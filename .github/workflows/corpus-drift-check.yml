@@ -42,6 +42,13 @@ jobs:
             'results-data/SEED_CORPUS_SPEC.md'
             'results-data/README.md'
             'results-data/validate_corpus.py'
+            'benchbox/validation/bundle.py'
+            'benchbox/core/results/query_status.py'
+            'benchbox/core/results/schema_policy.py'
+            'benchbox/core/results/subscale_policy.py'
+            'scripts/validate_submission.py'
+            'scripts/publication/validator_parity.py'
+            'scripts/generate_corpus_inventory.py'
           )
 
           DEVELOP_AHEAD=$(git diff --name-only --diff-filter=A "${PUB}" "${DEV}" -- "${PATHSPECS[@]}" || true)

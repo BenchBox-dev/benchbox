@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import ast
+import importlib.util
+import json
 import shlex
 import subprocess
+import sys
 from pathlib import Path, PurePosixPath
 
 import pytest
@@ -290,6 +293,71 @@ def test_drift_check_ignores_derived_inventory_difference() -> None:
     path_specs = run.split("PATHSPECS=(", 1)[1].split(")", 1)[0]
     assert "results-data/bundles" in path_specs
     assert "results-data/corpus-inventory.json" not in path_specs
+
+
+def _drift_check_pathspecs() -> list[str]:
+    workflow = yaml.safe_load(DRIFT_WORKFLOW_PATH.read_text(encoding="utf-8"))
+    compare = next(
+        step
+        for step in workflow["jobs"]["corpus-drift"]["steps"]
+        if step.get("name") == "Compare the mirrored corpus paths (directional)"
+    )
+    return shlex.split(compare["run"].split("PATHSPECS=(", 1)[1].split(")", 1)[0])
+
+
+def test_drift_check_pathspec_matches_sync_list_except_derived_inventory() -> None:
+    _, compare_paths, copy_paths = _mirrored_runtime_paths()
+    drift_paths = _drift_check_pathspecs()
+
+    assert sorted(drift_paths) == sorted(set(drift_paths))
+    assert sorted(drift_paths) == sorted(set(compare_paths) - {"results-data/corpus-inventory.json"})
+    assert sorted(drift_paths) == sorted([BUNDLES_DIR, *copy_paths])
+    assert not [path for path in drift_paths if "*" in path]
+
+
+def test_mirror_allowlist_excludes_modules_the_variant_identity_import_needs() -> None:
+    triggers, compare_paths, copy_paths = _mirrored_runtime_paths()
+    unmirrored = {
+        "benchbox/core/results/execution_variant.py",
+        "benchbox/core/execution_variant.py",
+        "benchbox/core/platform_manifest.py",
+    }
+
+    for paths in (triggers, compare_paths, copy_paths, _drift_check_pathspecs()):
+        assert not unmirrored & set(paths)
+
+
+def test_validator_fails_closed_when_the_identity_module_is_not_mirrored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle = {
+        "benchmark": {"id": "tpch", "scale_factor": 1.0, "test_type": "power"},
+        "platform": {"name": "DuckDB"},
+        "run": {"timestamp": "2026-08-01T12:00:00"},
+        "export": {"anonymized": True},
+        "summary": {
+            "queries": {"total": 2, "passed": 2, "failed": 0},
+            "validation": "passed",
+            "tpc_metrics": {"power_at_size": 1.0},
+        },
+        "queries": [
+            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
+            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
+        ],
+    }
+    (tmp_path / "rankable.json").write_text(json.dumps(bundle), encoding="utf-8")
+    for name in [name for name in sys.modules if name == "benchbox" or name.startswith("benchbox.")]:
+        monkeypatch.setitem(sys.modules, name, None)
+    monkeypatch.setitem(sys.modules, "benchbox.core.results.execution_variant", None)
+    spec = importlib.util.spec_from_file_location("validate_corpus", REPO_ROOT / "results-data" / "validate_corpus.py")
+    assert spec and spec.loader
+    validator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(validator)
+
+    assert validator.main(tmp_path) == 1
+    output = capsys.readouterr().out
+    assert "needs the full benchbox package" in output
+    assert "Cohorts:" not in output
 
 
 VALIDATOR_ROOTS = ("results-data/validate_corpus.py", "scripts/validate_submission.py")
