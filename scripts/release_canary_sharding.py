@@ -6,6 +6,7 @@ import json
 import math
 import sys
 from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -41,24 +42,40 @@ def read_node_ids(path: Path) -> list[str]:
     return _canonical_node_ids(path.read_text(encoding="utf-8").splitlines())
 
 
-def load_durations(path: Path) -> dict[str, float]:
+@dataclass(frozen=True)
+class Durations:
+    tests: Mapping[str, float]
+    default_seconds: float
+
+    def weight(self, node_id: str) -> float:
+        return self.tests.get(node_id, self.default_seconds)
+
+
+def _non_negative(value: object, label: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+        raise ValueError(f"{label} must be a finite non-negative number")
+    return float(value)
+
+
+def load_durations(path: Path) -> Durations:
     payload = json.loads(path.read_text(encoding="utf-8"))
     tests = payload.get("tests") if isinstance(payload, dict) else None
     if not isinstance(payload, dict) or payload.get("schema_version") != 1 or not isinstance(tests, dict):
         raise ValueError("duration file must be a schema 1 object with a tests map")
-    durations: dict[str, float] = {}
-    for node_id, record in tests.items():
-        value = record.get("p95_seconds") if isinstance(record, dict) else None
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
-            raise ValueError(f"duration for {node_id!r} must be a finite non-negative number")
-        durations[node_id] = float(value)
-    return durations
+    default_seconds = _non_negative(payload.get("default_seconds"), "default_seconds")
+    return Durations(
+        {
+            node_id: _non_negative(
+                record.get("p95_seconds") if isinstance(record, dict) else None, f"duration for {node_id!r}"
+            )
+            for node_id, record in tests.items()
+        },
+        default_seconds,
+    )
 
 
-def _balanced_assignments(ordered: list[str], shard_count: int, durations: Mapping[str, float]) -> list[list[str]]:
-    known = sorted(durations[node_id] for node_id in ordered if node_id in durations)
-    fallback = known[len(known) // 2] if known else 1.0
-    weight = {node_id: durations.get(node_id, fallback) for node_id in ordered}
+def _balanced_assignments(ordered: list[str], shard_count: int, durations: Durations) -> list[list[str]]:
+    weight = {node_id: durations.weight(node_id) for node_id in ordered}
     loads = [0.0] * shard_count
     shards: list[list[str]] = [[] for _ in range(shard_count)]
     for node_id in sorted(ordered, key=lambda candidate: (-weight[candidate], candidate)):
@@ -69,7 +86,7 @@ def _balanced_assignments(ordered: list[str], shard_count: int, durations: Mappi
 
 
 def partition_node_ids(
-    node_ids: Sequence[str], shard_index: int, shard_count: int, durations: Mapping[str, float] | None = None
+    node_ids: Sequence[str], shard_index: int, shard_count: int, durations: Durations | None = None
 ) -> list[str]:
     if isinstance(shard_count, bool) or not isinstance(shard_count, int) or shard_count < 1:
         raise ValueError("shard_count must be a positive integer")
@@ -86,7 +103,7 @@ def _node_ids_sha256(node_ids: Sequence[str]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _load_binding(durations_path: Path | None) -> tuple[dict[str, float] | None, dict[str, str]]:
+def _load_binding(durations_path: Path | None) -> tuple[Durations | None, dict[str, str]]:
     if durations_path is None:
         return None, {}
     digest = hashlib.sha256(durations_path.read_bytes()).hexdigest()

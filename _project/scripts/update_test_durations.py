@@ -22,10 +22,21 @@ def main(argv: list[str] | None = None) -> int:
         help="Committed duration artifact to write",
     )
     parser.add_argument("--source", default="T3 nightly JUnit reports", help="Provenance label for the artifact")
+    parser.add_argument(
+        "--min-seconds",
+        type=float,
+        help="Keep only tests at least this slow and record the mean of the rest as default_seconds",
+    )
     args = parser.parse_args(argv)
 
     durations = collect_junit_durations(args.input)
-    write_duration_file(args.output, durations, source=args.source)
+    default_seconds = None
+    if args.min_seconds is not None:
+        kept = {nodeid: value for nodeid, value in durations.items() if value >= args.min_seconds}
+        rest = [value for nodeid, value in durations.items() if nodeid not in kept]
+        default_seconds = sum(rest) / len(rest) if rest else 0.0
+        durations = kept
+    write_duration_file(args.output, durations, source=args.source, default_seconds=default_seconds)
     print(f"wrote {len(durations)} test durations to {args.output}")
     return 0
 

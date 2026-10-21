@@ -3,6 +3,8 @@ from __future__ import annotations
 import itertools
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -13,6 +15,7 @@ from scripts.release_canary_sharding import (
     MARKER_EXPRESSION,
     MEDIUM_MARKER_EXPRESSION,
     MEDIUM_SHARD_COUNT,
+    Durations,
     collect_node_ids,
     load_durations,
     parse_collection_output,
@@ -340,22 +343,23 @@ def test_release_canary_aggregation_fails_closed_and_preserves_summary_contract(
     assert "Release canary passed." in result_text
 
 
-def _durations_file(path: Path, durations: dict[str, float]) -> Path:
-    payload = {"schema_version": 1, "tests": {node_id: {"p95_seconds": value} for node_id, value in durations.items()}}
+def _durations_file(path: Path, tests: dict[str, float], default_seconds: float = 1.0) -> Path:
+    payload = {
+        "schema_version": 1,
+        "default_seconds": default_seconds,
+        "tests": {node_id: {"p95_seconds": value} for node_id, value in tests.items()},
+    }
     path.write_text(json.dumps(payload), encoding="utf-8")
     return path
 
 
-def _skewed_node_ids() -> tuple[list[str], dict[str, float]]:
+def _skewed_node_ids() -> tuple[list[str], Durations]:
     node_ids = [f"tests/unit/test_{index:03d}.py::test_case" for index in range(40)]
-    durations = dict.fromkeys(node_ids, 1.0)
-    for node_id in node_ids[::4]:
-        durations[node_id] = 60.0
-    return node_ids, durations
+    return node_ids, Durations(dict.fromkeys(node_ids[::4], 60.0), default_seconds=1.0)
 
 
-def _loads(shards: list[list[str]], durations: dict[str, float]) -> list[float]:
-    return [sum(durations[node_id] for node_id in shard) for shard in shards]
+def _loads(shards: list[list[str]], durations: Durations) -> list[float]:
+    return [sum(durations.weight(node_id) for node_id in shard) for shard in shards]
 
 
 def test_duration_partition_assigns_every_test_exactly_once_whatever_the_input_order():
@@ -379,24 +383,26 @@ def test_duration_partition_balances_a_skew_that_round_robin_leaves_on_one_shard
     assert max(_loads(weighted, durations)) - min(_loads(weighted, durations)) <= 60.0
 
 
-def test_duration_partition_weights_unmeasured_tests_at_the_median_of_the_measured_ones():
+def test_duration_partition_weights_tests_missing_from_the_file_at_the_default():
     node_ids = [f"tests/unit/test_{index}.py::test_case" for index in range(7)]
-    measured = {node_ids[0]: 100.0, node_ids[1]: 2.0, node_ids[2]: 2.0, node_ids[3]: 2.0}
+    durations = Durations({node_ids[0]: 100.0}, default_seconds=2.0)
 
-    shards = [partition_node_ids(node_ids, index, 2, measured) for index in range(2)]
+    shards = [partition_node_ids(node_ids, index, 2, durations) for index in range(2)]
 
-    heavy = next(shard for shard in shards if node_ids[0] in shard)
-    assert heavy == [node_ids[0]]
+    assert next(shard for shard in shards if node_ids[0] in shard) == [node_ids[0]]
+    assert _loads(shards, durations) == [100.0, 12.0] or _loads(shards, durations) == [12.0, 100.0]
 
 
 @pytest.mark.parametrize(
     "payload",
     [
-        {"schema_version": 2, "tests": {}},
-        {"schema_version": 1, "tests": []},
-        {"schema_version": 1, "tests": {"tests/a.py::t": {"p95_seconds": -1}}},
-        {"schema_version": 1, "tests": {"tests/a.py::t": {"p95_seconds": True}}},
-        {"schema_version": 1, "tests": {"tests/a.py::t": {}}},
+        {"schema_version": 2, "default_seconds": 1, "tests": {}},
+        {"schema_version": 1, "default_seconds": 1, "tests": []},
+        {"schema_version": 1, "tests": {}},
+        {"schema_version": 1, "default_seconds": -1, "tests": {}},
+        {"schema_version": 1, "default_seconds": 1, "tests": {"tests/a.py::t": {"p95_seconds": -1}}},
+        {"schema_version": 1, "default_seconds": 1, "tests": {"tests/a.py::t": {"p95_seconds": True}}},
+        {"schema_version": 1, "default_seconds": 1, "tests": {"tests/a.py::t": {}}},
     ],
 )
 def test_load_durations_rejects_malformed_files(tmp_path: Path, payload: dict):
@@ -407,12 +413,38 @@ def test_load_durations_rejects_malformed_files(tmp_path: Path, payload: dict):
         load_durations(path)
 
 
+def test_update_test_durations_keeps_slow_tests_and_records_the_default_for_the_rest(tmp_path: Path):
+    junit = tmp_path / "junit.xml"
+    junit.write_text(
+        "<testsuites><testsuite>"
+        '<testcase name="tests/unit/test_a.py::test_slow" time="8.0"/>'
+        '<testcase name="tests/unit/test_a.py::test_fast" time="0.1"/>'
+        '<testcase name="tests/unit/test_a.py::test_faster" time="0.3"/>'
+        "</testsuite></testsuites>",
+        encoding="utf-8",
+    )
+    output = tmp_path / "durations.json"
+
+    result = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "_project/scripts/update_test_durations.py")]
+        + ["--input", str(junit), "--output", str(output), "--min-seconds", "0.2"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    loaded = load_durations(output)
+    assert dict(loaded.tests) == {"tests/unit/test_a.py::test_slow": 8.0, "tests/unit/test_a.py::test_faster": 0.3}
+    assert loaded.default_seconds == pytest.approx(0.1)
+
+
 def test_shard_refuses_a_collection_built_with_different_durations(tmp_path: Path):
     node_ids, durations = _skewed_node_ids()
     collect_input = tmp_path / "collect.txt"
     collect_input.write_text("\n".join(node_ids) + "\n", encoding="utf-8")
-    mine = _durations_file(tmp_path / "mine.json", durations)
-    other = _durations_file(tmp_path / "other.json", {**durations, node_ids[0]: 7.0})
+    mine = _durations_file(tmp_path / "mine.json", dict(durations.tests))
+    other = _durations_file(tmp_path / "other.json", {**durations.tests, node_ids[0]: 7.0})
     collect_node_ids(
         collect_input,
         tmp_path / "nodeids.txt",
