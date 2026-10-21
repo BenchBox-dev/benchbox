@@ -3,7 +3,7 @@
     "claude works headless after reboot",
     "agy works, or is set enabled: false with a reason"
   ],
-  "context": "If claude fails: stop and ask the owner (N11).",
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "Plan gate A1 (owner action O7). Owner runs sudo fdesetup authrestart; after login, doctor --post-reboot runs claude auth status and the agy probe as their role users from the daemon context, plus one minimal headless call each.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "3480b21c30084190a7ba5062dccee20b",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:23:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f8957c7e822848cfa0dd60510703dbc4",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
