@@ -14,6 +14,156 @@ _READ = "postgres"
 _ENGINES = "benchbox._vendor.sqlglot.benchbox.ddl_engines"
 
 
+_ARR = r"(float|double)_array"
+_FIXED_ARRAY = (
+    "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; "
+    "the fork writes the target's plain array type."
+)
+_TYPE_SPELLING = (
+    "ClickHouse type spelling: Int32, String, Decimal, DateTime and Date name the same types as the "
+    "SQL aliases INT, VARCHAR(n), CHAR(n), DECIMAL, TIMESTAMP and DATE legacy kept."
+)
+_DANGLING = (
+    "Legacy leaves a dangling CONSTRAINT name after removing the PRIMARY KEY; the fork removes the whole constraint."
+)
+_QUESTDB_LENGTH = (
+    "QuestDB rejects CHAR(n) and VARCHAR(n) (verified on QuestDB 10.0.1: ',' or ')' expected); the fork writes VARCHAR."
+)
+_COMMENT = "The fork keeps a leading /* comment */ on the statement; the statement is otherwise identical."
+_SCHEMA = (
+    "The fork writes the adapter schema ([dbo].) on the table and its REFERENCES targets; legacy relied "
+    "on the connection default schema, which is dbo."
+)
+_NO_TSQL_ARRAY = (
+    "T-SQL has no array column type; legacy and the fork are both invalid for fixed-size vector columns. "
+    "Reported, no equivalent type chosen."
+)
+
+CLASSIFICATIONS: list[tuple[str, str, str]] = [
+    (
+        rf"(athena_(csv|other|parquet)|bigquery|databend|databricks_delta_auto_optimize|presto_(hive|iceberg)|"
+        rf"trino_(hive|iceberg|memory|delta)|snowflake):{_ARR}",
+        "legacy-bug",
+        _FIXED_ARRAY,
+    ),
+    (
+        rf"databricks_delta_no_auto_optimize:{_ARR}",
+        "legacy-bug",
+        _FIXED_ARRAY + " Legacy also wrote an empty TBLPROPERTIES() clause, which Databricks rejects.",
+    ),
+    (
+        rf"questdb_(default|day|none):{_ARR}",
+        "legacy-bug",
+        "QuestDB rejects fixed-size arrays (verified on QuestDB 10.0.1: arrays do not have a fixed size); "
+        "the fork writes DOUBLE PRECISION[].",
+    ),
+    (
+        r"starrocks:double_array",
+        "legacy-bug",
+        "Legacy wrote DOUBLE[N], which is not a StarRocks type; the fork writes ARRAY<DOUBLE>.",
+    ),
+    (rf"(fabric|synapse_(replicate|round_robin)):{_ARR}", "legacy-bug", _NO_TSQL_ARRAY),
+    (
+        rf"singlestore:{_ARR}",
+        "legacy-bug",
+        "SingleStore has no ARRAY column type; legacy ARRAY<DOUBLE>[N] and the fork ARRAY(DOUBLE) are both invalid. "
+        "VECTOR(n, F64) would be the match; reported as a separate design choice.",
+    ),
+    (
+        rf"helper_strip_primary_keys:{_ARR}",
+        "equivalent",
+        "PostgreSQL FLOAT is double precision; the fork writes DOUBLE PRECISION.",
+    ),
+    (
+        r"athena_(csv|other|parquet):time_column",
+        "legacy-bug",
+        "Athena external tables have no TIME column type; the fork writes TIMESTAMP.",
+    ),
+    (
+        r"databricks_delta_(auto|no_auto)_optimize:using_present",
+        "legacy-bug",
+        "Legacy kept the statement's USING PARQUET although Delta was requested; the layout format replaces "
+        "the statement's own USING (fork behaviour, a table that keeps its USING needs an empty layout).",
+    ),
+    (
+        r"databricks_delta_no_auto_optimize:.*",
+        "legacy-bug",
+        "Legacy wrote an empty TBLPROPERTIES() clause, which Databricks rejects.",
+    ),
+    (
+        r"bigquery:.*",
+        "equivalent",
+        "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part.",
+    ),
+    (r"clickhouse_default:pk_named", "legacy-bug", _DANGLING),
+    (r"clickhouse_(default|no_primary_keys|nullable|tuned):.*", "equivalent", _TYPE_SPELLING),
+    (
+        r"doris_(plain|partitioned):bare_varchar",
+        "legacy-bug",
+        "Legacy wrote a bare VARCHAR, whose default length is not the unbounded text the benchmark means; the fork "
+        "writes the explicit VARCHAR(65533), the maximum, as it does for StarRocks.",
+    ),
+    (
+        r"databend:pk_(inline|named)",
+        "legacy-bug",
+        "Legacy leaves an inline PRIMARY KEY or a dangling CONSTRAINT name that the adapter meant to strip.",
+    ),
+    (r"(doris_plain|doris_partitioned|lakesail_parquet|spark_orc|spark_parquet):pk_named", "legacy-bug", _DANGLING),
+    (
+        r"(fabric|synapse_(replicate|round_robin)):if_not_exists",
+        "legacy-bug",
+        "Legacy IF NOT EXISTS guard checks the table name in every schema (and, for Synapse, drops the "
+        "DISTRIBUTION clause); the fork also checks TABLE_SCHEMA and keeps the layout.",
+    ),
+    (r"(fabric|synapse_(replicate|round_robin)):.*", "equivalent", _SCHEMA),
+    (
+        r"helper_strip_primary_keys:text_string_types",
+        "legacy-bug",
+        "STRING is not a PostgreSQL type; the fork writes TEXT.",
+    ),
+    (
+        r"helper_strip_primary_keys:with_properties",
+        "equivalent",
+        "Neither side strips WITH properties in this helper; the fork only differs in the case of the property name.",
+    ),
+    (r"(lakesail_parquet|spark_delta|spark_orc|spark_parquet):comment_prefix", "equivalent", _COMMENT),
+    (
+        r"snowflake:quoted_identifiers",
+        "legacy-bug",
+        "Legacy uppercases quoted identifiers, renaming the user's mixed-case names; the fork keeps them.",
+    ),
+    (r"spark_mixin:delta_.*", "equivalent", "Only the order of the two delta.autoOptimize TBLPROPERTIES differs."),
+    (
+        r"spark_mixin:hive_bucketed",
+        "equivalent",
+        "Only clause order differs; the fork follows the Hive grammar (CLUSTERED BY before STORED AS).",
+    ),
+    (
+        r"spark_mixin:hive_partition",
+        "legacy-bug",
+        "Legacy repeats the partition column in the column list, which Hive rejects.",
+    ),
+    (r"spark_mixin:iceberg_partition", "equivalent", "months(col) and MONTHS(col) are the same transform."),
+    (
+        r"spark_mixin:parquet_partition_sort",
+        "legacy-bug",
+        "Legacy wrote SORTED BY without CLUSTERED BY, which Spark rejects (verified on PySpark).",
+    ),
+    (
+        r"starrocks:(lineitem_codec|pk_inline|pk_middle|pk_trailing|pk_named)",
+        "legacy-bug",
+        "Legacy falls back to DUPLICATE KEY on single-line DDL because its pattern needs newline-indented columns "
+        "(and leaves a dangling CONSTRAINT name); on the multi-line TPC DDL it writes PRIMARY KEY like the fork.",
+    ),
+    (
+        r"questdb_(default|day|none):lineitem_codec",
+        "legacy-bug",
+        "Legacy wrote timestamp(l_shipdate) for a table without that column, and VARCHAR(n); QuestDB rejects both.",
+    ),
+    (r"questdb_(default|day|none):.*", "legacy-bug", _QUESTDB_LENGTH),
+]
+
+
 def _tpch_statements() -> dict[str, str]:
     from benchbox.core.tpch.schema import get_create_all_tables_sql
 
@@ -57,6 +207,7 @@ _MISC: dict[str, str] = {
     "time_column": (
         "CREATE TABLE metrics (time TIMESTAMP, metric_time TIME, hostname VARCHAR(64), PRIMARY KEY (time, hostname))"
     ),
+    "decimal_wide_scale": "CREATE TABLE t (lat DECIMAL(18, 14), amount DECIMAL(15, 2))",
     "float_array": "CREATE TABLE vectors (id BIGINT, embedding FLOAT[128])",
     "double_array": "CREATE TABLE vectors (id BIGINT, embedding DOUBLE[256])",
     "events_tuned": "CREATE TABLE events (event_id INTEGER, event_date DATE, payload VARCHAR(50))",
@@ -152,6 +303,7 @@ def _firebolt() -> list[Case]:
             strip_foreign_keys=True,
             type_map={"VARCHAR": "TEXT", "CHAR": "TEXT", "DECIMAL": "NUMERIC"},
             drop_type_parameters=["TEXT"],
+            table_case="lower",
         ),
         _inputs(),
     )
@@ -167,7 +319,13 @@ def _redshift() -> list[Case]:
     return _family(
         "redshift",
         lambda sql: adapter._optimize_table_definition(_translated(sql, "redshift", True)),
-        lambda sql: _fork(sql, "redshift", "redshift", default_layout=_layout(distribution="auto", sort_auto=True)),
+        lambda sql: _fork(
+            sql,
+            "redshift",
+            "redshift",
+            table_case="lower",
+            default_layout=_layout(distribution="auto", sort_auto=True),
+        ),
         inputs,
     )
 
@@ -359,6 +517,7 @@ def _athena() -> list[Case]:
                 strip_foreign_keys=True,
                 strip_not_null=True,
                 if_not_exists=True,
+                table_case="lower",
                 type_map={"VARCHAR": "STRING", "CHAR": "STRING"},
                 drop_type_parameters=["STRING"],
                 default_layout=_layout(
@@ -396,6 +555,7 @@ def _athena() -> list[Case]:
             strip_foreign_keys=True,
             strip_not_null=True,
             if_not_exists=True,
+            table_case="lower",
             table_suffix="_staging",
             type_map={"VARCHAR": "STRING", "CHAR": "STRING"},
             drop_type_parameters=["STRING"],
@@ -456,6 +616,7 @@ def _trino() -> list[Case]:
                 write,
                 strip_primary_keys=True,
                 strip_not_null=memory,
+                table_case="lower",
                 default_layout=_layout(format="PARQUET") if with_format else None,
             )
 
@@ -477,8 +638,9 @@ def _starrocks() -> list[Case]:
         return _fork(
             sql,
             "starrocks",
-            read="duckdb",
+            read="postgres",
             strip_foreign_keys=True,
+            float_as_real=True,
             type_map=engines.STARROCKS_TYPE_MAP,
             default_layout=_layout(key_model="primary", distribution="hash", distribute_by=[first], buckets=8),
         )
@@ -587,7 +749,7 @@ def _bigquery() -> list[Case]:
     return _family(
         "bigquery",
         lambda sql: adapter._convert_to_bigquery_table(_translated(sql, "bigquery")),
-        lambda sql: _fork(sql, "bigquery", "bigquery", or_replace=True, schema="proj.ds"),
+        lambda sql: _fork(sql, "bigquery", "bigquery", or_replace=True, schema="proj.ds", table_case="upper"),
         _inputs(),
     )
 
@@ -597,6 +759,7 @@ def _singlestore() -> list[Case]:
 
     adapter = _bare("benchbox.platforms.singlestore", "SingleStoreAdapter")
     ddl = importlib.import_module("benchbox._vendor.sqlglot.benchbox.ddl")
+    engines = importlib.import_module(_ENGINES)
 
     def fork(sql: str) -> str:
         keys = ddl.SingleStoreKeys(
@@ -604,7 +767,15 @@ def _singlestore() -> list[Case]:
             sort_keys=singlestore._TPCH_SORT_KEYS,
             reference_tables=singlestore._REFERENCE_TABLES,
         )
-        return _fork(sql, "singlestore", "mysql", strip_foreign_keys=True, singlestore=keys)
+        return _fork(
+            sql,
+            "singlestore",
+            "mysql",
+            strip_foreign_keys=True,
+            table_case="lower",
+            type_map=engines.SINGLESTORE_TYPE_MAP,
+            singlestore=keys,
+        )
 
     def legacy(sql: str) -> str:
         return adapter._transform_create_statement(_translated(sql, "mysql"))
@@ -657,6 +828,7 @@ def _mooncake() -> list[Case]:
 
 def _questdb() -> list[Case]:
     cases: list[Case] = []
+    questdb = importlib.import_module("benchbox.platforms.questdb")
     for label, partition in (("default", None), ("day", "DAY"), ("none", "NONE")):
         adapter = _bare("benchbox.platforms.questdb", "QuestDBAdapter", partition_by=partition)
 
@@ -672,12 +844,27 @@ def _questdb() -> list[Case]:
         def legacy_translated(sql: str, legacy=legacy) -> str:
             return legacy(_translated(sql, "postgres"))
 
-        cases += _family(
-            f"questdb_{label}",
-            legacy_translated,
-            lambda sql: _fork(sql, "questdb", "postgres", strip_primary_keys=True, strip_foreign_keys=True),
-            _inputs(),
-        )
+        def fork(sql: str, adapter=adapter) -> str:
+            table = _name(sql)
+            designated = questdb.TPCH_TIMESTAMP_COLUMNS.get(table)
+            if designated and not re.search(rf"\b{designated}\b", sql, re.IGNORECASE):
+                designated = None
+            layout = _layout(
+                symbol_columns=questdb.TPCH_SYMBOL_COLUMNS.get(table, []),
+                timestamp_columns=questdb.TPCH_DATE_COLUMNS.get(table, []),
+                designated_timestamp=designated,
+                time_partition=adapter._get_partition_for_table(table) if designated else None,
+            )
+            return _fork(
+                sql,
+                "questdb",
+                "postgres",
+                strip_primary_keys=True,
+                strip_foreign_keys=True,
+                default_layout=layout,
+            )
+
+        cases += _family(f"questdb_{label}", legacy_translated, fork, _inputs())
     return cases
 
 
@@ -716,7 +903,7 @@ def _strip_helpers() -> list[Case]:
     cases += _family(
         "helper_strip_with_properties",
         strip_with_properties,
-        lambda sql: _fork(sql, "postgres"),
+        lambda sql: _fork(sql, "postgres", strip_with_properties=True),
         {"with_properties": inputs["with_properties"]},
     )
     return cases
