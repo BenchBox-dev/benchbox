@@ -15600,7 +15600,7 @@
         "oracle-local-b4-cutover"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "BenchBox: remove the hosted oracle reviewer jobs"
     },
     "oracle-local-b6-drop-in-repo-engine": {
