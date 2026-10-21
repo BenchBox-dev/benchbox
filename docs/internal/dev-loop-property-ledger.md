@@ -94,7 +94,8 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `sync-results-data-to-published.yml` | product-safety | Corpus trust boundary sync |
 | `test.yml` | product-safety | Test tiers; replaced by ci.yml units |
 | `todo-state-validate.yml` | tooling | Tracker state validation |
-| `trunk.yml` | product-safety | Develop-push fast lane, four-shard medium tier, correctness gate, required-local-cases and verified release artifact; retains pending runs with queue:max |
+| `trunk-coverage.yml` | product-safety | Develop-push instrumented four-shard medium tier, v2 coverage map combine, published-map self-fetch, and daily map-staleness issue; never consulted by arming |
+| `trunk.yml` | product-safety | Develop-push fast lane, uninstrumented four-shard medium tier, correctness gate, required-local-cases and verified release artifact; retains pending runs with queue:max |
 | `upload-answers.yml` | product-safety | Answer file publication |
 | `validate-release-pr.yml` | product-safety | Release PR base validation |
 | `validate-submission.yml` | product-safety | Submission validation |
@@ -117,7 +118,8 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_oracle_review_workflow.py` | product-safety | The required check name, triggers, read-only token and script invocation of the oracle-review check |
 | `test_oracle_verdict_workflow.py` | product-safety | Oracle review triggers, guards, per-job secret scoping, sequential reviewer slots and App-only posting |
 | `test_t2_partition_workflow.py` | product-safety | Complete medium selection, correctness gate conservation, and binary framing placement |
-| `test_trunk_workflow.py` | product-safety | Develop-push triggers, retained pending runs and read-only test permissions |
+| `test_trunk_coverage_workflow.py` | product-safety | Coverage workflow triggers, instrumented shards, map combine with self-fetch, schedule-only staleness issue |
+| `test_trunk_workflow.py` | product-safety | Develop-push triggers, uninstrumented medium tier, retained pending runs and read-only test permissions |
 | `test_published_results_base_ci.py` | product-safety | Published corpus CI |
 | `test_release_canary_shard_evidence.py` | product-safety | Release canary evidence |
 | `test_release_uat_charter_guard.py` | product-safety | Release charter guard |

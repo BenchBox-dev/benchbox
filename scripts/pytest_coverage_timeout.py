@@ -6,12 +6,13 @@ import pytest
 import pytest_timeout
 
 COVERAGE_TIMEOUT_FACTOR = 8
+COVERAGE_TIMEOUT_CAP_SECONDS = 1200
 
 
 def scaled(settings: Any) -> Any:
     if not settings.timeout:
         return settings
-    return settings._replace(timeout=settings.timeout * COVERAGE_TIMEOUT_FACTOR)
+    return settings._replace(timeout=min(settings.timeout * COVERAGE_TIMEOUT_FACTOR, COVERAGE_TIMEOUT_CAP_SECONDS))
 
 
 @pytest.hookimpl(tryfirst=True)

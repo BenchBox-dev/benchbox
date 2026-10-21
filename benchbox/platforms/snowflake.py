@@ -1162,7 +1162,7 @@ class SnowflakeAdapter(PlatformAdapter):
             self.log_very_verbose(f"Setting query tag: {self.query_tag}_{query_id}")
             cursor.execute(f"ALTER SESSION SET QUERY_TAG = '{self.query_tag}_{query_id}'")
 
-            query = self._safeguard_snowflake_division(query)
+            query = self._apply_fork_safe_division(query)
             self.log_verbose(f"Executing query {query_id} on Snowflake")
             from benchbox.platforms.base.mysql_wire import split_sql_statements
 
@@ -1313,6 +1313,17 @@ class SnowflakeAdapter(PlatformAdapter):
         statement = "".join(parts)
 
         return statement
+
+    def _apply_fork_safe_division(self, query: str) -> str:
+        from benchbox.utils.dialect_utils import apply_rewrite
+
+        if "/" not in query:
+            return query
+        try:
+            return apply_rewrite("safe_division", query, "snowflake")
+        except Exception as e:
+            self.log_very_verbose(f"Division safeguard skipped (unparseable Snowflake SQL): {e}")
+            return query
 
     def _safeguard_snowflake_division(self, query: str) -> str:
         try:
