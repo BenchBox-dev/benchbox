@@ -437,6 +437,8 @@ class Fake:
             return b""
         if leaf == "json":
             return Payload()
+        if leaf == "paginate":
+            return [Payload()]
         if leaf == "default":
             return Fake(self._ledger, "credentials"), CATALOG_NAME
         return Fake(self._ledger, f"{self._name}()")
@@ -946,7 +948,6 @@ FORCE_RECREATE_FAIL_CLOSED: dict[str, str] = {
 }
 DEFAULT_MODE_REFUSALS: dict[str, str] = {
     "ducklake-postgres_catalog": "no BenchBox run identity",
-    "athena": "Could not remove existing database",
 }
 FAKE_POLL = "the fake service never reports the remote job or session as finished, so the polling loop raises"
 INCOMPLETE_STAGES: dict[str, tuple[frozenset[str], str]] = {
