@@ -577,7 +577,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         tgt = (target_dialect or src).lower()
 
         pre_procs = [self._normalize_interval_syntax]
-        if tgt == "postgres":
+        if tgt in {"postgres", "questdb"}:
             pre_procs.append(
                 lambda sql: apply_rewrite("date_integer_arithmetic_to_interval", sql, src, date_columns=_DATE_COLUMNS)
             )

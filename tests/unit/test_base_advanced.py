@@ -649,7 +649,7 @@ class TestMockBaseBenchmarkQueryTranslation:
 
     def test_translate_query_wraps_translation_failure(self):
         self.benchmark.translate_query(1, "mysql")
-        with patch("benchbox._vendor.sqlglot.parse_one", side_effect=ValueError("boom")):
+        with patch("benchbox._vendor.sqlglot.parse", side_effect=ValueError("boom")):
             with pytest.raises(ValueError, match="Error translating to dialect"):
                 self.benchmark.translate_query(1, "mysql")
 

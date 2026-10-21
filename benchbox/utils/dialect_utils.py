@@ -352,10 +352,14 @@ def translate_sql_query(
                 processed_query = pre_proc(processed_query)
 
         should_identify = identify and (tgt not in NO_IDENTIFY_DIALECTS)
-        expression = sqlglot.parse_one(processed_query, read=src)
-        if tgt == "sqlite":
-            expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt, **SQLITE_DISCOUNT_BOUNDS)
-        translated = expression.sql(dialect=tgt, identify=should_identify)
+        parsed = sqlglot.parse(processed_query, read=src)
+        expression = parsed[0] if parsed else None
+        if expression is None:
+            translated = ""
+        else:
+            if tgt == "sqlite":
+                expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt, **SQLITE_DISCOUNT_BOUNDS)
+            translated = expression.sql(dialect=tgt, identify=should_identify)
 
         if post_processors:
             for post_proc in post_processors:

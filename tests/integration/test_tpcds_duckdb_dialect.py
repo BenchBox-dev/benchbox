@@ -200,7 +200,7 @@ class TestTPCDSDuckDBDialectIntegration:
     def test_strict_dialect_translation_fails_closed(self):
         benchmark = TPCDSBenchmark(scale_factor=1.0, verbose=False)
 
-        with patch("benchbox._vendor.sqlglot.parse_one", side_effect=RuntimeError("synthetic translation failure")):
+        with patch("benchbox._vendor.sqlglot.parse", side_effect=RuntimeError("synthetic translation failure")):
             with sql_translation_context(strict=True) as outcomes:
                 with pytest.raises(SQLTranslationError):
                     benchmark.translate_query_text(

@@ -123,7 +123,7 @@ class TestTranslateSqlMultiStatement:
     def test_error_returns_original_sql(self):
         sql = "CREATE TABLE t (id INTEGER)"
         a = _Adapter(dialect="snowflake")
-        with patch("benchbox._vendor.sqlglot.parse_one", side_effect=Exception("boom")):
+        with patch("benchbox._vendor.sqlglot.parse", side_effect=Exception("boom")):
             result = a.translate_sql(sql, source_dialect="duckdb")
         assert result == sql
 

@@ -372,12 +372,12 @@ class TestPlatformAdapter:
         result = adapter.translate_sql("SELECT * FROM orders", "duckdb")
         assert result == "SELECT * FROM orders;"
 
-    @patch("benchbox._vendor.sqlglot.parse_one")
-    def test_sql_translation_error_handling(self, mock_parse_one):
+    @patch("benchbox._vendor.sqlglot.parse")
+    def test_sql_translation_error_handling(self, mock_parse):
         adapter = MockPlatformAdapter()
         adapter._dialect = "postgresql"
 
-        mock_parse_one.side_effect = Exception("Translation error")
+        mock_parse.side_effect = Exception("Translation error")
 
         sql = "SELECT * FROM table"
         result = adapter.translate_sql(sql, "duckdb")

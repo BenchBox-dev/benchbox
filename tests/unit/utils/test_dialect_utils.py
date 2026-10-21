@@ -848,3 +848,23 @@ class TestPostgresIdentifierQuoting:
         result = translate_sql_query(query, target_dialect="postgres", source_dialect="netezza", identify=True)
         assert '"SR_RETURN_AMT"' not in result
         assert '"SR_NET_LOSS"' not in result
+
+
+class TestMultiStatementInput:
+    def test_only_the_first_statement_is_translated(self):
+        result = translate_sql_query("SELECT 1 AS a; SELECT 2 AS b", "duckdb", source_dialect="netezza", identify=False)
+        assert result == "SELECT 1 AS a"
+
+    def test_dsqgen_style_two_part_query_keeps_the_first_part(self):
+        result = translate_sql_query(
+            "SELECT * FROM t WHERE a = 1; SELECT * FROM t WHERE a = 2", "postgres", source_dialect="netezza"
+        )
+        assert "a = 2" not in result
+
+
+class TestTpcdsQuestDbDateArithmetic:
+    def test_date_plus_integer_becomes_dateadd(self):
+        result = TestTpcdsDateIntegerArithmetic._translate(
+            "SELECT * FROM a, b d1, b d3 WHERE d3.d_date > d1.d_date + 5", "questdb"
+        )
+        assert "DATEADD('d', 5, d1.d_date)" in result
