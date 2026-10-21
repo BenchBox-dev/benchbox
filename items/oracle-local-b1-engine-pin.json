@@ -4,7 +4,7 @@
     "test_verify_oracle_wheel.py covers tampered RECORD, extra file, .pth",
     "Contract tests pass"
   ],
-  "context": "Plan: ~/.benchbox/handoffs/2026-10-16-oracle-local-reviewer-plan-handoff.md section 7. B0 (concurrency fix) is done as oracle-review-cancel-race-20261016.",
+  "context": "2026-10-21: the upstream engine lacks #3192's fail-closed exemptions (it returns success with no review for non-soundness PRs), so freezing the in-repo engine on it would deadlock or skip reviews. Prerequisite ship-no-ship-gate-parity-20261021 added.",
   "description": "Plan step B1. .github/oracle/engine.lock and the vendored ship-no-ship wheel; every oracle job installs it and calls ship-no-ship; sparse checkouts include .github/oracle/; .github/oracle/ added to gate_paths and soundness-paths.txt; make oracle-engine-bump (writes the lock, pastes the release's source diff into the PR body); _project/scripts/verify_oracle_wheel.py and make oracle-engine-verify in CI; contract tests (policy passes validate-config; paths.py agrees with soundness_paths.py on every tracked file). Hosted reviewers unchanged; in-repo engine frozen.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "130634cdf38140c299198944c67757a5",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:46:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "34d6dd304aa44d60992073f4d7ec8339",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }

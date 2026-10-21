@@ -15543,7 +15543,8 @@
     "oracle-local-b1-engine-pin": {
       "claim": null,
       "needs": [
-        "ssns-v010-release"
+        "ssns-v010-release",
+        "ship-no-ship-gate-parity-20261021"
       ],
       "priority": "high",
       "status": "open",
