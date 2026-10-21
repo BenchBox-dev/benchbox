@@ -4,6 +4,7 @@
     "Owner approval recorded",
     "First local verdicts post on real PRs"
   ],
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "Plan step B4: executor.mode: local. Owner approves the cut-over the same day as the proof PRs (O9). Rollback: set ORACLE_EXECUTOR=hosted or revert, then re-dispatch waiting PRs.",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "op": "create",
       "op_id": "eb8408cd5c914f3ab339473fac6599e0",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:21:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e03f0dc0ca0f4d05b9f6d2c6bec396c5",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
