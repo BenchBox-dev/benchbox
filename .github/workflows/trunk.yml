@@ -218,6 +218,8 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob globstar
+          shard_dirs=(t2-shards/t2-medium-shard-*/)
+          test "${#shard_dirs[@]}" -gt 0
           args=()
           for shard in t2-shards/**/coverage-shard-*.dat; do
             args+=(--data "$shard")
@@ -226,6 +228,7 @@ jobs:
           uv run -- python scripts/coverage_test_selection.py build-map \
             "${args[@]}" \
             --sha "${{ github.sha }}" \
+            --expected-shards "${#shard_dirs[@]}" \
             --out t2-coverage-map/map.json
           test -s t2-coverage-map/map.json
       - name: Upload coverage test map

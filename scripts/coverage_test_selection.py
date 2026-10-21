@@ -7,6 +7,7 @@ import fnmatch
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -24,6 +25,7 @@ MAX_MAP_BEHIND_COMMITS = 50
 MAX_SELECTED_NODEIDS = 2000
 TESTS_ROOT = "tests"
 INERT_PATH_PATTERNS = ("docs/*", "*.md", "_project/todo-db-export/*")
+TRUNK_WORKFLOW_PATH = ".github/workflows/trunk.yml"
 
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 _HUNK_RE = re.compile(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
@@ -115,9 +117,22 @@ def _strip_git_prefix(token: str) -> str:
     return token
 
 
-def _parse_block(block: list[str]) -> ChangedFile | None:
+def _split_diff_header(header: str) -> tuple[str, str]:
+    rest = header[len("diff --git ") :] if header.startswith("diff --git ") else ""
+    try:
+        parts = shlex.split(rest)
+    except ValueError:
+        return "", ""
+    if len(parts) != 2:
+        return "", ""
+    return _strip_git_prefix(parts[0]), _strip_git_prefix(parts[1])
+
+
+def _parse_block(header: str, block: list[str]) -> ChangedFile:
     old = ""
     new = ""
+    rename_from = ""
+    rename_to = ""
     renamed = False
     added = False
     deleted = False
@@ -125,6 +140,9 @@ def _parse_block(block: list[str]) -> ChangedFile | None:
     for line in block:
         if line.startswith("rename from "):
             renamed = True
+            rename_from = line[len("rename from ") :].strip()
+        elif line.startswith("rename to "):
+            rename_to = line[len("rename to ") :].strip()
         elif line.startswith("new file mode"):
             added = True
         elif line.startswith("deleted file mode"):
@@ -144,8 +162,19 @@ def _parse_block(block: list[str]) -> ChangedFile | None:
                 start = int(match.group(1))
                 count = int(match.group(2)) if match.group(2) is not None else 1
                 ranges.append((start, count))
+    if rename_from and rename_to:
+        old, new = rename_from, rename_to
+    elif not old or not new:
+        header_old, header_new = _split_diff_header(header)
+        old, new = old or header_old, new or header_new
     if not old or not new:
-        return None
+        raise SelectionError(f"cannot parse diff block starting with: {header[:120]}")
+    return _finish_entry(old, new, renamed, added, deleted, ranges)
+
+
+def _finish_entry(
+    old: str, new: str, renamed: bool, added: bool, deleted: bool, ranges: list[tuple[int, int]]
+) -> ChangedFile:
     if old == "/dev/null":
         return ChangedFile(path=new, old_path=new, status="added", old_ranges=ranges)
     if new == "/dev/null":
@@ -160,14 +189,13 @@ def _parse_block(block: list[str]) -> ChangedFile | None:
 
 
 def parse_diff(diff: str) -> list[ChangedFile]:
-    blocks: list[list[str]] = []
+    blocks: list[tuple[str, list[str]]] = []
     for line in diff.splitlines():
         if line.startswith("diff --git "):
-            blocks.append([])
+            blocks.append((line, []))
         elif blocks:
-            blocks[-1].append(line)
-    entries = [_parse_block(block) for block in blocks]
-    return [entry for entry in entries if entry is not None]
+            blocks[-1][1].append(line)
+    return [_parse_block(header, block) for header, block in blocks]
 
 
 def changed_files(repo: Path, map_sha: str, head: str = "HEAD") -> list[ChangedFile]:
@@ -301,6 +329,17 @@ def _fallback_inputs(files: list[ChangedFile]) -> list[str]:
     return inputs
 
 
+def _path_hits(index: dict, path: str) -> set[str]:
+    lines = index.get(path)
+    if not isinstance(lines, dict):
+        return set()
+    hits: set[str] = set()
+    for nodes in lines.values():
+        if isinstance(nodes, list):
+            hits.update(node for node in nodes if isinstance(node, str))
+    return hits
+
+
 def _classify_files(
     repo: Path, mapping: dict | None, files: list[ChangedFile], index: dict
 ) -> tuple[set[str], set[str], set[str]]:
@@ -321,6 +360,9 @@ def _classify_files(
         if entry.status == "added":
             uncovered.add(entry.path)
             continue
+        if entry.status == "renamed":
+            coverage_hits.update(_path_hits(index, entry.old_path))
+            uncovered.add(entry.path)
         if entry.status == "modified" and not entry.old_ranges:
             uncovered.add(entry.old_path)
             continue
@@ -331,6 +373,29 @@ def _classify_files(
             uncovered.add(entry.old_path)
     coverage_hits = {node for node in coverage_hits if (repo / node.split("::", 1)[0]).is_file()}
     return coverage_hits, uncovered, non_python
+
+
+def _apply_develop_overlap(
+    repo: Path, mapping: dict | None, map_sha: str | None, base_sha: str, files: list[ChangedFile]
+) -> tuple[list[ChangedFile], str | None]:
+    if mapping is None or map_sha is None:
+        return files, None
+    if map_sha == base_sha or not _is_ancestor(repo, map_sha, base_sha):
+        return files, None
+    try:
+        develop_files = changed_files(repo, map_sha, base_sha)
+    except SelectionError as exc:
+        return files, str(exc)
+    overlap = {entry.path for entry in develop_files} | {entry.old_path for entry in develop_files}
+    if not overlap:
+        return files, None
+    remapped = [
+        ChangedFile(path=entry.path, old_path=entry.old_path, status="added", old_ranges=[])
+        if entry.path in overlap or entry.old_path in overlap
+        else entry
+        for entry in files
+    ]
+    return remapped, None
 
 
 def select_tests(
@@ -365,6 +430,9 @@ def select_tests(
                         reasons.append(
                             f"coverage map is {behind} develop commits behind the base (limit {MAX_MAP_BEHIND_COMMITS})"
                         )
+    files, overlap_note = _apply_develop_overlap(repo, mapping, map_sha, base_sha, files)
+    if overlap_note is not None:
+        reasons.append(overlap_note)
     index = mapping.get("files") if isinstance(mapping, dict) and isinstance(mapping.get("files"), dict) else {}
     coverage_hits, uncovered, non_python = _classify_files(repo, mapping, files, index)
     code_routed = decision is None or decision.get("needs_code_ci") is not False
@@ -459,9 +527,15 @@ def _split_row(line: str) -> tuple[str, str, str]:
     return parts[0], parts[1], parts[2]
 
 
-def _run_head_sha(repo: Path, slug: str, run_id: int) -> str | None:
+def _trusted_run_head(repo: Path, slug: str, run_id: int) -> str | None:
     proc = subprocess.run(
-        ["gh", "api", f"repos/{slug}/actions/runs/{run_id}", "--jq", ".head_sha"],
+        [
+            "gh",
+            "api",
+            f"repos/{slug}/actions/runs/{run_id}",
+            "--jq",
+            ".head_sha, .path, .event, .head_branch, .head_repository.full_name",
+        ],
         cwd=repo,
         text=True,
         capture_output=True,
@@ -469,7 +543,12 @@ def _run_head_sha(repo: Path, slug: str, run_id: int) -> str | None:
     )
     if proc.returncode != 0:
         return None
-    sha = proc.stdout.strip()
+    fields = [line.strip() for line in proc.stdout.splitlines()]
+    if len(fields) != 5:
+        return None
+    sha, path, event, branch, head_slug = fields
+    if path != TRUNK_WORKFLOW_PATH or event != "push" or branch != "develop" or head_slug != slug:
+        return None
     return sha if _SHA_RE.match(sha) else None
 
 
@@ -515,7 +594,7 @@ def fetch_map(
     try:
         resolved = slug or _github_slug(repo)
         for name, run_id, _created in _list_map_artifacts(repo, resolved, prefix):
-            head = _run_head_sha(repo, resolved, run_id)
+            head = _trusted_run_head(repo, resolved, run_id)
             if head is None or not _is_ancestor(repo, head, base_sha):
                 continue
             target = dest / name
@@ -560,6 +639,9 @@ def _cmd_build_map(args: argparse.Namespace) -> int:
         return 2
     data_files = [path for pattern in args.data for path in sorted(pattern.parent.glob(pattern.name))]
     data_files = [path for path in data_files if path.is_file()]
+    if args.expected_shards is not None and len(data_files) != args.expected_shards:
+        print(f"expected {args.expected_shards} coverage data files, found {len(data_files)}", file=sys.stderr)
+        return 1
     if not data_files:
         print("no coverage data files matched", file=sys.stderr)
         return 1
@@ -622,7 +704,7 @@ def _cmd_select(args: argparse.Namespace) -> int:
         map_note = "; ".join(note for note in (map_note, decision_note) if note)
     try:
         if mapping is not None and base_sha:
-            files = changed_files(repo, str(mapping["sha"]))
+            files = changed_files(repo, base_sha)
         elif base_sha:
             files = named_changed_files(repo, base_sha)
         else:
@@ -663,6 +745,7 @@ def build_parser() -> argparse.ArgumentParser:
     build_map_parser = sub.add_parser("build-map")
     build_map_parser.add_argument("--data", type=Path, action="append", required=True)
     build_map_parser.add_argument("--sha", required=True)
+    build_map_parser.add_argument("--expected-shards", type=int, default=None)
     build_map_parser.add_argument("--out", type=Path, required=True)
     build_map_parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     build_map_parser.set_defaults(func=_cmd_build_map)

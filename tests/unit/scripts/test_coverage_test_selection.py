@@ -169,6 +169,28 @@ def test_parse_diff_reads_additions_deletions_and_renames() -> None:
     assert entries["benchbox/core/gone.py"].old_ranges == [(1, 1)]
 
 
+def test_parse_diff_reads_pure_renames_and_header_only_blocks() -> None:
+    diff = (
+        "diff --git a/benchbox/core/old.py b/benchbox/core/new.py\n"
+        "similarity index 100%\n"
+        "rename from benchbox/core/old.py\n"
+        "rename to benchbox/core/new.py\n"
+        "diff --git a/benchbox/core/empty.py b/benchbox/core/empty.py\n"
+        "new file mode 100644\n"
+        "index 0000000..e69de29\n"
+    )
+    entries = {entry.path: entry for entry in sel.parse_diff(diff)}
+    assert entries["benchbox/core/new.py"].status == "renamed"
+    assert entries["benchbox/core/new.py"].old_path == "benchbox/core/old.py"
+    assert entries["benchbox/core/new.py"].old_ranges == []
+    assert entries["benchbox/core/empty.py"].status == "added"
+
+
+def test_parse_diff_rejects_blocks_without_paths() -> None:
+    with pytest.raises(sel.SelectionError):
+        sel.parse_diff("diff --git \nfoo\n")
+
+
 def test_lookup_hits_separates_covered_and_missed_lines() -> None:
     index = {"benchbox/base.py": {"4": ["tests/test_benchbox.py::test_translate"], "5": []}}
     hits, missed = sel.lookup_hits(index, "benchbox/base.py", [4, 5, 6])
@@ -241,15 +263,14 @@ def test_selection_unites_coverage_changed_tests_and_fallback(repo: Path) -> Non
     _write(repo, "benchbox/core/engine.py", "x = 2\n")
     _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
     _commit_all(repo)
-    base_sha = _head(repo)
     files = sel.changed_files(repo, map_sha)
-    result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
     assert result["escalate"] is False
     assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
     assert "tests/unit/test_unrelated.py" in result["selected"]
     assert "tests/unit/core/test_engine.py" in result["fallback_tests"]
     assert result["map_sha"] == map_sha
-    assert result["behind_commits"] == 1
+    assert result["behind_commits"] == 0
 
 
 def test_pure_addition_probes_neighbouring_old_lines(repo: Path) -> None:
@@ -259,7 +280,7 @@ def test_pure_addition_probes_neighbouring_old_lines(repo: Path) -> None:
     files = sel.changed_files(repo, map_sha)
     (entry,) = [entry for entry in files if entry.path == "benchbox/base.py"]
     assert entry.old_ranges == [(5, 0)]
-    result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
     assert "tests/test_benchbox.py::test_translate" in result["selected"]
 
 
@@ -326,7 +347,7 @@ def test_selection_over_the_named_limit_escalates(repo: Path, monkeypatch: pytes
     _commit_all(repo)
     files = sel.changed_files(repo, map_sha)
     monkeypatch.setattr(sel, "MAX_SELECTED_NODEIDS", 1)
-    result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
     assert result["escalate"] is True
     assert "exceeds" in result["reason"]
     assert set(result["selected"]) == set(result["fallback_tests"]) | set(result["importer_tests"])
@@ -367,7 +388,7 @@ def test_deleted_source_still_matches_coverage_by_old_path(repo: Path) -> None:
     (repo / "benchbox/core/engine.py").unlink()
     _commit_all(repo)
     files = sel.changed_files(repo, map_sha)
-    result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
     assert result["escalate"] is False
     assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
 
@@ -453,6 +474,100 @@ def test_map_sha_outside_base_ancestry_escalates(repo: Path) -> None:
     assert result["behind_commits"] is None
 
 
+def test_pure_rename_selects_tests_on_old_and_new_paths(repo: Path) -> None:
+    map_sha = _head(repo)
+    base_sha = map_sha
+    _git(repo, "mv", "benchbox/core/engine.py", "benchbox/core/motor.py")
+    _commit_all(repo)
+    files = sel.changed_files(repo, base_sha)
+    assert [(entry.path, entry.status) for entry in files] == [("benchbox/core/motor.py", "renamed")]
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
+    assert result["escalate"] is False
+    assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
+
+
+def test_pure_rename_of_non_python_resource_escalates(repo: Path) -> None:
+    map_sha = _head(repo)
+    _write(repo, "assets/logo.png", "fake-png\n")
+    _commit_all(repo)
+    base_sha = _head(repo)
+    _git(repo, "mv", "assets/logo.png", "assets/banner.png")
+    _commit_all(repo)
+    files = sel.changed_files(repo, base_sha)
+    assert [(entry.path, entry.status) for entry in files] == [("assets/banner.png", "renamed")]
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo), decision={"needs_code_ci": True})
+    assert result["escalate"] is True
+    assert "assets/banner.png" in result["reason"]
+
+
+def test_pr_change_against_base_selects_reverted_lines(repo: Path) -> None:
+    map_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _commit_all(repo)
+    base_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 1\n")
+    _commit_all(repo)
+    assert sel.changed_files(repo, map_sha) == []
+    files = sel.changed_files(repo, base_sha)
+    assert [entry.path for entry in files] == ["benchbox/core/engine.py"]
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
+    assert result["escalate"] is False
+    assert "tests/unit/core/test_engine.py" in result["selected"]
+
+
+def test_build_map_rejects_unexpected_shard_count(repo: Path, tmp_path: Path) -> None:
+    data = _coverage_data(tmp_path, {str(repo / "benchbox/base.py"): {4: ["tests/test_benchbox.py::test_translate"]}})
+    out = tmp_path / "map.json"
+    base = ["build-map", "--data", str(data), "--sha", _head(repo), "--out", str(out), "--repo-root", str(repo)]
+    assert sel.main([*base, "--expected-shards", "2"]) == 1
+    assert not out.is_file()
+    assert sel.main([*base, "--expected-shards", "1"]) == 0
+    assert json.loads(out.read_text(encoding="utf-8"))["sha"] == _head(repo)
+
+
+def test_trusted_run_head_accepts_trunk_push_runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    sha = "a" * 40
+    stdout = "\n".join([sha, ".github/workflows/trunk.yml", "push", "develop", "o/r"]) + "\n"
+
+    def _run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(args, 0, stdout, "")
+
+    monkeypatch.setattr(sel.subprocess, "run", _run)
+    assert sel._trusted_run_head(repo, "o/r", 7) == sha
+
+
+def test_trusted_run_head_rejects_untrusted_runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    sha = "a" * 40
+    good = [sha, ".github/workflows/trunk.yml", "push", "develop", "o/r"]
+    cases = [
+        ["not-a-sha", good[1], good[2], good[3], good[4]],
+        [good[0], ".github/workflows/ci.yml", good[2], good[3], good[4]],
+        [good[0], good[1], "pull_request", good[3], good[4]],
+        [good[0], good[1], good[2], "feature", good[4]],
+        [good[0], good[1], good[2], good[3], "other/r"],
+    ]
+    for fields in cases:
+        monkeypatch.setattr(sel.subprocess, "run", _fake_run("\n".join(fields) + "\n"))
+        assert sel._trusted_run_head(repo, "o/r", 7) is None
+
+
+def _fake_run(stdout: str) -> object:
+    def _run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(args, 0, stdout, "")
+
+    return _run
+
+
+def test_fetch_map_skips_runs_failing_provenance(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "_github_slug", lambda _repo: "o/r")
+    monkeypatch.setattr(
+        sel, "_list_map_artifacts", lambda _repo, _slug, _prefix: [("t2-coverage-map-abc", 7, "2026-10-20T00:00:00Z")]
+    )
+    monkeypatch.setattr(sel, "_trusted_run_head", lambda _repo, _slug, _run: None)
+    result = sel.fetch_map(repo, _head(repo), tmp_path / "maps")
+    assert result["status"] == "missing"
+
+
 def test_read_downloaded_map_prefers_matching_map_json(repo: Path, tmp_path: Path) -> None:
     head = _head(repo)
     target = tmp_path / "artifact"
@@ -492,7 +607,7 @@ def test_select_cli_writes_nodeids_and_json(repo: Path, tmp_path: Path, monkeypa
                 "--map",
                 str(map_path),
                 "--base-sha",
-                _head(repo),
+                map_sha,
                 "--nodeids-out",
                 str(nodeids),
                 "--json-out",
@@ -539,7 +654,7 @@ def test_fetch_map_skips_runs_that_are_not_base_ancestors(
     monkeypatch.setattr(
         sel, "_list_map_artifacts", lambda _repo, _slug, _prefix: [("t2-coverage-map-abc", 7, "2026-10-20T00:00:00Z")]
     )
-    monkeypatch.setattr(sel, "_run_head_sha", lambda _repo, _slug, _run: "a" * 40)
+    monkeypatch.setattr(sel, "_trusted_run_head", lambda _repo, _slug, _run: "a" * 40)
     monkeypatch.setattr(sel, "_is_ancestor", lambda _repo, _sha, _base: False)
     result = sel.fetch_map(repo, _head(repo), tmp_path / "maps")
     assert result["status"] == "missing"
