@@ -23455,7 +23455,7 @@
         "ssns-o6-install-and-doctor"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship activation A4: scripted live run against the real CLIs"
     },
     "ssns-a5-proof-prs": {
