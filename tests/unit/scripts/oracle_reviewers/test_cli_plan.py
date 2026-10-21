@@ -768,7 +768,24 @@ def _disputed_thread() -> dict[str, Any]:
         "resolved": False,
         "path": CAPTURE,
         "body": "**High**: Drops a row",
-        "replies": [{"author": "joe", "author_type": "User", "body": "Not a defect: pkg/kept.py:12 keeps the row."}],
+        "replies": [
+            {
+                "author": "joe",
+                "author_type": "User",
+                "body": "Dispute: pkg/kept.py:12 keeps the row, so the defect is wrong.",
+            }
+        ],
+    }
+
+
+def _acked_thread() -> dict[str, Any]:
+    return {
+        "author": "benchbox-oracle[bot]",
+        "author_type": "Bot",
+        "resolved": False,
+        "path": CAPTURE,
+        "body": "**High**: Drops a row",
+        "replies": [{"author": "joe", "author_type": "User", "body": "done"}],
     }
 
 
@@ -797,6 +814,26 @@ def test_push_with_a_disputed_thread_upgrades_carry_to_a_forced_rereview(
     assert plan["manual"] is False
     assert plan["protocol"]["kind"] == "follow-up" and plan["protocol"]["forced"] is True
     assert len(plan["disputes"]) == 1
+
+
+def test_push_with_only_an_acknowledgement_still_carries(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2)
+    _, values, plan = _plan(monkeypatch, tmp_path, _thread_fake(record, [_acked_thread()]))
+    assert values["decision"] == "carry" and values["post"] == "true"
+    assert plan["manual"] is False
+    assert plan["protocol"]["kind"] == "carry" and plan["protocol"]["forced"] is False
+    assert plan.get("disputes", []) == []
+
+
+def test_a_changed_patch_with_a_dispute_takes_the_ordinary_follow_up_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2)
+    fake = FakeGitHub(_pull(), TWO_FILES, threads=[_disputed_thread()], diff=CAPTURE_CHANGED)
+    fake.reviews = [_review(record)]
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "review" and values["post"] == "true"
+    assert plan["protocol"]["kind"] == "follow-up" and plan["protocol"]["forced"] is False
 
 
 @pytest.mark.parametrize(

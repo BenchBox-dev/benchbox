@@ -442,7 +442,7 @@ def test_disputed_finding_on_the_same_head_is_rejudged_not_skipped() -> None:
     assert rejudged.previous is not None and rejudged.previous["open_defects"][0]["id"] == "D1"
 
 
-def test_two_forced_rounds_per_head_are_allowed_and_the_third_is_refused() -> None:
+def test_two_forced_rounds_per_patch_are_allowed_and_the_third_is_refused() -> None:
     history = protocol.History([_decided(HEAD)])
     first = _plan_same_head(history, force=True)
     assert first.kind == protocol.FOLLOW_UP and first.number == 2
@@ -455,10 +455,58 @@ def test_two_forced_rounds_per_head_are_allowed_and_the_third_is_refused() -> No
     assert "already had 2 forced re-reviews" in refused.reason
 
 
+def test_empty_commit_heads_share_one_forced_round_budget_per_patch() -> None:
+    other = "b" * 40
+    history = protocol.History([_decided(HEAD), {**_forced(other, 2), "open_defects": [], "next_id": 2}])
+    third = protocol.plan_round(
+        history,
+        head_sha="c" * 40,
+        base_ref="develop",
+        digest="d" * 32,
+        patches={},
+        paths=["a.py"],
+        strike_count=0,
+        max_do_not_ship=3,
+        force=True,
+    )
+    assert third.kind == protocol.FOLLOW_UP and third.forced is True
+    history.records.append({**_forced("c" * 40, 3), "open_defects": [], "next_id": 2})
+    refused = protocol.plan_round(
+        history,
+        head_sha="e" * 40,
+        base_ref="develop",
+        digest="d" * 32,
+        patches={},
+        paths=["a.py"],
+        strike_count=0,
+        max_do_not_ship=3,
+        force=True,
+    )
+    assert refused.kind == protocol.SKIP
+    assert "already had 2 forced re-reviews" in refused.reason
+
+
+def test_a_changed_patch_takes_the_ordinary_follow_up_path_despite_a_spent_budget() -> None:
+    history = protocol.History([_decided(HEAD), {**_forced(HEAD, 2), "open_defects": [], "next_id": 2}])
+    history.records.append({**_forced(HEAD, 3), "open_defects": [], "next_id": 2})
+    step = protocol.plan_round(
+        history,
+        head_sha="b" * 40,
+        base_ref="develop",
+        digest="e" * 32,
+        patches={},
+        paths=["a.py"],
+        strike_count=0,
+        max_do_not_ship=3,
+        force=True,
+    )
+    assert step.kind == protocol.FOLLOW_UP and step.forced is False
+
+
 def test_ordinary_follow_ups_do_not_consume_the_forced_round_budget() -> None:
     ordinary = {**_decided(HEAD), "kind": protocol.FOLLOW_UP, "round": 2}
     history = protocol.History([_decided(HEAD), ordinary])
-    assert protocol.forced_rounds(history.records, HEAD) == 0
+    assert protocol.forced_rounds(history.records, "d" * 32) == 0
     assert _plan_same_head(history, force=True).kind == protocol.FOLLOW_UP
 
 

@@ -248,27 +248,27 @@ def strikes(records: Iterable[Mapping[str, Any]]) -> int:
 FORCED_ROUND_LIMIT = 2
 
 
-def forced_rounds(records: Iterable[Mapping[str, Any]], head_sha: str) -> int:
+def forced_rounds(records: Iterable[Mapping[str, Any]], digest: str) -> int:
     return sum(
         1
         for record in records
-        if record.get("head_sha") == head_sha and record.get("kind") == FOLLOW_UP and record.get("forced")
+        if record.get("patch_digest") == digest and record.get("kind") == FOLLOW_UP and record.get("forced")
     )
 
 
 def _forced_round(
     records: Iterable[Mapping[str, Any]],
     *,
-    head_sha: str,
+    digest: str,
     latest: Mapping[str, Any],
     paths: Sequence[str],
     reason: str,
 ) -> Round:
-    if forced_rounds(records, head_sha) >= FORCED_ROUND_LIMIT:
+    if forced_rounds(records, digest) >= FORCED_ROUND_LIMIT:
         return Round(
             SKIP,
-            f"the head already had {FORCED_ROUND_LIMIT} forced re-reviews;"
-            " push a new head or ask the owner for a stand-in",
+            f"the patch already had {FORCED_ROUND_LIMIT} forced re-reviews;"
+            " change the patch or ask the owner for a stand-in",
         )
     return Round(
         FOLLOW_UP,
@@ -305,7 +305,7 @@ def plan_round(
         if force and latest["decision"] in (SHIP, SHIP_WITH_FIXES):
             return _forced_round(
                 found.records,
-                head_sha=head_sha,
+                digest=digest,
                 latest=latest,
                 paths=paths,
                 reason=(
@@ -322,7 +322,7 @@ def plan_round(
         if force and latest["decision"] in (SHIP, SHIP_WITH_FIXES):
             return _forced_round(
                 found.records,
-                head_sha=head_sha,
+                digest=digest,
                 latest=latest,
                 paths=paths,
                 reason=(

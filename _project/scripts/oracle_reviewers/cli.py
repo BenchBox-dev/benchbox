@@ -140,6 +140,13 @@ def _finish_plan(out_dir: Path, plan: dict[str, Any]) -> int:
     return 0
 
 
+DISPUTE_MARKER = "Dispute:"
+
+
+def _is_dispute(body: str) -> bool:
+    return any(line.strip().startswith(DISPUTE_MARKER) for line in body.splitlines())
+
+
 def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dict[str, Any]]:
     disputes = []
     for thread in threads:
@@ -150,7 +157,7 @@ def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dic
         replies = [
             {"author": reply.get("author"), "body": reply.get("body") or ""}
             for reply in thread.get("replies", [])
-            if isinstance(reply, dict) and reply.get("author_type") != "Bot"
+            if isinstance(reply, dict) and reply.get("author_type") != "Bot" and _is_dispute(reply.get("body") or "")
         ]
         if not replies:
             continue
