@@ -22811,7 +22811,8 @@
       "claim": null,
       "needs": [
         "sqlglot-fork-f9-havoc-datafusion-rewrites",
-        "sqlglot-fork-a3-adopt-ddl-wheel"
+        "sqlglot-fork-a3-adopt-ddl-wheel",
+        "sqlglot-fork-f9b-bigquery-window-nulls-generator"
       ],
       "priority": "medium-high",
       "status": "open",
