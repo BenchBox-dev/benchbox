@@ -4,6 +4,7 @@
     "A unit test pins that a stand-in with extra text is rejected and an exact one accepted (extend tests/unit/scripts/test_oracle_review_check.py if not already covered).",
     "Document, or fix, that both oracle-review runs must be rerun after a stand-in or thread resolution."
   ],
+  "context": "Delivered in the same PR as oracle-standin-arming-digest-20261021; finish both together.",
   "description": "docs/agent/merge-authority.md says to quote the owner's instruction in the stand-in comment, but _project/scripts/oracle_review_check.py matches the whole comment body against 'Stand-in oracle review: APPROVE <sha>' (fullmatch), so any extra text makes the attestation invalid. A comment with a quote failed during PR #3139 and cost two check cycles. Related: the two oracle-review runs (synchronize, submitted) each need a manual rerun after a stand-in or thread resolution.",
   "links": [
     "docs/agent/merge-authority.md",
@@ -17,6 +18,14 @@
       "op": "create",
       "op_id": "496125fdd592438183f9c78754de48fe",
       "session_id": "5fc71a2e25aa4324a26f0d500fc3289e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:46:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ede53a199ef64952bb748eca9ac75921",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
