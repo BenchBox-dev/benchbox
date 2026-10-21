@@ -14642,17 +14642,12 @@
       "title": "Mirror validate-bundles rejects maintainer seed corpus with summary.validation=partial"
     },
     "mirrored-file-local-imports-audit-20261020": {
-      "claim": {
-        "expires_at": "2026-10-22T12:08:29Z",
-        "generation": "69f06aaf51dc4fb594adc8bc566ab604",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-mirror-validator-import-closure-20261018"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Audit function-local imports in the files mirrored to published-results"
     },
     "modin-cudf-and-dask-adapter-integration-into-cross-platform": {
