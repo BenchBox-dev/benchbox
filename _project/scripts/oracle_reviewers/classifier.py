@@ -73,18 +73,20 @@ def _matches(path: str, patterns: Iterable[str]) -> bool:
     return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
 
 
+def _in_scope(path: str, rules: ClassifierRules, is_soundness_path: Callable[[str], bool]) -> bool:
+    if is_soundness_path(path) or _matches(path, rules.gate_paths):
+        return True
+    return not _matches(path, rules.exempt_paths)
+
+
 def soundness_scope(
     files: list[ChangedFile],
     rules: ClassifierRules,
     is_soundness_path: Callable[[str], bool],
 ) -> SoundnessScope:
-    in_scope = [
-        item
-        for item in files
-        if any(is_soundness_path(path) or _matches(path, rules.gate_paths) for path in item.paths)
-    ]
+    in_scope = [item for item in files if any(_in_scope(path, rules, is_soundness_path) for path in item.paths)]
     if not in_scope:
-        return SoundnessScope(False, ("no soundness path changed",), (), (), ())
+        return SoundnessScope(False, ("only exempt paths changed",), (), (), ())
     gate = sorted({path for item in in_scope for path in item.paths if _matches(path, rules.gate_paths)})
     code = [item for item in in_scope if not all(_matches(path, rules.data_paths) for path in item.paths)]
     logic = sorted({path for item in code for path in item.paths if _matches(path, rules.logic_paths)})
@@ -94,7 +96,10 @@ def soundness_scope(
     if logic:
         reasons.append("changes comparison, validation or result logic: " + ", ".join(logic))
     if not reasons:
-        reasons.append(f"touches {len(in_scope)} soundness paths outside gate and logic areas")
+        reasons.append(f"changes {len(in_scope)} files outside the exempt paths")
+        soundness = sorted({path for item in in_scope for path in item.paths if is_soundness_path(path)})
+        if soundness:
+            reasons.append("touches soundness paths: " + ", ".join(soundness))
     paths = tuple(sorted({path for item in in_scope for path in item.paths}))
     return SoundnessScope(True, tuple(reasons), paths, tuple(gate), tuple(logic))
 

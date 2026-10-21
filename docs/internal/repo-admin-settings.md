@@ -62,8 +62,9 @@ Required status checks:
 
 Five of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `oracle-review` comes from
-`.github/workflows/oracle-review.yml` and passes at once for a change outside
-`.github/soundness-paths.txt`. `hold` comes from `.github/workflows/pr-hold.yml`
+`.github/workflows/oracle-review.yml` and passes at once for a change confined
+to exempt paths (`classifier.exempt_paths` in `.github/oracle-reviewers.yml`).
+`hold` comes from `.github/workflows/pr-hold.yml`
 and fails while the PR carries the `no-auto-merge` label; it re-runs when a
 label is added or removed.
 
@@ -81,7 +82,7 @@ check stays pending forever on a change that does not touch it.
 | `results-data` | `results-data/`, submission validator, `benchbox/core/results/` | corpus inventory and validation, submission validator sync, corpus and explorer-pipeline contract tests |
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
-| `oracle-review` | every PR; review required on soundness paths | `benchbox-oracle` success review of the current head, or the stand-in approval, with oracle threads resolved; other paths report success |
+| `oracle-review` | every PR; review required unless only exempt paths change | `benchbox-oracle` success review of the current head, or the stand-in approval, with oracle threads resolved; exempt-only changes report success |
 
 The public site is built, compared and deployed in `BenchBox-dev/benchbox-site`.
 
@@ -180,7 +181,7 @@ resolved. The drift check reports a `merge_queue` rule that reappears.
 The required `oracle-review` check (`.github/workflows/oracle-review.yml`)
 passes when any of these holds:
 
-- The change touches no soundness path.
+- The change touches only exempt paths (`classifier.exempt_paths` in `.github/oracle-reviewers.yml`).
 - The `benchbox-oracle` App's latest review of the current head, submitted after
   any retarget, reports success, and none of its review threads is unresolved.
 - An account in `STANDIN_ATTESTERS` (`_project/scripts/oracle_review_check.py`)
@@ -200,10 +201,12 @@ All review threads must be resolved before merging.
 The soundness gate, as operated:
 
 - `.github/soundness-paths.txt`, read by `_project/scripts/soundness_paths.py`,
-  defines the soundness-critical surface. `oracle-review` checks the diff
-  against the trusted base's predicate, including changes to the gate itself.
-  A soundness-path PR needs the `benchbox-oracle` App's success review of its
-  current head, or the stand-in approval, with every oracle thread resolved.
+  defines the soundness-critical surface used by the merge digest and landing
+  guards. `oracle-review` requires a review unless the diff touches only exempt
+  paths (`classifier.exempt_paths` in `.github/oracle-reviewers.yml`), including
+  changes to the gate itself. Any non-exempt PR needs the `benchbox-oracle`
+  App's success review of its current head, or the stand-in approval, with
+  every oracle thread resolved.
 - **Residual risk:** `oracle-review` runs the workflow file from the pull
   request, so a PR that edits `.github/workflows/` can change how its own check
   runs; checking out the base commit protects only the checker and manifest.

@@ -124,6 +124,7 @@ def test_fully_disabled_policy_needs_no_attempts() -> None:
         (lambda raw: raw["classifier"].update(gate_paths="x"), r"classifier gate_paths must be a string list"),
         (lambda raw: raw["classifier"].pop("logic_paths"), r"classifier logic_paths must be a string list"),
         (lambda raw: raw["classifier"].update(data_paths=[42]), r"classifier data_paths must be a string list"),
+        (lambda raw: raw["classifier"].pop("exempt_paths"), r"classifier exempt_paths must be a string list"),
         (lambda raw: raw.update(mode="audit"), r"mode must be shadow or enforce"),
         (lambda raw: raw.update(status_context=""), r"status_context is required"),
         (lambda raw: raw.update(findings_delivery="pr"), r"findings_delivery must be one of"),
