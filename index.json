@@ -2710,15 +2710,10 @@
       "title": "Keep release notes user-focused and in line with earlier entries"
     },
     "changelog-merge-conflict-churn-20261020": {
-      "claim": {
-        "expires_at": "2026-10-22T01:47:18Z",
-        "generation": "294fbea7b50c4c1f8eae993c6d0f2202",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Reduce CHANGELOG.md merge conflicts between concurrent PRs"
     },
     "changelog-parallel-pr-conflicts-20261014": {
