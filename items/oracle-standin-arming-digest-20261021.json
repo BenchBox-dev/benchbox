@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A digest run over a window containing #3222 lists it with the Medium finding overridden by stand-in and armed while Trunk was red",
+    "Unit tests for any-severity overrides, red-trunk arming, and withdrawals",
+    "oracle-standin-doc-contradicts-checker acceptance met in the same PR"
+  ],
+  "description": "The merge digest flags stand-in overrides only for Critical/High findings on soundness paths (soundness_merge_digest.py:55). #3222 passed oracle-review by stand-in over an open Medium finding, and was armed with gh pr merge --auto while the newest Trunk run was red. The stand-in check matches only the login, which agents share with the owner. Digest must list: every merged PR that passed by stand-in while an oracle finding of any severity was open (attester, gap between owner-instruction comment and stand-in); PRs armed while the newest completed Trunk run was red; oracle withdrawals of disputed findings. Also fix docs/agent/merge-authority.md per item oracle-standin-doc-contradicts-checker (exact comment format, quote in a separate comment, both oracle-review runs need rerun).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:44:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7d5e5fe137004272b8c179b30ecce7d5",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    }
+  ]
+}
