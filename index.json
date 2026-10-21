@@ -23427,7 +23427,7 @@
         "ssns-o6-install-and-doctor"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship activation A1: reviewer logins survive a reboot"
     },
     "ssns-a2-codex-token-measurement": {
