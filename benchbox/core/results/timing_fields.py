@@ -11,7 +11,7 @@ CLIENT_LINK_TIMING_FIELDS = ("probed_at",)
 
 KNOWN_TIMING_METHODS = frozenset({1, 2})
 NET_ESTIMATE_MIN_TIMING_METHOD = 2
-EMBEDDED_ENDPOINT_CLASS = "embedded_process"
+NETWORKED_ENDPOINT_CLASSES = frozenset({"localhost_port", "remote_host", "cloud_endpoint"})
 NET_ESTIMATE_STATUSES = frozenset(
     {
         "eligible",
@@ -67,8 +67,8 @@ def _request_problems(index: int, request: Any) -> list[str]:
         for name, value in fields.items():
             if not isinstance(name, str):
                 problems.append(f"{prefix}.fields keys must be strings")
-            elif value is not None and not isinstance(value, (str, bool)) and not _is_number(value):
-                problems.append(f"{prefix}.fields.{name} must be a finite number, string, boolean or null")
+            elif value is not None and not isinstance(value, bool) and not _is_number(value):
+                problems.append(f"{prefix}.fields.{name} must be a finite number, boolean or null")
     return problems
 
 
@@ -153,8 +153,12 @@ def net_estimate_problems(payload: Mapping[str, Any]) -> list[str]:
         )
     platform = payload.get("platform")
     deployment = platform.get("deployment") if isinstance(platform, Mapping) else None
-    if isinstance(deployment, Mapping) and deployment.get("endpoint_class") == EMBEDDED_ENDPOINT_CLASS:
-        problems.append("net_estimate_status 'eligible' is not allowed for an embedded run; use 'embedded'")
+    endpoint_class = deployment.get("endpoint_class") if isinstance(deployment, Mapping) else None
+    if endpoint_class not in NETWORKED_ENDPOINT_CLASSES:
+        problems.append(
+            f"net_estimate_status 'eligible' requires platform.deployment.endpoint_class in "
+            f"{sorted(NETWORKED_ENDPOINT_CLASSES)}, got {endpoint_class!r}"
+        )
     return problems
 
 

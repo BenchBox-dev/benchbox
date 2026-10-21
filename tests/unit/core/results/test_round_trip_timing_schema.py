@@ -4,6 +4,7 @@ import copy
 
 import pytest
 
+from benchbox.core.results.anonymization import AnonymizationManager
 from benchbox.core.results.loader import reconstruct_benchmark_results
 from benchbox.core.results.models import QueryExecution
 from benchbox.core.results.query_execution import (
@@ -159,6 +160,16 @@ def test_bundle_validator_accepts_well_formed_query_timing():
         ({"platform_timing": {"status": "unavailable"}}, "requires a reason"),
         ({"platform_timing": {"status": ["valid"]}}, "status must be one of"),
         ({"platform_timing": {"status": "valid", "platform_ms": 1, "extra": 1}}, "unknown field 'extra'"),
+        (
+            {
+                "platform_timing": {
+                    "status": "valid",
+                    "platform_ms": 1,
+                    "requests": [{"id": "q", "attempt": 1, "kind": "query", "fields": {"WAREHOUSE_NAME": "W"}}],
+                }
+            },
+            "fields.WAREHOUSE_NAME must be a finite number, boolean or null",
+        ),
     ],
 )
 def test_bundle_validator_rejects_malformed_query_timing(query, fragment):
@@ -195,13 +206,20 @@ def test_bundle_validator_rejects_malformed_run_timing(run_fields, fragment):
     assert any(fragment in error for error in _run_errors(run_fields))
 
 
-def _estimate_bundle(run_fields: dict, endpoint_class: str) -> dict:
+def _estimate_bundle(run_fields: dict, endpoint_class: str | None) -> dict:
     bundle = _bundle_2_4()
     for key in ("timing_method", "net_estimate_status"):
         bundle["run"].pop(key)
     bundle["run"].update(run_fields)
-    bundle["platform"].setdefault("deployment", {})["endpoint_class"] = endpoint_class
+    deployment = bundle["platform"].setdefault("deployment", {})
+    if endpoint_class is None:
+        deployment.pop("endpoint_class", None)
+    else:
+        deployment["endpoint_class"] = endpoint_class
     return bundle
+
+
+ELIGIBLE = {"net_estimate_status": "eligible", "timing_method": 2}
 
 
 @pytest.mark.parametrize(
@@ -209,7 +227,9 @@ def _estimate_bundle(run_fields: dict, endpoint_class: str) -> dict:
     [
         ({"net_estimate_status": "eligible"}, "cloud_endpoint", "requires timing_method 2 or later, got None"),
         ({"net_estimate_status": "eligible", "timing_method": 1}, "cloud_endpoint", "requires timing_method 2"),
-        ({"net_estimate_status": "eligible", "timing_method": 2}, "embedded_process", "not allowed for an embedded"),
+        (ELIGIBLE, "embedded_process", "got 'embedded_process'"),
+        (ELIGIBLE, "unknown", "got 'unknown'"),
+        (ELIGIBLE, None, "endpoint_class in"),
     ],
 )
 def test_validators_reject_an_ineligible_eligible_net_estimate(run_fields, endpoint_class, fragment):
@@ -226,8 +246,10 @@ def test_validators_reject_an_ineligible_eligible_net_estimate(run_fields, endpo
 @pytest.mark.parametrize(
     ("run_fields", "endpoint_class"),
     [
-        ({"net_estimate_status": "eligible", "timing_method": 2}, "cloud_endpoint"),
+        (ELIGIBLE, "cloud_endpoint"),
+        (ELIGIBLE, "localhost_port"),
         ({"net_estimate_status": "embedded", "timing_method": 2}, "embedded_process"),
+        ({"net_estimate_status": "endpoint_unknown", "timing_method": 2}, None),
         ({"net_estimate_status": "timing_method", "timing_method": 1}, "cloud_endpoint"),
     ],
 )
@@ -238,6 +260,16 @@ def test_validators_accept_consistent_net_estimate_status(run_fields, endpoint_c
     assert vr.errors == []
     SchemaV2Validator().validate(bundle)
     assert reconstruct_benchmark_results(bundle).net_estimate_status == run_fields["net_estimate_status"]
+
+
+def test_public_anonymization_pseudonymizes_platform_request_ids():
+    bundle = _bundle_2_4()
+    raw_id = PLATFORM_TIMING["requests"][0]["id"]
+    public = AnonymizationManager().anonymize_result_payload(bundle)
+    request = public["queries"][0]["platform_timing"]["requests"][0]
+    assert request["id"].startswith("statement_") and raw_id not in str(public)
+    assert request["fields"] == PLATFORM_TIMING["requests"][0]["fields"]
+    assert AnonymizationManager().anonymize_result_payload(public) == public
 
 
 def test_bundle_validator_checks_probed_at_type():

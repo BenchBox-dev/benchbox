@@ -164,7 +164,7 @@ Outcome as of 2026-10-17:
 | MotherDuck | Allowed with replication materials given to MotherDuck, and reciprocity. | No clause found. | Not confirmed. |
 | Starburst Galaxy | No benchmark clause in the 2021 terms; current terms not read. | No clause found. | Not confirmed. |
 
-BenchBox result bundles already carry the configuration and query text needed to replicate a run, which meets the replication conditions above. No terms seen restrict a customer from republishing its own query history, so public bundles carry `platform_timing` as recorded for every platform, and publication does not strip it. The *Read from* column records how each row was confirmed; it is not a publication gate. If a later read finds a restriction, a new amendment names the platform and how its fields are withheld.
+BenchBox result bundles already carry the configuration and query text needed to replicate a run, which meets the replication conditions above. On 2026-10-21 the project owner decided that public bundles carry `platform_timing` for every platform without waiting for the reads still marked *Not confirmed*. The fields are timings a customer retrieves about its own queries. Validation limits each request's raw `fields` to numbers, booleans and null, so no vendor name, user, warehouse or query text can ride along, and public anonymization replaces each platform statement ID with a `statement_` pseudonym. The *Read from* column records how each row was confirmed; it is not a publication gate. The unconfirmed rows are still to be read. If a read finds a restriction, a new amendment names the platform and how its fields are withheld.
 
 ### Consequences of the amendment
 
