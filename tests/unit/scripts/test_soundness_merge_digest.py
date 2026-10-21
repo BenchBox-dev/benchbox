@@ -1865,31 +1865,37 @@ def test_fetch_trunk_runs_paginates_to_a_short_page(monkeypatch):
     assert any(endpoint.endswith("page=2") for endpoint in seen)
 
 
-def test_a_failed_window_listing_still_advances_the_checkpoint(stubbed, monkeypatch, capsys):
+def test_a_failed_window_listing_marks_every_section_unavailable(stubbed, monkeypatch, capsys):
     def broken(repo, ref, since):
         raise digest.ReadError("window gone")
 
     monkeypatch.setattr(digest, "collect_window_pulls", broken)
     assert digest.main(["--apply"]) == 0
-    assert "The window's pull requests were unreadable: window gone" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "The window's pull requests were unreadable: window gone" in out
+    assert "Stand-in overrides are unavailable for this window" in out
+    assert "Red-trunk armings are unavailable for this window" in out
+    assert "Oracle withdrawals are unavailable for this window" in out
     assert stubbed["checkpoint"] == [HEAD]
 
 
-def test_a_failed_armings_section_leaves_the_other_sections_standing(stubbed, monkeypatch, capsys):
-    monkeypatch.setattr(
-        digest,
-        "collect_window_pulls",
-        lambda repo, ref, since: ([overridden()], []),
-    )
-
-    def broken(repo):
-        raise digest.ReadError("trunk gone")
-
-    monkeypatch.setattr(digest, "fetch_trunk_runs", broken)
+def test_partial_coverage_qualifies_a_clean_section(stubbed, monkeypatch, capsys):
+    unreadable = digest.UnreadablePull(9, "b" * 40, "threads exploded")
+    monkeypatch.setattr(digest, "collect_window_pulls", lambda repo, ref, since: ([overridden()], [unreadable]))
+    monkeypatch.setattr(digest, "fetch_trunk_runs", lambda repo: [])
     assert digest.main([]) == 0
     out = capsys.readouterr().out
-    assert "| #7 | `aaaaaaaaa` | joeharris76 | 1s | Medium |" in out
-    assert "Red-trunk armings are unavailable for this window: trunk gone" in out
+    assert "Unreadable pull requests" in out
+    assert "'None.' above covers only the PRs the digest could read" in out
+
+
+def test_full_coverage_needs_no_qualifier(stubbed, monkeypatch, capsys):
+    monkeypatch.setattr(digest, "collect_window_pulls", lambda repo, ref, since: ([overridden()], []))
+    monkeypatch.setattr(digest, "fetch_trunk_runs", lambda repo: [])
+    assert digest.main([]) == 0
+    out = capsys.readouterr().out
+    assert "Unreadable pull requests" not in out
+    assert "covers only the PRs" not in out
 
 
 def test_a_bold_line_that_is_not_a_verdict_section_does_not_close_the_findings():

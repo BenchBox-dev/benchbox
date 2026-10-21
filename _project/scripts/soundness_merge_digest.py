@@ -1119,23 +1119,46 @@ def main(argv: Sequence[str] | None = None) -> int:
             pulls, unreadable = collect_window_pulls(args.repo, until, since)
         except (ReadError, KeyError, TypeError, ValueError) as exc:
             pulls, unreadable = [], []
-            window_note = f"\nThe window's pull requests were unreadable: {exc}."
+            window_failed = f"\nThe window's pull requests were unreadable: {exc}."
         else:
-            window_note = ""
-        try:
-            overrides = render_standin_overrides(standin_overrides(pulls))
-        except (ReadError, KeyError, TypeError, ValueError) as exc:
-            overrides = f"\nStand-in overrides are unavailable for this window: {exc}."
-        try:
-            red, unknowable = red_armings(args.repo, pulls, fetch_trunk_runs(args.repo))
-            armings = render_red_armings(red, unknowable)
-        except (ReadError, KeyError, TypeError, ValueError) as exc:
-            armings = f"\nRed-trunk armings are unavailable for this window: {exc}."
-        try:
-            withdrawals = render_withdrawals(withdrawn_findings(pulls))
-        except (ReadError, KeyError, TypeError, ValueError) as exc:
-            withdrawals = f"\nOracle withdrawals are unavailable for this window: {exc}."
-        supplement = window_note + render_unreadable(unreadable) + overrides + armings + withdrawals
+            window_failed = ""
+        clean: list[bool] = []
+        if window_failed:
+            supplement = window_failed
+            supplement += (
+                "\nStand-in overrides are unavailable for this window: the window's pull requests were unreadable."
+            )
+            supplement += (
+                "\nRed-trunk armings are unavailable for this window: the window's pull requests were unreadable."
+            )
+            supplement += (
+                "\nOracle withdrawals are unavailable for this window: the window's pull requests were unreadable."
+            )
+        else:
+            supplement = render_unreadable(unreadable)
+            try:
+                found = standin_overrides(pulls)
+                supplement += render_standin_overrides(found)
+                clean.append(not found)
+            except (ReadError, KeyError, TypeError, ValueError) as exc:
+                supplement += f"\nStand-in overrides are unavailable for this window: {exc}."
+            try:
+                red, unknowable = red_armings(args.repo, pulls, fetch_trunk_runs(args.repo))
+                supplement += render_red_armings(red, unknowable)
+                clean.append(not red and not unknowable)
+            except (ReadError, KeyError, TypeError, ValueError) as exc:
+                supplement += f"\nRed-trunk armings are unavailable for this window: {exc}."
+            try:
+                marked = withdrawn_findings(pulls)
+                supplement += render_withdrawals(marked)
+                clean.append(not marked)
+            except (ReadError, KeyError, TypeError, ValueError) as exc:
+                supplement += f"\nOracle withdrawals are unavailable for this window: {exc}."
+            if unreadable and any(clean):
+                supplement += (
+                    f"\nCoverage: {len(unreadable)} merged PR(s) were unreadable; "
+                    "'None.' above covers only the PRs the digest could read."
+                )
         report = render(entries, since=since, until=until) + supplement
         print(report)
         closures = gap_closures(args.repo, entries)
