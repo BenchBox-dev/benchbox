@@ -25873,10 +25873,15 @@
       "title": "Make the capability registry the single source for validator severity, with an MRO-following parity test"
     },
     "tuning-cedardb-native-layout-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T18:19:23Z",
+        "generation": "129af5d378114b4c92f18baced9caad6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a00a661093086d4fdaf97c3f"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "CedarDB: define a layout-tuning method, and verify it on a host with io_uring"
     },
     "tuning-citus-native-layout-20261017": {
