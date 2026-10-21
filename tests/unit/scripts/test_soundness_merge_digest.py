@@ -1793,6 +1793,41 @@ def test_collect_pull_records_auto_merge_armings(monkeypatch):
     assert digest.collect_pull("o/r", MERGED).armed_at == (AFTER,)
 
 
+def test_collect_pull_records_a_merge_queue_enqueue_as_an_arming(monkeypatch):
+    rest = {
+        "reviews": [],
+        "reactions": [],
+        "timeline": [
+            {"event": "labeled", "created_at": BEFORE},
+            {"event": "added_to_merge_queue", "created_at": AFTER},
+        ],
+        "comments": [],
+    }
+    monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: 7)
+    monkeypatch.setattr(digest, "gh_json", lambda *args: {"user": {"login": "dev"}, "merged_at": MERGED_AT})
+    monkeypatch.setattr(digest, "collect_commits", lambda *args, **kwargs: ())
+    monkeypatch.setattr(digest, "collect_threads", lambda repo, number: ())
+    monkeypatch.setattr(digest, "gh_pages", lambda endpoint: rest[endpoint.rsplit("/", 1)[1]])
+    assert digest.collect_pull("o/r", MERGED).armed_at == (AFTER,)
+
+
+def test_a_queue_enqueue_while_trunk_is_red_is_flagged(monkeypatch):
+    rest = {
+        "reviews": [],
+        "reactions": [],
+        "timeline": [{"event": "added_to_merge_queue", "created_at": "2026-10-21T11:41:17Z"}],
+        "comments": [],
+    }
+    monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: 7)
+    monkeypatch.setattr(digest, "gh_json", lambda *args: {"user": {"login": "dev"}, "merged_at": MERGED_AT})
+    monkeypatch.setattr(digest, "collect_commits", lambda *args, **kwargs: ())
+    monkeypatch.setattr(digest, "collect_threads", lambda repo, number: ())
+    monkeypatch.setattr(digest, "gh_pages", lambda endpoint: rest[endpoint.rsplit("/", 1)[1]])
+    pull = digest.collect_pull("o/r", MERGED)
+    arming = red_only(pull, [TRUNK_RED, TRUNK_GREEN])[0]
+    assert (arming.number, arming.armed_at, arming.conclusion) == (7, "2026-10-21T11:41:17Z", "failure")
+
+
 def test_collect_window_pulls_reads_each_merged_pull_request_once(monkeypatch):
     monkeypatch.setattr(digest, "merged_commits", lambda ref, since: ["a" * 40, "b" * 40, "c" * 40])
     numbers = {"a" * 40: 7, "b" * 40: 7, "c" * 40: None}
