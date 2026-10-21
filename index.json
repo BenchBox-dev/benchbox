@@ -15572,7 +15572,7 @@
         "oracle-local-b1-engine-pin"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "BenchBox: record workflow, proof mode and engine-installed check for the local oracle"
     },
     "oracle-local-b3-decision-record-docs": {
