@@ -74,6 +74,7 @@ def _record(
         "next_id": next_id,
         "patch_digest": rules["patch_digest"],
         "carried": carried,
+        "forced": bool(rules.get("forced", False)),
         "summary": summary if decision == protocol.DO_NOT_SHIP else "",
     }
     return protocol.encode_marker(record, rules.get("patch_map"))
@@ -216,6 +217,8 @@ def finalize(
         lines += ["No defects are listed for this decision. Rework the change and push a new head.", ""]
     if judgement is not None and judgement.fixed:
         lines += [f"Verified fixed: {', '.join(judgement.fixed)}. Resolve their review threads.", ""]
+    if judgement is not None and judgement.withdrawn:
+        lines += [f"Withdrawn as never defects: {', '.join(judgement.withdrawn)}. Resolve their review threads.", ""]
     if judgement is not None:
         lines += _section("Still open from earlier reviews", [_entry_line(entry) for entry in judgement.carried])
     if delivery == "comment":

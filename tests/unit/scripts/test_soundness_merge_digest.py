@@ -770,6 +770,8 @@ def stubbed(monkeypatch):
     monkeypatch.setattr(digest, "run", fake_git)
     monkeypatch.setattr(digest, "read_checkpoint", lambda repo: ON_HISTORY)
     monkeypatch.setattr(digest, "collect_entries", lambda repo, ref, since: [unreviewed])
+    monkeypatch.setattr(digest, "collect_window_pulls", lambda repo, ref, since: ([], []))
+    monkeypatch.setattr(digest, "fetch_trunk_runs", lambda repo: [])
     monkeypatch.setattr(digest, "open_gap_issues", lambda repo, entries: calls["issues"].append(entries) or ["d" * 40])
     monkeypatch.setattr(digest, "write_checkpoint", lambda repo, sha, report: calls["checkpoint"].append(sha))
     monkeypatch.setattr(digest, "gap_closures", lambda repo, entries: calls["closures"])
@@ -1482,3 +1484,524 @@ def test_the_attested_review_form_is_not_a_pull_request_comment_signal(body):
 def test_a_reviewer_line_on_a_pull_request_comment_is_still_a_signal():
     comment = digest.Comment("joeharris76", "Reviewer: agy\n\nClean.", AFTER, "User")
     assert digest.review_signals(evidence(comments=(comment,))) == ("external-review:agy",)
+
+
+INSTRUCTION_AT = "2026-10-02T11:49:22Z"
+STANDIN_AT = "2026-10-02T11:49:23Z"
+
+
+def verdict_with_open(sha, severities=("Medium",)):
+    lines = [
+        f"### oracle-verdict: failure for `{sha}`",
+        "",
+        "Decision: **SHIP WITH FIXES**.",
+        "",
+        "**Still open**",
+        "",
+    ]
+    return "\n".join(lines + [f"- **{severity}** `scripts/plugin.py:13`: D1: some finding" for severity in severities])
+
+
+def failure_review(sha=HEAD, body=None):
+    return review(ORACLE_BOT, sha, user_type="Bot", body=body if body is not None else verdict_with_open(sha))
+
+
+def instruction(at=INSTRUCTION_AT, body='Owner instruction: "Post the stand in".'):
+    return digest.Comment("joeharris76", body, at, "User")
+
+
+def overridden(severities=("Medium",), at=STANDIN_AT, instruction_at=INSTRUCTION_AT, armed_at=()):
+    return evidence(
+        reviews=(failure_review(body=verdict_with_open(HEAD, severities)),),
+        comments=(instruction(instruction_at), standin(HEAD, at=at)),
+        armed_at=armed_at,
+    )
+
+
+def test_a_standin_override_lists_the_attester_gap_and_severity():
+    override = digest.standin_overrides([overridden()])[0]
+    assert (override.number, override.head, override.attester) == (7, HEAD, "joeharris76")
+    assert override.instruction_gap_seconds == 1
+    assert override.severities == ("Medium",)
+
+
+@pytest.mark.parametrize(
+    ("listed", "expected"),
+    [
+        (("Medium",), ("Medium",)),
+        (("Low", "Critical", "Medium"), ("Critical", "Medium", "Low")),
+        (("High",), ("High",)),
+    ],
+)
+def test_a_standin_override_lists_findings_of_any_severity(listed, expected):
+    assert digest.standin_overrides([overridden(severities=listed)])[0].severities == expected
+
+
+def test_an_unresolved_oracle_thread_counts_as_an_open_finding():
+    pull = evidence(
+        comments=(standin(HEAD),),
+        threads=(digest.Thread(False, "benchbox-oracle", HEAD, "Low"),),
+    )
+    assert [override.severities for override in digest.standin_overrides([pull])] == [("Low",)]
+
+
+@pytest.mark.parametrize(
+    "pull",
+    [
+        evidence(reviews=(review(ORACLE_BOT, HEAD, user_type="Bot", body=oracle_verdict(HEAD)),)),
+        evidence(comments=(standin(HEAD),)),
+        evidence(
+            reviews=(failure_review(),),
+            comments=(standin(HEAD, login="someone-else"),),
+        ),
+        evidence(
+            reviews=(failure_review(),),
+            comments=(standin(OLD),),
+        ),
+        evidence(
+            comments=(standin(HEAD),),
+            threads=(digest.Thread(True, "benchbox-oracle", OLD, "Medium"),),
+        ),
+    ],
+    ids=["oracle-success", "no-finding", "non-attester", "wrong-sha", "resolved-unlisted-thread"],
+)
+def test_a_pass_without_an_open_finding_is_not_an_override(pull):
+    assert digest.standin_overrides([pull]) == []
+
+
+def test_a_standin_overriding_a_do_not_ship_without_severities_is_listed():
+    body = f"### oracle-verdict: failure for `{HEAD}`\n\nDecision: **DO NOT SHIP**.\n"
+    pull = evidence(reviews=(failure_review(body=body),), comments=(standin(HEAD, at=STANDIN_AT),))
+    assert digest.standin_overrides([pull])[0].severities == ("DO NOT SHIP",)
+
+
+def test_a_standin_overriding_a_decisionless_failure_is_listed():
+    pull = evidence(
+        reviews=(failure_review(body=oracle_verdict(HEAD, "failure")),), comments=(standin(HEAD, at=STANDIN_AT),)
+    )
+    assert digest.standin_overrides([pull])[0].severities == ("failure",)
+
+
+def test_a_standin_without_any_verdict_is_not_an_override():
+    assert digest.standin_overrides([evidence(comments=(standin(HEAD, at=STANDIN_AT),))]) == []
+
+
+def test_a_standin_override_without_an_instruction_marks_the_gap():
+    pull = evidence(reviews=(failure_review(),), comments=(standin(HEAD, at=STANDIN_AT),))
+    override = digest.standin_overrides([pull])[0]
+    assert override.instruction_gap_seconds is None
+    assert "no Owner instruction comment" in digest.render_standin_overrides([override])
+
+
+def test_a_standin_override_uses_the_nearest_preceding_instruction():
+    pull = evidence(
+        reviews=(failure_review(),),
+        comments=(
+            instruction(BEFORE, "Owner instruction: arm it."),
+            instruction(),
+            standin(HEAD, at=STANDIN_AT),
+            instruction(LATER),
+        ),
+    )
+    assert digest.standin_overrides([pull])[0].instruction_gap_seconds == 1
+
+
+@pytest.mark.parametrize(
+    ("total_seconds", "expected"),
+    [(0, "0s"), (1, "1s"), (61, "1m 1s"), (3600, "1h"), (3661, "1h 1m 1s")],
+)
+def test_gaps_render_compactly(total_seconds, expected):
+    assert digest.format_gap(total_seconds) == expected
+
+
+def test_still_open_bullets_come_only_from_open_finding_sections():
+    body = "\n".join(
+        [
+            "**Still open**",
+            "",
+            "- **Medium** `a.py:1`: D1: open",
+            "",
+            "<details><summary>Not counted</summary>",
+            "",
+            "- **High** `b.py:2`: D2: hidden",
+            "",
+            "</details>",
+            "",
+            "**Reviewers not available**",
+            "",
+            "- **Low** `c.py:3`: D3: prose",
+            "",
+            "Withdrawn:",
+            "",
+            "- **Critical** `d.py:4`: D4: withdrawn",
+        ]
+    )
+    assert digest.still_open_severities(body) == ["Medium"]
+
+
+def test_render_standin_overrides_lists_each_override():
+    text = digest.render_standin_overrides(digest.standin_overrides([overridden()]))
+    assert f"| #7 | `{HEAD[:9]}` | joeharris76 | 1s | Medium |" in text
+    assert digest.render_standin_overrides([]).endswith("None.")
+
+
+def trunk_run(run_id, completed_at, conclusion="failure", head="a" * 40, status="completed"):
+    return {
+        "id": run_id,
+        "status": status,
+        "conclusion": conclusion,
+        "head_sha": head,
+        "updated_at": completed_at,
+    }
+
+
+TRUNK_RED = trunk_run(39555893700, "2026-10-21T07:47:46Z")
+TRUNK_GREEN = trunk_run(39596269177, "2026-10-21T12:32:24Z", "success", "b" * 40)
+
+
+def armed_pull(*armed_at):
+    return evidence(armed_at=tuple(armed_at))
+
+
+def red_only(pull, runs):
+    red, _ = digest.red_armings("o/r", [pull], runs)
+    return red
+
+
+def test_arming_while_trunk_is_red_is_flagged():
+    arming = red_only(armed_pull("2026-10-21T11:41:17Z"), [TRUNK_RED, TRUNK_GREEN])[0]
+    assert (arming.number, arming.armed_at, arming.conclusion) == (7, "2026-10-21T11:41:17Z", "failure")
+    assert (arming.run_id, arming.run_head, arming.completed_at) == (39555893700, "a" * 9, "2026-10-21T07:47:46Z")
+
+
+def test_a_run_completed_after_the_arming_does_not_count():
+    late_green = trunk_run(9, "2026-10-21T12:32:24Z", "success", "b" * 40)
+    assert red_only(armed_pull("2026-10-21T11:41:17Z"), [late_green, TRUNK_RED]) != []
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [late_green])
+    assert red == []
+    assert [item.reason for item in unknown] == [
+        "no completed trunk.yml push run on develop finished before the arming"
+    ]
+
+
+def test_no_trunk_history_marks_the_arming_unknown():
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [])
+    assert red == []
+    assert [(item.number, item.armed_at) for item in unknown] == [(7, "2026-10-21T11:41:17Z")]
+    assert unknown[0].reason == "no trunk.yml push run on develop existed yet"
+
+
+@pytest.mark.parametrize(
+    ("runs", "expected"),
+    [
+        ([TRUNK_GREEN], []),
+        ([trunk_run(1, "2026-10-21T07:47:46Z", "cancelled")], []),
+        ([trunk_run(1, "2026-10-21T07:47:46Z", "timed_out")], ["timed_out"]),
+        ([], []),
+    ],
+    ids=["green", "cancelled", "timed-out", "no-runs"],
+)
+def test_only_red_trunk_conclusions_are_flagged(runs, expected):
+    assert [arming.conclusion for arming in red_only(armed_pull("2026-10-21T11:41:17Z"), runs)] == expected
+
+
+def test_an_unfinished_trunk_run_is_not_the_newest_completed():
+    running = trunk_run(9, "2026-10-21T11:40:00Z", None, "b" * 40, status="in_progress")
+    assert red_only(armed_pull("2026-10-21T11:41:17Z"), [running, TRUNK_RED]) != []
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [running])
+    assert red == []
+    assert [item.reason for item in unknown] == [
+        "no completed trunk.yml push run on develop finished before the arming"
+    ]
+
+
+def rerun_run(run_id=9, created="2026-10-21T11:30:00Z", updated="2026-10-21T12:30:00Z"):
+    return {
+        "id": run_id,
+        "status": "completed",
+        "conclusion": "success",
+        "head_sha": "b" * 40,
+        "created_at": created,
+        "updated_at": updated,
+        "run_attempt": 2,
+    }
+
+
+def test_a_rerun_after_the_arming_resolves_to_the_attempt_current_then(monkeypatch):
+    first = {"conclusion": "failure", "updated_at": "2026-10-21T11:35:00Z"}
+    monkeypatch.setattr(digest, "trunk_attempt", lambda repo, run_id, attempt: first)
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [rerun_run(), TRUNK_RED])
+    assert unknown == []
+    assert [(arming.run_id, arming.conclusion, arming.completed_at) for arming in red] == [
+        (9, "failure", "2026-10-21T11:35:00Z")
+    ]
+
+
+def test_a_rerun_whose_first_attempt_postdates_the_arming_is_not_counted(monkeypatch):
+    first = {"conclusion": "failure", "updated_at": "2026-10-21T11:50:00Z"}
+    monkeypatch.setattr(digest, "trunk_attempt", lambda repo, run_id, attempt: first)
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [rerun_run()])
+    assert red == []
+    assert [item.reason for item in unknown] == [
+        "no completed trunk.yml push run on develop finished before the arming"
+    ]
+
+
+def test_an_unresolvable_rerun_marks_the_arming_unknown(monkeypatch):
+    def broken(repo, run_id, attempt):
+        raise digest.ReadError("attempt gone")
+
+    monkeypatch.setattr(digest, "trunk_attempt", broken)
+    red, unknown = digest.red_armings("o/r", [armed_pull("2026-10-21T11:41:17Z")], [rerun_run()])
+    assert red == []
+    assert [item.reason for item in unknown] == ["trunk run state was unresolvable: attempt gone"]
+
+
+def test_render_red_armings_names_the_run():
+    arming = digest.RedArming(7, "2026-10-21T11:41:17Z", "failure", 39555893700, "a" * 9, "2026-10-21T07:47:46Z")
+    text = digest.render_red_armings([arming])
+    assert "- #7 armed at 2026-10-21T11:41:17Z" in text
+    assert "was failure (run 39555893700, `aaaaaaaaa`, completed 2026-10-21T07:47:46Z)" in text
+    assert digest.render_red_armings([]).endswith("None.")
+
+
+def test_render_red_armings_reports_unknown_trunk_state():
+    unknown = digest.UnknownArming(7, "2026-10-21T11:41:17Z", "no completed trunk.yml push run on develop existed yet")
+    text = digest.render_red_armings([], [unknown])
+    assert (
+        "- #7 armed at 2026-10-21T11:41:17Z; trunk state unknown (no completed trunk.yml push run on develop existed yet)."
+        in text
+    )
+
+
+def test_collect_pull_records_auto_merge_armings(monkeypatch):
+    rest = {
+        "reviews": [],
+        "reactions": [],
+        "timeline": [
+            {"event": "labeled", "created_at": BEFORE},
+            {"event": "auto_squash_enabled", "created_at": AFTER},
+            {"event": "auto_merge_disabled", "created_at": LATER},
+        ],
+        "comments": [],
+    }
+    monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: 7)
+    monkeypatch.setattr(digest, "gh_json", lambda *args: {"user": {"login": "dev"}, "merged_at": MERGED_AT})
+    monkeypatch.setattr(digest, "collect_commits", lambda *args, **kwargs: ())
+    monkeypatch.setattr(digest, "collect_threads", lambda repo, number: ())
+    monkeypatch.setattr(digest, "gh_pages", lambda endpoint: rest[endpoint.rsplit("/", 1)[1]])
+    assert digest.collect_pull("o/r", MERGED).armed_at == (AFTER,)
+
+
+def test_collect_pull_records_a_merge_queue_enqueue_as_an_arming(monkeypatch):
+    rest = {
+        "reviews": [],
+        "reactions": [],
+        "timeline": [
+            {"event": "labeled", "created_at": BEFORE},
+            {"event": "added_to_merge_queue", "created_at": AFTER},
+        ],
+        "comments": [],
+    }
+    monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: 7)
+    monkeypatch.setattr(digest, "gh_json", lambda *args: {"user": {"login": "dev"}, "merged_at": MERGED_AT})
+    monkeypatch.setattr(digest, "collect_commits", lambda *args, **kwargs: ())
+    monkeypatch.setattr(digest, "collect_threads", lambda repo, number: ())
+    monkeypatch.setattr(digest, "gh_pages", lambda endpoint: rest[endpoint.rsplit("/", 1)[1]])
+    assert digest.collect_pull("o/r", MERGED).armed_at == (AFTER,)
+
+
+def test_a_queue_enqueue_while_trunk_is_red_is_flagged(monkeypatch):
+    rest = {
+        "reviews": [],
+        "reactions": [],
+        "timeline": [{"event": "added_to_merge_queue", "created_at": "2026-10-21T11:41:17Z"}],
+        "comments": [],
+    }
+    monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: 7)
+    monkeypatch.setattr(digest, "gh_json", lambda *args: {"user": {"login": "dev"}, "merged_at": MERGED_AT})
+    monkeypatch.setattr(digest, "collect_commits", lambda *args, **kwargs: ())
+    monkeypatch.setattr(digest, "collect_threads", lambda repo, number: ())
+    monkeypatch.setattr(digest, "gh_pages", lambda endpoint: rest[endpoint.rsplit("/", 1)[1]])
+    pull = digest.collect_pull("o/r", MERGED)
+    arming = red_only(pull, [TRUNK_RED, TRUNK_GREEN])[0]
+    assert (arming.number, arming.armed_at, arming.conclusion) == (7, "2026-10-21T11:41:17Z", "failure")
+
+
+def test_collect_window_pulls_reads_each_merged_pull_request_once(monkeypatch):
+    monkeypatch.setattr(digest, "merged_commits", lambda ref, since: ["a" * 40, "b" * 40, "c" * 40])
+    numbers = {"a" * 40: 7, "b" * 40: 7, "c" * 40: None}
+    monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: numbers[sha])
+    monkeypatch.setattr(digest, "collect_pull", lambda repo, sha: evidence(number=7) if sha == "a" * 40 else None)
+    assert digest.collect_window_pulls("o/r", "ref", "since") == ([evidence(number=7)], [])
+
+
+def test_collect_window_pulls_records_an_unreadable_pull_request(monkeypatch):
+    monkeypatch.setattr(digest, "merged_commits", lambda ref, since: ["a" * 40, "b" * 40])
+    monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: 7 if sha == "a" * 40 else 8)
+
+    def fake_pull(repo, sha):
+        if sha == "a" * 40:
+            raise digest.ReadError("threads exploded")
+        return evidence(number=8)
+
+    monkeypatch.setattr(digest, "collect_pull", fake_pull)
+    pulls, unreadable = digest.collect_window_pulls("o/r", "ref", "since")
+    assert pulls == [evidence(number=8)]
+    assert [(item.number, item.sha) for item in unreadable] == [(7, "a" * 40)]
+    assert "threads exploded" in unreadable[0].reason
+    text = digest.render_unreadable(unreadable)
+    assert text.startswith("\nUnreadable pull requests: merged PRs the digest could not read")
+    assert "- #7: unreadable (threads exploded)." in text
+    assert digest.render_unreadable([]) == ""
+
+
+WITHDRAWN_BODY = "\n".join(
+    [
+        "### oracle-verdict: failure for `HEAD`",
+        "",
+        "Decision: **SHIP WITH FIXES**.",
+        "",
+        "Withdrawn:",
+        "",
+        "- D1: scaled timeouts are covered by the canary",
+        "- D2: docs-only head needs no re-review",
+    ]
+)
+
+
+def test_withdrawals_list_the_marked_findings():
+    pull = evidence(reviews=(failure_review(body=WITHDRAWN_BODY.replace("HEAD", HEAD)),))
+    withdrawal = digest.withdrawn_findings([pull])[0]
+    assert withdrawal.number == 7
+    assert withdrawal.items == (
+        "D1: scaled timeouts are covered by the canary",
+        "D2: docs-only head needs no re-review",
+    )
+    text = digest.render_withdrawals([withdrawal])
+    assert f"- #7 (`{HEAD[:9]}`):" in text
+    assert "D1: scaled timeouts are covered" in text
+
+
+def test_withdrawals_are_skipped_when_no_review_marks_any():
+    assert digest.withdrawn_findings([overridden()]) == []
+    assert digest.render_withdrawals([]) == ""
+
+
+def test_a_dry_run_reports_overrides_and_armings(stubbed, monkeypatch, capsys):
+    monkeypatch.setattr(
+        digest,
+        "collect_window_pulls",
+        lambda repo, ref, since: ([overridden(armed_at=("2026-10-02T11:50:00Z",))], []),
+    )
+    monkeypatch.setattr(digest, "fetch_trunk_runs", lambda repo: [trunk_run(1, BEFORE)])
+    assert digest.main([]) == 0
+    out = capsys.readouterr().out
+    assert "| #7 | `aaaaaaaaa` | joeharris76 | 1s | Medium |" in out
+    assert "- #7 armed at 2026-10-02T11:50:00Z" in out
+    assert "was failure (run 1, `aaaaaaaaa`, completed 2026-10-02T09:00:00Z)" in out
+
+
+def test_fetch_trunk_runs_paginates_to_a_short_page(monkeypatch):
+    seen = []
+
+    def fake_json(*args):
+        seen.append(args[1])
+        query = dict(part.split("=", 1) for part in args[1].split("?", 1)[1].split("&"))
+        if query["page"] == "1":
+            return {"workflow_runs": [{"id": index} for index in range(100)]}
+        return {"workflow_runs": [{"id": 100}]}
+
+    monkeypatch.setattr(digest, "gh_json", fake_json)
+    assert [run["id"] for run in digest.fetch_trunk_runs("o/r")] == list(range(101))
+    assert any(endpoint.endswith("page=2") for endpoint in seen)
+
+
+def test_a_failed_window_listing_marks_every_section_unavailable(stubbed, monkeypatch, capsys):
+    def broken(repo, ref, since):
+        raise digest.ReadError("window gone")
+
+    monkeypatch.setattr(digest, "collect_window_pulls", broken)
+    assert digest.main(["--apply"]) == 0
+    out = capsys.readouterr().out
+    assert "The window's pull requests were unreadable: window gone" in out
+    assert "Stand-in overrides are unavailable for this window" in out
+    assert "Red-trunk armings are unavailable for this window" in out
+    assert "Oracle withdrawals are unavailable for this window" in out
+    assert stubbed["checkpoint"] == [HEAD]
+
+
+def test_partial_coverage_qualifies_a_clean_section(stubbed, monkeypatch, capsys):
+    unreadable = digest.UnreadablePull(9, "b" * 40, "threads exploded")
+    monkeypatch.setattr(digest, "collect_window_pulls", lambda repo, ref, since: ([overridden()], [unreadable]))
+    monkeypatch.setattr(digest, "fetch_trunk_runs", lambda repo: [])
+    assert digest.main([]) == 0
+    out = capsys.readouterr().out
+    assert "Unreadable pull requests" in out
+    assert "'None.' above covers only the PRs the digest could read" in out
+
+
+def test_full_coverage_needs_no_qualifier(stubbed, monkeypatch, capsys):
+    monkeypatch.setattr(digest, "collect_window_pulls", lambda repo, ref, since: ([overridden()], []))
+    monkeypatch.setattr(digest, "fetch_trunk_runs", lambda repo: [])
+    assert digest.main([]) == 0
+    out = capsys.readouterr().out
+    assert "Unreadable pull requests" not in out
+    assert "covers only the PRs" not in out
+
+
+def test_a_bold_line_that_is_not_a_verdict_section_does_not_close_the_findings():
+    body = "\n".join(
+        [
+            "**Still open**",
+            "",
+            "- **Medium** `a.py:1`: D1: open",
+            "",
+            "**Note**",
+            "",
+            "- **High** `b.py:2`: D2: still open",
+        ]
+    )
+    assert digest.still_open_severities(body) == ["Medium", "High"]
+
+
+def test_a_withdrawn_mention_inside_text_does_not_close_the_findings():
+    body = "\n".join(
+        [
+            "**Still open**",
+            "",
+            "- **Medium** `a.py:1`: D1: mentions Withdrawn: handling",
+            "",
+            "- **Low** `c.py:3`: D3: open",
+        ]
+    )
+    assert digest.still_open_severities(body) == ["Medium", "Low"]
+
+
+def test_a_known_closed_section_ends_the_findings():
+    body = "\n".join(
+        [
+            "**Still open**",
+            "",
+            "- **Medium** `a.py:1`: D1: open",
+            "",
+            "**Reviewers not available**",
+            "",
+            "- absentee",
+        ]
+    )
+    assert digest.still_open_severities(body) == ["Medium"]
+
+
+@pytest.mark.parametrize(
+    "comment",
+    [
+        digest.Comment("someone-else", 'Owner instruction: "go"', INSTRUCTION_AT, "User"),
+        digest.Comment("joeharris76", 'Owner instruction: "go"', INSTRUCTION_AT, "Bot"),
+        digest.Comment("joeharris76", 'Owner instruction: "go"', INSTRUCTION_AT, "User", LATER),
+    ],
+    ids=["non-attester", "bot-account", "edited"],
+)
+def test_an_instruction_from_an_untrusted_comment_does_not_count(comment):
+    pull = evidence(reviews=(failure_review(),), comments=(comment, standin(HEAD, at=STANDIN_AT)))
+    assert digest.standin_overrides([pull])[0].instruction_gap_seconds is None

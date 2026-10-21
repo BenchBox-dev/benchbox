@@ -525,6 +525,14 @@ def apply_rewrite(name: str, sql_or_expression, dialect: str, **args):
     return function(sql_or_expression, **args)
 
 
+def contains_division(sql: str, dialect: str) -> bool:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    resolved = normalize_dialect_for_sqlglot(dialect.lower())
+    return sqlglot.parse_one(sql, read=resolved).find(exp.Div) is not None
+
+
 def fix_postgres_date_arithmetic(query: str) -> str:
     import re
 

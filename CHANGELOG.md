@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   divisor still returns NULL. Queries without a division are now re-rendered by
   the runtime (for example comma joins become `CROSS JOIN`) instead of being
   passed through verbatim; the result sets are unchanged.
+- The BigQuery adapter now requests `safe_division` from the bundled SQLGlot
+  runtime through `apply_rewrite` instead of its own division rewrite. A zero
+  divisor still yields NULL. Nested divisions (`a / (b / c)`, TPC-DS Q58 and Q83)
+  are now rewritten at every level, so a zero inner divisor yields NULL instead
+  of an error. Queries are no longer emitted with every identifier quoted.
 - TPC-DI schema, query, loader, validation and SCD translation now call
   `translate_sql_query` with explicit `identify=False` instead of the vendored
   SQLGlot directly, so the DuckDB `ALL` restore and SQLite fix-ups apply there
@@ -35,6 +40,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same mapping where it previously returned the PostgreSQL text unchanged.
   Translation failures in strict mode now raise `SQLTranslationError` instead of
   being logged and skipped.
+- **ClickHouse zero-divisor handling now comes from the bundled SQLGlot runtime.**
+  `ClickHouseQueryTransformer.transform` requests the runtime's `safe_division`
+  rewrite through `apply_rewrite`, which wraps every non-literal divisor as
+  `nullIf(divisor, 0)`, including `Nullable(Decimal)` casts. The previous regex
+  missed divisors after a scaled numerator (`x * 100 / SUM(x) OVER (...)`,
+  TPC-DS Q12, Q20 and Q98), TPC-DS Q49's `CAST(...) / CAST(...)` ratios and
+  TPC-H Q14's `... END) / SUM(...)`; a zero divisor in those expressions
+  previously raised an error or produced `inf` and now returns NULL. Results
+  differ only when a zero divisor occurs. The query text is also re-rendered by
+  SQLGlot (comma joins become `CROSS JOIN`, `date 'x'` becomes `CAST('x' AS DATE)`,
+  `NULLIF` becomes `nullIf`), which is semantically equivalent. A query SQLGlot
+  cannot parse now fails with `ParseError` before reaching ClickHouse.
+  `execution_time_seconds` for ClickHouse queries now starts after the query
+  rewrite, so it measures only the engine call.
 - **BREAKING: the ParadeDB platform now requires `pg_search`, not `pg_analytics`.**
   Current ParadeDB images no longer ship `pg_analytics`, so the adapter could not
   connect to them. The supported image is `paradedb/paradedb:0.26.2-pg18`
@@ -44,6 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ParadeDB tuning files now apply heap partitioning and clustering/sorting, and the
   adapter claims `PARTITIONING`, `CLUSTERING` and `SORTING`. A TPC-H profile is at
   `examples/tunings/paradedb/tpch_tuned.yaml`.
+- pg_mooncake tuning files now apply clustering and sorting, and the adapter claims
+  `CLUSTERING` and `SORTING`. `CLUSTER` runs on the loaded heap table before
+  `mooncake.create_table` mirrors it, so the mirror's Parquet files inherit the sort
+  order; the intent is recorded as applied only after the mirror's files are read back
+  and found ordered on the tuned columns. A partitioning request is rejected when the
+  tuning file loads, because partitioning the source does not shape the mirror. A TPC-H profile is at
+  `examples/tunings/pg-mooncake/tpch_tuned.yaml`.
 - The bundled SQLGlot runtime moves from 30.24.0.1 to 30.24.0.2 (fork commit
   `010db57fe835`), which adds the `netezza`, `greenplum`, `vertica`, `datafusion`
   and `questdb` dialects, SQLite, DuckDB, Snowflake and Databricks generator
@@ -87,6 +113,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entry takes precedence over `--citus-distribution-column`. The new `reference` and
   `columnar` table flags are rejected on any other platform. A TPC-H profile is at
   `examples/tunings/citus/tpch_tuned.yaml`.
+- SQLite translation of a whole-day offset on a typed date,
+  `DATE('..') + INTERVAL 'N' DAY`, yields `DATE(DATE('..'), 'N DAY')`, which
+  evaluates to a date string (`1998-09-11`) like the previous fix-up. The runtime
+  raises `UnsupportedError` at `ErrorLevel.RAISE` for month and year offsets that
+  roll over a month end and for `DATE_PART('year', ..)`; `translate_sql_query`
+  still applies the BenchBox fix-ups to them until they are removed.
+- The bundled SQLGlot runtime moves from 30.24.0.2 to 30.24.0.3 (fork commit
+  `a4dad47db8ca`). A translation corpus of every shipped benchmark query across
+  the 20 target dialects and `questdb` (1,262 queries, 26,502 translations, no
+  errors in either runtime) changes in 40 outputs. Results published before this
+  change for the affected queries on SQLite were computed with different SQL:
+  - SQLite, day offsets on a date column compared with date text: 30.24.0.2
+    wrote `DATETIME(DATE(..), 'N DAY')`, whose `YYYY-MM-DD HH:MM:SS` text sorts
+    after the date text of the same day, so a lower bound excluded the
+    boundary-day rows and a `<` upper bound included them. The runtime now writes
+    `DATE(DATE(..), 'N DAY')`. TPC-DS queries 5, 12, 16, 20, 21, 32, 37, 40, 77,
+    80, 82, 92, 94, 95 and 98 (15 outputs), the same queries in `tpcds_obt` (12
+    outputs), TPC-H Q1, TPC-H Skew Q1 and ten TPC-Havoc `1_v*` variants.
+  - BigQuery `3_v9` in TPC-Havoc: the runtime drops `NULLS LAST` from the window
+    `ORDER BY` of `FIRST_VALUE` when the key is a `PARTITION BY` key, because
+    BigQuery rejects a non-default NULL ordering there and the key is constant
+    within a partition.
+- `apply_rewrite("drop_literal_row_source", ..)` replaces the one-row
+  `(VALUES (1)) AS dual(dual_col)` source of a dead `UNION ALL` leg with a
+  `FROM`-less `SELECT`; the golden corpus records TPC-Havoc `17_v4` on
+  PostgreSQL as the changed output. `flatten_count_of_count` is available the
+  same way. The runtime writes no `FROM VALUES` or `dual` source in any dialect.
 
 ### Fixed
 

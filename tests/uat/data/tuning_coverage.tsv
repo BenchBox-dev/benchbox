@@ -351,7 +351,7 @@ pg-duckdb	nyctaxi	basic_constraints	waived	basic constraints are acceptable unti
 pg-duckdb	flightdata	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-duckdb	datavault	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-duckdb	vector_search	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-pg-mooncake	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
+pg-mooncake	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/pg-mooncake/tpch_tuned.yaml
 pg-mooncake	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-mooncake	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-mooncake	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-

@@ -45,12 +45,17 @@ def _decide(policy: Policy, previous: State | None, *, manual: bool = True, new_
 
 
 def test_rerun_on_the_same_head_needs_every_reviewer_absent(policy: Policy) -> None:
-    for outcome in ("success", "failure"):
-        decision = _decide(policy, _state(outcome))
-        assert not decision.allowed
-        assert "already has" in decision.reason
-        assert not _decide(policy, _state(outcome), manual=False).allowed
     assert _decide(policy, _state("pending")).allowed
+
+
+def test_manual_same_head_rereview_is_bounded_by_budget_and_backoff(policy: Policy) -> None:
+    for outcome in ("success", "failure"):
+        assert not _decide(policy, _state(outcome), manual=False).allowed
+        decision = _decide(policy, _state(outcome))
+        assert decision.allowed and "same-head re-review" in decision.reason
+        assert not _decide(policy, _state(outcome, age=timedelta(minutes=30))).allowed
+        exhausted = _decide(policy, _state(outcome, age=timedelta(days=2), retries=policy.retry.daily_budget))
+        assert not exhausted.allowed and "budget" in exhausted.reason
 
 
 def test_new_head_or_new_diff_reruns(policy: Policy) -> None:

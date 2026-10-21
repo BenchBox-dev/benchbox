@@ -20,7 +20,7 @@ from .classify import Classification, classify_diff
 from .diff import commentable_lines, select_files
 from .jev import JevError, JevSession
 from .policy import SIZE_BUCKETS, Policy, Reviewer, load_policy
-from .render import OversizeError, file_listing, prior_listing, render_review, select_prior_rule
+from .render import OversizeError, dispute_listing, file_listing, prior_listing, render_review, select_prior_rule
 from .selection import SelectionInput
 from .verdict import DO_NOT_SHIP
 
@@ -140,6 +140,60 @@ def _finish_plan(out_dir: Path, plan: dict[str, Any]) -> int:
     return 0
 
 
+DISPUTE_MARKER = "Dispute:"
+
+
+def _is_dispute(body: str) -> bool:
+    return any(line.strip().startswith(DISPUTE_MARKER) for line in body.splitlines())
+
+
+def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dict[str, Any]]:
+    disputes = []
+    for thread in threads:
+        if thread.get("resolved") or thread.get("author_type") != "Bot":
+            continue
+        if (thread.get("author") or "").removesuffix("[bot]") != bot_login:
+            continue
+        replies = [
+            {"author": reply.get("author"), "body": reply.get("body") or ""}
+            for reply in thread.get("replies", [])
+            if isinstance(reply, dict) and reply.get("author_type") != "Bot" and _is_dispute(reply.get("body") or "")
+        ]
+        if not replies:
+            continue
+        title = (thread.get("body") or "").splitlines()
+        disputes.append(
+            {"path": thread.get("path") or "", "title": title[0][:300] if title else "", "replies": replies}
+        )
+    return disputes
+
+
+def _dispute_step(
+    plan: dict[str, Any],
+    policy: Policy,
+    found: protocol.History,
+    scoped: list[ChangedFile],
+    full_diff: str | None,
+    complete: bool,
+    strike_count: int,
+    step: protocol.Round,
+    manual: bool,
+    event_name: str,
+) -> tuple[list[dict[str, Any]] | None, protocol.Round]:
+    if step.kind not in (protocol.SKIP, protocol.CARRY):
+        return None, step
+    if not manual and event_name != "pull_request_target":
+        return None, step
+    try:
+        threads = github.review_threads(plan["repo"], plan["pr"])
+    except (github.GitHubError, KeyError, ValueError) as exc:
+        _summary(f"oracle-verdict: open review threads could not be read: {exc}")
+        return None, step
+    if threads is not None and _disputed_threads(threads, policy.bot_login):
+        step = _protocol_round(plan, policy, found, scoped, full_diff if complete else None, strike_count, force=True)
+    return threads, step
+
+
 def command_plan(args: argparse.Namespace) -> int:
     policy = load_policy(Path(args.policy))
     repo = os.environ["GITHUB_REPOSITORY"]
@@ -231,6 +285,18 @@ def command_plan(args: argparse.Namespace) -> int:
     complete = full_diff is not None and len(files) >= int(pull.get("changed_files") or 0)
     strike_count = max(protocol.strikes(found.records), previous.strikes if previous else 0)
     step = _protocol_round(plan, policy, found, scoped, full_diff if complete else None, strike_count)
+    threads, step = _dispute_step(
+        plan,
+        policy,
+        found,
+        scoped,
+        full_diff,
+        complete,
+        strike_count,
+        step,
+        manual,
+        event_name,
+    )
     if step.kind == protocol.SKIP:
         plan["decision_reason"] = step.reason
         return _finish_plan(out_dir, plan)
@@ -241,7 +307,9 @@ def command_plan(args: argparse.Namespace) -> int:
         plan.update({"decision": CARRY, "decision_reason": step.reason, "reviewed_head": step.previous["head_sha"]})
         return _finish_plan(out_dir, plan)
     try:
-        plan["open_findings"] = dedup.open_fingerprints(github.review_threads(repo, pr), policy.bot_login)
+        threads = github.review_threads(repo, pr) if threads is None else threads
+        plan["open_findings"] = dedup.open_fingerprints(threads, policy.bot_login)
+        plan["disputes"] = _disputed_threads(threads, policy.bot_login)
     except (github.GitHubError, KeyError, ValueError) as exc:
         _summary(f"oracle-verdict: open review threads could not be read, so none are suppressed: {exc}")
     _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, previous, now)
@@ -256,6 +324,7 @@ def _protocol_round(
     scoped: list[ChangedFile],
     full_diff: str | None,
     strike_count: int,
+    force: bool = False,
 ) -> protocol.Round:
     paths = sorted(item.path for item in scoped)
     patches = protocol.file_patches(full_diff or "")
@@ -271,6 +340,7 @@ def _protocol_round(
         paths=paths,
         strike_count=strike_count,
         max_do_not_ship=policy.protocol.max_do_not_ship,
+        force=force,
     )
     latest = step.previous or {}
     follow_up = step.kind == protocol.FOLLOW_UP
@@ -288,6 +358,7 @@ def _protocol_round(
         "next_id": int(latest.get("next_id", 1)) if follow_up else 1,
         "changed": sorted(step.changed) if follow_up and step.changed is not None else None,
         "previous": dict(latest) if step.kind == protocol.CARRY else None,
+        "forced": step.forced,
     }
     return step
 
@@ -474,7 +545,10 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
             f" the rework answers it.\n{files_block}"
         )
     prior = plan["protocol"]["prior"]
+    disputes = [item for item in plan.get("disputes", []) if isinstance(item, dict)] if prior else []
     prior_block = f"\nEarlier defects:\n{prior_listing(prior)}\n" if prior else ""
+    if disputes:
+        prior_block += f"\nDisputed findings:\n{dispute_listing(disputes)}\n"
     staged = None
     if plan.get("diff_inline"):
         diff_text: str | None = plan["diff_inline"]
@@ -489,7 +563,9 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
         base_sha=plan["base_sha"],
         head_sha=plan["head_sha"],
         max_defects=int(plan["max_defects"]),
-        prior_rule=select_prior_rule(prior or None, plan.get("reviewed_head"), int(plan["max_defects"])),
+        prior_rule=select_prior_rule(
+            prior or None, plan.get("reviewed_head"), int(plan["max_defects"]), bool(disputes)
+        ),
         prior_block=prior_block,
         files_block=files_block,
         diff_text=diff_text,
@@ -644,7 +720,11 @@ def _reread_history(plan: Mapping[str, Any]) -> protocol.History:
 def command_guard(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
     found = _reread_history(plan)
-    done = found.latest is not None and found.latest["head_sha"] == plan["head_sha"]
+    latest = found.latest
+    rules = plan.get("protocol") or {}
+    planned = (int(rules.get("cycle", 0)), int(rules.get("round", 0)))
+    posted = (int(latest.get("cycle", 0)), int(latest.get("round", 0))) if latest is not None else None
+    done = latest is not None and latest["head_sha"] == plan["head_sha"] and posted is not None and posted >= planned
     _output({"skip": "true" if done else "false"})
     if done:
         _summary(f"oracle-verdict: head {plan['head_sha']} already has a decision; this run posts nothing")

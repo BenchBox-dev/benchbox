@@ -120,6 +120,7 @@ def test_plan_guards_comments_and_edits() -> None:
     condition = _jobs()["plan"]["if"]
     assert "issue_comment" in condition
     assert "author_association" in condition
+    assert "review_comment" not in condition
     assert _jobs()["sweep"]["if"] == "github.event_name == 'schedule'"
 
 
