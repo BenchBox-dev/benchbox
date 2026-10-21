@@ -14,6 +14,8 @@ file	scripts/heavy_tier_needed.py
 file	scripts/coverage_test_selection.py
 file	scripts/coverage_map.ini
 file	_project/scripts/preflight_targets.py
+file	scripts/path_filter_decision.py
+file	.github/path-filters.yml
 file	scripts/pr_arm.py
 file	benchbox/core/validation/engines.py
 file	benchbox/utils/data_validation.py

@@ -169,6 +169,7 @@ jobs:
         run: |
           python scripts/path_filter_decision.py \
             --base-ref "${{ github.event.pull_request.base.sha }}" \
+            --rules-base-ref "${{ github.event.pull_request.base.sha }}" \
             --json-out ci-path-decision.json \
             --lists-dir .ci-paths \
             --github-output "$GITHUB_OUTPUT" \
@@ -970,7 +971,7 @@ jobs:
   medium-collect:
     name: medium-collect
     needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
+    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -1022,7 +1023,7 @@ jobs:
   medium-test:
     name: medium-test (shard ${{ matrix.shard_index }})
     needs: [ci-paths, medium-collect]
-    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) && needs.medium-collect.result == 'success' && needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
+    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) && needs.medium-collect.result == 'success' && needs.ci-paths.outputs.heavy-needed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -1111,7 +1112,7 @@ jobs:
   correctness-gate:
     name: correctness-gate (${{ matrix.partition }})
     needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
+    if: ${{ needs.ci-paths.outputs.heavy-needed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 65
     strategy:
@@ -1478,7 +1479,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Download complete medium shard evidence
-        if: needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true'
+        if: needs.ci-paths.outputs.heavy-needed == 'true'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           pattern: t2-medium-*-${{ github.sha }}
@@ -1486,7 +1487,7 @@ jobs:
           merge-multiple: false
 
       - name: Verify complete medium shard coverage
-        if: needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true'
+        if: needs.ci-paths.outputs.heavy-needed == 'true'
         run: >-
           python scripts/release_canary_sharding.py verify-medium --artifacts t2-evidence
           --checked-sha "${{ github.sha }}" --durations tests/fixtures/medium_shard_durations.json
@@ -1503,9 +1504,9 @@ jobs:
             --always ci-paths \
             --expect code-lint=${{ needs.ci-paths.outputs.code-tests-needed == 'true' }} \
             --expect code-test=${{ needs.ci-paths.outputs.code-tests-needed == 'true' }} \
-            --expect medium-collect=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
-            --expect medium-test=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
-            --expect correctness-gate=${{ needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }} \
+            --expect medium-collect=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
+            --expect medium-test=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
+            --expect correctness-gate=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
             --expect tpch-binary-framing=${{ needs.ci-paths.outputs.heavy-needed == 'true' || needs.ci-paths.outputs.framing-needed == 'true' }} \
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
             --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \

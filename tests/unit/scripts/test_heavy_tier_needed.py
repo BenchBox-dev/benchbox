@@ -275,3 +275,19 @@ def test_selection_logic_changes_need_the_heavy_tier(tmp_path: Path) -> None:
         )
         assert result["heavy_needed"] is True, path
         assert "test-infrastructure carve-out" in result["reason"]
+
+
+def test_router_files_belong_to_the_selection_logic_check() -> None:
+    assert {
+        ".github/path-filters.yml",
+        "scripts/path_filter_decision.py",
+        "scripts/ci_units.py",
+        ".github/ci-units.yml",
+    } <= heavy.SELECTION_LOGIC_PATHS
+
+
+def test_selection_logic_check_runs_before_the_code_route_exit(tmp_path: Path) -> None:
+    decision = {**_decision(["scripts/ci_units.py"]), "needs_code_ci": False}
+    result = heavy.heavy_needed(decision, "absent", tmp_path)
+    assert result["heavy_needed"] is True
+    assert "test-infrastructure carve-out" in result["reason"]

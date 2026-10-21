@@ -14,6 +14,7 @@ from path_filter_decision import (
     classify_paths,
     git_changed_paths,
     load_rules,
+    load_rules_from_base_ref,
     pattern_matches,
     write_github_output,
 )
@@ -396,3 +397,73 @@ def test_git_changed_paths_includes_deletions(tmp_path: Path) -> None:
 
     assert "benchbox/old.py" in changed
     assert "README.md" in changed
+
+
+BASE_COPY_RULES = "safe-content:\n  - 'docs/**'\ncontent-guard:\n  - 'docs/**'\ncode-ci:\n  - 'benchbox/**'\n"
+REROUTED_CHECKOUT_RULES = "safe-content:\n  - 'benchbox/**'\ncontent-guard:\n  - 'docs/**'\ncode-ci:\n  - 'docs/**'\n"
+
+
+def _rules_repo_with_rerouted_checkout(tmp_path: Path) -> tuple[Path, str]:
+    repo = tmp_path / "rules-repo"
+    repo.mkdir()
+    _git(repo, "init", "--initial-branch=main", "-q")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+    rules_file = repo / ".github" / "path-filters.yml"
+    rules_file.parent.mkdir(parents=True, exist_ok=True)
+    rules_file.write_text(BASE_COPY_RULES, encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "base rules", "-q")
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    rules_file.write_text(REROUTED_CHECKOUT_RULES, encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "reroute attempt", "-q")
+    return repo, base
+
+
+def test_rules_base_ref_reads_the_base_copy_not_the_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo, base = _rules_repo_with_rerouted_checkout(tmp_path)
+    monkeypatch.chdir(repo)
+    base_rules = load_rules_from_base_ref(base, Path(".github/path-filters.yml"))
+    checkout_rules = load_rules(Path(".github/path-filters.yml"))
+    assert classify_paths(["benchbox/core/x.py"], base_rules)["needs_code_ci"] is True
+    assert classify_paths(["benchbox/core/x.py"], checkout_rules)["needs_code_ci"] is False
+
+
+def test_rules_base_ref_cli_evaluates_the_base_copy(tmp_path: Path) -> None:
+    repo, base = _rules_repo_with_rerouted_checkout(tmp_path)
+    changed = repo / "changed.txt"
+    changed.write_text("benchbox/core/x.py\n", encoding="utf-8")
+    script = str(REPO_RULES.parents[1] / "scripts" / "path_filter_decision.py")
+    pr_only = subprocess.run(
+        [sys.executable, script, "--rules", ".github/path-filters.yml", "--changed-file", str(changed)],
+        cwd=repo,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    assert json.loads(pr_only.stdout)["needs_code_ci"] is False
+    pinned = subprocess.run(
+        [
+            sys.executable,
+            script,
+            "--rules",
+            ".github/path-filters.yml",
+            "--changed-file",
+            str(changed),
+            "--rules-base-ref",
+            base,
+        ],
+        cwd=repo,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    assert json.loads(pinned.stdout)["needs_code_ci"] is True
+
+
+def test_rules_base_ref_missing_ref_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo, _base = _rules_repo_with_rerouted_checkout(tmp_path)
+    monkeypatch.chdir(repo)
+    with pytest.raises(ValueError, match="cannot read base-ref copy"):
+        load_rules_from_base_ref("0" * 40, Path(".github/path-filters.yml"))
