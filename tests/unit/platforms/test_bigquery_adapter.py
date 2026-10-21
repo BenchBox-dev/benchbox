@@ -2669,6 +2669,35 @@ class TestSafeguardDivisionByZero:
 
 
 @pytest.mark.usefixtures("dependencies_available")
+class TestApplySafeDivision:
+    @patch("benchbox.platforms.bigquery.bigquery")
+    def test_division_routed_through_fork_rewrite(self, mock_bigquery):
+        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
+        result = adapter._apply_safe_division("SELECT a / b FROM `T`")
+        assert "SAFE_DIVIDE(a, b)" in result
+        assert " / " not in result
+
+    @patch("benchbox.platforms.bigquery.bigquery")
+    def test_nested_division_fully_rewritten(self, mock_bigquery):
+        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
+        result = adapter._apply_safe_division("SELECT a / (b / c) FROM t")
+        assert result.count("SAFE_DIVIDE") == 2
+        assert " / " not in result
+
+    @patch("benchbox.platforms.bigquery.bigquery")
+    def test_query_without_division_unchanged(self, mock_bigquery):
+        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
+        query = "SELECT a FROM `T` WHERE b = 1"
+        assert adapter._apply_safe_division(query) == query
+
+    @patch("benchbox.platforms.bigquery.bigquery")
+    def test_unparseable_query_unchanged(self, mock_bigquery):
+        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
+        query = "SELEC ((( / b"
+        assert adapter._apply_safe_division(query) == query
+
+
+@pytest.mark.usefixtures("dependencies_available")
 class TestGenerateTuningClause:
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_timestamp_partitioning_uses_date_wrapper(self, mock_bigquery):

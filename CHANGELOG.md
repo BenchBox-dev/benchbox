@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   divisor still returns NULL. Queries without a division are now re-rendered by
   the runtime (for example comma joins become `CROSS JOIN`) instead of being
   passed through verbatim; the result sets are unchanged.
+- The BigQuery adapter now requests `safe_division` from the bundled SQLGlot
+  runtime through `apply_rewrite` instead of its own division rewrite. A zero
+  divisor still yields NULL. Nested divisions (`a / (b / c)`, TPC-DS Q58 and Q83)
+  are now rewritten at every level, so a zero inner divisor yields NULL instead
+  of an error. Queries are no longer emitted with every identifier quoted.
 - TPC-DI schema, query, loader, validation and SCD translation now call
   `translate_sql_query` with explicit `identify=False` instead of the vendored
   SQLGlot directly, so the DuckDB `ALL` restore and SQLite fix-ups apply there
