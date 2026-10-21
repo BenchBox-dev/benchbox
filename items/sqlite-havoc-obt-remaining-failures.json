@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Each listed query is fixed with executed sqlite3 results matching DuckDB, or registered as an explicit SQLite skip with a reason, with owner decisions recorded where benchmark text changes.",
+    "The ROLLUP gap for TPC-DS Q5/Q77/Q80 is classified the same way."
+  ],
+  "description": "Found by the SQLite rerun (report ~/Developer/benchmark_runs/sqlite-day-offset-rerun-20261021/REPORT.md). Havoc 1_v7 uses a DuckDB LIST aggregate (near '[0]') and 1_v9 uses GROUPING SETS (near 'SETS'); both fail identically on old and new wheels and are not the known ROLLUP gap. tpcds_obt Q16, Q94 and Q95 use the unpadded date literal '1999-5-01', which SQLite compares as text so results differ from DuckDB on both wheels. Decide per query: a fork lowering (GROUPING SETS/ROLLUP expansion to UNION ALL, list aggregate lowering), a documented SQLite skip with reason, or fixing the benchmark text (benchmark definition, owner decision). The most-correct-result rule applies; each must end with an executed result matching DuckDB or a registered skip.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T21:00:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a4c98b7464b94c61b988b8f5933d37f1",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

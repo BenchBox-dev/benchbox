@@ -23363,6 +23363,13 @@
       "status": "done",
       "title": "SQLite TPC-DS Q21, Q40 and tpcds_obt Q40 exclude the boundary-day row (DATETIME day-offset bound)"
     },
+    "sqlite-havoc-obt-remaining-failures": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "SQLite: Havoc 1_v7 (LIST aggregate) and 1_v9 (GROUPING SETS) fail; tpcds_obt Q16/Q94/Q95 use an unpadded date literal"
+    },
     "sqlite-integer-division-truncates-ratios": {
       "claim": null,
       "needs": [],
