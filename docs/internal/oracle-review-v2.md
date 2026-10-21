@@ -419,4 +419,32 @@ The checker runs from the base commit, so the workflow can pass `--signal`
 only after `develop`'s copy of the script accepts it. A unit test fails if
 `mode: enforce` and `--signal oracle` disagree or if delivery is not `review`.
 Going back to the connector would need this cleanup reverted and the connector
-App reinstalled.
+
+## Required gate from trusted code
+
+`oracle-review` runs its workflow file from the pull request, so a pull request
+that edits `.github/workflows/` can change the check that judges it, and the
+commit status it reads can be set by any pull request sharing the head commit.
+The `oracle-gate` context answers both: `_project/scripts/oracle_gate.py`
+imports the decision and its helpers from `_project/scripts/oracle_review_check.py`
+instead of reimplementing them, and posts `oracle-gate` for the pull request
+head through the oracle App token. It is the only writer of that context. The
+pass rule is the checker's rule unchanged: only exempt paths changed, the App's
+latest review of the head reports success with no unresolved oracle thread, or
+a valid stand-in covers the exact head; anything else posts failure.
+
+`.github/workflows/oracle-gate.yml` runs `develop` code only. It triggers on
+`pull_request_target` (opened, synchronize, reopened, ready_for_review, edited),
+on created issue comments that open with the stand-in marker, on completion of
+`oracle-verdict` and `oracle-review` (the bridge for review and thread events,
+which have no trusted trigger of their own), on `workflow_dispatch` with a `pr`
+input, and on an hourly `schedule` sweep over open pull requests targeting
+`develop`. Every job checks out `develop`, never the pull request, with a sparse
+checkout of the gate and its predicate; the App token is minted the same way
+`oracle-verdict` mints it, from the same `oracle` environment and secrets.
+Concurrency is per pull request.
+
+The cutover keeps `oracle-review` required while `oracle-gate` runs
+alongside it. Once production runs show the two contexts agreeing, the owner
+adds `oracle-gate` to the required checks in `repo-admin-settings.md` and the
+live ruleset, and only then retires the `pull_request`-triggered check.

@@ -191,6 +191,15 @@ passes when any of these holds:
 
 A plain owner comment does not count. See [soundness drain](soundness-drain.md).
 
+The `oracle-gate` context is being introduced next to `oracle-review` and is not
+required yet. `.github/workflows/oracle-gate.yml` runs only `develop` code and
+posts `oracle-gate` for the pull request head through the same oracle App; no
+other workflow writes that context. It applies the checker's rule unchanged:
+success when only exempt paths changed, when the App's latest review of the head
+reports success with no unresolved oracle thread, or when a valid stand-in
+covers the exact head, and failure otherwise. The owner adds it to the required
+list above once production runs show it tracking `oracle-review`.
+
 ### Soundness-path review enforcement
 
 The required `develop-squash-only` policy combines `oracle-review` with
@@ -212,8 +221,10 @@ The soundness gate, as operated:
   runs; checking out the base commit protects only the checker and manifest.
   The daily soundness merge digest runs from `develop` and flags a
   soundness-path commit that merged without an oracle success review or another
-  review signal. It is a weak backstop: the same PR can edit the digest script,
-  and the digest also accepts a review recorded as text in the PR.
+  review signal; the `oracle-gate` workflow closes the first half of this gap by
+  evaluating the same rule from `develop` code on trusted triggers, so a pull
+  request cannot change the check that judges it. Requiring `oracle-gate` in the
+  ruleset is the remaining step.
 - `make pr-open` does not arm auto-merge when it creates a PR. `make pr-arm`
   (or `make pr-open READY=1`) arms it after a live check of the PR, so a PR
   cannot merge while a follow-up commit is still being written. Arm only when
