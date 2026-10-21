@@ -3,6 +3,7 @@
     "Docs lint passes",
     "Examples pass validate-config"
   ],
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "Plan step N9. architecture.md, config-reference.md, adopting.md, operating-macos.md (install, reboot checkpoint, recovery steps, rotation, upgrades, rollback, kill), threat-model.md, examples.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "91a5cc29e8db453492924677f7f334da",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:23:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "90958725ace74f31b41cfa1cde3328c1",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
