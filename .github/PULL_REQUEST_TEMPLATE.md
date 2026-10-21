@@ -17,6 +17,17 @@ Brief description of the changes in this PR (the *what* and *why*).
 How did you verify the change? Include the commands you ran (e.g.
 `make pr-preflight`, targeted `pytest`, manual smoke).
 
+## SQL Execution Evidence
+
+Required when this PR adopts a SQLGlot runtime wheel or changes SQL translation,
+the wrapper, or the TPC-H and TPC-DS query code.
+
+- [ ] I ran `make sql-execution-gate` and pasted its output below (candidate and
+      baseline runtime versions, per-engine cell counts, verified improvements,
+      expected differences), or this PR does not touch SQL translation.
+- [ ] Every verified improvement is listed as a published-result impact, and
+      every new `expected_differences.json` entry names its justification.
+
 ## Public Contract Check
 
 - [ ] I updated `docs/reference/public-contracts.md`, or this PR does not change
