@@ -5837,6 +5837,15 @@
       "status": "done",
       "title": "Cost Optimization Engine - Automated Recommendations"
     },
+    "cov-select-shadow-miss-report-20261021": {
+      "claim": null,
+      "needs": [
+        "cov-select-shadow-mode-20261021"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Report heavy-tier test failures that the shadow coverage selection would have missed"
+    },
     "cov-select-shadow-mode-20261021": {
       "claim": null,
       "needs": [],

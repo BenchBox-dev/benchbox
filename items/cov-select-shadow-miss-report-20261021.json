@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "A fixture junit with a failure outside the selection is reported as a miss; one inside is not",
+    "A real PR run shows the miss section in the core summary"
+  ],
+  "description": "While coverage selection runs in shadow mode, measure whether it would have caught real failures. In the core aggregate, compare failed node IDs from the heavy medium-test junit reports with the shadow selection and list misses (failed but not selected) in the step summary and the shadow artifact.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:44:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c1641c7dc27845e6bec1c63f5cab59e5",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    }
+  ]
+}
