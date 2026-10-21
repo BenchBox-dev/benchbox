@@ -19,6 +19,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same mapping where it previously returned the PostgreSQL text unchanged.
   Translation failures in strict mode now raise `SQLTranslationError` instead of
   being logged and skipped.
+- **BREAKING: the ParadeDB platform now requires `pg_search`, not `pg_analytics`.**
+  Current ParadeDB images no longer ship `pg_analytics`, so the adapter could not
+  connect to them. The supported image is `paradedb/paradedb:0.26.2-pg18`
+  (PostgreSQL 18.6, `pg_search` 0.26.2); the missing-extension error names it, and
+  `latest` is no longer recommended. Servers that only carry `pg_analytics` fail at
+  connection time.
+- ParadeDB tuning files now apply heap partitioning and clustering/sorting, and the
+  adapter claims `PARTITIONING`, `CLUSTERING` and `SORTING`. A TPC-H profile is at
+  `examples/tunings/paradedb/tpch_tuned.yaml`.
+
+### Fixed
+
+- Post-load clustering on PostgreSQL-family adapters no longer fails with
+  `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
+  clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`
+  as failed. The index now commits first and `CLUSTER` runs in autocommit; both
+  partitioning (`pg_get_partkeydef`) and clustering (`pg_index.indisclustered`, per
+  partition) are verified against the catalog. A verification failure after commit
+  records the durable statements as executed and the intent as not satisfied.
 
 ### Fixed
 

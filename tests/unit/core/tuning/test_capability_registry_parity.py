@@ -49,7 +49,7 @@ class TestRequestedButNotRenderedIsAnError:
         assert not any("partitioning" in e for e in errors)
 
     def test_partitioning_on_postgres_family_errors(self) -> None:
-        for platform in ("cedardb", "citus", "paradedb"):
+        for platform in ("cedardb", "citus"):
             errors, _warnings = _partitioned_config().validate_for_platform_detailed(platform)
             assert any("is not applied at execution" in e for e in errors), platform
 
@@ -296,9 +296,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
         }
     ),
     "mysql": frozenset({"check_constraints", "partitioning", "unique_constraints"}),
-    "paradedb": frozenset(
-        {"bloom_filters", "check_constraints", "clustering", "materialized_views", "partitioning", "unique_constraints"}
-    ),
+    "paradedb": frozenset({"bloom_filters", "check_constraints", "materialized_views", "unique_constraints"}),
     "pg-duckdb": frozenset({"check_constraints", "unique_constraints"}),
     "pg-mooncake": frozenset({"check_constraints", "clustering", "partitioning", "sorting", "unique_constraints"}),
     "postgresql": frozenset({"bloom_filters", "check_constraints", "materialized_views", "unique_constraints"}),
@@ -371,7 +369,7 @@ _RENDERED: dict[str, frozenset[str]] = {
     "firebolt": frozenset({}),
     "motherduck": frozenset({"sorting"}),
     "mysql": frozenset({"foreign_keys", "primary_keys"}),
-    "paradedb": frozenset({"foreign_keys", "primary_keys"}),
+    "paradedb": frozenset({"clustering", "foreign_keys", "partitioning", "primary_keys", "sorting"}),
     "pg-duckdb": frozenset({"clustering", "foreign_keys", "partitioning", "primary_keys", "sorting"}),
     "pg-mooncake": frozenset({"foreign_keys", "primary_keys"}),
     "postgresql": frozenset({"clustering", "foreign_keys", "partitioning", "primary_keys", "sorting"}),

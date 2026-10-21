@@ -556,7 +556,7 @@ pg-mooncake|effective_cache_size|PostgreSQL effective_cache_size planner hint|{'
 pg-mooncake|max_parallel_workers_per_gather|PostgreSQL max_parallel_workers_per_gather setting|{'parser': 'int', 'default': 2}
 pg-mooncake|storage_mode|Storage backend: local (disk) or s3 (object storage)|{'choices': ('local', 's3'), 'default': 'local'}
 pg-mooncake|mooncake_bucket|S3/GCS bucket URL for columnstore data (required when storage_mode=s3)|{}
-paradedb|host|PostgreSQL server hostname (with pg_analytics installed)|{'default': 'localhost'}
+paradedb|host|PostgreSQL server hostname (with pg_search installed)|{'default': 'localhost'}
 paradedb|port|PostgreSQL server port|{'parser': 'int', 'default': 5432}
 paradedb|database|PostgreSQL database name (auto-generated if not specified)|{}
 paradedb|username|PostgreSQL username|{'default': 'postgres'}
