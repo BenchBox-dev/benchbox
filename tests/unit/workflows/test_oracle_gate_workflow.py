@@ -97,6 +97,45 @@ def test_sparse_checkout_stays_in_the_gate_and_its_predicate() -> None:
                 assert "_project/scripts/oracle_review_check.py" in sparse
                 assert "_project/scripts/soundness_paths.py" in sparse
                 assert ".github/soundness-paths.txt" in sparse
+                assert ".github/oracle-reviewers.yml" in sparse
+                assert "_project/scripts/oracle_reviewers" in sparse
+
+
+def test_each_job_installs_uv_before_running_the_script() -> None:
+    for name in _jobs():
+        names = [step.get("name", "") for step in _steps(name)]
+        script_at = next(index for index, step in enumerate(_steps(name)) if SCRIPT in step.get("run", ""))
+        assert "Install uv" in names, name
+        assert names.index("Install uv") < script_at, name
+
+
+def test_gate_runs_the_script_with_pinned_pyyaml() -> None:
+    for name in _jobs():
+        for step in _steps(name):
+            if SCRIPT in step.get("run", ""):
+                assert "uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python" in step["run"], (
+                    name,
+                    step.get("name"),
+                )
+
+
+def test_every_gate_script_step_exports_the_posting_token() -> None:
+    for name in _jobs():
+        for step in _steps(name):
+            if SCRIPT not in step.get("run", ""):
+                continue
+            env = step.get("env", {})
+            assert "GITHUB_TOKEN" in env, (name, step.get("name"))
+            assert "GH_TOKEN" in env, (name, step.get("name"))
+
+
+def test_posting_steps_export_the_app_token() -> None:
+    post = next(step for step in _steps("gate") if step["name"] == "Post the gate for the head")
+    assert post["env"]["GITHUB_TOKEN"] == "${{ steps.app.outputs.token }}"
+    log = next(step for step in _steps("gate") if step["name"].startswith("Log the gate without posting"))
+    assert log["env"]["GITHUB_TOKEN"] == "${{ github.token }}"
+    sweep = next(step for step in _steps("sweep") if step["name"].startswith("Gate every open"))
+    assert sweep["env"]["GITHUB_TOKEN"] == "${{ steps.app.outputs.token || github.token }}"
 
 
 def test_dispatch_is_refused_outside_develop() -> None:
@@ -108,6 +147,7 @@ def test_dispatch_is_refused_outside_develop() -> None:
 
 def test_workflow_run_head_resolves_to_an_open_develop_pull_request() -> None:
     resolve = next(step for step in _steps("gate") if step["name"] == "Resolve the pull request")
+    assert "github.event.workflow_run.pull_requests" in str(resolve["env"])
     assert "github.event.workflow_run.head_sha" in str(resolve["env"])
     assert 'select(.base.ref == "develop"' in resolve["run"]
 
@@ -140,11 +180,22 @@ def test_sweep_covers_every_open_develop_pull_request() -> None:
     assert SCRIPT in sweep["run"]
 
 
-def test_concurrency_is_per_pull_request() -> None:
+def test_sweep_fails_visibly_when_a_pull_request_errors() -> None:
+    sweep = next(step for step in _steps("sweep") if step["name"].startswith("Gate every open"))
+    assert 'FAILED=""' in sweep["run"]
+    assert "::warning::oracle-gate failed for" in sweep["run"]
+    assert "::error::oracle-gate failed for" in sweep["run"]
+    assert "exit 1" in sweep["run"]
+
+
+def test_concurrency_is_one_group_per_pull_request() -> None:
     group = _load()["concurrency"]["group"]
     assert "github.event.pull_request.number" in group
     assert "github.event.issue.number" in group
     assert "inputs.pr" in group
+    assert "github.event.workflow_run.pull_requests" in group
+    assert "github.event.workflow_run.head_sha" not in group
+    assert "github.run_id" in group
     assert _load()["concurrency"]["cancel-in-progress"] is True
 
 
@@ -163,12 +214,19 @@ def test_actions_are_pinned_to_known_shas() -> None:
                 assert step["uses"].split("@")[1] in KNOWN_SHAS, (name, step["uses"])
 
 
-def test_gate_is_the_only_writer_of_its_context() -> None:
-    assert _text().count("oracle-gate") >= 1
-    for workflow in (REPO_ROOT / ".github" / "workflows").glob("*.yml"):
+def test_no_other_workflow_can_post_the_gate_context() -> None:
+    variable_context = re.compile(r"context[\"']?\s*[=:]\s*[\"']?\$")
+    offenders = []
+    for workflow in sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml")):
         if workflow.name == "oracle-gate.yml":
             continue
-        assert "context: oracle-gate" not in workflow.read_text(encoding="utf-8"), workflow.name
+        data = yaml.safe_load(workflow.read_text(encoding="utf-8"))
+        for job_name, job in (data.get("jobs") or {}).items():
+            for step in job.get("steps") or []:
+                run = step.get("run", "")
+                if "oracle-gate" in str(step) or ("statuses/" in run and variable_context.search(run)):
+                    offenders.append((workflow.name, job_name, step.get("name")))
+    assert offenders == []
     gate_py = (REPO_ROOT / "_project/scripts/oracle_gate.py").read_text(encoding="utf-8")
     assert 'GATE_CONTEXT = "oracle-gate"' in gate_py
 

@@ -7,6 +7,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 from oracle_review_check import (
@@ -15,7 +16,6 @@ from oracle_review_check import (
     PASS,
     WAITING,
     CheckError,
-    _review_rules,
     changed_paths,
     decide,
     fetch_base_change_date,
@@ -79,12 +79,22 @@ def post_status(token: str, repo: str, head_sha: str, status: int, message: str)
         raise CheckError(f"GitHub request to post {GATE_CONTEXT} for {head_sha} failed: {exc}") from exc
 
 
+def load_policy_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
+    try:
+        from oracle_reviewers.policy import load_policy
+
+        classifier = load_policy(Path(".github/oracle-reviewers.yml")).classifier
+        return classifier.exempt_paths, classifier.gate_paths
+    except Exception as exc:
+        raise CheckError(f"cannot load the review policy: {exc}") from exc
+
+
 def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
     pull = fetch_pull(token, repo, pr)
     head_sha = pull["head"]["sha"]
     items = fetch_files(token, repo, pr)
     files = changed_paths(items)
-    matcher = path_matcher(len(items), pull["changed_files"], *_review_rules())
+    matcher = path_matcher(len(items), pull["changed_files"], *load_policy_rules())
     reviews = fetch_reviews(token, repo, pr)
     threads = fetch_threads(token, repo, pr)
     base_date = fetch_base_change_date(token, repo, pr)
@@ -123,6 +133,14 @@ def main(argv: list[str] | None = None) -> int:
     print(message)
     if args.no_post:
         return PASS if status == PASS else WAITING
+    try:
+        latest_sha, latest_status, latest_message = evaluate(args.repo, args.pr, token)
+    except (CheckError, KeyError, ValueError) as exc:
+        print(f"oracle-gate: error: {exc}", file=sys.stderr)
+        return ERROR
+    if (latest_sha, latest_status, latest_message) != (head_sha, status, message):
+        print(latest_message)
+        head_sha, status, message = latest_sha, latest_status, latest_message
     try:
         post_status(token, args.repo, head_sha, status, message)
     except CheckError as exc:

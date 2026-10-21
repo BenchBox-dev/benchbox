@@ -65,12 +65,30 @@ def test_gate_reuses_the_checker_decision_and_helpers() -> None:
     assert oracle_gate.decide is oracle_review_check.decide
     assert oracle_gate.path_matcher is oracle_review_check.path_matcher
     assert oracle_gate.changed_paths is oracle_review_check.changed_paths
-    assert oracle_gate._review_rules is oracle_review_check._review_rules
     assert (oracle_gate.PASS, oracle_gate.WAITING, oracle_gate.ERROR) == (
         oracle_review_check.PASS,
         oracle_review_check.WAITING,
         oracle_review_check.ERROR,
     )
+
+
+def test_policy_rules_match_the_checker_rules() -> None:
+    assert oracle_gate.load_policy_rules() == oracle_review_check._review_rules()
+
+
+def test_policy_rules_fail_when_the_policy_file_is_missing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(oracle_gate.CheckError):
+        oracle_gate.load_policy_rules()
+
+
+def test_policy_rules_fail_when_the_package_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(sys.modules, "oracle_reviewers", None)
+    monkeypatch.setitem(sys.modules, "oracle_reviewers.policy", None)
+    with pytest.raises(oracle_gate.CheckError):
+        oracle_gate.load_policy_rules()
 
 
 def test_exempt_only_change_passes() -> None:
@@ -239,6 +257,39 @@ def test_main_reports_a_fetch_error(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(oracle_gate, "evaluate", failing_evaluate)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+
+
+def test_main_reports_a_policy_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.setattr(oracle_gate, "fetch_pull", lambda repo, pr, token: {"head": {"sha": HEAD}, "changed_files": 1})
+    monkeypatch.setattr(oracle_gate, "fetch_files", lambda repo, pr, token: [{"filename": "x"}])
+
+    def failing_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
+        raise oracle_gate.CheckError("no policy")
+
+    monkeypatch.setattr(oracle_gate, "load_policy_rules", failing_rules)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+
+
+def test_main_posts_the_fresh_decision(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    posted: dict[str, Any] = {}
+    seen: list[str] = []
+
+    def moving_evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
+        seen.append(repo)
+        if len(seen) == 1:
+            return HEAD, oracle_gate.WAITING, "first"
+        return HEAD, oracle_gate.PASS, "second"
+
+    def fake_post(token: str, repo: str, head_sha: str, status: int, message: str) -> None:
+        posted["head"] = head_sha
+        posted["message"] = message
+
+    monkeypatch.setattr(oracle_gate, "evaluate", moving_evaluate)
+    monkeypatch.setattr(oracle_gate, "post_status", fake_post)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == 0
+    assert posted == {"head": HEAD, "message": "second"}
 
 
 def test_main_reports_a_post_error(monkeypatch: pytest.MonkeyPatch) -> None:
