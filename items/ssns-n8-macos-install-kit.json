@@ -5,7 +5,7 @@
     "On-Mac full install, reboot, doctor --post-reboot",
     "Owner review"
   ],
-  "context": "Not started. Estimate 1.5-2.5 d.",
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "Plan step N8. launchd, notifier, sudoers and newsyslog templates; install --print and uninstall --print (print sudo commands, never run them); versioned venvs (keep two); install --resume after the reboot checkpoint; scripted activation run (A4) as doctor --live-check. Touches the daemon and sudoers, so the owner reviews.",
   "sessions": [
     {
@@ -15,6 +15,14 @@
       "op": "create",
       "op_id": "b363545c048643b4ba49cc5135170091",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:23:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "30a78c8d557c46c2986411b27d7754c2",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
