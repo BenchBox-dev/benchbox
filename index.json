@@ -23601,7 +23601,7 @@
         "ssns-o2-role-users"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship owner: App key, permissions and sandbox repository"
     },
     "ssns-o4-cli-signin": {
