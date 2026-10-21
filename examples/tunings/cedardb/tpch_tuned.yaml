@@ -1,0 +1,17 @@
+primary_keys:
+  enabled: true
+foreign_keys:
+  enabled: false
+table_tunings:
+  lineitem:
+    table_name: lineitem
+    partitioning:
+      - name: l_orderkey
+        type: INTEGER
+        order: 1
+  orders:
+    table_name: orders
+    partitioning:
+      - name: o_orderkey
+        type: INTEGER
+        order: 1

@@ -23,8 +23,8 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 HEAD = "a" * 40
 AFTER_HEAD = "2026-10-01T13:00:00Z"
-SOUNDNESS_FILES = ["benchbox/core/equivalence/checker.py", "README.md"]
-OTHER_FILES = ["README.md", "docs/index.md"]
+SOUNDNESS_FILES = ["benchbox/core/equivalence/checker.py", "docs/index.md"]
+OTHER_FILES = ["docs/index.md", "notes.md"]
 
 
 def _review(body: str, **over: Any) -> dict[str, Any]:

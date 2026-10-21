@@ -142,14 +142,20 @@ class TestFamilies:
         }
         assert _status(adapter) == NOOP
 
-    @pytest.mark.parametrize("platform", ["cedardb", "pg-mooncake"])
-    def test_postgres_family_variants_drop_every_layout_intent(self, platform):
+    @pytest.mark.parametrize(
+        ("platform", "tuning_type", "layout"),
+        [
+            ("pg-mooncake", TuningType.PARTITIONING, {"partitioning": _columns("L_SHIPDATE")}),
+            ("cedardb", TuningType.CLUSTERING, {"clustering": _columns("L_SHIPDATE")}),
+        ],
+    )
+    def test_postgres_family_variants_drop_every_layout_intent(self, platform, tuning_type, layout):
         adapter = _tuned(_Adapter(type=platform))
 
-        adapter._reconcile_requested_tuning(_layout_config(partitioning=_columns("L_SHIPDATE")))
+        adapter._reconcile_requested_tuning(_layout_config(**layout))
 
         [reason] = _drops(adapter).values()
-        capability = get_capability(platform, TuningType.PARTITIONING)
+        capability = get_capability(platform, tuning_type)
         expected = (
             f"not rendered at execution: {not_rendered_reason(capability)}"
             if capability is not None

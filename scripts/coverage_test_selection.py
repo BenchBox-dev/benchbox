@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import fnmatch
 import json
 import os
 import re
@@ -21,6 +20,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from _project.scripts import preflight_targets
+from _project.scripts.inert_paths import is_inert_path, is_machine_read_doc, load_readers, matches_exemption
 
 MAP_VERSION = 2
 MAP_ARTIFACT_PREFIX = "t2-coverage-map-"
@@ -29,7 +29,6 @@ MAX_SELECTION_RUNTIME_SECONDS = 900.0
 MAX_ARGV_NODEIDS = 10000
 UNKNOWN_TEST_SECONDS = 1.0
 TESTS_ROOT = "tests"
-INERT_PATH_PATTERNS = ("docs/*", "*.md", "_project/todo-db-export/*")
 TRUNK_WORKFLOW_PATH = ".github/workflows/trunk-coverage.yml"
 TRUSTED_MAP_EVENTS = ("push", "workflow_dispatch")
 SELECTION_SHADOW = True
@@ -417,7 +416,7 @@ def _is_test_file(path: str) -> bool:
 
 
 def _is_inert(path: str) -> bool:
-    return any(fnmatch.fnmatchcase(path, pattern) for pattern in INERT_PATH_PATTERNS)
+    return is_inert_path(path)
 
 
 def _module_name(path: str) -> str:
@@ -517,20 +516,31 @@ def _setup_module_nodes(mapping: dict, setup_nodes: set[str]) -> set[str]:
     return expanded
 
 
-def _classify_files(repo: Path, mapping: dict | None, files: list[ChangedFile]) -> tuple[set[str], set[str], set[str]]:
+def _classify_files(
+    repo: Path,
+    mapping: dict | None,
+    files: list[ChangedFile],
+    index: dict,
+    readers: dict[str, list[str]] | None = None,
+) -> tuple[set[str], set[str], set[str], set[str]]:
     coverage_hits: set[str] = set()
     uncovered: set[str] = set()
     non_python: set[str] = set()
-    index: dict = {}
+    reader_tests: set[str] = set()
+    known_readers = readers or {}
     nodes: list[str] = []
     if mapping is not None:
-        raw_index = mapping.get("files")
-        if isinstance(raw_index, dict):
-            index = raw_index
         raw_nodes = mapping.get("nodes")
         if isinstance(raw_nodes, list):
             nodes = raw_nodes
     for entry in files:
+        if is_machine_read_doc(entry.path) and matches_exemption(entry.path):
+            found = sorted(test for test in known_readers.get(entry.path, ()) if (repo / test).is_file())
+            if found:
+                reader_tests.update(found)
+            else:
+                uncovered.add(entry.path)
+            continue
         if _is_inert(entry.path):
             continue
         if not entry.path.endswith(".py"):
@@ -563,7 +573,8 @@ def _classify_files(repo: Path, mapping: dict | None, files: list[ChangedFile]) 
         if missed:
             uncovered.add(entry.old_path)
     coverage_hits = {node for node in coverage_hits if (repo / node.split("::", 1)[0]).is_file()}
-    return coverage_hits, uncovered, non_python
+    reader_tests = {test for test in reader_tests if (repo / test).is_file()}
+    return coverage_hits, uncovered, non_python, reader_tests
 
 
 def prune_missing_nodeids(repo: Path, node_ids: list[str], collected: list[str]) -> list[str]:
@@ -646,11 +657,12 @@ def _limit_selection(
     importer_tests: list[str],
     develop_changed: list[str],
     failed: list[str],
+    readers: list[str],
     durations: dict[str, float],
     default: float,
 ) -> tuple[set[str], float, list[str]]:
     runtime = estimate_runtime(union, durations, default)
-    core = set(fallback) | set(importer_tests) | set(develop_changed) | set(failed)
+    core = set(fallback) | set(importer_tests) | set(develop_changed) | set(failed) | set(readers)
     if runtime > MAX_SELECTION_RUNTIME_SECONDS:
         return (
             core,
@@ -709,7 +721,9 @@ def select_tests(
     files, overlap_note, develop_changed_tests = _apply_develop_overlap(repo, mapping, map_sha, base_sha, files)
     if overlap_note is not None:
         reasons.append(overlap_note)
-    coverage_hits, uncovered, non_python = _classify_files(repo, mapping, files)
+    index = mapping.get("files") if isinstance(mapping, dict) and isinstance(mapping.get("files"), dict) else {}
+    readers = load_readers(repo)
+    coverage_hits, uncovered, non_python, reader_tests = _classify_files(repo, mapping, files, index, readers)
     code_routed = decision is None or decision.get("needs_code_ci") is not False
     if non_python and code_routed:
         reasons.append(f"non-Python changes need the full tier: {', '.join(sorted(non_python))}")
@@ -737,10 +751,18 @@ def select_tests(
         | set(develop_changed_tests)
         | set(fallback)
         | set(importer_tests)
+        | set(reader_tests)
         | set(failed_nodes)
     )
     selected, runtime, limit_reasons = _limit_selection(
-        union, fallback, importer_tests, develop_changed_tests, failed_nodes, durations or {}, durations_default
+        union,
+        fallback,
+        importer_tests,
+        develop_changed_tests,
+        failed_nodes,
+        reader_tests,
+        durations or {},
+        durations_default,
     )
     reasons.extend(limit_reasons)
     if not selected and any(not _is_inert(entry.path) for entry in files):
@@ -750,7 +772,7 @@ def select_tests(
     counts = (
         f"coverage={len(coverage_hits)} changed_tests={len(changed_tests)} "
         f"develop_changed={len(develop_changed_tests)} fallback={len(fallback)} importers={len(importer_tests)} "
-        f"failed={len(failed_nodes)} selected={len(selected)} files={len(files)} behind={behind} "
+        f"readers={len(reader_tests)} failed={len(failed_nodes)} selected={len(selected)} files={len(files)} behind={behind} "
         f"runtime={runtime:.1f}s elapsed={elapsed:.1f}s rss={peak_rss:.1f}MB"
     )
     would_escalate = bool(reasons)
@@ -769,6 +791,7 @@ def select_tests(
         "develop_changed_tests": develop_changed_tests,
         "fallback_tests": sorted(fallback),
         "importer_tests": importer_tests,
+        "reader_tests": sorted(reader_tests),
         "failed_nodes": failed_nodes,
         "uncovered_sources": sorted(uncovered),
         "selected": sorted(selected),
@@ -1089,6 +1112,7 @@ def _cmd_select(args: argparse.Namespace) -> int:
             "develop_changed_tests": [],
             "fallback_tests": fallback,
             "importer_tests": [],
+            "reader_tests": [],
             "failed_nodes": [],
             "uncovered_sources": [],
             "selected": fallback,

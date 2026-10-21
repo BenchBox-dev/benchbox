@@ -182,7 +182,7 @@ def test_evidence_files_are_the_soundness_files_present_at_the_head(
 
 
 def test_exempt_only_pr_posts_success_without_reviewers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    files = [{"filename": "README.md", "additions": 1, "deletions": 0}]
+    files = [{"filename": "docs/notes.md", "additions": 1, "deletions": 0}]
     _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), files))
     assert values["decision"] == "success" and values["post"] == "true"
     assert plan["chain"] == [] and plan["scope_paths"] == [] and plan["gate_paths"] == []
@@ -436,10 +436,13 @@ def test_no_review_history_gives_a_first_full_review(monkeypatch: pytest.MonkeyP
 def test_an_unchanged_patch_carries_the_decision_without_a_reviewer(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, diff: str, decision: str
 ) -> None:
-    files = [*TWO_FILES, {"filename": "README.md", "additions": 1, "deletions": 0, "sha": "9" * 40}]
-    readme = diff + "diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n-a\n+b\n"
+    files = [*TWO_FILES, {"filename": "docs/notes.md", "additions": 1, "deletions": 0, "sha": "9" * 40}]
+    notes = (
+        diff
+        + "diff --git a/docs/notes.md b/docs/notes.md\n--- a/docs/notes.md\n+++ b/docs/notes.md\n@@ -1 +1 @@\n-a\n+b\n"
+    )
     fake = _fake(
-        _review(_record(TWO_FILE_DIFF, decision)), files=files, diff=readme, base={"ref": "develop", "sha": "f" * 40}
+        _review(_record(TWO_FILE_DIFF, decision)), files=files, diff=notes, base={"ref": "develop", "sha": "f" * 40}
     )
     _, values, plan = _plan(monkeypatch, tmp_path, fake)
     assert values["decision"] == "carry" and values["post"] == "true"
@@ -693,14 +696,14 @@ def test_a_binary_change_is_never_mistaken_for_an_unchanged_patch() -> None:
 
 
 def test_prose_is_untracked_apart_from_a_scoped_follow_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    readme = {"filename": "README.md", "additions": 1, "deletions": 0, "sha": "9" * 40}
+    notes = {"filename": "docs/notes.md", "additions": 1, "deletions": 0, "sha": "9" * 40}
     record = _record(TWO_FILE_DIFF, "SHIP")
     _, values, plan = _plan(
-        monkeypatch, tmp_path, _fake(_review(record), files=[*TWO_FILES, readme], diff=CAPTURE_CHANGED)
+        monkeypatch, tmp_path, _fake(_review(record), files=[*TWO_FILES, notes], diff=CAPTURE_CHANGED)
     )
     assert values["decision"] == "review" and plan["scope"] == "changed"
     assert [item["path"] for item in plan["reviewed_files"]] == [CAPTURE]
-    assert plan["unchanged_files"] == [CHECKER] and plan["untracked_files"] == ["README.md"]
+    assert plan["unchanged_files"] == [CHECKER] and plan["untracked_files"] == ["docs/notes.md"]
     assert plan["evidence_files"] == [CAPTURE]
 
 

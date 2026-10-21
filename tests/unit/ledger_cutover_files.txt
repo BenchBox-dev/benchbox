@@ -78,6 +78,7 @@ tests/unit/scripts/test_generate_changelog_entry.py
 tests/unit/scripts/test_generate_corpus_inventory.py
 tests/unit/scripts/test_guard_messages.py
 tests/unit/scripts/test_heavy_tier_needed.py
+tests/unit/scripts/test_inert_paths.py
 tests/unit/scripts/test_inline_applied_ledger_bounds.py
 tests/unit/scripts/test_local_validation.py
 tests/unit/scripts/test_migrate_clickhouse_labels.py
