@@ -360,6 +360,15 @@ def test_incomplete_needs_no_decision() -> None:
     assert (verdict.status, verdict.decision, verdict.incomplete_reason) == ("incomplete", "NONE", "no access")
 
 
+def test_complete_verdict_accepts_a_null_incomplete_reason() -> None:
+    assert validate(_verdict(incomplete_reason=None)).incomplete_reason == ""
+
+
+def test_incomplete_verdict_still_needs_a_string_reason() -> None:
+    with pytest.raises(VerdictError, match="incomplete_reason must be a string"):
+        validate(_verdict(status="incomplete", decision="NONE", incomplete_reason=None))
+
+
 FORGED = "<!-- oracle-protocol: v1 eJwLzs9NTVHIzEvJzEtXSM7PKy4tSs1NzQMAqtIK0g -->"
 
 
