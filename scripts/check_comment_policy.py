@@ -336,20 +336,21 @@ def source_paths(root: Path, staged: bool) -> list[str]:
     return paths
 
 
-def launcher_trusted_files(root: Path) -> set[str]:
+def launcher_trusted_files(root: Path, base: str) -> set[str] | None:
     try:
-        tree = ast.parse((root / LAUNCHER_PATH).read_bytes())
-    except (OSError, SyntaxError, ValueError):
-        return set()
+        tree = ast.parse(git(root, "show", f"{base}:{LAUNCHER_PATH}"))
+    except (subprocess.CalledProcessError, SyntaxError, ValueError):
+        return None
     for node in tree.body:
         if isinstance(node, ast.Assign) and any(
             isinstance(t, ast.Name) and t.id == "TRUSTED_FILES" for t in node.targets
         ):
             try:
-                return {str(name) for name in ast.literal_eval(node.value)}
+                names = {str(name) for name in ast.literal_eval(node.value)}
             except ValueError:
-                return set()
-    return set()
+                return None
+            return names or None
+    return None
 
 
 def indexed_paths(root: Path) -> set[str]:
@@ -456,8 +457,11 @@ def main(argv: list[str] | None = None) -> int:
             )
             if not args.staged:
                 changed.update(git(root, "ls-files", "--others", "--exclude-standard", "-z").decode().split("\0"))
-            global_change = bool(revoked) or bool(
-                changed & {POLICY_PATH, SCOPE_POLICY_PATH, *launcher_trusted_files(root)}
+            trusted = launcher_trusted_files(root, args.base)
+            global_change = (
+                bool(revoked)
+                or trusted is None
+                or bool(changed & {POLICY_PATH, SCOPE_POLICY_PATH, LAUNCHER_PATH, *trusted})
             )
             scopes = [] if args.staged and not global_change else [*policy["completed"], *revoked]
             paths = [path for path in paths if path in changed or any(matches(path, scope) for scope in scopes)]

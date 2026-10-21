@@ -291,13 +291,22 @@ def test_transition_worktree_and_staged_content(tmp_path: Path) -> None:
     assert main([*args, "--staged"]) == 1
 
 
+def launcher_source(files: tuple[str, ...] = ("scripts/comment_syntax.py",)) -> str:
+    return f"TRUSTED_FILES = {files!r}\n"
+
+
 def completed_repo(tmp_path: Path) -> str:
     git_repo(tmp_path, "x = 1\n")
     (tmp_path / "quality/comment-policy.json").write_text(
         json.dumps(policy(completed=["a.py", "b.py"])), encoding="utf-8"
     )
     (tmp_path / "b.py").write_text("# inherited\ny = 1\n", encoding="utf-8")
-    subprocess.run(["git", "-C", str(tmp_path), "add", "b.py", "quality/comment-policy.json"], check=True)
+    (tmp_path / "scripts").mkdir(exist_ok=True)
+    (tmp_path / "scripts/run_comment_policy.py").write_text(launcher_source(), encoding="utf-8")
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "add", "b.py", "quality/comment-policy.json", "scripts/run_comment_policy.py"],
+        check=True,
+    )
     subprocess.run(
         [
             "git",
@@ -342,10 +351,6 @@ def test_staged_scan_covers_only_changed_sources(tmp_path: Path, capsys: pytest.
 def test_staged_scan_stays_global_when_policy_or_checker_changes(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], target: str
 ) -> None:
-    (tmp_path / "scripts").mkdir()
-    (tmp_path / "scripts/run_comment_policy.py").write_text(
-        'TRUSTED_FILES = ("scripts/comment_syntax.py",)\n', encoding="utf-8"
-    )
     base = completed_repo(tmp_path)
     args = ["--root", str(tmp_path), "--mode", "transition", "--base", base, "--staged"]
     path = tmp_path / target
@@ -357,8 +362,55 @@ def test_staged_scan_stays_global_when_policy_or_checker_changes(
     assert "b.py:1: CP comment" in capsys.readouterr().out
 
 
-def test_launcher_trusted_files_come_from_the_launcher_constant() -> None:
-    assert check_comment_policy.launcher_trusted_files(ROOT) == set(TRUSTED_FILES)
+def test_candidate_launcher_cannot_drop_a_trusted_file_from_the_trigger_list(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = completed_repo(tmp_path)
+    (tmp_path / "scripts/run_comment_policy.py").write_text(launcher_source(("scripts/other.py",)), encoding="utf-8")
+    (tmp_path / "scripts/comment_syntax.py").write_text("x = 1\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "add", "scripts/run_comment_policy.py", "scripts/comment_syntax.py"], check=True
+    )
+    capsys.readouterr()
+    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base, "--staged"]) == 1
+    assert "b.py:1: CP comment" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("launcher", ["def (:\n", "OTHER = 1\n", "TRUSTED_FILES = compute()\n"])
+def test_unreadable_base_launcher_fails_closed_to_a_global_scan(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], launcher: str
+) -> None:
+    completed_repo(tmp_path)
+    (tmp_path / "scripts/run_comment_policy.py").write_text(launcher, encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "scripts/run_comment_policy.py"], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "-c",
+            "user.name=F",
+            "-c",
+            "user.email=f@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-qm",
+            "bad launcher",
+        ],
+        check=True,
+    )
+    base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+    (tmp_path / "a.py").write_text("x = 2\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
+    capsys.readouterr()
+    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base, "--staged"]) == 1
+    assert "b.py:1: CP comment" in capsys.readouterr().out
+
+
+def test_launcher_trusted_files_come_from_the_base_launcher_constant() -> None:
+    base = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip()
+    assert check_comment_policy.launcher_trusted_files(ROOT, base) == set(TRUSTED_FILES)
 
 
 def test_staged_consumer_validation_rejects_missing_consumer(tmp_path: Path) -> None:
