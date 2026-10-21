@@ -27756,10 +27756,15 @@
       "title": "todo create --verify splits on :: and silently truncates pytest node-id commands"
     },
     "verify-pg-integration-after-baseline-fix-20261020": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T19:49:11Z",
+        "generation": "b6b223f3a868498a8732715fd11a2e38",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Run the Docker PostgreSQL integration tests after the PG-family baseline fix"
     },
     "verify-rungs-contend-on-the-test-lock-20260805": {
