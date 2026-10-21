@@ -6873,7 +6873,7 @@
       "needs": [],
       "priority": "high",
       "status": "open",
-      "title": "DataFusion lowering truncates integer division in TPC-DS ratio queries (Q21, Q78, Q83) unlike DuckDB"
+      "title": "DataFusion and PostgreSQL lowering truncate integer division in TPC-DS ratio queries (Q21, Q78, Q83) unlike DuckDB"
     },
     "datafusion-normalize-seed-corpus-table-paths": {
       "claim": null,

@@ -1,5 +1,5 @@
 {
-  "description": "The executed evidence gate (make sql-execution-gate) runs every TPC-DS query on DataFusion 54 at SF0.01 and compares rows with DuckDB and the TPC reference row counts. On fork wheel 30.24.0.6 DataFusion returns 4 rows for Q21 where DuckDB and the TPC reference return 6, and different ratio values for Q78 (2.0 vs 2.32) and Q83 (0.0/0.0 vs 10.0/2.5/20.83): integer / integer truncates. The SQLite equivalent was fixed in 30.24.0.5/6. Fix in the fork (exact division for the DataFusion generator, opt-in or default per the SQLite precedent), adopt the wheel, and remove the three DataFusion entries from scripts/sql_execution_gate/expected_differences.json. Published-result impact: any published DataFusion TPC-DS run that includes Q21, Q78 or Q83 holds wrong rows for those queries.",
+  "description": "The executed evidence gate (make sql-execution-gate) runs every TPC-DS query on DataFusion 54 and PostgreSQL 16 at SF0.01 and compares rows with DuckDB and the TPC reference row counts. On fork wheel 30.24.0.6 both engines return 4 rows for Q21 where DuckDB returns 6, and different ratio values for Q78 (2.0 vs 2.32) and Q83 (0.0/0.0 vs 10.0/2.5/20.83): integer / integer truncates. The SQLite equivalent was fixed in 30.24.0.5/6. Fix in the fork (exact division for the DataFusion and PostgreSQL generators, following the SQLite precedent), adopt the wheel, and remove the six DataFusion and PostgreSQL entries from scripts/sql_execution_gate/expected_differences.json. Published-result impact: any published DataFusion or PostgreSQL-family TPC-DS run that includes Q21, Q78 or Q83 holds wrong rows for those queries.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
@@ -7,6 +7,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "c80847f36b9c411eae77b1a2453a569d",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T23:15:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5aede3c535a645ce973687ede8671852",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
