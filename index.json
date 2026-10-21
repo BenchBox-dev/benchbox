@@ -21488,7 +21488,7 @@
         "oracle-same-head-rebuttal-rereview-20261017"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Port fail-closed exemptions, the inert manifest and same-head re-review to ship-no-ship before the local oracle cutover"
     },
     "shipped-host-scan-binary-robustness": {

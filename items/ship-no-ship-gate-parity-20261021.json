@@ -3,7 +3,7 @@
     "ship-no-ship reviews every non-exempt PR and reads .github/inert-paths.txt (upstream tests)",
     "oracle-local-b1-engine-pin needs this item; b6 keep-list names oracle_gate.py and .github/inert-paths.txt"
   ],
-  "context": "Part 1 (fail-closed exemptions, gate/soundness precedence, prose filter, validate-config) is in joeharris76/ship-no-ship#20 (branch fix/fail-closed-exemptions, worktree ../ship-no-ship.wt-fail-closed-exemptions), CI green, awaiting owner merge. Deliberate differences: exempt_paths optional with fail-closed empty default; tier-reason wording and plan.json keys unchanged upstream. Remaining: read .github/inert-paths.txt once BenchBox's manifest merges (format fixed there), port the bounded same-head re-review once BenchBox #3233 merges, update oracle-local-b6 keep-list.",
+  "context": "Paused by the owner along with all ship-no-ship work. Do not start until the owner resumes it. An unauthorized draft (joeharris76/ship-no-ship#20, branch fix/fail-closed-exemptions) was opened and then closed unmerged; the branch is kept in case it is wanted later. Open question for when the work resumes: the upstream engine lacks BenchBox #3192's fail-closed exemptions.",
   "description": "The oracle-local plan freezes the in-repo engine (oracle-local-b1-engine-pin) and deletes it (oracle-local-b6-drop-in-repo-engine). Upstream ship-no-ship (head 551b3ac3) still returns 'no soundness path changed' with SUCCESS and no review (classifier.py:117, engine/cli.py:299-300, :584) and has no exempt_paths. At cutover ordinary PRs would deadlock or pass unreviewed. Port #3192 exempt and gate precedence, .github/inert-paths.txt, and the bounded same-head re-review; keep oracle_gate.py and inert-paths.txt outside the b6 deletion.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "07dd5140bfa34755af2a566508913999",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T17:17:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b8f2f34b7df143d792c6799f43df2599",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
