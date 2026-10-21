@@ -4,6 +4,7 @@
     "Make a retry path that actually reruns the reviewer on the same head (or document the exact trigger).",
     "Report which reviewers are required and alert when quota or availability leaves none."
   ],
+  "context": "\n\noracle-response-evidence-secrets-20261021 disables read summarization and preserves bounded useful read traces without reducing required-file evidence. Broad large-diff coverage/capacity acceptance remains here. No closure implied.",
   "description": "On PR #3139 the muse reviewer finished 'incomplete' because it did not examine eight workflow files, and the other reviewers were unavailable (OpenAI quota exhausted, same-family skip, diff over the agy brief cap). The verdict stayed pending and the PR could only merge through a stand-in. A /oracle-review comment started no new run. Large soundness-path diffs will hit this again.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3139",
@@ -18,6 +19,14 @@
       "op": "create",
       "op_id": "51d654bd2c3143faa718f853f1edf6bf",
       "session_id": "5fc71a2e25aa4324a26f0d500fc3289e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-21T23:53:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "393303ffdc81404db7687919e167ef13",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
     }
   ]
 }
