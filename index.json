@@ -23436,7 +23436,7 @@
         "ssns-o6-install-and-doctor"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship activation A2: measure whether reviewers can read their own credentials"
     },
     "ssns-a3-triggering-actor-probe": {
