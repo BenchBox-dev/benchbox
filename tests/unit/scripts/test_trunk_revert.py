@@ -442,8 +442,10 @@ def test_worktree_create_succeeds_when_invoked_from_a_linked_worktree(tmp_path: 
 
     first = tmp_path / "wt-first"
     second = tmp_path / "wt-second"
+    _git(repo, "config", "benchbox.shared-sentinel", "keep", env=env)
     created = create(repo, "fix/first", first)
     assert created.returncode == 0, created.stderr
+    _git(first, "config", "--worktree", "benchbox.seeded-inherited", "leaked", env=env)
 
     nested = create(first, "fix/revert-1", second)
     assert nested.returncode == 0, nested.stderr
@@ -452,4 +454,15 @@ def test_worktree_create_succeeds_when_invoked_from_a_linked_worktree(tmp_path: 
         return _git(path, "config", "--worktree", "--get", "benchbox.worktree.lifecycle-id", env=env)
 
     assert lifecycle_id(second) != lifecycle_id(first)
+    assert _git(first, "config", "--worktree", "--get", "benchbox.seeded-inherited", env=env) == "leaked"
+    inherited = subprocess.run(
+        ["git", "config", "--worktree", "--get", "benchbox.seeded-inherited"],
+        cwd=second,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert inherited.returncode != 0
+    assert _git(repo, "config", "--get", "benchbox.shared-sentinel", env=env) == "keep"
     assert _git(second, "config", "--worktree", "--get", "benchbox.worktree.branch", env=env) == "fix/revert-1"
