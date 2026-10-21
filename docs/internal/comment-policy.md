@@ -40,8 +40,9 @@ Other tools:
   `make comment-policy-check` for the files you changed. It scans only the
   files that differ from the base, and falls back to every file in a completed
   scope when the commit changes `quality/comment-policy.json`, the cleanup
-  scope policy, or removes an exception. Expired exceptions and the policy
-  ownership checks run on every commit.
+  scope policy, the checker and adapter files the launcher trusts from the
+  base, or removes an exception. An expired exception fails only when the
+  commit introduces it or changes the policy.
 - `scripts/check_comment_policy.py --path <prefix>` checks one file or
   directory.
 

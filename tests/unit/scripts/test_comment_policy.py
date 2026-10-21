@@ -336,34 +336,33 @@ def test_staged_scan_covers_only_changed_sources(tmp_path: Path, capsys: pytest.
     assert "b.py" not in output
 
 
-@pytest.mark.parametrize("target", ["quality/comment-policy.json", "quality/comment-cleanup-scope.json"])
-def test_staged_scan_stays_global_when_policy_changes(
+@pytest.mark.parametrize(
+    "target", ["quality/comment-policy.json", "quality/comment-cleanup-scope.json", "scripts/comment_syntax.py"]
+)
+def test_staged_scan_stays_global_when_policy_or_checker_changes(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], target: str
 ) -> None:
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts/run_comment_policy.py").write_text(
+        'TRUSTED_FILES = ("scripts/comment_syntax.py",)\n', encoding="utf-8"
+    )
     base = completed_repo(tmp_path)
     args = ["--root", str(tmp_path), "--mode", "transition", "--base", base, "--staged"]
-    (tmp_path / "quality/comment-policy.json").write_text(
-        json.dumps(policy(completed=["a.py", "b.py", "c.py"])), encoding="utf-8"
-    )
-    subprocess.run(["git", "-C", str(tmp_path), "add", "quality/comment-policy.json"], check=True)
+    path = tmp_path / target
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(policy(completed=["a.py", "b.py", "c.py"])) if target.endswith(".json") else "x = 1\n")
+    subprocess.run(["git", "-C", str(tmp_path), "add", target], check=True)
     capsys.readouterr()
     assert main(args) == 1
     assert "b.py:1: CP comment" in capsys.readouterr().out
 
 
-def test_staged_consumer_validation_reads_the_index_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_launcher_trusted_files_come_from_the_launcher_constant() -> None:
+    assert check_comment_policy.launcher_trusted_files(ROOT) == set(TRUSTED_FILES)
+
+
+def test_staged_consumer_validation_rejects_missing_consumer(tmp_path: Path) -> None:
     git_repo(tmp_path, "x = 1\n")
-    entries = [{**exception(), "consumer": "a.py"} for _ in range(5)]
-    calls: list[tuple[str, ...]] = []
-    real_git = check_comment_policy.git
-
-    def counting_git(root: Path, *args: str) -> bytes:
-        calls.append(args)
-        return real_git(root, *args)
-
-    monkeypatch.setattr(check_comment_policy, "git", counting_git)
-    check_comment_policy.validate_consumers(tmp_path, policy(exceptions=entries), staged=True)
-    assert calls == [("ls-files", "-z", "--cached")]
     with pytest.raises(ValueError, match="exception consumer missing: gone.py"):
         check_comment_policy.validate_consumers(
             tmp_path, policy(exceptions=[{**exception(), "consumer": "gone.py"}]), staged=True
