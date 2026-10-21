@@ -23656,7 +23656,7 @@
         "ssns-prepublication-hardening"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship: cut the first release (v0.1.0) once the service is ready"
     },
     "stabilize-full-test-suite-failures": {
