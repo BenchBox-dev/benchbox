@@ -161,6 +161,10 @@ create_worktree() {
   base_oid=$(git rev-parse origin/develop^{commit}) || die "Could not resolve fetched origin/develop"
   creation_started=yes
   git worktree add -b "$branch" "$worktree_path" origin/develop
+  git -C "$worktree_path" config --worktree --name-only --get-regexp '^benchbox\.' 2>/dev/null |
+    while IFS= read -r inherited_key; do
+      git -C "$worktree_path" config --worktree --unset-all "$inherited_key"
+    done
   "$script_dir/set_worktree_identity.sh" "$worktree_path"
 
   py_runner="python3"
