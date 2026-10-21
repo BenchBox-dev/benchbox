@@ -770,7 +770,7 @@ def stubbed(monkeypatch):
     monkeypatch.setattr(digest, "run", fake_git)
     monkeypatch.setattr(digest, "read_checkpoint", lambda repo: ON_HISTORY)
     monkeypatch.setattr(digest, "collect_entries", lambda repo, ref, since: [unreviewed])
-    monkeypatch.setattr(digest, "collect_window_pulls", lambda repo, ref, since: [])
+    monkeypatch.setattr(digest, "collect_window_pulls", lambda repo, ref, since: ([], []))
     monkeypatch.setattr(digest, "fetch_trunk_runs", lambda repo: [])
     monkeypatch.setattr(digest, "open_gap_issues", lambda repo, entries: calls["issues"].append(entries) or ["d" * 40])
     monkeypatch.setattr(digest, "write_checkpoint", lambda repo, sha, report: calls["checkpoint"].append(sha))
@@ -1781,7 +1781,27 @@ def test_collect_window_pulls_reads_each_merged_pull_request_once(monkeypatch):
     numbers = {"a" * 40: 7, "b" * 40: 7, "c" * 40: None}
     monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: numbers[sha])
     monkeypatch.setattr(digest, "collect_pull", lambda repo, sha: evidence(number=7) if sha == "a" * 40 else None)
-    assert digest.collect_window_pulls("o/r", "ref", "since") == [evidence(number=7)]
+    assert digest.collect_window_pulls("o/r", "ref", "since") == ([evidence(number=7)], [])
+
+
+def test_collect_window_pulls_records_an_unreadable_pull_request(monkeypatch):
+    monkeypatch.setattr(digest, "merged_commits", lambda ref, since: ["a" * 40, "b" * 40])
+    monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: 7 if sha == "a" * 40 else 8)
+
+    def fake_pull(repo, sha):
+        if sha == "a" * 40:
+            raise digest.ReadError("threads exploded")
+        return evidence(number=8)
+
+    monkeypatch.setattr(digest, "collect_pull", fake_pull)
+    pulls, unreadable = digest.collect_window_pulls("o/r", "ref", "since")
+    assert pulls == [evidence(number=8)]
+    assert [(item.number, item.sha) for item in unreadable] == [(7, "a" * 40)]
+    assert "threads exploded" in unreadable[0].reason
+    text = digest.render_unreadable(unreadable)
+    assert text.startswith("\nUnreadable pull requests: merged PRs the digest could not read")
+    assert "- #7: unreadable (threads exploded)." in text
+    assert digest.render_unreadable([]) == ""
 
 
 WITHDRAWN_BODY = "\n".join(
@@ -1818,7 +1838,9 @@ def test_withdrawals_are_skipped_when_no_review_marks_any():
 
 def test_a_dry_run_reports_overrides_and_armings(stubbed, monkeypatch, capsys):
     monkeypatch.setattr(
-        digest, "collect_window_pulls", lambda repo, ref, since: [overridden(armed_at=("2026-10-02T11:50:00Z",))]
+        digest,
+        "collect_window_pulls",
+        lambda repo, ref, since: ([overridden(armed_at=("2026-10-02T11:50:00Z",))], []),
     )
     monkeypatch.setattr(digest, "fetch_trunk_runs", lambda repo: [trunk_run(1, BEFORE)])
     assert digest.main([]) == 0
@@ -1843,14 +1865,31 @@ def test_fetch_trunk_runs_paginates_to_a_short_page(monkeypatch):
     assert any(endpoint.endswith("page=2") for endpoint in seen)
 
 
-def test_a_failed_supplement_leaves_the_gap_gate_running(stubbed, monkeypatch, capsys):
+def test_a_failed_window_listing_still_advances_the_checkpoint(stubbed, monkeypatch, capsys):
     def broken(repo, ref, since):
         raise digest.ReadError("window gone")
 
     monkeypatch.setattr(digest, "collect_window_pulls", broken)
     assert digest.main(["--apply"]) == 0
-    assert "unavailable for this window: window gone" in capsys.readouterr().out
+    assert "The window's pull requests were unreadable: window gone" in capsys.readouterr().out
     assert stubbed["checkpoint"] == [HEAD]
+
+
+def test_a_failed_armings_section_leaves_the_other_sections_standing(stubbed, monkeypatch, capsys):
+    monkeypatch.setattr(
+        digest,
+        "collect_window_pulls",
+        lambda repo, ref, since: ([overridden()], []),
+    )
+
+    def broken(repo):
+        raise digest.ReadError("trunk gone")
+
+    monkeypatch.setattr(digest, "fetch_trunk_runs", broken)
+    assert digest.main([]) == 0
+    out = capsys.readouterr().out
+    assert "| #7 | `aaaaaaaaa` | joeharris76 | 1s | Medium |" in out
+    assert "Red-trunk armings are unavailable for this window: trunk gone" in out
 
 
 def test_a_bold_line_that_is_not_a_verdict_section_does_not_close_the_findings():
@@ -1894,3 +1933,17 @@ def test_a_known_closed_section_ends_the_findings():
         ]
     )
     assert digest.still_open_severities(body) == ["Medium"]
+
+
+@pytest.mark.parametrize(
+    "comment",
+    [
+        digest.Comment("someone-else", 'Owner instruction: "go"', INSTRUCTION_AT, "User"),
+        digest.Comment("joeharris76", 'Owner instruction: "go"', INSTRUCTION_AT, "Bot"),
+        digest.Comment("joeharris76", 'Owner instruction: "go"', INSTRUCTION_AT, "User", LATER),
+    ],
+    ids=["non-attester", "bot-account", "edited"],
+)
+def test_an_instruction_from_an_untrusted_comment_does_not_count(comment):
+    pull = evidence(reviews=(failure_review(),), comments=(comment, standin(HEAD, at=STANDIN_AT)))
+    assert digest.standin_overrides([pull])[0].instruction_gap_seconds is None

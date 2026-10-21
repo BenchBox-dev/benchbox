@@ -230,6 +230,13 @@ class UnknownArming:
 
 
 @dataclass(frozen=True)
+class UnreadablePull:
+    number: int | None
+    sha: str
+    reason: str
+
+
+@dataclass(frozen=True)
 class Withdrawal:
     number: int
     head: str
@@ -299,7 +306,11 @@ def instruction_gap_seconds(evidence: PullEvidence, at: str) -> int | None:
     prior = [
         comment.created_at
         for comment in evidence.comments
-        if OWNER_INSTRUCTION in comment.body and comment.created_at <= at
+        if OWNER_INSTRUCTION in comment.body
+        and comment.login in STANDIN_ATTESTERS
+        and comment.user_type == "User"
+        and comment.updated_at in (None, comment.created_at)
+        and comment.created_at <= at
     ]
     if not prior:
         return None
@@ -754,18 +765,23 @@ def collect_entries(repo: str, ref: str, since: str) -> list[Entry]:
     return [entry for entry in entries if entry is not None]
 
 
-def collect_window_pulls(repo: str, ref: str, since: str) -> list[PullEvidence]:
+def collect_window_pulls(repo: str, ref: str, since: str) -> tuple[list[PullEvidence], list[UnreadablePull]]:
     pulls: list[PullEvidence] = []
+    unreadable: list[UnreadablePull] = []
     seen: set[int] = set()
     for sha in merged_commits(ref, since):
-        number = merged_pull_number(repo, sha)
-        if number is None or number in seen:
-            continue
-        seen.add(number)
-        pull = collect_pull(repo, sha)
-        if pull is not None:
-            pulls.append(pull)
-    return pulls
+        number: int | None = None
+        try:
+            number = merged_pull_number(repo, sha)
+            if number is None or number in seen:
+                continue
+            seen.add(number)
+            pull = collect_pull(repo, sha)
+            if pull is not None:
+                pulls.append(pull)
+        except (ReadError, KeyError, TypeError, ValueError) as exc:
+            unreadable.append(UnreadablePull(number, sha, str(exc)))
+    return pulls, unreadable
 
 
 def fetch_trunk_runs(repo: str) -> list[dict[str, Any]]:
@@ -885,6 +901,19 @@ def render_withdrawals(withdrawals: Sequence[Withdrawal]) -> str:
     for withdrawal in withdrawals:
         lines.append(f"- #{withdrawal.number} (`{withdrawal.head[:9]}`):")
         lines.extend(f"  - {item}" for item in withdrawal.items)
+    return "\n".join(lines)
+
+
+def render_unreadable(unreadable: Sequence[UnreadablePull]) -> str:
+    if not unreadable:
+        return ""
+    lines = [
+        "",
+        "Unreadable pull requests: merged PRs the digest could not read; their sections above may be incomplete.",
+    ]
+    for item in unreadable:
+        which = f"#{item.number}" if item.number is not None else f"`{item.sha[:9]}`"
+        lines.append(f"- {which}: unreadable ({item.reason}).")
     return "\n".join(lines)
 
 
@@ -1087,19 +1116,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ReadError(f"checkpoint {since[:9]} is not on the first-parent history of {args.ref}")
         entries = collect_entries(args.repo, until, since)
         try:
-            pulls = collect_window_pulls(args.repo, until, since)
-            overrides = standin_overrides(pulls)
-            red, unknowable = red_armings(args.repo, pulls, fetch_trunk_runs(args.repo))
-            withdrawals = withdrawn_findings(pulls)
-            supplement = (
-                render_standin_overrides(overrides)
-                + render_red_armings(red, unknowable)
-                + render_withdrawals(withdrawals)
-            )
+            pulls, unreadable = collect_window_pulls(args.repo, until, since)
         except (ReadError, KeyError, TypeError, ValueError) as exc:
-            supplement = (
-                f"\nStand-in overrides, red-trunk armings, and withdrawals are unavailable for this window: {exc}."
-            )
+            pulls, unreadable = [], []
+            window_note = f"\nThe window's pull requests were unreadable: {exc}."
+        else:
+            window_note = ""
+        try:
+            overrides = render_standin_overrides(standin_overrides(pulls))
+        except (ReadError, KeyError, TypeError, ValueError) as exc:
+            overrides = f"\nStand-in overrides are unavailable for this window: {exc}."
+        try:
+            red, unknowable = red_armings(args.repo, pulls, fetch_trunk_runs(args.repo))
+            armings = render_red_armings(red, unknowable)
+        except (ReadError, KeyError, TypeError, ValueError) as exc:
+            armings = f"\nRed-trunk armings are unavailable for this window: {exc}."
+        try:
+            withdrawals = render_withdrawals(withdrawn_findings(pulls))
+        except (ReadError, KeyError, TypeError, ValueError) as exc:
+            withdrawals = f"\nOracle withdrawals are unavailable for this window: {exc}."
+        supplement = window_note + render_unreadable(unreadable) + overrides + armings + withdrawals
         report = render(entries, since=since, until=until) + supplement
         print(report)
         closures = gap_closures(args.repo, entries)
