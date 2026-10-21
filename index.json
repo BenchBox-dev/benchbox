@@ -23224,6 +23224,15 @@
       "status": "open",
       "title": "Fork: BigQuery generator drops NULLS FIRST/LAST after a FIRST_VALUE-style window ORDER BY"
     },
+    "sqlglot-fork-flightdata-obt-callers": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-d1-delete-wrapper-fixups"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Move the flightdata ROUND handling and decide the tpcds_obt converter's place in the fork-only boundary"
+    },
     "sqlglot-fork-leftover-runner-overrides": {
       "claim": null,
       "needs": [

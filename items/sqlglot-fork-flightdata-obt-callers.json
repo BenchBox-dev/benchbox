@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "flightdata ROUND handling moves to the fork with an executed Postgres and DuckDB test; the allowlist entry is deleted.",
+    "The tpcds_obt converter is classified by an owner decision recorded here; either its allowlist entry carries a reviewed reason or the generic parts move to the fork.",
+    "rg and the bypass test show no BenchBox module outside translate_sql_query and apply_rewrite calls fork translation logic."
+  ],
+  "description": "After D1, benchbox/core/flightdata/queries.py and benchbox/core/tpcds_obt/query_conversion.py stay in the bypass-test allowlist (ast_rewrite). flightdata: one-argument ROUND(double) rounds half to even on PostgreSQL but half away from zero on DuckDB/DECIMAL, and the flightdata queries use ROUND(x*10) on DOUBLE columns, so ties differ; the most correct result requires a fork rewrite that casts ROUND inputs to DECIMAL (generic, named, opt-in argument or generator behavior) with an executed Postgres/DuckDB test. tpcds_obt: about 1,500 lines of benchmark-specific AST restructuring that builds the one-big-table query set; it is benchmark definition logic, not dialect translation, so it needs an owner classification: keep as benchmark logic with a documented allowlist reason (it does not translate between dialects) or split into generic fork rewrites plus benchmark data. Until decided, the allowlist cannot be reduced to parse-only entries.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T13:34:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ed493668a1744b1b9f2e524d6d15cf29",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
