@@ -2,7 +2,7 @@
   "acceptance": [
     "doctor CLI auth status passes for every enabled reviewer"
   ],
-  "context": "N11: if the claude keychain login fails headless or after a reboot, stop and ask the owner.",
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "Plan owner action O4. claude (interactive), codex (device code), muse and agy, each signed in as its own role user.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "op": "create",
       "op_id": "a7c089243c844c59876db1eb6f204b93",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:23:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8bf5d3e058f7407bb5e583737fb688ea",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
