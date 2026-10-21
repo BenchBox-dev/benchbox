@@ -14079,10 +14079,15 @@
       "title": "Measure actual uncompressed sizes at SF=1 for all benchmarks"
     },
     "medium-datagen-tests-build-full-scale-factor-data": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T20:18:45Z",
+        "generation": "78b97ed4a99947f6b3123a613bf55ecb",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Run the medium-tier generate_data tests at a reduced scale factor without losing generator coverage"
     },
     "medium-test-timeout-headroom": {
