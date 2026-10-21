@@ -6,7 +6,7 @@ import sys
 import tempfile
 from collections.abc import Sequence
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -243,13 +243,23 @@ class TestClickHouseEmbeddedIntegration:
             with patch("benchbox.platforms.clickhouse.setup.ClickHouseLocalClient", _FakeClient):
                 connection = adapter.create_connection()
 
-        result = adapter.execute_query(connection, "INVALID SQL QUERY HERE", "test_query")
+        result = adapter.execute_query(connection, "SELECT * FROM missing_table", "test_query")
 
         assert result["status"] == "FAILED"
         assert result["query_id"] == "test_query"
         assert result["rows_returned"] == 0
         assert "error" in result
         assert result["error_type"] == "RuntimeError"
+
+    def test_unparseable_query_fails_before_reaching_the_engine(self):
+        adapter = ClickHouseAdapter(deployment_mode="local")
+        connection = Mock()
+
+        result = adapter.execute_query(connection, "INVALID SQL QUERY HERE", "test_query")
+
+        assert result["status"] == "FAILED"
+        assert result["error_type"] == "ParseError"
+        connection.execute.assert_not_called()
 
     def test_basic_table_operations(self):
         adapter = ClickHouseAdapter(deployment_mode="local")

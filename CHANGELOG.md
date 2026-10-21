@@ -45,7 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   previously raised an error or produced `inf` and now returns NULL. Results
   differ only when a zero divisor occurs. The query text is also re-rendered by
   SQLGlot (comma joins become `CROSS JOIN`, `date 'x'` becomes `CAST('x' AS DATE)`,
-  `NULLIF` becomes `nullIf`), which is semantically equivalent.
+  `NULLIF` becomes `nullIf`), which is semantically equivalent. A query SQLGlot
+  cannot parse now fails with `ParseError` before reaching ClickHouse.
 - **BREAKING: the ParadeDB platform now requires `pg_search`, not `pg_analytics`.**
   Current ParadeDB images no longer ship `pg_analytics`, so the adapter could not
   connect to them. The supported image is `paradedb/paradedb:0.26.2-pg18`
