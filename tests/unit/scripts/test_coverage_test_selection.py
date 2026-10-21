@@ -357,7 +357,7 @@ def test_inert_paths_never_escalate(repo: Path) -> None:
     map_sha = _head(repo)
     _write(repo, "docs/guide.md", "# changed\n")
     _write(repo, "CHANGELOG.md", "# changed\n")
-    _write(repo, "_project/todo-db-export/export.json", "{}\n")
+    _write(repo, "_project/todo-db-export/index.md", "{}\n")
     _commit_all(repo)
     files = sel.changed_files(repo, map_sha)
     base_sha = _head(repo)
