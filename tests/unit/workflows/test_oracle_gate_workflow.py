@@ -17,7 +17,7 @@ SHA_PIN = re.compile(r"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$")
 KNOWN_SHAS = {
     match.group(0).split("@")[1]
     for match in re.finditer(
-        r"[\w.-]+/[\w.-]+@([0-9a-f]{40})", (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text()
+        r"[\w.-]+/[\w.-]+@([0-9a-f]{40})", (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     )
 } | {
     "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
