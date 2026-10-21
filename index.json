@@ -15892,6 +15892,13 @@
       "status": "done",
       "title": "Clear the two remaining orphans on test/freeze-bulk-path-coverage"
     },
+    "owner-agent-identity-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Owner: give agents their own GitHub identity so they cannot post stand-ins"
+    },
     "owner-drop-oracle-review-required-20261021": {
       "claim": null,
       "needs": [
