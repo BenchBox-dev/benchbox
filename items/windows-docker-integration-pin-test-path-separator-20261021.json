@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The test passes on Windows (windows-fast dispatch on the branch, run URL recorded) and still fails when an image reference is unpinned (demonstrated)",
+    "No skip or marker added",
+    "Issue 2964 evidence updated"
+  ],
+  "context": "Found 2026-10-21 while triaging open issues (scheduled Nightly T3 run 39604480542, develop 17dd8569d). Evidence from that run log; re-verify before editing. Unclaimed. Keeps issue 2964 open.",
+  "description": "tests/unit/workflows/test_docker_integration_workflow.py::test_every_postgres_image_reference_is_pinned_by_sha256 (added by the Postgres pinning change, merged as 17dd8569d) fails in t3:windows: AssertionError: assert {'.github\\\\wo...-c ... (a set of workflow paths built with Windows separators versus expected posix paths). It is a regression from our own batch: the Windows run before that merge (39467654899) was green. Fix the test to compare posix paths (Path.as_posix) as the earlier Windows fixes did for handoffs; do not skip or weaken the pin check itself. Prove with a windows-fast.yml dispatch on the branch.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-21T23:44:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1a44551d042e40ac802f0838fe71ada6",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}

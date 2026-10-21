@@ -28047,6 +28047,13 @@
       "status": "done",
       "title": "Windows nightly: isolate local ClickHouse tests from unavailable chDB (9 failures)"
     },
+    "windows-docker-integration-pin-test-path-separator-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Fix the Postgres image pin test failing on Windows because it compares backslash paths"
+    },
     "windows-dsqgen-streams-distribution-runtime": {
       "claim": null,
       "needs": [],
