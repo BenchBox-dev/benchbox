@@ -3,7 +3,7 @@
     "Find an approach whose job time is measured lower on CI over several runs, not only locally",
     "Collection evidence and the shard coverage check are unchanged"
   ],
-  "context": "Investigated at the user's request. Measured on CI 2026-10-21 with PR #3184 (head c15414b7c): the shared pre-build step did NOT reduce the job. medium-collect took 157 s against a prior median of 154 s over 18 runs. Steps: checkout 16 s, dependencies 22 s, pre-build 77 s, collect 33 s (collect alone fell from a median 108 s to 33 s, but the pre-build costs 77 s, so the total is unchanged). The local macOS result (cold 56 s to 34 s) did not transfer: on the 4-vCPU runner the parallel pre-build is slow, probably because each of the 4 chunks starts its own uv run and pytest process and compiles in parallel on the same cores. The original hypothesis (cold bytecode and assertion-rewrite cost) is only part of it. Untested alternatives: cache the compiled test modules across runs, which needs source mtimes normalised because pytest's rewrite cache compares mtime and size; or avoid a separate collection job by deriving the shard assignment inside each shard; or reduce what is collected (14,767 of 46,519 tests are kept). Same run: shard times 1020 s, 632 s, 609 s, 426 s, so shard 0 is still the slowest.",
+  "context": "PR #3253 (merged 7f5cd9b6b) adds --assert=plain to the medium collect-only step in ci.yml, trunk.yml, trunk-coverage.yml and test.yml; no test runs during collection, so assertion rewriting was wasted. Local (busy macOS): 177 s to 95 s, identical 15,028 node ids. CI, single run 39687466517: collect step 48 s against a 108 s median, medium-collect job 91 s against a 154 s median (18 earlier PR runs). Needs a re-measure over more runs before closing. Remaining cost is the import of the whole test tree; ideas from the long-test reviews (lazy platform registration in the CLI, explorer_pipeline package __init__) are product changes and untested.",
   "description": "medium-collect (ci.yml) is on the critical path: every medium shard needs it. Over the 18 most recent completed PR runs its job time was 119-183 s (median 154 s), of which the 'Collect the complete medium tier' step was a median 108 s (max 131 s), checkout 15 s (fetch-depth 0), dependency install 21 s. Locally the same command (pytest --collect-only -q -n 0 -m <medium expression>, 46,519 tests collected, 31,752 deselected, 14,767 kept) took 13.4 s with a warm __pycache__ and 49.9 s after deleting tests/**/__pycache__, so the cost is mostly compiling and assertion-rewriting the test modules on a fresh checkout, not the marker selection. The unit job already avoids this with a 'Pre-build the assertion-rewrite cache' step that collects the test files in nproc parallel chunks (ci.yml around line 817); medium-collect has no such step and collects single-process (-n 0). Directory-level timings with a warm cache: tests/unit 13 s (12,192 medium), tests/integration 4 s (1,181), everything else under 3 s combined.",
   "links": [
     "ci-rebalance-medium-shards"
@@ -23,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "44af0ceffc5645c9a797e7bde846fce2",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-21T23:03:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "95fe253517674843bbfe30fff41b55dc",
       "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
     }
   ]
