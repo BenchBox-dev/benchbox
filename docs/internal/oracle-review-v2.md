@@ -159,7 +159,7 @@ every hash. Prose files outside the review scope are left out.
 | Patch unchanged (a rebase or a prose-only change) | the decision is carried to the new head |
 | Latest SHIP or SHIP WITH FIXES, patch changed | follow-up on the changed files |
 | Latest DO NOT SHIP, patch changed | new cycle with a full review that quotes the previous summary |
-
+| Author rebuttal (`/oracle-review` comment, or a push after a `Dispute:` thread reply), head unchanged | forced follow-up that rejudges the disputed defects, at most twice per patch |
 A move of the base commit alone does not restart a cycle. A diff that cannot be
 read, a file list that is truncated, or a file missing from the diff never
 carries a decision, and neither does a file leaving the pull request: each
@@ -175,6 +175,26 @@ defect counts only in a file changed since the last review; new defects in
 other files are listed, collapsed and capped at five, as not counted. More
 than 10 open defects in total give DO NOT SHIP. The previous reviewer is tried
 first. A follow-up runs for every size bucket.
+
+A forced follow-up rejudges rather than skips: its brief adds the disputed
+threads under "Disputed findings", with each reply quoted as data, and tells
+the reviewer to confirm each disputed defect as not fixed or withdraw it with
+an examined head-commit file and line that refutes it. A withdrawal without
+such a citation counts as not fixed, and a defect the reviewer marks fixed on
+an unchanged patch counts as not fixed too, so only evidenced withdrawals
+leave the open list, and they are reported separately as never defects. On a
+forced round the judge counts a withdrawal without a file-and-line citation
+as not fixed; the head-commit existence check still happens when citations
+are marked.
+A thread reply counts as a dispute only when a reply from someone other than
+the oracle bot contains a line starting with `Dispute:` that states the case
+against the defect. A plain acknowledgement such as `done` is not a dispute.
+A forced re-review runs only after a SHIP or SHIP WITH FIXES decision, never
+after DO NOT SHIP. The third forced re-review of one patch is refused with a
+message to change the patch or ask the owner for a stand-in: empty commits and
+rebases keep the patch digest, so they share the patch's budget instead of
+resetting it. Ordinary follow-ups never consume this budget, and a push that
+disputes nothing is still carried, not rejudged.
 
 The oracle never resolves a review thread. A follow-up lists the defects it
 verified as fixed, and the author resolves those threads. Each new thread
@@ -303,7 +323,14 @@ request; the attempt jobs have no concurrency group of their own.
 - `/oracle-review` at the start of a top-level pull request comment, from an
   owner, member or collaborator, reruns the review on the current head. A reply
   on a review thread or a line comment does not trigger it, because those are
-  review comments, not issue comments.
+  review comments, not issue comments. A manual rerun may re-review the same
+  head after a decisive result, bounded by the daily retry budget and the
+  doubling backoff, so an author can dispute a finding with a `Dispute:` reply
+  on its thread without a new commit. A manual rerun with no `Dispute:` reply
+  leaves the head's decision in place instead of forcing another re-review.
+  The new brief carries unresolved thread replies as disputed findings and
+  asks the reviewer to confirm or withdraw each disputed defect with a reason,
+  checking any claimed grammar or documented behaviour.
 - `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>`
   does the same. A dispatch from any other ref is refused.
 - An hourly schedule retries pull requests whose last result on the current
@@ -427,3 +454,52 @@ only after `develop`'s copy of the script accepts it. A unit test fails if
 `mode: enforce` and `--signal oracle` disagree or if delivery is not `review`.
 Going back to the connector would need this cleanup reverted and the connector
 App reinstalled.
+
+## Required gate from trusted code
+
+`oracle-review` runs its workflow file from the pull request, so a pull request
+that edits `.github/workflows/` can change the check that judges it, and the
+commit status it reads can be set by any pull request sharing the head commit.
+The `oracle-gate` context answers the first half: `_project/scripts/oracle_gate.py`
+imports the decision and its helpers from `_project/scripts/oracle_review_check.py`
+instead of reimplementing them, and posts `oracle-gate` for the pull request
+head through the oracle App token. The pass rule is the checker's rule
+unchanged: only exempt paths changed, the App's latest review of the head
+reports success with no unresolved oracle thread, or a valid stand-in covers
+the exact head; anything else posts failure. The script re-reads the review
+state immediately before posting, so a run that evaluated stale data posts the
+fresh decision instead of overwriting a newer one.
+
+A same-repo pull request can still add a workflow with `statuses: write` that
+posts the `oracle-gate` context to its own head with a forged success, so the
+workflow alone does not make the context unforgeable. The unit test scans every
+workflow for steps that could post the context and fails on any outside
+`oracle-gate.yml`, but a status posted through a generated file or a new
+workflow would land the same way. The binding that closes this is in the
+ruleset: when the owner adds `oracle-gate` to the required checks, the check
+must be scoped to the `benchbox-oracle` App's integration ID, so only statuses
+posted with that App's identity satisfy it. Without that binding a forged
+success counts and the gate property does not hold.
+
+`.github/workflows/oracle-gate.yml` runs `develop` code only. It triggers on
+`pull_request_target` (opened, synchronize, reopened, ready_for_review, edited),
+on created issue comments that open with the stand-in marker, on completion of
+`oracle-verdict` and `oracle-review` (the bridge for review and thread events,
+which have no trusted trigger of their own), on `workflow_dispatch` with a `pr`
+input, and on an hourly `schedule` sweep over open pull requests targeting
+`develop`. Every job checks out `develop`, never the pull request, with a sparse
+checkout of the gate, its predicate and the reviewers policy, and runs the
+script with pinned `pyyaml` the same way `oracle-verdict` does; the App token
+is minted the same way `oracle-verdict` mints it, from the same `oracle`
+environment and secrets. When the reviewers policy cannot load, the script
+errors instead of deciding with empty rules, and the sweep records every
+per-PR error and fails the run when any pull request errored. Concurrency is a
+single group keyed by pull request number for every trigger, with
+cancel-in-progress, so a newer run for a pull request cancels the earlier one
+instead of racing it.
+
+The cutover keeps `oracle-review` required while `oracle-gate` runs
+alongside it. Once production runs show the two contexts agreeing, the owner
+adds `oracle-gate` to the required checks in `repo-admin-settings.md` and the
+live ruleset, scoped to the `benchbox-oracle` App's integration ID, and only
+then retires the `pull_request`-triggered check.

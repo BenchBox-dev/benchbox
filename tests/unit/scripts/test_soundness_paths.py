@@ -223,6 +223,10 @@ SELECTION_LOGIC_FILES = (
     "scripts/coverage_map.ini",
     "_project/scripts/preflight_targets.py",
     "scripts/heavy_tier_needed.py",
+    ".github/path-filters.yml",
+    "scripts/path_filter_decision.py",
+    "scripts/ci_units.py",
+    ".github/ci-units.yml",
 )
 
 

@@ -419,25 +419,28 @@ def prune_missing_nodeids(repo: Path, node_ids: list[str], collected: list[str])
 
 def _apply_develop_overlap(
     repo: Path, mapping: dict | None, map_sha: str | None, base_sha: str, files: list[ChangedFile]
-) -> tuple[list[ChangedFile], str | None]:
+) -> tuple[list[ChangedFile], str | None, list[str]]:
     if mapping is None or map_sha is None:
-        return files, None
+        return files, None, []
     if map_sha == base_sha or not _is_ancestor(repo, map_sha, base_sha):
-        return files, None
+        return files, None, []
     try:
         develop_files = changed_files(repo, map_sha, base_sha)
     except SelectionError as exc:
-        return files, str(exc)
+        return files, str(exc), []
+    develop_tests = sorted(
+        {entry.path for entry in develop_files if _is_test_file(entry.path) and (repo / entry.path).is_file()}
+    )
     overlap = {entry.path for entry in develop_files} | {entry.old_path for entry in develop_files}
     if not overlap:
-        return files, None
+        return files, None, develop_tests
     remapped = [
         ChangedFile(path=entry.path, old_path=entry.old_path, status="added", old_ranges=[])
         if entry.path in overlap or entry.old_path in overlap
         else entry
         for entry in files
     ]
-    return remapped, None
+    return remapped, None, develop_tests
 
 
 def select_tests(
@@ -472,7 +475,7 @@ def select_tests(
                         reasons.append(
                             f"coverage map is {behind} develop commits behind the base (limit {MAX_MAP_BEHIND_COMMITS})"
                         )
-    files, overlap_note = _apply_develop_overlap(repo, mapping, map_sha, base_sha, files)
+    files, overlap_note, develop_changed_tests = _apply_develop_overlap(repo, mapping, map_sha, base_sha, files)
     if overlap_note is not None:
         reasons.append(overlap_note)
     index = mapping.get("files") if isinstance(mapping, dict) and isinstance(mapping.get("files"), dict) else {}
@@ -491,10 +494,10 @@ def select_tests(
     )
     importers = source_importers(repo, sorted(uncovered)) if uncovered else {}
     importer_tests = sorted({test for tests in importers.values() for test in tests})
-    union = set(coverage_hits) | set(changed_tests) | set(fallback) | set(importer_tests)
+    union = set(coverage_hits) | set(changed_tests) | set(develop_changed_tests) | set(fallback) | set(importer_tests)
     if len(union) > MAX_SELECTED_NODEIDS:
         reasons.append(f"selection of {len(union)} tests exceeds the {MAX_SELECTED_NODEIDS} limit")
-        selected = set(fallback) | set(importer_tests)
+        selected = set(fallback) | set(importer_tests) | set(develop_changed_tests)
     else:
         selected = union
     if not selected and any(not _is_inert(entry.path) for entry in files):
@@ -503,7 +506,7 @@ def select_tests(
     peak_rss = _peak_rss_mb()
     counts = (
         f"coverage={len(coverage_hits)} changed_tests={len(changed_tests)} "
-        f"fallback={len(fallback)} importers={len(importer_tests)} "
+        f"develop_changed={len(develop_changed_tests)} fallback={len(fallback)} importers={len(importer_tests)} "
         f"selected={len(selected)} files={len(files)} behind={behind} elapsed={elapsed:.1f}s rss={peak_rss:.1f}MB"
     )
     would_escalate = bool(reasons)
@@ -519,6 +522,7 @@ def select_tests(
         "behind_commits": behind,
         "coverage_tests": sorted(coverage_hits),
         "changed_tests": changed_tests,
+        "develop_changed_tests": develop_changed_tests,
         "fallback_tests": sorted(fallback),
         "importer_tests": importer_tests,
         "uncovered_sources": sorted(uncovered),
@@ -800,6 +804,7 @@ def _cmd_select(args: argparse.Namespace) -> int:
             "behind_commits": None,
             "coverage_tests": [],
             "changed_tests": [],
+            "develop_changed_tests": [],
             "fallback_tests": fallback,
             "importer_tests": [],
             "uncovered_sources": [],

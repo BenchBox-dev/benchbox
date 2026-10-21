@@ -83,7 +83,8 @@ jobs:
             --expected-count "$count" --shard-count 4 \
             --workflow trunk.yml --job medium-collect \
             --marker-expression "medium and not (slow or stress or resource_heavy or live_integration)" \
-            --checked-ref "${{ github.ref }}" --checked-sha "${{ github.sha }}"
+            --checked-ref "${{ github.ref }}" --checked-sha "${{ github.sha }}" \
+            --durations tests/fixtures/trunk_medium_shard_durations.json
 
       - name: Upload medium collection evidence
         if: always()
@@ -137,7 +138,8 @@ jobs:
             --shard-index "$SHARD_INDEX" --shard-count 4 \
             --workflow trunk.yml --job medium-test \
             --marker-expression "medium and not (slow or stress or resource_heavy or live_integration)" \
-            --collection-summary t2-artifacts/medium-collection.json --checked-sha "${{ github.sha }}"
+            --collection-summary t2-artifacts/medium-collection.json --checked-sha "${{ github.sha }}" \
+            --durations tests/fixtures/trunk_medium_shard_durations.json
 
       - name: Run medium speed tier
         shell: bash

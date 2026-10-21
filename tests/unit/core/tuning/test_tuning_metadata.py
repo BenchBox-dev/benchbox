@@ -1278,6 +1278,33 @@ def test_validate_unified_tunings_detects_sort_attribute_drift_on_reuse():
     assert TuningMetadataManager._TABLE_ATTRIBUTES_SECTION in result.configuration_mismatches
 
 
+@pytest.mark.parametrize("flag", ["reference", "columnar"])
+def test_validate_unified_tunings_detects_table_placement_drift_on_reuse(flag):
+    adapter = _FakeAdapter("citus")
+    saved = UnifiedTuningConfiguration()
+    saved.table_tunings["part"] = TableTuning(table_name="part", **{flag: True})
+    assert TuningMetadataManager(adapter).save_unified_tunings(saved) is True
+
+    expected = UnifiedTuningConfiguration()
+    expected.table_tunings["part"] = TableTuning(table_name="part")
+    result = TuningMetadataManager(adapter).validate_unified_tunings(expected)
+
+    assert result.is_valid is False
+    assert TuningMetadataManager._TABLE_ATTRIBUTES_SECTION in result.configuration_mismatches
+
+
+def test_validate_unified_tunings_accepts_unchanged_table_placement_on_reuse():
+    adapter = _FakeAdapter("citus")
+    saved = UnifiedTuningConfiguration()
+    saved.table_tunings["part"] = TableTuning(table_name="part", reference=True, columnar=True)
+    assert TuningMetadataManager(adapter).save_unified_tunings(saved) is True
+
+    expected = UnifiedTuningConfiguration()
+    expected.table_tunings["part"] = TableTuning(table_name="part", reference=True, columnar=True)
+
+    assert TuningMetadataManager(adapter).validate_unified_tunings(expected).is_valid is True
+
+
 def test_validate_unified_tunings_old_format_table_loads_without_error():
     adapter = _FakeAdapter("duckdb")
     adapter.table.append(("orders", TuningType.SORTING.value, "o_orderkey", 1, "somehash", datetime.now(), "duckdb"))

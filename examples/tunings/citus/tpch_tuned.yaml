@@ -1,0 +1,40 @@
+primary_keys:
+  enabled: false
+foreign_keys:
+  enabled: false
+table_tunings:
+  lineitem:
+    table_name: lineitem
+    distribution:
+      - name: l_orderkey
+        type: INTEGER
+        order: 1
+  orders:
+    table_name: orders
+    distribution:
+      - name: o_orderkey
+        type: INTEGER
+        order: 1
+    sorting:
+      - name: o_orderdate
+        type: DATE
+        order: 1
+  part:
+    table_name: part
+    reference: true
+    columnar: true
+  nation:
+    table_name: nation
+    reference: true
+  region:
+    table_name: region
+    reference: true
+  supplier:
+    table_name: supplier
+    reference: true
+  customer:
+    table_name: customer
+    reference: true
+  partsupp:
+    table_name: partsupp
+    reference: true

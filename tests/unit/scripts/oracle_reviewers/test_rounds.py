@@ -146,7 +146,8 @@ def test_a_follow_up_ships_when_every_prior_defect_is_fixed_or_withdrawn(policy:
     final = _final(policy, tmp_path, plan, _with_priors(_v("s", outside, decision="SHIP"), D1="fixed", D2="withdrawn"))
     record = _record(final)
     assert final.state == "success" and record["decision"] == "SHIP" and record["open_defects"] == []
-    assert "Verified fixed: D1, D2." in final.review["body"]
+    assert "Verified fixed: D1. Resolve their review threads." in final.review["body"]
+    assert "Withdrawn as never defects: D2. Resolve their review threads." in final.review["body"]
 
 
 def test_a_prior_defect_with_no_status_stays_open(policy: Policy, tmp_path: Path) -> None:
@@ -385,6 +386,142 @@ def test_finalize_writes_the_strike_count_into_the_state_artifact(
     assert state["strikes"] == 3 and state["head_sha"] == HEAD
 
 
+def _decided(head_sha: str, decision: str = protocol.SHIP_WITH_FIXES, digest: str = "d" * 32) -> dict[str, Any]:
+    return {
+        "v": 1,
+        "cycle": 1,
+        "round": 1,
+        "kind": protocol.FIRST,
+        "decision": decision,
+        "head_sha": head_sha,
+        "base_ref": "develop",
+        "reviewer": "small",
+        "tier": "small",
+        "strikes_after": 0,
+        "open_defects": [
+            {"id": "D1", "severity": "High", "file": "a.py", "line": 3, "end_line": None, "title": "disputed"}
+        ],
+        "next_id": 2,
+        "patch_digest": digest,
+        "carried": False,
+        "summary": "",
+    }
+
+
+def _forced(head_sha: str, round_number: int) -> dict[str, Any]:
+    return {
+        **_decided(head_sha),
+        "round": round_number,
+        "kind": protocol.FOLLOW_UP,
+        "open_defects": [],
+        "next_id": 2,
+        "forced": True,
+    }
+
+
+def _plan_same_head(history: protocol.History, digest: str = "d" * 32, **over: Any) -> protocol.Round:
+    return protocol.plan_round(
+        history,
+        head_sha=HEAD,
+        base_ref="develop",
+        digest=digest,
+        patches={},
+        paths=["a.py"],
+        strike_count=0,
+        max_do_not_ship=3,
+        **over,
+    )
+
+
+def test_disputed_finding_on_the_same_head_is_rejudged_not_skipped() -> None:
+    history = protocol.History([_decided(HEAD)])
+    assert _plan_same_head(history).kind == protocol.SKIP
+    rejudged = _plan_same_head(history, force=True)
+    assert rejudged.kind == protocol.FOLLOW_UP and rejudged.forced is True
+    assert rejudged.changed == frozenset({"a.py"})
+    assert rejudged.previous is not None and rejudged.previous["open_defects"][0]["id"] == "D1"
+
+
+def test_two_forced_rounds_per_patch_are_allowed_and_the_third_is_refused() -> None:
+    history = protocol.History([_decided(HEAD)])
+    first = _plan_same_head(history, force=True)
+    assert first.kind == protocol.FOLLOW_UP and first.number == 2
+    history.records.append({**_forced(HEAD, 2), "open_defects": [], "next_id": 2})
+    second = _plan_same_head(history, force=True)
+    assert second.kind == protocol.FOLLOW_UP and second.number == 3
+    history.records.append({**_forced(HEAD, 3), "open_defects": [], "next_id": 2})
+    refused = _plan_same_head(history, force=True)
+    assert refused.kind == protocol.SKIP
+    assert "already had 2 forced re-reviews" in refused.reason
+
+
+def test_empty_commit_heads_share_one_forced_round_budget_per_patch() -> None:
+    other = "b" * 40
+    history = protocol.History([_decided(HEAD), {**_forced(other, 2), "open_defects": [], "next_id": 2}])
+    third = protocol.plan_round(
+        history,
+        head_sha="c" * 40,
+        base_ref="develop",
+        digest="d" * 32,
+        patches={},
+        paths=["a.py"],
+        strike_count=0,
+        max_do_not_ship=3,
+        force=True,
+    )
+    assert third.kind == protocol.FOLLOW_UP and third.forced is True
+    history.records.append({**_forced("c" * 40, 3), "open_defects": [], "next_id": 2})
+    refused = protocol.plan_round(
+        history,
+        head_sha="e" * 40,
+        base_ref="develop",
+        digest="d" * 32,
+        patches={},
+        paths=["a.py"],
+        strike_count=0,
+        max_do_not_ship=3,
+        force=True,
+    )
+    assert refused.kind == protocol.SKIP
+    assert "already had 2 forced re-reviews" in refused.reason
+
+
+def test_a_changed_patch_takes_the_ordinary_follow_up_path_despite_a_spent_budget() -> None:
+    history = protocol.History([_decided(HEAD), {**_forced(HEAD, 2), "open_defects": [], "next_id": 2}])
+    history.records.append({**_forced(HEAD, 3), "open_defects": [], "next_id": 2})
+    step = protocol.plan_round(
+        history,
+        head_sha="b" * 40,
+        base_ref="develop",
+        digest="e" * 32,
+        patches={},
+        paths=["a.py"],
+        strike_count=0,
+        max_do_not_ship=3,
+        force=True,
+    )
+    assert step.kind == protocol.FOLLOW_UP and step.forced is False
+
+
+def test_ordinary_follow_ups_do_not_consume_the_forced_round_budget() -> None:
+    ordinary = {**_decided(HEAD), "kind": protocol.FOLLOW_UP, "round": 2}
+    history = protocol.History([_decided(HEAD), ordinary])
+    assert protocol.forced_rounds(history.records, "d" * 32) == 0
+    assert _plan_same_head(history, force=True).kind == protocol.FOLLOW_UP
+
+
+def test_a_forced_round_never_overrides_a_strike_refusal() -> None:
+    history = protocol.History([_decided(HEAD, decision=protocol.REFUSED)])
+    assert _plan_same_head(history, force=True).kind == protocol.SKIP
+
+
+def test_a_forced_round_never_follows_do_not_ship() -> None:
+    history = protocol.History([_decided(HEAD, decision=protocol.DO_NOT_SHIP)])
+    assert _plan_same_head(history, force=True).kind == protocol.SKIP
+    carried = protocol.History([_decided("e" * 40, decision=protocol.DO_NOT_SHIP)])
+    assert _plan_same_head(carried, force=True).kind == protocol.CARRY
+
+
 FIXTURE = Path(__file__).resolve().parents[3] / "fixtures" / "oracle_reviewers" / "pr2769_history.json"
 
 
@@ -470,6 +607,81 @@ def test_replaying_the_real_pr_2769_history_reviews_each_patch_once_and_scopes_f
     assert len(reviewed) < len(history["rounds"])
     original = sum(len(entry["defects"]) for entry in history["rounds"])
     assert threads < original
+
+
+REPLAY_3222 = Path(__file__).resolve().parents[3] / "fixtures" / "oracle_reviewers" / "pr3222_replay.json"
+
+
+def test_a_docs_only_rebuttal_push_is_rejudged_not_carried() -> None:
+    history = json.loads(REPLAY_3222.read_text(encoding="utf-8"))
+    first, second = history["rounds"]
+    records: list[dict[str, Any]] = []
+    paths = sorted(path for path in first["patches"] if not path.endswith(".md"))
+    digest = protocol.patch_digest(first["patches"], paths)
+    assert digest is not None
+    opening = protocol.plan_round(
+        protocol.History(list(records)),
+        head_sha=first["head_sha"],
+        base_ref="develop",
+        digest=digest,
+        patches=protocol.patch_map(first["patches"], paths),
+        paths=paths,
+        strike_count=0,
+        max_do_not_ship=3,
+    )
+    assert opening.kind == protocol.FIRST
+    judged = _replay_verdict(first["defects"], [], frozenset(paths))
+    verdict = protocol.judge(judged, 10, (), None)
+    assert verdict.decision == protocol.SHIP_WITH_FIXES
+    records.append(
+        {
+            "v": 1,
+            "cycle": opening.cycle,
+            "round": opening.number,
+            "kind": opening.kind,
+            "decision": verdict.decision,
+            "head_sha": first["head_sha"],
+            "base_ref": "develop",
+            "reviewer": "small",
+            "tier": "small",
+            "strikes_after": 0,
+            "open_defects": [
+                *verdict.carried,
+                *(protocol.defect_entry(f"D{index + 1}", item) for index, item in enumerate(verdict.defects)),
+            ],
+            "next_id": 1 + len(verdict.defects),
+            "patch_digest": digest,
+            "carried": False,
+            "summary": "",
+            "patch_map": protocol.patch_map(first["patches"], paths),
+        }
+    )
+    rerun = protocol.plan_round(
+        protocol.History(list(records)),
+        head_sha=second["head_sha"],
+        base_ref="develop",
+        digest=protocol.patch_digest(second["patches"], paths),
+        patches=protocol.patch_map(second["patches"], paths),
+        paths=paths,
+        strike_count=0,
+        max_do_not_ship=3,
+    )
+    assert rerun.kind == protocol.CARRY
+    assert second["disputed"] and all(item["replies"] for item in second["disputed"])
+    forced = protocol.plan_round(
+        protocol.History(list(records)),
+        head_sha=second["head_sha"],
+        base_ref="develop",
+        digest=protocol.patch_digest(second["patches"], paths),
+        patches=protocol.patch_map(second["patches"], paths),
+        paths=paths,
+        strike_count=0,
+        max_do_not_ship=3,
+        force=True,
+    )
+    assert forced.kind == protocol.FOLLOW_UP and forced.forced is True
+    assert forced.changed == frozenset(paths)
+    assert forced.previous is not None and [item["id"] for item in forced.previous["open_defects"]] == ["D1"]
 
 
 def test_the_carry_digest_uses_full_patch_hashes_not_the_truncated_map() -> None:

@@ -68,8 +68,6 @@ def _bigquery_steps(query_id: str) -> list[tuple[str, dict]]:
         steps.append(("filtered_aggregates_to_conditional", {}))
     if query_id in cloud_compat._BIGQUERY_FROMLESS_IDS:
         steps.append(("add_row_source_to_fromless_selects", {"source": "UNNEST([1])"}))
-    if query_id == BIGQUERY_ORDER_ID:
-        steps.append(("strip_window_null_ordering", {"columns": ["l_orderkey"]}))
     if column := cloud_compat._BIGQUERY_HAVING_COLUMNS.get(query_id):
         steps.append(
             ("qualify_columns_by_name", {"tables": {column: "combined"}, "clauses": ["having"], "quoted": True})
@@ -105,7 +103,7 @@ def _postgres_steps(query_id: str) -> list[tuple[str, dict]]:
     if columns := dialect_compat.POSTGRES_QUALIFIED_COLUMNS.get(query_id):
         steps.append(("qualify_columns_by_name", {"tables": columns}))
     if query_id in dialect_compat.POSTGRES_DUAL_VARIANT_IDS:
-        steps.append(("literal_subquery_to_values", {"alias": "dual", "column": "dual_col"}))
+        steps.append(("drop_literal_row_source", {"alias": "dual"}))
     return steps
 
 

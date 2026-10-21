@@ -134,6 +134,7 @@ jobs:
         run: |
           set -o pipefail
           uv run -- python -m pytest tests/integration/platforms/test_postgresql_live.py \
+            tests/integration/test_throughput_session_isolation.py::TestPostgreSQLIndependentConnectionIsolatesSessions \
             -m "live_postgresql" --tb=short -v -p no:cacheprovider \
             | tee /tmp/pg_docker_output.txt
           if ! grep -Eq '[0-9]+ passed' /tmp/pg_docker_output.txt; then

@@ -74,6 +74,18 @@ def test_each_job_uses_own_compose_stack_and_guards_skips() -> None:
         assert "no passing tests" in text, f"{job_name} must fail on all-skipped runs"
 
 
+def test_postgres_job_selects_the_stream_session_isolation_tests() -> None:
+    steps = _load_workflow()["jobs"]["postgres"]["steps"]
+    text = "\n".join(str(s.get("run", "")) for s in steps)
+    node_id = (
+        "tests/integration/test_throughput_session_isolation.py::TestPostgreSQLIndependentConnectionIsolatesSessions"
+    )
+    assert node_id in text
+    assert "tests/integration/platforms/test_postgresql_live.py" in text
+    assert '-m "live_postgresql"' in text
+    assert "--deselect" not in text
+
+
 @pytest.mark.parametrize(
     ("service", "compose_path", "image_variable"),
     [

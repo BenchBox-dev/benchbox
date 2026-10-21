@@ -29,7 +29,7 @@ Aliases resolve to another platform's entry: `chdb` -> `clickhouse`, `clickhouse
 | `azure-synapse` | none | foreign_keys, primary_keys | check_constraints, clustering, distribution, partitioning, sorting, unique_constraints | - | no | no |
 | `bigquery` | none | foreign_keys, primary_keys | check_constraints, clustering, materialized_views, partitioning, unique_constraints | - | no | no |
 | `cedardb` | none | foreign_keys, primary_keys | bloom_filters, check_constraints, clustering, materialized_views, partitioning, unique_constraints | - | no | no |
-| `citus` | none | foreign_keys, primary_keys | bloom_filters, check_constraints, clustering, materialized_views, partitioning, unique_constraints | - | no | no |
+| `citus` | none | clustering, distribution, foreign_keys, partitioning, primary_keys, sorting | bloom_filters, check_constraints, materialized_views, unique_constraints | - | no | no |
 | `clickhouse` | ssb, tpcds, tpch | clustering, partitioning, primary_keys, sorting | check_constraints, foreign_keys, materialized_views, unique_constraints | - | yes | yes |
 | `databend` | none | clustering | check_constraints, distribution, foreign_keys, materialized_views, partitioning, primary_keys, sorting, unique_constraints | - | no | no |
 | `databricks` | read_primitives, ssb, tpcds, tpch, tpchavoc | auto_compact, auto_optimize, clustering, foreign_keys, liquid_clustering, primary_keys, z_ordering | bloom_filters, check_constraints, distribution, materialized_views, partitioning, unique_constraints | - | no | no |
@@ -42,7 +42,7 @@ Aliases resolve to another platform's entry: `chdb` -> `clickhouse`, `clickhouse
 | `mysql` | none | foreign_keys, primary_keys | check_constraints, partitioning, unique_constraints | - | no adapter | no |
 | `paradedb` | none | clustering, foreign_keys, partitioning, primary_keys, sorting | bloom_filters, check_constraints, materialized_views, unique_constraints | - | no | no |
 | `pg-duckdb` | none | clustering, foreign_keys, partitioning, primary_keys, sorting | check_constraints, unique_constraints | - | no | no |
-| `pg-mooncake` | none | foreign_keys, primary_keys | check_constraints, clustering, partitioning, sorting, unique_constraints | - | no | no |
+| `pg-mooncake` | none | clustering, foreign_keys, primary_keys, sorting | check_constraints, partitioning, unique_constraints | - | no | no |
 | `postgresql` | none | clustering, foreign_keys, partitioning, primary_keys, sorting | bloom_filters, check_constraints, materialized_views, unique_constraints | - | no | no |
 | `presto` | none | foreign_keys | check_constraints, clustering, distribution, partitioning, primary_keys, sorting, unique_constraints | - | no | no |
 | `questdb` | none | none | check_constraints, distribution, foreign_keys, partitioning, primary_keys, sorting, unique_constraints | - | no | no |

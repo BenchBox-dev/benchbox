@@ -56,7 +56,11 @@ def _insert_value_mark(connection: Any) -> str:
 
 
 def _column_tuned_table_names(tunings: BenchmarkTunings) -> set[str]:
-    return {name for name, table_tuning in tunings.table_tunings.items() if table_tuning.has_any_tuning()}
+    return {
+        name
+        for name, table_tuning in tunings.table_tunings.items()
+        if any(table_tuning.get_columns_by_type(tuning_type) for tuning_type in TuningType)
+    }
 
 
 def _normalize_platform_key(raw: object) -> str:
@@ -255,6 +259,9 @@ class TuningMetadataManager:
                     sections[tuning_type.value] = [
                         column.to_dict() for column in sorted(columns, key=lambda column: column.order)
                     ]
+            for placement_flag in ("reference", "columnar"):
+                if getattr(table_tuning, placement_flag, False):
+                    sections[placement_flag] = True
             payload[table_name] = sections
         return payload
 
@@ -448,7 +455,8 @@ class TuningMetadataManager:
             if existing_table_attributes_hash != self._hash_section(table_attributes_payload):
                 result.drifted_sections.add(self._TABLE_ATTRIBUTES_SECTION)
                 result.configuration_mismatches[self._TABLE_ATTRIBUTES_SECTION] = (
-                    "Persisted column attributes do not match expected sort order, null placement, compression, or type"
+                    "Persisted column attributes do not match expected sort order, null placement, compression, "
+                    "type, or table placement"
                 )
                 result.add_error("Table tuning column attributes drifted from persisted database metadata")
 
