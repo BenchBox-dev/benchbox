@@ -467,6 +467,13 @@ def test_a_forced_round_never_overrides_a_strike_refusal() -> None:
     assert _plan_same_head(history, force=True).kind == protocol.SKIP
 
 
+def test_a_forced_round_never_follows_do_not_ship() -> None:
+    history = protocol.History([_decided(HEAD, decision=protocol.DO_NOT_SHIP)])
+    assert _plan_same_head(history, force=True).kind == protocol.SKIP
+    carried = protocol.History([_decided("e" * 40, decision=protocol.DO_NOT_SHIP)])
+    assert _plan_same_head(carried, force=True).kind == protocol.CARRY
+
+
 FIXTURE = Path(__file__).resolve().parents[3] / "fixtures" / "oracle_reviewers" / "pr2769_history.json"
 
 

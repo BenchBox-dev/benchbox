@@ -98,3 +98,11 @@ def test_judge_counts_an_unverified_withdrawal_as_open() -> None:
     judgement = judge(verdict, 10, prior)
     assert judgement.decision == "SHIP_WITH_FIXES" and judgement.carried == (prior[0],)
     assert judgement.fixed == () and judgement.withdrawn == ()
+
+
+def test_judge_rejudges_fixed_as_open_on_a_forced_round() -> None:
+    prior = [{"id": "D1", "severity": "High", "file": "a.py", "line": 1, "end_line": None, "title": "t1"}]
+    fixed = _verdict("SHIP_WITH_FIXES", [], prior_defects=[{"id": "D1", "status": "fixed", "evidence": "reworked"}])
+    judgement = judge(fixed, 10, prior, rejudge_fixed=True)
+    assert judgement.decision == "SHIP_WITH_FIXES" and judgement.carried == (prior[0],)
+    assert judgement.fixed == () and judgement.withdrawn == ()

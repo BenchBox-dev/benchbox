@@ -140,17 +140,6 @@ def _finish_plan(out_dir: Path, plan: dict[str, Any]) -> int:
     return 0
 
 
-def _thread_reply_requests_rereview(event: Mapping[str, Any], bot_login: str) -> bool:
-    comment = event.get("comment")
-    if not isinstance(comment, dict) or not comment.get("in_reply_to_id"):
-        return False
-    user = comment.get("user")
-    if not isinstance(user, dict):
-        return False
-    login = user.get("login") or ""
-    return user.get("type") != "Bot" and login not in (bot_login, f"{bot_login}[bot]")
-
-
 def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dict[str, Any]]:
     disputes = []
     for thread in threads:
@@ -182,12 +171,11 @@ def _dispute_step(
     strike_count: int,
     step: protocol.Round,
     manual: bool,
-    thread_reply: bool,
     event_name: str,
 ) -> tuple[list[dict[str, Any]] | None, protocol.Round]:
     if step.kind not in (protocol.SKIP, protocol.CARRY):
         return None, step
-    if not ((not manual and event_name == "pull_request_target") or thread_reply):
+    if manual or event_name != "pull_request_target":
         return None, step
     try:
         threads = github.review_threads(plan["repo"], plan["pr"])
@@ -244,10 +232,7 @@ def command_plan(args: argparse.Namespace) -> int:
         plan["decision"] = FORK
         plan["decision_reason"] = "fork: owner review"
         return _finish_plan(out_dir, plan)
-    thread_reply = event_name == "pull_request_review_comment" and _thread_reply_requests_rereview(
-        event, policy.bot_login
-    )
-    manual = event_name in ("issue_comment", "workflow_dispatch") or thread_reply
+    manual = event_name in ("issue_comment", "workflow_dispatch")
     action = event.get("action", "")
     new_diff = event_name == "pull_request_target" and (
         action in NEW_DIFF_ACTIONS or (action == "edited" and "base" in (event.get("changes") or {}))
@@ -292,9 +277,7 @@ def command_plan(args: argparse.Namespace) -> int:
     full_diff = github.get_diff(repo, pr)
     complete = full_diff is not None and len(files) >= int(pull.get("changed_files") or 0)
     strike_count = max(protocol.strikes(found.records), previous.strikes if previous else 0)
-    step = _protocol_round(
-        plan, policy, found, scoped, full_diff if complete else None, strike_count, force=(manual and not thread_reply)
-    )
+    step = _protocol_round(plan, policy, found, scoped, full_diff if complete else None, strike_count, force=manual)
     threads, step = _dispute_step(
         plan,
         policy,
@@ -305,7 +288,6 @@ def command_plan(args: argparse.Namespace) -> int:
         strike_count,
         step,
         manual,
-        thread_reply,
         event_name,
     )
     if step.kind == protocol.SKIP:

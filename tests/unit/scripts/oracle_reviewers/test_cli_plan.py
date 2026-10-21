@@ -778,13 +778,6 @@ def _thread_fake(record: dict[str, Any], threads: list[dict[str, Any]]) -> FakeG
     return fake
 
 
-def _reply_event(user: dict[str, str], in_reply_to_id: int | None = 11) -> dict[str, Any]:
-    comment: dict[str, Any] = {"body": "Not a defect.", "user": user}
-    if in_reply_to_id is not None:
-        comment["in_reply_to_id"] = in_reply_to_id
-    return {"action": "created", "comment": comment}
-
-
 def test_comment_on_a_decided_head_forces_a_same_head_rereview(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
     _, values, plan = _plan(
@@ -795,64 +788,46 @@ def test_comment_on_a_decided_head_forces_a_same_head_rereview(monkeypatch: pyte
     assert plan["protocol"]["kind"] == "follow-up" and plan["protocol"]["forced"] is True
 
 
-def test_thread_reply_on_a_disputed_thread_forces_a_rereview(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    event = _reply_event({"login": "joe", "type": "User"})
-    _, values, plan = _plan(
-        monkeypatch,
-        tmp_path,
-        _thread_fake(_decided_head(), [_disputed_thread()]),
-        event_name="pull_request_review_comment",
-        event=event,
-    )
+def test_push_with_a_disputed_thread_upgrades_carry_to_a_forced_rereview(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2)
+    _, values, plan = _plan(monkeypatch, tmp_path, _thread_fake(record, [_disputed_thread()]))
     assert values["decision"] == "review" and values["post"] == "true"
-    assert plan["manual"] is True
+    assert plan["manual"] is False
     assert plan["protocol"]["kind"] == "follow-up" and plan["protocol"]["forced"] is True
     assert len(plan["disputes"]) == 1
 
 
-def test_thread_reply_without_a_dispute_skips(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    event = _reply_event({"login": "joe", "type": "User"})
-    _, values, plan = _plan(
-        monkeypatch,
-        tmp_path,
-        _thread_fake(_decided_head(), []),
-        event_name="pull_request_review_comment",
-        event=event,
-    )
-    assert values["decision"] == "skip" and values["post"] == "false"
-    assert "already has a" in plan["decision_reason"]
-
-
-def test_top_level_review_comment_is_ignored(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    event = _reply_event({"login": "joe", "type": "User"}, in_reply_to_id=None)
-    _, values, plan = _plan(
-        monkeypatch,
-        tmp_path,
-        _thread_fake(_decided_head(), [_disputed_thread()]),
-        event_name="pull_request_review_comment",
-        event=event,
-    )
-    assert values["decision"] == "skip" and values["post"] == "false"
-
-
-def test_bot_thread_reply_is_ignored(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    event = _reply_event({"login": "benchbox-oracle[bot]", "type": "Bot"})
+@pytest.mark.parametrize(
+    "comment",
+    [
+        {"body": "Not a defect.", "user": {"login": "joe", "type": "User"}, "in_reply_to_id": 11},
+        {"body": "Not a defect.", "user": {"login": "joe", "type": "User"}},
+        {"body": "Noted.", "user": {"login": "benchbox-oracle[bot]", "type": "Bot"}, "in_reply_to_id": 11},
+    ],
+    ids=["thread-reply", "top-level", "bot-reply"],
+)
+def test_review_comment_events_never_plan(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, comment: dict[str, Any]
+) -> None:
     _, values, plan = _plan(
         monkeypatch,
         tmp_path,
         _thread_fake(_decided_head(), [_disputed_thread()]),
         event_name="pull_request_review_comment",
-        event=event,
+        event={"action": "created", "comment": comment},
     )
     assert values["decision"] == "skip" and values["post"] == "false"
+    assert plan["manual"] is False
 
 
 def test_guard_posts_a_forced_follow_up_once_and_skips_the_duplicate(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    event = _reply_event({"login": "joe", "type": "User"})
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
     fake = _thread_fake(_decided_head(), [_disputed_thread()])
-    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="pull_request_review_comment", event=event)
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
     assert values["decision"] == "review" and plan["protocol"]["forced"] is True
     plan_path = tmp_path / "plan" / "plan.json"
     output = tmp_path / "guard.out"

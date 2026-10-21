@@ -302,7 +302,7 @@ def plan_round(
     if latest is None:
         return Round(FIRST, "first review of this pull request")
     if latest["head_sha"] == head_sha:
-        if force and latest["decision"] != REFUSED:
+        if force and latest["decision"] in (SHIP, SHIP_WITH_FIXES):
             return _forced_round(
                 found.records,
                 head_sha=head_sha,
@@ -319,7 +319,7 @@ def plan_round(
     if latest["decision"] == REFUSED:
         return Round(FIRST, "the strike limit no longer applies", restart, 1, latest)
     if latest["patch_digest"] == digest:
-        if force and latest["decision"] != REFUSED:
+        if force and latest["decision"] in (SHIP, SHIP_WITH_FIXES):
             return _forced_round(
                 found.records,
                 head_sha=head_sha,
@@ -351,10 +351,13 @@ def judge(
     max_defects: int,
     prior: Sequence[Mapping[str, Any]] = (),
     changed: Iterable[str] | None = None,
+    rejudge_fixed: bool = False,
 ) -> Judgement:
     if verdict.status != COMPLETE:
         raise ValueError("only a complete review can be judged")
     statuses = {item.id: item.status for item in verdict.prior_defects}
+    if rejudge_fixed:
+        statuses = {key: (NOT_FIXED if value == FIXED else value) for key, value in statuses.items()}
     carried = tuple(item for item in prior if statuses.get(item["id"], NOT_FIXED) == NOT_FIXED)
     fixed = tuple(item["id"] for item in prior if statuses.get(item["id"], NOT_FIXED) == FIXED)
     withdrawn = tuple(item["id"] for item in prior if statuses.get(item["id"]) == WITHDRAWN)
@@ -377,7 +380,7 @@ def judge(
 def judge_planned(verdict: Verdict, plan: Mapping[str, Any]) -> Judgement:
     rules = plan.get("protocol") or {}
     changed = rules.get("changed") if rules.get("kind") == FOLLOW_UP else None
-    return judge(verdict, int(plan["max_defects"]), rules.get("prior", ()), changed)
+    return judge(verdict, int(plan["max_defects"]), rules.get("prior", ()), changed, bool(rules.get("forced")))
 
 
 def defect_entry(defect_id: str, finding: Finding) -> dict[str, Any]:

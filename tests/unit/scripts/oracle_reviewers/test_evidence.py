@@ -325,13 +325,13 @@ def test_check_truncates_long_missing_lists(tmp_path: Path) -> None:
     assert "pkg/g.py" not in problem
 
 
-def _withdrawn_verdict(evidence: str) -> Verdict:
+def _withdrawn_verdict(evidence: str, examined: tuple[str, ...] = ("pkg/a.py",)) -> Verdict:
     return Verdict(
         status="complete",
         incomplete_reason="",
         decision="SHIP",
         summary="summary",
-        files_examined=(),
+        files_examined=examined,
         defects=(),
         prior_defects=(PriorDefect(id="D1", status="withdrawn", evidence=evidence),),
     )
@@ -359,4 +359,12 @@ def test_mark_citations_reopens_a_withdrawal_citing_a_missing_line(tmp_path: Pat
     (workspace / "pkg").mkdir(parents=True)
     (workspace / "pkg" / "a.py").write_text("one\ntwo\n")
     marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:9"), workspace)
+    assert marked.prior_defects[0].status == "not_fixed"
+
+
+def test_mark_citations_reopens_a_withdrawal_citing_an_unexamined_file(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    (workspace / "pkg").mkdir(parents=True)
+    (workspace / "pkg" / "a.py").write_text("one\ntwo\nthree\n")
+    marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:2", ()), workspace)
     assert marked.prior_defects[0].status == "not_fixed"

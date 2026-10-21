@@ -159,7 +159,7 @@ every hash. Prose files outside the review scope are left out.
 | Patch unchanged (a rebase or a prose-only change) | the decision is carried to the new head |
 | Latest SHIP or SHIP WITH FIXES, patch changed | follow-up on the changed files |
 | Latest DO NOT SHIP, patch changed | new cycle with a full review that quotes the previous summary |
-| Author rebuttal on an oracle thread (`/oracle-review` or a reply), head unchanged | forced follow-up that rejudges the disputed defects, at most twice per head |
+| Author rebuttal (`/oracle-review` comment, or a push that leaves a thread disputed), head unchanged | forced follow-up that rejudges the disputed defects, at most twice per head |
 A move of the base commit alone does not restart a cycle. A diff that cannot be
 read, a file list that is truncated, or a file missing from the diff never
 carries a decision, and neither does a file leaving the pull request: each
@@ -179,13 +179,15 @@ first. A follow-up runs for every size bucket.
 A forced follow-up rejudges rather than skips: its brief adds the disputed
 threads under "Disputed findings", with each reply quoted as data, and tells
 the reviewer to confirm each disputed defect as not fixed or withdraw it with
-the head-commit file and line that refutes it. A withdrawal without a citation
-that resolves into the head commit counts as not fixed, so only evidenced
-withdrawals leave the open list, and they are reported separately as never
-defects. The third forced re-review on one head is refused with a message to
-push a new head or ask the owner for a stand-in. Ordinary follow-ups never
-consume this budget, and replying on a thread that disputes nothing runs
-nothing.
+an examined head-commit file and line that refutes it. A withdrawal without
+such a citation counts as not fixed, and a defect the reviewer marks fixed on
+an unchanged patch counts as not fixed too, so only evidenced withdrawals
+leave the open list, and they are reported separately as never defects. A
+forced re-review runs only after a SHIP or SHIP WITH FIXES decision, never
+after DO NOT SHIP. The third forced re-review on one head is refused with a
+message to push a new head or ask the owner for a stand-in. Ordinary
+follow-ups never consume this budget, and a push that disputes nothing is
+still carried, not rejudged.
 
 The oracle never resolves a review thread. A follow-up lists the defects it
 verified as fixed, and the author resolves those threads. Each new thread
