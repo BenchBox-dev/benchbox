@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Confirm with an executed sqlite3 test on TPC-DS Q21 and Q40 inputs whether the boundary row is dropped on current develop.",
+    "The fork emits a day-offset form that keeps the boundary row, with an execution test; adopted through the normal wheel adoption with a corpus diff.",
+    "Published SQLite TPC-DS results that used Q21/Q40 are identified and flagged or rerun (rerun approval is the owner's)."
+  ],
+  "description": "Found while adopting fork wheel 30.24.0.2 (oracle finding on the adoption PR). On sqlite3, d BETWEEN DATETIME(DATE('1998-04-08'),'-30 DAY') AND ... compares a DATE text 'YYYY-MM-DD' column against a 'YYYY-MM-DD 00:00:00' bound, so the lower boundary row 1998-03-09 is dropped where DATE(..,'-30 day') keeps it. The old and new corpus output for TPC-DS Q21 on SQLite is identical, so wheel 30.24.0.1 already on develop emits the same form: TPC-DS Q21 and Q40 on SQLite and tpcds_obt Q40 may already return wrong rows on develop. Decide whether any published SQLite result used these queries (a published result is wrong or at risk), and fix the lowering to emit DATE(...) for day offsets on date-typed operands in the fork (the fork sqlite-temporal-lowering carried patch) with a sqlite3 execution test asserting the boundary row is kept.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3217",
+    "_project/decisions/sqlglot-fork-transpilation-plan.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T04:30:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3da25a4868b448b88307ffd09315942c",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

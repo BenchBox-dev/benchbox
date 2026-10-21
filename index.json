@@ -23180,6 +23180,13 @@
       "status": "done",
       "title": "Make SQLite honour --platform-option database_name"
     },
+    "sqlite-day-offset-bound-excludes-boundary-row": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "SQLite TPC-DS Q21, Q40 and tpcds_obt Q40 exclude the boundary-day row (DATETIME day-offset bound)"
+    },
     "sqlite-throughput-dialect-and-stream-isolation": {
       "claim": null,
       "needs": [
