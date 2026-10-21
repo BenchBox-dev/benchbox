@@ -23565,7 +23565,7 @@
         "ssns-n7-review-runner"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship: macOS install kit (launchd, sudoers, install --print, reboot resume, live check)"
     },
     "ssns-n9-docs": {
