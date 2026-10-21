@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import codecs
 import hashlib
 import io
@@ -39,6 +40,7 @@ DIRECTIVES = COMMENT_POLICY_DIRECTIVES
 ENFORCEMENT_MODES = COMMENT_POLICY_ENFORCEMENT_MODES
 
 POLICY_PATH = "quality/comment-policy.json"
+LAUNCHER_PATH = "scripts/run_comment_policy.py"
 BOOTSTRAP_BASE = "ed5c263c513ba65499f4918d3a7de607f280c65b"
 
 
@@ -334,23 +336,43 @@ def source_paths(root: Path, staged: bool) -> list[str]:
     return paths
 
 
-def path_present(root: Path, path: str, staged: bool) -> bool:
+def launcher_trusted_files(root: Path, base: str) -> set[str] | None:
+    try:
+        tree = ast.parse(git(root, "show", f"{base}:{LAUNCHER_PATH}"))
+    except (subprocess.CalledProcessError, SyntaxError, ValueError):
+        return None
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == "TRUSTED_FILES" for t in node.targets
+        ):
+            try:
+                names = {str(name) for name in ast.literal_eval(node.value)}
+            except ValueError:
+                return None
+            return names or None
+    return None
+
+
+def indexed_paths(root: Path) -> set[str]:
+    return set(git(root, "ls-files", "-z", "--cached").decode().split("\0")) - {""}
+
+
+def path_present(root: Path, path: str, staged: bool, indexed: set[str] | None = None) -> bool:
     if staged:
-        return (
-            subprocess.run(["git", "-C", str(root), "cat-file", "-e", f":{path}"], capture_output=True).returncode == 0
-        )
+        return path in (indexed if indexed is not None else indexed_paths(root))
     return (root / path).is_file()
 
 
 def validate_consumers(root: Path, policy: dict, staged: bool = False) -> None:
+    indexed = indexed_paths(root) if staged else None
     for entry in policy["exceptions"]:
-        if not path_present(root, entry["consumer"], staged):
+        if not path_present(root, entry["consumer"], staged, indexed):
             raise ValueError(f"exception consumer missing: {entry['consumer']}")
     for entry in policy["external"]:
         validate_path(entry["provenance"])
-        if not path_present(root, entry["provenance"], staged):
+        if not path_present(root, entry["provenance"], staged, indexed):
             raise ValueError(f"external provenance missing: {entry['provenance']}")
-        if entry["path"].endswith(".whl") and not path_present(root, entry["path"], staged):
+        if entry["path"].endswith(".whl") and not path_present(root, entry["path"], staged, indexed):
             raise ValueError(f"external wheel missing: {entry['path']}")
 
 
@@ -435,11 +457,14 @@ def main(argv: list[str] | None = None) -> int:
             )
             if not args.staged:
                 changed.update(git(root, "ls-files", "--others", "--exclude-standard", "-z").decode().split("\0"))
-            paths = [
-                path
-                for path in paths
-                if path in changed or any(matches(path, scope) for scope in [*policy["completed"], *revoked])
-            ]
+            trusted = launcher_trusted_files(root, args.base)
+            global_change = (
+                bool(revoked)
+                or trusted is None
+                or bool(changed & {POLICY_PATH, SCOPE_POLICY_PATH, LAUNCHER_PATH, *trusted})
+            )
+            scopes = [] if args.staged and not global_change else [*policy["completed"], *revoked]
+            paths = [path for path in paths if path in changed or any(matches(path, scope) for scope in scopes)]
         policy_owner_failure = (
             args.mode == "transition" and POLICY_PATH in changed and bool(expired_policy_findings(policy))
         )
