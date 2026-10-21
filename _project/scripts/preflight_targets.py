@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import re
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
@@ -12,6 +13,7 @@ TESTS_ROOT = "tests"
 PLATFORMS_ROOT = "benchbox/platforms/"
 SMOKE_TESTS_ROOT = "tests/integration/platforms/"
 CONFTEST_SUBTREE_LIMIT = 200
+PATCH_CALLEE = re.compile(r"(^|\.)patch(\.|$)")
 SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     "benchbox/": ("tests/system/test_module_size_thresholds.py",),
     "benchbox/cli/": ("tests/uat/test_no_cli_surface_drift.py",),
@@ -63,10 +65,18 @@ def _module_name(path: str) -> str:
     return ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
 
 
-def _imported_modules(repo: Path, path: str) -> set[str]:
-    try:
-        tree = ast.parse((repo / path).read_text(encoding="utf-8"))
-    except (OSError, SyntaxError, ValueError):
+def _parse(repo: Path, path: str, cache: dict[str, ast.AST | None]) -> ast.AST | None:
+    if path not in cache:
+        try:
+            cache[path] = ast.parse((repo / path).read_text(encoding="utf-8"))
+        except (OSError, SyntaxError, ValueError):
+            cache[path] = None
+    return cache[path]
+
+
+def _imported_modules(repo: Path, path: str, cache: dict[str, ast.AST | None] | None = None) -> set[str]:
+    tree = _parse(repo, path, {} if cache is None else cache)
+    if tree is None:
         return set()
     package = PurePosixPath(path).parent.parts
     modules: set[str] = set()
@@ -81,19 +91,74 @@ def _imported_modules(repo: Path, path: str) -> set[str]:
     return modules
 
 
+def _patch_targets(repo: Path, path: str, cache: dict[str, ast.AST | None]) -> set[str]:
+    tree = _parse(repo, path, cache)
+    if tree is None:
+        return set()
+    targets: set[str] = set()
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and node.args):
+            continue
+        first = node.args[0]
+        if not (isinstance(first, ast.Constant) and isinstance(first.value, str)):
+            continue
+        callee = ast.unparse(node.func)
+        if PATCH_CALLEE.search(callee) or callee.endswith("setattr"):
+            targets.add(first.value)
+    return targets
+
+
+def _resolve_module(repo: Path, dotted: str) -> str | None:
+    parts = dotted.split(".")
+    for end in range(len(parts), 0, -1):
+        base = "/".join(parts[:end])
+        for candidate in (f"{base}.py", f"{base}/__init__.py"):
+            if (repo / candidate).is_file():
+                return candidate
+    return None
+
+
 def _helper_importers(repo: Path, helpers: list[str], test_files: list[str]) -> set[str]:
     if not helpers:
         return set()
+    cache: dict[str, ast.AST | None] = {}
     wanted = {_module_name(helper) for helper in helpers}
     return {
         path
         for path in test_files
         if any(
             module == name or module.startswith(f"{name}.")
-            for module in _imported_modules(repo, path)
+            for module in _imported_modules(repo, path, cache)
             for name in wanted
         )
     }
+
+
+def _source_dependents(repo: Path, sources: list[str], test_files: list[str]) -> set[str]:
+    if not sources:
+        return set()
+    cache: dict[str, ast.AST | None] = {}
+    wanted = {_module_name(source) for source in sources}
+    hop: dict[str, bool] = {}
+
+    def reaches(module_file: str) -> bool:
+        if module_file not in hop:
+            hop[module_file] = _module_name(module_file) in wanted or bool(
+                _imported_modules(repo, module_file, cache) & wanted
+            )
+        return hop[module_file]
+
+    selected: set[str] = set()
+    for test in test_files:
+        if _imported_modules(repo, test, cache) & wanted:
+            selected.add(test)
+            continue
+        for target in _patch_targets(repo, test, cache):
+            module_file = _resolve_module(repo, target)
+            if module_file is not None and reaches(module_file):
+                selected.add(test)
+                break
+    return selected
 
 
 def _package_subtree(path: str, test_files: list[str]) -> list[str] | None:
@@ -142,6 +207,7 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
     index = _test_index(test_files)
     selected: set[str] = set()
     helpers: list[str] = []
+    sources: list[str] = []
     for path in paths:
         if not path.endswith(".py"):
             continue
@@ -159,6 +225,7 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
             else:
                 helpers.append(path)
         elif path.startswith(SOURCE_ROOTS):
+            sources.append(path)
             module = pure.stem
             if module != "__init__":
                 selected.update(index.get(f"test_{module}.py", ()))
@@ -166,6 +233,7 @@ def map_tests(repo: Path, paths: list[str]) -> list[str]:
             selected.update(_guard_tests(path, test_files))
         selected.update(EXTRA_TEST_MAP.get(path, ()))
     selected.update(_helper_importers(repo, helpers, test_files))
+    selected.update(_source_dependents(repo, sources, test_files))
     return sorted(selected)
 
 
