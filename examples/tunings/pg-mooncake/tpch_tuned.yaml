@@ -1,0 +1,17 @@
+primary_keys:
+  enabled: false
+foreign_keys:
+  enabled: false
+table_tunings:
+  lineitem:
+    table_name: lineitem
+    sorting:
+      - name: l_shipdate
+        type: DATE
+        order: 1
+  orders:
+    table_name: orders
+    sorting:
+      - name: o_orderdate
+        type: DATE
+        order: 1

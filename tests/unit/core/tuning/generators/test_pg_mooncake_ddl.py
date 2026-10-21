@@ -20,7 +20,7 @@ def _make_columns() -> list[ColumnDefinition]:
     ]
 
 
-def test_platform_name_and_tuning_clauses_ignore_postgresql_options() -> None:
+def test_only_clustering_and_sorting_reach_the_clauses() -> None:
     generator = PgMooncakeDDLGenerator()
     table_tuning = TableTuning(
         table_name="orders",
@@ -33,7 +33,21 @@ def test_platform_name_and_tuning_clauses_ignore_postgresql_options() -> None:
     clauses = generator.generate_tuning_clauses(table_tuning, PlatformOptimizationConfiguration())
 
     assert generator.platform_name == "pg_mooncake"
-    assert clauses.is_empty()
+    assert clauses.partition_by is None
+    assert clauses.distribute_by is None
+    statements = generator.get_post_load_statements("orders", clauses)
+    assert any(statement.startswith("CREATE INDEX") for statement in statements)
+    assert any(statement.startswith("CLUSTER") for statement in statements)
+
+
+def test_tuning_without_layout_columns_yields_no_clauses() -> None:
+    generator = PgMooncakeDDLGenerator()
+
+    assert generator.generate_tuning_clauses(None).is_empty()
+    only_partitioning = TableTuning(
+        table_name="orders", partitioning=[TuningColumn(name="order_date", type="DATE", order=1)]
+    )
+    assert generator.generate_tuning_clauses(only_partitioning).is_empty()
 
 
 def test_generate_create_table_ddl_preserves_heap_load_ddl_and_skips_partition_fragments() -> None:

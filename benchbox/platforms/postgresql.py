@@ -1152,8 +1152,13 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 )
 
     def _record_cluster_satisfied(
-        self, ledger: Any, table_name: str, effective_config: Any, observed: list[str]
-    ) -> None:
+        self,
+        ledger: Any,
+        table_name: str,
+        effective_config: Any,
+        observed: list[str],
+        evidence: str | None = None,
+    ) -> bool:
         from benchbox.core.tuning.interface import TuningType
 
         tuning = self.table_tuning_for(effective_config, table_name)
@@ -1163,7 +1168,8 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
             )
         )
         if index is None or tuning is None:
-            return
+            return False
+        reason = evidence or f"pg_index indisclustered catalog readback: {observed}"
         for kind, columns in (
             (TuningType.CLUSTERING, tuning.clustering),
             (TuningType.SORTING, tuning.sorting),
@@ -1171,7 +1177,8 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
             if columns:
                 ordered = sorted(columns, key=lambda column: column.order)
                 label = f"{kind.value}:{tuning.table_name} ({', '.join(column.name for column in ordered)})"
-                ledger.record_satisfied(label, index, f"pg_index indisclustered catalog readback: {observed}")
+                ledger.record_satisfied(label, index, reason)
+        return True
 
     def _expected_cluster_columns(self, effective_config: Any, table_name: str) -> list[str]:
         tuning = self.table_tuning_for(effective_config, table_name)

@@ -42,7 +42,7 @@ Aliases resolve to another platform's entry: `chdb` -> `clickhouse`, `clickhouse
 | `mysql` | none | foreign_keys, primary_keys | check_constraints, partitioning, unique_constraints | - | no adapter | no |
 | `paradedb` | none | clustering, foreign_keys, partitioning, primary_keys, sorting | bloom_filters, check_constraints, materialized_views, unique_constraints | - | no | no |
 | `pg-duckdb` | none | clustering, foreign_keys, partitioning, primary_keys, sorting | check_constraints, unique_constraints | - | no | no |
-| `pg-mooncake` | none | foreign_keys, primary_keys | check_constraints, clustering, partitioning, sorting, unique_constraints | - | no | no |
+| `pg-mooncake` | none | clustering, foreign_keys, primary_keys, sorting | check_constraints, partitioning, unique_constraints | - | no | no |
 | `postgresql` | none | clustering, foreign_keys, partitioning, primary_keys, sorting | bloom_filters, check_constraints, materialized_views, unique_constraints | - | no | no |
 | `presto` | none | foreign_keys | check_constraints, clustering, distribution, partitioning, primary_keys, sorting, unique_constraints | - | no | no |
 | `questdb` | none | none | check_constraints, distribution, foreign_keys, partitioning, primary_keys, sorting, unique_constraints | - | no | no |

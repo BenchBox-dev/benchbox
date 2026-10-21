@@ -63,6 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ParadeDB tuning files now apply heap partitioning and clustering/sorting, and the
   adapter claims `PARTITIONING`, `CLUSTERING` and `SORTING`. A TPC-H profile is at
   `examples/tunings/paradedb/tpch_tuned.yaml`.
+- pg_mooncake tuning files now apply clustering and sorting, and the adapter claims
+  `CLUSTERING` and `SORTING`. `CLUSTER` runs on the loaded heap table before
+  `mooncake.create_table` mirrors it, so the mirror's Parquet files inherit the sort
+  order; the intent is recorded as applied only after the mirror's files are read back
+  and found ordered on the tuned columns. A partitioning request is rejected when the
+  tuning file loads, because partitioning the source does not shape the mirror. A TPC-H profile is at
+  `examples/tunings/pg-mooncake/tpch_tuned.yaml`.
 - The bundled SQLGlot runtime moves from 30.24.0.1 to 30.24.0.2 (fork commit
   `010db57fe835`), which adds the `netezza`, `greenplum`, `vertica`, `datafusion`
   and `questdb` dialects, SQLite, DuckDB, Snowflake and Databricks generator

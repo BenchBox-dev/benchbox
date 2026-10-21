@@ -10,7 +10,7 @@ import pytest
 import benchbox.platforms.pg_mooncake as pg_mooncake_module
 import benchbox.platforms.postgresql as postgresql_module
 from benchbox.platforms.pg_mooncake import PgMooncakeAdapter
-from benchbox.platforms.postgresql import POSTGRES_DIALECT
+from benchbox.platforms.postgresql import POSTGRES_DIALECT, PostgreSQLAdapter
 
 pytestmark = [
     pytest.mark.unit,
@@ -130,10 +130,10 @@ class TestPgMooncakeAdapter:
 
         from benchbox.core.tuning.interface import TuningType
 
+        assert adapter.supports_tuning_type(TuningType.CLUSTERING) is True
+        assert adapter.supports_tuning_type(TuningType.SORTING) is True
         assert adapter.supports_tuning_type(TuningType.PARTITIONING) is False
-        assert adapter.supports_tuning_type(TuningType.SORTING) is False
         assert adapter.supports_tuning_type(TuningType.DISTRIBUTION) is False
-        assert adapter.supports_tuning_type(TuningType.CLUSTERING) is False
         assert adapter.supports_tuning_type(TuningType.PRIMARY_KEYS) is False
         assert adapter.supports_tuning_type(TuningType.FOREIGN_KEYS) is False
 
@@ -333,7 +333,6 @@ class TestPgMooncakeLoadPromotion:
         assert ("CALL mooncake.create_table(%s, %s)", ("lineitem", "__bb_moon_src_lineitem")) in executed
         assert ('SELECT COUNT(*) FROM "lineitem"',) in executed
         assert all("empty" not in str(args) for args in executed)
-        conn.commit.assert_called_once()
         cursor.close.assert_called_once()
 
     def test_load_data_rolls_back_on_promotion_failure(self, pg_mooncake_stubs, tmp_path):
@@ -353,17 +352,29 @@ class TestPgMooncakeLoadPromotion:
         ):
             adapter.load_data(Mock(), conn, tmp_path)
 
-        conn.rollback.assert_called_once()
+        conn.rollback.assert_called()
         cursor.close.assert_called_once()
 
-    def test_load_data_keeps_rename_and_mirror_creation_atomic(self, pg_mooncake_stubs, tmp_path):
+    def test_rename_is_committed_before_the_mirror_is_created(self, pg_mooncake_stubs, tmp_path):
         adapter = PgMooncakeAdapter()
         conn = Mock()
         cursor = Mock()
-        cursor.execute.side_effect = [
-            None,
-            RuntimeError("mirror creation failed"),
-        ]
+        events: list[str] = []
+        cursor.execute.side_effect = lambda *args: events.append(f"execute:{args[0].split('(')[0].split(' RENAME')[0]}")
+        conn.commit.side_effect = lambda: events.append("commit")
+        cursor.fetchone.return_value = (2,)
+        conn.cursor.return_value = cursor
+
+        with patch.object(postgresql_module.PostgreSQLAdapter, "load_data", return_value=({"orders": 2}, 1.25, None)):
+            adapter.load_data(Mock(), conn, tmp_path)
+
+        assert events[:3] == ['execute:ALTER TABLE "orders"', "commit", "execute:CALL mooncake.create_table"]
+
+    def test_failed_mirror_restores_the_heap_table_name(self, pg_mooncake_stubs, tmp_path):
+        adapter = PgMooncakeAdapter()
+        conn = Mock()
+        cursor = Mock()
+        cursor.execute.side_effect = [None, RuntimeError("mirror creation failed"), None]
         conn.cursor.return_value = cursor
 
         with (
@@ -380,9 +391,8 @@ class TestPgMooncakeLoadPromotion:
         assert executed == [
             ('ALTER TABLE "orders" RENAME TO "__bb_moon_src_orders"',),
             ("CALL mooncake.create_table(%s, %s)", ("orders", "__bb_moon_src_orders")),
+            ('ALTER TABLE "__bb_moon_src_orders" RENAME TO "orders"',),
         ]
-        conn.commit.assert_not_called()
-        conn.rollback.assert_called_once()
         cursor.close.assert_called_once()
 
     def test_load_data_rejects_invalid_schema_identifier(self, pg_mooncake_stubs, tmp_path):
@@ -748,3 +758,229 @@ class TestPgMooncakeMigrationPhase:
         assert result.status == "failed"
         assert result.tables_migrated == 0
         assert result.tables_failed == 1
+
+
+class _MirrorCursor:
+    def __init__(
+        self,
+        *,
+        location="/var/lib/postgresql/18/docker/pg_mooncake",
+        registered=True,
+        readback=(4, 50000, 0.0001),
+        fail_create=None,
+        fail_count=False,
+    ):
+        self.executed: list[str] = []
+        self.calls: list[tuple] = []
+        self._location = location
+        self._registered = registered
+        self._readback = readback
+        self._fail_create = fail_create
+        self._fail_count = fail_count
+        self._rows: list[tuple] = []
+        self.closed = False
+
+    def execute(self, sql, params=()):
+        self.executed.append(sql)
+        self.calls.append((sql, params))
+        if "CALL mooncake.create_table" in sql and params and params[0] == self._fail_create:
+            raise RuntimeError("mirror creation failed")
+        if "SELECT COUNT(*)" in sql:
+            if self._fail_count:
+                raise RuntimeError("count failed")
+            self._rows = [(self._readback[1],)]
+        elif "mooncake.list_tables" in sql:
+            self._rows = [(self._location,)] if self._registered else []
+        elif "current_database" in sql:
+            self._rows = [("benchbox",)]
+        elif "duckdb.query" in sql:
+            if isinstance(self._readback, Exception):
+                raise self._readback
+            self._rows = [self._readback]
+
+    def fetchone(self):
+        return self._rows[0]
+
+    def fetchall(self):
+        return self._rows
+
+    def close(self):
+        self.closed = True
+
+
+def _mirror_adapter(pg_mooncake_stubs, *tables):
+    from benchbox.core.tuning.applied_ledger import PHASE_POST_LOAD, AppliedTuningLedger
+    from benchbox.core.tuning.interface import TableTuning, TuningColumn, UnifiedTuningConfiguration
+
+    adapter = PgMooncakeAdapter()
+    config = UnifiedTuningConfiguration()
+    config.disable_all_constraints()
+    ledger = AppliedTuningLedger()
+    for table in tables:
+        config.table_tunings[table] = TableTuning(
+            table_name=table, sorting=[TuningColumn(name=f"{table[0]}_key", type="INTEGER", order=1)]
+        )
+        ledger.record(f"CREATE INDEX idx_{table} ON {table} ({table[0]}_key)", PHASE_POST_LOAD, table=table)
+    adapter._applied_tuning_ledger = ledger
+    return adapter, config, ledger
+
+
+class TestPgMooncakeMirrorOrder:
+    def test_clustered_heap_is_not_claimed_until_the_mirror_is_read_back(self, pg_mooncake_stubs):
+        adapter, config, ledger = _mirror_adapter(pg_mooncake_stubs, "lineitem")
+
+        adapter._record_cluster_satisfied(ledger, "lineitem", config, ["l_key"])
+
+        assert ledger.satisfied == []
+        assert ledger.dropped == []
+
+    def test_ordered_mirror_files_satisfy_the_intent(self, pg_mooncake_stubs):
+        adapter, config, ledger = _mirror_adapter(pg_mooncake_stubs, "lineitem")
+        adapter._record_cluster_satisfied(ledger, "lineitem", config, ["l_key"])
+        connection = Mock()
+        connection.cursor.return_value = _MirrorCursor(readback=(4, 60175, 0.0002))
+
+        adapter._settle_cluster_claims(connection, {"lineitem"}, {"lineitem": 60175})
+
+        [satisfied] = ledger.satisfied
+        assert satisfied.intent == "sorting:lineitem (l_key)"
+        assert "mirror Parquet readback: 60175 rows in 4 data files" in satisfied.reason
+        assert "indisclustered" in satisfied.reason
+        assert ledger.dropped == []
+
+    def test_unordered_mirror_files_drop_the_intent(self, pg_mooncake_stubs):
+        adapter, config, ledger = _mirror_adapter(pg_mooncake_stubs, "lineitem")
+        adapter._record_cluster_satisfied(ledger, "lineitem", config, ["l_key"])
+        connection = Mock()
+        connection.cursor.return_value = _MirrorCursor(readback=(4, 60175, 0.92))
+
+        adapter._settle_cluster_claims(connection, {"lineitem"}, {"lineitem": 60175})
+
+        assert ledger.satisfied == []
+        assert "not ordered by ['l_key']" in ledger.dropped[0].reason
+
+    def test_tables_that_were_not_mirrored_drop_the_intent(self, pg_mooncake_stubs):
+        adapter, config, ledger = _mirror_adapter(pg_mooncake_stubs, "region")
+        adapter._record_cluster_satisfied(ledger, "region", config, ["r_key"])
+        connection = Mock()
+        connection.cursor.return_value = _MirrorCursor()
+
+        adapter._settle_cluster_claims(connection, set(), {})
+
+        assert ledger.satisfied == []
+        assert "was not mirrored" in ledger.dropped[0].reason
+
+    @pytest.mark.parametrize(
+        "cursor, reason",
+        [
+            (_MirrorCursor(registered=False), "not registered with moonlink"),
+            (_MirrorCursor(readback=(0, 0, 0.0)), "no mirror data files found"),
+            (_MirrorCursor(readback=RuntimeError("s3 access denied")), "s3 access denied"),
+            (_MirrorCursor(location="/tmp/$evil"), "cannot be read back safely"),
+        ],
+    )
+    def test_an_unreadable_mirror_is_never_claimed(self, pg_mooncake_stubs, cursor, reason):
+        adapter, config, ledger = _mirror_adapter(pg_mooncake_stubs, "lineitem")
+        adapter._record_cluster_satisfied(ledger, "lineitem", config, ["l_key"])
+        connection = Mock()
+        connection.cursor.return_value = cursor
+
+        adapter._settle_cluster_claims(connection, {"lineitem"}, {"lineitem": 50000})
+
+        assert ledger.satisfied == []
+        assert reason in ledger.dropped[0].reason
+        assert "columnstore mirror readback failed" in ledger.dropped[0].reason
+
+    def test_readback_checks_the_whole_key_in_the_mirror_directory(self, pg_mooncake_stubs):
+        adapter, _config, _ledger = _mirror_adapter(pg_mooncake_stubs)
+        cursor = _MirrorCursor()
+
+        adapter._mirror_order_evidence(cursor, "lineitem", ["l_orderkey", "l_linenumber"])
+
+        query = next(sql for sql in cursor.executed if "duckdb.query" in sql)
+        assert "/var/lib/postgresql/18/docker/pg_mooncake/benchbox/public.lineitem/data/*.parquet" in query
+        assert "'c0': \"l_orderkey\", 'c1': \"l_linenumber\"" in query
+
+    def test_a_mirror_holding_other_rows_than_the_table_is_never_claimed(self, pg_mooncake_stubs):
+        adapter, config, ledger = _mirror_adapter(pg_mooncake_stubs, "lineitem")
+        adapter._record_cluster_satisfied(ledger, "lineitem", config, ["l_key"])
+        connection = Mock()
+        connection.cursor.return_value = _MirrorCursor(readback=(8, 120350, 0.0001))
+
+        adapter._settle_cluster_claims(connection, {"lineitem"}, {"lineitem": 60175})
+
+        assert ledger.satisfied == []
+        assert "hold 120350 rows, expected 60175" in ledger.dropped[0].reason
+
+    @pytest.mark.parametrize("column", ['a"b', "a b", "a$mooncake_order$b", "a%s"])
+    def test_columns_that_are_not_plain_identifiers_are_refused(self, pg_mooncake_stubs, column):
+        adapter, _config, _ledger = _mirror_adapter(pg_mooncake_stubs)
+
+        with pytest.raises(ValueError, match="not a plain identifier"):
+            adapter._mirror_order_evidence(_MirrorCursor(), "lineitem", [column])
+
+    def test_a_claim_with_no_recorded_index_statement_is_dropped_not_lost(self, pg_mooncake_stubs):
+        adapter, config, ledger = _mirror_adapter(pg_mooncake_stubs, "lineitem")
+        adapter._record_cluster_satisfied(ledger, "lineitem", config, ["l_key"])
+        ledger.statements.clear()
+        connection = Mock()
+        connection.cursor.return_value = _MirrorCursor(readback=(4, 60175, 0.0001))
+
+        adapter._settle_cluster_claims(connection, {"lineitem"}, {"lineitem": 60175})
+
+        assert ledger.satisfied == []
+        assert "no recorded CREATE INDEX statement" in ledger.dropped[0].reason
+
+    def test_a_promotion_failure_still_resolves_every_claim(self, pg_mooncake_stubs):
+        adapter, config, ledger = _mirror_adapter(pg_mooncake_stubs, "lineitem", "orders")
+        cursor = _MirrorCursor(readback=(4, 60175, 0.0001), fail_create="orders")
+        connection = Mock()
+        connection.cursor.return_value = cursor
+
+        def base_load(self, benchmark, connection, data_dir):
+            adapter._record_cluster_satisfied(ledger, "lineitem", config, ["l_key"])
+            adapter._record_cluster_satisfied(ledger, "orders", config, ["o_key"])
+            return {"lineitem": 60175, "orders": 15000}, 1.0, None
+
+        with (
+            patch.object(PostgreSQLAdapter, "load_data", base_load),
+            pytest.raises(RuntimeError, match="mirror creation failed"),
+        ):
+            adapter.load_data(Mock(), connection, "data")
+
+        assert [item.intent for item in ledger.satisfied] == ["sorting:lineitem (l_key)"]
+        assert "was not mirrored" in next(item for item in ledger.dropped if "orders" in item.intent).reason
+        assert adapter._pending_cluster_claims == {}
+
+    def test_only_tables_mirrored_by_this_load_can_be_claimed(self, pg_mooncake_stubs):
+        adapter, config, ledger = _mirror_adapter(pg_mooncake_stubs, "lineitem")
+        connection = Mock()
+        connection.cursor.return_value = _MirrorCursor(readback=(4, 60175, 0.0001))
+
+        def base_load(self, benchmark, connection, data_dir):
+            adapter._record_cluster_satisfied(ledger, "lineitem", config, ["l_key"])
+            return {"lineitem": 60175}, 1.0, None
+
+        with (
+            patch.object(PostgreSQLAdapter, "load_data", base_load),
+            patch.object(
+                adapter, "_promote_loaded_tables_to_mooncake", lambda connection, tables, stats, mirrored: stats
+            ),
+        ):
+            adapter.load_data(Mock(), connection, "data")
+
+        assert ledger.satisfied == []
+        assert "was not mirrored" in ledger.dropped[0].reason
+
+    def test_a_failure_after_the_mirror_exists_does_not_rename_the_heap_back(self, pg_mooncake_stubs):
+        adapter, _config, _ledger = _mirror_adapter(pg_mooncake_stubs)
+        connection = Mock()
+        cursor = _MirrorCursor(fail_count=True)
+        connection.cursor.return_value = cursor
+
+        mirrored: set[str] = set()
+        with pytest.raises(RuntimeError, match="count failed"):
+            adapter._promote_loaded_tables_to_mooncake(connection, ["orders"], {"orders": 5}, mirrored)
+
+        assert not any(sql.endswith('RENAME TO "orders"') for sql in cursor.executed)
+        assert mirrored == {"orders"}
