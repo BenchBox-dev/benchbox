@@ -4,7 +4,7 @@
     "The walk is iterative or catches RecursionError and fails closed",
     "Test with a planted tree that would explode without the cap"
   ],
-  "context": "Code: packages/service/src/ship_no_ship_service/doctor.py (Mach-O dependency closure) and macho.py. Evidence: plan evidence dir review-r2/adjudication.md, fix-verification round 4. Blocked: the ship-no-ship effort was paused by the owner on 2026-10-17; resume only on the owner's word.",
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "doctor resolves @rpath separately for each loading chain. On a toolchain tree built so many libraries load each other through many rpaths, the number of chains grows exponentially, and the recursive walk can also hit Python's recursion limit. Result: doctor hangs or crashes rather than passing, so it is not a bypass. Planting such a tree needs write access to the root-owned toolchain. Found by the independent fix review of the doctor PR, deferred as Low.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "op": "update",
       "op_id": "8a69ebac478c4cae9a7b760dd9e83053",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:26:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8fda1ec5b2164a72869b6eb91d8a09c7",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
