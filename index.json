@@ -23547,7 +23547,7 @@
         "ssns-n5-release-workflow"
       ],
       "priority": "high",
-      "status": "blocked",
+      "status": "dropped",
       "title": "ship-no-ship: service core (config, App auth, discovery, queue, outbox, heartbeat) and the doctor harness"
     },
     "ssns-n7-review-runner": {
