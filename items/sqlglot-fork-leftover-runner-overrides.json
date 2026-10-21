@@ -4,6 +4,7 @@
     "Moved rewrites have fork-side real-engine tests and an old-vs-new difference list.",
     "rg shows none of the moved functions remain in BenchBox."
   ],
+  "context": "OWNER DECISIONS (2026-10-21): (1) Guiding rule: always move toward the rewrite that runs the MOST CORRECT query and returns the MOST CORRECT result, aligned to the goal and intention of the benchmark; that overrides keeping previous incorrect results (changes to published results are then flagged, not avoided). Apply this to the TPC-DI double-count rewrite: determine the benchmark-intended answer (row count vs 1) from the TPC-DI spec/validation definition, implement the correct form as a named fork rewrite (or fix the query), and flag affected published results. (2) The owner is very concerned about FROM VALUES (1) anywhere in BenchBox: audit every use (rg -n 'FROM VALUES' benchbox), replace with the correct engine-portable construct (FROM-less SELECT or the engine's single-row source) in the fork, prove on engines (Doris reports FROM (VALUES (1)) AS d(c) not implemented), and add a regression test banning it in generated SQL. (3) TPC-DS Q47/Q57/Q66/Q90 and Postgres rollup overrides: split per override: generic regex-style overrides become named fork rewrites; whole-query replacement bodies stay in BenchBox as benchmark data with only the mechanism in the fork.",
   "description": "F10 left these in BenchBox: TPC-DS ClickHouse Q47, Q57, Q66, Q90 and the Postgres rollup overrides (regex or whole-query overrides in core/tpcds/benchmark/runner.py), the TPC-DI double-count rewrite (turns SELECT COUNT(*) FROM (SELECT COUNT(*) ...) into a source row count for ClickHouse/StarRocks/Doris, which changes the returned value), and the ClickHouse FROM VALUES (1) rewrite (belongs with the F9 dual rewrite; Doris reports FROM (VALUES (1)) AS d(c) as not implemented). The goal requires no BenchBox module to hold fork translation logic after the move, so each needs a decision: generic named fork rewrite, benchmark data kept in BenchBox with only the mechanism in the fork, or removal with a published-results note. The double-count rewrite changes a value, so the owner decides before it moves.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "cec274b37cd943489b56f72602d8aa65",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T12:34:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "64f22bebf6f54dde9d8e5c23f221c0c8",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
