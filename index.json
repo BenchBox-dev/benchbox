@@ -15775,9 +15775,9 @@
     },
     "oracle-review-stale-failure-recurrence-20261020": {
       "claim": {
-        "expires_at": "2026-10-22T23:39:55Z",
-        "generation": "2d40df9d8ad343888c1215818554ffe0",
-        "renewals": 0,
+        "expires_at": "2026-10-22T23:40:08Z",
+        "generation": "49d3e8c234504b4d854e82e3e74c9b02",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601"
       },
       "needs": [],
