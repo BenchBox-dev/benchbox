@@ -15510,6 +15510,15 @@
       "status": "done",
       "title": "Verify the oracle follow-up sequence end to end after its last change merges"
     },
+    "oracle-gate-consumers-cutover-20261021": {
+      "claim": null,
+      "needs": [
+        "owner-oracle-gate-required-20261021"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Move oracle-review consumers to oracle-gate"
+    },
     "oracle-gate-status-20261021": {
       "claim": null,
       "needs": [],
