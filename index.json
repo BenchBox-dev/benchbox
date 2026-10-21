@@ -23610,7 +23610,7 @@
         "ssns-o2-role-users"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship owner: sign in each reviewer CLI as its role user"
     },
     "ssns-o5-autorestart": {
