@@ -12471,6 +12471,15 @@
       "status": "done",
       "title": "A9: Cut accepted corpus promotions over to independent production deployment"
     },
+    "inert-paths-manifest-20261021": {
+      "claim": null,
+      "needs": [
+        "ci-heavy-tier-runs-on-escalation-20261021"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "One inert-path manifest that excludes machine-read docs, with a drift guard"
+    },
     "influxdb-timeseries-platform": {
       "claim": null,
       "needs": [],

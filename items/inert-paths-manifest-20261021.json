@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Must-catch guard fixtures for ruleset_drift_check.py:16, test_ci_lint_parity.py:435, version.py:24, check_doc_external_links.py:52, pr_review_followups.py:28 fail when their target is not excepted",
+    "An AGENTS.md-only PR gets an oracle review and runs test_batch_skill_delivery (observed)",
+    "Oracle exemption, reviewer prose filter, coverage inert check and path-filters routing agree (consistency test)",
+    "Merged with a current-head oracle SHIP (gate path)"
+  ],
+  "description": "The oracle exempt list (oracle-reviewers.yml classifier.exempt_paths, fnmatch *.md at any depth), the coverage selector's INERT_PATH_PATTERNS, and path-filters.yml disagree, and docs/* and *.md include files read by code and tests. Owner decision: exemptions minus machine-read exceptions. Create .github/inert-paths.txt in the soundness-paths.txt format, read by oracle_review_check, oracle_reviewers classifier._in_scope, the cli.py prose filter (:210-217), coverage selection (no PyYAML in ci-paths), and the oracle-gate script. Seed machine-read set: AGENTS.md, CLAUDE.md, GEMINI.md, README.md, docs/README.md, docs/agent/**, docs/internal/repo-admin-settings.md, docs/internal/dev-loop-worktrees.md, docs/operations/ci-local-parity.md, docs/reference/public-contracts.md, docs/publish-allowlist.txt, docs/publish-exclusions.txt, docs/linkcheck_ignore.txt, tests/uat/CHARTER.md, .claude/**, **/SKILL.md, prompts/**, *.md under benchbox/, scripts/, _project/scripts/, .github/. Drift guard resolves string literals, '/'-joined Path chains, os.path.join and __file__-relative constants in benchbox/, scripts/, _project/scripts/, tests/, .github/workflows/, Makefile, make/*.mk; indexes basenames; fails on tracked symlinks into inert paths. Selection maps each machine-read doc to the tests that read it. path-filters.yml routes machine-read docs as code.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:44:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "375218e72bc549dfbd322d2e0620a439",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    }
+  ]
+}
