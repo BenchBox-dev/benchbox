@@ -38,6 +38,11 @@ a matching `<benchmark>_notuning.yaml`):
 - `paradedb/` - `tpch`. Same heap-layout profile as `pg-duckdb/`: partitions
   `lineitem` and `orders` by their date columns and clusters them on their
   order keys after load, with constraints disabled.
+- `citus/` - `tpch`. Hash-distributes `lineitem` and `orders` on their order
+  keys so they colocate, replicates the other tables as reference tables, stores
+  `part` columnar and clusters `orders` by date after load. Constraints are
+  disabled because distributed tables cannot enforce keys that omit the
+  distribution column.
 
 DataFrame platforms live under `dataframe/` with a flat
 `<platform>_<profile>.yaml` naming (e.g. `polars_optimized.yaml`,

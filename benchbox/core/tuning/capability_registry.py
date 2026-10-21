@@ -438,14 +438,33 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
     },
     "citus": {
-        _T.PARTITIONING: _none(
-            "postgresql_ddl_generator:preview_only",
-            "CitusAdapter subclasses PostgreSQLAdapter with no DDL override: identical "
-            "execution gap to postgresql (preview computes PARTITION BY, execution renders nothing).",
+        _T.PARTITIONING: _ddl(
+            "postgresql_partition_by_date_domain",
+            "CitusAdapter inherits PostgreSQLAdapter partitioning: PARTITION BY plus child partitions at CREATE "
+            "TABLE time, skipped and recorded as dropped while primary or unique keys are requested. The "
+            "partitioned parent is then distributed, which distributes its children. The strategy and columns "
+            "are verified from pg_get_partkeydef after schema creation.",
         ),
-        _T.CLUSTERING: _none(
-            "postgresql_ddl_generator:preview_only",
-            "Same inherited execution gap as PARTITIONING.",
+        _T.CLUSTERING: _post_load(
+            "postgresql_index_cluster",
+            "CREATE INDEX then CLUSTER after load, with the index columns verified before CLUSTER commits and "
+            "indisclustered verified on the shell table and on every shard through run_command_on_shards. "
+            "Recorded as dropped, with the reason, on columnar tables (CLUSTER is rejected) and on partitioned "
+            "distributed tables (Citus does not propagate CLUSTER on the parent to its shards).",
+        ),
+        _T.SORTING: _post_load(
+            "postgresql_index_cluster",
+            "Same CREATE INDEX plus CLUSTER as CLUSTERING; sorting columns merge with clustering columns into "
+            "one index ordered by tuning order.",
+        ),
+        _T.DISTRIBUTION: _ddl(
+            "citus_create_distributed_table",
+            "The first distribution column becomes the create_distributed_table hash column, verified from "
+            "pg_dist_partition (partmethod h, partition key, colocation id). A table can instead be marked "
+            "reference (create_reference_table, partmethod n) or columnar (citus_columnar access method) in "
+            "the tuning file. A tuning-file entry takes precedence over --citus-distribution-column, which "
+            "applies only to tables the file does not place. Citus hash-distributes on one column, so a "
+            "request for several is recorded as dropped.",
         ),
         _T.BLOOM_FILTERS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
         _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
