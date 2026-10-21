@@ -23044,6 +23044,15 @@
       "status": "done",
       "title": "BenchBox: adopt the fork wheel containing the ClickHouse, StarRocks and TPC-DS runner rewrites"
     },
+    "sqlglot-fork-a6-adopt-wheel-7": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-review-m3-sqlite-date-semantics"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "BenchBox: adopt the fork wheel with the review fixes (Doris key model, row-source guard, SQLite date semantics) and wire mark_date_columns for sqlite"
+    },
     "sqlglot-fork-adapter-bigquery-safe-division": {
       "claim": null,
       "needs": [

@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Wheel 30.24.0.7 built from a clean checkout at a recorded fork commit; pin, hash and baseline updated; verified.",
+    "TPC-DS Q72 on sqlite uses DATE(d1.d_date,'5 DAY') via mark_date_columns, with an executed sqlite3-vs-DuckDB test in BenchBox.",
+    "Doris/StarRocks DDL callers cannot hit the new key-model error on shipped benchmark tables (test over shipped schemas).",
+    "make pr-preflight, comment-policy-check, compat-docs-check, sqlglot-repro-retirement-check, typecheck pass; PR merged."
+  ],
+  "description": "After the wheel 30.24.0.6 adoption (AdoptWheel4) merges, cut the next fork release (30.24.0.7) from fork main containing PRs #36 (Doris/StarRocks key model raises instead of narrowing), #37 (drop_literal_row_source single-row guard), #38 (engine version pins) and #39 (SQLite date integer semantics + mark_date_columns), adopt it by the standard procedure (fork revision-bump PR, clean-checkout build, verify, sync_sqlglot_runtime --wheel, pin/hash/baseline), and wire BenchBox: apply_rewrite('mark_date_columns', expression, 'sqlite', date_columns=<TPC-DS DATE columns>) on the parsed tree inside translate_sql_query for sqlite next to fold_between_literal_arithmetic (dialect_utils.py ~360; the runner passes the schema DATE columns; marking is lost on a SQL round trip so it must run on the tree). Doris adapter callers must list composite key columns first or fix callers so the new ValueError does not break runs. Include the executed evidence-gate output (sqlglot-fork-review-h2-execution-evidence-gate) if merged. Corpus diff vs the previous wheel in the PR body; unexpected differences stop for the owner.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c196539bd596dfa2c5536f3b",
+      "at": "2026-10-21T23:54:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5db7f24ab1e7463ca1ee82688b4d4dba",
+      "session_id": "ea33e0e9a667469f905c4d3119e03265"
+    }
+  ]
+}
