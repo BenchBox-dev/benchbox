@@ -4,7 +4,7 @@
     "Soundness path tests pass",
     "Dangling-reference test passes"
   ],
-  "context": "2026-10-21: keep _project/scripts/oracle_gate.py and .github/inert-paths.txt (outside oracle_reviewers/); they are the merge gate and the shared inert manifest, not engine code.",
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "Plan step B6. Delete _project/scripts/oracle_reviewers/, its tests and fixture. Checklist: .github/soundness-paths.txt, gate_paths, quality/comment-policy.json, tests/unit/ledger_cutover_files.txt, workflow sparse checkouts, docs. New tests/unit/test_no_dangling_oracle_paths.py fails on any tracked reference outside dated history files.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "04af751542fe43c4b77f1010b2abc54a",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:22:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "348bdbc1010d4e85bc61e06d825f9bc7",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
