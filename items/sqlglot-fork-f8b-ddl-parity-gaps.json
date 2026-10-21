@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Each of the eight gaps is either fixed in the fork with a test (executed where an engine exists) or explicitly classified as an equivalent difference with evidence.",
+    "The BenchBox DDL golden corpus shows no non-equivalent difference after the wheel adoption, or every remaining difference is listed and owner-approved.",
+    "Fork PRs merged with make check, benchbox-dist, benchbox-check passing; new wheel adopted via a BenchBox PR (pin, hash)."
+  ],
+  "description": "The A3 DDL golden corpus (219 recorded legacy-vs-fork differences) shows non-equivalent output that blocks deleting BenchBox's DDL rules. Fix in the fork (most-correct-DDL rule; legacy is the reference only where it is correct): (1) QuestDB: fork drops timestamp(col) PARTITION BY DAY|MONTH designated timestamp and SYMBOL types that legacy emits (performance-relevant); (2) BigQuery: fork omits NOT ENFORCED on PRIMARY KEY (invalid BigQuery DDL) and lowercases table names where legacy preserved case in proj.ds.T; (3) Spark, Lakesail, Athena: fork leaves ARRAY<DOUBLE>[256] (invalid); (4) Redshift: fork appends SORTKEY AUTO even when a SORTKEY is present; (5) StarRocks: CHAR(n)/VARCHAR(n) become VARCHAR(65533) and the key model is PRIMARY where legacy chose DUPLICATE KEY on tables with a primary key; (6) Spark: SORTED BY dropped on bucketed Hive tables, and USING DELTA/ORC replaced by PARQUET when USING is already present; (7) SingleStore DATETIME becomes TIMESTAMP; (8) the strip helper keeps WITH(FORMAT=...) on postgres. For each: decide fork vs BenchBox-owned data (table-specific choices stay as arguments), implement with executed tests on engines where available (Postgres, DuckDB, PySpark, StarRocks/Doris CI jobs, chDB, QuestDB CI job) and document gaps, then cut a wheel adoption.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T19:28:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "df0e92bea2ef46b5b11c9c4f71271d63",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

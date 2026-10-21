@@ -23208,6 +23208,15 @@
       "status": "done",
       "title": "Fork: engine-specific DDL (ClickHouse, Doris, StarRocks, Hive-family, Redshift, Delta/Iceberg) through DdlOptions"
     },
+    "sqlglot-fork-f8b-ddl-parity-gaps": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f8-engine-specific-ddl"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Fork: close the DDL parity gaps found by the DDL golden corpus before BenchBox deletes its DDL rules"
+    },
     "sqlglot-fork-f9-havoc-datafusion-rewrites": {
       "claim": null,
       "needs": [
