@@ -4,7 +4,7 @@
     "Each affected result is marked per the results provenance policy (flagged or superseded) or scheduled for rerun; the decision per group is recorded.",
     "No live-cloud runs are performed without owner approval; local-engine reruns are listed separately from cloud reruns."
   ],
-  "context": "Affected published results accumulated so far (owner rule: most correct query/result wins; rerun needs approval for cloud): TPC-DS Q21/Q40 and tpcds_obt Q40 on SQLite (boundary-day row, rerun approved, local); TPC-DI EQ3 source_records on DuckDB/Postgres/SQLite (was 1, now row count) and EQ7 base on engines where it failed; TPC-DI day-difference values on SQLite (fractional -> whole days); DataFusion TPC-H Q11/Q20 timings (generic decorrelation); ClickHouse TPC-DS Q12/Q20/Q98/Q49 zero-divisor behavior (error/inf -> NULL, only on zero divisors); TPC-DS SQLite DATE('..')+INTERVAL DAY output string change; ClickBench Q29 Snowflake REGEXP_REPLACE group text.",
+  "context": "Added from the ClickHouse safe-division adoption (PR #3235, merge 97cdb5c62): TPC-H Q14 and TPC-DS Q12, Q20, Q49, Q98 on ClickHouse now wrap divisors the old regex missed in nullIf(x, 0); results differ only when a zero divisor occurs (error/inf -> NULL). execution_time_seconds for ClickHouse no longer includes the rewrite (small timing shift). Also: the ClickHouse transform now raises ParseError on SQL SQLGlot cannot parse, while the Databricks and Snowflake paths return the query unchanged; D5 (sqlglot-fork-d5-delete-clickhouse-starrocks-rewrites) must make this consistent (pass unparseable SQL through unchanged, matching the other adapters, unless owner says otherwise).",
   "description": "Two accepted translation changes (BenchBox PRs 3189 and 3185, 2026-10-21) alter the SQL BenchBox generates, so results published before them used different SQL. Affected: TPC-DI AQ5, AQ6, AQ9 on mysql, doris, starrocks and singlestore (STDDEV was population deviation, now STDDEV_SAMP); read_primitives statistical_variance_stddev on the same four dialects; read_primitives array_sort and array_distinct on duckdb (LIST_SORT); approx_quantile_groupby on bigquery (APPROX_QUANTILES(x,2)[1]); pivot_basic on starrocks (PIVOT was dropped); ClickBench on sqlite Q19 and Q43 and on datafusion, netezza, ansi, standard, vertica and greenplum (previously ran untranslated ClickHouse text). The release notes already state this. Decide per published result whether to flag it, supersede it or rerun it.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3189",
@@ -26,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "67447d910492434b995a375f4c6fee8e",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T18:11:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4d6f996a868845dba7e137522ec63b36",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
