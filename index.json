@@ -1446,17 +1446,12 @@
       "title": "Stop PostgreSQL-family baseline results from recording session tuning statements that fail validation"
     },
     "autogen-postgres-pinning-and-mirror-consistency-20261018": {
-      "claim": {
-        "expires_at": "2026-10-22T13:05:45Z",
-        "generation": "49d95131d057420788c21efeb45819a5",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-docker-mirror-tag-digest-20261018"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Pin and mirror the remaining Postgres references that bypass the GHCR mirror"
     },
     "autogen-scheduled-run-confirmation-20261018": {
