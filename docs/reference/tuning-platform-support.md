@@ -28,7 +28,7 @@ Aliases resolve to another platform's entry: `chdb` -> `clickhouse`, `clickhouse
 | `athena` | none | none | check_constraints, clustering, distribution, foreign_keys, partitioning, primary_keys, sorting, unique_constraints | - | no | no |
 | `azure-synapse` | none | foreign_keys, primary_keys | check_constraints, clustering, distribution, partitioning, sorting, unique_constraints | - | no | no |
 | `bigquery` | none | foreign_keys, primary_keys | check_constraints, clustering, materialized_views, partitioning, unique_constraints | - | no | no |
-| `cedardb` | none | foreign_keys, primary_keys | bloom_filters, check_constraints, clustering, materialized_views, partitioning, unique_constraints | - | no | no |
+| `cedardb` | none | foreign_keys, partitioning, primary_keys | bloom_filters, check_constraints, clustering, materialized_views, unique_constraints | - | no | no |
 | `citus` | none | clustering, distribution, foreign_keys, partitioning, primary_keys, sorting | bloom_filters, check_constraints, materialized_views, unique_constraints | - | no | no |
 | `clickhouse` | ssb, tpcds, tpch | clustering, partitioning, primary_keys, sorting | check_constraints, foreign_keys, materialized_views, unique_constraints | - | yes | yes |
 | `databend` | none | clustering | check_constraints, distribution, foreign_keys, materialized_views, partitioning, primary_keys, sorting, unique_constraints | - | no | no |

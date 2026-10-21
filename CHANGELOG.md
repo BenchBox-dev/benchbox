@@ -76,6 +76,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and found ordered on the tuned columns. A partitioning request is rejected when the
   tuning file loads, because partitioning the source does not shape the mirror. A TPC-H profile is at
   `examples/tunings/pg-mooncake/tpch_tuned.yaml`.
+- CedarDB tuning files now apply hash partitioning, and the adapter claims `PARTITIONING`.
+  CedarDB supports only `PARTITION BY HASH` and creates its partitions itself, so every
+  partitioning column is hashed and no explicit partitions are emitted; a primary key
+  need not include the partition columns. Each request is verified from
+  `pg_get_partkeydef`. Clustering and sorting are rejected when the tuning file loads,
+  because CedarDB does not implement `CLUSTER`. A TPC-H profile is at
+  `examples/tunings/cedardb/tpch_tuned.yaml`.
+- The applied-tuning ledger no longer records an intent as satisfied by its executed
+  DDL statement after a catalog readback has already recorded it as not applied.
 - The bundled SQLGlot runtime moves from 30.24.0.1 to 30.24.0.2 (fork commit
   `010db57fe835`), which adds the `netezza`, `greenplum`, `vertica`, `datafusion`
   and `questdb` dialects, SQLite, DuckDB, Snowflake and Databricks generator
