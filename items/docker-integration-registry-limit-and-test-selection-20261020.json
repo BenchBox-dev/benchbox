@@ -4,7 +4,7 @@
     "That run executes test_throughput_session_isolation.py stream-session tests with ids recorded",
     "No test is skipped or deselected to get green"
   ],
-  "context": "Found 2026-10-20 during the follow-up batch. Evidence is from that session; re-verify before editing. Unclaimed.\n\nCHECKPOINT 2026-10-21: PR #3231 (head c91c19bb7, armed, needs oracle verdict) adds tests/integration/test_throughput_session_isolation.py::TestPostgreSQLIndependentConnectionIsolatesSessions to the docker-integration postgres job selection. Branch dispatch run https://github.com/BenchBox-dev/benchbox/actions/runs/39611140262 (verified by the controller from the job log): validate-input, mirror-postgres and postgres jobs success; the GHCR pull succeeded (no toomanyrequests); 13 passed in 6.91 s including the stream-session class tests (PASSED lines read in the log). Run was on the branch, not develop. NEXT: after #3231 merges, dispatch docker-integration.yml on develop (-f services=postgres), confirm the same, then finish this item and the PG integration verification item.",
+  "context": "Found 2026-10-20 during the follow-up batch. Evidence is from that session; re-verify before editing. Unclaimed.\n\nCHECKPOINT 2026-10-21: PR #3231 (head c91c19bb7, armed, needs oracle verdict) adds tests/integration/test_throughput_session_isolation.py::TestPostgreSQLIndependentConnectionIsolatesSessions to the docker-integration postgres job selection. Branch dispatch run https://github.com/BenchBox-dev/benchbox/actions/runs/39611140262 (verified by the controller from the job log): validate-input, mirror-postgres and postgres jobs success; the GHCR pull succeeded (no toomanyrequests); 13 passed in 6.91 s including the stream-session class tests (PASSED lines read in the log). Run was on the branch, not develop. NEXT: after #3231 merges, dispatch docker-integration.yml on develop (-f services=postgres), confirm the same, then finish this item and the PG integration verification item.\n\n### Completion Evidence (2026-10-21)\nPR #3231 merged as c8ea32e047804be33461893cd5ac6ca479fe9f93 (oracle verdict SHIP on c91c19bb7): the docker-integration postgres job now also selects tests/integration/test_throughput_session_isolation.py::TestPostgreSQLIndependentConnectionIsolatesSessions; workflow test updated. Dispatch on develop (head 8606e780f) after the merge: https://github.com/BenchBox-dev/benchbox/actions/runs/39663231339 success: validate-input, mirror-postgres and postgres jobs success; image pulled from the GHCR mirror (no toomanyrequests); \"13 passed in 6.60s\" with 5 PASSED lines for TestPostgreSQLIndependentConnectionIsolatesSessions (read from the job log); no FAILED/ERROR lines. Earlier failures were dispatches 39504256363 and 39504700230 (registry pull limit on public.ecr.aws) and scheduled run 39267152755; fixed by the GHCR mirror in #3187.",
   "description": "docker-integration.yml fails daily with \"toomanyrequests: Data limit exceeded\" pulling the postgres image from public.ecr.aws (scheduled run 39267152755; dispatches 39504256363 and 39504700230 on develop). Also, its postgres job runs only tests/integration/platforms/test_postgresql_live.py -m live_postgresql, so the stream-session tests in tests/integration/test_throughput_session_isolation.py (changed by the PG-family baseline fix) never run in CI. Open PR 3187 moves the integration job to the GHCR mirror, which may fix the pull limit. Work: after that merges, confirm the pull succeeds, add the stream-session tests to the selection (they are marked docker_integration and live_postgresql), run them green, and finish the PG integration verification item. Workflow path: oracle verdict required, no stand-in. Guardrail: no weaker selection, no new secret.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "generation": "b762d79ab4e941eb8460e2e1083774ef",
       "op": "take",
       "op_id": "6ad0e4ee74324d4399687eb167cd519e",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-21T19:49:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f863ec9be69c47a981615f2f4be6c245",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
