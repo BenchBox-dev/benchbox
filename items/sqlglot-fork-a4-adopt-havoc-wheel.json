@@ -5,6 +5,7 @@
     "Cumulative golden-corpus differences listed in the PR with a result-version note.",
     "make pr-preflight, make comment-policy-check, make compat-docs-check and make typecheck pass; PR merged."
   ],
+  "context": "From F9 (fork PRs #18, #20). Owner decisions needed in the adoption PR: (1) DataFusion Q11/Q20 now use generic decorrelate_subqueries; row results match official TPC-H answers at SF1 on DataFusion 52, but the plans differ from the hand-written queries so DataFusion timings for those two can move; if a published timing must not move, keep the replacements in BenchBox and use only the Q16/Q18 rewrites. (2) BigQuery 3_v9 NULLS LAST removal stays a caller-gated rewrite (strip_window_null_ordering) pending a live BigQuery check; making it generator behavior is a later decision. (3) DataFusion 52 answers all four original queries correctly, so the workarounds could be retired; BenchBox decides retire vs pin. (4) GROUP BY () drop now applies to every Spark/Databricks transpile (PySpark and DataFusion reject it). (5) BenchBox unit tests that assert NotImplementedError for ClickHouse COUNT/MIN/MAX and Presto window filters with COUNT(*)/DISTINCT must change: the fork now rewrites them. Stop for owner approval if the corpus diff touches published results.",
   "description": "Adopt the wheel containing F9 with the standard build, verify and pin procedure. Add apply_rewrite to the wrapper and a golden-corpus test over tests/unit/core/tpchavoc and the DataFusion and Spark transformer test inputs. No deletion in this PR.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md"
@@ -24,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "37e0689132ef4d5cb66278a91310f322",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T00:11:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6b951232ae5e49a69093fe50baa80ab6",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
