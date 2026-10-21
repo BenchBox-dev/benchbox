@@ -1569,6 +1569,23 @@ def test_a_pass_without_an_open_finding_is_not_an_override(pull):
     assert digest.standin_overrides([pull]) == []
 
 
+def test_a_standin_overriding_a_do_not_ship_without_severities_is_listed():
+    body = f"### oracle-verdict: failure for `{HEAD}`\n\nDecision: **DO NOT SHIP**.\n"
+    pull = evidence(reviews=(failure_review(body=body),), comments=(standin(HEAD, at=STANDIN_AT),))
+    assert digest.standin_overrides([pull])[0].severities == ("DO NOT SHIP",)
+
+
+def test_a_standin_overriding_a_decisionless_failure_is_listed():
+    pull = evidence(
+        reviews=(failure_review(body=oracle_verdict(HEAD, "failure")),), comments=(standin(HEAD, at=STANDIN_AT),)
+    )
+    assert digest.standin_overrides([pull])[0].severities == ("failure",)
+
+
+def test_a_standin_without_any_verdict_is_not_an_override():
+    assert digest.standin_overrides([evidence(comments=(standin(HEAD, at=STANDIN_AT),))]) == []
+
+
 def test_a_standin_override_without_an_instruction_marks_the_gap():
     pull = evidence(reviews=(failure_review(),), comments=(standin(HEAD, at=STANDIN_AT),))
     override = digest.standin_overrides([pull])[0]

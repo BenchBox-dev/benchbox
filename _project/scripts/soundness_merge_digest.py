@@ -80,6 +80,7 @@ OPEN_DEFECT_SECTIONS = frozenset(
 KNOWN_CLOSED_SECTIONS = frozenset({"Result withheld: the run's artifacts failed validation", "Reviewers not available"})
 SECTION_HEADING = re.compile(r"^\*\*(.+?)\*\*$")
 DEFECT_BULLET = re.compile(r"^[-*]\s+\*\*(Critical|High|Medium|Low)\*\*")
+DECISION_LINE = re.compile(r"(?m)^Decision: \*\*(.+?)\*\*")
 WITHDRAWN_HEADING = re.compile(r"^\s*(?:\*\*)?Withdrawn:(?:\*\*)?\s*(.*)$")
 WITHDRAWN_ITEM = re.compile(r"^\s*[-*]\s+(.+?)\s*$")
 DETAILS_BLOCK = re.compile(r"<details>.*?</details>", re.DOTALL)
@@ -417,14 +418,25 @@ def open_finding_severities(evidence: PullEvidence) -> tuple[str, ...]:
     return tuple(sorted(found, key=lambda severity: SEVERITY_ORDER[severity]))
 
 
+def blocking_verdict_decision(evidence: PullEvidence) -> str | None:
+    ordered = sorted(_oracle_reviews(evidence, evidence.content_shas), key=lambda review: review.submitted_at)
+    blocking = [review for review in ordered if _review_verdict(review) not in (None, "success")]
+    if not blocking:
+        return None
+    match = DECISION_LINE.search(blocking[-1].body or "")
+    if match:
+        return match.group(1).strip()
+    return _review_verdict(blocking[-1]) or "failure"
+
+
 def standin_overrides(pulls: Sequence[PullEvidence]) -> list[StandinOverride]:
     found: list[StandinOverride] = []
     for pull in pulls:
         comment = standin_comment(pull)
         if comment is None or "oracle-review" in review_signals(pull):
             continue
-        severities = open_finding_severities(pull)
-        if not severities:
+        severities = open_finding_severities(pull) or (blocking_verdict_decision(pull),)
+        if severities == (None,):
             continue
         head = pull.commits[-1].sha if pull.commits else ""
         found.append(
