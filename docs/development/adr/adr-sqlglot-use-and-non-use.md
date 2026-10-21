@@ -108,7 +108,7 @@ rewrites, DDL registries and authored variants remain BenchBox-owned.
 | Source-to-target SQL translation | `benchbox/utils/dialect_utils.py` `translate_sql_query()` | Centralized wrapper; pre/post processors plug in here |
 | Identifier quoting, function/operator renaming, type-syntax conversion | SQLGlot generator | Per-dialect; type *aliasing* (e.g., `VARCHAR` to `STRING` for Doris) is handled at the DDL layer |
 | AST parsing | SQLGlot parser | Consumed by `query_adapter` and `query_compile` phases |
-| Roundtrip parsing of TPC-base SQL | SQLGlot | Default base is `netezza`; `dialect_utils.normalize_dialect_for_sqlglot()` maps unsupported targets to nearest peer |
+| Roundtrip parsing of TPC-base SQL | SQLGlot | Default base is `netezza`; `dialect_utils.resolve_sql_dialect()` maps platform keys to fork dialects and raises for an unknown name |
 
 SQLGlot handles the long tail of SQL syntax variation (joins, CTEs, window
 functions, aggregates, basic types, `LIMIT` to `TOP N`, `EXTRACT` to

@@ -25,7 +25,6 @@ _SKIP_FILES = {
     "adapter_factory.py",
     "cloud_shared.py",
     "presto_trino_utils.py",
-    "questdb_rewriter.py",
     "datafusion_query_transformer.py",
     "datafusion_write_transformer.py",
 }

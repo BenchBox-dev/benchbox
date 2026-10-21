@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `NULLIF(x, 0)` is no longer wrapped a second time. Queries without a division
   are regenerated from the parsed tree, so their text can differ in formatting
   but not in meaning. No published Snowflake result changes.
+- Removed the wrapper fix-ups (DuckDB `ALL` restore, SQLite interval/EXTRACT/DATE_TRUNC rewrites, SQLite discount-bound fold, TPC-DS date-integer regex), `normalize_dialect_for_sqlglot` and `benchbox/platforms/questdb_rewriter.py`. `resolve_sql_dialect` and `PLATFORM_DIALECTS` map platform keys to runtime dialects; an unknown name raises `UnknownSqlDialectError`. `influxdb` resolves to `datafusion`.
+- QuestDB now translates to the runtime `questdb` dialect. TPC-H Q15 and every CTE column list keep their column names, which the removed rewriter dropped.
+- SQLite month/year intervals on a date with day of month above 28 now fail instead of returning a rolled-over date.
+- `netezza`, `greenplum`, `vertica` and `datafusion` use their own runtime dialects instead of postgres; TPC-DI date-difference output changes on ClickHouse, StarRocks, BigQuery, Databricks, DataFusion and Snowflake.
 - TPC-DI schema, query, loader, validation and SCD translation now call
   `translate_sql_query` with explicit `identify=False` instead of the vendored
   SQLGlot directly, so the DuckDB `ALL` restore and SQLite fix-ups apply there

@@ -6,10 +6,12 @@ from typing import Any, cast
 import pytest
 
 from benchbox.utils.dialect_utils import (
+    PLATFORM_DIALECTS,
+    SQLITE_DISCOUNT_BOUNDS,
     SQLTranslationError,
-    _query_has_group_or_order_by_all,
-    fix_postgres_date_arithmetic,
-    normalize_dialect_for_sqlglot,
+    UnknownSqlDialectError,
+    apply_rewrite,
+    resolve_sql_dialect,
     sql_translation_context,
     summarize_sql_translation_outcomes,
     translate_sql_query,
@@ -19,6 +21,16 @@ pytestmark = [
     pytest.mark.unit,
     pytest.mark.medium,
 ]
+
+
+def _fold_sqlite(query: str) -> str:
+    return apply_rewrite("fold_between_literal_arithmetic", query, "sqlite", **SQLITE_DISCOUNT_BOUNDS)
+
+
+def _roundtrip_sqlite(query: str) -> str:
+    from benchbox._vendor import sqlglot
+
+    return sqlglot.parse_one(query, read="sqlite").sql(dialect="sqlite")
 
 
 class TestSQLiteDiscountBoundaries:
@@ -86,10 +98,8 @@ class TestSQLiteDiscountBoundaries:
         ],
     )
     def test_unrelated_or_nonliteral_expressions_are_unchanged(self, predicate):
-        from benchbox.utils.dialect_utils import _fix_sqlite_unsupported_syntax
-
         query = f"SELECT 0.06 + 0.01 FROM lineitem WHERE {predicate}"
-        assert _fix_sqlite_unsupported_syntax(query) == query
+        assert _fold_sqlite(query) == _roundtrip_sqlite(query)
 
     def test_integer_overflow_bounds_keep_sqlite_semantics(self):
         import sqlite3
@@ -125,8 +135,6 @@ class TestSQLiteDiscountBoundaries:
         import sqlite3
         from decimal import Decimal
 
-        from benchbox.utils.dialect_utils import _fix_sqlite_unsupported_syntax
-
         values = [f"{cents / 100:.2f}" for cents in range(101)]
         connection = sqlite3.connect(":memory:")
         try:
@@ -148,7 +156,7 @@ class TestSQLiteDiscountBoundaries:
                     expected = [float(value) for value in values if low <= Decimal(value) <= high]
                     checked += 1
                     original_wrong += [row[0] for row in connection.execute(query).fetchall()] != expected
-                    rewritten = _fix_sqlite_unsupported_syntax(query)
+                    rewritten = _fold_sqlite(query)
                     rewritten_wrong += [row[0] for row in connection.execute(rewritten).fetchall()] != expected
             assert checked > 250
             assert original_wrong > 0, "the sweep must exercise the SQLite boundary defect"
@@ -166,25 +174,19 @@ class TestSQLiteDiscountBoundaries:
         ],
     )
     def test_queries_that_do_not_read_lineitem_are_not_folded(self, query):
-        from benchbox.utils.dialect_utils import _fix_sqlite_unsupported_syntax
-
-        assert _fix_sqlite_unsupported_syntax(query) == query
+        assert _fold_sqlite(query) == _roundtrip_sqlite(query)
 
     def test_a_query_that_reads_lineitem_is_folded_in_a_join_and_a_subquery(self):
-        from benchbox.utils.dialect_utils import _fix_sqlite_unsupported_syntax
-
         joined = (
             "SELECT 1 FROM orders o JOIN lineitem l ON l.l_orderkey = o.o_orderkey "
             "WHERE l.l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
         )
-        assert "BETWEEN 0.05 AND 0.07" in _fix_sqlite_unsupported_syntax(joined)
+        assert "BETWEEN 0.05 AND 0.07" in _fold_sqlite(joined)
         nested = "SELECT * FROM (SELECT l_discount FROM lineitem) WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
-        assert "BETWEEN 0.05 AND 0.07" in _fix_sqlite_unsupported_syntax(nested)
+        assert "BETWEEN 0.05 AND 0.07" in _fold_sqlite(nested)
 
     def test_value_inside_the_double_noise_band_follows_exact_decimal_semantics(self):
         import sqlite3
-
-        from benchbox.utils.dialect_utils import _fix_sqlite_unsupported_syntax
 
         query = (
             "WITH lineitem AS (SELECT 0.00000000000000001 AS l_discount) SELECT l_discount FROM lineitem "
@@ -193,7 +195,7 @@ class TestSQLiteDiscountBoundaries:
         connection = sqlite3.connect(":memory:")
         try:
             assert connection.execute(query).fetchall() == [(1e-17,)]
-            assert connection.execute(_fix_sqlite_unsupported_syntax(query)).fetchall() == []
+            assert connection.execute(_fold_sqlite(query)).fetchall() == []
         finally:
             connection.close()
 
@@ -213,14 +215,12 @@ class TestSQLiteDiscountBoundaries:
     def test_cancellation_and_overflow_bounds_keep_sqlite_semantics(self, rows, low, high, expected):
         import sqlite3
 
-        from benchbox.utils.dialect_utils import _fix_sqlite_unsupported_syntax
-
         values = " UNION ALL ".join(f"SELECT {value} AS l_discount" for value in rows)
         query = (
             f"WITH lineitem AS ({values}) SELECT l_discount FROM lineitem "
             f"WHERE l_discount BETWEEN {low} AND {high} ORDER BY l_discount"
         )
-        assert _fix_sqlite_unsupported_syntax(query) == query
+        assert _fold_sqlite(query) == _roundtrip_sqlite(query)
         connection = sqlite3.connect(":memory:")
         try:
             assert [value for (value,) in connection.execute(query).fetchall()] == expected
@@ -365,27 +365,48 @@ def test_bundled_sqlite_translation_execution(surface, expression, expected):
         assert connection.execute(translated).fetchall() == [(expected,)]
 
 
-class TestDialectNormalization:
-    def test_normalize_netezza_to_postgres(self):
-        assert normalize_dialect_for_sqlglot("netezza") == "postgres"
-        assert normalize_dialect_for_sqlglot("NETEZZA") == "postgres"
-        assert normalize_dialect_for_sqlglot("Netezza") == "postgres"
+class TestDialectResolution:
+    @pytest.mark.parametrize("alias", ["ansi", "standard", "ANSI", "Standard"])
+    def test_generic_names_resolve_to_postgres(self, alias):
+        assert resolve_sql_dialect(alias) == "postgres"
 
-    def test_normalize_greenplum_to_postgres(self):
-        assert normalize_dialect_for_sqlglot("greenplum") == "postgres"
-        assert normalize_dialect_for_sqlglot("GREENPLUM") == "postgres"
+    @pytest.mark.parametrize(
+        "name", ["netezza", "NETEZZA", "Netezza", "greenplum", "vertica", "datafusion", "questdb", "duckdb", "exasol"]
+    )
+    def test_fork_dialects_resolve_to_themselves(self, name):
+        assert resolve_sql_dialect(name) == name.lower()
 
-    def test_normalize_vertica_to_postgres(self):
-        assert normalize_dialect_for_sqlglot("vertica") == "postgres"
+    def test_influxdb_resolves_to_the_datafusion_engine(self):
+        assert resolve_sql_dialect("influxdb") == "datafusion"
 
-    def test_normalize_unknown_dialect_unchanged(self):
-        assert normalize_dialect_for_sqlglot("duckdb") == "duckdb"
-        assert normalize_dialect_for_sqlglot("bigquery") == "bigquery"
-        assert normalize_dialect_for_sqlglot("snowflake") == "snowflake"
-        assert normalize_dialect_for_sqlglot("clickhouse") == "clickhouse"
+    def test_hyphen_and_underscore_are_interchangeable(self):
+        assert resolve_sql_dialect("pg-duckdb") == resolve_sql_dialect("pg_duckdb") == "postgres"
+        assert resolve_sql_dialect(" Clickhouse-Local ") == "clickhouse"
 
-    def test_normalize_empty_string(self):
-        assert normalize_dialect_for_sqlglot("") == ""
+    @pytest.mark.parametrize("name", ["", None, "nonexistent_invalid_dialect_12345", "polars", "dataframe"])
+    def test_unknown_platform_raises(self, name):
+        with pytest.raises(UnknownSqlDialectError):
+            resolve_sql_dialect(cast(Any, name))
+
+    def test_every_registered_alias_targets_a_fork_dialect(self):
+        for platform, dialect in PLATFORM_DIALECTS.items():
+            assert resolve_sql_dialect(platform) == dialect
+
+    def test_every_sql_platform_in_the_manifest_resolves_to_a_fork_dialect(self):
+        from benchbox.core.config_inheritance import resolve_dialect_for_query_translation
+        from benchbox.core.platform_manifest import PLATFORM_MANIFEST
+
+        sql_platforms = [
+            entry.key for entry in PLATFORM_MANIFEST if entry.metadata.get("capabilities", {}).get("supports_sql")
+        ]
+        assert sql_platforms
+        for key in sql_platforms:
+            assert resolve_sql_dialect(resolve_dialect_for_query_translation(key))
+
+    def test_every_adapter_target_dialect_resolves_to_a_fork_dialect(self):
+        from benchbox.platforms.questdb import QUESTDB_DIALECT
+
+        assert resolve_sql_dialect(QUESTDB_DIALECT) == "questdb"
 
 
 class TestSQLTranslation:
@@ -416,11 +437,18 @@ class TestSQLTranslation:
         result = translate_sql_query(query, target_dialect="duckdb", identify=False)
         assert "orders" in result.lower()
 
-    def test_translate_fallback_on_invalid_dialect(self):
+    def test_translate_unknown_target_dialect_falls_back_without_postgres(self):
         query = "SELECT * FROM orders"
-        result = translate_sql_query(query, target_dialect="nonexistent_invalid_dialect_12345")
-        assert result
-        assert "orders" in result.lower()
+        with sql_translation_context(strict=False) as outcomes:
+            result = translate_sql_query(query, target_dialect="nonexistent_invalid_dialect_12345")
+        assert result == query
+        assert outcomes[0].status == "fallback"
+        assert outcomes[0].normalized_target_dialect is None
+
+    def test_translate_unknown_dialect_fails_in_strict_mode(self):
+        with pytest.raises(SQLTranslationError) as raised:
+            translate_sql_query("SELECT * FROM orders", "duckdb", source_dialect="not_a_dialect", strict=True)
+        assert isinstance(raised.value.__cause__, UnknownSqlDialectError)
 
     def test_translate_with_preprocessor(self):
 
@@ -461,10 +489,8 @@ class TestSQLTranslation:
         assert "test_col" in result.lower() or "1" in result
 
     def test_translate_preserves_query_on_translation_error(self):
-        query = "SELECT * FROM orders"
-        result = translate_sql_query(query, target_dialect="invalid_target_dialect")
-        assert result
-        assert "orders" in result.lower()
+        query = "SELEC FROM FROM orders ((("
+        assert translate_sql_query(query, target_dialect="duckdb") == query
 
     def test_translate_clickhouse_to_duckdb(self):
         query = "SELECT * FROM orders LIMIT 10"
@@ -510,10 +536,6 @@ class TestSQLTranslation:
         result = translate_sql_query(query, target_dialect="duckdb", source_dialect="netezza", identify=True)
         assert "GROUP BY ALL" in result.upper()
         assert 'GROUP BY "ALL"' not in result.upper()
-
-    def test_translate_fix_is_gated_by_original_query_pattern(self):
-        query = 'SELECT 1 AS "ALL" ORDER BY "ALL"'
-        assert _query_has_group_or_order_by_all(query) is False
 
     def test_translate_sqlite_rewrites_interval_and_extract(self):
         query = """
@@ -631,8 +653,8 @@ class TestTranslationScopeMetadata:
         assert "schema_statements_translated" not in summary
         entry = summary["outcomes"][0]
         assert entry["scope"] == "workload_query"
-        assert entry["parser_grammar"] == "postgres"
-        assert entry["normalized_source_dialect"] == "postgres"
+        assert entry["parser_grammar"] == "netezza"
+        assert entry["normalized_source_dialect"] == "netezza"
         assert entry["count"] == 4
         assert entry["calls"] == 4
         assert entry["unique_queries"] == 2
@@ -733,48 +755,69 @@ class TestIntegrationScenarios:
         assert "orders" in result.lower()
 
 
-class TestPostgresDateArithmetic:
+class TestTpcdsDateIntegerArithmetic:
+    @staticmethod
+    def _translate(query: str, target: str = "postgres") -> str:
+        from types import SimpleNamespace
+
+        from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
+
+        runner = SimpleNamespace()
+        runner._normalize_interval_syntax = lambda sql: TPCDSBenchmark._normalize_interval_syntax(runner, sql)
+        runner._fix_query58_ambiguity = lambda sql: TPCDSBenchmark._fix_query58_ambiguity(runner, sql)
+        return TPCDSBenchmark.translate_query_text(runner, query, "netezza", target)
+
     def test_convert_date_plus_integer(self):
-        query = "SELECT * FROM t WHERE d_date + 5 > NOW()"
-        result = fix_postgres_date_arithmetic(query)
-        assert "INTERVAL '5' DAY" in result
+        result = self._translate("SELECT * FROM t WHERE d_date + 5 > NOW()")
+        assert "INTERVAL '5 DAY'" in result
         assert "+ 5" not in result
 
     def test_convert_qualified_date_column(self):
-        query = "SELECT * FROM t WHERE d1.d_date + 30 > d2.d_date"
-        result = fix_postgres_date_arithmetic(query)
-        assert "d1.d_date + INTERVAL '30' DAY" in result
+        result = self._translate("SELECT * FROM t WHERE d1.d_date + 30 > d2.d_date")
+        assert "d1.d_date + INTERVAL '30 DAY'" in result
         assert "+ 30" not in result
 
     def test_convert_date_minus_integer(self):
-        query = "SELECT * FROM t WHERE d_date - 7 < NOW()"
-        result = fix_postgres_date_arithmetic(query)
-        assert "INTERVAL '7' DAY" in result
+        result = self._translate("SELECT * FROM t WHERE d_date - 7 < NOW()")
+        assert "INTERVAL '7 DAY'" in result
         assert "- 7" not in result
 
     def test_does_not_affect_non_date_columns(self):
-        query = "SELECT * FROM t WHERE order_id + 5 > 100"
-        result = fix_postgres_date_arithmetic(query)
-        assert result == query
+        result = self._translate("SELECT * FROM t WHERE order_id + 5 > 100")
+        assert "order_id + 5" in result
+        assert "INTERVAL" not in result
+
+    def test_does_not_affect_surrogate_date_keys(self):
+        result = self._translate("SELECT d_date_sk + 1 FROM date_dim WHERE d_date_sk - 7 > 0")
+        assert "d_date_sk + 1" in result
+        assert "d_date_sk - 7" in result
+        assert "INTERVAL" not in result
 
     def test_tpcds_q72_pattern(self):
-        query = "d3.d_date > d1.d_date + 5"
-        result = fix_postgres_date_arithmetic(query)
-        assert result == "d3.d_date > d1.d_date + INTERVAL '5' DAY"
+        result = self._translate("SELECT * FROM a, b d1, b d3 WHERE d3.d_date > d1.d_date + 5")
+        assert "d3.d_date > d1.d_date + INTERVAL '5 DAY'" in result
 
     def test_multiple_date_arithmetic_expressions(self):
-        query = "SELECT * FROM t WHERE d_date + 5 > NOW() AND d_date - 10 < NOW()"
-        result = fix_postgres_date_arithmetic(query)
-        assert "INTERVAL '5' DAY" in result
-        assert "INTERVAL '10' DAY" in result
+        result = self._translate("SELECT * FROM t WHERE d_date + 5 > NOW() AND d_date - 10 < NOW()")
+        assert "INTERVAL '5 DAY'" in result
+        assert "INTERVAL '10 DAY'" in result
         assert "+ 5" not in result
         assert "- 10" not in result
 
     def test_preserves_other_arithmetic(self):
-        query = "SELECT price * 2 + tax FROM t WHERE d_date + 5 > NOW()"
-        result = fix_postgres_date_arithmetic(query)
+        result = self._translate("SELECT price * 2 + tax FROM t WHERE d_date + 5 > NOW()")
         assert "price * 2 + tax" in result
-        assert "INTERVAL '5' DAY" in result
+        assert "INTERVAL '5 DAY'" in result
+
+    def test_only_the_postgres_target_receives_the_rewrite(self):
+        result = self._translate("SELECT * FROM t WHERE d_date + 5 > NOW()", target="duckdb")
+        assert "+ 5" in result
+
+    def test_date_columns_come_from_the_tpcds_schema(self):
+        from benchbox.core.tpcds.benchmark.runner import _DATE_COLUMNS
+
+        assert "d_date" in _DATE_COLUMNS
+        assert "d_date_sk" not in _DATE_COLUMNS
 
 
 class TestPostgresIdentifierQuoting:
@@ -805,3 +848,23 @@ class TestPostgresIdentifierQuoting:
         result = translate_sql_query(query, target_dialect="postgres", source_dialect="netezza", identify=True)
         assert '"SR_RETURN_AMT"' not in result
         assert '"SR_NET_LOSS"' not in result
+
+
+class TestMultiStatementInput:
+    def test_only_the_first_statement_is_translated(self):
+        result = translate_sql_query("SELECT 1 AS a; SELECT 2 AS b", "duckdb", source_dialect="netezza", identify=False)
+        assert result == "SELECT 1 AS a"
+
+    def test_dsqgen_style_two_part_query_keeps_the_first_part(self):
+        result = translate_sql_query(
+            "SELECT * FROM t WHERE a = 1; SELECT * FROM t WHERE a = 2", "postgres", source_dialect="netezza"
+        )
+        assert "a = 2" not in result
+
+
+class TestTpcdsQuestDbDateArithmetic:
+    def test_date_plus_integer_becomes_dateadd(self):
+        result = TestTpcdsDateIntegerArithmetic._translate(
+            "SELECT * FROM a, b d1, b d3 WHERE d3.d_date > d1.d_date + 5", "questdb"
+        )
+        assert "DATEADD('d', 5, d1.d_date)" in result

@@ -644,11 +644,12 @@ class TestMockBaseBenchmarkQueryTranslation:
             self.benchmark.translate_query(1, "mysql")
 
     def test_translate_query_unsupported_dialect(self):
-        with pytest.raises(ValueError, match="Error translating to dialect"):
+        with pytest.raises(ValueError, match="No fork SQL dialect for 'unsupported'"):
             self.benchmark.translate_query(1, "unsupported")
 
-    def test_translate_query_wraps_transpile_failure(self):
-        with patch("benchbox._vendor.sqlglot.transpile", side_effect=ValueError("boom")):
+    def test_translate_query_wraps_translation_failure(self):
+        self.benchmark.translate_query(1, "mysql")
+        with patch("benchbox._vendor.sqlglot.parse", side_effect=ValueError("boom")):
             with pytest.raises(ValueError, match="Error translating to dialect"):
                 self.benchmark.translate_query(1, "mysql")
 

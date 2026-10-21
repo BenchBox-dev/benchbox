@@ -804,16 +804,6 @@
    "signature": "(pyproject_data: 'Mapping[str, object]', lock_data: 'Mapping[str, object]') -> 'list[str]'"
   },
   {
-   "symbol": "benchbox.utils.dialect_utils.normalize_dialect_for_sqlglot",
-   "module": "benchbox.utils.dialect_utils",
-   "name": "normalize_dialect_for_sqlglot",
-   "kind": "function",
-   "area": "utilities",
-   "aliases": [],
-   "extras": [],
-   "signature": "(dialect: str) -> str"
-  },
-  {
    "symbol": "benchbox.utils.scale_factor.format_benchmark_name",
    "module": "benchbox.utils.scale_factor",
    "name": "format_benchmark_name",

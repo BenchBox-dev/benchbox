@@ -2,20 +2,19 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import hashlib
-import math
-import re
 from collections import Counter
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
-from decimal import Context, Decimal, DecimalException, Inexact
 from typing import Callable
 
 SCHEMA_DDL_SCOPE = "schema_ddl"
 WORKLOAD_QUERY_SCOPE = "workload_query"
 
-NO_IDENTIFY_DIALECTS = frozenset({"clickhouse", "postgres", "snowflake", "exasol"})
+NO_IDENTIFY_DIALECTS = frozenset(
+    {"clickhouse", "postgres", "snowflake", "exasol", "questdb", "netezza", "greenplum", "vertica", "datafusion"}
+)
 
 
 def _resolve_translation_scope(scope: str | None) -> str:
@@ -223,159 +222,76 @@ def summarize_sql_translation_outcomes(
     return summary
 
 
-def _query_has_group_or_order_by_all(query: str) -> bool:
-
-    return bool(re.search(r"(?i)\b(?:GROUP|ORDER)\s+BY\s+ALL\b", query))
-
-
-def _restore_group_order_by_all_keyword(query: str) -> str:
-
-    return re.sub(
-        r"(?i)\b((?:GROUP|ORDER)\s+BY)\s+(\"ALL\"|`ALL`|\[ALL\])",
-        r"\1 ALL",
-        query,
-    )
+class UnknownSqlDialectError(ValueError):
+    pass
 
 
-def _fold_sqlite_discount_bounds(query: str) -> str:
-    if not re.search(r"\bl_discount\b", query, re.IGNORECASE) or not re.search(r"\bBETWEEN\b", query, re.IGNORECASE):
-        return query
+SQLITE_DISCOUNT_BOUNDS = {"columns": ("l_discount",), "tables": ("lineitem",)}
 
-    from benchbox._vendor import sqlglot
-    from benchbox._vendor.sqlglot import exp
+PLATFORM_DIALECTS: dict[str, str] = {
+    "ansi": "postgres",
+    "standard": "postgres",
+    "postgresql": "postgres",
+    "timescaledb": "postgres",
+    "pg_mooncake": "postgres",
+    "pg_duckdb": "postgres",
+    "cedardb": "postgres",
+    "paradedb": "postgres",
+    "citus": "postgres",
+    "firebolt": "postgres",
+    "influxdb": "datafusion",
+    "motherduck": "duckdb",
+    "ducklake": "duckdb",
+    "clickhouse_local": "clickhouse",
+    "clickhouse_server": "clickhouse",
+    "clickhouse_cloud": "clickhouse",
+    "starburst": "trino",
+    "databricks_df": "databricks",
+    "databend": "snowflake",
+    "snowpark_connect": "snowflake",
+    "synapse": "tsql",
+    "fabric_dw": "tsql",
+    "fabric_lakehouse": "tsql",
+    "glue": "spark",
+    "emr_serverless": "spark",
+    "athena_spark": "spark",
+    "dataproc": "spark",
+    "dataproc_serverless": "spark",
+    "fabric_spark": "spark",
+    "synapse_spark": "spark",
+    "velox": "spark",
+    "lakesail": "spark",
+    "quanton": "spark",
+    "pyspark": "spark",
+}
 
-    context = Context(prec=60, traps=[Inexact])
-    max_leaves = 4
-    noise = 1e-12
-    leaves = 0
 
-    def evaluate(node: "exp.Expression") -> "tuple[Decimal, float] | None":
-        nonlocal leaves
-        node = node.unnest()
-        if isinstance(node, exp.Literal):
-            leaves += 1
-            if leaves > max_leaves or not node.is_number or not re.fullmatch(r"\d{1,2}\.\d{1,6}", node.name):
-                return None
-            return Decimal(node.name), float(node.name)
-        if isinstance(node, (exp.Add, exp.Sub)):
-            left, right = evaluate(node.this), evaluate(node.expression)
-            if left is None or right is None:
-                return None
-            try:
-                if isinstance(node, exp.Add):
-                    return context.add(left[0], right[0]), left[1] + right[1]
-                return context.subtract(left[0], right[0]), left[1] - right[1]
-            except DecimalException:
-                return None
+def resolve_sql_dialect(platform_or_dialect: str) -> str:
+    from benchbox._vendor.sqlglot.dialects import DIALECT_MODULE_NAMES
+    from benchbox._vendor.sqlglot.dialects.dialect import Dialect
+
+    key = (platform_or_dialect or "").strip().lower().replace("-", "_")
+    resolved = PLATFORM_DIALECTS.get(key, key)
+    if resolved not in DIALECT_MODULE_NAMES or Dialect.get(resolved) is None:
+        raise UnknownSqlDialectError(
+            f"No fork SQL dialect for {platform_or_dialect!r}; register the platform in PLATFORM_DIALECTS"
+        )
+    return resolved
+
+
+def _resolve_or_none(platform_or_dialect: str) -> str | None:
+    try:
+        return resolve_sql_dialect(platform_or_dialect)
+    except UnknownSqlDialectError:
         return None
-
-    tree = sqlglot.parse_one(query, read="sqlite")
-    if not any(table.name.lower() == "lineitem" for table in tree.find_all(exp.Table)):
-        return query
-    changed = False
-    for between in tree.find_all(exp.Between):
-        if not isinstance(between.this, exp.Column) or between.this.name.lower() != "l_discount":
-            continue
-        folded: list[Decimal] = []
-        for bound in (between.args["low"], between.args["high"]):
-            leaves = 0
-            value = evaluate(bound) if isinstance(bound.unnest(), (exp.Add, exp.Sub)) else None
-            if value is None:
-                break
-            exact, real = value
-            if exact < 0 or not math.isfinite(real) or abs(real - float(exact)) > noise:
-                break
-            folded.append(exact)
-        else:
-            between.set("low", exp.Literal.number(format(folded[0], "f")))
-            between.set("high", exp.Literal.number(format(folded[1], "f")))
-            changed = True
-    return tree.sql(dialect="sqlite") if changed else query
-
-
-def _fix_sqlite_unsupported_syntax(query: str) -> str:
-
-    def replace_date_interval(match: re.Match[str]) -> str:
-        date_literal = match.group("date")
-        sign = match.group("op")
-        value = match.group("value")
-        unit = match.group("unit").lower()
-        return f"DATE('{date_literal}', '{sign}{value} {unit}')"
-
-    query = re.sub(
-        r"\bDATE\s*\(\s*'(?P<date>\d{4}-\d{2}-\d{2})'\s*\)\s*"
-        r"(?P<op>[+-])\s*INTERVAL\s+'(?P<value>\d+)'\s+(?P<unit>DAY|MONTH|YEAR)\b",
-        replace_date_interval,
-        query,
-        flags=re.IGNORECASE,
-    )
-
-    date_parts = {
-        "DAY": "%d",
-        "MONTH": "%m",
-        "YEAR": "%Y",
-        "HOUR": "%H",
-        "MINUTE": "%M",
-        "SECOND": "%S",
-    }
-
-    def replace_extract(match: re.Match[str]) -> str:
-        part = match.group("part").upper()
-        expression = match.group("expression").strip()
-        return f"CAST(STRFTIME('{date_parts[part]}', {expression}) AS INTEGER)"
-
-    query = re.sub(
-        r"\bEXTRACT\s*\(\s*(?P<part>DAY|MONTH|YEAR|HOUR|MINUTE|SECOND)\s+FROM\s+"
-        r"(?P<expression>[^()]+?)\s*\)",
-        replace_extract,
-        query,
-        flags=re.IGNORECASE,
-    )
-
-    trunc_formats = {
-        "YEAR": "%Y-01-01 00:00:00",
-        "MONTH": "%Y-%m-01 00:00:00",
-        "DAY": "%Y-%m-%d 00:00:00",
-        "HOUR": "%Y-%m-%d %H:00:00",
-        "MINUTE": "%Y-%m-%d %H:%M:00",
-        "SECOND": "%Y-%m-%d %H:%M:%S",
-    }
-
-    def replace_date_trunc(match: re.Match[str]) -> str:
-        unit = match.group("unit").upper()
-        expression = match.group("expression").strip()
-        return f"STRFTIME('{trunc_formats[unit]}', {expression})"
-
-    query = re.sub(
-        r"\bDATE_TRUNC\s*\(\s*['\"](?P<unit>YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)['\"]\s*,\s*"
-        r"(?P<expression>[^(),]+?)\s*\)",
-        replace_date_trunc,
-        query,
-        flags=re.IGNORECASE,
-    )
-    return _fold_sqlite_discount_bounds(query)
-
-
-def normalize_dialect_for_sqlglot(dialect: str) -> str:
-    dialect_lower = dialect.lower() if dialect else ""
-
-    dialect_mapping = {
-        "netezza": "postgres",
-        "greenplum": "postgres",
-        "vertica": "postgres",
-        "datafusion": "postgres",
-        "ansi": "postgres",
-        "standard": "postgres",
-    }
-
-    return dialect_mapping.get(dialect_lower, dialect_lower)
 
 
 def split_sql_statements(sql: str, source_dialect: str) -> list[str]:
     try:
+        resolved = resolve_sql_dialect(source_dialect)
         from benchbox._vendor import sqlglot
 
-        tokens = sqlglot.Dialect.get_or_raise(normalize_dialect_for_sqlglot(source_dialect)).tokenize(sql)
+        tokens = sqlglot.Dialect.get_or_raise(resolved).tokenize(sql)
     except Exception:
         return [sql]
 
@@ -428,21 +344,22 @@ def translate_sql_query(
         return query
 
     try:
-        src = normalize_dialect_for_sqlglot(source_dialect.lower())
-        tgt = normalize_dialect_for_sqlglot(target_dialect.lower())
-
+        src = resolve_sql_dialect(source_dialect)
+        tgt = resolve_sql_dialect(target_dialect)
         processed_query = query
         if pre_processors:
             for pre_proc in pre_processors:
                 processed_query = pre_proc(processed_query)
 
         should_identify = identify and (tgt not in NO_IDENTIFY_DIALECTS)
-        translated = sqlglot.transpile(processed_query, read=src, write=tgt, identify=should_identify)[0]
-
-        if tgt == "duckdb" and _query_has_group_or_order_by_all(query):
-            translated = _restore_group_order_by_all_keyword(translated)
-        elif tgt == "sqlite":
-            translated = _fix_sqlite_unsupported_syntax(translated)
+        parsed = sqlglot.parse(processed_query, read=src)
+        expression = parsed[0] if parsed else None
+        if expression is None:
+            translated = ""
+        else:
+            if tgt == "sqlite":
+                expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt, **SQLITE_DISCOUNT_BOUNDS)
+            translated = expression.sql(dialect=tgt, identify=should_identify)
 
         if post_processors:
             for post_proc in post_processors:
@@ -467,8 +384,8 @@ def translate_sql_query(
         outcome = SqlTranslationOutcome(
             source_dialect=source_dialect,
             target_dialect=target_dialect,
-            normalized_source_dialect=normalize_dialect_for_sqlglot(source_dialect.lower()),
-            normalized_target_dialect=normalize_dialect_for_sqlglot(target_dialect.lower()),
+            normalized_source_dialect=_resolve_or_none(source_dialect),
+            normalized_target_dialect=_resolve_or_none(target_dialect),
             translator="sqlglot",
             status="failed" if strict_mode else "fallback",
             strict_mode=strict_mode,
@@ -514,7 +431,7 @@ def apply_rewrite(name: str, sql_or_expression, dialect: str, **args):
     import inspect
 
     function = _fork_rewrite(name)
-    resolved = normalize_dialect_for_sqlglot(dialect.lower())
+    resolved = resolve_sql_dialect(dialect)
     if "dialect" in inspect.signature(function).parameters:
         args.setdefault("dialect", resolved)
     if isinstance(sql_or_expression, str):
@@ -551,8 +468,8 @@ def translate_ddl(
     if isinstance(options.get("singlestore"), dict):
         options["singlestore"] = ddl_module.SingleStoreKeys(**options["singlestore"])
 
-    read = normalize_dialect_for_sqlglot(source_dialect.lower())
-    write = normalize_dialect_for_sqlglot(target_dialect.lower())
+    read = resolve_sql_dialect(source_dialect)
+    write = resolve_sql_dialect(target_dialect)
     return ddl_module.transpile_ddl(
         ddl,
         read=read,
@@ -566,19 +483,5 @@ def contains_division(sql: str, dialect: str) -> bool:
     from benchbox._vendor import sqlglot
     from benchbox._vendor.sqlglot import exp
 
-    resolved = normalize_dialect_for_sqlglot(dialect.lower())
+    resolved = resolve_sql_dialect(dialect)
     return sqlglot.parse_one(sql, read=resolved).find(exp.Div) is not None
-
-
-def fix_postgres_date_arithmetic(query: str) -> str:
-    import re
-
-    pattern = r"(\b\w*\.?\w*d_date\w*)\s*([+-])\s*(\d+)"
-
-    def replace_with_interval(match: re.Match) -> str:
-        col = match.group(1)
-        op = match.group(2)
-        num = match.group(3)
-        return f"{col} {op} INTERVAL '{num}' DAY"
-
-    return re.sub(pattern, replace_with_interval, query, flags=re.IGNORECASE)

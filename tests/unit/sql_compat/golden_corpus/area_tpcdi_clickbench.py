@@ -13,7 +13,7 @@ from benchbox.platforms.cloud_shared import rewrite_tpcdi_for_bigquery, rewrite_
 from benchbox.utils.dialect_utils import (
     NO_IDENTIFY_DIALECTS,
     apply_rewrite,
-    normalize_dialect_for_sqlglot,
+    resolve_sql_dialect,
     translate_sql_query,
 )
 from tests.unit.sql_compat.golden_corpus import Case
@@ -90,9 +90,8 @@ def fork_tpcdi(query: str, dialect: str) -> str:
         query = apply_rewrite(
             "flag_comparisons_to_boolean", query, "netezza", columns=TPCDI_FLAG_COLUMNS, use_is=style == "is"
         )
-    normalized = normalize_dialect_for_sqlglot(dialect)
-    target = "datafusion" if dialect == "datafusion" else normalized
-    return sqlglot.transpile(query, read="netezza", write=target, identify=normalized not in NO_IDENTIFY_DIALECTS)[0]
+    target = resolve_sql_dialect(dialect)
+    return sqlglot.transpile(query, read="netezza", write=target, identify=target not in NO_IDENTIFY_DIALECTS)[0]
 
 
 def tpcdi_cases() -> list[Case]:

@@ -21,7 +21,7 @@ def test_aq7_doris_replaces_julianday_with_datediff():
     assert "JULIANDAY" not in q.upper(), f"AQ7 must not use JULIANDAY for Doris:\n{q}"
     assert "DATEDIFF(" in q, f"AQ7 must use DATEDIFF() for Doris:\n{q}"
     assert "DATE_SUB(" in q, f"AQ7 must use DATE_SUB() for Doris:\n{q}"
-    assert "CURDATE()" in q, f"AQ7 must use CURDATE() for Doris:\n{q}"
+    assert "CURRENT_DATE()" in q, f"AQ7 must use CURRENT_DATE() for Doris:\n{q}"
 
 
 def test_aq8_doris_replaces_julianday():

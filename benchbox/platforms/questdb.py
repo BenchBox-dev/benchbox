@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.platforms.base.ddl_helpers import strip_foreign_keys
-from benchbox.platforms.questdb_rewriter import rewrite as _rewriter_rewrite
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -36,7 +35,7 @@ from .base.data_loading import (
 )
 from .base.sql_execution import execute_sql_query
 
-QUESTDB_DIALECT = "postgres"
+QUESTDB_DIALECT = "questdb"
 
 try:
     import psycopg
@@ -849,7 +848,6 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        query = _rewriter_rewrite(query)
         result = execute_sql_query(
             connection,
             query,
@@ -872,7 +870,6 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         query: str,
         explain_options: dict[str, Any] | None = None,
     ) -> str | None:
-        query = _rewriter_rewrite(query)
         _owns_cursor = callable(getattr(connection, "cursor", None))
         cursor = connection.cursor() if _owns_cursor else connection
 

@@ -720,7 +720,7 @@ class DSQGenBinary:
         cleaned_sql = re.sub(r"[ \t]+", " ", cleaned_sql)
         cleaned_sql = re.sub(r"\n\s+", "\n", cleaned_sql)
 
-        for source_dialect in ["postgres", "mysql", "sqlite", ""]:
+        for source_dialect in ["postgres", "mysql", "sqlite"]:
             try:
                 transpiled = "; ".join(
                     translate_sql_query(

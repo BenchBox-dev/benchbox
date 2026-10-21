@@ -1794,9 +1794,6 @@
           "path": "benchbox/platforms/questdb.py"
         },
         {
-          "path": "benchbox/platforms/questdb_rewriter.py"
-        },
-        {
           "prefix": "benchbox/platforms/influxdb/"
         }
       ]

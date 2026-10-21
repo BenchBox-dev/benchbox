@@ -5,9 +5,11 @@ import json
 import pkgutil
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 
 RECORDED = Path(__file__).parent / "recorded"
+FROZEN = Path(__file__).parent / "frozen"
 
 
 @dataclass(frozen=True)
@@ -22,6 +24,15 @@ def outcome(produce: Callable[[], str]) -> str:
         return produce()
     except Exception as error:
         return f"<{type(error).__name__}>"
+
+
+@cache
+def _frozen(area: str) -> dict[str, str]:
+    return json.loads((FROZEN / f"{area}.json").read_text(encoding="utf-8"))
+
+
+def frozen_legacy(area: str, case_id: str) -> Callable[[], str]:
+    return lambda: _frozen(area)[case_id]
 
 
 def area_names() -> list[str]:

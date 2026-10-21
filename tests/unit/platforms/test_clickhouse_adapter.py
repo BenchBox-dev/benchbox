@@ -148,14 +148,8 @@ class TestClickHouseAdapter:
         with patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"):
             adapter = ClickHouseAdapter(deployment_mode="server")
 
-            with patch("benchbox._vendor.sqlglot.transpile") as mock_transpile:
-                mock_transpile.return_value = ['SELECT * FROM "table"']
-
-                result = adapter.translate_sql("SELECT * FROM table", "duckdb")
-                assert result == 'SELECT * FROM "table";'
-                mock_transpile.assert_called_once_with(
-                    "SELECT * FROM table", read="duckdb", write="clickhouse", identify=False
-                )
+            result = adapter.translate_sql("SELECT * FROM orders", "duckdb")
+            assert result == "SELECT * FROM orders;"
 
     @patch("benchbox.platforms.clickhouse.setup.ClickHouseClient")
     def test_create_schema(self, mock_client_class):
