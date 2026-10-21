@@ -30,6 +30,7 @@ UNKNOWN_TEST_SECONDS = 1.0
 TESTS_ROOT = "tests"
 INERT_PATH_PATTERNS = ("docs/*", "*.md", "_project/todo-db-export/*")
 TRUNK_WORKFLOW_PATH = ".github/workflows/trunk-coverage.yml"
+TRUSTED_MAP_EVENTS = ("push", "workflow_dispatch")
 SELECTION_SHADOW = True
 
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -819,12 +820,12 @@ def _list_map_artifacts(repo: Path, slug: str, prefix: str) -> Iterator[tuple[st
     runs = _gh_get(
         repo,
         f"repos/{slug}/actions/workflows/{PurePosixPath(TRUNK_WORKFLOW_PATH).name}/runs",
-        {"branch": "develop", "event": "push", "per_page": str(MAX_MAP_BEHIND_COMMITS)},
-        '.workflow_runs[] | "\\(.id)\\t\\(.head_sha)"',
+        {"branch": "develop", "per_page": str(MAX_MAP_BEHIND_COMMITS)},
+        '.workflow_runs[] | "\\(.id)\\t\\(.head_sha)\\t\\(.event)"',
     )
     for line in runs:
-        run, head, _ = _split_row(line)
-        if not run.isdigit() or not _SHA_RE.match(head):
+        run, head, event = _split_row(line)
+        if not run.isdigit() or not _SHA_RE.match(head) or event not in TRUSTED_MAP_EVENTS:
             continue
         rows = _gh_get(
             repo,
@@ -867,7 +868,7 @@ def _trusted_run_head(repo: Path, slug: str, run_id: int) -> str | None:
     if len(fields) != 5:
         return None
     sha, path, event, branch, head_slug = fields
-    if path != TRUNK_WORKFLOW_PATH or event != "push" or branch != "develop" or head_slug != slug:
+    if path != TRUNK_WORKFLOW_PATH or event not in TRUSTED_MAP_EVENTS or branch != "develop" or head_slug != slug:
         return None
     return sha if _SHA_RE.match(sha) else None
 

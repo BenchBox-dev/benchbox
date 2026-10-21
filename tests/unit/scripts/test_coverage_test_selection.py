@@ -832,6 +832,13 @@ def test_trusted_run_head_accepts_trunk_push_runs(repo: Path, monkeypatch: pytes
     assert sel._trusted_run_head(repo, "o/r", 7) == sha
 
 
+def test_trusted_run_head_accepts_dispatched_runs_on_develop(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    sha = "b" * 40
+    stdout = "\n".join([sha, ".github/workflows/trunk-coverage.yml", "workflow_dispatch", "develop", "o/r"]) + "\n"
+    monkeypatch.setattr(sel.subprocess, "run", _fake_run(stdout))
+    assert sel._trusted_run_head(repo, "o/r", 9) == sha
+
+
 def test_trusted_run_head_rejects_untrusted_runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     sha = "a" * 40
     good = [sha, ".github/workflows/trunk-coverage.yml", "push", "develop", "o/r"]
@@ -871,7 +878,8 @@ def test_list_map_artifacts_reads_trunk_runs_with_get_requests(repo: Path, monke
         commands.append(command)
         endpoint = command[4]
         if endpoint.endswith("/workflows/trunk-coverage.yml/runs"):
-            return subprocess.CompletedProcess(command, 0, f"11\t{first}\n12\t{second}\n13\tnot-a-sha\n", "")
+            runs = f"11\t{first}\tpush\n12\t{second}\tworkflow_dispatch\n13\tnot-a-sha\tpush\n14\t{first}\tschedule\n"
+            return subprocess.CompletedProcess(command, 0, runs, "")
         if endpoint.endswith("/runs/11/artifacts"):
             return subprocess.CompletedProcess(command, 0, "", "")
         rows = f"t2-coverage-map-{second}\t2026-10-20T00:00:00Z\nt2-coverage-map-{first}\t2026-10-19T00:00:00Z\n"
