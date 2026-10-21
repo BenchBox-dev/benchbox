@@ -25716,10 +25716,15 @@
       "title": "CedarDB: define a layout-tuning method, and verify it on a host with io_uring"
     },
     "tuning-citus-native-layout-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T12:20:00Z",
+        "generation": "057779c1f8df4f26bc00bf388713e825",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a00a661093086d4fdaf97c3f"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Citus: drive distribution and columnar layout from the tuning file, and verify it live"
     },
     "tuning-companion-constraint-shapes-v1": {
