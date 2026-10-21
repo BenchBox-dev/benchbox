@@ -245,3 +245,71 @@ def test_conftest_limit_matches_the_heavy_tier_carve_out() -> None:
     from scripts import heavy_tier_needed
 
     assert pt.CONFTEST_SUBTREE_LIMIT == heavy_tier_needed.BROAD_CONFTEST_MODULES
+
+
+def test_source_change_selects_tests_that_import_the_module(repo: Path) -> None:
+    _write(repo, "tests/unit/test_via_import.py", "from benchbox.core import engine\n")
+    _write(repo, "tests/unit/test_via_dotted.py", "import benchbox.core.engine as e\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "importers")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _commit_all(repo)
+
+    selected = pt.map_tests(repo, pt.changed_paths(repo, "origin/develop"))
+
+    assert "tests/unit/test_via_import.py" in selected
+    assert "tests/unit/test_via_dotted.py" in selected
+    assert "tests/unit/test_unrelated.py" not in selected
+
+
+def test_base_change_selects_test_benchbox_through_patched_subclass_module(repo: Path) -> None:
+    _write(repo, "benchbox/base.py", "class BaseBenchmark:\n    pass\n")
+    _write(
+        repo,
+        "benchbox/core/tpch.py",
+        "from benchbox.base import BaseBenchmark\n\n\nclass TPCH(BaseBenchmark):\n    pass\n",
+    )
+    _write(repo, "benchbox/__init__.py", "from benchbox.core.tpch import TPCH\n")
+    _write(
+        repo,
+        "tests/test_benchbox.py",
+        "from unittest import mock\n\nfrom benchbox import TPCH\n\n\n"
+        "def test_x():\n    with mock.patch('benchbox.core.tpch.TPCH.generate'):\n        pass\n",
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "base")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    _write(repo, "benchbox/base.py", "class BaseBenchmark:\n    x = 1\n")
+    _commit_all(repo)
+
+    selected = pt.map_tests(repo, pt.changed_paths(repo, "origin/develop"))
+
+    assert selected == ["tests/test_benchbox.py"]
+
+
+def test_importing_the_package_alone_does_not_select_for_a_submodule_change(repo: Path) -> None:
+    _write(repo, "benchbox/__init__.py", "")
+    _write(repo, "tests/unit/test_pkg.py", "import benchbox\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "pkg")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    _write(repo, "benchbox/core/other.py", "x = 2\n")
+    _commit_all(repo)
+
+    assert pt.map_tests(repo, pt.changed_paths(repo, "origin/develop")) == []
+
+
+def test_monkeypatch_setattr_target_selects_the_patching_test(repo: Path) -> None:
+    _write(
+        repo,
+        "tests/unit/test_patcher.py",
+        "def test_x(monkeypatch):\n    monkeypatch.setattr('benchbox.core.engine.run', None)\n",
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "patcher")
+    _git(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _commit_all(repo)
+
+    assert "tests/unit/test_patcher.py" in pt.map_tests(repo, pt.changed_paths(repo, "origin/develop"))
