@@ -26186,15 +26186,10 @@
       "title": "Notuning reuse refusal can miss tuned databases: error misclassification, swallowed probe errors, marker deleted by save"
     },
     "tuning-paradedb-native-layout-20261017": {
-      "claim": {
-        "expires_at": "2026-10-21T23:47:09Z",
-        "generation": "e4a6119c90184813bd242e17bab6f67d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a00a661093086d4fdaf97c3f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "ParadeDB: fix the claimed-but-skipped layout tuning, and restore a working test image"
     },
     "tuning-partition-order-rendered-contract": {
