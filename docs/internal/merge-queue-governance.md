@@ -142,8 +142,8 @@ stays red over two hours with no revert pull request open, that is a risk
 signal for the owner, who should revert the culprit; nothing enforces the
 two-hour figure.
 
-Arming is stricter than opening: `make pr-arm`, `make pr-arm-remote` and
-`make pr-landing-ready ARM=1` run `scripts/trunk_revert.py arm-gate`, which
+Arming is stricter than opening: `make pr-arm`, `make pr-arm-remote`,
+`make pr-landing-remote-ready` and `make pr-landing-ready ARM=1` run `scripts/trunk_revert.py arm-gate`, which
 refuses at once, naming the culprit PR and run, while the newest completed
 trunk run is red and no revert of the culprit commit is on `develop`. PRs
 armed before the run failed still merge, and arming outside these targets

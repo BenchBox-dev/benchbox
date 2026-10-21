@@ -51,8 +51,8 @@ Check exact-commit workflow evidence before blaming a PR or admitting a release.
 
 A red `trunk.yml` run names its culprit and stops the repository's arming
 commands. `scripts/trunk_revert.py arm-gate` runs first in `make pr-arm`,
-`make pr-arm-remote`, and `make pr-landing-ready` with `ARM=1`, which is what
-`make pr-ready` and `make pr-arm-auto-merge` reach. It looks at the newest
+`make pr-arm-remote`, `make pr-landing-remote-ready`, and `make pr-landing-ready`
+with `ARM=1`, which is what `make pr-ready` and `make pr-arm-auto-merge` reach. It looks at the newest
 completed `trunk.yml` run on `develop`, ignoring runs still in progress and
 cancelled runs. If that run failed, `timed_out` or `startup_failure`, arming
 is refused with the run URL and the culprit: the PR associated with the run's

@@ -1258,13 +1258,13 @@ REMOTE_CLOSEOUT_VARIABLES := PR HEAD REPO BRANCH ITEM RECORD BUILDER_HEAD OWNER_
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): override $(name) := $$(value $(name))))
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): export REMOTE_CLOSEOUT_$(name) := $$($(name))))
 $(REMOTE_CLOSEOUT_TARGETS): export PYTHONDONTWRITEBYTECODE := 1
-pr-arm-remote:
-	@set -eu; \
-	if [ -n "$${REMOTE_CLOSEOUT_PR:-}" ]; then \
+REMOTE_ARM_GATE = if [ -n "$${REMOTE_CLOSEOUT_PR:-}" ]; then \
 		uv run --no-project -- python scripts/trunk_revert.py arm-gate --pr "$$REMOTE_CLOSEOUT_PR" --repo "$${REMOTE_CLOSEOUT_REPO:-BenchBox-dev/BenchBox}"; \
 	else \
 		uv run --no-project -- python scripts/trunk_revert.py arm-gate --branch "$${REMOTE_CLOSEOUT_BRANCH:-$$(git branch --show-current)}" --repo "$${REMOTE_CLOSEOUT_REPO:-BenchBox-dev/BenchBox}"; \
-	fi; \
+	fi
+pr-arm-remote:
+	@set -eu; $(REMOTE_ARM_GATE); \
 	uv run --no-project -- python scripts/remote_closeout.py arm
 pr-landing-remote-bind:
 	@uv run --no-project -- python scripts/remote_closeout.py bind
@@ -1277,7 +1277,8 @@ pr-landing-remote-review:
 pr-landing-remote-withdraw:
 	@uv run --no-project -- python scripts/remote_closeout.py withdraw
 pr-landing-remote-ready:
-	@uv run --no-project -- python scripts/remote_closeout.py ready
+	@set -eu; $(REMOTE_ARM_GATE); \
+	uv run --no-project -- python scripts/remote_closeout.py ready
 
 .PHONY: trunk-revert
 trunk-revert:

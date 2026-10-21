@@ -552,7 +552,7 @@ def test_main_arm_gate_requires_exactly_one_selector(args: list[str], capsys: py
     assert "exactly one of" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("target", ["pr-arm", "pr-landing-ready ARM=1", "pr-arm-remote"])
+@pytest.mark.parametrize("target", ["pr-arm", "pr-landing-ready ARM=1", "pr-arm-remote", "pr-landing-remote-ready"])
 def test_arming_targets_run_the_arm_gate_before_arming(target: str) -> None:
     done = subprocess.run(
         ["make", "-n", "--no-print-directory", *target.split(), "PR=7", "HEAD=" + "a" * 40, "EVIDENCE=e.json"],
@@ -565,7 +565,7 @@ def test_arming_targets_run_the_arm_gate_before_arming(target: str) -> None:
     gate = done.stdout.index("trunk_revert.py arm-gate")
     arm = max(
         done.stdout.index(name)
-        for name in ("pr_arm.py", "pr_landing.py", "remote_closeout.py arm")
+        for name in ("pr_arm.py", "pr_landing.py", "remote_closeout.py arm", "remote_closeout.py ready")
         if name in done.stdout
     )
     assert gate < arm
