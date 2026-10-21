@@ -2,6 +2,7 @@
   "acceptance": [
     "gh api repos/BenchBox-dev/benchbox/rulesets/15611785 lists oracle-gate with the App integration_id"
   ],
+  "context": "Owner-only ruleset edit; unblock after oracle-gate-status-20261021 merges and posts on real PRs.",
   "description": "Repository admin action. In ruleset 15611785 (develop) add required status check context oracle-gate with the integration_id of the benchbox-oracle App, keeping oracle-review required for now, so no window exists where neither is required.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "00c14a2817f9465193e3d329dd2a9e45",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:47:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0d356cebf3d34b2f99bc343427a95078",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]

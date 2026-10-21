@@ -15915,7 +15915,7 @@
         "oracle-gate-status-20261021"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner: require oracle-gate (App-pinned) alongside oracle-review"
     },
     "package-coffeeshop-seeds-and-restore-reference-parity": {
