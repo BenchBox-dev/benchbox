@@ -23300,15 +23300,10 @@
       "title": "Replace the text-diff golden corpus as adoption evidence with an executed, engine-compared gate"
     },
     "sqlglot-fork-review-h3-doris-key-model": {
-      "claim": {
-        "expires_at": "2026-10-22T23:37:42Z",
-        "generation": "d5adf52add024bf0a4cbf6a8d8a22355",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c196539bd596dfa2c5536f3b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Fork: never downgrade or narrow the Doris/StarRocks key model silently (lineitem loses rows under table_model=unique)"
     },
     "sqlglot-fork-review-lows": {
