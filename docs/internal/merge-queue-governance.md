@@ -122,7 +122,17 @@ combine job (globs the downloaded `coverage-shard-*.dat` files and merges them i
 with a 90-day retention), the correctness gate, and the `required-local-cases`
 job (`make test-required-local-cases`, which fails the run if a required
 local-engine case skips). The medium shards run with a 33-minute budget to
-cover the roughly 30% coverage overhead. The `dist-artifact` job builds and verifies the
+cover the roughly 30% coverage overhead. That overhead is an average: tight
+data-generation loops slow far more under the `ctrace` tracer. The ClickBench
+`test_generate_data` test went from 59s to more than 300s, past its
+`timeout(300)` marker, and the TPC-DI one from 34s to more than 60s. So the
+shards load `scripts/pytest_coverage_timeout.py`, which multiplies every
+per-test timeout, the global `--timeout=60` and explicit `timeout` markers
+alike, by 8 (`COVERAGE_TIMEOUT_FACTOR`). Scaling only the global default would
+leave the marked ClickBench test failing. The trade-off is a weaker hang bound
+in trunk only: a hung test can hold a shard for up to 8x its timeout. The PR
+medium tests and the heavy-tier `medium-test` shards, which run without
+coverage, still enforce the unscaled bounds before merge. The `dist-artifact` job builds and verifies the
 release wheel and sdist. The marker and forbidden-path guards run in the PR
 `lint` job (`guard-fast-lane-markers`); the test-count ceiling is retired.
 
