@@ -15745,6 +15745,13 @@
       "status": "open",
       "title": "Retry eligible absent oracle reviewer once within the same run"
     },
+    "oracle-response-evidence-secrets-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Preserve oracle evidence diagnostics and redact credential echoes safely"
+    },
     "oracle-response-ingress-20261021": {
       "claim": null,
       "needs": [],
