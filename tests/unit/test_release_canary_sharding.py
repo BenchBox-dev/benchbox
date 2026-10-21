@@ -14,6 +14,7 @@ from scripts.release_canary_sharding import (
     MEDIUM_MARKER_EXPRESSION,
     MEDIUM_SHARD_COUNT,
     collect_node_ids,
+    load_durations,
     parse_collection_output,
     partition_node_ids,
     verify_medium_shards,
@@ -337,3 +338,107 @@ def test_release_canary_aggregation_fails_closed_and_preserves_summary_contract(
         assert f"${result_name}" in result_text
     assert 'if [ "$result" != "success" ]' in result_text
     assert "Release canary passed." in result_text
+
+
+def _durations_file(path: Path, durations: dict[str, float]) -> Path:
+    payload = {"schema_version": 1, "tests": {node_id: {"p95_seconds": value} for node_id, value in durations.items()}}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+def _skewed_node_ids() -> tuple[list[str], dict[str, float]]:
+    node_ids = [f"tests/unit/test_{index:03d}.py::test_case" for index in range(40)]
+    durations = dict.fromkeys(node_ids, 1.0)
+    for node_id in node_ids[::4]:
+        durations[node_id] = 60.0
+    return node_ids, durations
+
+
+def _loads(shards: list[list[str]], durations: dict[str, float]) -> list[float]:
+    return [sum(durations[node_id] for node_id in shard) for shard in shards]
+
+
+def test_duration_partition_assigns_every_test_exactly_once_whatever_the_input_order():
+    node_ids, durations = _skewed_node_ids()
+
+    forward = [partition_node_ids(node_ids, index, 4, durations) for index in range(4)]
+    reverse = [partition_node_ids(list(reversed(node_ids)), index, 4, durations) for index in range(4)]
+
+    assert forward == reverse
+    assert sorted(itertools.chain.from_iterable(forward)) == sorted(node_ids)
+    assert all(shard == sorted(shard) for shard in forward)
+
+
+def test_duration_partition_balances_a_skew_that_round_robin_leaves_on_one_shard():
+    node_ids, durations = _skewed_node_ids()
+
+    round_robin = [partition_node_ids(node_ids, index, 4) for index in range(4)]
+    weighted = [partition_node_ids(node_ids, index, 4, durations) for index in range(4)]
+
+    assert max(_loads(round_robin, durations)) == 600.0
+    assert max(_loads(weighted, durations)) - min(_loads(weighted, durations)) <= 60.0
+
+
+def test_duration_partition_weights_unmeasured_tests_at_the_median_of_the_measured_ones():
+    node_ids = [f"tests/unit/test_{index}.py::test_case" for index in range(7)]
+    measured = {node_ids[0]: 100.0, node_ids[1]: 2.0, node_ids[2]: 2.0, node_ids[3]: 2.0}
+
+    shards = [partition_node_ids(node_ids, index, 2, measured) for index in range(2)]
+
+    heavy = next(shard for shard in shards if node_ids[0] in shard)
+    assert heavy == [node_ids[0]]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"schema_version": 2, "tests": {}},
+        {"schema_version": 1, "tests": []},
+        {"schema_version": 1, "tests": {"tests/a.py::t": {"p95_seconds": -1}}},
+        {"schema_version": 1, "tests": {"tests/a.py::t": {"p95_seconds": True}}},
+        {"schema_version": 1, "tests": {"tests/a.py::t": {}}},
+    ],
+)
+def test_load_durations_rejects_malformed_files(tmp_path: Path, payload: dict):
+    path = tmp_path / "durations.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        load_durations(path)
+
+
+def test_shard_refuses_a_collection_built_with_different_durations(tmp_path: Path):
+    node_ids, durations = _skewed_node_ids()
+    collect_input = tmp_path / "collect.txt"
+    collect_input.write_text("\n".join(node_ids) + "\n", encoding="utf-8")
+    mine = _durations_file(tmp_path / "mine.json", durations)
+    other = _durations_file(tmp_path / "other.json", {**durations, node_ids[0]: 7.0})
+    collect_node_ids(
+        collect_input,
+        tmp_path / "nodeids.txt",
+        tmp_path / "collection.json",
+        expected_count=len(node_ids),
+        shard_count=4,
+        checked_sha="a" * 40,
+        workflow="ci.yml",
+        job="medium-collect",
+        marker_expression=MEDIUM_MARKER_EXPRESSION,
+        durations_path=mine,
+    )
+    arguments = {
+        "shard_index": 0,
+        "shard_count": 4,
+        "workflow": "ci.yml",
+        "job": "medium-test",
+        "marker_expression": MEDIUM_MARKER_EXPRESSION,
+        "collection_summary": tmp_path / "collection.json",
+        "checked_sha": "a" * 40,
+    }
+
+    assert write_shard(
+        tmp_path / "nodeids.txt", tmp_path / "s.txt", tmp_path / "s.json", **arguments, durations_path=mine
+    )
+    with pytest.raises(ValueError, match="collection evidence does not match"):
+        write_shard(
+            tmp_path / "nodeids.txt", tmp_path / "s.txt", tmp_path / "s.json", **arguments, durations_path=other
+        )

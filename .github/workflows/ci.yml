@@ -1018,6 +1018,7 @@ jobs:
             -p scripts.pytest_shard_evidence \
             --assigned-nodeids "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt" \
             --shard-evidence "t2-artifacts/shard-${SHARD_INDEX}-execution.json" \
+            --junitxml "t2-artifacts/shard-${SHARD_INDEX}-junit.xml" \
             --checked-sha "${{ github.sha }}" "${node_ids[@]}"
 
       - name: Record kernel memory events for the medium shard
