@@ -1,0 +1,442 @@
+{
+  "bigquery_division_0": {
+    "fork": "SELECT SAFE_DIVIDE(a, b) FROM `T`",
+    "legacy": "SELECT SAFE_DIVIDE(`a`, `b`) FROM `T`"
+  },
+  "bigquery_division_tpch_q14": {
+    "fork": "SELECT SAFE_DIVIDE(100.00 * sum(CASE WHEN p_type LIKE 'PROMO%' THEN l_extendedprice * (1 - l_discount) ELSE 0 END), sum(l_extendedprice * (1 - l_discount))) AS promo_revenue FROM lineitem CROSS JOIN part WHERE l_partkey = p_partkey AND l_shipdate >= CAST('1995-09-01' AS DATE) AND l_shipdate < CAST('1995-09-01' AS DATE) + INTERVAL '1' MONTH",
+    "legacy": "SELECT SAFE_DIVIDE(100.00 * sum(CASE WHEN `p_type` LIKE 'PROMO%' THEN `l_extendedprice` * (1 - `l_discount`) ELSE 0 END), sum(`l_extendedprice` * (1 - `l_discount`))) AS `promo_revenue` FROM `lineitem` CROSS JOIN `part` WHERE `l_partkey` = `p_partkey` AND `l_shipdate` >= CAST('1995-09-01' AS DATE) AND `l_shipdate` < CAST('1995-09-01' AS DATE) + INTERVAL '1' MONTH"
+  },
+  "bigquery_division_tpch_q17": {
+    "fork": "SELECT SAFE_DIVIDE(sum(l_extendedprice), 7.0) AS avg_yearly FROM lineitem CROSS JOIN part WHERE p_partkey = l_partkey AND p_brand = 'Brand#23' AND p_container = 'MED BOX' AND l_quantity < (SELECT 0.2 * avg(l_quantity) FROM lineitem WHERE l_partkey = p_partkey)",
+    "legacy": "SELECT SAFE_DIVIDE(sum(`l_extendedprice`), 7.0) AS `avg_yearly` FROM `lineitem` CROSS JOIN `part` WHERE `p_partkey` = `l_partkey` AND `p_brand` = 'Brand#23' AND `p_container` = 'MED BOX' AND `l_quantity` < (SELECT 0.2 * avg(`l_quantity`) FROM `lineitem` WHERE `l_partkey` = `p_partkey`)"
+  },
+  "bigquery_division_tpch_q19": {
+    "fork": "SELECT sum(l_extendedprice * (1 - l_discount)) AS revenue FROM lineitem CROSS JOIN part WHERE (p_partkey = l_partkey AND p_brand = 'Brand#12' AND p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG') AND l_quantity >= 1 AND l_quantity <= 1 + 10 AND p_size BETWEEN 1 AND 5 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#23' AND p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK') AND l_quantity >= 10 AND l_quantity <= 10 + 10 AND p_size BETWEEN 1 AND 10 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#34' AND p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG') AND l_quantity >= 20 AND l_quantity <= 20 + 10 AND p_size BETWEEN 1 AND 15 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON')",
+    "legacy": "select\nsum(l_extendedprice* (1 - l_discount)) as revenue\nfrom\nlineitem,\npart\nwhere\n(\np_partkey = l_partkey\nand p_brand = 'Brand#12'\nand p_container in ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG')\nand l_quantity >= 1 and l_quantity <= 1 + 10\nand p_size between 1 and 5\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n)\nor\n(\np_partkey = l_partkey\nand p_brand = 'Brand#23'\nand p_container in ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK')\nand l_quantity >= 10 and l_quantity <= 10 + 10\nand p_size between 1 and 10\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n)\nor\n(\np_partkey = l_partkey\nand p_brand = 'Brand#34'\nand p_container in ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG')\nand l_quantity >= 20 and l_quantity <= 20 + 10\nand p_size between 1 and 15\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n);"
+  },
+  "bigquery_division_tpch_q22": {
+    "fork": "SELECT cntrycode, count(*) AS numcust, sum(c_acctbal) AS totacctbal FROM (SELECT SUBSTRING(c_phone, 1, 2) AS cntrycode, c_acctbal FROM customer WHERE SUBSTRING(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17') AND c_acctbal > (SELECT avg(c_acctbal) FROM customer WHERE c_acctbal > 0.00 AND SUBSTRING(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17')) AND NOT EXISTS(SELECT * FROM orders WHERE o_custkey = c_custkey)) AS custsale GROUP BY cntrycode ORDER BY cntrycode",
+    "legacy": "select\ncntrycode,\ncount(*) as numcust,\nsum(c_acctbal) as totacctbal\nfrom\n(\nselect\nsubstring(c_phone from 1 for 2) as cntrycode,\nc_acctbal\nfrom\ncustomer\nwhere\nsubstring(c_phone from 1 for 2) in\n('13', '31', '23', '29', '30', '18', '17')\nand c_acctbal > (\nselect\navg(c_acctbal)\nfrom\ncustomer\nwhere\nc_acctbal > 0.00\nand substring(c_phone from 1 for 2) in\n('13', '31', '23', '29', '30', '18', '17')\n)\nand not exists (\nselect\n*\nfrom\norders\nwhere\no_custkey = c_custkey\n)\n) as custsale\ngroup by\ncntrycode\norder by\ncntrycode;"
+  },
+  "bigquery_division_tpch_q8": {
+    "fork": "SELECT o_year, SAFE_DIVIDE(sum(CASE WHEN nation = 'BRAZIL' THEN volume ELSE 0 END), sum(volume)) AS mkt_share FROM (SELECT EXTRACT(YEAR FROM o_orderdate) AS o_year, l_extendedprice * (1 - l_discount) AS volume, n2.n_name AS nation FROM part CROSS JOIN supplier CROSS JOIN lineitem CROSS JOIN orders CROSS JOIN customer CROSS JOIN nation AS n1 CROSS JOIN nation AS n2 CROSS JOIN region WHERE p_partkey = l_partkey AND s_suppkey = l_suppkey AND l_orderkey = o_orderkey AND o_custkey = c_custkey AND c_nationkey = n1.n_nationkey AND n1.n_regionkey = r_regionkey AND r_name = 'AMERICA' AND s_nationkey = n2.n_nationkey AND o_orderdate BETWEEN CAST('1995-01-01' AS DATE) AND CAST('1996-12-31' AS DATE) AND p_type = 'ECONOMY ANODIZED STEEL') AS all_nations GROUP BY o_year ORDER BY o_year",
+    "legacy": "SELECT `o_year`, SAFE_DIVIDE(sum(CASE WHEN `nation` = 'BRAZIL' THEN `volume` ELSE 0 END), sum(`volume`)) AS `mkt_share` FROM (SELECT EXTRACT(YEAR FROM `o_orderdate`) AS `o_year`, `l_extendedprice` * (1 - `l_discount`) AS `volume`, `n2`.`n_name` AS `nation` FROM `part` CROSS JOIN `supplier` CROSS JOIN `lineitem` CROSS JOIN `orders` CROSS JOIN `customer` CROSS JOIN `nation` AS `n1` CROSS JOIN `nation` AS `n2` CROSS JOIN `region` WHERE `p_partkey` = `l_partkey` AND `s_suppkey` = `l_suppkey` AND `l_orderkey` = `o_orderkey` AND `o_custkey` = `c_custkey` AND `c_nationkey` = `n1`.`n_nationkey` AND `n1`.`n_regionkey` = `r_regionkey` AND `r_name` = 'AMERICA' AND `s_nationkey` = `n2`.`n_nationkey` AND `o_orderdate` BETWEEN CAST('1995-01-01' AS DATE) AND CAST('1996-12-31' AS DATE) AND `p_type` = 'ECONOMY ANODIZED STEEL') AS `all_nations` GROUP BY `o_year` ORDER BY `o_year`"
+  },
+  "bigquery_qualify_0": {
+    "fork": "WITH first_cte AS (SELECT a FROM `proj`.`ds`.`BASE_ONE`), second_cte AS (SELECT f.a FROM `proj`.`ds`.`ORDERS` AS o JOIN first_cte AS f ON o.a = f.a) SELECT * FROM second_cte",
+    "legacy": "WITH first_cte AS (SELECT a FROM `proj.ds.BASE_ONE`), second_cte AS (SELECT f.a FROM `proj.ds.ORDERS` o JOIN first_cte f ON o.a = f.a) SELECT * FROM second_cte"
+  },
+  "bigquery_qualify_1": {
+    "fork": "SELECT SUM(`l_quantity`) FROM `proj`.`ds`.`LINEITEM` CROSS JOIN `proj`.`ds`.`PART` WHERE `p_partkey` = `lineitem`.`l_partkey`",
+    "legacy": "SELECT SUM(`l_quantity`) FROM `proj.ds.LINEITEM` AS lineitem, `proj.ds.PART` WHERE `p_partkey` = `lineitem`.`l_partkey`"
+  },
+  "bigquery_qualify_10": {
+    "fork": "SELECT * FROM `proj`.`ds`.`PART`",
+    "legacy": "SELECT * FROM `proj.ds.PART`"
+  },
+  "bigquery_qualify_11": {
+    "fork": "SELECT * FROM `proj`.`ds`.`PARTSUPP`",
+    "legacy": "SELECT * FROM `proj.ds.PARTSUPP`"
+  },
+  "bigquery_qualify_12": {
+    "fork": "SELECT * FROM `proj`.`ds`.`ORDERS`",
+    "legacy": "SELECT * FROM `proj.ds.ORDERS`"
+  },
+  "bigquery_qualify_13": {
+    "fork": "SELECT * FROM `proj`.`ds`.`LINEITEM`",
+    "legacy": "SELECT * FROM `proj.ds.LINEITEM`"
+  },
+  "bigquery_qualify_14": {
+    "fork": "SELECT * FROM `proj`.`ds`.`CUSTOMER`",
+    "legacy": "SELECT * FROM `proj.ds.CUSTOMER`"
+  },
+  "bigquery_qualify_15": {
+    "fork": "SELECT * FROM `proj`.`ds`.`LINEITEM` AS l JOIN `proj`.`ds`.`ORDERS` AS o ON l.l_orderkey = o.o_orderkey",
+    "legacy": "SELECT * FROM `proj.ds.LINEITEM` l JOIN `proj.ds.ORDERS` o ON l.l_orderkey = o.o_orderkey"
+  },
+  "bigquery_qualify_16": {
+    "fork": "SELECT * FROM `proj`.`ds`.`MY_CUSTOM_TABLE`",
+    "legacy": "SELECT * FROM `proj.ds.MY_CUSTOM_TABLE`"
+  },
+  "bigquery_qualify_17": {
+    "fork": "SELECT schema_name FROM `proj`.`ds`.`INFORMATION_SCHEMA.SCHEMATA` AS SCHEMATA ORDER BY schema_name",
+    "legacy": "SELECT schema_name FROM INFORMATION_SCHEMA.SCHEMATA ORDER BY schema_name"
+  },
+  "bigquery_qualify_18": {
+    "fork": "SELECT table_name FROM `proj`.`ds`.`INFORMATION_SCHEMA.COLUMNS` AS COLUMNS",
+    "legacy": "SELECT table_name FROM `proj.ds.INFORMATION_SCHEMA.COLUMNS`"
+  },
+  "bigquery_qualify_19": {
+    "fork": "INSERT INTO `proj`.`ds`.`INSERT_OPS_LINEITEM` SELECT * FROM `proj`.`ds`.`LINEITEM`",
+    "legacy": "INSERT INTO `proj.ds.INSERT_OPS_LINEITEM` SELECT * FROM `proj.ds.LINEITEM`"
+  },
+  "bigquery_qualify_2": {
+    "fork": "WITH orders AS (SELECT * FROM `proj`.`ds`.`ORDERS` WHERE a > 1) SELECT * FROM orders",
+    "legacy": "WITH orders AS (SELECT * FROM `proj.ds.ORDERS` WHERE a > 1) SELECT * FROM `proj.ds.ORDERS`"
+  },
+  "bigquery_qualify_20": {
+    "fork": "UPDATE `proj`.`ds`.`UPDATE_OPS_ORDERS` SET o_comment = 'x' WHERE 1 = 1",
+    "legacy": "UPDATE `proj.ds.UPDATE_OPS_ORDERS` SET o_comment = 'x' WHERE 1=1"
+  },
+  "bigquery_qualify_21": {
+    "fork": "DROP TABLE IF EXISTS `proj`.`ds`.`TXN_ORDERS`",
+    "legacy": "DROP TABLE IF EXISTS `proj.ds.TXN_ORDERS`"
+  },
+  "bigquery_qualify_22": {
+    "fork": "SELECT COUNT(*) FROM `proj`.`ds`.`ORDERS`",
+    "legacy": "SELECT COUNT(*) FROM `proj.ds.ORDERS`"
+  },
+  "bigquery_qualify_23": {
+    "fork": "SELECT COUNT(*) FROM `proj`.`ds`.`ORDERS`",
+    "legacy": "SELECT COUNT(*) FROM `proj.ds.ORDERS`"
+  },
+  "bigquery_qualify_24": {
+    "fork": "INSERT INTO `proj`.`ds`.`UPDATE_OPS_ORDERS` SELECT * FROM `proj`.`ds`.`ORDERS`",
+    "legacy": "INSERT INTO `proj.ds.UPDATE_OPS_ORDERS` SELECT * FROM `proj.ds.ORDERS`"
+  },
+  "bigquery_qualify_25": {
+    "fork": "SELECT `o_orderkey`, `o_custkey` FROM `proj`.`ds`.`ORDERS`",
+    "legacy": "SELECT `o_orderkey`, `o_custkey` FROM `proj.ds.ORDERS`"
+  },
+  "bigquery_qualify_26": {
+    "fork": "SELECT count(*) AS total, customer FROM `proj`.`ds`.`LINEITEM` JOIN `proj`.`ds`.`CUSTOMER` ON lineitem.l_custkey = customer.c_custkey",
+    "legacy": "SELECT count(*) AS total, customer FROM `proj.ds.LINEITEM` AS lineitem JOIN `proj.ds.CUSTOMER` AS customer ON lineitem.l_custkey = customer.c_custkey"
+  },
+  "bigquery_qualify_27": {
+    "fork": "SELECT coalesce(c_name, customer) FROM `proj`.`ds`.`CUSTOMER`",
+    "legacy": "SELECT coalesce(c_name, customer) FROM `proj.ds.CUSTOMER`"
+  },
+  "bigquery_qualify_28": {
+    "fork": "INSERT INTO `proj`.`ds`.`CUSTOMER` (c_custkey, customer) VALUES (1, 'v')",
+    "legacy": "INSERT INTO `proj.ds.CUSTOMER` (c_custkey, customer) VALUES (1, 'v')"
+  },
+  "bigquery_qualify_29": {
+    "fork": "SELECT customer.c_name FROM `proj`.`ds`.`CUSTOMER` JOIN `proj`.`ds`.`LINEITEM` ON NOT COALESCE(lineitem.x, customer) IS NULL",
+    "legacy": "SELECT customer.c_name FROM `proj.ds.CUSTOMER` AS customer JOIN `proj.ds.LINEITEM` AS lineitem ON COALESCE(lineitem.x, customer) IS NOT NULL"
+  },
+  "bigquery_qualify_3": {
+    "fork": "SELECT * FROM `proj`.`ds`.`CUSTOMER` JOIN `proj`.`ds`.`ORDERS` ON customer.c_custkey = orders.o_custkey",
+    "legacy": "SELECT * FROM `proj.ds.CUSTOMER` AS customer JOIN `proj.ds.ORDERS` AS orders ON customer.c_custkey = orders.o_custkey"
+  },
+  "bigquery_qualify_30": {
+    "fork": "SELECT orders.o_orderkey FROM `proj`.`ds`.`ORDERS` AS `o`",
+    "legacy": "SELECT orders.o_orderkey FROM `proj.ds.ORDERS` `o`"
+  },
+  "bigquery_qualify_31": {
+    "fork": "SELECT orders.o_orderkey FROM `proj`.`ds`.`ORDERS` AS `order` WHERE 1 = 1",
+    "legacy": "SELECT orders.o_orderkey FROM `proj.ds.ORDERS` `order` WHERE 1=1"
+  },
+  "bigquery_qualify_32": {
+    "fork": "CREATE VIEW `proj`.`ds`.`ORDERS_VIEW` AS SELECT * FROM `proj`.`ds`.`ORDERS`",
+    "legacy": "CREATE VIEW `proj.ds.ORDERS_VIEW` AS SELECT * FROM `proj.ds.ORDERS`"
+  },
+  "bigquery_qualify_33": {
+    "fork": "DROP VIEW IF EXISTS `proj`.`ds`.`ORDERS_VIEW`",
+    "legacy": "DROP VIEW IF EXISTS `proj.ds.ORDERS_VIEW`"
+  },
+  "bigquery_qualify_34": {
+    "fork": "CREATE MATERIALIZED VIEW `proj`.`ds`.`MV` AS SELECT * FROM `proj`.`ds`.`ORDERS`",
+    "legacy": "CREATE MATERIALIZED VIEW `proj.ds.MV` AS SELECT * FROM `proj.ds.ORDERS`"
+  },
+  "bigquery_qualify_35": {
+    "fork": "DROP MATERIALIZED VIEW IF EXISTS `proj`.`ds`.`MV`",
+    "legacy": "DROP MATERIALIZED VIEW IF EXISTS `proj.ds.MV`"
+  },
+  "bigquery_qualify_36": {
+    "fork": "SELECT * FROM (`proj`.`ds`.`CUSTOMER` JOIN `proj`.`ds`.`ORDERS` ON customer.c_custkey = 1) JOIN `proj`.`ds`.`NATION` ON 1 = 1",
+    "legacy": "SELECT * FROM (`proj.ds.CUSTOMER` AS customer JOIN `proj.ds.ORDERS` ON customer.c_custkey = 1) JOIN `proj.ds.NATION` ON 1=1"
+  },
+  "bigquery_qualify_37": {
+    "fork": "SELECT * FROM (SELECT 1 FROM `proj`.`ds`.`LINEITEM`) AS sub CROSS JOIN `proj`.`ds`.`CUSTOMER` WHERE 1 = 1",
+    "legacy": "SELECT * FROM (SELECT 1 FROM `proj.ds.LINEITEM`) sub, `proj.ds.CUSTOMER` WHERE 1=1"
+  },
+  "bigquery_qualify_38": {
+    "fork": "SELECT * FROM `proj`.`ds`.`CUSTOMER` JOIN `proj`.`ds`.`ORDERS` ON customer.c_custkey = 1 CROSS JOIN `proj`.`ds`.`NATION` WHERE 1 = 1",
+    "legacy": "SELECT * FROM `proj.ds.CUSTOMER` AS customer JOIN `proj.ds.ORDERS` ON customer.c_custkey = 1, `proj.ds.NATION` WHERE 1=1"
+  },
+  "bigquery_qualify_39": {
+    "fork": "DELETE FROM `proj`.`ds`.`CUSTOMER` USING `proj`.`ds`.`ORDERS` CROSS JOIN `proj`.`ds`.`LINEITEM` WHERE 1 = 1",
+    "legacy": "DELETE FROM `proj.ds.CUSTOMER` USING `proj.ds.ORDERS`, `proj.ds.LINEITEM` WHERE 1=1"
+  },
+  "bigquery_qualify_4": {
+    "fork": "MERGE INTO `proj`.`ds`.`MERGE_OPS_TARGET` AS target USING (SELECT * FROM `proj`.`ds`.`ORDERS` WHERE o_orderkey BETWEEN 1 AND 10) AS source ON target.o_orderkey = source.o_orderkey WHEN NOT MATCHED THEN INSERT (VALUES(source.o_orderkey))",
+    "legacy": "MERGE INTO `proj.ds.MERGE_OPS_TARGET` AS target USING (SELECT * FROM `proj.ds.ORDERS` WHERE o_orderkey BETWEEN 1 AND 10) AS source ON target.o_orderkey = source.o_orderkey WHEN NOT MATCHED THEN INSERT VALUES (source.o_orderkey)"
+  },
+  "bigquery_qualify_40": {
+    "fork": "SELECT a, b FROM `proj`.`ds`.`CUSTOMER` CROSS JOIN `proj`.`ds`.`ORDERS`",
+    "legacy": "SELECT a, b FROM `proj.ds.CUSTOMER`, `proj.ds.ORDERS`"
+  },
+  "bigquery_qualify_43": {
+    "fork": "SELECT * FROM `proj`.`ds`.`ORDERS` WHERE o_orderkey IN (SELECT l_orderkey FROM `proj`.`ds`.`LINEITEM`)",
+    "legacy": "SELECT * FROM `proj.ds.ORDERS` WHERE o_orderkey IN (SELECT l_orderkey FROM `proj.ds.LINEITEM`)"
+  },
+  "bigquery_qualify_5": {
+    "fork": "BEGIN TRANSACTION;\nCREATE TEMPORARY TABLE IF NOT EXISTS `proj`.`ds`.`TEMP_ORDERS_1` AS SELECT * FROM `proj`.`ds`.`ORDERS` WHERE 1 = 0;\nINSERT INTO `proj`.`ds`.`TEMP_ORDERS_1` VALUES (1);\nINSERT INTO `proj`.`ds`.`TXN_ORDERS` SELECT * FROM `proj`.`ds`.`TEMP_ORDERS_1`;\nDROP TABLE IF EXISTS `proj`.`ds`.`TEMP_ORDERS_1`;\nCOMMIT TRANSACTION",
+    "legacy": "BEGIN TRANSACTION;\nCREATE TEMP TABLE IF NOT EXISTS temp_orders_1 AS SELECT * FROM `proj.ds.ORDERS` WHERE 1=0;\nINSERT INTO temp_orders_1 VALUES (1);\nINSERT INTO `proj.ds.TXN_ORDERS` SELECT * FROM temp_orders_1;\nDROP TABLE IF EXISTS temp_orders_1;\nCOMMIT;\n"
+  },
+  "bigquery_qualify_6": {
+    "fork": "SELECT * FROM `proj`.`ds`.`REGION`",
+    "legacy": "SELECT * FROM `proj.ds.REGION`"
+  },
+  "bigquery_qualify_7": {
+    "fork": "SELECT * FROM `proj`.`ds`.`NATION`",
+    "legacy": "SELECT * FROM `proj.ds.NATION`"
+  },
+  "bigquery_qualify_8": {
+    "fork": "SELECT * FROM `proj`.`ds`.`CUSTOMER`",
+    "legacy": "SELECT * FROM `proj.ds.CUSTOMER`"
+  },
+  "bigquery_qualify_9": {
+    "fork": "SELECT * FROM `proj`.`ds`.`SUPPLIER`",
+    "legacy": "SELECT * FROM `proj.ds.SUPPLIER`"
+  },
+  "clickhouse_decimal_division_0": {
+    "fork": "SELECT a / nullIf(CAST(b AS Nullable(Decimal(15, 4))), 0) FROM t",
+    "legacy": "SELECT a / NULLIF(CAST(b AS Nullable(Decimal(15, 4))), 0) FROM t"
+  },
+  "clickhouse_decimal_division_1": {
+    "fork": "SELECT a / nullIf(CAST(b AS Decimal(15, 4)), 0) FROM t",
+    "legacy": "SELECT a / CAST(b AS Decimal(15, 4)) FROM t"
+  },
+  "clickhouse_decimal_division_2": {
+    "fork": "SELECT x / nullIf(CAST(y AS Nullable(Decimal(18, 2))), 0) FROM t",
+    "legacy": "SELECT x / NULLIF(CAST(y AS Nullable(Decimal(18, 2))), 0) FROM t"
+  },
+  "clickhouse_decimal_literal_13": {
+    "fork": "SELECT CASE WHEN x THEN 1 ELSE CAST(0 AS Decimal(15, 2)) END",
+    "legacy": "SELECT CASE WHEN x THEN 1 ELSE CAST(0 AS Decimal(15,2)) END"
+  },
+  "clickhouse_decimal_literal_14": {
+    "fork": "SELECT COALESCE(col, CAST(0 AS Decimal(15, 2)))",
+    "legacy": "SELECT COALESCE(col, CAST(0 AS Decimal(15,2)))"
+  },
+  "clickhouse_decimal_literal_15": {
+    "fork": "SELECT COALESCE(col, CAST(0 AS Decimal(15, 2)))",
+    "legacy": "SELECT COALESCE(col, CAST(0 AS Decimal(15,2)))"
+  },
+  "clickhouse_decimal_literal_17": {
+    "fork": "SELECT * FROM t WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
+    "legacy": "SELECT * FROM t WHERE l_discount between 0.06 - 0.01 and 0.06 + 0.01"
+  },
+  "clickhouse_decimal_literal_4": {
+    "fork": "SELECT col + CAST(0 AS Decimal(15, 2))",
+    "legacy": "SELECT col + CAST(0 AS Decimal(15,2))"
+  },
+  "clickhouse_decimal_literal_5": {
+    "fork": "SELECT col - CAST(0 AS Decimal(15, 2))",
+    "legacy": "SELECT col - CAST(0 AS Decimal(15,2))"
+  },
+  "clickhouse_decimal_literal_9": {
+    "fork": "SELECT CASE WHEN x THEN CAST(0 AS Decimal(15, 2)) END",
+    "legacy": "SELECT CASE WHEN x THEN CAST(0 AS Decimal(15,2)) END"
+  },
+  "clickhouse_division_tpch_q14": {
+    "fork": "SELECT 100.00 * sum(CASE WHEN p_type LIKE 'PROMO%' THEN l_extendedprice * (1 - l_discount) ELSE 0 END) / nullIf(sum(l_extendedprice * (1 - l_discount)), 0) AS promo_revenue FROM lineitem CROSS JOIN part WHERE l_partkey = p_partkey AND l_shipdate >= CAST('1995-09-01' AS DATE) AND l_shipdate < CAST('1995-09-01' AS DATE) + INTERVAL '1' MONTH",
+    "legacy": "select\n100.00 * sum(case\nwhen p_type like 'PROMO%'\nthen l_extendedprice * (1 - l_discount)\nelse 0\nend) / sum(l_extendedprice * (1 - l_discount)) as promo_revenue\nfrom\nlineitem,\npart\nwhere\nl_partkey = p_partkey\nand l_shipdate >= date '1995-09-01'\nand l_shipdate < date '1995-09-01' + interval '1' month;"
+  },
+  "clickhouse_division_tpch_q17": {
+    "fork": "SELECT sum(l_extendedprice) / 7.0 AS avg_yearly FROM lineitem CROSS JOIN part WHERE p_partkey = l_partkey AND p_brand = 'Brand#23' AND p_container = 'MED BOX' AND l_quantity < (SELECT 0.2 * avg(l_quantity) FROM lineitem WHERE l_partkey = p_partkey)",
+    "legacy": "select\nsum(l_extendedprice) / 7.0 as avg_yearly\nfrom\nlineitem,\npart\nwhere\np_partkey = l_partkey\nand p_brand = 'Brand#23'\nand p_container = 'MED BOX'\nand l_quantity < (\nselect\n0.2 * avg(l_quantity)\nfrom\nlineitem\nwhere\nl_partkey = p_partkey\n);"
+  },
+  "clickhouse_division_tpch_q19": {
+    "fork": "SELECT sum(l_extendedprice * (1 - l_discount)) AS revenue FROM lineitem CROSS JOIN part WHERE (p_partkey = l_partkey AND p_brand = 'Brand#12' AND p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG') AND l_quantity >= 1 AND l_quantity <= 1 + 10 AND p_size BETWEEN 1 AND 5 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#23' AND p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK') AND l_quantity >= 10 AND l_quantity <= 10 + 10 AND p_size BETWEEN 1 AND 10 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#34' AND p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG') AND l_quantity >= 20 AND l_quantity <= 20 + 10 AND p_size BETWEEN 1 AND 15 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON')",
+    "legacy": "select\nsum(l_extendedprice* (1 - l_discount)) as revenue\nfrom\nlineitem,\npart\nwhere\n(\np_partkey = l_partkey\nand p_brand = 'Brand#12'\nand p_container in ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG')\nand l_quantity >= 1 and l_quantity <= 1 + 10\nand p_size between 1 and 5\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n)\nor\n(\np_partkey = l_partkey\nand p_brand = 'Brand#23'\nand p_container in ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK')\nand l_quantity >= 10 and l_quantity <= 10 + 10\nand p_size between 1 and 10\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n)\nor\n(\np_partkey = l_partkey\nand p_brand = 'Brand#34'\nand p_container in ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG')\nand l_quantity >= 20 and l_quantity <= 20 + 10\nand p_size between 1 and 15\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n);"
+  },
+  "clickhouse_division_tpch_q22": {
+    "fork": "SELECT cntrycode, count(*) AS numcust, sum(c_acctbal) AS totacctbal FROM (SELECT SUBSTRING(c_phone, 1, 2) AS cntrycode, c_acctbal FROM customer WHERE SUBSTRING(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17') AND c_acctbal > (SELECT avg(c_acctbal) FROM customer WHERE c_acctbal > 0.00 AND SUBSTRING(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17')) AND NOT EXISTS(SELECT * FROM orders WHERE o_custkey = c_custkey)) AS custsale GROUP BY cntrycode ORDER BY cntrycode",
+    "legacy": "select\ncntrycode,\ncount(*) as numcust,\nsum(c_acctbal) as totacctbal\nfrom\n(\nselect\nsubstring(c_phone from 1 for 2) as cntrycode,\nc_acctbal\nfrom\ncustomer\nwhere\nsubstring(c_phone from 1 for 2) in\n('13', '31', '23', '29', '30', '18', '17')\nand c_acctbal > (\nselect\navg(c_acctbal)\nfrom\ncustomer\nwhere\nc_acctbal > 0.00\nand substring(c_phone from 1 for 2) in\n('13', '31', '23', '29', '30', '18', '17')\n)\nand not exists (\nselect\n*\nfrom\norders\nwhere\no_custkey = c_custkey\n)\n) as custsale\ngroup by\ncntrycode\norder by\ncntrycode;"
+  },
+  "clickhouse_division_tpch_q8": {
+    "fork": "SELECT o_year, sum(CASE WHEN nation = 'BRAZIL' THEN volume ELSE 0 END) / nullIf(sum(volume), 0) AS mkt_share FROM (SELECT EXTRACT(YEAR FROM o_orderdate) AS o_year, l_extendedprice * (1 - l_discount) AS volume, n2.n_name AS nation FROM part CROSS JOIN supplier CROSS JOIN lineitem CROSS JOIN orders CROSS JOIN customer CROSS JOIN nation AS n1 CROSS JOIN nation AS n2 CROSS JOIN region WHERE p_partkey = l_partkey AND s_suppkey = l_suppkey AND l_orderkey = o_orderkey AND o_custkey = c_custkey AND c_nationkey = n1.n_nationkey AND n1.n_regionkey = r_regionkey AND r_name = 'AMERICA' AND s_nationkey = n2.n_nationkey AND o_orderdate BETWEEN CAST('1995-01-01' AS DATE) AND CAST('1996-12-31' AS DATE) AND p_type = 'ECONOMY ANODIZED STEEL') AS all_nations GROUP BY o_year ORDER BY o_year",
+    "legacy": "select\no_year,\nsum(case\nwhen nation = 'BRAZIL' then volume\nelse 0\nend) / NULLIF(sum(volume), 0) as mkt_share\nfrom\n(\nselect\nextract(year from o_orderdate) as o_year,\nl_extendedprice * (1 - l_discount) as volume,\nn2.n_name as nation\nfrom\npart,\nsupplier,\nlineitem,\norders,\ncustomer,\nnation n1,\nnation n2,\nregion\nwhere\np_partkey = l_partkey\nand s_suppkey = l_suppkey\nand l_orderkey = o_orderkey\nand o_custkey = c_custkey\nand c_nationkey = n1.n_nationkey\nand n1.n_regionkey = r_regionkey\nand r_name = 'AMERICA'\nand s_nationkey = n2.n_nationkey\nand o_orderdate between date '1995-01-01' and date '1996-12-31'\nand p_type = 'ECONOMY ANODIZED STEEL'\n) as all_nations\ngroup by\no_year\norder by\no_year;"
+  },
+  "clickhouse_lowercase_9": {
+    "fork": "SELECT 'SR_FEE' AS label, sr_fee FROM t",
+    "legacy": "SELECT 'sr_fee' AS label, sr_fee FROM t"
+  },
+  "clickhouse_safe_division_0": {
+    "fork": "SELECT revenue / nullIf(((store_sales + web_sales) / 2), 0) FROM metrics",
+    "legacy": "SELECT revenue / NULLIF(((store_sales + web_sales) / 2), 0) FROM metrics"
+  },
+  "clickhouse_safe_division_2": {
+    "fork": "SELECT total / nullIf(COUNT(*), 0) FROM t",
+    "legacy": "SELECT total / NULLIF(COUNT(*), 0) FROM t"
+  },
+  "clickhouse_safe_division_3": {
+    "fork": "SELECT revenue / nullIf(SUM(quantity), 0) FROM t",
+    "legacy": "SELECT revenue / NULLIF(SUM(quantity), 0) FROM t"
+  },
+  "clickhouse_safe_division_4": {
+    "fork": "SELECT a / nullIf(b, 0) FROM t",
+    "legacy": "SELECT a / NULLIF(b, 0) FROM t"
+  },
+  "clickhouse_safe_division_5": {
+    "fork": "SELECT a / nullIf(b, 0), c / nullIf(d, 0) FROM t",
+    "legacy": "SELECT a / NULLIF(b, 0), c / NULLIF(d, 0) FROM t"
+  },
+  "clickhouse_safe_division_6": {
+    "fork": "SELECT 'a/b' AS label, x / nullIf(y, 0) FROM t",
+    "legacy": "SELECT 'a/b' AS label, x / NULLIF(y, 0) FROM t"
+  },
+  "clickhouse_safe_division_7": {
+    "fork": "SELECT mkt / nullIf(SUM(volume) OVER (PARTITION BY o_year), 0) FROM t",
+    "legacy": "SELECT mkt / NULLIF(SUM(volume) OVER (PARTITION BY o_year), 0) FROM t"
+  },
+  "clickhouse_safe_division_8": {
+    "fork": "SELECT a / nullIf(b, 0) FROM t",
+    "legacy": "SELECT a / NULLIF(b, 0) FROM t"
+  },
+  "clickhouse_settings_0": {
+    "fork": "CREATE TABLE foo (id Int32) ENGINE=MergeTree() ORDER BY id",
+    "legacy": "CREATE TABLE foo (id Int32) ENGINE = MergeTree() ORDER BY id"
+  },
+  "clickhouse_settings_6": {
+    "fork": "SELECT a FROM t SETTINGS joined_subquery_requires_alias = 0, join_algorithm = 'grace_hash'",
+    "legacy": "SELECT a FROM t SETTINGS join_algorithm = 'hash' SETTINGS joined_subquery_requires_alias = 0, join_algorithm = 'grace_hash'"
+  },
+  "clickhouse_transform_0": {
+    "fork": "SELECT revenue / nullIf(((store_sales + web_sales) / 2), 0) FROM metrics",
+    "legacy": "SELECT revenue / NULLIF(((store_sales + web_sales) / 2), 0) FROM metrics"
+  },
+  "clickhouse_transform_1": {
+    "fork": "SELECT COALESCE(sr_fee, CAST(0 AS Decimal(15, 2))) / nullIf(sr_return_amt, 0) FROM store_returns",
+    "legacy": "SELECT COALESCE(sr_fee, CAST(0 AS Decimal(15,2))) / sr_return_amt FROM store_returns"
+  },
+  "clickhouse_transform_10": {
+    "fork": "SELECT o_year, sum(CASE WHEN nation = 'BRAZIL' THEN volume ELSE 0 END) / nullIf(sum(volume), 0) AS mkt_share FROM (SELECT EXTRACT(YEAR FROM o_orderdate) AS o_year, l_extendedprice * (1 - l_discount) AS volume, n2.n_name AS nation FROM part CROSS JOIN supplier CROSS JOIN lineitem CROSS JOIN orders CROSS JOIN customer CROSS JOIN nation AS n1 CROSS JOIN nation AS n2 CROSS JOIN region WHERE p_partkey = l_partkey AND s_suppkey = l_suppkey AND l_orderkey = o_orderkey AND o_custkey = c_custkey AND c_nationkey = n1.n_nationkey AND n1.n_regionkey = r_regionkey AND r_name = 'AMERICA' AND s_nationkey = n2.n_nationkey AND o_orderdate BETWEEN CAST('1995-01-01' AS DATE) AND CAST('1996-12-31' AS DATE) AND p_type = 'ECONOMY ANODIZED STEEL') AS all_nations GROUP BY o_year ORDER BY o_year",
+    "legacy": "select\no_year,\nsum(case\nwhen nation = 'BRAZIL' then volume\nelse 0\nend) / NULLIF(sum(volume), 0) as mkt_share\nfrom\n(\nselect\nextract(year from o_orderdate) as o_year,\nl_extendedprice * (1 - l_discount) as volume,\nn2.n_name as nation\nfrom\npart,\nsupplier,\nlineitem,\norders,\ncustomer,\nnation n1,\nnation n2,\nregion\nwhere\np_partkey = l_partkey\nand s_suppkey = l_suppkey\nand l_orderkey = o_orderkey\nand o_custkey = c_custkey\nand c_nationkey = n1.n_nationkey\nand n1.n_regionkey = r_regionkey\nand r_name = 'AMERICA'\nand s_nationkey = n2.n_nationkey\nand o_orderdate between date '1995-01-01' and date '1996-12-31'\nand p_type = 'ECONOMY ANODIZED STEEL'\n) as all_nations\ngroup by\no_year\norder by\no_year;"
+  },
+  "clickhouse_transform_11": {
+    "fork": "SELECT nation, o_year, sum(amount) AS sum_profit FROM (SELECT n_name AS nation, EXTRACT(YEAR FROM o_orderdate) AS o_year, l_extendedprice * (1 - l_discount) - ps_supplycost * l_quantity AS amount FROM part CROSS JOIN supplier CROSS JOIN lineitem CROSS JOIN partsupp CROSS JOIN orders CROSS JOIN nation WHERE s_suppkey = l_suppkey AND ps_suppkey = l_suppkey AND ps_partkey = l_partkey AND p_partkey = l_partkey AND o_orderkey = l_orderkey AND s_nationkey = n_nationkey AND p_name LIKE '%green%') AS profit GROUP BY nation, o_year ORDER BY nation, o_year DESC",
+    "legacy": "select\nnation,\no_year,\nsum(amount) as sum_profit\nfrom\n(\nselect\nn_name as nation,\nextract(year from o_orderdate) as o_year,\nl_extendedprice * (1 - l_discount) - ps_supplycost * l_quantity as amount\nfrom\npart,\nsupplier,\nlineitem,\npartsupp,\norders,\nnation\nwhere\ns_suppkey = l_suppkey\nand ps_suppkey = l_suppkey\nand ps_partkey = l_partkey\nand p_partkey = l_partkey\nand o_orderkey = l_orderkey\nand s_nationkey = n_nationkey\nand p_name like '%green%'\n) as profit\ngroup by\nnation,\no_year\norder by\nnation,\no_year desc;"
+  },
+  "clickhouse_transform_12": {
+    "fork": "SELECT c_custkey, c_name, sum(l_extendedprice * (1 - l_discount)) AS revenue, c_acctbal, n_name, c_address, c_phone, c_comment FROM customer CROSS JOIN orders CROSS JOIN lineitem CROSS JOIN nation WHERE c_custkey = o_custkey AND l_orderkey = o_orderkey AND o_orderdate >= CAST('1993-10-01' AS DATE) AND o_orderdate < CAST('1993-10-01' AS DATE) + INTERVAL '3' MONTH AND l_returnflag = 'R' AND c_nationkey = n_nationkey GROUP BY c_custkey, c_name, c_acctbal, c_phone, n_name, c_address, c_comment ORDER BY revenue DESC LIMIT 20",
+    "legacy": "select\nc_custkey,\nc_name,\nsum(l_extendedprice * (1 - l_discount)) as revenue,\nc_acctbal,\nn_name,\nc_address,\nc_phone,\nc_comment\nfrom\ncustomer,\norders,\nlineitem,\nnation\nwhere\nc_custkey = o_custkey\nand l_orderkey = o_orderkey\nand o_orderdate >= date '1993-10-01'\nand o_orderdate < date '1993-10-01' + interval '3' month\nand l_returnflag = 'R'\nand c_nationkey = n_nationkey\ngroup by\nc_custkey,\nc_name,\nc_acctbal,\nc_phone,\nn_name,\nc_address,\nc_comment\norder by\nrevenue desc\nLIMIT 20;"
+  },
+  "clickhouse_transform_13": {
+    "fork": "SELECT ps_partkey, sum(ps_supplycost * ps_availqty) AS value FROM partsupp CROSS JOIN supplier CROSS JOIN nation WHERE ps_suppkey = s_suppkey AND s_nationkey = n_nationkey AND n_name = 'GERMANY' GROUP BY ps_partkey HAVING sum(ps_supplycost * ps_availqty) > (SELECT sum(ps_supplycost * ps_availqty) * 0.0001000000 FROM partsupp CROSS JOIN supplier CROSS JOIN nation WHERE ps_suppkey = s_suppkey AND s_nationkey = n_nationkey AND n_name = 'GERMANY') ORDER BY value DESC",
+    "legacy": "select\nps_partkey,\nsum(ps_supplycost * ps_availqty) as value\nfrom\npartsupp,\nsupplier,\nnation\nwhere\nps_suppkey = s_suppkey\nand s_nationkey = n_nationkey\nand n_name = 'GERMANY'\ngroup by\nps_partkey having\nsum(ps_supplycost * ps_availqty) > (\nselect\nsum(ps_supplycost * ps_availqty) * 0.0001000000\nfrom\npartsupp,\nsupplier,\nnation\nwhere\nps_suppkey = s_suppkey\nand s_nationkey = n_nationkey\nand n_name = 'GERMANY'\n)\norder by\nvalue desc;"
+  },
+  "clickhouse_transform_14": {
+    "fork": "SELECT l_shipmode, sum(CASE WHEN o_orderpriority = '1-URGENT' OR o_orderpriority = '2-HIGH' THEN 1 ELSE 0 END) AS high_line_count, sum(CASE WHEN o_orderpriority <> '1-URGENT' AND o_orderpriority <> '2-HIGH' THEN 1 ELSE 0 END) AS low_line_count FROM orders CROSS JOIN lineitem WHERE o_orderkey = l_orderkey AND l_shipmode IN ('MAIL', 'SHIP') AND l_commitdate < l_receiptdate AND l_shipdate < l_commitdate AND l_receiptdate >= CAST('1994-01-01' AS DATE) AND l_receiptdate < CAST('1994-01-01' AS DATE) + INTERVAL '1' YEAR GROUP BY l_shipmode ORDER BY l_shipmode",
+    "legacy": "select\nl_shipmode,\nsum(case\nwhen o_orderpriority = '1-URGENT'\nor o_orderpriority = '2-HIGH'\nthen 1\nelse 0\nend) as high_line_count,\nsum(case\nwhen o_orderpriority <> '1-URGENT'\nand o_orderpriority <> '2-HIGH'\nthen 1\nelse 0\nend) as low_line_count\nfrom\norders,\nlineitem\nwhere\no_orderkey = l_orderkey\nand l_shipmode in ('MAIL', 'SHIP')\nand l_commitdate < l_receiptdate\nand l_shipdate < l_commitdate\nand l_receiptdate >= date '1994-01-01'\nand l_receiptdate < date '1994-01-01' + interval '1' year\ngroup by\nl_shipmode\norder by\nl_shipmode;"
+  },
+  "clickhouse_transform_15": {
+    "fork": "SELECT c_count, count(*) AS custdist FROM (SELECT c_custkey, count(o_orderkey) FROM customer LEFT OUTER JOIN orders ON c_custkey = o_custkey AND o_comment NOT LIKE '%special%requests%' GROUP BY c_custkey) AS c_orders(c_custkey, c_count) GROUP BY c_count ORDER BY custdist DESC, c_count DESC",
+    "legacy": "select\nc_count,\ncount(*) as custdist\nfrom\n(\nselect\nc_custkey,\ncount(o_orderkey)\nfrom\ncustomer left outer join orders on\nc_custkey = o_custkey\nand o_comment not like '%special%requests%'\ngroup by\nc_custkey\n) as c_orders (c_custkey, c_count)\ngroup by\nc_count\norder by\ncustdist desc,\nc_count desc;"
+  },
+  "clickhouse_transform_16": {
+    "fork": "SELECT 100.00 * sum(CASE WHEN p_type LIKE 'PROMO%' THEN l_extendedprice * (1 - l_discount) ELSE 0 END) / nullIf(sum(l_extendedprice * (1 - l_discount)), 0) AS promo_revenue FROM lineitem CROSS JOIN part WHERE l_partkey = p_partkey AND l_shipdate >= CAST('1995-09-01' AS DATE) AND l_shipdate < CAST('1995-09-01' AS DATE) + INTERVAL '1' MONTH",
+    "legacy": "select\n100.00 * sum(case\nwhen p_type like 'PROMO%'\nthen l_extendedprice * (1 - l_discount)\nelse 0\nend) / sum(l_extendedprice * (1 - l_discount)) as promo_revenue\nfrom\nlineitem,\npart\nwhere\nl_partkey = p_partkey\nand l_shipdate >= date '1995-09-01'\nand l_shipdate < date '1995-09-01' + interval '1' month;"
+  },
+  "clickhouse_transform_17": {
+    "fork": "WITH revenue(supplier_no, total_revenue) AS (SELECT l_suppkey, sum(l_extendedprice * (1 - l_discount)) FROM lineitem WHERE l_shipdate >= CAST('1996-01-01' AS DATE) AND l_shipdate < CAST('1996-01-01' AS DATE) + INTERVAL '3' MONTH GROUP BY l_suppkey) SELECT s_suppkey, s_name, s_address, s_phone, total_revenue FROM supplier CROSS JOIN revenue WHERE s_suppkey = supplier_no AND total_revenue = (SELECT max(total_revenue) FROM revenue) ORDER BY s_suppkey",
+    "legacy": "with revenue (supplier_no, total_revenue) as (\nselect\nl_suppkey,\nsum(l_extendedprice * (1-l_discount))\nfrom\nlineitem\nwhere\nl_shipdate >= date '1996-01-01'\nand l_shipdate < date '1996-01-01' + interval '3' month\ngroup by\nl_suppkey\n)\nselect\ns_suppkey,\ns_name,\ns_address,\ns_phone,\ntotal_revenue\nfrom\nsupplier,\nrevenue\nwhere\ns_suppkey = supplier_no\nand total_revenue = (\nselect\nmax(total_revenue)\nfrom\nrevenue\n)\norder by\ns_suppkey;"
+  },
+  "clickhouse_transform_18": {
+    "fork": "SELECT p_brand, p_type, p_size, count(DISTINCT ps_suppkey) AS supplier_cnt FROM partsupp CROSS JOIN part WHERE p_partkey = ps_partkey AND p_brand <> 'Brand#45' AND p_type NOT LIKE 'MEDIUM POLISHED%' AND p_size IN (49, 14, 23, 45, 19, 3, 36, 9) AND NOT (ps_suppkey IN (SELECT s_suppkey FROM supplier WHERE s_comment LIKE '%Customer%Complaints%')) GROUP BY p_brand, p_type, p_size ORDER BY supplier_cnt DESC, p_brand, p_type, p_size",
+    "legacy": "select\np_brand,\np_type,\np_size,\ncount(distinct ps_suppkey) as supplier_cnt\nfrom\npartsupp,\npart\nwhere\np_partkey = ps_partkey\nand p_brand <> 'Brand#45'\nand p_type not like 'MEDIUM POLISHED%'\nand p_size in (49, 14, 23, 45, 19, 3, 36, 9)\nand ps_suppkey not in (\nselect\ns_suppkey\nfrom\nsupplier\nwhere\ns_comment like '%Customer%Complaints%'\n)\ngroup by\np_brand,\np_type,\np_size\norder by\nsupplier_cnt desc,\np_brand,\np_type,\np_size;"
+  },
+  "clickhouse_transform_19": {
+    "fork": "SELECT sum(l_extendedprice) / 7.0 AS avg_yearly FROM lineitem CROSS JOIN part WHERE p_partkey = l_partkey AND p_brand = 'Brand#23' AND p_container = 'MED BOX' AND l_quantity < (SELECT 0.2 * avg(l_quantity) FROM lineitem WHERE l_partkey = p_partkey)",
+    "legacy": "select\nsum(l_extendedprice) / 7.0 as avg_yearly\nfrom\nlineitem,\npart\nwhere\np_partkey = l_partkey\nand p_brand = 'Brand#23'\nand p_container = 'MED BOX'\nand l_quantity < (\nselect\n0.2 * avg(l_quantity)\nfrom\nlineitem\nwhere\nl_partkey = p_partkey\n);"
+  },
+  "clickhouse_transform_20": {
+    "fork": "SELECT c_name, c_custkey, o_orderkey, o_orderdate, o_totalprice, sum(l_quantity) FROM customer CROSS JOIN orders CROSS JOIN lineitem WHERE o_orderkey IN (SELECT l_orderkey FROM lineitem GROUP BY l_orderkey HAVING sum(l_quantity) > 300) AND c_custkey = o_custkey AND o_orderkey = l_orderkey GROUP BY c_name, c_custkey, o_orderkey, o_orderdate, o_totalprice ORDER BY o_totalprice DESC, o_orderdate LIMIT 100",
+    "legacy": "select\nc_name,\nc_custkey,\no_orderkey,\no_orderdate,\no_totalprice,\nsum(l_quantity)\nfrom\ncustomer,\norders,\nlineitem\nwhere\no_orderkey in (\nselect\nl_orderkey\nfrom\nlineitem\ngroup by\nl_orderkey having\nsum(l_quantity) > 300\n)\nand c_custkey = o_custkey\nand o_orderkey = l_orderkey\ngroup by\nc_name,\nc_custkey,\no_orderkey,\no_orderdate,\no_totalprice\norder by\no_totalprice desc,\no_orderdate\nLIMIT 100;"
+  },
+  "clickhouse_transform_21": {
+    "fork": "SELECT sum(l_extendedprice * (1 - l_discount)) AS revenue FROM lineitem CROSS JOIN part WHERE (p_partkey = l_partkey AND p_brand = 'Brand#12' AND p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG') AND l_quantity >= 1 AND l_quantity <= 1 + 10 AND p_size BETWEEN 1 AND 5 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#23' AND p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK') AND l_quantity >= 10 AND l_quantity <= 10 + 10 AND p_size BETWEEN 1 AND 10 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#34' AND p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG') AND l_quantity >= 20 AND l_quantity <= 20 + 10 AND p_size BETWEEN 1 AND 15 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON')",
+    "legacy": "select\nsum(l_extendedprice* (1 - l_discount)) as revenue\nfrom\nlineitem,\npart\nwhere\n(\np_partkey = l_partkey\nand p_brand = 'Brand#12'\nand p_container in ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG')\nand l_quantity >= 1 and l_quantity <= 1 + 10\nand p_size between 1 and 5\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n)\nor\n(\np_partkey = l_partkey\nand p_brand = 'Brand#23'\nand p_container in ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK')\nand l_quantity >= 10 and l_quantity <= 10 + 10\nand p_size between 1 and 10\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n)\nor\n(\np_partkey = l_partkey\nand p_brand = 'Brand#34'\nand p_container in ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG')\nand l_quantity >= 20 and l_quantity <= 20 + 10\nand p_size between 1 and 15\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n);"
+  },
+  "clickhouse_transform_22": {
+    "fork": "SELECT s_name, s_address FROM supplier CROSS JOIN nation WHERE s_suppkey IN (SELECT ps_suppkey FROM partsupp WHERE ps_partkey IN (SELECT p_partkey FROM part WHERE p_name LIKE 'forest%') AND ps_availqty > (SELECT 0.5 * sum(l_quantity) FROM lineitem WHERE l_partkey = ps_partkey AND l_suppkey = ps_suppkey AND l_shipdate >= CAST('1994-01-01' AS DATE) AND l_shipdate < CAST('1994-01-01' AS DATE) + INTERVAL '1' YEAR)) AND s_nationkey = n_nationkey AND n_name = 'CANADA' ORDER BY s_name",
+    "legacy": "select\ns_name,\ns_address\nfrom\nsupplier,\nnation\nwhere\ns_suppkey in (\nselect\nps_suppkey\nfrom\npartsupp\nwhere\nps_partkey in (\nselect\np_partkey\nfrom\npart\nwhere\np_name like 'forest%'\n)\nand ps_availqty > (\nselect\n0.5 * sum(l_quantity)\nfrom\nlineitem\nwhere\nl_partkey = ps_partkey\nand l_suppkey = ps_suppkey\nand l_shipdate >= date '1994-01-01'\nand l_shipdate < date '1994-01-01' + interval '1' year\n)\n)\nand s_nationkey = n_nationkey\nand n_name = 'CANADA'\norder by\ns_name;"
+  },
+  "clickhouse_transform_23": {
+    "fork": "SELECT s_name, count(*) AS numwait FROM supplier CROSS JOIN lineitem AS l1 CROSS JOIN orders CROSS JOIN nation WHERE s_suppkey = l1.l_suppkey AND o_orderkey = l1.l_orderkey AND o_orderstatus = 'F' AND l1.l_receiptdate > l1.l_commitdate AND EXISTS(SELECT * FROM lineitem AS l2 WHERE l2.l_orderkey = l1.l_orderkey AND l2.l_suppkey <> l1.l_suppkey) AND NOT EXISTS(SELECT * FROM lineitem AS l3 WHERE l3.l_orderkey = l1.l_orderkey AND l3.l_suppkey <> l1.l_suppkey AND l3.l_receiptdate > l3.l_commitdate) AND s_nationkey = n_nationkey AND n_name = 'SAUDI ARABIA' GROUP BY s_name ORDER BY numwait DESC, s_name LIMIT 100",
+    "legacy": "select\ns_name,\ncount(*) as numwait\nfrom\nsupplier,\nlineitem l1,\norders,\nnation\nwhere\ns_suppkey = l1.l_suppkey\nand o_orderkey = l1.l_orderkey\nand o_orderstatus = 'F'\nand l1.l_receiptdate > l1.l_commitdate\nand exists (\nselect\n*\nfrom\nlineitem l2\nwhere\nl2.l_orderkey = l1.l_orderkey\nand l2.l_suppkey <> l1.l_suppkey\n)\nand not exists (\nselect\n*\nfrom\nlineitem l3\nwhere\nl3.l_orderkey = l1.l_orderkey\nand l3.l_suppkey <> l1.l_suppkey\nand l3.l_receiptdate > l3.l_commitdate\n)\nand s_nationkey = n_nationkey\nand n_name = 'SAUDI ARABIA'\ngroup by\ns_name\norder by\nnumwait desc,\ns_name\nLIMIT 100;"
+  },
+  "clickhouse_transform_24": {
+    "fork": "SELECT cntrycode, count(*) AS numcust, sum(c_acctbal) AS totacctbal FROM (SELECT SUBSTRING(c_phone, 1, 2) AS cntrycode, c_acctbal FROM customer WHERE SUBSTRING(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17') AND c_acctbal > (SELECT avg(c_acctbal) FROM customer WHERE c_acctbal > 0.00 AND SUBSTRING(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17')) AND NOT EXISTS(SELECT * FROM orders WHERE o_custkey = c_custkey)) AS custsale GROUP BY cntrycode ORDER BY cntrycode",
+    "legacy": "select\ncntrycode,\ncount(*) as numcust,\nsum(c_acctbal) as totacctbal\nfrom\n(\nselect\nsubstring(c_phone from 1 for 2) as cntrycode,\nc_acctbal\nfrom\ncustomer\nwhere\nsubstring(c_phone from 1 for 2) in\n('13', '31', '23', '29', '30', '18', '17')\nand c_acctbal > (\nselect\navg(c_acctbal)\nfrom\ncustomer\nwhere\nc_acctbal > 0.00\nand substring(c_phone from 1 for 2) in\n('13', '31', '23', '29', '30', '18', '17')\n)\nand not exists (\nselect\n*\nfrom\norders\nwhere\no_custkey = c_custkey\n)\n) as custsale\ngroup by\ncntrycode\norder by\ncntrycode;"
+  },
+  "clickhouse_transform_3": {
+    "fork": "SELECT l_returnflag, l_linestatus, sum(l_quantity) AS sum_qty, sum(l_extendedprice) AS sum_base_price, sum(l_extendedprice * (1 - l_discount)) AS sum_disc_price, sum(l_extendedprice * (1 - l_discount) * (1 + l_tax)) AS sum_charge, avg(l_quantity) AS avg_qty, avg(l_extendedprice) AS avg_price, avg(l_discount) AS avg_disc, count(*) AS count_order FROM lineitem WHERE l_shipdate <= CAST('1998-12-01' AS DATE) - INTERVAL '90' DAY GROUP BY l_returnflag, l_linestatus ORDER BY l_returnflag, l_linestatus",
+    "legacy": "select\nl_returnflag,\nl_linestatus,\nsum(l_quantity) as sum_qty,\nsum(l_extendedprice) as sum_base_price,\nsum(l_extendedprice * (1 - l_discount)) as sum_disc_price,\nsum(l_extendedprice * (1 - l_discount) * (1 + l_tax)) as sum_charge,\navg(l_quantity) as avg_qty,\navg(l_extendedprice) as avg_price,\navg(l_discount) as avg_disc,\ncount(*) as count_order\nfrom\nlineitem\nwhere\nl_shipdate <= date '1998-12-01' - interval '90' day\ngroup by\nl_returnflag,\nl_linestatus\norder by\nl_returnflag,\nl_linestatus;"
+  },
+  "clickhouse_transform_4": {
+    "fork": "SELECT s_acctbal, s_name, n_name, p_partkey, p_mfgr, s_address, s_phone, s_comment FROM part CROSS JOIN supplier CROSS JOIN partsupp CROSS JOIN nation CROSS JOIN region WHERE p_partkey = ps_partkey AND s_suppkey = ps_suppkey AND p_size = 15 AND p_type LIKE '%BRASS' AND s_nationkey = n_nationkey AND n_regionkey = r_regionkey AND r_name = 'EUROPE' AND ps_supplycost = (SELECT min(ps_supplycost) FROM partsupp CROSS JOIN supplier CROSS JOIN nation CROSS JOIN region WHERE p_partkey = ps_partkey AND s_suppkey = ps_suppkey AND s_nationkey = n_nationkey AND n_regionkey = r_regionkey AND r_name = 'EUROPE') ORDER BY s_acctbal DESC, n_name, s_name, p_partkey LIMIT 100",
+    "legacy": "select\ns_acctbal,\ns_name,\nn_name,\np_partkey,\np_mfgr,\ns_address,\ns_phone,\ns_comment\nfrom\npart,\nsupplier,\npartsupp,\nnation,\nregion\nwhere\np_partkey = ps_partkey\nand s_suppkey = ps_suppkey\nand p_size = 15\nand p_type like '%BRASS'\nand s_nationkey = n_nationkey\nand n_regionkey = r_regionkey\nand r_name = 'EUROPE'\nand ps_supplycost = (\nselect\nmin(ps_supplycost)\nfrom\npartsupp,\nsupplier,\nnation,\nregion\nwhere\np_partkey = ps_partkey\nand s_suppkey = ps_suppkey\nand s_nationkey = n_nationkey\nand n_regionkey = r_regionkey\nand r_name = 'EUROPE'\n)\norder by\ns_acctbal desc,\nn_name,\ns_name,\np_partkey\nLIMIT 100;"
+  },
+  "clickhouse_transform_5": {
+    "fork": "SELECT l_orderkey, sum(l_extendedprice * (1 - l_discount)) AS revenue, o_orderdate, o_shippriority FROM customer CROSS JOIN orders CROSS JOIN lineitem WHERE c_mktsegment = 'BUILDING' AND c_custkey = o_custkey AND l_orderkey = o_orderkey AND o_orderdate < CAST('1995-03-15' AS DATE) AND l_shipdate > CAST('1995-03-15' AS DATE) GROUP BY l_orderkey, o_orderdate, o_shippriority ORDER BY revenue DESC, o_orderdate LIMIT 10",
+    "legacy": "select\nl_orderkey,\nsum(l_extendedprice * (1 - l_discount)) as revenue,\no_orderdate,\no_shippriority\nfrom\ncustomer,\norders,\nlineitem\nwhere\nc_mktsegment = 'BUILDING'\nand c_custkey = o_custkey\nand l_orderkey = o_orderkey\nand o_orderdate < date '1995-03-15'\nand l_shipdate > date '1995-03-15'\ngroup by\nl_orderkey,\no_orderdate,\no_shippriority\norder by\nrevenue desc,\no_orderdate\nLIMIT 10;"
+  },
+  "clickhouse_transform_6": {
+    "fork": "SELECT o_orderpriority, count(*) AS order_count FROM orders WHERE o_orderdate >= CAST('1993-07-01' AS DATE) AND o_orderdate < CAST('1993-07-01' AS DATE) + INTERVAL '3' MONTH AND EXISTS(SELECT * FROM lineitem WHERE l_orderkey = o_orderkey AND l_commitdate < l_receiptdate) GROUP BY o_orderpriority ORDER BY o_orderpriority",
+    "legacy": "select\no_orderpriority,\ncount(*) as order_count\nfrom\norders\nwhere\no_orderdate >= date '1993-07-01'\nand o_orderdate < date '1993-07-01' + interval '3' month\nand exists (\nselect\n*\nfrom\nlineitem\nwhere\nl_orderkey = o_orderkey\nand l_commitdate < l_receiptdate\n)\ngroup by\no_orderpriority\norder by\no_orderpriority;"
+  },
+  "clickhouse_transform_7": {
+    "fork": "SELECT n_name, sum(l_extendedprice * (1 - l_discount)) AS revenue FROM customer CROSS JOIN orders CROSS JOIN lineitem CROSS JOIN supplier CROSS JOIN nation CROSS JOIN region WHERE c_custkey = o_custkey AND l_orderkey = o_orderkey AND l_suppkey = s_suppkey AND c_nationkey = s_nationkey AND s_nationkey = n_nationkey AND n_regionkey = r_regionkey AND r_name = 'ASIA' AND o_orderdate >= CAST('1994-01-01' AS DATE) AND o_orderdate < CAST('1994-01-01' AS DATE) + INTERVAL '1' YEAR GROUP BY n_name ORDER BY revenue DESC",
+    "legacy": "select\nn_name,\nsum(l_extendedprice * (1 - l_discount)) as revenue\nfrom\ncustomer,\norders,\nlineitem,\nsupplier,\nnation,\nregion\nwhere\nc_custkey = o_custkey\nand l_orderkey = o_orderkey\nand l_suppkey = s_suppkey\nand c_nationkey = s_nationkey\nand s_nationkey = n_nationkey\nand n_regionkey = r_regionkey\nand r_name = 'ASIA'\nand o_orderdate >= date '1994-01-01'\nand o_orderdate < date '1994-01-01' + interval '1' year\ngroup by\nn_name\norder by\nrevenue desc;"
+  },
+  "clickhouse_transform_8": {
+    "fork": "SELECT sum(l_extendedprice * l_discount) AS revenue FROM lineitem WHERE l_shipdate >= CAST('1994-01-01' AS DATE) AND l_shipdate < CAST('1994-01-01' AS DATE) + INTERVAL '1' YEAR AND l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01 AND l_quantity < 24",
+    "legacy": "select\nsum(l_extendedprice * l_discount) as revenue\nfrom\nlineitem\nwhere\nl_shipdate >= date '1994-01-01'\nand l_shipdate < date '1994-01-01' + interval '1' year\nand l_discount between .06 - 0.01 and .06 + 0.01\nand l_quantity < 24;"
+  },
+  "clickhouse_transform_9": {
+    "fork": "SELECT supp_nation, cust_nation, l_year, sum(volume) AS revenue FROM (SELECT n1.n_name AS supp_nation, n2.n_name AS cust_nation, EXTRACT(YEAR FROM l_shipdate) AS l_year, l_extendedprice * (1 - l_discount) AS volume FROM supplier CROSS JOIN lineitem CROSS JOIN orders CROSS JOIN customer CROSS JOIN nation AS n1 CROSS JOIN nation AS n2 WHERE s_suppkey = l_suppkey AND o_orderkey = l_orderkey AND c_custkey = o_custkey AND s_nationkey = n1.n_nationkey AND c_nationkey = n2.n_nationkey AND ((n1.n_name = 'FRANCE' AND n2.n_name = 'GERMANY') OR (n1.n_name = 'GERMANY' AND n2.n_name = 'FRANCE')) AND l_shipdate BETWEEN CAST('1995-01-01' AS DATE) AND CAST('1996-12-31' AS DATE)) AS shipping GROUP BY supp_nation, cust_nation, l_year ORDER BY supp_nation, cust_nation, l_year",
+    "legacy": "select\nsupp_nation,\ncust_nation,\nl_year,\nsum(volume) as revenue\nfrom\n(\nselect\nn1.n_name as supp_nation,\nn2.n_name as cust_nation,\nextract(year from l_shipdate) as l_year,\nl_extendedprice * (1 - l_discount) as volume\nfrom\nsupplier,\nlineitem,\norders,\ncustomer,\nnation n1,\nnation n2\nwhere\ns_suppkey = l_suppkey\nand o_orderkey = l_orderkey\nand c_custkey = o_custkey\nand s_nationkey = n1.n_nationkey\nand c_nationkey = n2.n_nationkey\nand (\n(n1.n_name = 'FRANCE' and n2.n_name = 'GERMANY')\nor (n1.n_name = 'GERMANY' and n2.n_name = 'FRANCE')\n)\nand l_shipdate between date '1995-01-01' and date '1996-12-31'\n) as shipping\ngroup by\nsupp_nation,\ncust_nation,\nl_year\norder by\nsupp_nation,\ncust_nation,\nl_year;"
+  },
+  "databricks_dedupe_11": {
+    "fork": "SELECT x, COUNT(*) AS x_2 FROM (SELECT a.v AS x, b.v AS x_2 FROM a CROSS JOIN b) AS s GROUP BY 1",
+    "legacy": "SELECT x, COUNT(*) AS x_2 FROM (SELECT a.v AS x, b.v AS x FROM a CROSS JOIN b) AS s GROUP BY 1"
+  },
+  "databricks_dedupe_13": {
+    "fork": "WITH c AS (SELECT a.k, b.k AS k_2 FROM a CROSS JOIN b) SELECT * FROM c",
+    "legacy": "WITH c AS (SELECT a.k, b.k FROM a, b) SELECT * FROM c"
+  },
+  "databricks_dedupe_16": {
+    "fork": "INSERT INTO t SELECT a.k, b.k AS k_2 FROM a CROSS JOIN b",
+    "legacy": "INSERT INTO t SELECT a.k, b.k FROM a, b"
+  },
+  "databricks_dedupe_6": {
+    "fork": "SELECT a.x, b.x FROM t AS a JOIN t AS b ON a.k = b.k ORDER BY x",
+    "legacy": "SELECT a.x, b.x FROM t a JOIN t b ON a.k = b.k ORDER BY x"
+  },
+  "databricks_dedupe_8": {
+    "fork": "SELECT a.x, b.x FROM t AS a JOIN t AS b ON a.k = b.k GROUP BY x",
+    "legacy": "SELECT a.x, b.x FROM t a JOIN t b ON a.k = b.k GROUP BY x"
+  },
+  "databricks_division_tpch_q19": {
+    "fork": "SELECT SUM(l_extendedprice * (1 - l_discount)) AS revenue FROM lineitem CROSS JOIN part WHERE (p_partkey = l_partkey AND p_brand = 'Brand#12' AND p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG') AND l_quantity >= 1 AND l_quantity <= 1 + 10 AND p_size BETWEEN 1 AND 5 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#23' AND p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK') AND l_quantity >= 10 AND l_quantity <= 10 + 10 AND p_size BETWEEN 1 AND 10 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#34' AND p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG') AND l_quantity >= 20 AND l_quantity <= 20 + 10 AND p_size BETWEEN 1 AND 15 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON')",
+    "legacy": "select\nsum(l_extendedprice* (1 - l_discount)) as revenue\nfrom\nlineitem,\npart\nwhere\n(\np_partkey = l_partkey\nand p_brand = 'Brand#12'\nand p_container in ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG')\nand l_quantity >= 1 and l_quantity <= 1 + 10\nand p_size between 1 and 5\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n)\nor\n(\np_partkey = l_partkey\nand p_brand = 'Brand#23'\nand p_container in ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK')\nand l_quantity >= 10 and l_quantity <= 10 + 10\nand p_size between 1 and 10\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n)\nor\n(\np_partkey = l_partkey\nand p_brand = 'Brand#34'\nand p_container in ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG')\nand l_quantity >= 20 and l_quantity <= 20 + 10\nand p_size between 1 and 15\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n);"
+  },
+  "databricks_division_tpch_q22": {
+    "fork": "SELECT cntrycode, COUNT(*) AS numcust, SUM(c_acctbal) AS totacctbal FROM (SELECT SUBSTRING(c_phone, 1, 2) AS cntrycode, c_acctbal FROM customer WHERE SUBSTRING(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17') AND c_acctbal > (SELECT AVG(c_acctbal) FROM customer WHERE c_acctbal > 0.00 AND SUBSTRING(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17')) AND NOT EXISTS(SELECT * FROM orders WHERE o_custkey = c_custkey)) AS custsale GROUP BY cntrycode ORDER BY cntrycode",
+    "legacy": "select\ncntrycode,\ncount(*) as numcust,\nsum(c_acctbal) as totacctbal\nfrom\n(\nselect\nsubstring(c_phone from 1 for 2) as cntrycode,\nc_acctbal\nfrom\ncustomer\nwhere\nsubstring(c_phone from 1 for 2) in\n('13', '31', '23', '29', '30', '18', '17')\nand c_acctbal > (\nselect\navg(c_acctbal)\nfrom\ncustomer\nwhere\nc_acctbal > 0.00\nand substring(c_phone from 1 for 2) in\n('13', '31', '23', '29', '30', '18', '17')\n)\nand not exists (\nselect\n*\nfrom\norders\nwhere\no_custkey = c_custkey\n)\n) as custsale\ngroup by\ncntrycode\norder by\ncntrycode;"
+  },
+  "databricks_pk_ddl_0": {
+    "fork": "CREATE TABLE t (id INT, PRIMARY KEY (id))",
+    "legacy": "CREATE TABLE t (id INT, PRIMARY KEY (id ))"
+  },
+  "databricks_pk_ddl_1": {
+    "fork": "CREATE TABLE t (id INT, PRIMARY KEY (id))",
+    "legacy": "CREATE TABLE t (id INT, PRIMARY KEY (id ))"
+  },
+  "databricks_pk_ddl_2": {
+    "fork": "CREATE TABLE t (a INT, b INT, PRIMARY KEY (a, b))",
+    "legacy": "CREATE TABLE t (a INT, b INT, PRIMARY KEY (a , b))"
+  },
+  "snowflake_division_tpch_q19": {
+    "fork": "SELECT SUM(l_extendedprice * (1 - l_discount)) AS revenue FROM lineitem, part WHERE (p_partkey = l_partkey AND p_brand = 'Brand#12' AND p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG') AND l_quantity >= 1 AND l_quantity <= 1 + 10 AND p_size BETWEEN 1 AND 5 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#23' AND p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK') AND l_quantity >= 10 AND l_quantity <= 10 + 10 AND p_size BETWEEN 1 AND 10 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON') OR (p_partkey = l_partkey AND p_brand = 'Brand#34' AND p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG') AND l_quantity >= 20 AND l_quantity <= 20 + 10 AND p_size BETWEEN 1 AND 15 AND l_shipmode IN ('AIR', 'AIR REG') AND l_shipinstruct = 'DELIVER IN PERSON')",
+    "legacy": "select\nsum(l_extendedprice* (1 - l_discount)) as revenue\nfrom\nlineitem,\npart\nwhere\n(\np_partkey = l_partkey\nand p_brand = 'Brand#12'\nand p_container in ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG')\nand l_quantity >= 1 and l_quantity <= 1 + 10\nand p_size between 1 and 5\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n)\nor\n(\np_partkey = l_partkey\nand p_brand = 'Brand#23'\nand p_container in ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK')\nand l_quantity >= 10 and l_quantity <= 10 + 10\nand p_size between 1 and 10\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n)\nor\n(\np_partkey = l_partkey\nand p_brand = 'Brand#34'\nand p_container in ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG')\nand l_quantity >= 20 and l_quantity <= 20 + 10\nand p_size between 1 and 15\nand l_shipmode in ('AIR', 'AIR REG')\nand l_shipinstruct = 'DELIVER IN PERSON'\n);"
+  },
+  "snowflake_division_tpch_q22": {
+    "fork": "SELECT cntrycode, COUNT(*) AS numcust, SUM(c_acctbal) AS totacctbal FROM (SELECT SUBSTRING(c_phone, 1, 2) AS cntrycode, c_acctbal FROM customer WHERE SUBSTRING(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17') AND c_acctbal > (SELECT AVG(c_acctbal) FROM customer WHERE c_acctbal > 0.00 AND SUBSTRING(c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17')) AND NOT EXISTS(SELECT * FROM orders WHERE o_custkey = c_custkey)) AS custsale GROUP BY cntrycode ORDER BY cntrycode",
+    "legacy": "select\ncntrycode,\ncount(*) as numcust,\nsum(c_acctbal) as totacctbal\nfrom\n(\nselect\nsubstring(c_phone from 1 for 2) as cntrycode,\nc_acctbal\nfrom\ncustomer\nwhere\nsubstring(c_phone from 1 for 2) in\n('13', '31', '23', '29', '30', '18', '17')\nand c_acctbal > (\nselect\navg(c_acctbal)\nfrom\ncustomer\nwhere\nc_acctbal > 0.00\nand substring(c_phone from 1 for 2) in\n('13', '31', '23', '29', '30', '18', '17')\n)\nand not exists (\nselect\n*\nfrom\norders\nwhere\no_custkey = c_custkey\n)\n) as custsale\ngroup by\ncntrycode\norder by\ncntrycode;"
+  }
+}

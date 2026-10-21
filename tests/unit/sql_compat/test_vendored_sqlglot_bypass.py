@@ -176,3 +176,75 @@ def test_new_offender_file_fails_scan(tmp_path: Path):
         encoding="utf-8",
     )
     assert scan_package(package_root, tmp_path) == {"benchbox/new_offender.py": 1}
+
+
+FORK_REWRITE_PACKAGE = VENDORED_SQLGLOT + ".benchbox"
+FORK_REWRITE_ALLOWED_PATHS = ("benchbox/_vendor/", "benchbox/utils/dialect_utils.py")
+
+
+def imports_fork_rewrites(source: str) -> bool:
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            if any(
+                alias.name == FORK_REWRITE_PACKAGE or alias.name.startswith(FORK_REWRITE_PACKAGE + ".")
+                for alias in node.names
+            ):
+                return True
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if module == FORK_REWRITE_PACKAGE or module.startswith(FORK_REWRITE_PACKAGE + "."):
+                return True
+            if module == VENDORED_SQLGLOT and any(alias.name == "benchbox" for alias in node.names):
+                return True
+        elif (
+            (
+                isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and node.value.startswith(FORK_REWRITE_PACKAGE)
+            )
+            or isinstance(node, ast.JoinedStr)
+            and any(
+                isinstance(part, ast.Constant) and isinstance(part.value, str) and FORK_REWRITE_PACKAGE in part.value
+                for part in node.values
+            )
+        ):
+            return True
+    return False
+
+
+def scan_fork_rewrite_imports(package_root: Path = PACKAGE_ROOT, repo_root: Path = REPO_ROOT) -> list[str]:
+    return [
+        relative
+        for path in sorted(package_root.rglob("*.py"))
+        if not (relative := path.relative_to(repo_root).as_posix()).startswith(FORK_REWRITE_ALLOWED_PATHS)
+        and imports_fork_rewrites(path.read_text(encoding="utf-8"))
+    ]
+
+
+def test_only_the_wrapper_imports_fork_rewrites():
+    offenders = scan_fork_rewrite_imports()
+    assert not offenders, (
+        f"Fork rewrite functions are imported outside benchbox/utils/dialect_utils.py: {offenders}. "
+        "Call apply_rewrite instead."
+    )
+
+
+def test_fork_rewrite_scanner_detects_each_import_form():
+    assert imports_fork_rewrites("from benchbox._vendor.sqlglot.benchbox import rewrites\n")
+    assert imports_fork_rewrites("from benchbox._vendor.sqlglot.benchbox.rewrites import safe_division\n")
+    assert imports_fork_rewrites("import benchbox._vendor.sqlglot.benchbox.compat as c\n")
+    assert imports_fork_rewrites("from benchbox._vendor.sqlglot import benchbox\n")
+    assert imports_fork_rewrites(
+        "import importlib\nimportlib.import_module('benchbox._vendor.sqlglot.benchbox.compat')\n"
+    )
+    assert imports_fork_rewrites(
+        "import importlib\nimportlib.import_module(f'benchbox._vendor.sqlglot.benchbox.{n}')\n"
+    )
+    assert not imports_fork_rewrites("from benchbox._vendor import sqlglot\nsqlglot.transpile('SELECT 1')\n")
+    assert not imports_fork_rewrites("from benchbox._vendor.sqlglot import exp\n")
+
+
+def test_wrapper_is_the_only_allowed_fork_rewrite_module():
+    assert FORK_REWRITE_ALLOWED_PATHS == ("benchbox/_vendor/", "benchbox/utils/dialect_utils.py")
+    allowed_wrapper = (REPO_ROOT / "benchbox/utils/dialect_utils.py").read_text(encoding="utf-8")
+    assert imports_fork_rewrites(allowed_wrapper)

@@ -240,6 +240,41 @@ Translation Results:
   snowflake      : SUCCESS (27 chars)
 ```
 
+### Execution-Time Rewrites
+
+#### `benchbox.utils.dialect_utils.apply_rewrite`
+
+```python
+def apply_rewrite(name: str, sql_or_expression, dialect: str, **args): ...
+```
+
+Applies one named rewrite from the bundled SQLGlot runtime to SQL that is already translated for `dialect`. It is the only sanctioned entry for rewrites that adapters run at execution time; no other BenchBox module imports the runtime's rewrite functions.
+
+**Parameters**:
+
+- `name`: a public expression rewrite in `benchbox._vendor.sqlglot.benchbox` (`safe_division`, `deduplicate_output_aliases`, `flag_comparisons_to_boolean`, `fold_between_literal_arithmetic`, `date_integer_arithmetic_to_interval`, and the engine, compatibility and subquery rewrites). An unknown name raises `ValueError`.
+- `sql_or_expression`: a SQL string, parsed and printed with `dialect`, or a parsed expression. The result has the same type as the input.
+- `dialect`: the dialect of the SQL, normalized like `translate_sql_query` (see `normalize_dialect_for_sqlglot`). A rewrite that takes a `dialect` argument receives the normalized name automatically.
+- `**args`: the rewrite's own arguments. Gates such as column and table names are always arguments; the runtime holds no benchmark data.
+
+```python
+from benchbox.utils.dialect_utils import apply_rewrite
+
+print(
+    apply_rewrite(
+        "fold_between_literal_arithmetic",
+        "SELECT 1 FROM lineitem WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
+        "sqlite",
+        columns=["l_discount"],
+        tables=["lineitem"],
+    )
+)
+```
+
+```text
+SELECT 1 FROM lineitem WHERE l_discount BETWEEN 0.05 AND 0.07
+```
+
 ## Execution Configuration
 
 ### `benchbox.utils.ExecutionConfigHelper`
