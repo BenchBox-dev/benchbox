@@ -10,6 +10,7 @@ import re
 import shlex
 import subprocess
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
@@ -26,6 +27,7 @@ MAX_SELECTED_NODEIDS = 2000
 TESTS_ROOT = "tests"
 INERT_PATH_PATTERNS = ("docs/*", "*.md", "_project/todo-db-export/*")
 TRUNK_WORKFLOW_PATH = ".github/workflows/trunk.yml"
+SELECTION_SHADOW = True
 
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 _HUNK_RE = re.compile(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
@@ -42,6 +44,15 @@ def _mono_time() -> float:
     except ImportError:
         from time import perf_counter as mono_time
     return mono_time()
+
+
+def _peak_rss_mb() -> float:
+    import resource
+
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    if sys.platform == "darwin":
+        return rss / (1024 * 1024)
+    return rss / 1024
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -468,6 +479,8 @@ def select_tests(
     code_routed = decision is None or decision.get("needs_code_ci") is not False
     if non_python and code_routed:
         reasons.append(f"non-Python changes need the full tier: {', '.join(sorted(non_python))}")
+    if uncovered and code_routed:
+        reasons.append(f"changed Python code no recorded test executed: {', '.join(sorted(uncovered))}")
     changed_tests = sorted(
         {
             entry.path
@@ -486,17 +499,19 @@ def select_tests(
     if not selected and any(not _is_inert(entry.path) for entry in files):
         reasons.append("no tests selected for the changed files")
     elapsed = _mono_time() - start
+    peak_rss = _peak_rss_mb()
     counts = (
         f"coverage={len(coverage_hits)} changed_tests={len(changed_tests)} "
         f"fallback={len(fallback)} importers={len(importer_tests)} "
-        f"selected={len(selected)} files={len(files)} behind={behind} elapsed={elapsed:.1f}s"
+        f"selected={len(selected)} files={len(files)} behind={behind} elapsed={elapsed:.1f}s rss={peak_rss:.1f}MB"
     )
+    would_escalate = bool(reasons)
     if reasons:
         reason = f"escalated to the full tier: {'; '.join(reasons)} ({counts})"
     else:
         reason = f"selected by coverage impact ({counts})"
-    return {
-        "escalate": bool(reasons),
+    result = {
+        "escalate": would_escalate,
         "reason": reason,
         "map_sha": map_sha,
         "base_sha": base_sha,
@@ -507,7 +522,26 @@ def select_tests(
         "importer_tests": importer_tests,
         "uncovered_sources": sorted(uncovered),
         "selected": sorted(selected),
+        "elapsed_seconds": elapsed,
+        "peak_rss_mb": peak_rss,
     }
+    if SELECTION_SHADOW:
+        if reasons:
+            shadow_reason = f"shadow mode: would escalate ({'; '.join(reasons)}); escalated to the full tier ({counts})"
+        else:
+            shadow_reason = (
+                f"shadow mode: selection of {len(selected)} tests recorded; escalated to the full tier ({counts})"
+            )
+        result.update(
+            {
+                "escalate": True,
+                "shadow": True,
+                "would_escalate": would_escalate,
+                "would_escalate_reasons": list(reasons),
+                "reason": shadow_reason,
+            }
+        )
+    return result
 
 
 def _github_slug(repo: Path) -> str:
@@ -526,28 +560,37 @@ def _github_slug(repo: Path) -> str:
     return slug
 
 
-def _list_map_artifacts(repo: Path, slug: str, prefix: str) -> list[tuple[str, int, str]]:
-    query = (
-        ".artifacts[] | "
-        f'select(.expired == false and (.name | startswith("{prefix}"))) | '
-        '"\\(.name)\\t\\(.workflow_run.id)\\t\\(.created_at)"'
-    )
-    proc = subprocess.run(
-        ["gh", "api", f"repos/{slug}/actions/artifacts", "--paginate", "-F", "per_page=100", "--jq", query],
-        cwd=repo,
-        text=True,
-        capture_output=True,
-        timeout=120,
-    )
+def _gh_get(repo: Path, endpoint: str, params: dict[str, str], query: str) -> list[str]:
+    command = ["gh", "api", "--method", "GET", endpoint, "--jq", query]
+    for key, value in params.items():
+        command += ["-f", f"{key}={value}"]
+    proc = subprocess.run(command, cwd=repo, text=True, capture_output=True, timeout=120)
     if proc.returncode != 0:
-        raise SelectionError(f"cannot list coverage map artifacts: {proc.stderr.strip()}")
-    entries: list[tuple[str, int, str]] = []
-    for line in proc.stdout.splitlines():
-        name, run, created = _split_row(line)
-        if name and run.isdigit() and created:
-            entries.append((name, int(run), created))
-    entries.sort(key=lambda entry: entry[2], reverse=True)
-    return entries
+        raise SelectionError(f"cannot query {endpoint}: {proc.stderr.strip() or proc.stdout.strip()}")
+    return proc.stdout.splitlines()
+
+
+def _list_map_artifacts(repo: Path, slug: str, prefix: str) -> Iterator[tuple[str, int, str]]:
+    runs = _gh_get(
+        repo,
+        f"repos/{slug}/actions/workflows/{PurePosixPath(TRUNK_WORKFLOW_PATH).name}/runs",
+        {"branch": "develop", "event": "push", "per_page": str(MAX_MAP_BEHIND_COMMITS)},
+        '.workflow_runs[] | "\\(.id)\\t\\(.head_sha)"',
+    )
+    for line in runs:
+        run, head, _ = _split_row(line)
+        if not run.isdigit() or not _SHA_RE.match(head):
+            continue
+        rows = _gh_get(
+            repo,
+            f"repos/{slug}/actions/runs/{run}/artifacts",
+            {"name": f"{prefix}{head}"},
+            '.artifacts[] | select(.expired == false) | "\\(.name)\\t\\(.created_at)"',
+        )
+        for row in rows:
+            name, created, _ = _split_row(row)
+            if name == f"{prefix}{head}":
+                yield name, int(run), created
 
 
 def _split_row(line: str) -> tuple[str, str, str]:
@@ -721,6 +764,7 @@ def _load_map_and_note(map_arg: Path | None) -> tuple[dict | None, str | None]:
 
 def _cmd_select(args: argparse.Namespace) -> int:
     repo = args.repo_root
+    select_start = _mono_time()
     try:
         decision = read_decision(args.decision_in) if args.decision_in is not None else None
     except SelectionError as exc:
@@ -759,16 +803,41 @@ def _cmd_select(args: argparse.Namespace) -> int:
             "importer_tests": [],
             "uncovered_sources": [],
             "selected": fallback,
+            "elapsed_seconds": _mono_time() - select_start,
+            "peak_rss_mb": _peak_rss_mb(),
         }
+        if SELECTION_SHADOW:
+            result.update(
+                {
+                    "shadow": True,
+                    "would_escalate": True,
+                    "would_escalate_reasons": [f"coverage selection failed: {exc}"],
+                }
+            )
     if args.nodeids_out is not None:
         args.nodeids_out.parent.mkdir(parents=True, exist_ok=True)
         args.nodeids_out.write_text("".join(f"{node}\n" for node in result["selected"]), encoding="utf-8")
     if args.json_out is not None:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
         args.json_out.write_text(json.dumps(result, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-    _append_summary(args.summary, f"Coverage selection: {result['reason']}.")
+    if result.get("map_sha"):
+        map_line = f"coverage map found: {result['map_sha']}"
+    else:
+        map_line = f"coverage map missing: {map_note}"
+    summary_lines = [
+        f"Coverage selection: {result['reason']}.",
+        f"Map SHA: {result.get('map_sha') or 'none'}.",
+        f"Would-be selected count: {len(result['selected'])}.",
+        f"Would-escalate reasons: {'; '.join(result.get('would_escalate_reasons', [])) or 'none'}.",
+        f"Elapsed: {result.get('elapsed_seconds', 0.0):.1f}s, peak RSS: {result.get('peak_rss_mb', 0.0):.1f}MB.",
+    ]
+    for line in summary_lines:
+        _append_summary(args.summary, line)
+    print(map_line)
     print(result["reason"])
     print(f"escalate={str(result['escalate']).lower()} selected={len(result['selected'])}")
+    print(f"would_escalate={str(result.get('would_escalate', result['escalate'])).lower()}")
+    print(f"elapsed={result.get('elapsed_seconds', 0.0):.1f}s rss={result.get('peak_rss_mb', 0.0):.1f}MB")
     return 0
 
 

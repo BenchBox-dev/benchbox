@@ -242,12 +242,12 @@ jobs:
       - name: Upload coverage selection
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: coverage-selection-${{ github.sha }}
+          name: coverage-selection-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
           path: |
             coverage-selection.json
             coverage-nodeids.txt
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 14
 
       - name: Decide heavy-tier need
         id: heavy
@@ -917,7 +917,7 @@ jobs:
       - name: Download coverage selection
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: coverage-selection-${{ github.sha }}
+          name: coverage-selection-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
           path: coverage-selection
 
       - name: Run medium tests for changed paths
