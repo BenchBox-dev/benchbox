@@ -108,10 +108,11 @@ SHIP_PRIOR_RULE = (
     " since that review."
 )
 FOLLOW_UP_PRIOR_RULE = (
-    'An earlier review listed the defects under "Earlier defects" below. Give each of them a status in'
-    " prior_defects: fixed, not_fixed, or withdrawn when it was never a defect, with evidence such as the line that"
-    " fixes it. List in defects only new defects, and only in the files changed since that review; defects in other"
-    " files are not counted. At most {max_defects} defects may stay open in total, counting the not_fixed ones."
+    'An earlier review listed the defects under "Earlier defects" below, each starting with its id. Give each of'
+    " them a status in prior_defects, with the id exactly as listed (for example D1): fixed, not_fixed, or withdrawn"
+    " when it was never a defect, with evidence such as the line that fixes it. List in defects only new defects,"
+    " and only in the files changed since that review; defects in other files are not counted. At most"
+    " {max_defects} defects may stay open in total, counting the not_fixed ones."
 )
 
 
@@ -142,7 +143,7 @@ def prior_listing(prior: Sequence[Mapping[str, object]]) -> str:
         line = defect.get("line")
         end = defect.get("end_line")
         span = f"{line}" if not end or end == line else f"{line}-{end}"
-        rows.append(f"#{defect.get('id')} {defect.get('severity')} {defect.get('file')}:{span} {defect.get('title')}")
+        rows.append(f"{defect.get('id')} {defect.get('severity')} {defect.get('file')}:{span} {defect.get('title')}")
     return "\n".join(rows)
 
 

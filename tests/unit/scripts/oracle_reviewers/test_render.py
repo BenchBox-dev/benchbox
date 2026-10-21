@@ -8,6 +8,7 @@ from _project.scripts.oracle_reviewers.classify import Classification, FileRow
 from _project.scripts.oracle_reviewers.render import (
     SLOT_MAX_BYTES,
     OversizeError,
+    prior_listing,
     render,
     render_file_priority,
     render_review,
@@ -164,3 +165,8 @@ def test_file_priority_is_cut_to_fit_its_slot() -> None:
     text = render_file_priority(rows)
     assert len(text.encode("utf-8")) <= SLOT_MAX_BYTES["file_priority"]
     assert text.splitlines()[0] == f"{rows[0][0]} | 3 | high"
+
+
+def test_prior_listing_starts_each_row_with_the_bare_id() -> None:
+    rows = prior_listing([{"id": "D3", "severity": "High", "file": "a.py", "line": 4, "end_line": None, "title": "t"}])
+    assert rows == "D3 High a.py:4 t"
