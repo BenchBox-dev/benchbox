@@ -15738,6 +15738,13 @@
       "status": "open",
       "title": "Oracle read evidence still accepts reads that show none of the head file's content"
     },
+    "oracle-review-automatic-reevaluation-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Re-evaluate the oracle-review check automatically after a verdict lands or threads are resolved"
+    },
     "oracle-review-cancel-race-20261016": {
       "claim": null,
       "needs": [],

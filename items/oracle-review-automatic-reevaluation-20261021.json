@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "A design note compares at least the scheduled sweep, an existing-event trigger and re-requesting the check run, with the permissions each needs",
+    "The chosen mechanism turns oracle-review green for a head with a success verdict and all threads resolved without a manual command (shown on a real or replayed PR)",
+    "Auto-merge stays set across the re-evaluation",
+    "A test fails if the mechanism re-evaluates a head with no success verdict or with an unresolved oracle thread"
+  ],
+  "context": "Found 2026-10-21 during the follow-up batch (finished item oracle-review-stale-failure-recurrence-20261020). Owner asked for this follow-up. Evidence is from that session; re-verify before editing. Unclaimed.",
+  "description": "Resolving a review thread, or an oracle verdict posting after a failed oracle-review run, starts no GitHub Actions run, so the required oracle-review check stays red until someone runs make oracle-review-recover PR=<n> (which also closes and reopens the PR and clears auto-merge). PRs 3149, 3156, 3158 stayed blocked for hours or more than a day this way. GitHub Actions has no pull_request_review_thread trigger (PR 3193 attempted one; the workflow failed to parse). Work: design the smallest sound mechanism that re-evaluates the check for open PRs whose head has a success verdict, for example a scheduled workflow (cron) that runs the existing recover logic for open soundness PRs, or reacting to an event that does exist (pull_request_review, workflow_run of oracle-verdict, issue_comment); weigh each. Guardrails: no stand-in verdict, no weaker decision logic, no new secrets, and any cron or permission change needs owner approval; the recovery must not clear auto-merge (re-arm it or avoid close/reopen, for example by re-requesting the check run instead).",
+  "links": [
+    "item:oracle-review-stale-failure-recurrence-20261020"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-21T23:40:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "495752fb68524e6dba4b648612ba5336",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}
