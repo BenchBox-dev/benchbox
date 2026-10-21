@@ -191,6 +191,19 @@ passes when any of these holds:
 
 A plain owner comment does not count. See [soundness drain](soundness-drain.md).
 
+The `oracle-gate` context is being introduced next to `oracle-review` and is not
+required yet. `.github/workflows/oracle-gate.yml` runs only `develop` code and
+posts `oracle-gate` for the pull request head through the same oracle App. The
+unit test fails when any other workflow could post that context, but a
+same-repo pull request with `statuses: write` could still forge it, so the
+workflow alone is not the enforcement. It applies the checker's rule unchanged:
+success when only exempt paths changed, when the App's latest review of the head
+reports success with no unresolved oracle thread, or when a valid stand-in
+covers the exact head, and failure otherwise. The owner adds it to the required
+list above once production runs show it tracking `oracle-review`, scoped to the
+`benchbox-oracle` App's integration ID; without that scoping a forged success
+counts and the gate property does not hold.
+
 ### Soundness-path review enforcement
 
 The required `develop-squash-only` policy combines `oracle-review` with
@@ -212,8 +225,13 @@ The soundness gate, as operated:
   runs; checking out the base commit protects only the checker and manifest.
   The daily soundness merge digest runs from `develop` and flags a
   soundness-path commit that merged without an oracle success review or another
-  review signal. It is a weak backstop: the same PR can edit the digest script,
-  and the digest also accepts a review recorded as text in the PR.
+  review signal; the `oracle-gate` workflow closes the first half of this gap by
+  evaluating the same rule from `develop` code on trusted triggers. The second
+  half is the ruleset binding: the required `oracle-gate` check must be scoped
+  to the `benchbox-oracle` App's integration ID, since only that binding stops
+  a pull request workflow with `statuses: write` from posting a forged success
+  to its own head. Requiring the App-scoped `oracle-gate` in the
+  ruleset is the remaining step.
 - `make pr-open` does not arm auto-merge when it creates a PR. `make pr-arm`
   (or `make pr-open READY=1`) arms it after a live check of the PR, so a PR
   cannot merge while a follow-up commit is still being written. Arm only when

@@ -454,3 +454,52 @@ only after `develop`'s copy of the script accepts it. A unit test fails if
 `mode: enforce` and `--signal oracle` disagree or if delivery is not `review`.
 Going back to the connector would need this cleanup reverted and the connector
 App reinstalled.
+
+## Required gate from trusted code
+
+`oracle-review` runs its workflow file from the pull request, so a pull request
+that edits `.github/workflows/` can change the check that judges it, and the
+commit status it reads can be set by any pull request sharing the head commit.
+The `oracle-gate` context answers the first half: `_project/scripts/oracle_gate.py`
+imports the decision and its helpers from `_project/scripts/oracle_review_check.py`
+instead of reimplementing them, and posts `oracle-gate` for the pull request
+head through the oracle App token. The pass rule is the checker's rule
+unchanged: only exempt paths changed, the App's latest review of the head
+reports success with no unresolved oracle thread, or a valid stand-in covers
+the exact head; anything else posts failure. The script re-reads the review
+state immediately before posting, so a run that evaluated stale data posts the
+fresh decision instead of overwriting a newer one.
+
+A same-repo pull request can still add a workflow with `statuses: write` that
+posts the `oracle-gate` context to its own head with a forged success, so the
+workflow alone does not make the context unforgeable. The unit test scans every
+workflow for steps that could post the context and fails on any outside
+`oracle-gate.yml`, but a status posted through a generated file or a new
+workflow would land the same way. The binding that closes this is in the
+ruleset: when the owner adds `oracle-gate` to the required checks, the check
+must be scoped to the `benchbox-oracle` App's integration ID, so only statuses
+posted with that App's identity satisfy it. Without that binding a forged
+success counts and the gate property does not hold.
+
+`.github/workflows/oracle-gate.yml` runs `develop` code only. It triggers on
+`pull_request_target` (opened, synchronize, reopened, ready_for_review, edited),
+on created issue comments that open with the stand-in marker, on completion of
+`oracle-verdict` and `oracle-review` (the bridge for review and thread events,
+which have no trusted trigger of their own), on `workflow_dispatch` with a `pr`
+input, and on an hourly `schedule` sweep over open pull requests targeting
+`develop`. Every job checks out `develop`, never the pull request, with a sparse
+checkout of the gate, its predicate and the reviewers policy, and runs the
+script with pinned `pyyaml` the same way `oracle-verdict` does; the App token
+is minted the same way `oracle-verdict` mints it, from the same `oracle`
+environment and secrets. When the reviewers policy cannot load, the script
+errors instead of deciding with empty rules, and the sweep records every
+per-PR error and fails the run when any pull request errored. Concurrency is a
+single group keyed by pull request number for every trigger, with
+cancel-in-progress, so a newer run for a pull request cancels the earlier one
+instead of racing it.
+
+The cutover keeps `oracle-review` required while `oracle-gate` runs
+alongside it. Once production runs show the two contexts agreeing, the owner
+adds `oracle-gate` to the required checks in `repo-admin-settings.md` and the
+live ruleset, scoped to the `benchbox-oracle` App's integration ID, and only
+then retires the `pull_request`-triggered check.

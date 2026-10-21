@@ -1,0 +1,189 @@
+name: oracle-gate
+
+run-name: oracle-gate (${{ github.event_name }} pr=${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || 'sweep' }})
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  issue_comment:
+    types: [created]
+  workflow_run:
+    workflows: [oracle-verdict, oracle-review]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to gate
+        required: true
+        type: string
+  schedule:
+    - cron: '41 * * * *'
+
+permissions: {}
+
+concurrency:
+  group: oracle-gate-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || github.event.workflow_run.pull_requests[0].number || format('run-{0}', github.run_id) }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: gate
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'issue_comment' || (github.event.issue.pull_request && startsWith(github.event.comment.body, 'Stand-in oracle review: APPROVE')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: oracle
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      HAS_APP: ${{ secrets.ORACLE_APP_ID != '' && secrets.ORACLE_APP_PRIVATE_KEY != '' }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Refuse a dispatch from any ref other than develop
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          CURRENT_REF: ${{ github.ref }}
+        run: |
+          if [ "$CURRENT_REF" != refs/heads/develop ]; then
+            echo "oracle-gate: error: dispatch runs only from develop" >&2
+            exit 2
+          fi
+
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: develop
+          persist-credentials: false
+          sparse-checkout: |
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            .github/workflows/oracle-gate.yml
+            _project/scripts/oracle_gate.py
+            _project/scripts/oracle_review_check.py
+            _project/scripts/oracle_reviewers
+            _project/scripts/soundness_paths.py
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Resolve the pull request
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+          PAYLOAD_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          PR_NUMBER="$EVENT_PR"
+          if [ "$EVENT_NAME" = workflow_run ]; then
+            PR_NUMBER="$PAYLOAD_PR"
+          fi
+          if [ -z "$PR_NUMBER" ] && [ "$EVENT_NAME" = workflow_run ]; then
+            PR_NUMBER="$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" --jq '[.[] | select(.base.ref == "develop" and .state == "open") | .number][0] // empty')"
+            if [ -z "$PR_NUMBER" ]; then
+              echo "oracle-gate: no open develop pull request contains $HEAD_SHA; nothing to gate"
+              exit 0
+            fi
+          fi
+          case "$PR_NUMBER" in
+            ''|*[!0-9]*|0*)
+              echo "oracle-gate: error: cannot resolve a pull request number" >&2
+              exit 2
+              ;;
+          esac
+          echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Mint the App token
+        id: app
+        if: steps.resolve.outputs.pr != '' && env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ secrets.ORACLE_APP_ID }}
+          private-key: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
+          permission-statuses: write
+          permission-pull-requests: write
+
+      - name: Post the gate for the head
+        if: steps.resolve.outputs.pr != '' && env.HAS_APP == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+        run: uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER"
+
+      - name: Log the gate without posting when the App is not configured
+        if: steps.resolve.outputs.pr != '' && env.HAS_APP != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+        run: uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" --no-post
+
+  sweep:
+    name: sweep
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: oracle
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      HAS_APP: ${{ secrets.ORACLE_APP_ID != '' && secrets.ORACLE_APP_PRIVATE_KEY != '' }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: develop
+          persist-credentials: false
+          sparse-checkout: |
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            .github/workflows/oracle-gate.yml
+            _project/scripts/oracle_gate.py
+            _project/scripts/oracle_review_check.py
+            _project/scripts/oracle_reviewers
+            _project/scripts/soundness_paths.py
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Mint the App token
+        id: app
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ secrets.ORACLE_APP_ID }}
+          private-key: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
+          permission-statuses: write
+          permission-pull-requests: write
+
+      - name: Gate every open pull request targeting develop
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
+          GITHUB_TOKEN: ${{ steps.app.outputs.token || github.token }}
+        run: |
+          set -euo pipefail
+          POST="--no-post"
+          if [ "${{ env.HAS_APP }}" = true ]; then
+            POST=""
+          else
+            echo "::notice::oracle-gate is not posted because the App secrets are not set"
+          fi
+          PRS="$(gh pr list --repo "$REPO" --base develop --state open --limit 200 --json number --jq '.[].number')"
+          FAILED=""
+          for PR_NUMBER in $PRS; do
+            uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" $POST || {
+              echo "::warning::oracle-gate failed for #$PR_NUMBER"
+              FAILED="$FAILED $PR_NUMBER"
+            }
+          done
+          if [ -n "$FAILED" ]; then
+            echo "::error::oracle-gate failed for:$FAILED"
+            exit 1
+          fi

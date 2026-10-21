@@ -74,8 +74,10 @@ file	.github/workflows/validate-submission.yml
 file	.github/workflows/sync-results-data-to-published.yml
 file	_project/scripts/soundness_paths.py
 file	_project/scripts/oracle_review_check.py
+file	_project/scripts/oracle_gate.py
 file	.github/workflows/oracle-review.yml
 file	.github/workflows/oracle-verdict.yml
+file	.github/workflows/oracle-gate.yml
 file	_project/scripts/check_soundness_review.py
 file	.github/oracle-reviewers.yml
 prefix	_project/scripts/oracle_reviewers/
