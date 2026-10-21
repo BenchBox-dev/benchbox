@@ -27777,15 +27777,10 @@
       "title": "Windows nightly: decode source and query-plan fixtures explicitly as UTF-8 (7 failures)"
     },
     "windows-fast-test-stall-cause-20261017": {
-      "claim": {
-        "expires_at": "2026-10-22T02:12:55Z",
-        "generation": "5f5970f847ba4687843a33fbd8fedc42",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Find the cause of the Windows fast-test stalls at 90-95%"
     },
     "windows-fast-tests-dispatchable-workflow-20261020": {
