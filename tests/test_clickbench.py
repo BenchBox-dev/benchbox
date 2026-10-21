@@ -16,6 +16,8 @@ from .fixtures.benchmark_test_mixin import BenchmarkTestMixin
 
 pytestmark = pytest.mark.medium
 
+GENERATE_DATA_SCALE_FACTOR = 0.01
+
 
 @pytest.mark.clickbench
 class TestClickBench:
@@ -23,15 +25,23 @@ class TestClickBench:
     def clickbench(self, small_scale_factor: float, temp_dir: Path) -> ClickBench:
         return ClickBench(scale_factor=small_scale_factor, output_dir=temp_dir)
 
-    @pytest.mark.timeout(300)
-    def test_generate_data(self, clickbench: ClickBench) -> None:
+    def test_generate_data(self, temp_dir: Path) -> None:
+        clickbench = ClickBench(scale_factor=GENERATE_DATA_SCALE_FACTOR, output_dir=temp_dir)
         data_paths = clickbench.generate_data()
+
+        expected_row_counts = {"hits": int(1_000_000 * GENERATE_DATA_SCALE_FACTOR)}
 
         assert isinstance(data_paths, list), "generate_data should return a list"
         assert len(data_paths) >= 1, "Should generate at least one file"
 
         for path in data_paths:
             assert Path(path).exists(), f"Generated file {path} does not exist"
+
+        row_counts = {}
+        for path in data_paths:
+            with open(path, encoding="utf-8") as data_file:
+                row_counts[Path(path).stem] = sum(1 for _ in data_file)
+        assert {table: row_counts.get(table) for table in expected_row_counts} == expected_row_counts
 
     def test_get_queries(self, clickbench: ClickBench) -> None:
         queries = clickbench.get_queries()

@@ -16,6 +16,8 @@ from .fixtures.benchmark_test_mixin import BenchmarkTestMixin
 
 pytestmark = pytest.mark.medium
 
+GENERATE_DATA_SCALE_FACTOR = 0.01
+
 
 @pytest.mark.ssb
 class TestSSB:
@@ -28,11 +30,23 @@ class TestSSB:
             compression_type="none",
         )
 
-    @pytest.mark.timeout(300)
-    def test_generate_data(self, ssb: SSB) -> None:
+    def test_generate_data(self, temp_dir: Path) -> None:
+        ssb = SSB(
+            scale_factor=GENERATE_DATA_SCALE_FACTOR,
+            output_dir=temp_dir,
+            compress_data=False,
+            compression_type="none",
+        )
         data_paths = ssb.generate_data()
 
         expected_tables = ["date", "customer", "supplier", "part", "lineorder"]
+        expected_row_counts = {
+            "date": 2_557,
+            "customer": int(30_000 * GENERATE_DATA_SCALE_FACTOR),
+            "supplier": int(2_000 * GENERATE_DATA_SCALE_FACTOR),
+            "part": int(200_000 * GENERATE_DATA_SCALE_FACTOR),
+            "lineorder": int(6_000_000 * GENERATE_DATA_SCALE_FACTOR),
+        }
 
         assert isinstance(data_paths, dict), "generate_data should return a dictionary"
 
@@ -42,6 +56,10 @@ class TestSSB:
         for _table_name, path in data_paths.items():
             assert Path(path).exists(), f"Generated file {path} does not exist"
             assert Path(path).stat().st_size >= 0, f"Generated file {path} has negative size"
+
+        for table_name, expected_row_count in expected_row_counts.items():
+            with open(data_paths[table_name], encoding="utf-8") as data_file:
+                assert sum(1 for _ in data_file) == expected_row_count, table_name
 
     def test_get_queries(self, ssb: SSB) -> None:
         queries = ssb.get_queries()
