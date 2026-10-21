@@ -3,6 +3,7 @@
     "Root cause identified and addressed (timeout scope, fixture size, split test, or shard parallelism)",
     "20 consecutive green medium runs without recurrence"
   ],
+  "context": "2026-10-21: same data-generation timeout class as the coverage slowdowns (ClickBench 9.5x, TPC-DI) handled in trunk-coverage-workflow-map-v2-20261021.",
   "description": "tests/test_amplab.py::TestAMPLab::test_generate_data fails intermittently in CI medium-test shards with pytest-timeout (>60s) inside _generate_uservisits_data, then passes on rerun. Observed 4+ times on 2026-10-12 across PRs #2830, #2875, #2917 and others; CI logs show memory pressure on the failing runners. Never root-caused; each occurrence burned a full shard rerun plus diagnosis.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "20e9c0fd823f41ed9d0107e00dd3ccd8",
       "session_id": "8be230d790474fda8edea19668121bf9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:47:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4442498551604e46b1cc56a3784d31f1",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
