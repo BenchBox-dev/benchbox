@@ -15591,7 +15591,7 @@
         "ssns-a5-proof-prs"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "BenchBox: switch the oracle to the local executor"
     },
     "oracle-local-b5-remove-hosted-reviewers": {
