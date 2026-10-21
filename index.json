@@ -23630,7 +23630,7 @@
         "ssns-o5-autorestart"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship owner: install the service, bootstrap launchd and pass doctor"
     },
     "ssns-prepublication-hardening": {
