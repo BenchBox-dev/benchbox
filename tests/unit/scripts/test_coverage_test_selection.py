@@ -947,3 +947,145 @@ def test_prune_cli_rewrites_nodeids(repo: Path, tmp_path: Path) -> None:
         "tests/unit/core/test_engine.py::test_x",
         "tests/unit/core/test_engine.py",
     ]
+
+
+def _write_junit(path: Path, cases: list[tuple[str, str, str | None]]) -> None:
+    lines = ['<?xml version="1.0" encoding="utf-8"?>', '<testsuites><testsuite name="pytest">']
+    for classname, name, outcome in cases:
+        if outcome is None:
+            lines.append(f'<testcase classname="{classname}" name="{name}" time="0.1" />')
+        else:
+            lines.append(
+                f'<testcase classname="{classname}" name="{name}" time="0.1">'
+                f'<{outcome} message="boom">trace</{outcome}></testcase>'
+            )
+    lines.append("</testsuite></testsuites>")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def test_junit_case_node_id_matches_medium_test_names() -> None:
+    assert sel.junit_case_node_id("tests.unit.scripts.test_heavy_tier_needed", "test_real_thing") == (
+        "tests/unit/scripts/test_heavy_tier_needed.py::test_real_thing",
+        "tests/unit/scripts/test_heavy_tier_needed.py",
+    )
+    assert sel.junit_case_node_id("tests.unit.scripts.test_heavy_tier_needed", "test_param[True-False-True]") == (
+        "tests/unit/scripts/test_heavy_tier_needed.py::test_param[True-False-True]",
+        "tests/unit/scripts/test_heavy_tier_needed.py",
+    )
+    assert sel.junit_case_node_id("tests.unit.core.test_engine", "TestGroup::test_x") == (
+        "tests/unit/core/test_engine.py::TestGroup::test_x",
+        "tests/unit/core/test_engine.py",
+    )
+    assert sel.junit_case_node_id("test_smoke", "test_boot") == (
+        "test_smoke.py::test_boot",
+        "test_smoke.py",
+    )
+    assert sel.junit_case_node_id("tests.unit.a.test_one.TestGroup", "test_x", "tests/unit/a/test_one.py") == (
+        "tests/unit/a/test_one.py::TestGroup::test_x",
+        "tests/unit/a/test_one.py",
+    )
+
+
+def test_failed_node_ids_counts_failures_and_errors(tmp_path: Path) -> None:
+    report = tmp_path / "shard-0-junit.xml"
+    _write_junit(
+        report,
+        [
+            ("tests.unit.a.test_one", "test_ok", None),
+            ("tests.unit.a.test_one", "test_broke", "failure"),
+            ("tests.unit.b.test_two", "TestGroup::test_blew_up[param]", "error"),
+            ("tests.unit.c.test_three", "test_skip", None),
+        ],
+    )
+    failed, parsed = sel.failed_node_ids([report])
+    assert parsed == 1
+    assert failed == [
+        "tests/unit/a/test_one.py::test_broke",
+        "tests/unit/b/test_two.py::TestGroup::test_blew_up[param]",
+    ]
+
+
+def test_shadow_misses_flags_failure_outside_selection() -> None:
+    selected = ["tests/unit/a/test_one.py::test_keep"]
+    failed = [
+        "tests/unit/a/test_one.py::test_keep",
+        "tests/unit/z/test_nine.py::test_broke",
+    ]
+    assert sel.shadow_misses(selected, failed) == ["tests/unit/z/test_nine.py::test_broke"]
+    report = sel.miss_report(selected, failed)
+    assert report == {
+        "selected_count": 1,
+        "failed": failed,
+        "missed": ["tests/unit/z/test_nine.py::test_broke"],
+        "would_escalate": True,
+    }
+
+
+def test_shadow_misses_covers_failure_by_node_or_file() -> None:
+    failed = [
+        "tests/unit/a/test_one.py::test_broke",
+        "tests/unit/b/test_two.py::TestGroup::test_bad",
+    ]
+    assert sel.shadow_misses(["tests/unit/a/test_one.py::test_broke"], failed[:1]) == []
+    assert sel.shadow_misses(["tests/unit/a/test_one.py"], failed[:1]) == []
+    assert sel.shadow_misses(["tests/unit/b/test_two.py"], failed[1:]) == []
+    assert sel.miss_report(failed, failed)["would_escalate"] is False
+
+
+def test_misses_cli_reports_not_available_on_missing_inputs(tmp_path: Path) -> None:
+    summary = tmp_path / "summary.md"
+    payload = tmp_path / "misses.json"
+    assert sel.main(["misses", "--json-out", str(payload), "--summary", str(summary)]) == 0
+    body = summary.read_text(encoding="utf-8")
+    assert "## Shadow selection misses" in body
+    assert "not available" in body
+    loaded = json.loads(payload.read_text(encoding="utf-8"))
+    assert loaded["selected_count"] == 0
+    assert loaded["failed"] == []
+    assert loaded["missed"] == []
+    assert loaded["would_escalate"] is False
+
+
+def test_misses_cli_lists_only_failures_outside_selection(tmp_path: Path) -> None:
+    selection = tmp_path / "coverage-selection.json"
+    selection.write_text(
+        json.dumps({"selected": ["tests/unit/a/test_one.py::test_keep", "tests/unit/b/test_two.py"]}),
+        encoding="utf-8",
+    )
+    report = tmp_path / "shard-1-junit.xml"
+    _write_junit(
+        report,
+        [
+            ("tests.unit.a.test_one", "test_keep", None),
+            ("tests.unit.a.test_one", "test_flaky", "failure"),
+            ("tests.unit.b.test_two", "TestGroup::test_bad", "failure"),
+            ("tests.unit.z.test_nine", "test_broke", "failure"),
+        ],
+    )
+    summary = tmp_path / "summary.md"
+    payload = tmp_path / "misses.json"
+    assert (
+        sel.main(
+            [
+                "misses",
+                "--selection-in",
+                str(selection),
+                "--junit",
+                str(report),
+                "--json-out",
+                str(payload),
+                "--summary",
+                str(summary),
+            ]
+        )
+        == 0
+    )
+    body = summary.read_text(encoding="utf-8")
+    assert "## Shadow selection misses" in body
+    assert "tests/unit/z/test_nine.py::test_broke" in body
+    assert "tests/unit/a/test_one.py::test_flaky" not in body
+    assert "tests/unit/b/test_two.py::TestGroup::test_bad" not in body
+    loaded = json.loads(payload.read_text(encoding="utf-8"))
+    assert loaded["selected_count"] == 2
+    assert loaded["missed"] == ["tests/unit/z/test_nine.py::test_broke"]
+    assert loaded["would_escalate"] is True

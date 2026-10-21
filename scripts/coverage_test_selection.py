@@ -10,6 +10,7 @@ import re
 import shlex
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -855,6 +856,123 @@ def _cmd_prune(args: argparse.Namespace) -> int:
     return 0
 
 
+def _junit_module_parts(classname: str) -> tuple[list[str], list[str]]:
+    parts = classname.split(".") if classname else []
+    extra: list[str] = []
+    while len(parts) > 1 and not parts[-1].startswith("test_") and not parts[-1].endswith("_test"):
+        extra.insert(0, parts.pop())
+    return parts, extra
+
+
+def junit_case_node_id(classname: str, name: str, file_attr: str | None = None) -> tuple[str, str]:
+    path: str | None = None
+    extra: list[str] = []
+    if file_attr:
+        stem = file_attr[: -len(".py")] if file_attr.endswith(".py") else file_attr
+        dotted = stem.replace("/", ".")
+        if classname == dotted:
+            path = file_attr
+        elif classname.startswith(dotted + "."):
+            path = file_attr
+            extra = classname[len(dotted) + 1 :].split(".")
+    if path is None:
+        module, extra = _junit_module_parts(classname)
+        path = "/".join(module) + ".py"
+    node = path if not extra else f"{path}::{'::'.join(extra)}"
+    return f"{node}::{name}", path
+
+
+def failed_node_ids(paths: list[Path]) -> tuple[list[str], int]:
+    failed: set[str] = set()
+    parsed = 0
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            root = ET.parse(path).getroot()
+        except (ET.ParseError, UnicodeDecodeError):
+            continue
+        parsed += 1
+        for case in root.iter("testcase"):
+            if case.find("failure") is None and case.find("error") is None:
+                continue
+            node, _ = junit_case_node_id(case.get("classname", ""), case.get("name", ""), case.get("file"))
+            failed.add(node)
+    return sorted(failed), parsed
+
+
+def shadow_misses(selected: list[str], failed: list[str]) -> list[str]:
+    have = set(selected)
+    files = {entry.split("::")[0] for entry in selected}
+    return sorted({node for node in failed if node not in have and node.split("::")[0] not in files})
+
+
+def miss_report(selected: list[str], failed: list[str]) -> dict:
+    missed = shadow_misses(selected, failed)
+    return {
+        "selected_count": len(selected),
+        "failed": sorted(set(failed)),
+        "missed": missed,
+        "would_escalate": bool(missed),
+    }
+
+
+def _miss_junit_paths(raw: list[Path]) -> list[Path]:
+    paths: list[Path] = []
+    for entry in raw or []:
+        if entry.is_dir():
+            paths.extend(sorted(entry.rglob("*-junit.xml")))
+        elif entry.is_file():
+            paths.append(entry)
+    return paths
+
+
+def _cmd_misses(args: argparse.Namespace) -> int:
+    notes: list[str] = []
+    selected: list[str] = []
+    if args.selection_in is None:
+        notes.append("no selection input")
+    else:
+        try:
+            payload = json.loads(args.selection_in.read_text(encoding="utf-8"))
+            selected = [str(node) for node in payload["selected"]]
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            notes.append(f"cannot read selection {args.selection_in}: {exc}")
+    junit_paths = _miss_junit_paths(args.junit)
+    if not junit_paths:
+        notes.append("no junit reports")
+    failed, parsed = failed_node_ids(junit_paths)
+    if junit_paths and not parsed:
+        notes.append("no junit reports parsed")
+    report = miss_report(selected, failed)
+    report.update({"available": not notes, "reason": "; ".join(notes)})
+    lines = ["## Shadow selection misses"]
+    if notes:
+        lines.append(f"Shadow selection misses: not available ({'; '.join(notes)}).")
+    elif not failed:
+        lines.append(
+            f"No failures in the medium-test shards; shadow selection of {len(selected)} tests has nothing to miss."
+        )
+    elif not report["missed"]:
+        lines.append(
+            f"No misses: all {len(failed)} failed tests were covered by the shadow selection of {len(selected)} tests."
+        )
+    else:
+        lines.append(
+            f"Shadow selection of {len(selected)} tests missed {len(report['missed'])} of {len(failed)} failed tests."
+        )
+        lines.extend(f"- {node}" for node in report["missed"])
+    lines.append(f"Would escalate on misses: {'yes' if report['would_escalate'] else 'no'}.")
+    for line in lines:
+        _append_summary(args.summary, line)
+    if args.json_out is not None:
+        args.json_out.parent.mkdir(parents=True, exist_ok=True)
+        args.json_out.write_text(json.dumps(report, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"misses={len(report['missed'])} failed={len(failed)} selected={len(selected)}")
+    print(f"available={str(report['available']).lower()}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
@@ -890,6 +1008,12 @@ def build_parser() -> argparse.ArgumentParser:
     prune_parser.add_argument("--nodeids-out", type=Path, required=True)
     prune_parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     prune_parser.set_defaults(func=_cmd_prune)
+    misses_parser = sub.add_parser("misses")
+    misses_parser.add_argument("--selection-in", type=Path, default=None)
+    misses_parser.add_argument("--junit", type=Path, action="append", default=None)
+    misses_parser.add_argument("--json-out", type=Path, default=None)
+    misses_parser.add_argument("--summary", type=Path, default=None)
+    misses_parser.set_defaults(func=_cmd_misses)
     return parser
 
 

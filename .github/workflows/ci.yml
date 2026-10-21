@@ -1473,7 +1473,9 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             scripts/ci_unit_result.py
+            scripts/coverage_test_selection.py
             scripts/release_canary_sharding.py
+            _project/scripts/preflight_targets.py
             tests/fixtures/medium_shard_durations.json
           sparse-checkout-cone-mode: false
 
@@ -1490,6 +1492,43 @@ jobs:
         run: >-
           python scripts/release_canary_sharding.py verify-medium --artifacts t2-evidence
           --checked-sha "${{ github.sha }}" --durations tests/fixtures/medium_shard_durations.json
+
+      - name: Download shadow selection
+        if: ${{ always() && needs.ci-paths.outputs.heavy-needed == 'true' && needs.ci-paths.outputs.unit-core == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: coverage-selection-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: coverage-selection
+
+      - name: Report shadow selection misses
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          junit_args=()
+          if [ -d t2-evidence ]; then
+            junit_args+=(--junit t2-evidence)
+          fi
+          selection_args=()
+          if [ -f coverage-selection/coverage-selection.json ]; then
+            selection_args+=(--selection-in coverage-selection/coverage-selection.json)
+          fi
+          python scripts/coverage_test_selection.py misses \
+            "${selection_args[@]}" \
+            "${junit_args[@]}" \
+            --json-out coverage-selection-misses.json \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload shadow selection misses
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: coverage-selection-misses-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: coverage-selection-misses.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Aggregate core result
         id: aggregate
