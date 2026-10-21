@@ -4,7 +4,7 @@
     "Site ci is green on main with the audit step passing without a new unexplained allowlist entry",
     "PR 53 can merge"
   ],
-  "context": "Found 2026-10-20 during the follow-up batch. Evidence is from that session; re-verify before editing. Unclaimed.\n\nCHECKPOINT 2026-10-20: all three advisories are in launch-editor <= 2.14.1 bundled by vite (high: GHSA-587h-7wmj-h5pm Windows existsSync bypass; medium: GHSA-698v-4r3x-3vcv, GHSA-r825-w8mm-5pxw). Dev-server exposure [INFERENCE: production build not traced]. Site PR 54 (head 3cc37e99a) bumps explorer vite 6.4.3 -> 6.4.4 (launch-editor 2.14.2); audit:high passes locally with no new allowlist entry; lint:comments, lint:guard, test:deploy, explorer 2116 and website 352 tests, build pass. CI pending, not merged (site auto-merge off). NEXT: squash-merge PR 54 when ci is green, rebase PR 53 on main, confirm main ci audit green, finish.",
+  "context": "Found 2026-10-20 during the follow-up batch. Evidence is from that session; re-verify before editing. Unclaimed.\n\nCHECKPOINT 2026-10-20: all three advisories are in launch-editor <= 2.14.1 bundled by vite (high: GHSA-587h-7wmj-h5pm Windows existsSync bypass; medium: GHSA-698v-4r3x-3vcv, GHSA-r825-w8mm-5pxw). Dev-server exposure [INFERENCE: production build not traced]. Site PR 54 (head 3cc37e99a) bumps explorer vite 6.4.3 -> 6.4.4 (launch-editor 2.14.2); audit:high passes locally with no new allowlist entry; lint:comments, lint:guard, test:deploy, explorer 2116 and website 352 tests, build pass. CI pending, not merged (site auto-merge off). NEXT: squash-merge PR 54 when ci is green, rebase PR 53 on main, confirm main ci audit green, finish.\n\n### Completion Evidence (2026-10-20)\nAdvisories GHSA-587h-7wmj-h5pm (high), GHSA-698v-4r3x-3vcv and GHSA-r825-w8mm-5pxw (medium) are all in launch-editor <= 2.14.1 bundled by vite; dev-server exposure [INFERENCE: production build not traced]. Site PR 54 merged (explorer vite 6.4.3 -> 6.4.4, launch-editor 2.14.2; no allowlist entry added); site main ci green after it (run for commit \"fix(explorer): update vite to 6.4.4 ...\"). PR 53 rebased on main: ci green incl. dependency audit, squash-merged as 5b740e7f40911a7505ef08f57c27c8159686e116.",
   "description": "benchbox-site ci run 39505312110 (PR 53) fails the audit job: \"audit:high: high finding in vite (ghsa-698v-4r3x-3vcv, ghsa-r825-w8mm-5pxw, ghsa-587h-7wmj-h5pm) is not allowlisted\" from explorer/scripts/audit-high.mjs. Main CI was green at the last push, so the advisories are new. This blocks every site PR, including the probe-wait fix (PR 53, which changes only deploy/ files). Work: check the advisories, upgrade vite to the patched release within the repo dependency rules if available and verify the explorer build and browser suite; allowlist only with a documented expiry if no patch exists. Guardrail: do not weaken the audit gate, and do not allowlist a reachable finding without reasoning.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "generation": "6b4e6c23dfe4495980d3a3e61172233b",
       "op": "take",
       "op_id": "cb1a9103e10c4fd29c87dbd6c2baa44c",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-21T02:12:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9fb70e2c635b494685e8790168da8f4c",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
