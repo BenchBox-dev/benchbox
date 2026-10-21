@@ -8536,12 +8536,17 @@
       "title": "Check #fragment anchors in the core docs external-link checker, as Sphinx linkcheck did"
     },
     "docker-integration-registry-limit-and-test-selection-20261020": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T19:48:54Z",
+        "generation": "b762d79ab4e941eb8460e2e1083774ef",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [
         "autogen-postgres-pinning-and-mirror-consistency-20261018"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Make docker-integration run the PostgreSQL stream-session tests and survive the registry pull limit"
     },
     "docs-accuracy-benchmarks-reference": {
