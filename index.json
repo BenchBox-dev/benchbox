@@ -15738,6 +15738,13 @@
       "status": "open",
       "title": "Oracle read evidence still accepts reads that show none of the head file's content"
     },
+    "oracle-response-absence-retry-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Retry eligible absent oracle reviewer once within the same run"
+    },
     "oracle-response-ingress-20261021": {
       "claim": null,
       "needs": [],
