@@ -1068,6 +1068,7 @@ pr-landing-ready:
 	[ -n "$(PR)" ] || { echo "PR is required" >&2; exit 2; }; \
 	[ -n "$(HEAD)" ] || { echo "HEAD is required" >&2; exit 2; }; \
 	[ -n "$(EVIDENCE)" ] || { echo "EVIDENCE is required" >&2; exit 2; }; \
+	$(if $(ARM),uv run -- python scripts/trunk_revert.py arm-gate --pr "$(PR)" --repo "$(or $(REPO),BenchBox-dev/BenchBox)"; ,)\
 	uv run -- python scripts/pr_landing.py --repo "$(or $(REPO),BenchBox-dev/BenchBox)" \
 		--worktree . --branch "$(or $(BRANCH),$(shell git branch --show-current))" \
 		$(if $(WORKTREE_ID),--worktree-id "$(WORKTREE_ID)",) \
@@ -1242,7 +1243,13 @@ pr-arm: export PR_ARM_HEAD_SET := $(PR_ARM_HEAD_SET)
 pr-arm: export PR_ARM_REPO := $(REPO)
 pr-arm: export PR_ARM_REPO_SET := $(PR_ARM_REPO_SET)
 pr-arm:
-	@uv run -- python scripts/pr_arm.py
+	@set -eu; \
+	if [ -n "$${PR_ARM_PR:-}" ]; then \
+		uv run -- python scripts/trunk_revert.py arm-gate --pr "$$PR_ARM_PR" --repo "$${PR_ARM_REPO:-BenchBox-dev/BenchBox}"; \
+	else \
+		uv run -- python scripts/trunk_revert.py arm-gate --branch "$$(git branch --show-current)" --repo "$${PR_ARM_REPO:-BenchBox-dev/BenchBox}"; \
+	fi; \
+	uv run -- python scripts/pr_arm.py
 
 REMOTE_CLOSEOUT_TARGETS := pr-arm-remote pr-landing-remote-bind pr-landing-remote-record \
 	pr-landing-remote-manifest pr-landing-remote-review pr-landing-remote-withdraw pr-landing-remote-ready
@@ -1252,7 +1259,13 @@ $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): o
 $(foreach name,$(REMOTE_CLOSEOUT_VARIABLES),$(eval $(REMOTE_CLOSEOUT_TARGETS): export REMOTE_CLOSEOUT_$(name) := $$($(name))))
 $(REMOTE_CLOSEOUT_TARGETS): export PYTHONDONTWRITEBYTECODE := 1
 pr-arm-remote:
-	@uv run --no-project -- python scripts/remote_closeout.py arm
+	@set -eu; \
+	if [ -n "$${REMOTE_CLOSEOUT_PR:-}" ]; then \
+		uv run --no-project -- python scripts/trunk_revert.py arm-gate --pr "$$REMOTE_CLOSEOUT_PR" --repo "$${REMOTE_CLOSEOUT_REPO:-BenchBox-dev/BenchBox}"; \
+	else \
+		uv run --no-project -- python scripts/trunk_revert.py arm-gate --branch "$${REMOTE_CLOSEOUT_BRANCH:-$$(git branch --show-current)}" --repo "$${REMOTE_CLOSEOUT_REPO:-BenchBox-dev/BenchBox}"; \
+	fi; \
+	uv run --no-project -- python scripts/remote_closeout.py arm
 pr-landing-remote-bind:
 	@uv run --no-project -- python scripts/remote_closeout.py bind
 pr-landing-remote-record:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import shlex
+import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -273,7 +274,7 @@ def _gate(runs: list[dict] | None, branch: str = "fix/thing", *, code: int = 0, 
             "--limit",
             "30",
         ]
-        assert cmd[-2:] == ["--json", "conclusion,status,createdAt,updatedAt,databaseId,url"]
+        assert cmd[-2:] == ["--json", "conclusion,status,createdAt,updatedAt,databaseId,url,headSha"]
         return code, payload
 
     return trunk_revert.trunk_gate(branch, run=run, now=NOW)
@@ -394,3 +395,154 @@ def test_main_gate_exits_nonzero_on_refusal(
 
 def test_main_rejects_a_malformed_repo(capsys: pytest.CaptureFixture[str]) -> None:
     assert trunk_revert.main(["revert", "--pr", "3", "--repo", "not a repo"]) == 2
+
+
+CULPRIT_SHA = "c" * 40
+
+
+class ArmRun:
+    def __init__(
+        self,
+        runs: list[dict],
+        *,
+        branch: str = "fix/thing",
+        pulls: list[dict] | None = None,
+        reverted: bool = False,
+        runs_code: int = 0,
+        pulls_code: int = 0,
+    ):
+        self.runs = runs
+        self.branch = branch
+        self.pulls = (
+            [{"number": 77, "merged_at": "2026-10-03T11:00:00Z", "base": {"ref": "develop"}}]
+            if pulls is None
+            else pulls
+        )
+        self.reverted = reverted
+        self.runs_code = runs_code
+        self.pulls_code = pulls_code
+        self.calls: list[list[str]] = []
+
+    def __call__(self, cmd: list[str]) -> tuple[int, str]:
+        self.calls.append(cmd)
+        if cmd[:3] == ["gh", "pr", "view"]:
+            return 0, json.dumps({"headRefName": self.branch})
+        if cmd[:3] == ["gh", "run", "list"]:
+            return self.runs_code, json.dumps(self.runs) if self.runs_code == 0 else "boom"
+        if cmd[:2] == ["gh", "api"]:
+            return self.pulls_code, json.dumps(self.pulls)
+        if cmd[:2] == ["git", "log"]:
+            return 0, "d" * 40 + "\n" if self.reverted else ""
+        return 0, ""
+
+
+def _red_runs(*items: tuple[str, str | None, timedelta]) -> list[dict]:
+    runs = _runs(*items)
+    for item in runs:
+        item["headSha"] = CULPRIT_SHA
+    return runs
+
+
+def test_arm_gate_names_the_culprit_pr_when_trunk_is_red_at_once() -> None:
+    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=1))))
+    message = trunk_revert.arm_gate("fix/thing", run=run)
+    assert message is not None
+    assert "PR #77" in message
+    assert "make trunk-revert PR=77" in message
+    assert run.runs[0]["url"] in message
+
+
+def test_arm_gate_blocks_through_a_newer_pending_run() -> None:
+    run = ArmRun(
+        _red_runs(
+            ("in_progress", None, timedelta(minutes=1)),
+            ("completed", "failure", timedelta(minutes=10)),
+            ("completed", "success", timedelta(hours=2)),
+        )
+    )
+    assert trunk_revert.arm_gate("fix/thing", run=run) is not None
+
+
+def test_arm_gate_blocks_through_a_newer_cancelled_run() -> None:
+    run = ArmRun(
+        _red_runs(("completed", "cancelled", timedelta(minutes=1)), ("completed", "failure", timedelta(minutes=10)))
+    )
+    assert trunk_revert.arm_gate("fix/thing", run=run) is not None
+
+
+def test_arm_gate_allows_once_trunk_is_green() -> None:
+    run = ArmRun(
+        _red_runs(("completed", "success", timedelta(minutes=1)), ("completed", "failure", timedelta(minutes=10)))
+    )
+    assert trunk_revert.arm_gate("fix/thing", run=run) is None
+
+
+def test_arm_gate_allows_once_a_revert_of_the_culprit_is_on_develop() -> None:
+    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))), reverted=True)
+    assert trunk_revert.arm_gate("fix/thing", run=run) is None
+    grep = next(call for call in run.calls if call[:2] == ["git", "log"])
+    assert f"--grep=This reverts commit {CULPRIT_SHA}" in grep
+
+
+def test_arm_gate_exempts_revert_branches() -> None:
+    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))))
+    assert trunk_revert.arm_gate("fix/revert-77", run=run) is None
+    assert run.calls == []
+
+
+def test_arm_gate_names_the_commit_when_no_pr_is_associated() -> None:
+    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))), pulls=[])
+    message = trunk_revert.arm_gate("fix/thing", run=run)
+    assert message is not None
+    assert CULPRIT_SHA[:9] in message
+    assert "PR=<number>" in message
+
+
+def test_arm_gate_ignores_unmerged_and_foreign_base_pulls() -> None:
+    pulls = [
+        {"number": 5, "merged_at": None, "base": {"ref": "develop"}},
+        {"number": 6, "merged_at": "2026-10-03T11:00:00Z", "base": {"ref": "release"}},
+    ]
+    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))), pulls=pulls)
+    message = trunk_revert.arm_gate("fix/thing", run=run)
+    assert message is not None
+    assert "PR #" not in message
+
+
+def test_arm_gate_fails_open_when_runs_are_unreadable(capsys: pytest.CaptureFixture[str]) -> None:
+    run = ArmRun([], runs_code=1)
+    assert trunk_revert.arm_gate("fix/thing", run=run) is None
+    assert "not blocking" in capsys.readouterr().err
+
+
+def test_main_arm_gate_resolves_the_pr_head_branch(capsys: pytest.CaptureFixture[str]) -> None:
+    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))), branch="feat/other")
+    assert trunk_revert.main(["arm-gate", "--pr", "9"], run=run) == 1
+    err = capsys.readouterr().err
+    assert "Refusing to arm feat/other" in err
+    assert "PR #77" in err
+
+
+@pytest.mark.parametrize("args", [[], ["--pr", "0"], ["--pr", "3", "--branch", "fix/x"]])
+def test_main_arm_gate_requires_exactly_one_selector(args: list[str], capsys: pytest.CaptureFixture[str]) -> None:
+    assert trunk_revert.main(["arm-gate", *args]) == 2
+    assert "exactly one of" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("target", ["pr-arm", "pr-landing-ready ARM=1", "pr-arm-remote"])
+def test_arming_targets_run_the_arm_gate_before_arming(target: str) -> None:
+    done = subprocess.run(
+        ["make", "-n", "--no-print-directory", *target.split(), "PR=7", "HEAD=" + "a" * 40, "EVIDENCE=e.json"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr
+    gate = done.stdout.index("trunk_revert.py arm-gate")
+    arm = max(
+        done.stdout.index(name)
+        for name in ("pr_arm.py", "pr_landing.py", "remote_closeout.py arm")
+        if name in done.stdout
+    )
+    assert gate < arm
