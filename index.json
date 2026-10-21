@@ -15618,7 +15618,7 @@
         "oracle-local-b5-remove-hosted-reviewers"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "BenchBox owner: delete the hosted reviewer secrets"
     },
     "oracle-local-o8-engine-installed-required": {
