@@ -406,34 +406,36 @@ class ArmRun:
         runs: list[dict],
         *,
         branch: str = "fix/thing",
+        commits: list[dict] | None = None,
         pulls: list[dict] | None = None,
-        reverted: bool = False,
+        develop: list[dict] | None = None,
         runs_code: int = 0,
-        pulls_code: int = 0,
+        develop_code: int = 0,
     ):
         self.runs = runs
         self.branch = branch
+        self.commits = commits or [{"messageHeadline": "change", "messageBody": ""}]
         self.pulls = (
             [{"number": 77, "merged_at": "2026-10-03T11:00:00Z", "base": {"ref": "develop"}}]
             if pulls is None
             else pulls
         )
-        self.reverted = reverted
+        self.develop = develop or [{"commit": {"message": "feat: unrelated"}}]
         self.runs_code = runs_code
-        self.pulls_code = pulls_code
+        self.develop_code = develop_code
         self.calls: list[list[str]] = []
 
     def __call__(self, cmd: list[str]) -> tuple[int, str]:
         self.calls.append(cmd)
         if cmd[:3] == ["gh", "pr", "view"]:
-            return 0, json.dumps({"headRefName": self.branch})
+            return 0, json.dumps({"headRefName": self.branch, "commits": self.commits})
         if cmd[:3] == ["gh", "run", "list"]:
             return self.runs_code, json.dumps(self.runs) if self.runs_code == 0 else "boom"
+        if cmd[:2] == ["gh", "api"] and "/pulls" in cmd[2]:
+            return 0, json.dumps(self.pulls)
         if cmd[:2] == ["gh", "api"]:
-            return self.pulls_code, json.dumps(self.pulls)
-        if cmd[:2] == ["git", "log"]:
-            return 0, "d" * 40 + "\n" if self.reverted else ""
-        return 0, ""
+            return self.develop_code, json.dumps(self.develop) if self.develop_code == 0 else "boom"
+        raise AssertionError(f"unexpected command: {cmd}")
 
 
 def _red_runs(*items: tuple[str, str | None, timedelta]) -> list[dict]:
@@ -478,16 +480,28 @@ def test_arm_gate_allows_once_trunk_is_green() -> None:
 
 
 def test_arm_gate_allows_once_a_revert_of_the_culprit_is_on_develop() -> None:
-    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))), reverted=True)
+    develop = [{"commit": {"message": f'Revert "x" (#77)\n\nThis reverts commit {CULPRIT_SHA}.'}}]
+    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))), develop=develop)
     assert trunk_revert.arm_gate("fix/thing", run=run) is None
-    grep = next(call for call in run.calls if call[:2] == ["git", "log"])
-    assert f"--grep=This reverts commit {CULPRIT_SHA}" in grep
+    assert not any(call[:1] == ["git"] for call in run.calls)
 
 
-def test_arm_gate_exempts_revert_branches() -> None:
-    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))))
+def test_arm_gate_exempts_a_real_revert_of_the_culprit() -> None:
+    commits = [{"messageHeadline": 'Revert "x" (#77)', "messageBody": f"This reverts commit {CULPRIT_SHA}."}]
+    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))), branch="fix/revert-77", commits=commits)
     assert trunk_revert.arm_gate("fix/revert-77", run=run) is None
-    assert run.calls == []
+
+
+@pytest.mark.parametrize(
+    "commits",
+    [
+        [{"messageHeadline": "unrelated change", "messageBody": ""}],
+        [{"messageHeadline": "revert", "messageBody": "This reverts commit " + "e" * 40}],
+    ],
+)
+def test_arm_gate_refuses_a_revert_named_branch_that_does_not_revert_the_culprit(commits: list[dict]) -> None:
+    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))), branch="fix/revert-x", commits=commits)
+    assert trunk_revert.arm_gate("fix/revert-x", run=run) is not None
 
 
 def test_arm_gate_names_the_commit_when_no_pr_is_associated() -> None:
@@ -509,17 +523,26 @@ def test_arm_gate_ignores_unmerged_and_foreign_base_pulls() -> None:
     assert "PR #" not in message
 
 
-def test_arm_gate_fails_open_when_runs_are_unreadable(capsys: pytest.CaptureFixture[str]) -> None:
-    run = ArmRun([], runs_code=1)
-    assert trunk_revert.arm_gate("fix/thing", run=run) is None
-    assert "not blocking" in capsys.readouterr().err
+def test_arm_gate_allows_when_trunk_has_never_run() -> None:
+    assert trunk_revert.arm_gate("fix/thing", run=ArmRun([])) is None
+
+
+def test_arm_gate_fails_closed_when_runs_are_unreadable() -> None:
+    with pytest.raises(trunk_revert.TrunkError):
+        trunk_revert.arm_gate("fix/thing", run=ArmRun([], runs_code=1))
+
+
+def test_arm_gate_fails_closed_when_develop_commits_are_unreadable() -> None:
+    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))), develop_code=1)
+    with pytest.raises(trunk_revert.TrunkError):
+        trunk_revert.arm_gate("fix/thing", run=run)
 
 
 def test_main_arm_gate_resolves_the_pr_head_branch(capsys: pytest.CaptureFixture[str]) -> None:
     run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))), branch="feat/other")
     assert trunk_revert.main(["arm-gate", "--pr", "9"], run=run) == 1
     err = capsys.readouterr().err
-    assert "Refusing to arm feat/other" in err
+    assert "Refusing to arm 9" in err
     assert "PR #77" in err
 
 

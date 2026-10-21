@@ -62,12 +62,13 @@ PR is associated. The message gives the `make trunk-revert PR=<n>` command.
 The refusal lifts when either:
 
 - a newer completed trunk run succeeds, or
-- `origin/develop` contains a commit whose message says
+- one of the 100 newest `develop` commits, read through the GitHub API, says
   `This reverts commit <culprit sha>`, which `make trunk-revert` writes.
 
-Branches named `fix/revert-*` are exempt so the revert itself can merge.
-Unlike `make pr-open`, which waits 30 minutes before refusing new PRs, arming
-is refused as soon as the red run completes.
+The revert PR itself is exempt: a `fix/revert-*` branch can be armed only if
+its own commits carry `This reverts commit <culprit sha>`, so the branch name
+alone buys nothing. Unlike `make pr-open`, which waits 30 minutes before
+refusing new PRs, arming is refused as soon as the red run completes.
 
 Bound:
 
@@ -79,9 +80,10 @@ Bound:
   GitHub UI or `gh pr merge --auto`, or calling `scripts/pr_arm.py` directly,
   skips it. A required check or ruleset would close this; both are owner
   settings.
-- **Fails open.** If `gh` cannot read the trunk runs, the gate warns and
-  allows arming, like `make pr-open`. It fails closed if the PR being armed
-  cannot be read.
+- **Fails closed on read errors.** If `gh` cannot read the PR, the trunk
+  runs or the recent `develop` commits, arming is refused. The only allowed
+  gap is a repository with no `trunk.yml` run yet. `make pr-open` still fails
+  open.
 - **A flaky red run names an innocent PR.** The remedy is to rerun trunk to
   green; a revert is not required.
 - **Delivery.** A push that GitHub never delivers produces no run, so the gate
