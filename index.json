@@ -23446,7 +23446,7 @@
         "oracle-local-b2-record-workflow-and-proof"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship activation A3: record workflow accepts only the App's own dispatches"
     },
     "ssns-a4-live-check": {
