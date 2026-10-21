@@ -258,7 +258,8 @@ def test_changed_files_detects_rename_with_old_ranges(repo: Path) -> None:
     assert entries["benchbox/core/motor.py"].old_ranges == [(20, 1)]
 
 
-def test_selection_unites_coverage_changed_tests_and_fallback(repo: Path) -> None:
+def test_selection_unites_coverage_changed_tests_and_fallback(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     map_sha = _head(repo)
     _write(repo, "benchbox/core/engine.py", "x = 2\n")
     _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
@@ -271,6 +272,52 @@ def test_selection_unites_coverage_changed_tests_and_fallback(repo: Path) -> Non
     assert "tests/unit/core/test_engine.py" in result["fallback_tests"]
     assert result["map_sha"] == map_sha
     assert result["behind_commits"] == 0
+
+
+def test_shadow_mode_escalates_while_reporting_a_clean_selection(repo: Path) -> None:
+    assert sel.SELECTION_SHADOW is True
+    map_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
+    assert result["escalate"] is True
+    assert result["shadow"] is True
+    assert result["would_escalate"] is False
+    assert result["would_escalate_reasons"] == []
+    assert result["reason"].startswith("shadow mode:")
+    assert result["elapsed_seconds"] >= 0
+    assert result["peak_rss_mb"] > 0
+    assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
+
+
+def test_shadow_mode_records_would_escalate_reasons(repo: Path) -> None:
+    assert sel.SELECTION_SHADOW is True
+    map_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _write(repo, "benchbox/core/fresh.py", "y = 3\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
+    assert result["escalate"] is True
+    assert result["would_escalate"] is True
+    assert result["would_escalate_reasons"] == ["changed Python code no recorded test executed: benchbox/core/fresh.py"]
+    assert result["reason"].startswith("shadow mode:")
+
+
+def test_shadow_off_restores_the_computed_selection(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    map_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
+    assert result["escalate"] is False
+    assert "shadow" not in result
+    assert "would_escalate" not in result
+    assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
 
 
 def test_pure_addition_probes_neighbouring_old_lines(repo: Path) -> None:
@@ -340,7 +387,8 @@ def test_unreadable_map_note_escalates(repo: Path) -> None:
     assert "boom" in result["reason"]
 
 
-def test_stale_map_escalates_past_the_named_limit(repo: Path) -> None:
+def test_stale_map_escalates_past_the_named_limit(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     assert sel.MAX_MAP_BEHIND_COMMITS == 50
     map_sha = _head(repo)
     for _ in range(sel.MAX_MAP_BEHIND_COMMITS + 1):
@@ -367,7 +415,8 @@ def test_selection_over_the_named_limit_escalates(repo: Path, monkeypatch: pytes
     assert set(result["selected"]) == set(result["fallback_tests"]) | set(result["importer_tests"])
 
 
-def test_inert_paths_never_escalate(repo: Path) -> None:
+def test_inert_paths_never_escalate(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     map_sha = _head(repo)
     _write(repo, "docs/guide.md", "# changed\n")
     _write(repo, "CHANGELOG.md", "# changed\n")
@@ -397,7 +446,8 @@ def test_non_python_change_escalates_only_for_code_routed_trees(repo: Path) -> N
     assert unknown["escalate"] is True
 
 
-def test_deleted_source_still_matches_coverage_by_old_path(repo: Path) -> None:
+def test_deleted_source_still_matches_coverage_by_old_path(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     map_sha = _head(repo)
     (repo / "benchbox/core/engine.py").unlink()
     _commit_all(repo)
@@ -640,6 +690,7 @@ def test_read_downloaded_map_scans_past_mismatched_candidates(repo: Path, tmp_pa
 
 
 def test_select_cli_writes_nodeids_and_json(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     map_sha = _head(repo)
     _write(repo, "benchbox/core/engine.py", "x = 2\n")
     _commit_all(repo)
