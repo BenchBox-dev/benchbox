@@ -7,8 +7,9 @@ import re
 import subprocess
 import sys
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +62,18 @@ CONNECTOR_CUTOFF = "2026-10-09T00:16:30Z"
 THREAD_PAGE = 100
 MAX_PULL_COMMITS = 250
 PULL_EVENTS = frozenset({"pull_request", "pull_request_target"})
+ARMING_EVENTS = frozenset({"auto_merge_enabled", "auto_squash_enabled", "auto_rebase_enabled"})
+TRUNK_WORKFLOW = "trunk.yml"
+RED_CONCLUSIONS = frozenset({"failure", "timed_out"})
+OWNER_INSTRUCTION = "Owner instruction"
+WITHDRAWN_MARKER = "Withdrawn:"
+OPEN_SECTION_PREFIXES = ("Still open", "Defects ")
+SECTION_HEADING = re.compile(r"^\*\*(.+?)\*\*$")
+DEFECT_BULLET = re.compile(r"^[-*]\s+\*\*(Critical|High|Medium|Low)\*\*")
+WITHDRAWN_HEADING = re.compile(r"^\s*(?:\*\*)?Withdrawn:(?:\*\*)?\s*(.*)$")
+WITHDRAWN_ITEM = re.compile(r"^\s*[-*]\s+(.+?)\s*$")
+DETAILS_BLOCK = re.compile(r"<details>.*?</details>", re.DOTALL)
+SEVERITY_ORDER = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
 
 
 class ReadError(RuntimeError):
@@ -120,6 +133,7 @@ class PullEvidence:
     comments: tuple[Comment, ...] = ()
     threads: tuple[Thread, ...] = ()
     base_changed_at: str = ""
+    armed_at: tuple[str, ...] = ()
 
     @property
     def content_cutoff(self) -> str:
@@ -178,6 +192,33 @@ class Closure:
     comment: str
 
 
+@dataclass(frozen=True)
+class StandinOverride:
+    number: int
+    head: str
+    attester: str
+    instruction_gap_seconds: int | None
+    severities: tuple[str, ...]
+    merged_at: str
+
+
+@dataclass(frozen=True)
+class RedArming:
+    number: int
+    armed_at: str
+    conclusion: str
+    run_id: int | None
+    run_head: str
+    completed_at: str
+
+
+@dataclass(frozen=True)
+class Withdrawal:
+    number: int
+    head: str
+    items: tuple[str, ...]
+
+
 def finding_severity(body: str) -> str:
     match = FINDING_SEVERITY.match(body)
     return match.group(1) if match else ""
@@ -204,6 +245,59 @@ def _oracle_success(evidence: PullEvidence) -> bool:
     return latest is not None and _review_verdict(latest) == "success"
 
 
+def _standin_after(evidence: PullEvidence) -> str:
+    if not evidence.commits:
+        return ""
+    head_reviews = _oracle_reviews(evidence, {evidence.commits[-1].sha})
+    return (
+        standin_not_before(
+            evidence.base_changed_at, ((review.submitted_at, _review_verdict(review)) for review in head_reviews)
+        )
+        or ""
+    )
+
+
+def standin_comment(evidence: PullEvidence) -> Comment | None:
+    if not evidence.commits:
+        return None
+    head = evidence.commits[-1].sha
+    after = _standin_after(evidence)
+    for comment in evidence.comments:
+        if (
+            comment.login in STANDIN_ATTESTERS
+            and comment.user_type == "User"
+            and comment.updated_at in (None, comment.created_at)
+            and after < comment.created_at <= evidence.merged_at
+            and head in _attested_shas({"body": comment.body})
+        ):
+            return comment
+    return None
+
+
+def _parse_moment(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def instruction_gap_seconds(evidence: PullEvidence, at: str) -> int | None:
+    prior = [
+        comment.created_at
+        for comment in evidence.comments
+        if OWNER_INSTRUCTION in comment.body and comment.created_at <= at
+    ]
+    if not prior:
+        return None
+    return max(0, int((_parse_moment(at) - _parse_moment(max(prior))).total_seconds()))
+
+
+def format_gap(total_seconds: int) -> str:
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    parts = [f"{hours}h"] if hours else []
+    parts += [f"{minutes}m"] if minutes else []
+    parts += [f"{seconds}s"] if seconds or not parts else []
+    return " ".join(parts)
+
+
 def review_signals(evidence: PullEvidence) -> tuple[str, ...]:
     cutoff = evidence.content_cutoff
 
@@ -226,26 +320,13 @@ def review_signals(evidence: PullEvidence) -> tuple[str, ...]:
         r.login in CONNECTOR_LOGINS and r.content == "+1" and in_window(r.created_at) for r in evidence.reactions
     ):
         signals.append("connector-approval")
-    head_reviews = _oracle_reviews(evidence, {evidence.commits[-1].sha}) if evidence.commits else []
-    standin_after = (
-        standin_not_before(
-            evidence.base_changed_at, ((review.submitted_at, _review_verdict(review)) for review in head_reviews)
-        )
-        or ""
-    )
     for comment in evidence.comments:
         match = EXTERNAL_REVIEW_PATTERN.search(comment.body)
         attester = comment.login in STANDIN_ATTESTERS and comment.user_type == "User"
         if match and attester and in_window(comment.created_at):
             signals.append(f"external-review:{match.group(1).lower()}")
-        if (
-            comment.login in STANDIN_ATTESTERS
-            and comment.user_type == "User"
-            and comment.updated_at in (None, comment.created_at)
-            and standin_after < comment.created_at <= evidence.merged_at
-            and evidence.commits[-1].sha in _attested_shas({"body": comment.body})
-        ):
-            signals.append("stand-in")
+    if standin_comment(evidence) is not None:
+        signals.append("stand-in")
     return tuple(dict.fromkeys(signals))
 
 
@@ -265,6 +346,103 @@ def unreviewed_thread_count(evidence: PullEvidence) -> int:
 
 def is_overridden_finding(thread: Thread) -> bool:
     return thread.started_by.removesuffix("[bot]") == ORACLE_LOGIN and thread.severity in OVERRIDDEN_SEVERITIES
+
+
+def still_open_severities(body: str) -> list[str]:
+    text = DETAILS_BLOCK.sub("", body or "")
+    found: list[str] = []
+    in_open = False
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if WITHDRAWN_MARKER in line:
+            in_open = False
+            continue
+        heading = SECTION_HEADING.match(line)
+        if heading is not None:
+            in_open = heading.group(1).startswith(OPEN_SECTION_PREFIXES)
+            continue
+        if in_open:
+            match = DEFECT_BULLET.match(line)
+            if match is not None:
+                found.append(match.group(1))
+    return found
+
+
+def open_finding_severities(evidence: PullEvidence) -> tuple[str, ...]:
+    shas = {commit.sha for commit in evidence.commits}
+    found = {
+        thread.severity
+        for thread in evidence.threads
+        if not thread.resolved
+        and thread.started_by.removesuffix("[bot]") == ORACLE_LOGIN
+        and thread.severity
+        and thread.first_comment_sha in shas
+    }
+    for review in _oracle_reviews(evidence, evidence.content_shas):
+        found.update(still_open_severities(review.body))
+    return tuple(sorted(found, key=lambda severity: SEVERITY_ORDER[severity]))
+
+
+def standin_overrides(pulls: Sequence[PullEvidence]) -> list[StandinOverride]:
+    found: list[StandinOverride] = []
+    for pull in pulls:
+        comment = standin_comment(pull)
+        if comment is None or "oracle-review" in review_signals(pull):
+            continue
+        severities = open_finding_severities(pull)
+        if not severities:
+            continue
+        head = pull.commits[-1].sha if pull.commits else ""
+        found.append(
+            StandinOverride(
+                pull.number,
+                head,
+                comment.login,
+                instruction_gap_seconds(pull, comment.created_at),
+                severities,
+                pull.merged_at,
+            )
+        )
+    return sorted(found, key=lambda override: (override.merged_at, override.number))
+
+
+def withdrawn_in_body(body: str) -> list[str]:
+    lines = (body or "").splitlines()
+    found: list[str] = []
+    index = 0
+    while index < len(lines):
+        heading = WITHDRAWN_HEADING.match(lines[index])
+        index += 1
+        if heading is None:
+            continue
+        rest = heading.group(1).strip()
+        if rest:
+            found.append(rest)
+        while index < len(lines):
+            item = WITHDRAWN_ITEM.match(lines[index])
+            if item is not None:
+                found.append(item.group(1))
+                index += 1
+            elif not lines[index].strip():
+                index += 1
+            else:
+                break
+    return found
+
+
+def withdrawn_findings(pulls: Sequence[PullEvidence]) -> list[Withdrawal]:
+    found: list[Withdrawal] = []
+    for pull in pulls:
+        items: list[str] = []
+        for review in _oracle_reviews(pull, pull.content_shas):
+            items.extend(withdrawn_in_body(review.body))
+        unique = tuple(dict.fromkeys(items))
+        if unique:
+            head = pull.commits[-1].sha if pull.commits else ""
+            found.append(Withdrawal(pull.number, head, unique))
+    return sorted(found, key=lambda withdrawal: withdrawal.number)
 
 
 def classify(sha: str, subject: str, files: Sequence[str], pull: PullEvidence | None) -> Entry:
@@ -485,6 +663,12 @@ def collect_pull(repo: str, sha: str) -> PullEvidence | None:
         return None
     pull = gh_json("api", f"repos/{repo}/pulls/{number}")
     commits = collect_commits(repo, number, pull, f"{sha}~1")
+    timeline = gh_pages(f"repos/{repo}/issues/{number}/timeline")
+    armed = sorted(
+        event.get("created_at", "")
+        for event in timeline
+        if event.get("event") in ARMING_EVENTS and event.get("created_at")
+    )
     return PullEvidence(
         number=number,
         author=pull["user"]["login"],
@@ -516,7 +700,8 @@ def collect_pull(repo: str, sha: str) -> PullEvidence | None:
             for c in gh_pages(f"repos/{repo}/issues/{number}/comments")
         ),
         threads=collect_threads(repo, number),
-        base_changed_at=latest_base_change(gh_pages(f"repos/{repo}/issues/{number}/timeline")) or "",
+        base_changed_at=latest_base_change(timeline) or "",
+        armed_at=tuple(armed),
     )
 
 
@@ -546,6 +731,100 @@ def collect_entry(repo: str, sha: str) -> Entry | None:
 def collect_entries(repo: str, ref: str, since: str) -> list[Entry]:
     entries = (collect_entry(repo, sha) for sha in merged_commits(ref, since))
     return [entry for entry in entries if entry is not None]
+
+
+def collect_window_pulls(repo: str, ref: str, since: str) -> list[PullEvidence]:
+    pulls: list[PullEvidence] = []
+    seen: set[int] = set()
+    for sha in merged_commits(ref, since):
+        number = merged_pull_number(repo, sha)
+        if number is None or number in seen:
+            continue
+        seen.add(number)
+        pull = collect_pull(repo, sha)
+        if pull is not None:
+            pulls.append(pull)
+    return pulls
+
+
+def fetch_trunk_runs(repo: str) -> list[dict[str, Any]]:
+    runs = gh_json(
+        "api",
+        f"repos/{repo}/actions/workflows/{TRUNK_WORKFLOW}/runs"
+        f"?branch={BASE_BRANCH}&event=push&status=completed&per_page=100",
+    )
+    return runs["workflow_runs"]
+
+
+def red_armings(pulls: Sequence[PullEvidence], trunk_runs: Sequence[Mapping[str, Any]]) -> list[RedArming]:
+    completed = [run for run in trunk_runs if run.get("status", "completed") == "completed" and run.get("updated_at")]
+    found: list[RedArming] = []
+    for pull in pulls:
+        for armed_at in pull.armed_at:
+            prior = [run for run in completed if run["updated_at"] <= armed_at]
+            if not prior:
+                continue
+            newest = max(prior, key=lambda run: run["updated_at"])
+            conclusion = newest.get("conclusion") or "unknown"
+            if conclusion in RED_CONCLUSIONS:
+                found.append(
+                    RedArming(
+                        pull.number,
+                        armed_at,
+                        conclusion,
+                        newest.get("id"),
+                        (newest.get("head_sha") or "")[:9],
+                        newest.get("updated_at") or "",
+                    )
+                )
+    return sorted(found, key=lambda arming: (arming.armed_at, arming.number))
+
+
+def render_standin_overrides(overrides: Sequence[StandinOverride]) -> str:
+    lines = [
+        "",
+        "Stand-in overrides: merged PRs that passed oracle-review by stand-in while an oracle finding was open.",
+    ]
+    if not overrides:
+        return "\n".join(lines + ["None."])
+    lines += ["| Pull request | Head | Attester | Instruction gap | Open findings |", "|---|---|---|---|---|"]
+    for override in overrides:
+        gap = (
+            format_gap(override.instruction_gap_seconds)
+            if override.instruction_gap_seconds is not None
+            else "no Owner instruction comment"
+        )
+        lines.append(
+            f"| #{override.number} | `{override.head[:9]}` | {override.attester} | {gap} "
+            f"| {', '.join(override.severities)} |"
+        )
+    return "\n".join(lines)
+
+
+def render_red_armings(armings: Sequence[RedArming]) -> str:
+    lines = [
+        "",
+        "Armed while Trunk was red: PRs with auto-merge enabled while the newest completed "
+        "trunk.yml push run on develop was red.",
+    ]
+    if not armings:
+        return "\n".join(lines + ["None."])
+    for arming in armings:
+        lines.append(
+            f"- #{arming.number} armed at {arming.armed_at}; the newest completed trunk.yml push run on develop "
+            f"was {arming.conclusion} (run {arming.run_id}, `{arming.run_head}`, completed {arming.completed_at})."
+        )
+    return "\n".join(lines)
+
+
+def render_withdrawals(withdrawals: Sequence[Withdrawal]) -> str:
+    if not withdrawals:
+        return ""
+    lines = ["", "Oracle withdrawals: findings the oracle withdrew in its review of the merged head."]
+    for withdrawal in withdrawals:
+        lines.append(f"- #{withdrawal.number} (`{withdrawal.head[:9]}`):")
+        lines.extend(f"  - {item}" for item in withdrawal.items)
+    return "\n".join(lines)
 
 
 def find_state_issue(repo: str) -> dict[str, Any] | None:
@@ -746,7 +1025,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         if since not in run(["git", "rev-list", "--first-parent", until]).split():
             raise ReadError(f"checkpoint {since[:9]} is not on the first-parent history of {args.ref}")
         entries = collect_entries(args.repo, until, since)
+        pulls = collect_window_pulls(args.repo, until, since)
+        overrides = standin_overrides(pulls)
+        armings = red_armings(pulls, fetch_trunk_runs(args.repo))
+        withdrawals = withdrawn_findings(pulls)
         report = render(entries, since=since, until=until)
+        report += render_standin_overrides(overrides) + render_red_armings(armings) + render_withdrawals(withdrawals)
         print(report)
         closures = gap_closures(args.repo, entries)
         print(render_closures(closures))
