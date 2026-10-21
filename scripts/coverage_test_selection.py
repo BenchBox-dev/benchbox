@@ -375,6 +375,21 @@ def _classify_files(
     return coverage_hits, uncovered, non_python
 
 
+def prune_missing_nodeids(repo: Path, node_ids: list[str], collected: list[str]) -> list[str]:
+    have = set(collected)
+    pruned: list[str] = []
+    for node in node_ids:
+        if node in have:
+            candidate = node
+        else:
+            candidate = node.split("::", 1)[0]
+            if not (repo / candidate).is_file():
+                continue
+        if candidate not in pruned:
+            pruned.append(candidate)
+    return pruned
+
+
 def _apply_develop_overlap(
     repo: Path, mapping: dict | None, map_sha: str | None, base_sha: str, files: list[ChangedFile]
 ) -> tuple[list[ChangedFile], str | None]:
@@ -738,6 +753,20 @@ def _cmd_select(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_prune(args: argparse.Namespace) -> int:
+    try:
+        node_ids = args.nodeids_in.read_text(encoding="utf-8").splitlines()
+        collected = args.collected_in.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        print(f"cannot read prune inputs: {exc}", file=sys.stderr)
+        return 1
+    pruned = prune_missing_nodeids(args.repo_root, [node for node in node_ids if node], collected)
+    args.nodeids_out.parent.mkdir(parents=True, exist_ok=True)
+    args.nodeids_out.write_text("".join(f"{node}\n" for node in pruned), encoding="utf-8")
+    print(f"pruned {len(node_ids)} selected IDs to {len(pruned)} runnable targets")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
@@ -767,6 +796,12 @@ def build_parser() -> argparse.ArgumentParser:
     select_parser.add_argument("--json-out", type=Path, default=None)
     select_parser.add_argument("--summary", type=Path, default=None)
     select_parser.set_defaults(func=_cmd_select)
+    prune_parser = sub.add_parser("prune")
+    prune_parser.add_argument("--nodeids-in", type=Path, required=True)
+    prune_parser.add_argument("--collected-in", type=Path, required=True)
+    prune_parser.add_argument("--nodeids-out", type=Path, required=True)
+    prune_parser.add_argument("--repo-root", type=Path, default=Path.cwd())
+    prune_parser.set_defaults(func=_cmd_prune)
     return parser
 
 

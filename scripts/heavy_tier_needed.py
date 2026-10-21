@@ -13,6 +13,14 @@ from typing import Any, Callable, Iterable
 PREDICATE_REPO_PATH = "_project/scripts/soundness_paths.py"
 POLICY_PATHS = (PREDICATE_REPO_PATH, ".github/soundness-paths.txt")
 BROAD_CONFTEST_MODULES = 200
+SELECTION_LOGIC_PATHS = frozenset(
+    {
+        "scripts/coverage_test_selection.py",
+        "scripts/coverage_map.ini",
+        "_project/scripts/preflight_targets.py",
+        "scripts/heavy_tier_needed.py",
+    }
+)
 
 
 class HeavyTierError(RuntimeError):
@@ -121,7 +129,7 @@ def broad_test_infrastructure(changed_paths: Iterable[str], repo_root: Path) -> 
     broad = []
     for path in changed_paths:
         pure = PurePosixPath(path)
-        if path == "pytest.ini":
+        if path == "pytest.ini" or path in SELECTION_LOGIC_PATHS:
             broad.append(path)
         elif pure.name in {"conftest.py", "__init__.py"} and pure.parts[:1] == ("tests",):
             modules = sum(1 for _ in (repo_root / pure.parent).rglob("test_*.py"))

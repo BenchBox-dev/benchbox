@@ -919,13 +919,24 @@ jobs:
           set -euo pipefail
           targets="coverage-selection/coverage-nodeids.txt"
           test -f "$targets"
-          if [ ! -s "$targets" ]; then
+          mapfile -t node_ids < "$targets" || true
+          if [ "${#node_ids[@]}" -gt 0 ]; then
+            collected="coverage-selection/collected.txt"
+            BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q "${node_ids[@]}" \
+              > "$collected" 2>/dev/null || true
+            runnable="coverage-selection/runnable-nodeids.txt"
+            uv run -- python scripts/coverage_test_selection.py prune \
+              --nodeids-in "$targets" \
+              --collected-in "$collected" \
+              --nodeids-out "$runnable"
+            mapfile -t node_ids < "$runnable"
+          fi
+          if [ "${#node_ids[@]}" -eq 0 ]; then
             echo "No tests selected for the changed paths."
             exit 0
           fi
-          echo "Medium tests selected by coverage impact: $(wc -l < "$targets")"
-          head -n 50 "$targets"
-          mapfile -t node_ids < "$targets"
+          echo "Medium tests selected by coverage impact: ${#node_ids[@]}"
+          printf '%s\n' "${node_ids[@]}" | head -n 50
           status=0
           BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest "${node_ids[@]}" \
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \

@@ -727,3 +727,49 @@ def test_heavy_cli_accepts_a_selection_file(repo: Path, tmp_path: Path) -> None:
     assert heavy.main(["--decision-in", str(decision), "--selection-in", str(selection), "--repo-root", str(repo)]) == 0
     selection.write_text("{bad", encoding="utf-8")
     assert heavy.main(["--decision-in", str(decision), "--selection-in", str(selection), "--repo-root", str(repo)]) == 0
+
+
+def test_prune_missing_nodeids_keeps_collectable_and_file_targets(repo: Path) -> None:
+    node_ids = [
+        "tests/unit/core/test_engine.py::test_x",
+        "tests/unit/core/test_engine.py::test_x",
+        "tests/unit/core/test_engine.py::test_gone",
+        "tests/unit/core/test_engine.py",
+        "tests/unit/core/test_missing.py::test_y",
+        "tests/unit/core/absent.py",
+    ]
+    collected = ["tests/unit/core/test_engine.py::test_x"]
+    assert sel.prune_missing_nodeids(repo, node_ids, collected) == [
+        "tests/unit/core/test_engine.py::test_x",
+        "tests/unit/core/test_engine.py",
+    ]
+
+
+def test_prune_cli_rewrites_nodeids(repo: Path, tmp_path: Path) -> None:
+    nodeids = tmp_path / "nodeids.txt"
+    nodeids.write_text(
+        "tests/unit/core/test_engine.py::test_x\ntests/unit/core/test_engine.py::test_gone\n", encoding="utf-8"
+    )
+    collected = tmp_path / "collected.txt"
+    collected.write_text("tests/unit/core/test_engine.py::test_x\n", encoding="utf-8")
+    out = tmp_path / "pruned.txt"
+    assert (
+        sel.main(
+            [
+                "prune",
+                "--nodeids-in",
+                str(nodeids),
+                "--collected-in",
+                str(collected),
+                "--nodeids-out",
+                str(out),
+                "--repo-root",
+                str(repo),
+            ]
+        )
+        == 0
+    )
+    assert out.read_text(encoding="utf-8").splitlines() == [
+        "tests/unit/core/test_engine.py::test_x",
+        "tests/unit/core/test_engine.py",
+    ]
