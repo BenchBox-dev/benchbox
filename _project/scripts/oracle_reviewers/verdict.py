@@ -199,9 +199,12 @@ def _is_line(value: Any) -> bool:
 def _finding(data: Any) -> Finding:
     _require(isinstance(data, dict), "each finding must be an object")
     keys = set(data)
+    required = set(FINDING_KEYS) - OPTIONAL_FINDING_KEYS
+    unexpected = sorted(str(key)[:40] for key in keys - set(FINDING_KEYS))[:5]
     _require(
-        set(FINDING_KEYS) - OPTIONAL_FINDING_KEYS <= keys <= set(FINDING_KEYS),
-        f"each finding must have the keys {FINDING_KEYS}, of which {sorted(OPTIONAL_FINDING_KEYS)} may be omitted",
+        required <= keys <= set(FINDING_KEYS),
+        f"each finding must have the keys {FINDING_KEYS}, of which {sorted(OPTIONAL_FINDING_KEYS)} may be omitted;"
+        f" missing {sorted(required - keys)}, unexpected {unexpected}",
     )
     severity, path, line, title, detail = (data[key] for key in ("severity", "file", "line", "title", "detail"))
     end_line = data.get("end_line")
@@ -220,10 +223,14 @@ def _prior(data: Any) -> PriorDefect:
     _require(
         isinstance(data, dict) and set(data) == set(PRIOR_KEYS), f"each prior defect must have the keys {PRIOR_KEYS}"
     )
-    _require(isinstance(data["id"], str) and re.fullmatch(r"[A-Za-z0-9-]{1,32}", data["id"]) is not None, "bad id")
+    identifier = data["id"].removeprefix("#") if isinstance(data["id"], str) else data["id"]
+    _require(
+        isinstance(identifier, str) and re.fullmatch(r"[A-Za-z0-9-]{1,32}", identifier) is not None,
+        f"prior defect id must be 1 to 32 letters, digits or hyphens, got {str(data['id'])[:40]!r}",
+    )
     _require(data["status"] in PRIOR_STATUSES, f"prior defect status must be one of {PRIOR_STATUSES}")
     _require(isinstance(data["evidence"], str), "prior defect evidence must be a string")
-    return PriorDefect(data["id"], data["status"], sanitize(data["evidence"], MAX_EVIDENCE))
+    return PriorDefect(identifier, data["status"], sanitize(data["evidence"], MAX_EVIDENCE))
 
 
 def validate(data: Any, *, trusted: bool = False) -> Verdict:
