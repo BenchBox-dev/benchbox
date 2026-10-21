@@ -1073,27 +1073,29 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
             uri=f"sqlite:///{table_path}/catalog.db",
             warehouse=str(table_path.parent),
         )
+        try:
+            ice_table = catalog.load_table(f"default.{table_name}")
+            arrow_table = ice_table.scan().to_arrow()
 
-        ice_table = catalog.load_table(f"default.{table_name}")
-        arrow_table = ice_table.scan().to_arrow()
+            if any(name != name.lower() for name in arrow_table.schema.names):
+                arrow_table = arrow_table.rename_columns([c.lower() for c in arrow_table.schema.names])
 
-        if any(name != name.lower() for name in arrow_table.schema.names):
-            arrow_table = arrow_table.rename_columns([c.lower() for c in arrow_table.schema.names])
+            batches = arrow_table.to_batches()
+            if batches:
+                connection.register_record_batches(table_name, [batches])
+            else:
+                import pyarrow as pa
 
-        batches = arrow_table.to_batches()
-        if batches:
-            connection.register_record_batches(table_name, [batches])
-        else:
-            import pyarrow as pa
+                empty_batch = pa.RecordBatch.from_pydict(
+                    {name: [] for name in arrow_table.schema.names},
+                    schema=arrow_table.schema,
+                )
+                connection.register_record_batches(table_name, [[empty_batch]])
 
-            empty_batch = pa.RecordBatch.from_pydict(
-                {name: [] for name in arrow_table.schema.names},
-                schema=arrow_table.schema,
-            )
-            connection.register_record_batches(table_name, [[empty_batch]])
-
-        self.log_very_verbose(f"Registered Iceberg table {table_name}: {arrow_table.num_rows:,} rows")
-        return arrow_table.num_rows
+            self.log_very_verbose(f"Registered Iceberg table {table_name}: {arrow_table.num_rows:,} rows")
+            return arrow_table.num_rows
+        finally:
+            catalog.engine.dispose()
 
     @staticmethod
     def _map_schema_type_to_pyarrow(col_type: str, pa: Any) -> Any | None:
