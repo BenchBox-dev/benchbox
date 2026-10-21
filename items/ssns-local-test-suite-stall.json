@@ -4,7 +4,7 @@
     "Slow doctor fixtures made fast, or the slowness explained",
     "Local suite time recorded and compared with CI"
   ],
-  "context": "May be the same machine-wide stall as BenchBox item bound-datagen-sync-and-investigate-io-stall; check that first. Blocked: the ship-no-ship effort was paused by the owner on 2026-10-17; resume only on the owner's word.",
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "On 2026-10-17 a local pytest run of ship-no-ship (main plus the doctor PR, from a worktree under the agent scratch directory) sat for more than 10 minutes using 3.7 s of CPU, in an uninterruptible wait (state U). It was killed at about 54%. A rerun passed (1449 passed, 1 skipped) but took 609 s; the slowest steps were doctor test setups (19.5 s and 12.4 s) and a discovery test (21 s). Unknown whether this is test code, temp-dir location, or a machine-wide macOS I/O stall.",
   "links": [
     "bound-datagen-sync-and-investigate-io-stall"
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "b765c706d8314b298ece792aa277c983",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:26:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "90fa98eee3f7430d8e9960bf4750eb69",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
