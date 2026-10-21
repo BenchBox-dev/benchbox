@@ -22873,17 +22873,12 @@
       "title": "BenchBox: route direct-transpile bypasses through translate_sql_query and add a bypass test"
     },
     "sqlglot-fork-b2-migrate-direct-importers": {
-      "claim": {
-        "expires_at": "2026-10-22T01:13:29Z",
-        "generation": "26c97bb5198840d1b05c41493d9e20b4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-fork-b1-route-bypasses-through-wrapper"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "BenchBox: migrate the remaining direct vendored-SQLGlot callers to the wrapper"
     },
     "sqlglot-fork-b3-checker-wrapper-mode": {
