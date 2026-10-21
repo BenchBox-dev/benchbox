@@ -5,7 +5,7 @@
     "A regression test replays the #3096 shape: many deletions plus a few modified soundness paths",
     "The oracle docs describe the coverage rule and how large PRs are handled"
   ],
-  "context": "Found 2026-10-17 on core #3096, the site removal: about 1,230 changed files and 19,537 code lines, mostly deletions. The first opus review on f1b9d26be gave SHIP WITH FIXES (one real defect, release-cut still staging landing/index.html). On e41f96b97 the reviewer reached SHIP twice, in the original run and in recovery run 39055089707, but the gate marked both incomplete. sol (the OpenAI reviewer) was disabled for lack of quota, and no other reviewer was selected. The owner cleared the gate with a stand-in on e41f96b97, and the PR merged as 364a6e9cd.",
+  "context": "Found 2026-10-17 on core #3096, the site removal: about 1,230 changed files and 19,537 code lines, mostly deletions. The first opus review on f1b9d26be gave SHIP WITH FIXES (one real defect, release-cut still staging landing/index.html). On e41f96b97 the reviewer reached SHIP twice, in the original run and in recovery run 39055089707, but the gate marked both incomplete. sol (the OpenAI reviewer) was disabled for lack of quota, and no other reviewer was selected. The owner cleared the gate with a stand-in on e41f96b97, and the PR merged as 364a6e9cd.\n\noracle-response-evidence-secrets-20261021 improves source presentation and diagnostics without weakening the file-list evidence policy. Large-PR scope/evidence design remains this item; no closure implied.",
   "description": "The oracle's coverage gate (_project/scripts/oracle_reviewers/evidence.py:215) turns a SHIP into \"pending: incomplete\" when the reviewer's trace doesn't show a read of every changed file: \"the verdict would ship but its trace shows no read of …\". On a PR with many changed paths, the reviewer can't meet that, so the gate can never pass. Retries and `make oracle-review-recover` give the same result, and the only way through is the owner's stand-in. The gate should scale with the PR: count files that are deleted outright or are generated or data files as covered by a summary, or let the reviewer cover a large diff in bounded chunks with a merged verdict. Make sure any such rule can't let unreviewed code through.",
   "sessions": [
     {
@@ -15,6 +15,14 @@
       "op": "create",
       "op_id": "897137bc7ef44211b25a93106ab4a360",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-21T23:53:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ee0ec78eca9740e7a71efb75ecfa925c",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
     }
   ]
 }
