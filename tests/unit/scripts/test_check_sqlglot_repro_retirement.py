@@ -7,10 +7,23 @@ from pathlib import Path
 
 import pytest
 
-from scripts.check_sqlglot_repro_retirement import BASELINE, EXECUTORS, REPO_ROOT, check, load_baseline, observe_case
+from scripts.check_sqlglot_repro_retirement import (
+    BASELINE,
+    EXECUTORS,
+    REPO_ROOT,
+    _execute_questdb,
+    check,
+    load_baseline,
+    observe_case,
+)
 from scripts.sync_sqlglot_runtime import check_runtime
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
+
+@pytest.fixture(autouse=True)
+def questdb_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(EXECUTORS, "questdb", lambda sql: [[1]])
 
 
 @pytest.fixture
@@ -81,11 +94,11 @@ def test_wrong_execution_result_requires_retirement_review(guarded_repository: P
 
 def test_unsupported_case_becoming_executable_requires_review(guarded_repository: Path) -> None:
     def alter(data):
-        case = next(case for case in data["cases"] if case["id"] == "sqlite-unknown-extract")
-        case["sql"] = "SELECT EXTRACT(YEAR FROM DATE '2024-02-29')"
+        case = next(case for case in data["cases"] if case["id"] == "sqlite-month-interval")
+        case["sql"] = "SELECT DATE '2024-02-28' + INTERVAL '1' DAY"
 
     change_baseline(guarded_repository, alter)
-    with pytest.raises(ValueError, match="sqlite-unknown-extract"):
+    with pytest.raises(ValueError, match="sqlite-month-interval"):
         check(guarded_repository, "HEAD")
 
 
@@ -120,7 +133,7 @@ def test_wrapper_output_change_fails_while_direct_transpile_passes(
 
 
 def test_wrapper_failure_reports_underlying_error_type() -> None:
-    case = baseline_case("questdb-dialect")
+    case = {**baseline_case("questdb-dialect"), "target": "not_a_dialect"}
     assert case["entry"] == "wrapper"
     assert observe_case(case) == {"outcome": "unsupported", "error_type": "ValueError"}
 
@@ -166,7 +179,7 @@ def test_questdb_rows_must_match_executor_output(guarded_repository: Path) -> No
 
 def test_questdb_without_endpoint_fails_closed(guarded_repository: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("BENCHBOX_QUESTDB_DSN", raising=False)
-    change_baseline(guarded_repository, lambda data: flip_questdb(data, drop_path=True))
+    monkeypatch.setitem(EXECUTORS, "questdb", _execute_questdb)
     with pytest.raises(RuntimeError, match="BENCHBOX_QUESTDB_DSN"):
         check(guarded_repository, "HEAD")
 
@@ -179,7 +192,7 @@ def test_fork_covered_without_executor_is_rejected(guarded_repository: Path) -> 
 
 
 def test_retained_workaround_requires_existing_path(guarded_repository: Path) -> None:
-    change_baseline(guarded_repository, lambda data: data["cases"][4]["workaround"].pop("path"))
+    change_baseline(guarded_repository, lambda data: data["cases"][5]["workaround"].pop("path"))
     with pytest.raises(ValueError, match="Malformed"):
         check(guarded_repository, "HEAD")
 
@@ -193,3 +206,49 @@ def test_missing_declared_path_is_malformed_even_when_fork_covered(guarded_repos
 def test_mysql_workaround_path_names_real_code() -> None:
     path = baseline_case("mysql-percentile-decorator")["workaround"]["path"]
     assert "PERCENTILE_CONT" in (REPO_ROOT / path).read_text(encoding="utf-8")
+
+
+class _FakeConnection:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc) -> None:
+        return None
+
+    def execute(self, sql: str):
+        return self
+
+    def fetchall(self) -> list[tuple[int]]:
+        return [(1,)]
+
+
+def test_questdb_executor_waits_for_the_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    import psycopg
+
+    attempts: list[int] = []
+
+    def connect(dsn: str, **options):
+        attempts.append(1)
+        if len(attempts) < 3:
+            raise psycopg.OperationalError("connection refused")
+        return _FakeConnection()
+
+    monkeypatch.setenv("BENCHBOX_QUESTDB_DSN", "postgresql://fixture")
+    monkeypatch.setattr(psycopg, "connect", connect)
+    monkeypatch.setattr("scripts.check_sqlglot_repro_retirement.time.sleep", lambda seconds: None)
+    assert _execute_questdb("SELECT 1") == [[1]]
+    assert len(attempts) == 3
+
+
+def test_questdb_executor_gives_up_after_the_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
+    import psycopg
+
+    def connect(dsn: str, **options):
+        raise psycopg.OperationalError("connection refused")
+
+    monkeypatch.setenv("BENCHBOX_QUESTDB_DSN", "postgresql://fixture")
+    monkeypatch.setattr(psycopg, "connect", connect)
+    monkeypatch.setattr("scripts.check_sqlglot_repro_retirement.time.sleep", lambda seconds: None)
+    monkeypatch.setattr("scripts.check_sqlglot_repro_retirement.QUESTDB_READY_SECONDS", -1)
+    with pytest.raises(RuntimeError, match="endpoint unavailable"):
+        _execute_questdb("SELECT 1")

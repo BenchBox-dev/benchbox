@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `benchbox.utils.dialect_utils.apply_rewrite(name, sql_or_expression, dialect, **args)`
+  applies a named rewrite from the bundled SQLGlot runtime to already-translated
+  SQL. It is the only module allowed to import the runtime's rewrite functions;
+  a repository test fails on any other import.
+- A golden-corpus test runs the BenchBox fix-ups and the bundled runtime's output
+  over the inputs of every area whose fix-ups move into the runtime and asserts
+  that the differences equal a recorded set.
+
 ### Changed
 
 - TPC-DI schema, query, loader, validation and SCD translation now call
@@ -45,6 +55,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the nested-archive import probe accepts Windows path separators, so the SQLGlot
   runtime tests pass on Windows. The BigQuery Iceberg test helper disposes its
   catalog engine.
+- The bundled SQLGlot runtime moves from 30.24.0.1 to 30.24.0.2 (fork commit
+  `010db57fe835`), which adds the `netezza`, `greenplum`, `vertica`, `datafusion`
+  and `questdb` dialects, SQLite, DuckDB, Snowflake and Databricks generator
+  changes and the rewrite modules behind `apply_rewrite`. A translation corpus of
+  every shipped benchmark query across 20 target dialects changes in 16 of 25,240
+  outputs. Results published before this change for the affected queries and
+  dialects were computed with different SQL:
+  - ClickBench Q43, nyctaxi `surcharge-revenue`, `trips-per-day` and
+    `trips-per-month`, read_primitives `groupby_all_complex` and
+    `timeseries_trend_analysis`, and TSBS `double-groupby-1-hr`,
+    `double-groupby-5-min` and `resource-utilization` on SQLite: `TIMESTAMP_TRUNC`
+    (not an SQLite function) now emits `STRFTIME` (9 outputs).
+  - TPC-Havoc `6_v2` and `14_v2` on Spark, Databricks and Snowflake: the empty
+    `GROUP BY ()` is dropped (6 outputs).
+  - ClickBench Q29 on Snowflake: the non-capturing group `(?:www\.)?` in the
+    `REGEXP_REPLACE` pattern is written as a capturing group, because Snowflake
+    lacks non-capturing groups.
+- The SQLGlot runtime baseline check (`make sqlglot-repro-retirement-check`) now
+  runs the `questdb` case on a QuestDB endpoint named by `BENCHBOX_QUESTDB_DSN`;
+  the CI lint job starts a QuestDB service for it. DuckDB `ORDER BY ALL`, `EXTRACT`
+  of an input of unknown type on SQLite, and the QuestDB dialect now pass directly
+  through the runtime.
+- SQLite translation of `DATE('..') + INTERVAL 'N' DAY` now yields
+  `DATETIME(DATE('..'), 'N DAY')`, which evaluates to a timestamp string
+  (`1998-09-11 00:00:00`) where the previous fix-up gave a date string
+  (`1998-09-11`). The runtime raises `UnsupportedError` at `ErrorLevel.RAISE`
+  for month and year offsets that roll over a month end and for
+  `DATE_PART('year', ..)`; `translate_sql_query` still applies the BenchBox
+  fix-ups to them until they are removed.
 
 ## [0.5.0rc1] - 2026-10-20
 

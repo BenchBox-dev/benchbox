@@ -6,6 +6,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+import time
 import tomllib
 from collections.abc import Callable
 from pathlib import Path
@@ -18,6 +19,7 @@ from scripts.sync_sqlglot_runtime import check_runtime
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 QUESTDB_DSN_ENV = "BENCHBOX_QUESTDB_DSN"
+QUESTDB_READY_SECONDS = 120
 BASELINE = Path("scripts/sqlglot_runtime_baseline.json")
 REQUIRED_CASES = {
     "postgres-extract-fractional-division",
@@ -77,13 +79,20 @@ def _execute_questdb(sql: str) -> list[list[Any]]:
     dsn = os.environ.get(QUESTDB_DSN_ENV)
     if not dsn:
         raise RuntimeError(f"Executing a QuestDB case requires a running QuestDB container; set {QUESTDB_DSN_ENV}")
-    try:
-        with psycopg.connect(dsn, autocommit=True, connect_timeout=10) as connection:
-            return [list(row) for row in connection.execute(sql).fetchall()]
-    except psycopg.Error as error:
-        if isinstance(error, psycopg.OperationalError) and not isinstance(error, psycopg.errors.SyntaxError):
-            raise RuntimeError(f"QuestDB endpoint unavailable: {error}") from error
-        raise EngineError(type(error).__name__) from error
+    deadline = time.monotonic() + QUESTDB_READY_SECONDS
+    while True:
+        try:
+            with psycopg.connect(dsn, autocommit=True, connect_timeout=10) as connection:
+                return [list(row) for row in connection.execute(sql).fetchall()]
+        except psycopg.Error as error:
+            unavailable = isinstance(error, psycopg.OperationalError) and not isinstance(
+                error, psycopg.errors.SyntaxError
+            )
+            if not unavailable:
+                raise EngineError(type(error).__name__) from error
+            if time.monotonic() >= deadline:
+                raise RuntimeError(f"QuestDB endpoint unavailable: {error}") from error
+            time.sleep(2)
 
 
 EXECUTORS: dict[str, Callable[[str], list[list[Any]]]] = {

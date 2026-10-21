@@ -5,12 +5,12 @@
     "distribution": "benchbox-sqlglot",
     "namespace": "benchbox._vendor.sqlglot",
     "repository": "https://github.com/BenchBox-dev/benchbox-sqlglot",
-    "version": "30.24.0.1",
-    "fork_sha": "4bea533be2d9fc951b9d453dfa9daf2f5f8cc9d9",
+    "version": "30.24.0.2",
+    "fork_sha": "010db57fe835296811cb34c43f426818c1b185d1",
     "upstream_sha": "5d588c0f32d17a08191898638f67ff27bb0a13ff",
-    "wheel": "benchbox_sqlglot-30.24.0.1-py3-none-any.whl",
-    "archive": "benchbox_sqlglot-30.24.0.1-py3-none-any.whl.zip",
-    "sha256": "f4fb83b9a91848c207da1b04a668b09cbbd4fd3e0b02f363a59a5bc5f0628a4b"
+    "wheel": "benchbox_sqlglot-30.24.0.2-py3-none-any.whl",
+    "archive": "benchbox_sqlglot-30.24.0.2-py3-none-any.whl.zip",
+    "sha256": "366f06cecd15d447f9af49768a0727228a54c353abafdc06aba531ebb2fdd71d"
   },
   "cases": [
     {
@@ -43,10 +43,10 @@
     },
     {
       "id": "sqlite-unknown-extract",
-      "sql": "SELECT EXTRACT(YEAR FROM d) FROM t",
+      "sql": "SELECT EXTRACT(YEAR FROM d) FROM (SELECT '2024-02-29' AS d) AS t",
       "source": "postgres", "target": "sqlite", "identify": true, "entry": "transpile",
-      "expected": {"outcome": "unsupported", "error_type": "UnsupportedError"},
-      "workaround": {"decision": "retain", "path": "benchbox/utils/dialect_utils.py", "reason": "Unknown-input and timestamp extraction are outside the bounded source-type proof; retain the mixed BenchBox compatibility helper."}
+      "expected": {"outcome": "pass", "rows": [[2024]]},
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The fork lowers EXTRACT on an input of unknown type to CAST(STRFTIME(..) AS INTEGER); the mixed BenchBox compatibility helper is no longer needed for it."}
     },
     {
       "id": "sqlite-month-interval",
@@ -59,22 +59,22 @@
       "id": "questdb-dialect",
       "sql": "SELECT 1",
       "source": "postgres", "target": "questdb", "identify": true, "entry": "wrapper",
-      "expected": {"outcome": "unsupported", "error_type": "ValueError"},
-      "workaround": {"decision": "retain", "path": "benchbox/platforms/questdb_rewriter.py", "reason": "QuestDB remains a BenchBox-owned compatibility path, not an admitted new fork capability."}
+      "expected": {"outcome": "pass", "rows": [[1]]},
+      "workaround": {"decision": "fork-covered", "path": "benchbox/platforms/questdb_rewriter.py", "reason": "The fork provides a questdb dialect that executes on QuestDB; the adapter still translates to postgres and applies the BenchBox rewriter until it switches."}
     },
     {
       "id": "duckdb-group-by-all",
       "sql": "WITH t AS (SELECT 1 AS x) SELECT x FROM t GROUP BY ALL",
       "source": "postgres", "target": "duckdb", "identify": true, "entry": "transpile",
       "expected": {"outcome": "pass", "rows": [[1]]},
-      "workaround": {"decision": "retain", "path": "benchbox/utils/dialect_utils.py", "reason": "Acknowledged GROUP BY ALL success does not retire the shared helper: the matching ORDER BY ALL cross-dialect case still fails."}
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "GROUP BY ALL executes on DuckDB from the direct transpile path; the matching ORDER BY ALL case now passes as well."}
     },
     {
       "id": "duckdb-order-by-all",
       "sql": "WITH t AS (SELECT 1 AS x) SELECT x FROM t ORDER BY ALL",
       "source": "postgres", "target": "duckdb", "identify": true, "entry": "transpile",
-      "expected": {"outcome": "unsupported", "error_type": "BinderException"},
-      "workaround": {"decision": "retain", "path": "benchbox/utils/dialect_utils.py", "reason": "PostgreSQL-normalized identifier quoting still produces an invalid DuckDB ALL-column reference; the restoration helper remains load-bearing."}
+      "expected": {"outcome": "pass", "rows": [[1]]},
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The DuckDB generator emits a sole unqualified ALL item of a query-level ORDER BY as the keyword, so the restoration helper is no longer load-bearing."}
     },
     {
       "id": "wrapper-sqlite-fractional-extract",
@@ -95,7 +95,7 @@
       "sql": "WITH t AS (SELECT 1 AS x) SELECT x FROM t ORDER BY ALL",
       "source": "postgres", "target": "duckdb", "identify": true, "entry": "wrapper",
       "expected": {"outcome": "pass", "rows": [[1]]},
-      "workaround": {"decision": "retain", "path": "benchbox/utils/dialect_utils.py", "reason": "The wrapper restores the ALL keyword that PostgreSQL-normalized quoting breaks in the direct transpile path."}
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The wrapper still restores the ALL keyword after transpilation; the fork now emits it directly, so the restoration is redundant."}
     },
     {
       "id": "mysql-percentile-decorator",

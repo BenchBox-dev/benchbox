@@ -521,6 +521,11 @@ jobs:
     needs: ci-paths
     if: ${{ needs.ci-paths.outputs.code-tests-needed == 'true' }}
     runs-on: ubuntu-latest
+    services:
+      questdb:
+        image: questdb/questdb:10.0.1
+        ports:
+          - 8812:8812
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -551,6 +556,7 @@ jobs:
         continue-on-error: true
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha }}
+          BENCHBOX_QUESTDB_DSN: postgresql://admin:quest@127.0.0.1:8812/qdb
         run: make sqlglot-repro-retirement-check
 
       - name: Stale _project/ reference check
