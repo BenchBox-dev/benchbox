@@ -2,7 +2,7 @@
   "acceptance": [
     "pmset -g shows autorestart 1"
   ],
-  "context": "Owner action, not needed until install (ssns-o6-install-and-doctor). Blocked: the ship-no-ship effort was paused by the owner on 2026-10-17.",
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "Plan owner action O5: sudo pmset -a autorestart 1.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "op": "update",
       "op_id": "3c88b934fc2142879be7ba14b645dcbf",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:26:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6d726a84572543569f8655eca4027721",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
