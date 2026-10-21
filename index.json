@@ -5846,6 +5846,18 @@
       "status": "done",
       "title": "Cost Optimization Engine - Automated Recommendations"
     },
+    "cov-select-exit-shadow-20261021": {
+      "claim": null,
+      "needs": [
+        "cov-select-shadow-miss-report-20261021",
+        "ci-heavy-tier-runs-on-escalation-20261021",
+        "inert-paths-manifest-20261021",
+        "trunk-coverage-workflow-map-v2-20261021"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Turn coverage selection live once shadow data shows zero misses"
+    },
     "cov-select-shadow-miss-report-20261021": {
       "claim": null,
       "needs": [

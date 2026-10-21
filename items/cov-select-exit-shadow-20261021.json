@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "PR states the 20-PR window, zero misses, would-select rate, escalation rate and estimated runner-minutes saved",
+    "Selection live: a covered Python-only PR runs only selected tests (observed)"
+  ],
+  "description": "Set SELECTION_SHADOW=False in scripts/coverage_test_selection.py only when the heavy-tier routing fix, the inert-path manifest and map v2 are merged and at least 20 code-routed PRs show zero shadow misses. Record the measured would-select rate, escalation rate and runner-minutes saved in the PR; if savings are negligible, propose retiring selection instead.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:45:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9404e4431a804f1c8832b4a406877ae3",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    }
+  ]
+}
