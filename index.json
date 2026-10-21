@@ -23299,6 +23299,13 @@
       "status": "open",
       "title": "Fork: never downgrade or narrow the Doris/StarRocks key model silently (lineitem loses rows under table_model=unique)"
     },
+    "sqlglot-fork-review-lows": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Close the adversarial review's Low findings (manifest gaps, stale docs, CI pinning, DDL edge cases, upstream-offer tracking)"
+    },
     "sqlglot-fork-review-m3-sqlite-date-semantics": {
       "claim": null,
       "needs": [],

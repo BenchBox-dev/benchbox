@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Each listed item has a recorded disposition (fixed with test, documented gap, or declined with reason) in this item's context.",
+    "Manifest has an upstream-state field and each carried patch has an entry (offered/not offered/declined) with a link where offered."
+  ],
+  "description": "Adversarial review Lows and M9: (L2) fork manifest gaps: upstream-owned files edited with no carried entry (Makefile, setup.py, README.md, package-test.yml) and new files with no entry (tests/test_downstream_{contract,distribution,refresh}.py, two workflows); (L3) tracker finish summaries must carry evidence in context and acceptance criteria met or deviations recorded; (L4) QuestDB comma-join rewrite attaches unqualified equalities to the first comma join (Q5 plan/timing may move); (L5) ENGINE-GAPS.md:173 netezza description stale, QuestDB CI image pinned by tag not digest (ci.yml:571), checker uses default QuestDB credentials; (L7) BigQuery window NULLS fix limited to FIRST_VALUE/LAST_VALUE/NTH_VALUE (aggregate windows with default RANGE frame may hit the same rejection), DECIMAL(38) one-parameter becomes NUMERIC(38) (BigQuery rejects), Spark layout format overrides a statement's own USING contrary to the README; (L8) netezza lone JULIANDAY(x) 2458850 vs SQLite 2458849.5, timestamp day differences differ between engines; (M9) none of the 13 carried patches has been offered upstream and the manifest has no upstream-state field; the SQLite division change alters transpile() for every caller including SQLite->SQLite (consider an opt-in exact_division rewrite like safe_division instead of generator behavior). Triage each: fix, document with evidence, or decline with a reason.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T22:51:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "74508ef637e14de085e84987984ed142",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
