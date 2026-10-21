@@ -15933,17 +15933,12 @@
       "title": "Owner: drop oracle-review from the develop ruleset"
     },
     "owner-oracle-gate-required-20261021": {
-      "claim": {
-        "expires_at": "2026-10-22T23:38:06Z",
-        "generation": "7f58a7a84e6c4e6981dba2f60c66f69c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d"
-      },
+      "claim": null,
       "needs": [
         "oracle-gate-status-20261021"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Owner: require oracle-gate (App-pinned) alongside oracle-review"
     },
     "package-coffeeshop-seeds-and-restore-reference-parity": {
