@@ -101,5 +101,5 @@ jobs:
             fi
           }
           check_head
-          uv run --no-project --with pyyaml python _project/scripts/oracle_review_check.py --repo "$REPO" --pr "$PR_NUMBER" --signal oracle
+          uv run --no-project --with pyyaml==6.0.3 python _project/scripts/oracle_review_check.py --repo "$REPO" --pr "$PR_NUMBER" --signal oracle
           check_head
