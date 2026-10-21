@@ -20680,6 +20680,15 @@
       "status": "done",
       "title": "Retire the dead complexity checker and make curated-release quality targets work"
     },
+    "retire-oracle-review-workflow-20261021": {
+      "claim": null,
+      "needs": [
+        "owner-drop-oracle-review-required-20261021"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Retire the oracle-review workflow and its checker"
+    },
     "retire-sqlglot-duckdb-all-workaround": {
       "claim": null,
       "needs": [],
