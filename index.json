@@ -22987,17 +22987,12 @@
       "title": "Databricks adapter: enable the fork safe_division option and decide its result impact"
     },
     "sqlglot-fork-adapter-snowflake-safe-division": {
-      "claim": {
-        "expires_at": "2026-10-22T18:55:15Z",
-        "generation": "c3a150cb405b4511bbdc05f4deea82f6",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-fork-a1-adopt-wrapper-wheel"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Snowflake adapter: enable the fork safe_division option and decide its result impact"
     },
     "sqlglot-fork-adr-ownership": {
