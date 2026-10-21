@@ -22859,15 +22859,10 @@
       "title": "Snowflake adapter: enable the fork safe_division option and decide its result impact"
     },
     "sqlglot-fork-adr-ownership": {
-      "claim": {
-        "expires_at": "2026-10-22T01:13:16Z",
-        "generation": "b30fd22a796b43f2a2cd9ef17976dc8a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Record the permanent-fork transpilation ownership decision as an ADR"
     },
     "sqlglot-fork-b1-route-bypasses-through-wrapper": {
