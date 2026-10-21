@@ -4,6 +4,7 @@
     "Unit tests for dialect_utils, platforms and sql_compat pass; make compat-docs-check, make sqlglot-repro-retirement-check, make comment-policy-check, make typecheck and make pr-preflight pass.",
     "The abc-conformance exemption for questdb_rewriter.py is removed; PR merged through make pr-open and make pr-arm."
   ],
+  "context": "From B2: the bypass-test allowlist (tests/unit/sql_compat/test_vendored_sqlglot_bypass.py) now has an ast_rewrite disposition for nine callers: flightdata/queries.py, tpcds_obt/query_conversion.py, three tpchavoc files, bigquery.py, databricks/adapter.py, snowflake.py, questdb_rewriter.py. Each must be moved onto apply_rewrite or a named fork rewrite by D1 (questdb_rewriter, flightdata, tpcds_obt unless another item names them), D2 (bigquery, databricks, snowflake) or D4 (tpchavoc), and its allowlist entry deleted; the goal's final criterion requires the allowlist to contain only parse-only entries (equivalence builders, joinorder dataframe files, read_primitives/variant_contracts.py). Confirm every ast_rewrite entry is owned by some D item; flightdata and tpcds_obt are not named in any item yet.",
   "description": "After A1 lands, delete from benchbox/utils/dialect_utils.py: _restore_group_order_by_all_keyword, _fix_sqlite_unsupported_syntax, _fold_sqlite_discount_bounds (call the fork rewrite through apply_rewrite with the lineitem gate as an argument), fix_postgres_date_arithmetic (call the fork rewrite with column types or a schema) and normalize_dialect_for_sqlglot (replaced by the platform registry mapping to fork dialects; this item defines the key space for standard, ansi, netezza and each platform, migrates all callers, and an unknown platform raises); delete benchbox/platforms/questdb_rewriter.py and its adapter call and switch QUESTDB_DIALECT (questdb.py:39) from postgres to questdb so the fork generator actually runs; remove the dialect_translation.py duplicates; re-point query_compile and query_adapter transformer_id strings at fork names (the discount-bound id lives under query_compile, sqlite_tpch_discount_bounds.py:13); regenerate compat docs; re-point the questdb-dialect baseline workaround path and flip duckdb-order-by-all, duckdb-group-by-all, sqlite-unknown-extract, sqlite-month-interval and questdb-dialect from retain to fork-covered; update mocks of normalize_dialect_for_sqlglot in tests/unit/test_benchbox.py and tests/unit/test_base_advanced.py.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md",
@@ -25,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "3750d37a6e4342879c6441562653c931",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T01:13:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cdf9ea85feb640d3a7aa853308b1b7e5",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
