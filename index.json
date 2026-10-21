@@ -23292,6 +23292,13 @@
       "status": "open",
       "title": "Fork: never downgrade or narrow the Doris/StarRocks key model silently (lineitem loses rows under table_model=unique)"
     },
+    "sqlglot-fork-review-m3-sqlite-date-semantics": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Fork: SQLite date arithmetic gaps (TPC-DS Q72 date + integer, DATE_TRUNC on DATE)"
+    },
     "sqlglot-freshness-gate-blocks-all-prs-v30-24-0": {
       "claim": null,
       "needs": [],

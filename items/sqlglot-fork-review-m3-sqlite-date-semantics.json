@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Q72-shape and DATE_TRUNC(DATE) comparisons return the same rows as DuckDB on sqlite3 in fork tests.",
+    "Shipped-query corpus diff and executed comparison listed; fork PR merged; adopted in a wheel PR."
+  ],
+  "description": "Adversarial review M3: TPC-DS Q72 'd3.d_date > d1.d_date + 5' stays integer addition on SQLite so text compares greater than the integer (toy repro 9 rows vs 2); the fork date-integer rewrite is applied only for postgres and questdb targets (runner.py:580-583). DATE_TRUNC on a DATE compared with a DATE returns 0 on SQLite vs 1 on DuckDB (TRUNC_FORMATS writes timestamp text, sqlite.py:32-40), the same class as the day-offset bug. Fix both in the fork with executed sqlite3-vs-DuckDB tests and corpus diff over shipped queries; adoption via wheel PR. Also record which published SQLite results used these shapes.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T22:51:39Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9fa1e06dc0524493a12e69f21efb1c4f",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
