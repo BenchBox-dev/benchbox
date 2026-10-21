@@ -446,6 +446,18 @@ def test_non_python_change_escalates_only_for_code_routed_trees(repo: Path) -> N
     assert unknown["escalate"] is True
 
 
+def test_non_exempt_exception_still_escalates_as_non_python(repo: Path) -> None:
+    map_sha = _head(repo)
+    _write(repo, ".claude/settings.json", "{}\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    base_sha = _head(repo)
+    assert files and all(entry.path == ".claude/settings.json" for entry in files)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha, decision={"needs_code_ci": True})
+    assert result["escalate"] is True
+    assert ".claude/settings.json" in result["reason"]
+
+
 def test_deleted_source_still_matches_coverage_by_old_path(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     map_sha = _head(repo)

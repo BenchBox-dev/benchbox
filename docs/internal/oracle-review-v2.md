@@ -129,15 +129,16 @@ Without the App secrets, the `post` job logs the result and succeeds.
 
 ## Inert-path manifest
 
-`.github/inert-paths.txt` is the single source of truth for review and
+`.github/inert-paths.txt` is the source of truth for code-driven review and
 coverage scope. `glob` lines exempt broad prose; `except` lines keep
 machine-read documents in scope, so the model is exemptions minus
 machine-read exceptions. The `classifier.exempt_paths` policy key is gone
-and the parser defaults it to empty; every consumer
-(`oracle_review_check.py`, the reviewer classifier and `plan` prose filter,
-`coverage_test_selection.py`, `.github/path-filters.yml`) reads the manifest
-through `_project/scripts/inert_paths.py`, with soundness and gate paths
-taking precedence over it.
+and the parser defaults it to empty; the Python consumers
+(`oracle_review_check.py`, the reviewer classifier, `coverage_test_selection.py`)
+read the manifest through `_project/scripts/inert_paths.py`, with soundness
+and gate paths taking precedence over it. `.github/path-filters.yml` does not
+read the manifest: its `code-ci` list hand-maintains the machine-read documents
+routed to code CI.
 
 To keep a document in review scope, add an `except` line for it. To return a
 document to inert, remove its `except` line. Every `except` line must match

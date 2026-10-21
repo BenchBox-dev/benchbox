@@ -12,8 +12,6 @@ from pathlib import Path
 from time import sleep
 from typing import Any
 
-from _project.scripts.inert_paths import is_inert_path
-
 from . import attempts as attempt_files, dedup, github, protocol, report, retry, runner, selection
 from .absence import ERROR, Absence
 from .brief import write_private
@@ -216,7 +214,7 @@ def command_plan(args: argparse.Namespace) -> int:
             path in in_scope
             or is_soundness(path)
             or matching([path], gate_paths) != []
-            or (not path.endswith(PROSE_SUFFIXES) and not is_inert_path(path))
+            or not path.endswith(PROSE_SUFFIXES)
             for path in item.paths
         )
     ]

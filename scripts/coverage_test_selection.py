@@ -18,7 +18,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from _project.scripts import preflight_targets
-from _project.scripts.inert_paths import is_inert_path, is_machine_read_doc, load_readers
+from _project.scripts.inert_paths import is_inert_path, is_machine_read_doc, load_readers, matches_exemption
 
 MAP_VERSION = 1
 MAP_ARTIFACT_PREFIX = "t2-coverage-map-"
@@ -378,14 +378,14 @@ def _classify_files(
     reader_tests: set[str] = set()
     known_readers = readers or {}
     for entry in files:
-        if _is_inert(entry.path):
-            continue
-        if is_machine_read_doc(entry.path):
+        if is_machine_read_doc(entry.path) and matches_exemption(entry.path):
             found = sorted(test for test in known_readers.get(entry.path, ()) if (repo / test).is_file())
             if found:
                 reader_tests.update(found)
             else:
                 uncovered.add(entry.path)
+            continue
+        if _is_inert(entry.path):
             continue
         if not entry.path.endswith(".py"):
             non_python.add(entry.path)
