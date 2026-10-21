@@ -273,8 +273,15 @@ checkout before it records it; a failed check records the reviewer as absent
   soundness-path file under review that still exists at the head (in a
   follow-up, the files changed since the last review), and OMP's event stream
   must show a successful `read` of each of those files, or a `grep` whose
-  reported matches include that file. A `grep` over several paths credits
-  only the files it reports as matched. That
+  requested path is that single file. A `grep` over several paths or a
+  directory credits nothing, and the reported `details.files` match list is
+  ignored: it records files that matched, not files the reviewer read. The
+  recorded transcript (`tests/fixtures/oracle_reviewers/
+  omp_multi_turn_review.jsonl`) shows a grep result keeping match metadata
+  (`files`, `fileMatches`, `matchCount`, `fileCount`) separate from the
+  rendered `displayContent` behind its own `truncated` flag, and its only
+  grep example is untruncated, so nothing proves `files` stays complete once
+  output is truncated. That
   includes a follow-up whose only defects are in unchanged files: those
   defects are not counted, so the follow-up would ship and still needs the
   files named and read. A verdict that would fail (DO NOT SHIP, a defect
