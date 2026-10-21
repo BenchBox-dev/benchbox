@@ -4,7 +4,7 @@
     "A scheduled or documented refresh of the duration file exists",
     "Worst shard within about 10% of the mean over at least 10 PR runs"
   ],
-  "context": "RESULTS (CI, trunk). Before the split, run 39596269177: shards 1644/1077/712/462 s; run 39614627213: 1595/980/738/592 s (summed test time 2162/1149/855/1481). After #3240 (8826fffe7), run 39633248681: wall 858/597/1217/734 s (shard 0..3), summed test time 1147/974/1720/1192 s. Slowest shard 1595-1644 s down to 1217 s (about 24-26% shorter), but still uneven: max over mean of summed time is about 1.37, against 1.0 predicted. Likely cause (not tested): the heavy generate_data tests vary a lot between runs under coverage and with -n 5 co-scheduling (ClickBench 625 s in the file's source run, 452 s now; H2ODB 525 s, TPCDI 109 s, all on shard 2 this time), so one run's timings are a noisy weight. Possible fix, untested: rebuild tests/fixtures/trunk_medium_shard_durations.json from several trunk runs (update_test_durations.py already merges multiple --input reports as p95); junit reports are in runs 39614627213 and 39633248681.\n\nPR workflow (#3218): slowest shard about 300 s (30%) shorter. Release workflow test.yml still round-robin; not decided whether it is worth changing. medium-collect (126-166 s per run) is unchanged: it imports the whole test tree in one process and deselects by marker afterwards; xdist would not help and a pyc cache probably would not survive a fresh checkout because pytest checks the source mtime. Not tested.",
+  "context": "UPDATE 2026-10-21: parts of the earlier notes below are out of date. PR #3245 (74ebc1560) moved coverage recording into a separate trunk-coverage.yml workflow and deleted tests/fixtures/trunk_medium_shard_durations.json (the file #3240 added); trunk.yml and trunk-coverage.yml now both read tests/fixtures/medium_shard_durations.json. So the HOLD and the 'build a trunk file from coverage-measured reports' plan no longer apply. The remaining shard-balance work is to regenerate medium_shard_durations.json from a recent PR CI medium run, after the generate_data tests are shrunk (see medium-datagen-tests-build-full-scale-factor-data), since those four tests are 611 s of 2,994 s of medium time and were the likely source of uneven shards.\n\nMEASURED (still valid): PR workflow after #3218, slowest shard about 300 s (30%) shorter. Trunk after #3240, before #3245: slowest shard 1,595-1,644 s down to 1,217 s (run 39633248681), still uneven (summed test time 1,147/974/1,720/1,192 s). medium-collect (126-166 s) unchanged; an untested idea is passing --assert=plain on the collect-only run, since no test executes during collection. test.yml (release) still round-robin.",
   "description": "DONE in #3218 (merged b38ed2385): the pull-request workflow (ci.yml) now assigns medium tests to the 4 shards longest-first using tests/fixtures/medium_shard_durations.json (988 tests of at least 0.25 s plus a 0.0278 s default for the rest, built from CI run 39538637499), and each shard writes a junit report. Measured on CI, slowest shard before 1020 s (others 632, 609, 426); after 717 s and 726 s on two runs (others 527-608 s), a drop of about 300 s (30%). The predicted balance from the real per-test timings was 843/848/843/844 s (max/mean 1.004), but the measured shards are still uneven (527 to 726 s) because the prediction ignores per-shard fixed cost and test interaction on the runner; that gap was not investigated. REMAINING: (1) trunk.yml and test.yml still use round-robin; (2) the duration file will drift as tests change and nothing regenerates it; _project/scripts/update_test_durations.py --min-seconds 0.25 rebuilds it from shard junit reports; (3) investigate why measured shard times stay uneven (shard 0 still slowest by about 120 s); (4) tests added since the file was built are weighted at the default.",
   "links": [
     "https://claude.ai/artifact/LjQocGvpr9RkJwMAAp18Z4",
@@ -73,6 +73,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "87176710b2c44d4196c1d15bdcb805a0",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-21T20:04:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d8fe125f351a4a17b8e477789ec6d1f9",
       "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
     }
   ]
