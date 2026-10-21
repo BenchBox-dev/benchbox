@@ -1513,17 +1513,12 @@
       "title": "Confirm the site-inputs parent-bundle lookup fix is pinned by a regression test"
     },
     "autogen-site-probe-mismatch-attribution-20261019": {
-      "claim": {
-        "expires_at": "2026-10-22T02:12:45Z",
-        "generation": "4b0fd72cfe174b24ba5cb2be5ac4b6f8",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-site-probe-mismatch-diagnosis-20261018"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Attribute a site probe mismatch using recorded byte hashes and cache headers"
     },
     "autogen-site-probe-mismatch-diagnosis-20261018": {
