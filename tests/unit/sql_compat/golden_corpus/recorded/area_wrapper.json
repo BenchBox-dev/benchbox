@@ -1,11 +1,47 @@
 {
+  "baseline-sqlite-leap-day-interval": {
+    "fork": "SELECT DATE(DATE('2024-02-29'), '1 DAY')",
+    "legacy": "SELECT DATETIME(DATE('2024-02-29'), '1 DAY')"
+  },
   "baseline-sqlite-month-interval": {
     "fork": "<UnsupportedError>",
     "legacy": "SELECT DATE('2024-01-31', '+1 month')"
   },
+  "baseline-sqlite-null-interval": {
+    "fork": "SELECT DATE(DATE(NULL), '1 DAY')",
+    "legacy": "SELECT DATETIME(DATE(NULL), '1 DAY')"
+  },
   "baseline-wrapper-sqlite-month-interval": {
     "fork": "<UnsupportedError>",
     "legacy": "SELECT DATE('2024-01-31', '+1 month')"
+  },
+  "sqlite-discount-q6-full-day-interval-netezza": {
+    "fork": "SELECT SUM(\"l_extendedprice\" * \"l_discount\") AS \"revenue\" FROM \"lineitem\" WHERE \"l_shipdate\" >= DATE('1994-01-01') AND \"l_shipdate\" < DATE(DATE('1994-01-01'), '365 DAY') AND \"l_discount\" BETWEEN 0.06 AND 0.08 AND \"l_quantity\" < 24",
+    "legacy": "SELECT SUM(\"l_extendedprice\" * \"l_discount\") AS \"revenue\" FROM \"lineitem\" WHERE \"l_shipdate\" >= DATE('1994-01-01') AND \"l_shipdate\" < DATETIME(DATE('1994-01-01'), '365 DAY') AND \"l_discount\" BETWEEN 0.06 AND 0.08 AND \"l_quantity\" < 24"
+  },
+  "sqlite-discount-q6-full-day-interval-postgres": {
+    "fork": "SELECT SUM(\"l_extendedprice\" * \"l_discount\") AS \"revenue\" FROM \"lineitem\" WHERE \"l_shipdate\" >= DATE('1994-01-01') AND \"l_shipdate\" < DATE(DATE('1994-01-01'), '365 DAY') AND \"l_discount\" BETWEEN 0.06 AND 0.08 AND \"l_quantity\" < 24",
+    "legacy": "SELECT SUM(\"l_extendedprice\" * \"l_discount\") AS \"revenue\" FROM \"lineitem\" WHERE \"l_shipdate\" >= DATE('1994-01-01') AND \"l_shipdate\" < DATETIME(DATE('1994-01-01'), '365 DAY') AND \"l_discount\" BETWEEN 0.06 AND 0.08 AND \"l_quantity\" < 24"
+  },
+  "sqlite-noidentify-cast-date-plus-7-day": {
+    "fork": "SELECT DATE(DATE('1994-01-01'), '7 DAY') AS result",
+    "legacy": "SELECT DATETIME(DATE('1994-01-01'), '7 DAY') AS result"
+  },
+  "sqlite-noidentify-date-minus-day": {
+    "fork": "SELECT DATE(DATE('1994-01-02'), '-1 DAY') AS result",
+    "legacy": "SELECT DATETIME(DATE('1994-01-02'), '-1 DAY') AS result"
+  },
+  "sqlite-noidentify-date-plus-day": {
+    "fork": "SELECT DATE(DATE('1994-01-01'), '1 DAY') AS result",
+    "legacy": "SELECT DATETIME(DATE('1994-01-01'), '1 DAY') AS result"
+  },
+  "sqlite-syntax-cast-date-plus-7-day-netezza": {
+    "fork": "SELECT DATE(DATE('1994-01-01'), '7 DAY') AS \"result\"",
+    "legacy": "SELECT DATETIME(DATE('1994-01-01'), '7 DAY') AS \"result\""
+  },
+  "sqlite-syntax-cast-date-plus-7-day-postgres": {
+    "fork": "SELECT DATE(DATE('1994-01-01'), '7 DAY') AS \"result\"",
+    "legacy": "SELECT DATETIME(DATE('1994-01-01'), '7 DAY') AS \"result\""
   },
   "sqlite-syntax-column-minus-interval-year-netezza": {
     "fork": "<UnsupportedError>",
@@ -31,6 +67,14 @@
     "fork": "<UnsupportedError>",
     "legacy": "SELECT \"o_orderdate\" + INTERVAL '3' MONTH FROM \"orders\""
   },
+  "sqlite-syntax-date-leap-day-day-netezza": {
+    "fork": "SELECT DATE(DATE('2024-02-29'), '1 DAY')",
+    "legacy": "SELECT DATETIME(DATE('2024-02-29'), '1 DAY')"
+  },
+  "sqlite-syntax-date-leap-day-day-postgres": {
+    "fork": "SELECT DATE(DATE('2024-02-29'), '1 DAY')",
+    "legacy": "SELECT DATETIME(DATE('2024-02-29'), '1 DAY')"
+  },
   "sqlite-syntax-date-leap-day-year-netezza": {
     "fork": "<UnsupportedError>",
     "legacy": "SELECT DATE('2024-02-29', '+1 year')"
@@ -38,6 +82,14 @@
   "sqlite-syntax-date-leap-day-year-postgres": {
     "fork": "<UnsupportedError>",
     "legacy": "SELECT DATE('2024-02-29', '+1 year')"
+  },
+  "sqlite-syntax-date-minus-day-netezza": {
+    "fork": "SELECT DATE(DATE('1994-01-02'), '-1 DAY') AS \"result\"",
+    "legacy": "SELECT DATETIME(DATE('1994-01-02'), '-1 DAY') AS \"result\""
+  },
+  "sqlite-syntax-date-minus-day-postgres": {
+    "fork": "SELECT DATE(DATE('1994-01-02'), '-1 DAY') AS \"result\"",
+    "legacy": "SELECT DATETIME(DATE('1994-01-02'), '-1 DAY') AS \"result\""
   },
   "sqlite-syntax-date-month-end-month-netezza": {
     "fork": "<UnsupportedError>",
@@ -63,6 +115,46 @@
     "fork": "<UnsupportedError>",
     "legacy": "SELECT CAST(STRFTIME('%Y', \"o_orderdate\") AS INTEGER) FROM \"orders\""
   },
+  "sqlite-syntax-date-plus-day-netezza": {
+    "fork": "SELECT DATE(DATE('1994-01-01'), '1 DAY') AS \"result\"",
+    "legacy": "SELECT DATETIME(DATE('1994-01-01'), '1 DAY') AS \"result\""
+  },
+  "sqlite-syntax-date-plus-day-postgres": {
+    "fork": "SELECT DATE(DATE('1994-01-01'), '1 DAY') AS \"result\"",
+    "legacy": "SELECT DATETIME(DATE('1994-01-01'), '1 DAY') AS \"result\""
+  },
+  "sqlite-syntax-date-plus-interval-day-lowercase-netezza": {
+    "fork": "SELECT DATE(DATE('1994-01-01'), '1 DAY')",
+    "legacy": "SELECT DATETIME(DATE('1994-01-01'), '1 DAY')"
+  },
+  "sqlite-syntax-date-plus-interval-day-lowercase-postgres": {
+    "fork": "SELECT DATE(DATE('1994-01-01'), '1 DAY')",
+    "legacy": "SELECT DATETIME(DATE('1994-01-01'), '1 DAY')"
+  },
+  "sqlite-syntax-date-plus-interval-day-nested-netezza": {
+    "fork": "SELECT CAST(STRFTIME('%d', DATE(DATE('1994-01-01'), '1 DAY')) AS INTEGER)",
+    "legacy": "SELECT CAST(STRFTIME('%d', DATETIME(DATE('1994-01-01'), '1 DAY')) AS INTEGER)"
+  },
+  "sqlite-syntax-date-plus-interval-day-nested-postgres": {
+    "fork": "SELECT CAST(STRFTIME('%d', DATE(DATE('1994-01-01'), '1 DAY')) AS INTEGER)",
+    "legacy": "SELECT CAST(STRFTIME('%d', DATETIME(DATE('1994-01-01'), '1 DAY')) AS INTEGER)"
+  },
+  "sqlite-syntax-date-plus-large-day-netezza": {
+    "fork": "SELECT DATE(DATE('1998-12-01'), '-90 DAY')",
+    "legacy": "SELECT DATETIME(DATE('1998-12-01'), '-90 DAY')"
+  },
+  "sqlite-syntax-date-plus-large-day-postgres": {
+    "fork": "SELECT DATE(DATE('1998-12-01'), '-90 DAY')",
+    "legacy": "SELECT DATETIME(DATE('1998-12-01'), '-90 DAY')"
+  },
+  "sqlite-syntax-date-plus-negative-day-netezza": {
+    "fork": "SELECT DATE(DATE('2024-02-29'), '-5 DAY')",
+    "legacy": "SELECT DATETIME(DATE('2024-02-29'), '-5 DAY')"
+  },
+  "sqlite-syntax-date-plus-negative-day-postgres": {
+    "fork": "SELECT DATE(DATE('2024-02-29'), '-5 DAY')",
+    "legacy": "SELECT DATETIME(DATE('2024-02-29'), '-5 DAY')"
+  },
   "sqlite-syntax-date-plus-quarter-netezza": {
     "fork": "<UnsupportedError>",
     "legacy": "SELECT DATE('2024-02-29') + INTERVAL '1' QUARTER"
@@ -78,6 +170,14 @@
   "sqlite-syntax-date-plus-week-postgres": {
     "fork": "<UnsupportedError>",
     "legacy": "SELECT DATE('2024-02-29') + INTERVAL '2' WEEK"
+  },
+  "sqlite-syntax-date-plus-zero-day-netezza": {
+    "fork": "SELECT DATE(DATE('2024-02-29'), '0 DAY')",
+    "legacy": "SELECT DATETIME(DATE('2024-02-29'), '0 DAY')"
+  },
+  "sqlite-syntax-date-plus-zero-day-postgres": {
+    "fork": "SELECT DATE(DATE('2024-02-29'), '0 DAY')",
+    "legacy": "SELECT DATETIME(DATE('2024-02-29'), '0 DAY')"
   },
   "sqlite-syntax-date-trunc-expression-netezza": {
     "fork": "<UnsupportedError>",
@@ -174,6 +274,22 @@
   "sqlite-syntax-extract-year-from-interval-sum-postgres": {
     "fork": "<UnsupportedError>",
     "legacy": "SELECT CAST(STRFTIME('%Y', \"o_orderdate\" + INTERVAL '1' YEAR) AS INTEGER) FROM \"orders\""
+  },
+  "sqlite-syntax-interval-day-in-where-netezza": {
+    "fork": "SELECT \"l_orderkey\" FROM \"lineitem\" WHERE \"l_shipdate\" <= DATE(DATE('1998-12-01'), '-90 DAY')",
+    "legacy": "SELECT \"l_orderkey\" FROM \"lineitem\" WHERE \"l_shipdate\" <= DATETIME(DATE('1998-12-01'), '-90 DAY')"
+  },
+  "sqlite-syntax-interval-day-in-where-postgres": {
+    "fork": "SELECT \"l_orderkey\" FROM \"lineitem\" WHERE \"l_shipdate\" <= DATE(DATE('1998-12-01'), '-90 DAY')",
+    "legacy": "SELECT \"l_orderkey\" FROM \"lineitem\" WHERE \"l_shipdate\" <= DATETIME(DATE('1998-12-01'), '-90 DAY')"
+  },
+  "sqlite-syntax-null-date-interval-netezza": {
+    "fork": "SELECT DATE(DATE(NULL), '1 DAY')",
+    "legacy": "SELECT DATETIME(DATE(NULL), '1 DAY')"
+  },
+  "sqlite-syntax-null-date-interval-postgres": {
+    "fork": "SELECT DATE(DATE(NULL), '1 DAY')",
+    "legacy": "SELECT DATETIME(DATE(NULL), '1 DAY')"
   },
   "sqlite-syntax-timestamp-plus-day-netezza": {
     "fork": "<UnsupportedError>",
