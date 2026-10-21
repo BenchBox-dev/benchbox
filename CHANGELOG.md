@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A golden-corpus test runs the BenchBox fix-ups and the bundled runtime's output
   over the inputs of every area whose fix-ups move into the runtime and asserts
   that the differences equal a recorded set.
+- Tests pin the `apply_rewrite` behavior of the ClickHouse, StarRocks and TPC-DS runner
+  engine rewrites (`lowercase_identifiers`, `decimal_zero_literals`, `add_query_settings`,
+  `correlated_exists_to_in`, `add_derived_table_aliases`, `qualify_order_by_columns`), and the
+  golden-corpus engines area records two more safe-division inputs from the ClickHouse
+  transformer tests.
 
 ### Changed
 
