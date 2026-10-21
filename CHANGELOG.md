@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   applies a named rewrite from the bundled SQLGlot runtime to already-translated
   SQL. It is the only module allowed to import the runtime's rewrite functions;
   a repository test fails on any other import.
+- `apply_rewrite` tests pin the named registry: every TPC-Havoc, Spark, DataFusion and engine
+  rewrite in the bundled SQLGlot runtime resolves by name, an unlisted runtime function fails
+  the registry test, and each Havoc, Spark and DataFusion rewrite has a documented-output test.
+- A DataFusion test executes TPC-H Q11, Q16, Q18 and Q20 rewritten by the runtime's generic
+  decorrelation rewrites at scale factors 0.01 and 0.1 and compares the rows with the
+  recorded TPC-H reference row counts and with the unrewritten query on DuckDB.
 - A golden-corpus test runs the BenchBox fix-ups and the bundled runtime's output
   over the inputs of every area whose fix-ups move into the runtime and asserts
   that the differences equal a recorded set.
