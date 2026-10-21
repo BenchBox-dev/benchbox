@@ -13,6 +13,7 @@ Citus is a PostgreSQL extension that transparently distributes tables across a c
 
 - **Extension gating** - Connection setup verifies (or creates) `citus` with an actionable install error otherwise
 - **Opt-in distribution** - Pass `distribution_column` to distribute every benchmark table with `create_distributed_table` after schema creation
+- **Per-table layout from tuning files** - `distribution`, `reference` and `columnar` table entries place each table individually; every placement is read back from the Citus catalogs before it is recorded as applied
 - **Graceful fallback** - Tables lacking the distribution column stay coordinator-local with a warning instead of failing the run
 - **Version provenance** - The installed `citus` version is recorded in platform info
 - **PostgreSQL compatible** - Standard PostgreSQL wire protocol, dialect, and COPY loading
@@ -73,10 +74,33 @@ See the [Citus GitHub repository](https://github.com/citusdata/citus) for worker
 
 ## Known Limitations
 
-- **Single distribution column** - One column applies to every benchmark table; per-table control is future work. Dimension tables that lack the column stay coordinator-local by design.
-- **Coordinator-only default** - Without `distribution_column`, tables are coordinator-local and the run measures single-node Postgres, not distribution.
+- **Single distribution column per table** - Citus hash-distributes on one column. A tuning file that lists several `distribution` columns for a table is recorded as not applied. Dimension tables that lack the `distribution_column` flag's column stay coordinator-local by design.
+- **Coordinator-only default** - Without `distribution_column` or a tuning file, tables are coordinator-local and the run measures single-node Postgres, not distribution.
+- **Planner limits on distributed tables** - Citus rejects some TPC-H shapes over distributed `lineitem`, such as the correlated subqueries in Q17, Q20 and Q22, so a distributed profile completes the power test with those queries failing. Reference tables avoid the local-to-distributed join errors that a flag-only run hits (Q4 and Q20 at scale 0.01).
 
 ## Recommended Benchmarks
 
 - **TPC-H** - Standard OLAP benchmark; distribute on `l_orderkey` for lineitem-heavy queries
 - **TPC-DS** - Complex OLAP; pick a store-sales key present across the fact tables being measured
+
+## Tuning files
+
+Run the distributed TPC-H profile with:
+
+```bash
+benchbox run --platform citus --benchmark tpch --scale 0.01 \
+  --phases generate,load,power --seed 42 \
+  --tuning examples/tunings/citus/tpch_tuned.yaml --non-interactive
+```
+
+Per-table placement keys, all under `table_tunings.<table>`:
+
+| Key | Effect | Catalog readback |
+|-----|--------|------------------|
+| `distribution` | `create_distributed_table` on the first column (hash) | `pg_dist_partition`: `partmethod` `h`, partition key, colocation id |
+| `reference: true` | `create_reference_table`, replicated to every node | `pg_dist_partition`: `partmethod` `n` |
+| `columnar: true` | `alter_table_set_access_method(..., 'columnar')` after `CREATE EXTENSION citus_columnar` | `pg_am` access method of the table |
+
+`reference` and `distribution` are mutually exclusive, and `reference` and `columnar` are rejected on every platform except Citus. A tuning-file entry takes precedence over `--platform-option distribution_column`, which then applies only to tables the file does not place. Tables placed in the same `distribution` column type share a colocation group, so `lineitem` and `orders` distributed on their order keys join locally on each shard.
+
+Partitioning and clustering use the PostgreSQL layout method. A partitioned table is distributed after creation, which distributes its partitions. After load, `CLUSTER` is verified from `pg_index` on the coordinator and then on every shard through `run_command_on_shards`; a shard that is not clustered fails the table's post-load step. Two combinations are recorded as not applied with their reason because Citus does not support them: `CLUSTER` on a columnar table, and `CLUSTER` on a partitioned distributed table (Citus does not propagate it to the shards). Columnar conversion of a partitioned table is also recorded as not applied.

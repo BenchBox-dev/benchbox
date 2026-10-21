@@ -289,10 +289,13 @@ class TableTuning:
     clustering: Optional[list[TuningColumn]] = None
     distribution: Optional[list[TuningColumn]] = None
     sorting: Optional[list[TuningColumn]] = None
+    reference: bool = False
+    columnar: bool = False
 
     def __post_init__(self) -> None:
         self._validate_table_name()
         self._validate_column_lists()
+        self._validate_placement_flags()
         self.validate()
 
     def _validate_table_name(self) -> None:
@@ -316,6 +319,11 @@ class TableTuning:
                     if not isinstance(column, TuningColumn):
                         raise ValueError(f"{tuning_type} column at index {i} must be a TuningColumn instance")
 
+    def _validate_placement_flags(self) -> None:
+        for flag in ("reference", "columnar"):
+            if not isinstance(getattr(self, flag), bool):
+                raise ValueError(f"Table tuning '{flag}' must be a boolean")
+
     def _get_tuning_columns(self) -> dict[str, Optional[list[TuningColumn]]]:
         return {
             "partitioning": self.partitioning,
@@ -334,10 +342,17 @@ class TableTuning:
 
         errors.extend(self._detect_column_conflicts())
 
+        if self.reference and self.distribution:
+            errors.append("A reference table is replicated to every node and cannot also have distribution columns")
+
         return errors
 
     def has_any_tuning(self) -> bool:
-        return any(columns is not None and len(columns) > 0 for columns in self._get_tuning_columns().values())
+        return (
+            any(columns is not None and len(columns) > 0 for columns in self._get_tuning_columns().values())
+            or self.reference
+            or self.columnar
+        )
 
     def _validate_column_orders(self) -> list[str]:
         errors = []
@@ -397,6 +412,11 @@ class TableTuning:
             if columns is not None:
                 result[tuning_type] = [col.to_dict() for col in columns]
 
+        if self.reference:
+            result["reference"] = True
+        if self.columnar:
+            result["columnar"] = True
+
         return result
 
     @classmethod
@@ -409,6 +429,10 @@ class TableTuning:
         for tuning_type in ["partitioning", "clustering", "distribution", "sorting"]:
             if tuning_type in data:
                 kwargs[tuning_type] = [TuningColumn.from_dict(col_data) for col_data in data[tuning_type]]
+
+        for flag in ("reference", "columnar"):
+            if flag in data:
+                kwargs[flag] = data[flag]
 
         return cls(**kwargs)
 
@@ -1251,6 +1275,14 @@ class UnifiedTuningConfiguration:
                 f"'spark' session-config map is not applied by platform '{platform}'; run on spark or velox to apply it"
             )
         resolved_key = resolve_platform_key(platform_key)
+        if resolved_key != "citus":
+            for flag in ("reference", "columnar"):
+                tables = sorted(name for name, tuning in self.table_tunings.items() if getattr(tuning, flag))
+                if tables:
+                    errors.append(
+                        f"requested {flag} table placement on {', '.join(tables)} is not applied at execution on "
+                        f"{platform}: only citus applies it"
+                    )
         validator = _get_effective_layout_validator(resolved_key)
         if validator is not None:
             errors.extend(validator(self))

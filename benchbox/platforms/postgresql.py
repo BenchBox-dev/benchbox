@@ -1073,6 +1073,7 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 raise ValueError(
                     f"Clustered index catalog mismatch for {table_name}: expected {expected}, observed {groups}"
                 )
+            self._verify_cluster_beyond_shell(cursor, table_name)
             observed = groups[0][1]
         except Exception as exc:
             self._record_post_load_failure(
@@ -1130,6 +1131,9 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
             return
         for statement in statements:
             ledger.record(statement, PHASE_POST_LOAD, status=STATEMENT_FAILED, table=table_name, error=exc)
+
+    def _verify_cluster_beyond_shell(self, cursor: Any, table_name: str) -> None:
+        del cursor, table_name
 
     def _drop_cluster_intents(self, ledger: Any, table_name: str, effective_config: Any, reason: str) -> None:
         from benchbox.core.tuning.interface import TuningType

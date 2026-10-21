@@ -77,6 +77,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`d >= DATETIME(DATE('1998-04-08'), '-30 DAY')`) excludes rows equal to the
   boundary date and a `<` upper bound includes them, where the previous `DATE(..)`
   form did not; the form was already emitted for typed dates by 30.24.0.1.
+- Citus tuning files now drive table placement. `distribution` hash-distributes a
+  table on its first column, `reference: true` creates a reference table and
+  `columnar: true` converts it to the `citus_columnar` access method; each is read
+  back from `pg_dist_partition` or `pg_am` before it is recorded as applied. The
+  adapter claims `PARTITIONING`, `CLUSTERING`, `SORTING` and `DISTRIBUTION`. CLUSTER
+  is verified on every shard through `run_command_on_shards` and recorded as not
+  applied on columnar tables and on partitioned distributed tables. A tuning-file
+  entry takes precedence over `--citus-distribution-column`. The new `reference` and
+  `columnar` table flags are rejected on any other platform. A TPC-H profile is at
+  `examples/tunings/citus/tpch_tuned.yaml`.
 
 ### Fixed
 

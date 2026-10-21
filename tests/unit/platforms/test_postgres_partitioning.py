@@ -11,7 +11,6 @@ from benchbox.core.tuning.ddl_generator import get_ddl_generator
 from benchbox.core.tuning.interface import TableTuning, TuningColumn, UnifiedTuningConfiguration
 from benchbox.platforms.base.sql_execution import execute_sql_query
 from benchbox.platforms.cedardb import CedarDBAdapter
-from benchbox.platforms.citus import CitusAdapter
 from benchbox.platforms.pg_mooncake import PgMooncakeAdapter
 from benchbox.platforms.postgresql import PARTITIONING_WITH_KEYS_REASON, PostgreSQLAdapter
 from benchbox.platforms.timescaledb import TimescaleDBAdapter
@@ -176,7 +175,7 @@ def test_adapters_that_do_not_partition_never_query_the_partition_catalog(adapte
 
 @pytest.mark.parametrize(
     "adapter_class",
-    [CedarDBAdapter, CitusAdapter, PgMooncakeAdapter, TimescaleDBAdapter],
+    [CedarDBAdapter, PgMooncakeAdapter, TimescaleDBAdapter],
 )
 def test_family_variants_do_not_partition(adapter_class):
     assert adapter_class.execution_partitioning_supported is False
