@@ -11,3 +11,5 @@
 /tools/skill-sync -text
 
 /CHANGELOG.md merge=union
+/benchbox/_vendor/SQLGLOT_LICENSE.txt text eol=lf
+/benchbox/_vendor/*.whl.zip -text

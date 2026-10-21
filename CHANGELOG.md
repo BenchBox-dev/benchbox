@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Translation failures in strict mode now raise `SQLTranslationError` instead of
   being logged and skipped.
 
+### Fixed
+
+- The bundled SQLGlot licence notice keeps LF line endings in Windows checkouts and
+  the nested-archive import probe accepts Windows path separators, so the SQLGlot
+  runtime tests pass on Windows. The BigQuery Iceberg test helper disposes its
+  catalog engine.
+
 ## [0.5.0rc1] - 2026-10-20
 
 ### Before you upgrade
