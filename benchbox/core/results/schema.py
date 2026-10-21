@@ -1441,6 +1441,7 @@ def build_applied_ledger_payload(result: BenchmarkResults) -> dict[str, Any] | N
         and not payload.get("dropped")
         and not payload.get("satisfied")
         and not payload.get("drift_check")
+        and not payload.get("metadata_store")
     ):
         return None
     return payload
