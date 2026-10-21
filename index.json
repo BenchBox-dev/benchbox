@@ -12489,17 +12489,12 @@
       "title": "A9: Cut accepted corpus promotions over to independent production deployment"
     },
     "inert-paths-manifest-20261021": {
-      "claim": {
-        "expires_at": "2026-10-22T20:14:43Z",
-        "generation": "95adec71c2984bab9f59966a5fdc8704",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc"
-      },
+      "claim": null,
       "needs": [
         "ci-heavy-tier-runs-on-escalation-20261021"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "One inert-path manifest that excludes machine-read docs, with a drift guard"
     },
     "influxdb-timeseries-platform": {
