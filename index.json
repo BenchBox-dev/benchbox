@@ -15778,6 +15778,15 @@
       "status": "open",
       "title": "Verify remediated oracle through real local and CI review flows"
     },
+    "oracle-response-reliability-observation-20261021": {
+      "claim": null,
+      "needs": [
+        "oracle-response-live-verification-20261021"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Measure oracle absence and retry reliability after remediation rollout"
+    },
     "oracle-review-automatic-reevaluation-20261021": {
       "claim": null,
       "needs": [],
