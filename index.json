@@ -14078,6 +14078,13 @@
       "status": "done",
       "title": "Measure actual uncompressed sizes at SF=1 for all benchmarks"
     },
+    "medium-datagen-tests-build-full-scale-factor-data": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Medium-tier generate_data tests build a full scale-factor-1.0 dataset"
+    },
     "medium-test-timeout-headroom": {
       "claim": null,
       "needs": [],

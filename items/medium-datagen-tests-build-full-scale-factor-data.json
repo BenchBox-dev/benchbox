@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The generate_data tests run in seconds at a reduced scale factor, or a recorded reason shows a full-size run is needed",
+    "No other test changes behaviour because of the fixture change",
+    "The trunk duration file is rebuilt after the change so shard weights reflect it"
+  ],
+  "context": "Raised by the user on 2026-10-21 after the trunk shard measurement. Related: ci-amplab-generate-data-timeout-flake, ci-rebalance-medium-shards, and PR #3222 which raised the timeouts for these tests on trunk instead of reducing their work.",
+  "description": "tests/fixtures/benchmark_fixtures.py sets SCALE_FACTORS small, medium and large all to 1.0 (unchanged since the initial release), and the small_scale_factor fixture returns it. tests/test_h2odb.py, test_clickbench.py, test_tpcdi.py and test_ssb.py use that fixture and call generate_data(), which for H2ODB writes int(10,000,000 * scale_factor) rows from a pure Python loop (benchbox/core/h2odb/generator.py _generate_trips_data). On trunk run 39633248681 (coverage on, 4 shards, -n 5): H2ODB 525 s, ClickBench 452 s, SSB 163 s, TPCDI 109 s; together 1,249 s of about 5,033 s total test time. The tests only assert that the returned dict has the expected tables and the files exist. Not yet checked: whether any other test depends on the 1.0 value, why the fixture was never lowered, and how long these tests take without coverage (the pull-request workflow).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "at": "2026-10-21T19:37:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5845e778e2e34ccca0dab8103cc376bc",
+      "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    }
+  ]
+}
