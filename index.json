@@ -22945,14 +22945,19 @@
       "title": "BenchBox: adopt the fork wheel containing TPC-DI and ClickBench generator behavior"
     },
     "sqlglot-fork-a3-adopt-ddl-wheel": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T20:19:24Z",
+        "generation": "978381b83cc8413781eb29743063bded",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
+      },
       "needs": [
         "sqlglot-fork-f7-ddl-core",
         "sqlglot-fork-f8-engine-specific-ddl",
         "sqlglot-fork-a1-adopt-wrapper-wheel"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "BenchBox: adopt the fork wheel containing DdlOptions and engine-specific DDL"
     },
     "sqlglot-fork-a4-adopt-havoc-wheel": {
