@@ -87,11 +87,26 @@ jobs:
     with:
       images: '["trino"]'
 
+  mirror-postgres:
+    needs: validate-input
+    if: ${{ needs.validate-input.outputs.run_postgres == 'true' }}
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["postgres"]'
+
   postgres:
-    needs: [validate-input]
+    needs: [validate-input, mirror-postgres]
     if: ${{ needs.validate-input.outputs.run_postgres == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    env:
+      POSTGRES_IMAGE: ghcr.io/benchbox-dev/postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -106,6 +121,11 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --group dev
+
+      - name: Authenticate to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
 
       - name: Bring up PostgreSQL compose stack
         run: docker compose -f docker/postgresql/docker-compose.yml up -d --wait

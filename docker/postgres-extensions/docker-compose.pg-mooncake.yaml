@@ -1,6 +1,6 @@
 services:
   pg-mooncake:
-    image: mooncakelabs/pg_mooncake:latest
+    image: mooncakelabs/pg_mooncake:latest@sha256:230731437d5fb1f091c4b1f1ddb27bad419088f44119a8e2d1937ea6cf11c9aa
     command:
       - postgres
       - -c
