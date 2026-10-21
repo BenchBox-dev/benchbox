@@ -178,6 +178,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_fast_lane_ceiling_check.py` | pure-process |
 | `test_generate_changelog_entry.py` | product-safety |
 | `test_heavy_tier_needed.py` | product-safety |
+| `test_inert_paths.py` | product-safety | Inert-path manifest predicates, machine-read reader index and guard |
 | `test_generate_corpus_inventory.py` | product-safety |
 | `test_guard_messages.py` | tooling |
 | `test_inline_applied_ledger_bounds.py` | product-safety |

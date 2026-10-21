@@ -299,7 +299,7 @@ def test_classify_does_not_treat_deleted_code_as_safe(
 
 def test_safe_content_only_when_truly_content(rules: dict[str, list[str]]) -> None:
     decision = classify_paths(
-        ["_project/blind-spots/foo.md", "docs/development/foo.md", "README.md"],
+        ["_project/blind-spots/foo.md", "docs/development/foo.md", "docs/index.md"],
         rules,
     )
     assert decision["safe_content_only"] is True

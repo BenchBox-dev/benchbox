@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import fnmatch
 import json
 import os
 import re
@@ -19,13 +18,13 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from _project.scripts import preflight_targets
+from _project.scripts.inert_paths import is_inert_path, is_machine_read_doc, load_readers
 
 MAP_VERSION = 1
 MAP_ARTIFACT_PREFIX = "t2-coverage-map-"
 MAX_MAP_BEHIND_COMMITS = 50
 MAX_SELECTED_NODEIDS = 2000
 TESTS_ROOT = "tests"
-INERT_PATH_PATTERNS = ("docs/*", "*.md", "_project/todo-db-export/*")
 TRUNK_WORKFLOW_PATH = ".github/workflows/trunk.yml"
 SELECTION_SHADOW = True
 
@@ -280,7 +279,7 @@ def _is_test_file(path: str) -> bool:
 
 
 def _is_inert(path: str) -> bool:
-    return any(fnmatch.fnmatchcase(path, pattern) for pattern in INERT_PATH_PATTERNS)
+    return is_inert_path(path)
 
 
 def _module_name(path: str) -> str:
@@ -367,13 +366,26 @@ def _path_hits(index: dict, path: str) -> set[str]:
 
 
 def _classify_files(
-    repo: Path, mapping: dict | None, files: list[ChangedFile], index: dict
-) -> tuple[set[str], set[str], set[str]]:
+    repo: Path,
+    mapping: dict | None,
+    files: list[ChangedFile],
+    index: dict,
+    readers: dict[str, list[str]] | None = None,
+) -> tuple[set[str], set[str], set[str], set[str]]:
     coverage_hits: set[str] = set()
     uncovered: set[str] = set()
     non_python: set[str] = set()
+    reader_tests: set[str] = set()
+    known_readers = readers or {}
     for entry in files:
         if _is_inert(entry.path):
+            continue
+        if is_machine_read_doc(entry.path):
+            found = sorted(test for test in known_readers.get(entry.path, ()) if (repo / test).is_file())
+            if found:
+                reader_tests.update(found)
+            else:
+                uncovered.add(entry.path)
             continue
         if not entry.path.endswith(".py"):
             non_python.add(entry.path)
@@ -398,7 +410,8 @@ def _classify_files(
         if _missed:
             uncovered.add(entry.old_path)
     coverage_hits = {node for node in coverage_hits if (repo / node.split("::", 1)[0]).is_file()}
-    return coverage_hits, uncovered, non_python
+    reader_tests = {test for test in reader_tests if (repo / test).is_file()}
+    return coverage_hits, uncovered, non_python, reader_tests
 
 
 def prune_missing_nodeids(repo: Path, node_ids: list[str], collected: list[str]) -> list[str]:
@@ -478,7 +491,8 @@ def select_tests(
     if overlap_note is not None:
         reasons.append(overlap_note)
     index = mapping.get("files") if isinstance(mapping, dict) and isinstance(mapping.get("files"), dict) else {}
-    coverage_hits, uncovered, non_python = _classify_files(repo, mapping, files, index)
+    readers = load_readers(repo)
+    coverage_hits, uncovered, non_python, reader_tests = _classify_files(repo, mapping, files, index, readers)
     code_routed = decision is None or decision.get("needs_code_ci") is not False
     if non_python and code_routed:
         reasons.append(f"non-Python changes need the full tier: {', '.join(sorted(non_python))}")
@@ -493,10 +507,17 @@ def select_tests(
     )
     importers = source_importers(repo, sorted(uncovered)) if uncovered else {}
     importer_tests = sorted({test for tests in importers.values() for test in tests})
-    union = set(coverage_hits) | set(changed_tests) | set(develop_changed_tests) | set(fallback) | set(importer_tests)
+    union = (
+        set(coverage_hits)
+        | set(changed_tests)
+        | set(develop_changed_tests)
+        | set(fallback)
+        | set(importer_tests)
+        | set(reader_tests)
+    )
     if len(union) > MAX_SELECTED_NODEIDS:
         reasons.append(f"selection of {len(union)} tests exceeds the {MAX_SELECTED_NODEIDS} limit")
-        selected = set(fallback) | set(importer_tests) | set(develop_changed_tests)
+        selected = set(fallback) | set(importer_tests) | set(develop_changed_tests) | set(reader_tests)
     else:
         selected = union
     if not selected and any(not _is_inert(entry.path) for entry in files):
@@ -505,7 +526,7 @@ def select_tests(
     peak_rss = _peak_rss_mb()
     counts = (
         f"coverage={len(coverage_hits)} changed_tests={len(changed_tests)} "
-        f"develop_changed={len(develop_changed_tests)} fallback={len(fallback)} importers={len(importer_tests)} "
+        f"develop_changed={len(develop_changed_tests)} fallback={len(fallback)} importers={len(importer_tests)} readers={len(reader_tests)} "
         f"selected={len(selected)} files={len(files)} behind={behind} elapsed={elapsed:.1f}s rss={peak_rss:.1f}MB"
     )
     would_escalate = bool(reasons)
@@ -524,6 +545,7 @@ def select_tests(
         "develop_changed_tests": develop_changed_tests,
         "fallback_tests": sorted(fallback),
         "importer_tests": importer_tests,
+        "reader_tests": sorted(reader_tests),
         "uncovered_sources": sorted(uncovered),
         "selected": sorted(selected),
         "elapsed_seconds": elapsed,
@@ -806,6 +828,7 @@ def _cmd_select(args: argparse.Namespace) -> int:
             "develop_changed_tests": [],
             "fallback_tests": fallback,
             "importer_tests": [],
+            "reader_tests": [],
             "uncovered_sources": [],
             "selected": fallback,
             "elapsed_seconds": _mono_time() - select_start,

@@ -6,8 +6,8 @@
 ```
 
 `.github/workflows/oracle-verdict.yml` uses agent CLIs to review every pull
-request except changes confined to exempt paths, and posts a non-required
-`oracle-verdict` status and a review
+request except changes confined to inert paths (see Inert-path manifest),
+and posts a non-required `oracle-verdict` status and a review
 through the owner's GitHub App. The required `oracle-review` check reads that
 App's pull request reviews (see Cut-over). The policy lives in
 `.github/oracle-reviewers.yml`. The decision records are
@@ -92,10 +92,9 @@ Without the App secrets, the `post` job logs the result and succeeds.
 1. `plan` holds no secret. It resolves the pull request and its head through
    the API, refuses closed, draft and non-`develop` pull requests, classifies
    the change, applies the rerun rules and writes a 0600 brief. A fork's
-   change outside the exempt paths gets a pending `fork: owner review` status
-   and never reaches a reviewer job. A change touching only exempt paths
-   (`docs/*`, `*.md` and `_project/todo-db-export/*`, from
-   `classifier.exempt_paths` in `.github/oracle-reviewers.yml`) gets `success`.
+   change outside the inert paths gets a pending `fork: owner review` status
+   and never reaches a reviewer job. A change touching only inert paths
+   (see Inert-path manifest) gets `success`.
 2. `select-1` asks Jev, through a direct call to TypeSafe's
    `/v1/systemone` API, for the change's size bucket, review capability,
    review template and per-file priority. The bucket names one reviewer in
@@ -127,6 +126,34 @@ Without the App secrets, the `post` job logs the result and succeeds.
      always reflects the latest run. The ruleset requires every thread to be
      resolved, so these threads block merges. The policy has used `review`
      since the parity period, and the oracle signal requires it.
+
+## Inert-path manifest
+
+`.github/inert-paths.txt` is the single source of truth for review and
+coverage scope. `glob` lines exempt broad prose; `except` lines keep
+machine-read documents in scope, so the model is exemptions minus
+machine-read exceptions. The `classifier.exempt_paths` policy key is gone
+and the parser defaults it to empty; every consumer
+(`oracle_review_check.py`, the reviewer classifier and `plan` prose filter,
+`coverage_test_selection.py`, `.github/path-filters.yml`) reads the manifest
+through `_project/scripts/inert_paths.py`, with soundness and gate paths
+taking precedence over it.
+
+To keep a document in review scope, add an `except` line for it. To return a
+document to inert, remove its `except` line. Every `except` line must match
+a tracked path: `test_every_exception_matches_a_tracked_path` fails
+otherwise, which is why the assignment seed `scripts/*.md` was dropped
+instead of carried (it matches nothing tracked). The guard also fails when
+live scanning finds an inert-path reference without an exception
+(`test_guard_reports_no_unexcepted_inert_references`).
+
+`_project/inert-doc-readers.json` maps each machine-read document to the
+tests that read it, so a docs-only change selects its readers instead of
+escalating, and escalates only when nothing reads the document. The index
+is checked in so the mapping is reviewed like code and CI can verify it is
+fresh (`test_checked_in_readers_match_the_rebuilt_index`). Regenerate it with
+`python3 _project/scripts/inert_paths.py --regenerate-readers` and commit
+the result.
 
 ## Rounds
 

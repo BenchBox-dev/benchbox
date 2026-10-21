@@ -63,7 +63,7 @@ Required status checks:
 Five of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `oracle-review` comes from
 `.github/workflows/oracle-review.yml` and passes at once for a change confined
-to exempt paths (`classifier.exempt_paths` in `.github/oracle-reviewers.yml`).
+to inert paths (see Inert-path manifest in `docs/internal/oracle-review-v2.md`).
 `hold` comes from `.github/workflows/pr-hold.yml`
 and fails while the PR carries the `no-auto-merge` label; it re-runs when a
 label is added or removed.
@@ -77,12 +77,12 @@ check stays pending forever on a change that does not touch it.
 
 | Context | Runs for | Jobs it requires |
 | --- | --- | --- |
-| `core` | `benchbox/`, `tests/`, packaging, executable docs code; framing also on test infrastructure or bundled binary changes | lint, unit tests, the coverage-impact medium selection on every PR (changes under `docs/*`, `*.md`, or `_project/todo-db-export/*` are inert; any other fail-closed escalation runs the heavy tier instead), and when heavy inputs change the medium tests, correctness gate, required local-engine cases, plan-capture gate and DataFusion integration; macOS/Windows TPC-H binary framing on heavy or framing inputs; package smoke and dependency audit on packaging changes |
+| `core` | `benchbox/`, `tests/`, packaging, executable docs code; framing also on test infrastructure or bundled binary changes | lint, unit tests, the coverage-impact medium selection on every PR (changes confined to `.github/inert-paths.txt` are inert; any other fail-closed escalation runs the heavy tier instead), and when heavy inputs change the medium tests, correctness gate, required local-engine cases, plan-capture gate and DataFusion integration; macOS/Windows TPC-H binary framing on heavy or framing inputs; package smoke and dependency audit on packaging changes |
 | `explorer` | explorer pipeline, parity fixtures, `benchbox/core/results/`, `results-data/` | CLI-versus-explorer parity fixtures |
 | `results-data` | `results-data/`, submission validator, `benchbox/core/results/` | corpus inventory and validation, submission validator sync, corpus and explorer-pipeline contract tests |
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
-| `oracle-review` | every PR; review required unless only exempt paths change | `benchbox-oracle` success review of the current head, or the stand-in approval, with oracle threads resolved; exempt-only changes report success |
+| `oracle-review` | every PR; review required unless only inert paths change | `benchbox-oracle` success review of the current head, or the stand-in approval, with oracle threads resolved; inert-only changes report success |
 
 The public site is built, compared and deployed in `BenchBox-dev/benchbox-site`.
 
@@ -181,7 +181,7 @@ resolved. The drift check reports a `merge_queue` rule that reappears.
 The required `oracle-review` check (`.github/workflows/oracle-review.yml`)
 passes when any of these holds:
 
-- The change touches only exempt paths (`classifier.exempt_paths` in `.github/oracle-reviewers.yml`).
+- The change touches only inert paths (see Inert-path manifest in `docs/internal/oracle-review-v2.md`).
 - The `benchbox-oracle` App's latest review of the current head, submitted after
   any retarget, reports success, and none of its review threads is unresolved.
 - An account in `STANDIN_ATTESTERS` (`_project/scripts/oracle_review_check.py`)
@@ -202,11 +202,11 @@ The soundness gate, as operated:
 
 - `.github/soundness-paths.txt`, read by `_project/scripts/soundness_paths.py`,
   defines the soundness-critical surface used by the merge digest and landing
-  guards. `oracle-review` requires a review unless the diff touches only exempt
-  paths (`classifier.exempt_paths` in `.github/oracle-reviewers.yml`), including
-  changes to the gate itself. Any non-exempt PR needs the `benchbox-oracle`
-  App's success review of its current head, or the stand-in approval, with
-  every oracle thread resolved.
+  guards. `oracle-review` requires a review unless the diff touches only inert
+  paths (`.github/inert-paths.txt`, read by `_project/scripts/inert_paths.py`),
+  including changes to the gate itself. Any non-inert PR needs the
+  `benchbox-oracle` App's success review of its current head, or the stand-in
+  approval, with every oracle thread resolved.
 - **Residual risk:** `oracle-review` runs the workflow file from the pull
   request, so a PR that edits `.github/workflows/` can change how its own check
   runs; checking out the base commit protects only the checker and manifest.
