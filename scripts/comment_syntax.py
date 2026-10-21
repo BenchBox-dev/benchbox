@@ -142,6 +142,7 @@ def language(path: str) -> str | None:
     if (
         name in {".gitignore", ".gitattributes", ".dockerignore", "CODEOWNERS", "MANIFEST.in"}
         or path == ".github/soundness-paths.txt"
+        or path == ".github/inert-paths.txt"
     ):
         return "line-config"
     if name.endswith(".py.backup"):

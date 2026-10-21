@@ -24,7 +24,7 @@ HEAD_DATE = "2026-10-01T12:00:00Z"
 BEFORE_HEAD = "2026-10-01T11:00:00Z"
 AFTER_HEAD = "2026-10-01T13:00:00Z"
 SOUNDNESS_FILES = ["benchbox/core/equivalence/checker.py", "README.md"]
-OTHER_FILES = ["README.md", "docs/index.md"]
+OTHER_FILES = ["docs/index.md", "notes.md"]
 CONNECTOR = "chatgpt-codex-connector[bot]"
 RETARGETED = "2026-10-01T14:00:00Z"
 AFTER_RETARGET = "2026-10-01T15:00:00Z"
@@ -65,6 +65,10 @@ def _decide(**kwargs: Any) -> tuple[int, str]:
 
 def test_exempt_only_change_skips() -> None:
     assert _decide(files=OTHER_FILES) == (0, "oracle-review: only exempt paths changed")
+
+
+def test_machine_read_doc_needs_review() -> None:
+    assert _decide(files=["README.md"])[0] == 1
 
 
 def test_code_outside_the_soundness_list_needs_review() -> None:
@@ -187,7 +191,7 @@ def test_gate_paths_beat_the_exemption() -> None:
 
 def test_review_rules_come_from_the_reviewer_policy() -> None:
     exempt, gate = oracle_review_check._review_rules()
-    assert exempt == ("docs/*", "*.md", "_project/todo-db-export/*")
+    assert exempt == ()
     assert "_project/scripts/oracle_reviewers/*" in gate
 
 

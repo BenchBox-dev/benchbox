@@ -43,6 +43,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Install uv
@@ -92,6 +94,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Install uv
@@ -137,6 +141,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Download the plan
@@ -185,6 +191,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Check out the pull request head for reading only
@@ -292,6 +300,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Download the plan
@@ -341,6 +351,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Check out the pull request head for reading only
@@ -448,6 +460,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Download the plan
@@ -497,6 +511,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Check out the pull request head for reading only
@@ -604,6 +620,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Download the plan
@@ -653,6 +671,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Check out the pull request head for reading only
@@ -760,6 +780,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Download the plan
@@ -809,6 +831,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Check out the pull request head for reading only
@@ -932,6 +956,8 @@ jobs:
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
+            .github/inert-paths.txt
+            _project/scripts/inert_paths.py
           sparse-checkout-cone-mode: false
 
       - name: Download the plan

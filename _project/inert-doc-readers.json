@@ -1,0 +1,185 @@
+{
+  ".claude/commands/blind-spot.md": [
+    "tests/unit/scripts/test_blind_spot_tools.py"
+  ],
+  ".claude/settings.json": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  ".claude/skills/skill-sync.receipt": [
+    "tests/integration/worktree/test_batch_skill_delivery.py",
+    "tests/unit/scripts/test_skill_sync_ci_policy.py"
+  ],
+  ".github/PULL_REQUEST_TEMPLATE.md": [
+    "tests/unit/test_release_infrastructure.py"
+  ],
+  ".github/RELEASE_PR_TEMPLATE.md": [
+    "tests/unit/test_release_infrastructure.py"
+  ],
+  "AGENTS.md": [
+    "tests/integration/worktree/test_batch_skill_delivery.py",
+    "tests/unit/scripts/test_check_makefile_inventory.py",
+    "tests/unit/workflows/test_stacked_pr_base_guard.py"
+  ],
+  "CHANGELOG.md": [
+    "tests/unit/scripts/test_generate_changelog_entry.py",
+    "tests/unit/test_release_infrastructure.py"
+  ],
+  "CONTRIBUTING.md": [
+    "tests/unit/test_contributing_pr_open_auto_merge_docs.py"
+  ],
+  "COPYRIGHT.md": [
+    "tests/unit/scripts/test_comment_cleanup_scope.py"
+  ],
+  "README.md": [
+    "tests/unit/cli/test_logo.py",
+    "tests/unit/core/test_platform_registry.py",
+    "tests/unit/docs/test_readme_quickstart_installs_what_it_uses.py",
+    "tests/unit/test_release_infrastructure.py"
+  ],
+  "_project/audits/results-explorer-hierarchy-usability-data-audit-20260507.md": [
+    "tests/unit/explorer/test_results_explorer_audit_manifest.py"
+  ],
+  "_project/decisions/independent-publication-a0-a1-tracker-completion-evidence-2026-09-01.md": [
+    "tests/unit/docs/test_publication_architecture.py"
+  ],
+  "_project/decisions/joinorder-track2-scaling-direction-2026-07-04.md": [
+    "tests/unit/core/joinorder_replicated/test_replication_prototype.py"
+  ],
+  "_project/decisions/single-repo-migration.md": [
+    "tests/unit/scripts/test_check_release_curation.py"
+  ],
+  "_project/release-evidence/README.md": [
+    "tests/unit/test_release_infrastructure.py",
+    "tests/unit/workflows/test_release_uat_charter_guard.py"
+  ],
+  "_sources/tpc-h/PATCHES.md": [
+    "tests/unit/scripts/test_comment_cleanup_scope.py"
+  ],
+  "benchbox/sql_compat/README.md": [
+    "tests/unit/platforms/base/test_ddl_helpers.py"
+  ],
+  "docs/CLI_REFERENCE.md": [
+    "tests/unit/test_cli_documentation.py"
+  ],
+  "docs/agent/batch-feature-delivery.md": [
+    "tests/integration/worktree/test_batch_skill_delivery.py"
+  ],
+  "docs/agent/review-protocol-legacy.md": [
+    "tests/unit/scripts/test_blind_spot_tools.py"
+  ],
+  "docs/agent/review-protocol.md": [
+    "tests/integration/worktree/test_batch_skill_delivery.py",
+    "tests/unit/scripts/test_blind_spot_tools.py"
+  ],
+  "docs/agent/todo-review.md": [
+    "tests/unit/scripts/test_todo_review_own_edit_freshness.py"
+  ],
+  "docs/benchmarks/sf1-calibrated-sizes.md": [
+    "tests/unit/generators/test_sf1_measurement.py"
+  ],
+  "docs/benchmarks/support-status.md": [
+    "tests/unit/core/test_benchmark_api_contract.py"
+  ],
+  "docs/benchmarks/write-primitives-sketch-functions.md": [
+    "tests/unit/core/write_primitives/test_doc_yaml_consistency.py",
+    "tests/unit/docs/test_write_primitives_sketch_functions_docs.py"
+  ],
+  "docs/development/adr/adr-one-engine-scoped-surfaces.md": [
+    "tests/unit/mcp/test_run_surface_contract.py"
+  ],
+  "docs/development/adr/adr-public-result-id-permanence.md": [
+    "tests/unit/docs/test_publication_architecture.py"
+  ],
+  "docs/development/index.md": [
+    "tests/unit/workflows/test_stacked_pr_base_guard.py"
+  ],
+  "docs/guides/tpc/tpc-di-deployment-guide.md": [
+    "tests/unit/docs/test_quickstart_commands_are_real.py"
+  ],
+  "docs/internal/adr/adr-independent-publication-authorities.md": [
+    "tests/unit/docs/test_publication_architecture.py"
+  ],
+  "docs/internal/dev-loop-property-ledger.md": [
+    "tests/unit/test_ledger_coverage.py"
+  ],
+  "docs/internal/dev-loop-worktrees.md": [
+    "tests/integration/worktree/test_batch_skill_delivery.py"
+  ],
+  "docs/internal/hosted-results-planning.md": [
+    "tests/unit/docs/test_publication_architecture.py"
+  ],
+  "docs/internal/independent-publication-contract.md": [
+    "tests/unit/docs/test_publication_architecture.py"
+  ],
+  "docs/internal/independent-publication-threat-model.md": [
+    "tests/unit/docs/test_publication_architecture.py"
+  ],
+  "docs/internal/nightly-t3.md": [
+    "tests/unit/workflows/test_nightly_t3_report_lifecycle.py"
+  ],
+  "docs/internal/pr-base-branch-policy.md": [
+    "tests/unit/workflows/test_stacked_pr_base_guard.py"
+  ],
+  "docs/internal/quality-gate-policy.md": [
+    "tests/unit/test_standardized_test_commands.py"
+  ],
+  "docs/internal/release-guide.md": [
+    "tests/unit/test_release_infrastructure.py"
+  ],
+  "docs/internal/repo-admin-settings.md": [
+    "tests/unit/release/test_ruleset_drift_review_coverage.py",
+    "tests/unit/test_release_infrastructure.py",
+    "tests/unit/test_ruleset_drift.py",
+    "tests/unit/workflows/test_ci_text_edit_skip.py",
+    "tests/unit/workflows/test_pr_hold_workflow.py"
+  ],
+  "docs/internal/results-phase-2-runbook.md": [
+    "tests/unit/docs/test_publication_architecture.py"
+  ],
+  "docs/internal/results-phase-3-runbook.md": [
+    "tests/unit/docs/test_publication_architecture.py"
+  ],
+  "docs/linkcheck_ignore.txt": [
+    "tests/unit/docs/test_linkcheck_ignore_policy.py"
+  ],
+  "docs/operations/ci-local-parity.md": [
+    "tests/system/test_ci_lint_parity.py"
+  ],
+  "docs/platforms/comparison-matrix.md": [
+    "tests/unit/core/test_platform_registry.py"
+  ],
+  "docs/platforms/databend.md": [
+    "tests/unit/docs/test_quickstart_commands_are_real.py"
+  ],
+  "docs/platforms/singlestore.md": [
+    "tests/unit/platforms/credentials/test_singlestore_credentials.py"
+  ],
+  "docs/platforms/support-status.md": [
+    "tests/unit/core/test_platform_support_status_contract.py"
+  ],
+  "docs/reference/hosted-results-contract.md": [
+    "tests/unit/docs/test_publication_architecture.py"
+  ],
+  "docs/reference/mcp.md": [
+    "tests/unit/mcp/test_run_surface_contract.py"
+  ],
+  "docs/reference/public-contracts.md": [
+    "tests/unit/core/test_benchmark_api_contract.py",
+    "tests/unit/mcp/test_run_surface_contract.py"
+  ],
+  "docs/reference/threat-model.md": [
+    "tests/unit/docs/test_publication_architecture.py"
+  ],
+  "docs/usage/getting-started.md": [
+    "tests/unit/docs/test_quickstart_commands_are_real.py"
+  ],
+  "tests/README.md": [
+    "tests/unit/test_standardized_test_commands.py"
+  ],
+  "tests/fixtures/dev_loop_metrics/refresh_audit_sample.md": [
+    "tests/unit/scripts/test_dev_loop_pr_metrics.py"
+  ],
+  "tests/uat/CHARTER.md": [
+    "tests/unit/workflows/test_release_uat_charter_guard.py"
+  ]
+}

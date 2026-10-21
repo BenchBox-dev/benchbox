@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -99,6 +102,28 @@ def test_sparse_checkout_stays_in_the_gate_and_its_predicate() -> None:
                 assert ".github/soundness-paths.txt" in sparse
                 assert ".github/oracle-reviewers.yml" in sparse
                 assert "_project/scripts/oracle_reviewers" in sparse
+                assert "_project/scripts/inert_paths.py" in sparse
+                assert ".github/inert-paths.txt" in sparse
+
+
+def test_sparse_checkout_is_enough_to_import_the_gate(tmp_path: Path) -> None:
+    repo = REPO_ROOT
+    for name in _jobs():
+        for step in _steps(name):
+            if "actions/checkout" not in step.get("uses", ""):
+                continue
+            root = tmp_path / name
+            for entry in step["with"]["sparse-checkout"].split():
+                source = repo / entry
+                target = root / entry
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if source.is_dir():
+                    shutil.copytree(source, target, ignore=shutil.ignore_patterns("__pycache__"))
+                else:
+                    shutil.copy2(source, target)
+            probe = "import sys; sys.path.insert(0, '_project/scripts'); import oracle_gate; oracle_gate.load_policy_rules()"
+            result = subprocess.run([sys.executable, "-c", probe], cwd=root, capture_output=True, text=True)
+            assert result.returncode == 0, f"{name}: {result.stderr}"
 
 
 def test_each_job_installs_uv_before_running_the_script() -> None:

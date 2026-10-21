@@ -124,7 +124,7 @@ def test_fully_disabled_policy_needs_no_attempts() -> None:
         (lambda raw: raw["classifier"].update(gate_paths="x"), r"classifier gate_paths must be a string list"),
         (lambda raw: raw["classifier"].pop("logic_paths"), r"classifier logic_paths must be a string list"),
         (lambda raw: raw["classifier"].update(data_paths=[42]), r"classifier data_paths must be a string list"),
-        (lambda raw: raw["classifier"].pop("exempt_paths"), r"classifier exempt_paths must be a string list"),
+        (lambda raw: raw["classifier"].update(exempt_paths="x"), r"classifier exempt_paths must be a string list"),
         (lambda raw: raw.update(mode="audit"), r"mode must be shadow or enforce"),
         (lambda raw: raw.update(status_context=""), r"status_context is required"),
         (lambda raw: raw.update(findings_delivery="pr"), r"findings_delivery must be one of"),
@@ -146,6 +146,12 @@ def test_invalid_policies_are_rejected(mutate: Callable[[dict[str, Any]], None],
     mutate(raw)
     with pytest.raises(PolicyError, match=message):
         parse_policy(raw)
+
+
+def test_missing_exempt_paths_defaults_to_empty() -> None:
+    raw = _raw()
+    raw["classifier"].pop("exempt_paths", None)
+    assert parse_policy(raw).classifier.exempt_paths == ()
 
 
 @pytest.mark.parametrize("effort", ["off", "minimal", "low", "medium", "high", "xhigh", "max", "auto", ""])
