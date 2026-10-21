@@ -23063,12 +23063,17 @@
       "title": "Fork: DdlOptions and transpile_ddl core (constraint stripping, CREATE OR REPLACE, SingleStore key clauses)"
     },
     "sqlglot-fork-f8-engine-specific-ddl": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T00:58:48Z",
+        "generation": "049e2e4142a849f98a63e016164aa823",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
+      },
       "needs": [
         "sqlglot-fork-f7-ddl-core"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Fork: engine-specific DDL (ClickHouse, Doris, StarRocks, Hive-family, Redshift, Delta/Iceberg) through DdlOptions"
     },
     "sqlglot-fork-f9-havoc-datafusion-rewrites": {
