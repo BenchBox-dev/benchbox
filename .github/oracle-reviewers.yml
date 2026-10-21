@@ -117,3 +117,7 @@ classifier:
     - results-data/bundles/*.override.json
     - _project/joinorder/*.json
     - "*_specs.yaml"
+  exempt_paths:
+    - docs/*
+    - "*.md"
+    - _project/todo-db-export/*

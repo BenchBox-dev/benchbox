@@ -3,8 +3,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import sys
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -40,18 +42,72 @@ def read_node_ids(path: Path) -> list[str]:
     return _canonical_node_ids(path.read_text(encoding="utf-8").splitlines())
 
 
-def partition_node_ids(node_ids: Sequence[str], shard_index: int, shard_count: int) -> list[str]:
+@dataclass(frozen=True)
+class Durations:
+    tests: Mapping[str, float]
+    default_seconds: float
+
+    def weight(self, node_id: str) -> float:
+        return self.tests.get(node_id, self.default_seconds)
+
+
+def _non_negative(value: object, label: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+        raise ValueError(f"{label} must be a finite non-negative number")
+    return float(value)
+
+
+def load_durations(path: Path) -> Durations:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    tests = payload.get("tests") if isinstance(payload, dict) else None
+    if not isinstance(payload, dict) or payload.get("schema_version") != 1 or not isinstance(tests, dict):
+        raise ValueError("duration file must be a schema 1 object with a tests map")
+    default_seconds = _non_negative(payload.get("default_seconds"), "default_seconds")
+    return Durations(
+        {
+            node_id: _non_negative(
+                record.get("p95_seconds") if isinstance(record, dict) else None, f"duration for {node_id!r}"
+            )
+            for node_id, record in tests.items()
+        },
+        default_seconds,
+    )
+
+
+def _balanced_assignments(ordered: list[str], shard_count: int, durations: Durations) -> list[list[str]]:
+    weight = {node_id: durations.weight(node_id) for node_id in ordered}
+    loads = [0.0] * shard_count
+    shards: list[list[str]] = [[] for _ in range(shard_count)]
+    for node_id in sorted(ordered, key=lambda candidate: (-weight[candidate], candidate)):
+        target = min(range(shard_count), key=lambda index: (loads[index], index))
+        shards[target].append(node_id)
+        loads[target] += weight[node_id]
+    return [sorted(shard) for shard in shards]
+
+
+def partition_node_ids(
+    node_ids: Sequence[str], shard_index: int, shard_count: int, durations: Durations | None = None
+) -> list[str]:
     if isinstance(shard_count, bool) or not isinstance(shard_count, int) or shard_count < 1:
         raise ValueError("shard_count must be a positive integer")
     if isinstance(shard_index, bool) or not isinstance(shard_index, int) or not 0 <= shard_index < shard_count:
         raise ValueError("shard_index must be an integer in [0, shard_count)")
     ordered = _canonical_node_ids(node_ids)
-    return ordered[shard_index::shard_count]
+    if durations is None:
+        return ordered[shard_index::shard_count]
+    return _balanced_assignments(ordered, shard_count, durations)[shard_index]
 
 
 def _node_ids_sha256(node_ids: Sequence[str]) -> str:
     payload = "\n".join(node_ids) + "\n"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _load_binding(durations_path: Path | None) -> tuple[Durations | None, dict[str, str | None]]:
+    if durations_path is None:
+        return None, {"durations_sha256": None}
+    digest = hashlib.sha256(durations_path.read_bytes()).hexdigest()
+    return load_durations(durations_path), {"durations_sha256": digest}
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -78,6 +134,7 @@ def collect_node_ids(
     workflow: str = "release-canary.yml",
     job: str = "collect-credential-free-non-fast",
     marker_expression: str = MARKER_EXPRESSION,
+    durations_path: Path | None = None,
 ) -> int:
     if expected_count < 1:
         raise ValueError("expected_count must be a positive integer")
@@ -88,7 +145,8 @@ def collect_node_ids(
     if len(node_ids) != expected_count:
         raise ValueError(f"collected node-id count {len(node_ids)} does not match expected count {expected_count}")
 
-    shard_counts = [len(partition_node_ids(node_ids, index, shard_count)) for index in range(shard_count)]
+    durations, binding = _load_binding(durations_path)
+    shard_counts = [len(partition_node_ids(node_ids, index, shard_count, durations)) for index in range(shard_count)]
     if sum(shard_counts) != len(node_ids):
         raise ValueError("shard count conservation check failed")
 
@@ -105,6 +163,7 @@ def collect_node_ids(
             "shard_count": shard_count,
             "shard_counts": shard_counts,
             "node_ids_sha256": _node_ids_sha256(node_ids),
+            **{key: value for key, value in binding.items() if value is not None},
         },
     )
     if github_output is not None:
@@ -125,8 +184,10 @@ def write_shard(
     marker_expression: str = MARKER_EXPRESSION,
     collection_summary: Path | None = None,
     checked_sha: str | None = None,
+    durations_path: Path | None = None,
 ) -> int:
     node_ids = read_node_ids(input_path)
+    durations, binding = _load_binding(durations_path)
     if collection_summary is not None or checked_sha is not None:
         if collection_summary is None or not checked_sha:
             raise ValueError("collection summary and checked SHA must be supplied together")
@@ -138,11 +199,14 @@ def write_shard(
             "total_count": len(node_ids),
             "shard_count": shard_count,
             "node_ids_sha256": _node_ids_sha256(node_ids),
-            "shard_counts": [len(partition_node_ids(node_ids, index, shard_count)) for index in range(shard_count)],
+            "shard_counts": [
+                len(partition_node_ids(node_ids, index, shard_count, durations)) for index in range(shard_count)
+            ],
+            **binding,
         }
         if not isinstance(collection, dict) or any(collection.get(key) != value for key, value in expected.items()):
             raise ValueError("collection evidence does not match the checkout, selector or node IDs")
-    shard_node_ids = partition_node_ids(node_ids, shard_index, shard_count)
+    shard_node_ids = partition_node_ids(node_ids, shard_index, shard_count, durations)
     _write_node_ids(nodeids_output, shard_node_ids)
     _write_json(
         summary_output,
@@ -157,6 +221,7 @@ def write_shard(
             "total_count": len(node_ids),
             "source_node_ids_sha256": _node_ids_sha256(node_ids),
             "node_ids_sha256": _node_ids_sha256(shard_node_ids),
+            **{key: value for key, value in binding.items() if value is not None},
         },
     )
     return len(shard_node_ids)
@@ -227,8 +292,13 @@ def verify_required_cases(evidence_path: Path, checked_sha: str, nodeids_path: P
 
 
 def verify_medium_shards(
-    artifact_root: Path, checked_sha: str, workflow: str = "ci.yml", artifact_prefix: str = "t2-medium"
+    artifact_root: Path,
+    checked_sha: str,
+    workflow: str = "ci.yml",
+    artifact_prefix: str = "t2-medium",
+    durations_path: Path | None = None,
 ) -> None:
+    durations, binding = _load_binding(durations_path)
     collection_root = artifact_root / f"{artifact_prefix}-nodeids-{checked_sha}"
     node_ids = read_node_ids(collection_root / "medium-nodeids.txt")
     collection = json.loads((collection_root / "medium-collection.json").read_text(encoding="utf-8"))
@@ -241,14 +311,16 @@ def verify_medium_shards(
         "total_count": len(node_ids),
         "node_ids_sha256": _node_ids_sha256(node_ids),
         "shard_counts": [
-            len(partition_node_ids(node_ids, index, MEDIUM_SHARD_COUNT)) for index in range(MEDIUM_SHARD_COUNT)
+            len(partition_node_ids(node_ids, index, MEDIUM_SHARD_COUNT, durations))
+            for index in range(MEDIUM_SHARD_COUNT)
         ],
+        **binding,
     }
     if not isinstance(collection, dict) or any(collection.get(key) != value for key, value in expected.items()):
         raise ValueError("medium collection does not match the checked SHA or selected node IDs")
     executed = []
     for index in range(MEDIUM_SHARD_COUNT):
-        assigned = partition_node_ids(node_ids, index, MEDIUM_SHARD_COUNT)
+        assigned = partition_node_ids(node_ids, index, MEDIUM_SHARD_COUNT, durations)
         if not assigned:
             raise ValueError("medium shard assignment is empty")
         shard_root = artifact_root / f"{artifact_prefix}-shard-{index}-{checked_sha}"
@@ -285,6 +357,7 @@ def _build_parser() -> argparse.ArgumentParser:
     collect_parser.add_argument("--workflow", default="release-canary.yml")
     collect_parser.add_argument("--job", default="collect-credential-free-non-fast")
     collect_parser.add_argument("--marker-expression", default=MARKER_EXPRESSION)
+    collect_parser.add_argument("--durations", type=Path)
 
     shard_parser = subparsers.add_parser("shard", help="write one deterministic node-id shard")
     shard_parser.add_argument("--input", type=Path, required=True)
@@ -297,11 +370,13 @@ def _build_parser() -> argparse.ArgumentParser:
     shard_parser.add_argument("--marker-expression", default=MARKER_EXPRESSION)
     shard_parser.add_argument("--collection-summary", type=Path)
     shard_parser.add_argument("--checked-sha")
+    shard_parser.add_argument("--durations", type=Path)
     verify_parser = subparsers.add_parser("verify-medium", help="verify exact medium shard coverage")
     verify_parser.add_argument("--artifacts", type=Path, required=True)
     verify_parser.add_argument("--checked-sha", required=True)
     verify_parser.add_argument("--workflow", default="ci.yml")
     verify_parser.add_argument("--artifact-prefix", default="t2-medium")
+    verify_parser.add_argument("--durations", type=Path)
     required_parser = subparsers.add_parser(
         "verify-required", help="verify a run executed exactly the required cases and passed all of them"
     )
@@ -327,6 +402,7 @@ def main(argv: list[str] | None = None) -> int:
                 workflow=args.workflow,
                 job=args.job,
                 marker_expression=args.marker_expression,
+                durations_path=args.durations,
             )
         elif args.command == "shard":
             write_shard(
@@ -340,11 +416,12 @@ def main(argv: list[str] | None = None) -> int:
                 marker_expression=args.marker_expression,
                 collection_summary=args.collection_summary,
                 checked_sha=args.checked_sha,
+                durations_path=args.durations,
             )
         elif args.command == "verify-required":
             verify_required_cases(args.evidence, args.checked_sha, args.nodeids)
         else:
-            verify_medium_shards(args.artifacts, args.checked_sha, args.workflow, args.artifact_prefix)
+            verify_medium_shards(args.artifacts, args.checked_sha, args.workflow, args.artifact_prefix, args.durations)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"release-canary sharding error: {exc}", file=sys.stderr)
         return 1

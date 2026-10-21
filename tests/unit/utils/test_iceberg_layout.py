@@ -83,14 +83,17 @@ def test_relocate_rewrites_graph_for_new_location(tmp_path):
 
     src = tmp_path / "src"
     catalog = SqlCatalog("reloc", uri=f"sqlite:///{tmp_path}/cat.db", warehouse=str(tmp_path))
-    catalog.create_namespace_if_not_exists("ns")
-    table = catalog.create_table(
-        "ns.t",
-        schema=Schema(NestedField(1, "id", LongType()), NestedField(2, "name", StringType())),
-        location=local_iceberg_location(src / "t"),
-        properties={"format-version": "2"},
-    )
-    table.overwrite(pa.table({"id": [1, 2], "name": ["a", "b"]}))
+    try:
+        catalog.create_namespace_if_not_exists("ns")
+        table = catalog.create_table(
+            "ns.t",
+            schema=Schema(NestedField(1, "id", LongType()), NestedField(2, "name", StringType())),
+            location=local_iceberg_location(src / "t"),
+            properties={"format-version": "2"},
+        )
+        table.overwrite(pa.table({"id": [1, 2], "name": ["a", "b"]}))
+    finally:
+        catalog.engine.dispose()
 
     staging = tmp_path / "staging"
     dest = tmp_path / "dest" / "t"

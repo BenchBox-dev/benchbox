@@ -72,6 +72,7 @@ class ClassifierRules:
     gate_paths: tuple[str, ...]
     logic_paths: tuple[str, ...]
     data_paths: tuple[str, ...]
+    exempt_paths: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -194,6 +195,7 @@ def parse_policy(data: Mapping[str, Any]) -> Policy:
             gate_paths=_str_tuple(classifier.get("gate_paths"), "classifier gate_paths"),
             logic_paths=_str_tuple(classifier.get("logic_paths"), "classifier logic_paths"),
             data_paths=_str_tuple(classifier.get("data_paths"), "classifier data_paths"),
+            exempt_paths=_str_tuple(classifier.get("exempt_paths"), "classifier exempt_paths"),
         ),
     )
     _require(policy.mode in ("shadow", "enforce"), "mode must be shadow or enforce")

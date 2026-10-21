@@ -135,8 +135,8 @@ create_worktree() {
 
   case "$branch" in
     develop|main|release) die "Refusing to create a worktree for protected branch: $branch" ;;
-    chore/*|fix/*|feat/*|docs/*) ;;
-    *) die "BRANCH must match ^(chore|fix|feat|docs)/.+" ;;
+    feat/?*|fix/?*|docs/?*|style/?*|refactor/?*|perf/?*|test/?*|build/?*|ci/?*|chore/?*|revert/?*) ;;
+    *) die "BRANCH must start with a Conventional Commit type and a slug: feat/ fix/ docs/ style/ refactor/ perf/ test/ build/ ci/ chore/ revert/ (got: $branch)" ;;
   esac
   git check-ref-format --branch "$branch" >/dev/null || die "Invalid git branch name: $branch"
 

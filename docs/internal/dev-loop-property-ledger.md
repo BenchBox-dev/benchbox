@@ -98,6 +98,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `validate-release-pr.yml` | product-safety | Release PR base validation |
 | `validate-submission.yml` | product-safety | Submission validation |
 | `validate-submission-comment.yml` | product-safety | Submission validation comment |
+| `windows-fast.yml` | product-safety | Dispatch-only Windows fast unit suite, the same command as the nightly `t3:windows` domain |
 | `tpcds-official-qualification.yml` | product-safety | Weekly SF 1 TPC-DS qualification; fails on DataFrame-to-SQL divergence or an unclassified printed-answer difference |
 | `tpcds-platform-identity.yml` | product-safety | Bundled TPC-DS generators agree across platforms (data checksums and dsqgen parameters) |
 | `tpch-dbgen-intel-macos.yml` | product-safety | Bundled darwin-x86_64 TPC-H dbgen is executed on an Intel macOS runner and emits the canonical supplier and customer rows |
@@ -130,6 +131,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_validate_submission_vendor_gate.py` | product-safety | Submission vendor gate |
 | `test_validate_submission_workflow_guard_mirror.py` | product-safety | Submission workflow guard mirror |
 | `test_workflow_context_availability.py` | product-safety | Workflow context availability (KEEP trap) |
+| `test_windows_fast_workflow.py` | product-safety | Windows fast workflow shares the nightly command, pins and read-only permissions |
 | `test_workflow_expression_contexts.py` | product-safety | Workflow context validity (KEEP trap) |
 
 ### `tests/unit/scripts/` (complete)

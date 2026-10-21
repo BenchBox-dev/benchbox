@@ -26,12 +26,11 @@ try:
 except ImportError:
     psycopg = None
 
-PARADEDB_EXTENSION = "pg_analytics"
+PARADEDB_EXTENSION = "pg_search"
+PARADEDB_SUPPORTED_IMAGE = "paradedb/paradedb:0.26.2-pg18"
 
 
 class ParadeDBAdapter(PostgreSQLAdapter):
-    execution_partitioning_supported = False
-    post_load_index_cluster_supported = False
     supports_refresh_functions = False
     plan_capture_phase_eligible = True
 
@@ -51,7 +50,7 @@ class ParadeDBAdapter(PostgreSQLAdapter):
                 "--paradedb-host",
                 dest="host",
                 default="localhost",
-                help="PostgreSQL server hostname (with pg_analytics installed)",
+                help="PostgreSQL server hostname (with pg_search installed)",
             )
             parser.add_argument(
                 "--paradedb-port",
@@ -95,7 +94,12 @@ class ParadeDBAdapter(PostgreSQLAdapter):
 
     def create_connection(self, **connection_config) -> Any:
         conn = super().create_connection(**connection_config)
-        ensure_postgres_extension(conn, self.logger, PARADEDB_EXTENSION, "https://github.com/paradedb/paradedb")
+        ensure_postgres_extension(
+            conn,
+            self.logger,
+            PARADEDB_EXTENSION,
+            f"https://github.com/paradedb/paradedb; supported image: {PARADEDB_SUPPORTED_IMAGE}",
+        )
         return conn
 
     def _apply_stream_session_state(self, connection: Any) -> None:
@@ -118,11 +122,11 @@ class ParadeDBAdapter(PostgreSQLAdapter):
 
                 cursor.close()
             except Exception as e:
-                self.logger.debug(f"Error getting pg_analytics info: {e}")
+                self.logger.debug(f"Error getting {PARADEDB_EXTENSION} info: {e}")
 
         return platform_info
 
-    _supported_tuning_type_names = ("PARTITIONING", "CLUSTERING", "PRIMARY_KEYS", "FOREIGN_KEYS")
+    _supported_tuning_type_names = ("PARTITIONING", "CLUSTERING", "SORTING", "PRIMARY_KEYS", "FOREIGN_KEYS")
 
 
 _build_paradedb_config = make_platform_config_builder(

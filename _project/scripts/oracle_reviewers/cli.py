@@ -179,7 +179,7 @@ def command_plan(args: argparse.Namespace) -> int:
     plan["scope_reasons"] = list(scope.reasons)
     if not scope.soundness:
         plan["decision"] = SUCCESS
-        plan["decision_reason"] = "no soundness path changed"
+        plan["decision_reason"] = "only exempt paths changed"
         return _finish_plan(out_dir, plan)
     if (pull["head"].get("repo") or {}).get("full_name") != repo:
         plan["decision"] = FORK
@@ -205,8 +205,18 @@ def command_plan(args: argparse.Namespace) -> int:
         plan["decision_reason"] = rerun.reason
         return _finish_plan(out_dir, plan)
     in_scope = set(scope.paths)
+    gate_paths = policy.classifier.gate_paths
+    is_soundness = _soundness_predicate()
     scoped = [
-        item for item in files if any(path in in_scope or not path.endswith(PROSE_SUFFIXES) for path in item.paths)
+        item
+        for item in files
+        if any(
+            path in in_scope
+            or is_soundness(path)
+            or matching([path], gate_paths) != []
+            or not path.endswith(PROSE_SUFFIXES)
+            for path in item.paths
+        )
     ]
     plan["manual"] = manual
     plan["previous_state"] = previous.to_json() if previous else None
@@ -556,7 +566,7 @@ def command_finalize(args: argparse.Namespace) -> int:
         raise SystemExit("oracle-verdict: the plan belongs to another run")
     now = _now()
     if plan["decision"] == SUCCESS:
-        final = report.fixed(retry.SUCCESS, "no soundness path changed")
+        final = report.fixed(retry.SUCCESS, "only exempt paths changed")
     elif plan["decision"] == FORK:
         final = report.fixed(retry.PENDING, "fork: owner review")
     elif plan["decision"] == HOLD:

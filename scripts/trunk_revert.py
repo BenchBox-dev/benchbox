@@ -17,13 +17,17 @@ TRUNK_WORKFLOW = "trunk.yml"
 REVERT_PREFIX = "fix/revert-"
 GRACE = timedelta(minutes=30)
 RED_CONCLUSIONS = frozenset({"failure", "timed_out", "startup_failure"})
-RUN_FIELDS = "conclusion,status,createdAt,updatedAt,databaseId,url"
+RUN_FIELDS = "conclusion,status,createdAt,updatedAt,databaseId,url,headSha"
 RUN_WINDOW = 30
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
 
 class TrunkError(Exception):
+    pass
+
+
+class NoTrunkRunsError(TrunkError):
     pass
 
 
@@ -54,7 +58,7 @@ def trunk_runs(run: Runner = live_run, repo: str = REPOSITORY) -> list[dict]:
     try:
         runs = json.loads(out) if out.strip() else []
         if not runs:
-            raise TrunkError(f"no {TRUNK_WORKFLOW} runs on {BASE_BRANCH} yet")
+            raise NoTrunkRunsError(f"no {TRUNK_WORKFLOW} runs on {BASE_BRANCH} yet")
         for item in runs:
             _parse_time(item["updatedAt"])
             if not isinstance(item["url"], str) or not item["url"].strip():
@@ -89,6 +93,80 @@ def trunk_gate(
         f"develop has been red for {minutes} minutes (newest {TRUNK_WORKFLOW} run: {newest['url']}; "
         f"failed at {red_since.isoformat()}). Fix it or revert the culprit with `make trunk-revert PR=<number>`; "
         f"branches named {REVERT_PREFIX}* are exempt."
+    )
+
+
+def red_trunk_run(run: Runner, repo: str) -> dict | None:
+    for item in trunk_runs(run, repo):
+        if item.get("status") != "completed":
+            continue
+        if item.get("conclusion") in RED_CONCLUSIONS:
+            return item
+        if item.get("conclusion") == "success":
+            return None
+    return None
+
+
+def culprit_pr(run: Runner, repo: str, sha: str) -> int | None:
+    code, out = run(["gh", "api", f"repos/{repo}/commits/{sha}/pulls"])
+    if code != 0:
+        return None
+    try:
+        merged = [
+            int(item["number"])
+            for item in json.loads(out)
+            if item.get("merged_at") and (item.get("base") or {}).get("ref") == BASE_BRANCH
+        ]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return None
+    return merged[0] if merged else None
+
+
+def is_reverted(run: Runner, repo: str, sha: str) -> bool:
+    out = _check(
+        run,
+        ["gh", "api", f"repos/{repo}/commits?sha={BASE_BRANCH}&per_page=100"],
+        f"listing recent {BASE_BRANCH} commits",
+    )
+    try:
+        return any(f"This reverts commit {sha}" in (item["commit"]["message"] or "") for item in json.loads(out))
+    except (ValueError, KeyError, TypeError) as exc:
+        raise TrunkError(f"unreadable {BASE_BRANCH} commit list: {exc}") from exc
+
+
+def pr_head(ref: str, run: Runner, repo: str) -> tuple[str, list[str]]:
+    view = _check(run, ["gh", "pr", "view", ref, "--repo", repo, "--json", "headRefName,commits"], f"reading PR {ref}")
+    try:
+        data = json.loads(view)
+        branch = data["headRefName"]
+        messages = [f"{item['messageHeadline']}\n{item['messageBody']}" for item in data["commits"]]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise TrunkError(f"unreadable PR {ref}: {exc}") from exc
+    if not isinstance(branch, str) or not branch:
+        raise TrunkError(f"unreadable PR {ref} head branch")
+    return branch, messages
+
+
+def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
+    branch, messages = pr_head(ref, run, repo)
+    try:
+        failed = red_trunk_run(run, repo)
+    except NoTrunkRunsError:
+        return None
+    if failed is None:
+        return None
+    sha = failed.get("headSha") or ""
+    if sha and is_reverted(run, repo, sha):
+        return None
+    if sha and branch.startswith(REVERT_PREFIX) and any(f"This reverts commit {sha}" in text for text in messages):
+        return None
+    culprit = culprit_pr(run, repo, sha) if sha else None
+    named = f"PR #{culprit}" if culprit else f"commit {sha[:9] or 'unknown'}"
+    revert_hint = f"make trunk-revert PR={culprit}" if culprit else "make trunk-revert PR=<number>"
+    return (
+        f"{BASE_BRANCH} is red: the newest completed {TRUNK_WORKFLOW} run failed at {named} ({failed['url']}). "
+        f"Merge a revert ({revert_hint}) or get {BASE_BRANCH} green before arming other PRs; "
+        f"only a {REVERT_PREFIX}* branch whose commits carry `This reverts commit {sha[:9] or '<sha>'}...` is exempt."
     )
 
 
@@ -205,7 +283,7 @@ def revert(number: int, run: Runner = live_run, repo: str = REPOSITORY) -> int:
     return 0
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
     parser = argparse.ArgumentParser(description="Revert a merged PR on develop, or gate new PRs while trunk is red.")
     sub = parser.add_subparsers(dest="command", required=True)
     rev = sub.add_parser("revert", help="open a revert PR for a merged PR")
@@ -214,15 +292,33 @@ def main(argv: Sequence[str] | None = None) -> int:
     gate = sub.add_parser("gate", help="refuse a new branch while trunk is red")
     gate.add_argument("--branch", required=True)
     gate.add_argument("--repo", default=REPOSITORY)
+    arm = sub.add_parser("arm-gate", help="refuse to arm a PR while trunk is red")
+    arm.add_argument("--pr", type=int)
+    arm.add_argument("--branch")
+    arm.add_argument("--repo", default=REPOSITORY)
     args = parser.parse_args(argv)
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repo):
         print(f"trunk: --repo must be owner/name, got {args.repo!r}", file=sys.stderr)
         return 2
+    if args.command == "revert" and args.pr <= 0:
+        print("trunk-revert: --pr must be a positive PR number", file=sys.stderr)
+        return 2
     if args.command == "revert":
-        if args.pr <= 0:
-            print("trunk-revert: --pr must be a positive PR number", file=sys.stderr)
-            return 2
         return revert(args.pr, repo=args.repo)
+    if args.command == "arm-gate":
+        if (args.pr is None) == (not args.branch) or (args.pr is not None and args.pr <= 0):
+            print("trunk-arm-gate: pass exactly one of --pr <positive number> or --branch", file=sys.stderr)
+            return 2
+        try:
+            ref = args.branch or str(args.pr)
+            refusal = arm_gate(ref, run, args.repo)
+        except TrunkError as exc:
+            print(f"trunk-arm-gate: refusing: {exc}", file=sys.stderr)
+            return 1
+        if refusal:
+            print(f"Refusing to arm {ref}: {refusal}", file=sys.stderr)
+            return 1
+        return 0
     refusal = trunk_gate(args.branch, repo=args.repo)
     if refusal:
         print(f"Refusing to open PR: {refusal}", file=sys.stderr)

@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pyarrow as pa
 import pytest
@@ -263,6 +264,23 @@ class TestIcebergConversion:
         metadata_dir = iceberg_table_path / "metadata"
         assert metadata_dir.exists()
         assert metadata_dir.is_dir()
+
+    def test_convert_releases_catalog_database_handle(self, temp_dir, sample_schema):
+        from sqlalchemy.engine import Engine
+
+        tbl_file = temp_dir / "test.tbl"
+        tbl_file.write_text("1|Alice|100.50|\n")
+
+        with patch.object(Engine, "dispose", autospec=True, side_effect=Engine.dispose) as dispose:
+            result = IcebergConverter().convert(
+                source_files=[tbl_file],
+                table_name="test",
+                schema=sample_schema,
+                options=ConversionOptions(output_dir=temp_dir),
+            )
+
+        assert result.success is True
+        dispose.assert_called_once()
 
     def test_convert_sharded_files(self, temp_dir, sample_schema):
         tbl_file1 = temp_dir / "test.tbl.1"

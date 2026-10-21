@@ -35,6 +35,9 @@ duckdb:
     measurements: []
   joinorder:
     measurements: []
+paradedb:
+  tpch:
+    measurements: []
 pg-duckdb:
   tpch:
     measurements: []

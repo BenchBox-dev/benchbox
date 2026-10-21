@@ -40,7 +40,7 @@ Aliases resolve to another platform's entry: `chdb` -> `clickhouse`, `clickhouse
 | `firebolt` | none | none | check_constraints, clustering, distribution, foreign_keys, partitioning, primary_keys, sorting, unique_constraints | - | no | no |
 | `motherduck` | none | sorting | check_constraints, clustering, distribution, foreign_keys, materialized_views, partitioning, primary_keys, unique_constraints | - | no | no |
 | `mysql` | none | foreign_keys, primary_keys | check_constraints, partitioning, unique_constraints | - | no adapter | no |
-| `paradedb` | none | foreign_keys, primary_keys | bloom_filters, check_constraints, clustering, materialized_views, partitioning, unique_constraints | - | no | no |
+| `paradedb` | none | clustering, foreign_keys, partitioning, primary_keys, sorting | bloom_filters, check_constraints, materialized_views, unique_constraints | - | no | no |
 | `pg-duckdb` | none | clustering, foreign_keys, partitioning, primary_keys, sorting | check_constraints, unique_constraints | - | no | no |
 | `pg-mooncake` | none | foreign_keys, primary_keys | check_constraints, clustering, partitioning, sorting, unique_constraints | - | no | no |
 | `postgresql` | none | clustering, foreign_keys, partitioning, primary_keys, sorting | bloom_filters, check_constraints, materialized_views, unique_constraints | - | no | no |

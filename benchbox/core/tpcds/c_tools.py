@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
 from benchbox.core.tpcds.parameter_log import TemplateParameters, parse_dsqgen_parameter_log
+from benchbox.utils.dialect_utils import split_sql_statements, translate_sql_query
 from benchbox.utils.tpc_compilation import (
     CompilationStatus,
     ensure_tpc_binaries,
@@ -719,23 +720,19 @@ class DSQGenBinary:
         cleaned_sql = re.sub(r"[ \t]+", " ", cleaned_sql)
         cleaned_sql = re.sub(r"\n\s+", "\n", cleaned_sql)
 
-        try:
-            from benchbox._vendor import sqlglot
-
-            for source_dialect in ["postgres", "mysql", "sqlite", None]:
-                try:
-                    parsed = sqlglot.parse_one(cleaned_sql, dialect=source_dialect)
-                    if parsed:
-                        transpiled = parsed.sql(dialect="postgres", pretty=True)
-                        if transpiled and len(transpiled.strip()) > 0:
-                            cleaned_sql = transpiled
-                            break
-                except Exception:
-                    continue
-        except ImportError:
-            pass
-        except Exception:
-            pass
+        for source_dialect in ["postgres", "mysql", "sqlite", ""]:
+            try:
+                transpiled = "; ".join(
+                    translate_sql_query(
+                        statement, "postgres", source_dialect=source_dialect, identify=False, strict=True
+                    )
+                    for statement in split_sql_statements(cleaned_sql, source_dialect)
+                )
+            except Exception:
+                continue
+            if transpiled.strip():
+                cleaned_sql = transpiled
+                break
 
         cleaned_sql = cleaned_sql.strip()
 

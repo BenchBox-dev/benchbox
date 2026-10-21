@@ -35,6 +35,9 @@ a matching `<benchmark>_notuning.yaml`):
   columns and clusters them on their order keys after load. Constraints are
   disabled because the benchmark's logical keys do not include the partition
   columns.
+- `paradedb/` - `tpch`. Same heap-layout profile as `pg-duckdb/`: partitions
+  `lineitem` and `orders` by their date columns and clusters them on their
+  order keys after load, with constraints disabled.
 
 DataFrame platforms live under `dataframe/` with a flat
 `<platform>_<profile>.yaml` naming (e.g. `polars_optimized.yaml`,

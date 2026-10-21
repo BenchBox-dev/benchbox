@@ -181,13 +181,44 @@ def test_evidence_files_are_the_soundness_files_present_at_the_head(
     assert plan["scope_paths"] == ["benchbox/core/equivalence/checker.py", "benchbox/core/equivalence/gone.py"]
 
 
-def test_non_soundness_pr_posts_success_without_reviewers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_exempt_only_pr_posts_success_without_reviewers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     files = [{"filename": "README.md", "additions": 1, "deletions": 0}]
     _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), files))
     assert values["decision"] == "success" and values["post"] == "true"
     assert plan["chain"] == [] and plan["scope_paths"] == [] and plan["gate_paths"] == []
-    assert plan["decision_reason"] == "no soundness path changed"
+    assert plan["decision_reason"] == "only exempt paths changed"
     assert not (tmp_path / "plan" / "diff.patch").exists()
+
+
+def test_docs_only_pr_posts_success_without_reviewers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    files = [{"filename": "docs/guide/setup.md", "additions": 10, "deletions": 2}]
+    _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), files))
+    assert values["decision"] == "success" and values["post"] == "true"
+    assert plan["chain"] == [] and plan["scope_paths"] == []
+    assert plan["decision_reason"] == "only exempt paths changed"
+
+
+def test_empty_file_list_posts_success_without_reviewers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), []))
+    assert values["decision"] == "success" and values["post"] == "true"
+    assert plan["chain"] == [] and plan["scope_paths"] == []
+    assert plan["decision_reason"] == "only exempt paths changed"
+
+
+def test_code_outside_the_soundness_list_requires_review(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    helper = "benchbox/utils/row_compare.py"
+    files = [{"filename": helper, "additions": 3, "deletions": 1}]
+    _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), files))
+    assert values["decision"] == "review" and values["post"] == "true"
+    assert plan["scope_paths"] == [helper] and plan["gate_paths"] == []
+    assert plan["scope_reasons"] == ["changes 1 files outside the exempt paths"]
+
+
+def test_rename_from_docs_into_code_requires_review(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    files = [{"filename": "benchbox/new.py", "previous_filename": "docs/old.md", "additions": 5, "deletions": 0}]
+    _, values, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), files))
+    assert values["decision"] == "review" and values["post"] == "true"
+    assert plan["scope_paths"] == ["benchbox/new.py", "docs/old.md"]
 
 
 def test_fork_pr_never_reaches_a_reviewer(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -423,9 +454,21 @@ def test_a_code_change_outside_soundness_paths_is_followed_up(monkeypatch: pytes
     fake = _fake(_review(record), files=files, diff=TWO_FILE_DIFF + section.replace("+helper", "+helper changed"))
     _, values, plan = _plan(monkeypatch, tmp_path, fake)
     assert values["decision"] == "review" and plan["scope"] == "changed"
-    assert plan["protocol"]["changed"] == [helper] and plan["evidence_files"] == []
+    assert plan["protocol"]["changed"] == [helper] and plan["evidence_files"] == [helper]
     assert plan["unchanged_files"] == [CHECKER, CAPTURE] and plan["untracked_files"] == []
-    assert plan["scope_paths"] == [CHECKER, CAPTURE]
+    assert plan["scope_paths"] == [CHECKER, CAPTURE, helper]
+
+
+def test_a_follow_up_changing_only_a_gate_template_reviews_it(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    template = "_project/scripts/oracle_reviewers/templates/gate.md"
+    files = [*TWO_FILES, {"filename": template, "additions": 1, "deletions": 1, "sha": "7" * 40}]
+    section = f"diff --git a/{template} b/{template}\n--- a/{template}\n+++ b/{template}\n@@ -1,1 +1,2 @@\n a\n+gate\n"
+    record = _record(TWO_FILE_DIFF + section, "SHIP")
+    fake = _fake(_review(record), files=files, diff=TWO_FILE_DIFF + section.replace("+gate", "+gate changed"))
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "review" and plan["scope"] == "changed"
+    assert plan["protocol"]["changed"] == [template] and plan["evidence_files"] == [template]
+    assert template in plan["scope_paths"] and template in plan["gate_paths"]
 
 
 def test_a_file_leaving_the_pull_request_gets_a_full_follow_up_not_a_carry(

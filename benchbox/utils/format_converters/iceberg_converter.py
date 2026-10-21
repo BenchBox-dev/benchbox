@@ -100,38 +100,41 @@ class IcebergConverter(BaseFormatConverter):
             uri=f"sqlite:///{catalog_db}",
             warehouse=str(output_dir),
         )
-        catalog.create_namespace_if_not_exists("benchbox")
-
-        table_identifier = ("benchbox", table_name)
         try:
-            catalog.drop_table(table_identifier)
-        except Exception:
-            pass
+            catalog.create_namespace_if_not_exists("benchbox")
 
-        compression_codec = self._COMPRESSION_MAP.get(opts.compression, "snappy")
+            table_identifier = ("benchbox", table_name)
+            try:
+                catalog.drop_table(table_identifier)
+            except Exception:
+                pass
 
-        iceberg_schema = None
-        partition_spec = None
-        if opts.partition_cols:
-            iceberg_schema, partition_spec = self._build_iceberg_schema_and_partition_spec(
-                arrow_schema, opts.partition_cols
-            )
+            compression_codec = self._COMPRESSION_MAP.get(opts.compression, "snappy")
 
-        create_kwargs: dict[str, Any] = {
-            "identifier": table_identifier,
-            "schema": iceberg_schema if iceberg_schema else arrow_schema,
-            "location": local_iceberg_location(iceberg_table_path),
-            "properties": {
-                "format-version": "2",
-                "write.format.default": "parquet",
-                "write.parquet.compression-codec": compression_codec,
-            },
-        }
-        if partition_spec:
-            create_kwargs["partition_spec"] = partition_spec
+            iceberg_schema = None
+            partition_spec = None
+            if opts.partition_cols:
+                iceberg_schema, partition_spec = self._build_iceberg_schema_and_partition_spec(
+                    arrow_schema, opts.partition_cols
+                )
 
-        iceberg_table = catalog.create_table(**create_kwargs)
-        iceberg_table.overwrite(combined_table)
+            create_kwargs: dict[str, Any] = {
+                "identifier": table_identifier,
+                "schema": iceberg_schema if iceberg_schema else arrow_schema,
+                "location": local_iceberg_location(iceberg_table_path),
+                "properties": {
+                    "format-version": "2",
+                    "write.format.default": "parquet",
+                    "write.parquet.compression-codec": compression_codec,
+                },
+            }
+            if partition_spec:
+                create_kwargs["partition_spec"] = partition_spec
+
+            iceberg_table = catalog.create_table(**create_kwargs)
+            iceberg_table.overwrite(combined_table)
+        finally:
+            catalog.engine.dispose()
 
     def _cleanup_catalog_artifacts(self, catalog_fd, catalog_db: str | None) -> None:
         if catalog_fd is not None:

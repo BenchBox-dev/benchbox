@@ -43,6 +43,8 @@ VENDOR_TRUST_LABEL = SOURCE_TO_TRUST_LABEL["vendor"]
 
 VENDOR_SUBTREE_COMPONENT = "vendor"
 
+NON_PUBLIC_BENCHMARKS = frozenset({"joinorder_synthetic"})
+
 
 def _normalize_funding(value: object) -> str:
     token = str(value).strip().lower() if value is not None else ""
@@ -186,7 +188,7 @@ def _is_public_benchmark(benchmark_id: str) -> bool:
     try:
         from benchbox.core.benchmark_registry import get_benchmark_surface
     except ImportError:
-        return True
+        return benchmark_id not in NON_PUBLIC_BENCHMARKS
     return get_benchmark_surface(benchmark_id) == "public"
 
 

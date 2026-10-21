@@ -125,8 +125,9 @@ class TestParadeDBAdapter:
         mock_conn.cursor.return_value = mock_cursor
 
         with patch.object(PostgreSQLAdapter, "create_connection", return_value=mock_conn):
-            with pytest.raises(RuntimeError, match="pg_analytics extension is not available"):
+            with pytest.raises(RuntimeError, match="pg_search extension is not available") as excinfo:
                 adapter.create_connection()
+        assert "paradedb/paradedb:0.26.2-pg18" in str(excinfo.value)
 
     def test_platform_info_reports_version(self, paradedb_stubs):
 

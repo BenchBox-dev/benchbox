@@ -1889,7 +1889,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "stream_connection_capability": "independent_connection"
     },
     "display_name": "paradedb",
-    "description": "Hybrid search + analytics PostgreSQL • BM25 via pg_analytics",
+    "description": "Hybrid search + analytics PostgreSQL • BM25 via pg_search",
     "category": "olap",
     "libraries": [
       {
@@ -1907,7 +1907,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "analytics"
     ],
     "driver_package": "psycopg",
-    "notes": "PostgreSQL extension adding Elasticsearch-compatible BM25 search and analytics over heap tables. Requires pg_analytics on server. No known extension conflicts.",
+    "notes": "PostgreSQL distribution adding Elasticsearch-compatible BM25 search over heap tables via pg_search. Requires pg_search on server (supported image paradedb/paradedb:0.26.2-pg18). No known extension conflicts.",
     "capabilities": {
       "supports_sql": true,
       "supports_dataframe": false,
@@ -1918,7 +1918,7 @@ _PLATFORM_MANIFEST_JSON = """[
         "self-hosted": {
           "mode": "self-hosted",
           "display_name": "ParadeDB Self-Hosted",
-          "description": "Self-hosted PostgreSQL with pg_analytics extension",
+          "description": "Self-hosted PostgreSQL with pg_search extension",
           "requires_credentials": true,
           "requires_cloud_storage": false,
           "requires_network": true,

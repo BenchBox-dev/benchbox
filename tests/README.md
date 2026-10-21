@@ -205,7 +205,10 @@ belong in an explicit workflow or correctness gate.
 Every code PR still runs the medium tests that `make pr-preflight` maps from
 its changed paths (`_project/scripts/preflight_targets.py`), in the
 `code-test` job's "Run medium tests for changed paths" step. A changed test
-module selects itself; a source module selects `test_<module>.py`; a test
+module selects itself; a source module selects `test_<module>.py` plus every test that imports
+it or `mock.patch`/`monkeypatch.setattr`s a module that imports it (one hop,
+static scan of import statements and string patch targets, so
+`benchbox/base.py` selects `tests/test_benchbox.py`); a test
 helper selects the tests that import it; a `conftest.py` selects its directory
 and a test-package `__init__.py` selects its package and importers, when that
 directory holds at most 200 test modules (a broader one runs the full medium
@@ -213,7 +216,10 @@ shards through the heavy tier); a platform module selects its
 `tests/integration/platforms` smoke test; and `SOURCE_GUARD_TESTS` names the
 drift guards that check a source prefix, such as the module-size guard for any
 `benchbox/` change. Everything else in the medium tier runs after merge in
-`trunk.yml` and on release PRs.
+`trunk.yml` and on release PRs. The selection cannot see dynamic imports,
+string-built patch targets, tests reaching the changed module through
+attribute access or inheritance more than one hop from a patched module, or
+non-Python inputs; the post-merge medium tier in `trunk.yml` covers those.
 
 ### Quick Development Testing
 Where a `make` target is followed by a `pytest` command, the two are equivalent. `make test-fast` runs the curated fast

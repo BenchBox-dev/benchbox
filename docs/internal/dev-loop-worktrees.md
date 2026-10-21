@@ -40,8 +40,9 @@ linked-worktree preflight never installs or repairs shared hooks.
 clone has uncommitted tracked changes, naming the paths; see
 `docs/agent/primary-clone-guard.md`.
 
-The branch must use one of the repository's feature prefixes: `chore/`,
-`fix/`, `feat/`, or `docs/`. The standard base is `origin/develop`.
+The branch must start with a Conventional Commit type and a slug:
+`feat/`, `fix/`, `docs/`, `style/`, `refactor/`, `perf/`, `test/`, `build/`,
+`ci/`, `chore/`, or `revert/`. Any other prefix is refused with this list. The standard base is `origin/develop`.
 Creation checks both local and `origin` branch refs before creating anything,
 so `origin` must be reachable; it fails closed when remote collision state
 cannot be verified.

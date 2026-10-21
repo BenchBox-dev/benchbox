@@ -45,13 +45,13 @@ fails it. Checks run on the pull request head, which need not be current with
 
 | Required Context | Workflow Path | Contract |
 | --- | --- | --- |
-| `core` | `.github/workflows/ci.yml` | Lint, type checks, fast tests on Python 3.14 and parity gates on the PR head. On `pull_request`, the heavy tier (medium-test, correctness-gate, required-local-cases, plan-capture-gate, DataFusion integration, and the macOS and Windows TPC-H binary-framing matrix) is skipped unless a carve-out applies (soundness paths, packaging paths); `trunk.yml` runs the Python 3.12 fast lane, the medium tier, the correctness gate and `required-local-cases` on `develop` after each merge. |
+| `core` | `.github/workflows/ci.yml` | Lint, type checks, fast tests on Python 3.14 and parity gates on the PR head. The PR medium step runs the node IDs selected by coverage impact (`scripts/coverage_test_selection.py select` against the newest `t2-coverage-map` artifact from a develop ancestor of the base, plus the name-based `map_tests` fallback); changes under `docs/*`, `*.md`, or `_project/todo-db-export/*` are inert (they add no tests and never trigger escalation), while any other non-Python change in a code-routed tree, a missing or stale map, a map outside the base ancestry, or an oversized or empty selection escalates through `scripts/heavy_tier_needed.py --selection-in`, so the full sharded heavy tier (medium-test, correctness-gate, required-local-cases, plan-capture-gate, DataFusion integration, and the macOS and Windows TPC-H binary-framing matrix) runs instead of being skipped; `trunk.yml` runs the Python 3.12 fast lane, the medium tier with per-test coverage, the coverage-map combine job, the correctness gate and `required-local-cases` on `develop` after each merge. |
 | `explorer` | `.github/workflows/ci.yml` | CLI-versus-explorer parity fixtures on Explorer pipeline and visualization changes. Reports success on unaffected paths. The Explorer app and its browser suite live in `BenchBox-dev/benchbox-site`. |
 | `results-data` | `.github/workflows/ci.yml` | Corpus inventory and validation, submission validator sync, and corpus contract tests on results-data changes. |
 | `docs` | `.github/workflows/ci.yml` | Example validation, generated docs inputs (`make docs-generate`), and spell check on docs changes. The site build runs in `BenchBox-dev/benchbox-site`. |
 | `landing` | `.github/workflows/ci.yml` | Always passes. Kept only until the context is removed from the ruleset. |
 | `tooling` | `.github/workflows/ci.yml` | Every event. Base-branch guard, comment policy, content guard, skill integrity, and audit checks by path. |
-| `oracle-review` | `.github/workflows/oracle-review.yml` (job and check name `oracle-review`) | Passes when no soundness path changes, or when the `benchbox-oracle` app's latest review of the current head, submitted after any retarget, reports success and none of the app's threads is unresolved. Each new head gets its own oracle result (`.github/workflows/oracle-verdict.yml`; rerun with a `/oracle-review` comment): a full review, a follow-up on files whose patch changed, or the earlier decision carried over when a rebase or prose-only push leaves the patch unchanged (Rounds in `docs/internal/oracle-review-v2.md`). If the oracle cannot review or its verdict is overruled, the check also passes on an independent stand-in review of the exact head followed by a `Stand-in oracle review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the oracle's latest review of that head (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. |
+| `oracle-review` | `.github/workflows/oracle-review.yml` (job and check name `oracle-review`) | Passes when only exempt paths (`classifier.exempt_paths` in `.github/oracle-reviewers.yml`) change, or when the `benchbox-oracle` app's latest review of the current head, submitted after any retarget, reports success and none of the app's threads is unresolved. Each new head gets its own oracle result (`.github/workflows/oracle-verdict.yml`; rerun with a `/oracle-review` comment): a full review, a follow-up on files whose patch changed, or the earlier decision carried over when a rebase or prose-only push leaves the patch unchanged (Rounds in `docs/internal/oracle-review-v2.md`). If the oracle cannot review or its verdict is overruled, the check also passes on an independent stand-in review of the exact head followed by a `Stand-in oracle review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the oracle's latest review of that head (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. |
 
 ---
 
@@ -115,9 +115,14 @@ If a PR changes any soundness path (for example `benchbox/core/equivalence/`,
 
 `.github/workflows/trunk.yml` runs on pushes to `develop` and tests it in its
 merged state; it is not a required PR check. It runs the fast lane, the
-four-shard medium tier, the correctness gate, and the `required-local-cases`
+four-shard medium tier with per-test line coverage enabled
+(`COVERAGE_CORE=ctrace`, `-p pytest_cov --cov --cov-context=test` under
+`scripts/coverage_map.ini`, one data file per shard), the `medium-coverage-map`
+combine job (globs the downloaded `coverage-shard-*.dat` files and merges them into one `t2-coverage-map-<sha>` artifact, failing unless the file count matches the downloaded shard evidence)
+with a 90-day retention), the correctness gate, and the `required-local-cases`
 job (`make test-required-local-cases`, which fails the run if a required
-local-engine case skips). The `dist-artifact` job builds and verifies the
+local-engine case skips). The medium shards run with a 33-minute budget to
+cover the roughly 30% coverage overhead. The `dist-artifact` job builds and verifies the
 release wheel and sdist. The marker and forbidden-path guards run in the PR
 `lint` job (`guard-fast-lane-markers`); the test-count ceiling is retired.
 
@@ -141,6 +146,13 @@ while a newer run is in progress or when `gh` cannot read the runs. If trunk
 stays red over two hours with no revert pull request open, that is a risk
 signal for the owner, who should revert the culprit; nothing enforces the
 two-hour figure.
+
+Arming is stricter than opening: `make pr-arm`, `make pr-arm-remote`,
+`make pr-landing-remote-ready` and `make pr-landing-ready ARM=1` run `scripts/trunk_revert.py arm-gate`, which
+refuses at once, naming the culprit PR and run, while the newest completed
+trunk run is red and no revert of the culprit commit is on `develop`. PRs
+armed before the run failed still merge, and arming outside these targets
+bypasses the gate; see [develop push gaps](develop-post-merge-gaps.md).
 
 If more than one medium-tier shard is killed in a day, someone should read
 that shard's memory sampler output for the test that is growing a worker.

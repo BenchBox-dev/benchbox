@@ -163,6 +163,7 @@ def write_duration_file(
     generated_at: str | None = None,
     source: str = "T3 nightly JUnit reports",
     bootstrap: bool = False,
+    default_seconds: float | None = None,
 ) -> None:
     if bootstrap and durations:
         raise ValueError("bootstrap duration artifacts must contain an empty tests map")
@@ -177,6 +178,10 @@ def write_duration_file(
         "generated_at": generated_at or datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "source": source,
     }
+    if default_seconds is not None:
+        if not math.isfinite(default_seconds) or default_seconds < 0:
+            raise ValueError("default_seconds must be finite and non-negative")
+        payload["default_seconds"] = round(default_seconds, 6)
     if bootstrap:
         payload["bootstrap"] = True
     payload["tests"] = {nodeid: {"p95_seconds": round(value, 6)} for nodeid, value in sorted(durations.items())}
