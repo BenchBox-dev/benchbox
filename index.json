@@ -15885,6 +15885,15 @@
       "status": "done",
       "title": "Clear the two remaining orphans on test/freeze-bulk-path-coverage"
     },
+    "owner-drop-oracle-review-required-20261021": {
+      "claim": null,
+      "needs": [
+        "oracle-gate-consumers-cutover-20261021"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Owner: drop oracle-review from the develop ruleset"
+    },
     "owner-oracle-gate-required-20261021": {
       "claim": null,
       "needs": [
