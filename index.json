@@ -21645,10 +21645,15 @@
       "title": "Fix the 15 broken fragment links that are live on benchbox.dev today"
     },
     "site-explorer-vite-high-advisory-blocks-ci-20261020": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T02:12:33Z",
+        "generation": "6b4e6c23dfe4495980d3a3e61172233b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Resolve the new high-severity vite advisory failing site CI audit"
     },
     "site-landing-cards-from-bundle-20261017": {
