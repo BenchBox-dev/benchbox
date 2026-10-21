@@ -23363,6 +23363,13 @@
       "status": "done",
       "title": "SQLite TPC-DS Q21, Q40 and tpcds_obt Q40 exclude the boundary-day row (DATETIME day-offset bound)"
     },
+    "sqlite-integer-division-truncates-ratios": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "SQLite lowering must not truncate integer division in ratio queries (TPC-DS Q21)"
+    },
     "sqlite-throughput-dialect-and-stream-isolation": {
       "claim": null,
       "needs": [

@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Fork fix with executed sqlite3 tests showing Q21-shape ratios match DuckDB; carried patch recorded in the manifest.",
+    "Corpus diff lists every shipped query whose SQLite output changes and the row-level effect on a DuckDB oracle; unexpected differences stop for the owner.",
+    "Adopted through a wheel adoption PR; published SQLite results using affected queries listed."
+  ],
+  "description": "The SQLite rerun (report ~/Developer/benchmark_runs/sqlite-day-offset-rerun-20261021/REPORT.md) found that TPC-DS Q21 divides two integer sums (inv_after / inv_before), which SQLite truncates, so Q21 on SQLite differs from DuckDB on every one of 80 parameter draws; old and new wheels emit the same text. Per the owner's most-correct-result rule, the fork's SQLite generator (or a named rewrite) should preserve the SQL-standard numeric semantics of integer/decimal division by casting the numerator to REAL (or equivalent) where the dividend is not already floating point, with an executed sqlite3 test and a corpus diff; behavior for queries where both operands are explicitly integer-typed keys needs a rule so legitimate integer division is not altered. Published SQLite results containing affected queries must be listed and flagged.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T21:00:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0d9dbedef37d417ea30cf6ca5a92ac34",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
