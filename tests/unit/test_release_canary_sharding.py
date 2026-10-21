@@ -413,6 +413,10 @@ def test_load_durations_rejects_malformed_files(tmp_path: Path, payload: dict):
         load_durations(path)
 
 
+@pytest.mark.skipif(
+    not (REPO_ROOT / "_project/scripts/update_test_durations.py").exists(),
+    reason="_project scripts are not in this checkout (release tree)",
+)
 def test_update_test_durations_keeps_slow_tests_and_records_the_default_for_the_rest(tmp_path: Path):
     junit = tmp_path / "junit.xml"
     junit.write_text(
