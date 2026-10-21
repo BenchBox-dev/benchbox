@@ -82,7 +82,7 @@ def test_apply_table_tunings_uses_liquid_clustering_when_configured(_mock_databr
 
 
 @patch("benchbox.platforms.databricks.adapter.databricks_sql")
-def test_apply_table_tunings_keeps_z_order_default_behavior(_mock_databricks_sql):
+def test_z_order_waits_for_loaded_data(_mock_databricks_sql):
     adapter = DatabricksAdapter(
         server_hostname="test.cloud.databricks.com",
         http_path="/sql/1.0/warehouses/test",
@@ -91,6 +91,10 @@ def test_apply_table_tunings_keeps_z_order_default_behavior(_mock_databricks_sql
 
     unified = UnifiedTuningConfiguration()
     unified.platform_optimizations.databricks_clustering_strategy = "z_order"
+    unified.table_tunings["test_table"] = _make_table_tuning(
+        cluster_cols=[_make_col("cluster_key", 1)],
+        distribution_cols=[_make_col("dist_key", 2)],
+    )
     adapter.unified_tuning_configuration = unified
 
     mock_cursor = Mock()
@@ -98,14 +102,18 @@ def test_apply_table_tunings_keeps_z_order_default_behavior(_mock_databricks_sql
     mock_connection = Mock()
     mock_connection.cursor.return_value = mock_cursor
 
-    table_tuning = _make_table_tuning(
-        cluster_cols=[_make_col("cluster_key", 1)],
-        distribution_cols=[_make_col("dist_key", 2)],
-    )
-    adapter.apply_table_tunings(table_tuning, mock_connection)
+    adapter.apply_table_tunings(unified.table_tunings["test_table"], mock_connection)
 
-    execute_calls = [str(call) for call in mock_cursor.execute.call_args_list]
-    assert any("OPTIMIZE test_table ZORDER BY (cluster_key, dist_key)" in call for call in execute_calls)
+    assert not any("ZORDER" in str(call) for call in mock_cursor.execute.call_args_list)
+    assert adapter._z_order_operations == []
+    assert adapter._applied_layout_operations == []
+
+    mock_cursor.execute.reset_mock()
+    adapter.run_post_load_tunings("test_table", unified, mock_connection)
+
+    statements = [str(call.args[0]) for call in mock_cursor.execute.call_args_list]
+    assert "OPTIMIZE test_table ZORDER BY (cluster_key, dist_key)" in statements
+    assert "OPTIMIZE test_table" not in statements
     assert adapter._z_order_operations == [
         {
             "table": "test_table",
@@ -113,7 +121,109 @@ def test_apply_table_tunings_keeps_z_order_default_behavior(_mock_databricks_sql
             "statement": "OPTIMIZE test_table ZORDER BY (cluster_key, dist_key)",
         }
     ]
-    assert [operation["mechanism"] for operation in adapter._applied_layout_operations] == ["z_order"]
+    assert [(op["mechanism"], op["phase"]) for op in adapter._applied_layout_operations] == [
+        ("z_order", "post_load"),
+        ("analyze", "post_load"),
+    ]
+
+
+@patch("benchbox.platforms.databricks.adapter.databricks_sql")
+def test_z_order_runs_after_the_copy_into_that_fills_the_table(_mock_databricks_sql):
+    from pathlib import Path
+
+    from tests.unit.platforms.csv_dialect_test_helpers import resolver_data_source
+
+    adapter = DatabricksAdapter(
+        server_hostname="test.cloud.databricks.com",
+        http_path="/sql/1.0/warehouses/test",
+        access_token="test_token",
+    )
+    unified = UnifiedTuningConfiguration()
+    unified.platform_optimizations.databricks_clustering_strategy = "z_order"
+    unified.table_tunings["lineitem"] = _make_table_tuning(cluster_cols=[_make_col("l_orderkey", 1)])
+    adapter.catalog = "main"
+    adapter.schema = "bench"
+    adapter.get_effective_tuning_configuration = Mock(return_value=unified)
+
+    cursor = Mock()
+    cursor.fetchone.return_value = (10,)
+    cursor.fetchall.return_value = [("Provider", "delta")]
+    connection = Mock()
+    connection.cursor.return_value = cursor
+    file_path = Path("lineitem.csv")
+
+    adapter.apply_table_tunings(unified.table_tunings["lineitem"], connection)
+    adapter._load_single_table(
+        cursor=cursor,
+        connection=connection,
+        benchmark=None,
+        table_name="lineitem",
+        file_path=file_path,
+        stage_root="dbfs:/Volumes/main/bench",
+        existing_tables={"lineitem"},
+        data_source=resolver_data_source(
+            "lineitem", file_path, {"csv_delimiter": ",", "csv_has_header": False, "csv_null_marker": ""}
+        ),
+    )
+
+    statements = [str(call.args[0]) for call in cursor.execute.call_args_list]
+    copy_index = next(i for i, sql in enumerate(statements) if sql.startswith("COPY INTO"))
+    zorder_indexes = [i for i, sql in enumerate(statements) if "ZORDER BY" in sql]
+    assert len(zorder_indexes) == 1
+    assert zorder_indexes[0] > copy_index
+    assert statements[zorder_indexes[0]] == "OPTIMIZE lineitem ZORDER BY (l_orderkey)"
+    assert [sql for sql in statements if sql.upper().startswith("OPTIMIZE")] == [statements[zorder_indexes[0]]]
+
+
+@patch("benchbox.platforms.databricks.adapter.databricks_sql")
+def test_z_order_runs_when_delta_optimization_is_disabled(_mock_databricks_sql):
+    adapter = DatabricksAdapter(
+        server_hostname="test.cloud.databricks.com",
+        http_path="/sql/1.0/warehouses/test",
+        access_token="test_token",
+        enable_delta_optimization=False,
+    )
+    unified = UnifiedTuningConfiguration()
+    unified.platform_optimizations.databricks_clustering_strategy = "z_order"
+    unified.table_tunings["test_table"] = _make_table_tuning(cluster_cols=[_make_col("cluster_key", 1)])
+    adapter.unified_tuning_configuration = unified
+
+    mock_cursor = Mock()
+    mock_cursor.fetchall.return_value = [("Provider", "delta")]
+    mock_connection = Mock()
+    mock_connection.cursor.return_value = mock_cursor
+
+    adapter.run_post_load_tunings("test_table", unified, mock_connection)
+
+    statements = [str(call.args[0]) for call in mock_cursor.execute.call_args_list]
+    assert "OPTIMIZE test_table ZORDER BY (cluster_key)" in statements
+    assert not any(sql.startswith("ANALYZE") for sql in statements)
+
+
+@patch("benchbox.platforms.databricks.adapter.databricks_sql")
+def test_liquid_clustering_leaves_the_post_load_step_to_plain_optimize(_mock_databricks_sql):
+    adapter = DatabricksAdapter(
+        server_hostname="test.cloud.databricks.com",
+        http_path="/sql/1.0/warehouses/test",
+        access_token="test_token",
+    )
+    unified = UnifiedTuningConfiguration()
+    unified.platform_optimizations.databricks_clustering_strategy = "liquid_clustering"
+    unified.platform_optimizations.liquid_clustering_enabled = True
+    unified.platform_optimizations.liquid_clustering_columns = ["event_time"]
+    unified.table_tunings["test_table"] = _make_table_tuning(cluster_cols=[_make_col("cluster_key", 1)])
+    adapter.unified_tuning_configuration = unified
+
+    mock_cursor = Mock()
+    mock_cursor.fetchall.return_value = [("Provider", "delta")]
+    mock_connection = Mock()
+    mock_connection.cursor.return_value = mock_cursor
+
+    adapter.run_post_load_tunings("test_table", unified, mock_connection)
+
+    statements = [str(call.args[0]) for call in mock_cursor.execute.call_args_list]
+    assert "OPTIMIZE test_table" in statements
+    assert not any("ZORDER" in sql for sql in statements)
 
 
 @patch("benchbox.platforms.databricks.adapter.databricks_sql")

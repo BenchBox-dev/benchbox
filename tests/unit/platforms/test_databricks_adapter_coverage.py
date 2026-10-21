@@ -1344,7 +1344,7 @@ class TestApplyTableTunings:
         executed = [c.args[0] for c in mock_cursor.execute.call_args_list]
         assert any("ALTER TABLE" in s and "CLUSTER BY" in s for s in executed)
 
-    def test_z_order_applied_for_delta_table(self):
+    def test_z_order_is_not_issued_before_data_is_loaded(self):
         adapter = _make_adapter()
         adapter.enable_delta_optimization = True
 
@@ -1376,7 +1376,7 @@ class TestApplyTableTunings:
             adapter.apply_table_tunings(tuning, mock_conn)
 
         executed = [c.args[0] for c in mock_cursor.execute.call_args_list]
-        assert any("ZORDER BY" in s for s in executed)
+        assert not any("ZORDER BY" in s for s in executed)
 
 
 class TestEnsureUcVolumeExists:

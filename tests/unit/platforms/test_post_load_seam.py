@@ -294,7 +294,7 @@ class TestDatabricksPostLoad:
         assert "optimize" not in [op["mechanism"] for op in databricks_adapter._applied_layout_operations]
         assert "analyze" not in [op["mechanism"] for op in databricks_adapter._applied_layout_operations]
 
-    def test_post_load_runs_optimize_and_analyze_on_the_physical_table(self, databricks_adapter):
+    def test_post_load_runs_z_order_and_analyze_on_the_physical_table(self, databricks_adapter):
         connection, cursor = _databricks_connection()
         config = UnifiedTuningConfiguration()
         config.table_tunings["LINEITEM"] = _table_tuning()
@@ -302,11 +302,12 @@ class TestDatabricksPostLoad:
         databricks_adapter.run_post_load_tunings("LINEITEM", config, connection)
 
         executed = [str(call.args[0]) for call in cursor.execute.call_args_list]
-        assert "OPTIMIZE lineitem" in executed
+        assert "OPTIMIZE lineitem ZORDER BY (l_orderkey)" in executed
+        assert "OPTIMIZE lineitem" not in executed
         assert "ANALYZE TABLE lineitem COMPUTE STATISTICS" in executed
         operations = databricks_adapter._applied_layout_operations
         assert [(op["mechanism"], op["phase"]) for op in operations] == [
-            ("optimize", "post_load"),
+            ("z_order", "post_load"),
             ("analyze", "post_load"),
         ]
 
@@ -361,8 +362,10 @@ class TestDatabricksLoadPathOptimizesOnce:
     def test_a_tuned_table_is_optimized_once_after_load(self, databricks_adapter):
         executed = self._load(databricks_adapter, tuned=True)
 
-        assert [sql for sql in executed if sql.upper().startswith("OPTIMIZE")] == ["OPTIMIZE lineitem"]
-        assert [op["mechanism"] for op in databricks_adapter._applied_layout_operations] == ["optimize", "analyze"]
+        assert [sql for sql in executed if sql.upper().startswith("OPTIMIZE")] == [
+            "OPTIMIZE lineitem ZORDER BY (l_orderkey)"
+        ]
+        assert [op["mechanism"] for op in databricks_adapter._applied_layout_operations] == ["z_order", "analyze"]
 
     def test_the_skip_marker_does_not_outlive_the_load(self, databricks_adapter):
         self._load(databricks_adapter, tuned=True)

@@ -101,8 +101,10 @@ class TestDatabricksPhysicalIdentifiers:
         assert adapter.resolve_physical_column("LINEITEM", "L_ORDERKEY") == "l_orderkey"
 
     def test_zorder_statement_uses_the_physical_identifiers(self, databricks_adapter):
+        unified = UnifiedTuningConfiguration()
+        unified.table_tunings["LINEITEM"] = _clustering("LINEITEM", "L_ORDERKEY", "L_PARTKEY")
         connection = FakeDatabricksConnection()
-        databricks_adapter.apply_table_tunings(_clustering("LINEITEM", "L_ORDERKEY", "L_PARTKEY"), connection)
+        databricks_adapter.run_post_load_tunings("LINEITEM", unified, connection)
         assert "OPTIMIZE lineitem ZORDER BY (l_orderkey, l_partkey)" in connection.statements
         assert "DESCRIBE EXTENDED lineitem" in connection.statements
 
