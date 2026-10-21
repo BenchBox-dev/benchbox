@@ -150,6 +150,8 @@ def test_workflow_run_head_resolves_to_an_open_develop_pull_request() -> None:
     assert "github.event.workflow_run.pull_requests" in str(resolve["env"])
     assert "github.event.workflow_run.head_sha" in str(resolve["env"])
     assert 'select(.base.ref == "develop"' in resolve["run"]
+    assert 'echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"' in resolve["run"]
+    assert "exit 2" in resolve["run"]
 
 
 def test_app_token_mint_matches_the_verdict_post_job() -> None:

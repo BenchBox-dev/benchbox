@@ -89,6 +89,13 @@ jobs:
               exit 0
             fi
           fi
+          case "$PR_NUMBER" in
+            ''|*[!0-9]*|0*)
+              echo "oracle-gate: error: cannot resolve a pull request number" >&2
+              exit 2
+              ;;
+          esac
+          echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: Mint the App token
         id: app
