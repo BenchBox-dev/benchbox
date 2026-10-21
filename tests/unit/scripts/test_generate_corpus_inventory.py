@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import generate_corpus_inventory as script
@@ -349,3 +350,28 @@ class TestMain:
         }
         assert inventory["summary"]["by_phase"] == {"power": 2, "throughput": 2, "unknown": 1}
         assert inventory["cohorts"]["tpch@sf1.0#throughput#3streams"] == ["Doris v1.0.0"]
+
+
+class TestMirrorFallback:
+    def test_non_public_fallback_matches_registry(self) -> None:
+        from benchbox.core.benchmark_registry import get_benchmark_surface, list_benchmark_ids
+
+        registry_non_public = {bid for bid in list_benchmark_ids() if get_benchmark_surface(bid) != "public"}
+
+        assert set(script.NON_PUBLIC_BENCHMARKS) == registry_non_public
+
+    def test_internal_benchmark_bundles_stay_hidden_without_the_registry(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setitem(sys.modules, "benchbox.core.benchmark_registry", None)
+        _write_bundle(tmp_path / "joinorder.json", benchmark_id="joinorder", scale_factor=1.0, platform="DuckDB")
+        _write_bundle(
+            tmp_path / "joinorder_synthetic.json",
+            benchmark_id="joinorder_synthetic",
+            scale_factor=1.0,
+            platform="DuckDB",
+        )
+
+        inventory = script.generate_inventory(tmp_path)
+
+        assert [entry["benchmark"] for entry in inventory["bundles"]] == ["joinorder"]

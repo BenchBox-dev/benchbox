@@ -462,3 +462,124 @@ def test_mirror_file_lists_name_only_repo_files_without_wildcards() -> None:
         assert "*" not in path
         assert (REPO_ROOT / path).exists(), path
     assert not [path for path in _git_add_targets() if "*" in path]
+
+
+REPO_IMPORT_ROOTS = frozenset({"benchbox", "scripts"})
+IMPORT_ERROR_NAMES = frozenset({"ImportError", "ModuleNotFoundError", "Exception", "BaseException"})
+DYNAMIC_IMPORT_NAMES = frozenset({"import_module", "__import__"})
+
+
+def _repo_module_file(module: str) -> str | None:
+    rel = PurePosixPath(*module.split("."))
+    for candidate in (rel.with_suffix(".py"), rel / "__init__.py"):
+        if (REPO_ROOT / candidate).is_file():
+            return str(candidate)
+    return None
+
+
+def _handler_catches_import_error(handler: ast.ExceptHandler) -> bool:
+    if handler.type is None:
+        return True
+    names = handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
+    return any(
+        (isinstance(name, ast.Name) and name.id in IMPORT_ERROR_NAMES)
+        or (isinstance(name, ast.Attribute) and name.attr in IMPORT_ERROR_NAMES)
+        for name in names
+    )
+
+
+def _guarded_import_nodes(tree: ast.AST) -> set[int]:
+    guarded: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Try) and any(_handler_catches_import_error(h) for h in node.handlers):
+            for stmt in node.body:
+                guarded.update(id(child) for child in ast.walk(stmt))
+    return guarded
+
+
+def _imported_repo_modules(node: ast.Import | ast.ImportFrom) -> list[str]:
+    if isinstance(node, ast.Import):
+        return [alias.name for alias in node.names if alias.name.split(".")[0] in REPO_IMPORT_ROOTS]
+    if node.level or not node.module or node.module.split(".")[0] not in REPO_IMPORT_ROOTS:
+        return []
+    submodules = [
+        f"{node.module}.{alias.name}" for alias in node.names if _repo_module_file(f"{node.module}.{alias.name}")
+    ]
+    return submodules or [node.module]
+
+
+def _unguarded_unmirrored_imports(source: str, mirrored: set[str]) -> list[str]:
+    tree = ast.parse(source)
+    guarded = _guarded_import_nodes(tree)
+    offenders: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            func = node.func
+            name = func.id if isinstance(func, ast.Name) else func.attr if isinstance(func, ast.Attribute) else None
+            if name in DYNAMIC_IMPORT_NAMES and id(node) not in guarded:
+                offenders.append(f"line {node.lineno}: dynamic {name}()")
+        if not isinstance(node, (ast.Import, ast.ImportFrom)):
+            continue
+        for module in _imported_repo_modules(node):
+            if _repo_module_file(module) in mirrored or id(node) in guarded:
+                continue
+            offenders.append(f"line {node.lineno}: {module}")
+    return offenders
+
+
+def _mirrored_python_files() -> set[str]:
+    _, _, copy_paths = _mirrored_runtime_paths()
+    return {path for path in copy_paths if path.endswith(".py")}
+
+
+def test_mirrored_python_files_never_import_unmirrored_repo_modules_without_a_guard() -> None:
+    mirrored = _mirrored_python_files()
+    assert "benchbox/validation/bundle.py" in mirrored
+    assert "scripts/generate_corpus_inventory.py" in mirrored
+
+    offenders = {
+        path: found
+        for path in sorted(mirrored)
+        if (found := _unguarded_unmirrored_imports((REPO_ROOT / path).read_text(encoding="utf-8"), mirrored))
+    }
+
+    assert offenders == {}, (
+        "mirrored files import repo modules that are not copied to published-results without an ImportError guard"
+    )
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("import json\nfrom pathlib import Path\n", []),
+        ("from benchbox.validation.bundle import discover_bundles\n", []),
+        (
+            "from benchbox.core.results.provenance import FUNDING_SOURCES\n",
+            ["line 1: benchbox.core.results.provenance"],
+        ),
+        ("def f():\n    from benchbox.core.schemas import X\n", ["line 2: benchbox.core.schemas"]),
+        ("import benchbox.core.benchmark_registry\n", ["line 1: benchbox.core.benchmark_registry"]),
+        ("from benchbox.core.results import provenance\n", ["line 1: benchbox.core.results.provenance"]),
+        ("import importlib\nimportlib.import_module('benchbox.core.schemas')\n", ["line 2: dynamic import_module()"]),
+        (
+            "try:\n    from benchbox.core.schemas import X\nexcept ImportError:\n    X = 2\n",
+            [],
+        ),
+        (
+            "def f():\n    try:\n        from benchbox.core.schemas import X\n    except ModuleNotFoundError as exc:\n        raise SystemExit(str(exc))\n",
+            [],
+        ),
+        (
+            "try:\n    pass\nexcept ImportError:\n    from benchbox.core.schemas import X\n",
+            ["line 4: benchbox.core.schemas"],
+        ),
+        (
+            "try:\n    from benchbox.core.schemas import X\nexcept KeyError:\n    X = 2\n",
+            ["line 2: benchbox.core.schemas"],
+        ),
+    ],
+)
+def test_unguarded_import_detector(source: str, expected: list[str]) -> None:
+    mirrored = {"benchbox/validation/bundle.py"}
+
+    assert _unguarded_unmirrored_imports(source, mirrored) == expected
