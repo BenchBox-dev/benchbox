@@ -23583,7 +23583,7 @@
         "ssns-v010-release"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship owner: decide on PyPI projects with Trusted Publishing"
     },
     "ssns-o2-role-users": {
