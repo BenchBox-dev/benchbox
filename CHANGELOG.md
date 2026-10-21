@@ -501,9 +501,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   loads. The statement used to run before the load, on an empty table, so tuned
   results measured plain compaction while the ledger recorded `z_order` as
   applied. The statement is now recorded in the `post_load` phase and replaces
-  the plain `OPTIMIZE` for that table. No published Databricks bundle used the
-  `z_order` strategy: every Databricks bundle in `results-data/` and on
-  `published-results` records `none`, so no published result needs correcting.
+  the plain `OPTIMIZE` for that table. The strategy resolves to `z_order` as
+  before: an explicit `z_order` setting, or a tuning with clustering or
+  distribution columns and no explicit strategy. No published result is affected:
+  all 51 Databricks bundles in `results-data/` and on `published-results` record
+  a resolved strategy of `none` and no requested tuning.
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
   `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
   clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`
