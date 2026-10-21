@@ -28063,10 +28063,15 @@
       "title": "Commit hooks leave an untracked .build/ directory in every worktree"
     },
     "worktree-create-type-prefix-mismatch-20261020": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T01:47:07Z",
+        "generation": "9c3d218e327941cda98710bb06a5007a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Let make worktree-create accept the test/ branch prefix or document the allowed set"
     },
     "worktree-maintenance-bossmode-adapter": {
