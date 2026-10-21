@@ -23574,7 +23574,7 @@
         "ssns-n8-macos-install-kit"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship: adopt-and-operate docs"
     },
     "ssns-o12-pypi-trusted-publishing": {
