@@ -20,7 +20,6 @@ WATCHED_ATTRIBUTE_CALLS = frozenset({"transpile", "parse_one", "sql"})
 WATCHED_MODULE_ATTRIBUTE_CALLS = frozenset({"parse"})
 WATCHED_IMPORTED_NAMES = frozenset({"transpile", "parse_one", "parse"})
 
-MIGRATE = "migrate_via_translate_sql_query"
 PARSE_ONLY = "parse_only"
 AST_REWRITE = "ast_rewrite"
 
@@ -32,8 +31,10 @@ class AllowlistEntry:
     reason: str
 
 
-MIGRATION_PENDING = "Moves behind translate_sql_query in the B2 migration items"
 DATAFRAME_PARSE_ONLY = "Parses SQL into an AST to build DataFrame operations; emits no dialect SQL"
+HAVOC_AST_REWRITE = "Rewrites a query on the AST with read and write dialect equal; moves to named fork rewrites"
+ADAPTER_AST_REWRITE = "Rewrites already-translated SQL on the AST at execution time; moves to apply_rewrite"
+QUESTDB_AST_REWRITE = "Rewrites PostgreSQL-dialect SQL on the AST for QuestDB; removed with the fork QuestDB generator"
 OBT_AST_REWRITE = "Rewrites query structure on the AST to target the one-big-table schema; moves to apply_rewrite"
 FLIGHTDATA_AST_REWRITE = "Casts ROUND inputs on the AST before printing PostgreSQL; moves to apply_rewrite"
 
@@ -51,13 +52,13 @@ BYPASS_ALLOWLIST: dict[str, AllowlistEntry] = {
         1, PARSE_ONLY, "Reads projection names from variant SQL to check result contracts; emits no SQL"
     ),
     "benchbox/core/tpcds_obt/query_conversion.py": AllowlistEntry(2, AST_REWRITE, OBT_AST_REWRITE),
-    "benchbox/core/tpchavoc/cloud_compat.py": AllowlistEntry(8, MIGRATE, MIGRATION_PENDING),
-    "benchbox/core/tpchavoc/dialect_compat.py": AllowlistEntry(16, MIGRATE, MIGRATION_PENDING),
-    "benchbox/core/tpchavoc/spark_query_transformer.py": AllowlistEntry(6, MIGRATE, MIGRATION_PENDING),
-    "benchbox/platforms/bigquery.py": AllowlistEntry(3, MIGRATE, MIGRATION_PENDING),
-    "benchbox/platforms/databricks/adapter.py": AllowlistEntry(4, MIGRATE, MIGRATION_PENDING),
-    "benchbox/platforms/questdb_rewriter.py": AllowlistEntry(2, MIGRATE, MIGRATION_PENDING),
-    "benchbox/platforms/snowflake.py": AllowlistEntry(2, MIGRATE, MIGRATION_PENDING),
+    "benchbox/core/tpchavoc/cloud_compat.py": AllowlistEntry(8, AST_REWRITE, HAVOC_AST_REWRITE),
+    "benchbox/core/tpchavoc/dialect_compat.py": AllowlistEntry(16, AST_REWRITE, HAVOC_AST_REWRITE),
+    "benchbox/core/tpchavoc/spark_query_transformer.py": AllowlistEntry(6, AST_REWRITE, HAVOC_AST_REWRITE),
+    "benchbox/platforms/bigquery.py": AllowlistEntry(3, AST_REWRITE, ADAPTER_AST_REWRITE),
+    "benchbox/platforms/databricks/adapter.py": AllowlistEntry(4, AST_REWRITE, ADAPTER_AST_REWRITE),
+    "benchbox/platforms/questdb_rewriter.py": AllowlistEntry(2, AST_REWRITE, QUESTDB_AST_REWRITE),
+    "benchbox/platforms/snowflake.py": AllowlistEntry(2, AST_REWRITE, ADAPTER_AST_REWRITE),
 }
 
 
@@ -148,7 +149,7 @@ def test_bypass_allowlist_has_no_stale_entries():
 def test_allowlist_entries_carry_valid_dispositions_and_reasons():
     for path, entry in BYPASS_ALLOWLIST.items():
         assert (REPO_ROOT / path).is_file(), path
-        assert entry.disposition in {MIGRATE, PARSE_ONLY, AST_REWRITE}, path
+        assert entry.disposition in {PARSE_ONLY, AST_REWRITE}, path
         assert entry.reason.strip(), path
         assert entry.calls > 0, path
 
