@@ -5,7 +5,7 @@
     "Applied layout requests are verified against the catalog; skipped ones are recorded with a reason",
     "Live TPC-H SF0.01 tuned run, with the evidence recorded in the PR"
   ],
-  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\" Found during the #3092 verification: the current ParadeDB image lacks pg_analytics. Related closed item: pg-analytics-paradedb-and-citus-extension-support.",
+  "context": "Owner request 2026-10-17: There should be a method for tuning these platforms. Related closed item: pg-analytics-paradedb-and-citus-extension-support.\n\nWorktree /Users/joe/Developer/BenchBox.wt-paradedb-native-tuning, branch feat/paradedb-native-tuning, commit 5223c91ff, PR #3206 (armed). Findings: current ParadeDB image ships pg_search 0.26.2 + pgvector, not pg_analytics; adapter now requires pg_search and names pinned image paradedb/paradedb:0.26.2-pg18 in its error. Heap layout method applies (ordinary heap tables). Also found and fixed a latent shared-base defect: PostgreSQLAdapter ran CLUSTER inside a transaction (reproduced on plain postgresql: 2 executed/4 failed); hardened flow hoisted from pg_duckdb into PostgreSQLAdapter, pg_duckdb keeps only its routing-guard override.\nLive (paradedb/paradedb:latest, PG18.6, container benchbox-paradedb-tuning port 55441): TPC-H SF0.01 seed 42 PASSED for paradedb and postgresql, 6 executed/0 failed/0 dropped, export tpch_sf001_paradedb_sql_20261020_195853_14ce9842.json. Fast suite 30484 passed; targeted 1744 passed.\nRemaining: CI + oracle verdict, merge, remove container, finish. Siblings still open: cedardb (io_uring host), citus, pg_mooncake.",
   "description": "ParadeDB declares PARTITIONING and CLUSTERING as supported (benchbox/platforms/paradedb.py:123) but skips both at execution (paradedb.py:33-34: execution_partitioning_supported = False, post_load_index_cluster_supported = False). The claimed support doesn't match what happens. Work out the right layout method for ParadeDB's storage: pg_analytics/DuckDB-backed tables and heap tables. Either implement it with ledger evidence, or stop claiming the tuning types. The current ParadeDB image (paradedb/paradedb:latest, checked during the #3092 work) no longer ships pg_analytics, which the adapter requires (\"extension \\\"pg_analytics\\\" is not available\"), so first settle which ParadeDB image and extension combination is supported.",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "generation": "e4a6119c90184813bd242e17bab6f67d",
       "op": "take",
       "op_id": "cfd2a89668ee4b799b21c2121fe6ae05",
+      "session_id": "1c132956646e412ba1ebcfb0aef362c3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a00a661093086d4fdaf97c3f",
+      "at": "2026-10-21T00:04:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3d68478c672947fcabf8897f29d171f5",
       "session_id": "1c132956646e412ba1ebcfb0aef362c3"
     }
   ]
