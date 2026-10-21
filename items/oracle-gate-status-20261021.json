@@ -5,6 +5,7 @@
     "A PR editing oracle-verdict.yml, oracle-review.yml or oracle_gate.py cannot change its own gate result (runs develop code)",
     "Unit tests for decide parity with oracle_review_check"
   ],
+  "context": "Done in #3229 (merge 07ce85143): _project/scripts/oracle_gate.py + .github/workflows/oracle-gate.yml post commit status oracle-gate from develop code via the oracle App on pull_request_target, issue_comment, workflow_run bridge, dispatch and hourly sweep; one concurrency group per PR; strict policy load. Live: on PR 3246 head 1141cb17 oracle-gate=failure 'waiting for the oracle's review', matching oracle-review. Required-check binding to the App integration_id is documented as the enforcement.",
   "description": "The required oracle-review check runs from the PR's own copy of oracle-review.yml (pull_request), and the ruleset requires the context without an integration_id, so a PR can weaken the check that judges it. oracle-verdict cannot carry gate semantics: the hosted post job and the planned local executor both write it. Owner decision: new context oracle-gate. Add standalone _project/scripts/oracle_gate.py outside _project/scripts/oracle_reviewers/ (which the oracle-local plan freezes then deletes), reusing oracle_review_check.decide semantics, run from pull_request_target, issue_comment (stand-in), a workflow_run bridge from review and thread events, and the hourly sweep; it is the only writer of oracle-gate, via the oracle App. Exempt-only -> success; SHIP with no unresolved oracle threads -> success; valid stand-in for the exact head -> success; else failure.",
   "sessions": [
     {
@@ -22,6 +23,14 @@
       "generation": "09c6616fce1b4d1c950e95214e2f0509",
       "op": "take",
       "op_id": "2ae4dead21424e4394db28a094fe61e2",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T17:41:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a7fd5d94f8784e9895073f6d6b736a12",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
