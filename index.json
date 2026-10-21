@@ -23357,10 +23357,15 @@
       "title": "Make SQLite honour --platform-option database_name"
     },
     "sqlite-day-offset-bound-excludes-boundary-row": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T21:00:12Z",
+        "generation": "0c68d00daadd48a8bc49e36c2970846e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "SQLite TPC-DS Q21, Q40 and tpcds_obt Q40 exclude the boundary-day row (DATETIME day-offset bound)"
     },
     "sqlite-throughput-dialect-and-stream-isolation": {
