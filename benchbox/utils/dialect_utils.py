@@ -468,8 +468,8 @@ def translate_ddl(
     if isinstance(options.get("singlestore"), dict):
         options["singlestore"] = ddl_module.SingleStoreKeys(**options["singlestore"])
 
-    read = normalize_dialect_for_sqlglot(source_dialect.lower())
-    write = normalize_dialect_for_sqlglot(target_dialect.lower())
+    read = resolve_sql_dialect(source_dialect)
+    write = resolve_sql_dialect(target_dialect)
     return ddl_module.transpile_ddl(
         ddl,
         read=read,
