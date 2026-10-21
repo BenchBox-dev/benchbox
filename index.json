@@ -15563,7 +15563,7 @@
         "ssns-v010-release"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "BenchBox: pin the vendored ship-no-ship wheel and run the oracle from it"
     },
     "oracle-local-b2-record-workflow-and-proof": {
