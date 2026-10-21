@@ -23556,7 +23556,7 @@
         "ssns-n6-service-core-doctor"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship: review runner, run-review supervisor and production wiring"
     },
     "ssns-n8-macos-install-kit": {
