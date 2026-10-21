@@ -4,7 +4,7 @@
     "Dispatch snapshot logic made robust to no-push races (or documented as expected S10 transient)",
     "Dev-loop guide notes the --ref develop footgun and the threads-before-rerun diagnostic"
   ],
-  "context": "Verified 2026-10-18: NOT closeable on inspected evidence. Head check before/after each run merged 2026-10-16, but all 3 remaining acceptance points are unverified: connector error rate, dispatch-snapshot race hardening/documentation, and dev-loop guide notes. Ready to implement.\n\nAdded 2026-10-20: PR #3109 head a6acef0d9 (oracle-verdict run 39179620566) again recorded 'opus: absent (error)': the claude attempt job ran about 4 minutes and ended 'slot 1: opus absent (error: exit code 1)' with no diagnostic in the log; the OpenAI reviewer was disabled for no quota (owner-only). oracle-review failed until the PR was closed and reopened. See also oracle-reviewer-backend-capacity.",
+  "context": "Verified 2026-10-18: NOT closeable on inspected evidence. Head check before/after each run merged 2026-10-16, but all 3 remaining acceptance points are unverified: connector error rate, dispatch-snapshot race hardening/documentation, and dev-loop guide notes. Ready to implement.\n\nAdded 2026-10-20: PR #3109 head a6acef0d9 (oracle-verdict run 39179620566) again recorded 'opus: absent (error)': the claude attempt job ran about 4 minutes and ended 'slot 1: opus absent (error: exit code 1)' with no diagnostic in the log; the OpenAI reviewer was disabled for no quota (owner-only). oracle-review failed until the PR was closed and reopened. See also oracle-reviewer-backend-capacity.\n\noracle-response-absence-retry-20261021 adds one bounded eligible same-reviewer retry. It does not satisfy connector-owner, dispatch-snapshot race, or dev-loop documentation acceptance here. Preserve those requirements; no closure implied.",
   "description": "Across 2026-10-11/12, oracle-verdict repeatedly reported opus/sol absent (error) (e.g. PR #2913 verdicts 00:52, 13:42, 14:37 UTC), forcing the S10 stand-in path; separately oracle-review runs failed ~10 times with 'dispatched PR identity or head changed' despite zero pushes between dispatch and job start (runs 38189396586, 38189696110, 38267710604, 38270039090, 38283247598 on PRs #2907/#2913). A manual workflow_dispatch --ref develop is rejected by the head guard by design; the feature-branch ref is the correct dispatch target. Substantive review still arrived (muse SHIP/SHIP-WITH-FIXES verdicts), so this is reliability, not coverage. The real gate error hides behind the race message: unresolved oracle review threads block with the same exit path — check threads before rerunning.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "op": "update",
       "op_id": "db07824f7aea4ee99303bd318a06c1c6",
       "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-21T23:53:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "72c34c9d6cd04f679736a5f5debd07f9",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
     }
   ]
 }
