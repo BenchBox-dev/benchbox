@@ -44,3 +44,21 @@ def test_coverage_plugin_scales_global_and_marker_timeouts(tmp_path: Path) -> No
     result = _run(tmp_path, "scripts.pytest_coverage_timeout")
     assert result.returncode == 0, result.stdout
     assert "3 passed" in result.stdout
+
+
+def test_scaling_multiplies_by_eight_and_caps_at_twenty_minutes() -> None:
+    import scripts.pytest_coverage_timeout as plugin
+
+    assert plugin.COVERAGE_TIMEOUT_FACTOR == 8
+    assert plugin.COVERAGE_TIMEOUT_CAP_SECONDS == 1200
+    assert plugin.scaled(_settings(60)).timeout == 480
+    assert plugin.scaled(_settings(628)).timeout == 1200
+    assert plugin.scaled(_settings(200)).timeout == 1200
+    assert plugin.scaled(_settings(0)).timeout == 0
+    assert plugin.scaled(_settings(None)).timeout is None
+
+
+def _settings(timeout: float | None) -> object:
+    from collections import namedtuple
+
+    return namedtuple("Settings", ["timeout"])(timeout)

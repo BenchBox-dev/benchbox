@@ -144,6 +144,30 @@ class TestSnowflakeSafeguardDivision:
             assert "web_sales" in result
 
 
+class TestSnowflakeForkSafeDivision:
+    def _adapter(self):
+        from benchbox.platforms.snowflake import SnowflakeAdapter
+
+        with patch("benchbox.platforms.snowflake.snowflake"):
+            return SnowflakeAdapter(account="acct", username="u", password="p")
+
+    def test_division_guarded_once(self):
+        result = self._adapter()._apply_fork_safe_division("SELECT a / b FROM t")
+        assert result == "SELECT a / NULLIF(b, 0) FROM t"
+
+    def test_existing_zero_guard_not_double_wrapped(self):
+        result = self._adapter()._apply_fork_safe_division("SELECT a / NULLIF(b, 0) FROM t")
+        assert result.count("NULLIF") == 1
+
+    def test_query_without_division_unchanged(self):
+        sql = "SELECT a FROM t"
+        assert self._adapter()._apply_fork_safe_division(sql) == sql
+
+    def test_unparseable_query_unchanged(self):
+        sql = "SELECT a / FROM ((("
+        assert self._adapter()._apply_fork_safe_division(sql) == sql
+
+
 class TestSnowflakeGenerateTuningClause:
     def test_no_tuning_returns_empty(self):
         adapter = _make_adapter()

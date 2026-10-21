@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   divisor still yields NULL. Nested divisions (`a / (b / c)`, TPC-DS Q58 and Q83)
   are now rewritten at every level, so a zero inner divisor yields NULL instead
   of an error. Queries are no longer emitted with every identifier quoted.
+- The Snowflake adapter now requests the bundled SQLGlot runtime's opt-in
+  `safe_division` rewrite through `apply_rewrite` before executing a query. A zero
+  divisor still yields NULL (`a / NULLIF(b, 0)`); a divisor already written as
+  `NULLIF(x, 0)` is no longer wrapped a second time. Queries without a division
+  are regenerated from the parsed tree, so their text can differ in formatting
+  but not in meaning. No published Snowflake result changes.
 - TPC-DI schema, query, loader, validation and SCD translation now call
   `translate_sql_query` with explicit `identify=False` instead of the vendored
   SQLGlot directly, so the DuckDB `ALL` restore and SQLite fix-ups apply there
