@@ -15806,10 +15806,15 @@
       "title": "Decide shared-credential concurrency and whether a later pending oracle review voids a stand-in"
     },
     "oracle-same-head-rebuttal-rereview-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T17:31:15Z",
+        "generation": "dcd9107c5d9242b9b8907bb50a8c7aba",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "An author cannot get the oracle to reconsider a disputed finding without pushing a new commit"
     },
     "oracle-self-attested-file-list-reviewers-20261008": {
