@@ -25757,15 +25757,10 @@
       "title": "A red post-merge Trunk run must stop further merges and surface the culprit"
     },
     "trunk-red-translate-query-called-twice-after-3185": {
-      "claim": {
-        "expires_at": "2026-10-22T12:47:33Z",
-        "generation": "e83c634c84404801b098f6d6eb917747",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc"
-      },
+      "claim": null,
       "needs": [],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "develop is red: test_translate_query sees normalize_dialect_for_sqlglot called twice after #3185"
     },
     "tsbs-devops-dataframe-sql-id-mapping": {
