@@ -4,6 +4,7 @@
     "tests/unit/core/tpchavoc and tests/unit/platforms pass; make compat-docs-check, make sqlglot-repro-retirement-check, make comment-policy-check, make typecheck and make pr-preflight pass; PR merged.",
     "The bypass test allowlist holds only reasoned parse-only entries."
   ],
+  "context": "Adversarial review (2026-10-21): D4 must not rewire Q17 variant 4 / dual handling onto drop_literal_row_source until sqlglot-fork-review-m8-row-source-guard is merged and adopted (the function currently fires on non-single-row sources). Include in D4: TPC-DI EQ3/EQ7 text fixes per leftover item context, DataFusion Q11/Q16/Q18/Q20 generic rewrites with the TPC-H answer validation re-run on the DataFusion versions BenchBox supports.",
   "description": "After A4, delete benchbox/core/tpchavoc/dialect_compat.py rewrite bodies, cloud_compat.py rewrite bodies, core/tpchavoc/spark_query_transformer.py with its platforms shim, and the DataFusion query transformer for the rules A4 validated. Keep variant id sets, POSTGRES_QUALIFIED_COLUMNS, _BIGQUERY_HAVING_COLUMNS, _BIGQUERY_FROMLESS_IDS and the dispatch table, which call apply_rewrite. Remove the questdb_rewriter.py and datafusion_query_transformer.py exemptions in tests/unit/.../test_abc_conformance.py if still present. Re-point query_adapter transformer_id strings; regenerate compat docs.",
   "links": [
     "_project/decisions/sqlglot-fork-transpilation-plan.md"
@@ -23,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "141d490d904c4386b93454a74b3098b2",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T22:52:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0643d91c412348b98a36559b2e1eea78",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
