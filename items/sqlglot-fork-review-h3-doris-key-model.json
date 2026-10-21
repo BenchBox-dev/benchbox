@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Composite-key tables keep the full key or raise; executed Doris/StarRocks tests insert duplicate-prefix rows and assert row counts.",
+    "Behavior documented in the fork README; fork PR merged; adoption via the next wheel.",
+    "Published Doris/StarRocks results using unique/primary table models listed for rerun review."
+  ],
+  "description": "Adversarial review H3: transpile_ddl with key_columns=(l_orderkey,l_linenumber) writes UNIQUE KEY (l_orderkey) for table_model=unique and DUPLICATE KEY (l_orderkey) for primary (ddl_engines.py:247-277 fall back to the first keyable column); legacy doris.py:861-870 is identical. A unique key narrower than the real key keeps one row per l_orderkey, so most lineitem rows are lost (inferred; not executed on Doris). Fix in the fork: raise when key columns are not a leading prefix of the column list (or reorder columns), never narrow the key; execute on the Doris and StarRocks CI jobs with a composite key and row-count assertions. BenchBox published Doris/StarRocks results using table_model unique must be checked.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T22:51:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0c9eba26189a4e5db97597151a61350e",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

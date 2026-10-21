@@ -23285,6 +23285,13 @@
       "status": "open",
       "title": "Replace the text-diff golden corpus as adoption evidence with an executed, engine-compared gate"
     },
+    "sqlglot-fork-review-h3-doris-key-model": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Fork: never downgrade or narrow the Doris/StarRocks key model silently (lineitem loses rows under table_model=unique)"
+    },
     "sqlglot-freshness-gate-blocks-all-prs-v30-24-0": {
       "claim": null,
       "needs": [],
