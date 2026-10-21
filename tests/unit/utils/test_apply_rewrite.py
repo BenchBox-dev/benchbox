@@ -120,6 +120,34 @@ def test_registry_exposes_no_unlisted_rewrites():
     ("name", "sql", "dialect", "args", "expected"),
     [
         (
+            "flatten_count_of_count",
+            "SELECT COUNT(*) AS source_records FROM (SELECT COUNT(*) AS c FROM t WHERE p > 1)",
+            "postgres",
+            {},
+            "SELECT COUNT(*) AS source_records FROM t WHERE p > 1",
+        ),
+        (
+            "add_row_source_to_fromless_selects",
+            "SELECT 1 WHERE 1 = 1",
+            "bigquery",
+            {"source": "UNNEST([1])"},
+            "SELECT 1 FROM UNNEST([1]) WHERE 1 = 1",
+        ),
+        (
+            "deduplicate_output_aliases",
+            "SELECT a, a FROM t",
+            "databricks",
+            {},
+            "SELECT a, a AS a_2 FROM t",
+        ),
+        (
+            "date_integer_arithmetic_to_interval",
+            "SELECT d + 30 FROM t",
+            "datafusion",
+            {"date_columns": ["d"]},
+            "SELECT d + INTERVAL '30 DAY' FROM t",
+        ),
+        (
             "inline_select_aliases",
             "SELECT a + 1 AS x FROM t WHERE x > 2 ORDER BY x",
             "postgres",

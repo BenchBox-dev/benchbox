@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a repository test fails on any other import.
 - `apply_rewrite` tests pin the named registry: every TPC-Havoc, Spark, DataFusion and engine
   rewrite in the bundled SQLGlot runtime resolves by name, an unlisted runtime function fails
-  the registry test, and each Havoc, Spark and DataFusion rewrite has a documented-output test.
+  the registry test, and every compat, subqueries, date-arithmetic and alias-deduplication
+  rewrite has a documented-output test.
 - A DataFusion test executes TPC-H Q11, Q16, Q18 and Q20 rewritten by the runtime's generic
   decorrelation rewrites at scale factors 0.01 and 0.1 and compares the rows with the
   recorded TPC-H reference row counts and with the unrewritten query on DuckDB.
