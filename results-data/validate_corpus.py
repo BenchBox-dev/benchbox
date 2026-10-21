@@ -645,7 +645,13 @@ _VARIANT_PLATFORM_SUFFIX_RE = re.compile(r"[-_]trust[-_](?:ci|community|local|un
 
 
 def _variant_aware_identity(payload: dict, platform_name: str) -> str:
-    from benchbox.core.results.execution_variant import published_variant_id
+    try:
+        from benchbox.core.results.execution_variant import published_variant_id
+    except ModuleNotFoundError as exc:
+        raise CorpusReadError(
+            "execution-variant identity needs the full benchbox package (not mirrored to published-results); "
+            f"run this gate from develop: {exc}"
+        ) from exc
 
     base = _VARIANT_PLATFORM_SUFFIX_RE.sub("", platform_name).strip().lower().replace(" ", "-")
     return published_variant_id(payload, base)
