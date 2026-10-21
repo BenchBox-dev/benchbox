@@ -23045,18 +23045,13 @@
       "title": "BenchBox: make the retirement checker exercise the wrapper and fix the baseline's workaround paths"
     },
     "sqlglot-fork-d1-delete-wrapper-fixups": {
-      "claim": {
-        "expires_at": "2026-10-22T22:52:08Z",
-        "generation": "c9275e00f2614504b245ad3ed45d2f9c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-fork-a1-adopt-wrapper-wheel",
         "sqlglot-fork-b2-migrate-direct-importers"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "BenchBox: delete wrapper fix-ups, dialect normalization and the QuestDB rewriter"
     },
     "sqlglot-fork-d2-delete-adapter-rewrites": {
