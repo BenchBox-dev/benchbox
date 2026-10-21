@@ -15759,6 +15759,13 @@
       "status": "open",
       "title": "Normalize harmless oracle response drift without weakening decisions"
     },
+    "oracle-response-json-template-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Give oracle reviewers a JSON response template to populate"
+    },
     "oracle-review-automatic-reevaluation-20261021": {
       "claim": null,
       "needs": [],
