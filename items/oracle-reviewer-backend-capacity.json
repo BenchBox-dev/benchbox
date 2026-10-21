@@ -4,7 +4,7 @@
     "A muse-authored PR can receive a deep review from at least one backend without requiring a same-family exception, or the same-family skip is documented as intended with the stand-in path as the explicit fallback.",
     "The oracle-review required check passes on a clean PR without owner intervention. (Observed failing state: PR 3170 verdict pending with zero findings, 2026-10-19.)"
   ],
-  "context": "Observed 2026-10-19 on PR 3170: the oracle verdict came back pending with no findings because every backend was unavailable: claude-deep absent (error), codex-deep disabled (no OpenAI API quota), gemini-deep disabled (unverified harness), muse-deep skipped (same model family as the PR author). With three backends down and the fourth skipping same-family authors, every agent-authored PR falls back to owner stand-in attestation, which defeats the gate. Owner/ops decision; no code change is assumed.\n\nOBSERVATION 2026-10-20 22:15 EDT (follow-up batch): six soundness PRs (core 3187, 3193, 3197, 3212, 3213, 3214) sat with oracle-verdict pending/oracle-review red for hours. On PR 3187 the oracle posted four identical comments \"oracle-verdict: pending for 95cb19295...\" with \"Reviewers not available: small: absent (invalid)\" and no review threads; the PR head had moved on (228dde2e6) since. This is backend availability, not a finding on the PRs. All remaining batch items (postgres pinning, oracle stale-check recurrence, hook runtime, scoped digests, Iceberg leaks, imports audit) wait on it. Agents may not stand in or rerun the oracle.",
+  "context": "Observed 2026-10-19 on PR 3170: the oracle verdict came back pending with no findings because every backend was unavailable: claude-deep absent (error), codex-deep disabled (no OpenAI API quota), gemini-deep disabled (unverified harness), muse-deep skipped (same model family as the PR author). With three backends down and the fourth skipping same-family authors, every agent-authored PR falls back to owner stand-in attestation, which defeats the gate. Owner/ops decision; no code change is assumed.\n\nOBSERVATION 2026-10-20 22:15 EDT (follow-up batch): six soundness PRs (core 3187, 3193, 3197, 3212, 3213, 3214) sat with oracle-verdict pending/oracle-review red for hours. On PR 3187 the oracle posted four identical comments \"oracle-verdict: pending for 95cb19295...\" with \"Reviewers not available: small: absent (invalid)\" and no review threads; the PR head had moved on (228dde2e6) since. This is backend availability, not a finding on the PRs. All remaining batch items (postgres pinning, oracle stale-check recurrence, hook runtime, scoped digests, Iceberg leaks, imports audit) wait on it. Agents may not stand in or rerun the oracle.\n\nCurrent response remediation keeps owner role aliases/model tiers unchanged. Backend quota/credential/capacity requirements remain here; bounded retries cannot manufacture capacity. No closure implied.",
   "description": "Three of four oracle deep-reviewer backends are unavailable (claude-deep errors, codex-deep has no quota, gemini-deep is disabled) and muse-deep skips PRs authored by the same model family, so agent-authored PRs cannot receive any deep review and the oracle-review required check can only pass via owner stand-in. Restore at least one backend or record an explicit policy decision that stand-in attestation is the normal path for agent-authored PRs.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox"
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "ab28af983d834c3299ae61dd7167d403",
       "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-21T23:53:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b40e69d200484efa9a5f50bf284c2650",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
     }
   ]
 }
