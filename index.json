@@ -23086,6 +23086,15 @@
       "status": "done",
       "title": "Fork: named AST rewrites for TPC-Havoc variants, Spark transformer and DataFusion workarounds"
     },
+    "sqlglot-fork-f9b-bigquery-window-nulls-generator": {
+      "claim": null,
+      "needs": [
+        "sqlglot-fork-f9-havoc-datafusion-rewrites"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: BigQuery generator drops NULLS FIRST/LAST after a FIRST_VALUE-style window ORDER BY"
+    },
     "sqlglot-fork-leftover-runner-overrides": {
       "claim": null,
       "needs": [

@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Fork generator output for BigQuery has no NULLS FIRST/LAST in the affected window position, with tests covering the aliasing and ordinary ORDER BY cases that must keep NULLS clauses.",
+    "Carried patch is in downstream/patches.json with an upstreamable commit; gap recorded in downstream/ENGINE-GAPS.md.",
+    "Fork PR merged with green hosted checks, make check/benchbox-dist/benchbox-check pass."
+  ],
+  "description": "Owner decision: the BigQuery 3_v9 NULLS LAST removal becomes generator behavior now, not a caller-gated rewrite (fork function strip_window_null_ordering from F9 is the starting point). BigQuery's grammar has no NULLS clause in that window ORDER BY position (BenchBox's live run needed it removed). Implement in the fork's BigQuery generator as a carried patch (fix: retain <ID> commit and manifest entry), keep strip_window_null_ordering only if a caller still needs it, prove with AST tests and a documented gap note (no BigQuery engine), run make check, benchbox-dist, benchbox-check, merge via the fork PR flow. A4 adopts it and removes the BenchBox gate.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T12:34:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3c6b0201301747c9a436426052f3bfd3",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
