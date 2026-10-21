@@ -5,7 +5,7 @@
     "Live run of TPC-H SF0.01 on a Citus amd64 environment, with the catalog evidence recorded in the PR",
     "Platform docs page describes the tuning method and its limits"
   ],
-  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\" Local live verification wasn't possible: pulling citusdata/citus:latest failed on this arm64 host with \"unsupported platform ... arm64\". Verify on an amd64 runner (CI or a nightly cell) or with an emulated amd64 container.",
+  "context": "Owner request 2026-10-17: \"There should be a method for tuning these platforms.\"\n\nOriginal note: local live verification wasn't possible on arm64 (citusdata/citus:latest unsupported platform).\n\nUPDATE 2026-10-20 (research only, no code): local amd64 verification IS possible. `container run -d --platform linux/amd64 --rosetta -e POSTGRES_PASSWORD=... -p 127.0.0.1:<port>:5432 citusdata/citus:latest` starts under Rosetta in ~30s: PostgreSQL 18.4 x86_64, citus 14.2-1 (probed, container removed). No external amd64 runner needed.\n\nDesign findings: (1) The tuning model has no concept of reference tables or columnar access method: TableTuning (core/tuning/interface.py:285) carries only partitioning/clustering/distribution/sorting column lists and has_any_tuning() requires columns, so the acceptance item 'mark tables as reference tables' needs a new TableTuning field with validation + to_dict/from_dict + registry/support-matrix updates. (2) There is no Citus DDL generator (core/tuning/generators has none). (3) Distribution columns already exist as TuningType.DISTRIBUTION and map naturally to create_distributed_table; verify via pg_dist_partition (partmethod 'h' distributed, 'n' reference, partkey, colocationid). (4) CitusAdapter (platforms/citus.py) inherits the hardened heap partitioning/CLUSTER flow once PR #3206 (hoist into PostgreSQLAdapter) lands; Citus restricts primary/unique keys and CLUSTER on distributed tables, so layout on distributed tables must be verified live before claiming it. (5) CLI --citus-distribution-column currently distributes every table on one column; precedence vs tuning file must be documented. Do not start until #3206 is merged; branch from develop.",
   "description": "PostgreSQL tuning now partitions tables and runs CLUSTER (#3098, #3092), but Citus skips both (benchbox/platforms/citus.py:34-35: execution_partitioning_supported = False and post_load_index_cluster_supported = False). Citus's only layout control is `--citus-distribution-column` (citus.py:85-117), which distributes every table on one column and ignores the tuning file. Add a tuning-file method: per-table distribution columns (create_distributed_table), reference tables for small dimensions, an optional columnar access method, and native PostgreSQL partitioning where Citus allows it. Record each request in the applied-tuning ledger as applied_verified, not applied, or failed, with reasons.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "op": "update",
       "op_id": "8441511eb9264baaa25c498774fa90f4",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a00a661093086d4fdaf97c3f",
+      "at": "2026-10-21T00:30:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b6f373330fb741d5b30551d1129948f8",
+      "session_id": "1c132956646e412ba1ebcfb0aef362c3"
     }
   ]
 }
