@@ -1582,17 +1582,12 @@
       "title": "Fix the four failing TPC-H slow-tier tests behind the release canary and t3:durations"
     },
     "autogen-windows-sqlglot-failures-20261018": {
-      "claim": {
-        "expires_at": "2026-10-22T01:46:56Z",
-        "generation": "8832d41238d249128bd2dfaff409c0fe",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
-      },
+      "claim": null,
       "needs": [
         "autogen-windows-t3-fast-failures-20261018"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Fix seven Windows-only SQLGlot test failures seen in the t3:windows branch run"
     },
     "autogen-windows-t3-fast-failures-20261018": {
