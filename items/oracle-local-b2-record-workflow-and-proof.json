@@ -3,7 +3,7 @@
     "Workflow tests: actor gate fails closed, proof upload only with the label, hosted path unchanged, installed check skipped under hosted and enforced under proof/local",
     "The record workflow opens the oracle-record-rejected issue with the App token, so its author is the App's bot"
   ],
-  "context": "Requirement found in adversarial review r2: ship-no-ship's activation probe accepts rejection evidence only from the App's own bot; an issue opened by github-actions[bot] would make gate A3 fail.",
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "Plan step B2. oracle-verdict-record.yml (fail-closed actor step, oracle-record-rejected issue, base branch from policy); policy version 2 with executor.mode: proof; request upload when handoff is true; sweep issues: write and heartbeat-aware re-offer; oracle-engine-installed.yml; record and installed-check workflows in gate paths.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "a90fbe5d0ec242b0b75cb9888360b307",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:21:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b41d965359224c0095c5a13573c85a4e",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
