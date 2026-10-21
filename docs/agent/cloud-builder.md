@@ -67,7 +67,7 @@ cost the whole session, so the builder checks them first.
    task prompt. If the change needs paths outside that scope, stop and report
    the blocker. Do not write tracker state; the local session owns the claim.
 
-3. **Branch.** Use the `chore/`, `fix/`, `feat/`, or `docs/` branch named in
+3. **Branch.** Use the Conventional Commit type branch (`feat/`, `fix/`, `docs/`, `test/`, `chore/`, ...) named in
    the task prompt, created from `origin/develop`. If the platform refuses that
    name, use the branch it created and report the refusal. Push no other branch.
 
