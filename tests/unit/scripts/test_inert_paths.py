@@ -41,7 +41,7 @@ MACHINE_READ_SAMPLE = [
 INERT_SAMPLE = [
     "docs/internal/branch-rename-runbook.md",
     "_project/todo-db-export/index.md",
-    "docs/guides/tpc/tpc-di-deployment-guide.md",
+    "docs/index.md",
 ]
 CODE_ROUTED_SAMPLE = [
     "AGENTS.md",
@@ -57,6 +57,16 @@ CODE_ROUTED_SAMPLE = [
     ".claude/commands/blind-spot.md",
     "benchbox/utils/VERSION_MANAGEMENT.md",
     ".github/PULL_REQUEST_TEMPLATE.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "COPYRIGHT.md",
+    "docs/CLI_REFERENCE.md",
+    "docs/benchmarks/sf1-calibrated-sizes.md",
+    "docs/platforms/support-status.md",
+    "docs/internal/release-guide.md",
+    "docs/guides/tpc/tpc-di-deployment-guide.md",
+    "_project/decisions/single-repo-migration.md",
+    "_project/notes/phase-2-requests.md",
 ]
 
 
