@@ -4,7 +4,7 @@
     "Each affected result is marked per the results provenance policy (flagged or superseded) or scheduled for rerun; the decision per group is recorded.",
     "No live-cloud runs are performed without owner approval; local-engine reruns are listed separately from cloud reruns."
   ],
-  "context": "SQLite exact-division adoption (owner accepted all 90 changed texts, 2026-10-21): published SQLite bundles in results-data/bundles that ran changed queries and need local SQLite rerun/replacement (SQLite reruns approved, local only; bundles not modified by agents): coffeeshop sf001/sf01/sf1 (QC1, SA1, SA3, SA4; QC1 and SA3 rows change), read_primitives sf001/sf01 (decimal_arithmetic, timeseries_trend_analysis), tpch sf001/sf01/sf1 (Q8, rows identical), tpch_skew sf001/sf01/sf1 (Q8, rows identical), tpcds sf1 (Q1 only; unaffected). TPC-DI EQ6/EQ8 are corrected at the query text in a separate PR (EQ8 resolution rate 0 -> 90 on integer-division engines). Earlier-recorded: published SQLite TPC-H/Skew Q1 bundles rows identical; no published bundle contains TPC-DS Q21/Q40 (boundary-day fix unaffected). Further SQLite findings (loader empty-text NULLs, integer division in TPC-DS Q21, Havoc 1_v7/1_v9) are separate items.",
+  "context": "Adversarial review additions (2026-10-21): (M1) ClickHouse safe_division adoption (#3235) also changed SQL beyond formatting for TPC-DI AQ2/AQ4/AQ5/AQ6/AQ9/EQ7 and TSBS disk-latency (EQ7: / COUNT(*) -> / nullIf(COUNT(*), 0), empty filtered set now NULL instead of NaN); every ClickHouse query is re-parsed/re-rendered and execution_time_seconds starts after the rewrite. (M2) D1 (#3239) changes not previously listed: TPC-DI on 7 engines (86 corpus cases; ClickHouse AQ7 previously emitted wrong dateDiff('day', MIN(x, today()))), InfluxDB now translated as datafusion instead of untranslated SQL, QuestDB Q15 (CTE column lists kept), new datafusion/netezza/greenplum/vertica dialects. (H3) Doris/StarRocks key model fallback (sqlglot-fork-review-h3-doris-key-model): published Doris/StarRocks results with table_model unique/primary need review. Owner decision on M1 (published ClickHouse results): per the owner's most-correct-result rule the new behavior stands; affected ClickHouse results are flagged here for rerun when the owner approves reruns.",
   "description": "Two accepted translation changes (BenchBox PRs 3189 and 3185, 2026-10-21) alter the SQL BenchBox generates, so results published before them used different SQL. Affected: TPC-DI AQ5, AQ6, AQ9 on mysql, doris, starrocks and singlestore (STDDEV was population deviation, now STDDEV_SAMP); read_primitives statistical_variance_stddev on the same four dialects; read_primitives array_sort and array_distinct on duckdb (LIST_SORT); approx_quantile_groupby on bigquery (APPROX_QUANTILES(x,2)[1]); pivot_basic on starrocks (PIVOT was dropped); ClickBench on sqlite Q19 and Q43 and on datafusion, netezza, ansi, standard, vertica and greenplum (previously ran untranslated ClickHouse text). The release notes already state this. Decide per published result whether to flag it, supersede it or rerun it.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3189",
@@ -42,6 +42,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "5e568fbc8a18478d84f5d0c22adc5dae",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T22:52:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4d9b5e87ecb840a4808d3d3ea846fe98",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
     }
   ]
