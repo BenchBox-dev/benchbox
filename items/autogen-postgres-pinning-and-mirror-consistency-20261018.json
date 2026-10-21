@@ -4,7 +4,7 @@
     "Each is pinned by sha256; those on rate-limited public paths use the GHCR mirror or have a recorded reason",
     "Workflow tests cover the change; PR merged with required checks green (oracle review for workflow paths)"
   ],
-  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11, guardrails G1-G12; read first). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs the reference inventory and tests. FAIL if any image stays unpinned.\n\nCHECKPOINT 2026-10-20: PR #3187 head 95cb19295 armed, awaiting oracle verdict (workflow path). Inventory of 7 refs in PR body; integration job moved to GHCR mirror with shared compose digest; nightly.yml pg17 service (still scheduled) pinned by sha256 on ECR; extension compose digests pinned. 3 new workflow tests (92 pass), not shown failing on base. NEXT: after merge re-take, record SHA, finish.",
+  "context": "Program: autogen-issues-decisions-20261018 (decisions D1-D11, guardrails G1-G12; read first). Follow-up created by the controller during the batch; not part of the batch set; do not take it during the batch. Rubric: PASS needs the reference inventory and tests. FAIL if any image stays unpinned.\n\nCHECKPOINT 2026-10-20: PR #3187 head 95cb19295 armed, awaiting oracle verdict (workflow path). Inventory of 7 refs in PR body; integration job moved to GHCR mirror with shared compose digest; nightly.yml pg17 service (still scheduled) pinned by sha256 on ECR; extension compose digests pinned. 3 new workflow tests (92 pass), not shown failing on base. NEXT: after merge re-take, record SHA, finish.\n\n### Completion Evidence (2026-10-21)\nPR #3187 merged as 17dd8569dbb2bd1dc8a721ca3cf0412daf5fcae3 (oracle verdict SHIP on head 228dde2e6, then rebased onto develop as 0352e1189 after a conflict). Inventory of seven postgres references is in the PR body. docker-integration.yml postgres job moved to ghcr.io/benchbox-dev/postgres:18@sha256:74935e72... via a new mirror-postgres job reusing the postgres case of mirror-ci-images.yml (digest verified there), packages: read and a GHCR login; nightly.yml postgres 17 service (still scheduled) pinned @sha256:2d2b8998...; pg_duckdb, pg_mooncake and timescaledb compose images pinned by digest; 3 new workflow tests (92 pass; not shown failing on base). Worker self-review only, no separate review agent. Not yet exercised: the GHCR path in a real docker-integration run (follow-up item docker-integration-registry-limit-and-test-selection-20261020).",
   "description": "Follow-up from the docker mirror item. nightly.yml uses an unpinned public.ecr.aws/docker/library/postgres:17 service container (nightly.yml is being retired by dlv2-70-retire-scheduled-workflows, so confirm first whether it still runs), and docker-integration.yml uses the ECR default in docker/postgresql/docker-compose.yml rather than the GHCR mirror. Work: for each remaining caller decide pin-only versus mirror, apply the smallest consistent change, keep digest-equality checks. Guardrail: no unpinned references, no new secrets. Formal review (G13): run the code review action as a separate pass before make pr-open; fix all Critical/Required findings.",
   "links": [
     "item:dlv2-70-retire-scheduled-workflows"
@@ -41,6 +41,14 @@
       "generation": "49d95131d057420788c21efeb45819a5",
       "op": "take",
       "op_id": "788b8a36e37e43d4b74def8d8fea032d",
+      "session_id": "0722acca462b419aa525d939aedd0290"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a",
+      "at": "2026-10-21T13:05:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e599c5d28b1e442aa440e3ac9e6ddda0",
       "session_id": "0722acca462b419aa525d939aedd0290"
     }
   ]
