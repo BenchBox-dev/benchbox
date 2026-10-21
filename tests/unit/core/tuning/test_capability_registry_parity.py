@@ -49,7 +49,7 @@ class TestRequestedButNotRenderedIsAnError:
         assert not any("partitioning" in e for e in errors)
 
     def test_partitioning_on_postgres_family_errors(self) -> None:
-        for platform in ("cedardb",):
+        for platform in ("pg-mooncake",):
             errors, _warnings = _partitioned_config().validate_for_platform_detailed(platform)
             assert any("is not applied at execution" in e for e in errors), platform
 
@@ -228,7 +228,7 @@ _NOT_RENDERED: dict[str, frozenset[str]] = {
         {"check_constraints", "clustering", "materialized_views", "partitioning", "unique_constraints"}
     ),
     "cedardb": frozenset(
-        {"bloom_filters", "check_constraints", "clustering", "materialized_views", "partitioning", "unique_constraints"}
+        {"bloom_filters", "check_constraints", "clustering", "materialized_views", "unique_constraints"}
     ),
     "citus": frozenset({"bloom_filters", "check_constraints", "materialized_views", "unique_constraints"}),
     "clickhouse": frozenset({"check_constraints", "foreign_keys", "materialized_views", "unique_constraints"}),
@@ -345,7 +345,7 @@ _RENDERED: dict[str, frozenset[str]] = {
     "athena": frozenset({}),
     "azure-synapse": frozenset({"foreign_keys", "primary_keys"}),
     "bigquery": frozenset({"foreign_keys", "primary_keys"}),
-    "cedardb": frozenset({"foreign_keys", "primary_keys"}),
+    "cedardb": frozenset({"foreign_keys", "partitioning", "primary_keys"}),
     "citus": frozenset({"clustering", "distribution", "foreign_keys", "partitioning", "primary_keys", "sorting"}),
     "clickhouse": frozenset({"clustering", "partitioning", "primary_keys", "sorting"}),
     "databend": frozenset({"clustering"}),

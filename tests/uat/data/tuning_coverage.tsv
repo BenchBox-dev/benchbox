@@ -109,7 +109,7 @@ clickhouse-server	nyctaxi	basic_constraints	waived	basic constraints are accepta
 clickhouse-server	flightdata	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 clickhouse-server	datavault	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 clickhouse-server	vector_search	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-cedardb	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
+cedardb	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/cedardb/tpch_tuned.yaml
 cedardb	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 cedardb	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 cedardb	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-

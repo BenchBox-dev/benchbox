@@ -157,7 +157,7 @@ class TestCedarDBTuningTypes:
 
         from benchbox.core.tuning.interface import TuningType
 
-        assert adapter.supports_tuning_type(TuningType.PARTITIONING) is False
+        assert adapter.supports_tuning_type(TuningType.PARTITIONING) is True
         assert adapter.supports_tuning_type(TuningType.SORTING) is False
         assert adapter.supports_tuning_type(TuningType.DISTRIBUTION) is False
         assert adapter.supports_tuning_type(TuningType.CLUSTERING) is False

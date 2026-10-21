@@ -361,6 +361,7 @@ EXPECTED_GENERATOR_ONLY_KEYS = frozenset(
         "delta",
         "fabric_warehouse",
         "questdb",
+        "cedardb",
         "pg-duckdb",
         "pg_duckdb",
         "pg-mooncake",

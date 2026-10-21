@@ -208,8 +208,10 @@ def reconcile_requested_intents(
             continue
         index = _realizing_index(intent, footprints, ledger, cluster_columns)
         if index is not None:
-            if _realized_in_ddl(capability, ledger.statements[index]) and not _covered(
-                intent, footprints, (entry.intent for entry in ledger.satisfied)
+            if (
+                _realized_in_ddl(capability, ledger.statements[index])
+                and not _covered(intent, footprints, (entry.intent for entry in ledger.satisfied))
+                and intent.label not in {entry.intent for entry in ledger.dropped}
             ):
                 ledger.record_satisfied(intent.label, index, DDL_REALIZED_REASON)
             continue

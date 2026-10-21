@@ -35,6 +35,9 @@ duckdb:
     measurements: []
   joinorder:
     measurements: []
+cedardb:
+  tpch:
+    measurements: []
 citus:
   tpch:
     measurements: []
