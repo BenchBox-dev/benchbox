@@ -23035,18 +23035,13 @@
       "title": "BenchBox: adopt the fork wheel containing the TPC-Havoc and DataFusion named rewrites"
     },
     "sqlglot-fork-a5-adopt-clickhouse-starrocks-wheel": {
-      "claim": {
-        "expires_at": "2026-10-22T23:52:21Z",
-        "generation": "7cf483bdbce14255aad8ae5751b76aea",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c196539bd596dfa2c5536f3b"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-fork-f10-clickhouse-starrocks-tpcds-rewrites",
         "sqlglot-fork-a4-adopt-havoc-wheel"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "BenchBox: adopt the fork wheel containing the ClickHouse, StarRocks and TPC-DS runner rewrites"
     },
     "sqlglot-fork-adapter-bigquery-safe-division": {
