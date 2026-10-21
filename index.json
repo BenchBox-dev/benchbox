@@ -5014,10 +5014,15 @@
       "title": "Resolve shell payload coverage errors blocking the required comment-policy gate"
     },
     "comment-policy-staged-hook-runtime-20261020": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T22:26:42Z",
+        "generation": "3134a788f4b8447c9c4e4bb23df79064",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:02878396eae2fd1a78bfb20a"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Make the comment-policy commit hook finish in seconds for a small commit"
     },
     "comment-policy-strict-mode-reconciliation": {
