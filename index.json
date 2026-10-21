@@ -22956,14 +22956,19 @@
       "title": "BenchBox: adopt the fork wheel containing DdlOptions and engine-specific DDL"
     },
     "sqlglot-fork-a4-adopt-havoc-wheel": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T22:52:20Z",
+        "generation": "0f32421a1fe04b39a6e31d1cf1180408",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d"
+      },
       "needs": [
         "sqlglot-fork-f9-havoc-datafusion-rewrites",
         "sqlglot-fork-a3-adopt-ddl-wheel",
         "sqlglot-fork-f9b-bigquery-window-nulls-generator"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "BenchBox: adopt the fork wheel containing the TPC-Havoc and DataFusion named rewrites"
     },
     "sqlglot-fork-a5-adopt-clickhouse-starrocks-wheel": {
