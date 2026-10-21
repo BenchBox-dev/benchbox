@@ -231,3 +231,43 @@ def test_wrap_grouped_scalar_subqueries_takes_the_aggregate_class():
         aggregate=sqlglot.exp.First,
     )
     assert result == "SELECT FIRST((SELECT 1)) FROM t GROUP BY a"
+
+
+def test_apply_rewrites_returns_the_input_text_when_no_rewrite_changes_the_tree():
+    from benchbox.utils.dialect_utils import apply_rewrites
+
+    sql = "select   a  ,b from   t where c = 1"
+    rewrites = [("deduplicate_output_aliases", {"nested": False}), ("safe_division", {})]
+    assert apply_rewrites(sql, "databricks", rewrites) is sql
+
+
+def test_apply_rewrites_parses_once_and_renders_the_combined_result():
+    from benchbox.utils.dialect_utils import apply_rewrites
+
+    rewrites = [("deduplicate_output_aliases", {"nested": False}), ("safe_division", {})]
+    result = apply_rewrites("SELECT a.k, b.k, x / y FROM a, b", "databricks", rewrites)
+    assert result == "SELECT a.k, b.k AS k_2, TRY_DIVIDE(x, y) FROM a CROSS JOIN b"
+
+
+def test_translate_sql_query_applies_rewrites_to_the_source_tree_before_generation():
+    from benchbox.utils.dialect_utils import translate_sql_query
+
+    result = translate_sql_query(
+        "SELECT 1 FROM t WHERE IsCurrent = 1",
+        "postgres",
+        rewrites=[("flag_comparisons_to_boolean", {"columns": ["IsCurrent"], "use_is": True})],
+    )
+    assert "IsCurrent IS TRUE" in result
+
+
+def test_unqualified_table_names_skips_ctes_schema_qualified_tables_and_deduplicates():
+    from benchbox.utils.dialect_utils import unqualified_table_names
+
+    sql = "WITH c AS (SELECT 1 FROM base) SELECT * FROM c JOIN ds.qualified q ON TRUE JOIN base b ON TRUE"
+    assert unqualified_table_names(sql, "bigquery") == ["BASE"]
+
+
+def test_unqualified_table_names_returns_none_for_unparseable_sql():
+    from benchbox.utils.dialect_utils import unqualified_table_names
+
+    assert unqualified_table_names("SELECT FROM WHERE (", "bigquery") is None

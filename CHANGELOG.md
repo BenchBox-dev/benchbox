@@ -258,6 +258,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on SingleStore and `VECTOR(n)` on a SQL Server or Azure SQL target with the
   `vector_type` option; on every other T-SQL target (Synapse, Fabric) the runtime
   raises a `ValueError` instead of writing an array type those engines reject.
+- The BigQuery, Snowflake and Databricks adapters no longer carry their own AST
+  division safeguards, the Databricks output-alias deduplication, the unqualified-table
+  scan, the `PRIMARY KEY ... NULLS` syntax fix, the TPC-DI SQLite-idiom regexes
+  (`JULIANDAY`, `DATE('now')`, flag comparisons) or the ClickBench Snowflake
+  regex-group rewrite; the bundled SQLGlot runtime owns each of them. The Databricks
+  adapter now applies alias deduplication (top-level `SELECT` only) and `safe_division`
+  in one parse and returns the query text untouched when neither changes it.
+  `translate_sql_query` accepts `rewrites=` to apply named runtime rewrites to the source
+  tree before generation; `apply_rewrites` applies several to one query with a single
+  parse; `unqualified_table_names` lists the tables a BigQuery statement leaves
+  unqualified. TPC-DI now renders `IsCurrent`, `TT_IS_SELL` and `HolidayFlag`
+  comparisons as booleans for BigQuery (`= TRUE`) and Databricks (`IS TRUE`) at
+  translation time, and the runtime's generators emit the date arithmetic: PostgreSQL
+  `JULIANDAY` differences are `EXTRACT(epoch ...) / 86400` cast to `BIGINT`, DuckDB uses
+  `DATE_DIFF('DAY', ...)`, relative dates use interval arithmetic. Zero divisors still
+  return NULL. The golden corpus records the remaining text differences.
 
 ### Fixed
 
@@ -289,6 +305,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the stall lasted. The flush now has a 30 second bound, is abandoned when it
   does not finish, and logs a warning that timing measurements may include
   unflushed writes.
+- TPC-DI `EQ3` counted the rows of a nested `COUNT(*)` for `source_records`, which is
+  always 1. It now counts the `DimCustomer` rows of the batch, so `source_records`
+  and `transformation_success_rate` change on every platform; previously only
+  ClickHouse, StarRocks and Doris rewrote it at translation time.
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
   `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
   clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`
