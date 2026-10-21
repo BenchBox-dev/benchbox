@@ -19,6 +19,9 @@ from benchbox.core.tuning.generators.bigquery import (
     BigQueryDDLGenerator,
     PartitionGranularity,
 )
+from benchbox.core.tuning.generators.cedardb import (
+    CedarDBDDLGenerator,
+)
 from benchbox.core.tuning.generators.clickhouse import (
     ClickHouseDDLGenerator,
     MergeTreeEngine,
@@ -102,6 +105,7 @@ __all__ = [
     "TrinoDDLGenerator",
     "PartitionStrategy",
     "PostgreSQLDDLGenerator",
+    "CedarDBDDLGenerator",
     "PgDuckDBDDLGenerator",
     "PgMooncakeDDLGenerator",
     "QuestDBDDLGenerator",

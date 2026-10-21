@@ -451,6 +451,7 @@ def _normalize_dataframe_platform_key(platform_lower: str) -> str:
 def get_ddl_generator(platform_type: str) -> BaseDDLGenerator:
     from benchbox.core.tuning.generators.azure_synapse import AzureSynapseDDLGenerator
     from benchbox.core.tuning.generators.bigquery import BigQueryDDLGenerator
+    from benchbox.core.tuning.generators.cedardb import CedarDBDDLGenerator
     from benchbox.core.tuning.generators.clickhouse import ClickHouseDDLGenerator
     from benchbox.core.tuning.generators.doris import DorisDDLGenerator
     from benchbox.core.tuning.generators.duckdb import DuckDBDDLGenerator
@@ -495,6 +496,7 @@ def get_ddl_generator(platform_type: str) -> BaseDDLGenerator:
         "pg_duckdb": PgDuckDBDDLGenerator,
         "pg-mooncake": PgMooncakeDDLGenerator,
         "pg_mooncake": PgMooncakeDDLGenerator,
+        "cedardb": CedarDBDDLGenerator,
     }
 
     platform_lower = platform_type.lower()

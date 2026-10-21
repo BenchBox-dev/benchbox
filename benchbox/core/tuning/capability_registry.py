@@ -420,14 +420,19 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
     },
     "cedardb": {
-        _T.PARTITIONING: _none(
-            "postgresql_ddl_generator:preview_only",
-            "CedarDBAdapter subclasses PostgreSQLAdapter with no DDL override: identical "
-            "execution gap to postgresql (preview computes PARTITION BY, execution renders nothing).",
+        _T.PARTITIONING: _ddl(
+            "cedardb_partition_by_hash",
+            "PARTITION BY HASH (columns) is rendered at CREATE TABLE time and verified from pg_get_partkeydef "
+            "after schema creation. CedarDB supports only HASH partitioning and creates its partitions "
+            "automatically on insert, so a date or other column is also partitioned by hash, and no explicit "
+            "partitions are created. Unlike PostgreSQL it does not require a primary or unique key to include the "
+            "partition column.",
         ),
         _T.CLUSTERING: _none(
-            "postgresql_ddl_generator:preview_only",
-            "Same inherited execution gap as PARTITIONING.",
+            "cedardb_cluster_not_implemented",
+            "CedarDB v2026-09-29 rejects CLUSTER with 'CLUSTER not implemented yet', and its B-tree indexes "
+            "never set indisclustered, so rows cannot be physically ordered by an index. No other tuning-file "
+            "key reaches CedarDB's storage layout, so the platform rejects the request when the tuning file loads.",
         ),
         _T.BLOOM_FILTERS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
         _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),

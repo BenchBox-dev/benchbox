@@ -582,6 +582,9 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
         return duration
 
     execution_partitioning_supported = True
+    partitioning_generator_platform = "postgresql"
+    partitioning_conflicts_with_keys = True
+    forced_partition_strategy: str | None = None
 
     def partitioned_create_statements(self, statement: str, benchmark: Any) -> tuple[str, list[str]]:
         match = _CREATE_TABLE_NAME_RE.match(statement)
@@ -593,13 +596,13 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
         partition_columns = list(getattr(table_tuning, "partitioning", None) or [])
         if not partition_columns:
             return statement, []
-        if config.primary_keys.enabled or config.unique_constraints.enabled:
+        if self.partitioning_conflicts_with_keys and (config.primary_keys.enabled or config.unique_constraints.enabled):
             self._record_partitioning_skipped(table_tuning, partition_columns)
             return statement, []
         from benchbox.core.tuning.ddl_generator import get_ddl_generator
         from benchbox.core.tuning.interface import TableTuning as RuntimeTableTuning
 
-        generator = get_ddl_generator("postgresql")
+        generator = get_ddl_generator(self.partitioning_generator_platform)
         layout_only = RuntimeTableTuning(table_name=table_tuning.table_name, partitioning=partition_columns)
         clauses = generator.generate_tuning_clauses(layout_only)
         children = generator.generate_partition_children(
@@ -966,7 +969,9 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
         if not self.tuning_enabled or not self.execution_partitioning_supported:
             return
         config = self.get_effective_tuning_configuration()
-        if config is None or config.primary_keys.enabled or config.unique_constraints.enabled:
+        if config is None or (
+            self.partitioning_conflicts_with_keys and (config.primary_keys.enabled or config.unique_constraints.enabled)
+        ):
             return
         ledger = getattr(self, "_applied_tuning_ledger", None)
         cursor = connection.cursor()
@@ -993,7 +998,7 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
                 observed = [part.strip().strip('"').lower() for part in inside.split(",") if part.strip()]
                 expected = [column.name.lower() for column in columns]
                 first_type = (columns[0].type or "").upper()
-                expected_strategy = (
+                expected_strategy = self.forced_partition_strategy or (
                     "RANGE"
                     if ("DATE" in first_type or "TIMESTAMP" in first_type)
                     else "HASH"
