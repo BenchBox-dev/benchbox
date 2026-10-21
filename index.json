@@ -23278,6 +23278,13 @@
       "status": "done",
       "title": "Fork: refresh onto upstream v30.24.0, reworking conflicting carried patches"
     },
+    "sqlglot-fork-review-h1-governance": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Governance: independent review for fork changes and soundness-path coverage of the wrapper, pin, baseline and recorded corpus"
+    },
     "sqlglot-fork-review-h2-execution-evidence-gate": {
       "claim": null,
       "needs": [],
