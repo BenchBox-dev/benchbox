@@ -6,6 +6,7 @@
     "path_filter_decision evaluates the base copy of path-filters.yml (unit test with a PR that edits the rules)",
     "Test modules develop added or changed since the map SHA are selected (unit test)"
   ],
+  "context": "Done in #3238 (merge 57dcfa74e): heavy jobs gate on heavy-needed alone; router files are selection-logic and soundness paths and checked before the needs_code_ci exit; path_filter_decision evaluates the base copy via --rules-base-ref; develop-changed test modules since the map SHA are selected. Real CI on the scripts-only PR head f52f4826f ran medium-collect, medium-test shards 0-3, correctness-gate (a)/(b): all success.",
   "description": "ci.yml gates the heavy jobs on heavy-needed == 'true' && unit-core == 'true' (ci.yml:967, 1019, 1108; core aggregate 1475, 1483, 1500-1502). unit-core excludes scripts/**, _project/scripts/** and .github/**, so a PR changing only scripts/coverage_test_selection.py, scripts/path_filter_decision.py or .github/path-filters.yml gets heavy_needed=true and still no heavy tier. Also: .github/path-filters.yml, scripts/path_filter_decision.py, scripts/ci_units.py and .github/ci-units.yml are not selection-logic or soundness paths; heavy_tier_needed returns before the selection-logic check when needs_code_ci is false; path_filter_decision reads path-filters.yml from the PR checkout (DEFAULT_RULES, :17) instead of the base. Also add test modules that develop added or changed between the map SHA and the PR base to the selection (tests added after the map are otherwise invisible).",
   "sessions": [
     {
@@ -23,6 +24,14 @@
       "generation": "4a162ffca03747f7919591fcc9fd631c",
       "op": "take",
       "op_id": "26c7c526809d45c7b6f4ef092ad345b6",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T16:34:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3c077e2a7dfb4f8cbc011f67a312a880",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
