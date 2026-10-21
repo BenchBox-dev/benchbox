@@ -23495,7 +23495,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "blocked",
+      "status": "dropped",
       "title": "ship-no-ship: the local test suite takes 10 minutes on the Mac and one run stalled"
     },
     "ssns-n1-bootstrap": {
