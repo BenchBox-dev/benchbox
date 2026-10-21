@@ -6578,10 +6578,15 @@
       "title": "Bring the Databricks tuned templates in line with Databricks partitioning and constraint guidance"
     },
     "databricks-zorder-applied-to-empty-tables-20261013": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T19:28:06Z",
+        "generation": "05a3520fd45040f9beb43b834d1fba09",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a00a661093086d4fdaf97c3f"
+      },
       "needs": [],
       "priority": "critical",
-      "status": "open",
+      "status": "active",
       "title": "Databricks Z-order tuned runs Z-order empty tables; loaded data is only compacted"
     },
     "databricks-zorder-templates-lost-date-locality-20261013": {
