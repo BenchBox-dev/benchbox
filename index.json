@@ -15774,15 +15774,10 @@
       "title": "A failing oracle-review run from before the oracle's review stays on the head and blocks merge until rerun by hand"
     },
     "oracle-review-stale-failure-recurrence-20261020": {
-      "claim": {
-        "expires_at": "2026-10-22T23:40:08Z",
-        "generation": "49d3e8c234504b4d854e82e3e74c9b02",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Stop a landed oracle verdict from leaving a red oracle-review check on armed PRs"
     },
     "oracle-review-thread-reply-run-churn-20261008": {
