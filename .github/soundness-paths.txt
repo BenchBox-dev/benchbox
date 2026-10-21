@@ -60,6 +60,7 @@ file	_project/scripts/explorer_pipeline/browser_fixtures.py
 file	_project/scripts/results_explorer_snapshot_invariants.py
 file	benchbox/core/results/canonical_json.py
 file	benchbox/core/results/schema_policy.py
+file	benchbox/core/results/timing_fields.py
 file	_project/scripts/explorer_publish.py
 file	scripts/generate_corpus_inventory.py
 file	scripts/validate_submission.py

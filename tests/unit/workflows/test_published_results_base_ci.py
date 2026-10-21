@@ -116,6 +116,17 @@ def test_submission_self_green_guard_covers_shared_schema_policy() -> None:
     assert "benchbox/core/results/schema_policy.py" in guard
 
 
+def test_submission_self_green_guard_covers_shared_timing_fields() -> None:
+    submission = _load(WORKFLOWS / "validate-submission.yml")
+    steps = submission["jobs"]["validate"]["steps"]
+    guard = next(
+        step.get("run", "")
+        for step in steps
+        if step.get("name") == "Reject validator or workflow changes in a submission PR"
+    )
+    assert "benchbox/core/results/timing_fields.py" in guard
+
+
 def test_published_results_base_mirror_validation_runs_before_the_pr_is_opened() -> None:
     names = [step.get("name") for step in _steps()]
     assert names.index(VALIDATE_STEP_NAME) < names.index(OPEN_PR_STEP_NAME), (

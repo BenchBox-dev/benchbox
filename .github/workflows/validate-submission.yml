@@ -72,6 +72,7 @@ jobs:
             benchbox/validation/bundle.py \
             benchbox/core/results/query_status.py \
             benchbox/core/results/schema_policy.py \
+            benchbox/core/results/timing_fields.py \
             scripts/generate_corpus_inventory.py \
             .github/workflows/validate-submission.yml \
             || true)
