@@ -77,6 +77,9 @@ file	.github/workflows/validate-submission.yml
 file	.github/workflows/sync-results-data-to-published.yml
 file	_project/scripts/soundness_paths.py
 file	_project/scripts/oracle_review_check.py
+file	_project/scripts/inert_paths.py
+file	.github/inert-paths.txt
+file	_project/inert-doc-readers.json
 file	_project/scripts/oracle_gate.py
 file	.github/workflows/oracle-review.yml
 file	.github/workflows/oracle-verdict.yml

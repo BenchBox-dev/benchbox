@@ -5,6 +5,8 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from _project.scripts.inert_paths import is_inert_path
+
 from .policy import ClassifierRules
 
 
@@ -76,6 +78,8 @@ def _matches(path: str, patterns: Iterable[str]) -> bool:
 def _in_scope(path: str, rules: ClassifierRules, is_soundness_path: Callable[[str], bool]) -> bool:
     if is_soundness_path(path) or _matches(path, rules.gate_paths):
         return True
+    if is_inert_path(path):
+        return False
     return not _matches(path, rules.exempt_paths)
 
 

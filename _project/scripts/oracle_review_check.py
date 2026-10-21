@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, TypeVar
 
+from inert_paths import is_inert_path
 from soundness_paths import is_soundness_path
 
 ORACLE_LOGIN = "benchbox-oracle"
@@ -235,6 +236,8 @@ def _path_needs_review(path: str, exempt: tuple[str, ...], gate: tuple[str, ...]
         return True
     if any(fnmatch.fnmatchcase(path, pattern) for pattern in gate):
         return True
+    if is_inert_path(path):
+        return False
     return not any(fnmatch.fnmatchcase(path, pattern) for pattern in exempt)
 
 

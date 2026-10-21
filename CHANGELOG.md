@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `platform_timing` and `net_estimate_status`, plus
   `environment.client_link.probed_at`. Producers still write 2.3; the fields
   support comparing local and cloud runs with the client round trip removed.
+- `benchbox.utils.dialect_utils.translate_ddl(ddl, target_dialect, source_dialect, identify, **options)`
+  translates DDL with the bundled SQLGlot runtime's `DdlOptions` and engine-specific
+  table layouts. It is the only module allowed to import the runtime's DDL module; a
+  repository test fails on any other import.
+- The golden-corpus DDL area records the differences between the BenchBox DDL
+  fix-ups and the runtime's DDL output for every platform.
 - `benchbox.utils.dialect_utils.apply_rewrite(name, sql_or_expression, dialect, **args)`
   applies a named rewrite from the bundled SQLGlot runtime to already-translated
   SQL. It is the only module allowed to import the runtime's rewrite functions;

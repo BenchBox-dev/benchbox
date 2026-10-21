@@ -57,12 +57,14 @@ jobs:
           ref: develop
           persist-credentials: false
           sparse-checkout: |
+            .github/inert-paths.txt
             .github/oracle-reviewers.yml
             .github/soundness-paths.txt
             .github/workflows/oracle-gate.yml
             _project/scripts/oracle_gate.py
             _project/scripts/oracle_review_check.py
             _project/scripts/oracle_reviewers
+            _project/scripts/inert_paths.py
             _project/scripts/soundness_paths.py
 
       - name: Install uv
@@ -142,12 +144,14 @@ jobs:
           ref: develop
           persist-credentials: false
           sparse-checkout: |
+            .github/inert-paths.txt
             .github/oracle-reviewers.yml
             .github/soundness-paths.txt
             .github/workflows/oracle-gate.yml
             _project/scripts/oracle_gate.py
             _project/scripts/oracle_review_check.py
             _project/scripts/oracle_reviewers
+            _project/scripts/inert_paths.py
             _project/scripts/soundness_paths.py
 
       - name: Install uv

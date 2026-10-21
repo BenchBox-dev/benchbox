@@ -525,6 +525,43 @@ def apply_rewrite(name: str, sql_or_expression, dialect: str, **args):
     return function(sql_or_expression, **args)
 
 
+def translate_ddl(
+    ddl: str,
+    target_dialect: str,
+    source_dialect: str = "standard",
+    identify: bool = True,
+    **options,
+) -> list[str]:
+    import importlib
+    from dataclasses import fields
+
+    ddl_module = importlib.import_module("benchbox._vendor.sqlglot.benchbox.ddl")
+    layout_class = importlib.import_module("benchbox._vendor.sqlglot.benchbox.layout").TableLayout
+
+    def layout(value):
+        return layout_class(**value) if isinstance(value, dict) else value
+
+    unknown = set(options) - {field.name for field in fields(ddl_module.DdlOptions)}
+    if unknown:
+        raise ValueError(f"Unknown DDL options: {sorted(unknown)}")
+    if options.get("default_layout") is not None:
+        options["default_layout"] = layout(options["default_layout"])
+    if options.get("layouts"):
+        options["layouts"] = {name: layout(value) for name, value in options["layouts"].items()}
+    if isinstance(options.get("singlestore"), dict):
+        options["singlestore"] = ddl_module.SingleStoreKeys(**options["singlestore"])
+
+    read = normalize_dialect_for_sqlglot(source_dialect.lower())
+    write = normalize_dialect_for_sqlglot(target_dialect.lower())
+    return ddl_module.transpile_ddl(
+        ddl,
+        read=read,
+        write=write,
+        options=ddl_module.DdlOptions(**options),
+        identify=identify and write not in NO_IDENTIFY_DIALECTS,
+    )
+
+
 def contains_division(sql: str, dialect: str) -> bool:
     from benchbox._vendor import sqlglot
     from benchbox._vendor.sqlglot import exp

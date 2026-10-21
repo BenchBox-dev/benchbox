@@ -29,7 +29,8 @@ class Rule:
     pattern: str
 
 
-def _load_rules(path: Path = DATA_PATH) -> tuple[Rule, ...]:
+def _load_rules(path: Path = DATA_PATH, valid_kinds: frozenset[str] = _VALID_KINDS) -> tuple[Rule, ...]:
+    manifest = "soundness path" if valid_kinds == _VALID_KINDS else "path"
     rules: list[Rule] = []
     for line_number, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         line = raw_line.strip()
@@ -39,7 +40,7 @@ def _load_rules(path: Path = DATA_PATH) -> tuple[Rule, ...]:
             kind, pattern = line.split("\t", 1)
         except ValueError as exc:
             raise ValueError(f"{path}:{line_number}: expected kind<TAB>pattern") from exc
-        if kind not in _VALID_KINDS:
+        if kind not in valid_kinds:
             raise ValueError(f"{path}:{line_number}: unknown rule kind {kind!r}")
         if not pattern:
             raise ValueError(f"{path}:{line_number}: empty rule pattern")
@@ -49,7 +50,7 @@ def _load_rules(path: Path = DATA_PATH) -> tuple[Rule, ...]:
             re.compile(pattern)
         rules.append(Rule(kind, pattern))
     if not rules:
-        raise ValueError(f"{path}: soundness path manifest is empty")
+        raise ValueError(f"{path}: {manifest} manifest is empty")
     return tuple(rules)
 
 
