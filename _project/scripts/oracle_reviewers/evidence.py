@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from .verdict import Finding, Verdict
+from .verdict import NOT_FIXED, WITHDRAWN, Finding, Verdict
 
 INLINE = "inline"
 _LINE_SUFFIX = re.compile(r":\d+(?:-\d+)?$")
@@ -18,6 +18,8 @@ OMP_READERS = frozenset({"read", "grep"})
 _OMP_SELECTOR = re.compile(r"(?::(?:raw|[\d,+-]+))+$")
 OMP_NO_MATCHES = "No matches found"
 CITATION_PREFIX = "Citation not found in the head commit"
+_WITHDRAWAL_CITATION = re.compile(r"(?P<path>[A-Za-z0-9_][A-Za-z0-9_./-]*\.[A-Za-z0-9]+):(?P<line>\d+)")
+UNVERIFIED_WITHDRAWAL = "the withdrawal names no verifiable head-commit citation, so it counts as not fixed"
 
 
 @dataclass(frozen=True)
@@ -126,13 +128,31 @@ def _citation_error(finding: Finding, workspace: Path) -> str | None:
     return None
 
 
+def _withdrawal_verified(evidence: str, workspace: Path) -> bool:
+    for match in _WITHDRAWAL_CITATION.finditer(evidence or ""):
+        line = int(match.group("line"))
+        if line < 1:
+            continue
+        count = _line_count(workspace, match.group("path"))
+        if count is not None and line <= count:
+            return True
+    return False
+
+
 def mark_citations(verdict: Verdict, workspace: Path) -> Verdict:
     marked = []
     for finding in verdict.defects:
         error = _citation_error(finding, workspace)
         detail = f"{CITATION_PREFIX}: {error}. {finding.detail}".rstrip() if error else finding.detail
         marked.append(replace(finding, detail=detail))
-    return replace(verdict, defects=tuple(marked))
+    priors = []
+    for prior in verdict.prior_defects:
+        if prior.status == WITHDRAWN and not _withdrawal_verified(prior.evidence, workspace):
+            note = f"{prior.evidence} {UNVERIFIED_WITHDRAWAL}".strip()
+            priors.append(replace(prior, status=NOT_FIXED, evidence=note))
+        else:
+            priors.append(prior)
+    return replace(verdict, defects=tuple(marked), prior_defects=tuple(priors))
 
 
 def _shown(paths: list[str]) -> str:

@@ -72,3 +72,29 @@ def test_an_incomplete_review_cannot_be_judged() -> None:
     verdict = _verdict("NONE", [], status="incomplete", incomplete_reason="no access")
     with pytest.raises(ValueError, match="only a complete review"):
         judge(verdict, 10)
+
+
+def test_judge_lists_fixed_and_withdrawn_ids_separately() -> None:
+    prior = [
+        {"id": "D1", "severity": "High", "file": "a.py", "line": 1, "end_line": None, "title": "t1"},
+        {"id": "D2", "severity": "High", "file": "a.py", "line": 2, "end_line": None, "title": "t2"},
+    ]
+    verdict = _verdict(
+        "SHIP",
+        [],
+        prior_defects=[
+            {"id": "D1", "status": "fixed", "evidence": "reworked"},
+            {"id": "D2", "status": "withdrawn", "evidence": "never a defect: a.py:2"},
+        ],
+    )
+    judgement = judge(verdict, 10, prior)
+    assert judgement.decision == "SHIP"
+    assert judgement.fixed == ("D1",) and judgement.withdrawn == ("D2",) and judgement.carried == ()
+
+
+def test_judge_counts_an_unverified_withdrawal_as_open() -> None:
+    prior = [{"id": "D1", "severity": "High", "file": "a.py", "line": 1, "end_line": None, "title": "t1"}]
+    verdict = _verdict("SHIP", [], prior_defects=[{"id": "D1", "status": "not_fixed", "evidence": "still there"}])
+    judgement = judge(verdict, 10, prior)
+    assert judgement.decision == "SHIP_WITH_FIXES" and judgement.carried == (prior[0],)
+    assert judgement.fixed == () and judgement.withdrawn == ()

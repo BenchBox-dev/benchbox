@@ -65,7 +65,13 @@ def test_triggers() -> None:
     workflow = _load()
     assert workflow["name"] == "oracle-verdict"
     triggers = workflow[True] if True in workflow else workflow.get("on", {})
-    assert set(triggers) == {"pull_request_target", "issue_comment", "workflow_dispatch", "schedule"}
+    assert set(triggers) == {
+        "pull_request_target",
+        "issue_comment",
+        "pull_request_review_comment",
+        "workflow_dispatch",
+        "schedule",
+    }
     assert "pull_request" not in triggers
 
 
@@ -120,6 +126,8 @@ def test_plan_guards_comments_and_edits() -> None:
     condition = _jobs()["plan"]["if"]
     assert "issue_comment" in condition
     assert "author_association" in condition
+    assert "pull_request_review_comment" in condition
+    assert "in_reply_to_id" in condition
     assert _jobs()["sweep"]["if"] == "github.event_name == 'schedule'"
 
 
