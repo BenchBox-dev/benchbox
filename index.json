@@ -23646,7 +23646,7 @@
         "ssns-prepublication-hardening"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship: add artifact attestations to release.yml"
     },
     "ssns-v010-release": {
