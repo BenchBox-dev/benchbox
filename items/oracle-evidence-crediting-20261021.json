@@ -3,6 +3,7 @@
     "A broad multi-path grep fixture no longer satisfies the gate; single-file grep and reads still do",
     "The details.files behaviour is recorded in docs/internal/oracle-review-v2.md"
   ],
+  "context": "Done in #3228 (merge 4422591f5): only reads and single-file greps credit a file; details.files crediting removed; docs record that grep details.files is match metadata and not proven complete under truncation. 569 oracle_reviewers tests pass.",
   "description": "oracle_reviewers/evidence.py credits every file in a grep's details.files (:53-56, :74-76), so one broad grep can satisfy the read-every-changed-file gate. Verify whether details.files lists matches beyond the displayed page and record it. Change: only a read, or a grep whose path is a single file, credits that file as examined.",
   "sessions": [
     {
@@ -20,6 +21,14 @@
       "generation": "0517e0bfa287434b9b55be590f953381",
       "op": "take",
       "op_id": "a0ff02b9ea064fe492419f64320ccb0d",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T14:21:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b0ebd762d1d643c88cd48a83cd91315f",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
