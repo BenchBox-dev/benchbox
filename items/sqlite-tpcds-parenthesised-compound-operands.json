@@ -1,0 +1,13 @@
+{
+  "description": "The executed evidence gate reports TPC-DS Q87 on SQLite failing with 'near EXCEPT: syntax error' on fork wheel 30.24.0.6: SQLite does not accept parenthesised SELECT operands of EXCEPT/INTERSECT/UNION. The fork generator should wrap such operands as subselects. When fixed, remove the Q87 entry from scripts/sql_execution_gate/expected_differences.json.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T23:12:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "eb2fc0db25dd42dd965a5931b0eea3b7",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}

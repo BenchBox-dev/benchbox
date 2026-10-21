@@ -23465,6 +23465,13 @@
       "status": "done",
       "title": "SQLite fails every TPC-DS query: a Cursor reaches execute_query where a Connection is expected"
     },
+    "sqlite-tpcds-parenthesised-compound-operands": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "SQLite lowering emits parenthesised compound operands that SQLite rejects (TPC-DS Q87 EXCEPT)"
+    },
     "ssb-dataframe-row-count-validation-20261016": {
       "claim": null,
       "needs": [],
