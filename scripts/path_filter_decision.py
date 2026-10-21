@@ -42,11 +42,11 @@ def unquote_yaml_scalar(value: str) -> str:
     return value
 
 
-def load_rules(path: Path) -> dict[str, list[str]]:
+def parse_rules_text(text: str, source: str) -> dict[str, list[str]]:
     rules: dict[str, list[str]] = {}
     current_key: str | None = None
 
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
+    for raw_line in text.splitlines():
         line = raw_line.split("#", 1)[0].rstrip()
         if not line.strip():
             continue
@@ -57,10 +57,27 @@ def load_rules(path: Path) -> dict[str, list[str]]:
         if current_key and line.lstrip().startswith("- "):
             rules[current_key].append(unquote_yaml_scalar(line.lstrip()[2:]))
 
-    missing = {"safe-content", "content-guard", "code-ci"} - set(rules)
+    missing = CORE_RULE_KEYS - set(rules)
     if missing:
-        raise ValueError(f"{path} is missing required filter keys: {', '.join(sorted(missing))}")
+        raise ValueError(f"{source} is missing required filter keys: {', '.join(sorted(missing))}")
     return rules
+
+
+def load_rules(path: Path) -> dict[str, list[str]]:
+    return parse_rules_text(path.read_text(encoding="utf-8"), str(path))
+
+
+def load_rules_from_base_ref(base_ref: str, path: Path = DEFAULT_RULES) -> dict[str, list[str]]:
+    source = f"{base_ref}:{path.as_posix()}"
+    proc = subprocess.run(
+        ["git", "--no-replace-objects", "show", source],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        raise ValueError(f"cannot read base-ref copy of the rules {source}: {proc.stderr.strip()}")
+    return parse_rules_text(proc.stdout, source)
 
 
 def pattern_matches(path: str, pattern: str) -> bool:
@@ -246,6 +263,10 @@ def write_lists(directory: Path, decision: dict[str, object]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=CLI_DESCRIPTION)
     parser.add_argument("--rules", type=Path, default=DEFAULT_RULES)
+    parser.add_argument(
+        "--rules-base-ref",
+        help="Evaluate the rules from this git ref instead of the working tree, for example the PR base SHA",
+    )
     parser.add_argument("--base-ref", help="Git ref to diff against, for example origin/develop")
     parser.add_argument("--changed-file", type=Path, help="Read changed paths from a newline-delimited file")
     parser.add_argument("--json-in", type=Path, help="Read an existing decision JSON instead of classifying paths")
@@ -263,7 +284,10 @@ def main() -> int:
     if args.json_in:
         decision = json.loads(args.json_in.read_text(encoding="utf-8"))
     else:
-        rules = load_rules(args.rules)
+        if args.rules_base_ref:
+            rules = load_rules_from_base_ref(args.rules_base_ref, args.rules)
+        else:
+            rules = load_rules(args.rules)
         if args.changed_file:
             changed_paths = [
                 normalize_path(line)

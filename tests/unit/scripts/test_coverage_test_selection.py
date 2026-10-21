@@ -947,3 +947,36 @@ def test_prune_cli_rewrites_nodeids(repo: Path, tmp_path: Path) -> None:
         "tests/unit/core/test_engine.py::test_x",
         "tests/unit/core/test_engine.py",
     ]
+
+
+def test_develop_added_tests_join_the_selection(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    map_sha = _head(repo)
+    _write(repo, "tests/unit/test_develop_added.py", "def test_added():\n    assert True\n")
+    _commit_all(repo)
+    base_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, base_sha)
+    assert [entry.path for entry in files] == ["benchbox/core/engine.py"]
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
+    assert result["develop_changed_tests"] == ["tests/unit/test_develop_added.py"]
+    assert "tests/unit/test_develop_added.py" in result["selected"]
+    assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
+    assert result["escalate"] is False
+
+
+def test_develop_changed_tests_exclude_files_missing_from_the_checkout(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
+    map_sha = _head(repo)
+    _write(repo, "tests/unit/test_develop_added.py", "def test_added():\n    assert True\n")
+    _commit_all(repo)
+    base_sha = _head(repo)
+    (repo / "tests/unit/test_develop_added.py").unlink()
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, base_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
+    assert result["develop_changed_tests"] == []
