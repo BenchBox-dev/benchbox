@@ -233,13 +233,14 @@ def validate(data: Any, *, trusted: bool = False) -> Verdict:
     _require(keys == set(VERDICT_KEYS), f"the verdict must have exactly the keys {VERDICT_KEYS}")
     _require(data["status"] in STATUSES, f"status must be one of {STATUSES}")
     _require(data["decision"] in DECISIONS, f"decision must be one of {DECISIONS}")
-    _require(isinstance(data["incomplete_reason"], str), "incomplete_reason must be a string")
+    complete = data["status"] == COMPLETE
+    reason = "" if complete and data["incomplete_reason"] is None else data["incomplete_reason"]
+    _require(isinstance(reason, str), "incomplete_reason must be a string")
     _require(isinstance(data["summary"], str), "summary must be a string")
     examined = data["files_examined"]
     _require(isinstance(examined, list) and all(isinstance(item, str) for item in examined), "files_examined bad")
     _require(isinstance(data["defects"], list), "defects must be a list")
     _require(isinstance(data["prior_defects"], list), "prior_defects must be a list")
-    complete = data["status"] == COMPLETE
     _require(complete != (data["decision"] == NO_DECISION), "a complete review decides, and only it does")
     count = data.get("defect_count", len(data["defects"]))
     _require(isinstance(count, int) and not isinstance(count, bool) and count >= 0, "defect_count must be >= 0")
@@ -249,7 +250,7 @@ def validate(data: Any, *, trusted: bool = False) -> Verdict:
     _require(len({prior.id for prior in priors}) == len(priors), "a prior defect id repeats")
     return Verdict(
         status=data["status"],
-        incomplete_reason=sanitize(data["incomplete_reason"], MAX_REASON),
+        incomplete_reason=sanitize(reason, MAX_REASON),
         decision=data["decision"],
         summary=sanitize(data["summary"], MAX_SUMMARY),
         files_examined=tuple(item for item in examined[:MAX_EXAMINED] if len(item) <= MAX_PATH * 4),
