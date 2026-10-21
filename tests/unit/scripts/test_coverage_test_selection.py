@@ -1089,3 +1089,35 @@ def test_misses_cli_lists_only_failures_outside_selection(tmp_path: Path) -> Non
     assert loaded["selected_count"] == 2
     assert loaded["missed"] == ["tests/unit/z/test_nine.py::test_broke"]
     assert loaded["would_escalate"] is True
+
+
+def test_misses_cli_reports_clean_run_when_no_failures(tmp_path: Path) -> None:
+    selection = tmp_path / "coverage-selection.json"
+    selection.write_text(json.dumps({"selected": ["tests/unit/a/test_one.py::test_keep"]}), encoding="utf-8")
+    report = tmp_path / "shard-0-junit.xml"
+    _write_junit(report, [("tests.unit.a.test_one", "test_keep", None)])
+    summary = tmp_path / "summary.md"
+    payload = tmp_path / "misses.json"
+    assert (
+        sel.main(
+            [
+                "misses",
+                "--selection-in",
+                str(selection),
+                "--junit",
+                str(report),
+                "--json-out",
+                str(payload),
+                "--summary",
+                str(summary),
+            ]
+        )
+        == 0
+    )
+    body = summary.read_text(encoding="utf-8")
+    assert "## Shadow selection misses" in body
+    assert "shadow selection of 1 test has nothing to miss" in body
+    loaded = json.loads(payload.read_text(encoding="utf-8"))
+    assert loaded["available"] is True
+    assert loaded["missed"] == []
+    assert loaded["would_escalate"] is False

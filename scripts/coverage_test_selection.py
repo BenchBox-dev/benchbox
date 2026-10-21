@@ -947,20 +947,16 @@ def _cmd_misses(args: argparse.Namespace) -> int:
     report = miss_report(selected, failed)
     report.update({"available": not notes, "reason": "; ".join(notes)})
     lines = ["## Shadow selection misses"]
+    picked = f"{len(selected)} test" if len(selected) == 1 else f"{len(selected)} tests"
+    broken = f"{len(failed)} test" if len(failed) == 1 else f"{len(failed)} tests"
     if notes:
         lines.append(f"Shadow selection misses: not available ({'; '.join(notes)}).")
     elif not failed:
-        lines.append(
-            f"No failures in the medium-test shards; shadow selection of {len(selected)} tests has nothing to miss."
-        )
+        lines.append(f"No failures in the medium-test shards; shadow selection of {picked} has nothing to miss.")
     elif not report["missed"]:
-        lines.append(
-            f"No misses: all {len(failed)} failed tests were covered by the shadow selection of {len(selected)} tests."
-        )
+        lines.append(f"No misses: all {broken} were covered by the shadow selection of {picked}.")
     else:
-        lines.append(
-            f"Shadow selection of {len(selected)} tests missed {len(report['missed'])} of {len(failed)} failed tests."
-        )
+        lines.append(f"Shadow selection of {picked} missed {len(report['missed'])} of {broken}.")
         lines.extend(f"- {node}" for node in report["missed"])
     lines.append(f"Would escalate on misses: {'yes' if report['would_escalate'] else 'no'}.")
     for line in lines:
