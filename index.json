@@ -15738,6 +15738,13 @@
       "status": "open",
       "title": "Oracle read evidence still accepts reads that show none of the head file's content"
     },
+    "oracle-response-ingress-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Normalize harmless oracle response drift without weakening decisions"
+    },
     "oracle-review-automatic-reevaluation-20261021": {
       "claim": null,
       "needs": [],
