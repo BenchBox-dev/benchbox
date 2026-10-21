@@ -15498,6 +15498,13 @@
       "status": "done",
       "title": "Verify the oracle follow-up sequence end to end after its last change merges"
     },
+    "oracle-gate-status-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Post the merge gate as an App status from trusted develop code (oracle-gate)"
+    },
     "oracle-jev-gateway-gap": {
       "claim": null,
       "needs": [],

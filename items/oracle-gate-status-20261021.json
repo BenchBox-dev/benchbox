@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Unresolved oracle thread -> oracle-gate failure; resolving it flips to success within bridge or sweep latency (observed on a real PR)",
+    "A valid stand-in flips the gate; extra text does not",
+    "A PR editing oracle-verdict.yml, oracle-review.yml or oracle_gate.py cannot change its own gate result (runs develop code)",
+    "Unit tests for decide parity with oracle_review_check"
+  ],
+  "description": "The required oracle-review check runs from the PR's own copy of oracle-review.yml (pull_request), and the ruleset requires the context without an integration_id, so a PR can weaken the check that judges it. oracle-verdict cannot carry gate semantics: the hosted post job and the planned local executor both write it. Owner decision: new context oracle-gate. Add standalone _project/scripts/oracle_gate.py outside _project/scripts/oracle_reviewers/ (which the oracle-local plan freezes then deletes), reusing oracle_review_check.decide semantics, run from pull_request_target, issue_comment (stand-in), a workflow_run bridge from review and thread events, and the hourly sweep; it is the only writer of oracle-gate, via the oracle App. Exempt-only -> success; SHIP with no unresolved oracle threads -> success; valid stand-in for the exact head -> success; else failure.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:44:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "99c59ca5cf84415588f4618bd62ed022",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    }
+  ]
+}
