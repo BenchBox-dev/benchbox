@@ -2,6 +2,7 @@
   "acceptance": [
     "oracle-review.yml uses --with pyyaml==6.0.3; workflow test pins it"
   ],
+  "context": "Done in #3225 (merge 09f68cf04): oracle-review.yml uses --with pyyaml==6.0.3; test_checker_dependency_is_pinned added.",
   "description": "oracle-review.yml:104 runs uv run --no-project --with pyyaml unpinned in a required gate; oracle-verdict.yml pins pyyaml==6.0.3.",
   "sessions": [
     {
@@ -19,6 +20,14 @@
       "generation": "e6301361d05a4918af35f6192d3ae69a",
       "op": "take",
       "op_id": "8006a2212de94b90a2110a7cd21d46e3",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T13:45:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8c955d345770402b83fe1bef76b177c8",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
