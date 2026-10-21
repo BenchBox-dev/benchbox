@@ -37,7 +37,12 @@ from benchbox.core.results.schema_policy import (
     supports_row_count_validation,
 )
 from benchbox.core.results.subscale_policy import NONSTANDARD_COMPLIANCE_CLASS, unofficial_metric_marker
-from benchbox.core.results.timing_fields import bundle_timing_field_paths, platform_timing_problems, run_timing_problems
+from benchbox.core.results.timing_fields import (
+    bundle_timing_field_paths,
+    net_estimate_problems,
+    platform_timing_problems,
+    run_timing_problems,
+)
 from benchbox.validation.bundle import REQUIRED_TOP_KEYS
 
 if TYPE_CHECKING:
@@ -193,7 +198,7 @@ def _validate_timing_fields(payload: Mapping[str, Any], version: Any, run: Mappi
         timing_paths = bundle_timing_field_paths(payload)
         if timing_paths:
             raise SchemaV2ValidationError(f"{timing_paths[0]} requires schema version 2.4 or later")
-    run_problems = run_timing_problems(run)
+    run_problems = [*run_timing_problems(run), *net_estimate_problems(payload)]
     if run_problems:
         raise SchemaV2ValidationError(f"run.{run_problems[0]}")
     queries = payload.get("queries")

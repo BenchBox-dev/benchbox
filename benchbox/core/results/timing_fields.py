@@ -10,6 +10,8 @@ RUN_TIMING_FIELDS = ("timing_method", "net_estimate_status", "platform_timing")
 CLIENT_LINK_TIMING_FIELDS = ("probed_at",)
 
 KNOWN_TIMING_METHODS = frozenset({1, 2})
+NET_ESTIMATE_MIN_TIMING_METHOD = 2
+EMBEDDED_ENDPOINT_CLASS = "embedded_process"
 NET_ESTIMATE_STATUSES = frozenset(
     {
         "eligible",
@@ -138,6 +140,24 @@ def run_timing_problems(run: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+def net_estimate_problems(payload: Mapping[str, Any]) -> list[str]:
+    run = payload.get("run")
+    if not isinstance(run, Mapping) or run.get("net_estimate_status") != "eligible":
+        return []
+    problems: list[str] = []
+    timing_method = run.get("timing_method")
+    if type(timing_method) is not int or timing_method < NET_ESTIMATE_MIN_TIMING_METHOD:
+        problems.append(
+            f"net_estimate_status 'eligible' requires timing_method {NET_ESTIMATE_MIN_TIMING_METHOD} or later, "
+            f"got {timing_method!r}"
+        )
+    platform = payload.get("platform")
+    deployment = platform.get("deployment") if isinstance(platform, Mapping) else None
+    if isinstance(deployment, Mapping) and deployment.get("endpoint_class") == EMBEDDED_ENDPOINT_CLASS:
+        problems.append("net_estimate_status 'eligible' is not allowed for an embedded run; use 'embedded'")
+    return problems
+
+
 def bundle_timing_field_paths(payload: Mapping[str, Any]) -> list[str]:
     paths: list[str] = []
     run = payload.get("run")
@@ -169,6 +189,7 @@ __all__ = [
     "RUN_TIMING_FIELDS",
     "TIMING_FIELDS_SCHEMA_VERSION",
     "bundle_timing_field_paths",
+    "net_estimate_problems",
     "platform_timing_problems",
     "run_timing_problems",
     "supports_timing_fields",

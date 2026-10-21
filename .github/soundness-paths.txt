@@ -68,6 +68,11 @@ file	benchbox/core/results/schema_policy.py
 file	benchbox/core/results/timing_fields.py
 file	benchbox/core/results/subscale_policy.py
 file	results-data/validate_corpus.py
+file	benchbox/core/results/loader.py
+file	benchbox/core/results/schema.py
+file	benchbox/core/results/models.py
+file	benchbox/core/results/query_execution.py
+file	benchbox/core/results/environment.py
 file	_project/scripts/explorer_publish.py
 file	scripts/generate_corpus_inventory.py
 file	scripts/validate_submission.py

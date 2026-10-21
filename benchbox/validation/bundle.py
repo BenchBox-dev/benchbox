@@ -71,14 +71,19 @@ def _load_timing_field_helpers():
     return (
         module.platform_timing_problems,
         module.run_timing_problems,
+        module.net_estimate_problems,
         module.bundle_timing_field_paths,
         module.supports_timing_fields,
     )
 
 
-platform_timing_problems, run_timing_problems, bundle_timing_field_paths, supports_timing_fields = (
-    _load_timing_field_helpers()
-)
+(
+    platform_timing_problems,
+    run_timing_problems,
+    net_estimate_problems,
+    bundle_timing_field_paths,
+    supports_timing_fields,
+) = _load_timing_field_helpers()
 
 
 PRIVATE_LOCAL_PATH_RE = re.compile(
@@ -688,6 +693,11 @@ def _validate_timing_field_versions(data: dict, version: Any, vr: ValidationResu
         return
     for field_path in bundle_timing_field_paths(data):
         vr.error(f"{field_path} requires schema version 2.4 or later")
+
+
+def _validate_net_estimate_status(data: dict, vr: ValidationResult) -> None:
+    for problem in net_estimate_problems(data):
+        vr.error(f"run.{problem}")
 
 
 def _validate_benchmark_section(benchmark: Any, vr: ValidationResult) -> None:
@@ -2124,6 +2134,7 @@ def _validate_bundle(
     _validate_public_cost_section(data, vr)
     _validate_queries_section(data.get("queries", []), version, vr)
     _validate_timing_field_versions(data, version, vr)
+    _validate_net_estimate_status(data, vr)
     _warn_empty_result_rows(data, vr)
     _warn_timing_plateau(data, vr)
     _warn_small_scale_floor(data, vr)

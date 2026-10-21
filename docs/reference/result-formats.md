@@ -178,7 +178,7 @@ round trip is removed; see the
 | `queries[].platform_timing` | The platform's own timing for the query, captured by platform statement ID: `source`, `requests` (one entry per request with its `id`, `attempt`, `kind` of `query`, `begin`, `commit` or `setup`, and raw `fields` in ms and bytes), the derived `platform_ms`, optional `queue_ms`, `compile_ms` and `exec_ms`, `cache_hit`, and `status`. `valid` requires `platform_ms`; `suspect` and `unavailable` require a `reason`. Values are marked, never deleted, and unknown keys are rejected. |
 | `run.timing_method` | `1` or `2`, naming the timer scope. Runs without it are method 1. Method 2 times only the query's own requests. |
 | `run.platform_timing` | Run summary, all required: `source`, its `definition` class (`server_complete` or `includes_fetch`), and `coverage`, the share of measured queries with a valid `platform_ms` (0 to 1). |
-| `run.net_estimate_status` | `eligible` when the round-trip estimate may be shown for this run, otherwise the reason it may not: `embedded`, `endpoint_unknown`, `timing_method`, `probe_samples`, `probe_unverified` or `floor_suspect`. |
+| `run.net_estimate_status` | `eligible` when the round-trip estimate may be shown for this run, otherwise the reason it may not: `embedded`, `endpoint_unknown`, `timing_method`, `probe_samples`, `probe_unverified` or `floor_suspect`. `eligible` requires `run.timing_method` 2 and is rejected when `platform.deployment.endpoint_class` is `embedded_process`. |
 | `environment.client_link.probed_at` | ISO 8601 time the statement overhead probe ran. |
 
 ##### Execution variants (schema 2.3)

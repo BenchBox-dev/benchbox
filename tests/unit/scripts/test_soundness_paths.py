@@ -146,7 +146,6 @@ def test_soundness_predicate_matches_review_required_paths(path: str) -> None:
         "benchbox/platforms/duckdb_introspection_notes.md",
         "benchbox/platforms/clickhouse/adapter.py",
         "benchbox/core/results/exporter.py",
-        "benchbox/core/results/schema.py",
         "benchbox/core/results/anonymization.py.bak",
         "benchbox/core/results/anonymization_specs.yaml.example",
         "results-data/bundles/tpch/duckdb/sf1.json",

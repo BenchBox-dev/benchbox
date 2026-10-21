@@ -34,7 +34,7 @@ from benchbox.core.results.schema_policy import (
     supports_round_trip_timing_fields,
     supports_row_count_validation,
 )
-from benchbox.core.results.timing_fields import bundle_timing_field_paths, run_timing_problems
+from benchbox.core.results.timing_fields import bundle_timing_field_paths, net_estimate_problems, run_timing_problems
 from benchbox.validation.bundle import COMPANION_SUFFIXES
 
 logger = logging.getLogger(__name__)
@@ -154,6 +154,7 @@ def _validate_versioned_query_extensions(data: dict[str, Any]) -> None:
             raise ValueError(f"{timing_paths[0]} requires schema version 2.4 or later, got {version!r}")
     run_section = data.get("run")
     run_problems = run_timing_problems(run_section) if isinstance(run_section, dict) else []
+    run_problems.extend(net_estimate_problems(data))
     if run_problems:
         raise ValueError(f"run.{run_problems[0]}")
     if supports_row_count_validation(version):

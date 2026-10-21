@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `platform_timing` and `net_estimate_status`, plus
   `environment.client_link.probed_at`. Producers still write 2.3; the fields
   support comparing local and cloud runs with the client round trip removed.
+  A run marked `net_estimate_status: eligible` must use `timing_method` 2 and
+  must not be embedded.
 - `benchbox.utils.dialect_utils.translate_ddl(ddl, target_dialect, source_dialect, identify, **options)`
   translates DDL with the bundled SQLGlot runtime's `DdlOptions` and engine-specific
   table layouts. It is the only module allowed to import the runtime's DDL module; a

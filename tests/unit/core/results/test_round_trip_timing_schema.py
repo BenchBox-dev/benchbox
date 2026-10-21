@@ -16,6 +16,7 @@ from benchbox.core.results.schema_policy import CURRENT_SCHEMA_VERSION, RUNTIME_
 from benchbox.validation.bundle import (
     ValidationResult,
     _validate_environment_client_link,
+    _validate_net_estimate_status,
     _validate_run_section,
     _validate_single_query,
     _validate_timing_field_versions,
@@ -192,6 +193,51 @@ def test_bundle_validator_accepts_well_formed_run_timing():
 )
 def test_bundle_validator_rejects_malformed_run_timing(run_fields, fragment):
     assert any(fragment in error for error in _run_errors(run_fields))
+
+
+def _estimate_bundle(run_fields: dict, endpoint_class: str) -> dict:
+    bundle = _bundle_2_4()
+    for key in ("timing_method", "net_estimate_status"):
+        bundle["run"].pop(key)
+    bundle["run"].update(run_fields)
+    bundle["platform"].setdefault("deployment", {})["endpoint_class"] = endpoint_class
+    return bundle
+
+
+@pytest.mark.parametrize(
+    ("run_fields", "endpoint_class", "fragment"),
+    [
+        ({"net_estimate_status": "eligible"}, "cloud_endpoint", "requires timing_method 2 or later, got None"),
+        ({"net_estimate_status": "eligible", "timing_method": 1}, "cloud_endpoint", "requires timing_method 2"),
+        ({"net_estimate_status": "eligible", "timing_method": 2}, "embedded_process", "not allowed for an embedded"),
+    ],
+)
+def test_validators_reject_an_ineligible_eligible_net_estimate(run_fields, endpoint_class, fragment):
+    bundle = _estimate_bundle(run_fields, endpoint_class)
+    vr = ValidationResult(path="<test>")
+    _validate_net_estimate_status(bundle, vr)
+    assert any(error.startswith("run.") and fragment in error for error in vr.errors)
+    with pytest.raises(SchemaV2ValidationError, match=fragment):
+        SchemaV2Validator().validate(bundle)
+    with pytest.raises(ValueError, match=fragment):
+        reconstruct_benchmark_results(bundle)
+
+
+@pytest.mark.parametrize(
+    ("run_fields", "endpoint_class"),
+    [
+        ({"net_estimate_status": "eligible", "timing_method": 2}, "cloud_endpoint"),
+        ({"net_estimate_status": "embedded", "timing_method": 2}, "embedded_process"),
+        ({"net_estimate_status": "timing_method", "timing_method": 1}, "cloud_endpoint"),
+    ],
+)
+def test_validators_accept_consistent_net_estimate_status(run_fields, endpoint_class):
+    bundle = _estimate_bundle(run_fields, endpoint_class)
+    vr = ValidationResult(path="<test>")
+    _validate_net_estimate_status(bundle, vr)
+    assert vr.errors == []
+    SchemaV2Validator().validate(bundle)
+    assert reconstruct_benchmark_results(bundle).net_estimate_status == run_fields["net_estimate_status"]
 
 
 def test_bundle_validator_checks_probed_at_type():
