@@ -4,6 +4,7 @@
     "Owner review",
     "Docs say attestations are supplementary to the pinned sha256"
   ],
+  "context": "Closed by owner decision: the ship-no-ship design is not being pursued at present.",
   "description": "Plan section 16 step P5. Attest release wheels with GitHub artifact attestations (free for public repositories). Supplementary only: BenchBox's trust root stays the sha256 pinned in a reviewed BenchBox PR. Touches the release workflow, so the owner reviews.",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "op": "create",
       "op_id": "bb8a51c284ca4dd58f161d40fdfdffe3",
       "session_id": "843d10c2193d483aba6b1b07dad544c1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T20:24:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5c489099c9504fb794e5f467531d745e",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
