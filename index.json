@@ -15808,7 +15808,7 @@
     "oracle-same-head-rebuttal-rereview-20261017": {
       "claim": null,
       "needs": [],
-      "priority": "medium",
+      "priority": "high",
       "status": "open",
       "title": "An author cannot get the oracle to reconsider a disputed finding without pushing a new commit"
     },
