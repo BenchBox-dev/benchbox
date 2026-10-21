@@ -4,7 +4,7 @@
     "A scheduled or documented refresh of the duration file exists",
     "Worst shard within about 10% of the mean over at least 10 PR runs"
   ],
-  "context": "Corrected earlier: the slowest shard was shard 0, not shard 3. Measured 2026-10-21 on PR #3218 runs 39541240878 (717/604/567/582 s) and 39544830455 (726/527/578/608 s).\n\nHOLD (user decision 2026-10-21): do not change trunk.yml until PR #3222 (scale per-test timeouts in the coverage-measured trunk shards) merges; both edit the trunk.yml medium shard step and would conflict. After it lands, rebase on it. Input caution: trunk shards now record per-test line coverage (#3200), which slows tight loops such as the ClickBench and TPC-DI generate_data tests far beyond the suite average. The current tests/fixtures/medium_shard_durations.json was built from pull-request shards without coverage, so it understates those tests on trunk. Build a trunk duration file from coverage-measured trunk shard junit reports instead of reusing it. #3200 (select medium tests from a line-coverage map) is independent of the split and composes with it.",
+  "context": "2026-10-21: remaining part (1) for trunk.yml is delivered by trunk-coverage-workflow-map-v2-20261021, which returns trunk medium-test to uninstrumented duration-weighted shards. test.yml and the refresh remain here.",
   "description": "DONE in #3218 (merged b38ed2385): the pull-request workflow (ci.yml) now assigns medium tests to the 4 shards longest-first using tests/fixtures/medium_shard_durations.json (988 tests of at least 0.25 s plus a 0.0278 s default for the rest, built from CI run 39538637499), and each shard writes a junit report. Measured on CI, slowest shard before 1020 s (others 632, 609, 426); after 717 s and 726 s on two runs (others 527-608 s), a drop of about 300 s (30%). The predicted balance from the real per-test timings was 843/848/843/844 s (max/mean 1.004), but the measured shards are still uneven (527 to 726 s) because the prediction ignores per-shard fixed cost and test interaction on the runner; that gap was not investigated. REMAINING: (1) trunk.yml and test.yml still use round-robin; (2) the duration file will drift as tests change and nothing regenerates it; _project/scripts/update_test_durations.py --min-seconds 0.25 rebuilds it from shard junit reports; (3) investigate why measured shard times stay uneven (shard 0 still slowest by about 120 s); (4) tests added since the file was built are weighted at the default.",
   "links": [
     "https://claude.ai/artifact/LjQocGvpr9RkJwMAAp18Z4",
@@ -50,6 +50,14 @@
       "op": "update",
       "op_id": "9968efa39f344000ae84c58924732a0e",
       "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:47:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f71af7d3d7b74680aa57f8af6444c316",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
 }
