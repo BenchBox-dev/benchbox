@@ -26380,15 +26380,10 @@
       "title": "pg_duckdb: fix the claimed-but-skipped layout tuning, and add a native method"
     },
     "tuning-pg-mooncake-native-layout-20261017": {
-      "claim": {
-        "expires_at": "2026-10-22T15:53:15Z",
-        "generation": "a94023f876444568a61248f2f6f248a6",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a00a661093086d4fdaf97c3f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "pg_mooncake: define a layout-tuning method for columnstore tables"
     },
     "tuning-physical-identifier-resolution-20261001": {
