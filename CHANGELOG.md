@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The Databricks adapter now requests the bundled SQLGlot runtime's opt-in
+  `safe_division` rewrite through `apply_rewrite` after alias deduplication.
+  Every division, including nested ones, still becomes `TRY_DIVIDE`, so a zero
+  divisor still returns NULL. Queries without a division are now re-rendered by
+  the runtime (for example comma joins become `CROSS JOIN`) instead of being
+  passed through verbatim; the result sets are unchanged.
 - TPC-DI schema, query, loader, validation and SCD translation now call
   `translate_sql_query` with explicit `identify=False` instead of the vendored
   SQLGlot directly, so the DuckDB `ALL` restore and SQLite fix-ups apply there

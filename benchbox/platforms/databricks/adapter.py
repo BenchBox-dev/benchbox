@@ -2565,8 +2565,14 @@ class DatabricksAdapter(PlatformAdapter):
         return rewrite_tpcdi_for_databricks(query)
 
     def _normalize_databricks_query(self, query: str) -> str:
+        from benchbox.utils.dialect_utils import apply_rewrite
+
         query = self._deduplicate_output_aliases(query)
-        return self._safeguard_databricks_division(query)
+        try:
+            return apply_rewrite("safe_division", query, "databricks")
+        except Exception as e:
+            self.log_very_verbose(f"Division safeguard skipped (unparseable Databricks SQL): {e}")
+            return query
 
     @staticmethod
     def _order_group_bare_refs(scope, column_cls) -> set:
