@@ -214,17 +214,20 @@ jobs:
           merge-multiple: false
 
       - name: Build the coverage test map
+        shell: bash
         run: |
           set -euo pipefail
+          shopt -s nullglob globstar
+          args=()
+          for shard in t2-shards/**/coverage-shard-*.dat; do
+            args+=(--data "$shard")
+          done
+          test "${#args[@]}" -gt 0
           uv run -- python scripts/coverage_test_selection.py build-map \
-            --data "t2-shards/t2-medium-shard-0-${{ github.sha }}/coverage-shard-0.dat" \
-            --data "t2-shards/t2-medium-shard-1-${{ github.sha }}/coverage-shard-1.dat" \
-            --data "t2-shards/t2-medium-shard-2-${{ github.sha }}/coverage-shard-2.dat" \
-            --data "t2-shards/t2-medium-shard-3-${{ github.sha }}/coverage-shard-3.dat" \
+            "${args[@]}" \
             --sha "${{ github.sha }}" \
             --out t2-coverage-map/map.json
           test -s t2-coverage-map/map.json
-
       - name: Upload coverage test map
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:

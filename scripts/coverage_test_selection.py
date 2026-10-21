@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import fnmatch
 import json
 import os
 import re
@@ -22,6 +23,7 @@ MAP_ARTIFACT_PREFIX = "t2-coverage-map-"
 MAX_MAP_BEHIND_COMMITS = 50
 MAX_SELECTED_NODEIDS = 2000
 TESTS_ROOT = "tests"
+INERT_PATH_PATTERNS = ("docs/*", "*.md", "_project/todo-db-export/*")
 
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 _HUNK_RE = re.compile(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
@@ -223,6 +225,10 @@ def _is_test_file(path: str) -> bool:
     return pure.parts[:1] == (TESTS_ROOT,) and pure.name.startswith("test_") and pure.suffix == ".py"
 
 
+def _is_inert(path: str) -> bool:
+    return any(fnmatch.fnmatchcase(path, pattern) for pattern in INERT_PATH_PATTERNS)
+
+
 def _module_name(path: str) -> str:
     parts = PurePosixPath(path).with_suffix("").parts
     return ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
@@ -295,6 +301,38 @@ def _fallback_inputs(files: list[ChangedFile]) -> list[str]:
     return inputs
 
 
+def _classify_files(
+    repo: Path, mapping: dict | None, files: list[ChangedFile], index: dict
+) -> tuple[set[str], set[str], set[str]]:
+    coverage_hits: set[str] = set()
+    uncovered: set[str] = set()
+    non_python: set[str] = set()
+    for entry in files:
+        if _is_inert(entry.path):
+            continue
+        if not entry.path.endswith(".py"):
+            non_python.add(entry.path)
+            continue
+        if _is_test_file(entry.path) or _is_test_file(entry.old_path):
+            continue
+        if mapping is None:
+            uncovered.add(entry.path)
+            continue
+        if entry.status == "added":
+            uncovered.add(entry.path)
+            continue
+        if entry.status == "modified" and not entry.old_ranges:
+            uncovered.add(entry.old_path)
+            continue
+        lines = [line for old_start, old_count in entry.old_ranges for line in probe_lines(old_start, old_count)]
+        hits, _missed = lookup_hits(index, entry.old_path, lines)
+        coverage_hits.update(hits)
+        if _missed:
+            uncovered.add(entry.old_path)
+    coverage_hits = {node for node in coverage_hits if (repo / node.split("::", 1)[0]).is_file()}
+    return coverage_hits, uncovered, non_python
+
+
 def select_tests(
     repo: Path,
     mapping: dict | None,
@@ -315,36 +353,20 @@ def select_tests(
         if map_sha is None:
             reasons.append("coverage map names no develop SHA")
         else:
-            try:
-                behind = behind_commits(repo, map_sha, base_sha)
-            except SelectionError as exc:
-                reasons.append(str(exc))
+            if not _is_ancestor(repo, map_sha, base_sha):
+                reasons.append(f"coverage map {map_sha} is not an ancestor of the base")
             else:
-                if behind > MAX_MAP_BEHIND_COMMITS:
-                    reasons.append(
-                        f"coverage map is {behind} develop commits behind the base (limit {MAX_MAP_BEHIND_COMMITS})"
-                    )
+                try:
+                    behind = behind_commits(repo, map_sha, base_sha)
+                except SelectionError as exc:
+                    reasons.append(str(exc))
+                else:
+                    if behind > MAX_MAP_BEHIND_COMMITS:
+                        reasons.append(
+                            f"coverage map is {behind} develop commits behind the base (limit {MAX_MAP_BEHIND_COMMITS})"
+                        )
     index = mapping.get("files") if isinstance(mapping, dict) and isinstance(mapping.get("files"), dict) else {}
-    coverage_hits: set[str] = set()
-    uncovered: set[str] = set()
-    non_python: set[str] = set()
-    for entry in files:
-        if not entry.path.endswith(".py"):
-            non_python.add(entry.path)
-            continue
-        if _is_test_file(entry.path) or _is_test_file(entry.old_path):
-            continue
-        if mapping is None:
-            uncovered.add(entry.path)
-            continue
-        if entry.status == "added":
-            uncovered.add(entry.path)
-            continue
-        lines = [line for old_start, old_count in entry.old_ranges for line in probe_lines(old_start, old_count)]
-        hits, _missed = lookup_hits(index, entry.old_path, lines)
-        coverage_hits.update(hits)
-        if _missed:
-            uncovered.add(entry.old_path)
+    coverage_hits, uncovered, non_python = _classify_files(repo, mapping, files, index)
     code_routed = decision is None or decision.get("needs_code_ci") is not False
     if non_python and code_routed:
         reasons.append(f"non-Python changes need the full tier: {', '.join(sorted(non_python))}")
@@ -357,11 +379,14 @@ def select_tests(
     )
     importers = source_importers(repo, sorted(uncovered)) if uncovered else {}
     importer_tests = sorted({test for tests in importers.values() for test in tests})
-    selected = set(coverage_hits) | set(changed_tests) | set(fallback) | set(importer_tests)
-    if len(selected) > MAX_SELECTED_NODEIDS and not reasons:
-        reasons.append(f"selection of {len(selected)} tests exceeds the {MAX_SELECTED_NODEIDS} limit")
-    if reasons:
+    union = set(coverage_hits) | set(changed_tests) | set(fallback) | set(importer_tests)
+    if len(union) > MAX_SELECTED_NODEIDS:
+        reasons.append(f"selection of {len(union)} tests exceeds the {MAX_SELECTED_NODEIDS} limit")
         selected = set(fallback) | set(importer_tests)
+    else:
+        selected = union
+    if not selected and any(not _is_inert(entry.path) for entry in files):
+        reasons.append("no tests selected for the changed files")
     elapsed = _mono_time() - start
     counts = (
         f"coverage={len(coverage_hits)} changed_tests={len(changed_tests)} "
@@ -466,14 +491,21 @@ def _download_artifact(repo: Path, slug: str, run_id: int, name: str, target: Pa
     return proc.returncode == 0
 
 
-def _read_downloaded_map(target: Path) -> tuple[dict, Path] | None:
+def _read_downloaded_map(target: Path, head: str) -> tuple[dict, Path] | None:
     if not target.is_dir():
         return None
-    for candidate in sorted(target.rglob("*.json")):
+    candidates = sorted(target.rglob("*.json"))
+    preferred = target / "map.json"
+    if preferred in candidates:
+        candidates.remove(preferred)
+        candidates.insert(0, preferred)
+    for candidate in candidates:
         try:
-            return read_map(candidate), candidate
+            payload = read_map(candidate)
         except SelectionError:
             continue
+        if payload.get("sha") == head:
+            return payload, candidate
     return None
 
 
@@ -489,8 +521,8 @@ def fetch_map(
             target = dest / name
             if not _download_artifact(repo, resolved, run_id, name, target):
                 continue
-            found = _read_downloaded_map(target)
-            if found is not None and found[0].get("sha") == head:
+            found = _read_downloaded_map(target, head)
+            if found is not None:
                 return {
                     "status": "found",
                     "sha": head,
@@ -618,14 +650,6 @@ def _cmd_select(args: argparse.Namespace) -> int:
     if args.json_out is not None:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
         args.json_out.write_text(json.dumps(result, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-    _write_github_output(
-        args.github_output,
-        {
-            "coverage-escalated": str(result["escalate"]).lower(),
-            "coverage-selected-count": str(len(result["selected"])),
-            "coverage-map-sha": str(result["map_sha"] or ""),
-        },
-    )
     _append_summary(args.summary, f"Coverage selection: {result['reason']}.")
     print(result["reason"])
     print(f"escalate={str(result['escalate']).lower()} selected={len(result['selected'])}")
@@ -658,7 +682,6 @@ def build_parser() -> argparse.ArgumentParser:
     select_parser.add_argument("--decision-in", type=Path, default=None)
     select_parser.add_argument("--nodeids-out", type=Path, default=None)
     select_parser.add_argument("--json-out", type=Path, default=None)
-    select_parser.add_argument("--github-output", type=Path, default=None)
     select_parser.add_argument("--summary", type=Path, default=None)
     select_parser.set_defaults(func=_cmd_select)
     return parser

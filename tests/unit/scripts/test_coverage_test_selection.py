@@ -329,19 +329,35 @@ def test_selection_over_the_named_limit_escalates(repo: Path, monkeypatch: pytes
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
     assert result["escalate"] is True
     assert "exceeds" in result["reason"]
+    assert set(result["selected"]) == set(result["fallback_tests"]) | set(result["importer_tests"])
+
+
+def test_inert_paths_never_escalate(repo: Path) -> None:
+    map_sha = _head(repo)
+    _write(repo, "docs/guide.md", "# changed\n")
+    _write(repo, "CHANGELOG.md", "# changed\n")
+    _write(repo, "_project/todo-db-export/export.json", "{}\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    base_sha = _head(repo)
+    assert files
+    assert all(sel._is_inert(entry.path) for entry in files)
+    for decision in ({"needs_code_ci": True}, {"needs_code_ci": False}, None):
+        assert sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha, decision=decision)["escalate"] is False
 
 
 def test_non_python_change_escalates_only_for_code_routed_trees(repo: Path) -> None:
     map_sha = _head(repo)
-    _write(repo, "docs/guide.md", "# changed\n")
+    _write(repo, "assets/logo.png", "fake-png\n")
     _commit_all(repo)
     files = sel.changed_files(repo, map_sha)
     base_sha = _head(repo)
     coded = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha, decision={"needs_code_ci": True})
     assert coded["escalate"] is True
-    assert "docs/guide.md" in coded["reason"]
+    assert "assets/logo.png" in coded["reason"]
     routed_away = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha, decision={"needs_code_ci": False})
-    assert routed_away["escalate"] is False
+    assert routed_away["escalate"] is True
+    assert "no tests selected" in routed_away["reason"]
     unknown = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
     assert unknown["escalate"] is True
 
@@ -354,6 +370,110 @@ def test_deleted_source_still_matches_coverage_by_old_path(repo: Path) -> None:
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
     assert result["escalate"] is False
     assert "tests/unit/core/test_engine.py::test_x" in result["selected"]
+
+
+def test_empty_selection_with_code_changes_escalates(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    map_sha = _head(repo)
+    monkeypatch.setattr(sel.preflight_targets, "map_tests", lambda _repo, _inputs: [])
+    files = [
+        sel.ChangedFile(
+            path="benchbox/core/engine.py",
+            old_path="benchbox/core/engine.py",
+            status="modified",
+            old_ranges=[(99, 1)],
+        )
+    ]
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
+    assert result["escalate"] is True
+    assert "no tests selected" in result["reason"]
+
+
+def test_stale_coverage_node_ids_are_dropped(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    map_sha = _head(repo)
+    (repo / "tests/unit/core/test_engine.py").unlink()
+    monkeypatch.setattr(sel.preflight_targets, "map_tests", lambda _repo, _inputs: [])
+    files = [
+        sel.ChangedFile(
+            path="benchbox/core/engine.py",
+            old_path="benchbox/core/engine.py",
+            status="modified",
+            old_ranges=[(1, 1)],
+        )
+    ]
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
+    assert result["coverage_tests"] == []
+    assert "tests/unit/core/test_engine.py::test_x" not in result["selected"]
+    assert result["escalate"] is True
+    assert "no tests selected" in result["reason"]
+
+
+def test_zero_hunk_modified_source_counts_as_uncovered(repo: Path) -> None:
+    map_sha = _head(repo)
+    _write(repo, "tests/unit/core/test_engine.py", "from benchbox.core.engine import x\n")
+    _commit_all(repo)
+    files = [
+        sel.ChangedFile(
+            path="benchbox/core/engine.py",
+            old_path="benchbox/core/engine.py",
+            status="modified",
+            old_ranges=[],
+        )
+    ]
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, _head(repo))
+    assert result["escalate"] is False
+    assert result["uncovered_sources"] == ["benchbox/core/engine.py"]
+    assert "tests/unit/core/test_engine.py" in result["importer_tests"]
+    assert "tests/unit/core/test_engine.py" in result["selected"]
+
+
+def test_escalation_runs_the_full_union(repo: Path) -> None:
+    map_sha = _head(repo)
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _write(repo, "tests/unit/test_unrelated.py", "y = 2\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    result = sel.select_tests(repo, None, files, _head(repo))
+    assert result["escalate"] is True
+    assert "tests/unit/test_unrelated.py" in result["selected"]
+    assert set(result["fallback_tests"]) <= set(result["selected"])
+    assert set(result["importer_tests"]) <= set(result["selected"])
+
+
+def test_map_sha_outside_base_ancestry_escalates(repo: Path) -> None:
+    map_sha = _head(repo)
+    _git(repo, "checkout", "-b", "side")
+    _write(repo, "benchbox/core/engine.py", "x = 2\n")
+    _commit_all(repo)
+    side_sha = _head(repo)
+    _git(repo, "checkout", "feature")
+    result = sel.select_tests(repo, _mapping(repo, side_sha), [], _head(repo))
+    assert map_sha != side_sha
+    assert result["escalate"] is True
+    assert "not an ancestor" in result["reason"]
+    assert result["behind_commits"] is None
+
+
+def test_read_downloaded_map_prefers_matching_map_json(repo: Path, tmp_path: Path) -> None:
+    head = _head(repo)
+    target = tmp_path / "artifact"
+    target.mkdir()
+    (target / "a.json").write_text(json.dumps(_mapping(repo, "0" * 40)), encoding="utf-8")
+    (target / "map.json").write_text(json.dumps(_mapping(repo, head)), encoding="utf-8")
+    found = sel._read_downloaded_map(target, head)
+    assert found is not None
+    assert found[1].name == "map.json"
+    assert sel._read_downloaded_map(target, "1" * 40) is None
+
+
+def test_read_downloaded_map_scans_past_mismatched_candidates(repo: Path, tmp_path: Path) -> None:
+    head = _head(repo)
+    target = tmp_path / "artifact"
+    target.mkdir()
+    (target / "map.json").write_text(json.dumps(_mapping(repo, "0" * 40)), encoding="utf-8")
+    (target / "b.json").write_text(json.dumps(_mapping(repo, head)), encoding="utf-8")
+    found = sel._read_downloaded_map(target, head)
+    assert found is not None
+    assert found[1].name == "b.json"
 
 
 def test_select_cli_writes_nodeids_and_json(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -76,7 +76,7 @@ check stays pending forever on a change that does not touch it.
 
 | Context | Runs for | Jobs it requires |
 | --- | --- | --- |
-| `core` | `benchbox/`, `tests/`, packaging, executable docs code; framing also on test infrastructure or bundled binary changes | lint, unit tests, the coverage-impact medium selection on every PR (fail-closed escalation runs the heavy tier instead), and when heavy inputs change the medium tests, correctness gate, required local-engine cases, plan-capture gate and DataFusion integration; macOS/Windows TPC-H binary framing on heavy or framing inputs; package smoke and dependency audit on packaging changes |
+| `core` | `benchbox/`, `tests/`, packaging, executable docs code; framing also on test infrastructure or bundled binary changes | lint, unit tests, the coverage-impact medium selection on every PR (changes under `docs/*`, `*.md`, or `_project/todo-db-export/*` are inert; any other fail-closed escalation runs the heavy tier instead), and when heavy inputs change the medium tests, correctness gate, required local-engine cases, plan-capture gate and DataFusion integration; macOS/Windows TPC-H binary framing on heavy or framing inputs; package smoke and dependency audit on packaging changes |
 | `explorer` | explorer pipeline, parity fixtures, `benchbox/core/results/`, `results-data/` | CLI-versus-explorer parity fixtures |
 | `results-data` | `results-data/`, submission validator, `benchbox/core/results/` | corpus inventory and validation, submission validator sync, corpus and explorer-pipeline contract tests |
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |

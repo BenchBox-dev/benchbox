@@ -102,7 +102,6 @@ jobs:
       framing-needed: ${{ steps.classify.outputs.framing-needed }}
       viz-needed: ${{ steps.classify.outputs.viz-needed }}
       heavy-needed: ${{ steps.heavy.outputs.heavy-needed }}
-      coverage-escalated: ${{ steps.coverage-select.outputs.coverage-escalated }}
       unit-core: ${{ steps.units.outputs.unit-core }}
       unit-results-data: ${{ steps.units.outputs.unit-results-data }}
       unit-docs: ${{ steps.units.outputs.unit-docs }}
@@ -237,7 +236,6 @@ jobs:
             --decision-in ci-path-decision.json \
             --nodeids-out coverage-nodeids.txt \
             --json-out coverage-selection.json \
-            --github-output "$GITHUB_OUTPUT" \
             --summary "$GITHUB_STEP_SUMMARY"
           test -s coverage-selection.json
 
