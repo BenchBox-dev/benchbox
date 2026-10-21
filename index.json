@@ -5837,6 +5837,13 @@
       "status": "done",
       "title": "Cost Optimization Engine - Automated Recommendations"
     },
+    "cov-select-shadow-mode-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Ship coverage test selection in shadow mode until its soundness fixes land"
+    },
     "coverage-below-50-modules-wave-plan": {
       "claim": null,
       "needs": [],
