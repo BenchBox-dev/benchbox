@@ -15827,10 +15827,15 @@
       "title": "Report stand-in overrides of any severity and PRs armed while Trunk was red"
     },
     "oracle-standin-doc-contradicts-checker": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-22T18:01:30Z",
+        "generation": "0ba9083119d24f4db38ecb9e9ec3d34a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Fix stand-in approval docs: the check rejects comments that quote the owner"
     },
     "oracle-strike-count-distinct-patches-20261008": {
