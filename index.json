@@ -21481,6 +21481,16 @@
       "status": "done",
       "title": "Ship discoverable templates with the installed package (package resources) so --tuning tuned works outside a repo checkout"
     },
+    "ship-no-ship-gate-parity-20261021": {
+      "claim": null,
+      "needs": [
+        "inert-paths-manifest-20261021",
+        "oracle-same-head-rebuttal-rereview-20261017"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Port fail-closed exemptions, the inert manifest and same-head re-review to ship-no-ship before the local oracle cutover"
+    },
     "shipped-host-scan-binary-robustness": {
       "claim": null,
       "needs": [],
