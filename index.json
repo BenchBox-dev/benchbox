@@ -23467,7 +23467,7 @@
         "ssns-a4-live-check"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "ship-no-ship activation A5: review one or two real BenchBox soundness PRs in proof mode"
     },
     "ssns-doctor-rpath-chain-cap": {
