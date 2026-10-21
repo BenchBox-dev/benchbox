@@ -10,6 +10,7 @@ import re
 import shlex
 import subprocess
 import sys
+import tempfile
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -20,13 +21,16 @@ if str(REPO_ROOT) not in sys.path:
 
 from _project.scripts import preflight_targets
 
-MAP_VERSION = 1
+MAP_VERSION = 2
 MAP_ARTIFACT_PREFIX = "t2-coverage-map-"
 MAX_MAP_BEHIND_COMMITS = 50
-MAX_SELECTED_NODEIDS = 2000
+MAX_SELECTION_RUNTIME_SECONDS = 900.0
+MAX_ARGV_NODEIDS = 10000
+UNKNOWN_TEST_SECONDS = 1.0
 TESTS_ROOT = "tests"
 INERT_PATH_PATTERNS = ("docs/*", "*.md", "_project/todo-db-export/*")
-TRUNK_WORKFLOW_PATH = ".github/workflows/trunk.yml"
+TRUNK_WORKFLOW_PATH = ".github/workflows/trunk-coverage.yml"
+TRUSTED_MAP_EVENTS = ("push", "workflow_dispatch")
 SELECTION_SHADOW = True
 
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -65,6 +69,13 @@ def normalize_context(context: str) -> str | None:
     return node or None
 
 
+def split_phase(context: str) -> tuple[str | None, str]:
+    node, _, phase = context.partition("|")
+    node = node.strip()
+    phase = phase.strip() or "run"
+    return (node or None, phase)
+
+
 def _relative_name(repo: Path, filename: str) -> str | None:
     try:
         return Path(filename).resolve().relative_to(repo.resolve()).as_posix()
@@ -72,7 +83,69 @@ def _relative_name(repo: Path, filename: str) -> str | None:
         return None
 
 
-def build_map(data_files: list[Path], repo: Path, sha: str) -> dict:
+def _junit_case_filename(repo: Path, filename: str, classname: str) -> str | None:
+    if filename:
+        return filename
+    parts = [part for part in classname.split(".") if part]
+    for width in range(len(parts), 0, -1):
+        candidate = "/".join(parts[:width]) + ".py"
+        if (repo / candidate).is_file():
+            return candidate
+    return None
+
+
+def _junit_failed_nodeids(junit_files: list[Path], repo: Path) -> list[str]:
+    import xml.etree.ElementTree as ET
+
+    failed: set[str] = set()
+    for junit in junit_files:
+        try:
+            root = ET.parse(str(junit)).getroot()
+        except (OSError, ET.ParseError) as exc:
+            raise SelectionError(f"shard junit {junit} is unreadable: {exc}") from exc
+        for case in root.iter("testcase"):
+            if case.find("failure") is None and case.find("error") is None:
+                continue
+            name = (case.get("name") or "").strip()
+            classname = (case.get("classname") or "").strip()
+            if not name:
+                continue
+            filename = _junit_case_filename(repo, (case.get("file") or "").strip(), classname)
+            if filename is None:
+                continue
+            module = filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
+            if not classname or classname == module:
+                parts = [filename, name]
+            elif classname.startswith(module + "."):
+                parts = [filename, *classname[len(module) + 1 :].split("."), name]
+            else:
+                parts = [filename, classname.replace(".", "::"), name]
+            failed.add("::".join(part for part in parts if part))
+    return sorted(failed)
+
+
+def _statement_lines(repo: Path, data_file: str, filenames: list[str]) -> dict[str, list[int]]:
+    from coverage import Coverage
+
+    try:
+        cov = Coverage(data_file=data_file, config_file=False)
+        cov.load()
+    except Exception as exc:
+        raise SelectionError(f"coverage data {data_file} is unreadable: {exc}") from exc
+    statements: dict[str, list[int]] = {}
+    for filename in filenames:
+        rel = _relative_name(repo, filename)
+        if rel is None:
+            continue
+        try:
+            _, found, _, _, _ = cov.analysis2(filename)
+        except Exception:
+            continue
+        statements[rel] = sorted(found)
+    return statements
+
+
+def build_map(data_files: list[Path], repo: Path, sha: str, junit_files: list[Path] | None = None) -> dict:
     from coverage import CoverageData
 
     merged = CoverageData()
@@ -80,19 +153,48 @@ def build_map(data_files: list[Path], repo: Path, sha: str) -> dict:
         shard = CoverageData(str(path))
         shard.read()
         merged.update(shard)
-    files: dict[str, dict[str, list[str]]] = {}
+    by_line: dict[str, dict[int, set[str]]] = {}
+    setup_by_line: dict[str, dict[int, set[str]]] = {}
     for filename in merged.measured_files():
         rel = _relative_name(repo, filename)
         if rel is None:
             continue
-        lines: dict[str, set[str]] = {}
         for lineno, contexts in merged.contexts_by_lineno(filename).items():
-            nodes = {node for context in contexts if (node := normalize_context(context))}
-            if nodes:
-                lines.setdefault(str(lineno), set()).update(nodes)
-        if lines:
-            files[rel] = {lineno: sorted(nodes) for lineno, nodes in lines.items()}
-    return {"version": MAP_VERSION, "sha": sha, "files": files}
+            for context in contexts:
+                node, phase = split_phase(context)
+                if node is None:
+                    continue
+                by_line.setdefault(rel, {}).setdefault(lineno, set()).add(node)
+                if phase == "setup":
+                    setup_by_line.setdefault(rel, {}).setdefault(lineno, set()).add(node)
+    nodes = sorted({node for lines in by_line.values() for hit in lines.values() for node in hit})
+    positions = {node: index for index, node in enumerate(nodes)}
+    with tempfile.TemporaryDirectory() as tmp:
+        merged_path = str(Path(tmp) / "merged.dat")
+        writer = CoverageData(merged_path)
+        writer.update(merged)
+        writer.write()
+        statements = _statement_lines(repo, merged_path, list(merged.measured_files()))
+    files: dict[str, dict[str, object]] = {}
+    for rel, lines in by_line.items():
+        entry: dict[str, object] = {
+            "lines": {str(lineno): sorted(positions[node] for node in hit) for lineno, hit in sorted(lines.items())},
+        }
+        if rel in statements:
+            entry["statements"] = statements[rel]
+        setup = setup_by_line.get(rel, {})
+        if setup:
+            entry["setup"] = {
+                str(lineno): sorted(positions[node] for node in hit) for lineno, hit in sorted(setup.items())
+            }
+        files[rel] = entry
+    return {
+        "version": MAP_VERSION,
+        "sha": sha,
+        "nodes": nodes,
+        "files": files,
+        "failed_nodes": _junit_failed_nodeids(list(junit_files or []), repo),
+    }
 
 
 def write_map(mapping: dict, path: Path) -> None:
@@ -105,12 +207,27 @@ def read_map(path: Path) -> dict:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise SelectionError(f"coverage map {path} is unreadable: {exc}") from exc
-    if not isinstance(payload, dict) or payload.get("version") != MAP_VERSION:
-        raise SelectionError(f"coverage map {path} has an unsupported version")
+    if not isinstance(payload, dict):
+        raise SelectionError(f"coverage map {path} has an invalid envelope")
+    version = payload.get("version")
+    if version != MAP_VERSION:
+        raise SelectionError(
+            f"coverage map {path} uses unsupported version {version!r} (expected {MAP_VERSION}); "
+            "rebuild it from a trunk-coverage.yml run"
+        )
     sha = payload.get("sha")
     files = payload.get("files")
+    nodes = payload.get("nodes")
+    failed_nodes = payload.get("failed_nodes", [])
     if not isinstance(sha, str) or not _SHA_RE.match(sha) or not isinstance(files, dict):
         raise SelectionError(f"coverage map {path} has an invalid envelope")
+    if not isinstance(nodes, list) or any(not isinstance(node, str) for node in nodes):
+        raise SelectionError(f"coverage map {path} has an invalid node table")
+    if not isinstance(failed_nodes, list) or any(not isinstance(node, str) for node in failed_nodes):
+        raise SelectionError(f"coverage map {path} has an invalid failed-node list")
+    for rel, entry in files.items():
+        if not isinstance(entry, dict):
+            raise SelectionError(f"coverage map {path} has an invalid entry for {rel}")
     return payload
 
 
@@ -257,21 +374,36 @@ def probe_lines(start: int, count: int) -> list[int]:
     return [line for line in (start, start + 1) if line >= 1]
 
 
-def lookup_hits(index: dict, path: str, lines: list[int]) -> tuple[set[str], list[int]]:
-    covered = index.get(path)
-    hits: set[str] = set()
+def _entry_nodes(entry: dict, nodes: list[str], lineno: int, table: str) -> set[str]:
+    raw = entry.get(table)
+    if not isinstance(raw, dict):
+        return set()
+    indices = raw.get(str(lineno))
+    if not isinstance(indices, list):
+        return set()
+    return {nodes[index] for index in indices if isinstance(index, int) and 0 <= index < len(nodes)}
+
+
+def lookup_hits(entry: dict, nodes: list[str], lines: list[int]) -> tuple[set[str], list[int], set[str]]:
+    covered = entry.get("lines")
     if not isinstance(covered, dict):
-        return hits, list(lines)
+        return set(), list(lines), set()
+    raw_statements = entry.get("statements")
+    statements = set(raw_statements) if isinstance(raw_statements, list) else None
+    hits: set[str] = set()
+    setup_hits: set[str] = set()
     missed: list[int] = []
     for lineno in lines:
-        nodes = covered.get(str(lineno))
-        if isinstance(nodes, list) and nodes:
-            names = {node for node in nodes if isinstance(node, str) and node}
-            if names:
-                hits.update(names)
-                continue
-        missed.append(lineno)
-    return hits, missed
+        if statements is not None and lineno not in statements:
+            missed.append(lineno)
+            continue
+        names = _entry_nodes(entry, nodes, lineno, "lines")
+        if names:
+            hits.update(names)
+            setup_hits.update(_entry_nodes(entry, nodes, lineno, "setup"))
+        else:
+            missed.append(lineno)
+    return hits, missed, setup_hits
 
 
 def _is_test_file(path: str) -> bool:
@@ -355,23 +487,44 @@ def _fallback_inputs(files: list[ChangedFile]) -> list[str]:
     return inputs
 
 
-def _path_hits(index: dict, path: str) -> set[str]:
-    lines = index.get(path)
+def _path_hits(entry: dict, nodes: list[str]) -> set[str]:
+    lines = entry.get("lines")
     if not isinstance(lines, dict):
         return set()
     hits: set[str] = set()
-    for nodes in lines.values():
-        if isinstance(nodes, list):
-            hits.update(node for node in nodes if isinstance(node, str))
+    for indices in lines.values():
+        if isinstance(indices, list):
+            hits.update(nodes[index] for index in indices if isinstance(index, int) and 0 <= index < len(nodes))
     return hits
 
 
-def _classify_files(
-    repo: Path, mapping: dict | None, files: list[ChangedFile], index: dict
-) -> tuple[set[str], set[str], set[str]]:
+def _setup_module_nodes(mapping: dict, setup_nodes: set[str]) -> set[str]:
+    nodes = mapping.get("nodes")
+    if not isinstance(nodes, list):
+        return set()
+    by_module: dict[str, set[str]] = {}
+    for node in nodes:
+        if isinstance(node, str) and node:
+            by_module.setdefault(node.split("::", 1)[0], set()).add(node)
+    expanded: set[str] = set()
+    for node in setup_nodes:
+        expanded.update(by_module.get(node.split("::", 1)[0], set()))
+    return expanded
+
+
+def _classify_files(repo: Path, mapping: dict | None, files: list[ChangedFile]) -> tuple[set[str], set[str], set[str]]:
     coverage_hits: set[str] = set()
     uncovered: set[str] = set()
     non_python: set[str] = set()
+    index: dict = {}
+    nodes: list[str] = []
+    if mapping is not None:
+        raw_index = mapping.get("files")
+        if isinstance(raw_index, dict):
+            index = raw_index
+        raw_nodes = mapping.get("nodes")
+        if isinstance(raw_nodes, list):
+            nodes = raw_nodes
     for entry in files:
         if _is_inert(entry.path):
             continue
@@ -387,15 +540,22 @@ def _classify_files(
             uncovered.add(entry.path)
             continue
         if entry.status == "renamed":
-            coverage_hits.update(_path_hits(index, entry.old_path))
+            old = index.get(entry.old_path)
+            if isinstance(old, dict):
+                coverage_hits.update(_path_hits(old, nodes))
             uncovered.add(entry.path)
         if entry.status == "modified" and not entry.old_ranges:
             uncovered.add(entry.old_path)
             continue
+        old = index.get(entry.old_path)
+        if not isinstance(old, dict):
+            uncovered.add(entry.old_path)
+            continue
         lines = [line for old_start, old_count in entry.old_ranges for line in probe_lines(old_start, old_count)]
-        hits, _missed = lookup_hits(index, entry.old_path, lines)
+        hits, missed, setup_nodes = lookup_hits(old, nodes, lines)
         coverage_hits.update(hits)
-        if _missed:
+        coverage_hits.update(_setup_module_nodes(mapping, setup_nodes))
+        if missed:
             uncovered.add(entry.old_path)
     coverage_hits = {node for node in coverage_hits if (repo / node.split("::", 1)[0]).is_file()}
     return coverage_hits, uncovered, non_python
@@ -442,6 +602,68 @@ def _apply_develop_overlap(
     return remapped, None, develop_tests
 
 
+def load_durations(path: Path) -> tuple[dict[str, float], float]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise SelectionError(f"durations {path} are unreadable: {exc}") from exc
+    tests = payload.get("tests")
+    if not isinstance(payload, dict) or not isinstance(tests, dict):
+        raise SelectionError(f"durations {path} have an invalid envelope")
+    durations: dict[str, float] = {}
+    for node, entry in tests.items():
+        if isinstance(entry, dict) and isinstance(entry.get("p95_seconds"), (int, float)):
+            durations[node] = float(entry["p95_seconds"])
+    default = payload.get("default_seconds", UNKNOWN_TEST_SECONDS)
+    if not isinstance(default, (int, float)):
+        default = UNKNOWN_TEST_SECONDS
+    return durations, float(default)
+
+
+def estimate_runtime(entries: set[str], durations: dict[str, float], default: float) -> float:
+    by_file: dict[str, float] = {}
+    for node, seconds in durations.items():
+        by_file[node.split("::", 1)[0]] = by_file.get(node.split("::", 1)[0], 0.0) + seconds
+    total = 0.0
+    for entry in entries:
+        if entry in durations:
+            total += durations[entry]
+        elif "::" in entry:
+            total += default
+        else:
+            total += by_file.get(entry, default)
+    return total
+
+
+def _limit_selection(
+    union: set[str],
+    fallback: list[str],
+    importer_tests: list[str],
+    develop_changed: list[str],
+    failed: list[str],
+    durations: dict[str, float],
+    default: float,
+) -> tuple[set[str], float, list[str]]:
+    runtime = estimate_runtime(union, durations, default)
+    core = set(fallback) | set(importer_tests) | set(develop_changed) | set(failed)
+    if runtime > MAX_SELECTION_RUNTIME_SECONDS:
+        return (
+            core,
+            runtime,
+            [
+                f"selection of {len(union)} tests has an estimated runtime of {runtime:.1f}s "
+                f"(limit {MAX_SELECTION_RUNTIME_SECONDS:.0f}s)"
+            ],
+        )
+    if len(union) > MAX_ARGV_NODEIDS:
+        return (
+            core,
+            runtime,
+            [f"selection of {len(union)} tests exceeds the {MAX_ARGV_NODEIDS} argv limit; pass them by file instead"],
+        )
+    return union, runtime, []
+
+
 def select_tests(
     repo: Path,
     mapping: dict | None,
@@ -449,10 +671,15 @@ def select_tests(
     base_sha: str,
     decision: dict | None = None,
     map_note: str | None = None,
+    durations: dict[str, float] | None = None,
+    durations_default: float = UNKNOWN_TEST_SECONDS,
+    durations_error: str | None = None,
 ) -> dict:
     start = _mono_time()
     fallback = preflight_targets.map_tests(repo, _fallback_inputs(files))
     reasons: list[str] = []
+    if durations_error is not None:
+        reasons.append(durations_error)
     behind: int | None = None
     map_sha: str | None = None
     if mapping is None:
@@ -477,8 +704,7 @@ def select_tests(
     files, overlap_note, develop_changed_tests = _apply_develop_overlap(repo, mapping, map_sha, base_sha, files)
     if overlap_note is not None:
         reasons.append(overlap_note)
-    index = mapping.get("files") if isinstance(mapping, dict) and isinstance(mapping.get("files"), dict) else {}
-    coverage_hits, uncovered, non_python = _classify_files(repo, mapping, files, index)
+    coverage_hits, uncovered, non_python = _classify_files(repo, mapping, files)
     code_routed = decision is None or decision.get("needs_code_ci") is not False
     if non_python and code_routed:
         reasons.append(f"non-Python changes need the full tier: {', '.join(sorted(non_python))}")
@@ -493,12 +719,25 @@ def select_tests(
     )
     importers = source_importers(repo, sorted(uncovered)) if uncovered else {}
     importer_tests = sorted({test for tests in importers.values() for test in tests})
-    union = set(coverage_hits) | set(changed_tests) | set(develop_changed_tests) | set(fallback) | set(importer_tests)
-    if len(union) > MAX_SELECTED_NODEIDS:
-        reasons.append(f"selection of {len(union)} tests exceeds the {MAX_SELECTED_NODEIDS} limit")
-        selected = set(fallback) | set(importer_tests) | set(develop_changed_tests)
-    else:
-        selected = union
+    failed_nodes: list[str] = []
+    if mapping is not None:
+        raw_failed = mapping.get("failed_nodes", [])
+        if isinstance(raw_failed, list):
+            failed_nodes = sorted(
+                {node for node in raw_failed if isinstance(node, str) and (repo / node.split("::", 1)[0]).is_file()}
+            )
+    union = (
+        set(coverage_hits)
+        | set(changed_tests)
+        | set(develop_changed_tests)
+        | set(fallback)
+        | set(importer_tests)
+        | set(failed_nodes)
+    )
+    selected, runtime, limit_reasons = _limit_selection(
+        union, fallback, importer_tests, develop_changed_tests, failed_nodes, durations or {}, durations_default
+    )
+    reasons.extend(limit_reasons)
     if not selected and any(not _is_inert(entry.path) for entry in files):
         reasons.append("no tests selected for the changed files")
     elapsed = _mono_time() - start
@@ -506,7 +745,8 @@ def select_tests(
     counts = (
         f"coverage={len(coverage_hits)} changed_tests={len(changed_tests)} "
         f"develop_changed={len(develop_changed_tests)} fallback={len(fallback)} importers={len(importer_tests)} "
-        f"selected={len(selected)} files={len(files)} behind={behind} elapsed={elapsed:.1f}s rss={peak_rss:.1f}MB"
+        f"failed={len(failed_nodes)} selected={len(selected)} files={len(files)} behind={behind} "
+        f"runtime={runtime:.1f}s elapsed={elapsed:.1f}s rss={peak_rss:.1f}MB"
     )
     would_escalate = bool(reasons)
     if reasons:
@@ -524,8 +764,10 @@ def select_tests(
         "develop_changed_tests": develop_changed_tests,
         "fallback_tests": sorted(fallback),
         "importer_tests": importer_tests,
+        "failed_nodes": failed_nodes,
         "uncovered_sources": sorted(uncovered),
         "selected": sorted(selected),
+        "estimated_runtime_seconds": runtime,
         "elapsed_seconds": elapsed,
         "peak_rss_mb": peak_rss,
     }
@@ -578,12 +820,12 @@ def _list_map_artifacts(repo: Path, slug: str, prefix: str) -> Iterator[tuple[st
     runs = _gh_get(
         repo,
         f"repos/{slug}/actions/workflows/{PurePosixPath(TRUNK_WORKFLOW_PATH).name}/runs",
-        {"branch": "develop", "event": "push", "per_page": str(MAX_MAP_BEHIND_COMMITS)},
-        '.workflow_runs[] | "\\(.id)\\t\\(.head_sha)"',
+        {"branch": "develop", "per_page": str(MAX_MAP_BEHIND_COMMITS)},
+        '.workflow_runs[] | "\\(.id)\\t\\(.head_sha)\\t\\(.event)"',
     )
     for line in runs:
-        run, head, _ = _split_row(line)
-        if not run.isdigit() or not _SHA_RE.match(head):
+        run, head, event = _split_row(line)
+        if not run.isdigit() or not _SHA_RE.match(head) or event not in TRUSTED_MAP_EVENTS:
             continue
         rows = _gh_get(
             repo,
@@ -619,12 +861,14 @@ def _trusted_run_head(repo: Path, slug: str, run_id: int) -> str | None:
         timeout=60,
     )
     if proc.returncode != 0:
-        return None
+        raise SelectionError(
+            f"cannot query repos/{slug}/actions/runs/{run_id}: {proc.stderr.strip() or proc.stdout.strip()}"
+        )
     fields = [line.strip() for line in proc.stdout.splitlines()]
     if len(fields) != 5:
         return None
     sha, path, event, branch, head_slug = fields
-    if path != TRUNK_WORKFLOW_PATH or event != "push" or branch != "develop" or head_slug != slug:
+    if path != TRUNK_WORKFLOW_PATH or event not in TRUSTED_MAP_EVENTS or branch != "develop" or head_slug != slug:
         return None
     return sha if _SHA_RE.match(sha) else None
 
@@ -692,7 +936,7 @@ def fetch_map(
             "reason": "no coverage map artifact from a develop SHA that is an ancestor of the base",
         }
     except SelectionError as exc:
-        return {"status": "missing", "sha": None, "path": None, "reason": str(exc)}
+        return {"status": "lookup-failed", "sha": None, "path": None, "reason": str(exc)}
 
 
 def _write_github_output(path: Path | None, values: dict[str, str]) -> None:
@@ -722,13 +966,26 @@ def _cmd_build_map(args: argparse.Namespace) -> int:
     if not data_files:
         print("no coverage data files matched", file=sys.stderr)
         return 1
+    junit_files = [path for pattern in (args.junit or []) for path in sorted(pattern.parent.glob(pattern.name))]
+    junit_files = [path for path in junit_files if path.is_file()]
+    if args.junit is not None and len(junit_files) < len(data_files):
+        print(
+            f"expected one junit report per coverage data file, found {len(junit_files)} "
+            f"for {len(data_files)} data file(s)",
+            file=sys.stderr,
+        )
+        return 1
     try:
-        mapping = build_map(data_files, args.repo_root, args.sha)
+        mapping = build_map(data_files, args.repo_root, args.sha, junit_files=junit_files)
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"cannot build coverage map: {exc}", file=sys.stderr)
         return 1
     write_map(mapping, args.out)
-    print(f"coverage map for {args.sha}: {len(mapping['files'])} files from {len(data_files)} shard(s)")
+    print(
+        f"coverage map for {args.sha}: {len(mapping['files'])} files, "
+        f"{len(mapping['nodes'])} tests from {len(data_files)} shard(s), "
+        f"{len(mapping['failed_nodes'])} failed"
+    )
     return 0
 
 
@@ -742,6 +999,8 @@ def _cmd_fetch_map(args: argparse.Namespace) -> int:
         args.github_output,
         {"map-status": result["status"], "map-sha": result["sha"] or "", "map-path": result["path"] or ""},
     )
+    if result["status"] == "lookup-failed":
+        print(f"::warning::coverage map lookup failed: {result['reason']}")
     print(f"coverage map {result['status']}: {result['reason']}")
     return 0
 
@@ -781,6 +1040,15 @@ def _cmd_select(args: argparse.Namespace) -> int:
     if decision_note is not None:
         map_note = "; ".join(note for note in (map_note, decision_note) if note)
     try:
+        durations_arg = (
+            args.durations if args.durations is not None else REPO_ROOT / "tests/fixtures/medium_shard_durations.json"
+        )
+        durations, durations_default = load_durations(durations_arg)
+        durations_error = None
+    except SelectionError as exc:
+        durations, durations_default = {}, UNKNOWN_TEST_SECONDS
+        durations_error = str(exc)
+    try:
         if mapping is not None and base_sha:
             files = changed_files(repo, base_sha)
         elif base_sha:
@@ -788,7 +1056,17 @@ def _cmd_select(args: argparse.Namespace) -> int:
         else:
             files = []
             map_note = "; ".join(note for note in (map_note, base_note) if note) or map_note
-        result = select_tests(repo, mapping, files, base_sha, decision=decision, map_note=map_note)
+        result = select_tests(
+            repo,
+            mapping,
+            files,
+            base_sha,
+            decision=decision,
+            map_note=map_note,
+            durations=durations,
+            durations_default=durations_default,
+            durations_error=durations_error,
+        )
     except Exception as exc:
         try:
             fallback = _emergency_fallback(repo, base_sha)
@@ -806,8 +1084,10 @@ def _cmd_select(args: argparse.Namespace) -> int:
             "develop_changed_tests": [],
             "fallback_tests": fallback,
             "importer_tests": [],
+            "failed_nodes": [],
             "uncovered_sources": [],
             "selected": fallback,
+            "estimated_runtime_seconds": 0.0,
             "elapsed_seconds": _mono_time() - select_start,
             "peak_rss_mb": _peak_rss_mb(),
         }
@@ -834,6 +1114,7 @@ def _cmd_select(args: argparse.Namespace) -> int:
         f"Map SHA: {result.get('map_sha') or 'none'}.",
         f"Would-be selected count: {len(result['selected'])}.",
         f"Would-escalate reasons: {'; '.join(result.get('would_escalate_reasons', [])) or 'none'}.",
+        f"Estimated runtime: {result.get('estimated_runtime_seconds', 0.0):.1f}s.",
         f"Elapsed: {result.get('elapsed_seconds', 0.0):.1f}s, peak RSS: {result.get('peak_rss_mb', 0.0):.1f}MB.",
     ]
     for line in summary_lines:
@@ -843,6 +1124,7 @@ def _cmd_select(args: argparse.Namespace) -> int:
     print(f"escalate={str(result['escalate']).lower()} selected={len(result['selected'])}")
     print(f"would_escalate={str(result.get('would_escalate', result['escalate'])).lower()}")
     print(f"elapsed={result.get('elapsed_seconds', 0.0):.1f}s rss={result.get('peak_rss_mb', 0.0):.1f}MB")
+    print(f"estimated_runtime={result.get('estimated_runtime_seconds', 0.0):.1f}s")
     return 0
 
 
@@ -866,6 +1148,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     build_map_parser = sub.add_parser("build-map")
     build_map_parser.add_argument("--data", type=Path, action="append", required=True)
+    build_map_parser.add_argument("--junit", type=Path, action="append", default=None)
     build_map_parser.add_argument("--sha", required=True)
     build_map_parser.add_argument("--expected-shards", type=int, default=None)
     build_map_parser.add_argument("--out", type=Path, required=True)
@@ -885,6 +1168,7 @@ def build_parser() -> argparse.ArgumentParser:
     select_parser.add_argument("--base-sha", default=None)
     select_parser.add_argument("--base-ref", default=os.environ.get("GITHUB_BASE_REF", "origin/develop"))
     select_parser.add_argument("--decision-in", type=Path, default=None)
+    select_parser.add_argument("--durations", type=Path, default=None)
     select_parser.add_argument("--nodeids-out", type=Path, default=None)
     select_parser.add_argument("--json-out", type=Path, default=None)
     select_parser.add_argument("--summary", type=Path, default=None)
