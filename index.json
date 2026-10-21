@@ -15766,6 +15766,18 @@
       "status": "open",
       "title": "Give oracle reviewers a JSON response template to populate"
     },
+    "oracle-response-live-verification-20261021": {
+      "claim": null,
+      "needs": [
+        "oracle-response-ingress-20261021",
+        "oracle-response-absence-retry-20261021",
+        "oracle-response-evidence-secrets-20261021",
+        "oracle-response-json-template-20261021"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Verify remediated oracle through real local and CI review flows"
+    },
     "oracle-review-automatic-reevaluation-20261021": {
       "claim": null,
       "needs": [],
