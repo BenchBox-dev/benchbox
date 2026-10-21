@@ -25637,6 +25637,15 @@
       "status": "done",
       "title": "Trino Platform Adapter"
     },
+    "trunk-coverage-workflow-map-v2-20261021": {
+      "claim": null,
+      "needs": [
+        "ci-heavy-tier-runs-on-escalation-20261021"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Move per-test coverage to its own trunk workflow and make the coverage map smaller, statement-aware and failure-tolerant"
+    },
     "trunk-red-stops-further-merges": {
       "claim": null,
       "needs": [],

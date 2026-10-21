@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Gating trunk medium shards load neither pytest_cov nor the timeout plugin; shard durations return near the pre-coverage 7-15 min (observed on a real run)",
+    "trunk-coverage.yml publishes a v2 map; a PR's ci-paths loads it and records elapsed seconds and peak RSS under a stated budget",
+    "Unit tests cover v2 build and lookup, setup-phase expansion, statement filtering, failed-node inclusion, runtime cap, timeout cap, and fetch error vs not-found",
+    "The staleness signal fires on a fixture and is documented",
+    "docs/internal/merge-queue-governance.md section 5 describes the split, the cap rationale and the signal"
+  ],
+  "description": "Per-test coverage in trunk.yml made Trunk runs ~31.5 min (run 39596269177; shard 0 pytest 1580 s of a 33 min budget; ClickBench test_generate_data 628 s vs 65.8 s) and #3222 scaled every timeout 8x, so a hang can exceed the job limit. Owner decision: separate workflow. Steps: (1) trunk.yml medium-test back to uninstrumented runs with real timeouts and ci.yml duration-weighted sharding; (2) new .github/workflows/trunk-coverage.yml on push to develop, concurrency group trunk-coverage with cancel-in-progress, permissions contents+actions read, 4 coverage shards plus map job, never part of the arm gate; TRUNK_WORKFLOW_PATH provenance points at it; (3) timeout plugin min(t*8, 1200) with rationale 1200 s ~ 1.9x the worst measured coverage runtime (628 s); coverage-specific durations; (4) map job if: always() when all 4 shard data files exist, records failed node IDs which select always includes, --expected-shards 4 literal, retention-days 7; (5) map v2: node table with per-line integer indices, per-file executable-statement sets (changed blank/comment/docstring lines ignored), keep context phase and expand only setup-phase hits to the whole test module, replace the node-count cap with an estimated-runtime cap from the durations file; (6) fetch-map distinguishes 'no map published' from 'lookup failed' (::warning::), and the map job self-fetches the map it published; (7) owner-visible staleness signal (nightly-v2 domain or scheduled job opening/updating one issue) when the newest map is >20 commits behind develop or the coverage workflow failed 3 runs in a row; (8) tests/conftest.py coverage warning honours COVERAGE_FILE.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/39596269177"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T12:44:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9e381bf1e9b84c7ea685ddaf4acbf6be",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    }
+  ]
+}
