@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Engine jobs install constrained versions matching BenchBox's supported ranges; versions printed in job output.",
+    "Fork PR merged with green hosted checks."
+  ],
+  "description": "Adversarial review M4: fork CI engine jobs install duckdb 2.0.0, datafusion 55, pyspark 4.2, chdb 4.4 (engines-requirements.txt unpinned; the duckdb<2 constraint only applies in package-test.yml:56, not benchbox-engines.yml:38,71) while BenchBox locks duckdb 1.5.5 (<2). Constrain the engine jobs to BenchBox's supported versions (read them from BenchBox's lock/pyproject) and print versions in job logs; document the version policy in downstream/README.md.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T22:51:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "94548120abe64227ba723e2f5698af5f",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
