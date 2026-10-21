@@ -15581,7 +15581,7 @@
         "oracle-local-b2-record-workflow-and-proof"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "BenchBox: decision record and docs for the local oracle executor"
     },
     "oracle-local-b4-cutover": {
