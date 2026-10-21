@@ -23337,15 +23337,10 @@
       "title": "BenchBox wrapper contract: unknown platform always raises; rewrites apply before generation; one dialect-mapping home"
     },
     "sqlglot-fork-review-m8-row-source-guard": {
-      "claim": {
-        "expires_at": "2026-10-22T23:37:29Z",
-        "generation": "1dec7b76851c41feb7d3ef3ebb66cb46",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c196539bd596dfa2c5536f3b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Fork: drop_literal_row_source must only fire for a provably single-row source"
     },
     "sqlglot-freshness-gate-blocks-all-prs-v30-24-0": {
