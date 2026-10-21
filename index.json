@@ -23278,6 +23278,13 @@
       "status": "done",
       "title": "Fork: refresh onto upstream v30.24.0, reworking conflicting carried patches"
     },
+    "sqlglot-fork-review-h2-execution-evidence-gate": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Replace the text-diff golden corpus as adoption evidence with an executed, engine-compared gate"
+    },
     "sqlglot-freshness-gate-blocks-all-prs-v30-24-0": {
       "claim": null,
       "needs": [],

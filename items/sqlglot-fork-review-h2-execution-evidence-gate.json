@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A make target and CI job run the executed comparison over all shipped queries per local engine, with a documented list of expected row differences that each name their justification.",
+    "The gate demonstrably catches the DATETIME day-offset regression and the Q21 truncation (tests built from the old wheel behaviors).",
+    "Each wheel adoption PR template requires the gate output."
+  ],
+  "description": "Adversarial review H2: the corpus 'legacy' side runs on the same pinned wheel, recorded sets accept whatever is recorded, the corpus generates with ErrorLevel.RAISE while runtime uses WARN, and nothing executes SQL. Regressions like the DATETIME day offset (accepted as a difference in fork PR #9, caught only by ad hoc DuckDB comparison) and Q21 integer truncation passed it. Build a committed CI/make gate that runs every shipped query on each locally available engine (sqlite, duckdb<2, datafusion, chDB, Postgres where available) comparing old pinned wheel vs candidate wheel output rows, and rows against DuckDB or the TPC/benchmark answer sets, and fails on unexplained row differences. Keep text diffs as secondary. Use WARN-level generation as the runtime does.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T22:51:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ecada5827d004de9a0d4825041e6e47f",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
