@@ -23306,6 +23306,13 @@
       "status": "open",
       "title": "Fork CI: constrain engine jobs to the engine versions BenchBox supports and record versions in evidence"
     },
+    "sqlglot-fork-review-m8-row-source-guard": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fork: drop_literal_row_source must only fire for a provably single-row source"
+    },
     "sqlglot-freshness-gate-blocks-all-prs-v30-24-0": {
       "claim": null,
       "needs": [],

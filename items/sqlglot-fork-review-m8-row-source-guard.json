@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The four counterexamples keep their original row counts (rewrite does not fire) with executed DuckDB tests; the Q17 variant 4 dead-leg shape still rewrites.",
+    "Fork PR merged; adopted in the next wheel."
+  ],
+  "description": "Adversarial review M8: drop_literal_row_source (compat.py:246-293) does not check that the inner SELECT has no FROM/WHERE/LIMIT. DuckDB: SELECT 0 AS r FROM (SELECT 1 FROM t) d (3 rows) -> 1 row; (SELECT 1 WHERE FALSE) d -> 1 row instead of 0; LIMIT 0 -> 1 row; COUNT(*) over it -> 1 instead of 3. Guard: inner select must have no FROM, WHERE, LIMIT, GROUP/HAVING/distinct/set-op; add the four counterexamples as executed tests. Fix before D4 uses it.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ab6e4028120b97ee5b2fbb1d",
+      "at": "2026-10-21T22:51:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5c8a60a03c1b4ea39ff06bacb47e11e2",
+      "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    }
+  ]
+}
