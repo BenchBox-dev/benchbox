@@ -4,6 +4,7 @@
     "Unit tests for any-severity overrides, red-trunk arming, and withdrawals",
     "oracle-standin-doc-contradicts-checker acceptance met in the same PR"
   ],
+  "context": "Done in #3230 (merge dc01122e9): digest lists stand-ins over open oracle findings of any severity (or a DO NOT SHIP / decision-less failure verdict) with attester and instruction gap; PRs armed or enqueued while the newest completed trunk.yml run was red; Withdrawn sections. Dry run over 6f2615129..2d2c7deff lists #3222 (Medium overridden by stand-in, 1 s after instruction; armed 11:41:17Z while trunk run 39555893700 failed). 330 tests pass.",
   "description": "The merge digest flags stand-in overrides only for Critical/High findings on soundness paths (soundness_merge_digest.py:55). #3222 passed oracle-review by stand-in over an open Medium finding, and was armed with gh pr merge --auto while the newest Trunk run was red. The stand-in check matches only the login, which agents share with the owner. Digest must list: every merged PR that passed by stand-in while an oracle finding of any severity was open (attester, gap between owner-instruction comment and stand-in); PRs armed while the newest completed Trunk run was red; oracle withdrawals of disputed findings. Also fix docs/agent/merge-authority.md per item oracle-standin-doc-contradicts-checker (exact comment format, quote in a separate comment, both oracle-review runs need rerun).",
   "sessions": [
     {
@@ -21,6 +22,14 @@
       "generation": "f1f6e87aaeae41849ea6e118ae1f6613",
       "op": "take",
       "op_id": "b244b49c75dd4e1ba0fc275ee504c164",
+      "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
+      "at": "2026-10-21T18:01:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e87fcca25e6d45b3996f0e93f1c9a0d2",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
     }
   ]
