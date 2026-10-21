@@ -91,6 +91,29 @@ class TestTranslateSqlSQLitePostfix:
         assert "INTERVAL" not in result
         assert "DATETIME(DATE('1998-09-01'), '10 DAY')" in result
 
+    def test_date_interval_evaluates_to_timestamp_text(self):
+        import sqlite3
+
+        a = _Adapter(dialect="sqlite")
+        result = a.translate_sql("SELECT DATE('1998-09-01') + INTERVAL '10' DAY", source_dialect="duckdb")
+        assert sqlite3.connect(":memory:").execute(result.rstrip(";")).fetchall() == [("1998-09-11 00:00:00",)]
+
+    def test_day_interval_bound_compares_as_timestamp_text(self):
+        import sqlite3
+
+        connection = sqlite3.connect(":memory:")
+        connection.execute("CREATE TABLE t (d TEXT)")
+        connection.executemany("INSERT INTO t VALUES (?)", [("1998-03-09",), ("1998-04-07",), ("1998-05-08",)])
+        a = _Adapter(dialect="sqlite")
+        lower = a.translate_sql(
+            "SELECT d FROM t WHERE d >= DATE('1998-04-08') - INTERVAL '30' DAY", source_dialect="duckdb"
+        )
+        upper = a.translate_sql(
+            "SELECT d FROM t WHERE d <= DATE('1998-04-08') + INTERVAL '30' DAY", source_dialect="duckdb"
+        )
+        assert [row[0] for row in connection.execute(lower.rstrip(";"))] == ["1998-04-07", "1998-05-08"]
+        assert [row[0] for row in connection.execute(upper.rstrip(";"))] == ["1998-03-09", "1998-04-07", "1998-05-08"]
+
 
 class TestTranslateSqlMultiStatement:
     def test_single_statement_gets_trailing_semicolon(self):

@@ -38,23 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ParadeDB tuning files now apply heap partitioning and clustering/sorting, and the
   adapter claims `PARTITIONING`, `CLUSTERING` and `SORTING`. A TPC-H profile is at
   `examples/tunings/paradedb/tpch_tuned.yaml`.
-
-### Fixed
-
-- Post-load clustering on PostgreSQL-family adapters no longer fails with
-  `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
-  clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`
-  as failed. The index now commits first and `CLUSTER` runs in autocommit; both
-  partitioning (`pg_get_partkeydef`) and clustering (`pg_index.indisclustered`, per
-  partition) are verified against the catalog. A verification failure after commit
-  records the durable statements as executed and the intent as not satisfied.
-
-### Fixed
-
-- The bundled SQLGlot licence notice keeps LF line endings in Windows checkouts and
-  the nested-archive import probe accepts Windows path separators, so the SQLGlot
-  runtime tests pass on Windows. The BigQuery Iceberg test helper disposes its
-  catalog engine.
 - The bundled SQLGlot runtime moves from 30.24.0.1 to 30.24.0.2 (fork commit
   `010db57fe835`), which adds the `netezza`, `greenplum`, `vertica`, `datafusion`
   and `questdb` dialects, SQLite, DuckDB, Snowflake and Databricks generator
@@ -84,6 +67,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for month and year offsets that roll over a month end and for
   `DATE_PART('year', ..)`; `translate_sql_query` still applies the BenchBox
   fix-ups to them until they are removed.
+  Because SQLite compares dates as text, a lower bound written as a day offset
+  (`d >= DATETIME(DATE('1998-04-08'), '-30 DAY')`) excludes rows equal to the
+  boundary date and a `<` upper bound includes them, where the previous `DATE(..)`
+  form did not; the form was already emitted for typed dates by 30.24.0.1.
+
+### Fixed
+
+- Post-load clustering on PostgreSQL-family adapters no longer fails with
+  `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
+  clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`
+  as failed. The index now commits first and `CLUSTER` runs in autocommit; both
+  partitioning (`pg_get_partkeydef`) and clustering (`pg_index.indisclustered`, per
+  partition) are verified against the catalog. A verification failure after commit
+  records the durable statements as executed and the intent as not satisfied.
+
+### Fixed
+
+- The bundled SQLGlot licence notice keeps LF line endings in Windows checkouts and
+  the nested-archive import probe accepts Windows path separators, so the SQLGlot
+  runtime tests pass on Windows. The BigQuery Iceberg test helper disposes its
+  catalog engine.
 
 ## [0.5.0rc1] - 2026-10-20
 
