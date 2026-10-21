@@ -13,14 +13,6 @@ from typing import Any, Callable, Iterable
 PREDICATE_REPO_PATH = "_project/scripts/soundness_paths.py"
 POLICY_PATHS = (PREDICATE_REPO_PATH, ".github/soundness-paths.txt")
 BROAD_CONFTEST_MODULES = 200
-SELECTION_LOGIC_PATHS = frozenset(
-    {
-        "scripts/coverage_test_selection.py",
-        "scripts/coverage_map.ini",
-        "_project/scripts/preflight_targets.py",
-        "scripts/heavy_tier_needed.py",
-    }
-)
 
 
 class HeavyTierError(RuntimeError):
@@ -129,7 +121,7 @@ def broad_test_infrastructure(changed_paths: Iterable[str], repo_root: Path) -> 
     broad = []
     for path in changed_paths:
         pure = PurePosixPath(path)
-        if path == "pytest.ini" or path in SELECTION_LOGIC_PATHS:
+        if path == "pytest.ini":
             broad.append(path)
         elif pure.name in {"conftest.py", "__init__.py"} and pure.parts[:1] == ("tests",):
             modules = sum(1 for _ in (repo_root / pure.parent).rglob("test_*.py"))
@@ -144,7 +136,6 @@ def heavy_needed(
     repo_root: Path,
     read_base: Callable[[str, Path], dict[str, str]] | None = None,
     read_pr: Callable[[Path], dict[str, str]] | None = None,
-    selection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     try:
         for flag in ("needs_code_ci", "packaging_needed"):
@@ -158,15 +149,6 @@ def heavy_needed(
         needs_code_ci = decision["needs_code_ci"]
         if not needs_code_ci:
             return {"heavy_needed": False, "reason": "not a code-routed tree; the light lane already covers it"}
-        if selection is not None:
-            if not isinstance(selection, dict) or not isinstance(selection.get("escalate"), bool):
-                raise HeavyTierError("coverage selection is unreadable")
-            if selection["escalate"]:
-                detail = selection.get("reason") or "no reason recorded"
-                return {
-                    "heavy_needed": True,
-                    "reason": f"coverage selection escalated: {detail} (coverage fail-closed carve-out)",
-                }
         if decision["packaging_needed"]:
             return {"heavy_needed": True, "reason": "packaging paths touched (packaging carve-out)"}
         broad = broad_test_infrastructure(changed, repo_root)
@@ -191,7 +173,6 @@ def _write_github_output(path: Path, needed: bool) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--decision-in", type=Path, default=None)
-    parser.add_argument("--selection-in", type=Path, default=None)
     parser.add_argument("--base-ref", default=os.environ.get("GITHUB_BASE_REF", "origin/develop"))
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--github-output", type=Path, default=None)
@@ -211,25 +192,7 @@ def main(argv: list[str] | None = None) -> int:
             if not isinstance(decision, dict):
                 result = {"heavy_needed": True, "reason": "lookup failed closed: decision is not an object"}
             else:
-                selection: dict[str, Any] | None = None
-                if args.selection_in is not None:
-                    try:
-                        selection = json.loads(args.selection_in.read_text(encoding="utf-8"))
-                    except (OSError, ValueError) as exc:
-                        selection = None
-                        result = {
-                            "heavy_needed": True,
-                            "reason": f"lookup failed closed: unreadable coverage selection: {exc}",
-                        }
-                    else:
-                        if not isinstance(selection, dict):
-                            selection = None
-                            result = {
-                                "heavy_needed": True,
-                                "reason": "lookup failed closed: coverage selection is not an object",
-                            }
-                if selection is not None or args.selection_in is None:
-                    result = heavy_needed(decision, args.base_ref, args.repo_root, selection=selection)
+                result = heavy_needed(decision, args.base_ref, args.repo_root)
 
     needed = bool(result["heavy_needed"])
     reason = str(result["reason"])

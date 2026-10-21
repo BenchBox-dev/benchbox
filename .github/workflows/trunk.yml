@@ -98,7 +98,7 @@ jobs:
     name: medium-test (shard ${{ matrix.shard_index }})
     needs: medium-collect
     runs-on: ubuntu-latest
-    timeout-minutes: 33
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -143,8 +143,6 @@ jobs:
         shell: bash
         env:
           SHARD_INDEX: ${{ matrix.shard_index }}
-          COVERAGE_CORE: ctrace
-          COVERAGE_FILE: t2-artifacts/coverage-shard-${{ matrix.shard_index }}.dat
         run: |
           set -euo pipefail
           test -s "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt"
@@ -161,7 +159,6 @@ jobs:
           BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest \
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \
             --tb=short --timeout=60 -n 5 --durations=25 \
-            -p pytest_cov --cov --cov-config=scripts/coverage_map.ini --cov-context=test --cov-report= \
             -p scripts.pytest_shard_evidence \
             --assigned-nodeids "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt" \
             --shard-evidence "t2-artifacts/shard-${SHARD_INDEX}-execution.json" \
@@ -182,62 +179,6 @@ jobs:
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
-
-  medium-coverage-map:
-    name: medium-coverage-map
-    needs: medium-test
-    if: ${{ needs.medium-test.result == 'success' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: '3.12'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-
-      - name: Install dependencies
-        run: uv sync --group dev
-
-      - name: Download medium shard evidence
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          pattern: t2-medium-shard-*-${{ github.sha }}
-          path: t2-shards
-          merge-multiple: false
-
-      - name: Build the coverage test map
-        shell: bash
-        run: |
-          set -euo pipefail
-          shopt -s nullglob globstar
-          shard_dirs=(t2-shards/t2-medium-shard-*/)
-          test "${#shard_dirs[@]}" -gt 0
-          args=()
-          for shard in t2-shards/**/coverage-shard-*.dat; do
-            args+=(--data "$shard")
-          done
-          test "${#args[@]}" -gt 0
-          uv run -- python scripts/coverage_test_selection.py build-map \
-            "${args[@]}" \
-            --sha "${{ github.sha }}" \
-            --expected-shards "${#shard_dirs[@]}" \
-            --out t2-coverage-map/map.json
-          test -s t2-coverage-map/map.json
-      - name: Upload coverage test map
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-        with:
-          name: t2-coverage-map-${{ github.sha }}
-          path: t2-coverage-map/
-          if-no-files-found: error
-          retention-days: 90
 
   correctness-gate:
     name: correctness-gate (${{ matrix.partition }})

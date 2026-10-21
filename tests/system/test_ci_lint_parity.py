@@ -132,14 +132,6 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "Hosted job-output step; it turns the classifier's changed-path list into "
         "booleans so later jobs do not receive the full list, and has no local gate."
     ),
-    ("ci.yml", "ci-paths", "Fetch coverage test map"): (
-        "Hosted artifact download; it fetches the coverage map through the Actions "
-        "API with a GitHub token, which has no local equivalent."
-    ),
-    ("ci.yml", "ci-paths", "Select tests by coverage impact"): (
-        "Hosted selection against the downloaded map for the PR base SHA; it needs "
-        "the Actions artifact and the hosted path decision, so no Make target runs it."
-    ),
     ("ci.yml", "tpch-binary-framing", "Verify bundled dbgen binaries emit clean framing"): (
         "Cross-platform macOS/Windows binary smoke; the local macOS checkout has no Windows runner equivalent."
     ),

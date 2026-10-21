@@ -45,7 +45,7 @@ fails it. Checks run on the pull request head, which need not be current with
 
 | Required Context | Workflow Path | Contract |
 | --- | --- | --- |
-| `core` | `.github/workflows/ci.yml` | Lint, type checks, fast tests on Python 3.14 and parity gates on the PR head. The PR medium step runs the node IDs selected by coverage impact (`scripts/coverage_test_selection.py select` against the newest `t2-coverage-map` artifact from a develop ancestor of the base, plus the name-based `map_tests` fallback); changes under `docs/*`, `*.md`, or `_project/todo-db-export/*` are inert (they add no tests and never trigger escalation), while any other non-Python change in a code-routed tree, a missing or stale map, a map outside the base ancestry, or an oversized or empty selection escalates through `scripts/heavy_tier_needed.py --selection-in`, so the full sharded heavy tier (medium-test, correctness-gate, required-local-cases, plan-capture-gate, DataFusion integration, and the macOS and Windows TPC-H binary-framing matrix) runs instead of being skipped; `trunk.yml` runs the Python 3.12 fast lane, the medium tier with per-test coverage, the coverage-map combine job, the correctness gate and `required-local-cases` on `develop` after each merge. |
+| `core` | `.github/workflows/ci.yml` | Lint, type checks, fast tests on Python 3.14 and parity gates on the PR head. On `pull_request`, the heavy tier (medium-test, correctness-gate, required-local-cases, plan-capture-gate, DataFusion integration, and the macOS and Windows TPC-H binary-framing matrix) is skipped unless a carve-out applies (soundness paths, packaging paths); `trunk.yml` runs the Python 3.12 fast lane, the medium tier, the correctness gate and `required-local-cases` on `develop` after each merge. |
 | `explorer` | `.github/workflows/ci.yml` | CLI-versus-explorer parity fixtures on Explorer pipeline and visualization changes. Reports success on unaffected paths. The Explorer app and its browser suite live in `BenchBox-dev/benchbox-site`. |
 | `results-data` | `.github/workflows/ci.yml` | Corpus inventory and validation, submission validator sync, and corpus contract tests on results-data changes. |
 | `docs` | `.github/workflows/ci.yml` | Example validation, generated docs inputs (`make docs-generate`), and spell check on docs changes. The site build runs in `BenchBox-dev/benchbox-site`. |
@@ -115,14 +115,9 @@ If a PR changes any soundness path (for example `benchbox/core/equivalence/`,
 
 `.github/workflows/trunk.yml` runs on pushes to `develop` and tests it in its
 merged state; it is not a required PR check. It runs the fast lane, the
-four-shard medium tier with per-test line coverage enabled
-(`COVERAGE_CORE=ctrace`, `-p pytest_cov --cov --cov-context=test` under
-`scripts/coverage_map.ini`, one data file per shard), the `medium-coverage-map`
-combine job (globs the downloaded `coverage-shard-*.dat` files and merges them into one `t2-coverage-map-<sha>` artifact, failing unless the file count matches the downloaded shard evidence)
-with a 90-day retention), the correctness gate, and the `required-local-cases`
+four-shard medium tier, the correctness gate, and the `required-local-cases`
 job (`make test-required-local-cases`, which fails the run if a required
-local-engine case skips). The medium shards run with a 33-minute budget to
-cover the roughly 30% coverage overhead. The `dist-artifact` job builds and verifies the
+local-engine case skips). The `dist-artifact` job builds and verifies the
 release wheel and sdist. The marker and forbidden-path guards run in the PR
 `lint` job (`guard-fast-lane-markers`); the test-count ceiling is retired.
 

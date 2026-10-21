@@ -216,19 +216,3 @@ def test_any_soundness_path_recognises_tuning_trust_paths() -> None:
     assert soundness.any_soundness_path(["docs/index.md", *TUNING_TRUST_FILES[:1]]) is True
     assert soundness.any_soundness_path(["benchbox/platforms/duckdb_introspection.py"]) is True
     assert soundness.any_soundness_path(["benchbox/platforms/base/adapter.py", "benchbox/platforms/duckdb.py"]) is False
-
-
-SELECTION_LOGIC_FILES = (
-    "scripts/coverage_test_selection.py",
-    "scripts/coverage_map.ini",
-    "_project/scripts/preflight_targets.py",
-    "scripts/heavy_tier_needed.py",
-)
-
-
-def test_selection_logic_paths_are_pinned_in_manifest() -> None:
-    manifest = (ROOT / ".github" / "soundness-paths.txt").read_text(encoding="utf-8").splitlines()
-    for path in SELECTION_LOGIC_FILES:
-        assert f"file\t{path}" in manifest
-        assert (ROOT / path).is_file(), f"{path} no longer exists; update the soundness manifest"
-        assert soundness.is_soundness_path(path) is True

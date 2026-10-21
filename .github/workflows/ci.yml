@@ -83,10 +83,6 @@ jobs:
     name: ci-paths
     if: ${{ !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-      actions: read
     outputs:
       safe-content-only: ${{ steps.classify.outputs.safe-content-only }}
       needs-code-ci: ${{ steps.classify.outputs.needs-code-ci }}
@@ -210,45 +206,6 @@ jobs:
             ci-unit-decision.json
           retention-days: 30
 
-      - name: Fetch coverage test map
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          git fetch --no-tags origin develop
-          python scripts/coverage_test_selection.py fetch-map \
-            --base-sha "${{ github.event.pull_request.base.sha }}" \
-            --dest-dir .coverage-map \
-            --json-out coverage-fetch.json
-
-      - name: Select tests by coverage impact
-        id: coverage-select
-        run: |
-          set -euo pipefail
-          map_path="$(python -c "import json; print(json.load(open('coverage-fetch.json')).get('path') or '')")"
-          map_args=()
-          if [ -n "$map_path" ]; then
-            map_args=(--map "$map_path")
-          fi
-          python scripts/coverage_test_selection.py select \
-            "${map_args[@]}" \
-            --base-sha "${{ github.event.pull_request.base.sha }}" \
-            --decision-in ci-path-decision.json \
-            --nodeids-out coverage-nodeids.txt \
-            --json-out coverage-selection.json \
-            --summary "$GITHUB_STEP_SUMMARY"
-          test -s coverage-selection.json
-
-      - name: Upload coverage selection
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-        with:
-          name: coverage-selection-${{ github.sha }}
-          path: |
-            coverage-selection.json
-            coverage-nodeids.txt
-          if-no-files-found: error
-          retention-days: 30
-
       - name: Decide heavy-tier need
         id: heavy
         run: |
@@ -256,7 +213,6 @@ jobs:
           python scripts/heavy_tier_needed.py \
             --decision-in ci-path-decision.json \
             --base-ref "${{ github.event.pull_request.base.sha }}" \
-            --selection-in coverage-selection.json \
             --github-output "$GITHUB_OUTPUT" \
             --summary "$GITHUB_STEP_SUMMARY"
 
@@ -826,10 +782,6 @@ jobs:
     if: ${{ needs.ci-paths.outputs.code-tests-needed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    permissions:
-      contents: read
-      pull-requests: read
-      actions: read
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -908,37 +860,22 @@ jobs:
           fi
           exit "$status"
 
-      - name: Download coverage selection
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          name: coverage-selection-${{ github.sha }}
-          path: coverage-selection
-
       - name: Run medium tests for changed paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
-          targets="coverage-selection/coverage-nodeids.txt"
-          test -f "$targets"
-          mapfile -t node_ids < "$targets" || true
-          if [ "${#node_ids[@]}" -gt 0 ]; then
-            collected="coverage-selection/collected.txt"
-            BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q "${node_ids[@]}" \
-              > "$collected" 2>/dev/null || true
-            runnable="coverage-selection/runnable-nodeids.txt"
-            uv run -- python scripts/coverage_test_selection.py prune \
-              --nodeids-in "$targets" \
-              --collected-in "$collected" \
-              --nodeids-out "$runnable"
-            mapfile -t node_ids < "$runnable"
-          fi
-          if [ "${#node_ids[@]}" -eq 0 ]; then
-            echo "No tests selected for the changed paths."
+          : "${BASE_SHA:?the pull request base SHA is required to map changed paths to tests}"
+          targets="$RUNNER_TEMP/medium-targets.txt"
+          uv run -- python _project/scripts/preflight_targets.py tests --base-ref "$BASE_SHA" > "$targets"
+          if [ ! -s "$targets" ]; then
+            echo "No test modules map to the changed paths."
             exit 0
           fi
-          echo "Medium tests selected by coverage impact: ${#node_ids[@]}"
-          printf '%s\n' "${node_ids[@]:0:50}"
+          echo "Medium tests for changed paths:"
+          cat "$targets"
           status=0
-          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest "${node_ids[@]}" \
+          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest $(cat "$targets") \
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \
             --tb=short --timeout=60 -q || status=$?
           if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then

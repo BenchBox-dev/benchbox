@@ -11,9 +11,6 @@ prefix	_sources/tpc-h/dbgen/answers/
 prefix	_sources/tpc-ds/answer_sets/
 
 file	scripts/heavy_tier_needed.py
-file	scripts/coverage_test_selection.py
-file	scripts/coverage_map.ini
-file	_project/scripts/preflight_targets.py
 file	scripts/pr_arm.py
 file	benchbox/core/validation/engines.py
 file	benchbox/utils/data_validation.py
