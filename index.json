@@ -22921,6 +22921,15 @@
       "status": "done",
       "title": "The soundness merge digest accepts an external-review comment from any author"
     },
+    "soundness-oracle-branch-name-quote-20261022": {
+      "claim": null,
+      "needs": [
+        "soundness-gaps-decisions-20261022"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "URL-encode the branch name in the oracle reviewer pull-request query"
+    },
     "soundness-path-prefix-not-exact-file": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Failing-before test: a branch name containing characters that change query meaning (&, #, space, %) yields a wrong or injected query on develop and a correctly encoded one after the fix",
+    "A branch name like fix/some-branch still resolves exactly as before (test)",
+    "grep evidence lists every interpolation site in the module and shows each encoded",
+    "PR merged with an oracle verdict on its final head, or evidence that no change is needed"
+  ],
+  "context": "\n\nSource: soundness-gap plan (read-only planner review, 2026-10-22) of open issues 2806, 2807, 2808, 3125, 3126 in BenchBox-dev/benchbox plus owner decisions of 2026-10-22 (record: soundness-gaps-decisions-20261022). Line numbers, commit SHAs and findings are leads from that plan: re-verify them against current develop before acting. Not yet verified by anyone else.",
+  "description": "Owner decision 2026-10-22: yes (hardening). oracle_reviewers/github.py about line 166 builds a pull-request lookup query with an unencoded branch name (planner: it fails closed today, so this is defense in depth; also about lines 160-198 hold the retarget lookup). Encode the branch name with urllib.parse.quote (safe='' semantics appropriate for a query value) wherever the branch is interpolated into a URL or search query in that module, and nowhere else.\n\nDECISION GATE: re-verify the interpolation sites on current develop first. If no unencoded interpolation remains, record that and finish with no PR. Do not change behavior for ordinary branch names (slashes in names such as fix/x must still resolve).\n\nGUARDRAILS (all items): G1 never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict is required on every PR (soundness paths) and no digest may be pre-registered. G2 never weaken a gate, threshold, rule or check; no skip/xfail/quarantine. G3 the primary clone /Users/joe/Developer/BenchBox is read-only: use make worktree-create + make agent-write-preflight and absolute worktree paths; stage explicit paths; never git add -A; never git stash; identity Joe Harris, no agent trailers. G4 no CHANGELOG.md entry (curated section is at its 160-line ceiling) and no comments/docstrings in code (make comment-policy-check). G5 commit and PR text for a reader who never saw the session: no item ids, no plan/session labels. G6 never close, label or edit gap issues directly: the daily digest closes them after a valid attestation. G7 no settings/rulesets/secrets/variables writes; no new dependencies or unpinned images. G8 done means merged PR plus verification evidence recorded in the item; an open PR is not done. G9 self-review pass (code review action) before make pr-open; fix Critical and Required findings.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T19:54:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "419a68c3c512472b97efdc106cf82fea",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}
