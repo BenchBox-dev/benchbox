@@ -3,9 +3,11 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -242,19 +244,21 @@ def test_pr_number_is_unknown_without_squash_suffix_or_history(tmp_path: Path) -
 
 
 @pytest.fixture
-def rules(tmp_path: Path) -> tuple[object, ...]:
-    manifest = tmp_path / "changelog-paths.txt"
-    manifest.write_text(
-        "# fixture\n"
-        "prefix\tbenchbox/\n"
-        "prefix\t_sources/\n"
-        "prefix\t_binaries/\n"
-        "file\tpyproject.toml\n"
-        "file\tMANIFEST.in\n"
-        "except\tbenchbox/utils/VERSION_MANAGEMENT.md\n",
-        encoding="utf-8",
+def rules() -> tuple[object, ...]:
+    return (
+        SimpleNamespace(kind="prefix", pattern="benchbox/"),
+        SimpleNamespace(kind="prefix", pattern="_sources/"),
+        SimpleNamespace(kind="prefix", pattern="_binaries/"),
+        SimpleNamespace(kind="file", pattern="pyproject.toml"),
+        SimpleNamespace(kind="file", pattern="MANIFEST.in"),
+        SimpleNamespace(kind="except", pattern="benchbox/utils/VERSION_MANAGEMENT.md"),
     )
-    return cf.load_rules(manifest)
+
+
+requires_project_parser = pytest.mark.skipif(
+    not (REPO_ROOT / "_project" / "scripts" / "soundness_paths.py").is_file(),
+    reason="_project is removed from the curated release tree",
+)
 
 
 SHIPPED = ["benchbox/core/runner.py"]
@@ -366,6 +370,7 @@ def test_title_text_is_data_not_syntax(rules: tuple[object, ...]) -> None:
     assert cf.decide_required(hostile, SHIPPED, rules).required
 
 
+@requires_project_parser
 def test_manifest_loader_rejects_unknown_kinds_and_empty_files(tmp_path: Path) -> None:
     bad = tmp_path / "bad.txt"
     bad.write_text("glob\tbenchbox/**\n", encoding="utf-8")
@@ -573,6 +578,7 @@ def test_preview_renders_markdown_and_prints_pr_numbers_on_stderr(tmp_path: Path
     assert "changelog.d/fix-a.json  #77" in result.stderr
 
 
+@requires_project_parser
 def test_required_cli_exit_codes_and_manifest_failure(tmp_path: Path) -> None:
     manifest = tmp_path / "paths.txt"
     manifest.write_text("prefix\tbenchbox/\n", encoding="utf-8")
@@ -586,3 +592,21 @@ def test_required_cli_exit_codes_and_manifest_failure(tmp_path: Path) -> None:
     assert exempt.returncode == 0
     missing = _run_cli(tmp_path, "required", "--manifest", str(tmp_path / "absent.txt"), "--title", "feat: x y")
     assert missing.returncode == 2
+
+
+def test_required_fails_closed_when_the_manifest_parser_is_unavailable(tmp_path: Path) -> None:
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    shutil.copy(SCRIPT_PATH, scripts / "changelog_fragments.py")
+    manifest = tmp_path / "paths.txt"
+    manifest.write_text("prefix\tbenchbox/\n", encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(scripts / "changelog_fragments.py"), "required", "--manifest", str(manifest)]
+        + ["--title", "feat: add a thing", "--changed-file", "docs/a.md"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 2
+    assert "parser unavailable" in result.stderr

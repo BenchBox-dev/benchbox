@@ -503,6 +503,9 @@ def command_required(args: argparse.Namespace) -> int:
         changed = list(args.changed_file)
         for source in args.changed_files_from:
             changed.extend(_read_lines(source))
+    except ImportError as exc:
+        print(f"error: path manifest parser unavailable: {exc}", file=sys.stderr)
+        return EXIT_USAGE
     except (OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_USAGE
