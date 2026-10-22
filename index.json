@@ -13453,10 +13453,15 @@
       "title": "Add an exact-equality fast path to the result validator that can only accept what the slow path accepts"
     },
     "longtest-08-tpcds-binding-draw-obt": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T07:54:46Z",
+        "generation": "943ff5f3db29451e8a99400de865858f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Cut repeated dsqgen work in the TPC-DS binding, shared-draw and OBT parameter tests"
     },
     "longtest-09-throughput-refresh-sets-once": {
