@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Failing-before test: a non-zero-exit run whose stdout quotes a calibrated quota or auth phrase inside model output is classified ERROR (not QUOTA/AUTH) on the fixed code and QUOTA/AUTH on develop",
+    "Every existing calibrated real-world fixture (genuine quota and auth failures per harness) is still classified QUOTA/AUTH; none deleted or loosened",
+    "The per-harness stream decision is recorded in the item",
+    "PR merged with an oracle verdict on its final head; merge SHA recorded"
+  ],
+  "context": "Created 2026-10-22 from the 2807 external review finding 4.",
+  "description": "External review (codex) of commit 9c005a17a (gap issue 2807) reported, and the controller read the code on origin/develop 2026-10-22: _project/scripts/oracle_reviewers/absence.py (classify, about lines 150-175) matches CALIBRATED_QUOTA_PATTERNS and CALIBRATED_AUTH_PATTERNS against stdout plus stderr combined whenever the exit code is non-zero, so quoted content (for example a diff or finding that contains the text rate_limit_error) can classify a failed run as QUOTA or AUTH, which can suppress a permitted retry and block the reviewer's pool. The failing-exit gate does not authenticate the matched text. Related done item oracle-absence-classification-lows-20261008 handled earlier Lows; check it first and do not redo its work.\n\nDECISION GATE: prefer matching only against stderr (or the harness's structured error channel) where the calibrated patterns come from, and keep stdout matching only if the calibration shows the harness writes quota errors there; record per harness which stream the calibrated patterns were observed on (the calibration fixtures or tests). If a harness writes errors only to stdout together with model output, anchor the patterns to line starts or to the harness's error prefix instead of widening or removing them.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR (soundness path _project/scripts/oracle_reviewers); no pre-registered digests; never weaken a gate; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; done = merged PR plus evidence.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T20:10:12Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "44a0ce47c77249399032e638452c515f",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}

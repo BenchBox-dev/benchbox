@@ -15677,6 +15677,13 @@
       "status": "done",
       "title": "Oracle absence details are not redacted, newer quota messages get no reset time, and the muse quota table is empty"
     },
+    "oracle-absence-quota-pattern-anchoring-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Stop quoted text in reviewer output from classifying a failed run as quota-exhausted"
+    },
     "oracle-agy-reviewer-calibration-20261008": {
       "claim": null,
       "needs": [],
