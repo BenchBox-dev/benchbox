@@ -1,11 +1,15 @@
 {
   "acceptance": [
-    "The hash keeps the hunk header's function context, or each hunk's position relative to the previous one, while still surviving a plain rebase",
-    "A test shows a moved edit gives a different digest, and a rebased identical patch the same one",
-    "The #2769 replay fixture still shows the rebase carried"
+    "Failing-before evidence: a unit test with a moved hunk (same added line at two different positions) shows identical digests on develop and a different digest after the fix",
+    "A rebase-only fixture (same patch, different base, unchanged position relative to context) still produces the same digest and still CARRYs; the replay fixture of PR 2769 still shows the rebase carried",
+    "A reordered-hunks and an added-above-shift case are covered and behave as the chosen option documents",
+    "Every existing protocol/report test passes unchanged; no test is deleted or loosened",
+    "PR merged with an oracle SHIP verdict on its final head (no stand-in); merge SHA recorded in the item",
+    "The decision (option 1 or 2) and its reason are recorded in the item context",
+    "Residual risk statement: what a carried digest can still miss after the fix"
   ],
   "context": "2026-10-09 tracker review: priority lowered from medium to low. The risk is accidental only: an edit moved within a file where the three context lines still match, most likely in repetitive YAML or tests. The only writer on this repository is also the stand-in attester (joeharris76), so there is no adversary to exploit it. The acceptance criteria stay as written.",
-  "description": "protocol.file_patches replaces each hunk header with a bare \"@@\" so that rebases keep the hash. Moving an added or removed line to another place in the same file, where the three context lines match, therefore gives the same per-file hash and digest. The earlier SHIP is then carried to a semantically different head without review. Deferred from #2784 (Medium).",
+  "description": "protocol.file_patches (oracle_reviewers/protocol.py, about lines 120-123 on develop, re-verify) replaces every hunk header with a bare '@@' so rebases keep the hash. Moving an added or removed line to another place in the same file where the three context lines match gives the same per-file hash and patch_digest, so plan_round returns CARRY (protocol.py about 333-336) and report.carried posts SUCCESS without running a reviewer (report.py about 269-273). The planner reproduced it: the same '+require_admin(user)' hunk at guarded_write (line 10) versus public_read (line 40) gives identical file_patches and patch_digest. oracle_reviewers/ is now on the soundness path list (.github/soundness-paths.txt about line 94), so the merge gate itself is affected. This is the live deferred Medium from PR 2784 (commit 5ca12e6ca, gap issue 2808). Priority raised from low to high because the issue cannot be honestly attested clean until this is fixed and the defect sits in the gate.\n\nDECISION GATE (choose before coding, record the choice and reason): option 1 bind to each file's post-image blob id (right side of the diff 'index' line): simplest, but changes when anything else in the file changes, which may re-review more than needed after rebases that touch the file elsewhere; option 2 keep each hunk header's function context plus the hunk's offset relative to the previous hunk: survives plain rebases and unrelated shifts above, but must be shown not to be fooled by a move between functions with identical context. Choose the option that satisfies BOTH tests below; if neither can, stop and report to the owner rather than weakening either test.\n\nGUARDRAILS (all items): G1 never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict is required on every PR (soundness paths) and no digest may be pre-registered. G2 never weaken a gate, threshold, rule or check; no skip/xfail/quarantine. G3 the primary clone /Users/joe/Developer/BenchBox is read-only: use make worktree-create + make agent-write-preflight and absolute worktree paths; stage explicit paths; never git add -A; never git stash; identity Joe Harris, no agent trailers. G4 no CHANGELOG.md entry (curated section is at its 160-line ceiling) and no comments/docstrings in code (make comment-policy-check). G5 commit and PR text for a reader who never saw the session: no item ids, no plan/session labels. G6 never close, label or edit gap issues directly: the daily digest closes them after a valid attestation. G7 no settings/rulesets/secrets/variables writes; no new dependencies or unpinned images. G8 done means merged PR plus verification evidence recorded in the item; an open PR is not done. G9 self-review pass (code review action) before make pr-open; fix Critical and Required findings.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/2784"
   ],
@@ -25,6 +29,14 @@
       "op": "update",
       "op_id": "061b963a6b1d4b51a49288483b3b636f",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T19:52:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bfda420e309745e3b5423d0d49d550b0",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
     }
   ]
 }

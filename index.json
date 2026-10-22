@@ -15936,10 +15936,12 @@
     },
     "oracle-patch-hash-hunk-positions-20261008": {
       "claim": null,
-      "needs": [],
-      "priority": "low",
+      "needs": [
+        "soundness-gaps-decisions-20261022"
+      ],
+      "priority": "high",
       "status": "open",
-      "title": "Oracle patch hashes drop hunk positions, so moving an edit can carry an earlier decision"
+      "title": "Bind the oracle carry digest to hunk positions so a moved edit is re-reviewed"
     },
     "oracle-post-guard-reread-retry-20261009": {
       "claim": null,
