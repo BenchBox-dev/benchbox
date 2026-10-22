@@ -52,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Results anonymization precompiles the key-normalising pattern and caches the
+  normalised key and the identifier prefix for a key path (bounded caches, both pure
+  functions of their arguments). Anonymizing the committed results corpus is about a third
+  faster locally; published output is byte-identical.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed
@@ -329,6 +333,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   password in full. A test-session probe seeds a sentinel credential in the
   caller's home and checks that an isolated pytest run never reads it and writes
   nothing to that home; a live-only run still reads it.
+
+### Security
+
+- BenchBox now requires `certifi` 2026.10.19 or newer. Older releases of the CA
+  bundle that `requests` uses still trust the compromised eMudhra emSign
+  certificate authorities, so an attacker on the network path could impersonate
+  a cloud endpoint and capture the tokens that `requests`-based adapters send,
+  such as the Fabric and Synapse Spark adapters. Upgrading BenchBox now upgrades
+  `certifi` as well. See the
+  [Python advisory](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576).
+- Releases publish with `pypa/gh-action-pypi-publish` 1.14.3, which removes the
+  same authorities from the CA bundle that Sigstore uses for Trusted Publishing
+  and attestations. Release jobs install pip 26.2.2 and their helper packages
+  from hash-pinned wheels, so an older pip on the runner cannot be served a
+  substituted package.
+- The `benchbox-agent`, Velox and LakeSail images install Python packages with
+  uv 0.13.5 instead of pip. Rebuild existing images to pick up the change.
 
 ## [0.5.0rc1] - 2026-10-20
 

@@ -105,6 +105,7 @@ file	scripts/release_artifact_consumer.py
 file	scripts/release_admitted_dist.py
 file	scripts/release_tag_recheck.py
 file	scripts/release_blocker_check.py
+file	scripts/release_requirements.txt
 file	scripts/update_version.py
 file	scripts/generate_changelog_entry.py
 file	scripts/check_release_curation.py

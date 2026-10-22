@@ -107,10 +107,21 @@ Without the App secrets, the `post` job logs the result and succeeds.
 3. `attempt-N-omp` runs that reviewer through OMP on a detached,
    credential-free checkout of the head. OMP starts in an empty working
    directory with the checkout added as a read-only workspace, the tools
-   limited to `read,grep,glob`, and a trusted overlay that turns off project
-   MCP config, the advisor, context promotion and prewalk. It never runs pull
-   request code. The result is an artifact with the run ID, head SHA, reviewer
-   and either a validated verdict or an absence.
+   limited to `read,grep,glob`, skills and rules off (`--no-skills`,
+   `--no-rules`), and a trusted overlay. The overlay turns off project MCP
+   config, the advisor, context promotion, prewalk and URL fetching
+   (`fetch.enabled: false`). It also disables every discovery provider except
+   OMP's built-in defaults, so the checkout's `AGENTS.md`, `.omp/AGENTS.md`,
+   `CLAUDE.md`, editor rule files and plugins do not load. OMP reads any file
+   named by an `@` mention in the prompt before a tool call, resolving relative
+   paths from the working directory, so the brief puts a zero-width space
+   before every `@` that is followed by a character other than whitespace or
+   another `@` in the change data and the file priority. An `@` preceded by
+   that character does not start a mention. These settings limit what the
+   pull request can make the reviewer load. They do not confine its file
+   tools: the reviewer can still read any file the runner user can. It never
+   runs pull request code. The result is an artifact with the run ID, head
+   SHA, reviewer and either a validated verdict or an absence.
 4. `post` re-validates every artifact from this run, replays the selection,
    and posts the status and the findings. `findings_delivery` in
    `.github/oracle-reviewers.yml` chooses how:
@@ -214,9 +225,11 @@ leave the open list, and they are reported separately as never defects. On a
 forced round the judge counts a withdrawal without a file-and-line citation
 as not fixed; the head-commit existence check still happens when citations
 are marked.
-A thread reply counts as a dispute only when a reply from someone other than
-the oracle bot contains a line starting with `Dispute:` that states the case
-against the defect. A plain acknowledgement such as `done` is not a dispute.
+A thread reply counts as a dispute only when a reply from an owner, member or
+collaborator of the repository, other than the oracle bot, contains a line
+starting with `Dispute:` that states the case against the defect. Replies from
+other accounts never reach the brief and never force a re-review. A plain
+acknowledgement such as `done` is not a dispute.
 A forced re-review runs only after a SHIP or SHIP WITH FIXES decision, never
 after DO NOT SHIP. The third forced re-review of one patch is refused with a
 message to change the patch or ask the owner for a stand-in: empty commits and
@@ -268,21 +281,48 @@ rejected.
 
 ## Decisions
 
-The reviewer answers with schema 2 of the verdict (`VERDICT_SCHEMA` in
-`_project/scripts/oracle_reviewers/verdict.py`). Every property is required,
-because Codex structured outputs reject optional keys: `status` (`complete` or
-`incomplete`), `incomplete_reason`, `decision` (`SHIP`, `SHIP_WITH_FIXES`,
-`DO_NOT_SHIP`, or `NONE` when incomplete), `summary`, `files_examined`,
-`defects` and `prior_defects`. A reviewer that adds any other key, such as a
-defect count, is invalid. The brief asks for must-fix defects only, at
-most `protocol.max_defects` (10), and for `DO_NOT_SHIP` when the change needs
-rework or more defects would have to be listed.
+The canonical schema-2 response has seven reviewer-supplied properties:
+`status` (`complete` or `incomplete`), `incomplete_reason`, `decision` (`SHIP`,
+`SHIP_WITH_FIXES`, `DO_NOT_SHIP`, or `NONE` when incomplete), `summary`,
+`files_examined`, `defects` and `prior_defects`. The oracle adds the computed
+`defect_count` to stored verdicts; reviewers cannot set it. Stored artifacts
+must match the canonical fields strictly.
+
+Only reviewer ingress normalizes known harmless drift:
+
+- Missing `incomplete_reason` becomes empty. Missing `summary` becomes empty
+  except for DO_NOT_SHIP, whose summary is the published rationale.
+- Finding metadata `line_note`, `end_line_note` and `detail_extra` is removed.
+- Prior metadata `severity`, `file`, `line`, `end_line`, `title` and `detail`
+  is removed; the prior's `id`, `status` and `evidence` are never inferred.
+- An object keyed by prior ID becomes a list. An omitted embedded ID comes
+  from the key; an embedded ID must agree after the supported `#` prefix is
+  removed. Duplicate normalized IDs remain invalid.
+
+Duplicate JSON keys at any depth, unfilled response-template placeholders,
+unknown top-level keys, reviewer-supplied defect counts and missing
+decision-bearing fields remain invalid. No finding is discarded or given an
+invented location. Applied rewrites are recorded in the diagnostic. Invalid
+JSON retains a redacted final-message tail; parseable invalid output also
+gets a bounded keys-and-types fingerprint, never field values.
+
+`tests/fixtures/oracle_reviewers/pr3237_missing_text_fields.json` preserves
+decoded payloads from the retained attempt diagnostics for runs `39662535698`
+and `39669405558`. Their text is already redacted; these are not raw model
+transcripts. Both responses retain the unfixed prior finding rather than
+becoming approvals after normalization.
+
+The brief asks for must-fix defects only, at most `protocol.max_defects` (10),
+and for DO_NOT_SHIP when the change needs rework or more defects would have
+to be listed.
 
 The code, not the model, decides, and the stricter outcome wins:
 
 | Reviewer reports | Result |
 |---|---|
-| SHIP or SHIP_WITH_FIXES, no defects | SHIP |
+| SHIP, no counted or open prior defects | SHIP |
+| SHIP_WITH_FIXES, no listed or open prior defects | absent (`invalid`), never promoted to SHIP |
+| SHIP_WITH_FIXES, only out-of-scope follow-up findings | SHIP; findings are disclosed as not counted |
 | SHIP or SHIP_WITH_FIXES, 1 to 10 defects | SHIP WITH FIXES |
 | more than 10 defects | DO NOT SHIP; the defects are dropped and the summary notes the count |
 | DO_NOT_SHIP | DO NOT SHIP; the summary is kept, at most 1500 characters |
