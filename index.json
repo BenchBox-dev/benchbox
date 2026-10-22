@@ -22916,6 +22916,25 @@
       "status": "open",
       "title": "External review of soundness-gap commit 48c44cf73 (issue 3126) and attestation if clean"
     },
+    "soundness-gaps-closeout-20261022": {
+      "claim": null,
+      "needs": [
+        "oracle-patch-hash-hunk-positions-20261008",
+        "soundness-gap-2807-external-review-20261022",
+        "soundness-gap-3125-external-review-20261022",
+        "soundness-gap-2806-external-review-20261022",
+        "soundness-gap-3126-external-review-20261022",
+        "soundness-gap-2808-external-review-20261022",
+        "soundness-dead-exception-report-20261022",
+        "soundness-prereg-same-commit-entries-20261022",
+        "soundness-dead-exceptions-cleanup-20261022",
+        "soundness-oracle-branch-name-quote-20261022",
+        "soundness-deferred-findings-inventory-20261022"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Close out the soundness-gap batch: verify gap issues, digest closure and owner actions"
+    },
     "soundness-gaps-decisions-20261022": {
       "claim": null,
       "needs": [],
