@@ -3,7 +3,7 @@
     "Each of the five decisions and the reviewer interpretation are recorded in the item context with date",
     "The item is finished before any dependent item is claimed"
   ],
-  "context": "Decision gate: none (decisions already made by the owner in conversation).\n\nSource: soundness-gap plan (read-only planner review, 2026-10-22) of open issues 2806, 2807, 2808, 3125, 3126 in BenchBox-dev/benchbox plus owner decisions of 2026-10-22 (record: soundness-gaps-decisions-20261022). Line numbers, commit SHAs and findings are leads from that plan: re-verify them against current develop before acting. Not yet verified by anyone else.",
+  "context": "Decision gate: none (decisions already made by the owner in conversation).\n\nSource: soundness-gap plan (read-only planner review, 2026-10-22) of open issues 2806, 2807, 2808, 3125, 3126 in BenchBox-dev/benchbox plus owner decisions of 2026-10-22 (record: soundness-gaps-decisions-20261022). Line numbers, commit SHAs and findings are leads from that plan: re-verify them against current develop before acting. Not yet verified by anyone else.\n\nGUARDRAIL: this item records decisions only: no code, issue or tracker-item changes beyond this record. Finish it immediately; all other items in the batch need it.",
   "description": "Decision record, not implementation. Owner answers of 2026-10-22: (1) Attestation authority = option B: agents may post the External review attestation after a real external reviewer returns zero findings, one-time exception limited to issues 2806, 2807, 2808, 3125, 3126 (see ATTESTATION RULE in dependent items). (2) Reviewer = 'oracle review'. Interpretation (flagged to the owner, not contradicted): the oracle reviews every PR this batch opens (verdict required, no stand-in); the digest accepts attester names codex, muse or agy only, so the five issue attestations use the planner's split: codex for 2807 and 2808, agy for 2806, 3125 and 3126. (3) Do not harden the attestation check (no SHA/link requirement, no attester credential design): record only. (4) Yes: local hook accepts same-commit fixture entries (CI still requires oracle cover) and add a dead-exception report. (5) Yes: dead-exception cleanup PR, quote() hardening PR for the oracle branch-name query, inventory of deferred oracle findings into tracker items. Planner findings not acted on, by decision: the digest's standin_comment ignores CONNECTOR_CUTOFF (reports a gap that is not there, never hides one: left as is).",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "fc094735a48a4153993052fcda4297ac",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T19:55:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f73458ccf8374fb8899c1eebcf2b0f4f",
       "session_id": "db427a9694db441d88b0b3b12151b3f1"
     }
   ]
