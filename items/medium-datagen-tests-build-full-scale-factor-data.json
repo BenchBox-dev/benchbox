@@ -75,6 +75,17 @@
       "op": "update",
       "op_id": "42c2b57045b64f9ea3c1e07686f5e97d",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-22T01:32:31Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e",
+      "generation": "050ac86151b040d6bef0c4b7a92086e1",
+      "op": "takeover",
+      "op_id": "ce078e8d0b79448bafc4ab10e548f1a3",
+      "reason": "The holder is this conversation's previous agent process (session 8202d1c5316f41c897a0af067e2c8e9e), which exited at about 2026-10-21T23:29Z; the conversation continues under a new process and actor, so that session cannot resume.",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]
 }

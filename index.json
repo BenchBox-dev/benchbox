@@ -14238,10 +14238,10 @@
     },
     "medium-datagen-tests-build-full-scale-factor-data": {
       "claim": {
-        "expires_at": "2026-10-22T20:18:45Z",
-        "generation": "78b97ed4a99947f6b3123a613bf55ecb",
+        "expires_at": "2026-10-23T01:32:31Z",
+        "generation": "050ac86151b040d6bef0c4b7a92086e1",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
       },
       "needs": [
         "longtest-16-refresh-durations-and-measure"
