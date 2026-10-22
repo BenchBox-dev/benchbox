@@ -1769,7 +1769,7 @@ jobs:
     name: ${{ matrix.unit }}
     if: ${{ github.event.action == 'edited' && !github.event.changes.base }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 5
     permissions:
       actions: read
       checks: read
@@ -1791,6 +1791,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
-          python scripts/ci_text_edit_verdict.py --repo "${{ github.repository }}"
+          python scripts/ci_text_edit_verdict.py verdict --repo "${{ github.repository }}"
           --sha "${{ github.event.pull_request.head.sha }}" --unit "${{ matrix.unit }}"
           --run-id "${{ github.run_id }}"

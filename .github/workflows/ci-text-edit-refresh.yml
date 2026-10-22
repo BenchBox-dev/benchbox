@@ -1,0 +1,39 @@
+name: ci-text-edit-refresh
+
+run-name: ci-text-edit-refresh (${{ github.event.workflow_run.head_sha }})
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: ci-text-edit-refresh-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    name: refresh
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.display_title != 'CI (text edit)' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Checkout the verdict helper
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: scripts/ci_text_edit_verdict.py
+          sparse-checkout-cone-mode: false
+
+      - name: Re-run the newest failed text-edit run on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: python scripts/ci_text_edit_verdict.py refresh --repo "$REPO" --sha "$HEAD_SHA"

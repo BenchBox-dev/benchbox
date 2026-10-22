@@ -221,9 +221,19 @@ def test_concurrency_is_one_group_per_pull_request() -> None:
     assert "github.event.issue.number" in group
     assert "inputs.pr" in group
     assert "github.event.workflow_run.pull_requests" in group
-    assert "github.event.workflow_run.head_sha" not in group
     assert "github.run_id" in group
     assert _load()["concurrency"]["cancel-in-progress"] is True
+
+
+def test_concurrency_keys_on_head_sha_only_for_pull_request_source_runs() -> None:
+    group = _load()["concurrency"]["group"]
+    assert group.count("github.event.workflow_run.head_sha") == 1
+    guard = re.search(r"\(([^()]*)\)\s*&&\s*format\('sha-\{0\}', github\.event\.workflow_run\.head_sha\)", group)
+    assert guard, "the sha key must be guarded by a condition on the source event"
+    events = set(re.findall(r"github\.event\.workflow_run\.event == '(\w+)'", guard.group(1)))
+    assert events == {"pull_request", "pull_request_target"}
+    assert group.index("github.event.workflow_run.pull_requests") < group.index("sha-")
+    assert group.index("sha-") < group.index("github.run_id")
 
 
 def test_workflow_permissions_are_empty_and_jobs_stay_minimal() -> None:
