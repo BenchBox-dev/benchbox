@@ -13406,15 +13406,10 @@
       "title": "Delete or fold six duplicate medium-tier tests and evaluate one timing bound"
     },
     "longtest-02-canary-live-real-checks": {
-      "claim": {
-        "expires_at": "2026-10-23T03:31:49Z",
-        "generation": "ec1552cb5f8c4df6a373acf980acd095",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Replace the vacuous live canary-selection tests with targeted checks and split the full-tree tests"
     },
     "longtest-03-mcp-export-failure-real-result": {
