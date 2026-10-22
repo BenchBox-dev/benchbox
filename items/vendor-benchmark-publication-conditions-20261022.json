@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Every condition above is met by a documented publishing step or an automated check, named per vendor.",
+    "Bundles record enough (plan tier, preview features used) for a reviewer or validator to refuse free-tier and preview results.",
+    "The live-cloud publish items follow the procedure before publishing."
+  ],
+  "context": "Terms read in full from the live vendor pages on 2026-10-22 and recorded in the ADR's 'Terms check' section. The readings come from the agreements themselves, not legal advice. Related: trial-capacity-disclosure-bundles-20261006 covers trial capacity SKUs, not these conditions.",
+  "description": "The locality ADR's terms table (read from each vendor's live terms, #3266) lists conditions on publishing benchmark results that nothing in BenchBox checks today:\n\n- Snowflake: share results with Snowflake reasonably in advance of publishing (Acceptable Use Policy §IV).\n- AWS (Redshift, Athena), ClickHouse Cloud and MotherDuck: send the replication information to the vendor, not only publish it (AWS Service Terms §1.8, ClickHouse AUP §2, MotherDuck MSA §1.5).\n- Free, trial and preview tiers: do not publish results from Databricks Free Edition (needs express permission), MotherDuck free or trial use, or any Beta or Preview feature on AWS, Snowflake, Databricks or ClickHouse without the vendor's approval.\n- BigQuery: only tests the publisher runs itself, not on behalf of a hyperscale cloud provider.\n\nDecide how each condition is met (publishing checklist, bundle metadata such as the plan tier and preview features used, or a submission validator check), then implement it.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3266",
+    "docs/development/adr/adr-client-link-locality-disclosure.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e4d4a73320d8851d7411e8f",
+      "at": "2026-10-22T13:41:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "05c37ba536f348519ac95f883a907a01",
+      "session_id": "e9f0cc7a22044c60b8b2b71e8d7d25c0"
+    }
+  ]
+}

@@ -28059,6 +28059,13 @@
       "status": "open",
       "title": "Verify the Velox spark-map apply path and effective-config capture against a live Gluten build"
     },
+    "vendor-benchmark-publication-conditions-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Meet each vendor's benchmark-publication conditions before publishing cloud results"
+    },
     "vendor-duckdb-wasm-bundle-to-remove-jsdelivr-dependency": {
       "claim": null,
       "needs": [
