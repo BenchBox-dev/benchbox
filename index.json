@@ -2711,9 +2711,9 @@
     },
     "changelog-fragments-01-library": {
       "claim": {
-        "expires_at": "2026-10-23T14:38:01Z",
+        "expires_at": "2026-10-23T16:42:40Z",
         "generation": "ca2e696acd4d42ceb8a14db0a74e0bb4",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af2ba468331f7d9dcc65a0d3"
       },
       "needs": [],
