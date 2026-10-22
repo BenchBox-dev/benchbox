@@ -211,12 +211,22 @@ def name_problems(workflow: dict[str, Any], required: set[str]) -> list[str]:
     verdict = workflow["jobs"].get(VERDICT_JOB)
     if verdict is None:
         return [*problems, f"no {VERDICT_JOB} job reports the required names on a text edit"]
-    if verdict.get("name") != "${{ matrix.unit }}":
+    name = str(verdict.get("name", VERDICT_JOB))
+    if name != "${{ matrix.unit }}":
         problems.append(f"{VERDICT_JOB} is not named after its matrix unit")
+    if skipped_check_name(name) in required:
+        problems.append(f"{VERDICT_JOB} publishes required name {skipped_check_name(name)!r} when it is skipped")
     units = set(verdict.get("strategy", {}).get("matrix", {}).get("unit", []))
     problems += [f"a text edit reports no {name!r} check" for name in sorted(required - units)]
     problems += [f"a text edit reports {name!r}, which is not a required check" for name in sorted(units - required)]
     return problems
+
+
+def skipped_check_name(name: str) -> str:
+    text = name.strip()
+    if text.startswith("${{") and text.endswith("}}"):
+        return text[3:-2].strip()
+    return text
 
 
 def guard_problems(workflow: dict[str, Any]) -> list[str]:
@@ -353,6 +363,10 @@ def _run_name_unmarked(workflow: dict[str, Any]) -> None:
     workflow["run-name"] = "CI"
 
 
+def _verdict_named_core(workflow: dict[str, Any]) -> None:
+    workflow["jobs"][VERDICT_JOB]["name"] = "core"
+
+
 @pytest.mark.parametrize(
     ("change", "check"),
     [
@@ -366,6 +380,7 @@ def _run_name_unmarked(workflow: dict[str, Any]) -> None:
         (_verdict_drops_a_unit, "names"),
         (_verdict_removed, "names"),
         (_run_name_unmarked, "run-name"),
+        (_verdict_named_core, "names"),
     ],
 )
 def test_checks_catch_regressions(change: Any, check: str) -> None:
@@ -378,3 +393,8 @@ def test_checks_catch_regressions(change: Any, check: str) -> None:
         assert run_name_problems(workflow)
     else:
         assert concurrency_problems(workflow)
+
+
+def test_a_skipped_job_publishes_its_name_expression_without_the_delimiters() -> None:
+    assert skipped_check_name("${{ matrix.unit }}") == "matrix.unit"
+    assert skipped_check_name("core") == "core"
