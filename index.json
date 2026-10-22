@@ -13435,6 +13435,15 @@
       "status": "open",
       "title": "Share pre-generated TPC-H data across the CLI end-to-end tests"
     },
+    "longtest-06-cross-surface-medium-scale": {
+      "claim": null,
+      "needs": [
+        "longtest-01-delete-duplicate-tests"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run the medium cross-surface copies on smaller data where the property allows, and build SSB once"
+    },
     "longtest-07-validator-exact-fast-path": {
       "claim": null,
       "needs": [],
