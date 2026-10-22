@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -72,7 +73,9 @@ def test_clickhouse_mode_alias_names_only_the_supplied_key(tmp_path: Path) -> No
     assert "'--platform clickhouse-local'" in lines[0]
 
 
-def test_polars_streaming_flag_warns_once_and_records_legacy_option(tmp_path: Path) -> None:
+def test_polars_streaming_flag_warns_once_and_records_legacy_option(
+    tmp_path: Path, tpch_sf001_data: Callable[[Path], str]
+) -> None:
     result = run_cli_command(
         [
             "run",
@@ -89,7 +92,7 @@ def test_polars_streaming_flag_warns_once_and_records_legacy_option(tmp_path: Pa
             "generate,load,power",
             "--non-interactive",
             "--output",
-            str(tmp_path / "out"),
+            tpch_sf001_data(tmp_path / "out"),
         ],
         env={"BENCHBOX_OUTPUT_DIR": str(tmp_path), "PYTHONWARNINGS": "default"},
         timeout=300,
