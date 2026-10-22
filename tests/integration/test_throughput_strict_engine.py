@@ -4,6 +4,7 @@ import sqlite3
 import threading
 import time
 from collections.abc import Generator
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ import pytest
 from benchbox.core.tpcds.benchmark import TPCDSBenchmark
 from benchbox.core.tpcds.throughput_test import TPCDSThroughputTest, TPCDSThroughputTestConfig
 from benchbox.core.tpch.benchmark import TPCHBenchmark
+from benchbox.core.tpch.refresh import TPCHRefreshUpdateSet, generate_refresh_update_sets
 from benchbox.core.tpch.throughput_test import TPCHThroughputTest, TPCHThroughputTestConfig
 from benchbox.platforms import sqlite as sqlite_module
 from benchbox.platforms.base.connection_wrappers import (
@@ -115,6 +117,11 @@ def _load_tpch(adapter: SQLiteAdapter, benchmark: TPCHBenchmark, data_dir: Path)
 
 
 @pytest.fixture(scope="module")
+def tpch_refresh_sets(tmp_path_factory: pytest.TempPathFactory) -> dict[int, TPCHRefreshUpdateSet]:
+    return generate_refresh_update_sets(_SCALE_FACTOR, 1, 1, tmp_path_factory.mktemp("tpch_refresh_sets") / "dbgen")
+
+
+@pytest.fixture(scope="module")
 def tpch_sqlite(
     tmp_path_factory: pytest.TempPathFactory, tpch_data: tuple[TPCHBenchmark, Path]
 ) -> Generator[tuple[SQLiteAdapter, TPCHBenchmark, Any], None, None]:
@@ -213,6 +220,18 @@ class TestTPCHThroughputOnSQLite:
 
 
 class TestTPCHMaintenanceOnSQLite:
+    @pytest.fixture(autouse=True)
+    def _reuse_generated_refresh_sets(
+        self, tpch_refresh_sets: dict[int, TPCHRefreshUpdateSet], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def generate(
+            scale_factor: float, first_set: int, count: int, output_dir: Path
+        ) -> dict[int, TPCHRefreshUpdateSet]:
+            assert scale_factor == _SCALE_FACTOR
+            return {set_id: replace(tpch_refresh_sets[set_id]) for set_id in range(first_set, first_set + count)}
+
+        monkeypatch.setattr("benchbox.core.tpch.maintenance_test.generate_refresh_update_sets", generate)
+
     @staticmethod
     def _run(
         adapter: SQLiteAdapter, benchmark: TPCHBenchmark, connection: Any, output_dir: Path
