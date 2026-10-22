@@ -656,9 +656,9 @@ DDL centralization.
 | Databricks | `platforms/databricks/adapter.py` | `_convert_to_delta_table` (pre-pass loop) | CREATE OR REPLACE, USING DELTA, TBLPROPERTIES (config-dependent) |
 | Databend | `platforms/databend/adapter.py` | `_optimize_table_definition` | Databend-specific DDL dialect |
 | Firebolt | `platforms/firebolt.py` | `_optimize_table_definition` | Firebolt DDL dialect |
-| Redshift | `platforms/redshift.py` | `_optimize_table_definition` | Redshift DDL dialect |
+| Redshift | `platforms/redshift.py` | `translate_ddl` | Redshift DDL dialect |
 | Azure Synapse | `platforms/azure_synapse.py` | `_optimize_table_definition` | Synapse DDL dialect |
-| Snowflake | `platforms/snowflake.py` | `_optimize_table_definition` | Snowflake DDL dialect (clustering/tuning) |
+| Snowflake | `platforms/snowflake.py` | `translate_ddl` | Snowflake DDL dialect (clustering/tuning) |
 | Presto | `platforms/presto.py` | `_optimize_table_definition` | Presto DDL dialect |
 | Trino | `platforms/trino.py` | `_optimize_table_definition` | Trino DDL dialect |
 | Spark | `platforms/spark.py` | `_optimize_table_definition` | USING DELTA/ICEBERG/ORC/PARQUET (format from `self.table_format`) |

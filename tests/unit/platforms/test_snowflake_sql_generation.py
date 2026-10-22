@@ -35,66 +35,6 @@ def _make_adapter(**kwargs):
         return SnowflakeAdapter(**defaults)
 
 
-class TestSnowflakeOptimizeTableDefinition:
-    def test_adds_cluster_by_when_missing(self):
-        from benchbox.platforms.snowflake import SnowflakeAdapter
-
-        with patch("benchbox.platforms.snowflake.snowflake"):
-            adapter = SnowflakeAdapter(
-                account="acct",
-                username="u",
-                password="p",
-                clustering_keys=["l_orderkey", "l_shipdate"],
-            )
-            result = adapter._optimize_table_definition("CREATE TABLE lineitem (l_orderkey BIGINT)")
-
-            assert isinstance(result, str)
-
-    def test_returns_unchanged_if_no_cluster_keys(self):
-        from benchbox.platforms.snowflake import SnowflakeAdapter
-
-        with patch("benchbox.platforms.snowflake.snowflake"):
-            adapter = SnowflakeAdapter(
-                account="acct",
-                username="u",
-                password="p",
-            )
-            stmt = "CREATE TABLE orders (o_orderkey BIGINT)"
-            result = adapter._optimize_table_definition(stmt)
-            assert "CLUSTER BY" not in result
-
-    def test_if_not_exists_kept_without_or_replace(self):
-
-        from benchbox.platforms.snowflake import SnowflakeAdapter
-
-        with patch("benchbox.platforms.snowflake.snowflake"):
-            adapter = SnowflakeAdapter(
-                account="acct",
-                username="u",
-                password="p",
-            )
-            stmt = "CREATE TABLE IF NOT EXISTS DimDate (SK_DateID BIGINT)"
-            result = adapter._optimize_table_definition(stmt)
-            assert "OR REPLACE" not in result
-            assert "IF NOT EXISTS" in result
-
-    def test_quoted_identifiers_uppercased(self):
-
-        from benchbox.platforms.snowflake import SnowflakeAdapter
-
-        with patch("benchbox.platforms.snowflake.snowflake"):
-            adapter = SnowflakeAdapter(
-                account="acct",
-                username="u",
-                password="p",
-            )
-            stmt = 'CREATE TABLE "store_sales" ("ss_sold_date_sk" INTEGER, "note" VARCHAR DEFAULT \'keep me\')'
-            result = adapter._optimize_table_definition(stmt)
-            assert '"STORE_SALES"' in result
-            assert '"SS_SOLD_DATE_SK"' in result
-            assert "'keep me'" in result
-
-
 class TestSnowflakeSafeguardDivision:
     def test_division_routed_through_nullif(self):
 

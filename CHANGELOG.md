@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Redshift and Snowflake build `CREATE TABLE` text through `translate_ddl` instead of the
+  adapters' own DDL rewriters, which are deleted. Redshift still adds `DISTSTYLE AUTO SORTKEY AUTO`
+  and Snowflake still writes `CREATE OR REPLACE TABLE`. Snowflake keeps the case of quoted
+  identifiers instead of upper-casing them, and fixed-size arrays are written as plain arrays.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed

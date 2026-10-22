@@ -1366,26 +1366,6 @@ class TestGenerateTuningClause:
             pytest.skip("TuningType not available")
 
 
-class TestOptimizeTableDefinition:
-    def test_adds_or_replace_to_create_table(self):
-        adapter = _make_adapter()
-        sql = "CREATE TABLE ORDERS (o_orderkey INT)"
-        result = adapter._optimize_table_definition(sql)
-        assert "CREATE OR REPLACE TABLE" in result
-
-    def test_leaves_non_create_table_unchanged(self):
-        adapter = _make_adapter()
-        sql = "CREATE INDEX idx ON ORDERS (o_orderkey)"
-        result = adapter._optimize_table_definition(sql)
-        assert result == sql
-
-    def test_does_not_double_replace(self):
-        adapter = _make_adapter()
-        sql = "CREATE OR REPLACE TABLE ORDERS (o_orderkey INT)"
-        result = adapter._optimize_table_definition(sql)
-        assert result.count("OR REPLACE") == 1
-
-
 class TestAnalyzeTableAndCloseConnection:
     def test_analyze_table_executes_recluster(self):
         adapter = _make_adapter()
