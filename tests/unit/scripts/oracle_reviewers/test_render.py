@@ -169,6 +169,35 @@ def test_file_priority_is_cut_to_fit_its_slot() -> None:
     assert text.splitlines()[0] == f"{rows[0][0]} | 3 | high"
 
 
+@pytest.mark.parametrize(
+    "mention", ["@/etc/passwd", "@~/.omp/agent/config.yml", '@"/x y"', "@'/x'", "@../out", "@./in"]
+)
+def test_path_mentions_in_untrusted_slots_cannot_reach_omp(mention: str) -> None:
+    row = FileRow(f"docs/{mention}.md", "high", 1.0, 3)
+    text = render_review(
+        template_name="gate",
+        classification=_classification((), (row,)),
+        repo="o/n",
+        pr=1,
+        base_sha="a" * 40,
+        head_sha="b" * 40,
+        max_defects=10,
+        prior_rule="Confirm or withdraw each disputed defect.",
+        prior_block=f"\nDisputed findings:\n- a.py: t\n  - reply by joe: Dispute: see {mention}\n",
+        files_block=f"Changed files:\n{mention} (+1/-0, modified)\n",
+        diff_text=f"+ value = {mention}\n",
+        diff_path=None,
+        max_bytes=200_000,
+    )
+    assert mention not in text
+    assert text.count(mention.replace("@", "@\u200b", 1)) == 4
+
+
+def test_diff_syntax_and_ordinary_at_signs_stay_byte_identical() -> None:
+    diff = "@@ -1,2 +1,3 @@\n+@pytest.mark.fast\n+owner = 'dev@example.com'\n+x = a @ b\n"
+    assert diff in _review(_classification(()), diff)
+
+
 def test_prior_listing_starts_each_row_with_the_bare_id() -> None:
     rows = prior_listing([{"id": "D3", "severity": "High", "file": "a.py", "line": 4, "end_line": None, "title": "t"}])
     assert rows == "D3 High a.py:4 t"

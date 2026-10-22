@@ -108,9 +108,15 @@ Without the App secrets, the `post` job logs the result and succeeds.
    credential-free checkout of the head. OMP starts in an empty working
    directory with the checkout added as a read-only workspace, the tools
    limited to `read,grep,glob`, and a trusted overlay that turns off project
-   MCP config, the advisor, context promotion and prewalk. It never runs pull
-   request code. The result is an artifact with the run ID, head SHA, reviewer
-   and either a validated verdict or an absence.
+   MCP config, the advisor, context promotion, prewalk and URL fetching
+   (`fetch.enabled: false`), and disables every context-file discovery
+   provider, so a pull request's `AGENTS.md`, `.omp/AGENTS.md` or `CLAUDE.md`
+   never reaches the system prompt. The brief inserts a zero-width space after
+   any `@` that precedes `/`, `~`, `.` or a quote in the change data and the
+   file priority, because OMP reads a file named by an `@` mention in the
+   prompt before any tool call. It never runs pull request code. The result is
+   an artifact with the run ID, head SHA, reviewer and either a validated
+   verdict or an absence.
 4. `post` re-validates every artifact from this run, replays the selection,
    and posts the status and the findings. `findings_delivery` in
    `.github/oracle-reviewers.yml` chooses how:
@@ -214,9 +220,11 @@ leave the open list, and they are reported separately as never defects. On a
 forced round the judge counts a withdrawal without a file-and-line citation
 as not fixed; the head-commit existence check still happens when citations
 are marked.
-A thread reply counts as a dispute only when a reply from someone other than
-the oracle bot contains a line starting with `Dispute:` that states the case
-against the defect. A plain acknowledgement such as `done` is not a dispute.
+A thread reply counts as a dispute only when a reply from an owner, member or
+collaborator of the repository, other than the oracle bot, contains a line
+starting with `Dispute:` that states the case against the defect. Replies from
+other accounts never reach the brief and never force a re-review. A plain
+acknowledgement such as `done` is not a dispute.
 A forced re-review runs only after a SHIP or SHIP WITH FIXES decision, never
 after DO NOT SHIP. The third forced re-review of one patch is refused with a
 message to change the patch or ask the owner for a stand-in: empty commits and
