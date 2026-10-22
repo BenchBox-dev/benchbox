@@ -27,30 +27,28 @@ pytestmark = [
 ]
 
 
-@pytest.fixture(scope="module")
-def ssb_cell(tmp_path_factory):
+def test_ssb_dataframe_surface_equivalent_to_sql_and_reference_row_counts_match(tmp_path):
     gate = GATES["ssb"]
-    data = gate.build(EQUIVALENCE_SCALE, tmp_path_factory.mktemp("ssb_cell"))
+    data = gate.build(EQUIVALENCE_SCALE, tmp_path)
+    connection = data.connection
     try:
-        yield data
+        contexts = build_production_contexts(data.benchmark, data.data_dir, backends=gate.backends)
+        divergences = find_cross_surface_divergences(
+            connection,
+            query_ids=data.query_ids,
+            reference_sql=data.reference_sql,
+            dataframe_query=data.dataframe_query,
+            contexts=contexts,
+            validator=ResultValidator(tolerance=gate.tolerance),
+            backends=gate.backends,
+        )
+        coverage = count_executed_cells(data.query_ids, data.dataframe_query, gate.backends)
+        actual = {
+            normalize_ssb_query_id(qid): len(connection.execute(data.reference_sql(qid)).fetchall())
+            for qid in data.query_ids
+        }
     finally:
-        data.connection.close()
-
-
-def test_ssb_dataframe_surface_equivalent_to_sql(ssb_cell):
-    gate = GATES["ssb"]
-    data = ssb_cell
-    contexts = build_production_contexts(data.benchmark, data.data_dir, backends=gate.backends)
-    divergences = find_cross_surface_divergences(
-        data.connection,
-        query_ids=data.query_ids,
-        reference_sql=data.reference_sql,
-        dataframe_query=data.dataframe_query,
-        contexts=contexts,
-        validator=ResultValidator(tolerance=gate.tolerance),
-        backends=gate.backends,
-    )
-    coverage = count_executed_cells(data.query_ids, data.dataframe_query, gate.backends)
+        connection.close()
 
     missing = sorted(backend for backend, count in coverage.items() if count == 0)
     assert not missing, f"gated SSB backend(s) implement no queries: {missing}"
@@ -60,14 +58,7 @@ def test_ssb_dataframe_surface_equivalent_to_sql(ssb_cell):
         f"{d.key} ({d.detail})" for d in divergences if d.key in unexpected
     )
 
-
-def test_ssb_sql_reference_row_counts_match_the_recorded_expectations(ssb_cell):
-    assert not GATES["ssb"].legitimately_empty, (
+    assert not gate.legitimately_empty, (
         "the SSB gate must carry no legitimately_empty classification once the data is fixed"
     )
-    data = ssb_cell
-    actual = {
-        normalize_ssb_query_id(qid): len(data.connection.execute(data.reference_sql(qid)).fetchall())
-        for qid in data.query_ids
-    }
     assert actual == SSB_EXPECTED_ROW_COUNTS[EQUIVALENCE_SCALE]
