@@ -22899,17 +22899,12 @@
       "title": "External review of soundness-gap commit 5ca12e6ca (issue 2808) and attestation if clean"
     },
     "soundness-gap-3125-external-review-20261022": {
-      "claim": {
-        "expires_at": "2026-10-23T20:03:18Z",
-        "generation": "c702ad679e5c4d3a9812f6d4d2d10b8c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601"
-      },
+      "claim": null,
       "needs": [
         "soundness-gaps-decisions-20261022"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "External review of soundness-gap commit d153fbb1a (issue 3125) and attestation if clean"
     },
     "soundness-gap-3126-external-review-20261022": {
