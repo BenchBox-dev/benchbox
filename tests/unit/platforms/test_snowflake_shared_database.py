@@ -67,10 +67,42 @@ def test_a_reset_drops_only_this_benchmarks_tables_and_keeps_the_database(adapte
         assert adapter.reset_database_in_place(database=DATABASE, schema="PUBLIC") is True
 
     assert sorted(connection.statements) == sorted(
-        f"DROP TABLE IF EXISTS {DATABASE}.PUBLIC.{name.upper()}" for name in TPCH_TABLES
+        [f"DROP TABLE IF EXISTS {DATABASE}.PUBLIC.{name.upper()}" for name in TPCH_TABLES]
+        + [f"DROP TABLE IF EXISTS {DATABASE}.PUBLIC.BENCHBOX_TUNING_METADATA"]
     )
     assert not any("DATABASE" in statement.upper().replace(DATABASE.upper(), "") for statement in connection.statements)
     assert connection.closed
+
+
+def test_a_reset_clears_the_tuning_metadata_so_a_later_run_cannot_trust_it(adapter):
+    connection = _Connection()
+    with _admin(adapter, connection):
+        adapter.reset_database_in_place(database=DATABASE, schema="PUBLIC")
+
+    assert f"DROP TABLE IF EXISTS {DATABASE}.PUBLIC.BENCHBOX_TUNING_METADATA" in connection.statements
+
+
+def test_a_reset_drops_an_external_table_with_the_statement_snowflake_requires(adapter):
+    class _ExternalTables(_Connection):
+        def cursor(self) -> _Cursor:
+            cursor = super().cursor()
+            record = cursor.execute
+
+            def execute(sql: str, *args: Any, **kwargs: Any) -> None:
+                if sql == f"DROP TABLE IF EXISTS {DATABASE}.PUBLIC.LINEITEM":
+                    record(sql)
+                    raise RuntimeError("Object found is of type 'EXTERNAL_TABLE', not specified type 'TABLE'.")
+                record(sql)
+
+            cursor.execute = execute
+            return cursor
+
+    connection = _ExternalTables()
+    with _admin(adapter, connection):
+        assert adapter.reset_database_in_place(database=DATABASE, schema="PUBLIC") is True
+
+    assert f"DROP EXTERNAL TABLE IF EXISTS {DATABASE}.PUBLIC.LINEITEM" in connection.statements
+    assert not any(sql.startswith("DROP DATABASE") for sql in connection.statements)
 
 
 def test_a_validation_mismatch_never_drops_the_database_other_benchmarks_share(adapter):
@@ -87,7 +119,7 @@ def test_a_validation_mismatch_never_drops_the_database_other_benchmarks_share(a
     assert connection.statements
     assert not any(statement.upper().startswith("DROP DATABASE") for statement in connection.statements)
     dropped = {statement.rsplit(".", 1)[-1].lower() for statement in connection.statements}
-    assert dropped == set(TPCH_TABLES)
+    assert dropped == {*TPCH_TABLES, "benchbox_tuning_metadata"}
     assert dropped.isdisjoint(STAGING_TABLES)
 
 

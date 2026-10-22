@@ -560,23 +560,36 @@ class SnowflakeAdapter(PlatformAdapter):
             )
         return sorted({self._database_object_name(str(name), "table").upper() for name in schema})
 
+    def _drop_table_of_any_kind(self, cursor: Any, qualified_name: str) -> None:
+        try:
+            cursor.execute(f"DROP TABLE IF EXISTS {qualified_name}")
+        except Exception as e:
+            if "external" not in str(e).lower():
+                raise
+            cursor.execute(f"DROP EXTERNAL TABLE IF EXISTS {qualified_name}")
+
     def reset_database_in_place(self, **connection_config) -> bool:
+        from benchbox.core.tuning.metadata import TuningMetadataManager
+
         database = self._database_object_name(connection_config.get("database", self.database), "database")
         schema = self._database_object_name(connection_config.get("schema", self.schema), "schema")
         tables = self._tables_owned_by_this_benchmark()
+        metadata_table = TuningMetadataManager(self)._metadata_table_name.upper()
         connection = None
         try:
             connection = self._create_admin_connection(**connection_config)
             cursor = connection.cursor()
             for table in tables:
-                cursor.execute(f"DROP TABLE IF EXISTS {database}.{schema}.{table}")
+                self._drop_table_of_any_kind(cursor, f"{database}.{schema}.{table}")
+            cursor.execute(f"DROP TABLE IF EXISTS {database}.{schema}.{metadata_table}")
         except Exception as e:
             raise RuntimeError(f"Failed to reset Snowflake database {database}: {e}") from e
         finally:
             if connection is not None:
                 connection.close()
         self.log_verbose(
-            f"Dropped {len(tables)} table(s) of this benchmark from {database}.{schema}; kept the database"
+            f"Dropped {len(tables)} table(s) of this benchmark and the tuning metadata from {database}.{schema}; "
+            "kept the database"
         )
         return True
 

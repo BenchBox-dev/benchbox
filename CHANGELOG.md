@@ -264,16 +264,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whole database. Benchmarks that declare a data-source benchmark (read, write and
   transaction primitives, TPC-DS OBT) run inside that benchmark's database, so
   dropping it would delete every other benchmark's tables there. Snowflake now
-  resets in place: it drops only the tables of the requesting benchmark's schema,
-  keeps the database, and fails without removing anything when it cannot tell which
-  tables those are. `drop_database` and the `USE DATABASE`/`USE SCHEMA` fallbacks
-  now render the identifier unquoted, as `CREATE DATABASE` does; the quoted
-  lowercase form never matched the uppercase database, so the drop was a silent
-  no-op that the log reported as "Dropped database".
-- On every platform that drops the database on a validation mismatch, BenchBox now
-  refuses when validation found tables that do not belong to the requesting
+  resets in place: it drops the tables the requesting benchmark declares in its
+  schema (for the primitives that includes the TPC-H tables they query, but not
+  other benchmarks' tables), drops the tuning metadata table so a later run cannot
+  trust stale metadata, keeps the database, and fails without removing anything
+  when it cannot tell which tables those are. External tables are dropped with
+  `DROP EXTERNAL TABLE`. `drop_database` and the `USE DATABASE`/`USE SCHEMA`
+  fallbacks now render the identifier unquoted, as `CREATE DATABASE` does; the
+  quoted lowercase form never matched the uppercase database, so the drop was a
+  silent no-op that the log reported as "Dropped database".
+- On server-side platforms that drop the database on a validation mismatch, BenchBox
+  now refuses when validation found tables that do not belong to the requesting
   benchmark ("Extra tables found"), and names them, instead of deleting them.
-  `--force-recreate` still drops the whole database.
+  `--force-recreate` still drops the whole database. File-based databases (DuckDB,
+  SQLite, DataFusion, Polars) are still deleted and rebuilt on a mismatch.
 
 ### Fixed
 
