@@ -29,7 +29,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.tpcds]
 
 SCALE = 0.01
 RUNS = [(None, 0), (None, 1), (42, 0), (42, 1)]
-EVERY_ADAPTED_QUERY_RUNS = [(42, 0)]
+EVERY_ADAPTED_QUERY_RUNS = [(None, 1), (42, 0)]
 UNADAPTED = min(set(range(1, 100)) - set(ADAPTERS), default=None)
 needs_unadapted = pytest.mark.skipif(UNADAPTED is None, reason="every query has an adapter")
 
