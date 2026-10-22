@@ -3,7 +3,7 @@
     "RUBRIC 1: G1-G4 evidence in the PR body",
     "RUBRIC 2: module-sum CI time vs baseline (C5); per-id informational; (C5); C8 statement"
   ],
-  "context": "PROGRESS 2026-10-22: PR #3274 (head 49f325e7). Session fixture tpch_sf001_data in tests/conftest.py generates TPC-H SF 0.01 once per xdist worker via the CLI's own path/layout/compression; each test copies it and passes --output; teardown asserts the cache is unchanged. G1 (local, subprocess coverage, same base): 70,540 -> 70,557 lines, 0 lost, after keeping duckdb_tuned_run generating (G4: it alone runs 52 data-organization lines). G2: 39 tests pass in four local -n 5 / reversed / loadfile runs; a cache write trips teardown. G3: reuse log shows no generation. Mutations: five, each failing as intended. CI module sums (PR runs 39727483401 base-equivalent vs 39731292812): 235.73 s -> 192.36 s (-43.4 s); no green trunk baseline was available. CAVEAT for later items: tests/conftest.py must not contain dynamic Path(...) calls; the canary dependency map in tests/unit/test_canary_impact_live.py rejects them and all four medium shards fail (fixed in 5305a44c9). Oracle finding (zstd vs CLI default) fixed and withdrawn; thread resolved; make oracle-review-recover re-queued checks. NEXT: arm on 49f325e7 when required checks are green; finish after merge.",
+  "context": "DONE 2026-10-22: PR #3274 merged as 6fe053eb9835e5dff758ee7aef379794433ae7aa (head 49f325e7). Session fixture tpch_sf001_data in tests/conftest.py (per xdist worker, CLI's own path/layout/compression; per-test copy; teardown asserts the cache unchanged). G1: 0 lines lost on the same base after keeping duckdb_tuned_run generating (G4). G2/G3 pass. CI module sums 235.73 s -> 192.36 s (-43.4 s). Caveat for later conftest edits: no dynamic Path(...) calls (canary dependency map rejects them). Merge required resolving the withdrawn oracle thread, make oracle-review-recover, and re-running three stale oracle-review failures on the head.",
   "description": "PROBLEM: about ten CLI end-to-end tests each generate TPC-H SF 0.01 before running (about 4.6-5.5 s each locally); passing --output pointing at existing data reuses it (run-lifecycle 6.7 s to 0.9 s locally, receipt identical).\n\nTARGET TESTS: tests/integration/test_execution_engine_recording.py (polars x2, pandas-df), tests/integration/test_execution_engine_sources.py (remaining cases), tests/integration/test_deprecation_warnings_visible.py, tests/integration/test_load_only_cli_exit_status.py (polars, duckdb-sql-tuned), tests/unit/cli/test_run_template_evidence_warning.py (remaining runs), tests/unit/cli/test_normalize_plan_literals_flag.py.\n\nCHANGE: one session-scoped fixture, living in tests/conftest.py (in scope for C4) and calling the generator with the same options the CLI uses so the CLI reuses rather than regenerates, generates TPC-H SF 0.01 once per xdist worker under tmp_path_factory; each test copies it into its own tmp dir (reuse rewrites the manifest) and passes it via the existing output option.\n\nDECISION GATES:\nG1 C1: data-generator lines these tests stop executing must be executed by named generator tests in the same or faster tier.\nG2 Isolation: run the target modules with -n 5 locally twice and in reverse order; no failures, no shared-file writes (assert the cached source dir is unchanged after the session).\nG3 Show from the run log that no generation happens when the cached copy is used. The receipt/phase assertions that mention generation must still hold or be adjusted only where generation is genuinely skipped; any changed expectation is listed and justified (no silent loosening, C3).\nG4 If a test's purpose includes the generate phase itself, keep it generating and say so.",
   "links": [
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-18T23-52-50-730Z_01a1516e-af2a-70ba-8b0e-81c1898c948f/CliRunReview.md"
@@ -66,6 +66,14 @@
       "generation": "807f3219c6d24fa4b1cd16277eb1caaa",
       "op": "take",
       "op_id": "a41129a2ac47410c9110510862f52401",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-22T07:46:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bd1ee4c9847d402ba2277c5ec93f9f01",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]
