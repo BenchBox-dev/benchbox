@@ -644,15 +644,15 @@ class TestBenchmarkDdlAndAdapterBehavior:
         assert "FOREIGN KEY" not in strip_foreign_keys(foreign)
 
     def test_trino_base_optimize_strips_primary_keys(self) -> None:
-        from benchbox.platforms.presto_trino_adapter_base import PrestoTrinoAdapterBase
+        from benchbox.platforms.trino import TrinoAdapter
 
-        adapter = PrestoTrinoAdapterBase.__new__(PrestoTrinoAdapterBase)
+        adapter = TrinoAdapter.__new__(TrinoAdapter)
         adapter.table_format = "hive"
         adapter.catalog = "catalog"
         create = "CREATE TABLE orders (o_orderkey INTEGER, PRIMARY KEY (o_orderkey));"
-        assert "PRIMARY KEY" not in PrestoTrinoAdapterBase._optimize_table_definition(adapter, create)
+        assert "PRIMARY KEY" not in TrinoAdapter._schema_ddl(adapter, create)[0]
         foreign = "CREATE TABLE orders (o_orderkey INTEGER, FOREIGN KEY (o_orderkey) REFERENCES c (x));"
-        assert "FOREIGN KEY" in PrestoTrinoAdapterBase._optimize_table_definition(adapter, foreign)
+        assert "FOREIGN KEY" in TrinoAdapter._schema_ddl(adapter, foreign)[0]
 
     def test_clickhouse_optimize_preserves_foreign_keys(self) -> None:
         from benchbox.platforms.clickhouse.workload import ClickHouseWorkloadMixin
@@ -740,7 +740,7 @@ class TestBenchmarkDdlAndAdapterBehavior:
     def test_athena_rewrite_takes_no_tuning(self) -> None:
         from benchbox.platforms.athena import AthenaAdapter
 
-        parameters = inspect.signature(AthenaAdapter._convert_to_external_table).parameters
+        parameters = inspect.signature(AthenaAdapter._external_table_ddl).parameters
         assert "tuning_config" not in parameters and "table_tuning" not in parameters
 
     def test_athena_external_table_strips_constraints(self) -> None:
@@ -757,11 +757,11 @@ class TestBenchmarkDdlAndAdapterBehavior:
             "FOREIGN KEY (o_custkey) REFERENCES customer (c_custkey))"
         )
         for is_staging in (False, True):
-            rendered = AthenaAdapter._convert_to_external_table(adapter, create, is_staging=is_staging)
+            [rendered] = AthenaAdapter._external_table_ddl(adapter, create, is_staging=is_staging)
             assert "PRIMARY KEY" not in rendered.upper()
             assert "FOREIGN KEY" not in rendered.upper()
             assert "REFERENCES" not in rendered.upper()
-            assert "o_custkey INTEGER)" in rendered
+            assert "`o_custkey` INT)" in rendered
 
     def test_datafusion_schema_ignores_constraints(self) -> None:
         from benchbox.platforms.datafusion import DataFusionAdapter

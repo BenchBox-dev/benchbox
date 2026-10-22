@@ -89,7 +89,6 @@ def test_ddl_governance_statuses_distinguish_runtime_governance_and_no_rewrite_p
     by_key = {(entry.inferred_platform_key, entry.func_name): entry for entry in statuses}
 
     assert by_key[("bigquery", "_convert_to_bigquery_table")].status == "registered_governance_only_intent"
-    assert by_key[("athena", "_convert_to_external_table")].status == "registered_governance_only_intent"
     assert by_key[("databricks", "_convert_to_delta_table")].status == "registered_governance_only_intent"
     assert by_key[("singlestore", "_transform_create_statement")].status == "registered_runtime_behavior"
     assert by_key[("spark", "optimize_spark_table_definition")].status == "registered_governance_only_intent"
@@ -119,7 +118,7 @@ def test_bigquery_runtime_ddl_rewrite_is_represented_in_governance_inventory():
     assert status.status == "registered_governance_only_intent"
 
 
-def test_athena_runtime_ddl_rewrite_is_represented_in_governance_inventory():
+def test_athena_runtime_ddl_comes_from_translate_ddl():
     from benchbox.platforms.athena import AthenaAdapter
     from benchbox.sql_compat.inventory import collect_ddl_governance_statuses
 
@@ -130,21 +129,19 @@ def test_athena_runtime_ddl_rewrite_is_represented_in_governance_inventory():
     adapter.data_format = "parquet"
     adapter.default_format = "PARQUET"
 
-    converted = adapter._convert_to_external_table(
-        "CREATE TABLE orders (id VARCHAR(20) NOT NULL, amount DECIMAL)", is_staging=False
-    )
+    [converted] = adapter._external_table_ddl("CREATE TABLE orders (id VARCHAR(20) NOT NULL, amount DECIMAL)")
 
-    assert "CREATE EXTERNAL TABLE IF NOT EXISTS orders" in converted
-    assert "id STRING" in converted
+    assert "CREATE EXTERNAL TABLE IF NOT EXISTS `orders`" in converted
+    assert "`id` STRING" in converted
     assert "NOT NULL" not in converted
     assert "STORED AS PARQUET" in converted
     assert "LOCATION 's3://bucket/prefix/db/orders/'" in converted
-    status = next(
+    assert not [
         entry
         for entry in collect_ddl_governance_statuses(_BENCHBOX_ROOT)
-        if entry.inferred_platform_key == "athena" and entry.func_name == "_convert_to_external_table"
-    )
-    assert status.status == "registered_governance_only_intent"
+        if entry.inferred_platform_key == "athena"
+        and entry.status in {"unregistered_detected_behavior", "unknown_uninspectable_behavior"}
+    ]
 
 
 def test_singlestore_ddl_rules_resolve_via_base_optimizer():

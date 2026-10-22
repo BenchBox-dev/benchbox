@@ -654,69 +654,53 @@ class TestPrestoAdapter:
         assert any("optimize_hash_generation" in sql for sql in executed_sql)
         assert any("join_reordering_strategy" in sql for sql in executed_sql)
 
-    def test_normalize_table_name_in_sql(self, presto_stubs):
+    def test_schema_ddl_lowercases_table_names(self, presto_stubs):
 
         adapter = PrestoAdapter()
 
-        sql = 'CREATE TABLE "CUSTOMER" (id INTEGER)'
-        normalized = adapter._normalize_table_name_in_sql(sql)
+        [translated] = adapter._schema_ddl('CREATE TABLE "CUSTOMER" (id INTEGER)')
 
-        assert "customer" in normalized.lower()
-        assert "CUSTOMER" not in normalized
+        assert translated.startswith('CREATE TABLE "customer"')
 
-    def test_optimize_table_definition_memory(self, presto_stubs):
+    def test_schema_ddl_memory(self, presto_stubs):
 
         adapter = PrestoAdapter(table_format="memory")
 
-        sql = "CREATE TABLE test (id INTEGER) WITH (format='ORC')"
-        optimized = adapter._optimize_table_definition(sql)
+        [translated] = adapter._schema_ddl("CREATE TABLE kind_type (id INTEGER PRIMARY KEY, kind VARCHAR(15) NOT NULL)")
 
-        assert "WITH" not in optimized
-
-        sql = "CREATE TABLE kind_type (id INTEGER PRIMARY KEY, kind VARCHAR(15) NOT NULL)"
-        optimized = adapter._optimize_table_definition(sql)
-
-        assert "PRIMARY KEY" not in optimized
-        assert "NOT NULL" not in optimized
-        assert "id INTEGER" in optimized
+        assert "PRIMARY KEY" not in translated
+        assert "NOT NULL" not in translated
+        assert "WITH" not in translated
+        assert '"id" INTEGER' in translated
 
         schema_sql = JoinOrderSchema().get_create_tables_sql("duckdb")
-        optimized = [
-            adapter._optimize_table_definition(statement.strip())
-            for statement in schema_sql.split(";")
-            if statement.strip()
-        ]
+        translated = adapter._schema_ddl(schema_sql)
 
-        assert len(optimized) == 21
-        assert all("PRIMARY KEY" not in statement for statement in optimized)
+        assert len(translated) == 21
+        assert all("PRIMARY KEY" not in statement for statement in translated)
 
-    def test_optimize_table_definition_hive(self, presto_stubs):
+    def test_schema_ddl_hive(self, presto_stubs):
 
         adapter = PrestoAdapter(table_format="hive")
 
-        sql = "CREATE TABLE test (id INTEGER)"
-        optimized = adapter._optimize_table_definition(sql)
+        [translated] = adapter._schema_ddl("CREATE TABLE test (id INTEGER)")
+        assert translated.endswith("WITH (format='PARQUET')")
 
-        assert "WITH" in optimized
-        assert "PARQUET" in optimized
+        [translated] = adapter._schema_ddl("CREATE TABLE kind_type (id INTEGER PRIMARY KEY, kind VARCHAR(15) NOT NULL)")
 
-        sql = "CREATE TABLE kind_type (id INTEGER PRIMARY KEY, kind VARCHAR(15) NOT NULL)"
-        optimized = adapter._optimize_table_definition(sql)
+        assert "PRIMARY KEY" not in translated
+        assert "NOT NULL" in translated
+        assert translated.endswith("WITH (format='PARQUET')")
 
-        assert "PRIMARY KEY" not in optimized
-        assert "NOT NULL" in optimized
-        assert "WITH (format = 'PARQUET')" in optimized
-
-    def test_optimize_table_definition_memory_catalog_name(self, presto_stubs):
+    def test_schema_ddl_memory_catalog_name(self, presto_stubs):
 
         adapter = PrestoAdapter(catalog="memory", table_format="hive")
 
-        sql = "CREATE TABLE test (id INTEGER PRIMARY KEY, kind VARCHAR(15) NOT NULL)"
-        optimized = adapter._optimize_table_definition(sql)
+        [translated] = adapter._schema_ddl("CREATE TABLE test (id INTEGER PRIMARY KEY, kind VARCHAR(15) NOT NULL)")
 
-        assert "PRIMARY KEY" not in optimized
-        assert "NOT NULL" not in optimized
-        assert "WITH" not in optimized
+        assert "PRIMARY KEY" not in translated
+        assert "NOT NULL" not in translated
+        assert "WITH" not in translated
 
     def test_analyze_table_memory_catalog(self, presto_stubs):
 

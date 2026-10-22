@@ -93,33 +93,3 @@ def strip_primary_keys(stmt: str) -> str:
     result = _LEADING_COMMA_RE.sub(r"\1", result)
 
     return result
-
-
-_WITH_KEYWORD_RE = re.compile(r"\s+WITH\s*\(", re.IGNORECASE)
-
-
-def strip_with_properties(stmt: str) -> str:
-    if "WITH" not in stmt.upper():
-        return stmt
-
-    result = stmt
-    while True:
-        m = _WITH_KEYWORD_RE.search(result)
-        if m is None:
-            break
-        open_pos = m.end() - 1
-        depth = 0
-        close_pos = -1
-        for i in range(open_pos, len(result)):
-            if result[i] == "(":
-                depth += 1
-            elif result[i] == ")":
-                depth -= 1
-                if depth == 0:
-                    close_pos = i
-                    break
-        if close_pos == -1:
-            break
-        result = result[: m.start()] + result[close_pos + 1 :]
-
-    return result

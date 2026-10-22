@@ -9,7 +9,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from benchbox.core.sql_utils import normalize_table_name_in_sql
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -29,7 +28,6 @@ from ..utils.dependencies import (
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.config_utils import make_registered_platform_config_builder
 from .base.data_loading import DataSourceResolver, FileFormatRegistry
-from .base.ddl_helpers import strip_foreign_keys, strip_primary_keys, strip_with_properties
 from .base.runtime_metadata import build_default_normalized_result_metadata
 from .presto_trino_utils import normalize_existing_files, show_tables_lower
 
@@ -552,48 +550,26 @@ class AthenaAdapter(PlatformAdapter):
     def create_schema(self, benchmark, connection: Any) -> float:
         start_time = mono_time()
         cursor = connection.cursor()
+        is_staging = self.data_format == "parquet"
 
         try:
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
 
-            statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
+            for statement in self._external_table_ddl(schema_sql, is_staging=is_staging):
+                try:
+                    cursor.execute(statement)
+                    self.logger.debug(f"Executed: {statement[:100]}...")
+                except Exception as e:
+                    if "already exists" in str(e).lower():
+                        table_name = self._extract_table_name(statement)
+                        if table_name:
+                            self.log_notice(f"Dropping existing Athena table before recreate: {table_name}")
+                            cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+                            cursor.execute(statement)
+                    else:
+                        raise
 
-            for statement in statements:
-                if not statement:
-                    continue
-
-                statement = self._normalize_table_name_in_sql(statement)
-
-                if self.data_format == "parquet":
-                    staging_statement = self._convert_to_external_table(statement, is_staging=True)
-                    try:
-                        cursor.execute(staging_statement)
-                        self.logger.debug(f"Created staging table: {staging_statement[:100]}...")
-                    except Exception as e:
-                        if "already exists" in str(e).lower():
-                            table_name = self._extract_table_name(staging_statement)
-                            if table_name:
-                                self.log_notice(f"Dropping existing Athena table before recreate: {table_name}")
-                                cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
-                                cursor.execute(staging_statement)
-                        else:
-                            raise
-                else:
-                    statement = self._convert_to_external_table(statement, is_staging=False)
-                    try:
-                        cursor.execute(statement)
-                        self.logger.debug(f"Executed: {statement[:100]}...")
-                    except Exception as e:
-                        if "already exists" in str(e).lower():
-                            table_name = self._extract_table_name(statement)
-                            if table_name:
-                                self.log_notice(f"Dropping existing Athena table before recreate: {table_name}")
-                                cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
-                                cursor.execute(statement)
-                        else:
-                            raise
-
-            mode_desc = "staging tables (parquet mode)" if self.data_format == "parquet" else "text tables"
+            mode_desc = "staging tables (parquet mode)" if is_staging else "text tables"
             self.logger.info(f"Schema created ({mode_desc})")
 
         except Exception as e:
@@ -604,82 +580,54 @@ class AthenaAdapter(PlatformAdapter):
 
         return elapsed_seconds(start_time)
 
-    def _convert_to_external_table(self, statement: str, is_staging: bool = False) -> str:
-        if not statement.upper().startswith("CREATE TABLE"):
-            return statement
-
-        statement = re.sub(r"VARCHAR\s*\(\s*\d+\s*\)", "STRING", statement, flags=re.IGNORECASE)
-        statement = re.sub(r"\bVARCHAR\b", "STRING", statement, flags=re.IGNORECASE)
-        statement = re.sub(r"\bCHAR\s*\(\s*\d+\s*\)", "STRING", statement, flags=re.IGNORECASE)
-
-        table_match = re.search(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([^\s(]+)", statement, re.IGNORECASE)
-        if not table_match:
-            return statement
-
-        table_name = table_match.group(1).lower()
-
+    def _external_table_layout(self, table_name: str, is_staging: bool) -> dict[str, Any]:
+        root = f"s3://{self.s3_bucket}/{self.s3_prefix}"
         if is_staging:
-            staging_table_name = f"{table_name}_staging"
-            statement = re.sub(
-                r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([^\s(]+)",
-                f"CREATE EXTERNAL TABLE IF NOT EXISTS {staging_table_name}",
-                statement,
-                count=1,
-                flags=re.IGNORECASE,
-            )
-            location = f"s3://{self.s3_bucket}/{self.s3_prefix}/{self.database}_staging/{table_name}/"
-            storage_clause = (
-                f"\nROW FORMAT DELIMITED"
-                f"\n  FIELDS TERMINATED BY '|'"
-                f"\n  LINES TERMINATED BY '\\n'"
-                f"\nSTORED AS TEXTFILE"
-                f"\nLOCATION '{location}'"
-            )
-        else:
-            statement = re.sub(
-                r"CREATE\s+TABLE",
-                "CREATE EXTERNAL TABLE",
-                statement,
-                count=1,
-                flags=re.IGNORECASE,
-            )
+            return {
+                "external": True,
+                "stored_as": "TEXTFILE",
+                "location": f"{root}/{self.database}_staging/{table_name}/",
+                "field_delimiter": "|",
+                "line_delimiter": "\n",
+            }
+        location = f"{root}/{self.database}/{table_name}/"
+        if self.data_format == "parquet" or self.default_format.upper() == "PARQUET":
+            return {"external": True, "stored_as": "PARQUET", "location": location}
+        text_layout = {
+            "external": True,
+            "stored_as": "TEXTFILE",
+            "location": location,
+            "line_delimiter": "\n",
+        }
+        if self.default_format.upper() in ("CSV", "TEXTFILE"):
+            return {**text_layout, "field_delimiter": ","}
+        return {**text_layout, "field_delimiter": "|", "properties": {"skip.header.line.count": "0"}}
 
-            if "IF NOT EXISTS" not in statement.upper():
-                statement = statement.replace("EXTERNAL TABLE", "EXTERNAL TABLE IF NOT EXISTS", 1)
+    def _external_table_ddl(self, schema_sql: str, is_staging: bool = False) -> list[str]:
+        from benchbox.utils.dialect_utils import translate_ddl
 
-            location = f"s3://{self.s3_bucket}/{self.s3_prefix}/{self.database}/{table_name}/"
-
-            if self.data_format == "parquet" or self.default_format.upper() == "PARQUET":
-                storage_clause = f"\nSTORED AS PARQUET\nLOCATION '{location}'"
-            elif self.default_format.upper() in ("CSV", "TEXTFILE"):
-                storage_clause = (
-                    f"\nROW FORMAT DELIMITED"
-                    f"\n  FIELDS TERMINATED BY ','"
-                    f"\n  LINES TERMINATED BY '\\n'"
-                    f"\nSTORED AS TEXTFILE"
-                    f"\nLOCATION '{location}'"
+        statements: list[str] = []
+        for statement in (part.strip() for part in schema_sql.split(";")):
+            if not statement:
+                continue
+            table_name = self._extract_table_name(statement)
+            layout = self._external_table_layout(table_name.strip('"`'), is_staging) if table_name else None
+            statements.extend(
+                translate_ddl(
+                    statement,
+                    "athena",
+                    strip_primary_keys=True,
+                    strip_foreign_keys=True,
+                    strip_not_null=True,
+                    if_not_exists=True,
+                    table_case="lower",
+                    table_suffix="_staging" if is_staging else "",
+                    type_map={"VARCHAR": "STRING", "CHAR": "STRING"},
+                    drop_type_parameters=["STRING"],
+                    default_layout=layout,
                 )
-            else:
-                storage_clause = (
-                    f"\nROW FORMAT DELIMITED"
-                    f"\n  FIELDS TERMINATED BY '|'"
-                    f"\n  LINES TERMINATED BY '\\n'"
-                    f"\nSTORED AS TEXTFILE"
-                    f"\nLOCATION '{location}'"
-                    f"\nTBLPROPERTIES ('skip.header.line.count'='0')"
-                )
-
-        statement = re.sub(r"\s+NOT\s+NULL", "", statement, flags=re.IGNORECASE)
-        statement = strip_primary_keys(strip_foreign_keys(statement))
-
-        statement = strip_with_properties(statement)
-
-        if statement.rstrip().endswith(")"):
-            statement = statement.rstrip() + storage_clause
-        else:
-            statement = statement + storage_clause
-
-        return statement
+            )
+        return statements
 
     def load_data(
         self, benchmark, connection: Any, data_dir: Path
@@ -834,16 +782,13 @@ class AthenaAdapter(PlatformAdapter):
                 raise
 
     def _build_external_table_statements(self, benchmark: Any) -> dict[str, str]:
-        schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
-        statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
+        schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
         table_sql: dict[str, str] = {}
 
-        for statement in statements:
-            normalized = self._normalize_table_name_in_sql(statement)
-            table_name = self._extract_table_name(normalized)
-            if not table_name:
-                continue
-            table_sql[table_name.lower()] = self._convert_to_external_table(normalized, is_staging=False)
+        for statement in self._external_table_ddl(schema_sql):
+            table_name = self._extract_table_name(statement)
+            if table_name:
+                table_sql[table_name.strip('"`')] = statement
 
         return table_sql
 
@@ -1107,9 +1052,6 @@ class AthenaAdapter(PlatformAdapter):
         if match:
             return match.group(1).strip().lower()
         return None
-
-    def _normalize_table_name_in_sql(self, sql: str) -> str:
-        return normalize_table_name_in_sql(sql)
 
     def get_query_plan(self, connection: Any, query: str) -> str | None:
         from benchbox.platforms.base.sql_execution import get_query_plan_from_cursor
