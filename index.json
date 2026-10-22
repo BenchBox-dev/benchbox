@@ -13405,6 +13405,13 @@
       "status": "open",
       "title": "Delete or fold six medium-tier tests that only repeat checks other tests already make"
     },
+    "longtest-02-canary-live-real-checks": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Replace the vacuous live canary-selection tests with targeted checks and split the full-tree tests"
+    },
     "loud-loader-failures-for-contaminated-data": {
       "claim": null,
       "needs": [],
