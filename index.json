@@ -13398,6 +13398,13 @@
       "status": "done",
       "title": "Logging Standardization"
     },
+    "longtest-01-delete-duplicate-tests": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Delete or fold six medium-tier tests that only repeat checks other tests already make"
+    },
     "loud-loader-failures-for-contaminated-data": {
       "claim": null,
       "needs": [],
