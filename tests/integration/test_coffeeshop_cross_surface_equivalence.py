@@ -11,13 +11,15 @@ pytest.importorskip("pandas", reason="Pandas not installed")
 pytest.importorskip("duckdb", reason="DuckDB not installed")
 
 from benchbox.core.equivalence.cross_surface import (
-    EQUIVALENCE_SCALE,
     GATES,
     build_production_contexts,
     count_executed_cells,
     find_cross_surface_divergences,
 )
 from benchbox.core.tpchavoc.validation import ResultValidator
+
+MEDIUM_EQUIVALENCE_SCALE = 0.01
+MEDIUM_NON_VACUOUS_QUERY_FLOOR = 11
 
 pytestmark = [
     pytest.mark.integration,
@@ -29,10 +31,13 @@ pytestmark = [
 @pytest.mark.timeout(600)
 def test_coffeeshop_dataframe_surface_equivalent_to_sql(tmp_path):
     gate = GATES["coffeeshop"]
-    data = gate.build(EQUIVALENCE_SCALE, tmp_path)
+    data = gate.build(MEDIUM_EQUIVALENCE_SCALE, tmp_path)
     connection = data.connection
+    reference_row_counts: dict[str, int] = {}
     try:
-        contexts = build_production_contexts(data.benchmark, data.data_dir, backends=gate.backends)
+        contexts = build_production_contexts(
+            data.benchmark, data.data_dir, backends=gate.backends, scale_factor=MEDIUM_EQUIVALENCE_SCALE
+        )
         divergences = find_cross_surface_divergences(
             connection,
             query_ids=data.query_ids,
@@ -41,6 +46,7 @@ def test_coffeeshop_dataframe_surface_equivalent_to_sql(tmp_path):
             contexts=contexts,
             validator=ResultValidator(tolerance=gate.tolerance),
             backends=gate.backends,
+            reference_row_counts=reference_row_counts,
         )
         coverage = count_executed_cells(data.query_ids, data.dataframe_query, gate.backends)
     finally:
@@ -48,6 +54,12 @@ def test_coffeeshop_dataframe_surface_equivalent_to_sql(tmp_path):
 
     missing = sorted(backend for backend, count in coverage.items() if count == 0)
     assert not missing, f"gated CoffeeShop backend(s) implement no queries: {missing}"
+
+    non_vacuous = sum(1 for count in reference_row_counts.values() if count > 0)
+    assert non_vacuous >= MEDIUM_NON_VACUOUS_QUERY_FLOOR, (
+        f"only {non_vacuous} queries returned reference rows at SF {MEDIUM_EQUIVALENCE_SCALE}; "
+        f"need at least {MEDIUM_NON_VACUOUS_QUERY_FLOOR}"
+    )
 
     unexpected = {d.key for d in divergences} - set(gate.known_divergences)
     assert not unexpected, "CoffeeShop DataFrame surface diverges from SQL: " + ", ".join(

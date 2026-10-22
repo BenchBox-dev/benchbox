@@ -390,6 +390,19 @@ def judge_planned(verdict: Verdict, plan: Mapping[str, Any]) -> Judgement:
     return judge(verdict, int(plan["max_defects"]), rules.get("prior", ()), changed, bool(rules.get("forced")))
 
 
+def contradiction(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
+    if verdict.status != COMPLETE or judge_planned(verdict, plan).decision != SHIP:
+        return None
+    priors = (plan.get("protocol") or {}).get("prior") or ()
+    known = {item.get("id") for item in priors if isinstance(item, Mapping)}
+    unknown = {item.id for item in verdict.prior_defects} - known
+    if unknown:
+        return f"the verdict would ship but cites {len(unknown)} prior defect ID(s) the plan does not list"
+    if verdict.decision == SHIP_WITH_FIXES and not verdict.defects and verdict.listed == 0:
+        return "SHIP_WITH_FIXES names no current or open prior defects"
+    return None
+
+
 def defect_entry(defect_id: str, finding: Finding) -> dict[str, Any]:
     return {
         "id": defect_id,
