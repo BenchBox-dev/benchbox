@@ -310,6 +310,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   caller's home and checks that an isolated pytest run never reads it and writes
   nothing to that home; a live-only run still reads it.
 
+### Security
+
+- BenchBox now requires `certifi` 2026.10.19 or newer. Older releases of the CA
+  bundle that `requests` uses still trust the compromised eMudhra emSign
+  certificate authorities, so an attacker on the network path could impersonate
+  a cloud endpoint and capture the tokens that `requests`-based adapters send,
+  such as the Fabric and Synapse Spark adapters. Upgrading BenchBox now upgrades
+  `certifi` as well. See the
+  [Python advisory](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576).
+- Releases publish with `pypa/gh-action-pypi-publish` 1.14.3, which removes the
+  same authorities from the CA bundle that Sigstore uses for Trusted Publishing
+  and attestations. Release jobs install pip 26.2.2 and their helper packages
+  from hash-pinned wheels, so an older pip on the runner cannot be served a
+  substituted package.
+- The `benchbox-agent`, Velox and LakeSail images install Python packages with
+  uv 0.13.5 instead of pip. Rebuild existing images to pick up the change.
+
 ## [0.5.0rc1] - 2026-10-20
 
 ### Before you upgrade
