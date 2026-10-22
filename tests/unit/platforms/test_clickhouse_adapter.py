@@ -424,7 +424,7 @@ class TestClickHouseAdapter:
             assert table_name is not None
             nullable_columns = nullable_by_table.get(table_name.lower(), set())
             tuning_clauses = adapter._resolve_tuned_ddl_clauses(statement, tpcds_tunings)
-            key_columns = adapter._resolve_key_columns(statement, tuning_clauses, nullable_columns)
+            key_columns = {column.lower() for column in adapter._extract_primary_key_columns(statement)}
             rendered = adapter._translate_schema_statement(
                 statement,
                 tpcds_tunings,
