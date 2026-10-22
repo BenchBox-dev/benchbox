@@ -227,7 +227,7 @@ def test_invalid_verdict_counts_as_absent(policy: Policy, tmp_path: Path) -> Non
     loaded, step, errors = _decide(policy, plan, tmp_path)
     assert errors == []
     assert loaded.attempts[0].absence == "invalid"
-    assert step.reviewer is not None and step.reviewer.name == "medium"
+    assert step.reviewer is not None and step.reviewer.name == "small"
 
 
 def test_an_incomplete_verdict_in_an_artifact_never_passes(policy: Policy, tmp_path: Path) -> None:
@@ -238,7 +238,7 @@ def test_an_incomplete_verdict_in_an_artifact_never_passes(policy: Policy, tmp_p
     assert errors == []
     assert loaded.attempts[0] == Attempt(1, "small", selection.ABSENT, "incomplete", "no access")
     assert loaded.verdicts == {}
-    assert step.kind == selection.REVIEW and step.reviewer is not None and step.reviewer.name == "medium"
+    assert step.kind == selection.REVIEW and step.reviewer is not None and step.reviewer.name == "small"
 
 
 def test_all_absent_is_pending_and_names_every_reviewer(policy: Policy, tmp_path: Path) -> None:
@@ -647,7 +647,7 @@ def test_a_held_plan_finalizes_to_a_pending_status_with_no_decision_or_marker(
 
 def test_a_long_status_description_is_cut_to_the_status_limit(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy)
-    _write(tmp_path, 1, "small", missing=Absence("error", "limit " * 60))
+    _write(tmp_path, 1, "small", missing=Absence("timeout", "limit " * 60))
     _write(tmp_path, 2, "medium", missing=Absence("auth", "bad key"))
     loaded, step, errors = _decide(policy, plan, tmp_path)
     final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})

@@ -255,8 +255,16 @@ defect cannot become a line comment, so it is listed in the review body with a
 note that it counts like the others. Ignoring it would let a reviewer's report
 of a real defect pass because it cited an unchanged line.
 
-Reviewers run one at a time, so a decision stops the run and an absent
-reviewer hands over to the next.
+Reviewers run one at a time, so a decision stops the run. A reviewer whose
+attempt was absent as `invalid`, `incomplete`, `empty` or `error` runs once
+more before the chain advances, so a reviewer gets at most two attempts and the
+run at most `max_attempts`. A decision is never retried, and neither are
+`quota`, `auth` or `timeout` absences, a reviewer job that did not finish
+(`ensure-attempt` records it with the fixed `JOB_FAILURE_DETAIL` detail) or a
+reviewer that selection would skip (disabled, out of quota, or unable to take
+the brief). Selection and artifact replay share this rule, so an artifact set
+with a third attempt of one reviewer, or any attempt after a decision, is
+rejected.
 
 ## Decisions
 
@@ -278,7 +286,7 @@ The code, not the model, decides, and the stricter outcome wins:
 | SHIP or SHIP_WITH_FIXES, 1 to 10 defects | SHIP WITH FIXES |
 | more than 10 defects | DO NOT SHIP; the defects are dropped and the summary notes the count |
 | DO_NOT_SHIP | DO NOT SHIP; the summary is kept, at most 1500 characters |
-| `incomplete` | the reviewer is absent (`incomplete`) and the next one runs |
+| `incomplete` | the reviewer is absent (`incomplete`); it runs once more, then the next one runs |
 
 Severity orders the list and never gates: any listed defect, even a Low one,
 makes the result SHIP WITH FIXES. SHIP posts `success`; SHIP WITH FIXES and
@@ -310,7 +318,9 @@ written by one model family can be reviewed by the same family.
 A verdict without a defect can be hollow: a reviewer that could not read the
 files may still answer. The review job checks each verdict against the head
 checkout before it records it; a failed check records the reviewer as absent
-(`incomplete`), so the next reviewer runs and a hollow answer never passes.
+(`incomplete`). That reviewer can run once more before the chain advances;
+if no reviewer returns a verdict, the run stays pending. A hollow answer
+never passes.
 
 - In every mode, each defect must cite a file in the head commit and a line
   within it. A defect that does not is kept, with a note that its citation was
