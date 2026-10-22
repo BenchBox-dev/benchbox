@@ -15992,10 +15992,15 @@
       "title": "Retry eligible absent oracle reviewer once within the same run"
     },
     "oracle-response-evidence-secrets-20261021": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T23:35:43Z",
+        "generation": "9c723bf2c7434b77bda9b900941f12a6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Preserve oracle evidence diagnostics and redact credential echoes safely"
     },
     "oracle-response-ingress-20261021": {
