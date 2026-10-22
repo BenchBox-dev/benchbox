@@ -33,10 +33,14 @@ def obt_connection(tmp_path_factory: pytest.TempPathFactory):
     connection.close()
 
 
-@pytest.mark.parametrize("query_id", EMPTY_UNDER_ZERO_DEFAULTS)
-def test_query_returns_rows_with_dsqgen_parameters(obt_connection, query_id: int) -> None:
+def test_queries_return_rows_with_dsqgen_parameters(obt_connection) -> None:
     from benchbox.core.tpcds_obt.queries import TPCDSOBTQueryManager
 
-    sql = TPCDSOBTQueryManager().get_query(query_id, scale_factor=SCALE_FACTOR).rstrip().rstrip(";")
-    (rows,) = obt_connection.execute(f"SELECT COUNT(*) FROM ({sql})").fetchone()
-    assert rows > 0
+    manager = TPCDSOBTQueryManager()
+    empty = []
+    for query_id in EMPTY_UNDER_ZERO_DEFAULTS:
+        sql = manager.get_query(query_id, scale_factor=SCALE_FACTOR).rstrip().rstrip(";")
+        (rows,) = obt_connection.execute(f"SELECT COUNT(*) FROM ({sql})").fetchone()
+        if rows == 0:
+            empty.append(query_id)
+    assert empty == [], f"queries returned no rows with dsqgen parameters: {empty}"

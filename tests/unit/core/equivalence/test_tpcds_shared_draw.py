@@ -132,7 +132,7 @@ def test_incomplete_or_inconsistent_draw_is_rejected(draw, defect):
 
 
 @pytest.mark.parametrize("defect", ["adapter", "registry", "binding", "implementation"])
-def test_builder_refuses_incomplete_coverage_before_data_generation(draw, monkeypatch, tmp_path, defect):
+def test_builder_refuses_incomplete_coverage_before_data_generation(monkeypatch, tmp_path, defect):
     from benchbox.core.tpcds.dataframe_queries import production_binding
 
     def unexpected(*args, **kwargs):
@@ -144,13 +144,13 @@ def test_builder_refuses_incomplete_coverage_before_data_generation(draw, monkey
         monkeypatch.delitem(ADAPTERS, 99)
     elif defect == "registry":
         monkeypatch.setattr(
-            TPCDS_DATAFRAME_QUERIES, "get_query_ids", lambda: [f"Q{qid}" for qid in draw.query_ids[:-1]]
+            TPCDS_DATAFRAME_QUERIES, "get_query_ids", lambda: [f"Q{qid}" for qid in tpcds.TPCDS_GATE_QUERY_IDS[:-1]]
         )
     elif defect == "binding":
         monkeypatch.setattr(
             production_binding,
             "bind_power_stream",
-            lambda *a, **k: {n: b for n, b in draw.dataframe_query.bindings.items() if n != 99},
+            lambda *a, **k: {n: object() for n in range(1, 99)},
         )
     elif defect == "implementation":
         original = TPCDS_DATAFRAME_QUERIES.get_or_raise
@@ -160,9 +160,7 @@ def test_builder_refuses_incomplete_coverage_before_data_generation(draw, monkey
             lambda qid: dataclasses.replace(original(qid), pandas_impl=None) if qid == "Q39b" else original(qid),
         )
     with pytest.raises(ValueError, match="TPC-DS"):
-        tpcds.build_tpcds_duckdb(
-            0.01, tmp_path, seed=draw.query_parameters["seed"], stream_id=draw.query_parameters["power_stream_id"]
-        )
+        tpcds.build_tpcds_duckdb(0.01, tmp_path, seed=42, stream_id=1)
 
 
 def test_staged_preconditions_fail_before_production_loading(draw, monkeypatch):
