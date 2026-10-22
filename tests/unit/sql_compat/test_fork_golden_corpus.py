@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-
 import pytest
 
 from tests.unit.sql_compat.golden_corpus import (
@@ -17,8 +15,6 @@ from tests.unit.sql_compat.golden_corpus import (
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 AREAS = area_names()
-
-APPROVED_FORK_GAPS = r"(fabric|synapse_(replicate|round_robin)|singlestore):(float|double)_array"
 
 
 def test_every_moved_area_has_a_corpus():
@@ -48,11 +44,10 @@ def test_recorded_differences_name_existing_cases(area: str):
 
 
 @pytest.mark.parametrize("area", [name for name in AREAS if classified(name)])
-def test_every_recorded_difference_is_classified_and_each_fork_gap_is_owner_approved(area: str):
+def test_every_recorded_difference_is_classified_and_none_is_a_fork_gap(area: str):
     entries = recorded(area)
     unclassified = sorted(case_id for case_id, entry in entries.items() if entry.get("classification") not in CLASSES)
     assert not unclassified, f"{area}: unclassified differences {unclassified[:5]}"
     gaps = sorted(case_id for case_id, entry in entries.items() if entry["classification"] == "fork-gap")
-    unapproved = [case_id for case_id in gaps if not re.fullmatch(APPROVED_FORK_GAPS, case_id)]
-    assert not unapproved, f"{area}: fork gaps awaiting a fork fix or owner approval {unapproved[:5]}"
+    assert not gaps, f"{area}: fork gaps awaiting a fork fix {gaps[:5]}"
     assert all(entry.get("reason") for entry in entries.values())

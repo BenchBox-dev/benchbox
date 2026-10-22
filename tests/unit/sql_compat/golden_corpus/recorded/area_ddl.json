@@ -702,10 +702,10 @@
     "reason": "The fork writes the adapter schema ([dbo].) on the table and its REFERENCES targets; legacy relied on the connection default schema, which is dbo."
   },
   "fabric:double_array": {
-    "classification": "fork-gap",
-    "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>)",
+    "classification": "legacy-bug",
+    "fork": "<ValueError>",
     "legacy": "CREATE TABLE [vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[256])",
-    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
+    "reason": "T-SQL has no array column type, so legacy wrote invalid DDL; the fork raises a ValueError instead of writing it (VECTOR(n) is written only on a SQL Server or Azure SQL target with vector_type)."
   },
   "fabric:events_tuned": {
     "classification": "equivalent",
@@ -714,10 +714,10 @@
     "reason": "The fork writes the adapter schema ([dbo].) on the table and its REFERENCES targets; legacy relied on the connection default schema, which is dbo."
   },
   "fabric:float_array": {
-    "classification": "fork-gap",
-    "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>)",
+    "classification": "legacy-bug",
+    "fork": "<ValueError>",
     "legacy": "CREATE TABLE [vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[128])",
-    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
+    "reason": "T-SQL has no array column type, so legacy wrote invalid DDL; the fork raises a ValueError instead of writing it (VECTOR(n) is written only on a SQL Server or Azure SQL target with vector_type)."
   },
   "fabric:if_not_exists": {
     "classification": "legacy-bug",
@@ -1200,16 +1200,16 @@
     "reason": "QuestDB rejects CHAR(n) and VARCHAR(n) (verified on QuestDB 10.0.1: ',' or ')' expected); the fork writes VARCHAR."
   },
   "singlestore:double_array": {
-    "classification": "fork-gap",
-    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE), SHARD KEY())",
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding VECTOR(256, F64), SHARD KEY())",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256], SHARD KEY())",
-    "reason": "SingleStore has no ARRAY column type; legacy ARRAY<DOUBLE>[N] and the fork ARRAY(DOUBLE) are both invalid. VECTOR(n, F64) would be the match; a separate design choice reported for an owner decision."
+    "reason": "SingleStore has no ARRAY column type, so legacy wrote invalid DDL; the fork writes VECTOR(n, F32) for 4-byte floats."
   },
   "singlestore:float_array": {
-    "classification": "fork-gap",
-    "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE), SHARD KEY())",
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE vectors(id BIGINT, embedding VECTOR(128, F32), SHARD KEY())",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[128], SHARD KEY())",
-    "reason": "SingleStore has no ARRAY column type; legacy ARRAY<DOUBLE>[N] and the fork ARRAY(DOUBLE) are both invalid. VECTOR(n, F64) would be the match; a separate design choice reported for an owner decision."
+    "reason": "SingleStore has no ARRAY column type, so legacy wrote invalid DDL; the fork writes VECTOR(n, F32) for 4-byte floats."
   },
   "snowflake:double_array": {
     "classification": "legacy-bug",
@@ -1344,16 +1344,16 @@
     "reason": "Legacy falls back to DUPLICATE KEY on single-line DDL because its pattern needs newline-indented columns (and leaves a dangling CONSTRAINT name); on the multi-line TPC DDL it writes PRIMARY KEY like the fork."
   },
   "synapse_replicate:double_array": {
-    "classification": "fork-gap",
-    "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>) WITH(DISTRIBUTION=REPLICATE)",
+    "classification": "legacy-bug",
+    "fork": "<ValueError>",
     "legacy": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[256]) WITH(DISTRIBUTION=REPLICATE)",
-    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
+    "reason": "T-SQL has no array column type, so legacy wrote invalid DDL; the fork raises a ValueError instead of writing it (VECTOR(n) is written only on a SQL Server or Azure SQL target with vector_type)."
   },
   "synapse_replicate:float_array": {
-    "classification": "fork-gap",
-    "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>) WITH(DISTRIBUTION=REPLICATE)",
+    "classification": "legacy-bug",
+    "fork": "<ValueError>",
     "legacy": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[128]) WITH(DISTRIBUTION=REPLICATE)",
-    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
+    "reason": "T-SQL has no array column type, so legacy wrote invalid DDL; the fork raises a ValueError instead of writing it (VECTOR(n) is written only on a SQL Server or Azure SQL target with vector_type)."
   },
   "synapse_replicate:if_not_exists": {
     "classification": "legacy-bug",
@@ -1398,16 +1398,16 @@
     "reason": "The fork writes the adapter schema ([dbo].) on the table and its REFERENCES targets; legacy relied on the connection default schema, which is dbo."
   },
   "synapse_round_robin:double_array": {
-    "classification": "fork-gap",
-    "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>) WITH(DISTRIBUTION=ROUND_ROBIN)",
+    "classification": "legacy-bug",
+    "fork": "<ValueError>",
     "legacy": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[256]) WITH(DISTRIBUTION=ROUND_ROBIN)",
-    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
+    "reason": "T-SQL has no array column type, so legacy wrote invalid DDL; the fork raises a ValueError instead of writing it (VECTOR(n) is written only on a SQL Server or Azure SQL target with vector_type)."
   },
   "synapse_round_robin:float_array": {
-    "classification": "fork-gap",
-    "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>) WITH(DISTRIBUTION=ROUND_ROBIN)",
+    "classification": "legacy-bug",
+    "fork": "<ValueError>",
     "legacy": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[128]) WITH(DISTRIBUTION=ROUND_ROBIN)",
-    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
+    "reason": "T-SQL has no array column type, so legacy wrote invalid DDL; the fork raises a ValueError instead of writing it (VECTOR(n) is written only on a SQL Server or Azure SQL target with vector_type)."
   },
   "synapse_round_robin:if_not_exists": {
     "classification": "legacy-bug",

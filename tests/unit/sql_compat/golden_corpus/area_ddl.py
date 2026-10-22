@@ -26,12 +26,12 @@ def _has_size(legacy: str, fork: str) -> bool:
     return bool(re.search(r"\[\d+\]", legacy)) and not re.search(r"\[\d+\]", fork)
 
 
-def _no_tsql_array(legacy: str, fork: str) -> bool:
-    return _has_size(legacy, fork) and "ARRAY" in fork
+def _fork_raises(legacy: str, fork: str) -> bool:
+    return _has_size(legacy, "") and fork == "<ValueError>"
 
 
-def _singlestore_array(legacy: str, fork: str) -> bool:
-    return "ARRAY" in legacy and "ARRAY" in fork and _has_size(legacy, fork)
+def _singlestore_vector(legacy: str, fork: str) -> bool:
+    return _has_size(legacy, fork) and "VECTOR(" in fork
 
 
 def _empty_tblproperties(legacy: str, fork: str) -> bool:
@@ -173,17 +173,17 @@ CLASSIFICATIONS: list[tuple[str, str, str, _Check]] = [
     ),
     (
         rf"{_TSQL}:{_ARR}",
-        "fork-gap",
-        "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. "
-        "No equivalent type is chosen; reported for an owner decision.",
-        _no_tsql_array,
+        "legacy-bug",
+        "T-SQL has no array column type, so legacy wrote invalid DDL; the fork raises a ValueError instead of "
+        "writing it (VECTOR(n) is written only on a SQL Server or Azure SQL target with vector_type).",
+        _fork_raises,
     ),
     (
         rf"singlestore:{_ARR}",
-        "fork-gap",
-        "SingleStore has no ARRAY column type; legacy ARRAY<DOUBLE>[N] and the fork ARRAY(DOUBLE) are both invalid. "
-        "VECTOR(n, F64) would be the match; a separate design choice reported for an owner decision.",
-        _singlestore_array,
+        "legacy-bug",
+        "SingleStore has no ARRAY column type, so legacy wrote invalid DDL; the fork writes VECTOR(n, F32) for "
+        "4-byte floats.",
+        _singlestore_vector,
     ),
     (
         r"helper_strip_primary_keys:double_array",
@@ -812,12 +812,34 @@ def _trino() -> list[Case]:
     return cases
 
 
+def _starrocks_key_model(sql: str) -> str:
+    sqlglot = importlib.import_module("benchbox._vendor.sqlglot")
+    exp = sqlglot.exp
+    tree = sqlglot.parse_one(sql, read=_READ)
+    columns = [column.name.lower() for column in tree.find_all(exp.ColumnDef)]
+    key = [
+        identifier.name.lower()
+        for primary in tree.find_all(exp.PrimaryKey)
+        for identifier in primary.find_all(exp.Identifier)
+    ]
+    key += [
+        column.name.lower()
+        for column in tree.find_all(exp.ColumnDef)
+        if any(
+            isinstance(c.args.get("kind"), exp.PrimaryKeyColumnConstraint) for c in column.args.get("constraints") or []
+        )
+    ]
+    leading = bool(key) and set(key) == set(columns[: len(set(key))])
+    return "primary" if leading else "duplicate"
+
+
 def _starrocks() -> list[Case]:
     adapter = _bare("benchbox.platforms.starrocks.adapter", "StarRocksAdapter")
     engines = importlib.import_module(_ENGINES)
 
     def fork(sql: str) -> str:
         first = _first_column(sql)
+        model = _starrocks_key_model(sql)
         return _fork(
             sql,
             "starrocks",
@@ -825,7 +847,13 @@ def _starrocks() -> list[Case]:
             strip_foreign_keys=True,
             float_as_real=True,
             type_map=engines.STARROCKS_TYPE_MAP,
-            default_layout=_layout(key_model="primary", distribution="hash", distribute_by=[first], buckets=8),
+            default_layout=_layout(
+                key_model=model,
+                key_columns=[] if model == "primary" else [first],
+                distribution="hash",
+                distribute_by=[first],
+                buckets=8,
+            ),
         )
 
     return _family("starrocks", adapter._optimize_table_definition, fork, _inputs())
@@ -956,6 +984,7 @@ def _singlestore() -> list[Case]:
             "mysql",
             strip_foreign_keys=True,
             table_case="lower",
+            float_as_real=True,
             type_map=engines.SINGLESTORE_TYPE_MAP,
             singlestore=keys,
         )
