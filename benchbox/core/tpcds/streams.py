@@ -214,12 +214,6 @@ class DSQGenStreamsError(Exception):
 _DSQGEN_BEGIN_STREAM_RE = re.compile(r"^BEGIN STREAM\s+(\d+)\s*$", re.IGNORECASE)
 _DSQGEN_TEMPLATE_RE = re.compile(r"^Template:\s*query(\d+)([ab]?)\.tpl\s*$", re.IGNORECASE)
 _DSQGEN_STATEMENT_SPLIT_RE = re.compile(r"(?<=;)\n+(?=\S)")
-_WINDOWS_DSQGEN_CITIES_OVERRUN_FRAGMENTS = (
-    "Runtime ERROR: Distribution over-run/under-run",
-    "Check distribution definitions and usage for cities.",
-    "index = -1, length=1000.",
-)
-_WINDOWS_DSQGEN_MAX_ATTEMPTS = 10
 
 
 def _resolve_dsqgen_binary_and_templates() -> tuple[Path, Path]:
@@ -262,28 +256,20 @@ def _run_dsqgen_streams(
     timeout: int,
     env: dict[str, str],
 ) -> subprocess.CompletedProcess[str]:
-    max_attempts = _WINDOWS_DSQGEN_MAX_ATTEMPTS if sys.platform == "win32" else 1
+    from benchbox.core.tpcds.c_tools import run_dsqgen_process
 
-    for attempt in range(max_attempts):
-        result = subprocess.run(
-            cmd,
-            cwd=temp_path,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            env=env,
-        )
-        is_transient_windows_overrun = sys.platform == "win32" and all(
-            fragment in result.stderr for fragment in _WINDOWS_DSQGEN_CITIES_OVERRUN_FRAGMENTS
-        )
-        if result.returncode == 0 or not is_transient_windows_overrun or attempt == max_attempts - 1:
-            return result
-
+    def discard_partial_output() -> None:
         for output_path in temp_path.glob("query_*.sql"):
             output_path.unlink()
         (temp_path / "stream_params.log").unlink(missing_ok=True)
 
-    raise AssertionError("unreachable")
+    return run_dsqgen_process(
+        cmd,
+        cwd=temp_path,
+        timeout=timeout,
+        env=env,
+        discard_partial_output=discard_partial_output,
+    )
 
 
 def _parse_dsqgen_stream_log(log_text: str) -> dict[int, list[tuple[int, Optional[str]]]]:
