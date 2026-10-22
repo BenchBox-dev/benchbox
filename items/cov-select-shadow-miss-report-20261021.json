@@ -3,6 +3,7 @@
     "A fixture junit with a failure outside the selection is reported as a miss; one inside is not",
     "A real PR run shows the miss section in the core summary"
   ],
+  "context": "PR #3237 (branch feat/coverage-shadow-miss-report, worktree BenchBox.wt-shadow-miss) is open at head 55a75aa13 and blocked: the oracle's latest verdict (2026-10-22) is SHIP WITH FIXES with two open defects. D7 (High): `scripts/coverage_test_selection.py:23` imports `_project.scripts.inert_paths` at load time, and the core job's sparse checkout for the misses step omits it, so the misses report fails before writing anything (the step is continue-on-error, so it fails silently). D6 (Medium): a second junit-to-node-ID derivation (`:1154-1172`) duplicates and diverges from the existing helpers. D5 is verified fixed. Develop is not affected: no develop step imports the module from a sparse checkout.",
   "description": "While coverage selection runs in shadow mode, measure whether it would have caught real failures. In the core aggregate, compare failed node IDs from the heavy medium-test junit reports with the shadow selection and list misses (failed but not selected) in the step summary and the shadow artifact.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "c1641c7dc27845e6bec1c63f5cab59e5",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:18:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8763baa1536d4006bdaee7e2d277b0d6",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
     }
   ]
 }
