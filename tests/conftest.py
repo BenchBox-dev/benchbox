@@ -461,7 +461,8 @@ def tpch_sf001_data(tmp_path_factory: pytest.TempPathFactory):
     from benchbox.utils.output_path import normalize_output_root
 
     cache_root = tmp_path_factory.mktemp("shared_tpch_sf001")
-    cached_dir = Path(str(normalize_output_root(str(cache_root), "tpch", 0.01)))
+    cached_dir = cache_root / "tpch_sf001"
+    assert normalize_output_root(str(cache_root), "tpch", 0.01) == str(cached_dir)
     config = BenchmarkConfig(
         name="tpch",
         display_name="TPC-H",
