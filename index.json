@@ -13472,6 +13472,15 @@
       "status": "open",
       "title": "Run the explorer help examples in-process and anonymize the corpus once for both corpus tests"
     },
+    "longtest-11-anonymizer-key-cache": {
+      "claim": null,
+      "needs": [
+        "longtest-10-repo-scan-tests"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop recompiling the anonymizer's key-compaction regex millions of times"
+    },
     "loud-loader-failures-for-contaminated-data": {
       "claim": null,
       "needs": [],
