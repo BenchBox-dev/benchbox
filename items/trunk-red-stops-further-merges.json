@@ -4,6 +4,7 @@
     "make trunk-revert PR=<n> succeeds from a linked worktree (reproduce the lifecycle ID error, fix it, add a regression test in tests/unit/scripts/test_trunk_revert.py).",
     "docs/internal/develop-post-merge-gaps.md states the final behavior and its remaining bound."
   ],
+  "context": "2026-10-21: the arm gate in scripts/trunk_revert.py exists, but it names the newest red run's PR as the culprit; when a failure persists across merges it blames an innocent later PR and refuses the real revert (trunk-arm-gate-blames-newest-red-run-20261022). On the same day `make trunk-revert PR=3200`, run from the linked worktree BenchBox.wt-trunk-coverage-timeouts, created revert PR #3223 and its worktree without the lifecycle-ID error, which bears on the second acceptance criterion.",
   "description": "After PR 3185 merged, the Trunk run failed 14 minutes later. Nothing reverted the change or stopped further merges; pr-open only refuses new PRs after develop has been red for 30 minutes, and develop was red for about 39 minutes before anyone acted. The documented recovery (make trunk-revert PR=<n>) failed when run from a linked worktree: make worktree-create raised 'Worktree already carries immutable lifecycle ID' for the new revert worktree, so the revert had to be done by hand.",
   "links": [
     "scripts/trunk_revert.py",
@@ -18,6 +19,14 @@
       "op": "create",
       "op_id": "899b0917b6f2479989340bd1fa18fce8",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:17:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c6f1c0d54a584c22af197e02b034c85a",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
     }
   ]
 }
