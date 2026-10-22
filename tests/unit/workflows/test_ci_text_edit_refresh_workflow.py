@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 import yaml
 
+from scripts import ci_text_edit_verdict as verdict
 from scripts.ci_text_edit_verdict import TEXT_EDIT_RUN_NAME
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -39,6 +40,11 @@ def test_skips_text_edit_runs_and_other_events_without_a_runner() -> None:
 
 def test_the_ci_workflow_keeps_the_name_this_workflow_listens_for() -> None:
     assert _load(CI)["name"] == _load()[True if True in _load() else "on"]["workflow_run"]["workflows"][0]
+
+
+def test_the_job_timeout_covers_the_bounded_wait() -> None:
+    wait_minutes = verdict.UNFINISHED_POLLS * verdict.UNFINISHED_POLL_SECONDS / 60
+    assert _job()["timeout-minutes"] > wait_minutes
 
 
 def test_permissions_are_minimal() -> None:

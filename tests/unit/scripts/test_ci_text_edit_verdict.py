@@ -206,3 +206,33 @@ def test_refresh_does_nothing_when_no_run_failed(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(verdict.subprocess, "run", lambda command, **_: commands.append(command))
     assert main(REFRESH_ARGS) == 0
     assert commands == []
+
+
+def test_refresh_waits_for_a_text_edit_run_that_is_still_finishing(
+    monkeypatch: pytest.MonkeyPatch, sleeps: list[float]
+) -> None:
+    finishing = [run(30, "in_progress", TEXT_EDIT_RUN_NAME)]
+    finished = [run(30, title=TEXT_EDIT_RUN_NAME, conclusion="failure")]
+    polls = iter([finishing, finishing, finished])
+    monkeypatch.setattr(verdict, "_fetch_runs", lambda repo, sha, token: next(polls))
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], **_: Any) -> Any:
+        commands.append(command)
+        return type("Done", (), {"returncode": 0})()
+
+    monkeypatch.setattr(verdict.subprocess, "run", fake_run)
+    assert main(REFRESH_ARGS) == 0
+    assert sleeps == [verdict.UNFINISHED_POLL_SECONDS] * 2
+    assert commands == [["gh", "run", "rerun", "30", "--failed", "--repo", "o/r"]]
+
+
+def test_refresh_stops_waiting_after_a_bounded_number_of_polls(
+    monkeypatch: pytest.MonkeyPatch, sleeps: list[float]
+) -> None:
+    monkeypatch.setattr(verdict, "_fetch_runs", lambda repo, sha, token: [run(30, "queued", TEXT_EDIT_RUN_NAME)])
+    commands: list[list[str]] = []
+    monkeypatch.setattr(verdict.subprocess, "run", lambda command, **_: commands.append(command))
+    assert main(REFRESH_ARGS) == 0
+    assert len(sleeps) == verdict.UNFINISHED_POLLS
+    assert commands == []

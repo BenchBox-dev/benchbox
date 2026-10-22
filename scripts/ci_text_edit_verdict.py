@@ -28,6 +28,8 @@ TEXT_EDIT_RUN_NAME = "CI (text edit)"
 WORKFLOW_FILE = "ci.yml"
 API_TRIES = 3
 API_RETRY_SECONDS = 10.0
+UNFINISHED_POLLS = 20
+UNFINISHED_POLL_SECONDS = 15.0
 RUN_ID_IN_URL = re.compile(r"/actions/runs/(\d+)/")
 
 PASS = "pass"
@@ -113,6 +115,10 @@ def newest_failed_text_edit_run(runs: list[dict[str, Any]]) -> int | None:
     return max(failed, default=None)
 
 
+def text_edit_run_unfinished(runs: list[dict[str, Any]]) -> bool:
+    return any(run.get("display_title") == TEXT_EDIT_RUN_NAME and run.get("status") != "completed" for run in runs)
+
+
 def _verdict(args: argparse.Namespace) -> int:
     token = os.environ["GH_TOKEN"]
     try:
@@ -134,6 +140,12 @@ def _refresh(args: argparse.Namespace) -> int:
     token = os.environ["GH_TOKEN"]
     try:
         runs = _with_retries(lambda: _fetch_runs(args.repo, args.sha, token))
+        for _ in range(UNFINISHED_POLLS):
+            if not text_edit_run_unfinished(runs):
+                break
+            print("a text-edit run on this commit is still finishing; waiting for it to complete", flush=True)
+            time.sleep(UNFINISHED_POLL_SECONDS)
+            runs = _with_retries(lambda: _fetch_runs(args.repo, args.sha, token))
     except (urllib.error.URLError, TimeoutError) as error:
         print(f"GitHub API request failed: {error}", file=sys.stderr)
         return 1
