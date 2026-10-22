@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "update_item with an empty string clears a non-empty optional text field and records an update operation; a test covers it.",
+    "A request that changes nothing still returns E_STATE."
+  ],
+  "description": "`update_item` with `context` set to an empty value on an item whose context is non-empty returns `E_STATE` `operation produced no state change`, so the field cannot be cleared. Observed 2026-10-21 on `oracle-local-b6-drop-in-repo-engine` (context set by mistake; restoring it to empty was refused). That item has since been dropped. Seen for `context`; other optional text fields untested.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:17:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "64de212f503341b39cbb0ff18f617524",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    }
+  ]
+}
