@@ -13487,12 +13487,17 @@
       "title": "Stop recompiling the anonymizer's key-compaction regex millions of times"
     },
     "longtest-12-explorer-pipeline-lazy-init": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T14:21:40Z",
+        "generation": "ed04d41789f14d3686fca200958ff5fc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
+      },
       "needs": [
         "longtest-10-repo-scan-tests"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop the explorer_pipeline package from importing all of benchbox on import"
     },
     "longtest-13-lazy-platform-registration": {
