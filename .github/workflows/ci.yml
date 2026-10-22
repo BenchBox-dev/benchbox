@@ -1024,6 +1024,7 @@ jobs:
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
+          overwrite: true
 
   medium-test:
     name: medium-test (shard ${{ matrix.shard_index }})
@@ -1113,6 +1114,7 @@ jobs:
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
+          overwrite: true
 
   correctness-gate:
     name: correctness-gate (${{ matrix.partition }})

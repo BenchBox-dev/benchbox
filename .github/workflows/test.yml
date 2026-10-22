@@ -283,6 +283,7 @@ jobs:
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 7
+          overwrite: true
 
   medium:
     name: medium (shard ${{ matrix.shard_index }})
@@ -353,6 +354,7 @@ jobs:
           path: t2-artifacts/shard-${{ matrix.shard_index }}-*
           if-no-files-found: error
           retention-days: 7
+          overwrite: true
 
   medium-coverage:
     name: medium-coverage
