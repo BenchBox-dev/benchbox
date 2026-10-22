@@ -391,6 +391,13 @@ def judge_planned(verdict: Verdict, plan: Mapping[str, Any]) -> Judgement:
 
 
 def contradiction(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
+    if verdict.status == COMPLETE:
+        rules = plan.get("protocol") or {}
+        priors = rules.get("prior", ()) or ()
+        known = {item["id"] for item in priors if isinstance(item, Mapping) and isinstance(item.get("id"), str)}
+        unknown = sorted({item.id for item in verdict.prior_defects} - known)
+        if unknown:
+            return f"prior defect IDs not in plan: {', '.join(unknown)}"
     if (
         verdict.status == COMPLETE
         and verdict.decision == SHIP_WITH_FIXES

@@ -57,13 +57,39 @@ def test_known_finding_metadata_does_not_erase_a_blocking_finding(field: str) ->
 
 
 @pytest.mark.parametrize("field", ["severity", "file", "line", "end_line", "title", "detail"])
-def test_prior_metadata_does_not_change_an_open_prior(field: str) -> None:
+def test_prior_finding_metadata_is_invalid_not_stripped(field: str) -> None:
     prior = {"id": "D2", "status": "not_fixed", "evidence": "The old behavior remains.", field: "metadata"}
     normalized, _ = normalize_reviewer(_payload(defects=[], prior_defects=[prior]))
-    verdict = validate(normalized)
+    with pytest.raises(VerdictError):
+        validate(normalized)
+
+
+def test_misfiled_finding_under_priors_cannot_ship() -> None:
+    raw = _payload(
+        defects=[],
+        decision="SHIP",
+        prior_defects=[
+            {
+                "id": "D99",
+                "status": "fixed",
+                "evidence": "misplaced",
+                "severity": "High",
+                "file": "input.py",
+                "line": 1,
+                "title": "Input lost",
+                "detail": "The value is dropped.",
+            }
+        ],
+    )
+    normalized, _ = normalize_reviewer(raw)
+    with pytest.raises(VerdictError):
+        validate(normalized)
+
+
+def test_unknown_prior_ids_are_contradictions() -> None:
+    verdict = validate(_payload(defects=[], prior_defects=[{"id": "D99", "status": "fixed", "evidence": "x"}]))
     plan = {"max_defects": 10, "protocol": {"prior": [{"id": "D2"}]}}
-    assert protocol.judge_planned(verdict, plan).carried == ({"id": "D2"},)
-    assert protocol.contradiction(verdict, plan) is None
+    assert protocol.contradiction(verdict, plan) == "prior defect IDs not in plan: D99"
 
 
 @pytest.mark.parametrize("embedded", [None, "D2", "#D2"])
@@ -146,7 +172,7 @@ def test_actual_pr3237_responses_preserve_unfixed_d6() -> None:
         normalized, _ = normalize_reviewer(record["payload"])
         verdict = validate(normalized)
         assert next(prior.status for prior in verdict.prior_defects if prior.id == "D6") == "not_fixed"
-        plan = {"max_defects": 10, "protocol": {"prior": [{"id": "D6"}]}}
+        plan = {"max_defects": 10, "protocol": {"prior": [{"id": "D5"}, {"id": "D6"}]}}
         assert protocol.judge_planned(verdict, plan).decision == "SHIP_WITH_FIXES"
         assert protocol.contradiction(verdict, plan) is None
 

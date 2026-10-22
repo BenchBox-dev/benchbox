@@ -49,7 +49,6 @@ RESPONSE_PLACEHOLDERS = {
     "evidence": "<evidence>",
 }
 FINDING_METADATA = frozenset({"line_note", "end_line_note", "detail_extra"})
-PRIOR_METADATA = frozenset({"severity", "file", "line", "end_line", "title", "detail"})
 _KEY_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,39}")
 _PRIOR_ID = re.compile(r"[A-Za-z0-9-]{1,32}")
 
@@ -257,21 +256,19 @@ def normalize_reviewer(data: Any) -> tuple[Any, tuple[str, ...]]:
             entries.append({**value, "id": identifier})
         normalized["prior_defects"] = entries
         rewrites.append("prior_dictionary")
-    for field, metadata in (("defects", FINDING_METADATA), ("prior_defects", PRIOR_METADATA)):
-        entries = normalized.get(field)
-        if not isinstance(entries, list):
-            continue
+    defects_entries = normalized.get("defects")
+    if isinstance(defects_entries, list):
         cleaned = []
         removed = set()
-        for entry in entries:
+        for entry in defects_entries:
             if isinstance(entry, dict):
-                removed.update(set(entry) & metadata)
-                cleaned.append({key: value for key, value in entry.items() if key not in metadata})
+                removed.update(set(entry) & FINDING_METADATA)
+                cleaned.append({key: value for key, value in entry.items() if key not in FINDING_METADATA})
             else:
                 cleaned.append(entry)
         if removed:
-            normalized[field] = cleaned
-            rewrites.append(f"{field}_metadata")
+            normalized["defects"] = cleaned
+            rewrites.append("defects_metadata")
     return normalized, tuple(rewrites)
 
 
