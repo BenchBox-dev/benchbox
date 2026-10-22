@@ -45,3 +45,13 @@ def test_layouts_by_table_and_singlestore_mappings_are_converted():
 def test_unknown_option_is_rejected():
     with pytest.raises(ValueError, match="Unknown DDL options"):
         translate_ddl(TABLE, "postgres", strip_everything=True)
+
+
+def test_type_map_may_name_a_fork_engine_map():
+    import importlib
+
+    engines = importlib.import_module("benchbox._vendor.sqlglot.benchbox.ddl_engines")
+    named = translate_ddl(TABLE, "doris", source_dialect="duckdb", type_map="doris")
+    assert named == translate_ddl(TABLE, "doris", source_dialect="duckdb", type_map=engines.DORIS_TYPE_MAP)
+    with pytest.raises(ValueError, match="Unknown DDL type map"):
+        translate_ddl(TABLE, "starrocks", type_map="nonexistent")
