@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A hosted `@slow` or `@plan` oracle review through the gateway completes, with its longest silent stretch measured from the gateway log, or a reproducible failure is recorded with its cause.",
+    "If silent stretches past the idle limit fail, the gateway or reviewer setting is changed and the fix verified the same way."
+  ],
+  "description": "Once PR #3296 moves the reviewer onto the scoped auth-gateway, every reviewer request streams through `omp auth-gateway serve` on the owner's Mac. The local test of that setup did not include a request with a long silent stretch. The gateway runs on Bun, whose server idle timeout is at most 255 seconds; the gateway's setting and its keepalive behaviour during provider silence were not checked. A high-effort `@slow` or `@plan` review can think longer than that before emitting output, so long reviews could fail as absent. Start after #3296 merges.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3296"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:16:55Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3e0641b0080a4f4983336761ae059bea",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    }
+  ]
+}

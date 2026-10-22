@@ -15780,6 +15780,13 @@
       "status": "done",
       "title": "Post the merge gate as an App status from trusted develop code (oracle-gate)"
     },
+    "oracle-gateway-long-silence-timeout-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Confirm the oracle's auth-gateway survives a long silent thinking stretch from @slow or @plan reviewers"
+    },
     "oracle-jev-gateway-gap": {
       "claim": null,
       "needs": [],
