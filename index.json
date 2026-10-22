@@ -13526,6 +13526,29 @@
       "status": "open",
       "title": "Keep each module's expensive fixtures on one worker and shard in the medium tier"
     },
+    "longtest-16-refresh-durations-and-measure": {
+      "claim": null,
+      "needs": [
+        "longtest-01-delete-duplicate-tests",
+        "longtest-02-canary-live-real-checks",
+        "longtest-03-mcp-export-failure-real-result",
+        "longtest-04-cli-identical-runs-and-scale",
+        "longtest-05-cli-shared-tpch-data",
+        "longtest-06-cross-surface-medium-scale",
+        "longtest-07-validator-exact-fast-path",
+        "longtest-08-tpcds-binding-draw-obt",
+        "longtest-09-throughput-refresh-sets-once",
+        "longtest-10-repo-scan-tests",
+        "longtest-11-anonymizer-key-cache",
+        "longtest-12-explorer-pipeline-lazy-init",
+        "longtest-13-lazy-platform-registration",
+        "longtest-14-dsqgen-template-staging",
+        "longtest-15-module-grouped-scheduling"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Refresh the medium-tier duration weights from a full trunk run and measure the result of the long-test work"
+    },
     "loud-loader-failures-for-contaminated-data": {
       "claim": null,
       "needs": [],
