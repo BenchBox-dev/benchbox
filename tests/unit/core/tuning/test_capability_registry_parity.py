@@ -633,15 +633,16 @@ class TestBenchmarkDdlAndAdapterBehavior:
             )
 
     def test_questdb_create_schema_strips_constraints(self) -> None:
-        from benchbox.platforms.base.ddl_helpers import strip_foreign_keys
-        from benchbox.platforms.questdb import QuestDBAdapter
+        from benchbox.utils.dialect_utils import translate_ddl
 
-        adapter = QuestDBAdapter.__new__(QuestDBAdapter)
-        create = "CREATE TABLE orders (o_orderkey INTEGER, o_custkey INTEGER, PRIMARY KEY (o_orderkey));"
-        assert "PRIMARY KEY" not in QuestDBAdapter._strip_pk_constraints(adapter, create)
-        assert "o_orderkey INTEGER" in QuestDBAdapter._strip_pk_constraints(adapter, create)
-        foreign = "CREATE TABLE orders (o_orderkey INTEGER, FOREIGN KEY (o_orderkey) REFERENCES c (x));"
-        assert "FOREIGN KEY" not in strip_foreign_keys(foreign)
+        create = (
+            "CREATE TABLE orders (o_orderkey INTEGER, o_custkey INTEGER, PRIMARY KEY (o_orderkey), "
+            "FOREIGN KEY (o_custkey) REFERENCES c (x));"
+        )
+        [rendered] = translate_ddl(create, "questdb", strip_primary_keys=True, strip_foreign_keys=True)
+        assert "PRIMARY KEY" not in rendered
+        assert "FOREIGN KEY" not in rendered
+        assert "o_orderkey INT" in rendered
 
     def test_trino_base_optimize_strips_primary_keys(self) -> None:
         from benchbox.platforms.presto_trino_adapter_base import PrestoTrinoAdapterBase
@@ -676,16 +677,15 @@ class TestBenchmarkDdlAndAdapterBehavior:
         assert "tuned_dist" not in rendered.split("WITH (DISTRIBUTION")[1]
         assert "PARTITION" not in rendered.upper()
 
-    def test_questdb_enhancement_takes_no_tuning(self) -> None:
+    def test_questdb_layout_takes_no_tuning(self) -> None:
         from benchbox.platforms.questdb import QuestDBAdapter
 
-        parameters = inspect.signature(QuestDBAdapter._apply_questdb_schema_enhancements).parameters
+        parameters = inspect.signature(QuestDBAdapter._questdb_table_layout).parameters
         assert "tuning_config" not in parameters and "table_tuning" not in parameters
         adapter = QuestDBAdapter.__new__(QuestDBAdapter)
         adapter.partition_by = None
         create = "CREATE TABLE lineitem (l_orderkey INTEGER, l_shipdate DATE);"
-        rendered = QuestDBAdapter._apply_questdb_schema_enhancements(adapter, create)
-        assert "PARTITION BY MONTH" in rendered.upper()
+        assert adapter._questdb_table_layout(create)["time_partition"] == "MONTH"
 
     def test_quiet_generators_emit_no_clause(self) -> None:
         from benchbox.core.tuning.ddl_generator import get_ddl_generator

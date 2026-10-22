@@ -975,11 +975,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         _T.PRIMARY_KEYS: _none(
             "questdb_strips_primary_keys",
-            "QuestDBAdapter.create_schema strips PRIMARY KEY clauses via _strip_pk_constraints (questdb.py).",
+            "QuestDBAdapter.create_schema strips PRIMARY KEY clauses via translate_ddl strip_primary_keys (questdb.py).",
         ),
         _T.FOREIGN_KEYS: _none(
             "questdb_strips_foreign_keys",
-            "QuestDBAdapter.create_schema strips FOREIGN KEY clauses via ddl_helpers strip_foreign_keys (questdb.py).",
+            "QuestDBAdapter.create_schema strips FOREIGN KEY clauses via translate_ddl strip_foreign_keys (questdb.py).",
         ),
         **_no_unique_check_entries(
             "questdb_no_unique_check_rendering",

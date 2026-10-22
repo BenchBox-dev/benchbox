@@ -863,7 +863,7 @@ class DuckDBAdapter(PlatformAdapter):
                 import re
 
                 table_name = "unknown"
-                match = re.search(r"CREATE TABLE\s+(\w+)", statement, re.IGNORECASE)
+                match = re.search(r"CREATE TABLE\s+\"?(\w+)", statement, re.IGNORECASE)
                 if match:
                     table_name = match.group(1)
 
