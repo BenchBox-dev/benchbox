@@ -188,6 +188,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Tuned runs no longer abort, or lose the tuned-run marker, when the tuning
+  metadata store does not work on the platform:
+  - Athena has no metadata store. A tuned run proceeds without a marker and records
+    `metadata_store: unsupported` in its applied-tuning ledger. Because BenchBox
+    cannot tell later whether such a database was tuned, it now refuses to reuse an
+    existing Athena database and recreates it.
+  - Synapse and Fabric Warehouse get valid T-SQL: `IF OBJECT_ID(...) IS NULL CREATE
+    TABLE` with `DATETIME2` (the old `TIMESTAMP` column is a `ROWVERSION`), `TOP 1`
+    instead of `LIMIT 1`, and `DELETE` without `WHERE TRUE`. DDL runs through the
+    cursor, because the adapters' query path fetches a result set that DDL does not
+    return. Fabric Warehouse gets no lookup index, which it does not support.
+  - BigQuery creates the store with `CREATE TABLE IF NOT EXISTS`; the adapter used
+    to rewrite the plain `CREATE TABLE` to `CREATE OR REPLACE`, so each new manager
+    emptied the table and its marker.
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
   `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
   clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`

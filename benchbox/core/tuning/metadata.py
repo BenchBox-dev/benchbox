@@ -5,6 +5,7 @@
 import hashlib
 import json
 import logging
+import re
 import sys
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
@@ -33,6 +34,8 @@ _PLATFORM_KEY_ALIASES = {
     "azure_synapse": "synapse",
     "fabric_warehouse": "fabric_dw",
 }
+
+_TSQL_PLATFORMS = frozenset({"synapse", "fabric_dw"})
 
 
 def _driver_paramstyle(connection: Any) -> str | None:
@@ -66,6 +69,16 @@ def _column_tuned_table_names(tunings: BenchmarkTunings) -> set[str]:
 def _normalize_platform_key(raw: object) -> str:
     key = str(raw).strip().lower().replace("-", "_").replace(" ", "_")
     return _PLATFORM_KEY_ALIASES.get(key, key)
+
+
+def metadata_store_unsupported_reason(platform: object) -> Optional[str]:
+    if _normalize_platform_key(platform) == "athena":
+        return (
+            "Tuning metadata is not supported on Athena: the metadata table "
+            "needs an Iceberg table with an explicit warehouse LOCATION, which "
+            "BenchBox does not provision."
+        )
+    return None
 
 
 @dataclass
@@ -217,6 +230,7 @@ class TuningMetadataManager:
                         "unknown table",
                         "undefined table",
                         "not found",
+                        "invalid object name",
                     )
                 ):
                     return True
@@ -356,12 +370,11 @@ class TuningMetadataManager:
         try:
             if not self._table_exists_check():
                 return False
-            query_sql = (
+            query_sql = self._first_row_query(
                 "SELECT 1 FROM "
                 f"{self._metadata_table_name} "
                 f"WHERE table_name = '{self._SECTION_MARKER_TABLE}' "
-                f"AND tuning_type = '{self._TUNING_TYPE_RUN_KIND}' "
-                "LIMIT 1"
+                f"AND tuning_type = '{self._TUNING_TYPE_RUN_KIND}'"
             )
             with self._managed_connection() as conn:
                 return self._fetch_one(conn, query_sql) is not None
@@ -474,23 +487,21 @@ class TuningMetadataManager:
             "cedardb",
         }
     )
-    _INDEX_TSQL_PLATFORMS = frozenset({"synapse", "fabric_dw"})
+    _INDEX_TSQL_PLATFORMS = frozenset({"synapse"})
 
-    def _metadata_unsupported_reason(self) -> Optional[str]:
-        if self._platform_key() == "athena":
-            return (
-                "Tuning metadata is not supported on Athena: the metadata table "
-                "needs an Iceberg table with an explicit warehouse LOCATION, which "
-                "BenchBox does not provision. Runs continue without persisted tuning "
-                "metadata (reuse and drift detection stay disabled)."
-            )
-        return None
+    def _first_row_query(self, select_sql: str) -> str:
+        if self._platform_key() in _TSQL_PLATFORMS:
+            return re.sub(r"^\s*SELECT\b", "SELECT TOP 1", select_sql, count=1, flags=re.IGNORECASE)
+        return f"{select_sql} LIMIT 1"
+
+    def unsupported_reason(self) -> Optional[str]:
+        return metadata_store_unsupported_reason(self._platform_key())
 
     def create_metadata_table(self) -> bool:
         if self._table_exists:
             return True
 
-        unsupported = self._metadata_unsupported_reason()
+        unsupported = self.unsupported_reason()
         if unsupported is not None:
             self.logger.error(unsupported)
             return False
@@ -532,7 +543,7 @@ class TuningMetadataManager:
         )"""
 
         if platform == "bigquery":
-            bigquery_sql = base_sql.replace("CREATE TABLE IF NOT EXISTS", "CREATE TABLE")
+            bigquery_sql = base_sql
             for narrow, broad in (
                 ("VARCHAR(255)", "STRING"),
                 ("VARCHAR(50)", "STRING"),
@@ -542,6 +553,9 @@ class TuningMetadataManager:
             ):
                 bigquery_sql = bigquery_sql.replace(narrow, broad)
             return bigquery_sql
+        elif platform in _TSQL_PLATFORMS:
+            body = base_sql.replace("CREATE TABLE IF NOT EXISTS", "CREATE TABLE").replace("TIMESTAMP", "DATETIME2")
+            return f"IF OBJECT_ID(N'{self._metadata_table_name}', N'U') IS NULL {body}"
         elif platform == "snowflake":
             return base_sql.replace("TIMESTAMP", "TIMESTAMP_NTZ")
         elif platform == "redshift":
@@ -773,7 +787,7 @@ class TuningMetadataManager:
             return self._table_exists
 
         try:
-            query_sql = f"SELECT COUNT(*) FROM {self._metadata_table_name} LIMIT 1"
+            query_sql = self._first_row_query(f"SELECT COUNT(*) FROM {self._metadata_table_name}")
             with self._managed_connection() as conn:
                 self._fetch_one(conn, query_sql)
                 self._table_exists = True
@@ -924,7 +938,10 @@ class TuningMetadataManager:
             if not self._table_exists_check():
                 return True
 
-            delete_sql = f"DELETE FROM {self._metadata_table_name} WHERE TRUE"
+            if self._platform_key() in _TSQL_PLATFORMS:
+                delete_sql = f"DELETE FROM {self._metadata_table_name}"
+            else:
+                delete_sql = f"DELETE FROM {self._metadata_table_name} WHERE TRUE"
             with self._managed_connection() as conn:
                 self._execute_sql(conn, delete_sql)
 
@@ -970,8 +987,11 @@ class TuningMetadataManager:
         except Exception as e:
             return {"table_exists": False, "error": str(e)}
 
+    def _uses_raw_cursor(self, connection) -> bool:
+        return self._platform_key() in _TSQL_PLATFORMS and hasattr(connection, "cursor")
+
     def _execute_sql(self, connection, sql: str, params: Optional[list] = None) -> Any:
-        if hasattr(self.platform_adapter, "execute_query"):
+        if hasattr(self.platform_adapter, "execute_query") and not self._uses_raw_cursor(connection):
             if not hasattr(connection, "cursor"):
                 sql = self._qualify_metadata_read_sql(sql)
             result = self.platform_adapter.execute_query(connection, sql, "metadata")

@@ -282,6 +282,10 @@ to answer what a run requested and what it applied:
     that statement in `statements`), and a `reason`. It is omitted when empty,
     is not part of `applied_ledger_hash`, and never counts as corroboration:
     only the referenced statement's own receipt entry does.
+  - `metadata_store` is `"unsupported"` when the platform has no tuning metadata
+    store (Athena). The run proceeded without a tuned-run marker, and BenchBox
+    will not reuse a database it created. It is omitted when the store works, and
+    is not part of `applied_ledger_hash`.
 
 Bundles exported before this were accompanied by `<result>.tuning.json` and
 `<result>.applied.json` files carrying the same content. Nothing writes them

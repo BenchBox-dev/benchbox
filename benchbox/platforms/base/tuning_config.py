@@ -64,6 +64,16 @@ class TuningConfigMixin:
                 TuningMetadataManager,
             )
 
+            unsupported = self.tuning_metadata_unsupported_reason()
+            if unsupported is not None:
+                result = MetadataValidationResult()
+                result.add_error(
+                    f"{unsupported} BenchBox cannot tell whether this database was tuned, "
+                    "so it is recreated instead of reused."
+                )
+                self._drift_validation_result = result
+                return result
+
             self._validating_database = True
             temp_connection = None
             if hasattr(self, "_create_direct_connection"):
@@ -106,6 +116,24 @@ class TuningConfigMixin:
             self._drift_validation_result = result
             return result
 
+    def tuning_metadata_unsupported_reason(self) -> str | None:
+        from benchbox.core.tuning.metadata import metadata_store_unsupported_reason
+
+        return metadata_store_unsupported_reason(getattr(self, "canonical_platform_type", None) or self.platform_name)
+
+    def _note_tuning_metadata_unsupported(self) -> bool:
+        reason = self.tuning_metadata_unsupported_reason()
+        if reason is None:
+            return False
+        ledger = getattr(self, "_applied_tuning_ledger", None)
+        if ledger is not None and not ledger.metadata_store_unsupported:
+            ledger.metadata_store_unsupported = True
+            self.logger.warning(
+                "%s This run proceeds without a tuned-run marker, and a database created by it cannot be reused.",
+                reason,
+            )
+        return True
+
     @staticmethod
     def _has_tuned_run_marker(metadata_manager: Any) -> bool:
         probe = getattr(metadata_manager, "has_tuned_run_marker", None)
@@ -119,6 +147,8 @@ class TuningConfigMixin:
     def ensure_tuned_run_marker(self, connection: Any) -> bool:
         effective_config = self.get_effective_tuning_configuration()
         if not self.tuning_enabled or not effective_config:
+            return True
+        if self._note_tuning_metadata_unsupported():
             return True
 
         try:
@@ -136,6 +166,8 @@ class TuningConfigMixin:
         effective_config = self.get_effective_tuning_configuration()
         if not self.tuning_enabled or not effective_config:
             return True
+        if self._note_tuning_metadata_unsupported():
+            return False
 
         try:
             from benchbox.core.tuning.metadata import TuningMetadataManager
