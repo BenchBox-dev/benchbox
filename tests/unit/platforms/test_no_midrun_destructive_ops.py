@@ -831,6 +831,7 @@ SPECS: dict[str, Spec] = {
     "quanton": Spec(config={**AWS, "api_key": "key"}),
     "snowflake": Spec(
         config={"account": "acct"},
+        patches={"benchmark_instance": SimpleNamespace(get_schema=lambda: {"region": {}})},
         scripted={r"SHOW TABLES LIKE": []},
     ),
     "snowpark-connect": Spec(config={"account": "acct", "user": "user"}),

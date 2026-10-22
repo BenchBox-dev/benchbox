@@ -237,3 +237,23 @@ def test_validation_carries_the_foreign_tables_into_the_database_result():
 
     assert not result.is_valid
     assert result.foreign_tables == tuple(sorted(STAGING_TABLES))
+
+
+def test_a_validation_error_after_the_table_check_keeps_the_foreign_tables():
+    benchmark_adapter = _ExistingTablesAdapter(existing=[*TPCH_TABLES, *STAGING_TABLES], expected=TPCH_TABLES)
+    validator = DatabaseValidator(benchmark_adapter, {})
+
+    with (
+        patch.object(validator.connection_validator, "create_temporary_connection") as connect,
+        patch.object(
+            validator.tuning_validator, "validate", return_value=SimpleNamespace(is_valid=True, errors=[], warnings=[])
+        ),
+        patch.object(validator.row_count_validator, "validate", side_effect=RuntimeError("row count probe failed")),
+    ):
+        connect.return_value.__enter__.return_value = Mock()
+        result = validator.validate()
+
+    assert not result.is_valid
+    assert not result.can_reuse
+    assert any("row count probe failed" in issue for issue in result.issues)
+    assert result.foreign_tables == tuple(sorted(STAGING_TABLES))

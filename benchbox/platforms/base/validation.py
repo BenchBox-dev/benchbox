@@ -349,7 +349,13 @@ class DatabaseValidator:
 
         except Exception as e:
             issues.append(f"Database validation failed: {str(e)}")
-            return DatabaseValidationResult(is_valid=False, can_reuse=False, issues=issues, warnings=warnings)
+            return DatabaseValidationResult(
+                is_valid=False,
+                can_reuse=False,
+                issues=issues,
+                warnings=warnings,
+                foreign_tables=tuple(sorted(foreign_tables)),
+            )
 
         is_valid, can_reuse = self._determine_validity(tuning_valid, tables_valid, row_counts_valid)
 
