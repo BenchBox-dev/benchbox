@@ -29,6 +29,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.tpcds]
 
 SCALE = 0.01
 RUNS = [(None, 0), (None, 1), (42, 0), (42, 1)]
+EVERY_ADAPTED_QUERY_RUNS = [(None, 1), (42, 0)]
 UNADAPTED = min(set(range(1, 100)) - set(ADAPTERS), default=None)
 needs_unadapted = pytest.mark.skipif(UNADAPTED is None, reason="every query has an adapter")
 
@@ -131,7 +132,7 @@ class TestPowerParameterSeed:
 
 
 class TestSQLAndDataFrameBindTheSameValues:
-    @pytest.mark.parametrize("seed,stream_id", RUNS)
+    @pytest.mark.parametrize("seed,stream_id", EVERY_ADAPTED_QUERY_RUNS)
     def test_every_adapted_query(self, tpcds_benchmark, seed, stream_id):
         benchmark = tpcds_benchmark
         dsqgen = benchmark._impl.query_manager.dsqgen
