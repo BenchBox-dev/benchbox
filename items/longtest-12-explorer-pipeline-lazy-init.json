@@ -3,7 +3,7 @@
     "RUBRIC 1: G1 importer list and test results in the PR body",
     "RUBRIC 2: G2 measurements (local and CI labelled)"
   ],
-  "context": "PROGRESS 2026-10-22: PR #3287 (head f3676503), arming. Package __init__ re-exports its 7 public names lazily via module __getattr__/__dir__, literal __all__ and a TYPE_CHECKING block; new fast test module (12 tests) pins the surface and that importing contract loads neither benchbox nor pandas. G1: no Python importer uses package-root names (all import submodules: explorer_publish, corpus migrate, cpu attestation backfill, publication bijection/compat checks, site_inputs, tests); workflows reference paths only; no deploy-workflow test exists, ran CI workflow unit tests instead; ~1440 explorer-related tests pass locally. G2: contract import 0.68 s warm (2.8 s cold) -> 1.4 ms local; CI 8 explorer modules 52.37 -> 40.74 s, longest medium shard 402.1 -> 365.5 s (trunk 39781259427 vs PR 39785735493, same base ba7a41952; single runs). G3: no public surface broken. C1 local coverage: only __init__.py lines change. Mutations caught. Oracle SHIP, no findings. NEXT: finish after merge.",
+  "context": "DONE 2026-10-22: PR #3287 merged as 93524639b01221f1394fe869b57dbecc775173c2 (head f3676503). Package __init__ re-exports its 7 public names lazily (module __getattr__/__dir__, literal __all__, TYPE_CHECKING block); new fast test module pins the surface and that importing contract loads neither benchbox nor pandas. G1: no importer uses package-root names; ~1440 explorer-related tests pass locally; no deploy-workflow test exists (CI workflow unit tests run instead). G2: contract import 0.68 s warm -> 1.4 ms local; CI 8 explorer modules 52.37 -> 40.74 s (trunk 39781259427 vs PR 39785735493, same base). G3: no surface broken. Coverage: only __init__.py lines change. Mutations caught. Oracle SHIP.",
   "description": "PROBLEM: importing _project.scripts.explorer_pipeline.contract (which itself has no imports) costs about 4 s because the package __init__ eagerly imports duckdb_builder -> models -> benchbox.core.cost -> the whole benchbox package plus pandas. Every script process in the explorer pipeline and its tests pays this.\n\nCHANGE: make the package __init__ lazy (PEP 562 __getattr__ re-exports, or no re-exports with callers importing submodules directly), keeping every currently imported public name importable from the package.\n\nDECISION GATES:\nG1 Find every importer of names from the package (grep and the explorer workflows); each must still work. Run the explorer-related unit tests and the deploy-workflow test.\nG2 Measure python -X importtime for contract import before/after (local) and the explorer test times on CI.\nG3 If laziness breaks a documented public import surface that cannot be preserved, stop and record (C10).",
   "links": [
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-18T23-52-50-730Z_01a1516e-af2a-70ba-8b0e-81c1898c948f/RepoScanReview.md"
@@ -58,6 +58,14 @@
       "generation": "ed04d41789f14d3686fca200958ff5fc",
       "op": "take",
       "op_id": "16f4478281784c82abac5e3fbd172e12",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-22T14:21:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f5d54dbaca934d3c915a0a48bc8820e7",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]
