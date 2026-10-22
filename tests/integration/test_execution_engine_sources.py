@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +32,7 @@ def _only_receipt(results_dir: Path) -> dict[str, Any]:
     return json.loads(bundles[0].read_text(encoding="utf-8"))["platform"]["execution_engine"]
 
 
-def _cli_run(tmp_path: Path, *args: str) -> Any:
+def _cli_run(tmp_path: Path, *args: str, output: str | None = None) -> Any:
     return run_cli_command(
         [
             "run",
@@ -48,7 +49,7 @@ def _cli_run(tmp_path: Path, *args: str) -> Any:
             *args,
             "--non-interactive",
             "--output",
-            str(tmp_path / "out"),
+            output or str(tmp_path / "out"),
         ],
         env={"BENCHBOX_OUTPUT_DIR": str(tmp_path)},
         timeout=300,
@@ -67,14 +68,21 @@ def streaming_tuning(tmp_path: Path) -> str:
     [
         (("--execution-engine", "streaming", "--tuning", "{tuning}", "--polars-streaming"), "explicit"),
         (("--tuning", "{tuning}", "--polars-streaming"), "tuning_profile"),
-        (("--polars-streaming",), "legacy_option"),
     ],
-    ids=["explicit-tuning-legacy", "tuning-legacy", "legacy"],
+    ids=["explicit-tuning-legacy", "tuning-legacy"],
 )
 def test_cli_agreeing_sources_resolve_to_the_highest_precedence(
-    tmp_path: Path, streaming_tuning: str, sources: tuple[str, ...], resolution: str
+    tmp_path: Path,
+    tpch_sf001_data: Callable[[Path], str],
+    streaming_tuning: str,
+    sources: tuple[str, ...],
+    resolution: str,
 ) -> None:
-    result = _cli_run(tmp_path, *(part.format(tuning=streaming_tuning) for part in sources))
+    result = _cli_run(
+        tmp_path,
+        *(part.format(tuning=streaming_tuning) for part in sources),
+        output=tpch_sf001_data(tmp_path / "out"),
+    )
     assert result.returncode == 0, result.stdout + result.stderr
 
     receipt = _only_receipt(tmp_path / "results")

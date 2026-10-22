@@ -69,6 +69,7 @@ MERGE_GATE_GUARD_TOKENS = (
 
 MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "tuning-liveness", "Run real-CLI tuning liveness matrix"): "tuning-liveness-gate",
+    ("ci.yml", "sql-execution-evidence", "Run the executed SQL comparison gate"): "sql-execution-gate",
     ("ci.yml", "package-smoke", "Build package"): "test-package",
     (
         "test.yml",

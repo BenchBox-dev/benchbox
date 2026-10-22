@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "differences": [
+    {
+      "engine": "sqlite",
+      "benchmark": "tpcds",
+      "check": "error",
+      "queries": [
+        5,
+        14,
+        18,
+        22,
+        67,
+        77,
+        80
+      ],
+      "match": "no such function: ROLLUP",
+      "justification": "SQLite does not implement ROLLUP. The query fails loudly instead of returning rows. Engine capability gap; no row difference is possible."
+    },
+    {
+      "engine": "sqlite",
+      "benchmark": "tpcds",
+      "check": "error",
+      "queries": [
+        27,
+        36,
+        70,
+        86
+      ],
+      "match": "no such function: GROUPING",
+      "justification": "SQLite does not implement GROUPING() or grouping sets. The query fails loudly instead of returning rows. Engine capability gap; no row difference is possible."
+    },
+    {
+      "engine": "sqlite",
+      "benchmark": "tpcds",
+      "check": "error",
+      "queries": [
+        17,
+        39
+      ],
+      "match": "no such function: STDDEV_SAMP",
+      "justification": "SQLite has no STDDEV_SAMP aggregate. The query fails loudly instead of returning rows. Engine capability gap; no row difference is possible."
+    },
+    {
+      "engine": "sqlite",
+      "benchmark": "tpcds",
+      "check": "error",
+      "queries": [
+        87
+      ],
+      "match": "syntax error",
+      "justification": "SQLite rejects parenthesised operands of EXCEPT. The fork generator does not wrap them as subselects, so the query fails loudly. Tracked by sqlite-tpcds-parenthesised-compound-operands; remove this entry when the generator is fixed.",
+      "tracker": "sqlite-tpcds-parenthesised-compound-operands"
+    },
+    {
+      "engine": "sqlite",
+      "benchmark": "tpcds",
+      "check": "error",
+      "queries": [
+        13,
+        48
+      ],
+      "match": "timeout",
+      "justification": "SQLite without indexes does not finish these multi-join queries inside the per-query budget at SF0.01. The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on unindexed TPC-DS, not a translation difference.",
+      "optional": true
+    },
+    {
+      "engine": "sqlite",
+      "benchmark": "tpch",
+      "check": "error",
+      "queries": [
+        21
+      ],
+      "match": "timeout",
+      "justification": "SQLite without indexes does not finish TPC-H Q21 inside the per-query budget at SF0.01. The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on unindexed TPC-H, not a translation difference.",
+      "optional": true
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpcds",
+      "check": "reference",
+      "queries": [
+        21
+      ],
+      "match": "row count 4 != 6",
+      "justification": "DataFusion truncates integer / integer, so this ratio query returns different rows from DuckDB and the TPC reference. This is a real defect, not an accepted difference: tracked by datafusion-integer-division-truncates-ratios; remove this entry when the fork fixes DataFusion and PostgreSQL division.",
+      "tracker": "datafusion-integer-division-truncates-ratios"
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpcds",
+      "check": "reference",
+      "queries": [
+        78
+      ],
+      "match": "2.0, 58.0, 47.89",
+      "justification": "DataFusion truncates integer / integer, so this ratio query returns different rows from DuckDB and the TPC reference. This is a real defect, not an accepted difference: tracked by datafusion-integer-division-truncates-ratios; remove this entry when the fork fixes DataFusion and PostgreSQL division.",
+      "tracker": "datafusion-integer-division-truncates-ratios"
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpcds",
+      "check": "reference",
+      "queries": [
+        83
+      ],
+      "match": "'AAAAAAAAOIAAAAAA', 12.0, 0.0, 3.0",
+      "justification": "DataFusion truncates integer / integer, so this ratio query returns different rows from DuckDB and the TPC reference. This is a real defect, not an accepted difference: tracked by datafusion-integer-division-truncates-ratios; remove this entry when the fork fixes DataFusion and PostgreSQL division.",
+      "tracker": "datafusion-integer-division-truncates-ratios"
+    },
+    {
+      "engine": "postgres",
+      "benchmark": "tpcds",
+      "check": "reference",
+      "queries": [
+        21
+      ],
+      "match": "row count 4 != 6",
+      "justification": "PostgreSQL truncates integer / integer, so this ratio query returns different rows from DuckDB and the TPC reference. This is a real defect, not an accepted difference: tracked by datafusion-integer-division-truncates-ratios; remove this entry when the fork fixes DataFusion and PostgreSQL division.",
+      "tracker": "datafusion-integer-division-truncates-ratios"
+    },
+    {
+      "engine": "postgres",
+      "benchmark": "tpcds",
+      "check": "reference",
+      "queries": [
+        78
+      ],
+      "match": "2.0, 58.0, 47.89",
+      "justification": "PostgreSQL truncates integer / integer, so this ratio query returns different rows from DuckDB and the TPC reference. This is a real defect, not an accepted difference: tracked by datafusion-integer-division-truncates-ratios; remove this entry when the fork fixes DataFusion and PostgreSQL division.",
+      "tracker": "datafusion-integer-division-truncates-ratios"
+    },
+    {
+      "engine": "postgres",
+      "benchmark": "tpcds",
+      "check": "reference",
+      "queries": [
+        83
+      ],
+      "match": "'AAAAAAAAOIAAAAAA', 12.0, 0.0, 3.0",
+      "justification": "PostgreSQL truncates integer / integer, so this ratio query returns different rows from DuckDB and the TPC reference. This is a real defect, not an accepted difference: tracked by datafusion-integer-division-truncates-ratios; remove this entry when the fork fixes DataFusion and PostgreSQL division.",
+      "tracker": "datafusion-integer-division-truncates-ratios"
+    },
+    {
+      "engine": "postgres",
+      "benchmark": "tpch",
+      "check": "error",
+      "queries": [
+        20
+      ],
+      "match": "statement timeout",
+      "justification": "PostgreSQL without indexes does not finish TPC-H Q20 inside the per-query budget at SF0.01. The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on unindexed TPC-H, not a translation difference.",
+      "optional": true
+    }
+  ]
+}

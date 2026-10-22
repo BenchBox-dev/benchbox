@@ -11,6 +11,7 @@ from benchbox.sql_compat import (
     RewriteQueryPayload,
     SupportLevel,
 )
+from benchbox.utils.dialect_utils import SQLITE_DISCOUNT_BOUNDS, apply_rewrite
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -39,7 +40,6 @@ def test_exact_discount_rule_scope_and_transformer(platform, benchmark_name, que
     assert decision.support_level == SupportLevel.REWRITTEN
     assert decision.failure_mode == FailureMode.SILENT_CORRUPTION
     assert isinstance(decision.payload, RewriteQueryPayload)
-    module_name, name = decision.payload.transformer_id.rsplit(".", 1)
-    transformer = getattr(importlib.import_module(module_name), name)
     query = "SELECT * FROM lineitem WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
-    assert transformer(query) == "SELECT * FROM lineitem WHERE l_discount BETWEEN 0.05 AND 0.07"
+    rewritten = apply_rewrite(decision.payload.transformer_id, query, "sqlite", **SQLITE_DISCOUNT_BOUNDS)
+    assert rewritten == "SELECT * FROM lineitem WHERE l_discount BETWEEN 0.05 AND 0.07"

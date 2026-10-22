@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 import json
 import types
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -27,7 +27,7 @@ def _only_bundle(results_dir: Path) -> dict[str, Any]:
     return json.loads(bundles[0].read_text(encoding="utf-8"))
 
 
-def _cli_run(tmp_path: Path, platform: str, *args: str, benchmark: str = "tpch") -> Any:
+def _cli_run(tmp_path: Path, platform: str, *args: str, benchmark: str = "tpch", output: str | None = None) -> Any:
     return run_cli_command(
         [
             "run",
@@ -40,7 +40,7 @@ def _cli_run(tmp_path: Path, platform: str, *args: str, benchmark: str = "tpch")
             *args,
             "--non-interactive",
             "--output",
-            str(tmp_path / "out"),
+            output or str(tmp_path / "out"),
         ],
         env={"BENCHBOX_OUTPUT_DIR": str(tmp_path)},
         timeout=300,
@@ -56,12 +56,22 @@ def _cli_run(tmp_path: Path, platform: str, *args: str, benchmark: str = "tpch")
 )
 def test_cli_polars_run_records_requested_engine_and_collect_kwargs(
     tmp_path: Path,
+    tpch_sf001_data: Callable[[Path], str],
     engine_args: tuple[str, ...],
     requested: str,
     collect_kwargs: dict[str, str],
     variant: str,
 ) -> None:
-    result = _cli_run(tmp_path, "polars-df", *engine_args, "--queries", "6", "--phases", "generate,load,power")
+    result = _cli_run(
+        tmp_path,
+        "polars-df",
+        *engine_args,
+        "--queries",
+        "6",
+        "--phases",
+        "generate,load,power",
+        output=tpch_sf001_data(tmp_path / "out"),
+    )
     assert result.returncode == 0, result.stdout + result.stderr
 
     bundle = _only_bundle(tmp_path / "results")
@@ -83,10 +93,18 @@ _DEFAULT_RECEIPT = {
 
 @pytest.mark.parametrize(("platform", "variant"), [("duckdb", "duckdb"), ("pandas-df", "pandas-df")])
 def test_cli_run_on_a_platform_without_engines_records_the_default_receipt(
-    tmp_path: Path, platform: str, variant: str
+    tmp_path: Path, tpch_sf001_data: Callable[[Path], str], platform: str, variant: str
 ) -> None:
     pytest.importorskip("pandas")
-    result = _cli_run(tmp_path, platform, "--queries", "6", "--phases", "generate,load,power")
+    result = _cli_run(
+        tmp_path,
+        platform,
+        "--queries",
+        "6",
+        "--phases",
+        "generate,load,power",
+        output=tpch_sf001_data(tmp_path / "out"),
+    )
     assert result.returncode == 0, result.stdout + result.stderr
 
     bundle = _only_bundle(tmp_path / "results")
@@ -95,11 +113,12 @@ def test_cli_run_on_a_platform_without_engines_records_the_default_receipt(
     assert bundle["platform"]["variant"] == variant
 
 
-@pytest.mark.parametrize("profile", ["optimized", "streaming", "memory-constrained"])
-def test_cli_tuning_init_profile_then_run_records_the_default_engine(tmp_path: Path, profile: str) -> None:
-    tuning_file = tmp_path / f"{profile}.yaml"
+def test_cli_tuning_init_streaming_profile_then_run_records_the_default_engine(
+    tmp_path: Path, tpch_sf001_data: Callable[[Path], str]
+) -> None:
+    tuning_file = tmp_path / "streaming.yaml"
     init = run_cli_command(
-        ["tuning", "init", "--platform", "polars", "--profile", profile, "--output", str(tuning_file)],
+        ["tuning", "init", "--platform", "polars", "--profile", "streaming", "--output", str(tuning_file)],
         env={"BENCHBOX_OUTPUT_DIR": str(tmp_path)},
         timeout=120,
     )
@@ -108,7 +127,15 @@ def test_cli_tuning_init_profile_then_run_records_the_default_engine(tmp_path: P
     assert "engine_affinity" not in tuning_file.read_text(encoding="utf-8")
 
     result = _cli_run(
-        tmp_path, "polars-df", "--tuning", str(tuning_file), "--queries", "6", "--phases", "generate,load,power"
+        tmp_path,
+        "polars-df",
+        "--tuning",
+        str(tuning_file),
+        "--queries",
+        "6",
+        "--phases",
+        "generate,load,power",
+        output=tpch_sf001_data(tmp_path / "out"),
     )
     assert result.returncode == 0, result.stdout + result.stderr
 
@@ -117,6 +144,44 @@ def test_cli_tuning_init_profile_then_run_records_the_default_engine(tmp_path: P
     assert bundle["platform"]["execution_engine"]["requested"] == "default"
     assert bundle["platform"]["execution_engine"]["resolution"] == "version_default"
     assert bundle["platform"]["variant"] == "polars-df"
+
+
+@pytest.mark.parametrize("profile", ["optimized", "memory-constrained"])
+def test_cli_tuning_init_profile_then_adapter_resolves_the_default_engine(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, profile: str
+) -> None:
+    from click.testing import CliRunner
+    from rich.console import Console
+
+    from benchbox.cli.main import cli
+    from benchbox.cli.tuning_runtime import resolve_dataframe_tuning_config
+    from benchbox.core.execution_variant import derive_variant_id
+    from benchbox.platforms import get_dataframe_adapter
+
+    monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path))
+    tuning_file = tmp_path / f"{profile}.yaml"
+    init = CliRunner().invoke(
+        cli, ["tuning", "init", "--platform", "polars", "--profile", profile, "--output", str(tuning_file)]
+    )
+    assert init.exit_code == 0, init.output
+    assert "--execution-engine" in init.output
+    assert "engine_affinity" not in tuning_file.read_text(encoding="utf-8")
+
+    tuning_config = resolve_dataframe_tuning_config(
+        platform_name="polars-df",
+        mode_name="dataframe",
+        tuning_enabled_flag=True,
+        use_auto_tuning_flag=False,
+        tuning_config_file_path=str(tuning_file),
+        console=Console(quiet=True),
+        logger=None,
+        quiet=True,
+    )
+    receipt = get_dataframe_adapter("polars-df", tuning_config=tuning_config).get_platform_info()["execution_engine"]
+
+    assert receipt["requested"] == "default"
+    assert receipt["resolution"] == "version_default"
+    assert derive_variant_id("polars-df", None, receipt["requested"]) == "polars-df"
 
 
 @contextmanager

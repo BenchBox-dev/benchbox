@@ -2374,14 +2374,8 @@
     "tests/unit/scripts/test_corpus_cohort_depth.py::test_validator_agrees_with_the_explorer_on_the_throughput_stream_count[clean]": {
       "p95_seconds": 0.407
     },
-    "tests/unit/scripts/test_corpus_privacy_invariant.py::test_anonymizing_the_corpus_twice_matches_anonymizing_it_once": {
-      "p95_seconds": 16.806
-    },
     "tests/unit/scripts/test_corpus_privacy_invariant.py::test_no_corpus_file_exposes_a_private_path": {
       "p95_seconds": 0.951
-    },
-    "tests/unit/scripts/test_corpus_privacy_invariant.py::test_rederived_corpus_publishes_byte_identically_to_what_is_stored": {
-      "p95_seconds": 8.865
     },
     "tests/unit/scripts/test_generate_changelog_entry.py::test_since_ref_ignores_squashed_commit_when_new_patch_touches_same_file": {
       "p95_seconds": 0.97

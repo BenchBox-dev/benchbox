@@ -626,7 +626,7 @@ def command_ensure_attempt(args: argparse.Namespace) -> int:
         slot=args.slot,
         reviewer=args.reviewer,
         verdict=None,
-        missing=Absence(ERROR, "the reviewer job did not finish"),
+        missing=Absence(ERROR, selection.JOB_FAILURE_DETAIL),
     )
     _write_json(path, artifact)
     return 0

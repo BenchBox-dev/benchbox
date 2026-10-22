@@ -204,6 +204,7 @@ class AppliedTuningLedger:
     statements: list[AppliedStatement] = field(default_factory=list)
     dropped: list[DroppedIntent] = field(default_factory=list)
     satisfied: list[SatisfiedIntent] = field(default_factory=list)
+    metadata_store_unsupported: bool = False
 
     def record(
         self,
@@ -313,6 +314,8 @@ class AppliedTuningLedger:
         }
         if self.satisfied:
             payload["satisfied"] = [item.to_dict() for item in self.satisfied]
+        if self.metadata_store_unsupported:
+            payload["metadata_store"] = "unsupported"
         if receipt is not None:
             payload["receipt"] = receipt
         if drift_check is not None:
@@ -320,7 +323,7 @@ class AppliedTuningLedger:
         return payload
 
     def is_empty(self) -> bool:
-        return not self.statements and not self.dropped and not self.satisfied
+        return not self.statements and not self.dropped and not self.satisfied and not self.metadata_store_unsupported
 
 
 class _RecordingProxy:

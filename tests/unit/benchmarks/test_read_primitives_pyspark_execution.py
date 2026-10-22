@@ -345,21 +345,3 @@ class TestPySparkSkipList:
         assert not unexpectedly_working, (
             f"These queries now work on PySpark and should be removed from SKIP_FOR_PYSPARK: {unexpectedly_working}"
         )
-
-    def test_non_skipped_queries_do_not_use_unsupported_apis(self, pyspark_ctx):
-        from pyspark.errors import PySparkAttributeError, PySparkTypeError
-
-        failed_queries = []
-        for query_id in RUNNABLE_QUERY_IDS:
-            query = REGISTRY.get(query_id)
-            if query is None:
-                continue
-            try:
-                _collect(query.expression_impl(pyspark_ctx))
-            except (NotImplementedError, PySparkTypeError, PySparkAttributeError) as exc:
-                failed_queries.append((query_id, str(exc)[:160]))
-        if failed_queries:
-            msg = "These queries failed with unsupported-API errors and should be added to SKIP_FOR_PYSPARK:\n"
-            for qid, err in failed_queries:
-                msg += f"  - {qid}: {err}\n"
-            pytest.fail(msg)

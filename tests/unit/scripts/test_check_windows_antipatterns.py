@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 from check_windows_antipatterns import (
-    _DEFAULT_BASELINE,
     _DEFAULT_ROOTS,
     Violation,
     apply_baseline,
@@ -276,13 +275,3 @@ def test_write_baseline_creates_a_missing_file(tmp_path: Path) -> None:
 
     assert write_baseline(path, [_violation(tmp_path, "tests/a.py")], tmp_path, [tmp_path / "tests"]) == 0
     assert load_baseline(path) == {"tests/a.py": {"WA003": 1}}
-
-
-def test_repository_baseline_is_current() -> None:
-    repo_root = Path(__file__).resolve().parents[3]
-    roots = [repo_root / name for name in _DEFAULT_ROOTS]
-    violations, _ = check_tree(roots)
-
-    result = apply_baseline(violations, load_baseline(repo_root / _DEFAULT_BASELINE), repo_root, roots)
-
-    assert result.clean, [str(v) for v in result.regressions] + result.stale

@@ -97,7 +97,7 @@ This exports all formats for comprehensive archival.
 ### Notes
 
 - The `export` command loads existing result files from `benchmark_runs/results/`
-- Schema versions 2.0, 2.1, 2.2, and 2.3 are supported by current result tooling
+- Schema versions 2.0, 2.1, 2.2, 2.3, and 2.4 are supported by current result tooling
 - Export preserves all metrics and metadata from original results
 - Large result files (TPC-DS at scale 100+) may take a few seconds to process
 - The --force flag skips confirmation prompts when overwriting existing files
@@ -333,7 +333,7 @@ benchbox compare \
 ### Notes
 
 - The first result file is always treated as the baseline
-- Both result files must use a schema version accepted by the current result loader (schema 2.0 through 2.3).
+- Both result files must use a schema version accepted by the current result loader (schema 2.0 through 2.4).
 - Results should be from the same benchmark and scale factor for meaningful comparison
 - When more than two result paths are supplied, only the first two are compared.
 - Use `benchbox results` to find available result files for comparison

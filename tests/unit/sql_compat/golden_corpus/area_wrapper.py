@@ -2,80 +2,67 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
 from benchbox._vendor.sqlglot import ErrorLevel
 from benchbox.utils.dialect_utils import (
     NO_IDENTIFY_DIALECTS,
+    SQLITE_DISCOUNT_BOUNDS,
     apply_rewrite,
-    normalize_dialect_for_sqlglot,
+    resolve_sql_dialect,
     translate_sql_query,
 )
 
-from . import Case
+from . import Case, frozen_legacy
 
+AREA = "area_wrapper"
 ROOT = Path(__file__).resolve().parents[4]
 TPCDS_TEMPLATES = ROOT / "benchbox" / "_binaries" / "tpc-ds" / "templates" / "query_templates"
 BASELINE = ROOT / "scripts" / "sqlglot_runtime_baseline.json"
 
-LINEITEM_DISCOUNT_FOLD = {"columns": ["l_discount"], "tables": ["lineitem"]}
-TPCDS_DATE_COLUMNS = ["d_date"]
 QUERY58_QUALIFIERS = {"item_id": "ss_items"}
-FORK_ONLY_NAMES = {"ansi": "postgres", "standard": "postgres"}
 
 
-def _fork_name(dialect: str) -> str:
-    return FORK_ONLY_NAMES.get(dialect.lower(), dialect.lower())
+@dataclass(frozen=True)
+class WrapperCase(Case):
+    current: Callable[[], str]
 
 
-def _legacy(sql: str, src: str, tgt: str, identify: bool = True, pre=None, post=None):
-    return lambda: translate_sql_query(
-        sql, tgt, source_dialect=src, identify=identify, strict=True, pre_processors=pre, post_processors=post
-    )
+def _tpcds_date_columns() -> list[str]:
+    from benchbox.core.tpcds.benchmark.runner import _DATE_COLUMNS
+
+    return list(_DATE_COLUMNS)
 
 
-def _fork(sql: str, src: str, tgt: str, identify: bool = True, rewrites=(), pre=None):
+def _current(sql: str, src: str, tgt: str, identify: bool = True):
+    return lambda: translate_sql_query(sql, tgt, source_dialect=src, identify=identify, strict=True)
+
+
+def _fork(sql: str, src: str, tgt: str, identify: bool = True, rewrites=()):
     import benchbox._vendor.sqlglot as sqlglot
 
     def produce() -> str:
-        read, write = _fork_name(src), _fork_name(tgt)
-        query = sql
-        for processor in pre or ():
-            query = processor(query)
-        expression = sqlglot.parse_one(query, read=read)
+        read, write = resolve_sql_dialect(src), resolve_sql_dialect(tgt)
+        expression = sqlglot.parse_one(sql, read=read)
         for name, args in rewrites:
             expression = apply_rewrite(name, expression, write, **args)
-        should_identify = identify and normalize_dialect_for_sqlglot(tgt) not in NO_IDENTIFY_DIALECTS
+        should_identify = identify and write not in NO_IDENTIFY_DIALECTS
         return expression.sql(dialect=write, identify=should_identify, unsupported_level=ErrorLevel.RAISE)
 
     return produce
 
 
-def _transpile_fork(sql: str, src: str, tgt: str, identify: bool = True):
-    import benchbox._vendor.sqlglot as sqlglot
-
-    def produce() -> str:
-        should_identify = identify and normalize_dialect_for_sqlglot(tgt) not in NO_IDENTIFY_DIALECTS
-        return sqlglot.transpile(
-            sql,
-            read=_fork_name(src),
-            write=_fork_name(tgt),
-            identify=should_identify,
-            unsupported_level=ErrorLevel.RAISE,
-        )[0]
-
-    return produce
-
-
-def _sqlite_fork(sql: str, src: str, identify: bool = True):
-    return _fork(sql, src, "sqlite", identify, rewrites=[("fold_between_literal_arithmetic", LINEITEM_DISCOUNT_FOLD)])
-
-
 def _case(case_id: str, sql: str, src: str, tgt: str, identify: bool = True) -> Case:
-    if tgt == "sqlite":
-        return Case(case_id, _legacy(sql, src, tgt, identify), _sqlite_fork(sql, src, identify))
-    return Case(case_id, _legacy(sql, src, tgt, identify), _transpile_fork(sql, src, tgt, identify))
+    rewrites = [("fold_between_literal_arithmetic", SQLITE_DISCOUNT_BOUNDS)] if tgt == "sqlite" else []
+    return WrapperCase(
+        case_id,
+        frozen_legacy(AREA, case_id),
+        _fork(sql, src, tgt, identify, rewrites),
+        _current(sql, src, tgt, identify),
+    )
 
 
 SQLITE_DISCOUNT = [
@@ -362,19 +349,14 @@ def _tpcds_template(number: int) -> str:
     return re.sub(r"\[[^\]]*\]", "1", text).strip().rstrip(";")
 
 
-def _tpcds_driver():
-    from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
-
-    runner = SimpleNamespace()
-    runner._normalize_interval_syntax = lambda query: TPCDSBenchmark._normalize_interval_syntax(runner, query)
-    runner._fix_query58_ambiguity = lambda query: TPCDSBenchmark._fix_query58_ambiguity(runner, query)
-    return runner, TPCDSBenchmark
-
-
-def _tpcds_legacy(sql: str, src: str, tgt: str):
+def _tpcds_current(sql: str, src: str, tgt: str):
     def produce() -> str:
-        runner, benchmark = _tpcds_driver()
-        return benchmark.translate_query_text(runner, sql, src, tgt)
+        from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
+
+        runner = SimpleNamespace()
+        runner._normalize_interval_syntax = lambda query: TPCDSBenchmark._normalize_interval_syntax(runner, query)
+        runner._fix_query58_ambiguity = lambda query: TPCDSBenchmark._fix_query58_ambiguity(runner, query)
+        return TPCDSBenchmark.translate_query_text(runner, sql, src, tgt)
 
     return produce
 
@@ -383,16 +365,16 @@ def _tpcds_fork(sql: str, src: str, tgt: str):
     def produce() -> str:
         import benchbox._vendor.sqlglot as sqlglot
 
-        read, write = _fork_name(src), _fork_name(tgt)
+        read, write = resolve_sql_dialect(src), resolve_sql_dialect(tgt)
         expression = sqlglot.parse_one(sql, read=read)
         if tgt == "postgres":
             expression = apply_rewrite(
-                "date_integer_arithmetic_to_interval", expression, write, date_columns=TPCDS_DATE_COLUMNS
+                "date_integer_arithmetic_to_interval", expression, write, date_columns=_tpcds_date_columns()
             )
         expression = apply_rewrite("qualify_order_by_columns", expression, write, qualifiers=QUERY58_QUALIFIERS)
         return expression.sql(
             dialect=write,
-            identify=normalize_dialect_for_sqlglot(tgt) not in NO_IDENTIFY_DIALECTS,
+            identify=write not in NO_IDENTIFY_DIALECTS,
             unsupported_level=ErrorLevel.RAISE,
         )
 
@@ -433,27 +415,24 @@ TPCDS_SNIPPETS = [
 ]
 
 
+def _tpcds_case(case_id: str, sql: str, tgt: str) -> Case:
+    return WrapperCase(
+        case_id,
+        frozen_legacy(AREA, case_id),
+        _tpcds_fork(sql, "netezza", tgt),
+        _tpcds_current(sql, "netezza", tgt),
+    )
+
+
 def _tpcds_cases() -> list[Case]:
     cases: list[Case] = []
     for case_id, sql in TPCDS_SNIPPETS:
         for tgt in ("postgres", "duckdb"):
-            cases.append(
-                Case(
-                    f"tpcds-{case_id}-netezza-{tgt}",
-                    _tpcds_legacy(sql, "netezza", tgt),
-                    _tpcds_fork(sql, "netezza", tgt),
-                )
-            )
+            cases.append(_tpcds_case(f"tpcds-{case_id}-netezza-{tgt}", sql, tgt))
     for number in (12, 16, 20, 21, 32, 37, 40, 72, 77, 80, 82, 92, 94, 95, 98, 99, 62, 50, 58, 5):
         sql = _tpcds_template(number)
         for tgt in ("postgres", "duckdb"):
-            cases.append(
-                Case(
-                    f"tpcds-template-q{number}-netezza-{tgt}",
-                    _tpcds_legacy(sql, "netezza", tgt),
-                    _tpcds_fork(sql, "netezza", tgt),
-                )
-            )
+            cases.append(_tpcds_case(f"tpcds-template-q{number}-netezza-{tgt}", sql, tgt))
     return cases
 
 

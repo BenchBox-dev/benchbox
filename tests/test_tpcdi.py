@@ -19,16 +19,26 @@ pytestmark = [
     pytest.mark.medium,
 ]
 
+TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR = 0.11
+
 
 class TestTPCDI:
     @pytest.fixture
     def tpcdi(self, small_scale_factor: float, temp_dir: Path) -> TPCDI:
         return TPCDI(scale_factor=small_scale_factor, output_dir=temp_dir)
 
-    def test_generate_data(self, tpcdi: TPCDI) -> None:
+    def test_generate_data(self, temp_dir: Path) -> None:
+        tpcdi = TPCDI(scale_factor=TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR, output_dir=temp_dir)
         data_paths = tpcdi.generate_data()
 
         expected_total_tables = 16
+        expected_row_counts = {
+            "DimCompany": int(1_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
+            "DimSecurity": int(10_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
+            "DimCustomer": int(50_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
+            "DimAccount": int(100_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
+            "FactTrade": int(1_000_000 * TPCDI_PARALLEL_FACT_TRADE_SCALE_FACTOR),
+        }
 
         assert isinstance(data_paths, list), "generate_data should return a list per BaseBenchmark interface"
         assert len(data_paths) == expected_total_tables, (
@@ -37,6 +47,12 @@ class TestTPCDI:
 
         for path in data_paths:
             assert Path(path).exists(), f"Generated file {path} does not exist"
+
+        row_counts = {}
+        for path in data_paths:
+            with open(path, encoding="utf-8") as data_file:
+                row_counts[Path(path).stem] = sum(1 for _ in data_file)
+        assert {table: row_counts.get(table) for table in expected_row_counts} == expected_row_counts
 
     def test_get_queries(self, tpcdi: TPCDI) -> None:
         queries = tpcdi.get_queries()

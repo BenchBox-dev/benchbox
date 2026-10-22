@@ -291,6 +291,136 @@ def test_transition_worktree_and_staged_content(tmp_path: Path) -> None:
     assert main([*args, "--staged"]) == 1
 
 
+def launcher_source(files: tuple[str, ...] = ("scripts/comment_syntax.py",)) -> str:
+    return f"TRUSTED_FILES = {files!r}\n"
+
+
+def completed_repo(tmp_path: Path) -> str:
+    git_repo(tmp_path, "x = 1\n")
+    (tmp_path / "quality/comment-policy.json").write_text(
+        json.dumps(policy(completed=["a.py", "b.py"])), encoding="utf-8"
+    )
+    (tmp_path / "b.py").write_text("# inherited\ny = 1\n", encoding="utf-8")
+    (tmp_path / "scripts").mkdir(exist_ok=True)
+    (tmp_path / "scripts/run_comment_policy.py").write_text(launcher_source(), encoding="utf-8")
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "add", "b.py", "quality/comment-policy.json", "scripts/run_comment_policy.py"],
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-qm",
+            "completed scope",
+        ],
+        check=True,
+    )
+    return subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+
+
+def test_staged_scan_covers_only_changed_sources(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    base = completed_repo(tmp_path)
+    args = ["--root", str(tmp_path), "--mode", "transition", "--base", base]
+    assert main(args) == 1
+    (tmp_path / "a.py").write_text("x = 2\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
+    capsys.readouterr()
+    assert main([*args, "--staged"]) == 0
+    assert "1 source files" in capsys.readouterr().out
+    (tmp_path / "a.py").write_text("# added\nx = 2\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
+    capsys.readouterr()
+    assert main([*args, "--staged"]) == 1
+    output = capsys.readouterr().out
+    assert "a.py:1: CP comment" in output
+    assert "b.py" not in output
+
+
+@pytest.mark.parametrize(
+    "target", ["quality/comment-policy.json", "quality/comment-cleanup-scope.json", "scripts/comment_syntax.py"]
+)
+def test_staged_scan_stays_global_when_policy_or_checker_changes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], target: str
+) -> None:
+    base = completed_repo(tmp_path)
+    args = ["--root", str(tmp_path), "--mode", "transition", "--base", base, "--staged"]
+    path = tmp_path / target
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(policy(completed=["a.py", "b.py", "c.py"])) if target.endswith(".json") else "x = 1\n")
+    subprocess.run(["git", "-C", str(tmp_path), "add", target], check=True)
+    capsys.readouterr()
+    assert main(args) == 1
+    assert "b.py:1: CP comment" in capsys.readouterr().out
+
+
+def test_candidate_launcher_cannot_drop_a_trusted_file_from_the_trigger_list(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = completed_repo(tmp_path)
+    (tmp_path / "scripts/run_comment_policy.py").write_text(launcher_source(("scripts/other.py",)), encoding="utf-8")
+    (tmp_path / "scripts/comment_syntax.py").write_text("x = 1\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "add", "scripts/run_comment_policy.py", "scripts/comment_syntax.py"], check=True
+    )
+    capsys.readouterr()
+    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base, "--staged"]) == 1
+    assert "b.py:1: CP comment" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("launcher", ["def (:\n", "OTHER = 1\n", "TRUSTED_FILES = compute()\n"])
+def test_unreadable_base_launcher_fails_closed_to_a_global_scan(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], launcher: str
+) -> None:
+    completed_repo(tmp_path)
+    (tmp_path / "scripts/run_comment_policy.py").write_text(launcher, encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "scripts/run_comment_policy.py"], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "-c",
+            "user.name=F",
+            "-c",
+            "user.email=f@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-qm",
+            "bad launcher",
+        ],
+        check=True,
+    )
+    base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+    (tmp_path / "a.py").write_text("x = 2\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
+    capsys.readouterr()
+    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base, "--staged"]) == 1
+    assert "b.py:1: CP comment" in capsys.readouterr().out
+
+
+def test_launcher_trusted_files_come_from_the_base_launcher_constant() -> None:
+    base = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip()
+    assert check_comment_policy.launcher_trusted_files(ROOT, base) == set(TRUSTED_FILES)
+
+
+def test_staged_consumer_validation_rejects_missing_consumer(tmp_path: Path) -> None:
+    git_repo(tmp_path, "x = 1\n")
+    with pytest.raises(ValueError, match="exception consumer missing: gone.py"):
+        check_comment_policy.validate_consumers(
+            tmp_path, policy(exceptions=[{**exception(), "consumer": "gone.py"}]), staged=True
+        )
+
+
 def test_expired_policy_fails_owner_transition_but_not_inherited_advisory(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

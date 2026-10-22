@@ -114,6 +114,71 @@ def test_validate_loaded_data_returns_passthrough_when_disabled(adapter):
     assert result.details["validation_enabled"] is False
 
 
+def test_remove_database_refuses_to_drop_a_database_holding_other_benchmarks_tables(adapter):
+    adapter.drop_database = Mock()
+
+    with pytest.raises(RuntimeError, match="refusing to drop the database.*orders_staging, txn_log"):
+        adapter._remove_database(False, "", foreign_tables=("orders_staging", "txn_log"), database="shared")
+
+    adapter.drop_database.assert_not_called()
+
+
+def test_remove_database_names_only_the_first_foreign_tables(adapter):
+    tables = tuple(f"t{index:02d}" for index in range(14))
+
+    with pytest.raises(RuntimeError) as error:
+        adapter._remove_database(False, "", foreign_tables=tables, database="shared")
+
+    assert "t09" in str(error.value)
+    assert "t10" not in str(error.value)
+    assert "and 4 more" in str(error.value)
+
+
+def test_an_in_place_reset_takes_precedence_over_the_foreign_table_refusal(adapter):
+    adapter.reset_database_in_place = Mock(return_value=True)
+    adapter.drop_database = Mock()
+
+    adapter._remove_database(False, "", foreign_tables=("other",), database="shared")
+
+    adapter.drop_database.assert_not_called()
+
+
+def test_a_validation_mismatch_hands_the_foreign_tables_to_the_removal():
+    adapter = _TrackingAdapter(server_exists=True)
+    adapter._validate_database_compatibility = Mock(
+        return_value=SimpleNamespace(
+            is_valid=False, can_reuse=False, warnings=[], issues=["Missing tables: lineitem"], foreign_tables=("other",)
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="refusing to drop the database.*other"):
+        adapter.handle_existing_database(database="shared")
+
+    assert adapter.drop_calls == []
+
+
+def test_force_recreate_still_drops_the_whole_database_on_request():
+    adapter = _TrackingAdapter(server_exists=True)
+    adapter.force_recreate = True
+    adapter._validate_database_compatibility = Mock()
+
+    adapter.handle_existing_database(database="shared")
+
+    assert adapter.drop_calls == [{"database": "shared"}]
+    adapter._validate_database_compatibility.assert_not_called()
+
+
+def test_a_mismatch_without_foreign_tables_still_recreates_the_database():
+    adapter = _TrackingAdapter(server_exists=True)
+    adapter._validate_database_compatibility = Mock(
+        return_value=SimpleNamespace(is_valid=False, can_reuse=False, warnings=[], issues=["Missing tables: lineitem"])
+    )
+
+    adapter.handle_existing_database(database="shared")
+
+    assert adapter.drop_calls == [{"database": "shared"}]
+
+
 def test_validate_loaded_data_uses_validation_service_when_enabled(adapter, monkeypatch):
     class FakeService:
         def run_database(self, connection, benchmark_type, scale_factor):

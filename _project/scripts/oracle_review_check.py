@@ -163,7 +163,7 @@ def decide(
     if open_threads:
         return WAITING, (
             f"oracle-review: {open_threads} unresolved oracle review thread(s) on {head_sha}; "
-            "resolve them and rerun this check"
+            "resolve them, then run `make oracle-review-recover PR=<number>` (resolving a thread starts no run)"
         )
 
     if head_reviews and verdict == "success":

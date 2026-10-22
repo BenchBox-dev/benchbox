@@ -246,7 +246,7 @@ class TestRunDsqgenStreams:
             return self._completed(1, self._CITIES_OVERRUN)
 
         monkeypatch.setattr(streams_mod.sys, "platform", "win32")
-        monkeypatch.setattr(streams_mod, "_WINDOWS_DSQGEN_MAX_ATTEMPTS", 3)
+        monkeypatch.setattr("benchbox.core.tpcds.c_tools._WINDOWS_DSQGEN_MAX_ATTEMPTS", 3)
         monkeypatch.setattr(streams_mod.subprocess, "run", _always_overrun)
 
         result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, timeout=30, env={})

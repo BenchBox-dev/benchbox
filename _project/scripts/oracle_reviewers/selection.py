@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
+from .absence import EMPTY, ERROR, INCOMPLETE, INVALID
 from .policy import Reviewer
 
 PASS = "pass"
@@ -14,6 +15,9 @@ REVIEW = "review"
 PENDING = "pending"
 BRIEF_MODES = ("inline", "file-list", "oversize")
 QUOTA_BACKOFF = timedelta(hours=1)
+JOB_FAILURE_DETAIL = "the reviewer job did not finish"
+RETRYABLE_ABSENCES = frozenset({INVALID, INCOMPLETE, EMPTY, ERROR})
+MAX_ATTEMPTS_PER_REVIEWER = 2
 
 
 @dataclass(frozen=True)
@@ -54,14 +58,24 @@ class SelectionInput:
         )
 
 
+def _may_retry(history: Sequence[Attempt]) -> bool:
+    return (
+        len(history) < MAX_ATTEMPTS_PER_REVIEWER
+        and history[-1].outcome == ABSENT
+        and history[-1].absence in RETRYABLE_ABSENCES
+        and history[-1].detail != JOB_FAILURE_DETAIL
+    )
+
+
 def _skip_reason(
     reviewer: Reviewer,
     selection: SelectionInput,
-    attempted: Mapping[str, Attempt],
+    attempted: Mapping[str, Sequence[Attempt]],
     quota_pools: set[str],
 ) -> str | None:
-    if reviewer.name in attempted:
-        attempt = attempted[reviewer.name]
+    history = attempted.get(reviewer.name, ())
+    if history and not _may_retry(history):
+        attempt = history[-1]
         return f"absent ({attempt.absence}{': ' + attempt.detail if attempt.detail else ''})"
     if not reviewer.enabled:
         return f"disabled ({reviewer.disabled_reason})"
@@ -85,7 +99,9 @@ def next_step(selection: SelectionInput, attempts: Sequence[Attempt]) -> Step:
             return Step(FAIL, by_name.get(attempt.reviewer), (f"{attempt.reviewer}: did not clear the change",))
         if attempt.outcome == PASS:
             return Step(PASS, by_name.get(attempt.reviewer), (f"{attempt.reviewer}: cleared the change",))
-    attempted = {attempt.reviewer: attempt for attempt in ordered}
+    attempted: dict[str, list[Attempt]] = {}
+    for attempt in ordered:
+        attempted.setdefault(attempt.reviewer, []).append(attempt)
     quota_pools = {
         by_name[attempt.reviewer].pool
         for attempt in ordered

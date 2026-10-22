@@ -350,13 +350,9 @@ def test_create_index_sql_uses_plain_form_where_supported(platform):
     "platform",
     [
         "azure_synapse",
-        "fabric_warehouse",
         "synapse",
-        "fabric_dw",
         "azure-synapse",
-        "fabric-warehouse",
         "Azure Synapse",
-        "Fabric Warehouse",
     ],
 )
 def test_create_index_sql_uses_sys_indexes_guard_on_tsql(platform):
@@ -381,6 +377,10 @@ def test_create_index_sql_uses_sys_indexes_guard_on_tsql(platform):
         "trino",
         "presto",
         "athena",
+        "fabric_warehouse",
+        "fabric_dw",
+        "fabric-warehouse",
+        "Fabric Warehouse",
         "spark",
         "datafusion",
         "questdb",
@@ -455,7 +455,7 @@ def test_metadata_ddl_parses_for_target_dialect(registry_platform, adapter_name,
         assert type(parsed).__name__ != "Command", f"{registry_platform}/{adapter_dialect}: {sql[:80]}"
 
 
-@pytest.mark.parametrize("registry_platform", ["synapse", "fabric_dw"])
+@pytest.mark.parametrize("registry_platform", ["synapse"])
 def test_registry_tsql_platforms_use_sys_indexes_guard(registry_platform):
     adapter_class = PlatformRegistry.get_adapter_class(registry_platform)
     adapter_name = adapter_class.__new__(adapter_class).platform_name

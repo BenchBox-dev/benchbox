@@ -39,7 +39,7 @@ UNCHANGED_BY_ROUTING_DIALECTS = (
 
 SQLITE_STRFTIME_QUERY_IDS = frozenset({"Q19", "Q43"})
 ALIAS_DIALECTS_UNKNOWN_TO_SQLGLOT = ("ansi", "standard")
-ALIAS_DIALECTS_MAPPED_TO_POSTGRES = ("datafusion", "netezza", "ansi", "standard", "vertica", "greenplum")
+ALIAS_DIALECTS_MAPPED_TO_POSTGRES = ("ansi", "standard", "postgresql")
 
 
 def translate_before_routing(query: str, dialect: str) -> str:

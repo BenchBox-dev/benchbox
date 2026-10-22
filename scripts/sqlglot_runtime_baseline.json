@@ -5,12 +5,12 @@
     "distribution": "benchbox-sqlglot",
     "namespace": "benchbox._vendor.sqlglot",
     "repository": "https://github.com/BenchBox-dev/benchbox-sqlglot",
-    "version": "30.24.0.3",
-    "fork_sha": "a4dad47db8ca00b54c79f6a01d422d04d94f13d4",
+    "version": "30.24.0.7",
+    "fork_sha": "d880f416014b7fbe425a6f169e8ec8fe5b4e21d6",
     "upstream_sha": "5d588c0f32d17a08191898638f67ff27bb0a13ff",
-    "wheel": "benchbox_sqlglot-30.24.0.3-py3-none-any.whl",
-    "archive": "benchbox_sqlglot-30.24.0.3-py3-none-any.whl.zip",
-    "sha256": "ba9f05447fca2e2d905cac2d0cc617f1d92af2e1eb5833493db4c83744bd8181"
+    "wheel": "benchbox_sqlglot-30.24.0.7-py3-none-any.whl",
+    "archive": "benchbox_sqlglot-30.24.0.7-py3-none-any.whl.zip",
+    "sha256": "252bfa860705f5bd6068e7bb2ce12cb9f2813c30ee0b493b199863aadd1aa54c"
   },
   "cases": [
     {
@@ -18,7 +18,7 @@
       "sql": "SELECT EXTRACT(YEAR FROM DATE '2020-06-01') / 3 > 673",
       "source": "postgres", "target": "sqlite", "identify": true, "entry": "transpile",
       "expected": {"outcome": "pass", "rows": [[1]]},
-      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The carried PostgreSQL return-type and typed-DATE SQLite extraction patches preserve fractional division. Mixed legacy extraction handling remains for unproved input types."}
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The carried PostgreSQL return-type and typed-DATE SQLite extraction patches preserve fractional division; the wrapper no longer post-processes EXTRACT."}
     },
     {
       "id": "postgres-integer-division",
@@ -32,7 +32,7 @@
       "sql": "SELECT DATE '2024-02-29' + INTERVAL '1' DAY",
       "source": "postgres", "target": "sqlite", "identify": true, "entry": "transpile",
       "expected": {"outcome": "pass", "rows": [["2024-03-01"]]},
-      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The fork handles whole DAY/HOUR/MINUTE/SECOND intervals on typed DATE; the mixed helper still covers month/year syntax and DATE_TRUNC."}
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The fork handles whole DAY/HOUR/MINUTE/SECOND intervals on typed DATE and the wrapper no longer rewrites intervals after generation."}
     },
     {
       "id": "sqlite-null-interval",
@@ -46,56 +46,56 @@
       "sql": "SELECT EXTRACT(YEAR FROM d) FROM (SELECT '2024-02-29' AS d) AS t",
       "source": "postgres", "target": "sqlite", "identify": true, "entry": "transpile",
       "expected": {"outcome": "pass", "rows": [[2024]]},
-      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The fork lowers EXTRACT on an input of unknown type to CAST(STRFTIME(..) AS INTEGER); the mixed BenchBox compatibility helper is no longer needed for it."}
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The fork lowers EXTRACT on an input of unknown type to CAST(STRFTIME(..) AS INTEGER); the BenchBox compatibility helper was deleted."}
     },
     {
       "id": "sqlite-month-interval",
       "sql": "SELECT DATE '2024-01-31' + INTERVAL '1' MONTH",
       "source": "postgres", "target": "sqlite", "identify": true, "entry": "transpile",
       "expected": {"outcome": "unsupported", "error_type": "UnsupportedError"},
-      "workaround": {"decision": "retain", "path": "benchbox/utils/dialect_utils.py", "reason": "Month/year rollover semantics are not proved by the carried date arithmetic patch; do not retire mixed helper coverage."}
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The fork lowers month/year intervals only for DATE inputs that cannot overflow and rejects a day-of-month above 28 instead of rolling it into the next month; the BenchBox lowering that produced the rolled-over date was deleted."}
     },
     {
       "id": "questdb-dialect",
       "sql": "SELECT 1",
       "source": "postgres", "target": "questdb", "identify": true, "entry": "wrapper",
       "expected": {"outcome": "pass", "rows": [[1]]},
-      "workaround": {"decision": "fork-covered", "path": "benchbox/platforms/questdb_rewriter.py", "reason": "The fork provides a questdb dialect that executes on QuestDB; the adapter still translates to postgres and applies the BenchBox rewriter until it switches."}
+      "workaround": {"decision": "fork-covered", "path": "benchbox/platforms/questdb.py", "reason": "The adapter now targets the fork questdb dialect, which executes on QuestDB; the BenchBox rewriter was deleted."}
     },
     {
       "id": "duckdb-group-by-all",
       "sql": "WITH t AS (SELECT 1 AS x) SELECT x FROM t GROUP BY ALL",
       "source": "postgres", "target": "duckdb", "identify": true, "entry": "transpile",
       "expected": {"outcome": "pass", "rows": [[1]]},
-      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "GROUP BY ALL executes on DuckDB from the direct transpile path; the matching ORDER BY ALL case now passes as well."}
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "GROUP BY ALL executes on DuckDB from the generator output; the restoration helper was deleted."}
     },
     {
       "id": "duckdb-order-by-all",
       "sql": "WITH t AS (SELECT 1 AS x) SELECT x FROM t ORDER BY ALL",
       "source": "postgres", "target": "duckdb", "identify": true, "entry": "transpile",
       "expected": {"outcome": "pass", "rows": [[1]]},
-      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The DuckDB generator emits a sole unqualified ALL item of a query-level ORDER BY as the keyword, so the restoration helper is no longer load-bearing."}
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The DuckDB generator emits a sole unqualified ALL item of a query-level ORDER BY as the keyword; the restoration helper was deleted."}
     },
     {
       "id": "wrapper-sqlite-fractional-extract",
       "sql": "SELECT EXTRACT(YEAR FROM DATE '2020-06-01') / 3 > 673",
       "source": "postgres", "target": "sqlite", "identify": true, "entry": "wrapper",
       "expected": {"outcome": "pass", "rows": [[1]]},
-      "workaround": {"decision": "retain", "path": "benchbox/utils/dialect_utils.py", "reason": "The wrapper still applies the SQLite compatibility fix-ups after transpilation; retire them only when this case and the direct transpile case both pass with the helper removed."}
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The wrapper emits the fork generator output unchanged; the SQLite compatibility fix-ups were deleted."}
     },
     {
       "id": "wrapper-sqlite-month-interval",
       "sql": "SELECT DATE '2024-01-31' + INTERVAL '1' MONTH",
       "source": "postgres", "target": "sqlite", "identify": true, "entry": "wrapper",
-      "expected": {"outcome": "pass", "rows": [["2024-03-02"]]},
-      "workaround": {"decision": "retain", "path": "benchbox/utils/dialect_utils.py", "reason": "The wrapper supplies month/year interval lowering that the direct transpile path rejects."}
+      "expected": {"outcome": "unsupported", "error_type": "OperationalError"},
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The wrapper emits the generator output, which keeps the INTERVAL that SQLite rejects for a day-of-month above 28; the deleted lowering returned a rolled-over date that PostgreSQL and DuckDB do not return."}
     },
     {
       "id": "wrapper-duckdb-order-by-all",
       "sql": "WITH t AS (SELECT 1 AS x) SELECT x FROM t ORDER BY ALL",
       "source": "postgres", "target": "duckdb", "identify": true, "entry": "wrapper",
       "expected": {"outcome": "pass", "rows": [[1]]},
-      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The wrapper still restores the ALL keyword after transpilation; the fork now emits it directly, so the restoration is redundant."}
+      "workaround": {"decision": "fork-covered", "path": "benchbox/utils/dialect_utils.py", "reason": "The wrapper emits the fork generator output, which keeps the ALL keyword; the restoration helper was deleted."}
     },
     {
       "id": "mysql-percentile-decorator",

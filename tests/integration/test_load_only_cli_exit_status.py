@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ from tests.integration._cli_e2e_utils import run_cli_command
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 
-def _run_load_only(tmp_path: Path, platform: str, *args: str):
+def _run_load_only(tmp_path: Path, output: str, platform: str, *args: str):
     return run_cli_command(
         [
             "run",
@@ -25,7 +26,7 @@ def _run_load_only(tmp_path: Path, platform: str, *args: str):
             *args,
             "--non-interactive",
             "--output",
-            str(tmp_path / "out"),
+            output,
         ],
         env={"BENCHBOX_OUTPUT_DIR": str(tmp_path)},
         timeout=300,
@@ -42,11 +43,11 @@ def _run_load_only(tmp_path: Path, platform: str, *args: str):
     ids=["duckdb-sql", "duckdb-sql-tuned", "polars-dataframe"],
 )
 def test_successful_load_only_run_exits_zero_with_load_summary(
-    tmp_path: Path, platform: str, args: tuple[str, ...], module: str
+    tmp_path: Path, tpch_sf001_data: Callable[[Path], str], platform: str, args: tuple[str, ...], module: str
 ) -> None:
     pytest.importorskip(module)
 
-    result = _run_load_only(tmp_path, platform, *args)
+    result = _run_load_only(tmp_path, tpch_sf001_data(tmp_path / "out"), platform, *args)
 
     output = result.stdout + result.stderr
     assert result.returncode == 0, output

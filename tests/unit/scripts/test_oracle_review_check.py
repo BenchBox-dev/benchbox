@@ -152,6 +152,21 @@ def test_open_oracle_threads_block_but_other_threads_do_not() -> None:
     assert _oracle(threads=others)[0] == 0
 
 
+def test_resolving_the_last_oracle_thread_turns_a_success_verdict_into_a_pass() -> None:
+    assert _oracle(threads=[_thread(True), _thread(False)])[0] == 1
+    assert _oracle(threads=[_thread(True), _thread(True)]) == (0, f"oracle-review: pass (oracle review of {HEAD})")
+    assert _oracle(threads=[_thread(True), _thread(False)])[0] == 1
+
+
+def test_the_open_thread_message_names_the_recovery_command() -> None:
+    message = _oracle(threads=[_thread(False)])[1]
+    assert "make oracle-review-recover PR=<number>" in message
+
+
+def test_resolved_threads_without_a_verdict_still_wait() -> None:
+    assert _decide(threads=[_thread(True)])[0] == 1
+
+
 def test_rename_with_a_non_exempt_side_needs_review() -> None:
     files = oracle_review_check.changed_paths(
         [{"filename": "docs/moved.py", "previous_filename": "benchbox/core/equivalence/checker.py"}]

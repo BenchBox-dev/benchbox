@@ -323,13 +323,8 @@ class TestStarRocksAdapter:
     def test_sql_translation(self, mock_pymysql):
         adapter = StarRocksAdapter()
 
-        with patch("benchbox._vendor.sqlglot.transpile") as mock_transpile:
-            mock_transpile.return_value = ['SELECT * FROM "table"']
-            result = adapter.translate_sql("SELECT * FROM table", "duckdb")
-            assert result == 'SELECT * FROM "table";'
-            mock_transpile.assert_called_once_with(
-                "SELECT * FROM table", read="duckdb", write="starrocks", identify=True
-            )
+        result = adapter.translate_sql("SELECT * FROM orders", "duckdb")
+        assert result == "SELECT * FROM `orders`;"
 
     def test_apply_constraint_configuration(self, mock_pymysql):
         mock_conn = Mock()

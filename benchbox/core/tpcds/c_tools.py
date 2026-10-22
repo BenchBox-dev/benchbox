@@ -30,6 +30,44 @@ def tpcds_option(name: str) -> str:
     return f"{_option_prefix()}{name.upper()}"
 
 
+_WINDOWS_DSQGEN_CITIES_OVERRUN_FRAGMENTS = (
+    "Runtime ERROR: Distribution over-run/under-run",
+    "Check distribution definitions and usage for cities.",
+    "index = -1, length=1000.",
+)
+_WINDOWS_DSQGEN_MAX_ATTEMPTS = 10
+
+
+def run_dsqgen_process(
+    cmd: list[str],
+    *,
+    cwd: Union[str, Path],
+    timeout: int,
+    env: dict[str, str],
+    discard_partial_output: Optional[Callable[[], None]] = None,
+) -> subprocess.CompletedProcess[str]:
+    max_attempts = _WINDOWS_DSQGEN_MAX_ATTEMPTS if sys.platform == "win32" else 1
+
+    for attempt in range(max_attempts):
+        result = subprocess.run(
+            cmd,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+        )
+        is_transient_windows_overrun = sys.platform == "win32" and all(
+            fragment in result.stderr for fragment in _WINDOWS_DSQGEN_CITIES_OVERRUN_FRAGMENTS
+        )
+        if result.returncode == 0 or not is_transient_windows_overrun or attempt == max_attempts - 1:
+            return result
+        if discard_partial_output is not None:
+            discard_partial_output()
+
+    raise AssertionError("unreachable")
+
+
 def _resolve_tpcds_tool_and_template_paths() -> tuple[Path, Path]:
     from benchbox.utils.tpc_compilation import get_tpc_templates_dir
 
@@ -293,15 +331,24 @@ class DSQGenBinary:
             cmd.extend([f"{_opt}STREAMS", str(streams)])
         return cmd, _opt
 
-    def _stage_dsqgen_workdir(self, temp_path: Path, scale_factor: float, query_id: int) -> dict[str, str]:
+    def _stage_dsqgen_workdir(
+        self, temp_path: Path, scale_factor: float, query_id: int, template_arg: str
+    ) -> dict[str, str]:
         import os
         import shutil as _shutil
 
-        _shutil.copytree(self.templates_dir, temp_path / "q")
-        apply_subscale_template_overrides(temp_path / "q", scale_factor, {f"query{query_id}.tpl"})
-        var_src = self.templates_dir.parent / "query_variants"
-        if var_src.exists():
-            _shutil.copytree(var_src, temp_path / "query_variants")
+        query_dir = temp_path / "q"
+        query_dir.mkdir()
+        for support in self.templates_dir.iterdir():
+            if support.is_file() and not (support.name.startswith("query") and support.suffix == ".tpl"):
+                _shutil.copy2(support, query_dir / support.name)
+        template_src = Path(os.path.normpath(self.templates_dir / template_arg))
+        template_dest = Path(os.path.normpath(query_dir / template_arg))
+        if template_src.is_file():
+            template_dest.parent.mkdir(parents=True, exist_ok=True)
+            _shutil.copy2(template_src, template_dest)
+        override_names = {name for name in (f"query{query_id}.tpl",) if (query_dir / name).exists()}
+        apply_subscale_template_overrides(query_dir, scale_factor, override_names)
 
         env = os.environ.copy()
         env["DSS_QUERY"] = str(temp_path)
@@ -337,7 +384,7 @@ class DSQGenBinary:
         log_text: Optional[str] = None
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
-            env = self._stage_dsqgen_workdir(temp_path, scale_factor, query_id)
+            env = self._stage_dsqgen_workdir(temp_path, scale_factor, query_id, cmd[cmd.index(f"{opt}TEMPLATE") + 1])
             if edit_workdir is not None:
                 edit_workdir(temp_path)
 
@@ -347,13 +394,12 @@ class DSQGenBinary:
             if capture_log:
                 cmd.extend([f"{opt}LOG", str(log_path)])
 
-            result = subprocess.run(
+            result = run_dsqgen_process(
                 cmd,
                 cwd=temp_dir,
-                capture_output=True,
-                text=True,
                 timeout=30,
                 env=env,
+                discard_partial_output=lambda: log_path.unlink(missing_ok=True),
             )
             if capture_log and result.returncode == 0:
                 if not log_path.exists():
@@ -720,7 +766,7 @@ class DSQGenBinary:
         cleaned_sql = re.sub(r"[ \t]+", " ", cleaned_sql)
         cleaned_sql = re.sub(r"\n\s+", "\n", cleaned_sql)
 
-        for source_dialect in ["postgres", "mysql", "sqlite", ""]:
+        for source_dialect in ["postgres", "mysql", "sqlite"]:
             try:
                 transpiled = "; ".join(
                     translate_sql_query(

@@ -219,6 +219,7 @@
     "docs/internal/results-phase-3-runbook.md": "core-only",
     "docs/internal/site-deploy.md": "core-only",
     "docs/internal/soundness-drain.md": "core-only",
+    "docs/internal/sql-execution-evidence-gate.md": "core-only",
     "docs/internal/task-management-design.md": "core-only",
     "docs/internal/throughput-result-alignment.md": "core-only",
     "docs/internal/todo-db-benchbox-extraction.md": "core-only",

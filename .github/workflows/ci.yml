@@ -1,4 +1,5 @@
 name: CI
+run-name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'CI (text edit)' || 'CI' }}
 
 
 env:
@@ -97,6 +98,7 @@ jobs:
       submission-validator-changed: ${{ steps.path-flags.outputs.submission-validator-changed }}
       api-contract-changed: ${{ steps.path-flags.outputs.api-contract-changed }}
       tuning-paths-changed: ${{ steps.path-flags.outputs.tuning-paths-changed }}
+      sql-evidence-paths-changed: ${{ steps.path-flags.outputs.sql-evidence-paths-changed }}
       estimated-runner-minutes-saved: ${{ steps.classify.outputs.estimated-runner-minutes-saved }}
       packaging-needed: ${{ steps.classify.outputs.packaging-needed }}
       framing-needed: ${{ steps.classify.outputs.framing-needed }}
@@ -184,6 +186,7 @@ jobs:
           validator=false
           api=false
           tuning=false
+          sql_evidence=false
           if grep -qE '^_project/audits/' .ci-paths/changed.txt; then audit=true; fi
           if grep -qxE '\.github/workflows/validate-submission\.yml|scripts/check_submission_validator_sync\.py' .ci-paths/changed.txt; then validator=true; fi
           if grep -qxE '_project/design/api-public-symbols\.json|scripts/check_api_contract_symbols\.py|scripts/api_contract_probe\.py' .ci-paths/changed.txt; then api=true; fi
@@ -192,6 +195,8 @@ jobs:
           echo "api-contract-changed=$api" >> "$GITHUB_OUTPUT"
           if grep -qE '^(benchbox/core/tuning/|benchbox/cli/tuning|benchbox/platforms/base/(adapter|ddl_helpers|sorted_ingestion|tuning|tuning_config|tuning_trust)\.py|benchbox/platforms/(duckdb|sqlite|datafusion|polars)|benchbox/platforms/clickhouse/|benchbox/platforms/dataframe/polars|tests/integration/tuning/|tests/fixtures/tuning/|examples/tunings/)' .ci-paths/changed.txt; then tuning=true; fi
           echo "tuning-paths-changed=$tuning" >> "$GITHUB_OUTPUT"
+          if grep -qE '^(benchbox/_vendor/|benchbox/utils/dialect_utils\.py|benchbox/sql_compat/|benchbox/core/(tpch|tpcds)/|benchbox/platforms/(sqlite|duckdb|datafusion|postgresql)|scripts/sql_execution_gate/|tests/unit/scripts/test_sql_execution_gate\.py)' .ci-paths/changed.txt; then sql_evidence=true; fi
+          echo "sql-evidence-paths-changed=$sql_evidence" >> "$GITHUB_OUTPUT"
 
       - name: Classify merge units
         id: units
@@ -996,7 +1001,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p t2-artifacts
-          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q -n 0 \
+          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q -n 0 --assert=plain \
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \
             > t2-artifacts/medium-collect.txt
           count=$(grep -Eo '^[0-9]+/[0-9]+ tests collected' t2-artifacts/medium-collect.txt | tail -1 | cut -d/ -f1)
@@ -1019,6 +1024,7 @@ jobs:
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
+          overwrite: true
 
   medium-test:
     name: medium-test (shard ${{ matrix.shard_index }})
@@ -1108,6 +1114,7 @@ jobs:
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
+          overwrite: true
 
   correctness-gate:
     name: correctness-gate (${{ matrix.partition }})
@@ -1264,6 +1271,52 @@ jobs:
 
       - name: Run real-CLI tuning liveness matrix
         run: make tuning-liveness-gate
+
+  sql-execution-evidence:
+    name: sql-execution-evidence
+    needs: ci-paths
+    if: ${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: benchbox
+          POSTGRES_PASSWORD: benchbox
+          POSTGRES_DB: benchbox_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Create virtual environment
+        run: uv venv
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run the executed SQL comparison gate
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
+          BENCHBOX_POSTGRES_DSN: postgresql://benchbox:benchbox@127.0.0.1:5432/benchbox_test
+        run: make sql-execution-gate
 
   package-smoke:
     name: package-smoke
@@ -1459,7 +1512,7 @@ jobs:
 
   core:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
-    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, package-smoke, dependency-audit]
+    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, sql-execution-evidence, package-smoke, dependency-audit]
     if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1549,6 +1602,7 @@ jobs:
             --expect correctness-gate=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
             --expect tpch-binary-framing=${{ needs.ci-paths.outputs.heavy-needed == 'true' || needs.ci-paths.outputs.framing-needed == 'true' }} \
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
+            --expect sql-execution-evidence=${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }} \
             --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \
             --expect dependency-audit=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} || {
             rc=$?
@@ -1750,3 +1804,33 @@ jobs:
           set -euo pipefail
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
+
+  text-edit-verdict:
+    name: ${{ matrix.unit }}
+    if: ${{ github.event.action == 'edited' && !github.event.changes.base }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        unit: [core, explorer, results-data, docs, tooling]
+    steps:
+      - name: Checkout the verdict helper
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: scripts/ci_text_edit_verdict.py
+          sparse-checkout-cone-mode: false
+
+      - name: Report the full CI run's verdict for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python scripts/ci_text_edit_verdict.py --repo "${{ github.repository }}"
+          --sha "${{ github.event.pull_request.head.sha }}" --unit "${{ matrix.unit }}"
+          --run-id "${{ github.run_id }}"

@@ -61,6 +61,31 @@ def _load_bundle_failed_query_count():
 bundle_failed_query_count = _load_bundle_failed_query_count()
 
 
+def _load_timing_field_helpers():
+    helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "timing_fields.py"
+    spec = importlib.util.spec_from_file_location("_benchbox_timing_fields", helper_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load timing field rules from {helper_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return (
+        module.platform_timing_problems,
+        module.run_timing_problems,
+        module.net_estimate_problems,
+        module.bundle_timing_field_paths,
+        module.supports_timing_fields,
+    )
+
+
+(
+    platform_timing_problems,
+    run_timing_problems,
+    net_estimate_problems,
+    bundle_timing_field_paths,
+    supports_timing_fields,
+) = _load_timing_field_helpers()
+
+
 PRIVATE_LOCAL_PATH_RE = re.compile(
     r"(?<![A-Za-z0-9_])(?:"
     r"(?:~|/Users|/home|/root|/private/var|/var/folders|/var/run|/Volumes)/[^\s'\",;)]*"
@@ -631,6 +656,8 @@ def _validate_run_section(run: Any, vr: ValidationResult) -> None:
     if missing_run:
         vr.error(f"Missing keys in 'run': {sorted(missing_run)}")
 
+    _validate_run_timing_fields(run, vr)
+
     total_ms = run.get("total_duration_ms")
     if total_ms is None:
         return
@@ -643,6 +670,34 @@ def _validate_run_section(run: Any, vr: ValidationResult) -> None:
         vr.error(f"Negative total_duration_ms: {total_ms_f}")
     elif total_ms_f > MAX_TOTAL_DURATION_MS:
         vr.warn(f"Unusually long total_duration_ms: {total_ms_f:.0f} (>{MAX_TOTAL_DURATION_MS})")
+
+
+def _validate_run_timing_fields(run: dict, vr: ValidationResult) -> None:
+    for problem in run_timing_problems(run):
+        vr.error(f"run.{problem}")
+
+
+def _validate_query_timing_fields(index: int, q: dict, vr: ValidationResult) -> None:
+    for key in ("request_count", "result_bytes"):
+        value = q.get(key)
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
+            vr.error(f"queries[{index}].{key} must be a non-negative int, got {value!r}")
+    if q.get("platform_timing") is None:
+        return
+    for problem in platform_timing_problems(q["platform_timing"]):
+        vr.error(f"queries[{index}].platform_timing {problem}")
+
+
+def _validate_timing_field_versions(data: dict, version: Any, vr: ValidationResult) -> None:
+    if supports_timing_fields(_schema_version_tuple(version)):
+        return
+    for field_path in bundle_timing_field_paths(data):
+        vr.error(f"{field_path} requires schema version 2.4 or later")
+
+
+def _validate_net_estimate_status(data: dict, vr: ValidationResult) -> None:
+    for problem in net_estimate_problems(data):
+        vr.error(f"run.{problem}")
 
 
 def _validate_benchmark_section(benchmark: Any, vr: ValidationResult) -> None:
@@ -1279,7 +1334,7 @@ def _validate_environment_client_link(data: dict, vr: ValidationResult) -> None:
     if source is not None and not isinstance(source, str):
         vr.error(f"'environment.client_link.source' must be a string, got {source!r}")
 
-    for key in ("client_region", "client_cloud", "collection_error_class", "collection_error_message"):
+    for key in ("client_region", "client_cloud", "probed_at", "collection_error_class", "collection_error_message"):
         value = client_link.get(key)
         if value is not None and not isinstance(value, str):
             vr.error(f"'environment.client_link.{key}' must be a string, got {value!r}")
@@ -1714,6 +1769,7 @@ def _validate_single_query(index: int, q: Any, version: Any, vr: ValidationResul
         return False
 
     _validate_row_count_validation(index, q, version, vr)
+    _validate_query_timing_fields(index, q, vr)
 
     ms = q.get("ms")
     if ms is None:
@@ -2077,6 +2133,8 @@ def _validate_bundle(
     _warn_pre_cutoff_clustering_claim(data, vr)
     _validate_public_cost_section(data, vr)
     _validate_queries_section(data.get("queries", []), version, vr)
+    _validate_timing_field_versions(data, version, vr)
+    _validate_net_estimate_status(data, vr)
     _warn_empty_result_rows(data, vr)
     _warn_timing_plateau(data, vr)
     _warn_small_scale_floor(data, vr)

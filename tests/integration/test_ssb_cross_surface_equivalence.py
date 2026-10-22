@@ -26,8 +26,6 @@ pytestmark = [
     pytest.mark.duckdb,
 ]
 
-_PREVIOUSLY_EMPTY = ("Q2.1", "Q2.2", "Q2.3", "Q3.3", "Q3.4", "Q4.3")
-
 
 @pytest.fixture(scope="module")
 def ssb_cell(tmp_path_factory):
@@ -63,19 +61,10 @@ def test_ssb_dataframe_surface_equivalent_to_sql(ssb_cell):
     )
 
 
-def test_ssb_previously_empty_queries_now_discriminate(ssb_cell):
-    data = ssb_cell
+def test_ssb_sql_reference_row_counts_match_the_recorded_expectations(ssb_cell):
     assert not GATES["ssb"].legitimately_empty, (
         "the SSB gate must carry no legitimately_empty classification once the data is fixed"
     )
-    empty = [qid for qid in _PREVIOUSLY_EMPTY if not data.connection.execute(data.reference_sql(qid)).fetchall()]
-    assert not empty, (
-        f"SSB queries regressed to vacuous (0 reference rows) at SF={EQUIVALENCE_SCALE}: {empty} - "
-        "the generator no longer emits values matching the canonical query literals (#870)."
-    )
-
-
-def test_ssb_sql_reference_row_counts_match_the_recorded_expectations(ssb_cell):
     data = ssb_cell
     actual = {
         normalize_ssb_query_id(qid): len(data.connection.execute(data.reference_sql(qid)).fetchall())

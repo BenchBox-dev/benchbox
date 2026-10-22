@@ -84,3 +84,20 @@ class TestCreateConfigDebugLogging:
         ]
         assert matching
         assert all("DSN-SENTINEL" not in str(record.__dict__) for record in matching)
+
+
+def test_available_databases_is_detected_on_first_access_and_cached(monkeypatch):
+    from benchbox.core.platform_registry import PlatformRegistry
+
+    manager = DatabaseManager()
+    assert "available_databases" not in vars(manager)
+
+    monkeypatch.setattr(PlatformRegistry, "get_available_platforms", lambda: ["duckdb", "clickhouse"])
+    detected = manager.available_databases
+
+    assert manager.available_databases is detected
+    duckdb_info = detected["duckdb"]
+    assert set(duckdb_info) >= {"name", "version", "description", "adoption", "supports_olap"}
+    assert duckdb_info["name"]
+    if "clickhouse" in detected:
+        assert set(detected["clickhouse"]) >= {"supports_server", "supports_embedded"}

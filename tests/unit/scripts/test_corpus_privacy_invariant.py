@@ -78,47 +78,48 @@ def _anonymize(payload: dict, path: Path, manager: AnonymizationManager) -> dict
     return manager.anonymize_result_payload(payload)
 
 
-def test_anonymizing_the_corpus_twice_matches_anonymizing_it_once() -> None:
-    manager = AnonymizationManager()
-    unstable: list[str] = []
-    scanned = 0
-
-    for path in _corpus_json_files():
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(payload, dict):
-            continue
-        scanned += 1
-        once = _anonymize(payload, path, manager)
-        if _anonymize(once, path, manager) != once:
-            unstable.append(str(path.relative_to(REPO_ROOT)))
-
-    assert scanned, "no corpus mappings scanned - the fixed-point gate would be vacuous"
-    assert not unstable, f"{len(unstable)} corpus file(s) change under a second anonymization pass:\n" + "\n".join(
-        unstable[:20]
-    )
+BUNDLES_DIR = RESULTS_DATA / "bundles"
 
 
-def test_rederived_corpus_publishes_byte_identically_to_what_is_stored() -> None:
+def test_rederived_corpus_publishes_byte_identically_and_is_stable_under_a_second_pass() -> None:
     manager = AnonymizationManager()
     drifted: list[str] = []
+    unstable: list[str] = []
     scanned = 0
+    primary_scanned = 0
 
-    for path in sorted((RESULTS_DATA / "bundles").rglob("*")):
-        if not is_primary_bundle_file(path):
+    for path in sorted(RESULTS_DATA.rglob("*")):
+        primary = BUNDLES_DIR in path.parents and is_primary_bundle_file(path)
+        if not (primary or (path.is_file() and path.name.endswith(".json"))):
             continue
         stored = path.read_bytes()
         payload = json.loads(stored.decode("utf-8"))
         if not isinstance(payload, dict):
             continue
         scanned += 1
-        if canonical_json_bytes(manager.anonymize_result_payload(payload)) != stored:
-            drifted.append(str(path.relative_to(REPO_ROOT)))
+        relative = str(path.relative_to(REPO_ROOT))
+        once = _anonymize(payload, path, manager)
+        if primary:
+            primary_scanned += 1
+            if canonical_json_bytes(once) != stored:
+                drifted.append(relative)
+        if once != payload and _anonymize(once, path, manager) != once:
+            unstable.append(relative)
 
-    assert scanned, "no primary bundles scanned - this gate would be vacuous"
-    assert not drifted, (
-        f"{len(drifted)} bundle(s) are not stored at the publication fixed point; "
-        "publishing would rewrite them:\n" + "\n".join(drifted[:20])
-    )
+    assert scanned, "no corpus mappings scanned - the idempotence gate would be vacuous"
+    assert primary_scanned, "no primary bundles scanned - the byte-identity gate would be vacuous"
+    failures: list[str] = []
+    if drifted:
+        failures.append(
+            f"byte identity failed: {len(drifted)} bundle(s) are not stored at the publication fixed point; "
+            "publishing would rewrite them:\n" + "\n".join(drifted[:20])
+        )
+    if unstable:
+        failures.append(
+            f"idempotence failed: {len(unstable)} corpus file(s) change under a second anonymization pass:\n"
+            + "\n".join(unstable[:20])
+        )
+    assert not failures, "\n\n".join(failures)
 
 
 def _manifest_hash_mismatches(bundles_dir: Path) -> tuple[list[str], int]:

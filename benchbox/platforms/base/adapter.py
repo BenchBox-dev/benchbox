@@ -1014,7 +1014,9 @@ class PlatformAdapter(
 
             quiet_console.print("Saving tuning metadata...")
             tuning_metadata_saved = self.save_tuning_metadata(connection)
-            if not tuning_metadata_saved:
+            if not tuning_metadata_saved and self.tuning_metadata_unsupported_reason() is not None:
+                quiet_console.print("⚠️ Tuning metadata is not stored on this platform; databases cannot be reused")
+            elif not tuning_metadata_saved:
                 quiet_console.print("⚠️ Failed to save tuning metadata")
             elif self._tuning_marker_save_failed:
                 quiet_console.print(

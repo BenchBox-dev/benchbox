@@ -1,10 +1,14 @@
+import json
 import sys
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from benchbox.core.results.models import BenchmarkResults
+from benchbox.core.results.schema import build_result_payload
 from tests.fixtures.result_dict_fixtures import write_v2_result_file
 from tests.unit.mcp.public_api import get_tool_functions
 
@@ -434,30 +438,37 @@ class TestRunBenchmarkToolSuccess:
     def test_export_failure_does_not_break_response(self, tool_functions):
         fn = tool_functions["run_benchmark"]
 
-        mock_result = MagicMock()
-        mock_result.total_queries = 5
-        mock_result.successful_queries = 5
-        mock_result.failed_queries = 0
-        mock_result.total_execution_time = 2.0
-        mock_result.query_results = []
-
-        mock_instance = MagicMock()
-        mock_instance.run_with_platform.return_value = mock_result
-
-        mock_bm_class = MagicMock(return_value=mock_instance)
+        real_result = BenchmarkResults(
+            benchmark_name="tpch",
+            platform="duckdb",
+            scale_factor=0.01,
+            execution_id="exec",
+            timestamp=datetime(2026, 1, 1),
+            duration_seconds=2.0,
+            total_queries=5,
+            successful_queries=5,
+            failed_queries=0,
+            total_execution_time=2.0,
+        )
 
         mock_exporter = MagicMock()
         mock_exporter.export_result.side_effect = OSError("disk full")
 
         with (
-            patch("benchbox.mcp.tools.benchmark._get_platform_adapter"),
-            patch("benchbox.mcp.tools.benchmark.get_public_benchmark_class", return_value=mock_bm_class),
+            patch("benchbox.mcp.tools.benchmark.get_public_benchmark_class", return_value=MagicMock),
             patch("benchbox.mcp.tools.benchmark.ResultExporter", return_value=mock_exporter),
+            patch("benchbox.core.run_service.execute_run", return_value=real_result),
         ):
             result = fn(platform="duckdb", benchmark="tpch", scale_factor=0.01)
 
+        mock_exporter.export_result.assert_called_once()
+        assert type(result) is dict
+        assert result["result_schema_version"] == build_result_payload(real_result)["result_schema_version"]
+        assert result["benchmark"]["id"] == "tpch"
+        assert result["run"]["id"] == result["mcp_metadata"]["execution_id"]
         assert result["mcp_metadata"]["status"] == "incomplete"
         assert result["mcp_metadata"]["result_file"] is None
+        assert "MagicMock" not in json.dumps(result)
 
     def test_all_query_results_included(self, tool_functions, tmp_path):
         fn = tool_functions["run_benchmark"]

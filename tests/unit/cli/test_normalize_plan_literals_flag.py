@@ -54,7 +54,7 @@ class TestNormalizePlanLiteralsFlagAccepted:
 
 
 class TestNormalizePlanLiteralsFingerprintInResults:
-    def _run(self, monkeypatch, tmp_path, extra_args):
+    def _run(self, monkeypatch, tmp_path, tpch_sf001_data, extra_args):
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("BENCHBOX_OUTPUT_DIR", raising=False)
         runner = CliRunner()
@@ -74,6 +74,8 @@ class TestNormalizePlanLiteralsFingerprintInResults:
                 "--capture-plans",
                 "--non-interactive",
                 "--quiet",
+                "--output",
+                tpch_sf001_data(tmp_path / "data"),
                 *extra_args,
             ],
             obj={"config": ConfigManager()},
@@ -82,8 +84,8 @@ class TestNormalizePlanLiteralsFingerprintInResults:
         assert result.exit_code == 0, result.output
         return tmp_path / "benchmark_runs" / "results"
 
-    def test_normalized_fingerprint_present_when_flag_set(self, monkeypatch, tmp_path):
-        results_dir = self._run(monkeypatch, tmp_path, ["--normalize-plan-literals"])
+    def test_normalized_fingerprint_present_when_flag_set(self, monkeypatch, tmp_path, tpch_sf001_data):
+        results_dir = self._run(monkeypatch, tmp_path, tpch_sf001_data, ["--normalize-plan-literals"])
         payload = _load_plans_companion(results_dir)
 
         plans = payload["queries"]
@@ -94,8 +96,8 @@ class TestNormalizePlanLiteralsFingerprintInResults:
 
             assert len(entry["fingerprint_normalized"]) == 64
 
-    def test_normalized_fingerprint_absent_without_flag(self, monkeypatch, tmp_path):
-        results_dir = self._run(monkeypatch, tmp_path, [])
+    def test_normalized_fingerprint_absent_without_flag(self, monkeypatch, tmp_path, tpch_sf001_data):
+        results_dir = self._run(monkeypatch, tmp_path, tpch_sf001_data, [])
         payload = _load_plans_companion(results_dir)
 
         plans = payload["queries"]

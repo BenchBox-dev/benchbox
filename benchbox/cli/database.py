@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any, Literal
 
 from rich.prompt import Prompt
@@ -70,9 +71,12 @@ def _sync_platform_driver_info(platform_info: Any, config: DatabaseConfig) -> No
 class DatabaseManager:
     def __init__(self):
         self.console = quiet_console
-        self.available_databases = self._detect_databases()
         self.platform_manager = get_platform_manager()
         self.verbosity = VerbositySettings.default()
+
+    @cached_property
+    def available_databases(self) -> dict[str, dict[str, Any]]:
+        return self._detect_databases()
 
     def set_verbosity(self, settings: VerbositySettings) -> None:
 

@@ -43,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p t2-artifacts
-          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q -n 0 \
+          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q -n 0 --assert=plain \
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \
             > t2-artifacts/medium-collect.txt
           count=$(grep -Eo '^[0-9]+/[0-9]+ tests collected' t2-artifacts/medium-collect.txt | tail -1 | cut -d/ -f1)
@@ -66,6 +66,7 @@ jobs:
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
+          overwrite: true
 
   medium-test:
     name: medium-test (shard ${{ matrix.shard_index }})
@@ -159,6 +160,7 @@ jobs:
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
+          overwrite: true
 
   medium-coverage-map:
     name: medium-coverage-map
@@ -219,6 +221,7 @@ jobs:
           path: t2-coverage-map/
           if-no-files-found: error
           retention-days: 7
+          overwrite: true
 
       - name: Verify the published map resolves
         env:

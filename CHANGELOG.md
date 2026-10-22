@@ -9,16 +9,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Result readers accept schema 2.4: the loader, normalizer, explorer input
+  and bundle validator read the new optional per-query `request_count`,
+  `result_bytes` and `platform_timing`, and the run-level `timing_method`,
+  `platform_timing` and `net_estimate_status`, plus
+  `environment.client_link.probed_at`. Producers still write 2.3; the fields
+  support comparing local and cloud runs with the client round trip removed.
+  A run marked `net_estimate_status: eligible` must use `timing_method` 2 and
+  must not be embedded.
+- `make sql-execution-gate` executes every shipped TPC-H and TPC-DS query on SQLite, DuckDB,
+  DataFusion and PostgreSQL (when `BENCHBOX_POSTGRES_DSN` is set) at SF0.01 and compares the
+  rows of the candidate tree with the baseline commit, DuckDB and the TPC reference row counts.
+  Differences must be listed with a justification in
+  `scripts/sql_execution_gate/expected_differences.json`. The `sql-execution-evidence` CI job
+  runs it when SQL translation changes, and the pull request template asks for its output on
+  every wheel adoption. It reports DataFusion and PostgreSQL integer-division truncation in
+  TPC-DS Q21, Q78 and Q83 (tracked), and the bundled wheel's SQLite gaps (no ROLLUP, GROUPING
+  or STDDEV_SAMP, parenthesised EXCEPT operands in Q87).
+- `benchbox.utils.dialect_utils.translate_ddl(ddl, target_dialect, source_dialect, identify, **options)`
+  translates DDL with the bundled SQLGlot runtime's `DdlOptions` and engine-specific
+  table layouts. It is the only module allowed to import the runtime's DDL module; a
+  repository test fails on any other import.
+- The golden-corpus DDL area records the differences between the BenchBox DDL
+  fix-ups and the runtime's DDL output for every platform.
 - `benchbox.utils.dialect_utils.apply_rewrite(name, sql_or_expression, dialect, **args)`
   applies a named rewrite from the bundled SQLGlot runtime to already-translated
   SQL. It is the only module allowed to import the runtime's rewrite functions;
   a repository test fails on any other import.
+- `apply_rewrite` tests pin the named registry: every TPC-Havoc, Spark, DataFusion and engine
+  rewrite in the bundled SQLGlot runtime resolves by name, an unlisted runtime function fails
+  the registry test, and every compat, subqueries, date-arithmetic and alias-deduplication
+  rewrite has a documented-output test.
+- A DataFusion test executes TPC-H Q11, Q16, Q18 and Q20 rewritten by the runtime's generic
+  decorrelation rewrites at scale factors 0.01 and 0.1 and compares the rows with the
+  recorded TPC-H reference row counts and with the unrewritten query on DuckDB.
 - A golden-corpus test runs the BenchBox fix-ups and the bundled runtime's output
   over the inputs of every area whose fix-ups move into the runtime and asserts
   that the differences equal a recorded set.
+- Tests pin the `apply_rewrite` behavior of the ClickHouse, StarRocks and TPC-DS runner
+  engine rewrites (`lowercase_identifiers`, `decimal_zero_literals`, `add_query_settings`,
+  `correlated_exists_to_in`, `add_derived_table_aliases`, `qualify_order_by_columns`), and the
+  golden-corpus engines area records two more safe-division inputs from the ClickHouse
+  transformer tests.
 
 ### Changed
 
+- Results anonymization precompiles the key-normalising pattern and caches the
+  normalised key and the identifier prefix for a key path (bounded caches, both pure
+  functions of their arguments). Anonymizing the committed results corpus is about a third
+  faster locally; published output is byte-identical.
+- TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
+  for every `dsqgen` call. It stages only the support files and the one requested template, so a
+  call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed
+  template tree is never written.
+- `benchbox run` registers only the requested platform's adapter instead of importing all 52
+  adapters, and checks DataFrame availability for the requested platform only. A local
+  `run --dry-run` for Polars drops from about 2.0 s to about 1.2 s and for DuckDB from about
+  1.85 s to about 1.3 s. Commands that list platforms still register every adapter, and the
+  CLI output, unknown-platform message and exit code are unchanged.
+- `ResultValidator.validate_results_exact` now accepts result sets that are exactly equal
+  (in the same order, or after sorting when order does not matter) without the per-cell
+  tolerant comparison, which makes large cross-surface and qualification comparisons much
+  faster. The shortcut never rejects: results containing NaN, non-finite decimals, integers
+  too large for a float, or values that cannot be sorted or compared go through the existing
+  comparison, so accepted and rejected outcomes and error messages are unchanged.
 - The Databricks adapter now requests the bundled SQLGlot runtime's opt-in
   `safe_division` rewrite through `apply_rewrite` after alias deduplication.
   Every division, including nested ones, still becomes `TRY_DIVIDE`, so a zero
@@ -36,6 +90,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `NULLIF(x, 0)` is no longer wrapped a second time. Queries without a division
   are regenerated from the parsed tree, so their text can differ in formatting
   but not in meaning. No published Snowflake result changes.
+- Removed the wrapper fix-ups (DuckDB `ALL` restore, SQLite interval/EXTRACT/DATE_TRUNC rewrites, SQLite discount-bound fold, TPC-DS date-integer regex), `normalize_dialect_for_sqlglot` and `benchbox/platforms/questdb_rewriter.py`. `resolve_sql_dialect` and `PLATFORM_DIALECTS` map platform keys to runtime dialects; an unknown name raises `UnknownSqlDialectError`. `influxdb` resolves to `datafusion`.
+- QuestDB now translates to the runtime `questdb` dialect. TPC-H Q15 and every CTE column list keep their column names, which the removed rewriter dropped.
+- SQLite month/year intervals on a date with day of month above 28 now fail instead of returning a rolled-over date.
+- `netezza`, `greenplum`, `vertica` and `datafusion` use their own runtime dialects instead of postgres; TPC-DI date-difference output changes on ClickHouse, StarRocks, BigQuery, Databricks, DataFusion and Snowflake.
 - TPC-DI schema, query, loader, validation and SCD translation now call
   `translate_sql_query` with explicit `identify=False` instead of the vendored
   SQLGlot directly, so the DuckDB `ALL` restore and SQLite fix-ups apply there
@@ -155,9 +213,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `FROM`-less `SELECT`; the golden corpus records TPC-Havoc `17_v4` on
   PostgreSQL as the changed output. `flatten_count_of_count` is available the
   same way. The runtime writes no `FROM VALUES` or `dual` source in any dialect.
+- The bundled SQLGlot runtime moves from 30.24.0.3 to 30.24.0.7 (fork commit
+  `d880f416014b`). A translation corpus of every shipped benchmark query across
+  the 20 target dialects and `questdb` (1,262 queries, 26,502 translations, no
+  errors in either runtime) changes in 88 SQLite outputs and no other output.
+  SQLite no longer divides possibly-integer operands with integer truncation:
+  a division the source dialect marks as possibly truncating is written
+  `CAST(dividend AS REAL) / divisor` unless an operand is already real or both
+  operands are integers (literal-only integer division keeps PostgreSQL
+  semantics). Results published before this change for the affected SQLite
+  queries were computed with different SQL.
+- The DDL golden corpus passes the runtime's new DDL options (`table_case`,
+  `strip_with_properties`, QuestDB layout fields, SingleStore `DATETIME`, StarRocks
+  `float_as_real`) and records a classification and reason (`equivalent`,
+  `legacy-bug` or `fork-gap`) for every remaining difference; each classification
+  rule verifies the shape of the difference it labels, and a test fails on an
+  unclassified difference or a `fork-gap`. Array columns become `VECTOR(n, F32|F64)`
+  on SingleStore and `VECTOR(n)` on a SQL Server or Azure SQL target with the
+  `vector_type` option; on every other T-SQL target (Synapse, Fabric) the runtime
+  raises a `ValueError` instead of writing an array type those engines reject.
 
 ### Fixed
 
+- A pull request title or body edit no longer leaves an armed pull request blocked
+  with every required check green. The CI run such an edit starts now reports each
+  required check (`core`, `explorer`, `results-data`, `docs`, `tooling`) by copying
+  the verdict of the newest full CI run on the same head commit, waiting while that
+  run is in progress. Before, its required jobs were skipped under other names, and
+  GitHub kept the pull request blocked until a push or a close and reopen started a
+  full run.
+
+- Tuned runs no longer abort, or lose the tuned-run marker, when the tuning
+  metadata store does not work on the platform:
+  - Athena has no metadata store. A tuned run proceeds without a marker and records
+    `metadata_store: unsupported` in its applied-tuning ledger. Because BenchBox
+    cannot tell later whether such a database was tuned, it now refuses to reuse an
+    existing Athena database and recreates it.
+  - Synapse and Fabric Warehouse get valid T-SQL: `IF OBJECT_ID(...) IS NULL CREATE
+    TABLE` with `DATETIME2` (the old `TIMESTAMP` column is a `ROWVERSION`), `TOP 1`
+    instead of `LIMIT 1`, and `DELETE` without `WHERE TRUE`. DDL runs through the
+    cursor, because the adapters' query path fetches a result set that DDL does not
+    return. Fabric Warehouse gets no lookup index, which it does not support.
+  - BigQuery creates the store with `CREATE TABLE IF NOT EXISTS`; the adapter used
+    to rewrite the plain `CREATE TABLE` to `CREATE OR REPLACE`, so each new manager
+    emptied the table and its marker.
+- TPC-H and TPC-DS data generation no longer hang when the filesystem cannot
+  flush. Both ran the global `sync` command with no timeout; a process stuck in
+  uninterruptible I/O wait cannot be signalled, so generation waited as long as
+  the stall lasted. The flush now has a 30 second bound, is abandoned when it
+  does not finish, and logs a warning that timing measurements may include
+  unflushed writes.
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
   `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
   clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`
@@ -165,6 +270,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   partitioning (`pg_get_partkeydef`) and clustering (`pg_index.indisclustered`, per
   partition) are verified against the catalog. A verification failure after commit
   records the durable statements as executed and the intent as not satisfied.
+- TPC-DI `EQ8` and `EQ6` now use decimal literals where the arithmetic is meant to be
+  exact. `EQ8` computes the error resolution rates as `45.0 / 50 * 100`,
+  `13.0 / 15 * 100`, `2.0 / 3 * 100` and `20.0 / 25 * 100`; `EQ6` computes the memory
+  headroom term as `(1000 - N) / 10.0`. Engines that apply integer division to integer
+  literals (PostgreSQL semantics, SQLite) previously returned a resolution rate of `0`
+  for `45 / 50 * 100` instead of `90`, and truncated the `EQ6` memory headroom term
+  (`93` rather than `93.6`; the `EQ6` performance rating is capped at 100, so its
+  output is unchanged). The recorded `EQ6` and `EQ8` results in published TPC-DI
+  bundles hold timings and row counts only, so no recorded field changes.
+- A validation mismatch or `--force-recreate` on Snowflake no longer targets the
+  whole database. Benchmarks that declare a data-source benchmark (read, write and
+  transaction primitives, TPC-DS OBT) run inside that benchmark's database, so
+  dropping it would delete every other benchmark's tables there. Snowflake now
+  resets in place: it drops the tables the requesting benchmark declares in its
+  schema (for the primitives that includes the TPC-H tables they query, but not
+  other benchmarks' tables), drops the tuning metadata table so a later run cannot
+  trust stale metadata, keeps the database, and fails without removing anything
+  when it cannot tell which tables those are. External tables are dropped with
+  `DROP EXTERNAL TABLE`. `drop_database` and the `USE DATABASE`/`USE SCHEMA`
+  fallbacks now render the identifier unquoted, as `CREATE DATABASE` does; the
+  quoted lowercase form never matched the uppercase database, so the drop was a
+  silent no-op that the log reported as "Dropped database".
+- On server-side platforms that drop the database on a validation mismatch, BenchBox
+  now refuses when validation found tables that do not belong to the requesting
+  benchmark ("Extra tables found"), and names them, instead of deleting them.
+  `--force-recreate` still drops the whole database. File-based databases (DuckDB,
+  SQLite, DataFusion, Polars) are still deleted and rebuilt on a mismatch.
 
 ### Fixed
 
@@ -172,6 +304,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the nested-archive import probe accepts Windows path separators, so the SQLGlot
   runtime tests pass on Windows. The BigQuery Iceberg test helper disposes its
   catalog engine.
+- A `DatabaseConfig`, such as the one `PlatformHookRegistry.build_database_config`
+  returns, no longer shows secrets when it is printed, formatted or logged. Its
+  `repr`, `str` and log output redact secret-named options and fields
+  (`password`, `token`, `secret`, `api_key`, `connection_string` and similar) and
+  the credentials embedded in URIs, while the connection code still reads the real
+  values. Before, a Snowflake config built from saved credentials printed the
+  password in full. A test-session probe seeds a sentinel credential in the
+  caller's home and checks that an isolated pytest run never reads it and writes
+  nothing to that home; a live-only run still reads it.
 
 ## [0.5.0rc1] - 2026-10-20
 

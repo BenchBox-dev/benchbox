@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from benchbox.platforms.questdb_rewriter import rewrite
 from benchbox.utils.dialect_utils import translate_sql_query
-from tests.unit.sql_compat.golden_corpus import Case
+from tests.unit.sql_compat.golden_corpus import Case, frozen_legacy
+
+AREA = "area_questdb"
 
 SOURCE_DIALECT = "netezza"
 TPCH_SEED = 1
@@ -163,11 +164,6 @@ def tpch_queries() -> dict[int, str]:
     return {number: manager.get_query(number, seed=TPCH_SEED, scale_factor=1.0) for number in range(1, 23)}
 
 
-def legacy_output(sql: str, identify: bool) -> str:
-    translated = translate_sql_query(sql, "postgres", source_dialect=SOURCE_DIALECT, identify=identify)
-    return rewrite(translated)
-
-
 def fork_output(sql: str, identify: bool) -> str:
     return translate_sql_query(sql, "questdb", source_dialect=SOURCE_DIALECT, identify=identify)
 
@@ -182,7 +178,7 @@ def cases() -> list[Case]:
             found.append(
                 Case(
                     id=f"{case_id}.{suffix}",
-                    legacy=lambda sql=sql, identify=identify: legacy_output(sql, identify),
+                    legacy=frozen_legacy(AREA, f"{case_id}.{suffix}"),
                     fork=lambda sql=sql, identify=identify: fork_output(sql, identify),
                 )
             )
