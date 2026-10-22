@@ -13433,6 +13433,13 @@
       "status": "open",
       "title": "Add an exact-equality fast path to the result validator that can only accept what the slow path accepts"
     },
+    "longtest-08-tpcds-binding-draw-obt": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Cut repeated dsqgen work in the TPC-DS binding, shared-draw and OBT parameter tests"
+    },
     "loud-loader-failures-for-contaminated-data": {
       "claim": null,
       "needs": [],
