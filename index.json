@@ -2716,6 +2716,13 @@
       "status": "open",
       "title": "Add the changelog fragment library and make targets (inert, no CI gate, no release-path change)"
     },
+    "changelog-fragments-02-release-prep": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Make release-prep compile changelog fragments into the release section and gate pre-tag state"
+    },
     "changelog-merge-conflict-churn-20261020": {
       "claim": null,
       "needs": [],
