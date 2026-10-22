@@ -15958,7 +15958,7 @@
       ],
       "priority": "high",
       "status": "open",
-      "title": "Restrict oracle file tools through a trusted fail-closed workspace policy"
+      "title": "Keep oracle reviewer credentials out of reach with a scoped auth-gateway client token"
     },
     "oracle-response-reliability-observation-20261021": {
       "claim": null,
