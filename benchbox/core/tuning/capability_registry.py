@@ -544,13 +544,13 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
         _T.PRIMARY_KEYS: _none(
             "databend_strips_primary_keys",
-            "DatabendAdapter strips PRIMARY KEY clauses from every executed CREATE TABLE via "
-            "inline regex (databend/adapter.py:678), alongside the foreign-key strip. Tuned keys "
+            "DatabendAdapter passes strip_primary_keys to translate_ddl for every executed CREATE TABLE "
+            "(databend/adapter.py), alongside the foreign-key strip. Tuned keys "
             "reach the DDL builder but never reach the engine.",
         ),
         _T.FOREIGN_KEYS: _none(
             "databend_strips_foreign_keys",
-            "DatabendAdapter strips foreign keys from every CREATE TABLE (databend/adapter.py:680); "
+            "DatabendAdapter passes strip_foreign_keys to translate_ddl for every CREATE TABLE (databend/adapter.py); "
             "remaining constraint configuration is informational log-only.",
         ),
         _T.UNIQUE_CONSTRAINTS: _none(
@@ -868,13 +868,13 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         _T.PRIMARY_KEYS: _none(
             "firebolt_strips_primary_keys",
-            "FireboltAdapter._optimize_table_definition strips PRIMARY KEY clauses from every "
-            "CREATE TABLE via ddl_helpers strip_primary_keys (firebolt.py).",
+            "FireboltAdapter.create_schema passes strip_primary_keys to translate_ddl, which removes "
+            "PRIMARY KEY clauses from every CREATE TABLE (firebolt.py).",
         ),
         _T.FOREIGN_KEYS: _none(
             "firebolt_strips_foreign_keys",
-            "FireboltAdapter._optimize_table_definition strips FOREIGN KEY clauses from every "
-            "CREATE TABLE via ddl_helpers strip_foreign_keys (firebolt.py).",
+            "FireboltAdapter.create_schema passes strip_foreign_keys to translate_ddl, which removes "
+            "FOREIGN KEY clauses from every CREATE TABLE (firebolt.py).",
         ),
         **_no_unique_check_entries(
             "firebolt_no_unique_check_rendering",

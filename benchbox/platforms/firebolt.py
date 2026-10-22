@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -10,7 +9,6 @@ from urllib.parse import urlparse
 
 from benchbox.core.benchmark_mixins import CursorValidationQueryExecutionMixin
 from benchbox.core.deployment import deployment_class, select_adapter_deployment
-from benchbox.core.sql_utils import normalize_table_name_in_sql
 from benchbox.platforms.base.config_utils import make_registered_platform_config_builder
 from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata, with_canonical_compute
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
@@ -32,7 +30,6 @@ from ..utils.dependencies import (
 )
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.data_loading import FileFormatRegistry
-from .base.ddl_helpers import strip_foreign_keys, strip_primary_keys
 
 try:
     from firebolt.client.auth import ClientCredentials
@@ -707,16 +704,9 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         cursor = connection.cursor()
 
         try:
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
 
-            statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
-
-            for statement in statements:
-                if not statement:
-                    continue
-
-                statement = self._normalize_table_name_in_sql(statement)
-                statement = self._optimize_table_definition(statement)
+            for statement in self._translate_schema_ddl(schema_sql):
                 try:
                     cursor.execute(statement)
                     self.logger.debug(f"Executed schema statement: {statement[:100]}...")
@@ -1053,31 +1043,23 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
 
         return extract_table_name(statement)
 
-    def _normalize_table_name_in_sql(self, sql: str) -> str:
-        return normalize_table_name_in_sql(sql)
+    def _translate_schema_ddl(self, schema_sql: str) -> list[str]:
+        from benchbox.utils.dialect_utils import translate_ddl
+
+        return translate_ddl(
+            schema_sql,
+            self.get_target_dialect(),
+            strip_primary_keys=True,
+            strip_foreign_keys=True,
+            type_map={"VARCHAR": "TEXT", "CHAR": "TEXT", "DECIMAL": "NUMERIC"},
+            drop_type_parameters=["TEXT"],
+            table_case="lower",
+        )
 
     def _quote_identifier(self, name: str) -> str:
         if not isinstance(name, str) or not name:
             raise ValueError("Identifier must be a non-empty string")
         return '"' + name.replace('"', '""') + '"'
-
-    def _optimize_table_definition(self, statement: str) -> str:
-        if not statement.upper().startswith("CREATE TABLE"):
-            return statement
-
-        statement = re.sub(r"VARCHAR\s*\(\s*\d+\s*\)", "TEXT", statement, flags=re.IGNORECASE)
-        statement = re.sub(r"\bVARCHAR\b", "TEXT", statement, flags=re.IGNORECASE)
-        statement = re.sub(r"\bCHAR\s*\(\s*\d+\s*\)", "TEXT", statement, flags=re.IGNORECASE)
-
-        statement = re.sub(r"\bDECIMAL\b", "NUMERIC", statement, flags=re.IGNORECASE)
-
-        statement = strip_primary_keys(statement)
-        statement = strip_foreign_keys(statement)
-
-        statement = re.sub(r",\s*,", ",", statement)
-        statement = re.sub(r",\s*\)", ")", statement)
-
-        return statement
 
     def get_query_plan(self, connection: Any, query: str) -> str | None:
         from benchbox.platforms.base.sql_execution import get_query_plan_from_cursor

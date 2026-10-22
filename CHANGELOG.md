@@ -54,6 +54,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Databend and Firebolt build their `CREATE TABLE` statements with the SQLGlot fork's `translate_ddl`
+  instead of per-adapter text rewrites (`_optimize_table_definition`, `_normalize_table_name_in_sql`).
+  Emitted DDL matches the golden corpus; both still drop primary and foreign keys.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed
