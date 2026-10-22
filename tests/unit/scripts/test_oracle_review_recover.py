@@ -65,7 +65,9 @@ class FakeRunner:
         pr_views: list[dict[str, Any]] | None = None,
         bad_closed_snapshot: bool = False,
         close_returns_failure: bool = False,
+        auto_merge: bool = False,
     ) -> None:
+        self.auto_merge = auto_merge
         self.checks = [dict(check) for check in checks]
         self.runs = {run_id: dict(run) for run_id, run in runs.items()}
         self.rerun_conclusions = rerun_conclusions or {}
@@ -89,11 +91,24 @@ class FakeRunner:
             "headRefOid": HEAD,
             "headRepository": {"nameWithOwner": REPO},
             "isCrossRepository": False,
+            "autoMergeRequest": {"mergeMethod": "SQUASH"} if self.auto_merge and not self.closed else None,
         }
         if self.closed and self.bad_closed_snapshot:
             self.bad_closed_snapshot = False
             payload["headRefOid"] = OTHER_HEAD
         return payload
+
+    def _paginate(self, args: tuple[str, ...]) -> str:
+        envelope = {
+            "total_count": len(self.checks),
+            "check_runs": [
+                {**check, "id": 1000 + index, "app": {"slug": "github-actions"}}
+                for index, check in enumerate(self.checks)
+            ],
+        }
+        assert args[args.index("--jq") + 1].startswith(".check_runs[]")
+        keys = ("name", "head_sha", "status", "conclusion", "details_url")
+        return "".join(json.dumps({key: run.get(key) for key in keys}) + "\n" for run in envelope["check_runs"])
 
     def __call__(self, command: list[str]) -> subprocess.CompletedProcess[str]:
         args = tuple(command[1:])
@@ -101,7 +116,7 @@ class FakeRunner:
         if args[:2] == ("pr", "view"):
             return _completed(json.dumps(self._pull_request()))
         if args[:2] == ("api", "--paginate"):
-            return _completed("".join(json.dumps(check) + "\n" for check in self.checks))
+            return _completed(self._paginate(args))
         if len(args) >= 2 and args[0] == "api" and args[1].startswith(f"repos/{REPO}/actions/runs/"):
             run_id = int(args[1].rsplit("/", 1)[1])
             return _completed(json.dumps(self.runs[run_id]))
@@ -148,7 +163,7 @@ def test_unsuccessful_runs_are_rerun_serially_before_pr_close_and_reopen() -> No
         {12: _run(12), 7: _run(7), 99: _run(99, conclusion="success")},
     )
 
-    assert oracle_review_recover.recover(REPO, PR, runner) == 2
+    assert oracle_review_recover.recover(REPO, PR, runner) == (2, True)
 
     rerun_events = [event for event in runner.events if event[:2] == ("run", "rerun")]
     assert [event[2] for event in rerun_events] == ["7", "12"]
@@ -171,7 +186,7 @@ def test_successful_checks_are_not_rerun() -> None:
         {5: _run(5, conclusion="success")},
     )
 
-    assert oracle_review_recover.recover(REPO, PR, runner) == 0
+    assert oracle_review_recover.recover(REPO, PR, runner) == (0, True)
 
     assert not any(event[:2] in (("run", "rerun"), ("run", "watch")) for event in runner.events)
     assert runner.events.index(("pr", "close", str(PR), "--repo", REPO)) < runner.events.index(
@@ -255,3 +270,35 @@ def test_failed_close_attempts_to_reopen_when_pr_state_is_uncertain() -> None:
     reopen = runner.events.index(("pr", "reopen", str(PR), "--repo", REPO))
     assert close < reopen
     assert runner.closed is False
+
+
+def test_failed_check_run_in_real_api_envelope_is_found_and_rerun() -> None:
+    runner = FakeRunner(
+        [_check(21), _check(22, conclusion="success")], {21: _run(21), 22: _run(22, conclusion="success")}
+    )
+
+    assert oracle_review_recover._failed_run_ids(runner, REPO, HEAD) == [21]
+    assert oracle_review_recover.recover(REPO, PR, runner).reruns == 1
+    assert ("run", "rerun", "21", "--repo", REPO) in runner.events
+
+
+def test_armed_auto_merge_is_not_disarmed_by_recovery() -> None:
+    runner = FakeRunner([_check(31)], {31: _run(31)}, auto_merge=True)
+
+    result = oracle_review_recover.recover(REPO, PR, runner)
+
+    assert result == (1, False)
+    assert ("run", "rerun", "31", "--repo", REPO) in runner.events
+    assert not any(event[:2] in (("pr", "close"), ("pr", "reopen")) for event in runner.events)
+    assert not any(event[:2] == ("pr", "merge") for event in runner.events)
+
+
+def test_main_reports_that_auto_merge_was_kept(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(oracle_review_recover, "recover", lambda repo, pr: oracle_review_recover.Recovery(1, False))
+
+    assert oracle_review_recover.main(["--repo", REPO, "--pr", str(PR)]) == 0
+
+    output = capsys.readouterr().out
+    assert "auto-merge" in output and "Closed and reopened" not in output
