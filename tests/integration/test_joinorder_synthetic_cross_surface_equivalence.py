@@ -11,7 +11,6 @@ pytest.importorskip("pandas", reason="Pandas not installed")
 pytest.importorskip("duckdb", reason="DuckDB not installed")
 
 from benchbox.core.equivalence.cross_surface import (
-    EQUIVALENCE_SCALE,
     GATES,
     build_production_contexts,
     count_executed_cells,
@@ -19,6 +18,8 @@ from benchbox.core.equivalence.cross_surface import (
 )
 from benchbox.core.joinorder.queries import CANONICAL_JOINORDER_QUERIES
 from benchbox.core.tpchavoc.validation import ResultValidator
+
+MEDIUM_EQUIVALENCE_SCALE = 0.01
 
 pytestmark = [
     pytest.mark.integration,
@@ -29,10 +30,12 @@ pytestmark = [
 
 def test_joinorder_synthetic_dataframe_surface_equivalent_to_sql(tmp_path):
     gate = GATES["joinorder_synthetic"]
-    data = gate.build(EQUIVALENCE_SCALE, tmp_path)
+    data = gate.build(MEDIUM_EQUIVALENCE_SCALE, tmp_path)
     connection = data.connection
     try:
-        contexts = build_production_contexts(data.benchmark, data.data_dir, backends=gate.backends)
+        contexts = build_production_contexts(
+            data.benchmark, data.data_dir, backends=gate.backends, scale_factor=MEDIUM_EQUIVALENCE_SCALE
+        )
         divergences = find_cross_surface_divergences(
             connection,
             query_ids=data.query_ids,

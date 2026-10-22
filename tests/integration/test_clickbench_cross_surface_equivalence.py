@@ -11,12 +11,13 @@ pytest.importorskip("pandas", reason="Pandas not installed")
 pytest.importorskip("duckdb", reason="DuckDB not installed")
 
 from benchbox.core.equivalence.cross_surface import (
-    EQUIVALENCE_SCALE,
     GATES,
     build_production_contexts,
     count_executed_cells,
     find_cross_surface_divergences,
 )
+
+MEDIUM_EQUIVALENCE_SCALE = 0.01
 
 pytestmark = [
     pytest.mark.integration,
@@ -28,10 +29,12 @@ pytestmark = [
 @pytest.mark.timeout(180)
 def test_clickbench_dataframe_surface_equivalent_to_sql(tmp_path):
     gate = GATES["clickbench"]
-    data = gate.build(EQUIVALENCE_SCALE, tmp_path)
+    data = gate.build(MEDIUM_EQUIVALENCE_SCALE, tmp_path)
     connection = data.connection
     try:
-        contexts = build_production_contexts(data.benchmark, data.data_dir, backends=gate.backends)
+        contexts = build_production_contexts(
+            data.benchmark, data.data_dir, backends=gate.backends, scale_factor=MEDIUM_EQUIVALENCE_SCALE
+        )
         divergences = find_cross_surface_divergences(
             connection,
             query_ids=data.query_ids,
