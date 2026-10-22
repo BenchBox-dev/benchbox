@@ -3,7 +3,7 @@
     "RUBRIC 1: G1-G3 evidence in the PR body; published bytes unchanged",
     "RUBRIC 2: CI time of the corpus test vs its post-longtest-10 time (C5)"
   ],
-  "context": "PROGRESS 2026-10-22: PR #3285 (head 6ae4e0ca), armed. Precompiled key pattern; _compact_key lru_cache(4096); _identifier_prefix_for_key_path body moved to a module-level lru_cache(4096) keyed by the last three path elements (a new fast-tier test pins that dependency; before it, narrowing the key was undetected). G1 purity: anonymization.py:118-120 and :123-157 read only arguments and immutable constants (lines 37-41); salt only in the uncached _hash_public_identifier. G2: SHA-256 over first- and second-pass output of all 791 results-data files identical before/after (5c537be5...); 257 related tests pass. G3 local medians: 2.87 -> 1.88 s (-35%; cache alone -26%). G4: prefix function 1.30M calls / 5.2 s cumulative, cached. Mutations caught. CI: corpus module sum 9.31 -> 7.09 s (trunk 39779270732 vs PR 39781167567). Oracle SHIP, no findings. NEXT: finish after merge.",
+  "context": "DONE 2026-10-22: PR #3285 merged as a51e484d1d1f60bef6047c5ee33ad2418c6042bd (final head c0b3fe2ec, a merge of develop to clear a CHANGELOG conflict GitHub reported because it does not apply the local union driver; oracle SHIP on that head). Precompiled key pattern; _compact_key lru_cache(4096); prefix computation moved to a module-level lru_cache(4096) keyed by the last three path elements, with a new fast-tier test pinning that dependency. G1 purity: anonymization.py:118-120 and :123-157 read only arguments and immutable constants. G2: SHA-256 over two-pass output of all 791 results-data files identical before/after; 257 related tests pass. G3 local medians 2.87 -> 1.88 s (-35%). G4: prefix function cached (pure). Mutations caught. CI corpus module 9.31 -> 7.09 s (trunk 39779270732 vs PR 39781167567).",
   "description": "PROBLEM: corpus anonymization spends much of its time in _compact_key (benchbox results anonymization module, around line 114), which runs an uncompiled re.sub about 4.8 M times per pass; one noisy local run of an lru_cache on _compact_key cut a pass from 6.13 s to 3.94 s.\n\nCHANGE (product code): precompile the pattern at module level and, if _compact_key is a pure function of its argument, memoize it with a bounded functools.lru_cache.\n\nDECISION GATES:\nG1 Purity: show _compact_key depends only on its argument (no salt or global state); if not, only precompile.\nG2 Byte identity: the merged corpus test from longtest-10 (all 419 primaries byte-identical) passes unchanged; also run the anonymization unit tests.\nG3 Measure locally three times before/after (median) and on CI via the corpus test's junit; keep the cache only if the median improves by at least 20 percent, else keep only the precompile and record the numbers.\nG4 Also profile _identifier_prefix_for_key_path (the other hot spot); optimise it under the same purity and byte-identity gates only if it is pure, else record.",
   "links": [
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-18T23-52-50-730Z_01a1516e-af2a-70ba-8b0e-81c1898c948f/RepoScanReview.md"
@@ -76,6 +76,14 @@
       "generation": "9e6a69703aa74c4f8c9db28d718ebde3",
       "op": "take",
       "op_id": "f6f6bed039694cf0aee29e83a40b7c81",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-22T15:43:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4962ecaa1114425b9da0e9c65cb91408",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]
