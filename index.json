@@ -15969,15 +15969,10 @@
       "title": "Preserve oracle evidence diagnostics and redact credential echoes safely"
     },
     "oracle-response-ingress-20261021": {
-      "claim": {
-        "expires_at": "2026-10-22T23:48:47Z",
-        "generation": "7276d3c5306e40a2a609ea527983a06d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Normalize harmless oracle response drift without weakening decisions"
     },
     "oracle-response-json-template-20261021": {
