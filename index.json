@@ -22868,6 +22868,15 @@
       "status": "open",
       "title": "External review of soundness-gap commit d153fbb1a (issue 3125) and attestation if clean"
     },
+    "soundness-gap-3126-external-review-20261022": {
+      "claim": null,
+      "needs": [
+        "soundness-gaps-decisions-20261022"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "External review of soundness-gap commit 48c44cf73 (issue 3126) and attestation if clean"
+    },
     "soundness-gaps-decisions-20261022": {
       "claim": null,
       "needs": [],
