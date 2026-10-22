@@ -8,7 +8,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-ORACLE_CONTEXTS = ("oracle-gate", "oracle-review")
+ORACLE_REVIEW_CONTEXT = "oracle-review"
+ORACLE_GATE_CONTEXT = "oracle-gate"
+ORACLE_GATE_INTEGRATION_ID = 5201041
 
 
 def extract_rules(payload: Any) -> list[dict[str, Any]]:
@@ -25,6 +27,12 @@ def _pull_request_parameters(rules: list[dict[str, Any]]) -> dict[str, Any] | No
             params = rule.get("parameters")
             return params if isinstance(params, dict) else {}
     return None
+
+
+def _is_oracle_check(check: dict[str, Any]) -> bool:
+    if check["context"] == ORACLE_REVIEW_CONTEXT:
+        return True
+    return check["context"] == ORACLE_GATE_CONTEXT and check.get("integration_id") == ORACLE_GATE_INTEGRATION_ID
 
 
 def review_enforcement_findings(rules: list[dict[str, Any]]) -> list[str]:
@@ -52,8 +60,8 @@ def review_enforcement_findings(rules: list[dict[str, Any]]) -> list[str]:
         for check in checks
     ):
         findings.append("required_status_checks are malformed: oracle enforcement is unverified")
-    elif not any(check["context"] in ORACLE_CONTEXTS for check in checks):
-        findings.append("required_status_checks must include oracle-gate or oracle-review")
+    elif not any(_is_oracle_check(check) for check in checks):
+        findings.append("required_status_checks must include oracle-review or oracle-gate scoped to the oracle App")
     return findings
 
 
@@ -267,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"- {finding}")
         return 1
     print(f"# Ruleset review enforcement ({args.branch}) - OK")
-    print("- oracle-gate or oracle-review required")
+    print("- oracle-review or App-scoped oracle-gate required")
     print("- review thread resolution required")
     return 0
 
