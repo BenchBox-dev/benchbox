@@ -13412,6 +13412,13 @@
       "status": "open",
       "title": "Replace the vacuous live canary-selection tests with targeted checks and split the full-tree tests"
     },
+    "longtest-03-mcp-export-failure-real-result": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Make the MCP export-failure test exercise its own path instead of recursing through a mock"
+    },
     "loud-loader-failures-for-contaminated-data": {
       "claim": null,
       "needs": [],
