@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Running the make target on develop prints every exception without a current finding and exits 0; the planner leads (the ten dead entries) appear or the item explains why each does not",
+    "A test with a synthetic policy and source tree shows: a matching exception is not listed, a digest-mismatched one is listed, a missing-path one is listed",
+    "The report does not run in CI or the commit hook and the policy file is byte-identical after a run (tested)",
+    "Reuses the checker scan: no second digest implementation (grep evidence recorded)",
+    "PR merged with an oracle verdict on its final head; merge SHA recorded"
+  ],
+  "context": "\n\nSource: soundness-gap plan (read-only planner review, 2026-10-22) of open issues 2806, 2807, 2808, 3125, 3126 in BenchBox-dev/benchbox plus owner decisions of 2026-10-22 (record: soundness-gaps-decisions-20261022). Line numbers, commit SHAs and findings are leads from that plan: re-verify them against current develop before acting. Not yet verified by anyone else.",
+  "description": "Owner decision 2026-10-22: add a dead-exception report. quality/comment-policy.json carries fixture exceptions keyed by path and digest. Pre-registered or superseded entries stay forever when their file or digest no longer matches (planner found about ten: PR 3084's d0fc52c1..., 297e975..., 02d3deac..., 63ef1d3... from PR 3136, and five superseded entries from PR 3081; re-verify). Nothing reports them. Build a report (a script under scripts/ plus a make target following the existing comment-policy targets) that lists every registered exception with no current finding at its path and digest (and every exception whose path no longer exists), with its registration PR/commit when derivable. REPORT ONLY: it must not fail any build, must not modify the policy file, and must not be wired into CI or the commit hook.\n\nDECISION GATE: reuse the checker's own scan (import or call the same functions the checker uses) rather than reimplementing digest logic; if that needs a refactor of check_comment_policy.py beyond a thin entry point, stop and record the options for the owner. Digest scheme note: PR 3212 (scoped digests) may land and change the scheme; the report must use whatever scheme the checker on the current branch uses.\n\nGUARDRAILS (all items): G1 never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict is required on every PR (soundness paths) and no digest may be pre-registered. G2 never weaken a gate, threshold, rule or check; no skip/xfail/quarantine. G3 the primary clone /Users/joe/Developer/BenchBox is read-only: use make worktree-create + make agent-write-preflight and absolute worktree paths; stage explicit paths; never git add -A; never git stash; identity Joe Harris, no agent trailers. G4 no CHANGELOG.md entry (curated section is at its 160-line ceiling) and no comments/docstrings in code (make comment-policy-check). G5 commit and PR text for a reader who never saw the session: no item ids, no plan/session labels. G6 never close, label or edit gap issues directly: the daily digest closes them after a valid attestation. G7 no settings/rulesets/secrets/variables writes; no new dependencies or unpinned images. G8 done means merged PR plus verification evidence recorded in the item; an open PR is not done. G9 self-review pass (code review action) before make pr-open; fix Critical and Required findings.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T19:53:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4f56b192483b409a919792a54220f2a2",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}

@@ -22834,6 +22834,15 @@
       "status": "done",
       "title": "SOUNDNESS_PREFIXES matches exact-file entries by prefix so sibling files are gated"
     },
+    "soundness-dead-exception-report-20261022": {
+      "claim": null,
+      "needs": [
+        "soundness-gaps-decisions-20261022"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Add a report of comment-policy exceptions that no longer match any finding"
+    },
     "soundness-drain-all-ruleset-required-checks-20260806": {
       "claim": null,
       "needs": [],
