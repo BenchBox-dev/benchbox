@@ -13420,10 +13420,15 @@
       "title": "Make the MCP export-failure test exercise its own path instead of recursing through a mock"
     },
     "longtest-04-cli-identical-runs-and-scale": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T04:16:46Z",
+        "generation": "ba95d689956941ec81540571cb6d60da",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Stop repeating identical CLI benchmark runs and shrink the cross-surface dtype test"
     },
     "longtest-05-cli-shared-tpch-data": {
