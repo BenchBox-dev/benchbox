@@ -13544,7 +13544,8 @@
         "longtest-12-explorer-pipeline-lazy-init",
         "longtest-13-lazy-platform-registration",
         "longtest-14-dsqgen-template-staging",
-        "longtest-15-module-grouped-scheduling"
+        "longtest-15-module-grouped-scheduling",
+        "longtest-17-cli-startup-probe-and-datagen-chunks"
       ],
       "priority": "high",
       "status": "open",
