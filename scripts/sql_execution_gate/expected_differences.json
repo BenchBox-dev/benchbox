@@ -40,14 +40,55 @@
       "benchmark": "tpcds",
       "check": "baseline",
       "queries": [
-        12,
-        36,
-        59,
-        66,
+        12
+      ],
+      "match": "48.18628515445487",
+      "justification": "DataFusion previously computed this exact division as DECIMAL with six fractional digits; the runtime now computes DOUBLE PRECISION. Both agree with the DuckDB reference within the comparison tolerance; the candidate keeps the digits beyond the sixth that the baseline rounded away. The entry is optional because it can only fire while the baseline commit predates the runtime that changed the division, so it is not stale once a baseline carries that runtime. Output precision change, not a row difference.",
+      "optional": true
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpcds",
+      "check": "baseline",
+      "queries": [
+        36
+      ],
+      "match": "-0.8091435685191565",
+      "justification": "DataFusion previously computed this exact division as DECIMAL with six fractional digits; the runtime now computes DOUBLE PRECISION. Both agree with the DuckDB reference within the comparison tolerance; the candidate keeps the digits beyond the sixth that the baseline rounded away. The entry is optional because it can only fire while the baseline commit predates the runtime that changed the division, so it is not stale once a baseline carries that runtime. Output precision change, not a row difference.",
+      "optional": true
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpcds",
+      "check": "baseline",
+      "queries": [
+        59
+      ],
+      "match": "0.6941795905968915",
+      "justification": "DataFusion previously computed this exact division as DECIMAL with six fractional digits; the runtime now computes DOUBLE PRECISION. Both agree with the DuckDB reference within the comparison tolerance; the candidate keeps the digits beyond the sixth that the baseline rounded away. The entry is optional because it can only fire while the baseline commit predates the runtime that changed the division, so it is not stale once a baseline carries that runtime. Output precision change, not a row difference.",
+      "optional": true
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpcds",
+      "check": "baseline",
+      "queries": [
+        66
+      ],
+      "match": "0.03348810119177285",
+      "justification": "DataFusion previously computed this exact division as DECIMAL with six fractional digits; the runtime now computes DOUBLE PRECISION. Both agree with the DuckDB reference within the comparison tolerance; the candidate keeps the digits beyond the sixth that the baseline rounded away. The entry is optional because it can only fire while the baseline commit predates the runtime that changed the division, so it is not stale once a baseline carries that runtime. Output precision change, not a row difference.",
+      "optional": true
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpcds",
+      "check": "baseline",
+      "queries": [
         98
       ],
-      "match": "differs from baseline",
-      "justification": "DataFusion previously computed this exact division as DECIMAL with six fractional digits; it is now computed as DOUBLE PRECISION. Both agree with the DuckDB reference within the comparison tolerance, and the candidate carries the digits beyond the sixth that the baseline rounded away. Output precision change, not a row difference."
+      "match": "14.050525885720932",
+      "justification": "DataFusion previously computed this exact division as DECIMAL with six fractional digits; the runtime now computes DOUBLE PRECISION. Both agree with the DuckDB reference within the comparison tolerance; the candidate keeps the digits beyond the sixth that the baseline rounded away. The entry is optional because it can only fire while the baseline commit predates the runtime that changed the division, so it is not stale once a baseline carries that runtime. Output precision change, not a row difference.",
+      "optional": true
     }
   ]
 }
