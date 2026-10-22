@@ -22587,15 +22587,10 @@
       "title": "Snowflake: stop issuing ALTER SESSION SET QUERY_ACCELERATION_MAX_SCALE_FACTOR, which fails on every OLAP run"
     },
     "snowflake-shared-database-recreate-drops-shared-tables-20261013": {
-      "claim": {
-        "expires_at": "2026-10-23T07:38:44Z",
-        "generation": "389ca7d54faa46e2898df5ffb418661d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dce62a827220422fd68b23fc"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Snowflake: protect shared databases on recreate, then fix the drop identifier"
     },
     "snowflake-ssb-tuned-template-generator-20261013": {
