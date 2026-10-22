@@ -439,3 +439,49 @@ def pytest_terminal_summary(terminalreporter, config, exitstatus) -> None:
             )
     except Exception as e:  # pragma: no cover
         terminalreporter.write_line(f"Note: Coverage warning check skipped: {e}")
+
+
+def _tree_digest(root: Path) -> dict[str, tuple[int, str]]:
+    import hashlib
+
+    return {
+        str(path.relative_to(root)): (path.stat().st_size, hashlib.sha256(path.read_bytes()).hexdigest())
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+@pytest.fixture(scope="session")
+def tpch_sf001_data(tmp_path_factory: pytest.TempPathFactory):
+    import shutil
+
+    from benchbox.core.benchmark_loader import get_benchmark_instance
+    from benchbox.core.config import BenchmarkConfig
+    from benchbox.core.system import SystemProfiler
+    from benchbox.utils.output_path import normalize_output_root
+
+    cache_root = tmp_path_factory.mktemp("shared_tpch_sf001")
+    cached_dir = Path(str(normalize_output_root(str(cache_root), "tpch", 0.01)))
+    config = BenchmarkConfig(
+        name="tpch",
+        display_name="TPC-H",
+        scale_factor=0.01,
+        compress_data=True,
+        compression_type="zstd",
+    )
+    benchmark = get_benchmark_instance(
+        config,
+        SystemProfiler().get_system_profile(),
+        output_dir=cached_dir,
+        quiet=True,
+    )
+    benchmark.generate_data()
+    generated = _tree_digest(cached_dir)
+    assert "_datagen_manifest.json" in generated
+
+    def copy_to(destination: Path) -> str:
+        shutil.copytree(cache_root, destination)
+        return str(destination)
+
+    yield copy_to
+    assert _tree_digest(cached_dir) == generated

@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 import json
 import types
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -27,7 +27,7 @@ def _only_bundle(results_dir: Path) -> dict[str, Any]:
     return json.loads(bundles[0].read_text(encoding="utf-8"))
 
 
-def _cli_run(tmp_path: Path, platform: str, *args: str, benchmark: str = "tpch") -> Any:
+def _cli_run(tmp_path: Path, platform: str, *args: str, benchmark: str = "tpch", output: str | None = None) -> Any:
     return run_cli_command(
         [
             "run",
@@ -40,7 +40,7 @@ def _cli_run(tmp_path: Path, platform: str, *args: str, benchmark: str = "tpch")
             *args,
             "--non-interactive",
             "--output",
-            str(tmp_path / "out"),
+            output or str(tmp_path / "out"),
         ],
         env={"BENCHBOX_OUTPUT_DIR": str(tmp_path)},
         timeout=300,
@@ -56,12 +56,22 @@ def _cli_run(tmp_path: Path, platform: str, *args: str, benchmark: str = "tpch")
 )
 def test_cli_polars_run_records_requested_engine_and_collect_kwargs(
     tmp_path: Path,
+    tpch_sf001_data: Callable[[Path], str],
     engine_args: tuple[str, ...],
     requested: str,
     collect_kwargs: dict[str, str],
     variant: str,
 ) -> None:
-    result = _cli_run(tmp_path, "polars-df", *engine_args, "--queries", "6", "--phases", "generate,load,power")
+    result = _cli_run(
+        tmp_path,
+        "polars-df",
+        *engine_args,
+        "--queries",
+        "6",
+        "--phases",
+        "generate,load,power",
+        output=tpch_sf001_data(tmp_path / "out"),
+    )
     assert result.returncode == 0, result.stdout + result.stderr
 
     bundle = _only_bundle(tmp_path / "results")
@@ -83,10 +93,18 @@ _DEFAULT_RECEIPT = {
 
 @pytest.mark.parametrize(("platform", "variant"), [("duckdb", "duckdb"), ("pandas-df", "pandas-df")])
 def test_cli_run_on_a_platform_without_engines_records_the_default_receipt(
-    tmp_path: Path, platform: str, variant: str
+    tmp_path: Path, tpch_sf001_data: Callable[[Path], str], platform: str, variant: str
 ) -> None:
     pytest.importorskip("pandas")
-    result = _cli_run(tmp_path, platform, "--queries", "6", "--phases", "generate,load,power")
+    result = _cli_run(
+        tmp_path,
+        platform,
+        "--queries",
+        "6",
+        "--phases",
+        "generate,load,power",
+        output=tpch_sf001_data(tmp_path / "out"),
+    )
     assert result.returncode == 0, result.stdout + result.stderr
 
     bundle = _only_bundle(tmp_path / "results")
@@ -95,7 +113,9 @@ def test_cli_run_on_a_platform_without_engines_records_the_default_receipt(
     assert bundle["platform"]["variant"] == variant
 
 
-def test_cli_tuning_init_streaming_profile_then_run_records_the_default_engine(tmp_path: Path) -> None:
+def test_cli_tuning_init_streaming_profile_then_run_records_the_default_engine(
+    tmp_path: Path, tpch_sf001_data: Callable[[Path], str]
+) -> None:
     tuning_file = tmp_path / "streaming.yaml"
     init = run_cli_command(
         ["tuning", "init", "--platform", "polars", "--profile", "streaming", "--output", str(tuning_file)],
@@ -107,7 +127,15 @@ def test_cli_tuning_init_streaming_profile_then_run_records_the_default_engine(t
     assert "engine_affinity" not in tuning_file.read_text(encoding="utf-8")
 
     result = _cli_run(
-        tmp_path, "polars-df", "--tuning", str(tuning_file), "--queries", "6", "--phases", "generate,load,power"
+        tmp_path,
+        "polars-df",
+        "--tuning",
+        str(tuning_file),
+        "--queries",
+        "6",
+        "--phases",
+        "generate,load,power",
+        output=tpch_sf001_data(tmp_path / "out"),
     )
     assert result.returncode == 0, result.stdout + result.stderr
 

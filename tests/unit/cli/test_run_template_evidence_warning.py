@@ -82,7 +82,7 @@ def test_duckdb_tuned_run_prints_tuning_verification_summary(duckdb_tuned_run):
     assert "Dropped intents" in result.output
 
 
-def test_duckdb_notuning_run_has_no_evidence_warning(tmp_path, monkeypatch):
+def test_duckdb_notuning_run_has_no_evidence_warning(tmp_path, monkeypatch, tpch_sf001_data):
     monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path))
 
     result = CliRunner().invoke(
@@ -100,6 +100,8 @@ def test_duckdb_notuning_run_has_no_evidence_warning(tmp_path, monkeypatch):
             "--queries",
             "1",
             "--non-interactive",
+            "--output",
+            tpch_sf001_data(tmp_path / "data"),
         ],
     )
 
@@ -108,7 +110,7 @@ def test_duckdb_notuning_run_has_no_evidence_warning(tmp_path, monkeypatch):
     assert _tuned_run_payload(tmp_path) is None
 
 
-def test_duckdb_tuned_run_without_engine_metadata_stays_unmeasured(tmp_path, monkeypatch):
+def test_duckdb_tuned_run_without_engine_metadata_stays_unmeasured(tmp_path, monkeypatch, tpch_sf001_data):
     profile = SystemProfiler().get_system_profile()
     monkeypatch.setattr(
         template_evidence,
@@ -147,6 +149,8 @@ def test_duckdb_tuned_run_without_engine_metadata_stays_unmeasured(tmp_path, mon
             "--queries",
             "1",
             "--non-interactive",
+            "--output",
+            tpch_sf001_data(tmp_path / "data"),
         ],
     )
 
