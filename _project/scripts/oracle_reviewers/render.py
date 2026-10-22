@@ -36,6 +36,11 @@ SLOT_MAX_BYTES = {
 _SHA = re.compile(r"[0-9a-f]{40}")
 _SLUG = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
 _NUMBER = re.compile(r"[0-9]+(\.[0-9]+)?")
+_MENTION_AT = re.compile(r"@(?=[^@ \t\r\n\f\v])")
+
+
+def _neutralize_mentions(text: str) -> str:
+    return _MENTION_AT.sub("\u200b@", text)
 
 
 def _validate(name: str, values: Mapping[str, object]) -> None:
@@ -94,7 +99,7 @@ def render_file_priority(rows: Sequence[tuple[str, int, str]]) -> str:
     for path, score, impact in rows:
         if not isinstance(score, int) or not 1 <= score <= 5:
             raise ValueError(f"file priority score out of range 1-5: {path!r}={score!r}")
-        line = f"{path} | {score} | {impact}"
+        line = _neutralize_mentions(f"{path} | {score} | {impact}")
         size += len(line.encode("utf-8")) + 1
         if size > SLOT_MAX_BYTES["file_priority"]:
             break
@@ -214,7 +219,7 @@ def assemble_values(
         ),
         "max_defects": max_defects,
         "prior_rule": prior_rule,
-        "change_data": change_data,
+        "change_data": _neutralize_mentions(change_data),
         "schema": schema_text(),
     }
 

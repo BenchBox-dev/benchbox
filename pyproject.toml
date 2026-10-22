@@ -36,6 +36,7 @@ dependencies = [
     "numpy>=1.24.0",
     "zstandard>=0.20.0",
     "requests>=2.31.0",
+    "certifi>=2026.10.19",
 ]
 
 [tool.setuptools]
