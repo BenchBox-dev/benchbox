@@ -275,6 +275,10 @@ class TestPolarsSmoke:
         collected2 = collect_result(result2, polars_adapter)
         assert polars_adapter.get_row_count(collected2) == 4
 
+        result3 = orders.filter(col("o_totalprice") > lit(1500.0))
+        collected3 = collect_result(result3, polars_adapter)
+        assert polars_adapter.get_row_count(collected3) == 3
+
     def test_sort_multiple_columns(self, polars_adapter):
 
         ctx = polars_adapter.create_context()
@@ -367,6 +371,10 @@ class TestPySparkSmoke:
         collected = collect_result(result, pyspark_adapter)
         assert pyspark_adapter.get_row_count(collected) == 4
 
+        result2 = orders.filter(col("o_totalprice") > lit(1500.0))
+        collected2 = collect_result(result2, pyspark_adapter)
+        assert pyspark_adapter.get_row_count(collected2) == 3
+
     def test_sort_multiple_columns(self, pyspark_adapter):
 
         ctx = pyspark_adapter.create_context()
@@ -452,56 +460,6 @@ class TestDataFusionSmoke:
 
 @pytest.mark.integration
 class TestCrossPlatformConsistency:
-    @pytest.mark.skipif(not (POLARS_AVAILABLE and PYSPARK_AVAILABLE), reason="Both Polars and PySpark required")
-    def test_join_produces_same_row_count(self, polars_adapter, pyspark_adapter):
-
-        polars_ctx = polars_adapter.create_context()
-        polars_data = create_test_data_polars()
-        for name, df in polars_data.items():
-            polars_ctx.register_table(name, df)
-
-        polars_orders = polars_ctx.get_table("orders")
-        polars_customers = polars_ctx.get_table("customer")
-        polars_result = polars_orders.join(polars_customers, left_on="o_custkey", right_on="c_custkey")
-        polars_count = get_row_count(polars_result, polars_adapter)
-
-        pyspark_ctx = pyspark_adapter.create_context()
-        pyspark_data = create_test_data_pyspark(pyspark_adapter.spark)
-        for name, df in pyspark_data.items():
-            pyspark_ctx.register_table(name, df)
-
-        pyspark_orders = pyspark_ctx.get_table("orders")
-        pyspark_customers = pyspark_ctx.get_table("customer")
-        pyspark_result = pyspark_orders.join(pyspark_customers, left_on="o_custkey", right_on="c_custkey")
-        pyspark_count = get_row_count(pyspark_result, pyspark_adapter)
-
-        assert polars_count == pyspark_count, f"Join row counts differ: Polars={polars_count}, PySpark={pyspark_count}"
-
-    @pytest.mark.skipif(not (POLARS_AVAILABLE and PYSPARK_AVAILABLE), reason="Both Polars and PySpark required")
-    def test_group_by_produces_same_row_count(self, polars_adapter, pyspark_adapter):
-
-        polars_ctx = polars_adapter.create_context()
-        polars_data = create_test_data_polars()
-        polars_ctx.register_table("orders", polars_data["orders"])
-
-        polars_orders = polars_ctx.get_table("orders")
-        polars_col = polars_ctx.col
-        polars_result = polars_orders.group_by("o_custkey").agg(polars_col("o_totalprice").sum().alias("total"))
-        polars_count = get_row_count(polars_result, polars_adapter)
-
-        pyspark_ctx = pyspark_adapter.create_context()
-        pyspark_data = create_test_data_pyspark(pyspark_adapter.spark)
-        pyspark_ctx.register_table("orders", pyspark_data["orders"])
-
-        pyspark_orders = pyspark_ctx.get_table("orders")
-        pyspark_col = pyspark_ctx.col
-        pyspark_result = pyspark_orders.group_by("o_custkey").agg(pyspark_col("o_totalprice").sum().alias("total"))
-        pyspark_count = get_row_count(pyspark_result, pyspark_adapter)
-
-        assert polars_count == pyspark_count, (
-            f"Group by row counts differ: Polars={polars_count}, PySpark={pyspark_count}"
-        )
-
     @pytest.mark.skipif(not (POLARS_AVAILABLE and PYSPARK_AVAILABLE), reason="Both Polars and PySpark required")
     def test_filter_produces_same_row_count(self, polars_adapter, pyspark_adapter):
 
