@@ -54,6 +54,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The Spark, Velox, LakeSail and Databricks adapters build `CREATE TABLE` statements with
+  `translate_ddl` instead of rewriting the translated text: the `USING` format, Delta auto-optimize
+  and Hudi table properties, `CREATE OR REPLACE`, and the Parquet and ORC constraint and `SMALLINT`
+  stripping are `translate_ddl` options built from the adapter configuration. The cloud Spark DDL
+  mixin returns table layouts (`generate_table_layout`) and renders them through `translate_ddl`.
+  `optimize_spark_table_definition`, `_convert_to_delta_table`, `_convert_to_hudi_table` and
+  `SparkDDLGeneratorMixin.generate_tuning_clauses` are removed. Differences from the old text
+  output: a leading `/* comment */` is kept, a named `CONSTRAINT` is removed together with its
+  key, a Hive partition column is moved out of the column list, a Parquet `SORTED BY` without
+  `CLUSTERED BY` is no longer written, and the two Delta auto-optimize properties are listed in
+  a different order.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed

@@ -479,6 +479,20 @@ def translate_ddl(
     )
 
 
+def ddl_column_names(ddl: str, source_dialect: str = "standard") -> dict[str, list[str]]:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    columns: dict[str, list[str]] = {}
+    for tree in sqlglot.parse(ddl, read=resolve_sql_dialect(source_dialect)):
+        if not isinstance(tree, exp.Create) or not isinstance(tree.this, exp.Schema):
+            continue
+        table = tree.this.this
+        if isinstance(table, exp.Table):
+            columns[table.name.lower()] = [column.name for column in tree.this.find_all(exp.ColumnDef)]
+    return columns
+
+
 def contains_division(sql: str, dialect: str) -> bool:
     from benchbox._vendor import sqlglot
     from benchbox._vendor.sqlglot import exp

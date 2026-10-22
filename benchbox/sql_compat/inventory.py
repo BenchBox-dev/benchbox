@@ -105,7 +105,6 @@ _FILE_STEM_TO_PLATFORM_KEY: dict[str, str] = {
 }
 
 _DDL_HELPER_PLATFORM_KEYS: dict[tuple[str, str], tuple[str, ...]] = {
-    ("_spark_helpers.py", "optimize_spark_table_definition"): ("lakesail", "spark", "velox"),
     ("presto_trino_adapter_base.py", "_optimize_table_definition"): ("presto", "trino"),
 }
 _DDL_GOVERNANCE_TRANSFORMER_ALIASES: dict[tuple[str, str], tuple[str, ...]] = {
@@ -115,25 +114,19 @@ _DDL_GOVERNANCE_TRANSFORMER_ALIASES: dict[tuple[str, str], tuple[str, ...]] = {
     ("clickhouse", "_resolve_tuned_ddl_clauses"): ("clickhouse_ddl_optimizer",),
     ("clickhouse", "_strip_primary_key_constraints"): ("clickhouse_ddl_optimizer",),
     ("databend", "_optimize_table_definition"): ("databend_ddl_optimizer",),
-    ("databricks", "_convert_to_delta_table"): ("databricks_delta_ddl_optimizer",),
-    ("databricks", "_convert_to_hudi_table"): ("databricks_delta_ddl_optimizer",),
-    ("databricks", "_hudi_table_properties"): ("databricks_delta_ddl_optimizer",),
     ("doris", "_inject_doris_ddl_clauses"): ("doris_inject_ddl_clauses",),
     ("fabric_dw", "_optimize_table_definition"): ("fabric_dw_ddl_optimizer",),
     ("firebolt", "_optimize_table_definition"): ("firebolt_ddl_optimizer",),
-    ("lakesail", "optimize_spark_table_definition"): ("lakesail_ddl_optimizer",),
     ("pg_mooncake", "_transform_create_statement"): ("pg_mooncake_heap_load_then_mirror",),
     ("postgresql", "_transform_create_statement"): ("postgresql_strip_foreign_keys",),
     ("presto", "_optimize_table_definition"): ("presto_ddl_optimizer",),
     ("questdb", "_strip_pk_constraints"): ("questdb_strip_fk_and_pk_constraints",),
     ("redshift", "_optimize_table_definition"): ("redshift_ddl_optimizer",),
     ("snowflake", "_optimize_table_definition"): ("snowflake_ddl_optimizer",),
-    ("spark", "optimize_spark_table_definition"): ("spark_ddl_optimizer",),
     ("starrocks", "_optimize_table_definition"): ("starrocks_ddl_optimizer",),
     ("starrocks", "_resolve_tuned_ddl_clauses"): ("starrocks_ddl_optimizer",),
     ("synapse", "_optimize_table_definition"): ("azure_synapse_ddl_optimizer",),
     ("trino", "_optimize_table_definition"): ("trino_ddl_optimizer",),
-    ("velox", "optimize_spark_table_definition"): ("velox_ddl_optimizer",),
 }
 
 _SESSION_SETTING_RES = [

@@ -14,7 +14,7 @@ from benchbox.sql_compat.rules._registration import register_ddl_rewrite
 register_ddl_rewrite(
     platform="databricks",
     rule_name="convert_to_delta_table",
-    transformer_id="databricks_delta_ddl_optimizer",
+    transformer_id="translate_ddl:default_layout",
     description="Convert DuckDB-style DDL to Databricks Delta Lake or Apache Hudi format: "
     "CREATE OR REPLACE TABLE, USING DELTA or USING HUDI, with TBLPROPERTIES settings",
     reason="Databricks requires Delta Lake or Hudi DDL: CREATE TABLE must use CREATE OR REPLACE TABLE "

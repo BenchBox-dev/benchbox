@@ -90,9 +90,7 @@ def test_ddl_governance_statuses_distinguish_runtime_governance_and_no_rewrite_p
 
     assert by_key[("bigquery", "_convert_to_bigquery_table")].status == "registered_governance_only_intent"
     assert by_key[("athena", "_convert_to_external_table")].status == "registered_governance_only_intent"
-    assert by_key[("databricks", "_convert_to_delta_table")].status == "registered_governance_only_intent"
     assert by_key[("singlestore", "_transform_create_statement")].status == "registered_runtime_behavior"
-    assert by_key[("spark", "optimize_spark_table_definition")].status == "registered_governance_only_intent"
     assert all(entry.inferred_platform_key != "duckdb" for entry in statuses)
 
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import re
 import socket
 from collections.abc import Callable, Mapping
 from typing import Any
@@ -163,130 +162,22 @@ def get_spark_query_plan(
         return None
 
 
-_USING_CLAUSE_RE = re.compile(r"\s+USING\s+\w+", re.IGNORECASE)
-_SMALLINT_RE = re.compile(r"\bSMALLINT\b", re.IGNORECASE)
-_INLINE_PK_RE = re.compile(r"\bPRIMARY\s+KEY\b(?!\s*\()", re.IGNORECASE)
-_INLINE_UNIQUE_RE = re.compile(r"\bUNIQUE\b(?!\s*\()", re.IGNORECASE)
-_TABLE_CONSTRAINT_KEYWORD_RE = re.compile(
-    r",\s*(PRIMARY\s+KEY|UNIQUE|FOREIGN\s+KEY|CHECK)\s*\(",
-    re.IGNORECASE,
-)
-_REFERENCES_TAIL_RE = re.compile(r"\s+REFERENCES\s+\S+\s*\(", re.IGNORECASE)
-_TRAILING_COMMA_RE = re.compile(r",\s*\)")
-_REPEATED_SPACE_RE = re.compile(r"[ \t]{2,}")
-_LEADING_COMMENTS_RE = re.compile(r"\A(?:\s*(?:--[^\n]*(?:\n|$)|/\*.*?\*/))+\s*", re.DOTALL)
-_FIXED_SIZE_ARRAY_TYPE_RE = re.compile(r"\b([A-Za-z]\w*)\s*\[\s*\d+\s*\]")
-_ARRAY_FIXED_SIZE_SUFFIX_RE = re.compile(r"(>)\s*\[\s*\d+\s*\]")
-_CREATE_TABLE_COLUMN_LIST_RE = re.compile(
-    r"\A\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:\"[^\"]*\"|`[^`]*`|[^\s(\"`])+\s*\(",
-    re.IGNORECASE,
-)
+def spark_schema_statements(schema_sql: str, *, table_format: str, strip_constraints: bool) -> list[str]:
+    from benchbox.utils.dialect_utils import translate_ddl
+
+    options: dict[str, Any] = {"default_layout": {"format": (table_format or "parquet").lower()}}
+    if strip_constraints:
+        options.update(
+            strip_primary_keys=True,
+            strip_foreign_keys=True,
+            strip_unique=True,
+            type_map={"SMALLINT": "INT"},
+        )
+    return translate_ddl(schema_sql, "spark", "standard", **options)
 
 
-def _column_list_end(statement: str) -> int:
-    match = _CREATE_TABLE_COLUMN_LIST_RE.match(statement)
-    if not match:
-        return len(statement)
-    depth = 1
-    quote = ""
-    cursor = match.end()
-    while cursor < len(statement):
-        ch = statement[cursor]
-        cursor += 1
-        if quote:
-            if ch == "\\" and quote == "'":
-                cursor += 1
-            elif ch == quote:
-                quote = ""
-        elif ch in "'\"`":
-            quote = ch
-        elif ch == "-" and statement[cursor : cursor + 1] == "-":
-            newline = statement.find("\n", cursor + 1)
-            cursor = len(statement) if newline == -1 else newline + 1
-        elif ch == "/" and statement[cursor : cursor + 1] == "*":
-            close = statement.find("*/", cursor + 1)
-            cursor = len(statement) if close == -1 else close + 2
-        elif ch == "(":
-            depth += 1
-        elif ch == ")":
-            depth -= 1
-            if depth == 0:
-                return cursor
-    return len(statement)
-
-
-def _strip_balanced_paren_constraints(statement: str) -> str:
-    out: list[str] = []
-    idx = 0
-    while True:
-        match = _TABLE_CONSTRAINT_KEYWORD_RE.search(statement, idx)
-        if not match:
-            out.append(statement[idx:])
-            return "".join(out)
-
-        out.append(statement[idx : match.start()])
-        depth = 1
-        cursor = match.end()
-        while cursor < len(statement) and depth:
-            ch = statement[cursor]
-            if ch == "(":
-                depth += 1
-            elif ch == ")":
-                depth -= 1
-            cursor += 1
-        if depth:
-            out.append(statement[match.start() :])
-            return "".join(out)
-
-        ref_match = _REFERENCES_TAIL_RE.match(statement, cursor)
-        if ref_match:
-            ref_depth = 1
-            ref_cursor = ref_match.end()
-            while ref_cursor < len(statement) and ref_depth:
-                ch = statement[ref_cursor]
-                if ch == "(":
-                    ref_depth += 1
-                elif ch == ")":
-                    ref_depth -= 1
-                ref_cursor += 1
-            if ref_depth == 0:
-                cursor = ref_cursor
-        idx = cursor
-
-
-def optimize_spark_table_definition(
-    statement: str,
-    *,
-    table_format: str = "parquet",
-    strip_v1_constraints: bool = True,
-    upcast_smallint: bool = True,
-) -> str:
-    statement = _LEADING_COMMENTS_RE.sub("", statement)
-    if not statement.strip():
-        return ""
-    if not statement.upper().startswith("CREATE TABLE"):
-        return statement
-
-    statement = _USING_CLAUSE_RE.sub("", statement)
-    statement = _FIXED_SIZE_ARRAY_TYPE_RE.sub(r"ARRAY<\1>", statement)
-    statement = _ARRAY_FIXED_SIZE_SUFFIX_RE.sub(r"\1", statement)
-
-    if upcast_smallint:
-        statement = _SMALLINT_RE.sub("INT", statement)
-
-    if strip_v1_constraints:
-        statement = _INLINE_PK_RE.sub("", statement)
-        statement = _INLINE_UNIQUE_RE.sub("", statement)
-        statement = _strip_balanced_paren_constraints(statement)
-        statement = _TRAILING_COMMA_RE.sub(")", statement)
-        statement = _REPEATED_SPACE_RE.sub(" ", statement)
-
-    if ")" in statement:
-        fmt = (table_format or "parquet").upper()
-        statement = statement.rstrip(";").rstrip()
-        end = _column_list_end(statement)
-        statement = f"{statement[:end]} USING {fmt}{statement[end:]}"
-    return statement
+def spark_format_strips_constraints(table_format: str) -> bool:
+    return (table_format or "parquet").lower() in {"parquet", "orc"}
 
 
 def purge_orphaned_warehouse_directory(spark: Any, *, logger: logging.Logger) -> None:
@@ -555,7 +446,6 @@ def _run_schema_statement(spark: Any, statement: str) -> None:
 def run_spark_schema_creation_loop(
     spark: Any,
     statements: list[str],
-    optimize_statement: Callable[[str], str],
     *,
     logger: logging.Logger,
     on_pre_loop: Callable[[Any], None] | None = None,
@@ -569,9 +459,6 @@ def run_spark_schema_creation_loop(
         if not statement:
             continue
         statement = normalize_spark_table_name_in_sql(statement)
-        statement = optimize_statement(statement)
-        if not statement.strip():
-            continue
         try:
             _run_schema_statement(spark, statement)
             logger.debug(f"Executed schema statement: {statement[:100]}...")

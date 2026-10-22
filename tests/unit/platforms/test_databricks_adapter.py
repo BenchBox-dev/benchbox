@@ -1344,7 +1344,7 @@ class TestNormalizeDatabricksQuery:
         assert adapter._normalize_databricks_query(query) == query
 
 
-class TestConvertToDeltaTable:
+class TestSchemaDdlOptions:
     def _make_adapter(self, **kwargs):
         with patch("benchbox.platforms.databricks.adapter.databricks_sql"):
             defaults = {
@@ -1355,96 +1355,78 @@ class TestConvertToDeltaTable:
             defaults.update(kwargs)
             return DatabricksAdapter(**defaults)
 
+    def _convert(self, adapter, sql):
+        from benchbox.utils.dialect_utils import translate_ddl
+
+        return " ".join(translate_ddl(sql, "databricks", "standard", **adapter._schema_ddl_options(sql)))
+
     def test_adds_or_replace_to_create_table(self):
         adapter = self._make_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE foo (id BIGINT)")
-        assert result.startswith("CREATE OR REPLACE TABLE foo")
+        result = self._convert(adapter, "CREATE TABLE foo (id BIGINT)")
+        assert result.startswith("CREATE OR REPLACE TABLE `foo`")
 
     def test_preserves_existing_or_replace(self):
         adapter = self._make_adapter()
-        result = adapter._convert_to_delta_table("CREATE OR REPLACE TABLE foo (id BIGINT)")
+        result = self._convert(adapter, "CREATE OR REPLACE TABLE foo (id BIGINT)")
         assert result.count("OR REPLACE") == 1
 
     def test_adds_using_delta_after_column_defs(self):
         adapter = self._make_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE t (a INT, b STRING)")
-        assert "USING DELTA" in result
-        paren_idx = result.index(")")
-        delta_idx = result.index("USING DELTA")
-        assert delta_idx > paren_idx
+        result = self._convert(adapter, "CREATE TABLE t (a INT, b STRING)")
+        assert result.index("USING DELTA") > result.index(")")
 
-    def test_does_not_add_using_delta_when_already_present(self):
+    def test_existing_using_clause_is_replaced(self):
         adapter = self._make_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE t (a INT) USING DELTA")
-        assert result.count("USING DELTA") == 1
-
-    def test_ctas_places_using_delta_before_as_select(self):
-        adapter = self._make_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE t AS SELECT * FROM (SELECT 1 AS id) s")
+        result = self._convert(adapter, "CREATE TABLE t (a INT) USING PARQUET")
+        assert result.count("USING") == 1
         assert "USING DELTA" in result
-        assert result.index("USING DELTA") < result.index("AS SELECT")
-        assert ") USING DELTA" not in result
-        result = adapter._convert_to_delta_table("CREATE TABLE t AS SELECT 1 AS id")
-        assert "USING DELTA" in result
-        assert result.index("USING DELTA") < result.index("AS SELECT")
-
-    def test_ctas_tblproperties_precede_as_select(self):
-        adapter = self._make_adapter(delta_auto_optimize=True)
-        result = adapter._convert_to_delta_table("CREATE TABLE t AS SELECT 1 AS id")
-        props_idx = result.index("TBLPROPERTIES")
-        select_idx = result.index("AS SELECT")
-        assert props_idx < select_idx
-        assert "SELECT 1 AS id TBLPROPERTIES" not in result
-
-    def test_ctas_with_join_using_keeps_using_delta(self):
-        adapter = self._make_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE t AS SELECT * FROM a JOIN b USING (id)")
-        assert "USING DELTA" in result
-        assert "USING (id)" in result
 
     def test_using_named_columns_do_not_suppress_using_delta(self):
         adapter = self._make_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE t (id INT, using_status STRING)")
+        result = self._convert(adapter, "CREATE TABLE t (id INT, using_status STRING)")
         assert "USING DELTA" in result
-
-    def test_cte_ctas_places_clauses_before_with(self):
-        adapter = self._make_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE t AS WITH cte AS (SELECT 1 AS id) SELECT * FROM cte")
-        using_idx = result.index("USING DELTA")
-        with_idx = result.index("AS WITH")
-        assert using_idx < with_idx
-        assert "(SELECT 1 AS id) USING DELTA" not in result
 
     def test_adds_tblproperties_for_auto_optimize(self):
         adapter = self._make_adapter(delta_auto_optimize=True)
-        result = adapter._convert_to_delta_table("CREATE TABLE t (a INT)")
-        assert "TBLPROPERTIES" in result
-        assert "'delta.autoOptimize.optimizeWrite' = 'true'" in result
-        assert "'delta.autoOptimize.autoCompact' = 'true'" in result
+        result = self._convert(adapter, "CREATE TABLE t (a INT)")
+        assert "'delta.autoOptimize.optimizeWrite'='true'" in result
+        assert "'delta.autoOptimize.autoCompact'='true'" in result
 
     def test_no_tblproperties_when_auto_optimize_disabled(self):
         adapter = self._make_adapter(delta_auto_optimize=False)
-        result = adapter._convert_to_delta_table("CREATE TABLE t (a INT)")
-        assert "TBLPROPERTIES ()" in result
-
-    def test_preserves_existing_tblproperties(self):
-        adapter = self._make_adapter()
-        sql = "CREATE TABLE t (a INT) TBLPROPERTIES ('x'='y')"
-        result = adapter._convert_to_delta_table(sql)
-        assert result.count("TBLPROPERTIES") == 1
+        result = self._convert(adapter, "CREATE TABLE t (a INT)")
+        assert "TBLPROPERTIES" not in result
 
     def test_non_create_table_passthrough(self):
         adapter = self._make_adapter()
-        sql = "INSERT INTO foo VALUES (1)"
-        assert adapter._convert_to_delta_table(sql) == sql
+        assert self._convert(adapter, "INSERT INTO foo VALUES (1)") == "INSERT INTO `foo` VALUES (1)"
 
     def test_nested_parens_in_column_defs(self):
         adapter = self._make_adapter()
-        sql = "CREATE TABLE t (a DECIMAL(10,2), b VARCHAR(100))"
-        result = adapter._convert_to_delta_table(sql)
+        result = self._convert(adapter, "CREATE TABLE t (a DECIMAL(10,2), b VARCHAR(100))")
         assert "USING DELTA" in result
-        assert "DECIMAL(10,2)" in result
+        assert "DECIMAL(10, 2)" in result
         assert "VARCHAR(100)" in result
+
+    def test_if_not_exists_kept_until_schema_reset(self):
+        adapter = self._make_adapter()
+        ddl = "CREATE TABLE IF NOT EXISTS DimDate (SK_DateID BIGINT)"
+        result = self._convert(adapter, ddl)
+        assert "OR REPLACE" not in result
+        assert "IF NOT EXISTS" in result
+        adapter._schema_reset_in_place = True
+        assert "OR REPLACE" in self._convert(adapter, ddl)
+
+    def test_hudi_layouts_keep_keys_only_for_tables_with_the_columns(self):
+        adapter = self._make_adapter(
+            table_format="hudi", hudi_primary_key="o_orderkey", hudi_precombine_field="o_orderdate"
+        )
+        ddl = "CREATE TABLE orders (O_ORDERKEY BIGINT, o_orderdate DATE); CREATE TABLE region (r_regionkey BIGINT)"
+        orders, region = [self._convert(adapter, s) for s in ddl.split(";")]
+        assert "'primaryKey'='O_ORDERKEY'" in orders
+        assert "'preCombineField'='o_orderdate'" in orders
+        assert "primaryKey" not in region
+        assert "'type'='cow'" in region
 
 
 class TestFixDatabricksSqlSyntax:

@@ -31,6 +31,7 @@ from benchbox.utils.dependencies import (
     get_dependency_error_message,
     get_package_install_message,
 )
+from benchbox.utils.dialect_utils import ddl_column_names, translate_ddl
 from benchbox.utils.file_format import COMPRESSION_EXTENSIONS
 
 try:
@@ -66,34 +67,6 @@ def _compact_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 def _normalize_table_format(config: Mapping[str, Any]) -> str:
     return str(config.get("table_format") or "delta").strip().lower()
-
-
-def _table_name_paren_start(statement: str) -> int | None:
-    table_match = re.match(
-        r"(?i)CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\S+)\s*\(",
-        statement,
-    )
-    if not table_match:
-        return None
-    return table_match.end() - 1
-
-
-def _split_top_level_commas(body: str) -> list[str]:
-    parts: list[str] = []
-    depth = 0
-    current: list[str] = []
-    for char in body:
-        if char == "(":
-            depth += 1
-        elif char == ")":
-            depth -= 1
-        if char == "," and depth == 0:
-            parts.append("".join(current))
-            current = []
-        else:
-            current.append(char)
-    parts.append("".join(current))
-    return parts
 
 
 _COMMIT_HASH_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
@@ -1215,7 +1188,7 @@ class DatabricksAdapter(PlatformAdapter):
             cursor.execute(f"USE SCHEMA {self.schema}")
             self.log_very_verbose(f"Set schema context to: {self.catalog}.{self.schema}")
 
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
 
             self.log_verbose(f"Received schema SQL from _create_schema_with_tuning: {len(schema_sql)} characters")
             self.log_very_verbose(f"Schema SQL (first 300 chars): {schema_sql[:300]}")
@@ -1233,21 +1206,15 @@ class DatabricksAdapter(PlatformAdapter):
             if len(schema_sql) != original_len:
                 self.log_verbose(f"SQL length changed after Databricks syntax fix: {original_len} -> {len(schema_sql)}")
 
-            from benchbox.platforms.cloud_shared import split_leading_sql_comments
-
-            statements = [
-                stmt.strip()
-                for stmt in schema_sql.split(";")
-                if stmt.strip() and split_leading_sql_comments(stmt)[1].strip()
-            ]
+            statements = translate_ddl(
+                schema_sql, self.get_target_dialect(), "standard", **self._schema_ddl_options(schema_sql)
+            )
 
             self.log_verbose(f"Parsed {len(statements)} CREATE TABLE statements from schema SQL")
             if not statements:
                 self.logger.error("No CREATE TABLE statements found after parsing schema SQL")
                 self.logger.error(f"Raw schema SQL (first 500 chars): {schema_sql[:500]}")
                 raise RuntimeError("Schema SQL produced no executable statements")
-
-            statements = [self._convert_to_delta_table(s) for s in statements]
 
             tables_created, failed_tables = self._execute_schema_statements(statements, cursor)
 
@@ -2700,162 +2667,36 @@ class DatabricksAdapter(PlatformAdapter):
 
         return fixed_sql
 
-    def _convert_to_delta_table(self, statement: str) -> str:
-        from benchbox.platforms.cloud_shared import split_leading_sql_comments
-
-        prefix, body = split_leading_sql_comments(statement)
-        if not re.match(r"(?i)CREATE\s+(OR\s+REPLACE\s+)?TABLE\b", body):
-            return statement
-
-        if "CREATE TABLE" in body.upper() and "OR REPLACE" not in body.upper():
-            if "IF NOT EXISTS" not in body.upper():
-                body = body.replace("CREATE TABLE", "CREATE OR REPLACE TABLE", 1)
-            elif getattr(self, "_schema_reset_in_place", False):
-                body = re.sub(
-                    r"CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS", "CREATE OR REPLACE TABLE", body, count=1, flags=re.IGNORECASE
-                )
-        statement = prefix + body
-
+    def _schema_ddl_options(self, schema_sql: str) -> dict[str, Any]:
+        options: dict[str, Any] = {
+            "or_replace": True,
+            "replace_if_not_exists": bool(getattr(self, "_schema_reset_in_place", False)),
+        }
         if self.table_format == "hudi":
-            return self._convert_to_hudi_table(prefix + body)
-
-        as_select = re.search(r"\bAS\s+(?:SELECT\b|WITH\b)", body, flags=re.IGNORECASE)
-        has_using_clause = re.search(
-            r"\bUSING\s+(?:DELTA|HUDI|PARQUET|CSV|JSON|TEXT|ORC|AVRO)\b", body, flags=re.IGNORECASE
-        )
-        if has_using_clause is None:
-            if as_select is not None:
-                body = body[: as_select.start()] + "USING DELTA " + body[as_select.start() :]
-            else:
-                paren_count = 0
-                using_pos = len(body)
-
-                for i, char in enumerate(body):
-                    if char == "(":
-                        paren_count += 1
-                    elif char == ")":
-                        paren_count -= 1
-                        if paren_count == 0:
-                            using_pos = i + 1
-                            break
-
-                body = body[:using_pos] + " USING DELTA" + body[using_pos:]
-
-        if "TBLPROPERTIES" not in body.upper():
-            properties = []
-
-            if self.delta_auto_optimize:
-                properties.append("'delta.autoOptimize.optimizeWrite' = 'true'")
-                properties.append("'delta.autoOptimize.autoCompact' = 'true'")
-
-            clause = "TBLPROPERTIES (" + ", ".join(properties) + ")"
-            if as_select is not None:
-                anchor_match = re.search(r"\bAS\s+(?:SELECT\b|WITH\b)", body, flags=re.IGNORECASE)
-                anchor = anchor_match.start() if anchor_match else len(body)
-                body = body[:anchor].rstrip() + " " + clause + " " + body[anchor:]
-            else:
-                body += " " + clause
-
-        return prefix + body
-
-    def _convert_to_hudi_table(self, statement: str) -> str:
-        paren_end = self._column_definitions_end(statement)
-        if "USING" not in statement.upper():
-            if paren_end is None:
-                as_match = re.search(r"(?i)\sAS\s+", statement)
-                if as_match:
-                    statement = statement[: as_match.start()] + " USING HUDI" + statement[as_match.start() :]
-                else:
-                    statement += " USING HUDI"
-            else:
-                statement = statement[:paren_end] + " USING HUDI" + statement[paren_end:]
-        elif paren_end is None:
-            statement = re.sub(r"(?i)\bUSING\s+\w+", "USING HUDI", statement, count=1)
+            options["default_layout"] = {"format": "hudi", "properties": {"type": self.hudi_table_type}}
+            options["layouts"] = {
+                table: {"format": "hudi", "properties": self._hudi_table_properties(columns)}
+                for table, columns in ddl_column_names(schema_sql).items()
+            }
         else:
-            head, tail = statement[:paren_end], statement[paren_end:]
-            tail = re.sub(r"(?i)\bUSING\s+\w+", "USING HUDI", tail, count=1)
-            statement = head + tail
-        if "USING HUDI" not in statement.upper():
-            if paren_end is None:
-                as_match = re.search(r"(?i)\sAS\s+", statement)
-                if as_match:
-                    statement = statement[: as_match.start()] + " USING HUDI" + statement[as_match.start() :]
-                else:
-                    statement += " USING HUDI"
-            else:
-                statement = statement[:paren_end] + " USING HUDI" + statement[paren_end:]
+            properties = (
+                {"delta.autoOptimize.optimizeWrite": "true", "delta.autoOptimize.autoCompact": "true"}
+                if self.delta_auto_optimize
+                else {}
+            )
+            options["default_layout"] = {"format": "delta", "properties": properties}
+        return options
 
-        stripped, n_subs = re.subn(r"(?i)\s*CLUSTER\s+BY\s*\([^()]*\)", "", statement)
-        if n_subs:
-            self.logger.warning("Removed Delta-only CLUSTER BY from Hudi DDL")
-            statement = stripped
-
-        properties = self._hudi_table_properties(statement)
-        if "TBLPROPERTIES" not in statement.upper():
-            statement += " TBLPROPERTIES (" + ", ".join(properties) + ")"
-        else:
-            missing = [prop for prop in properties if prop.split("=")[0].strip().lower() not in statement.lower()]
-            pos = statement.rfind(")")
-            if missing and pos != -1:
-                statement = statement[:pos] + ", " + ", ".join(missing) + statement[pos:]
-
-        return statement
-
-    @staticmethod
-    def _column_definitions_end(statement: str) -> int | None:
-        paren_start = _table_name_paren_start(statement)
-        if paren_start is None:
-            return None
-        depth = 0
-        for i in range(paren_start, len(statement)):
-            char = statement[i]
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0:
-                    return i + 1
-        return None
-
-    @staticmethod
-    def _ddl_column_names(statement: str) -> list[str]:
-        paren_start = _table_name_paren_start(statement)
-        if paren_start is None:
-            return []
-        depth = 0
-        start = None
-        for i in range(paren_start, len(statement)):
-            char = statement[i]
-            if char == "(":
-                if depth == 0:
-                    start = i
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0 and start is not None:
-                    body = statement[start + 1 : i]
-                    break
-        else:
-            return []
-        names: list[str] = []
-        for part in _split_top_level_commas(body):
-            tokens = part.strip().split()
-            if tokens:
-                names.append(tokens[0].strip('"`[]'))
-        return names
-
-    def _hudi_table_properties(self, statement: str) -> list[str]:
-        properties = [f"'type' = '{self.hudi_table_type}'"]
-        columns = self._ddl_column_names(statement)
-        key_options = (
-            ("'primaryKey'", self.hudi_primary_key),
-            ("'preCombineField'", self.hudi_precombine_field),
-        )
-        for option, field in key_options:
+    def _hudi_table_properties(self, columns: list[str]) -> dict[str, str]:
+        properties = {"type": self.hudi_table_type}
+        for option, field in (
+            ("primaryKey", self.hudi_primary_key),
+            ("preCombineField", self.hudi_precombine_field),
+        ):
             if field:
                 match = next((name for name in columns if name.lower() == field.lower()), None)
                 if match is not None:
-                    properties.append(f"{option} = '{match}'")
+                    properties[option] = match
         return properties
 
     def _get_platform_metadata(self, connection: Any) -> dict[str, Any]:

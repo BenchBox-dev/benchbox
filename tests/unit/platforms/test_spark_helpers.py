@@ -10,10 +10,11 @@ from benchbox.platforms._spark_helpers import (
     SPARK_AQE_KEYS,
     SparkLikeAdapterMixin,
     get_spark_query_plan,
-    optimize_spark_table_definition,
     purge_orphaned_warehouse_directory,
     run_spark_schema_creation_loop,
     spark_aqe_conf_entries,
+    spark_format_strips_constraints,
+    spark_schema_statements,
     spark_session_tuning_conf_entries,
     validate_spark_identifier,
 )
@@ -132,239 +133,74 @@ class TestValidateSparkIdentifier:
         assert validate_spark_identifier("a" * 129) is False
 
 
-class TestOptimizeSparkTableDefinition:
-    def test_appends_using_parquet(self) -> None:
-        result = optimize_spark_table_definition("CREATE TABLE t (id INT)", table_format="parquet")
-        assert result.endswith("USING PARQUET")
+class TestSparkSchemaStatements:
+    def _statements(self, sql: str, table_format: str = "parquet", strip: bool = True) -> list[str]:
+        return spark_schema_statements(sql, table_format=table_format, strip_constraints=strip)
 
-    def test_appends_using_orc(self) -> None:
-        result = optimize_spark_table_definition("CREATE TABLE t (id INT)", table_format="orc")
-        assert result.endswith("USING ORC")
+    @pytest.mark.parametrize("table_format", ["parquet", "orc", "delta", "iceberg"])
+    def test_writes_using_clause_for_format(self, table_format: str) -> None:
+        (result,) = self._statements("CREATE TABLE t (id INT)", table_format)
+        assert result.endswith(f"USING {table_format.upper()}")
 
-    def test_strips_existing_using_clause(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE t (id INT) USING DELTA",
-            table_format="parquet",
-        )
+    def test_existing_using_clause_is_replaced(self) -> None:
+        (result,) = self._statements("CREATE TABLE t (id INT) USING DELTA")
         assert "DELTA" not in result.upper()
         assert result.endswith("USING PARQUET")
 
-    @pytest.mark.parametrize("clause", ["PARTITIONED BY (id)", "CLUSTER BY (id)"])
-    def test_using_precedes_trailing_tuning_clause(self, clause: str) -> None:
-        result = optimize_spark_table_definition(
-            f"CREATE TABLE t (id INT, amount DECIMAL(10,2))\n{clause};",
-            table_format="delta",
-        )
-        assert result == f"CREATE TABLE t (id INT, amount DECIMAL(10,2)) USING DELTA\n{clause}"
+    def test_empty_format_defaults_to_parquet(self) -> None:
+        (result,) = self._statements("CREATE TABLE t (id INT)", "")
+        assert result.endswith("USING PARQUET")
+
+    def test_non_create_statement_passes_through(self) -> None:
+        assert self._statements("INSERT INTO t VALUES (1)") == ["INSERT INTO `t` VALUES (1)"]
+
+    def test_comment_only_input_has_no_statements(self) -> None:
+        assert self._statements("-- just a comment\n") == []
+        assert self._statements("   \n  ") == []
+
+    def test_multiple_statements_are_split(self) -> None:
+        results = self._statements("CREATE TABLE a (x INT); CREATE TABLE b (y INT);")
+        assert len(results) == 2
+        assert all(result.endswith("USING PARQUET") for result in results)
 
     @pytest.mark.parametrize(
-        ("columns", "name"),
+        "sql",
         [
-            ("id INT, note STRING DEFAULT ' ) '", "t"),
-            ("id INT, note STRING DEFAULT 'it''s ) here'", "t"),
-            ("id INT, note STRING DEFAULT 'a\\' ) b'", "t"),
-            ("id INT, `we ) ird` STRING", "t"),
-            ("id INT, amount DECIMAL(10,2), tags MAP<STRING, ARRAY<INT>>", "`my table`"),
-        ],
-    )
-    def test_using_stays_outside_column_list_with_quoted_parentheses(self, columns: str, name: str) -> None:
-        result = optimize_spark_table_definition(
-            f"CREATE TABLE {name} ({columns}) PARTITIONED BY (id);",
-            table_format="delta",
-        )
-        assert f"({columns})" in result
-        assert result.count("USING DELTA") == 1
-        assert result.index(f"({columns})") + len(f"({columns})") < result.index("USING DELTA")
-        assert result.index("USING DELTA") < result.index("PARTITIONED BY")
-
-    @pytest.mark.parametrize(
-        "columns",
-        [
-            "id INT /* ) */, amount INT",
-            "id INT /* ( unbalanced */, amount INT",
-            "id INT -- )\n, amount INT",
-            "id INT -- ( unbalanced\n, amount INT",
-        ],
-    )
-    def test_using_stays_outside_column_list_with_comment_parentheses(self, columns: str) -> None:
-        result = optimize_spark_table_definition(
-            f"CREATE TABLE t ({columns}) PARTITIONED BY (id);",
-            table_format="delta",
-        )
-        assert f"({columns})" in result
-        assert result.count("USING DELTA") == 1
-        assert result.index(f"({columns})") + len(f"({columns})") < result.index("USING DELTA")
-        assert result.index("USING DELTA") < result.index("PARTITIONED BY")
-
-    def test_non_create_table_unchanged(self) -> None:
-        sql = "INSERT INTO t VALUES (1)"
-        assert optimize_spark_table_definition(sql, table_format="parquet") == sql
-
-    def test_strip_v1_constraints_removes_inline_pk(self) -> None:
-        result = optimize_spark_table_definition(
             "CREATE TABLE t (id INT PRIMARY KEY, val STRING)",
-            table_format="parquet",
-        )
-        assert "PRIMARY KEY" not in result.upper()
-        assert "id INT" in result
-        assert "val STRING" in result
-
-    def test_strip_v1_constraints_removes_table_level_pk(self) -> None:
-        result = optimize_spark_table_definition(
             "CREATE TABLE t (id INT, val STRING, PRIMARY KEY (id))",
-            table_format="parquet",
-        )
-        assert "PRIMARY KEY" not in result.upper()
-
-    def test_strip_v1_constraints_removes_foreign_key(self) -> None:
-        result = optimize_spark_table_definition(
             "CREATE TABLE t (id INT, ref_id INT, FOREIGN KEY (ref_id) REFERENCES other(id))",
-            table_format="parquet",
-        )
-        assert "FOREIGN KEY" not in result.upper()
-        assert "REFERENCES" not in result.upper()
-
-    def test_strip_v1_constraints_removes_unique_and_check(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE t (id INT, val INT, UNIQUE (id), CHECK (val > 0))",
-            table_format="parquet",
-        )
-        assert "UNIQUE" not in result.upper()
-        assert "CHECK" not in result.upper()
-
-    def test_upcast_smallint_to_int(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE t (id INT, count SMALLINT)",
-            table_format="parquet",
-            upcast_smallint=True,
-        )
-        assert "SMALLINT" not in result.upper()
-        assert "INT" in result.upper()
-
-    def test_v2_format_preserves_constraints(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE t (id INT PRIMARY KEY)",
-            table_format="delta",
-            strip_v1_constraints=False,
-        )
-        assert "PRIMARY KEY" in result.upper()
-        assert "USING DELTA" in result.upper()
-
-    def test_v2_format_preserves_smallint(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE t (count SMALLINT)",
-            table_format="iceberg",
-            upcast_smallint=False,
-        )
-        assert "SMALLINT" in result.upper()
-
-    def test_strip_constraints_with_nested_paren_check(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE t (a INT, b INT, CHECK ((a > 0) AND (b > 0)))",
-            table_format="parquet",
-        )
-        assert "CHECK" not in result.upper()
-        assert "AND" not in result.upper()
-        assert result.count("(") == result.count(")")
-        assert result.endswith("USING PARQUET")
-        assert "a INT" in result
-        assert "b INT" in result
-
-    def test_strip_constraints_with_multi_column_foreign_key(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE t (a INT, b INT, c INT, FOREIGN KEY (a, b) REFERENCES other(c, d))",
-            table_format="parquet",
-        )
-        assert "FOREIGN KEY" not in result.upper()
-        assert "REFERENCES" not in result.upper()
-        assert result.count("(") == result.count(")")
-        assert "a INT" in result
-        assert "c INT" in result
-
-    def test_strip_v1_constraints_removes_inline_unique(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE t (id INT, email STRING UNIQUE)",
-            table_format="parquet",
-        )
-        assert "UNIQUE" not in result.upper()
-        assert "email STRING" in result
-
-    def test_strip_v1_constraints_preserves_table_unique_clause_then_strips(self) -> None:
-        result = optimize_spark_table_definition(
             "CREATE TABLE t (id INT, email STRING UNIQUE, UNIQUE (id))",
-            table_format="parquet",
-        )
-        assert "UNIQUE" not in result.upper()
-        assert result.count("(") == result.count(")")
-        assert "id INT" in result
-        assert "email STRING" in result
-
-    def test_repeated_space_collapse_preserves_newlines(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE t (\n    a INT,\n    b INT,\n    PRIMARY KEY (a)\n)",
-            table_format="parquet",
-        )
-        assert "\n" in result
-        assert "PRIMARY KEY" not in result.upper()
-
-    def test_table_level_pk_after_trailing_comma_leaves_no_dangling_paren(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE taxi_zones (\n    location_id INTEGER,\n    zone VARCHAR,\n    PRIMARY KEY (location_id)\n)",
-            table_format="parquet",
-        )
-        assert "PRIMARY KEY" not in result.upper()
-        assert "(location_id))" not in result.replace(" ", "")
+            "CREATE TABLE t (id INT, c INT, CONSTRAINT pk PRIMARY KEY (id))",
+        ],
+    )
+    def test_v1_formats_strip_constraints(self, sql: str) -> None:
+        (result,) = self._statements(sql)
+        for keyword in ("PRIMARY KEY", "FOREIGN KEY", "REFERENCES", "UNIQUE", "CONSTRAINT"):
+            assert keyword not in result.upper()
         assert result.count("(") == result.count(")")
         assert result.endswith("USING PARQUET")
-        assert "location_id INTEGER" in result
-        assert "zone VARCHAR" in result
 
-    def test_strips_leading_line_comments_so_create_table_is_detected(self) -> None:
-        result = optimize_spark_table_definition(
-            "-- Benchmark schema\n-- second comment line\n\n"
-            "CREATE TABLE region (\n    r_regionkey INTEGER NOT NULL,\n"
-            "    r_name CHAR(25) NOT NULL,\n    PRIMARY KEY (r_regionkey)\n)",
-            table_format="parquet",
-        )
-        assert result.upper().startswith("CREATE TABLE")
-        assert "PRIMARY KEY" not in result.upper()
-        assert "--" not in result
-        assert result.endswith("USING PARQUET")
+    def test_smallint_is_upcast_when_stripping(self) -> None:
+        (result,) = self._statements("CREATE TABLE t (id INT, c SMALLINT)")
+        assert "SMALLINT" not in result.upper()
 
-    def test_strips_leading_block_comments(self) -> None:
-        result = optimize_spark_table_definition(
-            "/* Benchmark Schema */ /* second banner */ "
-            "CREATE TABLE `region` (`r_regionkey` INT NOT NULL, "
-            "`r_comment` STRING, PRIMARY KEY (`r_regionkey`))",
-            table_format="parquet",
-        )
-        assert result.upper().startswith("CREATE TABLE")
-        assert "PRIMARY KEY" not in result.upper()
-        assert "/*" not in result
-        assert result.endswith("USING PARQUET")
+    def test_constraints_and_smallint_kept_when_not_stripping(self) -> None:
+        (result,) = self._statements("CREATE TABLE t (id INT PRIMARY KEY, c SMALLINT)", "delta", strip=False)
+        assert "PRIMARY KEY" in result.upper()
+        assert "SMALLINT" in result.upper()
+        assert result.endswith("USING DELTA")
 
-    def test_comment_only_chunk_returns_empty(self) -> None:
-        assert optimize_spark_table_definition("-- just a comment\n", table_format="parquet") == ""
-        assert optimize_spark_table_definition("/* only a block comment */", table_format="parquet") == ""
-        assert optimize_spark_table_definition("   \n  ", table_format="parquet") == ""
-
-    def test_fixed_size_array_type_rewritten_to_array_element_type(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE vectors (id BIGINT, embedding FLOAT[128], doc_id VARCHAR(100))",
-            table_format="parquet",
-        )
-        assert "ARRAY<FLOAT>" in result.upper()
+    def test_fixed_size_array_becomes_array_type(self) -> None:
+        (result,) = self._statements("CREATE TABLE vectors (id BIGINT, embedding FLOAT[128])")
+        assert "ARRAY<" in result.upper()
         assert "[128]" not in result
-        assert "embedding ARRAY<FLOAT>" in result
 
-    def test_array_type_with_transpiled_fixed_size_suffix_normalised(self) -> None:
-        result = optimize_spark_table_definition(
-            "CREATE TABLE vectors (id BIGINT, embedding ARRAY<FLOAT>[128])",
-            table_format="parquet",
-        )
-        assert "[128]" not in result
-        assert "ARRAY<FLOAT>" in result.upper()
-        assert result.endswith("USING PARQUET")
+    @pytest.mark.parametrize(
+        ("table_format", "expected"),
+        [("parquet", True), ("ORC", True), ("delta", False), ("iceberg", False), ("", True)],
+    )
+    def test_format_strips_constraints(self, table_format: str, expected: bool) -> None:
+        assert spark_format_strips_constraints(table_format) is expected
 
 
 def _purge_stub(*, list_tables_return=None, list_tables_raises=None, current_db="default") -> MagicMock:
@@ -452,14 +288,13 @@ class TestRunSparkSchemaCreationLoop:
     def test_happy_path_executes_each_statement(self) -> None:
         spark = MagicMock()
         statements = [
-            "CREATE TABLE orders (id INT)",
-            "CREATE TABLE customers (id INT)",
+            "CREATE TABLE orders (id INT) USING PARQUET",
+            "CREATE TABLE customers (id INT) USING PARQUET",
         ]
 
         run_spark_schema_creation_loop(
             spark,
             statements,
-            lambda s: optimize_spark_table_definition(s, table_format="parquet"),
             logger=logging.getLogger(__name__),
         )
 
@@ -477,7 +312,6 @@ class TestRunSparkSchemaCreationLoop:
         run_spark_schema_creation_loop(
             spark,
             ["CREATE TABLE t (id INT)"],
-            lambda s: s + " USING PARQUET",
             logger=logging.getLogger(__name__),
             on_pre_loop=pre_loop,
         )
@@ -499,7 +333,6 @@ class TestRunSparkSchemaCreationLoop:
         run_spark_schema_creation_loop(
             spark,
             ["CREATE TABLE orders (id INT)"],
-            lambda s: s,
             logger=logging.getLogger(__name__),
         )
 
@@ -522,7 +355,6 @@ class TestRunSparkSchemaCreationLoop:
         run_spark_schema_creation_loop(
             spark,
             ["CREATE TABLE `region` (`r_regionkey` INT)"],
-            lambda s: s,
             logger=logging.getLogger(__name__),
         )
 
@@ -537,7 +369,6 @@ class TestRunSparkSchemaCreationLoop:
             run_spark_schema_creation_loop(
                 spark,
                 ["CREATE TABLE `my_schema.tbl` (id INT)"],
-                lambda s: s,
                 logger=logging.getLogger(__name__),
             )
 
@@ -560,7 +391,6 @@ class TestRunSparkSchemaCreationLoop:
         run_spark_schema_creation_loop(
             spark,
             ["CREATE TABLE orders (id INT)"],
-            lambda s: s,
             logger=logging.getLogger(__name__),
             on_location_collision=on_collision,
         )
@@ -588,7 +418,6 @@ class TestRunSparkSchemaCreationLoop:
         run_spark_schema_creation_loop(
             spark,
             ["CREATE TABLE orders (id INT)"],
-            lambda s: s,
             logger=logging.getLogger(__name__),
             on_location_collision=on_collision,
         )
@@ -603,7 +432,6 @@ class TestRunSparkSchemaCreationLoop:
             run_spark_schema_creation_loop(
                 spark,
                 ["ALTER VIEW v AS SELECT 1"],
-                lambda s: s,
                 logger=logging.getLogger(__name__),
             )
 
@@ -615,7 +443,6 @@ class TestRunSparkSchemaCreationLoop:
             run_spark_schema_creation_loop(
                 spark,
                 ["CREATE TABLE my_schema.tbl (id INT)"],
-                lambda s: s,
                 logger=logging.getLogger(__name__),
             )
 
@@ -627,7 +454,6 @@ class TestRunSparkSchemaCreationLoop:
             run_spark_schema_creation_loop(
                 spark,
                 ["CREATE TABLE t (id INT)"],
-                lambda s: s,
                 logger=logging.getLogger(__name__),
             )
 
@@ -636,7 +462,6 @@ class TestRunSparkSchemaCreationLoop:
         run_spark_schema_creation_loop(
             spark,
             ["", "  ", "CREATE TABLE t (id INT)"],
-            lambda s: s,
             logger=logging.getLogger(__name__),
         )
         assert spark.sql.call_count == 1

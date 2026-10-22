@@ -264,22 +264,6 @@ class TestLakeSailAdapter:
 
         assert "customer" in normalized.lower()
 
-    def test_optimize_table_definition_parquet(self, mock_pyspark):
-
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        sql = "CREATE TABLE orders (id INT, amount DECIMAL)"
-        optimized = optimize_spark_table_definition(sql, table_format="parquet")
-        assert "USING PARQUET" in optimized.upper()
-
-    def test_optimize_table_definition_orc(self, mock_pyspark):
-
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        sql = "CREATE TABLE orders (id INT, amount DECIMAL)"
-        optimized = optimize_spark_table_definition(sql, table_format="orc")
-        assert "USING ORC" in optimized.upper()
-
     def test_validate_identifier(self, mock_pyspark):
 
         from benchbox.platforms._spark_helpers import validate_spark_identifier
