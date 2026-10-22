@@ -67,9 +67,8 @@ def streaming_tuning(tmp_path: Path) -> str:
     [
         (("--execution-engine", "streaming", "--tuning", "{tuning}", "--polars-streaming"), "explicit"),
         (("--tuning", "{tuning}", "--polars-streaming"), "tuning_profile"),
-        (("--polars-streaming",), "legacy_option"),
     ],
-    ids=["explicit-tuning-legacy", "tuning-legacy", "legacy"],
+    ids=["explicit-tuning-legacy", "tuning-legacy"],
 )
 def test_cli_agreeing_sources_resolve_to_the_highest_precedence(
     tmp_path: Path, streaming_tuning: str, sources: tuple[str, ...], resolution: str

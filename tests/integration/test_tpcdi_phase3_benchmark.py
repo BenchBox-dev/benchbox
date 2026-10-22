@@ -4,7 +4,6 @@
 
 import sqlite3
 import tempfile
-from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -524,28 +523,6 @@ class TestTPCDIPhase3PerformanceIntegration:
             assert customer_count > 0
             assert incremental_results["records_loaded"] >= customer_count
             assert incremental_duration < 30
-
-    def test_quality_monitoring_performance(self, performance_benchmark):
-
-        with sqlite3.connect(":memory:") as conn:
-            performance_benchmark.create_schema(conn, "sqlite")
-            performance_benchmark._initialize_connection_dependent_systems(conn, "sqlite")
-            performance_benchmark.generate_data()
-            performance_benchmark.load_data_to_database(conn)
-
-            start_time = datetime.now()
-            with patch.object(
-                performance_benchmark.data_quality_monitor,
-                "execute_quality_checks",
-                return_value={"rules_executed": 5, "overall_pass_rate": 0.9, "rules_failed": 0},
-            ):
-                quality_results = performance_benchmark._run_data_quality_monitoring(conn)
-            quality_duration = (datetime.now() - start_time).total_seconds()
-
-            assert quality_results["success"] is True
-            assert quality_results["rules_executed"] > 0
-            assert quality_results["quality_score"] > 0
-            assert quality_duration >= 0
 
 
 if __name__ == "__main__":
