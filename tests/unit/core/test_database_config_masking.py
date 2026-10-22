@@ -82,10 +82,20 @@ def test_the_connection_code_still_reads_the_real_values() -> None:
     assert dumped["password"] == PASSWORD
 
 
-def test_an_unset_secret_is_not_shown_as_redacted() -> None:
+def test_an_unset_secret_is_shown_as_unset_not_as_redacted() -> None:
     rendered = repr(DatabaseConfig(type="snowflake", name="Snowflake", password=None, options={"password": None}))
-    assert "password=<redacted>" not in rendered
-    assert "password='<redacted>'" not in rendered
+    assert "password=None" in rendered
+    assert "'password': None" in rendered
+    assert "<redacted>" not in rendered
+
+
+def test_a_set_secret_and_an_unset_one_render_differently() -> None:
+    rendered = repr(
+        DatabaseConfig(type="snowflake", name="Snowflake", options={"password": "x", "token": None, "account": "a"})
+    )
+    assert "'password': '<redacted>'" in rendered
+    assert "'token': None" in rendered
+    assert "'account': 'a'" in rendered
 
 
 def test_a_config_built_from_the_registry_masks_its_saved_credentials(tmp_path, monkeypatch) -> None:

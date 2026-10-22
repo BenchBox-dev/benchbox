@@ -341,7 +341,8 @@ class DatabaseConfig(BaseModel):
     def __repr_args__(self) -> Iterable[tuple[str | None, Any]]:
         for name, value in super().__repr_args__():
             if name == "options" and isinstance(value, Mapping):
-                yield name, sanitize_platform_options(value, redact_usernames=False)
+                masked = sanitize_platform_options(value, redact_usernames=False)
+                yield name, {str(key): None if item is None else masked[str(key)] for key, item in value.items()}
             elif name is not None and value is not None and is_secret_option_key(name):
                 yield name, REDACTED_VALUE
             else:
