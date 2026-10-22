@@ -26179,6 +26179,13 @@
       "status": "done",
       "title": "Trino Platform Adapter"
     },
+    "trunk-arm-gate-blames-newest-red-run-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "The red-Trunk arm gate blames the newest failing run, so it refuses the revert of the real culprit"
+    },
     "trunk-coverage-workflow-map-v2-20261021": {
       "claim": null,
       "needs": [

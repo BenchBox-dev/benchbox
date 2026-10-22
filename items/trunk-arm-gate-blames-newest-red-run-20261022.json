@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The culprit is the head of the first red run after the last green completed run (the start of the red streak); a test covers a two-run streak whose second PR is innocent.",
+    "A `fix/revert-*` branch that reverts the streak's first red commit is exempt; a revert of a commit outside the streak is not.",
+    "The refusal message names the streak's first culprit PR and its revert command."
+  ],
+  "description": "`scripts/trunk_revert.py` `arm_gate` (`:150-170`) takes the newest completed red Trunk run (`red_trunk_run`, `:99-107`), names the PR merged at that run's head as the culprit, and exempts only a `fix/revert-*` branch whose commits say `This reverts commit <that head>`. When a failure persists across later merges, the newest red run's head is a later, innocent PR. The gate then tells the operator to revert that PR and refuses the revert of the commit that broke Trunk. `is_reverted` checks the same newest head, so merging the real revert does not clear the gate until a new Trunk run completes.\n\nObserved 2026-10-21: #3200 (4e8118c98) turned Trunk red (run 39549351208). #3220 merged next and its Trunk run (39555893700) failed the same way. `make pr-arm` on the revert of #3200 (#3223, branch `fix/revert-3200`) refused with `the newest completed trunk.yml run failed at PR #3220 ... Merge a revert (make trunk-revert PR=3220)`. Related: trunk-red-stops-further-merges.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3223",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/39555893700"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:16:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3e5b2c91a86648a8b76f480b6c50375e",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    }
+  ]
+}
