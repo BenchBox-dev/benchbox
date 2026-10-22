@@ -8,7 +8,7 @@
     "The decision (option 1 or 2) and its reason are recorded in the item context",
     "Residual risk statement: what a carried digest can still miss after the fix"
   ],
-  "context": "2026-10-09 tracker review: priority lowered from medium to low. The risk is accidental only: an edit moved within a file where the three context lines still match, most likely in repetitive YAML or tests. The only writer on this repository is also the stand-in attester (joeharris76), so there is no adversary to exploit it. The acceptance criteria stay as written.",
+  "context": "2026-10-09 tracker review: priority lowered from medium to low. The risk is accidental only: an edit moved within a file where the three context lines still match, most likely in repetitive YAML or tests. The only writer on this repository is also the stand-in attester (joeharris76), so there is no adversary to exploit it. The acceptance criteria stay as written.\n\nUPDATE 2026-10-22: priority raised from low to high (supersedes the 2026-10-09 note above). Reason: the gap issue 2808 cannot be attested clean while this defect is live, and the defect sits in the oracle merge gate on a soundness path; the 'no adversary' argument does not apply to an automated writer. Acceptance unchanged except it is now part of the soundness-gap batch (see soundness-gaps-decisions-20261022).",
   "description": "protocol.file_patches (oracle_reviewers/protocol.py, about lines 120-123 on develop, re-verify) replaces every hunk header with a bare '@@' so rebases keep the hash. Moving an added or removed line to another place in the same file where the three context lines match gives the same per-file hash and patch_digest, so plan_round returns CARRY (protocol.py about 333-336) and report.carried posts SUCCESS without running a reviewer (report.py about 269-273). The planner reproduced it: the same '+require_admin(user)' hunk at guarded_write (line 10) versus public_read (line 40) gives identical file_patches and patch_digest. oracle_reviewers/ is now on the soundness path list (.github/soundness-paths.txt about line 94), so the merge gate itself is affected. This is the live deferred Medium from PR 2784 (commit 5ca12e6ca, gap issue 2808). Priority raised from low to high because the issue cannot be honestly attested clean until this is fixed and the defect sits in the gate.\n\nDECISION GATE (choose before coding, record the choice and reason): option 1 bind to each file's post-image blob id (right side of the diff 'index' line): simplest, but changes when anything else in the file changes, which may re-review more than needed after rebases that touch the file elsewhere; option 2 keep each hunk header's function context plus the hunk's offset relative to the previous hunk: survives plain rebases and unrelated shifts above, but must be shown not to be fooled by a move between functions with identical context. Choose the option that satisfies BOTH tests below; if neither can, stop and report to the owner rather than weakening either test.\n\nGUARDRAILS (all items): G1 never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict is required on every PR (soundness paths) and no digest may be pre-registered. G2 never weaken a gate, threshold, rule or check; no skip/xfail/quarantine. G3 the primary clone /Users/joe/Developer/BenchBox is read-only: use make worktree-create + make agent-write-preflight and absolute worktree paths; stage explicit paths; never git add -A; never git stash; identity Joe Harris, no agent trailers. G4 no CHANGELOG.md entry (curated section is at its 160-line ceiling) and no comments/docstrings in code (make comment-policy-check). G5 commit and PR text for a reader who never saw the session: no item ids, no plan/session labels. G6 never close, label or edit gap issues directly: the daily digest closes them after a valid attestation. G7 no settings/rulesets/secrets/variables writes; no new dependencies or unpinned images. G8 done means merged PR plus verification evidence recorded in the item; an open PR is not done. G9 self-review pass (code review action) before make pr-open; fix Critical and Required findings.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/2784"
@@ -36,6 +36,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "bfda420e309745e3b5423d0d49d550b0",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T19:55:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1bce5b4a4868400eb695340f781c3f3f",
       "session_id": "db427a9694db441d88b0b3b12151b3f1"
     }
   ]
