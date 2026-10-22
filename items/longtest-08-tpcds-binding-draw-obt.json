@@ -4,7 +4,7 @@
     "RUBRIC 2: dsqgen invocation counts before and after per module (instrumented local run)",
     "RUBRIC 3: module-sum CI time vs baseline (C5); per-id informational; (C5); C7 list"
   ],
-  "context": "PROGRESS 2026-10-22: PR #3279 (head a2dcbe86). Change 1: test_every_adapted_query runs [(None, 1), (42, 0)]; G1 found no cover for (None, 1) (the oracle flagged its first removal), so it is kept; (None, 0) and (42, 1) are covered by test_all_103 (builders/tpcds.py:112; test_tpcds_shared_draw.py:59-64). Change 2: builder-refusal tests no longer use the draw fixture ([adapter], [registry], [binding], [implementation] run once); G2: refusal detection unchanged (adapter and implementation refusals are doubly guarded before and after). Change 3: one looped OBT test (7.0 s CI). G4: OBT fixture time is dsdgen 1.4 s + transform 2.6 s (about 1.6 s in a DuckDB UNION ALL in product code), no change. dsqgen calls (local): binding 1654 -> 955, shared draw 816 -> 713. C1: 27,492 lines before and after, 0 lost. CI module sums (baseline run 39538637499 vs 39755118750): 153.4 s -> 83.6 s. The draw fixture is still built twice in the remaining draw tests (shared-fixture cost; item 15). NEXT: thread resolved, recovery run, arm when green, finish after merge.",
+  "context": "DONE 2026-10-22: PR #3279 merged as d7f8cb1f6ffaa0a185224f2c6381a625cddcac6c (head a2dcbe86). test_every_adapted_query runs [(None, 1), (42, 0)] ((None, 1) kept: no other cover, flagged by the oracle on the first head); builder-refusal tests no longer use the draw fixture (four cases run once; refusal detection unchanged); OBT draws merged into one looped test (7.0 s CI). G4: OBT time is dsdgen 1.4 s + transform 2.6 s, mostly a DuckDB UNION ALL in product code; no change. dsqgen calls (local): binding 1654 -> 955, shared draw 816 -> 713. C1: 27,492 lines, 0 lost. CI module sums 153.4 s -> 83.6 s. Merge needed a flaky unrelated test re-run (tests/uat/test_timeouts.py kill-ladder test) and re-running stale oracle-review failures from before the thread was resolved.",
   "description": "PROBLEM: tests/unit/core/tpcds/test_production_binding.py::TestSQLAndDataFrameBindTheSameValues::test_every_adapted_query runs four times (~45 s PR), about 310 dsqgen calls each; tests/unit/core/equivalence/test_tpcds_shared_draw.py builds a 27 s `draw` fixture about 8 times per trunk run, often for builder-refusal tests that only need seed/stream values; tests/integration/test_tpcds_obt_parameter_draws.py has 14 cases each rebuilding nothing but paying per-shard fixture cost (~40 s PR).\n\nCHANGES:\n1. test_every_adapted_query: parametrize over a new local list [(42, 0)] and leave the shared RUNS list unchanged (TestPowerParameterSeed and test_second_statement_variants use it).\n2. test_tpcds_shared_draw builder-refusal tests: remove the draw dependency; use constant seed/stream values and {n: object() for n in range(1, 99)} for the binding case (the check compares keys only); run the implementation case once, not per draw. Keep test_all_103 unchanged.\n3. test_tpcds_obt_parameter_draws: one test looping over the 14 queries with one query manager, asserting the list of queries that returned no rows is [] (message names failing ids).\n\nDECISION GATES:\nG1 For change 1, show a cover for each of (None,0), (None,1) and (42,1) (test_all_103 covers (None,0) and (42,1) per the review; find one for (None,1)); a run without a cover is kept, or its loss (one random draw) is listed under C1 and accepted in the PR body.\nG2 For change 2, C2: break each refusal condition and show each builder test still fails as intended without the draw.\nG3 For change 3, the looped test must stay under the 60 s default timeout on CI with margin (target < 40 s); if not, split into two halves instead.\nG4 Profile the OBT fixture's transform (about 11 s locally, unexplained by cProfile, likely in DuckDB/native code); record where the time goes; change it only if a fix is local to the test fixture.",
   "links": [
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-18T23-52-50-730Z_01a1516e-af2a-70ba-8b0e-81c1898c948f/PysparkTpcdsReview.md"
@@ -103,6 +103,14 @@
       "generation": "b9e9fce3a23843518a8bf25c07d64a33",
       "op": "take",
       "op_id": "66d9eb8b26b2436c994abbe7d21450e7",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-22T12:02:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e7bea3cdcba14e93ac01a3533990215c",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]
