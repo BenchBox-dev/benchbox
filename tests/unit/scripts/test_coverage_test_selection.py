@@ -1269,7 +1269,8 @@ def test_junit_case_node_id_needs_no_test_tree(tmp_path: Path) -> None:
     assert node(tmp_path, _case("", "test_x", "tests/unit/core/test_engine.py")) == (
         "tests/unit/core/test_engine.py::test_x"
     )
-    assert node(tmp_path, _case("", "test_x")) is None
+    assert node(tmp_path, _case("", "test_x")) == "test_x"
+    assert node(tmp_path, _case("", "")) == sel.UNIDENTIFIED_TESTCASE
     assert node(tmp_path, _case("tests.unit.b.test_sub.TestSub", "test_inherited", "tests/unit/a/test_base.py")) == (
         "tests/unit/b/test_sub.py::TestSub::test_inherited"
     )
@@ -1300,7 +1301,12 @@ def test_miss_and_build_map_derive_identical_node_ids(tmp_path: Path) -> None:
     failed, _, _ = sel.failed_node_ids([report], tmp_path)
     assert failed == sel._junit_failed_nodeids([report], tmp_path)
     assert failed == [
+        "test_orphan",
         "tests/unit/a/test_one.py::TestG::test_a",
+        "tests/unit/zz/test_gone.py::TestG::test_b",
+    ]
+    assert sel.shadow_misses(["tests/unit/a/test_one.py"], failed) == [
+        "test_orphan",
         "tests/unit/zz/test_gone.py::TestG::test_b",
     ]
 

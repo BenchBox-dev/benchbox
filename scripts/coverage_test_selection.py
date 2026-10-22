@@ -22,6 +22,7 @@ if str(REPO_ROOT) not in sys.path:
 from _project.scripts import preflight_targets
 
 MAP_VERSION = 2
+UNIDENTIFIED_TESTCASE = "<unidentified testcase>"
 MAP_ARTIFACT_PREFIX = "t2-coverage-map-"
 MAX_MAP_BEHIND_COMMITS = 50
 MAX_SELECTION_RUNTIME_SECONDS = 900.0
@@ -102,11 +103,9 @@ def _junit_module(filename: str) -> str:
     return filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
 
 
-def junit_case_node_id(repo: Path, case: ET.Element) -> str | None:
+def junit_case_node_id(repo: Path, case: ET.Element) -> str:
     name = (case.get("name") or "").strip()
     classname = (case.get("classname") or "").strip()
-    if not name:
-        return None
     filename = (case.get("file") or "").strip() or None
     if filename is not None and classname:
         module = _junit_module(filename)
@@ -115,7 +114,7 @@ def junit_case_node_id(repo: Path, case: ET.Element) -> str | None:
     if filename is None:
         filename = _classname_filename(repo, classname)
     if filename is None:
-        return None
+        return name or UNIDENTIFIED_TESTCASE
     module = _junit_module(filename)
     extra = classname[len(module) + 1 :].split(".") if classname.startswith(module + ".") else []
     return "::".join(part for part in (filename, *extra, name) if part)
@@ -131,9 +130,7 @@ def _junit_failed_nodeids(junit_files: list[Path], repo: Path) -> list[str]:
         for case in root.iter("testcase"):
             if case.find("failure") is None and case.find("error") is None:
                 continue
-            node = junit_case_node_id(repo, case)
-            if node is not None:
-                failed.add(node)
+            failed.add(junit_case_node_id(repo, case))
     return sorted(failed)
 
 
@@ -1202,9 +1199,7 @@ def failed_node_ids(paths: list[Path], repo: Path) -> tuple[list[str], int, list
         for case in root.iter("testcase"):
             if case.find("failure") is None and case.find("error") is None:
                 continue
-            node = junit_case_node_id(repo, case)
-            if node is not None:
-                failed.add(node)
+            failed.add(junit_case_node_id(repo, case))
     return sorted(failed), parsed, unparsed
 
 
