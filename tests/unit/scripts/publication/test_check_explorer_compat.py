@@ -502,18 +502,23 @@ def test_script_without_tree_contract_exits_nonzero(tmp_path: Path, monkeypatch:
 HELP_EXAMPLE_PREFIX = "uv run -- python scripts/publication/check_explorer_compat.py "
 
 
-def test_script_help_examples_name_the_current_version_and_all_run(mock_artifact_dir: Path, tmp_path: Path) -> None:
+def test_script_help_examples_name_the_current_version_and_all_run(
+    mock_artifact_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     import shlex
 
     import duckdb
 
     from _project.scripts.explorer_pipeline.contract import EXPLORER_READ_MODEL_VERSION
 
-    helped = _run_script("--help", cwd=tmp_path)
-    assert helped.returncode == 0, helped.stderr
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as helped:
+        checker.main(["--help"])
+    assert helped.value.code == 0
+    help_text = capsys.readouterr().out
     examples = [
         shlex.split(line.strip().removeprefix(HELP_EXAMPLE_PREFIX))
-        for line in helped.stdout.splitlines()
+        for line in help_text.splitlines()
         if line.strip().startswith(HELP_EXAMPLE_PREFIX)
     ]
     assert len(examples) >= 6
@@ -529,9 +534,12 @@ def test_script_help_examples_name_the_current_version_and_all_run(mock_artifact
         for statement in checker.generate_schema_ddl(EXPLORER_READ_MODEL_VERSION):
             con.execute(statement)
         con.execute(f"INSERT INTO metadata VALUES ({EXPLORER_READ_MODEL_VERSION})")
-    seeded = _run_script("--artifact", "explorer-dist", "--generate-manifest", cwd=workdir)
-    assert seeded.returncode == 0, seeded.stdout + seeded.stderr
+    monkeypatch.chdir(workdir)
+    seeded = checker.main(["--artifact", "explorer-dist", "--generate-manifest"])
+    captured = capsys.readouterr()
+    assert seeded == 0, captured.out + captured.err
 
     for example in examples:
-        completed = _run_script(*example, cwd=workdir)
-        assert completed.returncode == 0, f"{example}\n{completed.stdout}\n{completed.stderr}"
+        exit_code = checker.main(example)
+        captured = capsys.readouterr()
+        assert exit_code == 0, f"{example}\n{captured.out}\n{captured.err}"
