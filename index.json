@@ -15976,10 +15976,15 @@
       "title": "Oracle read evidence still accepts reads that show none of the head file's content"
     },
     "oracle-response-absence-retry-20261021": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T16:18:34Z",
+        "generation": "deaac69898ee4bd88c0fb43074fd21b2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Retry eligible absent oracle reviewer once within the same run"
     },
     "oracle-response-evidence-secrets-20261021": {
