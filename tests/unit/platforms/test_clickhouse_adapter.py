@@ -1359,10 +1359,6 @@ class TestClickHouseWorkloadCoverage:
         connection = Mock()
         connection.execute.return_value = [(1,)]
 
-        transformer = Mock()
-        transformer.transform.return_value = "SELECT 1"
-        transformer.add_query_settings.return_value = "SELECT 1 SETTINGS joined_subquery_requires_alias = 0"
-        transformer.get_transformations_applied.return_value = ["expanded_final"]
         validation_result = SimpleNamespace(
             is_valid=True,
             warning_message="expected row count unavailable",
@@ -1370,14 +1366,11 @@ class TestClickHouseWorkloadCoverage:
             expected_row_count=None,
         )
 
-        with (
-            patch("benchbox.platforms.clickhouse.workload.ClickHouseQueryTransformer", return_value=transformer),
-            patch("benchbox.core.validation.query_validation.QueryValidator") as validator_cls,
-        ):
+        with patch("benchbox.core.validation.query_validation.QueryValidator") as validator_cls:
             validator_cls.return_value.validate_query_result.return_value = validation_result
             result = adapter.execute_query(
                 connection,
-                "SELECT * FROM table",
+                "SELECT * FROM orders",
                 "Q1",
                 benchmark_type="tpch",
                 scale_factor=1.0,
@@ -1386,17 +1379,13 @@ class TestClickHouseWorkloadCoverage:
         assert result["status"] == "SUCCESS"
         assert result["row_count_validation"]["status"] == "PASSED"
         assert result["row_count_validation"]["warning"] == "expected row count unavailable"
-        adapter.log_verbose.assert_any_call("Query Q1: Applied transformations: expanded_final")
+        connection.execute.assert_called_once_with("SELECT * FROM orders SETTINGS joined_subquery_requires_alias = 0")
 
     def test_execute_query_turns_validation_failures_into_failed_results(self):
         adapter = self._adapter()
         connection = Mock()
         connection.execute.return_value = [(1,), (2,)]
 
-        transformer = Mock()
-        transformer.transform.return_value = "SELECT 1"
-        transformer.add_query_settings.return_value = "SELECT 1 SETTINGS joined_subquery_requires_alias = 0"
-        transformer.get_transformations_applied.return_value = []
         validation_result = SimpleNamespace(
             is_valid=False,
             warning_message=None,
@@ -1404,12 +1393,9 @@ class TestClickHouseWorkloadCoverage:
             expected_row_count=5,
         )
 
-        with (
-            patch("benchbox.platforms.clickhouse.workload.ClickHouseQueryTransformer", return_value=transformer),
-            patch("benchbox.core.validation.query_validation.QueryValidator") as validator_cls,
-        ):
+        with patch("benchbox.core.validation.query_validation.QueryValidator") as validator_cls:
             validator_cls.return_value.validate_query_result.return_value = validation_result
-            result = adapter.execute_query(connection, "SELECT * FROM table", "Q2", benchmark_type="tpch")
+            result = adapter.execute_query(connection, "SELECT * FROM orders", "Q2", benchmark_type="tpch")
 
         assert result["status"] == "FAILED"
         assert result["row_count_validation"]["status"] == "FAILED"
@@ -1421,13 +1407,7 @@ class TestClickHouseWorkloadCoverage:
         connection = Mock()
         connection.execute.side_effect = RuntimeError("boom")
 
-        transformer = Mock()
-        transformer.transform.return_value = "SELECT 1"
-        transformer.add_query_settings.return_value = "SELECT 1 SETTINGS joined_subquery_requires_alias = 0"
-        transformer.get_transformations_applied.return_value = []
-
-        with patch("benchbox.platforms.clickhouse.workload.ClickHouseQueryTransformer", return_value=transformer):
-            result = adapter.execute_query(connection, "SELECT * FROM table", "Q3")
+        result = adapter.execute_query(connection, "SELECT * FROM orders", "Q3")
 
         assert result["status"] == "FAILED"
         assert result["error"] == "boom"
@@ -1442,13 +1422,7 @@ class TestClickHouseWorkloadCoverage:
         )
         connection.execute.side_effect = RuntimeError(driver_error)
 
-        transformer = Mock()
-        transformer.transform.return_value = "SELECT foo_invalid"
-        transformer.add_query_settings.return_value = "SELECT foo_invalid"
-        transformer.get_transformations_applied.return_value = []
-
-        with patch("benchbox.platforms.clickhouse.workload.ClickHouseQueryTransformer", return_value=transformer):
-            result = adapter.execute_query(connection, "SELECT foo_invalid", "Q_err")
+        result = adapter.execute_query(connection, "SELECT foo_invalid", "Q_err")
 
         assert result["status"] == "FAILED"
         assert result["error"] == driver_error
@@ -1460,263 +1434,8 @@ class TestClickHouseWorkloadCoverage:
         connection = Mock()
         connection.execute.side_effect = RuntimeError()
 
-        transformer = Mock()
-        transformer.transform.return_value = "SELECT 1"
-        transformer.add_query_settings.return_value = "SELECT 1"
-        transformer.get_transformations_applied.return_value = []
-
-        with patch("benchbox.platforms.clickhouse.workload.ClickHouseQueryTransformer", return_value=transformer):
-            result = adapter.execute_query(connection, "SELECT 1", "Q_empty")
+        result = adapter.execute_query(connection, "SELECT 1", "Q_empty")
 
         assert result["status"] == "FAILED"
         assert result["error"]
         assert result["error_type"] == "RuntimeError"
-
-
-class TestClickHouseQueryTransformerDecimalLiterals:
-    def _transformer(self):
-        from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
-
-        return ClickHouseQueryTransformer()
-
-    def test_arithmetic_non_zero_decimal_not_corrupted(self):
-        t = self._transformer()
-        for expr in ("col + 0.06", "col - 0.01", "col * 0.05", "col / 0.07"):
-            result = t.fix_type_casts(expr)
-            assert result == expr, f"fix_type_casts corrupted {expr!r} -> {result!r}"
-
-    def test_arithmetic_pure_zero_decimal_is_cast(self):
-        t = self._transformer()
-        for expr in ("col + 0.0", "col - 0.00"):
-            result = t.fix_type_casts(expr)
-            assert "CAST(0 AS Decimal" in result, f"fix_type_casts should cast pure-zero in {expr!r}"
-            assert result.count("CAST") == 1, f"Unexpected extra CASTs in {result!r}"
-
-    def test_then_non_zero_decimal_not_corrupted(self):
-        t = self._transformer()
-        for expr in ("THEN 0.06", "THEN 0.05", "THEN 0.07"):
-            result = t.fix_type_casts(expr)
-            assert result == expr, f"fix_type_casts corrupted {expr!r} -> {result!r}"
-
-    def test_else_non_zero_decimal_not_corrupted(self):
-        t = self._transformer()
-        for expr in ("ELSE 0.06", "ELSE 0.07", "ELSE 0.01"):
-            result = t.fix_type_casts(expr)
-            assert result == expr, f"fix_type_casts corrupted {expr!r} -> {result!r}"
-
-    def test_tpchavoc_q6_between_clause_preserved(self):
-        t = self._transformer()
-        sql = "WHERE l_discount between 0.06 - 0.01 and 0.06 + 0.01"
-        result = t.fix_type_casts(sql)
-        assert result == sql, f"fix_type_casts corrupted Q6 BETWEEN clause: {result!r}"
-
-    def test_full_transform_preserves_q6_decimal_literals(self):
-        t = self._transformer()
-        sql = (
-            "SELECT SUM(l_extendedprice * l_discount) AS revenue "
-            "FROM lineitem "
-            "WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
-        )
-        result = t.transform(sql)
-        assert "0.06" in result, f"0.06 was stripped from SQL: {result!r}"
-        assert "0.01" in result, f"0.01 was stripped from SQL: {result!r}"
-        import re
-
-        assert not re.search(r"Decimal\(15,2\)\)\d", result), f"Dangling digit after CAST: {result!r}"
-
-
-class TestClickHouseQueryTransformerSettings:
-    def _transformer(self):
-        from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
-
-        return ClickHouseQueryTransformer()
-
-    def test_settings_not_appended_to_non_select(self):
-        t = self._transformer()
-        ddl = "CREATE TABLE foo (id Int32) ENGINE = MergeTree() ORDER BY id"
-        assert t.add_query_settings(ddl) == ddl
-
-    def test_settings_include_joined_subquery_alias(self):
-        t = self._transformer()
-        result = t.add_query_settings("SELECT 1")
-        assert "joined_subquery_requires_alias = 0" in result
-
-    def test_additional_settings_share_the_statement_settings_clause(self):
-        t = self._transformer()
-        result = t.add_query_settings(
-            "SELECT 1",
-            (("join_algorithm", "grace_hash"), ("grace_hash_join_initial_buckets", 8)),
-        )
-
-        assert result.count(" SETTINGS ") == 1
-        assert "join_algorithm = 'grace_hash'" in result
-        assert "grace_hash_join_initial_buckets = 8" in result
-
-    def test_enable_analyzer_not_added_for_plain_select(self):
-        t = self._transformer()
-        result = t.add_query_settings("SELECT count(*) FROM store_sales")
-        assert "enable_analyzer" not in result
-
-    def test_enable_analyzer_not_added_for_avg_sum_window_pattern(self):
-        t = self._transformer()
-        q47_like = (
-            "WITH v1 AS (SELECT d_year, SUM(ss_sales_price) AS sum_sales, "
-            "AVG(SUM(ss_sales_price)) OVER (PARTITION BY i_category, d_year) AS avg_sales "
-            "FROM store_sales GROUP BY d_year, i_category) SELECT * FROM v1"
-        )
-        result = t.add_query_settings(q47_like)
-        assert "enable_analyzer" not in result
-
-    def test_enable_analyzer_not_added_for_q66_alias_aggregate_pattern(self):
-        t = self._transformer()
-        q66_like = (
-            "SELECT w_warehouse_name, sum(jan_sales) as jan_sales "
-            "FROM (SELECT w_warehouse_name, sum(CASE WHEN d_moy=1 THEN ws_ext_list_price ELSE 0 END) as jan_sales "
-            "FROM web_sales JOIN date_dim ON ws_sold_date_sk = d_date_sk "
-            "UNION ALL SELECT w_warehouse_name, sum(CASE WHEN d_moy=1 THEN cs_ext_list_price ELSE 0 END) as jan_sales "
-            "FROM catalog_sales JOIN date_dim ON cs_sold_date_sk = d_date_sk) "
-            "GROUP BY w_warehouse_name"
-        )
-        result = t.add_query_settings(q66_like)
-        assert "enable_analyzer" not in result
-
-
-class TestClickHouseQueryTransformerDecimalDivision:
-    def _transformer(self):
-        from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
-
-        return ClickHouseQueryTransformer()
-
-    def test_nullable_decimal_divisor_is_wrapped(self):
-        t = self._transformer()
-        sql = "SELECT a / CAST(b AS Nullable(Decimal(15, 4))) FROM t"
-        result = t.fix_decimal_division_by_zero(sql)
-        assert "NULLIF(CAST(b AS Nullable(Decimal(15, 4))), 0)" in result
-
-    def test_non_nullable_decimal_not_wrapped(self):
-        t = self._transformer()
-        sql = "SELECT a / CAST(b AS Decimal(15, 4)) FROM t"
-        result = t.fix_decimal_division_by_zero(sql)
-        assert "NULLIF" not in result
-        assert result == sql
-
-    def test_transformation_recorded(self):
-        t = self._transformer()
-        sql = "SELECT x / CAST(y AS Nullable(Decimal(18, 2))) FROM t"
-        t.fix_decimal_division_by_zero(sql)
-        assert "decimal_division_fix" in t.transformations_applied
-
-    def test_no_transformation_when_pattern_absent(self):
-        t = self._transformer()
-        sql = "SELECT a / b FROM t"
-        t.fix_decimal_division_by_zero(sql)
-        assert "decimal_division_fix" not in t.transformations_applied
-
-
-class TestClickHouseQueryTransformerSafeDivision:
-    def _transformer(self):
-        from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
-
-        return ClickHouseQueryTransformer()
-
-    def test_parenthesized_divisor_is_wrapped_as_a_whole(self):
-        t = self._transformer()
-        sql = "SELECT revenue / ((store_sales + web_sales) / 2) FROM metrics"
-        result = t.safe_division(sql)
-        assert "revenue / NULLIF(((store_sales + web_sales) / 2), 0)" in result
-
-    def test_numeric_literal_divisor_stays_untouched(self):
-        t = self._transformer()
-        sql = "SELECT total_sales / 12 FROM metrics"
-        result = t.safe_division(sql)
-        assert result == sql
-
-    def test_function_call_divisor_is_wrapped(self):
-        t = self._transformer()
-        sql = "SELECT total / COUNT(*) FROM t"
-        result = t.safe_division(sql)
-        assert "total / NULLIF(COUNT(*), 0)" in result
-
-    def test_sum_function_divisor_is_wrapped(self):
-        t = self._transformer()
-        sql = "SELECT revenue / SUM(quantity) FROM t"
-        result = t.safe_division(sql)
-        assert "revenue / NULLIF(SUM(quantity), 0)" in result
-
-    def test_already_nullif_wrapped_divisor_stays_untouched(self):
-        t = self._transformer()
-        sql = "SELECT a / NULLIF(b, 0) FROM t"
-        result = t.safe_division(sql)
-        assert "a / NULLIF(b, 0)" in result
-        assert "NULLIF(NULLIF" not in result
-
-    def test_multiple_divisions_in_one_query(self):
-        t = self._transformer()
-        sql = "SELECT a / b, c / d FROM t"
-        result = t.safe_division(sql)
-        assert "a / NULLIF(b, 0)" in result
-        assert "c / NULLIF(d, 0)" in result
-
-    def test_division_inside_string_literal_not_transformed(self):
-        t = self._transformer()
-        sql = "SELECT 'a/b' AS label, x / y FROM t"
-        result = t.safe_division(sql)
-        assert "'a/b'" in result
-        assert "x / NULLIF(y, 0)" in result
-
-    def test_windowed_divisor_wraps_whole_window_expression(self):
-        t = self._transformer()
-        sql = "SELECT mkt / SUM(volume) OVER (PARTITION BY o_year) FROM t"
-        result = t.safe_division(sql)
-        assert "mkt / NULLIF(SUM(volume) OVER (PARTITION BY o_year), 0)" in result
-        assert "NULLIF(SUM(volume), 0) OVER" not in result
-
-
-class TestClickHouseQueryTransformerForkSafeDivision:
-    def _transform(self, sql: str):
-        from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
-
-        transformer = ClickHouseQueryTransformer()
-        return transformer.transform(sql), transformer
-
-    def test_nullable_decimal_divisor_is_wrapped(self):
-        result, transformer = self._transform("SELECT a / CAST(b AS Nullable(Decimal(15, 4))) FROM t")
-        assert "nullIf(CAST(b AS Nullable(Decimal(15, 4))), 0)" in result
-        assert "safe_division" in transformer.get_transformations_applied()
-
-    def test_scaled_numerator_window_divisor_is_wrapped(self):
-        result, _ = self._transform("SELECT SUM(x) * 100 / SUM(SUM(x)) OVER (PARTITION BY c) FROM t GROUP BY c")
-        assert "nullIf(SUM(SUM(x)) OVER (PARTITION BY c), 0)" in result
-
-    def test_literal_divisor_untouched_and_not_recorded(self):
-        result, transformer = self._transform("SELECT a / 12 FROM t")
-        assert "nullIf" not in result
-        assert "safe_division" not in transformer.get_transformations_applied()
-
-
-class TestClickHouseQueryTransformerCaseNormalization:
-    def _transformer(self):
-        from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
-
-        return ClickHouseQueryTransformer()
-
-    def test_q1_fee_column_lowercased(self):
-        t = self._transformer()
-        result = t.normalize_case("SELECT SUM(SR_FEE) AS ctr_total_return FROM store_returns")
-        assert "SUM(sr_fee)" in result
-        assert "SR_FEE" not in result
-
-    def test_q1_agg_field_variants_lowercased(self):
-        t = self._transformer()
-        for column in (
-            "SR_RETURN_AMT",
-            "SR_FEE",
-            "SR_REFUNDED_CASH",
-            "SR_RETURN_AMT_INC_TAX",
-            "SR_REVERSED_CHARGE",
-            "SR_STORE_CREDIT",
-            "SR_RETURN_TAX",
-        ):
-            result = t.normalize_case(f"SELECT SUM({column}) FROM store_returns")
-            assert f"SUM({column.lower()})" in result
-            assert column not in result

@@ -212,23 +212,26 @@ class TestTPCDSDuckDBDialectIntegration:
         assert outcomes[0].status == "failed"
         assert outcomes[0].error_category == "translation_failed"
 
-    def test_interval_syntax_normalization(self):
-
+    def test_interval_syntax_translation(self):
         benchmark = TPCDSBenchmark(scale_factor=1.0, verbose=False)
 
-        query_add = "SELECT * FROM t WHERE d BETWEEN '2000-01-01' AND cast('2000-01-01' as date) + 60 days"
-        normalized_add = benchmark._normalize_interval_syntax(query_add)
-        assert "+ INTERVAL 60 DAY" in normalized_add
-        assert "+ 60 days" not in normalized_add.lower()
+        def translate(query: str) -> str:
+            return benchmark.translate_query_text(query, "netezza", "duckdb")
 
-        query_sub = "SELECT * FROM t WHERE d BETWEEN (cast('2000-01-01' as date) - 30 days) AND '2000-02-01'"
-        normalized_sub = benchmark._normalize_interval_syntax(query_sub)
-        assert "- INTERVAL 30 DAY" in normalized_sub
-        assert "- 30 days" not in normalized_sub.lower()
+        translated_add = translate(
+            "SELECT * FROM t WHERE d BETWEEN '2000-01-01' AND cast('2000-01-01' as date) + 60 days"
+        )
+        assert "+ INTERVAL '60' DAY" in translated_add
+        assert "+ 60 days" not in translated_add.lower()
 
-        query_upper = "SELECT * FROM t WHERE d = cast('2000-01-01' as date) + 14 DAYS"
-        normalized_upper = benchmark._normalize_interval_syntax(query_upper)
-        assert "+ INTERVAL 14 DAY" in normalized_upper
+        translated_sub = translate(
+            "SELECT * FROM t WHERE d BETWEEN (cast('2000-01-01' as date) - 30 days) AND '2000-02-01'"
+        )
+        assert "- INTERVAL '30' DAY" in translated_sub
+        assert "- 30 days" not in translated_sub.lower()
+
+        translated_upper = translate("SELECT * FROM t WHERE d = cast('2000-01-01' as date) + 14 DAYS")
+        assert "+ INTERVAL '14' DAY" in translated_upper
 
     def test_interval_syntax_with_duckdb_execution(self, temp_dir):
 
@@ -243,7 +246,7 @@ class TestTPCDSDuckDBDialectIntegration:
 
         netezza_query = "SELECT * FROM test_dates WHERE d BETWEEN '2000-01-01' AND cast('2000-01-01' as date) + 60 days"
 
-        translated = benchmark.translate_query_text(netezza_query, "postgres", "duckdb")
+        translated = benchmark.translate_query_text(netezza_query, "netezza", "duckdb")
 
         try:
             result = conn.execute(translated).fetchall()
@@ -254,11 +257,10 @@ class TestTPCDSDuckDBDialectIntegration:
         finally:
             conn.close()
 
-    def test_interval_normalization_preserves_other_syntax(self):
-
+    def test_interval_translation_preserves_other_syntax(self):
         benchmark = TPCDSBenchmark(scale_factor=1.0, verbose=False)
 
         query_with_days_column = "SELECT days_since_order FROM orders WHERE notes = 'shipped in 30 days'"
-        normalized = benchmark._normalize_interval_syntax(query_with_days_column)
-        assert "days_since_order" in normalized
-        assert "'shipped in 30 days'" in normalized
+        translated = benchmark.translate_query_text(query_with_days_column, "netezza", "duckdb")
+        assert "days_since_order" in translated
+        assert "'shipped in 30 days'" in translated

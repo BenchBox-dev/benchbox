@@ -274,19 +274,6 @@ def _databricks_adapter_call(method: str, sql: str) -> Callable[[], str]:
     return run
 
 
-def _transformer():
-    from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
-
-    return ClickHouseQueryTransformer()
-
-
-def _clickhouse_legacy(method: str, sql: str, *args) -> Callable[[], str]:
-    def run() -> str:
-        return getattr(_transformer(), method)(sql, *args)
-
-    return run
-
-
 def _fork_rewrite(name: str, sql: str, dialect: str, **args) -> Callable[[], str]:
     def run() -> str:
         return apply_rewrite(name, sql, dialect, **args)
@@ -397,7 +384,7 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"clickhouse_division_tpch_q{number}",
-                _clickhouse_legacy("safe_division", sql),
+                frozen_legacy(AREA, f"clickhouse_division_tpch_q{number}"),
                 _fork_rewrite("safe_division", sql, "clickhouse"),
             )
         )
@@ -424,7 +411,7 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"clickhouse_safe_division_{index}",
-                _clickhouse_legacy("safe_division", sql),
+                frozen_legacy(AREA, f"clickhouse_safe_division_{index}"),
                 _fork_rewrite("safe_division", sql, "clickhouse"),
             )
         )
@@ -433,7 +420,7 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"clickhouse_decimal_division_{index}",
-                _clickhouse_legacy("fix_decimal_division_by_zero", sql),
+                frozen_legacy(AREA, f"clickhouse_decimal_division_{index}"),
                 _fork_rewrite("safe_division", sql, "clickhouse"),
             )
         )
@@ -442,7 +429,7 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"clickhouse_decimal_literal_{index}",
-                _clickhouse_legacy("fix_type_casts", sql),
+                frozen_legacy(AREA, f"clickhouse_decimal_literal_{index}"),
                 _fork_rewrite("decimal_zero_literals", sql, "clickhouse", precision=15, scale=2),
             )
         )
@@ -451,7 +438,7 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"clickhouse_lowercase_{index}",
-                _clickhouse_legacy("normalize_case", sql),
+                frozen_legacy(AREA, f"clickhouse_lowercase_{index}"),
                 _fork_rewrite("lowercase_identifiers", sql, "clickhouse", patterns=CLICKHOUSE_LOWERCASE_PATTERNS),
             )
         )
@@ -466,7 +453,7 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"clickhouse_transform_{index}",
-                _clickhouse_legacy("transform", sql),
+                frozen_legacy(AREA, f"clickhouse_transform_{index}"),
                 lambda sql=sql: _clickhouse_pipeline(sql),
             )
         )
@@ -475,7 +462,7 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"clickhouse_settings_{index}",
-                _clickhouse_legacy("add_query_settings", sql, extra),
+                frozen_legacy(AREA, f"clickhouse_settings_{index}"),
                 _clickhouse_settings_fork(sql, extra),
             )
         )

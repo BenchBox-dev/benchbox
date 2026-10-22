@@ -211,7 +211,7 @@ def _clickhouse_rows(sess, sql: str) -> list[tuple]:
 class TestDuckDBClickHouseLocal:
     def test_query_results_match(self, query_id, duckdb_reference_conn, clickhouse_session):
         from benchbox.core.validation.cross_platform import tolerance_for
-        from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
+        from benchbox.platforms.clickhouse.query_rewrites import rewrite_query_for_clickhouse
 
         qn = int(query_id[1:])
         sql = _tpch_sql(qn)
@@ -219,8 +219,7 @@ class TestDuckDBClickHouseLocal:
 
         reference_rows = _fetchall_as_tuples(duckdb_reference_conn, sql)
 
-        transformer = ClickHouseQueryTransformer()
-        ch_sql = transformer.transform(sql)
+        ch_sql = rewrite_query_for_clickhouse(sql)
 
         try:
             comparison_rows = _clickhouse_rows(clickhouse_session, ch_sql)

@@ -24,6 +24,7 @@ from benchbox.core.validation import (
     DataValidationEngine,
     ValidationResult,
 )
+from benchbox.utils.dialect_utils import apply_rewrite
 from benchbox.utils.file_format import get_delimiter_for_file
 from benchbox.utils.printing import emit
 from benchbox.utils.sql_parsing import find_matching_parenthesis
@@ -33,7 +34,6 @@ from ..compliance import validate_tpcds_scale
 from ..generator import TPCDSDataGenerator
 from ..queries import TPCDSQueryManager
 from ..schema import TABLES, DataType
-from .clickhouse_overrides import rewrite_q10_for_clickhouse, rewrite_q35_for_clickhouse
 from .config import MaintenanceTestConfig, ThroughputTestConfig
 from .results import (
     MaintenanceTestResult,
@@ -71,6 +71,9 @@ def _aggregate_stream_results(stream_results: list[dict[str, Any]], start_time: 
         "stream_results": stream_results,
     }
 
+
+_Q58_CTES = ("ss_items", "cs_items", "ws_items")
+_Q58_ORDER_QUALIFIERS = {"item_id": "ss_items"}
 
 _DATE_COLUMNS = tuple(
     sorted({column.name for table in TABLES for column in table.columns if column.data_type == DataType.DATE})
@@ -234,10 +237,8 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
 
         if query_id in (47, 57):
             return self._rewrite_clickhouse_monthly_avg_query(query_id, query)
-        if query_id == 10 and variant is None:
-            return rewrite_q10_for_clickhouse(query)
-        if query_id == 35 and variant is None:
-            return rewrite_q35_for_clickhouse(query)
+        if query_id in (10, 35) and variant is None:
+            return apply_rewrite("correlated_exists_to_in", query, "clickhouse", expected=3)
         if query_id == 66:
             return self._rewrite_clickhouse_q66(query)
         return query
@@ -545,38 +546,18 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             dialect=src,
         )
 
-    def _normalize_interval_syntax(self, query: str) -> str:
-        import re
-
-        pattern = r"([+\-])\s+(\d+)\s+days"
-
-        replacement = r"\1 INTERVAL \2 DAY"
-
-        return re.sub(pattern, replacement, query, flags=re.IGNORECASE)
-
-    def _fix_query58_ambiguity(self, query: str) -> str:
-        if "ss_items" not in query.lower() or "cs_items" not in query.lower() or "ws_items" not in query.lower():
-            return query
-
-        import re
-
-        pattern = r'(ORDER\s+BY\s+)"item_id"'
-        replacement = r'\1"ss_items"."item_id"'
-        query = re.sub(pattern, replacement, query, flags=re.IGNORECASE)
-
-        pattern_unquoted = r"(ORDER\s+BY\s+)item_id\b(?!\.)"
-        replacement_unquoted = r"\1ss_items.item_id"
-        query = re.sub(pattern_unquoted, replacement_unquoted, query, flags=re.IGNORECASE)
-
-        return query
-
     def translate_query_text(self, query: str, source_dialect: str, target_dialect: str) -> str:
-        from benchbox.utils.dialect_utils import apply_rewrite, translate_sql_query
+        from benchbox.utils.dialect_utils import translate_sql_query
 
         src = (source_dialect or "netezza").lower()
         tgt = (target_dialect or src).lower()
 
-        pre_procs = [self._normalize_interval_syntax]
+        pre_procs = []
+        lowered = query.lower()
+        if all(cte in lowered for cte in _Q58_CTES):
+            pre_procs.append(
+                lambda sql: apply_rewrite("qualify_order_by_columns", sql, src, qualifiers=_Q58_ORDER_QUALIFIERS)
+            )
         if tgt in {"postgres", "questdb"}:
             pre_procs.append(
                 lambda sql: apply_rewrite("date_integer_arithmetic_to_interval", sql, src, date_columns=_DATE_COLUMNS)
@@ -588,7 +569,6 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             source_dialect=src,
             identify=True,
             pre_processors=pre_procs,
-            post_processors=[self._fix_query58_ambiguity],
             date_columns=_DATE_COLUMNS if tgt == "sqlite" else None,
         )
 

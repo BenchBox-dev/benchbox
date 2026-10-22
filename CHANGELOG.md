@@ -124,6 +124,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `PRIMARY KEY` model, and statements other than `CREATE TABLE` on Doris are sent unchanged. A Doris
   `unique` or `aggregate` table model on a table whose key columns do not lead the table now raises
   instead of silently writing a narrower key. A test runs both adapters over every shipped schema.
+- **ClickHouse, StarRocks and TPC-DS runner rewrites now run through the bundled SQLGlot runtime.**
+  `ClickHouseQueryTransformer` and `transform_query_for_clickhouse` are gone. ClickHouse
+  execution applies the runtime's `lowercase_identifiers`, `decimal_zero_literals`,
+  `safe_division` and `add_query_settings` through `apply_rewrite`
+  (`benchbox.platforms.clickhouse.query_rewrites`). StarRocks execution applies
+  `add_derived_table_aliases` instead of the reserved-alias, `SUBSTRING` and
+  identifier regexes and the derived-table scanner. TPC-DS Q10 and Q35 on ClickHouse use
+  `correlated_exists_to_in`, and the TPC-DS runner's interval and Q58 regexes are replaced
+  by the runtime's Netezza parsing and `qualify_order_by_columns`. Output differences:
+  string literals are no longer edited (the regexes lowercased `'SR_FEE'` and rewrote
+  `'THEN 0.0'`), a zero literal before `)` is cast to `Decimal(15, 2)`, an existing
+  `SETTINGS` clause is replaced instead of duplicated, a query that starts with a
+  hint comment receives the session setting, JOIN-derived and nested subqueries on
+  StarRocks receive aliases, a scalar subquery in an expression list no longer receives
+  one, and SQL the runtime cannot parse is executed unchanged with a warning. Q58 on
+  BigQuery, Spark, Databricks and SingleStore now qualifies `item_id` in `ORDER BY`
+  (the regex matched only double-quoted output). Query text is otherwise re-rendered
+  by SQLGlot; across the ClickHouse query sets of every benchmark 745 of 749 queries are
+  byte-identical (the other four gain the session setting), and across the StarRocks query
+  sets 679 of 759 are byte-identical while 78 of the rest differ only in whitespace,
+  `NOT x IS NULL` spelling or alias numbering. Published ClickHouse results do not
+  change; published StarRocks results are unaffected apart from the alias spelling.
+  Published Q58 results on the four backtick-quoted targets above were produced from the
+  ambiguous form.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed
