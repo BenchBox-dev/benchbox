@@ -22839,6 +22839,13 @@
       "status": "done",
       "title": "soundness_drain_report keys only on ci-required-result, not all ruleset required checks"
     },
+    "soundness-gaps-decisions-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Record the owner decisions for the soundness-gap remediation"
+    },
     "soundness-merge-digest-external-review-author-20261008": {
       "claim": null,
       "needs": [],
