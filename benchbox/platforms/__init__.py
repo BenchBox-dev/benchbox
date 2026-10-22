@@ -404,8 +404,13 @@ def get_dataframe_adapter(platform_name: str, **config):
     return adapter_class(**config)
 
 
-def list_available_dataframe_platforms() -> dict[str, bool]:
-    return {platform: _load_lazy_constant(info[1]) for platform, info in _DATAFRAME_PLATFORM_INFO.items()}
+def list_available_dataframe_platforms(platform_names: Optional[Iterable[str]] = None) -> dict[str, bool]:
+    requested = None if platform_names is None else set(platform_names)
+    return {
+        platform: _load_lazy_constant(info[1])
+        for platform, info in _DATAFRAME_PLATFORM_INFO.items()
+        if requested is None or platform in requested
+    }
 
 
 def get_dataframe_requirements(platform_name: str) -> str:

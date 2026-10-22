@@ -347,7 +347,9 @@ def _resolve_platform_mode(s: types.SimpleNamespace) -> None:
     caps = PlatformRegistry.get_platform_capabilities(platform_key)
     if caps is None:
         is_df_platform_legacy = is_dataframe_platform(platform_key)
-        is_df_available = is_df_platform_legacy and list_available_dataframe_platforms().get(platform_key, False)
+        is_df_available = is_df_platform_legacy and list_available_dataframe_platforms([platform_key]).get(
+            platform_key, False
+        )
         if not is_df_available and not s.dry_run:
             from benchbox.utils.dependencies import get_install_command
 
@@ -381,8 +383,8 @@ def _resolve_platform_mode(s: types.SimpleNamespace) -> None:
         else:
             is_available = caps.supports_dataframe
             if is_available and platform_key in ["polars", "pandas", "cudf", "dask"]:
-                df_platforms = list_available_dataframe_platforms()
                 legacy_key = f"{platform_key}-df"
+                df_platforms = list_available_dataframe_platforms([legacy_key, platform_key])
                 is_available = df_platforms.get(legacy_key, df_platforms.get(platform_key, False))
 
         if not is_available and not s.dry_run:

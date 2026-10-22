@@ -70,3 +70,16 @@ def test_cli_platforms_commands_reject_removed_platform(cmd) -> None:
     assert "Platform 'modin' has been removed" in result.output
     assert "pandas-df" in result.output
     assert "dask-df" in result.output
+
+
+@pytest.mark.parametrize("selector", ["nosuchplatform", "snowflak"])
+def test_cli_run_unknown_platform_reports_unavailable_and_exits_one(selector: str) -> None:
+    runner = CliRunner()
+    result = runner.invoke(
+        run,
+        ["--platform", selector, "--benchmark", "tpch"],
+        obj={"config": ConfigManager()},
+    )
+    assert result.exit_code == 1
+    assert f"Platform '{selector}' is not available (missing dependencies)" in result.output
+    assert f"uv sync --extra {selector}" in result.output

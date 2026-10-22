@@ -78,6 +78,11 @@ class TestListAvailableDataFramePlatforms:
         assert platforms["polars-df"] is True
         assert platforms["pandas-df"] is True
 
+    def test_platform_names_scope_the_result(self):
+        scoped = list_available_dataframe_platforms(["polars-df", "unknown-df"])
+
+        assert scoped == {"polars-df": POLARS_AVAILABLE}
+
 
 class TestGetDataFrameRequirements:
     def test_polars_df_requirements(self):

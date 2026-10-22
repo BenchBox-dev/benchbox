@@ -240,6 +240,101 @@ class TestAdapterRegistration:
             assert issubclass(adapter_class, PlatformAdapter)
 
 
+class TestLazySingleAdapterRegistration:
+    @pytest.fixture
+    def registered_names(self, monkeypatch):
+        from benchbox.core import platform_registry
+
+        monkeypatch.setattr(PlatformRegistry, "_adapters", {})
+        monkeypatch.setattr(PlatformRegistry, "_auto_registered", False)
+        monkeypatch.setattr(PlatformRegistry, "_availability_cache", None)
+        names: list[str] = []
+        original = platform_registry._try_register_adapter
+
+        def recording(name, module_path, class_name):
+            names.append(name)
+            original(name, module_path, class_name)
+
+        monkeypatch.setattr(platform_registry, "_try_register_adapter", recording)
+        return names
+
+    def test_get_adapter_class_registers_only_requested_platform(self, registered_names):
+        from benchbox.platforms.sqlite import SQLiteAdapter
+
+        assert PlatformRegistry.get_adapter_class("sqlite3") is SQLiteAdapter
+        assert registered_names == ["sqlite"]
+        assert PlatformRegistry._auto_registered is False
+
+    def test_is_platform_available_registers_only_requested_platform(self, registered_names):
+        assert PlatformRegistry.is_platform_available("duckdb") is True
+        assert registered_names == ["duckdb"]
+
+    def test_is_platform_available_unknown_platform_registers_nothing(self, registered_names):
+        assert PlatformRegistry.is_platform_available("nosuchplatform_xyz") is False
+        assert registered_names == []
+
+    def test_get_platform_info_registers_only_requested_platform(self, registered_names):
+        info = PlatformRegistry.get_platform_info("sqlite")
+        assert info is not None
+        assert info.enabled is True
+        assert registered_names == ["sqlite"]
+
+    def test_failed_single_registration_is_not_retried(self, registered_names, monkeypatch):
+        from benchbox.core import platform_registry
+
+        monkeypatch.setitem(
+            platform_registry._OPTIONAL_ADAPTER_REGISTRATION_DIAGNOSTICS,
+            "sqlite",
+            {"status": "missing_optional_dependency"},
+        )
+        assert PlatformRegistry.is_platform_available("sqlite") is False
+        info = PlatformRegistry.get_platform_info("sqlite")
+        assert info is not None
+        assert info.enabled is False
+        assert registered_names == []
+
+    def test_run_path_in_fresh_process_loads_only_requested_adapter(self):
+        code = """
+import sys
+import benchbox.cli.main
+from benchbox.cli.database import DatabaseManager
+from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
+from benchbox.core.platform_registry import PlatformRegistry
+
+manager = DatabaseManager()
+assert PlatformRegistry.is_platform_available("duckdb")
+assert "velox" not in PlatformHookRegistry._config_builders
+PlatformRegistry.get_platform_info("velox")
+assert "velox" in PlatformHookRegistry._config_builders
+assert not PlatformRegistry._auto_registered
+assert sorted(PlatformRegistry._adapters) == ["duckdb", "velox"], sorted(PlatformRegistry._adapters)
+assert "benchbox.platforms.snowflake" not in sys.modules
+assert "benchbox.platforms.bigquery" not in sys.modules
+assert "benchbox.platforms.dataframe.dask_df" not in sys.modules
+assert manager.available_databases
+assert PlatformRegistry._auto_registered
+"""
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
+        assert result.returncode == 0, result.stderr or result.stdout
+
+    def test_unknown_platform_error_lists_all_registered_platforms(self, registered_names):
+        with pytest.raises(ValueError) as excinfo:
+            PlatformRegistry.get_adapter_class("nosuchplatform_xyz")
+        available = PlatformRegistry.get_available_platforms()
+        assert str(excinfo.value) == (
+            f"Platform 'nosuchplatform_xyz' not registered. Available: {', '.join(available)}"
+        )
+        assert "duckdb" in available
+        assert PlatformRegistry._auto_registered is True
+
+    def test_full_registration_after_single_keeps_manifest_order(self, registered_names):
+        PlatformRegistry.get_adapter_class("sqlite")
+        PlatformRegistry.get_adapter_class("duckdb")
+        available = PlatformRegistry.get_available_platforms()
+        manifest_order = [name for name, _, _ in get_adapter_imports()]
+        assert available == [name for name in manifest_order if name in available]
+
+
 class TestPlatformAvailability:
     def setup_method(self):
         PlatformRegistry.clear_cache()
