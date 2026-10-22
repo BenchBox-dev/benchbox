@@ -2,6 +2,7 @@
   "acceptance": [
     "Merges no longer stall on superseded failures (sweep, docs, or rollup fix)"
   ],
+  "context": "2026-10-22 recurrence on PR #3264 (head 68de1e483): every required context had a SUCCESS instance, but two superseded failed `oracle-review` check runs (Actions runs 39706240336, synchronize; 39711741625, pull_request_review) kept the required rollup at FAILURE and mergeStateStatus BLOCKED. Cancelled `gate` instances from the oracle-gate workflow's cancel-in-progress concurrency also show as failing in `gh pr checks`, though `gate` is not required. `make oracle-review-recover` could not help: it never finds failed runs (oracle-review-recover-finds-no-failed-runs-20261022). A manual `gh run rerun --failed` of both runs unblocked the merge.",
   "description": "On 2026-10-12, PRs #2822, #2829, #2830, #2875, #2876, #2878, #2905, #2908 each sat green-but-unmergable behind superseded FAILED instances in the commit rollup. Manual gh run rerun on each stale instance unblocked merge (#2829 additionally needed close+reopen for a phantom FAILURE rollup with zero failing checks). Workarounds in /tmp/benchbox-open-prs-handoff-2026-10-12.md.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "op": "create",
       "op_id": "0675f588617b4db79c10c098b2744c94",
       "session_id": "8be230d790474fda8edea19668121bf9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:17:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "296253c6808b438c9e3afe74a8ce0a38",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
     }
   ]
 }
