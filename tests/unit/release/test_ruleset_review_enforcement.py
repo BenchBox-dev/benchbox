@@ -24,7 +24,9 @@ rre = _load("ruleset_review_enforcement")
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
-def _pr_rule(count: int, thread_resolution: bool | None = True) -> list[dict]:
+def _pr_rule(
+    count: int, thread_resolution: bool | None = True, contexts: tuple[str, ...] = ("core", "oracle-review")
+) -> list[dict]:
     parameters: dict[str, object] = {
         "required_approving_review_count": count,
     }
@@ -33,7 +35,7 @@ def _pr_rule(count: int, thread_resolution: bool | None = True) -> list[dict]:
     return [
         {
             "type": "required_status_checks",
-            "parameters": {"required_status_checks": [{"context": "core"}, {"context": "oracle-review"}]},
+            "parameters": {"required_status_checks": [{"context": context} for context in contexts]},
         },
         {
             "type": "pull_request",
@@ -77,12 +79,25 @@ def test_missing_required_status_rule_fails() -> None:
     assert "no required_status_checks rule" in " ".join(rre.review_enforcement_findings(rules))
 
 
+@pytest.mark.parametrize(
+    "contexts",
+    [
+        ("core", "oracle-review", "oracle-gate"),
+        ("core", "oracle-gate"),
+        ("core", "oracle-review"),
+    ],
+)
+def test_review_enforced_with_either_or_both_oracle_contexts(contexts: tuple[str, ...]) -> None:
+    rules = _pr_rule(count=0, contexts=contexts)
+    assert rre.is_review_enforced(rules) is True
+
+
 @pytest.mark.parametrize("checks", [[], [{"context": "core"}], [{"context": "oracle-review-other"}]])
 def test_missing_oracle_review_fails(checks: list[dict]) -> None:
     rules = _pr_rule(count=0)
     rules[0]["parameters"]["required_status_checks"] = checks
     assert rre.is_review_enforced(rules) is False
-    assert "must include oracle-review" in " ".join(rre.review_enforcement_findings(rules))
+    assert "must include oracle-gate or oracle-review" in " ".join(rre.review_enforcement_findings(rules))
 
 
 @pytest.mark.parametrize(

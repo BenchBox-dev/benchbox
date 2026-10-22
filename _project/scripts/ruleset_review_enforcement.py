@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+ORACLE_CONTEXTS = ("oracle-gate", "oracle-review")
+
 
 def extract_rules(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, list):
@@ -36,20 +38,22 @@ def review_enforcement_findings(rules: list[dict[str, Any]]) -> list[str]:
         )
     status_rule = next((rule for rule in rules if rule.get("type") == "required_status_checks"), None)
     if status_rule is None:
-        findings.append("develop ruleset has no required_status_checks rule: oracle-review must be required")
+        findings.append(
+            "develop ruleset has no required_status_checks rule: oracle-review or oracle-gate must be required"
+        )
         return findings
     status_params = status_rule.get("parameters")
     if not isinstance(status_params, dict):
-        findings.append("required_status_checks parameters are malformed: oracle-review enforcement is unverified")
+        findings.append("required_status_checks parameters are malformed: oracle enforcement is unverified")
         return findings
     checks = status_params.get("required_status_checks")
     if not isinstance(checks, list) or any(
         not isinstance(check, dict) or not isinstance(check.get("context"), str) or not check["context"].strip()
         for check in checks
     ):
-        findings.append("required_status_checks are malformed: oracle-review enforcement is unverified")
-    elif not any(check["context"] == "oracle-review" for check in checks):
-        findings.append("required_status_checks must include oracle-review")
+        findings.append("required_status_checks are malformed: oracle enforcement is unverified")
+    elif not any(check["context"] in ORACLE_CONTEXTS for check in checks):
+        findings.append("required_status_checks must include oracle-gate or oracle-review")
     return findings
 
 
@@ -263,7 +267,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"- {finding}")
         return 1
     print(f"# Ruleset review enforcement ({args.branch}) - OK")
-    print("- oracle-review required")
+    print("- oracle-gate or oracle-review required")
     print("- review thread resolution required")
     return 0
 
