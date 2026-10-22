@@ -44,7 +44,7 @@ The first command writes to a local directory and the second writes to cloud sto
 ## JSON Format (Schema v2)
 
 The JSON export is the canonical schema-v2 result bundle containing complete
-benchmark details. Schema v2 spans minors `"2.0"` through `"2.3"`. Current runs emit
+benchmark details. Schema v2 spans minors `"2.0"` through `"2.4"`. Current runs emit
 `"2.3"` in the top-level `result_schema_version` field. Readers accept
 `result_schema_version` -> `version` -> `schema_version` in that order, so
 bundles written before the rename keep loading.
@@ -53,10 +53,10 @@ Consumer policy is intentionally split by use case:
 | Consumer | Accepted versions | Behavior |
 | --- | --- | --- |
 | Producer/exporter | `"2.3"` | New bundles are written with the current producer version. |
-| Runtime loader and exporter listing | `"2.0"`, `"2.1"`, `"2.2"`, `"2.3"` | Unknown versions fail closed and should be re-exported. |
-| Normalizer | `"2.0"`, `"2.1"`, `"2.2"`, `"2.3"` as v2; other shapes as legacy | Known v2 bundles use exact v2 field mapping; v1.x and unknown shapes use legacy best-effort extraction. |
+| Runtime loader and exporter listing | `"2.0"`, `"2.1"`, `"2.2"`, `"2.3"`, `"2.4"` | Unknown versions fail closed and should be re-exported. |
+| Normalizer | `"2.0"`, `"2.1"`, `"2.2"`, `"2.3"`, `"2.4"` as v2; other shapes as legacy | Known v2 bundles use exact v2 field mapping; v1.x and unknown shapes use legacy best-effort extraction. |
 | Public submission validator | Numeric `2.x` | Forward-compatible for schema-v2 minor versions, but missing or malformed versions are rejected. |
-| Explorer pipeline input | `"2.0"`, `"2.1"`, `"2.2"`, `"2.3"` | Unsupported bundles are rejected before explorer read-model projection. |
+| Explorer pipeline input | `"2.0"`, `"2.1"`, `"2.2"`, `"2.3"`, `"2.4"` | Unsupported bundles are rejected before explorer read-model projection. |
 
 ### Schema Structure
 
@@ -162,6 +162,24 @@ where possible. Current canonical locations are `platform.*` for platform
 facets and raw platform metadata, `phases.<stage>` for lifecycle-stage
 summaries, and `comparisons.*` for cross-engine comparison data. New top-level
 keys require a public-contract update and consumer tests.
+
+##### Round-trip and platform timing fields (schema 2.4)
+
+These fields are optional and omitted until a producer supplies them, and
+bundles older than 2.4 may not carry them. They
+support comparing an in-process engine with a networked one once the client
+round trip is removed; see the
+[locality ADR amendment](../development/adr/adr-client-link-locality-disclosure.md#amendment-round-trip-removed-and-platform-timings).
+
+| Field | Meaning |
+|-------|---------|
+| `queries[].request_count` | Requests the adapter sent to the platform inside the query's timer: each `execute()` or job submit, including `BEGIN` and `COMMIT`. A count of calls, not parsed statements. |
+| `queries[].result_bytes` | Bytes of the result that crossed back to the client. `rows` remains the row count. |
+| `queries[].platform_timing` | The platform's own timing for the query, captured by platform statement ID: `source`, `requests` (one entry per request with its `id`, `attempt`, `kind` of `query`, `begin`, `commit` or `setup`, and raw `fields` in ms and bytes), the derived `platform_ms`, optional `queue_ms`, `compile_ms` and `exec_ms`, `cache_hit`, and `status`. `valid` requires `platform_ms`; `suspect` and `unavailable` require a `reason`. Values are marked, never deleted, and unknown keys are rejected. `fields` values must be numbers, booleans or null, never strings. Public bundles replace each request `id` with a `statement_` pseudonym. |
+| `run.timing_method` | `1` or `2`, naming the timer scope. Runs without it are method 1. Method 2 times only the query's own requests. |
+| `run.platform_timing` | Run summary, all required: `source`, its `definition` class (`server_complete` or `includes_fetch`), and `coverage`, the share of measured queries with a valid `platform_ms` (0 to 1). |
+| `run.net_estimate_status` | `eligible` when the round-trip estimate may be shown for this run, otherwise the reason it may not: `embedded`, `endpoint_unknown`, `timing_method`, `probe_samples`, `probe_unverified` or `floor_suspect`. `eligible` requires `run.timing_method` 2 and a `platform.deployment.endpoint_class` of `localhost_port`, `remote_host` or `cloud_endpoint`. |
+| `environment.client_link.probed_at` | ISO 8601 time the statement overhead probe ran. |
 
 ##### Execution variants (schema 2.3)
 
@@ -688,7 +706,7 @@ uses top-level `result_schema_version`, `run`, `benchmark`, `platform`,
 `environment`, `normalized_cost`, `validation`, and `comparisons`.
 Example bundles in this guide illustrate the v2 bundle structure.
 Runtime loading and explorer generation intentionally accept only known v2
-minor versions (`"2.0"`, `"2.1"`, `"2.2"`, and `"2.3"`). The public submission validator accepts
+minor versions (`"2.0"`, `"2.1"`, `"2.2"`, `"2.3"`, and `"2.4"`). The public submission validator accepts
 numeric `2.x` versions to allow forward-compatible submissions, but it rejects
 missing values and malformed strings such as `"2.x"`. Legacy v1.x result shapes
 are not runtime-loadable; they are handled only by the normalizer's best-effort
@@ -698,6 +716,7 @@ compatibility path.
 
 | Version | Changes |
 | --------- | --------- |
+| 2.4 | Added optional per-query `request_count`, `result_bytes` and `platform_timing`, and run-level `timing_method`, `platform_timing` and `net_estimate_status`, plus `environment.client_link.probed_at`. Readers accept 2.4 before the producer writes it |
 | 2.3 | Added optional execution-engine receipts, compute resource and size, selected deployment, gateway, and variant identity; legacy reads preserve published bundles |
 | 2.2 | Added bounded per-query `row_count_validation` evidence; top-level version key renamed to `result_schema_version` with `version`/`schema_version` fallback reads |
 | 2.1 | Added typed result and companion metadata used by the previous producer |

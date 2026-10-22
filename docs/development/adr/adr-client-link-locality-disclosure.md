@@ -1,6 +1,6 @@
 # ADR: Client-to-Platform Locality Disclosure and Statement Overhead Probe
 
-- Status: Accepted. Amended 2026-10-17: an opt-in, labeled estimate with the measured round trip removed, and platform timings in result bundles (see [Amendment: Round Trip Removed and Platform Timings](#amendment-round-trip-removed-and-platform-timings)).
+- Status: Accepted. Amended 2026-10-17: an opt-in, labeled estimate with the measured round trip removed, and platform timings in result bundles (see [Amendment: Round Trip Removed and Platform Timings](#amendment-round-trip-removed-and-platform-timings)). Revised 2026-10-21: public bundles carry `platform_timing` for every platform; the terms check no longer gates publication.
 - Date: 2026-09-03
 - Constrains: Result schema `environment.client_link`, CLI `--client-cloud` and `--client-region` options, post-benchmark statement overhead probe, Results Explorer read model v10, and hosted result submission validation. The amendment also constrains result schema 2.4 (`platform_timing`, `request_count`, `run.timing_method`, `run.net_estimate_status`, `client_link.probed_at`) and the Results Explorer Compare round-trip view.
 
@@ -150,7 +150,7 @@ The disclosure above tells readers that a DuckDB-versus-Snowflake compare at a s
 
 ### Terms check
 
-Result bundles are public downloads, so before a platform's raw timing fields are published, its current terms must be read for two things: conditions on publishing benchmarks, and any limit on republishing the query telemetry a customer retrieves.
+Result bundles are public downloads, so a platform's current terms were read for two things: conditions on publishing benchmarks, and any limit on republishing the query telemetry a customer retrieves.
 
 Outcome as of 2026-10-17:
 
@@ -164,7 +164,7 @@ Outcome as of 2026-10-17:
 | MotherDuck | Allowed with replication materials given to MotherDuck, and reciprocity. | No clause found. | Not confirmed. |
 | Starburst Galaxy | No benchmark clause in the 2021 terms; current terms not read. | No clause found. | Not confirmed. |
 
-BenchBox result bundles already carry the configuration and query text needed to replicate a run, which meets the replication conditions above. No terms seen restrict a customer from republishing its own query history. Publication still requires a confirmed read: a platform's `platform_timing` fields enter public bundles only once its row reads *Live page*. Until then publication strips them, and local bundles keep them.
+BenchBox result bundles already carry the configuration and query text needed to replicate a run, which meets the replication conditions above. On 2026-10-21 the project owner decided that public bundles carry `platform_timing` for every platform without waiting for the reads still marked *Not confirmed*. The fields are timings a customer retrieves about its own queries. Validation limits each request's raw `fields` to numbers, booleans and null, so no vendor name, user, warehouse or query text can ride along, and public anonymization replaces each platform statement ID with a `statement_` pseudonym. The *Read from* column records how each row was confirmed; it is not a publication gate. The unconfirmed rows are still to be read. If a read finds a restriction, a new amendment names the platform and how its fields are withheld.
 
 ### Consequences of the amendment
 

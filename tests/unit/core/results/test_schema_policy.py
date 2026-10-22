@@ -28,7 +28,7 @@ def test_producer_policy_only_accepts_current_schema_version() -> None:
     assert "producer result schema policy" in older.error_message()
 
 
-@pytest.mark.parametrize("version", ["2.0", "2.1", "2.2", "2.3"])
+@pytest.mark.parametrize("version", ["2.0", "2.1", "2.2", "2.3", "2.4"])
 def test_strict_runtime_policies_accept_known_v2_versions(version: str) -> None:
     assert RUNTIME_SCHEMA_POLICY.evaluate(version).accepted
     assert LOADER_SCHEMA_POLICY.evaluate(version).accepted
@@ -51,7 +51,7 @@ def test_strict_runtime_policies_reject_unsupported_versions(version: object, re
         decision = policy.evaluate(version)
         assert not decision.accepted
         assert decision.reason == reason
-        assert "schema versions 2.0, 2.1, 2.2, and 2.3" in decision.error_message()
+        assert "schema versions 2.0, 2.1, 2.2, 2.3, and 2.4" in decision.error_message()
 
 
 @pytest.mark.parametrize("version", ["2.0", "2.1", "2.2", "2.99", "2.1.3"])
