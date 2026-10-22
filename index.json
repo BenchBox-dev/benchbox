@@ -2718,7 +2718,9 @@
     },
     "changelog-fragments-02-release-prep": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "changelog-fragments-01-library"
+      ],
       "priority": "medium-high",
       "status": "open",
       "title": "Make release-prep compile changelog fragments into the release section and gate pre-tag state"
