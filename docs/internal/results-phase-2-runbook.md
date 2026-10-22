@@ -51,7 +51,7 @@ change is ready to surface on the public corpus branch.
 
 **Publication fixed-point gate.** Before building a mirror branch or opening
 a PR, the sync workflow runs the same check as
-`tests/unit/scripts/test_corpus_privacy_invariant.py::test_rederived_corpus_publishes_byte_identically_to_what_is_stored`
+`tests/unit/scripts/test_corpus_privacy_invariant.py::test_rederived_corpus_publishes_byte_identically_and_is_stable_under_a_second_pass`
 against the develop content at `GITHUB_SHA` (the bytes about to be mirrored).
 If re-anonymization would rewrite any primary bundle, the run fails loudly and
 does **not** open a mirror. That keeps `published-results` from receiving a

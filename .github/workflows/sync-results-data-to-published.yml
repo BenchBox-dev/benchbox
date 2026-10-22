@@ -138,7 +138,7 @@ jobs:
                   f"::error::Corpus is not at the publication fixed point "
                   f"({len(drifted)} bundle(s) would be rewritten by re-anonymization). "
                   f"Refusing to open a mirror that would rewrite published bytes. "
-                  f"Same check as test_rederived_corpus_publishes_byte_identically_to_what_is_stored.",
+                  f"Same check as test_rederived_corpus_publishes_byte_identically_and_is_stable_under_a_second_pass.",
                   file=sys.stderr,
               )
               for rel in drifted[:20]:
