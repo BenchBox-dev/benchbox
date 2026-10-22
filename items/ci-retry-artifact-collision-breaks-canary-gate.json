@@ -2,7 +2,7 @@
   "acceptance": [
     "Downloader/verifier disambiguates attempts (latest-wins) or failed-attempt artifacts are namespaced/cleaned automatically; no manual deletion required"
   ],
-  "context": "Found while landing PR #2913. Stale artifact IDs deleted: 11757022181, 11762606819; kept 11762303564 (exit 0).",
+  "context": "Merged as PR 3272 (3125c0428). The medium-collection, medium-shard and coverage-map evidence uploads in ci.yml, trunk.yml, trunk-coverage.yml and test.yml now set overwrite: true (actions/upload-artifact v6.0.0: a matching artifact is deleted before the new one uploads), so a rerun replaces the failed attempt's evidence instead of leaving two same-named artifacts for the download pattern to merge. tests/unit/workflows/test_evidence_artifact_reruns.py requires overwrite: true on every SHA-keyed evidence upload; with the workflow change removed all 9 uploads fail it. Not yet observed on GitHub: the replacement happens inside upload-artifact on a real rerun. Check the next rerun of a failed medium shard (artifact list of the run should show one artifact per name); if two still appear, the verifier needs an attempt-aware lookup and this item should reopen.",
   "description": "CI run 38267710571 accumulated three same-named t2-medium-shard-0-d05f41116 artifacts (IDs 11757022181 exit 1, 11762606819 exit 1, 11762303564 exit 0). The core aggregator (release_canary_sharding.py verify-medium exact-assignment check) kept failing on the stale exit-1 evidence after the shard reran green. Resolved by manually deleting the two stale artifacts via the API and rerunning core, which passed. Manual artifact deletion is a destructive workaround, not a process.",
   "sessions": [
     {
@@ -38,6 +38,14 @@
       "generation": "0c387f39f778473685070b8df4eafd4c",
       "op": "take",
       "op_id": "940e8e16fac543fab1de2932a7b0ed27",
+      "session_id": "7d2f94f74b1c49ec9ffc810e3c0bad68"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dce62a827220422fd68b23fc",
+      "at": "2026-10-22T05:07:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9e7e1b3d40a84ec7b1dae87c2fe5d508",
       "session_id": "7d2f94f74b1c49ec9ffc810e3c0bad68"
     }
   ]
