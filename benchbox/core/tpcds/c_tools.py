@@ -331,15 +331,24 @@ class DSQGenBinary:
             cmd.extend([f"{_opt}STREAMS", str(streams)])
         return cmd, _opt
 
-    def _stage_dsqgen_workdir(self, temp_path: Path, scale_factor: float, query_id: int) -> dict[str, str]:
+    def _stage_dsqgen_workdir(
+        self, temp_path: Path, scale_factor: float, query_id: int, template_arg: str
+    ) -> dict[str, str]:
         import os
         import shutil as _shutil
 
-        _shutil.copytree(self.templates_dir, temp_path / "q")
-        apply_subscale_template_overrides(temp_path / "q", scale_factor, {f"query{query_id}.tpl"})
-        var_src = self.templates_dir.parent / "query_variants"
-        if var_src.exists():
-            _shutil.copytree(var_src, temp_path / "query_variants")
+        query_dir = temp_path / "q"
+        query_dir.mkdir()
+        for support in self.templates_dir.iterdir():
+            if support.is_file() and not (support.name.startswith("query") and support.suffix == ".tpl"):
+                _shutil.copy2(support, query_dir / support.name)
+        template_src = Path(os.path.normpath(self.templates_dir / template_arg))
+        template_dest = Path(os.path.normpath(query_dir / template_arg))
+        if template_src.is_file():
+            template_dest.parent.mkdir(parents=True, exist_ok=True)
+            _shutil.copy2(template_src, template_dest)
+        override_names = {name for name in (f"query{query_id}.tpl",) if (query_dir / name).exists()}
+        apply_subscale_template_overrides(query_dir, scale_factor, override_names)
 
         env = os.environ.copy()
         env["DSS_QUERY"] = str(temp_path)
@@ -375,7 +384,7 @@ class DSQGenBinary:
         log_text: Optional[str] = None
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
-            env = self._stage_dsqgen_workdir(temp_path, scale_factor, query_id)
+            env = self._stage_dsqgen_workdir(temp_path, scale_factor, query_id, cmd[cmd.index(f"{opt}TEMPLATE") + 1])
             if edit_workdir is not None:
                 edit_workdir(temp_path)
 
