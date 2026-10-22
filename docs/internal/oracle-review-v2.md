@@ -142,11 +142,12 @@ in the Tailscale console.
    (`https://<host>.<tailnet>.ts.net:4000`) to the `oracle` environment as
    secrets.
 6. After a hosted run passes on the gateway, delete `CLAUDE_CODE_OAUTH_TOKEN`,
-   `OPENAI_API_KEY`, `META_API_KEY`, `GEMINI_API_KEY`, `OMP_AUTH_BROKER_URL`,
+   `OPENAI_API_KEY`, `META_API_KEY`, `OMP_AUTH_BROKER_URL`,
    `OMP_AUTH_BROKER_TOKEN` and `OMP_AGENT_CONFIG` from the environment, remove
    the broker's `tcp:8765` ACL entry for `tag:oracle-ci`, and rotate those
    credentials once. Until then reverting the cut-over restores the old
-   setup.
+   setup. `GEMINI_API_KEY` was referenced by the old workflow but never set in
+   the environment, so there is nothing to delete for it.
 
 To rotate the client token, make a new token and digest, replace the digest in
 the clients file, and update `ORACLE_GATEWAY_TOKEN`; the old token stops

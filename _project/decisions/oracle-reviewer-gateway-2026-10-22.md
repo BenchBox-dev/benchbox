@@ -102,10 +102,9 @@ scope or the reviewer's reach grows.
 2. Merge this change, then run a canary on a soundness pull request.
 3. After the canary passes, delete the old secrets
    (`CLAUDE_CODE_OAUTH_TOKEN`, `OPENAI_API_KEY`, `META_API_KEY`,
-   `GEMINI_API_KEY`, `OMP_AUTH_BROKER_URL`, `OMP_AUTH_BROKER_TOKEN`,
-   `OMP_AGENT_CONFIG`), remove the broker ACL entry for `tag:oracle-ci`, and
-   rotate those credentials once, since an unconfined reviewer could reach
-   them.
+   `OMP_AUTH_BROKER_URL`, `OMP_AUTH_BROKER_TOKEN`, `OMP_AGENT_CONFIG`),
+   remove the broker ACL entry for `tag:oracle-ci`, and rotate those
+   credentials once, since an unconfined reviewer could reach them.
 
 Rollback is reverting this change. It is safe until the old secrets are
 deleted in step 3, so keep them until the canary has passed.
