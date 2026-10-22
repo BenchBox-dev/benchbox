@@ -496,6 +496,10 @@ comment-policy-strict:
 comment-policy-report:
 	uv run -- python scripts/check_comment_policy.py --mode report
 
+.PHONY: comment-policy-dead-exceptions
+comment-policy-dead-exceptions:
+	uv run -- python scripts/report_dead_comment_exceptions.py
+
 .PHONY: lint-markers
 lint-markers:
 	uv run -- python -m pytest --collect-only -q -p no:warnings
