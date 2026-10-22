@@ -223,8 +223,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `13.0 / 15 * 100`, `2.0 / 3 * 100` and `20.0 / 25 * 100`; `EQ6` computes the memory
   headroom term as `(1000 - N) / 10.0`. Engines that apply integer division to integer
   literals (PostgreSQL semantics, SQLite) previously returned a resolution rate of `0`
-  for `45 / 50 * 100` instead of `90`, and truncated the `EQ6` memory headroom
-  (`93` rather than `93.6`). The recorded EQ6 and EQ8 results in published TPC-DI
+  for `45 / 50 * 100` instead of `90`, and truncated the `EQ6` memory headroom term
+  (`93` rather than `93.6`; the `EQ6` performance rating is capped at 100, so its
+  output is unchanged). The recorded `EQ6` and `EQ8` results in published TPC-DI
   bundles hold timings and row counts only, so no recorded field changes.
 
 ### Fixed
