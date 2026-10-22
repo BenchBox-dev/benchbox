@@ -4,7 +4,7 @@
     "No skip or marker added",
     "Issue 2964 evidence updated"
   ],
-  "context": "Found 2026-10-21 while triaging open issues (scheduled Nightly T3 run 39604480542, develop 17dd8569d). Evidence from that run log; re-verify before editing. Unclaimed. Keeps issue 2964 open.",
+  "context": "Found 2026-10-21 while triaging open issues (scheduled Nightly T3 run 39604480542, develop 17dd8569d). Evidence from that run log; re-verify before editing. Unclaimed. Keeps issue 2964 open.\n\nCHECKPOINT 2026-10-21: PR #3258 (head bc1b6e520, armed): _postgres_image_references() built paths with str(path.relative_to(REPO_ROOT)), backslashes on Windows; now .as_posix(); expectation set and sha256 check unchanged. Introduced by 17dd8569d (#3187). Before: nightly run 39604480542. After: windows-fast dispatch https://github.com/BenchBox-dev/benchbox/actions/runs/39696250139 (pre-rebase commit, test file only) 12 passed; with @sha256 removed from docker/postgresql/docker-compose.yml locally the test fails (restored). NEXT: finish after #3258 merges.",
   "description": "tests/unit/workflows/test_docker_integration_workflow.py::test_every_postgres_image_reference_is_pinned_by_sha256 (added by the Postgres pinning change, merged as 17dd8569d) fails in t3:windows: AssertionError: assert {'.github\\\\wo...-c ... (a set of workflow paths built with Windows separators versus expected posix paths). It is a regression from our own batch: the Windows run before that merge (39467654899) was green. Fix the test to compare posix paths (Path.as_posix) as the earlier Windows fixes did for handoffs; do not skip or weaken the pin check itself. Prove with a windows-fast.yml dispatch on the branch.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "1a44551d042e40ac802f0838fe71ada6",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T00:14:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "eada731059784a38a12e7fa5ad4b6363",
       "session_id": "db427a9694db441d88b0b3b12151b3f1"
     }
   ]
