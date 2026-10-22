@@ -371,61 +371,6 @@ class TestSingleStoreDatabaseOperations:
         mock_cursor.execute.assert_called_with("SHOW TABLES")
 
 
-class TestSingleStoreDDL:
-    def test_shard_key_tpch_lineitem(self):
-        adapter = SingleStoreAdapter()
-        clause = adapter.get_shard_key_clause("lineitem")
-        assert clause == "SHARD KEY (l_orderkey)"
-
-    def test_shard_key_tpch_orders(self):
-        adapter = SingleStoreAdapter()
-        clause = adapter.get_shard_key_clause("orders")
-        assert clause == "SHARD KEY (o_orderkey)"
-
-    def test_shard_key_tpch_customer(self):
-        adapter = SingleStoreAdapter()
-        clause = adapter.get_shard_key_clause("customer")
-        assert clause == "SHARD KEY (c_custkey)"
-
-    def test_shard_key_unknown_table(self):
-        adapter = SingleStoreAdapter()
-        clause = adapter.get_shard_key_clause("unknown_table")
-        assert clause == "SHARD KEY ()"
-
-    def test_sort_key_tpch_lineitem(self):
-        adapter = SingleStoreAdapter()
-        clause = adapter.get_sort_key_clause("lineitem")
-        assert "l_orderkey" in clause
-        assert "l_linenumber" in clause
-        assert clause.startswith("SORT KEY")
-
-    def test_sort_key_tpch_orders(self):
-        adapter = SingleStoreAdapter()
-        clause = adapter.get_sort_key_clause("orders")
-        assert clause == "SORT KEY (o_orderkey)"
-
-    def test_sort_key_unknown_table(self):
-        adapter = SingleStoreAdapter()
-        clause = adapter.get_sort_key_clause("unknown_table")
-        assert clause == ""
-
-    def test_reference_table_nation(self):
-        adapter = SingleStoreAdapter()
-        assert adapter.is_reference_table("nation") is True
-
-    def test_reference_table_region(self):
-        adapter = SingleStoreAdapter()
-        assert adapter.is_reference_table("region") is True
-
-    def test_not_reference_table_lineitem(self):
-        adapter = SingleStoreAdapter()
-        assert adapter.is_reference_table("lineitem") is False
-
-    def test_not_reference_table_orders(self):
-        adapter = SingleStoreAdapter()
-        assert adapter.is_reference_table("orders") is False
-
-
 class TestSingleStoreDataLoading:
     def test_load_data_infile_standard(self):
         adapter = SingleStoreAdapter()
@@ -1124,19 +1069,25 @@ def singlestore_ddl_decisions():
 
 
 class TestSingleStoreDDLTransformation:
+    @staticmethod
+    def _statements(script: str) -> list[str]:
+        adapter = SingleStoreAdapter()
+        benchmark = MagicMock()
+        benchmark.get_create_tables_sql.return_value = script
+        return adapter._schema_statements(benchmark)
+
     def test_strip_fk_rule_registered_and_applied(self, singlestore_ddl_decisions):
         rule_ids = [d.rule_id for d in singlestore_ddl_decisions]
         assert "ddl_optimize.singlestore.all.strip_foreign_keys" in rule_ids
 
-        adapter = SingleStoreAdapter()
         stmt = (
-            "CREATE TABLE `orders` (\n"
+            "CREATE TABLE orders (\n"
             "  o_orderkey BIGINT,\n"
             "  o_custkey BIGINT,\n"
             "  FOREIGN KEY (o_custkey) REFERENCES customer (c_custkey) ON DELETE CASCADE\n"
             ")"
         )
-        result = adapter._transform_create_statement(stmt)
+        (result,) = self._statements(stmt)
         assert "FOREIGN KEY" not in result
         assert "o_orderkey" in result
 
@@ -1144,90 +1095,45 @@ class TestSingleStoreDDLTransformation:
         rule_ids = [d.rule_id for d in singlestore_ddl_decisions]
         assert "ddl_optimize.singlestore.all.reference_table_for_dimensions" in rule_ids
 
-        adapter = SingleStoreAdapter()
-        stmt = "CREATE TABLE `nation` (\n  n_nationkey INT\n)"
-        result = adapter._transform_create_statement(stmt)
+        (result,) = self._statements("CREATE TABLE nation (n_nationkey INT)")
         assert "CREATE REFERENCE TABLE" in result
 
     def test_inject_shard_key_rule_registered_and_applied(self, singlestore_ddl_decisions):
         rule_ids = [d.rule_id for d in singlestore_ddl_decisions]
         assert "ddl_optimize.singlestore.all.inject_shard_key" in rule_ids
 
-        adapter = SingleStoreAdapter()
-        stmt = "CREATE TABLE `lineitem` (\n  l_orderkey BIGINT\n)"
-        result = adapter._transform_create_statement(stmt)
-        assert "SHARD KEY (l_orderkey)" in result
+        (result,) = self._statements("CREATE TABLE lineitem (l_orderkey BIGINT)")
+        assert "SHARD KEY (`l_orderkey`)" in result
 
     def test_inject_sort_key_rule_registered_and_applied(self, singlestore_ddl_decisions):
         rule_ids = [d.rule_id for d in singlestore_ddl_decisions]
         assert "ddl_optimize.singlestore.all.inject_sort_key" in rule_ids
 
-        adapter = SingleStoreAdapter()
-        stmt = "CREATE TABLE `lineitem` (\n  l_orderkey BIGINT,\n  l_linenumber INT\n)"
-        result = adapter._transform_create_statement(stmt)
-        assert "SORT KEY (l_orderkey, l_linenumber)" in result
+        (result,) = self._statements("CREATE TABLE lineitem (l_orderkey BIGINT, l_linenumber INT)")
+        assert "SORT KEY (`l_orderkey`, `l_linenumber`)" in result
 
-    def test_transform_injects_shard_key(self):
-        adapter = SingleStoreAdapter()
-        stmt = "CREATE TABLE `lineitem` (\n  l_orderkey BIGINT\n)"
-        result = adapter._transform_create_statement(stmt)
-        assert "SHARD KEY (l_orderkey)" in result
-
-    def test_transform_injects_sort_key(self):
-        adapter = SingleStoreAdapter()
-        stmt = "CREATE TABLE `lineitem` (\n  l_orderkey BIGINT,\n  l_linenumber INT\n)"
-        result = adapter._transform_create_statement(stmt)
-        assert "SORT KEY (l_orderkey, l_linenumber)" in result
-
-    def test_transform_reference_table_nation(self):
-        adapter = SingleStoreAdapter()
-        stmt = "CREATE TABLE `nation` (\n  n_nationkey INT\n)"
-        result = adapter._transform_create_statement(stmt)
+    def test_reference_table_has_no_keys(self):
+        (result,) = self._statements("CREATE TABLE region (r_regionkey INT)")
         assert "CREATE REFERENCE TABLE" in result
         assert "SHARD KEY" not in result
         assert "SORT KEY" not in result
 
-    def test_transform_reference_table_region(self):
-        adapter = SingleStoreAdapter()
-        stmt = "CREATE TABLE region (\n  r_regionkey INT\n)"
-        result = adapter._transform_create_statement(stmt)
-        assert "CREATE REFERENCE TABLE" in result
+    def test_table_name_lowercased(self):
+        (result,) = self._statements("CREATE TABLE IF NOT EXISTS ORDERS (o_orderkey BIGINT)")
+        assert "`orders`" in result
+        assert "SHARD KEY (`o_orderkey`)" in result
+        assert "SORT KEY (`o_orderkey`)" in result
 
-    def test_transform_if_not_exists(self):
-        adapter = SingleStoreAdapter()
-        stmt = "CREATE TABLE IF NOT EXISTS `orders` (\n  o_orderkey BIGINT\n)"
-        result = adapter._transform_create_statement(stmt)
-        assert "SHARD KEY (o_orderkey)" in result
-        assert "SORT KEY (o_orderkey)" in result
-
-    def test_transform_unknown_table_gets_empty_shard(self):
-        adapter = SingleStoreAdapter()
-        stmt = "CREATE TABLE `custom_table` (\n  id INT\n)"
-        result = adapter._transform_create_statement(stmt)
+    def test_unknown_table_gets_empty_shard(self):
+        (result,) = self._statements("CREATE TABLE custom_table (id INT)")
         assert "SHARD KEY ()" in result
 
-    def test_transform_non_create_passthrough(self):
-        adapter = SingleStoreAdapter()
-        stmt = "INSERT INTO lineitem VALUES (1, 2, 3)"
-        result = adapter._transform_create_statement(stmt)
-        assert result == stmt
+    def test_drop_statement_is_kept(self):
+        statements = self._statements("DROP TABLE IF EXISTS lineitem;\nCREATE TABLE nation (n_nationkey INT);")
+        assert statements[0].startswith("DROP TABLE IF EXISTS")
+        assert statements[1].startswith("CREATE REFERENCE TABLE")
 
-    def test_transform_drop_passthrough(self):
-        adapter = SingleStoreAdapter()
-        stmt = "DROP TABLE IF EXISTS lineitem"
-        result = adapter._transform_create_statement(stmt)
-        assert result == stmt
-
-    def test_transform_customer_shard_key(self):
-        adapter = SingleStoreAdapter()
-        stmt = "CREATE TABLE `customer` (\n  c_custkey BIGINT\n)"
-        result = adapter._transform_create_statement(stmt)
-        assert "SHARD KEY (c_custkey)" in result
-        assert "SORT KEY (c_custkey)" in result
-
-    def test_transform_partsupp_compound_sort_key(self):
-        adapter = SingleStoreAdapter()
-        stmt = "CREATE TABLE `partsupp` (\n  ps_partkey BIGINT,\n  ps_suppkey BIGINT\n)"
-        result = adapter._transform_create_statement(stmt)
-        assert "SHARD KEY (ps_partkey)" in result
-        assert "SORT KEY (ps_partkey, ps_suppkey)" in result
+    def test_partsupp_compound_sort_key(self):
+        (result,) = self._statements("CREATE TABLE partsupp (ps_partkey BIGINT, ps_suppkey BIGINT)")
+        assert "SHARD KEY (`ps_partkey`)" in result
+        assert "SORT KEY (`ps_partkey`, `ps_suppkey`)" in result

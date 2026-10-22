@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -91,7 +90,6 @@ def test_ddl_governance_statuses_distinguish_runtime_governance_and_no_rewrite_p
     assert by_key[("bigquery", "_convert_to_bigquery_table")].status == "registered_governance_only_intent"
     assert by_key[("athena", "_convert_to_external_table")].status == "registered_governance_only_intent"
     assert by_key[("databricks", "_convert_to_delta_table")].status == "registered_governance_only_intent"
-    assert by_key[("singlestore", "_transform_create_statement")].status == "registered_runtime_behavior"
     assert by_key[("spark", "optimize_spark_table_definition")].status == "registered_governance_only_intent"
     assert all(entry.inferred_platform_key != "duckdb" for entry in statuses)
 
@@ -147,7 +145,7 @@ def test_athena_runtime_ddl_rewrite_is_represented_in_governance_inventory():
     assert status.status == "registered_governance_only_intent"
 
 
-def test_singlestore_ddl_rules_resolve_via_base_optimizer():
+def test_singlestore_ddl_rules_are_governance_only():
     import importlib
     import pkgutil
 
@@ -176,39 +174,22 @@ def test_singlestore_ddl_rules_resolve_via_base_optimizer():
 
     transformer_ids = [d.payload.transformer_id for d in decisions if isinstance(d.payload, RewriteDDLPayload)]
     assert transformer_ids == [
-        "singlestore_strip_foreign_keys",
-        "singlestore_reference_table",
-        "singlestore_inject_shard_key",
-        "singlestore_inject_sort_key",
+        "translate_ddl:strip_foreign_keys",
+        "translate_ddl:singlestore.reference_tables",
+        "translate_ddl:singlestore.shard_keys",
+        "translate_ddl:singlestore.sort_keys",
     ], f"Unexpected transformer_id order: {transformer_ids}"
 
     for decision in decisions:
         assert isinstance(decision.payload, RewriteDDLPayload)
         assert decision.payload.transformer_id, "transformer_id must not be empty"
         assert decision.payload.description, "description must not be empty"
+        assert decision.payload.governance_only
 
 
-def test_base_ddl_optimizer_dispatches_correctly():
-    from benchbox.platforms.singlestore import SingleStoreAdapter
+def test_every_rule_file_registers_its_platform():
+    import importlib
 
-    with patch("benchbox.platforms.singlestore._s2", MagicMock()):
-        adapter = SingleStoreAdapter()
-
-    lineitem_stmt = "CREATE TABLE `lineitem` (\n  l_orderkey BIGINT,\n  l_linenumber INT\n)"
-    result = adapter._transform_create_statement(lineitem_stmt)
-    assert "SHARD KEY (l_orderkey)" in result
-    assert "SORT KEY (l_orderkey, l_linenumber)" in result
-    assert "FOREIGN KEY" not in result
-
-    nation_stmt = "CREATE TABLE nation (\n  n_nationkey INT\n)"
-    result = adapter._transform_create_statement(nation_stmt)
-    assert "CREATE REFERENCE TABLE" in result
-    assert "SHARD KEY" not in result
-    assert "SORT KEY" not in result
-
-
-def test_every_rule_file_loads_via_base_optimizer():
-    from benchbox.platforms.base.ddl_optimizer import _clear_load_cache, _ensure_platform_rules_loaded
     from benchbox.sql_compat.context import Phase
     from benchbox.sql_compat.registry import REGISTRY
 
@@ -216,10 +197,9 @@ def test_every_rule_file_loads_via_base_optimizer():
     rule_files = sorted(p.stem for p in rules_dir.glob("*_ddl_rewrites.py"))
     assert rule_files, "No DDL rewrite rule files found"
 
-    _clear_load_cache()
     for stem in rule_files:
         platform_key = stem.removesuffix("_ddl_rewrites")
-        _ensure_platform_rules_loaded(platform_key)
+        importlib.import_module(f"benchbox.sql_compat.rules.ddl_optimize.{stem}")
         registered = {platform for (phase, platform, _, _), _ in REGISTRY.all_rules() if phase == Phase.DDL_OPTIMIZE}
         assert platform_key in registered, (
             f"Rule file {stem}.py loaded but registered no DDL_OPTIMIZE rule for "
@@ -227,9 +207,7 @@ def test_every_rule_file_loads_via_base_optimizer():
         )
 
 
-_DISPATCHED_ADAPTERS: dict[str, str] = {
-    "singlestore": "benchbox.platforms.singlestore.SingleStoreAdapter",
-}
+_DISPATCHED_ADAPTERS: dict[str, str] = {}
 
 
 def test_runtime_dispatch_or_governance_only():
