@@ -182,11 +182,20 @@ def _comment_prefix(legacy: str, fork: str) -> bool:
     return re.sub(r"^/\*.*?\*/ ", "", fork) == legacy and fork != legacy
 
 
-def _same_tokens(legacy: str, fork: str) -> bool:
-    def tokens(text: str) -> list[str]:
-        return sorted(token for token in re.split(r"[\s,()]+", text) if token)
+def _property_order(legacy: str, fork: str) -> bool:
+    pattern = re.compile(r"^(.*TBLPROPERTIES\()(.*)(\).*)$")
+    left, right = pattern.match(legacy), pattern.match(fork)
+    if left is None or right is None or left.group(1) != right.group(1) or left.group(3) != right.group(3):
+        return False
+    old, new = left.group(2).split(", "), right.group(2).split(", ")
+    return old != new and sorted(old) == sorted(new)
 
-    return tokens(legacy) == tokens(fork)
+
+def _stored_as_last(legacy: str, fork: str) -> bool:
+    clause = re.search(r" STORED AS \w+", fork)
+    if clause is None or not fork.endswith(clause.group(0)) or legacy.endswith(clause.group(0)):
+        return False
+    return legacy.count(clause.group(0)) == 1 and legacy.replace(clause.group(0), "") == fork[: -len(clause.group(0))]
 
 
 def _unquoted_lower(legacy: str, fork: str) -> bool:
@@ -195,12 +204,12 @@ def _unquoted_lower(legacy: str, fork: str) -> bool:
 
 def _repeated_partition_column(legacy: str, fork: str) -> bool:
     deduplicated = legacy.replace("o_orderdate DATE, ", "", 1)
-    return deduplicated != legacy and _same_tokens(deduplicated, fork)
+    return deduplicated != legacy and _stored_as_last(deduplicated, fork)
 
 
 def _sorted_without_cluster(legacy: str, fork: str) -> bool:
     without = re.sub(r" SORTED BY\([^)]*\)", "", legacy)
-    return without != legacy and "CLUSTERED BY" not in legacy and _same_tokens(without, fork)
+    return without != legacy and "CLUSTERED BY" not in legacy and without == fork
 
 
 def _time_type(legacy: str, fork: str) -> bool:
@@ -372,13 +381,13 @@ CLASSIFICATIONS: list[tuple[str, str, str, _Check]] = [
         r"spark_mixin:delta_.*",
         "equivalent",
         "Only the order of the two delta.autoOptimize TBLPROPERTIES differs.",
-        _same_tokens,
+        _property_order,
     ),
     (
         r"spark_mixin:hive_bucketed",
         "equivalent",
         "Only clause order differs; the fork follows the Hive grammar (CLUSTERED BY before STORED AS).",
-        _same_tokens,
+        _stored_as_last,
     ),
     (
         r"spark_mixin:hive_partition",
