@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -1264,7 +1265,10 @@ def build_dependency_map(root: Path, test_files: list[str]) -> tuple[dict[str, F
 
 
 def collect_canary_node_ids(
-    root: Path, timeout_seconds: int = 600, marker_expression: str = MARKER_EXPRESSION
+    root: Path,
+    timeout_seconds: int = 600,
+    marker_expression: str = MARKER_EXPRESSION,
+    paths: Sequence[str] | None = None,
 ) -> list[str]:
     completed = subprocess.run(
         [
@@ -1279,7 +1283,7 @@ def collect_canary_node_ids(
             "no:cacheprovider",
             "-m",
             marker_expression,
-            "tests",
+            *(paths or ("tests",)),
         ],
         cwd=str(root),
         text=True,
