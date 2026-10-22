@@ -13427,13 +13427,18 @@
       "title": "Stop repeating identical CLI benchmark runs and shrink the cross-surface dtype test"
     },
     "longtest-05-cli-shared-tpch-data": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T07:46:05Z",
+        "generation": "807f3219c6d24fa4b1cd16277eb1caaa",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
+      },
       "needs": [
         "longtest-04-cli-identical-runs-and-scale",
         "longtest-01-delete-duplicate-tests"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Share pre-generated TPC-H data across the CLI end-to-end tests"
     },
     "longtest-06-cross-surface-medium-scale": {
