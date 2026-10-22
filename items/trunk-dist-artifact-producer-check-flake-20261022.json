@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "On failure the step logs each matching job's id, run_attempt and status, so the failing condition is known.",
+    "The cause is identified from at least one logged failure and fixed without weakening the uniqueness or attempt-identity checks; a unit test covers the failing listing.",
+    "No producer-check failures across 50 consecutive develop Trunk runs after the fix."
+  ],
+  "description": "`scripts/release_artifact_consumer.py` `producer` (`:683-695`) lists the jobs of the current run attempt and requires exactly one job named `dist-artifact` with status `in_progress`. It fails intermittently with `Release artifact admission failed: producer job is not unique and running`, and a rerun passes. Each failure turns develop red, and the red-Trunk arm gate then blocks `make pr-arm` for every PR until a later Trunk run passes.\n\nFailures: run 39614627213 (2026-10-21, head 4f5458c16); run 39615662898 attempt 1 (2026-10-21, head 7dcebb28c; attempt 2 passed); run 39794975920 (2026-10-22, head 93524639b; failed jobs rerun). That is 3 of the 60 most recent develop Trunk runs. The message does not say which condition failed, so the cause is unknown: no match, several matches, or a match whose listed status is not yet `in_progress`. Jobs-API lag is a guess, not verified.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/39794975920"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:16:46Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "04c5673e45ce48809f448ddaf1d4f70e",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    }
+  ]
+}

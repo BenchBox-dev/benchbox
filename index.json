@@ -26195,6 +26195,13 @@
       "status": "open",
       "title": "Move per-test coverage to its own trunk workflow and make the coverage map smaller, statement-aware and failure-tolerant"
     },
+    "trunk-dist-artifact-producer-check-flake-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Trunk's dist-artifact producer check fails intermittently with 'producer job is not unique and running'"
+    },
     "trunk-red-stops-further-merges": {
       "claim": null,
       "needs": [],
