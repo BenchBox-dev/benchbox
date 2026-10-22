@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "sql-execution-evidence uses a digest-pinned Postgres 17 image from the ghcr.io mirror or another authenticated registry.",
+    "Workflow tests that pin the image are updated, and a CI run shows the job pulling from the mirror."
+  ],
+  "description": "The `sql-execution-evidence` job in `.github/workflows/ci.yml` uses the service image `public.ecr.aws/docker/library/postgres:17@sha256:2d2b8998...` (`:1283`), pulled anonymously from ECR Public. On PR #3264 (run 39778950173, 2026-10-22) the pull failed with `toomanyrequests: Data limit exceeded`; the job failed, and the required `core` aggregate failed with it. A rerun passed. `docker-integration.yml` already avoids this: its `mirror-postgres` job copies Postgres to `ghcr.io/benchbox-dev/postgres` through `mirror-ci-images.yml`, and its jobs pin the mirrored digest (today Postgres 18).",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/39778950173"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:16:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3b06c93b195a417a86dd96b9d51e4888",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    }
+  ]
+}
