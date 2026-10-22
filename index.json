@@ -13429,7 +13429,8 @@
     "longtest-05-cli-shared-tpch-data": {
       "claim": null,
       "needs": [
-        "longtest-04-cli-identical-runs-and-scale"
+        "longtest-04-cli-identical-runs-and-scale",
+        "longtest-01-delete-duplicate-tests"
       ],
       "priority": "medium",
       "status": "open",
