@@ -2727,7 +2727,9 @@
     },
     "changelog-fragments-03-cutover": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "changelog-fragments-02-release-prep"
+      ],
       "priority": "medium-high",
       "status": "open",
       "title": "Cut over to changelog fragments: migrate [Unreleased], enforce entries in CI, retire the union rule"
