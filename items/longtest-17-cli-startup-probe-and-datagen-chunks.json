@@ -16,6 +16,15 @@
       "op": "create",
       "op_id": "eedabf1d9452486aa7a13d9162573169",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-22T11:42:54Z",
+      "client": "omp-coding-agent",
+      "generation": "0d7801762cbb4b7ca6b0c4fcbdd32f37",
+      "op": "take",
+      "op_id": "a355aec0bd3645288743236fdec44f50",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]
 }

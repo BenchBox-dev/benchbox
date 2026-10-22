@@ -13552,12 +13552,17 @@
       "title": "Refresh the medium-tier duration weights from a full trunk run and measure the result of the long-test work"
     },
     "longtest-17-cli-startup-probe-and-datagen-chunks": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T11:42:54Z",
+        "generation": "0d7801762cbb4b7ca6b0c4fcbdd32f37",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
+      },
       "needs": [
         "longtest-13-lazy-platform-registration"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Measure and, if warranted, remove the cloud-region probe and tiny-scale chunked generation from every CLI run"
     },
     "loud-loader-failures-for-contaminated-data": {
