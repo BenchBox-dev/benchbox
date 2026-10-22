@@ -26149,15 +26149,10 @@
       "title": "Confirm tsbs_devops DataFrame-SQL id mapping"
     },
     "tuned-run-marker-aborts-athena-synapse-bigquery-20261013": {
-      "claim": {
-        "expires_at": "2026-10-23T04:42:06Z",
-        "generation": "b62ff9851a6d4b4e9dd269a9eff92dc9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dce62a827220422fd68b23fc"
-      },
+      "claim": null,
       "needs": [],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "Tuned runs abort or lose metadata on Athena, Synapse/Fabric DW and BigQuery because the tuning metadata store does not work there"
     },
     "tuning-adr-baseline-definition-and-renderer-20260712": {
