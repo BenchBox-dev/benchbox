@@ -22841,6 +22841,15 @@
       "status": "done",
       "title": "soundness_drain_report keys only on ci-required-result, not all ruleset required checks"
     },
+    "soundness-gap-2806-external-review-20261022": {
+      "claim": null,
+      "needs": [
+        "soundness-gaps-decisions-20261022"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "External review of soundness-gap commit 1f56404ef (issue 2806) and attestation if clean"
+    },
     "soundness-gap-2807-external-review-20261022": {
       "claim": null,
       "needs": [
