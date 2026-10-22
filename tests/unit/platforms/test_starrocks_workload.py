@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import pytest
 
+from benchbox._vendor.sqlglot.errors import ParseError
 from benchbox.platforms.starrocks.workload import (
     StarRocksWorkloadMixin,
     _alias_derived_tables,
@@ -68,11 +69,9 @@ class TestAliasDerivedTables:
         q = "SELECT `a` AS `rank` FROM `t`"
         assert _alias_derived_tables(q) == q
 
-    def test_unparseable_query_passes_through_with_a_warning(self, caplog):
-        broken = "SELECT ((( FROM"
-        with caplog.at_level("WARNING", logger="benchbox.platforms.starrocks.workload"):
-            assert _alias_derived_tables(broken) == broken
-        assert "unparseable StarRocks SQL" in caplog.text
+    def test_unparseable_query_fails_before_reaching_the_engine(self):
+        with pytest.raises(ParseError):
+            _alias_derived_tables("SELECT ((( FROM")
 
 
 class TestOptimizeTableDefinition:

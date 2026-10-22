@@ -26,11 +26,7 @@ def _stream_load_treats_empty_as_null(delimiter: str) -> bool:
 
 
 def _alias_derived_tables(query: str) -> str:
-    try:
-        return apply_rewrite("add_derived_table_aliases", query, "starrocks", prefix="_sq", quoted=True)
-    except Exception as error:
-        logger.warning("StarRocks derived-table aliasing skipped (unparseable StarRocks SQL): %s", error)
-        return query
+    return apply_rewrite("add_derived_table_aliases", query, "starrocks", prefix="_sq", quoted=True)
 
 
 class StarRocksWorkloadMixin:

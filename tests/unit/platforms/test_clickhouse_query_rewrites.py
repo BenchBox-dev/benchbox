@@ -1,7 +1,6 @@
-import logging
-
 import pytest
 
+from benchbox._vendor.sqlglot.errors import ParseError
 from benchbox.platforms.clickhouse.query_rewrites import rewrite_query_for_clickhouse
 
 pytestmark = [
@@ -38,11 +37,9 @@ class TestDecimalLiterals:
 
 
 class TestSettings:
-    def test_statements_other_than_queries_are_returned_unchanged(self):
+    def test_non_query_statements_are_not_given_a_settings_clause(self):
         ddl = "CREATE TABLE foo (id Int32) ENGINE = MergeTree() ORDER BY id"
-        assert rewrite_query_for_clickhouse(ddl) == ddl
-        insert = "INSERT INTO t VALUES (1)"
-        assert rewrite_query_for_clickhouse(insert) == insert
+        assert "SETTINGS joined" not in rewrite_query_for_clickhouse(ddl)
 
     def test_session_setting_is_appended_to_queries(self):
         assert rewrite_query_for_clickhouse("SELECT 1") == f"SELECT 1 {SESSION_SETTING}"
@@ -112,8 +109,6 @@ class TestCaseNormalization:
 
 
 class TestUnparseableSql:
-    def test_unparseable_query_passes_through_unchanged_with_a_warning(self, caplog):
-        broken = "SELECT SR_FEE / ((( FROM"
-        with caplog.at_level(logging.WARNING, logger="benchbox.platforms.clickhouse.query_rewrites"):
-            assert rewrite_query_for_clickhouse(broken) == broken
-        assert "unparseable ClickHouse SQL" in caplog.text
+    def test_unparseable_query_fails_before_reaching_the_engine(self):
+        with pytest.raises(ParseError):
+            rewrite_query_for_clickhouse("SELECT SR_FEE / ((( FROM")

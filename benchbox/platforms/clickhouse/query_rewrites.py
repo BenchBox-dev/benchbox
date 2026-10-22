@@ -1,14 +1,8 @@
 from __future__ import annotations
 
-import logging
-import re
 from collections.abc import Mapping
 
 from benchbox.utils.dialect_utils import apply_rewrite
-
-logger = logging.getLogger(__name__)
-
-_QUERY_START = re.compile(r"\s*(?:(?:--[^\n]*\n|/\*.*?\*/)\s*)*(?:SELECT|WITH)\b", re.IGNORECASE | re.DOTALL)
 
 SESSION_SETTINGS: Mapping[str, str | int] = {"joined_subquery_requires_alias": 0}
 
@@ -38,20 +32,13 @@ def rewrite_query_for_clickhouse(
     query: str,
     additional_settings: Mapping[str, str | int] | None = None,
 ) -> str:
-    if not _QUERY_START.match(query):
-        return query
-
     settings = {**SESSION_SETTINGS, **(additional_settings or {})}
-    try:
-        rewritten = apply_rewrite("lowercase_identifiers", query, "clickhouse", patterns=LOWERCASE_IDENTIFIER_PATTERNS)
-        rewritten = apply_rewrite(
-            "decimal_zero_literals", rewritten, "clickhouse", precision=DECIMAL_PRECISION, scale=DECIMAL_SCALE
-        )
-        rewritten = apply_rewrite("safe_division", rewritten, "clickhouse")
-        return apply_rewrite("add_query_settings", rewritten, "clickhouse", settings=settings)
-    except Exception as error:
-        logger.warning("ClickHouse execution rewrites skipped (unparseable ClickHouse SQL): %s", error)
-        return query
+    rewritten = apply_rewrite("lowercase_identifiers", query, "clickhouse", patterns=LOWERCASE_IDENTIFIER_PATTERNS)
+    rewritten = apply_rewrite(
+        "decimal_zero_literals", rewritten, "clickhouse", precision=DECIMAL_PRECISION, scale=DECIMAL_SCALE
+    )
+    rewritten = apply_rewrite("safe_division", rewritten, "clickhouse")
+    return apply_rewrite("add_query_settings", rewritten, "clickhouse", settings=settings)
 
 
 __all__ = ["rewrite_query_for_clickhouse"]
