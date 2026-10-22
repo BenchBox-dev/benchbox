@@ -13426,6 +13426,15 @@
       "status": "open",
       "title": "Stop repeating identical CLI benchmark runs and shrink the cross-surface dtype test"
     },
+    "longtest-05-cli-shared-tpch-data": {
+      "claim": null,
+      "needs": [
+        "longtest-04-cli-identical-runs-and-scale"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Share pre-generated TPC-H data across the CLI end-to-end tests"
+    },
     "longtest-07-validator-exact-fast-path": {
       "claim": null,
       "needs": [],
