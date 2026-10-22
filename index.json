@@ -2737,6 +2737,13 @@
       "status": "open",
       "title": "Update the benchbox release skill source and regenerate the tracked mirror for the fragment flow"
     },
+    "changelog-fragments-05-end-to-end-verification": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Rehearse the fragment flow end to end and record the evidence that closes the batch"
+    },
     "changelog-merge-conflict-churn-20261020": {
       "claim": null,
       "needs": [],
