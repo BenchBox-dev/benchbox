@@ -2745,7 +2745,9 @@
     },
     "changelog-fragments-05-end-to-end-verification": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "changelog-fragments-03-cutover"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Rehearse the fragment flow end to end and record the evidence that closes the batch"
