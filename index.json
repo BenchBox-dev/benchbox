@@ -13447,6 +13447,13 @@
       "status": "open",
       "title": "Generate TPC-H refresh sets once per module in the strict-engine throughput tests"
     },
+    "longtest-10-repo-scan-tests": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run the explorer help examples in-process and anonymize the corpus once for both corpus tests"
+    },
     "loud-loader-failures-for-contaminated-data": {
       "claim": null,
       "needs": [],
