@@ -76,18 +76,25 @@ def test_overlay_pins_reviewer_safety_and_keeps_omp_fallbacks(tmp_path: Path) ->
     assert "retry" not in overlay
 
 
-def test_env_passes_every_provider_key_and_nothing_else(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_env_passes_the_gateway_token_and_drops_provider_and_broker_variables(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("OMP_GATEWAY_TOKEN", "gateway-test")
     monkeypatch.setenv("ANTHROPIC_OAUTH_TOKEN", "oauth-test")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-    monkeypatch.setenv("META_API_KEY", "")
     monkeypatch.setenv("OMP_AUTH_BROKER_URL", "https://broker.invalid")
+    monkeypatch.setenv("OMP_AUTH_BROKER_TOKEN", "broker-test")
     monkeypatch.setenv("UNRELATED_SECRET", "shh")
     env = build_omp(selector="@smol", effort="", workspace=WS, scratch=tmp_path, prompt=PROMPT).env
-    assert env["ANTHROPIC_OAUTH_TOKEN"] == "oauth-test"
-    assert env["OPENAI_API_KEY"] == "sk-test"
-    assert env["OMP_AUTH_BROKER_URL"] == "https://broker.invalid"
-    assert "META_API_KEY" not in env
-    assert "UNRELATED_SECRET" not in env
+    assert env["OMP_GATEWAY_TOKEN"] == "gateway-test"
+    for dropped in (
+        "ANTHROPIC_OAUTH_TOKEN",
+        "OPENAI_API_KEY",
+        "OMP_AUTH_BROKER_URL",
+        "OMP_AUTH_BROKER_TOKEN",
+        "UNRELATED_SECRET",
+    ):
+        assert dropped not in env
 
 
 def test_execute_honors_invocation_env(tmp_path: Path) -> None:

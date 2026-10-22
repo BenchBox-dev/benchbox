@@ -16,17 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "oracle-verdict.yml"
 LEGACY = REPO_ROOT / ".github" / "workflows" / "oracle-review.yml"
 POLICY = load_policy(REPO_ROOT / ".github" / "oracle-reviewers.yml")
-REVIEW_SECRETS = {
-    "CLAUDE_CODE_OAUTH_TOKEN",
-    "OPENAI_API_KEY",
-    "META_API_KEY",
-    "GEMINI_API_KEY",
-    "OMP_AUTH_BROKER_URL",
-    "OMP_AUTH_BROKER_TOKEN",
-    "TS_OAUTH_CLIENT_ID",
-    "TS_AUDIENCE",
-    "OMP_AGENT_CONFIG",
-}
+REVIEW_SECRETS = {"ORACLE_GATEWAY_TOKEN", "ORACLE_GATEWAY_URL", "TS_OAUTH_CLIENT_ID", "TS_AUDIENCE"}
 APP_SECRETS = {"ORACLE_APP_ID", "ORACLE_APP_PRIVATE_KEY"}
 SHA_PIN = re.compile(r"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$")
 SECRET_REF = re.compile(r"secrets\.([A-Z0-9_]+)")
@@ -88,20 +78,46 @@ def test_workflow_permissions_are_empty_and_jobs_are_minimal() -> None:
 def test_attempt_jobs_join_the_tailnet_before_the_reviewer_runs() -> None:
     for name, job in _attempt_jobs().items():
         names = [step["name"] for step in job["steps"]]
-        join = job["steps"][names.index("Join the tailnet to reach the credential broker")]
-        assert names.index("Join the tailnet to reach the credential broker") < names.index("Run the reviewer"), name
+        join = job["steps"][names.index("Join the tailnet to reach the credential gateway")]
+        assert names.index("Join the tailnet to reach the credential gateway") < names.index("Run the reviewer"), name
         assert join["uses"].startswith("tailscale/github-action@"), name
         assert join["with"]["tags"] == "tag:oracle-ci", name
         assert "oauth-secret" not in join["with"] and "authkey" not in join["with"], name
         assert join["if"] == "env.HAS_TAILNET == 'true'", name
 
 
-def test_attempt_jobs_install_the_owner_roles_before_the_reviewer_runs() -> None:
+def test_attempt_jobs_write_the_reviewer_home_before_the_reviewer_runs() -> None:
     for name, job in _attempt_jobs().items():
         names = [step["name"] for step in job["steps"]]
-        install = names.index("Install the owner's OMP model roles")
-        assert install < names.index("Run the reviewer"), name
-        assert job["steps"][install]["env"] == {"OMP_AGENT_CONFIG": "${{ secrets.OMP_AGENT_CONFIG }}"}, name
+        home = names.index("Write the reviewer's OMP home")
+        assert names.index("Check out the trusted develop copy") < home < names.index("Run the reviewer"), name
+        step = job["steps"][home]
+        assert step["working-directory"] == "trusted", name
+        assert step["env"] == {"ORACLE_GATEWAY_URL": "${{ secrets.ORACLE_GATEWAY_URL }}"}, name
+        assert 'reviewer-home --home "$HOME" --gateway-url "$ORACLE_GATEWAY_URL"' in step["run"], name
+
+
+def test_attempt_jobs_hold_only_the_gateway_token_and_no_provider_credentials() -> None:
+    for name, job in _attempt_jobs().items():
+        step = next(step for step in job["steps"] if step["name"] == "Run the reviewer")
+        assert set(step["env"]) == {"OMP_GATEWAY_TOKEN", "REVIEWER"}, name
+        assert step["env"]["OMP_GATEWAY_TOKEN"] == "${{ secrets.ORACLE_GATEWAY_TOKEN }}", name
+        text = _text(job)
+        for gone in (
+            "OMP_AGENT_CONFIG",
+            "OMP_AUTH_BROKER",
+            "CLAUDE_CODE_OAUTH_TOKEN",
+            "OPENAI_API_KEY",
+            "META_API_KEY",
+            "GEMINI_API_KEY",
+        ):
+            assert gone not in text, (name, gone)
+
+
+def test_attempt_jobs_check_out_the_committed_reviewer_config() -> None:
+    for name, job in _attempt_jobs().items():
+        trusted = next(step for step in job["steps"] if step["name"] == "Check out the trusted develop copy")
+        assert ".github/oracle-omp-config.yml" in trusted["with"]["sparse-checkout"].split(), name
 
 
 def test_concurrency_is_per_pull_request_and_ignores_unrelated_events() -> None:

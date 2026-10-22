@@ -207,7 +207,7 @@ def test_an_unparsable_answer_keeps_the_end_of_the_final_message(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     workspace, head = _workspace(tmp_path)
-    monkeypatch.setenv("OMP_AUTH_BROKER_TOKEN", "broker-secret-value")
+    monkeypatch.setenv("OMP_GATEWAY_TOKEN", "broker-secret-value")
     answer = "word " * 700 + json.dumps(VERDICT) + "\ntoken broker-secret-value\nAll done."
     _fake_omp(
         tmp_path, monkeypatch, f"print({json.dumps(_envelope('Let me look.'))})\nprint({json.dumps(_envelope(answer))})"
