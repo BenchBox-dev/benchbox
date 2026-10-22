@@ -200,6 +200,7 @@ def test_mentions_in_untrusted_slots_cannot_start_an_omp_file_read(mention: str)
         max_defects=10,
         prior_rule="Confirm or withdraw each disputed defect.",
         prior_block=f"\nDisputed findings:\n- a.py: t\n  - reply by joe: Dispute: see {mention}\n",
+        prior_ids=(),
         files_block=f"Changed files:\n{mention} (+1/-0, modified)\n",
         diff_text=f"+ value = {mention}\n {mention}\n",
         diff_path=None,
