@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Failing-before evidence: the target run against the locked Polars 1.x environment passes on develop and fails with the new assertion after the change",
+    "The assertion message names the installed and required versions; the CI job (install 2.0.0, then the target) still passes (workflow test or run evidence)",
+    "Every caller of the target is listed in the item with confirmation it still works",
+    "PR merged (oracle verdict if a soundness path file such as ci.yml is touched; the Makefile alone may not be); merge SHA recorded"
+  ],
+  "context": "Created 2026-10-22 from the 2806 external review Low finding. The two High findings of that review were historical and already fixed (see soundness-gap-2806-external-review-20261022).",
+  "description": "External review (agy) of commit 1f56404ef (gap issue 2806) found, and the controller re-verified on origin/develop 2026-10-22: the Makefile target polars-df-compat-check (line 251 onward) only prints polars.__version__ at line 256, so run standalone without the CI install step it passes against locked Polars 1.x while being named the Polars 2.0 compatibility check. CI is protected because .github/workflows/ci.yml (about line 1241, 'Run the polars-df smoke and cross-surface gates on Polars 2.0.0') installs 2.0.0 first. Change the version line to fail when the major version is not 2 (clear error message), keeping --no-sync on every uv run.\n\nDECISION GATE: if the target is meant to also run against Polars 1.x elsewhere (grep callers: CI, docs, other make targets), keep that use working by taking the required major as a make variable with default 2 and record the callers. Do not change the CI install step.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required if a soundness path changes; no pre-registered digests; never weaken a gate; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; done = merged PR plus evidence.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T20:06:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a633bb749907414f8d1d53d06ba53256",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}
