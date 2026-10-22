@@ -60,8 +60,11 @@ have usage left.
 - **Integrity.** Each reviewer job enters the `oracle` environment and loads
   only its own credential. Only the final job holds the App key, and it posts
   only artifacts from its own run that name the head the workflow checked out.
-  Verdicts must match a strict schema; findings are cleaned of secrets,
-  mentions and links before posting.
+  Stored verdicts must match a strict schema; findings are cleaned of secrets,
+  mentions and links before posting. The response-boundary rules in
+  `oracle-review-protocol-2026-10-08.md` supersede blanket ingress rejection:
+  only known harmless drift is normalized, while duplicate keys, placeholders
+  and missing decision-bearing data remain invalid.
 - **Usage limits.** A rerun needs a new head or a previous run in which every
   attempted reviewer was absent; a run left pending by invalid artifacts or a
   reviewer that never reported is not rerun on the same head. `/oracle-review`
