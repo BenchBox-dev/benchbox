@@ -10,7 +10,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: ci-text-edit-refresh-${{ github.event.workflow_run.head_sha }}
+  group: ci-text-edit-refresh-${{ github.event.workflow_run.head_sha }}-${{ github.event.workflow_run.display_title == 'CI (text edit)' }}
   cancel-in-progress: true
 
 jobs:

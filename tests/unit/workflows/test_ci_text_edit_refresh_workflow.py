@@ -42,6 +42,12 @@ def test_the_ci_workflow_keeps_the_name_this_workflow_listens_for() -> None:
     assert _load(CI)["name"] == _load()[True if True in _load() else "on"]["workflow_run"]["workflows"][0]
 
 
+def test_a_text_edit_completion_never_shares_a_group_with_a_refresh_that_may_be_polling() -> None:
+    group = _load()["concurrency"]["group"]
+    assert "github.event.workflow_run.head_sha" in group
+    assert f"github.event.workflow_run.display_title == '{TEXT_EDIT_RUN_NAME}'" in group
+
+
 def test_the_job_timeout_covers_the_bounded_wait() -> None:
     wait_minutes = verdict.UNFINISHED_POLLS * verdict.UNFINISHED_POLL_SECONDS / 60
     assert _job()["timeout-minutes"] > wait_minutes
