@@ -2736,7 +2736,9 @@
     },
     "changelog-fragments-04-skill-sync": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "changelog-fragments-03-cutover"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Update the benchbox release skill source and regenerate the tracked mirror for the fragment flow"
