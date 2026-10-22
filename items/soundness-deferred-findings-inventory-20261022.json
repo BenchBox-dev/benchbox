@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A table in the item evidence: PR, thread URL, severity, classification a/b/c/d, evidence (commit, item id or file:line)",
+    "Every class (c) finding has a tracker item created with the thread URL and re-verified file:line; no duplicate of an existing open item (search evidence recorded)",
+    "Every class (a) and (b) classification cites the fixing commit or the existing item id",
+    "No code, issue, label or comment changes were made (verified by git status of worktrees and the issue lists)"
+  ],
+  "context": "\n\nSource: soundness-gap plan (read-only planner review, 2026-10-22) of open issues 2806, 2807, 2808, 3125, 3126 in BenchBox-dev/benchbox plus owner decisions of 2026-10-22 (record: soundness-gaps-decisions-20261022). Line numbers, commit SHAs and findings are leads from that plan: re-verify them against current develop before acting. Not yet verified by anyone else.",
+  "description": "Owner decision 2026-10-22: yes. Planner finding: replies on merged PRs say a finding was 'recorded as a follow-up' or deferred, but no issue or tracker item exists for most (the hunk-position Medium from PR 2784 did exist as oracle-patch-hash-hunk-positions-20261008; the planner did not check the tracker). Task: for soundness-path PRs merged to develop since the oracle cut-over (2026-10-09), list every review thread authored by the oracle that was resolved as deferred, disputed, or without a later commit; classify each as (a) already fixed by a later commit, (b) already tracked (find the tracker item or issue: search by file and keyword), (c) still live and untracked, (d) not a defect. Start from the gap-issue reason classes in the digest (override of an oracle High finding, deferred finding) and the PRs named in issues 2806, 2807, 2808, 3125, 3126 (PRs 2771, 2769, 2784, 3081, 3084), then widen to the digest's other entries since 2026-10-09 listed in issue 2640.\n\nDECISION GATE: for each (c), re-verify on current develop that the defect still exists (read the code at the cited path) before filing; file one tracker item per distinct live defect with title, severity from the oracle, file:line, the PR and thread URL, and a verifiable acceptance. If more than 15 distinct live defects, file items for High and Medium only and one rollup item listing the Lows. Tracker items only (no GitHub issues, no code changes).\n\nGUARDRAILS (all items): G1 never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict is required on every PR (soundness paths) and no digest may be pre-registered. G2 never weaken a gate, threshold, rule or check; no skip/xfail/quarantine. G3 the primary clone /Users/joe/Developer/BenchBox is read-only: use make worktree-create + make agent-write-preflight and absolute worktree paths; stage explicit paths; never git add -A; never git stash; identity Joe Harris, no agent trailers. G4 no CHANGELOG.md entry (curated section is at its 160-line ceiling) and no comments/docstrings in code (make comment-policy-check). G5 commit and PR text for a reader who never saw the session: no item ids, no plan/session labels. G6 never close, label or edit gap issues directly: the daily digest closes them after a valid attestation. G7 no settings/rulesets/secrets/variables writes; no new dependencies or unpinned images. G8 done means merged PR plus verification evidence recorded in the item; an open PR is not done. G9 self-review pass (code review action) before make pr-open; fix Critical and Required findings.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T19:54:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "552568b735f8480299e5c0a0ccae032d",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}

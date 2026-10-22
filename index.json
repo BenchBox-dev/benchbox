@@ -22854,6 +22854,15 @@
       "status": "open",
       "title": "Remove the dead comment-policy exceptions found by the report"
     },
+    "soundness-deferred-findings-inventory-20261022": {
+      "claim": null,
+      "needs": [
+        "soundness-gaps-decisions-20261022"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Inventory oracle findings marked deferred on merged soundness PRs and track each"
+    },
     "soundness-drain-all-ruleset-required-checks-20260806": {
       "claim": null,
       "needs": [],
