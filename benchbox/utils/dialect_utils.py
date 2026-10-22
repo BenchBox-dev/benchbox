@@ -315,6 +315,7 @@ def translate_sql_query(
     post_processors: list[Callable[[str], str]] | None = None,
     strict: bool | None = None,
     scope: str | None = None,
+    rewrites: Sequence[tuple[str, dict]] | None = None,
 ) -> str:
     import logging
 
@@ -357,6 +358,8 @@ def translate_sql_query(
         if expression is None:
             translated = ""
         else:
+            for rewrite_name, rewrite_args in rewrites or ():
+                expression = apply_rewrite(rewrite_name, expression, src, **rewrite_args)
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt, **SQLITE_DISCOUNT_BOUNDS)
             translated = expression.sql(dialect=tgt, identify=should_identify)

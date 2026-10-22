@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from benchbox._vendor import sqlglot
 from benchbox._vendor.sqlglot import exp
+from benchbox.utils.dialect_utils import translate_sql_query
 
 _BIGQUERY_FROMLESS_IDS = frozenset({"7_v8", "12_v8", "13_v8", "18_v4"})
 _BIGQUERY_HAVING_COLUMNS = {"5_v4": "revenue", "11_v4": "value"}
@@ -35,37 +36,25 @@ def rewrite_cloud_variant(query_id: str, query: str, target_dialect: str) -> str
     if query_id == _ARRAY_AGGREGATION_ID:
         return _rewrite_array_aggregation(query, target_dialect)
     if target_dialect == "databricks":
-        from benchbox.core.tpchavoc.spark_query_transformer import SparkTPCHavocQueryTransformer
+        from benchbox.core.tpchavoc.dialect_compat import SPARK_VARIANT_IDS, spark_variant_rewrites
 
-        if query_id in SparkTPCHavocQueryTransformer.known_variant_ids():
-            return SparkTPCHavocQueryTransformer().transform(query, query_id)
+        if query_id in SPARK_VARIANT_IDS and (rewrites := spark_variant_rewrites(query_id)):
+            return translate_sql_query(
+                query, "databricks", source_dialect="databricks", identify=False, rewrites=rewrites
+            )
         return query
-    if target_dialect == "snowflake" and query_id in _SNOWFLAKE_EMPTY_GROUP_IDS:
-        return query.replace(" GROUP BY ()", "", 1)
     if target_dialect != "bigquery":
         return query
-
-    upper_query = query.upper()
-    has_filter = " FILTER(" in upper_query or " FILTER (" in upper_query
-    if not (has_filter or query_id in _BIGQUERY_FROMLESS_IDS or query_id in _BIGQUERY_HAVING_COLUMNS):
-        if query_id == "3_v9":
-            return query.replace("ORDER BY `l_orderkey` NULLS LAST", "ORDER BY `l_orderkey`")
-        return query
-
-    tree = sqlglot.parse_one(query, read="bigquery")
-    if has_filter:
-        tree = tree.transform(_rewrite_bigquery_filter)
+    rewrites = []
     if query_id in _BIGQUERY_FROMLESS_IDS:
-        one_row_source = sqlglot.parse_one("SELECT 1 FROM UNNEST([1])", read="bigquery").find(exp.From).this
-        for select in tree.find_all(exp.Select):
-            if select.args.get("where") is not None and not (select.args.get("from_") or select.args.get("from")):
-                select.from_(one_row_source.copy(), copy=False)
+        rewrites.append(("add_row_source_to_fromless_selects", {"source": "UNNEST([1])"}))
     if column_name := _BIGQUERY_HAVING_COLUMNS.get(query_id):
-        for having in tree.find_all(exp.Having):
-            for column in having.find_all(exp.Column):
-                if column.name == column_name and not column.table:
-                    column.set("table", exp.to_identifier("combined", quoted=True))
-    return tree.sql(dialect="bigquery")
+        rewrites.append(
+            ("qualify_columns_by_name", {"tables": {column_name: "combined"}, "clauses": ["having"], "quoted": True})
+        )
+    if not rewrites:
+        return query
+    return translate_sql_query(query, "bigquery", source_dialect="bigquery", identify=False, rewrites=rewrites)
 
 
 def _rewrite_array_aggregation(query: str, target_dialect: str) -> str:
@@ -155,23 +144,3 @@ def _array_projection_sql(target_dialect: str) -> tuple[str, ...]:
         f"{avg_disc} AS avg_disc",
         f"{size}(quantities) AS count_order",
     )
-
-
-def _rewrite_bigquery_filter(node: exp.Expression) -> exp.Expression:
-    if not isinstance(node, exp.Filter):
-        return node
-    aggregate = node.this.copy()
-    condition = node.expression.this.copy()
-    value = aggregate.this
-    if isinstance(aggregate, exp.Count) and isinstance(value, exp.Star):
-        return exp.CountIf(this=condition)
-    if isinstance(value, exp.Distinct):
-        distinct = value.copy()
-        distinct.set(
-            "expressions",
-            [exp.If(this=condition, true=expression.copy(), false=exp.Null()) for expression in distinct.expressions],
-        )
-        aggregate.set("this", distinct)
-    else:
-        aggregate.set("this", exp.If(this=condition, true=value.copy(), false=exp.Null()))
-    return aggregate

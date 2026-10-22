@@ -54,6 +54,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- TPC-Havoc, Spark and DataFusion query rewrites run through the bundled SQLGlot fork's named rewrites
+  (`translate_sql_query(..., rewrites=...)`); the BenchBox AST rewriters, `SparkTPCHavocQueryTransformer` and the
+  regex `DataFusionQueryTransformer` are removed. DataFusion TPC-H Q11, Q18 and Q20 use the fork's decorrelation and
+  Q16 now rewrites `NOT IN` to `NOT EXISTS` (the earlier regex did not match the shipped Q16 text), so DataFusion
+  plans and timings for Q11, Q16, Q18 and Q20 can differ from earlier results; returned rows are unchanged. The
+  TPC-Havoc 17_v4 PostgreSQL text no longer contains `FROM (VALUES (1))`. The 1_v7 array aggregation rewrite stays
+  in BenchBox until the fork provides list-aggregate rewrites.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed
