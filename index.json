@@ -13262,7 +13262,8 @@
     "live-cloud-corpus-athena-tpch-first-20261006": {
       "claim": null,
       "needs": [
-        "new-platform-tpch-smoke-20261006"
+        "new-platform-tpch-smoke-20261006",
+        "vendor-benchmark-publication-conditions-20261022"
       ],
       "priority": "high",
       "status": "open",
