@@ -16051,6 +16051,13 @@
       "status": "done",
       "title": "Define a recorded fallback reviewer for oracle-review when the Codex connector is unavailable"
     },
+    "oracle-review-recover-finds-no-failed-runs-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "make oracle-review-recover never finds failed runs, and its close-and-reopen turns off auto-merge"
+    },
     "oracle-review-stale-check-runs-block-merge-20261008": {
       "claim": null,
       "needs": [],

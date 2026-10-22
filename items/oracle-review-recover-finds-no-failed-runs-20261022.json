@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The check-run query reads `.check_runs[]`; a test feeds the real API envelope through the runner and a failed oracle-review check run is rerun.",
+    "A PR whose auto-merge was on before recovery still has it on afterwards with the same merge method, or recovery skips close-and-reopen and says why.",
+    "On a real PR with a failed oracle-review check run, `make oracle-review-recover` reruns it and reports a nonzero count."
+  ],
+  "description": "`scripts/oracle_review_recover.py:108` runs `gh api --paginate --jq '{name, head_sha, status, conclusion, details_url}'` on `repos/<repo>/commits/<sha>/check-runs?check_name=oracle-review`. The filter applies to the response envelope (`{total_count, check_runs}`), not to `.check_runs[]`, so every row is `{\"name\": null, ...}`. `_failed_run_ids` skips rows whose name is not `oracle-review`, so recovery never finds a failed run, always prints `Reran 0 unsuccessful oracle-review run(s)`, then closes and reopens the PR. Closing and reopening turns off auto-merge. The oracle-review failure message points authors at this target, so the documented recovery leaves the stale failures in place and disarms the PR.\n\nThe unit test fake (`tests/unit/scripts/test_oracle_review_recover.py:104`) returns pre-flattened check rows, so the tests pass.\n\nObserved 2026-10-22 on PR #3264 (head 68de1e483): failed oracle-review check runs from Actions runs 39706240336 and 39711741625 kept the required `oracle-review` rollup at FAILURE after a later success on the same head. The target reran 0 runs twice; a manual `gh run rerun --failed` of both runs and a second `make pr-arm` were needed. Reproduce: `gh api --paginate --jq '{name}' 'repos/BenchBox-dev/benchbox/commits/<sha>/check-runs?check_name=oracle-review'` prints `{\"name\":null}`. Related: merge-stale-failure-rollup-blocks.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3264"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:16:39Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "83363aa3b9ae4301b3e6df115b165bf3",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    }
+  ]
+}
