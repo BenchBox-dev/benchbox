@@ -14,6 +14,8 @@ from benchbox.core.equivalence import cross_surface
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium, pytest.mark.duckdb]
 
+_DTYPE_SCALE_FACTOR = 0.01
+
 
 @contextmanager
 def _collect_engines() -> Iterator[list[str | None]]:
@@ -47,13 +49,13 @@ def test_gate_row_comparison_collects_every_frame_with_the_requested_engine() ->
 @pytest.mark.timeout(600)
 def test_gate_dtype_comparison_collects_every_frame_with_the_requested_engine(tmp_path) -> None:
     gate = cross_surface.get_gate("ssb")
-    data = gate.build(gate.scale_factor, tmp_path)
+    data = gate.build(_DTYPE_SCALE_FACTOR, tmp_path)
     try:
         contexts = cross_surface.build_production_contexts(
             data.benchmark,
             data.data_dir,
             backends=("expression",),
-            scale_factor=gate.scale_factor,
+            scale_factor=_DTYPE_SCALE_FACTOR,
             execution_engine="streaming",
         )
         with _collect_engines() as engines:

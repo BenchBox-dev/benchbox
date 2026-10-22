@@ -37,32 +37,49 @@ def _tuned_run_payload(tmp_path: Path) -> dict | None:
     return None
 
 
-def test_duckdb_tuned_run_warns_and_records_unmeasured_evidence(tmp_path, monkeypatch):
-    monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path))
+@pytest.fixture(scope="module")
+def duckdb_tuned_run(tmp_path_factory):
+    output_dir = tmp_path_factory.mktemp("tuned_run")
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(output_dir))
+        result = CliRunner().invoke(
+            cli,
+            [
+                "run",
+                "--platform",
+                "duckdb",
+                "--benchmark",
+                "tpch",
+                "--tuning",
+                "tuned",
+                "--scale",
+                "0.01",
+                "--queries",
+                "1",
+                "--non-interactive",
+            ],
+        )
+    return result, output_dir
 
-    result = CliRunner().invoke(
-        cli,
-        [
-            "run",
-            "--platform",
-            "duckdb",
-            "--benchmark",
-            "tpch",
-            "--tuning",
-            "tuned",
-            "--scale",
-            "0.01",
-            "--queries",
-            "1",
-            "--non-interactive",
-        ],
-    )
+
+def test_duckdb_tuned_run_warns_and_records_unmeasured_evidence(duckdb_tuned_run):
+    result, output_dir = duckdb_tuned_run
 
     assert result.exit_code == 0, result.output
     assert WARNING in result.output
-    payload = _tuned_run_payload(tmp_path)
+    payload = _tuned_run_payload(output_dir)
     assert payload is not None, "no exported result carries platform.tuning.template_evidence"
     assert payload["platform"]["tuning"]["template_evidence"] == "unmeasured"
+
+
+def test_duckdb_tuned_run_prints_tuning_verification_summary(duckdb_tuned_run):
+    result, _ = duckdb_tuned_run
+
+    assert result.exit_code == 0, result.output
+    assert "Tuning verification: applied_verified" in result.output
+    assert "Verdicts:" in result.output
+    assert "Top reasons:" in result.output
+    assert "Dropped intents" in result.output
 
 
 def test_duckdb_notuning_run_has_no_evidence_warning(tmp_path, monkeypatch):

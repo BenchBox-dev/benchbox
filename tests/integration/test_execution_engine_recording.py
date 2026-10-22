@@ -95,11 +95,10 @@ def test_cli_run_on_a_platform_without_engines_records_the_default_receipt(
     assert bundle["platform"]["variant"] == variant
 
 
-@pytest.mark.parametrize("profile", ["optimized", "streaming", "memory-constrained"])
-def test_cli_tuning_init_profile_then_run_records_the_default_engine(tmp_path: Path, profile: str) -> None:
-    tuning_file = tmp_path / f"{profile}.yaml"
+def test_cli_tuning_init_streaming_profile_then_run_records_the_default_engine(tmp_path: Path) -> None:
+    tuning_file = tmp_path / "streaming.yaml"
     init = run_cli_command(
-        ["tuning", "init", "--platform", "polars", "--profile", profile, "--output", str(tuning_file)],
+        ["tuning", "init", "--platform", "polars", "--profile", "streaming", "--output", str(tuning_file)],
         env={"BENCHBOX_OUTPUT_DIR": str(tmp_path)},
         timeout=120,
     )
@@ -117,6 +116,44 @@ def test_cli_tuning_init_profile_then_run_records_the_default_engine(tmp_path: P
     assert bundle["platform"]["execution_engine"]["requested"] == "default"
     assert bundle["platform"]["execution_engine"]["resolution"] == "version_default"
     assert bundle["platform"]["variant"] == "polars-df"
+
+
+@pytest.mark.parametrize("profile", ["optimized", "memory-constrained"])
+def test_cli_tuning_init_profile_then_adapter_resolves_the_default_engine(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, profile: str
+) -> None:
+    from click.testing import CliRunner
+    from rich.console import Console
+
+    from benchbox.cli.main import cli
+    from benchbox.cli.tuning_runtime import resolve_dataframe_tuning_config
+    from benchbox.core.execution_variant import derive_variant_id
+    from benchbox.platforms import get_dataframe_adapter
+
+    monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path))
+    tuning_file = tmp_path / f"{profile}.yaml"
+    init = CliRunner().invoke(
+        cli, ["tuning", "init", "--platform", "polars", "--profile", profile, "--output", str(tuning_file)]
+    )
+    assert init.exit_code == 0, init.output
+    assert "--execution-engine" in init.output
+    assert "engine_affinity" not in tuning_file.read_text(encoding="utf-8")
+
+    tuning_config = resolve_dataframe_tuning_config(
+        platform_name="polars-df",
+        mode_name="dataframe",
+        tuning_enabled_flag=True,
+        use_auto_tuning_flag=False,
+        tuning_config_file_path=str(tuning_file),
+        console=Console(quiet=True),
+        logger=None,
+        quiet=True,
+    )
+    receipt = get_dataframe_adapter("polars-df", tuning_config=tuning_config).get_platform_info()["execution_engine"]
+
+    assert receipt["requested"] == "default"
+    assert receipt["resolution"] == "version_default"
+    assert derive_variant_id("polars-df", None, receipt["requested"]) == "polars-df"
 
 
 @contextmanager
