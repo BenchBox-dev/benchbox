@@ -13399,15 +13399,10 @@
       "title": "Logging Standardization"
     },
     "longtest-01-delete-duplicate-tests": {
-      "claim": {
-        "expires_at": "2026-10-23T01:44:46Z",
-        "generation": "c160ebf6620c44a890d15ce99312fcec",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Delete or fold six duplicate medium-tier tests and evaluate one timing bound"
     },
     "longtest-02-canary-live-real-checks": {
