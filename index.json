@@ -13481,6 +13481,15 @@
       "status": "open",
       "title": "Stop recompiling the anonymizer's key-compaction regex millions of times"
     },
+    "longtest-12-explorer-pipeline-lazy-init": {
+      "claim": null,
+      "needs": [
+        "longtest-10-repo-scan-tests"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop the explorer_pipeline package from importing all of benchbox on import"
+    },
     "loud-loader-failures-for-contaminated-data": {
       "claim": null,
       "needs": [],
