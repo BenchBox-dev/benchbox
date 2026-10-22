@@ -5,7 +5,7 @@
     "The results artifact is uploaded and verified; met by throughput-uat-37928417334-1 and throughput-baseline-duckdb-tpch-sf1-37928417334-1",
     "The CedarDB connection loss in dispatch 37967682464 (all 3 streams 'SSL error: unexpected eof', artifact throughput-uat-37967682464-1) is diagnosed and fixed, or recorded as a known flake with the evidence"
   ],
-  "context": "Post-merge verification for PR #2757.\n\n2026-10-09 tracker review: acceptance 1 and 3 were met by scheduled run 37928417334. Acceptance 2 was reworded to the 5-sample threshold. Acceptance 4 is new, from dispatch 37967682464. The throughput UAT job also has to move to nightly-v2 before dlv2-70 deletes nightly.yml; that is tracked by nightly-v2-throughput-uat-port-20261009, and the floor's history lookup in nightly.yml (about line 755) must follow it.",
+  "context": "Post-merge verification for PR #2757.\n\n2026-10-09 tracker review: acceptance 1 and 3 were met by scheduled run 37928417334. Acceptance 2 was reworded to the 5-sample threshold. Acceptance 4 is new, from dispatch 37967682464. The throughput UAT job also has to move to nightly-v2 before dlv2-70 deletes nightly.yml; that is tracked by nightly-v2-throughput-uat-port-20261009, and the floor's history lookup in nightly.yml (about line 755) must follow it.\n\n2026-10-22 survey of scheduled nightly.yml runs (read-only, nothing fixed): throughput-uat (the floor input) succeeded on every scheduled run from 2026-10-10 to 2026-10-15, six samples. throughput-uat-cedardb passed on 10-11 and failed on 10-12, 10-13, 10-14 and 10-15. In the 10-15 run (38720419880) the sweep reported phase exit codes preflight 0, execute 0, validate 1, report 0, and the later assert step still verified the result file (Throughput@Size 97833), so the job failed in the sweep's validate phase rather than in the throughput run; the validate output was not read. From 2026-10-16 to 2026-10-21 the scheduled nightly.yml runs contain no throughput jobs at all (jobs matching 'throughput' are absent), so no scheduled samples exist after 10-15, and every scheduled nightly-v2.yml run from 10-06 to 10-21 concluded failure. Not established: why the throughput jobs left nightly.yml, whether the floor left observe-only (six scheduled throughput-uat samples exist but the floor's own evaluation was not read), and the cause of the 10-12..10-15 validate failures or of the SSL eof in dispatch 37967682464.",
   "description": "PR #2757 unquarantined the CedarDB throughput UAT cell (removed continue-on-error) and activated the per-runner-class rolling median floor. PR #2757 was merged after 2 green nightly cells with owner waiver. Monitor the scheduled runs to ensure the unquarantined CedarDB cell, statement timeouts, and numeric floor evaluate cleanly in production without false-positive ejection.\n\nStatus on 2026-10-09: scheduled run 37928417334 passed the CedarDB cell and uploaded artifacts throughput-uat-37928417334-1 and throughput-baseline-duckdb-tpch-sf1-37928417334-1 (acceptance 1 and 3). The floor is still observe-only: only 1 of the 5 required same-runner-class scheduled samples exists for amd-epyc-7763. Only scheduled runs count. A later manual dispatch, 37967682464, lost its CedarDB connection in all 3 streams with \"SSL error: unexpected eof\" (artifact throughput-uat-37967682464-1); the cause is not yet known.",
   "sessions": [
     {
@@ -39,6 +39,14 @@
       "op": "update",
       "op_id": "80f730ef544b45c989946bb24a9a9bf8",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dce62a827220422fd68b23fc",
+      "at": "2026-10-22T07:47:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a9a8c6dab04348e8a62a3671c2f41db8",
+      "session_id": "7d2f94f74b1c49ec9ffc810e3c0bad68"
     }
   ]
 }
