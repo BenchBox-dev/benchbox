@@ -159,11 +159,14 @@ def _ambiguous(root: str, part: str, workspace: Path) -> bool:
     literal = _literal(root, part, workspace)
     if literal is None:
         return False
-    base = _plain(_OMP_SELECTOR.sub("", part))
-    if base is None:
-        return False
-    candidate = _normalize(base, workspace)
-    return candidate != literal and _inside(root, candidate) and os.path.exists(os.path.join(root, candidate))
+    for match in re.finditer(r"[:?]", part):
+        prefix = part[: match.start()]
+        if not prefix:
+            continue
+        candidate = _normalize(prefix, workspace)
+        if candidate != literal and _inside(root, candidate) and os.path.isfile(os.path.join(root, candidate)):
+            return True
+    return False
 
 
 def credited(run: Trace, workspace: Path) -> frozenset[str]:
