@@ -9,8 +9,9 @@ from pathlib import Path
 from .brief import FILE_LIST_DIFF_LINE, with_full_diff
 from .classifier import ChangedFile
 from .classify import Classification
-from .commands import schema_text
 from .policy import SIZE_BUCKETS
+from .protocol import DEFECT_ID
+from .verdict import RESPONSE_PLACEHOLDERS, VERDICT_KEYS
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 TEMPLATES = ("standard", "deep", "gate")
@@ -31,7 +32,7 @@ SLOT_MAX_BYTES = {
     "max_defects": 4,
     "prior_rule": 2048,
     "change_data": 100000,
-    "schema": 16384,
+    "response_template": 16384,
 }
 _SHA = re.compile(r"[0-9a-f]{40}")
 _SLUG = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
@@ -55,10 +56,48 @@ def _validate(name: str, values: Mapping[str, object]) -> None:
         raise ValueError(f"template {name} slot repo must be owner/name")
     if not _NUMBER.fullmatch(str(values.get("confidence"))):
         raise ValueError(f"template {name} slot confidence must be numeric")
+    _validate_response_template(name, str(values.get("response_template")))
+
+
+def _validate_response_template(name: str, text: str) -> None:
     try:
-        json.loads(str(values.get("schema")))
-    except (ValueError, TypeError) as exc:
-        raise ValueError(f"template {name} slot schema must be JSON") from exc
+        template = json.loads(text)
+    except ValueError as exc:
+        raise ValueError(f"template {name} slot response_template must be JSON") from exc
+    if not isinstance(template, dict) or set(template) != set(VERDICT_KEYS):
+        raise ValueError(f"template {name} slot response_template must hold exactly the verdict keys")
+    priors = template["prior_defects"]
+    if not isinstance(priors, list) or any(
+        not isinstance(item, dict) or not isinstance(item.get("id"), str) or not DEFECT_ID.fullmatch(item["id"])
+        for item in priors
+    ):
+        raise ValueError(f"template {name} slot response_template carries an invalid prior defect id")
+
+
+def response_template(prior_ids: Sequence[str] = ()) -> str:
+    ids = list(prior_ids)
+    if len(set(ids)) != len(ids) or any(not isinstance(item, str) or not DEFECT_ID.fullmatch(item) for item in ids):
+        raise ValueError("prior defect ids must be unique and match the defect id grammar")
+    marks = RESPONSE_PLACEHOLDERS
+    template = {
+        "status": marks["status"],
+        "incomplete_reason": marks["incomplete_reason"],
+        "decision": marks["decision"],
+        "summary": marks["summary"],
+        "files_examined": [marks["files_examined"]],
+        "defects": [
+            {
+                "severity": marks["severity"],
+                "file": marks["file"],
+                "line": 0,
+                "end_line": None,
+                "title": marks["title"],
+                "detail": marks["detail"],
+            }
+        ],
+        "prior_defects": [{"id": item, "status": marks["prior_status"], "evidence": marks["evidence"]} for item in ids],
+    }
+    return json.dumps(template, indent=2)
 
 
 def render(name: str, values: Mapping[str, object]) -> str:
@@ -183,6 +222,7 @@ def assemble_values(
     max_defects: int,
     prior_rule: str,
     prior_block: str,
+    prior_ids: Sequence[str],
     files_block: str,
     diff_text: str | None,
     diff_path: Path | None,
@@ -198,7 +238,7 @@ def assemble_values(
         change_data = with_full_diff(change_data, diff_path)
     return {
         "template_name": template_name,
-        "template_version": 1,
+        "template_version": 2,
         "repo": repo,
         "pr": pr,
         "base": base_sha,
@@ -215,7 +255,7 @@ def assemble_values(
         "max_defects": max_defects,
         "prior_rule": prior_rule,
         "change_data": change_data,
-        "schema": schema_text(),
+        "response_template": response_template(prior_ids),
     }
 
 
@@ -230,6 +270,7 @@ def render_review(
     max_defects: int,
     prior_rule: str,
     prior_block: str,
+    prior_ids: Sequence[str],
     files_block: str,
     diff_text: str | None,
     diff_path: Path | None,
@@ -245,6 +286,7 @@ def render_review(
         "max_defects": max_defects,
         "prior_rule": prior_rule,
         "prior_block": prior_block,
+        "prior_ids": prior_ids,
         "files_block": files_block,
         "diff_path": diff_path,
     }
