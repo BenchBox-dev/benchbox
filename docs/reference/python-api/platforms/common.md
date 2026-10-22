@@ -706,7 +706,7 @@ The method validates database compatibility and makes these decisions automatica
 
 - If `force_recreate=True`, it always recreates the database.
 - If the database is valid, it reuses it.
-- If the database has issues, it recreates it.
+- If the database has issues, it recreates it. For a server-side database, when validation found tables that do not belong to this benchmark (the "Extra tables found" warning) and the adapter cannot reset its own tables in place, it raises instead of dropping the database, naming the tables. `force_recreate=True` still drops the whole database, and file-based databases are still deleted and rebuilt.
 - If `skip_database_management=True`, it skips create/drop management while allowing adapters to opt into table-readiness checks.
 
 ##### `benchbox.platforms.base.connection_lifecycle.ConnectionLifecycleMixin.reset_database_in_place`
@@ -719,7 +719,7 @@ def reset_database_in_place(**connection_config) -> bool: ...
 
 Empties a server-side database for reload without dropping it.
 
-Returns `True` when the database was reset in place, so the caller skips `drop_database`. The default does nothing and returns `False`. Override it where dropping objects is costly, for example where dropped tables keep counting against a catalog quota.
+Returns `True` when the database was reset in place, so the caller skips `drop_database`. The default does nothing and returns `False`. Override it where dropping objects is costly, for example where dropped tables keep counting against a catalog quota, or where a database is shared with other benchmarks. `SnowflakeAdapter` drops the tables its benchmark declares in `get_schema()` and the tuning metadata table, keeps the database, and raises when it cannot tell which tables those are.
 
 ##### `benchbox.platforms.base.connection_lifecycle.ConnectionLifecycleMixin.drop_database`
 

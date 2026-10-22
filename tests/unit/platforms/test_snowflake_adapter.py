@@ -353,7 +353,7 @@ class TestSnowflakeAdapter:
 
         adapter.drop_database()
 
-        mock_cursor.execute.assert_called_once_with('DROP DATABASE IF EXISTS "TEST_DB"')
+        mock_cursor.execute.assert_called_once_with("DROP DATABASE IF EXISTS TEST_DB")
         mock_connection.close.assert_called_once()
 
     @patch("benchbox.platforms.snowflake.snowflake")
