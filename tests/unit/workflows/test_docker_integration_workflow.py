@@ -134,7 +134,7 @@ def _postgres_image_references() -> list[tuple[str, str]]:
         *(REPO_ROOT / "docker").rglob("docker-compose*.y*ml"),
     ]
     return [
-        (str(path.relative_to(REPO_ROOT)), match.group("ref"))
+        (path.relative_to(REPO_ROOT).as_posix(), match.group("ref"))
         for path in sorted(files)
         for match in POSTGRES_IMAGE_REFERENCE.finditer(path.read_text(encoding="utf-8"))
     ]
