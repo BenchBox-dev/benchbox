@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The PR diff touches only quality/comment-policy.json (plus docs only if a rule text changes) and removes only entries the report listed dead at base (per-entry list with reason in the item)",
+    "After the change the report lists no dead entries and the strict comment-policy scan on the merged tree reports 0 violations (command output recorded)",
+    "The five live entries for the two test files are still present (grep evidence)",
+    "PR merged with an oracle verdict on its final head; merge SHA recorded"
+  ],
+  "context": "\n\nSource: soundness-gap plan (read-only planner review, 2026-10-22) of open issues 2806, 2807, 2808, 3125, 3126 in BenchBox-dev/benchbox plus owner decisions of 2026-10-22 (record: soundness-gaps-decisions-20261022). Line numbers, commit SHAs and findings are leads from that plan: re-verify them against current develop before acting. Not yet verified by anyone else.",
+  "description": "Owner decision 2026-10-22: yes. After the dead-exception report exists and PR 3212 (scoped digests) has merged and settled the digest scheme, remove exactly the exceptions the report lists as dead (planner expected about ten: from PR 3084, PR 3136 and the superseded entries from PR 3081; the five LIVE entries from PR 3081 for test_artifacts.py and test_validate_submission_override_approval.py are NOT dead and must stay). Also remove the old whole-module entries that PR 3212 left alongside the new scoped entries IF the base checker is by then the scoped one and the report lists them dead (they are only removable once the trusted base checker uses the new scheme).\n\nDECISION GATE: for each entry removed, record why it is dead using the report output at the time (not the plan's list). Remove an entry only if the report lists it dead on the merged base AND its stated removal condition is met. If the report lists something the plan did not, or the plan listed something the report does not, trust the report, record the discrepancy and do not remove the unlisted one. If the staged/CI check treats removal as a policy change needing review, that is fine: the PR needs its oracle verdict.\n\nGUARDRAILS (all items): G1 never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict is required on every PR (soundness paths) and no digest may be pre-registered. G2 never weaken a gate, threshold, rule or check; no skip/xfail/quarantine. G3 the primary clone /Users/joe/Developer/BenchBox is read-only: use make worktree-create + make agent-write-preflight and absolute worktree paths; stage explicit paths; never git add -A; never git stash; identity Joe Harris, no agent trailers. G4 no CHANGELOG.md entry (curated section is at its 160-line ceiling) and no comments/docstrings in code (make comment-policy-check). G5 commit and PR text for a reader who never saw the session: no item ids, no plan/session labels. G6 never close, label or edit gap issues directly: the daily digest closes them after a valid attestation. G7 no settings/rulesets/secrets/variables writes; no new dependencies or unpinned images. G8 done means merged PR plus verification evidence recorded in the item; an open PR is not done. G9 self-review pass (code review action) before make pr-open; fix Critical and Required findings.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T19:54:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c881325f911d453eacf291fb7a628c5c",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}

@@ -22843,6 +22843,17 @@
       "status": "open",
       "title": "Add a report of comment-policy exceptions that no longer match any finding"
     },
+    "soundness-dead-exceptions-cleanup-20261022": {
+      "claim": null,
+      "needs": [
+        "soundness-gaps-decisions-20261022",
+        "soundness-dead-exception-report-20261022",
+        "comment-policy-digest-and-base-exception-catch22-20261008"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove the dead comment-policy exceptions found by the report"
+    },
     "soundness-drain-all-ruleset-required-checks-20260806": {
       "claim": null,
       "needs": [],
