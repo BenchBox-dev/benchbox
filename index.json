@@ -2730,6 +2730,13 @@
       "status": "open",
       "title": "Cut over to changelog fragments: migrate [Unreleased], enforce entries in CI, retire the union rule"
     },
+    "changelog-fragments-04-skill-sync": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Update the benchbox release skill source and regenerate the tracked mirror for the fragment flow"
+    },
     "changelog-merge-conflict-churn-20261020": {
       "claim": null,
       "needs": [],
