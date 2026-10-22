@@ -207,8 +207,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The DDL golden corpus passes the runtime's new DDL options (`table_case`,
   `strip_with_properties`, QuestDB layout fields, SingleStore `DATETIME`, StarRocks
   `float_as_real`) and records a classification and reason (`equivalent`,
-  `legacy-bug` or `fork-gap`) for every remaining difference; a test fails on an
-  unclassified difference or any `fork-gap`.
+  `legacy-bug` or `fork-gap`) for every remaining difference; each classification
+  rule verifies the shape of the difference it labels, and a test fails on an
+  unclassified difference or a `fork-gap` that is not owner-approved.
 
 ### Fixed
 

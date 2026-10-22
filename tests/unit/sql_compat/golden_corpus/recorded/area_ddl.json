@@ -3,13 +3,13 @@
     "classification": "legacy-bug",
     "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/'",
     "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[256]) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/'",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "athena_csv:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/'",
     "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/'",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "athena_csv:time_column": {
     "classification": "legacy-bug",
@@ -21,13 +21,13 @@
     "classification": "legacy-bug",
     "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/' TBLPROPERTIES('skip.header.line.count'='0')",
     "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[256]) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/' TBLPROPERTIES('skip.header.line.count'='0')",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "athena_other:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/' TBLPROPERTIES('skip.header.line.count'='0')",
     "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/' TBLPROPERTIES('skip.header.line.count'='0')",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "athena_other:time_column": {
     "classification": "legacy-bug",
@@ -39,13 +39,13 @@
     "classification": "legacy-bug",
     "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/vectors/'",
     "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[256]) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/vectors/'",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "athena_parquet:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/vectors/'",
     "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/vectors/'",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "athena_parquet:time_column": {
     "classification": "legacy-bug",
@@ -57,157 +57,157 @@
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.T(c STRING)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(c STRING)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:char_with_length": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.T(c STRING(10))",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(c STRING(10))",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:decimal_precision": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.T(price NUMERIC(15, 2))",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(price NUMERIC(15, 2))",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:decimal_wide_scale": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.T(lat BIGNUMERIC(18, 14), amount NUMERIC(15, 2))",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(lat BIGNUMERIC(18, 14), amount NUMERIC(15, 2))",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:double_array": {
     "classification": "legacy-bug",
     "fork": "CREATE OR REPLACE TABLE proj.ds.VECTORS(id INT64, embedding ARRAY<FLOAT64>)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.VECTORS`(id INT64, embedding ARRAY<FLOAT64>[256])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "bigquery:events_tuned": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.EVENTS(event_id INT64, event_date DATE, payload STRING(50))",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.EVENTS`(event_id INT64, event_date DATE, payload STRING(50))",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE OR REPLACE TABLE proj.ds.VECTORS(id INT64, embedding ARRAY<FLOAT64>)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.VECTORS`(id INT64, embedding ARRAY<FLOAT64>[128])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "bigquery:if_not_exists": {
     "classification": "equivalent",
     "fork": "CREATE TABLE IF NOT EXISTS proj.ds.T(a INT64, b STRING(10))",
     "legacy": "CREATE TABLE IF NOT EXISTS `proj.ds.T`(a INT64, b STRING(10))",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:lineitem_codec": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.LINEITEM(l_orderkey INT64, l_comment STRING(44), l_extendedprice NUMERIC(15, 2), PRIMARY KEY(l_orderkey) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.LINEITEM`(l_orderkey INT64, l_comment STRING(44), l_extendedprice NUMERIC(15, 2), PRIMARY KEY(l_orderkey) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:nullable_numeric": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.T(amount NUMERIC(10, 2), next_col INT64, tail STRING(5))",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(amount NUMERIC(10, 2), next_col INT64, tail STRING(5))",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:pk_inline": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.T(a INT64, b STRING, PRIMARY KEY(a) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(a INT64, b STRING, PRIMARY KEY(a) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:pk_middle": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.T(a INT64, PRIMARY KEY(a) NOT ENFORCED, b STRING)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(a INT64, PRIMARY KEY(a) NOT ENFORCED, b STRING)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:pk_named": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.T(a INT64, CONSTRAINT pk PRIMARY KEY(a) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(a INT64, CONSTRAINT pk PRIMARY KEY(a) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:pk_trailing": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.T(a INT64, b STRING, PRIMARY KEY(a) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(a INT64, b STRING, PRIMARY KEY(a) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:text_string_types": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.T(a STRING, b STRING, c INT64, d DATETIME, e BOOL)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.T`(a STRING, b STRING, c INT64, d DATETIME, e BOOL)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:time_column": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.METRICS(time DATETIME, metric_time TIME, hostname STRING(64), PRIMARY KEY(time, hostname) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.METRICS`(time DATETIME, metric_time TIME, hostname STRING(64), PRIMARY KEY(time, hostname) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:tpcds_call_center": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.CALL_CENTER(cc_call_center_sk INT64 NOT NULL, cc_call_center_id STRING(16) NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT64, cc_open_date_sk INT64, cc_name STRING(50), cc_class STRING(50), cc_employees INT64, cc_sq_ft INT64, cc_hours STRING(20), cc_manager STRING(40), cc_mkt_id INT64, cc_mkt_class STRING(50), cc_mkt_desc STRING(100), cc_market_manager STRING(40), cc_division INT64, cc_division_name STRING(50), cc_company INT64, cc_company_name STRING(50), cc_street_number STRING(10), cc_street_name STRING(60), cc_street_type STRING(15), cc_suite_number STRING(10), cc_city STRING(60), cc_county STRING(30), cc_state STRING(2), cc_zip STRING(10), cc_country STRING(20), cc_gmt_offset NUMERIC(15, 2), cc_tax_percentage NUMERIC(15, 2))",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.CALL_CENTER`(cc_call_center_sk INT64 NOT NULL, cc_call_center_id STRING(16) NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT64, cc_open_date_sk INT64, cc_name STRING(50), cc_class STRING(50), cc_employees INT64, cc_sq_ft INT64, cc_hours STRING(20), cc_manager STRING(40), cc_mkt_id INT64, cc_mkt_class STRING(50), cc_mkt_desc STRING(100), cc_market_manager STRING(40), cc_division INT64, cc_division_name STRING(50), cc_company INT64, cc_company_name STRING(50), cc_street_number STRING(10), cc_street_name STRING(60), cc_street_type STRING(15), cc_suite_number STRING(10), cc_city STRING(60), cc_county STRING(30), cc_state STRING(2), cc_zip STRING(10), cc_country STRING(20), cc_gmt_offset NUMERIC(15, 2), cc_tax_percentage NUMERIC(15, 2))",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:tpcds_store_sales": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.STORE_SALES(ss_sold_date_sk INT64, ss_sold_time_sk INT64, ss_item_sk INT64 NOT NULL, ss_customer_sk INT64, ss_cdemo_sk INT64, ss_hdemo_sk INT64, ss_addr_sk INT64, ss_store_sk INT64, ss_promo_sk INT64, ss_ticket_number INT64 NOT NULL, ss_quantity INT64, ss_wholesale_cost NUMERIC(15, 2), ss_list_price NUMERIC(15, 2), ss_sales_price NUMERIC(15, 2), ss_ext_discount_amt NUMERIC(15, 2), ss_ext_sales_price NUMERIC(15, 2), ss_ext_wholesale_cost NUMERIC(15, 2), ss_ext_list_price NUMERIC(15, 2), ss_ext_tax NUMERIC(15, 2), ss_coupon_amt NUMERIC(15, 2), ss_net_paid NUMERIC(15, 2), ss_net_paid_inc_tax NUMERIC(15, 2), ss_net_profit NUMERIC(15, 2))",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.STORE_SALES`(ss_sold_date_sk INT64, ss_sold_time_sk INT64, ss_item_sk INT64 NOT NULL, ss_customer_sk INT64, ss_cdemo_sk INT64, ss_hdemo_sk INT64, ss_addr_sk INT64, ss_store_sk INT64, ss_promo_sk INT64, ss_ticket_number INT64 NOT NULL, ss_quantity INT64, ss_wholesale_cost NUMERIC(15, 2), ss_list_price NUMERIC(15, 2), ss_sales_price NUMERIC(15, 2), ss_ext_discount_amt NUMERIC(15, 2), ss_ext_sales_price NUMERIC(15, 2), ss_ext_wholesale_cost NUMERIC(15, 2), ss_ext_list_price NUMERIC(15, 2), ss_ext_tax NUMERIC(15, 2), ss_coupon_amt NUMERIC(15, 2), ss_net_paid NUMERIC(15, 2), ss_net_paid_inc_tax NUMERIC(15, 2), ss_net_profit NUMERIC(15, 2))",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:tpch_customer": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.CUSTOMER(c_custkey INT64 NOT NULL, c_name STRING(25) NOT NULL, c_address STRING(40) NOT NULL, c_nationkey INT64 NOT NULL, c_phone STRING(15) NOT NULL, c_acctbal NUMERIC(15, 2) NOT NULL, c_mktsegment STRING(10) NOT NULL, c_comment STRING(117) NOT NULL, PRIMARY KEY(c_custkey) NOT ENFORCED, FOREIGN KEY(c_nationkey) REFERENCES proj.ds.NATION(n_nationkey) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.CUSTOMER`(c_custkey INT64 NOT NULL, c_name STRING(25) NOT NULL, c_address STRING(40) NOT NULL, c_nationkey INT64 NOT NULL, c_phone STRING(15) NOT NULL, c_acctbal NUMERIC(15, 2) NOT NULL, c_mktsegment STRING(10) NOT NULL, c_comment STRING(117) NOT NULL, PRIMARY KEY(c_custkey) NOT ENFORCED, FOREIGN KEY(c_nationkey) REFERENCES `proj.ds.NATION`(n_nationkey) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:tpch_lineitem": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.LINEITEM(l_orderkey INT64 NOT NULL, l_partkey INT64 NOT NULL, l_suppkey INT64 NOT NULL, l_linenumber INT64 NOT NULL, l_quantity NUMERIC(15, 2) NOT NULL, l_extendedprice NUMERIC(15, 2) NOT NULL, l_discount NUMERIC(15, 2) NOT NULL, l_tax NUMERIC(15, 2) NOT NULL, l_returnflag STRING(1) NOT NULL, l_linestatus STRING(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct STRING(25) NOT NULL, l_shipmode STRING(10) NOT NULL, l_comment STRING(44) NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber) NOT ENFORCED, FOREIGN KEY(l_orderkey) REFERENCES proj.ds.ORDERS(o_orderkey) NOT ENFORCED, FOREIGN KEY(l_partkey) REFERENCES proj.ds.PART(p_partkey) NOT ENFORCED, FOREIGN KEY(l_suppkey) REFERENCES proj.ds.SUPPLIER(s_suppkey) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.LINEITEM`(l_orderkey INT64 NOT NULL, l_partkey INT64 NOT NULL, l_suppkey INT64 NOT NULL, l_linenumber INT64 NOT NULL, l_quantity NUMERIC(15, 2) NOT NULL, l_extendedprice NUMERIC(15, 2) NOT NULL, l_discount NUMERIC(15, 2) NOT NULL, l_tax NUMERIC(15, 2) NOT NULL, l_returnflag STRING(1) NOT NULL, l_linestatus STRING(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct STRING(25) NOT NULL, l_shipmode STRING(10) NOT NULL, l_comment STRING(44) NOT NULL, PRIMARY KEY(l_orderkey, l_linenumber) NOT ENFORCED, FOREIGN KEY(l_orderkey) REFERENCES `proj.ds.ORDERS`(o_orderkey) NOT ENFORCED, FOREIGN KEY(l_partkey) REFERENCES `proj.ds.PART`(p_partkey) NOT ENFORCED, FOREIGN KEY(l_suppkey) REFERENCES `proj.ds.SUPPLIER`(s_suppkey) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:tpch_nation": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.NATION(n_nationkey INT64 NOT NULL, n_name STRING(25) NOT NULL, n_regionkey INT64 NOT NULL, n_comment STRING(152), PRIMARY KEY(n_nationkey) NOT ENFORCED, FOREIGN KEY(n_regionkey) REFERENCES proj.ds.REGION(r_regionkey) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.NATION`(n_nationkey INT64 NOT NULL, n_name STRING(25) NOT NULL, n_regionkey INT64 NOT NULL, n_comment STRING(152), PRIMARY KEY(n_nationkey) NOT ENFORCED, FOREIGN KEY(n_regionkey) REFERENCES `proj.ds.REGION`(r_regionkey) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:tpch_orders": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.ORDERS(o_orderkey INT64 NOT NULL, o_custkey INT64 NOT NULL, o_orderstatus STRING(1) NOT NULL, o_totalprice NUMERIC(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority STRING(15) NOT NULL, o_clerk STRING(15) NOT NULL, o_shippriority INT64 NOT NULL, o_comment STRING(79) NOT NULL, PRIMARY KEY(o_orderkey) NOT ENFORCED, FOREIGN KEY(o_custkey) REFERENCES proj.ds.CUSTOMER(c_custkey) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.ORDERS`(o_orderkey INT64 NOT NULL, o_custkey INT64 NOT NULL, o_orderstatus STRING(1) NOT NULL, o_totalprice NUMERIC(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority STRING(15) NOT NULL, o_clerk STRING(15) NOT NULL, o_shippriority INT64 NOT NULL, o_comment STRING(79) NOT NULL, PRIMARY KEY(o_orderkey) NOT ENFORCED, FOREIGN KEY(o_custkey) REFERENCES `proj.ds.CUSTOMER`(c_custkey) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:tpch_part": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.PART(p_partkey INT64 NOT NULL, p_name STRING(55) NOT NULL, p_mfgr STRING(25) NOT NULL, p_brand STRING(10) NOT NULL, p_type STRING(25) NOT NULL, p_size INT64 NOT NULL, p_container STRING(10) NOT NULL, p_retailprice NUMERIC(15, 2) NOT NULL, p_comment STRING(23) NOT NULL, PRIMARY KEY(p_partkey) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.PART`(p_partkey INT64 NOT NULL, p_name STRING(55) NOT NULL, p_mfgr STRING(25) NOT NULL, p_brand STRING(10) NOT NULL, p_type STRING(25) NOT NULL, p_size INT64 NOT NULL, p_container STRING(10) NOT NULL, p_retailprice NUMERIC(15, 2) NOT NULL, p_comment STRING(23) NOT NULL, PRIMARY KEY(p_partkey) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:tpch_partsupp": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.PARTSUPP(ps_partkey INT64 NOT NULL, ps_suppkey INT64 NOT NULL, ps_availqty INT64 NOT NULL, ps_supplycost NUMERIC(15, 2) NOT NULL, ps_comment STRING(199) NOT NULL, PRIMARY KEY(ps_partkey, ps_suppkey) NOT ENFORCED, FOREIGN KEY(ps_partkey) REFERENCES proj.ds.PART(p_partkey) NOT ENFORCED, FOREIGN KEY(ps_suppkey) REFERENCES proj.ds.SUPPLIER(s_suppkey) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.PARTSUPP`(ps_partkey INT64 NOT NULL, ps_suppkey INT64 NOT NULL, ps_availqty INT64 NOT NULL, ps_supplycost NUMERIC(15, 2) NOT NULL, ps_comment STRING(199) NOT NULL, PRIMARY KEY(ps_partkey, ps_suppkey) NOT ENFORCED, FOREIGN KEY(ps_partkey) REFERENCES `proj.ds.PART`(p_partkey) NOT ENFORCED, FOREIGN KEY(ps_suppkey) REFERENCES `proj.ds.SUPPLIER`(s_suppkey) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:tpch_region": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.REGION(r_regionkey INT64 NOT NULL, r_name STRING(25) NOT NULL, r_comment STRING(152), PRIMARY KEY(r_regionkey) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.REGION`(r_regionkey INT64 NOT NULL, r_name STRING(25) NOT NULL, r_comment STRING(152), PRIMARY KEY(r_regionkey) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "bigquery:tpch_supplier": {
     "classification": "equivalent",
     "fork": "CREATE OR REPLACE TABLE proj.ds.SUPPLIER(s_suppkey INT64 NOT NULL, s_name STRING(25) NOT NULL, s_address STRING(40) NOT NULL, s_nationkey INT64 NOT NULL, s_phone STRING(15) NOT NULL, s_acctbal NUMERIC(15, 2) NOT NULL, s_comment STRING(101) NOT NULL, PRIMARY KEY(s_suppkey) NOT ENFORCED, FOREIGN KEY(s_nationkey) REFERENCES proj.ds.NATION(n_nationkey) NOT ENFORCED)",
     "legacy": "CREATE OR REPLACE TABLE `proj.ds.SUPPLIER`(s_suppkey INT64 NOT NULL, s_name STRING(25) NOT NULL, s_address STRING(40) NOT NULL, s_nationkey INT64 NOT NULL, s_phone STRING(15) NOT NULL, s_acctbal NUMERIC(15, 2) NOT NULL, s_comment STRING(101) NOT NULL, PRIMARY KEY(s_suppkey) NOT ENFORCED, FOREIGN KEY(s_nationkey) REFERENCES `proj.ds.NATION`(n_nationkey) NOT ENFORCED)",
-    "reason": "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part."
+    "reason": "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and table as separate identifiers. Both resolve to the same table; only the quoting differs."
   },
   "clickhouse_default:bare_varchar": {
     "classification": "equivalent",
@@ -285,7 +285,7 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE t(a Int32, CONSTRAINT pk PRIMARY KEY(a)) ENGINE=MergeTree() ORDER BY(a)",
     "legacy": "CREATE TABLE t(a INT, CONSTRAINT pk PRIMARY KEY(a)) ENGINE=MergeTree() ORDER BY(CONSTRAINT, a)",
-    "reason": "Legacy leaves a dangling CONSTRAINT name after removing the PRIMARY KEY; the fork removes the whole constraint."
+    "reason": "Legacy writes ORDER BY(CONSTRAINT, a), taking the constraint keyword for a key column; the fork writes ORDER BY(a). Both keep the named constraint in the column list; no shipped DDL uses a named key."
   },
   "clickhouse_default:pk_trailing": {
     "classification": "equivalent",
@@ -447,13 +447,13 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE))",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[256])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "databend:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE))",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[128])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "databend:pk_inline": {
     "classification": "legacy-bug",
@@ -471,13 +471,13 @@
     "classification": "legacy-bug",
     "fork": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING DELTA TBLPROPERTIES('delta.autoOptimize.optimizeWrite'='true', 'delta.autoOptimize.autoCompact'='true')",
     "legacy": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256]) USING DELTA TBLPROPERTIES('delta.autoOptimize.optimizeWrite'='true', 'delta.autoOptimize.autoCompact'='true')",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "databricks_delta_auto_optimize:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING DELTA TBLPROPERTIES('delta.autoOptimize.optimizeWrite'='true', 'delta.autoOptimize.autoCompact'='true')",
     "legacy": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[128]) USING DELTA TBLPROPERTIES('delta.autoOptimize.optimizeWrite'='true', 'delta.autoOptimize.autoCompact'='true')",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "databricks_delta_auto_optimize:using_present": {
     "classification": "legacy-bug",
@@ -519,7 +519,7 @@
     "classification": "legacy-bug",
     "fork": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING DELTA",
     "legacy": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256]) USING DELTA TBLPROPERTIES()",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type. Legacy also wrote an empty TBLPROPERTIES() clause, which Databricks rejects."
+    "reason": "Legacy wrote a fixed-size array and an empty TBLPROPERTIES() clause, which Databricks rejects."
   },
   "databricks_delta_no_auto_optimize:events_tuned": {
     "classification": "legacy-bug",
@@ -531,7 +531,7 @@
     "classification": "legacy-bug",
     "fork": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) USING DELTA",
     "legacy": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[128]) USING DELTA TBLPROPERTIES()",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type. Legacy also wrote an empty TBLPROPERTIES() clause, which Databricks rejects."
+    "reason": "Legacy wrote a fixed-size array and an empty TBLPROPERTIES() clause, which Databricks rejects."
   },
   "databricks_delta_no_auto_optimize:if_not_exists": {
     "classification": "legacy-bug",
@@ -702,10 +702,10 @@
     "reason": "The fork writes the adapter schema ([dbo].) on the table and its REFERENCES targets; legacy relied on the connection default schema, which is dbo."
   },
   "fabric:double_array": {
-    "classification": "legacy-bug",
+    "classification": "fork-gap",
     "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>)",
     "legacy": "CREATE TABLE [vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[256])",
-    "reason": "T-SQL has no array column type; legacy and the fork are both invalid for fixed-size vector columns. Reported, no equivalent type chosen."
+    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
   },
   "fabric:events_tuned": {
     "classification": "equivalent",
@@ -714,10 +714,10 @@
     "reason": "The fork writes the adapter schema ([dbo].) on the table and its REFERENCES targets; legacy relied on the connection default schema, which is dbo."
   },
   "fabric:float_array": {
-    "classification": "legacy-bug",
+    "classification": "fork-gap",
     "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>)",
     "legacy": "CREATE TABLE [vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[128])",
-    "reason": "T-SQL has no array column type; legacy and the fork are both invalid for fixed-size vector columns. Reported, no equivalent type chosen."
+    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
   },
   "fabric:if_not_exists": {
     "classification": "legacy-bug",
@@ -834,16 +834,16 @@
     "reason": "The fork writes the adapter schema ([dbo].) on the table and its REFERENCES targets; legacy relied on the connection default schema, which is dbo."
   },
   "helper_strip_primary_keys:double_array": {
-    "classification": "equivalent",
+    "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[256])",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE[256])",
-    "reason": "PostgreSQL FLOAT is double precision; the fork writes DOUBLE PRECISION."
+    "reason": "DOUBLE is not a PostgreSQL type; the fork writes DOUBLE PRECISION[N]."
   },
   "helper_strip_primary_keys:float_array": {
     "classification": "equivalent",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[128])",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding FLOAT[128])",
-    "reason": "PostgreSQL FLOAT is double precision; the fork writes DOUBLE PRECISION."
+    "reason": "PostgreSQL FLOAT is double precision; the fork writes DOUBLE PRECISION[N]."
   },
   "helper_strip_primary_keys:text_string_types": {
     "classification": "legacy-bug",
@@ -855,7 +855,7 @@
     "classification": "equivalent",
     "fork": "CREATE TABLE t(a INT) WITH(FORMAT='PARQUET')",
     "legacy": "CREATE TABLE t(a INT) WITH(format='PARQUET')",
-    "reason": "Neither side strips WITH properties in this helper; the fork only differs in the case of the property name."
+    "reason": "Only the case of the property name differs (format vs FORMAT)."
   },
   "lakesail_parquet:comment_prefix": {
     "classification": "equivalent",
@@ -873,25 +873,25 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)) WITH(format='PARQUET')",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[256]) WITH(format='PARQUET')",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "presto_hive:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)) WITH(format='PARQUET')",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) WITH(format='PARQUET')",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "presto_iceberg:double_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE))",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[256])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "presto_iceberg:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE))",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[128])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "questdb_day:char_with_length": {
     "classification": "legacy-bug",
@@ -903,7 +903,7 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[])",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[256])",
-    "reason": "QuestDB rejects fixed-size arrays (verified on QuestDB 10.0.1: arrays do not have a fixed size); the fork writes DOUBLE PRECISION[]."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "questdb_day:events_tuned": {
     "classification": "legacy-bug",
@@ -915,7 +915,7 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[])",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[128])",
-    "reason": "QuestDB rejects fixed-size arrays (verified on QuestDB 10.0.1: arrays do not have a fixed size); the fork writes DOUBLE PRECISION[]."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "questdb_day:if_not_exists": {
     "classification": "legacy-bug",
@@ -1005,7 +1005,7 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[])",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[256])",
-    "reason": "QuestDB rejects fixed-size arrays (verified on QuestDB 10.0.1: arrays do not have a fixed size); the fork writes DOUBLE PRECISION[]."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "questdb_default:events_tuned": {
     "classification": "legacy-bug",
@@ -1017,7 +1017,7 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[])",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[128])",
-    "reason": "QuestDB rejects fixed-size arrays (verified on QuestDB 10.0.1: arrays do not have a fixed size); the fork writes DOUBLE PRECISION[]."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "questdb_default:if_not_exists": {
     "classification": "legacy-bug",
@@ -1107,7 +1107,7 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[])",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[256])",
-    "reason": "QuestDB rejects fixed-size arrays (verified on QuestDB 10.0.1: arrays do not have a fixed size); the fork writes DOUBLE PRECISION[]."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "questdb_none:events_tuned": {
     "classification": "legacy-bug",
@@ -1119,7 +1119,7 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[])",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE PRECISION[128])",
-    "reason": "QuestDB rejects fixed-size arrays (verified on QuestDB 10.0.1: arrays do not have a fixed size); the fork writes DOUBLE PRECISION[]."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "questdb_none:if_not_exists": {
     "classification": "legacy-bug",
@@ -1200,28 +1200,28 @@
     "reason": "QuestDB rejects CHAR(n) and VARCHAR(n) (verified on QuestDB 10.0.1: ',' or ')' expected); the fork writes VARCHAR."
   },
   "singlestore:double_array": {
-    "classification": "legacy-bug",
+    "classification": "fork-gap",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE), SHARD KEY())",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256], SHARD KEY())",
-    "reason": "SingleStore has no ARRAY column type; legacy ARRAY<DOUBLE>[N] and the fork ARRAY(DOUBLE) are both invalid. VECTOR(n, F64) would be the match; reported as a separate design choice."
+    "reason": "SingleStore has no ARRAY column type; legacy ARRAY<DOUBLE>[N] and the fork ARRAY(DOUBLE) are both invalid. VECTOR(n, F64) would be the match; a separate design choice reported for an owner decision."
   },
   "singlestore:float_array": {
-    "classification": "legacy-bug",
+    "classification": "fork-gap",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE), SHARD KEY())",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[128], SHARD KEY())",
-    "reason": "SingleStore has no ARRAY column type; legacy ARRAY<DOUBLE>[N] and the fork ARRAY(DOUBLE) are both invalid. VECTOR(n, F64) would be the match; reported as a separate design choice."
+    "reason": "SingleStore has no ARRAY column type; legacy ARRAY<DOUBLE>[N] and the fork ARRAY(DOUBLE) are both invalid. VECTOR(n, F64) would be the match; a separate design choice reported for an owner decision."
   },
   "snowflake:double_array": {
     "classification": "legacy-bug",
     "fork": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE))",
     "legacy": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[256])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "snowflake:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE))",
     "legacy": "CREATE OR REPLACE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[128])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "snowflake:quoted_identifiers": {
     "classification": "legacy-bug",
@@ -1311,7 +1311,7 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>) DUPLICATE KEY(id) DISTRIBUTED BY HASH(id) BUCKETS 8",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding DOUBLE[256]) DUPLICATE KEY(id) DISTRIBUTED BY HASH(id) BUCKETS 8",
-    "reason": "Legacy wrote DOUBLE[N], which is not a StarRocks type; the fork writes ARRAY<DOUBLE>."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "starrocks:lineitem_codec": {
     "classification": "legacy-bug",
@@ -1344,16 +1344,16 @@
     "reason": "Legacy falls back to DUPLICATE KEY on single-line DDL because its pattern needs newline-indented columns (and leaves a dangling CONSTRAINT name); on the multi-line TPC DDL it writes PRIMARY KEY like the fork."
   },
   "synapse_replicate:double_array": {
-    "classification": "legacy-bug",
+    "classification": "fork-gap",
     "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>) WITH(DISTRIBUTION=REPLICATE)",
     "legacy": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[256]) WITH(DISTRIBUTION=REPLICATE)",
-    "reason": "T-SQL has no array column type; legacy and the fork are both invalid for fixed-size vector columns. Reported, no equivalent type chosen."
+    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
   },
   "synapse_replicate:float_array": {
-    "classification": "legacy-bug",
+    "classification": "fork-gap",
     "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>) WITH(DISTRIBUTION=REPLICATE)",
     "legacy": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[128]) WITH(DISTRIBUTION=REPLICATE)",
-    "reason": "T-SQL has no array column type; legacy and the fork are both invalid for fixed-size vector columns. Reported, no equivalent type chosen."
+    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
   },
   "synapse_replicate:if_not_exists": {
     "classification": "legacy-bug",
@@ -1398,16 +1398,16 @@
     "reason": "The fork writes the adapter schema ([dbo].) on the table and its REFERENCES targets; legacy relied on the connection default schema, which is dbo."
   },
   "synapse_round_robin:double_array": {
-    "classification": "legacy-bug",
+    "classification": "fork-gap",
     "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>) WITH(DISTRIBUTION=ROUND_ROBIN)",
     "legacy": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[256]) WITH(DISTRIBUTION=ROUND_ROBIN)",
-    "reason": "T-SQL has no array column type; legacy and the fork are both invalid for fixed-size vector columns. Reported, no equivalent type chosen."
+    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
   },
   "synapse_round_robin:float_array": {
-    "classification": "legacy-bug",
+    "classification": "fork-gap",
     "fork": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>) WITH(DISTRIBUTION=ROUND_ROBIN)",
     "legacy": "CREATE TABLE [dbo].[vectors]([id] BIGINT, [embedding] ARRAY<FLOAT>[128]) WITH(DISTRIBUTION=ROUND_ROBIN)",
-    "reason": "T-SQL has no array column type; legacy and the fork are both invalid for fixed-size vector columns. Reported, no equivalent type chosen."
+    "reason": "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. No equivalent type is chosen; reported for an owner decision."
   },
   "synapse_round_robin:if_not_exists": {
     "classification": "legacy-bug",
@@ -1455,48 +1455,48 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE))",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[256])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "trino_delta:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE))",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[128])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "trino_hive:double_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)) WITH(format='PARQUET')",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[256]) WITH(format='PARQUET')",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "trino_hive:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)) WITH(format='PARQUET')",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) WITH(format='PARQUET')",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "trino_iceberg:double_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)) WITH(format='PARQUET')",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[256]) WITH(format='PARQUET')",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "trino_iceberg:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)) WITH(format='PARQUET')",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) WITH(format='PARQUET')",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "trino_memory:double_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE))",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[256])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
   "trino_memory:float_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE))",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[128])",
-    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; the fork writes the target's plain array type."
+    "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   }
 }

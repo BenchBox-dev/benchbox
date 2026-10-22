@@ -15,152 +15,335 @@ _ENGINES = "benchbox._vendor.sqlglot.benchbox.ddl_engines"
 
 
 _ARR = r"(float|double)_array"
-_FIXED_ARRAY = (
-    "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N] or DOUBLE[N]) that the target rejects; "
-    "the fork writes the target's plain array type."
-)
-_TYPE_SPELLING = (
-    "ClickHouse type spelling: Int32, String, Decimal, DateTime and Date name the same types as the "
-    "SQL aliases INT, VARCHAR(n), CHAR(n), DECIMAL, TIMESTAMP and DATE legacy kept."
-)
-_DANGLING = (
-    "Legacy leaves a dangling CONSTRAINT name after removing the PRIMARY KEY; the fork removes the whole constraint."
-)
-_QUESTDB_LENGTH = (
-    "QuestDB rejects CHAR(n) and VARCHAR(n) (verified on QuestDB 10.0.1: ',' or ')' expected); the fork writes VARCHAR."
-)
-_COMMENT = "The fork keeps a leading /* comment */ on the statement; the statement is otherwise identical."
-_SCHEMA = (
-    "The fork writes the adapter schema ([dbo].) on the table and its REFERENCES targets; legacy relied "
-    "on the connection default schema, which is dbo."
-)
-_NO_TSQL_ARRAY = (
-    "T-SQL has no array column type; legacy and the fork are both invalid for fixed-size vector columns. "
-    "Reported, no equivalent type chosen."
+_Check = Callable[[str, str], bool]
+
+
+def _size(text: str) -> str:
+    return re.sub(r"\[\d+\]", "", text)
+
+
+def _has_size(legacy: str, fork: str) -> bool:
+    return bool(re.search(r"\[\d+\]", legacy)) and not re.search(r"\[\d+\]", fork)
+
+
+def _no_tsql_array(legacy: str, fork: str) -> bool:
+    return _has_size(legacy, fork) and "ARRAY" in fork
+
+
+def _singlestore_array(legacy: str, fork: str) -> bool:
+    return "ARRAY" in legacy and "ARRAY" in fork and _has_size(legacy, fork)
+
+
+def _empty_tblproperties(legacy: str, fork: str) -> bool:
+    return " TBLPROPERTIES()" in legacy and _size(legacy.replace(" TBLPROPERTIES()", "")) == _size(fork)
+
+
+def _delta_using(legacy: str, fork: str) -> bool:
+    return (
+        "USING PARQUET" in legacy
+        and legacy.replace(" TBLPROPERTIES()", "").replace("USING PARQUET", "USING DELTA") == fork
+    )
+
+
+def _no_backticks(legacy: str, fork: str) -> bool:
+    return legacy.replace("`", "") == fork.replace("`", "")
+
+
+_CLICKHOUSE_TYPES = (
+    (r"\b(?:varchar|char|text|string)(?:\(\d+\))?(?=[ ,)])", "string"),
+    (r"\bbigint\b", "int64"),
+    (r"\bsmallint\b", "int16"),
+    (r"\btinyint\b", "int8"),
+    (r"\bint\b", "int32"),
+    (r"\btimestamp\b", "datetime"),
+    (r"\bboolean\b", "bool"),
+    (r"\bdouble precision\b|\bdouble\b", "float64"),
 )
 
-CLASSIFICATIONS: list[tuple[str, str, str]] = [
+
+def _clickhouse_spelling(legacy: str, fork: str) -> bool:
+    def normal(text: str) -> str:
+        text = text.lower()
+        for pattern, replacement in _CLICKHOUSE_TYPES:
+            text = re.sub(pattern, replacement, text)
+        return text
+
+    return normal(legacy) == normal(fork)
+
+
+def _clickhouse_order_by(legacy: str, fork: str) -> bool:
+    return "ORDER BY(CONSTRAINT" in legacy and "ORDER BY(CONSTRAINT" not in fork
+
+
+def _dangling_constraint(legacy: str, fork: str) -> bool:
+    return "CONSTRAINT" in legacy and "CONSTRAINT" not in fork
+
+
+def _key_removed(legacy: str, fork: str) -> bool:
+    return (
+        ("PRIMARY KEY" in legacy or "CONSTRAINT" in legacy) and "PRIMARY KEY" not in fork and "CONSTRAINT" not in fork
+    )
+
+
+def _starrocks_key_model(legacy: str, fork: str) -> bool:
+    return "DUPLICATE KEY" in legacy and "PRIMARY KEY" in fork and "DUPLICATE KEY" not in fork
+
+
+def _doris_varchar(legacy: str, fork: str) -> bool:
+    return legacy.replace("c VARCHAR)", "c VARCHAR(65533))") == fork
+
+
+def _schema_qualified(legacy: str, fork: str) -> bool:
+    return legacy.replace("[dbo].", "") == fork.replace("[dbo].", "")
+
+
+def _schema_guard(legacy: str, fork: str) -> bool:
+    return "TABLE_SCHEMA" not in legacy and "TABLE_SCHEMA" in fork
+
+
+def _postgres_string(legacy: str, fork: str) -> bool:
+    return legacy.replace("b STRING", "b TEXT") == fork
+
+
+def _postgres_double(legacy: str, fork: str) -> bool:
+    return "DOUBLE[" in legacy and fork == legacy.replace("DOUBLE[", "DOUBLE PRECISION[")
+
+
+def _postgres_float(legacy: str, fork: str) -> bool:
+    return fork == legacy.replace("FLOAT[", "DOUBLE PRECISION[")
+
+
+def _same_lower(legacy: str, fork: str) -> bool:
+    return legacy.lower() == fork.lower()
+
+
+def _comment_prefix(legacy: str, fork: str) -> bool:
+    return re.sub(r"^/\*.*?\*/ ", "", fork) == legacy and fork != legacy
+
+
+def _same_tokens(legacy: str, fork: str) -> bool:
+    return sorted(re.split(r"[\s,()]+", legacy)) == sorted(re.split(r"[\s,()]+", fork))
+
+
+def _unquoted_lower(legacy: str, fork: str) -> bool:
+    return legacy.replace('"', "").lower() == fork.replace('"', "").lower()
+
+
+def _repeated_partition_column(legacy: str, fork: str) -> bool:
+    return legacy.count("o_orderdate") > fork.count("o_orderdate")
+
+
+def _sorted_without_cluster(legacy: str, fork: str) -> bool:
+    return "SORTED BY" in legacy and "SORTED BY" not in fork and "CLUSTERED BY" not in legacy
+
+
+def _time_type(legacy: str, fork: str) -> bool:
+    return bool(re.search(r"\bTIME\b", legacy)) and not re.search(r"\bTIME\b", fork)
+
+
+def _questdb_lengths(legacy: str, fork: str) -> bool:
+    return re.sub(r"\b(?:VARCHAR|CHAR)\(\d+\)", "VARCHAR", legacy) == fork
+
+
+def _questdb_missing_column(legacy: str, fork: str) -> bool:
+    without_clause = re.sub(r" timestamp\(l_shipdate\)( PARTITION BY \w+)?", "", legacy)
+    return (
+        "timestamp(l_shipdate)" in legacy
+        and "timestamp(l_shipdate)" not in fork
+        and _questdb_lengths(without_clause, fork)
+    )
+
+
+_TSQL = r"(fabric|synapse_(replicate|round_robin))"
+
+CLASSIFICATIONS: list[tuple[str, str, str, _Check]] = [
     (
         rf"(athena_(csv|other|parquet)|bigquery|databend|databricks_delta_auto_optimize|presto_(hive|iceberg)|"
-        rf"trino_(hive|iceberg|memory|delta)|snowflake):{_ARR}",
+        rf"trino_(hive|iceberg|memory|delta)|snowflake|starrocks|questdb_(default|day|none)):{_ARR}",
         "legacy-bug",
-        _FIXED_ARRAY,
+        "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on "
+        "10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type.",
+        _has_size,
     ),
     (
         rf"databricks_delta_no_auto_optimize:{_ARR}",
         "legacy-bug",
-        _FIXED_ARRAY + " Legacy also wrote an empty TBLPROPERTIES() clause, which Databricks rejects.",
+        "Legacy wrote a fixed-size array and an empty TBLPROPERTIES() clause, which Databricks rejects.",
+        _empty_tblproperties,
     ),
     (
-        rf"questdb_(default|day|none):{_ARR}",
-        "legacy-bug",
-        "QuestDB rejects fixed-size arrays (verified on QuestDB 10.0.1: arrays do not have a fixed size); "
-        "the fork writes DOUBLE PRECISION[].",
+        rf"{_TSQL}:{_ARR}",
+        "fork-gap",
+        "T-SQL has no array column type; legacy ARRAY<FLOAT>[N] and the fork ARRAY<FLOAT> are both invalid. "
+        "No equivalent type is chosen; reported for an owner decision.",
+        _no_tsql_array,
     ),
-    (
-        r"starrocks:double_array",
-        "legacy-bug",
-        "Legacy wrote DOUBLE[N], which is not a StarRocks type; the fork writes ARRAY<DOUBLE>.",
-    ),
-    (rf"(fabric|synapse_(replicate|round_robin)):{_ARR}", "legacy-bug", _NO_TSQL_ARRAY),
     (
         rf"singlestore:{_ARR}",
-        "legacy-bug",
+        "fork-gap",
         "SingleStore has no ARRAY column type; legacy ARRAY<DOUBLE>[N] and the fork ARRAY(DOUBLE) are both invalid. "
-        "VECTOR(n, F64) would be the match; reported as a separate design choice.",
+        "VECTOR(n, F64) would be the match; a separate design choice reported for an owner decision.",
+        _singlestore_array,
     ),
     (
-        rf"helper_strip_primary_keys:{_ARR}",
+        r"helper_strip_primary_keys:double_array",
+        "legacy-bug",
+        "DOUBLE is not a PostgreSQL type; the fork writes DOUBLE PRECISION[N].",
+        _postgres_double,
+    ),
+    (
+        r"helper_strip_primary_keys:float_array",
         "equivalent",
-        "PostgreSQL FLOAT is double precision; the fork writes DOUBLE PRECISION.",
+        "PostgreSQL FLOAT is double precision; the fork writes DOUBLE PRECISION[N].",
+        _postgres_float,
     ),
     (
         r"athena_(csv|other|parquet):time_column",
         "legacy-bug",
         "Athena external tables have no TIME column type; the fork writes TIMESTAMP.",
+        _time_type,
     ),
     (
         r"databricks_delta_(auto|no_auto)_optimize:using_present",
         "legacy-bug",
         "Legacy kept the statement's USING PARQUET although Delta was requested; the layout format replaces "
         "the statement's own USING (fork behaviour, a table that keeps its USING needs an empty layout).",
+        _delta_using,
     ),
     (
         r"databricks_delta_no_auto_optimize:.*",
         "legacy-bug",
         "Legacy wrote an empty TBLPROPERTIES() clause, which Databricks rejects.",
+        _empty_tblproperties,
     ),
     (
         r"bigquery:.*",
         "equivalent",
-        "Legacy writes proj.ds.T as one backtick-quoted identifier; the fork writes `proj`.`ds`.`T`, one identifier per part.",
+        "Legacy writes project.dataset.table as one backtick-quoted identifier; the fork writes project, dataset and "
+        "table as separate identifiers. Both resolve to the same table; only the quoting differs.",
+        _no_backticks,
     ),
-    (r"clickhouse_default:pk_named", "legacy-bug", _DANGLING),
-    (r"clickhouse_(default|no_primary_keys|nullable|tuned):.*", "equivalent", _TYPE_SPELLING),
+    (
+        r"clickhouse_default:pk_named",
+        "legacy-bug",
+        "Legacy writes ORDER BY(CONSTRAINT, a), taking the constraint keyword for a key column; the fork writes "
+        "ORDER BY(a). Both keep the named constraint in the column list; no shipped DDL uses a named key.",
+        _clickhouse_order_by,
+    ),
+    (
+        r"clickhouse_(default|no_primary_keys|nullable|tuned):.*",
+        "equivalent",
+        "ClickHouse type spelling: Int32, String, Decimal, DateTime and Date name the same types as the SQL aliases "
+        "INT, VARCHAR(n), CHAR(n), DECIMAL, TIMESTAMP and DATE legacy kept.",
+        _clickhouse_spelling,
+    ),
     (
         r"doris_(plain|partitioned):bare_varchar",
         "legacy-bug",
         "Legacy wrote a bare VARCHAR, whose default length is not the unbounded text the benchmark means; the fork "
         "writes the explicit VARCHAR(65533), the maximum, as it does for StarRocks.",
+        _doris_varchar,
     ),
     (
         r"databend:pk_(inline|named)",
         "legacy-bug",
         "Legacy leaves an inline PRIMARY KEY or a dangling CONSTRAINT name that the adapter meant to strip.",
+        _key_removed,
     ),
-    (r"(doris_plain|doris_partitioned|lakesail_parquet|spark_orc|spark_parquet):pk_named", "legacy-bug", _DANGLING),
     (
-        r"(fabric|synapse_(replicate|round_robin)):if_not_exists",
+        r"(doris_plain|doris_partitioned|lakesail_parquet|spark_orc|spark_parquet):pk_named",
+        "legacy-bug",
+        "Legacy leaves a dangling CONSTRAINT name after removing the PRIMARY KEY; the fork removes the whole constraint.",
+        _dangling_constraint,
+    ),
+    (
+        rf"{_TSQL}:if_not_exists",
         "legacy-bug",
         "Legacy IF NOT EXISTS guard checks the table name in every schema (and, for Synapse, drops the "
         "DISTRIBUTION clause); the fork also checks TABLE_SCHEMA and keeps the layout.",
+        _schema_guard,
     ),
-    (r"(fabric|synapse_(replicate|round_robin)):.*", "equivalent", _SCHEMA),
+    (
+        rf"{_TSQL}:.*",
+        "equivalent",
+        "The fork writes the adapter schema ([dbo].) on the table and its REFERENCES targets; legacy relied "
+        "on the connection default schema, which is dbo.",
+        _schema_qualified,
+    ),
     (
         r"helper_strip_primary_keys:text_string_types",
         "legacy-bug",
         "STRING is not a PostgreSQL type; the fork writes TEXT.",
+        _postgres_string,
     ),
     (
         r"helper_strip_primary_keys:with_properties",
         "equivalent",
-        "Neither side strips WITH properties in this helper; the fork only differs in the case of the property name.",
+        "Only the case of the property name differs (format vs FORMAT).",
+        _same_lower,
     ),
-    (r"(lakesail_parquet|spark_delta|spark_orc|spark_parquet):comment_prefix", "equivalent", _COMMENT),
+    (
+        r"(lakesail_parquet|spark_delta|spark_orc|spark_parquet):comment_prefix",
+        "equivalent",
+        "The fork keeps a leading /* comment */ on the statement; the statement is otherwise identical.",
+        _comment_prefix,
+    ),
     (
         r"snowflake:quoted_identifiers",
         "legacy-bug",
         "Legacy uppercases quoted identifiers, renaming the user's mixed-case names; the fork keeps them.",
+        _unquoted_lower,
     ),
-    (r"spark_mixin:delta_.*", "equivalent", "Only the order of the two delta.autoOptimize TBLPROPERTIES differs."),
+    (
+        r"spark_mixin:delta_.*",
+        "equivalent",
+        "Only the order of the two delta.autoOptimize TBLPROPERTIES differs.",
+        _same_tokens,
+    ),
     (
         r"spark_mixin:hive_bucketed",
         "equivalent",
         "Only clause order differs; the fork follows the Hive grammar (CLUSTERED BY before STORED AS).",
+        _same_tokens,
     ),
     (
         r"spark_mixin:hive_partition",
         "legacy-bug",
         "Legacy repeats the partition column in the column list, which Hive rejects.",
+        _repeated_partition_column,
     ),
-    (r"spark_mixin:iceberg_partition", "equivalent", "months(col) and MONTHS(col) are the same transform."),
+    (
+        r"spark_mixin:iceberg_partition",
+        "equivalent",
+        "months(col) and MONTHS(col) are the same transform.",
+        _same_lower,
+    ),
     (
         r"spark_mixin:parquet_partition_sort",
         "legacy-bug",
         "Legacy wrote SORTED BY without CLUSTERED BY, which Spark rejects (verified on PySpark).",
+        _sorted_without_cluster,
     ),
     (
         r"starrocks:(lineitem_codec|pk_inline|pk_middle|pk_trailing|pk_named)",
         "legacy-bug",
         "Legacy falls back to DUPLICATE KEY on single-line DDL because its pattern needs newline-indented columns "
         "(and leaves a dangling CONSTRAINT name); on the multi-line TPC DDL it writes PRIMARY KEY like the fork.",
+        _starrocks_key_model,
     ),
     (
         r"questdb_(default|day|none):lineitem_codec",
         "legacy-bug",
         "Legacy wrote timestamp(l_shipdate) for a table without that column, and VARCHAR(n); QuestDB rejects both.",
+        _questdb_missing_column,
     ),
-    (r"questdb_(default|day|none):.*", "legacy-bug", _QUESTDB_LENGTH),
+    (
+        r"questdb_(default|day|none):.*",
+        "legacy-bug",
+        "QuestDB rejects CHAR(n) and VARCHAR(n) (verified on QuestDB 10.0.1: ',' or ')' expected); the fork writes "
+        "VARCHAR.",
+        _questdb_lengths,
+    ),
 ]
 
 
