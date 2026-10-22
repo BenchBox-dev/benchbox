@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 from benchbox.core.tpcds.c_tools import tpcds_option
+from benchbox.utils.filesystem_flush import flush_filesystem
 from benchbox.utils.printing import emit
 from benchbox.utils.tpc_compilation import CompilationStatus, ensure_tpc_binaries
 
@@ -143,10 +144,7 @@ class DsdgenRunnerMixin:
                 stderr=None if self.verbose else subprocess.PIPE,
             )
 
-            try:
-                subprocess.run(["sync"], check=False, capture_output=True)
-            except (FileNotFoundError, subprocess.SubprocessError):
-                pass
+            flush_filesystem()
 
             import time
 

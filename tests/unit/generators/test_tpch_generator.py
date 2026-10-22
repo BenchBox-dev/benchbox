@@ -765,7 +765,7 @@ class TestTPCHDataGeneratorParallelProcessing(unittest.TestCase):
                 generator._run_dbgen_native(work_dir)
 
                 mock_parallel.assert_not_called()
-                self.assertEqual(mock_single.call_count, 2)
+                self.assertEqual(mock_single.call_count, 1)
 
     @mock.patch("benchbox.core.tpch.generator.TPCHDataGenerator._find_or_build_dbgen")
     def test_parallel_execution_path_multiple(self, mock_find_dbgen):
@@ -904,7 +904,7 @@ class TestTPCHDataGeneratorParallelProcessing(unittest.TestCase):
 
             generator._run_dbgen_native(self.work_dir)
 
-            self.assertEqual(mock_run.call_count, 2)
+            self.assertEqual(mock_run.call_count, 1)
 
             call_args = mock_run.call_args_list[0][0][0]
             self.assertIn("-vf", call_args)
