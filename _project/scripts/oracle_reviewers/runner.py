@@ -14,7 +14,16 @@ from typing import Any
 from . import absence, evidence, protocol
 from .commands import Invocation, build
 from .policy import Reviewer
-from .verdict import INCOMPLETE, SHIP, VerdictError, extract_omp_text, parse_output, validate
+from .verdict import (
+    INCOMPLETE,
+    SHIP,
+    VerdictError,
+    extract_omp_text,
+    normalize_reviewer,
+    parse_output,
+    shape_fingerprint,
+    validate,
+)
 
 
 @dataclass(frozen=True)
@@ -141,15 +150,32 @@ def review(
         return ReviewOutcome(None, absence.Absence(absence.INVALID, reason), diagnostic)
     if missing.absent:
         return ReviewOutcome(None, missing, diagnostic)
+    payload: Any = None
+    parsed = False
+    rewrites: tuple[str, ...] = ()
     try:
-        verdict = validate(parse_output(reviewer.harness, output))
+        payload = parse_output(reviewer.harness, output)
+        parsed = True
+        normalized, rewrites = normalize_reviewer(payload)
+        verdict = validate(normalized)
     except VerdictError as exc:
         unparsed = _unparsed(reviewer.harness, output, diagnostic)
-        return ReviewOutcome(None, absence.Absence(absence.INVALID, str(exc)), unparsed)
+        if parsed:
+            fingerprint = shape_fingerprint(payload, _credentials())
+            unparsed = f"shape={fingerprint}\n{unparsed}"
+        if rewrites:
+            unparsed = f"rewrites={','.join(rewrites)}\n{unparsed}"
+        detail = absence.redact_detail(str(exc), _credentials())
+        return ReviewOutcome(None, absence.Absence(absence.INVALID, detail), unparsed)
+    if rewrites:
+        diagnostic = f"rewrites={','.join(rewrites)}\n{diagnostic}"
     if verdict.status == INCOMPLETE:
         reason = verdict.incomplete_reason or "the reviewer reported its review incomplete"
         return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, reason), diagnostic)
     verdict = evidence.mark_citations(verdict, workspace)
+    problem = protocol.contradiction(verdict, plan)
+    if problem is not None:
+        return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), diagnostic)
     problem = evidence.check(
         verdict,
         ships=protocol.judge_planned(verdict, plan).decision == SHIP,

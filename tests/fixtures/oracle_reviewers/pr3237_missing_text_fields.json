@@ -1,0 +1,66 @@
+[
+  {
+    "run_id": "39662535698",
+    "head_sha": "fa9b907c8264e0591d3e16231fecd57c0dae2369",
+    "pr": 3237,
+    "payload": {
+      "status": "complete",
+      "decision": "SHIP_WITH_FIXES",
+      "prior_defects": [
+        {
+          "id": "D5",
+          "status": "fixed",
+          "evidence": "Head re-derives the module path from classname when the junit file attribute disagrees (`_junit_failed_nodeids` filename re-derivation, ~lines 115-118), and `junit_case_node_id` derives path from classname on mismatch. Covered by [redacted] and [redacted]."
+        },
+        {
+          "id": "D6",
+          "status": "not_fixed",
+          "evidence": "`junit_case_node_id` (misses path) still duplicates the junit-to-nodeid mapping in `_junit_failed_nodeids` (build-map path). They diverge: `_junit_failed_nodeids` drops a case when the classname module is absent from disk, while `junit_case_node_id` falls back to `_junit_module_parts`. They also diverge on empty classname (see new defect 1)."
+        }
+      ],
+      "defects": [
+        {
+          "severity": "Medium",
+          "file": "scripts/coverage_test_selection.py",
+          "line": 1170,
+          "end_line": 1185,
+          "title": "Empty classname with no file attribute yields unselectable '.py::<name>' node",
+          "detail": "When classname is '' and the junit case has no file attribute (or repo lookup fails), `junit_case_node_id` calls `_junit_module_parts('')`, which returns ([], []). The path then becomes '/'.join([]) + '.py' = '.py', producing node IDs like '.py::tests.unit.x.test_bad'. These can never match a selected node, so `shadow_misses` reports them as misses and `miss_report` sets would_escalate=true. `_junit_failed_nodeids` skips the same cases (`continue`), so the two paths disagree. Shadow-mode escalation metrics are inflated. Fix: return None for empty classname with no filename and skip the case, matching `_junit_failed_nodeids`."
+        }
+      ],
+      "files_examined": [
+        "scripts/coverage_test_selection.py",
+        "tests/unit/scripts/test_coverage_test_selection.py",
+        ".github/workflows/ci.yml"
+      ]
+    }
+  },
+  {
+    "run_id": "39669405558",
+    "head_sha": "55a75aa1399112c0f99d52843b84b4d4102d6a22",
+    "pr": 3237,
+    "payload": {
+      "decision": "SHIP_WITH_FIXES",
+      "status": "complete",
+      "defects": [],
+      "prior_defects": [
+        {
+          "id": "D5",
+          "status": "fixed",
+          "evidence": "scripts/coverage_test_selection.py:113-117 (_junit_failed_nodeids) re-probes the junit classname with _junit_case_filename(repo, \"\", classname) when the file attribute's module does not match classname, so inherited failures resolve to the defining module's path instead of a file-anchored bogus ID. The misses path (junit_case_node_id, ~1181-1204) falls back to the _junit_module_parts heuristic, which yields the correct ID for pytest-collected modules. tests/unit/scripts/test_coverage_test_selection.py:~325 [redacted] asserts failed_nodes == [\"tests/unit/core/test_engine.py::TestSub::test_inherited\"]; the repo fixture creates tests/unit/core/test_engine.py."
+        },
+        {
+          "id": "D6",
+          "status": "not_fixed",
+          "evidence": "Two junit-to-node derivations remain. _junit_failed_nodeids (scripts/coverage_test_selection.py:97-126) probes the filesystem for classname mismatches, while junit_case_node_id (~1181-1204) and failed_node_ids (~1206) reimplement the parse loop and use the _junit_module_parts string heuristic (~1174-1179) on mismatch, with no probe. The two paths can disagree for the same testcase, for example when a classname module is not test_*/*_test named. The misses report then compares against IDs that build_map would not produce. Under pytest's default collection patterns the heuristic matches the probe, so the divergence is latent rather than observed."
+        }
+      ],
+      "files_examined": [
+        "scripts/coverage_test_selection.py",
+        ".github/workflows/ci.yml",
+        "docs/internal/merge-queue-governance.md",
+        "tests/unit/scripts/test_coverage_test_selection.py"
+      ]
+    }
+  }
+]
