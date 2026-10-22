@@ -13446,15 +13446,10 @@
       "title": "Run the medium cross-surface copies on smaller data where the property allows, and build SSB once"
     },
     "longtest-07-validator-exact-fast-path": {
-      "claim": {
-        "expires_at": "2026-10-23T07:12:56Z",
-        "generation": "83ac98080e43493eb6b2a53a75a21219",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Add an exact-equality fast path to the result validator that can only accept what the slow path accepts"
     },
     "longtest-08-tpcds-binding-draw-obt": {
