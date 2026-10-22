@@ -111,8 +111,50 @@ _PRIVATE_LOCAL_PATH_RE = re.compile(
 )
 
 
+_COMPACT_KEY_STRIP_RE = re.compile(r"[^a-z0-9]+")
+
+
+@functools.lru_cache(maxsize=4096)
 def _compact_key(key: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", key.lower())
+    return _COMPACT_KEY_STRIP_RE.sub("", key.lower())
+
+
+@functools.lru_cache(maxsize=4096)
+def _identifier_prefix_for_key_tail(key_path: tuple[str, ...]) -> str | None:
+    if not key_path:
+        return None
+
+    key = _compact_key(key_path[-1])
+    parent = _compact_key(key_path[-2]) if len(key_path) >= 2 else ""
+
+    if parent in _MOUNT_COLLECTION_KEYS and key in _MOUNT_PATH_KEYS:
+        return "path"
+    if key == "id" and key_path[-3:-1] == ("platform_timing", "requests"):
+        return "statement"
+    if key in _IDENTIFIER_KEYS:
+        return _IDENTIFIER_KEYS[key]
+    if key.endswith("bucket"):
+        return "bucket"
+    if key.endswith("prefix"):
+        return "prefix"
+    if key.endswith("arn"):
+        return "arn"
+    if key.endswith("host") or key.endswith("hostname") or key in _ENDPOINT_KEYS:
+        return "host" if key in {"host", "hostname", "server", "enginehost"} else "endpoint"
+    if key.endswith("url") or key.endswith("endpoint"):
+        return "endpoint"
+    if (
+        key.endswith("path")
+        or key.endswith("directory")
+        or key.endswith("dir")
+        or key.endswith("folder")
+        or key.endswith("root")
+        or key.endswith("file")
+        or key.endswith("executable")
+        or key in _PATH_KEYS
+    ):
+        return "path"
+    return None
 
 
 _PUBLIC_HASH_WIDTH = 12
@@ -582,40 +624,7 @@ class AnonymizationManager:
         return key in _MESSAGE_KEYS or key.endswith("message") or key.endswith("error") or key.endswith("errors")
 
     def _identifier_prefix_for_key_path(self, key_path: tuple[str, ...]) -> str | None:
-        if not key_path:
-            return None
-
-        key = _compact_key(key_path[-1])
-        parent = _compact_key(key_path[-2]) if len(key_path) >= 2 else ""
-
-        if parent in _MOUNT_COLLECTION_KEYS and key in _MOUNT_PATH_KEYS:
-            return "path"
-        if key == "id" and key_path[-3:-1] == ("platform_timing", "requests"):
-            return "statement"
-        if key in _IDENTIFIER_KEYS:
-            return _IDENTIFIER_KEYS[key]
-        if key.endswith("bucket"):
-            return "bucket"
-        if key.endswith("prefix"):
-            return "prefix"
-        if key.endswith("arn"):
-            return "arn"
-        if key.endswith("host") or key.endswith("hostname") or key in _ENDPOINT_KEYS:
-            return "host" if key in {"host", "hostname", "server", "enginehost"} else "endpoint"
-        if key.endswith("url") or key.endswith("endpoint"):
-            return "endpoint"
-        if (
-            key.endswith("path")
-            or key.endswith("directory")
-            or key.endswith("dir")
-            or key.endswith("folder")
-            or key.endswith("root")
-            or key.endswith("file")
-            or key.endswith("executable")
-            or key in _PATH_KEYS
-        ):
-            return "path"
-        return None
+        return _identifier_prefix_for_key_tail(key_path[-3:])
 
     def _hash_public_identifier(self, value: str, prefix: str) -> str:
         if _is_public_pseudonym(value, prefix):

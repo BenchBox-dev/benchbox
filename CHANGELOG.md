@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Results anonymization precompiles the key-normalising pattern and caches the
+  normalised key and the identifier prefix for a key path (bounded caches, both pure
+  functions of their arguments). Anonymizing the committed results corpus is about a third
+  faster locally; published output is byte-identical.
 - `benchbox run` registers only the requested platform's adapter instead of importing all 52
   adapters, and checks DataFrame availability for the requested platform only. A local
   `run --dry-run` for Polars drops from about 2.0 s to about 1.2 s and for DuckDB from about
