@@ -13501,12 +13501,17 @@
       "title": "Register platform adapters lazily on the CLI run path"
     },
     "longtest-14-dsqgen-template-staging": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T12:33:29Z",
+        "generation": "270a2d663cf64374afa3717e77ae8cb6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
+      },
       "needs": [
         "longtest-08-tpcds-binding-draw-obt"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop copying the whole TPC-DS template tree on every dsqgen call"
     },
     "longtest-15-module-grouped-scheduling": {
