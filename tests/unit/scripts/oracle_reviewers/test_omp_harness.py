@@ -76,15 +76,24 @@ def test_overlay_pins_reviewer_safety_and_keeps_omp_fallbacks(tmp_path: Path) ->
     assert overlay["fetch"]["enabled"] is False
     assert set(overlay["disabledProviders"]) == {
         "native",
+        "omp-plugins",
         "claude",
+        "agent-plugins",
         "codex",
+        "agents",
+        "claude-plugins",
         "gemini",
         "opencode",
+        "cursor",
+        "windsurf",
+        "cline",
         "github",
-        "agents",
+        "vscode",
         "agents-md",
         "claude-md",
         "custom-context",
+        "mcp-json",
+        "ssh-json",
     }
     assert "retry" not in overlay
 

@@ -36,11 +36,11 @@ SLOT_MAX_BYTES = {
 _SHA = re.compile(r"[0-9a-f]{40}")
 _SLUG = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
 _NUMBER = re.compile(r"[0-9]+(\.[0-9]+)?")
-_PATH_MENTION = re.compile(r"@(?=[/~.\"'])")
+_MENTION_AT = re.compile(r"@(?=[^@ \t\r\n\f\v])")
 
 
 def _neutralize_mentions(text: str) -> str:
-    return _PATH_MENTION.sub("@\u200b", text)
+    return _MENTION_AT.sub("\u200b@", text)
 
 
 def _validate(name: str, values: Mapping[str, object]) -> None:

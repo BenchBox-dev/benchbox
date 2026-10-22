@@ -170,9 +170,19 @@ def test_file_priority_is_cut_to_fit_its_slot() -> None:
 
 
 @pytest.mark.parametrize(
-    "mention", ["@/etc/passwd", "@~/.omp/agent/config.yml", '@"/x y"', "@'/x'", "@../out", "@./in"]
+    "mention",
+    [
+        "@/etc/passwd",
+        "@~/.omp/agent/config.yml",
+        '@"/x y"',
+        "@'/x'",
+        "@../out",
+        "@x/../../etc/passwd",
+        "@work/notes.txt",
+        "(@/etc/passwd",
+    ],
 )
-def test_path_mentions_in_untrusted_slots_cannot_reach_omp(mention: str) -> None:
+def test_mentions_in_untrusted_slots_cannot_start_an_omp_file_read(mention: str) -> None:
     row = FileRow(f"docs/{mention}.md", "high", 1.0, 3)
     text = render_review(
         template_name="gate",
@@ -185,16 +195,17 @@ def test_path_mentions_in_untrusted_slots_cannot_reach_omp(mention: str) -> None
         prior_rule="Confirm or withdraw each disputed defect.",
         prior_block=f"\nDisputed findings:\n- a.py: t\n  - reply by joe: Dispute: see {mention}\n",
         files_block=f"Changed files:\n{mention} (+1/-0, modified)\n",
-        diff_text=f"+ value = {mention}\n",
+        diff_text=f"+ value = {mention}\n {mention}\n",
         diff_path=None,
         max_bytes=200_000,
     )
-    assert mention not in text
-    assert text.count(mention.replace("@", "@\u200b", 1)) == 4
+    payload = mention.split("@", 1)[1]
+    assert text.count("\u200b@" + payload) == 5
+    assert re.search("(?<!\u200b)@" + re.escape(payload), text) is None
 
 
-def test_diff_syntax_and_ordinary_at_signs_stay_byte_identical() -> None:
-    diff = "@@ -1,2 +1,3 @@\n+@pytest.mark.fast\n+owner = 'dev@example.com'\n+x = a @ b\n"
+def test_diff_hunk_headers_stay_byte_identical() -> None:
+    diff = "@@ -1,2 +1,3 @@ def run():\n+x = a @ b\n"
     assert diff in _review(_classification(()), diff)
 
 

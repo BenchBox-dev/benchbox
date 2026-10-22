@@ -107,16 +107,21 @@ Without the App secrets, the `post` job logs the result and succeeds.
 3. `attempt-N-omp` runs that reviewer through OMP on a detached,
    credential-free checkout of the head. OMP starts in an empty working
    directory with the checkout added as a read-only workspace, the tools
-   limited to `read,grep,glob`, and a trusted overlay that turns off project
-   MCP config, the advisor, context promotion, prewalk and URL fetching
-   (`fetch.enabled: false`), and disables every context-file discovery
-   provider, so a pull request's `AGENTS.md`, `.omp/AGENTS.md` or `CLAUDE.md`
-   never reaches the system prompt. The brief inserts a zero-width space after
-   any `@` that precedes `/`, `~`, `.` or a quote in the change data and the
-   file priority, because OMP reads a file named by an `@` mention in the
-   prompt before any tool call. It never runs pull request code. The result is
-   an artifact with the run ID, head SHA, reviewer and either a validated
-   verdict or an absence.
+   limited to `read,grep,glob`, skills and rules off (`--no-skills`,
+   `--no-rules`), and a trusted overlay. The overlay turns off project MCP
+   config, the advisor, context promotion, prewalk and URL fetching
+   (`fetch.enabled: false`). It also disables every discovery provider except
+   OMP's built-in defaults, so the checkout's `AGENTS.md`, `.omp/AGENTS.md`,
+   `CLAUDE.md`, editor rule files and plugins do not load. OMP reads any file
+   named by an `@` mention in the prompt before a tool call, resolving relative
+   paths from the working directory, so the brief puts a zero-width space
+   before every `@` that is followed by a character other than whitespace or
+   another `@` in the change data and the file priority. An `@` preceded by
+   that character does not start a mention. These settings limit what the
+   pull request can make the reviewer load. They do not confine its file
+   tools: the reviewer can still read any file the runner user can. It never
+   runs pull request code. The result is an artifact with the run ID, head
+   SHA, reviewer and either a validated verdict or an absence.
 4. `post` re-validates every artifact from this run, replays the selection,
    and posts the status and the findings. `findings_delivery` in
    `.github/oracle-reviewers.yml` chooses how:
