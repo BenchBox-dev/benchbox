@@ -55,7 +55,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
         nodes {
           isResolved
           path
-          comments(first: 50) { nodes { author { __typename login } body } }
+          comments(first: 50) { nodes { author { __typename login } authorAssociation body } }
         }
       }
     }
@@ -89,6 +89,7 @@ def review_threads(repo: str, pr: int) -> list[dict[str, Any]]:
                         {
                             "author": (item.get("author") or {}).get("login"),
                             "author_type": (item.get("author") or {}).get("__typename"),
+                            "association": item.get("authorAssociation"),
                             "body": item.get("body") or "",
                         }
                         for item in comments[1:]
@@ -123,6 +124,7 @@ WORKFLOW_PATH = ".github/workflows/oracle-verdict.yml"
 LEGACY_WORKFLOW_PATH = ".github/workflows/oracle-review-shadow.yml"
 STATE_SOURCES = ((STATE_ARTIFACT_PREFIX, WORKFLOW_PATH), (LEGACY_STATE_ARTIFACT_PREFIX, LEGACY_WORKFLOW_PATH))
 TRUSTED_EVENTS = frozenset({"pull_request_target", "issue_comment", "schedule", "workflow_dispatch"})
+TRUSTED_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
 
 
 def on_develop(repo: str, sha: str) -> bool:
