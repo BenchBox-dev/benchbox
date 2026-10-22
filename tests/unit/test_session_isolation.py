@@ -166,9 +166,14 @@ def _run_session_probe(
     *pytest_args: str,
     extra_env: dict[str, str] | None = None,
     lock_held: bool = False,
+    caller_files: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     caller_home = tmp_path / "caller-home"
     caller_home.mkdir()
+    for relative, content in (caller_files or {}).items():
+        seeded = caller_home / relative
+        seeded.parent.mkdir(parents=True, exist_ok=True)
+        seeded.write_text(content, encoding="utf-8")
     (tmp_path / "pytest.ini").write_text("[pytest]\nmarkers =\n    live_integration: live\n", encoding="utf-8")
     (tmp_path / "test_probe.py").write_text(test_source, encoding="utf-8")
     lock_path = tmp_path / "lock" / "test.lock"
@@ -301,6 +306,97 @@ def test_isolation_is_dropped_only_for_runs_selecting_nothing_but_live_tests(exp
 
     assert plugin._selects_only_live_tests(["-m", expression]) is expected
     assert plugin._selects_only_live_tests([]) is False
+
+
+SENTINEL = "sentinel-secret-7f3a91c2"
+SAVED_CREDENTIALS = f"snowflake:\n  account: sentinel-account\n  username: sentinel-user\n  password: {SENTINEL}\n"
+CREDENTIAL_PROBE = (
+    "import json, os, pytest\n"
+    "from benchbox.core.hooks.platform_hooks import PlatformHookRegistry\n"
+    "\n"
+    "def _build():\n"
+    '    config = PlatformHookRegistry.build_database_config("snowflake", {})\n'
+    "    return config, json.dumps(config.model_dump(), default=str)\n"
+    "\n"
+    "@pytest.mark.live_integration\n"
+    "def test_live_run_sees_the_saved_credential():\n"
+    "    config, dumped = _build()\n"
+    '    assert os.environ["PROBE_SENTINEL"] in dumped\n'
+    '    assert os.environ["PROBE_SENTINEL"] not in repr(config) + str(config)\n'
+    "\n"
+    "def test_isolated_run_never_sees_the_saved_credential():\n"
+    "    config, dumped = _build()\n"
+    '    assert os.environ["PROBE_SENTINEL"] not in dumped + repr(config) + str(config)\n'
+    "    assert not config.options.get('password')\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("selection", "expected_passed"),
+    [("not live_integration", "1 passed"), ("live_integration", "1 passed")],
+    ids=["isolated-run-cannot-read-them", "live-only-run-can-and-masks-them"],
+)
+def test_a_built_config_only_carries_saved_credentials_the_run_is_allowed_to_read(
+    tmp_path: Path, selection: str, expected_passed: str
+) -> None:
+    result = _run_session_probe(
+        tmp_path,
+        CREDENTIAL_PROBE,
+        "-n",
+        "0",
+        "-m",
+        selection,
+        extra_env={"PROBE_SENTINEL": SENTINEL},
+        caller_files={".benchbox/credentials.yaml": SAVED_CREDENTIALS},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert expected_passed in result.stdout
+    assert SENTINEL not in result.stdout + result.stderr
+
+
+PREFERENCES_PROBE = (
+    "import pytest\n"
+    "from benchbox.cli.preferences import save_last_run_config\n"
+    "from benchbox.security.credentials import CredentialManager\n"
+    "\n"
+    "def _write_state():\n"
+    '    save_last_run_config(database="duckdb", benchmark="tpch", scale=0.01, tuning_mode="notuning")\n'
+    "    manager = CredentialManager()\n"
+    '    manager.set_platform_credentials("duckdb", {"path": "x"})\n'
+    "    manager.save_credentials()\n"
+    "\n"
+    "@pytest.mark.live_integration\n"
+    "def test_live_run_writes_to_the_callers_home():\n"
+    "    _write_state()\n"
+    "\n"
+    "def test_isolated_run_writes_nowhere_near_the_callers_home():\n"
+    "    _write_state()\n"
+)
+
+
+def _snapshot(root: Path) -> dict[str, str]:
+    return {
+        str(path.relative_to(root)): path.read_text(encoding="utf-8")
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+def test_an_isolated_run_leaves_the_callers_preferences_and_credentials_untouched(tmp_path: Path) -> None:
+    seeded = {".benchbox/last_run.yaml": "database: caller\n", ".benchbox/credentials.yaml": SAVED_CREDENTIALS}
+    result = _run_session_probe(
+        tmp_path, PREFERENCES_PROBE, "-n", "0", "-m", "not live_integration", caller_files=seeded
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 passed" in result.stdout
+    assert _snapshot(tmp_path / "caller-home") == seeded
+
+
+def test_the_write_probe_reaches_the_callers_home_when_isolation_is_off(tmp_path: Path) -> None:
+    seeded = {".benchbox/last_run.yaml": "database: caller\n"}
+    result = _run_session_probe(tmp_path, PREFERENCES_PROBE, "-n", "0", "-m", "live_integration", caller_files=seeded)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _snapshot(tmp_path / "caller-home") != seeded
 
 
 class _EarlyConfig:

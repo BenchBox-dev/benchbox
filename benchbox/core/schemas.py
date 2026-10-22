@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 from typing import Any, ClassVar, Literal, Optional
 
@@ -8,6 +8,7 @@ from benchbox.core.constants import (
     GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS,
     GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS,
 )
+from benchbox.core.results.platform_options import REDACTED_VALUE, is_secret_option_key, sanitize_platform_options
 from benchbox.utils.verbosity import VerbositySettings
 
 MIN_THROUGHPUT_STREAMS = 2
@@ -336,6 +337,15 @@ class DatabaseConfig(BaseModel):
             self.type, self.options, self.execution_mode
         )
         return self
+
+    def __repr_args__(self) -> Iterable[tuple[str | None, Any]]:
+        for name, value in super().__repr_args__():
+            if name == "options" and isinstance(value, Mapping):
+                yield name, sanitize_platform_options(value, redact_usernames=False)
+            elif name is not None and value is not None and is_secret_option_key(name):
+                yield name, REDACTED_VALUE
+            else:
+                yield name, value
 
 
 class SystemProfile(BaseModel):

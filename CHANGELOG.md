@@ -267,6 +267,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the nested-archive import probe accepts Windows path separators, so the SQLGlot
   runtime tests pass on Windows. The BigQuery Iceberg test helper disposes its
   catalog engine.
+- A `DatabaseConfig`, such as the one `PlatformHookRegistry.build_database_config`
+  returns, no longer shows secrets when it is printed, formatted or logged. Its
+  `repr`, `str` and log output redact secret-named options and fields
+  (`password`, `token`, `secret`, `api_key`, `connection_string` and similar) and
+  the credentials embedded in URIs, while the connection code still reads the real
+  values. Before, a Snowflake config built from saved credentials printed the
+  password in full. A test-session probe seeds a sentinel credential in the
+  caller's home and checks that an isolated pytest run never reads it and writes
+  nothing to that home; a live-only run still reads it.
 
 ## [0.5.0rc1] - 2026-10-20
 
