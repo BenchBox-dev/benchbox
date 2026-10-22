@@ -15779,17 +15779,12 @@
       "title": "Verify the oracle follow-up sequence end to end after its last change merges"
     },
     "oracle-gate-consumers-cutover-20261021": {
-      "claim": {
-        "expires_at": "2026-10-23T23:30:48Z",
-        "generation": "aa89764eab1e4ae38095c072d0c4338d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d"
-      },
+      "claim": null,
       "needs": [
         "owner-oracle-gate-required-20261021"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Move oracle-review consumers to oracle-gate"
     },
     "oracle-gate-status-20261021": {
