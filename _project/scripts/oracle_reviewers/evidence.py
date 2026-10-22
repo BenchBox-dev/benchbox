@@ -86,7 +86,7 @@ def _outcome(message: dict) -> _Outcome:
 
 
 def _archive_container(part: str) -> str | None:
-    match = _ARCHIVE_READ.fullmatch(part)
+    match = None if ";" in part else _ARCHIVE_READ.fullmatch(part)
     if match is None:
         return None
     member = match.group("member") or ""
@@ -159,13 +159,14 @@ def credited(run: Trace, workspace: Path) -> frozenset[str]:
     root = os.path.realpath(workspace)
     read: set[str] = set()
     for path in run.reads:
-        for part in (item.strip() for item in path.split(";")):
+        parts = [item.strip() for item in path.split(";")]
+        for part in parts:
             if not part:
                 continue
             if (literal := _literal(root, part, workspace)) is not None:
                 read.add(literal)
                 continue
-            container = _archive_container(part)
+            container = _archive_container(path.strip()) if len(parts) == 1 else None
             target = container if container is not None else _plain(_OMP_SELECTOR.sub("", part))
             if target is not None and _inside(root, candidate := _normalize(target, workspace)):
                 read.add(candidate)

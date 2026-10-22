@@ -449,6 +449,9 @@ def test_a_successful_archive_read_credits_its_container_only(tmp_path: Path, pa
         ("dist/x.whl:pkg/mod.py?q=.x", False, "x"),
         ("dist/x.txt:pkg/mod.py", False, "x"),
         ("other/x.whl:pkg/mod.py", False, "x"),
+        ("pkg/a.py;dist/x.whl:pkg/mod.so", False, "def f(): ...\n[Cannot read binary archive entry 'pkg/mod.so']"),
+        ("pkg/a.py;dist/x.whl:pkg/mod.py", False, "x"),
+        ("dist/x.whl:pkg/mod.py;pkg/a.py", False, "x"),
     ],
 )
 def test_failed_unsafe_or_unrelated_archive_reads_do_not_credit_the_container(

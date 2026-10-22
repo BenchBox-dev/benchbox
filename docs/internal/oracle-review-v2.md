@@ -396,7 +396,8 @@ never passes.
 - A successful read of an archive listing or member (registered archive
   extension, inside the checkout) credits the archive container only; the
   member path never credits a repository file. An error, a binary-entry
-  notice, a `?q=` or `..` member, no match, a directory, several paths, a
+  notice, a `?q=` or `..` member, no match, a directory, a read of several
+  `;`-joined paths that includes an archive member, a
   sibling or a path outside the checkout credits nothing. Binary and
   unreviewable content, out-of-bounds line reads and notice-only reads are
   not solved here and stay with `oracle-verdict-labels-unreviewed-bytes` and
