@@ -340,7 +340,7 @@ jobs:
           mapfile -t node_ids < "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt"
           BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest \
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \
-            --tb=short --timeout=60 -n 5 \
+            --tb=short --timeout=60 -n 5 --dist loadscope \
             -p scripts.pytest_shard_evidence \
             --assigned-nodeids "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt" \
             --shard-evidence "t2-artifacts/shard-${SHARD_INDEX}-execution.json" \

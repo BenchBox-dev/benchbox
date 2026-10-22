@@ -54,6 +54,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Medium-tier shards now keep every test module on one shard (balanced by
+  the summed durations of the module) and run with `--dist loadscope`, so a
+  module's fixtures are built on one worker instead of on every worker and
+  shard. Node ids are unchanged, so shard evidence, durations and coverage
+  contexts keep their keys.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed
