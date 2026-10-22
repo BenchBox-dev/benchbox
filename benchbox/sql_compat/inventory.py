@@ -119,7 +119,6 @@ _DDL_GOVERNANCE_TRANSFORMER_ALIASES: dict[tuple[str, str], tuple[str, ...]] = {
     ("databricks", "_convert_to_hudi_table"): ("databricks_delta_ddl_optimizer",),
     ("databricks", "_hudi_table_properties"): ("databricks_delta_ddl_optimizer",),
     ("doris", "_inject_doris_ddl_clauses"): ("doris_inject_ddl_clauses",),
-    ("fabric_dw", "_optimize_table_definition"): ("fabric_dw_ddl_optimizer",),
     ("firebolt", "_optimize_table_definition"): ("firebolt_ddl_optimizer",),
     ("lakesail", "optimize_spark_table_definition"): ("lakesail_ddl_optimizer",),
     ("pg_mooncake", "_transform_create_statement"): ("pg_mooncake_heap_load_then_mirror",),
@@ -131,7 +130,6 @@ _DDL_GOVERNANCE_TRANSFORMER_ALIASES: dict[tuple[str, str], tuple[str, ...]] = {
     ("spark", "optimize_spark_table_definition"): ("spark_ddl_optimizer",),
     ("starrocks", "_optimize_table_definition"): ("starrocks_ddl_optimizer",),
     ("starrocks", "_resolve_tuned_ddl_clauses"): ("starrocks_ddl_optimizer",),
-    ("synapse", "_optimize_table_definition"): ("azure_synapse_ddl_optimizer",),
     ("trino", "_optimize_table_definition"): ("trino_ddl_optimizer",),
     ("velox", "optimize_spark_table_definition"): ("velox_ddl_optimizer",),
 }

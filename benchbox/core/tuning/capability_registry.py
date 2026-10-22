@@ -884,8 +884,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
     "azure-synapse": {
         _T.DISTRIBUTION: _none(
             "engine_default_not_tuned",
-            "benchbox/platforms/azure_synapse.py's real _optimize_table_definition "
-            "(azure_synapse.py:1046-1069, called at actual schema-creation time) does add a real "
+            "benchbox/platforms/azure_synapse.py's real schema creation (translate_ddl with the adapter's "
+            "default distribution layout, called at actual schema-creation time) does add a real "
             "WITH (DISTRIBUTION = ...) clause, but the value always comes from self.distribution_default "
             "(a platform/CLI option defaulted to ROUND_ROBIN, azure_synapse.py:117), never from "
             "TableTuning.distribution columns. The generator "
@@ -900,8 +900,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "azure_synapse_ddl_generator:preview_only",
             "The generator computes a real (if structurally incomplete -- the RANGE RIGHT FOR VALUES () "
             "boundary list is always empty) PARTITION clause from tuned columns for dry-run preview "
-            "(azure_synapse.py:201-209, 254-255), but real execution's _optimize_table_definition "
-            "(azure_synapse.py:1046-1069) never adds a PARTITION clause at all.",
+            "(azure_synapse.py:201-209, 254-255), but real execution's translate_ddl call "
+            "never adds a PARTITION clause at all.",
         ),
         _T.SORTING: _none(
             "azure_synapse_ddl_generator:log_only",

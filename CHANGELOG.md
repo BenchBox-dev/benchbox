@@ -54,6 +54,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Azure Synapse and Fabric Warehouse build their `CREATE TABLE` statements with `translate_ddl`
+  instead of per-adapter text rewrites. Tables are always qualified with the configured
+  `[schema]`, and the generated statement is wrapped in a `TABLE_SCHEMA`-guarded
+  `IF NOT EXISTS ... EXEC('CREATE TABLE ...')`. Synapse still appends
+  `WITH (DISTRIBUTION=<distribution_default>)`, now written without spaces around `=`.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed

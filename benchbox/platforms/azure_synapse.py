@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.dialect_utils import translate_ddl
 
 if TYPE_CHECKING:
     from benchbox.core.tuning.interface import (
@@ -393,14 +394,16 @@ class AzureSynapseAdapter(PlatformAdapter):
                 """
                 )
 
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
 
-            statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
+            statements = translate_ddl(
+                schema_sql,
+                self.get_target_dialect(),
+                schema=self.schema,
+                default_layout={"distribution": self.distribution_default.lower()},
+            )
 
             for statement in statements:
-                if not statement.upper().startswith("CREATE TABLE"):
-                    continue
-
                 table_name = self._extract_table_name(statement)
                 if not table_name:
                     continue
@@ -413,8 +416,7 @@ class AzureSynapseAdapter(PlatformAdapter):
                 """
                 )
 
-                optimized_statement = self._optimize_table_definition(statement)
-                cursor.execute(optimized_statement)
+                cursor.execute(statement)
                 self.logger.info(f"Created table: {table_name}")
 
             self.logger.info("Schema created")
@@ -972,29 +974,8 @@ class AzureSynapseAdapter(PlatformAdapter):
         return result_dict
 
     def _extract_table_name(self, statement: str) -> str | None:
-        match = re.search(r"CREATE\s+TABLE\s+\[?([^\s\[\](]+)\]?", statement, re.IGNORECASE)
+        match = re.search(r"CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?", statement, re.IGNORECASE)
         return match.group(1).strip() if match else None
-
-    def _optimize_table_definition(self, statement: str) -> str:
-        if not statement.upper().startswith("CREATE TABLE"):
-            return statement
-
-        table_name = self._extract_table_name(statement)
-        if table_name and f"[{self.schema}]" not in statement:
-            statement = re.sub(
-                rf"CREATE\s+TABLE\s+\[?{re.escape(table_name)}\]?",
-                f"CREATE TABLE [{self.schema}].[{table_name}]",
-                statement,
-                flags=re.IGNORECASE,
-            )
-
-        if "WITH" not in statement.upper() or "DISTRIBUTION" not in statement.upper():
-            if statement.rstrip().endswith(")"):
-                statement = statement.rstrip()[:-1] + f") WITH (DISTRIBUTION = {self.distribution_default})"
-            else:
-                statement += f" WITH (DISTRIBUTION = {self.distribution_default})"
-
-        return statement
 
     def _get_existing_tables(self, connection: Any) -> list[str]:
         cursor = connection.cursor()

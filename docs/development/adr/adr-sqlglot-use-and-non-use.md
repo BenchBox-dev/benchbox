@@ -172,10 +172,10 @@ plus the per-adapter `_optimize_table_definition()` hook documented in the
 "not in the registry":
 [`fabric_dw_ddl_rewrites.py`](../../../benchbox/sql_compat/rules/ddl_optimize/fabric_dw_ddl_rewrites.py)
 registers a `governance_only=True` rule so `compat_lint` can audit the
-platform, but the runtime transformation lives in
-`FabricWarehouseAdapter._optimize_table_definition()` because the schema
-prefix it injects depends on adapter state. The registry rule is the
-governance marker; the rewrite is operational.
+platform, but the runtime transformation is the `schema` option of
+`translate_ddl` (the schema prefix comes from adapter state passed by
+`FabricWarehouseAdapter.create_schema`). The registry rule is the
+governance marker.
 
 ### 3. Hand-Written Per-Engine Query Variants
 
