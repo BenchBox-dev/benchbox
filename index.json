@@ -23376,10 +23376,15 @@
       "title": "Governance: independent review for fork changes and soundness-path coverage of the wrapper, pin, baseline and recorded corpus"
     },
     "sqlglot-fork-review-h2-execution-evidence-gate": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T01:19:59Z",
+        "generation": "9564339bfee34e09b47764606b760b7f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c196539bd596dfa2c5536f3b"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Replace the text-diff golden corpus as adoption evidence with an executed, engine-compared gate"
     },
     "sqlglot-fork-review-h3-doris-key-model": {
