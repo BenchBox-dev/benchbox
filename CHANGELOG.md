@@ -197,6 +197,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A pull request title or body edit no longer leaves an armed pull request blocked
+  with every required check green. The CI run such an edit starts now reports each
+  required check (`core`, `explorer`, `results-data`, `docs`, `tooling`) by copying
+  the verdict of the newest full CI run on the same head commit, waiting while that
+  run is in progress. Before, its required jobs were skipped under other names, and
+  GitHub kept the pull request blocked until a push or a close and reopen started a
+  full run.
+
 - Tuned runs no longer abort, or lose the tuned-run marker, when the tuning
   metadata store does not work on the platform:
   - Athena has no metadata store. A tuned run proceeds without a marker and records
