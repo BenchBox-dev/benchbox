@@ -13460,10 +13460,15 @@
       "title": "Cut repeated dsqgen work in the TPC-DS binding, shared-draw and OBT parameter tests"
     },
     "longtest-09-throughput-refresh-sets-once": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T09:38:36Z",
+        "generation": "913a4dcefbd341b4a1d99c11ec37b855",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Generate TPC-H refresh sets once per module in the strict-engine throughput tests"
     },
     "longtest-10-repo-scan-tests": {
