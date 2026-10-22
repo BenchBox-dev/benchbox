@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Reproduction evidence: a body longer than 65,536 characters is produced on develop from a synthetic judgement, with its length and the posting-path behavior recorded (or evidence that the path already handles it)",
+    "After the fix: the same input yields a body at or under the limit that keeps the first-line verdict, the Decision line, every blocking finding and the protocol marker, plus an explicit truncation notice with the omitted count; test fails on develop and passes after",
+    "No finding is dropped silently: a test counts findings in versus findings represented in the output or the notice",
+    "Existing report tests pass unchanged; none deleted or loosened",
+    "PR merged with an oracle verdict on its final head; merge SHA recorded"
+  ],
+  "context": "Created 2026-10-22 from the 2807 external review finding 2 (reviewer output /Users/joe/Developer/soundness-reviews/2807/reviewer-raw-output.txt sha256 f7d5419ffe30cf59178aa7f85e474316616ec0283a5f239244a92c147e81bffc).",
+  "description": "External review (codex) of commit 9c005a17a (gap issue 2807) reported, and the controller re-verified the code path on origin/develop 2026-10-22: _project/scripts/oracle_reviewers/report.py (final assembly about lines 225-266) joins every section into one body ('\\n'.join(lines)) with no body-level cap; the only clipping is the per-description _clip (DESCRIPTION_LIMIT) on the status description. The reviewer says it rendered 68,222 characters from realistic inputs, above GitHub's review body limit (about 65,536 characters: the reviewer's figure, re-verify against GitHub documentation or an API error before relying on it). An oversized submission fails after state may already be finalized, losing the review and its findings.\n\nDECISION GATE: first reproduce (build a Final body from a synthetic judgement with enough non-blocking findings to exceed the limit; record the length and what the posting path does with it: read _review_payload and the post step). If the posting path already splits or truncates safely, record that and finish with no change. Otherwise choose: cap with an explicit truncation notice that keeps every blocking finding and the decision line and moves overflow into additional review comments or a summary count, never dropping a blocking finding silently; the decision line and marker (oracle-protocol / oracle-verdict first line) must stay intact and parseable.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR (soundness path _project/scripts/oracle_reviewers); no pre-registered digests; never weaken a gate; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; done = merged PR plus evidence.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T20:10:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9fb03e5cbafc4bf4b5e2b944d622f198",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}

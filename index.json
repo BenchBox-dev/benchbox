@@ -16046,6 +16046,13 @@
       "status": "open",
       "title": "Re-evaluate the oracle-review check automatically after a verdict lands or threads are resolved"
     },
+    "oracle-review-body-length-cap-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Cap the oracle review body so an oversized result cannot lose the review"
+    },
     "oracle-review-cancel-race-20261016": {
       "claim": null,
       "needs": [],
