@@ -88,6 +88,10 @@ def test_named_registry_resolves_every_moved_rewrite(name: str):
     assert callable(_fork_rewrite(name))
 
 
+def test_mark_date_columns_resolves_from_the_registry():
+    assert callable(_fork_rewrite("mark_date_columns"))
+
+
 def test_registry_exposes_no_unlisted_rewrites():
     import importlib
     import inspect
@@ -109,6 +113,7 @@ def test_registry_exposes_no_unlisted_rewrites():
         "safe_division",
         "deduplicate_output_aliases",
         "flag_comparisons_to_boolean",
+        "mark_date_columns",
         *HAVOC_REWRITES,
         *SUBQUERY_REWRITES,
         *ENGINE_REWRITES,
