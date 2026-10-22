@@ -4,6 +4,7 @@
     "A PR whose auto-merge was on before recovery still has it on afterwards with the same merge method, or recovery skips close-and-reopen and says why.",
     "On a real PR with a failed oracle-review check run, `make oracle-review-recover` reruns it and reports a nonzero count."
   ],
+  "context": "Fixed in PR #3313, squash-merged 2026-10-22T23:28:14Z as 3aaf05ddb07ffc57abc8409477df73b4d8ef008e.\n- The check-run query filter is now `.check_runs[] | {name, head_sha, status, conclusion, details_url}`.\n- A PR with auto-merge armed is not closed and reopened. Recovery reruns the failed runs, then prints that it skipped close-and-reopen because closing turns auto-merge off, and that auto-merge is still armed.\n- The script never calls `gh pr merge`, and a test asserts it.\n\nAcceptance status:\n- Criterion 1, partial: the unit fake mirrors the envelope shape but flattens rows itself instead of running jq. On 2026-10-22 the exact merged query ran against the real API on #3311 (head 8fe8d8f82) and #3237 (head b530e1f1c). It returned name=oracle-review, conclusion=failure and run ids, e.g. 39869414371 and 39869888109; the old filter returned name null.\n- Criterion 2: met by the armed-PR skip.\n- Criterion 3, open: run `make oracle-review-recover` on a real PR that still carries failed oracle-review runs after its head gets SHIP, and confirm a nonzero rerun count and that auto-merge stays armed. Close this item after that run.",
   "description": "`scripts/oracle_review_recover.py:108` runs `gh api --paginate --jq '{name, head_sha, status, conclusion, details_url}'` on `repos/<repo>/commits/<sha>/check-runs?check_name=oracle-review`. The filter applies to the response envelope (`{total_count, check_runs}`), not to `.check_runs[]`, so every row is `{\"name\": null, ...}`. `_failed_run_ids` skips rows whose name is not `oracle-review`, so recovery never finds a failed run, always prints `Reran 0 unsuccessful oracle-review run(s)`, then closes and reopens the PR. Closing and reopening turns off auto-merge. The oracle-review failure message points authors at this target, so the documented recovery leaves the stale failures in place and disarms the PR.\n\nThe unit test fake (`tests/unit/scripts/test_oracle_review_recover.py:104`) returns pre-flattened check rows, so the tests pass.\n\nObserved 2026-10-22 on PR #3264 (head 68de1e483): failed oracle-review check runs from Actions runs 39706240336 and 39711741625 kept the required `oracle-review` rollup at FAILURE after a later success on the same head. The target reran 0 runs twice; a manual `gh run rerun --failed` of both runs and a second `make pr-arm` were needed. Reproduce: `gh api --paginate --jq '{name}' 'repos/BenchBox-dev/benchbox/commits/<sha>/check-runs?check_name=oracle-review'` prints `{\"name\":null}`. Related: merge-stale-failure-rollup-blocks.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3264"
@@ -15,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "83363aa3b9ae4301b3e6df115b165bf3",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T23:31:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f6d7f9e66a5045f79f088276860720d2",
       "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
     }
   ]
