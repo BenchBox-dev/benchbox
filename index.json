@@ -15777,7 +15777,8 @@
         "oracle-response-ingress-20261021",
         "oracle-response-absence-retry-20261021",
         "oracle-response-evidence-secrets-20261021",
-        "oracle-response-json-template-20261021"
+        "oracle-response-json-template-20261021",
+        "oracle-response-read-boundary-prerequisite-20261021"
       ],
       "priority": "high",
       "status": "open",
