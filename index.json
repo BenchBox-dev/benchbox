@@ -13508,6 +13508,24 @@
       "status": "open",
       "title": "Stop copying the whole TPC-DS template tree on every dsqgen call"
     },
+    "longtest-15-module-grouped-scheduling": {
+      "claim": null,
+      "needs": [
+        "longtest-01-delete-duplicate-tests",
+        "longtest-02-canary-live-real-checks",
+        "longtest-03-mcp-export-failure-real-result",
+        "longtest-04-cli-identical-runs-and-scale",
+        "longtest-05-cli-shared-tpch-data",
+        "longtest-06-cross-surface-medium-scale",
+        "longtest-07-validator-exact-fast-path",
+        "longtest-08-tpcds-binding-draw-obt",
+        "longtest-09-throughput-refresh-sets-once",
+        "longtest-10-repo-scan-tests"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Keep each module's expensive fixtures on one worker and shard in the medium tier"
+    },
     "loud-loader-failures-for-contaminated-data": {
       "claim": null,
       "needs": [],
