@@ -86,8 +86,12 @@ def test_rederived_corpus_publishes_byte_identically_and_is_stable_under_a_secon
     drifted: list[str] = []
     unstable: list[str] = []
     scanned = 0
+    primary_scanned = 0
 
-    for path in _corpus_json_files():
+    for path in sorted(RESULTS_DATA.rglob("*")):
+        primary = BUNDLES_DIR in path.parents and is_primary_bundle_file(path)
+        if not (primary or (path.is_file() and path.name.endswith(".json"))):
+            continue
         stored = path.read_bytes()
         payload = json.loads(stored.decode("utf-8"))
         if not isinstance(payload, dict):
@@ -95,12 +99,15 @@ def test_rederived_corpus_publishes_byte_identically_and_is_stable_under_a_secon
         scanned += 1
         relative = str(path.relative_to(REPO_ROOT))
         once = _anonymize(payload, path, manager)
-        if BUNDLES_DIR in path.parents and is_primary_bundle_file(path) and canonical_json_bytes(once) != stored:
-            drifted.append(relative)
+        if primary:
+            primary_scanned += 1
+            if canonical_json_bytes(once) != stored:
+                drifted.append(relative)
         if once != payload and _anonymize(once, path, manager) != once:
             unstable.append(relative)
 
-    assert scanned, "no corpus mappings scanned - the fixed-point gates would be vacuous"
+    assert scanned, "no corpus mappings scanned - the idempotence gate would be vacuous"
+    assert primary_scanned, "no primary bundles scanned - the byte-identity gate would be vacuous"
     failures: list[str] = []
     if drifted:
         failures.append(
