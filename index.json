@@ -3029,10 +3029,15 @@
       "title": "Keep the medium-shard duration file current and extend the weighted split to trunk and release workflows"
     },
     "ci-retry-artifact-collision-breaks-canary-gate": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T05:07:39Z",
+        "generation": "0c387f39f778473685070b8df4eafd4c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dce62a827220422fd68b23fc"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Rerun evidence artifacts collide by name and the canary core aggregator reads stale failure"
     },
     "ci-soundness-flag-stale-base": {
