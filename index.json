@@ -2709,6 +2709,13 @@
       "status": "done",
       "title": "Keep release notes user-focused and in line with earlier entries"
     },
+    "changelog-fragments-01-library": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Add the changelog fragment library and make targets (inert, no CI gate, no release-path change)"
+    },
     "changelog-merge-conflict-churn-20261020": {
       "claim": null,
       "needs": [],
