@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A supported boundary design is reviewed and an owner selects the OMP capability or runner containment route.",
+    "Pinned Linux OMP build with CI role configuration denies real outside-root, ../, symlink and /proc/HOME fake-sentinel reads before tool execution; safe in-checkout read/grep/glob still work.",
+    "Untrusted read/grep/glob URI requests cannot exfiltrate fake sentinels; provider/broker access still works without exposing credentials to file tools.",
+    "Boundary tests are independent of output redaction; docs state actual guarantees and remaining limits."
+  ],
+  "context": "Owner of next decision: repository owner with OMP maintainer or runner-security operator. Evidence: agent://OracleEvidenceImpl and agent://OracleEvidenceReview; smoke workspace /tmp/oracle-evidence-smoke. Existing gap remains separate from oracle-response-evidence-secrets-20261021, which fixes evidence credit and known credential echoes without claiming containment. Continue all reachable response fixes; do not mark this prerequisite complete based on redaction or macOS-only checks.",
+  "description": "Confirmed existing security boundary gap, not introduced by response remediation: real OMP18.12.6 fake-sentinel probes read an outside-checkout file through an absolute path, ../ traversal and a committed symlink. No actual credential/config files were probed. build_omp forwards HOME/provider/broker environment. On Linux, readable /proc environments and HOME config are risks requiring pinned-build probes; public URL reads are an inferred egress path from documented tools. Exact-value redaction is output hygiene, not containment. Native documented OMP settings have no read-roots allowlist; --add-dir only adds roots, always-ask-cached has no documented noninteractive tree grant and does not gate public URL reads. Do not seed undocumented approval-cache.db or claim read-only tools form a sandbox. Owner/OMP-maintainer prerequisite: choose supported read-roots plus URI gating in OMP, or an OS-contained reviewer filesystem/environment/network boundary in BenchBox. No unnamed repository writes, unsupported harness fork, settings/secrets mutation or network blanket exception is authorized here.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T00:07:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "34b71ed2b2d0442cbabe1be41f3a8a56",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    }
+  ]
+}

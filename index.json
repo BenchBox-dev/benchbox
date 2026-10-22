@@ -15783,6 +15783,13 @@
       "status": "open",
       "title": "Verify remediated oracle through real local and CI review flows"
     },
+    "oracle-response-read-boundary-prerequisite-20261021": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Constrain oracle read tools before exposing runner credentials to untrusted reviews"
+    },
     "oracle-response-reliability-observation-20261021": {
       "claim": null,
       "needs": [
