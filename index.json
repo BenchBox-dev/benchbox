@@ -13490,6 +13490,15 @@
       "status": "open",
       "title": "Stop the explorer_pipeline package from importing all of benchbox on import"
     },
+    "longtest-14-dsqgen-template-staging": {
+      "claim": null,
+      "needs": [
+        "longtest-08-tpcds-binding-draw-obt"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop copying the whole TPC-DS template tree on every dsqgen call"
+    },
     "loud-loader-failures-for-contaminated-data": {
       "claim": null,
       "needs": [],
