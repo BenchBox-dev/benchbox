@@ -16163,6 +16163,13 @@
       "status": "open",
       "title": "The oracle's retry-state strike count rises on every DO NOT SHIP, not once per distinct patch"
     },
+    "oracle-sweep-schedule-drops-most-runs-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "The oracle's hourly retry sweep runs only 3 to 7 times a day, so pending verdicts wait hours"
+    },
     "oracle-swf-empty-defect-list-decision-20261008": {
       "claim": null,
       "needs": [],

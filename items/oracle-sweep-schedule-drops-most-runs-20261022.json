@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Pending heads are retried within a stated bound (for example 90 minutes) without relying on GitHub's cron cadence, measured over at least 3 days.",
+    "The retry trigger keeps the existing daily budget, backoff and attempt limits."
+  ],
+  "description": "`.github/workflows/oracle-verdict.yml` schedules its retry sweep with cron `23 * * * *` (`:16-17`). GitHub started 65 scheduled runs between 2026-10-10 and 2026-10-22, between 3 and 7 a day instead of 24 (Actions API, `event=schedule`). A head whose run ends pending (every reviewer absent, or waiting on backoff) depends on that sweep. In the 2026-10-21 investigation of 450 recorded attempts, heads with an absence that later got a verdict waited 0.2 to 8.8 hours. The same-reviewer retry inside the run (oracle-response-absence-retry-20261021) removes part of that dependence; a run that still ends pending waits for the sweep. Options not yet chosen: a delayed dispatch from the run that ends pending, or a scheduler outside GitHub.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:16:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "766ec0cf454b49db9321aeb3d8d87452",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    }
+  ]
+}
