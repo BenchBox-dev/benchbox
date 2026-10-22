@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "An upstream omp issue exists with a minimal reproduction, or the docs are confirmed to describe the intended behaviour.",
+    "The owner's personal config is rekeyed by primary model id, or the owner accepts default-chain fallback."
+  ],
+  "description": "omp's documentation shows `retry.fallbackChains` keyed by role name. With omp 18.12.1 (linux-x64, the oracle's pinned build), `--model @review`, `@plan` and `@slow` walked the `default` chain after a usage-limit 429, not their own chains; chains keyed by the primary model id were honoured. Found 2026-10-22 against a stub provider (no real provider calls).\n\nBenchBox impact: until PR #3296 merges, the oracle reads the owner's config from `OMP_AGENT_CONFIG`, whose chains are keyed by role, so every reviewer alias falls back along the default chain. #3296 commits reviewer chains keyed by model id, and a test rejects role-name keys. The owner's personal config has the same issue.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:16:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "160af761a68e47ea85ad3e5bcfedcb95",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    }
+  ]
+}

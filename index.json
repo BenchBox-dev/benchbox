@@ -15424,6 +15424,13 @@
       "status": "dropped",
       "title": "Degraded read mode: serve ready/show/list from the committed snapshot when hosted DB is unreachable"
     },
+    "omp-role-keyed-fallback-chains-ignored-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Report upstream: omp ignores role-keyed fallbackChains for --model @role"
+    },
     "on-demand-tpc-answer-download": {
       "claim": null,
       "needs": [],
