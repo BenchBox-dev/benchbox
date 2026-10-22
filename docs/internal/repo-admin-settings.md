@@ -58,12 +58,14 @@ Required status checks:
 - tooling
 - oracle-review
 - hold
+- oracle-gate
 ```
 
 Five of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `oracle-review` comes from
 `.github/workflows/oracle-review.yml` and passes at once for a change confined
 to inert paths (see Inert-path manifest in `docs/internal/oracle-review-v2.md`).
+`oracle-gate` comes from `.github/workflows/oracle-gate.yml`.
 `hold` comes from `.github/workflows/pr-hold.yml`
 and fails while the PR carries the `no-auto-merge` label; it re-runs when a
 label is added or removed.
@@ -83,6 +85,7 @@ check stays pending forever on a change that does not touch it.
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
 | `oracle-review` | every PR; review required unless only inert paths change | `benchbox-oracle` success review of the current head, or the stand-in approval, with oracle threads resolved; inert-only changes report success |
+| `oracle-gate` | every PR, from `develop` code on trusted triggers | the same decision as `oracle-review`, posted by the `benchbox-oracle` App; required with that App's integration ID |
 
 The public site is built, compared and deployed in `BenchBox-dev/benchbox-site`.
 
@@ -191,18 +194,16 @@ passes when any of these holds:
 
 A plain owner comment does not count. See [soundness drain](soundness-drain.md).
 
-The `oracle-gate` context is being introduced next to `oracle-review` and is not
-required yet. `.github/workflows/oracle-gate.yml` runs only `develop` code and
-posts `oracle-gate` for the pull request head through the same oracle App. The
-unit test fails when any other workflow could post that context, but a
-same-repo pull request with `statuses: write` could still forge it, so the
-workflow alone is not the enforcement. It applies the checker's rule unchanged:
-success when only exempt paths changed, when the App's latest review of the head
-reports success with no unresolved oracle thread, or when a valid stand-in
-covers the exact head, and failure otherwise. The owner adds it to the required
-list above once production runs show it tracking `oracle-review`, scoped to the
-`benchbox-oracle` App's integration ID; without that scoping a forged success
-counts and the gate property does not hold.
+The `oracle-gate` context is required next to `oracle-review`, scoped to the
+`benchbox-oracle` App's integration ID in the live ruleset.
+`.github/workflows/oracle-gate.yml` runs only `develop` code and posts
+`oracle-gate` for the pull request head through the same oracle App. The unit
+test fails when any other workflow could post that context, but a same-repo pull
+request with `statuses: write` could still forge it, so the workflow alone is
+not the enforcement; the integration-ID scoping is. It applies the checker's
+rule unchanged: success when only exempt paths changed, when the App's latest
+review of the head reports success with no unresolved oracle thread, or when a
+valid stand-in covers the exact head, and failure otherwise.
 
 ### Soundness-path review enforcement
 
@@ -230,8 +231,9 @@ The soundness gate, as operated:
   half is the ruleset binding: the required `oracle-gate` check must be scoped
   to the `benchbox-oracle` App's integration ID, since only that binding stops
   a pull request workflow with `statuses: write` from posting a forged success
-  to its own head. Requiring the App-scoped `oracle-gate` in the
-  ruleset is the remaining step.
+  to its own head. The live ruleset carries that binding;
+  `scripts/ruleset_drift_check.py` compares context names only, so the
+  integration ID is checked by hand.
 - `make pr-open` does not arm auto-merge when it creates a PR. `make pr-arm`
   (or `make pr-open READY=1`) arms it after a live check of the PR, so a PR
   cannot merge while a follow-up commit is still being written. Arm only when
