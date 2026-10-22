@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from benchbox.core.tuning.introspection import has_order_by_clause
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
+from benchbox.utils.dialect_utils import translate_ddl
 from benchbox.utils.printing import emit
 from benchbox.utils.sql_parsing import find_matching_parenthesis
 
@@ -115,11 +116,10 @@ class ClickHouseWorkloadMixin:
             prepared_statements = []
             for statement in statements:
                 table_name = self._extract_table_name(statement)
-                nullable_columns = nullable_columns_by_table.get(table_name.lower(), set()) if table_name else set()
-                optimized = self._optimize_table_definition(
+                optimized = self._translate_schema_statement(
                     statement,
                     table_tunings,
-                    nullable_columns=nullable_columns,
+                    nullable_columns=nullable_columns_by_table.get(table_name.lower(), set()) if table_name else set(),
                     primary_keys_enabled=primary_keys_enabled,
                 )
                 prepared_statements.append((statement, table_name, optimized))
@@ -138,7 +138,7 @@ class ClickHouseWorkloadMixin:
 
         return elapsed_seconds(start_time)
 
-    def _optimize_table_definition(
+    def _translate_schema_statement(
         self,
         statement: str,
         table_tunings: dict[str, Any] | None = None,
@@ -149,80 +149,32 @@ class ClickHouseWorkloadMixin:
         if not statement.upper().startswith("CREATE TABLE"):
             return statement
 
-        import re
-
-        statement = re.sub(
-            r"Nullable\((?:[^()]+|\([^)]*\))+\)\s+NOT\s+NULL",
-            lambda m: m.group(0).replace(" NOT NULL", ""),
-            statement,
-            flags=re.IGNORECASE,
-        )
-
-        statement = re.sub(r"\bFLOAT\s*\[\s*\d+\s*\]", "Array(Float32)", statement, flags=re.IGNORECASE)
-        statement = re.sub(r"\bDOUBLE\s*\[\s*\d+\s*\]", "Array(Float64)", statement, flags=re.IGNORECASE)
-
-        statement = re.sub(
-            r"(?P<prefix>[,(]\s*(?:\"[^\"]+\"|`[^`]+`|[A-Za-z_]\w*)\s+)TIME\b",
-            r"\g<prefix>String",
-            statement,
-            flags=re.IGNORECASE,
-        )
-
-        tuned_order_by_applies = "ORDER BY" not in statement.upper()
-        schema_primary_key_columns = self._extract_primary_key_columns(statement)
+        table_name = self._extract_table_name(statement)
         tuning_clauses = self._resolve_tuned_ddl_clauses(
             statement,
             table_tunings,
-            primary_key_columns=(
-                schema_primary_key_columns if primary_keys_enabled and tuned_order_by_applies else None
-            ),
+            primary_key_columns=self._extract_primary_key_columns(statement) if primary_keys_enabled else None,
         )
-        if nullable_columns:
-            key_columns = self._resolve_key_columns(statement, tuning_clauses, nullable_columns)
-            tuned_nullable_keys = self._tuned_nullable_key_columns(tuning_clauses, nullable_columns)
-            if tuned_nullable_keys:
-                raise ValueError(self._nullable_key_error(statement, tuned_nullable_keys))
-            statement = self._apply_nullable_column_types(statement, nullable_columns - key_columns)
-
-        tuned_sort_key_applies = tuned_order_by_applies and tuning_clauses is not None and bool(tuning_clauses.sort_by)
-        if tuned_sort_key_applies and schema_primary_key_columns:
-            statement = self._strip_primary_key_constraints(statement)
-
-        statement_upper = statement.upper()
-
-        if "ENGINE" not in statement_upper:
-            if statement.endswith(";"):
-                statement = statement[:-1] + " ENGINE = MergeTree();"
-            else:
-                statement = statement + " ENGINE = MergeTree()"
-
-        statement_upper = statement.upper()
-        if "PARTITION BY" not in statement_upper and tuning_clauses is not None and tuning_clauses.partition_by:
-            partition_clause = f" PARTITION BY ({tuning_clauses.partition_by})"
-            if statement.endswith(";"):
-                statement = statement[:-1] + partition_clause + ";"
-            else:
-                statement = statement + partition_clause
-
-        statement_upper = statement.upper()
-        if "ORDER BY" not in statement_upper:
-            if tuning_clauses is not None and tuning_clauses.sort_by:
-                order_by_clause = f" ORDER BY ({tuning_clauses.sort_by})"
-                if tuning_clauses.primary_key:
-                    order_by_clause += f" PRIMARY KEY ({tuning_clauses.primary_key})"
-            else:
-                pk_columns = self._extract_primary_key_columns(statement)
-                if pk_columns:
-                    order_by_clause = f" ORDER BY ({', '.join(pk_columns)})"
-                else:
-                    order_by_clause = " ORDER BY tuple()"
-
-            if statement.endswith(";"):
-                statement = statement[:-1] + order_by_clause + ";"
-            else:
-                statement = statement + order_by_clause
-
-        return statement
+        layout: dict[str, Any] = {"engine": "MergeTree()", "nullable_columns": sorted(nullable_columns or ())}
+        if tuning_clauses is not None:
+            for option, expression in (
+                ("partition_by", tuning_clauses.partition_by),
+                ("sort_by", tuning_clauses.sort_by),
+                ("primary_key", tuning_clauses.primary_key),
+            ):
+                if expression:
+                    layout[option] = [expression]
+        try:
+            statements = translate_ddl(
+                statement,
+                "clickhouse",
+                source_dialect="duckdb",
+                type_map={"TIME": "String"},
+                default_layout=layout,
+            )
+        except ValueError as exc:
+            raise ValueError(f"table {table_name!r}: {exc}") from exc
+        return "; ".join(statements)
 
     def _record_tuned_sort_key_op(
         self,
@@ -345,91 +297,6 @@ class ClickHouseWorkloadMixin:
 
         return nullable_by_table
 
-    def _resolve_key_columns(self, statement: str, tuning_clauses: Any, nullable_columns: set[str]) -> set[str]:
-        key_columns = {name.lower() for name in self._extract_primary_key_columns(statement)}
-        key_columns.update(self._tuned_nullable_key_columns(tuning_clauses, nullable_columns))
-        return key_columns
-
-    _TUNED_KEY_ROLES: tuple[tuple[str, str], ...] = (
-        ("partition_by", "PARTITION BY"),
-        ("sort_by", "ORDER BY"),
-        ("order_by", "ORDER BY"),
-        ("cluster_by", "CLUSTER BY"),
-        ("primary_key", "PRIMARY KEY"),
-    )
-
-    def _tuned_nullable_key_columns(self, tuning_clauses: Any, nullable_columns: set[str]) -> dict[str, list[str]]:
-        import re
-
-        matched: dict[str, list[str]] = {}
-        if tuning_clauses is None:
-            return matched
-        expressions = [(role, getattr(tuning_clauses, attribute, None)) for attribute, role in self._TUNED_KEY_ROLES]
-        for column_name in nullable_columns:
-            identifier = re.compile(
-                rf"(?<![A-Za-z0-9_]){re.escape(column_name)}(?![A-Za-z0-9_])",
-                re.IGNORECASE,
-            )
-            roles = sorted({role for role, expression in expressions if expression and identifier.search(expression)})
-            if roles:
-                matched[column_name] = roles
-        return matched
-
-    @staticmethod
-    def _nullable_key_error(statement: str, tuned_nullable_keys: dict[str, list[str]]) -> str:
-        import re
-
-        match = re.search(r"CREATE TABLE(?:\s+IF NOT EXISTS)?\s+(\w+)", statement, re.IGNORECASE)
-        table = match.group(1) if match else "<unknown table>"
-        columns = ", ".join(f"{name} ({'/'.join(roles)})" for name, roles in sorted(tuned_nullable_keys.items()))
-        return (
-            f"tuned key columns of table {table!r} are nullable in the source schema: {columns}; "
-            "BenchBox renders key columns non-Nullable, which would load their NULLs as 0 and "
-            "silently change query answers. Use NOT NULL key columns (as in the curated ClickHouse "
-            "TPC-DS template) or declare the columns non-nullable."
-        )
-
-    @classmethod
-    def _apply_nullable_column_types(cls, statement: str, nullable_columns: set[str]) -> str:
-        import re
-
-        if not nullable_columns:
-            return statement
-
-        create_match = re.search(r"CREATE TABLE(?:\s+IF NOT EXISTS)?\s+[A-Za-z_]\w*\s*\(", statement, re.IGNORECASE)
-        if create_match is None:
-            return statement
-        open_index = statement.find("(", create_match.start())
-        close_index = find_matching_parenthesis(statement, open_index)
-        body = statement[open_index + 1 : close_index]
-        edits: list[tuple[int, int, str]] = []
-
-        for start, end in cls._top_level_column_spans(body):
-            segment = body[start:end]
-            name_match = re.match(r'^\s*(?:"(?P<quoted>[^"]+)"|(?P<plain>[A-Za-z_]\w*))\s+', segment)
-            if name_match is None:
-                continue
-            column_name = (name_match.group("quoted") or name_match.group("plain")).lower()
-            if column_name not in nullable_columns:
-                continue
-
-            type_start = name_match.end()
-            type_end = cls._column_type_end(segment, type_start)
-            data_type = segment[type_start:type_end].rstrip()
-            if not data_type or data_type.upper().startswith("NULLABLE("):
-                continue
-            if data_type.upper().startswith("ARRAY("):
-                continue
-            suffix = segment[type_end:]
-            if re.search(r"\bNOT\s+NULL\b", suffix, re.IGNORECASE):
-                raise ValueError(f"source-nullable column {column_name!r} is declared NOT NULL")
-            replacement_end = type_start + len(data_type)
-            edits.append((start + type_start, start + replacement_end, f"Nullable({data_type})"))
-
-        for start, end, replacement in reversed(edits):
-            body = body[:start] + replacement + body[end:]
-        return statement[: open_index + 1] + body + statement[close_index:]
-
     @staticmethod
     def _top_level_column_spans(body: str) -> list[tuple[int, int]]:
         spans: list[tuple[int, int]] = []
@@ -465,123 +332,6 @@ class ClickHouseWorkloadMixin:
             index += 1
         spans.append((start, len(body)))
         return spans
-
-    @staticmethod
-    def _blank_quoted_and_commented(text: str) -> str:
-        chars = list(text)
-        index = 0
-        quote: str | None = None
-        while index < len(chars):
-            char = chars[index]
-            if quote is not None:
-                if chars[index] != "\n":
-                    chars[index] = " "
-                if char == quote:
-                    if index + 1 < len(chars) and chars[index + 1] == quote:
-                        if chars[index + 1] != "\n":
-                            chars[index + 1] = " "
-                        index += 2
-                        continue
-                    quote = None
-            elif char in {"'", '"', "`"}:
-                chars[index] = " "
-                quote = char
-            elif char == "-" and index + 1 < len(chars) and chars[index + 1] == "-":
-                while index < len(chars) and chars[index] != "\n":
-                    chars[index] = " "
-                    index += 1
-                continue
-            elif char == "/" and index + 1 < len(chars) and chars[index + 1] == "*":
-                chars[index] = " "
-                chars[index + 1] = " "
-                index += 2
-                while index < len(chars):
-                    if chars[index] == "*" and index + 1 < len(chars) and chars[index + 1] == "/":
-                        chars[index] = " "
-                        chars[index + 1] = " "
-                        index += 2
-                        break
-                    if chars[index] != "\n":
-                        chars[index] = " "
-                    index += 1
-                continue
-            index += 1
-        return "".join(chars)
-
-    @staticmethod
-    def _strip_inline_primary_key(segment: str) -> str:
-        import re
-
-        while True:
-            probe = ClickHouseWorkloadMixin._blank_quoted_and_commented(segment)
-            match = re.search(r"PRIMARY\s+KEY\b", probe, flags=re.IGNORECASE)
-            if match is None:
-                return segment
-            start = match.start()
-            while start > 0 and segment[start - 1].isspace():
-                start -= 1
-            segment = segment[:start] + segment[match.end() :]
-
-    @staticmethod
-    def _column_type_end(segment: str, type_start: int) -> int:
-        import re
-
-        constraint = re.compile(
-            r"(?:NOT\s+NULL|NULL|PRIMARY\s+KEY|REFERENCES|DEFAULT|UNIQUE|CHECK|COLLATE|GENERATED|CONSTRAINT)\b",
-            re.IGNORECASE,
-        )
-        depth = 0
-        quote: str | None = None
-        index = type_start
-        while index < len(segment):
-            char = segment[index]
-            if quote is not None:
-                if char == quote:
-                    if index + 1 < len(segment) and segment[index + 1] == quote:
-                        index += 2
-                        continue
-                    quote = None
-            elif char in {"'", '"'}:
-                quote = char
-            elif char in "([":
-                depth += 1
-            elif char in ")]":
-                depth -= 1
-            elif char.isspace() and depth == 0:
-                next_token = segment[index:].lstrip()
-                if constraint.match(next_token):
-                    return index
-            index += 1
-        return len(segment.rstrip())
-
-    @classmethod
-    def _strip_primary_key_constraints(cls, statement: str) -> str:
-        import re
-
-        table_name = r'(?:"[^"]+"|`[^`]+`|\[[^\]]+\]|[A-Za-z_]\w*)'
-        create_match = re.search(rf"CREATE TABLE(?:\s+IF NOT EXISTS)?\s+{table_name}\s*\(", statement, re.IGNORECASE)
-        if create_match is None:
-            return statement
-        open_index = statement.find("(", create_match.start())
-        close_index = find_matching_parenthesis(statement, open_index)
-        body = statement[open_index + 1 : close_index]
-
-        table_constraint = re.compile(r"^\s*(?:CONSTRAINT\s+[\s\S]+?\s+)?PRIMARY\s+KEY\s*\(", re.IGNORECASE)
-        kept_segments: list[str] = []
-        dropped_last_segment = False
-        spans = cls._top_level_column_spans(body)
-        for position, (start, end) in enumerate(spans):
-            segment = body[start:end]
-            probe = cls._blank_quoted_and_commented(segment)
-            if table_constraint.match(probe):
-                dropped_last_segment = position == len(spans) - 1
-                continue
-            kept_segments.append(cls._strip_inline_primary_key(segment))
-
-        rebuilt = ",".join(kept_segments)
-        if dropped_last_segment:
-            rebuilt = rebuilt.rstrip() + body[len(body.rstrip()) :]
-        return statement[: open_index + 1] + rebuilt + statement[close_index:]
 
     def _resolve_tuned_ddl_clauses(
         self,

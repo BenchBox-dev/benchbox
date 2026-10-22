@@ -54,6 +54,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- ClickHouse `create_schema` writes its table DDL with `translate_ddl` (MergeTree engine, `Nullable` only
+  for the columns the benchmark schema marks nullable, tuned `PARTITION BY` / `ORDER BY` / `PRIMARY KEY`)
+  instead of the adapter's own text rewriting. The adapter's `_optimize_table_definition`,
+  `_strip_primary_key_constraints` and `Nullable`/key text helpers are removed. Types are spelled the
+  ClickHouse way (`Int32`, `String`, `Decimal(15, 2)`, `DateTime`), and tuned key columns that are
+  nullable fail with the table name and the key role. Cases are listed in
+  `tests/unit/sql_compat/golden_corpus/recorded/area_ddl.json`.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed
