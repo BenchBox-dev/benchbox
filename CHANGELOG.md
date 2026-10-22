@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
+  for every `dsqgen` call. It stages only the support files and the one requested template, so a
+  call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed
+  template tree is never written.
 - `benchbox run` registers only the requested platform's adapter instead of importing all 52
   adapters, and checks DataFrame availability for the requested platform only. A local
   `run --dry-run` for Polars drops from about 2.0 s to about 1.2 s and for DuckDB from about
