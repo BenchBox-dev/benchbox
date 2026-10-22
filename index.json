@@ -13419,6 +13419,13 @@
       "status": "open",
       "title": "Make the MCP export-failure test exercise its own path instead of recursing through a mock"
     },
+    "longtest-04-cli-identical-runs-and-scale": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Stop repeating identical CLI benchmark runs and shrink the cross-surface dtype test"
+    },
     "loud-loader-failures-for-contaminated-data": {
       "claim": null,
       "needs": [],
