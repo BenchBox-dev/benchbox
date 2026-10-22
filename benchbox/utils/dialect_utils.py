@@ -467,6 +467,12 @@ def translate_ddl(
         options["layouts"] = {name: layout(value) for name, value in options["layouts"].items()}
     if isinstance(options.get("singlestore"), dict):
         options["singlestore"] = ddl_module.SingleStoreKeys(**options["singlestore"])
+    if isinstance(options.get("type_map"), str):
+        engines = importlib.import_module("benchbox._vendor.sqlglot.benchbox.ddl_engines")
+        name = f"{options['type_map'].upper()}_TYPE_MAP"
+        if not hasattr(engines, name):
+            raise ValueError(f"Unknown DDL type map: {options['type_map']!r}")
+        options["type_map"] = getattr(engines, name)
 
     read = resolve_sql_dialect(source_dialect)
     write = resolve_sql_dialect(target_dialect)

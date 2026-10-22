@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `translate_ddl` accepts an engine type map by name (`type_map="starrocks"`, `"doris"`, `"singlestore"`) so adapters do not import fork modules.
 - Result readers accept schema 2.4: the loader, normalizer, explorer input
   and bundle validator read the new optional per-query `request_count`,
   `result_bytes` and `platform_timing`, and the run-level `timing_method`,
