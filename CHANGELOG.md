@@ -54,6 +54,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `benchbox run` registers only the requested platform's adapter instead of importing all 52
+  adapters, and checks DataFrame availability for the requested platform only. A local
+  `run --dry-run` for Polars drops from about 2.0 s to about 1.2 s and for DuckDB from about
+  1.85 s to about 1.3 s. Commands that list platforms still register every adapter, and the
+  CLI output, unknown-platform message and exit code are unchanged.
 - `ResultValidator.validate_results_exact` now accepts result sets that are exactly equal
   (in the same order, or after sorting when order does not matter) without the per-cell
   tolerant comparison, which makes large cross-surface and qualification comparisons much

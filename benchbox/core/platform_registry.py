@@ -153,6 +153,20 @@ class PlatformRegistry:
         if not cls._auto_registered:
             cls._auto_registered = True
             auto_register_platforms()
+            order = {name: index for index, (name, _, _) in enumerate(_OPTIONAL_ADAPTERS)}
+            cls._adapters = dict(sorted(cls._adapters.items(), key=lambda item: order.get(item[0], len(order))))
+
+    @classmethod
+    def _ensure_platform_registered(cls, canonical_name: str) -> None:
+        if cls._auto_registered or canonical_name in cls._adapters:
+            return
+        previous = _OPTIONAL_ADAPTER_REGISTRATION_DIAGNOSTICS.get(canonical_name)
+        if previous is not None and previous["status"] != "available":
+            return
+        for name, module_path, class_name in _OPTIONAL_ADAPTERS:
+            if name == canonical_name:
+                _try_register_adapter(name, module_path, class_name)
+                return
 
     @classmethod
     def register_adapter(cls, platform_name: str, adapter_class: type[PlatformAdapter]) -> None:
@@ -180,8 +194,10 @@ class PlatformRegistry:
 
     @classmethod
     def get_adapter_class(cls, platform_name: str) -> type[PlatformAdapter]:
-        cls._ensure_registered()
         canonical_name = cls.resolve_platform_name(platform_name)
+        cls._ensure_platform_registered(canonical_name)
+        if canonical_name not in cls._adapters:
+            cls._ensure_registered()
 
         if canonical_name not in cls._adapters:
             available = ", ".join(cls.get_available_platforms())
@@ -246,6 +262,28 @@ class PlatformRegistry:
         return package or None
 
     @classmethod
+    def _probe_platform_availability(cls, platform_name: str) -> bool:
+        if platform_name in cls._platform_metadata:
+            platform_spec = cls._platform_metadata[platform_name]
+
+            for lib_spec in platform_spec.get("libraries", []):
+                lib_info = cls._detect_library(lib_spec)
+                if lib_spec.get("required", True) and not lib_info.installed and not lib_spec.get("alternative", False):
+                    return False
+
+            return True
+
+        try:
+            adapter_class = cls._adapters[platform_name]
+            test_config = {"database_path": ":memory:"} if platform_name == "duckdb" else {}
+            adapter_class(**test_config)
+            return True
+        except (ImportError, OSError):
+            return False
+        except Exception:
+            return True
+
+    @classmethod
     def get_platform_availability(cls) -> dict[str, bool]:
         cls._ensure_registered()
         if cls._availability_cache is not None:
@@ -254,49 +292,32 @@ class PlatformRegistry:
         if not cls._platform_metadata:
             cls._platform_metadata = cls._build_platform_metadata()
 
-        availability = {}
-        for platform_name in cls._adapters:
-            if platform_name in cls._platform_metadata:
-                platform_spec = cls._platform_metadata[platform_name]
-                available = True
-
-                for lib_spec in platform_spec.get("libraries", []):
-                    lib_info = cls._detect_library(lib_spec)
-                    if (
-                        lib_spec.get("required", True)
-                        and not lib_info.installed
-                        and not lib_spec.get("alternative", False)
-                    ):
-                        available = False
-                        break
-
-                availability[platform_name] = available
-            else:
-                try:
-                    adapter_class = cls._adapters[platform_name]
-                    test_config = {"database_path": ":memory:"} if platform_name == "duckdb" else {}
-                    adapter_class(**test_config)
-                    availability[platform_name] = True
-                except (ImportError, OSError):
-                    availability[platform_name] = False
-                except Exception:
-                    availability[platform_name] = True
+        availability = {
+            platform_name: cls._probe_platform_availability(platform_name) for platform_name in cls._adapters
+        }
 
         cls._availability_cache = availability
         return availability.copy()
 
     @classmethod
     def is_platform_available(cls, platform_name: str) -> bool:
-        availability = cls.get_platform_availability()
-        return availability.get(platform_name, False)
+        if cls._availability_cache is not None or cls._auto_registered:
+            return cls.get_platform_availability().get(platform_name, False)
+
+        cls._ensure_platform_registered(platform_name)
+        if platform_name not in cls._adapters:
+            return False
+        if not cls._platform_metadata:
+            cls._platform_metadata = cls._build_platform_metadata()
+        return cls._probe_platform_availability(platform_name)
 
     @classmethod
     def get_platform_info(cls, platform_name: str) -> Optional[PlatformInfo]:
-        cls._ensure_registered()
         if not cls._platform_metadata:
             cls._platform_metadata = cls._build_platform_metadata()
 
         canonical_name = cls.resolve_platform_name(platform_name)
+        cls._ensure_platform_registered(canonical_name)
 
         if canonical_name not in cls._platform_metadata:
             return None
