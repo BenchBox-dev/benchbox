@@ -56,6 +56,42 @@ def _row_sort_key(row: tuple[Any, ...]) -> tuple[Any, ...]:
     return tuple(_cell_sort_key(value) for value in row)
 
 
+_PLAIN_CELL_TYPES = frozenset({str, bytes, bool, type(None), datetime.date, datetime.datetime, datetime.time})
+_MAX_EXACT_INT = 1 << 53
+
+
+def _cell_is_exact_safe(value: Any) -> bool:
+    cell_type = type(value)
+    if cell_type in _PLAIN_CELL_TYPES:
+        return True
+    if cell_type is int:
+        if -_MAX_EXACT_INT <= value <= _MAX_EXACT_INT:
+            return True
+        try:
+            float(value)
+        except OverflowError:
+            return False
+        return True
+    if cell_type is float:
+        return value == value
+    if cell_type is Decimal:
+        return value.is_finite()
+    if isinstance(value, (list, tuple)):
+        return all(_cell_is_exact_safe(item) for item in value)
+    if isinstance(value, dict):
+        return all(_cell_is_exact_safe(item) for item in value.values())
+    if isinstance(value, int):
+        return _cell_is_exact_safe(int(value))
+    try:
+        return bool(value == value)
+    except (TypeError, ValueError):
+        return False
+
+
+def _rows_are_exact_safe(rows: list[tuple[Any, ...]]) -> bool:
+    return all(_cell_is_exact_safe(value) for row in rows for value in row)
+
+
 class ValidationError(Exception):
     pass
 
@@ -90,6 +126,9 @@ class ResultValidator:
                 f"Original: {len(original_results)}, Variant: {len(variant_results)}"
             )
 
+        if self._exact_fast_path_accepts(original_results, variant_results, ordered=bool(order_aware and order_by)):
+            return True
+
         if order_aware and order_by and self._order_key_in_range(order_by, original_results, variant_results):
             return self._validate_order_aware(
                 original_results,
@@ -118,6 +157,21 @@ class ResultValidator:
             return True
 
         raise ValidationError(detail)
+
+    @staticmethod
+    def _exact_fast_path_accepts(
+        original: list[tuple[Any, ...]],
+        variant: list[tuple[Any, ...]],
+        *,
+        ordered: bool,
+    ) -> bool:
+        try:
+            if original != variant:
+                if ordered or sorted(original) != sorted(variant):
+                    return False
+            return _rows_are_exact_safe(original) and _rows_are_exact_safe(variant)
+        except (TypeError, ValueError, ArithmeticError):
+            return False
 
     def _first_column_count_mismatch(
         self,
