@@ -5,20 +5,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from .credentials import FORWARDED_ENV
 from .policy import OMP_THINKING_LEVELS, Reviewer
 
 FORBIDDEN_FLAGS = ("--dangerously-skip-permissions", "--yolo", "--dangerously-bypass-approvals-and-sandbox")
 OMP_READ_TOOLS = "read,grep,glob"
 OMP_BASE_ENV = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "LC_ALL", "TZ", "USER", "LOGNAME", "SHELL")
-OMP_BROKER_ENV = ("OMP_AUTH_BROKER_URL", "OMP_AUTH_BROKER_TOKEN")
-OMP_PROVIDER_ENV = (
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_OAUTH_TOKEN",
-    "OPENAI_API_KEY",
-    "OPENAI_CODEX_OAUTH_TOKEN",
-    "GEMINI_API_KEY",
-    "META_API_KEY",
-)
 OMP_OVERLAY_TEXT = """mcp:
   enableProjectConfig: false
 advisor:
@@ -28,6 +20,9 @@ contextPromotion:
 prewalk:
   enabled: false
   auto: "off"
+read:
+  summarize:
+    enabled: false
 fetch:
   enabled: false
 disabledProviders:
@@ -62,7 +57,7 @@ class Invocation:
 
 
 def omp_env() -> dict[str, str]:
-    names = (*OMP_BASE_ENV, *OMP_BROKER_ENV, *OMP_PROVIDER_ENV)
+    names = (*OMP_BASE_ENV, *FORWARDED_ENV)
     return {name: value for name in names if (value := os.environ.get(name))}
 
 

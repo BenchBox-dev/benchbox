@@ -2503,6 +2503,7 @@ def _fake_api(
     workflow: bytes,
     seen: list[str],
     reviews: list[dict] | None = None,
+    statuses: list[dict] | None = None,
 ) -> None:
     import json as json_module
 
@@ -2515,6 +2516,8 @@ def _fake_api(
             return _FakeResponse(workflow)
         if "/pulls/" in url and url.endswith("/reviews?per_page=100&page=1"):
             return _FakeResponse(payload)
+        if "/statuses?" in url:
+            return _FakeResponse(json_module.dumps(statuses if statuses is not None else []).encode())
         return _FakeResponse(_check_runs_payload(*runs))
 
     monkeypatch.setattr("urllib.request.urlopen", fake)
@@ -2528,6 +2531,38 @@ def test_oracle_review_covers_bound_workflow_success(tmp_path: Path, monkeypatch
     _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen)
     assert scope.oracle_review_covers(tmp_path) is True
     assert any("a" * 40 in url for url in seen)
+
+
+def _gate_status(state: str = "success", login: str = "benchbox-oracle[bot]", account_type: str = "Bot") -> dict:
+    return {"context": "oracle-gate", "state": state, "creator": {"login": login, "type": account_type}}
+
+
+def test_oracle_review_covers_with_gate_status_when_review_check_is_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    _fake_api(monkeypatch, [], _workflow_payload(), [], statuses=[_gate_status()])
+    assert scope.oracle_review_covers(tmp_path) is True
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        _gate_status(state="failure"),
+        _gate_status(login="someone-else"),
+        _gate_status(account_type="User"),
+    ],
+)
+def test_oracle_review_covers_rejects_unsound_gate_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: dict
+) -> None:
+    import check_comment_cleanup_scope as scope
+
+    _review_env(tmp_path, monkeypatch)
+    _fake_api(monkeypatch, [], _workflow_payload(), [], statuses=[status])
+    assert scope.oracle_review_covers(tmp_path) is False
 
 
 def test_oracle_review_covers_latest_completed_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
