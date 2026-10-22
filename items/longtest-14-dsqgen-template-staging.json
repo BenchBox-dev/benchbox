@@ -3,7 +3,7 @@
     "RUBRIC 1: G1-G4 evidence in the PR body",
     "RUBRIC 2: CHANGELOG entry"
   ],
-  "context": "PROGRESS 2026-10-22: PR #3284 (head fe29f903), armed. Design: each per-call directory gets copies of the support files, the two distribution files and only the requested template (hard-link design measured slower on macOS and discarded); no shared state or links, so G6 fallback is not applicable. G1: 515 generate + 206 generate_with_parameters calls identical to the pre-change module; TPC-DS modules 2025 passed. G2: _binaries/tpc-ds checksum unchanged; new 8-thread test checks tree checksum and threaded == serial (no multi-process run). G3: plain copies; Windows TPC-DS manifest and TPC-H framing jobs green. G4: per call 28.0 -> 5.9 ms local median; CI TPC-DS-named modules 392.0 -> 220.4 s (trunk 39774579422 vs PR 39776485789). G5: only query 93 has a sub-scale override; exactly one staged file differs. Mutations (symlink, missing support files, stage-all) each fail tests. streams.py has its own staging, untouched. CHANGELOG entry. Oracle SHIP, no threads. NEXT: finish after merge.",
+  "context": "DONE 2026-10-22: PR #3284 merged as ba7a4195208dabda98b408c7717ef6685bed4138 (head fe29f903). Per-call directory gets copies of support files, distribution files and only the requested template (hard-link variant measured slower and discarded; no links so the OSError fallback is not applicable). G1: 721 calls identical to the pre-change module. G2: template tree checksum unchanged; 8-thread test (no multi-process run). G3: Windows jobs green. G4: per call 28.0 -> 5.9 ms local; CI TPC-DS modules 392.0 -> 220.4 s. G5: only query 93 has a sub-scale override, exactly one staged file differs. Mutations caught. streams.py staging untouched. Oracle SHIP.",
   "description": "PROBLEM: each dsqgen call copies the 123-file template tree into a temp directory and deletes it (benchbox TPC-DS c_tools.py around line 296); on a quiet machine that is 27 of 33 ms per call, dsqgen itself about 5 ms. Tests call it hundreds of times per run.\n\nCHANGE (product code): stage the template tree once per process (or per template set) and write only the edited template per call into a per-call directory, or link unchanged files and replace the edited one; generate_with_parameters rewrites a template inside the work directory, so a linked file must be replaced, never written through.\n\nDECISION GATES:\nG1 Output identity: for all 99 queries and several seeds/streams, generated SQL is byte-identical before and after (local script, results in PR body); the TPC-DS answer/qualification tests pass.\nG2 Safety: show the source template tree is never modified (checksum before/after a full run), including under concurrent calls from xdist workers.\nG3 Windows: symlinks may be unavailable; use copy for the edited file and hard links or a once-per-process copy for the rest, and keep the Windows CI job green.\nG4 Measure per-call time and the TPC-DS tests' CI times; keep the change only if it is faster.\nG5 Show each dsqgen call edits exactly one template (the small-scale template overrides touch only one file); if more, write each edited file per call.\nG6 Fall back to copying on OSError (hard links fail across devices, EXDEV). G2's concurrency check must also cover threads (the concurrent bound-queries test).",
   "links": [
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-18T23-52-50-730Z_01a1516e-af2a-70ba-8b0e-81c1898c948f/PysparkTpcdsReview.md"
@@ -76,6 +76,14 @@
       "generation": "b4d4a3e20d974fc2b5c22037a207b542",
       "op": "take",
       "op_id": "1136bfcad85a412db1de9ae3d0f14ae9",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-22T12:48:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ed65445aaf094c2a9225ed4591cfd49c",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]
