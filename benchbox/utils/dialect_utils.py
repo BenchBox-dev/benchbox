@@ -531,3 +531,31 @@ def contains_division(sql: str, dialect: str) -> bool:
 
     resolved = resolve_sql_dialect(dialect)
     return sqlglot.parse_one(sql, read=resolved).find(exp.Div) is not None
+
+
+def is_create_table(ddl: str) -> bool:
+    body = "\n".join(line for line in ddl.splitlines() if not line.lstrip().startswith("--"))
+    return body.lstrip().upper().startswith("CREATE TABLE")
+
+
+def create_table_shape(ddl: str, source_dialect: str = "standard") -> tuple[str, list[str], list[str]]:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    tree = sqlglot.parse_one(ddl, read=resolve_sql_dialect(source_dialect))
+    if not isinstance(tree, exp.Create) or not isinstance(tree.this, exp.Schema):
+        return "", [], []
+    columns = [column.name.lower() for column in tree.find_all(exp.ColumnDef)]
+    key = [
+        identifier.name.lower()
+        for primary in tree.find_all(exp.PrimaryKey)
+        for identifier in primary.find_all(exp.Identifier)
+    ]
+    key += [
+        column.name.lower()
+        for column in tree.find_all(exp.ColumnDef)
+        if any(
+            isinstance(c.args.get("kind"), exp.PrimaryKeyColumnConstraint) for c in column.args.get("constraints") or []
+        )
+    ]
+    return tree.this.this.name.lower(), columns, key

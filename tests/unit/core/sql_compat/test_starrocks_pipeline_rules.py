@@ -84,7 +84,7 @@ def test_starrocks_rewrite_ddl_action_and_payload(bmark: str, query_id: str | No
     assert decision is not None, f"No rule for starrocks DDL_OPTIMIZE/{bmark}"
     assert decision.action is CompatAction.REWRITE_DDL
     assert isinstance(decision.payload, RewriteDDLPayload)
-    assert decision.payload.transformer_id == "starrocks_ddl_optimizer"
+    assert decision.payload.transformer_id == "translate_ddl:key_model"
 
 
 @pytest.mark.parametrize(

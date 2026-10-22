@@ -651,17 +651,18 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             _INLINE_CONSTRAINT,
             "Tuned primary keys choose the StarRocks key model: the workload rewrite reads the "
             "PK columns from the tuned DDL and emits PRIMARY KEY when they lead the table, else "
-            "DUPLICATE KEY (starrocks/workload.py:122-152).",
+            "DUPLICATE KEY (StarRocksWorkloadMixin._starrocks_layout).",
         ),
         _T.FOREIGN_KEYS: _none(
             "starrocks_strips_foreign_keys",
-            "StarRocksWorkloadMixin strips foreign keys from every CREATE TABLE (starrocks/workload.py:120).",
+            "StarRocksWorkloadMixin translates every CREATE TABLE with "
+            "translate_ddl(strip_foreign_keys=True) (StarRocksWorkloadMixin._translate_schema_statement).",
         ),
         _T.UNIQUE_CONSTRAINTS: _none(
             "starrocks_no_unique_check_rendering",
-            "StarRocksWorkloadMixin._optimize_table_definition handles PARTITION/DISTRIBUTION/"
-            "ORDER BY plus PK-model selection and foreign-key stripping only (starrocks/workload.py:"
-            "109-198); nothing renders, strips, or validates UNIQUE/CHECK clauses.",
+            "StarRocksWorkloadMixin._translate_schema_statement maps PARTITION/DISTRIBUTION/ORDER BY "
+            "tuning plus PK-model selection into a translate_ddl layout and strips foreign keys only; "
+            "nothing renders, strips, or validates UNIQUE/CHECK clauses.",
         ),
         _T.CHECK_CONSTRAINTS: _none(
             "starrocks_no_unique_check_rendering",
@@ -672,7 +673,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.PARTITIONING: _none(
             "doris_ddl_generator:preview_only",
             "core.tuning.generators.doris.DorisDDLGenerator computes PARTITION BY from tuned columns "
-            "for dry-run preview, but DorisAdapter inherits NoOpTableTuningMixin (doris.py:187) and "
+            "for dry-run preview, but DorisAdapter inherits NoOpTableTuningMixin and "
             "renders nothing at execution. Corrects the prior unaudited _ddl claim.",
         ),
         _T.SORTING: _none(
@@ -690,11 +691,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.PRIMARY_KEYS: _none(
             "doris_strips_primary_keys",
             "The shared tuning-aware DDL path would emit tuned primary keys, but DorisAdapter "
-            "strips PRIMARY KEY clauses from every CREATE TABLE (doris.py:803-805).",
+            "strips PRIMARY KEY clauses from every CREATE TABLE (DorisAdapter._translate_create_table).",
         ),
         _T.FOREIGN_KEYS: _none(
             "doris_strips_foreign_keys",
-            "DorisAdapter strips foreign keys from every CREATE TABLE (doris.py:802).",
+            "DorisAdapter strips foreign keys from every CREATE TABLE (DorisAdapter._translate_create_table).",
         ),
         _T.UNIQUE_CONSTRAINTS: _none(
             "doris_no_unique_check_rendering",

@@ -175,30 +175,30 @@ class TestStarRocksAdapter:
         assert schema_time >= 0
         assert mock_cursor.execute.call_count >= 2
 
-    def test_optimize_table_definition(self, mock_pymysql):
+    def test_translate_schema_statement(self, mock_pymysql):
         adapter = StarRocksAdapter()
 
         original = "CREATE TABLE test (id INT, name VARCHAR(100))"
-        optimized = adapter._optimize_table_definition(original)
+        optimized = adapter._translate_schema_statement(original)
         assert "DUPLICATE KEY" in optimized
         assert "DISTRIBUTED BY HASH" in optimized
         assert "BUCKETS" in optimized
 
-    def test_optimize_table_definition_type_conversion(self, mock_pymysql):
+    def test_translate_schema_statement_type_conversion(self, mock_pymysql):
         adapter = StarRocksAdapter()
 
         original = "CREATE TABLE test (id INTEGER, name STRING, val DOUBLE PRECISION, big HUGEINT)"
-        optimized = adapter._optimize_table_definition(original)
+        optimized = adapter._translate_schema_statement(original)
         assert "INT" in optimized
         assert "VARCHAR(65533)" in optimized
         assert "DOUBLE" in optimized
         assert "LARGEINT" in optimized
 
-    def test_optimize_table_definition_removes_foreign_keys(self, mock_pymysql):
+    def test_translate_schema_statement_removes_foreign_keys(self, mock_pymysql):
         adapter = StarRocksAdapter()
 
         original = "CREATE TABLE orders (id INT, cust_id INT, FOREIGN KEY (cust_id) REFERENCES customer(id))"
-        optimized = adapter._optimize_table_definition(original)
+        optimized = adapter._translate_schema_statement(original)
         assert "FOREIGN KEY" not in optimized
 
     def test_execute_query_success(self, mock_pymysql):
@@ -353,19 +353,20 @@ class TestStarRocksAdapter:
         adapter = StarRocksAdapter()
         adapter.apply_table_tunings(None, mock_conn)
 
-    def test_extract_first_column(self, mock_pymysql):
-        adapter = StarRocksAdapter()
-
-        assert adapter._extract_first_column("CREATE TABLE test (id INT, name VARCHAR)") == "id"
-        assert adapter._extract_first_column("CREATE TABLE t (`col1` BIGINT)") == "col1"
-        assert adapter._extract_first_column("NO PARENS") is None
-
-    def test_optimize_table_adds_duplicate_key_after_pk_removal(self, mock_pymysql):
+    def test_leading_primary_key_uses_primary_model(self, mock_pymysql):
         adapter = StarRocksAdapter()
         original = "CREATE TABLE test (id INT, name VARCHAR(100), PRIMARY KEY (id))"
-        optimized = adapter._optimize_table_definition(original)
-        assert "DUPLICATE KEY" in optimized
+        optimized = adapter._translate_schema_statement(original)
+        assert "PRIMARY KEY" in optimized
+        assert "DUPLICATE KEY" not in optimized
         assert "DISTRIBUTED BY HASH" in optimized
+
+    def test_non_leading_primary_key_uses_duplicate_model(self, mock_pymysql):
+        adapter = StarRocksAdapter()
+        original = "CREATE TABLE test (name VARCHAR(100), id INT, PRIMARY KEY (id))"
+        optimized = adapter._translate_schema_statement(original)
+        assert "DUPLICATE KEY" in optimized
+        assert "PRIMARY KEY" not in optimized
 
     def test_apply_platform_optimizations_rejects_unsafe_setting(self, mock_pymysql):
         mock_conn = Mock()

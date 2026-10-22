@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Callable, cast
 from urllib.parse import urlparse, urlunparse
 
-from benchbox.platforms.base.ddl_helpers import strip_foreign_keys
+from benchbox.utils.dialect_utils import create_table_shape, is_create_table, translate_ddl
 
 from ..utils.dependencies import (
     check_platform_dependencies,
@@ -91,16 +91,6 @@ def _format_filter_ratio(value: Any) -> str:
     return format(ratio, "g")
 
 
-_CREATE_TABLE_RE = re.compile(
-    r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`\"]?(\w+)[`\"]?\s*\(",
-    re.IGNORECASE,
-)
-_KNOWN_SQL_TYPES = frozenset(
-    "int integer bigint smallint tinyint largeint float double decimal numeric string text varchar char boolean "
-    "bool date datetime timestamp time json jsonb array map struct bitmap hll blob binary varbinary".split()
-)
-_COL_DEF_RE = re.compile(r'[`"]?(\w+)[`"]?\s+(\w+)', re.MULTILINE)
-_NON_KEY_DORIS_TYPES = frozenset({"time", "json", "jsonb", "blob", "binary", "hll", "bitmap"})
 _DORIS_ENGINE_VERSION_RE = re.compile(r"doris[-\s]v?(\d+\.\d+\.\d+(?:-[A-Za-z0-9]+)?)", re.IGNORECASE)
 
 _TPCH_TABLE_KEYS: dict[str, list[str]] = dict(  # noqa: C408
@@ -372,11 +362,14 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         )
 
     def _wrap_database_connection(self, conn: Any) -> Any:
-        return _DorisConnectionWrapper(conn, ddl_optimizer=self._inject_doris_ddl_clauses)
+        return _DorisConnectionWrapper(conn, ddl_optimizer=self._translate_create_table)
+
+    def _create_schema_with_tuning(self, benchmark: Any, source_dialect: str = "standard") -> str:
+        return super()._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
 
     def _transform_schema_statement(self, stmt: str, benchmark: Any) -> str:
         scale_factor: float | None = getattr(benchmark, "scale_factor", None)
-        return self._inject_doris_ddl_clauses(stmt, scale_factor=scale_factor)
+        return self._translate_create_table(stmt, scale_factor=scale_factor)
 
     def _load_resolved_data_file(
         self,
@@ -794,132 +787,28 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
 
         return platform_info
 
-    def _inject_doris_ddl_clauses(self, stmt: str, scale_factor: float | None = None) -> str:
-        stripped = stmt.strip()
-        if not _CREATE_TABLE_RE.search(stripped):
+    def _translate_create_table(self, stmt: str, scale_factor: float | None = None) -> str:
+        if not is_create_table(stmt):
             return stmt
-
-        stripped = strip_foreign_keys(stripped)
-        stripped = re.sub(r",?\s*PRIMARY\s+KEY\s*\([^)]*\)", "", stripped, flags=re.IGNORECASE)
-        stripped = re.sub(r"\bPRIMARY\s+KEY\b(?!\s*\()", "", stripped, flags=re.IGNORECASE)
-        stripped = re.sub(r"\(\s*,", "(", stripped)
-
-        stripped = re.sub(
-            r"\bTIME\b(?!STAMP)(?=\s*(?:[,\)]|$|NOT\s+NULL|NULL\b|DEFAULT\b|\Z))",
-            "VARCHAR(8)",
-            stripped,
-            flags=re.IGNORECASE | re.MULTILINE,
-        )
-
-        name_match = _CREATE_TABLE_RE.search(stripped)
-        if not name_match:
-            return stripped
-
-        table_name = name_match.group(1)
-        table_name_key = table_name.lower()
-
-        open_pos = name_match.end() - 1
-        depth = 0
-        close_pos = -1
-        for i in range(open_pos, len(stripped)):
-            if stripped[i] == "(":
-                depth += 1
-            elif stripped[i] == ")":
-                depth -= 1
-                if depth == 0:
-                    close_pos = i
-                    break
-
-        if close_pos == -1:
-            return stripped
-
-        col_body = stripped[open_pos + 1 : close_pos]
-
-        col_body_fixed = re.sub(r"\bSTRING\b", "VARCHAR(65533)", col_body, flags=re.IGNORECASE)
-        col_body_fixed = re.sub(r"\bTEXT\b", "VARCHAR(65533)", col_body_fixed, flags=re.IGNORECASE)
-        col_body_fixed = re.sub(r"\bSMALLINT\b", "INT", col_body_fixed, flags=re.IGNORECASE)
-        col_body_fixed = re.sub(r"(ARRAY<[^>]+>)\[\d+\]", r"\1", col_body_fixed, flags=re.IGNORECASE)
-        if col_body_fixed != col_body:
-            col_body = col_body_fixed
-            stripped = stripped[: open_pos + 1] + col_body + stripped[close_pos:]
-            close_pos = open_pos + 1 + len(col_body)
-
-        schema_cols: list[tuple[str, str]] = [
-            (m.group(1).lower(), m.group(2).lower())
-            for m in _COL_DEF_RE.finditer(col_body)
-            if m.group(2).lower() in _KNOWN_SQL_TYPES
-        ]
-
-        keyable_cols = [name for name, typ in schema_cols if typ not in _NON_KEY_DORIS_TYPES]
-
-        model_keyword = {
-            "duplicate": "DUPLICATE KEY",
-            "aggregate": "AGGREGATE KEY",
-            "unique": "UNIQUE KEY",
-        }.get(self.table_model, "DUPLICATE KEY")
-
-        desired_keys = [k.lower() for k in _TPCH_TABLE_KEYS.get(table_name_key, [])]
-        if desired_keys:
-            desired_set = set(desired_keys)
-            prefix_keys: list[str] = []
-            for col_name, col_type in schema_cols:
-                if col_name in desired_set and col_type not in _NON_KEY_DORIS_TYPES:
-                    prefix_keys.append(col_name)
-                else:
-                    break
-            key_cols = prefix_keys or (keyable_cols[:1] if keyable_cols else None)
-        else:
-            key_cols = keyable_cols[:1] if keyable_cols else None
-
-        clauses: list[str] = []
-
-        if key_cols:
-            cols_str = ", ".join(f"`{c}`" for c in key_cols)
-            clauses.append(f"{model_keyword}({cols_str})")
-
-        partition_clause = self.get_partition_clause(table_name_key)
-        if partition_clause:
-            clauses.append(partition_clause)
-
-        schema_col_names = {col_name for col_name, _ in schema_cols}
-        dist_key_candidate = _TPCH_DISTRIBUTION_KEYS.get(table_name_key)
-        dist_key = (
-            dist_key_candidate
-            if dist_key_candidate and dist_key_candidate in schema_col_names
-            else (key_cols[0] if key_cols else None)
-        )
-        buckets = self._compute_bucket_count(table_name_key, scale_factor)
-        if dist_key:
-            clauses.append(f"DISTRIBUTED BY HASH(`{dist_key}`) BUCKETS {buckets}")
-        else:
-            clauses.append(f"DISTRIBUTED BY RANDOM BUCKETS {buckets}")
-
-        clauses.append(f'PROPERTIES ("replication_num" = "{self.replication_num}", "storage_medium" = "HDD")')
-
-        suffix = "\n" + "\n".join(clauses)
-        return stripped[: close_pos + 1] + suffix + stripped[close_pos + 1 :]
-
-    def get_table_model_clause(self, table_name: str) -> str:
-        model_keyword = {
-            "duplicate": "DUPLICATE KEY",
-            "aggregate": "AGGREGATE KEY",
-            "unique": "UNIQUE KEY",
-        }.get(self.table_model, "DUPLICATE KEY")
-
-        key_cols = _TPCH_TABLE_KEYS.get(table_name)
-        if key_cols:
-            cols_str = ", ".join(key_cols)
-            return f"{model_keyword}({cols_str})"
-
-        return ""
-
-    def get_distribution_clause(self, table_name: str, scale_factor: float | None = None) -> str:
-        dist_key = _TPCH_DISTRIBUTION_KEYS.get(table_name)
-        if not dist_key:
-            return f"DISTRIBUTED BY HASH(`{table_name}`) BUCKETS {self.default_buckets}"
-
-        buckets = self._compute_bucket_count(table_name, scale_factor)
-        return f"DISTRIBUTED BY HASH({dist_key}) BUCKETS {buckets}"
+        options: dict[str, Any] = {
+            "strip_foreign_keys": True,
+            "strip_primary_keys": True,
+            "type_map": "doris",
+        }
+        table_name, columns, _ = create_table_shape(stmt)
+        key_model = self.table_model if self.table_model in {"duplicate", "aggregate", "unique"} else "duplicate"
+        key_columns = _TPCH_TABLE_KEYS.get(table_name) or (columns[:1] if key_model != "duplicate" else [])
+        distribution_key = _TPCH_DISTRIBUTION_KEYS.get(table_name)
+        options["default_layout"] = {
+            "key_model": key_model,
+            "key_columns": key_columns,
+            "partition_clause": self.get_partition_clause(table_name) or None,
+            "distribution": "hash",
+            "distribute_by": [distribution_key] if distribution_key else [],
+            "buckets": self._compute_bucket_count(table_name, scale_factor),
+            "properties": {"replication_num": str(self.replication_num), "storage_medium": "HDD"},
+        }
+        return "; ".join(translate_ddl(stmt, "doris", source_dialect="standard", **options))
 
     def _compute_bucket_count(self, table_name: str, scale_factor: float | None = None) -> int:
         if not isinstance(scale_factor, (int, float)) or scale_factor <= 0:
