@@ -194,6 +194,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `FROM`-less `SELECT`; the golden corpus records TPC-Havoc `17_v4` on
   PostgreSQL as the changed output. `flatten_count_of_count` is available the
   same way. The runtime writes no `FROM VALUES` or `dual` source in any dialect.
+- The bundled SQLGlot runtime moves from 30.24.0.3 to 30.24.0.7 (fork commit
+  `d880f416014b`). A translation corpus of every shipped benchmark query across
+  the 20 target dialects and `questdb` (1,262 queries, 26,502 translations, no
+  errors in either runtime) changes in 88 SQLite outputs and no other output.
+  SQLite no longer divides possibly-integer operands with integer truncation:
+  a division the source dialect marks as possibly truncating is written
+  `CAST(dividend AS REAL) / divisor` unless an operand is already real or both
+  operands are integers (literal-only integer division keeps PostgreSQL
+  semantics). Results published before this change for the affected SQLite
+  queries were computed with different SQL.
+- The DDL golden corpus passes the runtime's new DDL options (`table_case`,
+  `strip_with_properties`, QuestDB layout fields, SingleStore `DATETIME`, StarRocks
+  `float_as_real`) and records a classification and reason (`equivalent`,
+  `legacy-bug` or `fork-gap`) for every remaining difference; each classification
+  rule verifies the shape of the difference it labels, and a test fails on an
+  unclassified difference or a `fork-gap`. Array columns become `VECTOR(n, F32|F64)`
+  on SingleStore and `VECTOR(n)` on a SQL Server or Azure SQL target with the
+  `vector_type` option; on every other T-SQL target (Synapse, Fabric) the runtime
+  raises a `ValueError` instead of writing an array type those engines reject.
 
 ### Fixed
 

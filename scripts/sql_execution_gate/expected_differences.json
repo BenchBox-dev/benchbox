@@ -4,39 +4,6 @@
     {
       "engine": "sqlite",
       "benchmark": "tpcds",
-      "check": "reference",
-      "queries": [
-        21
-      ],
-      "match": "row count 4 != 6",
-      "justification": "SQLite truncates integer / integer in the wheel pinned on this branch, so this ratio query returns different rows from DuckDB. This is a real defect, not an accepted difference: tracked by sqlite-integer-division-truncates-ratios; fixed by the exact-division generator in SQLGlot runtime 30.24.0.5 and later, so remove this entry when that wheel is adopted.",
-      "tracker": "sqlite-integer-division-truncates-ratios"
-    },
-    {
-      "engine": "sqlite",
-      "benchmark": "tpcds",
-      "check": "reference",
-      "queries": [
-        78
-      ],
-      "match": "2.0, 58.0, 47.89",
-      "justification": "SQLite truncates integer / integer in the wheel pinned on this branch, so this ratio query returns different rows from DuckDB. This is a real defect, not an accepted difference: tracked by sqlite-integer-division-truncates-ratios; fixed by the exact-division generator in SQLGlot runtime 30.24.0.5 and later, so remove this entry when that wheel is adopted.",
-      "tracker": "sqlite-integer-division-truncates-ratios"
-    },
-    {
-      "engine": "sqlite",
-      "benchmark": "tpcds",
-      "check": "reference",
-      "queries": [
-        83
-      ],
-      "match": "'AAAAAAAAOIAAAAAA', 12.0, 0.0, 3.0",
-      "justification": "SQLite truncates integer / integer in the wheel pinned on this branch, so this ratio query returns different rows from DuckDB. This is a real defect, not an accepted difference: tracked by sqlite-integer-division-truncates-ratios; fixed by the exact-division generator in SQLGlot runtime 30.24.0.5 and later, so remove this entry when that wheel is adopted.",
-      "tracker": "sqlite-integer-division-truncates-ratios"
-    },
-    {
-      "engine": "sqlite",
-      "benchmark": "tpcds",
       "check": "error",
       "queries": [
         5,

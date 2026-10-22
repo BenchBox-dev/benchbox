@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import pkgutil
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
@@ -57,6 +58,22 @@ def differences(area: str) -> dict[str, dict[str, str]]:
     return found
 
 
+CLASSES = ("equivalent", "legacy-bug", "fork-gap")
+METADATA = ("classification", "reason")
+
+
+def classify(area: str, case_id: str, pair: dict[str, str]) -> dict[str, str] | None:
+    module = importlib.import_module(f"{__name__}.{area}")
+    for pattern, kind, reason, check in getattr(module, "CLASSIFICATIONS", ()):
+        if re.fullmatch(pattern, case_id) and check(pair["legacy"], pair["fork"]):
+            return {"classification": kind, "reason": reason}
+    return None
+
+
+def classified(area: str) -> bool:
+    return hasattr(importlib.import_module(f"{__name__}.{area}"), "CLASSIFICATIONS")
+
+
 def recorded(area: str) -> dict[str, dict[str, str]]:
     path = RECORDED / f"{area}.json"
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
@@ -64,6 +81,9 @@ def recorded(area: str) -> dict[str, dict[str, str]]:
 
 def write_recorded(area: str) -> None:
     RECORDED.mkdir(exist_ok=True)
+    found = differences(area)
+    if classified(area):
+        found = {case_id: {**pair, **(classify(area, case_id, pair) or {})} for case_id, pair in found.items()}
     (RECORDED / f"{area}.json").write_text(
-        json.dumps(differences(area), indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8"
+        json.dumps(found, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8"
     )
