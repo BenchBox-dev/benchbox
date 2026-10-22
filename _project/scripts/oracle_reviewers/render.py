@@ -77,6 +77,8 @@ def _validate_response_template(name: str, text: str) -> None:
         for item in priors
     ):
         raise ValueError(f"template {name} slot response_template carries an invalid prior defect id")
+    if text != response_template([item["id"] for item in priors]):
+        raise ValueError(f"template {name} slot response_template must be the unpopulated response template")
 
 
 def response_template(prior_ids: Sequence[str] = ()) -> str:

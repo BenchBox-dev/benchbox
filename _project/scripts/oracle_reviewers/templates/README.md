@@ -29,8 +29,8 @@ The renderer rejects unknown or missing slots, over-byte values, a
 `capability` outside the enums, non-integer `pr` / `max_defects` /
 `template_version`, non-sha `base` / `head`, a `repo` outside `owner/name`
 shape, non-numeric `confidence`, and a `response_template` that is not JSON, does
-not hold exactly the seven verdict keys, or carries a prior id outside the
-defect id grammar. A compromised or
+not hold exactly the seven verdict keys, carries a prior id outside the
+defect id grammar, or differs from the unpopulated template built for those ids. A compromised or
 buggy caller cannot smuggle prose through a trusted slot.
 
 ## Slots

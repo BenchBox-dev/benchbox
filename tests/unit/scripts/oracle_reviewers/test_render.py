@@ -88,6 +88,16 @@ def test_render_rejects_missing_slot() -> None:
         render("deep", values)
 
 
+def test_render_rejects_a_prefilled_response_template() -> None:
+    values = _values()
+    filled = json.loads(str(values["response_template"]))
+    filled["decision"] = "SHIP"
+    filled["summary"] = "Looks fine."
+    values["response_template"] = json.dumps(filled)
+    with pytest.raises(ValueError):
+        render("deep", values)
+
+
 def test_render_rejects_unknown_slot() -> None:
     with pytest.raises(ValueError):
         render("deep", _values(model="x"))

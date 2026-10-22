@@ -69,8 +69,9 @@ When the change data lists files instead of carrying the diff, and this review w
 scope must be backed by tool evidence: a plain, line-ranged or raw
 read of that file, or a grep of that single file, that returned content. Read queries (a path with a ?q= selector),
 directory greps and multi-path greps compute or list matches rather than showing the file, and do not count. A
-shipping verdict without that evidence, or without the file in files_examined, is rejected. When the diff is
-inline, no read evidence is required.
+shipping verdict without that evidence, or without the file in files_examined, is rejected. That check
+runs only for file-list briefs; with an inline diff you must still read the changed files and the code they
+affect, and never decide SHIP for code you did not read.
 
 ## CHANGE DATA
 
