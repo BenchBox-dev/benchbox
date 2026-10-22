@@ -13236,7 +13236,8 @@
       "needs": [
         "first-live-cloud-benchmark-run-and-publish",
         "tuning-no-midrun-destructive-db-handling-20261001",
-        "tuning-portable-metadata-store-20261001"
+        "tuning-portable-metadata-store-20261001",
+        "vendor-benchmark-publication-conditions-20261022"
       ],
       "priority": "medium",
       "status": "open",
