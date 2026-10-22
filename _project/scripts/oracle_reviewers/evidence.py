@@ -155,13 +155,24 @@ def _literal(root: str, part: str, workspace: Path) -> str | None:
     return candidate if _inside(root, candidate) and os.path.exists(os.path.join(root, candidate)) else None
 
 
+def _ambiguous(root: str, part: str, workspace: Path) -> bool:
+    literal = _literal(root, part, workspace)
+    if literal is None:
+        return False
+    base = _plain(_OMP_SELECTOR.sub("", part))
+    if base is None:
+        return False
+    candidate = _normalize(base, workspace)
+    return candidate != literal and _inside(root, candidate) and os.path.exists(os.path.join(root, candidate))
+
+
 def credited(run: Trace, workspace: Path) -> frozenset[str]:
     root = os.path.realpath(workspace)
     read: set[str] = set()
     for path in run.reads:
         parts = [item.strip() for item in path.split(";")]
         for part in parts:
-            if not part:
+            if not part or _ambiguous(root, part, workspace):
                 continue
             if (literal := _literal(root, part, workspace)) is not None:
                 read.add(literal)
@@ -172,7 +183,7 @@ def credited(run: Trace, workspace: Path) -> frozenset[str]:
                 read.add(candidate)
     for path in run.greps:
         request = path.strip()
-        if not request or ";" in request:
+        if not request or ";" in request or _ambiguous(root, request, workspace):
             continue
         literal = _literal(root, request, workspace)
         if literal is not None:

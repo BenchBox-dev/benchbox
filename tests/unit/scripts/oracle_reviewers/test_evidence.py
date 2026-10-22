@@ -526,14 +526,19 @@ def test_a_symlink_staying_inside_the_checkout_is_still_credited(tmp_path: Path)
 
 
 @pytest.mark.parametrize("literal", ["a.py:raw", "a.py:1-2", "a.py:5"])
-def test_an_existing_literal_filename_wins_over_selector_parsing(tmp_path: Path, literal: str) -> None:
+def test_a_literal_filename_that_collides_with_a_selector_credits_nothing(tmp_path: Path, literal: str) -> None:
     (tmp_path / "a.py").write_text("base\n", encoding="utf-8")
     (tmp_path / literal).write_text("literal\n", encoding="utf-8")
     for name in ("read", "grep"):
         run = trace("omp", _tool_events(name, literal, is_error=False, output="literal"))
-        assert unread("omp", ["a.py", literal], run, tmp_path) == ["a.py"]
-    base = trace("omp", _tool_events("read", "a.py", is_error=False, output="base"))
-    assert unread("omp", ["a.py", literal], base, tmp_path) == [literal]
+        assert unread("omp", ["a.py", literal], run, tmp_path) == ["a.py", literal]
+
+
+@pytest.mark.parametrize("literal", ["a.py:raw", "a.py:1-2"])
+def test_a_literal_filename_without_a_base_file_is_credited_exactly(tmp_path: Path, literal: str) -> None:
+    (tmp_path / literal).write_text("literal\n", encoding="utf-8")
+    run = trace("omp", _tool_events("read", literal, is_error=False, output="literal"))
+    assert unread("omp", [literal], run, tmp_path) == []
 
 
 def test_a_selector_credits_the_base_file_when_no_such_literal_file_exists(tmp_path: Path) -> None:

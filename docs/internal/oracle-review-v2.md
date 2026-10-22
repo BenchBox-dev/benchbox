@@ -392,7 +392,10 @@ never passes.
   range in either order. A computed `?q=` read, `:conflicts` and `:img` credit
   nothing: a query returns whatever its expression computes (one character was
   observed), unlike a verbatim range or grep. A plain, ranged or raw `read`,
-  or a `grep` of the single file, supplies evidence.
+  or a `grep` of the single file, supplies evidence. A committed file whose
+  name is a selector-shaped variant of another committed file (`a.py:raw`
+  beside `a.py`) is ambiguous, because OMP's resolution order is not verified,
+  so neither path is credited from that read.
 - A successful read of an archive listing or member (registered archive
   extension, inside the checkout) credits the archive container only; the
   member path never credits a repository file. An error, a binary-entry
