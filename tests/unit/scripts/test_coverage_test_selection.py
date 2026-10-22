@@ -1256,11 +1256,7 @@ def _case(classname: str | None, name: str, file: str | None = None) -> ET.Eleme
     return case
 
 
-def test_junit_case_node_id_matches_medium_test_names(tmp_path: Path) -> None:
-    (tmp_path / "tests/unit/scripts").mkdir(parents=True)
-    (tmp_path / "tests/unit/scripts/test_heavy_tier_needed.py").write_text("", encoding="utf-8")
-    (tmp_path / "tests/unit/b").mkdir(parents=True)
-    (tmp_path / "tests/unit/b/test_sub.py").write_text("", encoding="utf-8")
+def test_junit_case_node_id_needs_no_test_tree(tmp_path: Path) -> None:
     node = sel.junit_case_node_id
     assert (
         node(tmp_path, _case("tests.unit.scripts.test_heavy_tier_needed", "test_param[True-False-True]"))
@@ -1277,11 +1273,20 @@ def test_junit_case_node_id_matches_medium_test_names(tmp_path: Path) -> None:
     assert node(tmp_path, _case("tests.unit.b.test_sub.TestSub", "test_inherited", "tests/unit/a/test_base.py")) == (
         "tests/unit/b/test_sub.py::TestSub::test_inherited"
     )
+    assert node(tmp_path, _case("tests.unit.b.test_sub.TestSub", "test_x", "")) == (
+        "tests/unit/b/test_sub.py::TestSub::test_x"
+    )
+
+
+def test_junit_case_node_id_prefers_existing_module_file(tmp_path: Path) -> None:
+    (tmp_path / "tests/unit/a").mkdir(parents=True)
+    (tmp_path / "tests/unit/a/checks.py").write_text("", encoding="utf-8")
+    assert sel.junit_case_node_id(tmp_path, _case("tests.unit.a.checks.TestG", "test_a")) == (
+        "tests/unit/a/checks.py::TestG::test_a"
+    )
 
 
 def test_miss_and_build_map_derive_identical_node_ids(tmp_path: Path) -> None:
-    (tmp_path / "tests/unit/a").mkdir(parents=True)
-    (tmp_path / "tests/unit/a/test_one.py").write_text("", encoding="utf-8")
     report = tmp_path / "shard-0-junit.xml"
     report.write_text(
         "<testsuites><testsuite>"
@@ -1294,7 +1299,10 @@ def test_miss_and_build_map_derive_identical_node_ids(tmp_path: Path) -> None:
     )
     failed, _, _ = sel.failed_node_ids([report], tmp_path)
     assert failed == sel._junit_failed_nodeids([report], tmp_path)
-    assert failed == ["tests/unit/a/test_one.py::TestG::test_a"]
+    assert failed == [
+        "tests/unit/a/test_one.py::TestG::test_a",
+        "tests/unit/zz/test_gone.py::TestG::test_b",
+    ]
 
 
 def test_failed_node_ids_counts_failures_and_errors(tmp_path: Path) -> None:

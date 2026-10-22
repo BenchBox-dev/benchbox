@@ -40,8 +40,6 @@ def test_misses_step_runs_from_its_sparse_checkout(tmp_path: Path) -> None:
             shutil.copytree(source, target, ignore=shutil.ignore_patterns("__pycache__"))
         else:
             shutil.copy2(source, target)
-    (tmp_path / "tests/unit/a").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "tests/unit/a/test_one.py").write_text("", encoding="utf-8")
     selection = tmp_path / "selection.json"
     selection.write_text(json.dumps({"selected": ["tests/unit/a/test_one.py::test_in"]}), encoding="utf-8")
     junit = tmp_path / "evidence" / "shard-0-junit.xml"

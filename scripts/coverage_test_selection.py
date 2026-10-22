@@ -82,15 +82,24 @@ def _relative_name(repo: Path, filename: str) -> str | None:
         return None
 
 
-def _junit_case_filename(repo: Path, filename: str, classname: str) -> str | None:
-    if filename:
-        return filename
+def _classname_filename(repo: Path, classname: str) -> str | None:
     parts = [part for part in classname.split(".") if part]
+    if not parts:
+        return None
     for width in range(len(parts), 0, -1):
         candidate = "/".join(parts[:width]) + ".py"
         if (repo / candidate).is_file():
             return candidate
-    return None
+    test_widths = [
+        width
+        for width in range(len(parts), 0, -1)
+        if parts[width - 1].startswith("test_") or parts[width - 1].endswith("_test")
+    ]
+    return "/".join(parts[: test_widths[0] if test_widths else len(parts)]) + ".py"
+
+
+def _junit_module(filename: str) -> str:
+    return filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
 
 
 def junit_case_node_id(repo: Path, case: ET.Element) -> str | None:
@@ -98,21 +107,18 @@ def junit_case_node_id(repo: Path, case: ET.Element) -> str | None:
     classname = (case.get("classname") or "").strip()
     if not name:
         return None
-    filename = _junit_case_filename(repo, (case.get("file") or "").strip(), classname)
-    if filename is not None:
-        module = filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
-        if classname and classname != module and not classname.startswith(module + "."):
-            filename = _junit_case_filename(repo, "", classname)
+    filename = (case.get("file") or "").strip() or None
+    if filename is not None and classname:
+        module = _junit_module(filename)
+        if classname != module and not classname.startswith(module + "."):
+            filename = None
+    if filename is None:
+        filename = _classname_filename(repo, classname)
     if filename is None:
         return None
-    module = filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
-    if not classname or classname == module:
-        parts = [filename, name]
-    elif classname.startswith(module + "."):
-        parts = [filename, *classname[len(module) + 1 :].split("."), name]
-    else:
-        return None
-    return "::".join(part for part in parts if part)
+    module = _junit_module(filename)
+    extra = classname[len(module) + 1 :].split(".") if classname.startswith(module + ".") else []
+    return "::".join(part for part in (filename, *extra, name) if part)
 
 
 def _junit_failed_nodeids(junit_files: list[Path], repo: Path) -> list[str]:
