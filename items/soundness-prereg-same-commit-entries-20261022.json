@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Failing-before test: staged commit adding an exception for a changed file with the correct digest is rejected by the local check on develop and accepted after the change",
+    "Negative tests all still reject: exception for an unchanged file, wrong digest, digest of a different finding, a second use of the same entry for another path",
+    "CI-path test: the same entry with no oracle cover still fails the non-staged/CI invocation (the exact command the comment-policy job runs, read from the workflow)",
+    "The acceptance flag is off by default and not reachable from the CI invocation (shown by reading the workflow and a test)",
+    "docs/internal/comment-policy.md describes the rule and the unchanged CI behavior",
+    "PR merged with an oracle verdict on its final head; merge SHA recorded; no pre-registered digests in the PR"
+  ],
+  "context": "\n\nSource: soundness-gap plan (read-only planner review, 2026-10-22) of open issues 2806, 2807, 2808, 3125, 3126 in BenchBox-dev/benchbox plus owner decisions of 2026-10-22 (record: soundness-gaps-decisions-20261022). Line numbers, commit SHAs and findings are leads from that plan: re-verify them against current develop before acting. Not yet verified by anyone else.",
+  "description": "Owner decision 2026-10-22: yes. Problem: new fixture exceptions only count under oracle cover (scripts/check_comment_policy.py about lines 433 and 479-483; oracle_review_covers needs the GitHub environment), so the local pre-commit hook rejects an exception added in the same PR as the code it excuses. Agents therefore pre-register guessed digests in an earlier PR; then the oracle objects and the owner stands in over a High finding. That produced gap issues 3125 and 3126 and a digest that never matched (PR 3084).\n\nChange: in the local staged check only, accept a NEW exception when (1) its path is a file changed in the same staged commit, and (2) its digest equals the digest the checker computes from the staged content of that file, and (3) it is not reused for any other path or finding. CI must keep requiring oracle cover exactly as today: a PR adding an exception without oracle cover must still fail the CI check.\n\nDECISION GATE: before coding, write down the exact accept rule and the attack you must defeat: a commit that adds an exception for a file it changes in order to hide a new finding must still be caught in CI (the local hook accepts it only to unblock the commit; CI decides). If you cannot show CI still fails it, stop and report. Also decide where the staged-only acceptance lives so the CI path cannot reach it (separate flag defaulting to off; the hook sets it; the trusted base checker in CI never does).\n\nGUARDRAILS (all items): G1 never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict is required on every PR (soundness paths) and no digest may be pre-registered. G2 never weaken a gate, threshold, rule or check; no skip/xfail/quarantine. G3 the primary clone /Users/joe/Developer/BenchBox is read-only: use make worktree-create + make agent-write-preflight and absolute worktree paths; stage explicit paths; never git add -A; never git stash; identity Joe Harris, no agent trailers. G4 no CHANGELOG.md entry (curated section is at its 160-line ceiling) and no comments/docstrings in code (make comment-policy-check). G5 commit and PR text for a reader who never saw the session: no item ids, no plan/session labels. G6 never close, label or edit gap issues directly: the daily digest closes them after a valid attestation. G7 no settings/rulesets/secrets/variables writes; no new dependencies or unpinned images. G8 done means merged PR plus verification evidence recorded in the item; an open PR is not done. G9 self-review pass (code review action) before make pr-open; fix Critical and Required findings.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T19:53:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5709da9ffe0c462b8424960cf5626f09",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}
