@@ -30,7 +30,7 @@ MARKER_VERSION = 1
 MARKER_LIMIT = 4096
 MARKER_OPEN = "<!-- oracle-protocol:"
 _MARKER = re.compile(r"<!-- oracle-protocol: v1 (?P<data>[A-Za-z0-9_-]+) -->\s*\Z")
-_HUNK = re.compile(r"^@@ [^@]* @@")
+_HUNK = re.compile(r"^@@ -(?P<start>\d+)(?:,(?P<count>\d+))? \+\d+(?:,\d+)? @@(?P<section>.*)$")
 _DEFECT_ID = re.compile(r"D([1-9][0-9]{0,3})")
 NOT_COUNTED_LIMIT = 5
 PATCH_HEX = 16
@@ -117,9 +117,20 @@ def file_patches(diff_text: str) -> dict[str, str]:
         if match is None:
             continue
         binary = "\nBinary files " in f"\n{body}" or "\nGIT binary patch" in f"\n{body}"
-        kept = [
-            "@@" if _HUNK.match(line) else line for line in body.splitlines() if binary or not line.startswith("index ")
-        ]
+        kept = []
+        previous_end: int | None = None
+        for line in body.splitlines():
+            if not binary and line.startswith("index "):
+                continue
+            hunk = _HUNK.match(line)
+            if hunk is None:
+                kept.append(line)
+                continue
+            count = 1 if hunk["count"] is None else int(hunk["count"])
+            first = int(hunk["start"]) + (1 if count == 0 else 0)
+            gap = "first" if previous_end is None else str(first - previous_end)
+            previous_end = first + count
+            kept.append(f"@@ gap={gap}{hunk['section']}")
         patches[match.group("new")] = hashlib.sha256("\n".join(kept).encode("utf-8")).hexdigest()
     return patches
 
@@ -388,6 +399,19 @@ def judge_planned(verdict: Verdict, plan: Mapping[str, Any]) -> Judgement:
     rules = plan.get("protocol") or {}
     changed = rules.get("changed") if rules.get("kind") == FOLLOW_UP else None
     return judge(verdict, int(plan["max_defects"]), rules.get("prior", ()), changed, bool(rules.get("forced")))
+
+
+def contradiction(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
+    if verdict.status != COMPLETE or judge_planned(verdict, plan).decision != SHIP:
+        return None
+    priors = (plan.get("protocol") or {}).get("prior") or ()
+    known = {item.get("id") for item in priors if isinstance(item, Mapping)}
+    unknown = {item.id for item in verdict.prior_defects} - known
+    if unknown:
+        return f"the verdict would ship but cites {len(unknown)} prior defect ID(s) the plan does not list"
+    if verdict.decision == SHIP_WITH_FIXES and not verdict.defects and verdict.listed == 0:
+        return "SHIP_WITH_FIXES names no current or open prior defects"
+    return None
 
 
 def defect_entry(defect_id: str, finding: Finding) -> dict[str, Any]:

@@ -31,15 +31,19 @@ Two defects showed up in the shadow period.
 - **One decision per review.** The reviewer answers SHIP, SHIP_WITH_FIXES or
   DO_NOT_SHIP, or reports its review incomplete. Code computes the result from
   the defect list, and the stricter outcome wins: defects make SHIP into SHIP
-  WITH FIXES, an empty list makes SHIP WITH FIXES into SHIP, and more than 10
-  defects or a DO_NOT_SHIP answer give DO NOT SHIP with the summary only.
-  Severity orders defects and never gates. Too many defects is a decision,
-  not an invalid verdict, because an invalid verdict hands over to the next
-  reviewer and would leave a genuinely bad change pending.
-- **Every schema property is required** and no enum is nullable, because
-  Codex structured outputs reject optional keys. The schema was checked with
-  `codex exec --output-schema`, `claude --json-schema`, `agy --output-format
-  json --json-schema` and muse with the schema in the prompt.
+  WITH FIXES, and more than 10 defects or a DO_NOT_SHIP answer give DO NOT SHIP
+  with the summary only. An actually empty SHIP_WITH_FIXES, with no open prior
+  defect, is invalid rather than promoted to SHIP. Findings outside a follow-up's
+  changed files remain uncounted. Severity orders defects and never gates.
+  Too many defects is a decision, not an invalid verdict.
+- **Canonical stored verdicts stay strict.** The original mandatory-property
+  rule served Codex structured outputs, which are no longer used. At reviewer
+  ingress, missing non-decision text and a closed list of harmless finding/prior
+  metadata are normalized; dictionary-form prior statuses are converted without
+  changing IDs or statuses. A DO_NOT_SHIP still needs its summary. Duplicate
+  JSON keys, unfilled response-template placeholders, unknown top-level keys
+  and missing decision-bearing fields are invalid. Stored artifacts are never
+  normalized, and contradictory decisions are rejected during replay too.
 - **Evidence.** A defect must cite a real file and line in the head commit; a
   defect that does not is kept and marked, so it still fails the change rather
   than handing it to the next reviewer. Under a file-list brief, a verdict that

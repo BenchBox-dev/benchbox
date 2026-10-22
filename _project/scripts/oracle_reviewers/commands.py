@@ -6,13 +6,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from .credentials import GATEWAY_ENV
 from .policy import OMP_THINKING_LEVELS, Reviewer
 from .verdict import VERDICT_SCHEMA
 
 FORBIDDEN_FLAGS = ("--dangerously-skip-permissions", "--yolo", "--dangerously-bypass-approvals-and-sandbox")
 OMP_READ_TOOLS = "read,grep,glob"
 OMP_BASE_ENV = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "LC_ALL", "TZ", "USER", "LOGNAME", "SHELL")
-OMP_GATEWAY_ENV = ("OMP_GATEWAY_TOKEN",)
+
 OMP_OVERLAY_TEXT = """mcp:
   enableProjectConfig: false
 advisor:
@@ -22,6 +23,31 @@ contextPromotion:
 prewalk:
   enabled: false
   auto: "off"
+read:
+  summarize:
+    enabled: false
+fetch:
+  enabled: false
+disabledProviders:
+  - native
+  - omp-plugins
+  - claude
+  - agent-plugins
+  - codex
+  - agents
+  - claude-plugins
+  - gemini
+  - opencode
+  - cursor
+  - windsurf
+  - cline
+  - github
+  - vscode
+  - agents-md
+  - claude-md
+  - custom-context
+  - mcp-json
+  - ssh-json
 """
 
 
@@ -38,7 +64,7 @@ def schema_text() -> str:
 
 
 def omp_env() -> dict[str, str]:
-    names = (*OMP_BASE_ENV, *OMP_GATEWAY_ENV)
+    names = (*OMP_BASE_ENV, *GATEWAY_ENV)
     return {name: value for name in names if (value := os.environ.get(name))}
 
 

@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
+from itertools import islice
 from typing import Any
 
+from . import credentials
+from .credentials import REDACTED
 from .policy import SEVERITIES
 
 MAX_LISTED = 50
@@ -34,6 +37,22 @@ FINDING_KEYS = ("severity", "file", "line", "end_line", "title", "detail")
 OPTIONAL_FINDING_KEYS = frozenset({"end_line"})
 PRIOR_KEYS = ("id", "status", "evidence")
 VERDICT_KEYS = ("status", "incomplete_reason", "decision", "summary", "files_examined", "defects", "prior_defects")
+RESPONSE_PLACEHOLDERS = {
+    "status": "<status>",
+    "incomplete_reason": "<incomplete_reason>",
+    "decision": "<decision>",
+    "summary": "<summary>",
+    "file": "<file>",
+    "files_examined": "<examined_file>",
+    "severity": "<severity>",
+    "title": "<title>",
+    "detail": "<detail>",
+    "prior_status": "<prior_status>",
+    "evidence": "<evidence>",
+}
+FINDING_METADATA = frozenset({"line_note", "end_line_note", "detail_extra"})
+_KEY_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,39}")
+_PRIOR_ID = re.compile(r"[A-Za-z0-9-]{1,32}")
 
 VERDICT_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -98,8 +117,8 @@ _MENTION = re.compile(r"(?<![A-Za-z0-9_`])@(?=[A-Za-z0-9])")
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _COMMENT_OPEN = re.compile(r"<\s*!\s*-\s*-")
 _COMMENT_CLOSE = re.compile(r"-\s*-\s*>")
-REDACTED = "[redacted]"
 LINK_REMOVED = "[link removed]"
+_SANITIZE_PASSES = 32
 
 
 class VerdictError(ValueError):
@@ -164,8 +183,9 @@ class Verdict:
         }
 
 
-def sanitize(text: str, limit: int) -> str:
-    cleaned = _CONTROL.sub("", text)
+def sanitize(text: str, limit: int, extra: Iterable[str] = ()) -> str:
+    known = tuple(extra)
+    cleaned = _CONTROL.sub("", credentials.redact(text, known))
     for pattern in SECRET_PATTERNS:
         cleaned = pattern.sub(REDACTED, cleaned)
     cleaned = _MARKDOWN_LINK.sub(lambda match: match.group(1), cleaned)
@@ -173,12 +193,152 @@ def sanitize(text: str, limit: int) -> str:
     cleaned = _MENTION.sub("", cleaned)
     cleaned = _COMMENT_OPEN.sub("&lt;!--", cleaned)
     cleaned = _COMMENT_CLOSE.sub("--&gt;", cleaned)
+    cleaned = credentials.redact(cleaned, known)
     return cleaned if len(cleaned) <= limit else cleaned[: limit - 1] + "…"
+
+
+def _structural_strings(data: Any) -> Iterator[str]:
+    if isinstance(data, dict):
+        for key, value in data.items():
+            yield str(key)
+            yield from _structural_strings(value)
+    elif isinstance(data, list):
+        for item in data:
+            yield from _structural_strings(item)
+
+
+def _reject_structural_credentials(data: dict[str, Any]) -> None:
+    strings = list(_structural_strings(data))
+    examined = data.get("files_examined")
+    strings += [item for item in examined if isinstance(item, str)] if isinstance(examined, list) else []
+    for field, key in (("defects", "file"), ("prior_defects", "id")):
+        items = data.get(field)
+        for item in items if isinstance(items, list) else ():
+            if isinstance(item, dict) and isinstance(item.get(key), str):
+                strings.append(item[key])
+    _require(
+        not any(credentials.contains(text) for text in strings),
+        "the verdict carries a credential in a structural field",
+    )
 
 
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise VerdictError(message)
+
+
+def _key_labels(keys: Iterable[Any]) -> str:
+    safe = []
+    unsafe = 0
+    for key in keys:
+        if isinstance(key, str) and _KEY_NAME.fullmatch(key) and sanitize(key, 40) == key:
+            safe.append(key)
+        else:
+            unsafe += 1
+    labels = repr(sorted(safe)[:5])
+    return f"{labels}, {unsafe} unsafe" if unsafe else labels
+
+
+def _settled(text: str) -> str:
+    for _ in range(_SANITIZE_PASSES):
+        cleaned = sanitize(text, 2 * len(text) + 64)
+        if cleaned == text:
+            return text
+        text = cleaned
+    raise VerdictError("the response text does not settle under sanitization")
+
+
+def _reject_placeholders(data: Any) -> None:
+    pending = [data]
+    placeholders = frozenset(RESPONSE_PLACEHOLDERS.values())
+    while pending:
+        item = pending.pop()
+        if isinstance(item, str):
+            _require(_settled(item) not in placeholders, "the response template contains an unfilled placeholder")
+        elif isinstance(item, dict):
+            pending.extend(item.keys())
+            pending.extend(item.values())
+        elif isinstance(item, list):
+            pending.extend(item)
+
+
+def normalize_reviewer(data: Any) -> tuple[Any, tuple[str, ...]]:
+    if not isinstance(data, dict):
+        return data, ()
+    _reject_placeholders(data)
+    normalized = dict(data)
+    rewrites = []
+    if "incomplete_reason" not in normalized:
+        normalized["incomplete_reason"] = ""
+        rewrites.append("default_incomplete_reason")
+    if "summary" not in normalized and normalized.get("decision") != DO_NOT_SHIP:
+        normalized["summary"] = ""
+        rewrites.append("default_summary")
+    priors = normalized.get("prior_defects")
+    if isinstance(priors, dict):
+        entries = []
+        seen: set[str] = set()
+        for key, value in priors.items():
+            identifier = key.removeprefix("#") if isinstance(key, str) else key
+            _require(
+                isinstance(identifier, str) and _PRIOR_ID.fullmatch(identifier) is not None,
+                "dictionary prior defect keys must be valid IDs",
+            )
+            _require(identifier not in seen, "a dictionary prior defect ID repeats after normalization")
+            seen.add(identifier)
+            _require(isinstance(value, dict), "dictionary prior defect values must be objects")
+            embedded = value.get("id", key)
+            embedded = embedded.removeprefix("#") if isinstance(embedded, str) else embedded
+            _require(embedded == identifier, "dictionary prior defect key and embedded ID disagree")
+            entries.append({**value, "id": identifier})
+        normalized["prior_defects"] = entries
+        rewrites.append("prior_dictionary")
+    defects_entries = normalized.get("defects")
+    if isinstance(defects_entries, list):
+        cleaned = []
+        removed = set()
+        for entry in defects_entries:
+            if isinstance(entry, dict):
+                removed.update(set(entry) & FINDING_METADATA)
+                cleaned.append({key: value for key, value in entry.items() if key not in FINDING_METADATA})
+            else:
+                cleaned.append(entry)
+        if removed:
+            normalized["defects"] = cleaned
+            rewrites.append("defects_metadata")
+    return normalized, tuple(rewrites)
+
+
+def shape_fingerprint(data: Any, credentials: Iterable[str] = ()) -> str:
+    secrets = tuple(value for value in credentials if value)
+
+    def shape(value: Any, depth: int) -> Any:
+        if isinstance(value, dict):
+            if depth >= 3:
+                return {"object_keys": len(value)}
+            result = {}
+            unsafe = 0
+            for key, child in islice(value.items(), 20):
+                if (
+                    isinstance(key, str)
+                    and _KEY_NAME.fullmatch(key)
+                    and not any(secret in key for secret in secrets)
+                    and sanitize(key, 40) == key
+                ):
+                    result[key] = shape(child, depth + 1)
+                else:
+                    unsafe += 1
+            if unsafe:
+                result["<unsafe keys>"] = unsafe
+            if len(value) > 20:
+                result["<omitted keys>"] = len(value) - 20
+            return result
+        if isinstance(value, list):
+            return {"list_items": len(value)}
+        return type(value).__name__
+
+    text = json.dumps(shape(data, 0), ensure_ascii=True, separators=(",", ":"))
+    return text if len(text) <= 512 else text[:509] + "..."
 
 
 def _valid_path(path: str) -> bool:
@@ -200,7 +360,7 @@ def _finding(data: Any) -> Finding:
     _require(isinstance(data, dict), "each finding must be an object")
     keys = set(data)
     required = set(FINDING_KEYS) - OPTIONAL_FINDING_KEYS
-    unexpected = sorted(str(key)[:40] for key in keys - set(FINDING_KEYS))[:5]
+    unexpected = _key_labels(keys - set(FINDING_KEYS))
     _require(
         required <= keys <= set(FINDING_KEYS),
         f"each finding must have the keys {FINDING_KEYS}, of which {sorted(OPTIONAL_FINDING_KEYS)} may be omitted;"
@@ -225,8 +385,8 @@ def _prior(data: Any) -> PriorDefect:
     )
     identifier = data["id"].removeprefix("#") if isinstance(data["id"], str) else data["id"]
     _require(
-        isinstance(identifier, str) and re.fullmatch(r"[A-Za-z0-9-]{1,32}", identifier) is not None,
-        f"prior defect id must be 1 to 32 letters, digits or hyphens, got {str(data['id'])[:40]!r}",
+        isinstance(identifier, str) and _PRIOR_ID.fullmatch(identifier) is not None,
+        "prior defect id must be 1 to 32 letters, digits or hyphens",
     )
     _require(data["status"] in PRIOR_STATUSES, f"prior defect status must be one of {PRIOR_STATUSES}")
     _require(isinstance(data["evidence"], str), "prior defect evidence must be a string")
@@ -235,9 +395,15 @@ def _prior(data: Any) -> PriorDefect:
 
 def validate(data: Any, *, trusted: bool = False) -> Verdict:
     _require(isinstance(data, dict), "the verdict must be a JSON object")
+    _reject_structural_credentials(data)
+    _reject_placeholders(data)
     _require(trusted or "defect_count" not in data, "defect_count is set by the oracle, not the reviewer")
     keys = set(data) - {"defect_count"}
-    _require(keys == set(VERDICT_KEYS), f"the verdict must have exactly the keys {VERDICT_KEYS}")
+    _require(
+        keys == set(VERDICT_KEYS),
+        f"the verdict must have exactly the keys {VERDICT_KEYS};"
+        f" missing {sorted(set(VERDICT_KEYS) - keys)}, unexpected {_key_labels(keys - set(VERDICT_KEYS))}",
+    )
     _require(data["status"] in STATUSES, f"status must be one of {STATUSES}")
     _require(data["decision"] in DECISIONS, f"decision must be one of {DECISIONS}")
     complete = data["status"] == COMPLETE
@@ -273,6 +439,14 @@ def _strip_fence(text: str) -> str:
     return match.group(1) if match else stripped
 
 
+def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result = {}
+    for key, value in pairs:
+        _require(key not in result, "duplicate JSON object key in reviewer output")
+        result[key] = value
+    return result
+
+
 def _stream_result(text: str) -> Any:
     for line in reversed(text.splitlines()):
         try:
@@ -289,7 +463,7 @@ def extract_omp_text(stdout: str) -> str:
     for line in stdout.splitlines():
         try:
             event = json.loads(line)
-        except ValueError:
+        except json.JSONDecodeError:
             continue
         if not isinstance(event, dict) or event.get("type") != "message_end":
             continue
@@ -312,7 +486,7 @@ def parse_output(harness: str, text: str) -> Any:
         return parse_output("text", extract_omp_text(text))
     stripped = _strip_fence(text)
     try:
-        payload = json.loads(stripped)
+        payload = json.loads(stripped, object_pairs_hook=_unique_object)
     except json.JSONDecodeError as exc:
         payload = _stream_result(text) if harness == "claude" else None
         if payload is None:

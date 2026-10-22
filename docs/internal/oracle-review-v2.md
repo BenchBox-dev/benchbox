@@ -175,10 +175,21 @@ Without the App secrets, the `post` job logs the result and succeeds.
 3. `attempt-N-omp` runs that reviewer through OMP on a detached,
    credential-free checkout of the head. OMP starts in an empty working
    directory with the checkout added as a read-only workspace, the tools
-   limited to `read,grep,glob`, and a trusted overlay that turns off project
-   MCP config, the advisor, context promotion and prewalk. It never runs pull
-   request code. The result is an artifact with the run ID, head SHA, reviewer
-   and either a validated verdict or an absence.
+   limited to `read,grep,glob`, skills and rules off (`--no-skills`,
+   `--no-rules`), and a trusted overlay. The overlay turns off project MCP
+   config, the advisor, context promotion, prewalk and URL fetching
+   (`fetch.enabled: false`). It also disables every discovery provider except
+   OMP's built-in defaults, so the checkout's `AGENTS.md`, `.omp/AGENTS.md`,
+   `CLAUDE.md`, editor rule files and plugins do not load. OMP reads any file
+   named by an `@` mention in the prompt before a tool call, resolving relative
+   paths from the working directory, so the brief puts a zero-width space
+   before every `@` that is followed by a character other than whitespace or
+   another `@` in the change data and the file priority. An `@` preceded by
+   that character does not start a mention. These settings limit what the
+   pull request can make the reviewer load. They do not confine its file
+   tools: the reviewer can still read any file the runner user can. It never
+   runs pull request code. The result is an artifact with the run ID, head
+   SHA, reviewer and either a validated verdict or an absence.
 4. `post` re-validates every artifact from this run, replays the selection,
    and posts the status and the findings. `findings_delivery` in
    `.github/oracle-reviewers.yml` chooses how:
@@ -282,9 +293,11 @@ leave the open list, and they are reported separately as never defects. On a
 forced round the judge counts a withdrawal without a file-and-line citation
 as not fixed; the head-commit existence check still happens when citations
 are marked.
-A thread reply counts as a dispute only when a reply from someone other than
-the oracle bot contains a line starting with `Dispute:` that states the case
-against the defect. A plain acknowledgement such as `done` is not a dispute.
+A thread reply counts as a dispute only when a reply from an owner, member or
+collaborator of the repository, other than the oracle bot, contains a line
+starting with `Dispute:` that states the case against the defect. Replies from
+other accounts never reach the brief and never force a re-review. A plain
+acknowledgement such as `done` is not a dispute.
 A forced re-review runs only after a SHIP or SHIP WITH FIXES decision, never
 after DO NOT SHIP. The third forced re-review of one patch is refused with a
 message to change the patch or ask the owner for a stand-in: empty commits and
@@ -336,21 +349,48 @@ rejected.
 
 ## Decisions
 
-The reviewer answers with schema 2 of the verdict (`VERDICT_SCHEMA` in
-`_project/scripts/oracle_reviewers/verdict.py`). Every property is required,
-because Codex structured outputs reject optional keys: `status` (`complete` or
-`incomplete`), `incomplete_reason`, `decision` (`SHIP`, `SHIP_WITH_FIXES`,
-`DO_NOT_SHIP`, or `NONE` when incomplete), `summary`, `files_examined`,
-`defects` and `prior_defects`. A reviewer that adds any other key, such as a
-defect count, is invalid. The brief asks for must-fix defects only, at
-most `protocol.max_defects` (10), and for `DO_NOT_SHIP` when the change needs
-rework or more defects would have to be listed.
+The canonical schema-2 response has seven reviewer-supplied properties:
+`status` (`complete` or `incomplete`), `incomplete_reason`, `decision` (`SHIP`,
+`SHIP_WITH_FIXES`, `DO_NOT_SHIP`, or `NONE` when incomplete), `summary`,
+`files_examined`, `defects` and `prior_defects`. The oracle adds the computed
+`defect_count` to stored verdicts; reviewers cannot set it. Stored artifacts
+must match the canonical fields strictly.
+
+Only reviewer ingress normalizes known harmless drift:
+
+- Missing `incomplete_reason` becomes empty. Missing `summary` becomes empty
+  except for DO_NOT_SHIP, whose summary is the published rationale.
+- Finding metadata `line_note`, `end_line_note` and `detail_extra` is removed.
+- Prior metadata `severity`, `file`, `line`, `end_line`, `title` and `detail`
+  is removed; the prior's `id`, `status` and `evidence` are never inferred.
+- An object keyed by prior ID becomes a list. An omitted embedded ID comes
+  from the key; an embedded ID must agree after the supported `#` prefix is
+  removed. Duplicate normalized IDs remain invalid.
+
+Duplicate JSON keys at any depth, unfilled response-template placeholders,
+unknown top-level keys, reviewer-supplied defect counts and missing
+decision-bearing fields remain invalid. No finding is discarded or given an
+invented location. Applied rewrites are recorded in the diagnostic. Invalid
+JSON retains a redacted final-message tail; parseable invalid output also
+gets a bounded keys-and-types fingerprint, never field values.
+
+`tests/fixtures/oracle_reviewers/pr3237_missing_text_fields.json` preserves
+decoded payloads from the retained attempt diagnostics for runs `39662535698`
+and `39669405558`. Their text is already redacted; these are not raw model
+transcripts. Both responses retain the unfixed prior finding rather than
+becoming approvals after normalization.
+
+The brief asks for must-fix defects only, at most `protocol.max_defects` (10),
+and for DO_NOT_SHIP when the change needs rework or more defects would have
+to be listed.
 
 The code, not the model, decides, and the stricter outcome wins:
 
 | Reviewer reports | Result |
 |---|---|
-| SHIP or SHIP_WITH_FIXES, no defects | SHIP |
+| SHIP, no counted or open prior defects | SHIP |
+| SHIP_WITH_FIXES, no listed or open prior defects | absent (`invalid`), never promoted to SHIP |
+| SHIP_WITH_FIXES, only out-of-scope follow-up findings | SHIP; findings are disclosed as not counted |
 | SHIP or SHIP_WITH_FIXES, 1 to 10 defects | SHIP WITH FIXES |
 | more than 10 defects | DO NOT SHIP; the defects are dropped and the summary notes the count |
 | DO_NOT_SHIP | DO NOT SHIP; the summary is kept, at most 1500 characters |
@@ -420,6 +460,59 @@ never passes.
   files named and read. A verdict that would fail (DO NOT SHIP, a defect
   counted in scope, or an earlier defect not fixed) needs neither.
 - An inline brief carries the diff, so no read is required there.
+- Read credit is exact-path equality after normalisation, never a prefix or a
+  sibling. The documented selector grammar is accepted on `read` and on a
+  single-file `grep`: `:raw`, `:N`, `:LN`, `:N-`, `:N..`, `:A-B`, `:A..B`,
+  `:LA-LB`, `:A+C`, `:-N`, comma lists such as `:1-12,-15`, and `:raw` with a
+  range in either order. A computed `?q=` read, `:conflicts` and `:img` credit
+  nothing: a query returns whatever its expression computes (one character was
+  observed), unlike a verbatim range or grep. A plain, ranged or raw `read`,
+  or a `grep` of the single file, supplies evidence. A committed file whose
+  name is a selector-shaped variant of another committed file (`a.py:raw`,
+  `a.py:conflicts`, `a.py?q=.x` or `x.whl:pkg/m.py` beside the committed
+  `a.py` or `x.whl`) is ambiguous, because OMP's resolution order is not verified,
+  so neither path is credited from that read.
+- A successful read of an archive listing or member (registered archive
+  extension, inside the checkout) credits the archive container only; the
+  member path never credits a repository file. An error, a binary-entry
+  notice, a `?q=` or `..` member, no match, a directory, a read of several
+  `;`-joined paths that includes an archive member, a
+  sibling or a path outside the checkout credits nothing. Binary and
+  unreviewable content, out-of-bounds line reads and notice-only reads are
+  not solved here and stay with `oracle-verdict-labels-unreviewed-bytes` and
+  `oracle-read-evidence-tightening-20261008`; no file is exempted.
+- Partial reads keep their credit; this is exposure, not whole-file or
+  semantic proof. The reviewer overlay sets `read.summarize.enabled: false` so
+  a plain read of a large file is not replaced by a structural summary, and
+  the trace records each credited read's `details.summary` elision counts
+  (the gate does not reject them). Without summarisation an open-ended read
+  is still capped by `read.defaultLimit` (300 lines), which the gate does not
+  detect.
+- Every parsed outcome, successful or not, keeps a bounded, redacted `trace:`
+  line in the attempt diagnostic: read, grep and failed-call counts, up to
+  five credited, required and missing paths, and elision totals, so elided
+  credited reads stay measurable. It never carries the raw event stream, and
+  the OMP stdout stream is no longer excerpted into diagnostics. Read credit
+  also requires the real path to stay inside the checkout, so a committed
+  symlink to an outside file credits nothing.
+- Credentials: `commands.omp_env()` forwards only the base environment and
+  the gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`). One list
+  (`credentials.py` `NAMES`) names that token, the broker and provider
+  variables the attempt jobs no longer receive, and the legacy extras, so a
+  local run that still holds them is redacted too. Values of at least eight
+  characters are removed by exact match before and after every sanitising
+  transform and before any truncation, across control-character splits and
+  overlaps, in verdict text, absence details, diagnostics and error
+  snippets. A known value inside a structural field (file, `files_examined`,
+  prior id or an object key) invalidates the verdict with a fixed message
+  instead of moving a finding. This is known-value hygiene, not a sandbox:
+  values brokered dynamically or held only inside `OMP_AGENT_CONFIG`, and any
+  value under eight characters, cannot be matched. A local fake-sentinel probe
+  showed the reviewer's `read` returns a committed symlink target, an absolute
+  outside path and a `..` path, so the checkout is not a read boundary. The reach
+  probes also reached `/proc/self/environ` and the home configuration, which
+  is why the reviewer holds only the scoped gateway client token
+  (`oracle-response-read-boundary-prerequisite-20261021`).
 
 The verdict is the text of the reviewer's final assistant message, taken from
 its `message_end` event; remarks the reviewer makes between tool calls are
@@ -484,7 +577,11 @@ These checks must pass before the cut-over that makes the context required.
   of the output, at most 300 characters. When the answer is not a valid
   verdict, it holds instead the last 2,000 characters of the reviewer's final
   message. Both have credentials and long tokens removed; raw output is never
-  uploaded. Add the messages to the `CALIBRATED_*_PATTERNS` tables in
+  uploaded. For OMP, stdout is never excerpted; only stderr is. A `trace:` line
+  of at most 700 characters follows on every outcome that reached verdict
+  parsing (valid, invalid, incomplete or failed evidence). Its paths are
+  redacted by known value and secret pattern, not by the generic long-token
+  filter. Add the messages to the `CALIBRATED_*_PATTERNS` tables in
   `_project/scripts/oracle_reviewers/absence.py`; until then they count as
   errors, which never pass. A quota absence means OMP's fallback chain was
   also exhausted. It skips the reviewer's whole pool for the rest of the run,
@@ -509,6 +606,12 @@ policy or the attempt jobs must also:
   must be a verdict that passes the evidence check.
   After merge, dispatch a run on a soundness pull request to confirm it in
   CI. Repeat both after any change to routing or bucket floors.
+- record, beside the CI-pinned proof, a separately labelled local proof: the
+  local OMP build and version, the reviewer overlay, a plain read of a file
+  over 100 lines with no `details.summary` and no `elided; re-read needed
+  ranges` footer, and a single-file `grep`. A local macOS OMP 18.12.6 run does
+  not prove the pinned Linux build or the secret `OMP_AGENT_CONFIG`; only an
+  observed CI run does.
 - be self-reviewed across every module at the harness boundary listed above
   and its tests, not a chosen subset.
 

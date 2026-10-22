@@ -88,6 +88,9 @@ def _attempt(data: Mapping[str, Any], plan: Mapping[str, Any], loaded: LoadedAtt
             return Attempt(slot, reviewer, selection.ABSENT, absence.INVALID, str(exc))
         if verdict.status != COMPLETE:
             return Attempt(slot, reviewer, selection.ABSENT, absence.INCOMPLETE, verdict.incomplete_reason)
+        problem = protocol.contradiction(verdict, plan)
+        if problem is not None:
+            return Attempt(slot, reviewer, selection.ABSENT, absence.INVALID, problem)
         loaded.verdicts[slot] = verdict
         shipped = protocol.judge_planned(verdict, plan).decision == SHIP
         return Attempt(slot, reviewer, selection.PASS if shipped else selection.FAIL)

@@ -28,9 +28,9 @@ of the existing broker. The gateway limits the client to 11 named models and,
 optionally, to pinned accounts, and the token is reachable only over the
 tailnet.
 
-- `commands.omp_env()` forwards `OMP_BASE_ENV` and `OMP_GATEWAY_TOKEN`
-  only. `absence.CREDENTIAL_ENV` redacts `OMP_GATEWAY_TOKEN` and
-  `TYPESAFE_API_KEY`.
+- `commands.omp_env()` forwards `OMP_BASE_ENV` and `credentials.GATEWAY_ENV`
+  (`OMP_GATEWAY_TOKEN`) only. `credentials.NAMES` still redacts the gateway
+  token, the broker and provider variables and the legacy extras.
 - Provider keys, the broker URL and token, and the `OMP_AGENT_CONFIG` secret
   leave the attempt jobs.
 - The model roles and fallback chains are committed in

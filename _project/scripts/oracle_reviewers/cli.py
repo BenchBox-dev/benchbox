@@ -160,7 +160,10 @@ def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dic
         replies = [
             {"author": reply.get("author"), "body": reply.get("body") or ""}
             for reply in thread.get("replies", [])
-            if isinstance(reply, dict) and reply.get("author_type") != "Bot" and _is_dispute(reply.get("body") or "")
+            if isinstance(reply, dict)
+            and reply.get("author_type") != "Bot"
+            and reply.get("association") in github.TRUSTED_ASSOCIATIONS
+            and _is_dispute(reply.get("body") or "")
         ]
         if not replies:
             continue

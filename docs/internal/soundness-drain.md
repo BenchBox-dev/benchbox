@@ -33,7 +33,9 @@ stand-in review is complete for the current head, run
 run is blocking the PR. The target verifies each run belongs to the current
 PR head and workflow, waits for each rerun serially, then closes and reopens
 the PR to fire a fresh `pull_request` event. The `reopened` action reruns CI
-and any other workflows subscribed to that action.
+and any other workflows subscribed to that action. A PR with auto-merge armed
+is left open, because closing a PR turns auto-merge off; the target reports
+that it skipped the close and reopen.
 
 The `pull_request_review` submitted and dismissed triggers stay enabled so the
 required Actions check `oracle-review` is reevaluated after the Oracle App
