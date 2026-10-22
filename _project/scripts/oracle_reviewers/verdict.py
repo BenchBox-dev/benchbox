@@ -117,6 +117,7 @@ _COMMENT_OPEN = re.compile(r"<\s*!\s*-\s*-")
 _COMMENT_CLOSE = re.compile(r"-\s*-\s*>")
 REDACTED = "[redacted]"
 LINK_REMOVED = "[link removed]"
+_SANITIZE_PASSES = 32
 
 
 class VerdictError(ValueError):
@@ -210,14 +211,22 @@ def _key_labels(keys: Iterable[Any]) -> str:
     return f"{labels}, {unsafe} unsafe" if unsafe else labels
 
 
+def _settled(text: str) -> str:
+    for _ in range(_SANITIZE_PASSES):
+        cleaned = sanitize(text, 2 * len(text) + 64)
+        if cleaned == text:
+            return text
+        text = cleaned
+    raise VerdictError("the response text does not settle under sanitization")
+
+
 def _reject_placeholders(data: Any) -> None:
     pending = [data]
     placeholders = frozenset(RESPONSE_PLACEHOLDERS.values())
     while pending:
         item = pending.pop()
         if isinstance(item, str):
-            text = sanitize(item, 2 * len(item) + 64)
-            _require(text not in placeholders, "the response template contains an unfilled placeholder")
+            _require(_settled(item) not in placeholders, "the response template contains an unfilled placeholder")
         elif isinstance(item, dict):
             pending.extend(item.keys())
             pending.extend(item.values())

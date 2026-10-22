@@ -86,10 +86,21 @@ def test_misfiled_finding_under_priors_cannot_ship() -> None:
         validate(normalized)
 
 
-def test_unknown_prior_ids_are_contradictions() -> None:
-    verdict = validate(_payload(defects=[], prior_defects=[{"id": "D99", "status": "fixed", "evidence": "x"}]))
-    plan = {"max_defects": 10, "protocol": {"prior": [{"id": "D2"}]}}
-    assert protocol.contradiction(verdict, plan) == "prior defect IDs not in plan: D99"
+def test_unknown_prior_ids_invalidate_a_verdict_that_would_ship() -> None:
+    priors = [
+        {"id": "D2", "status": "fixed", "evidence": "fixed"},
+        {"id": "D99", "status": "not_fixed", "evidence": "A new defect filed as a prior."},
+    ]
+    verdict = validate(_payload(decision="SHIP", defects=[], prior_defects=priors))
+    assert protocol.contradiction(verdict, {"max_defects": 10, "protocol": {"prior": [{"id": "D2"}]}}) is not None
+
+
+@pytest.mark.parametrize("decision", ["SHIP_WITH_FIXES", "DO_NOT_SHIP"])
+def test_unknown_prior_ids_do_not_discard_a_blocking_verdict(decision: str) -> None:
+    verdict = validate(_payload(decision=decision, prior_defects=[{"id": "D99", "status": "fixed", "evidence": "x"}]))
+    plan = {"max_defects": 10, "protocol": {"prior": []}}
+    assert protocol.contradiction(verdict, plan) is None
+    assert protocol.judge_planned(verdict, plan).decision == decision
 
 
 @pytest.mark.parametrize("embedded", [None, "D2", "#D2"])
@@ -233,7 +244,16 @@ def test_dictionary_id_collision_past_the_display_limit_is_not_hidden() -> None:
         normalize_reviewer(_payload(defects=[], prior_defects=priors))
 
 
-@pytest.mark.parametrize("text", ["<summ\u0001ary>", "<[summary](https://example.com)>"])
+@pytest.mark.parametrize(
+    "text", ["<summ\u0001ary>", "<[summary](https://example.com)>", "[[<summary>](a)](b)", "[[[<summary>](a)](b)](c)"]
+)
 def test_transformed_placeholders_cannot_disagree_between_live_and_replay(text: str) -> None:
     with pytest.raises(VerdictError):
         normalize_reviewer(_payload(summary=text))
+
+
+def test_nested_links_accepted_live_are_accepted_on_replay() -> None:
+    normalized, _ = normalize_reviewer(_payload(summary="[[kept](a)](b)"))
+    verdict = validate(normalized)
+    stored = json.loads(json.dumps(verdict.to_json()))
+    assert validate(stored, trusted=True).decision == verdict.decision
