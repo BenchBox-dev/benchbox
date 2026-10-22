@@ -15787,8 +15787,8 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "blocked",
-      "title": "Constrain oracle read tools before exposing runner credentials to untrusted reviews"
+      "status": "open",
+      "title": "Restrict oracle file tools through a trusted fail-closed workspace policy"
     },
     "oracle-response-reliability-observation-20261021": {
       "claim": null,

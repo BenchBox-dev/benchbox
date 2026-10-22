@@ -1,12 +1,13 @@
 {
   "acceptance": [
-    "A supported boundary design is reviewed and an owner selects the OMP capability or runner containment route.",
-    "Pinned Linux OMP build with CI role configuration denies real outside-root, ../, symlink and /proc/HOME fake-sentinel reads before tool execution; safe in-checkout read/grep/glob still work.",
-    "Untrusted read/grep/glob URI requests cannot exfiltrate fake sentinels; provider/broker access still works without exposing credentials to file tools.",
-    "Boundary tests are independent of output redaction; docs state actual guarantees and remaining limits."
+    "Advisor reviews the supplement and required corrections are implemented before publication.",
+    "Deterministic Node-backed behavioral tests exercise actual files/symlinks and allow in-root source/range/raw/archive/grep while denying outside, traversal, escape symlink, missing fallback, URL/query and unsafe directory/glob requests.",
+    "Real OMP trusted-extension smoke blocks fake-sentinel/loopback/internal-URI requests before execution and returns no sentinel in results or artifacts; legitimate file-list review still produces an evidence-passing complete verdict.",
+    "Pinned Linux build and CI role config exercise hook coverage/fail-closed load behavior or an exact unavailable prerequisite is reported without fallback.",
+    "All callers/docs/tests updated, comment policy/preflight/review passed, PR merged; guarantees limited to the three enabled tools, never claimed as OS containment."
   ],
-  "context": "Owner of next decision: repository owner with OMP maintainer or runner-security operator. Evidence: agent://OracleEvidenceImpl and agent://OracleEvidenceReview; smoke workspace /tmp/oracle-evidence-smoke. Existing gap remains separate from oracle-response-evidence-secrets-20261021, which fixes evidence credit and known credential echoes without claiming containment. Continue all reachable response fixes; do not mark this prerequisite complete based on redaction or macOS-only checks.",
-  "description": "Confirmed existing security boundary gap, not introduced by response remediation: real OMP18.12.6 fake-sentinel probes read an outside-checkout file through an absolute path, ../ traversal and a committed symlink. No actual credential/config files were probed. build_omp forwards HOME/provider/broker environment. On Linux, readable /proc environments and HOME config are risks requiring pinned-build probes; public URL reads are an inferred egress path from documented tools. Exact-value redaction is output hygiene, not containment. Native documented OMP settings have no read-roots allowlist; --add-dir only adds roots, always-ask-cached has no documented noninteractive tree grant and does not gate public URL reads. Do not seed undocumented approval-cache.db or claim read-only tools form a sandbox. Owner/OMP-maintainer prerequisite: choose supported read-roots plus URI gating in OMP, or an OS-contained reviewer filesystem/environment/network boundary in BenchBox. No unnamed repository writes, unsupported harness fork, settings/secrets mutation or network blanket exception is authorized here.",
+  "context": "The initial external-only blocker was superseded by verified supported hook APIs in omp://extension-loading.md:133-145,330-343; omp://hooks.md:147-164; omp://cli-reference.md:153-158. Supplemental plan is under independent Advisor review before implementation. Keep ship-no-ship/local-executor excluded. Separate isolated BenchBox worktree/PR; parent integrates after response slices. No unnamed repository/settings/secrets writes required.",
+  "description": "A real fake-sentinel probe confirmed existing OMP read access outside the checkout through absolute, ../ and committed-symlink paths. Redaction is not containment. Native OMP read-roots settings are absent, but further investigation verified a supported BenchBox-only alternative: --trusted-extension exact module allowlist plus a tool_call policy hook before scheduling/approval, with fail-closed exceptions/timeouts and input canonicalization. Implement the adversarially reviewed supplemental plan local://oracle-read-boundary-supplement.md using one trusted Node-standard-library ESM module, no OMP fork/new service/OS dependency. Root comes only from trusted invocation environment. Read/grep/glob reject external/internal URLs, queries, outside realpaths, missing suffix-fallback paths and unsafe archive/glob/symlink scopes; safe in-root source reads retain supported selectors. Preserve other OMP isolation flags. No actual credential/config files are probed. If pinned support genuinely fails, stop fail-closed and record precise prerequisite, never an unguarded fallback.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
@@ -22,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "1f484913ad274bb0a2f9bf45c42c0cbc",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T00:13:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c3c3eaf7c11f4d29b7076a70e1feb463",
       "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
     }
   ]
