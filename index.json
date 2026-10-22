@@ -13492,17 +13492,12 @@
       "title": "Stop the explorer_pipeline package from importing all of benchbox on import"
     },
     "longtest-13-lazy-platform-registration": {
-      "claim": {
-        "expires_at": "2026-10-23T11:02:45Z",
-        "generation": "72b7f0c7d99c41c6a34e314134f33ccb",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
-      },
+      "claim": null,
       "needs": [
         "longtest-05-cli-shared-tpch-data"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Register platform adapters lazily on the CLI run path"
     },
     "longtest-14-dsqgen-template-staging": {
