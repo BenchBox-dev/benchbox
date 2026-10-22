@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 from ..core.exceptions import ConfigurationError
 from ..utils.cloud_storage import get_cloud_path_info, snowflake_stage_mode_error
 from ..utils.dependencies import check_platform_dependencies, get_dependency_error_message
+from ..utils.sql_identifier import is_valid_sql_identifier
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.config_utils import make_registered_platform_config_builder
 from .base.data_loading import (
@@ -520,13 +521,13 @@ class SnowflakeAdapter(PlatformAdapter):
                 return True
 
             try:
-                cursor.execute(f'USE DATABASE "{database}"')
+                cursor.execute(f"USE DATABASE {self._database_object_name(database, 'database')}")
                 schema_escaped = schema.replace("'", "''")
                 cursor.execute(f"SHOW SCHEMAS LIKE '{schema_escaped}'")
                 schemas = cursor.fetchall()
 
                 if schemas:
-                    cursor.execute(f'USE SCHEMA "{schema}"')
+                    cursor.execute(f"USE SCHEMA {self._database_object_name(schema, 'schema')}")
                     cursor.execute("SHOW TABLES")
                     tables = cursor.fetchall()
 
@@ -544,13 +545,48 @@ class SnowflakeAdapter(PlatformAdapter):
             if "connection" in locals() and connection:
                 connection.close()
 
+    def _database_object_name(self, value: str, kind: str) -> str:
+        if not is_valid_sql_identifier(str(value), max_length=255):
+            raise ValueError(f"Invalid Snowflake {kind} identifier: {value!r}")
+        return str(value)
+
+    def _tables_owned_by_this_benchmark(self) -> list[str]:
+        benchmark = getattr(self, "benchmark_instance", None)
+        schema = benchmark.get_schema() if benchmark is not None and hasattr(benchmark, "get_schema") else None
+        if not isinstance(schema, dict) or not schema:
+            raise RuntimeError(
+                "cannot tell which tables belong to this benchmark, so none are removed from a database "
+                "that other benchmarks may share"
+            )
+        return sorted({self._database_object_name(str(name), "table").upper() for name in schema})
+
+    def reset_database_in_place(self, **connection_config) -> bool:
+        database = self._database_object_name(connection_config.get("database", self.database), "database")
+        schema = self._database_object_name(connection_config.get("schema", self.schema), "schema")
+        tables = self._tables_owned_by_this_benchmark()
+        connection = None
+        try:
+            connection = self._create_admin_connection(**connection_config)
+            cursor = connection.cursor()
+            for table in tables:
+                cursor.execute(f"DROP TABLE IF EXISTS {database}.{schema}.{table}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to reset Snowflake database {database}: {e}") from e
+        finally:
+            if connection is not None:
+                connection.close()
+        self.log_verbose(
+            f"Dropped {len(tables)} table(s) of this benchmark from {database}.{schema}; kept the database"
+        )
+        return True
+
     def drop_database(self, **connection_config) -> None:
-        database = connection_config.get("database", self.database)
+        database = self._database_object_name(connection_config.get("database", self.database), "database")
         try:
             connection = self._create_admin_connection(**connection_config)
             cursor = connection.cursor()
 
-            cursor.execute(f'DROP DATABASE IF EXISTS "{database}"')
+            cursor.execute(f"DROP DATABASE IF EXISTS {database}")
 
         except Exception as e:
             raise RuntimeError(f"Failed to drop Snowflake database {database}: {e}") from e

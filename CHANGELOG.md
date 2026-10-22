@@ -260,6 +260,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`93` rather than `93.6`; the `EQ6` performance rating is capped at 100, so its
   output is unchanged). The recorded `EQ6` and `EQ8` results in published TPC-DI
   bundles hold timings and row counts only, so no recorded field changes.
+- A validation mismatch or `--force-recreate` on Snowflake no longer targets the
+  whole database. Benchmarks that declare a data-source benchmark (read, write and
+  transaction primitives, TPC-DS OBT) run inside that benchmark's database, so
+  dropping it would delete every other benchmark's tables there. Snowflake now
+  resets in place: it drops only the tables of the requesting benchmark's schema,
+  keeps the database, and fails without removing anything when it cannot tell which
+  tables those are. `drop_database` and the `USE DATABASE`/`USE SCHEMA` fallbacks
+  now render the identifier unquoted, as `CREATE DATABASE` does; the quoted
+  lowercase form never matched the uppercase database, so the drop was a silent
+  no-op that the log reported as "Dropped database".
+- On every platform that drops the database on a validation mismatch, BenchBox now
+  refuses when validation found tables that do not belong to the requesting
+  benchmark ("Extra tables found"), and names them, instead of deleting them.
+  `--force-recreate` still drops the whole database.
 
 ### Fixed
 

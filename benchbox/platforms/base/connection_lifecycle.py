@@ -219,10 +219,17 @@ class ConnectionLifecycleMixin:
 
             self.log_verbose("Recreating database...")
             self.database_was_reused = False
-            self._remove_database(is_file_based, db_path, **connection_config)
+            self._remove_database(
+                is_file_based,
+                db_path,
+                foreign_tables=tuple(getattr(validation_result, "foreign_tables", ()) or ()),
+                **connection_config,
+            )
             self.log_operation_complete("Database validation", details="Database recreated due to incompatibility")
 
-    def _remove_database(self, is_file_based: bool, db_path: str, **connection_config) -> None:
+    def _remove_database(
+        self, is_file_based: bool, db_path: str, *, foreign_tables: tuple[str, ...] = (), **connection_config
+    ) -> None:
         try:
             if is_file_based:
                 db_path_obj = Path(db_path)
@@ -237,7 +244,16 @@ class ConnectionLifecycleMixin:
                 else:
                     self.logger.warning("Database path exists but is neither file nor directory")
             elif self.reset_database_in_place(**connection_config):
-                self.logger.warning("Emptied existing tables in place; schema kept for reload")
+                self.logger.warning("Reset the existing tables in place; the database was kept for reload")
+            elif foreign_tables:
+                shown = ", ".join(foreign_tables[:10]) + (
+                    f" and {len(foreign_tables) - 10} more" if len(foreign_tables) > 10 else ""
+                )
+                raise RuntimeError(
+                    f"refusing to drop the database: it holds tables that do not belong to this benchmark ({shown}), "
+                    "and dropping it would delete them. Remove them yourself, or re-run with --force-recreate "
+                    "to drop the whole database."
+                )
             else:
                 self.drop_database(**connection_config)
                 self.logger.warning("Dropped database")

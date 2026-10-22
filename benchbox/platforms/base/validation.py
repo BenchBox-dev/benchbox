@@ -15,6 +15,7 @@ class ValidationResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     database_empty: bool = False
+    foreign_tables: set[str] = field(default_factory=set)
 
     def add_error(self, error: str) -> None:
         self.errors.append(error)
@@ -101,6 +102,7 @@ class SchemaValidator(BaseValidator):
             if extra_tables:
                 extra_tables = self._filter_system_tables(extra_tables)
                 if extra_tables:
+                    result.foreign_tables = set(extra_tables)
                     result.add_warning(f"Extra tables found: {', '.join(sorted(extra_tables))}")
 
         except ValueError as e:
@@ -319,6 +321,7 @@ class DatabaseValidator:
         tables_valid = None
         row_counts_valid = None
         database_empty = False
+        foreign_tables: set[str] = set()
 
         try:
             with self.connection_validator.create_temporary_connection() as connection:
@@ -330,6 +333,7 @@ class DatabaseValidator:
                 schema_result = self.schema_validator.validate(connection)
                 tables_valid = schema_result.is_valid
                 database_empty = schema_result.database_empty
+                foreign_tables = schema_result.foreign_tables
                 issues.extend(schema_result.errors)
                 warnings.extend(schema_result.warnings)
 
@@ -364,6 +368,7 @@ class DatabaseValidator:
             tables_valid=tables_valid,
             row_counts_valid=row_counts_valid,
             database_empty=database_empty,
+            foreign_tables=tuple(sorted(foreign_tables)),
         )
 
     def _determine_validity(
