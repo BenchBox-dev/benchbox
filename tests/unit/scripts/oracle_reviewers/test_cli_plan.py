@@ -764,7 +764,7 @@ def _decided_head(open_defects: list[dict[str, Any]] | None = None) -> dict[str,
     return _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", head_sha=HEAD, open_defects=open_defects or [DEFECT], next_id=2)
 
 
-def _disputed_thread() -> dict[str, Any]:
+def _disputed_thread(association: str | None = "OWNER") -> dict[str, Any]:
     return {
         "author": "benchbox-oracle[bot]",
         "author_type": "Bot",
@@ -775,6 +775,7 @@ def _disputed_thread() -> dict[str, Any]:
             {
                 "author": "joe",
                 "author_type": "User",
+                "association": association,
                 "body": "Dispute: pkg/kept.py:12 keeps the row, so the defect is wrong.",
             }
         ],
@@ -788,7 +789,7 @@ def _acked_thread() -> dict[str, Any]:
         "resolved": False,
         "path": CAPTURE,
         "body": "**High**: Drops a row",
-        "replies": [{"author": "joe", "author_type": "User", "body": "done"}],
+        "replies": [{"author": "joe", "author_type": "User", "association": "OWNER", "body": "done"}],
     }
 
 
@@ -840,6 +841,17 @@ def test_push_with_only_an_acknowledgement_still_carries(monkeypatch: pytest.Mon
     assert values["decision"] == "carry" and values["post"] == "true"
     assert plan["manual"] is False
     assert plan["protocol"]["kind"] == "carry" and plan["protocol"]["forced"] is False
+    assert plan.get("disputes", []) == []
+
+
+@pytest.mark.parametrize("association", ["NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR", None])
+def test_a_dispute_from_outside_the_repository_is_ignored(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, association: str | None
+) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2)
+    _, values, plan = _plan(monkeypatch, tmp_path, _thread_fake(record, [_disputed_thread(association)]))
+    assert values["decision"] == "carry"
+    assert plan["protocol"]["forced"] is False
     assert plan.get("disputes", []) == []
 
 

@@ -28,6 +28,28 @@ contextPromotion:
 prewalk:
   enabled: false
   auto: "off"
+fetch:
+  enabled: false
+disabledProviders:
+  - native
+  - omp-plugins
+  - claude
+  - agent-plugins
+  - codex
+  - agents
+  - claude-plugins
+  - gemini
+  - opencode
+  - cursor
+  - windsurf
+  - cline
+  - github
+  - vscode
+  - agents-md
+  - claude-md
+  - custom-context
+  - mcp-json
+  - ssh-json
 """
 
 
