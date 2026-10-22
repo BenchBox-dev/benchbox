@@ -3,7 +3,7 @@
     "Each of the five decisions and the reviewer interpretation are recorded in the item context with date",
     "The item is finished before any dependent item is claimed"
   ],
-  "context": "Decision gate: none (decisions already made by the owner in conversation).\n\nSource: soundness-gap plan (read-only planner review, 2026-10-22) of open issues 2806, 2807, 2808, 3125, 3126 in BenchBox-dev/benchbox plus owner decisions of 2026-10-22 (record: soundness-gaps-decisions-20261022). Line numbers, commit SHAs and findings are leads from that plan: re-verify them against current develop before acting. Not yet verified by anyone else.\n\nGUARDRAIL: this item records decisions only: no code, issue or tracker-item changes beyond this record. Finish it immediately; all other items in the batch need it.",
+  "context": "Decision gate: none (decisions already made by the owner in conversation).\n\nSource: soundness-gap plan (read-only planner review, 2026-10-22) of open issues 2806, 2807, 2808, 3125, 3126 in BenchBox-dev/benchbox plus owner decisions of 2026-10-22 (record: soundness-gaps-decisions-20261022). Line numbers, commit SHAs and findings are leads from that plan: re-verify them against current develop before acting. Not yet verified by anyone else.\n\nGUARDRAIL: this item records decisions only: no code, issue or tracker-item changes beyond this record. Finish it immediately; all other items in the batch need it.\n\n### Completion Evidence (2026-10-22)\nDecisions recorded as stated in the description. Owner replies verbatim: 'Decision 1: B; Decision 2: oracle review; Decision 3: no; Decision 4: yes; Decision 5: yes'. Decision 2 was ambiguous; interpretation stated to the owner before proceeding: the oracle reviews every PR this batch opens; the digest accepts attester names codex, muse or agy only, so the five issue attestations use codex for 2807 and 2808 and agy for 2806, 3125, 3126.",
   "description": "Decision record, not implementation. Owner answers of 2026-10-22: (1) Attestation authority = option B: agents may post the External review attestation after a real external reviewer returns zero findings, one-time exception limited to issues 2806, 2807, 2808, 3125, 3126 (see ATTESTATION RULE in dependent items). (2) Reviewer = 'oracle review'. Interpretation (flagged to the owner, not contradicted): the oracle reviews every PR this batch opens (verdict required, no stand-in); the digest accepts attester names codex, muse or agy only, so the five issue attestations use the planner's split: codex for 2807 and 2808, agy for 2806, 3125 and 3126. (3) Do not harden the attestation check (no SHA/link requirement, no attester credential design): record only. (4) Yes: local hook accepts same-commit fixture entries (CI still requires oracle cover) and add a dead-exception report. (5) Yes: dead-exception cleanup PR, quote() hardening PR for the oracle branch-name query, inventory of deferred oracle findings into tracker items. Planner findings not acted on, by decision: the digest's standin_comment ignores CONNECTOR_CUTOFF (reports a gap that is not there, never hides one: left as is).",
   "sessions": [
     {
@@ -29,6 +29,14 @@
       "generation": "c5d7e5f6c376433199326c5a914ce78e",
       "op": "take",
       "op_id": "4fd4ef36b6f84940b237e71e0775b77a",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T19:55:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "247555a1a2bd4f97987b585ae0ccd320",
       "session_id": "db427a9694db441d88b0b3b12151b3f1"
     }
   ]
