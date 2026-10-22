@@ -95,7 +95,7 @@ def _header(plan: Mapping[str, Any], state: str) -> list[str]:
     lines = [f"### {plan['status_context']}: {state} for `{plan['head_sha']}`", ""]
     if plan.get("mode") == "shadow":
         lines += [
-            "Shadow mode: this result is advisory and does not replace the required `oracle-gate` and `oracle-review` checks.",
+            "Shadow mode: this result is advisory and does not replace the required oracle checks.",
             "",
         ]
     lines += ["This result supersedes those for earlier heads; their open review threads still apply.", ""]
