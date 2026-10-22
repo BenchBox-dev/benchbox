@@ -1,9 +1,10 @@
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from benchbox.core.tpcds.c_tools import DSQGenBinary
+from benchbox.core.tpcds.c_tools import DSQGenBinary, TPCDSError
 
 pytestmark = [
     pytest.mark.unit,
@@ -87,3 +88,77 @@ def test_validate_query_id_accepts_variant_in_query_variants(tmp_path):
     dsq.templates_dir = templates_dir
 
     assert dsq.validate_query_id("14a") is True
+
+
+_CITIES_OVERRUN_STDERR = (
+    "Runtime ERROR: Distribution over-run/under-run\n"
+    "Check distribution definitions and usage for cities.\n"
+    "index = -1, length=1000."
+)
+
+
+def _single_query_binary(tmp_path):
+    templates_dir = tmp_path / "query_templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "templates.lst").write_text("\n")
+    (templates_dir / "netezza.tpl").write_text("-- dialect stub\n")
+    (templates_dir / "query46.tpl").write_text("-- base query 46\nSELECT 1;\n")
+    dsq = DSQGenBinary()
+    dsq.templates_dir = templates_dir
+    return dsq
+
+
+def _completed(returncode: int, stdout: str = "", stderr: str = ""):
+    return subprocess.CompletedProcess(args=["dsqgen"], returncode=returncode, stdout=stdout, stderr=stderr)
+
+
+def test_windows_cities_overrun_is_retried_for_a_single_query(tmp_path, monkeypatch):
+    dsq = _single_query_binary(tmp_path)
+    results = [_completed(1, stderr=_CITIES_OVERRUN_STDERR), _completed(0, stdout="SELECT 46;\n")]
+
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: results.pop(0))
+
+    sql = dsq.generate(46, seed=1, scale_factor=1.0, dialect="netezza")
+
+    assert "select 46" in sql.lower()
+    assert not results
+
+
+def test_non_windows_cities_overrun_is_not_retried_for_a_single_query(tmp_path, monkeypatch):
+    dsq = _single_query_binary(tmp_path)
+    calls = 0
+
+    def overrun(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return _completed(1, stderr=_CITIES_OVERRUN_STDERR)
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(subprocess, "run", overrun)
+
+    with pytest.raises(TPCDSError, match="dsqgen failed for query 46"):
+        dsq.generate(46, seed=1, scale_factor=1.0, dialect="netezza")
+
+    assert calls == 1
+
+
+def test_persistent_windows_cities_overrun_for_a_single_query_stops_at_the_cap(tmp_path, monkeypatch):
+    import benchbox.core.tpcds.c_tools as c_tools
+
+    dsq = _single_query_binary(tmp_path)
+    calls = 0
+
+    def overrun(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return _completed(1, stderr=_CITIES_OVERRUN_STDERR)
+
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(c_tools, "_WINDOWS_DSQGEN_MAX_ATTEMPTS", 3)
+    monkeypatch.setattr(subprocess, "run", overrun)
+
+    with pytest.raises(TPCDSError, match="Distribution over-run/under-run"):
+        dsq.generate(46, seed=1, scale_factor=1.0, dialect="netezza")
+
+    assert calls == 3

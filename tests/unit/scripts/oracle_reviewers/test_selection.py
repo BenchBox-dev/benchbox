@@ -19,6 +19,8 @@ from _project.scripts.oracle_reviewers.selection import (
     pool_resets,
 )
 
+RETRYABLE = ("invalid", "incomplete", "empty", "error")
+
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 NOW = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
@@ -71,7 +73,7 @@ def test_single_reviewer_chain_reviews_first() -> None:
 
 def test_multi_reviewer_chain_advances_past_attempted() -> None:
     chain = [_reviewer("r1"), _reviewer("r2")]
-    attempts = [Attempt(1, "r1", ABSENT, "error")]
+    attempts = [Attempt(1, "r1", ABSENT, "timeout")]
     step = next_step(_input(chain), attempts)
     assert step.kind == REVIEW
     assert step.reviewer is not None and step.reviewer.name == "r2"
@@ -105,7 +107,7 @@ def test_earliest_terminal_attempt_wins() -> None:
 
 def test_attempted_reviewers_show_absent_reasons() -> None:
     chain = [_reviewer("r1"), _reviewer("r2")]
-    attempts = [Attempt(1, "r1", ABSENT, "error", "boom")]
+    attempts = [Attempt(1, "r1", ABSENT, "auth", "boom")]
     step = next_step(_input(chain), attempts)
     assert step.kind == REVIEW
     assert step.reviewer is not None and step.reviewer.name == "r2"
@@ -113,10 +115,10 @@ def test_attempted_reviewers_show_absent_reasons() -> None:
 
 def test_attempted_reason_recorded_when_chain_pending() -> None:
     chain = [_reviewer("r1", enabled=False, disabled_reason="off"), _reviewer("r2")]
-    attempts = [Attempt(1, "r2", ABSENT, "error", "boom")]
+    attempts = [Attempt(1, "r2", ABSENT, "auth", "boom")]
     step = next_step(_input(chain, max_attempts=1), attempts)
     assert step.kind == PENDING
-    assert "r2: absent (error: boom)" in step.reasons
+    assert "r2: absent (auth: boom)" in step.reasons
 
 
 def test_attempted_reason_without_detail() -> None:

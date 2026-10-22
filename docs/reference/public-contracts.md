@@ -139,7 +139,7 @@ Source-derived counts:
 |---|---|---|
 | `benchbox.core.benchmark_registry` | 23 benchmark metadata entries and 23 loader-resolved IDs; support status counts are stable=6, beta=11, experimental=5, repo_only=1, deprecated=0, document_only=0. | Benchmark count and support claims must derive from registry metadata or avoid exact counts. |
 | `benchbox.core.platform_registry.PlatformRegistry.get_all_platform_metadata()` | 52 platform metadata entries: 48 SQL-capable, 18 DataFrame-capable, 14 dual-mode. | README and platform docs must not carry unqualified hand-maintained platform counts. |
-| `benchbox.core.results.schema_policy` | Current result schema version: `2.3`; runtime/explorer accepted versions: `2.0`, `2.1`, `2.2`, `2.3`; public submission accepts numeric `2.x`. | Result schema version claims must update with the named consumer policy or defer to this policy module. |
+| `benchbox.core.results.schema_policy` | Current result schema version: `2.3`; runtime/explorer accepted versions: `2.0`, `2.1`, `2.2`, `2.3`, `2.4`; public submission accepts numeric `2.x`. | Result schema version claims must update with the named consumer policy or defer to this policy module. |
 
 Authoritative count statements should come from the relevant registry metadata.
 Editorial lists may remain in narrative docs, but they must not claim to be

@@ -1017,7 +1017,7 @@ Saves tuning metadata to the database for future validation.
 
 ###### Returns
 
-`bool`: `True` if the metadata was saved successfully, `False` otherwise.
+`bool`: `True` if the metadata was saved successfully, `False` otherwise. On a platform with no metadata store (Athena) it returns `False` without raising, and the run's applied-tuning ledger records `metadata_store: unsupported`.
 
 ##### `benchbox.platforms.base.tuning_config.TuningConfigMixin.platform_name`
 

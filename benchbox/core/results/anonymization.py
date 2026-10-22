@@ -590,6 +590,8 @@ class AnonymizationManager:
 
         if parent in _MOUNT_COLLECTION_KEYS and key in _MOUNT_PATH_KEYS:
             return "path"
+        if key == "id" and key_path[-3:-1] == ("platform_timing", "requests"):
+            return "statement"
         if key in _IDENTIFIER_KEYS:
             return _IDENTIFIER_KEYS[key]
         if key.endswith("bucket"):

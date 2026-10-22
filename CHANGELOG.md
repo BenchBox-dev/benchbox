@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Result readers accept schema 2.4: the loader, normalizer, explorer input
+  and bundle validator read the new optional per-query `request_count`,
+  `result_bytes` and `platform_timing`, and the run-level `timing_method`,
+  `platform_timing` and `net_estimate_status`, plus
+  `environment.client_link.probed_at`. Producers still write 2.3; the fields
+  support comparing local and cloud runs with the client round trip removed.
+  A run marked `net_estimate_status: eligible` must use `timing_method` 2 and
+  must not be embedded.
+- `make sql-execution-gate` executes every shipped TPC-H and TPC-DS query on SQLite, DuckDB,
+  DataFusion and PostgreSQL (when `BENCHBOX_POSTGRES_DSN` is set) at SF0.01 and compares the
+  rows of the candidate tree with the baseline commit, DuckDB and the TPC reference row counts.
+  Differences must be listed with a justification in
+  `scripts/sql_execution_gate/expected_differences.json`. The `sql-execution-evidence` CI job
+  runs it when SQL translation changes, and the pull request template asks for its output on
+  every wheel adoption. It reports DataFusion and PostgreSQL integer-division truncation in
+  TPC-DS Q21, Q78 and Q83 (tracked), and the bundled wheel's SQLite gaps (no ROLLUP, GROUPING
+  or STDDEV_SAMP, parenthesised EXCEPT operands in Q87).
 - `benchbox.utils.dialect_utils.translate_ddl(ddl, target_dialect, source_dialect, identify, **options)`
   translates DDL with the bundled SQLGlot runtime's `DdlOptions` and engine-specific
   table layouts. It is the only module allowed to import the runtime's DDL module; a
@@ -29,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A golden-corpus test runs the BenchBox fix-ups and the bundled runtime's output
   over the inputs of every area whose fix-ups move into the runtime and asserts
   that the differences equal a recorded set.
+- Tests pin the `apply_rewrite` behavior of the ClickHouse, StarRocks and TPC-DS runner
+  engine rewrites (`lowercase_identifiers`, `decimal_zero_literals`, `add_query_settings`,
+  `correlated_exists_to_in`, `add_derived_table_aliases`, `qualify_order_by_columns`), and the
+  golden-corpus engines area records two more safe-division inputs from the ClickHouse
+  transformer tests.
 
 ### Changed
 
@@ -183,6 +205,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   GitHub kept the pull request blocked until a push or a close and reopen started a
   full run.
 
+- Tuned runs no longer abort, or lose the tuned-run marker, when the tuning
+  metadata store does not work on the platform:
+  - Athena has no metadata store. A tuned run proceeds without a marker and records
+    `metadata_store: unsupported` in its applied-tuning ledger. Because BenchBox
+    cannot tell later whether such a database was tuned, it now refuses to reuse an
+    existing Athena database and recreates it.
+  - Synapse and Fabric Warehouse get valid T-SQL: `IF OBJECT_ID(...) IS NULL CREATE
+    TABLE` with `DATETIME2` (the old `TIMESTAMP` column is a `ROWVERSION`), `TOP 1`
+    instead of `LIMIT 1`, and `DELETE` without `WHERE TRUE`. DDL runs through the
+    cursor, because the adapters' query path fetches a result set that DDL does not
+    return. Fabric Warehouse gets no lookup index, which it does not support.
+  - BigQuery creates the store with `CREATE TABLE IF NOT EXISTS`; the adapter used
+    to rewrite the plain `CREATE TABLE` to `CREATE OR REPLACE`, so each new manager
+    emptied the table and its marker.
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
   `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
   clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`

@@ -450,6 +450,10 @@ uv-lock-revision-check:
 sqlglot-upstream-freshness-check:
 	uv run -- python scripts/check_sqlglot_upstream_freshness.py
 
+.PHONY: sql-execution-gate
+sql-execution-gate:
+	uv run -- python -m scripts.sql_execution_gate $(SQL_EXECUTION_GATE_ARGS)
+
 .PHONY: sqlglot-repro-retirement-check
 sqlglot-repro-retirement-check:
 	uv run -- python -m scripts.check_sqlglot_repro_retirement $(if $(BASE_REF),--base-ref "$(BASE_REF)",) --check

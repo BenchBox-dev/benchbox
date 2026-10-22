@@ -1,0 +1,386 @@
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from scripts.sql_execution_gate.engines import Dataset, QueryTimeout, available_engines
+from scripts.sql_execution_gate.rows import first_difference
+
+ROOT = Path(__file__).resolve().parents[2]
+EMIT = Path(__file__).with_name("emit.py")
+EXPECTED = Path(__file__).with_name("expected_differences.json")
+CHECKS = ("error", "row-count", "reference", "baseline")
+TPCDS_MULTI_PART = {"14": "14a", "23": "23a", "24": "24a", "39": "39a"}
+REFERENCE_ENGINE = "duckdb"
+
+
+@dataclass
+class Outcome:
+    rows: list[tuple] | None = None
+    error: str | None = None
+
+
+@dataclass
+class Finding:
+    benchmark: str
+    query: str
+    engine: str
+    check: str
+    detail: str
+
+    @property
+    def key(self) -> tuple[str, str, str, str]:
+        return (self.benchmark, self.query, self.engine, self.check)
+
+
+@dataclass
+class Report:
+    findings: list[Finding] = field(default_factory=list)
+    improvements: list[Finding] = field(default_factory=list)
+    unexplained: list[Finding] = field(default_factory=list)
+    explained: list[Finding] = field(default_factory=list)
+    stale: list[dict] = field(default_factory=list)
+    compared: dict[str, int] = field(default_factory=dict)
+
+    @property
+    def passed(self) -> bool:
+        return not self.unexplained and not self.stale
+
+
+def load_expected(path: Path = EXPECTED) -> list[dict]:
+    expanded = []
+    seen = set()
+    for entry in json.loads(path.read_text(encoding="utf-8"))["differences"]:
+        label = f"{entry.get('engine')}/{entry.get('benchmark')}/{entry.get('check')}"
+        if entry["check"] not in CHECKS:
+            raise ValueError(f"{label}: unknown check {entry['check']!r}")
+        for field_name in ("justification", "match"):
+            if not str(entry.get(field_name, "")).strip():
+                raise ValueError(f"{label}: every expected difference needs a non-empty {field_name}")
+        if not entry.get("queries"):
+            raise ValueError(f"{label}: list the queries the justification covers")
+        for query in entry["queries"]:
+            key = (entry["benchmark"], str(query), entry["engine"], entry["check"])
+            if key in seen:
+                raise ValueError(f"{key}: duplicate expected difference")
+            seen.add(key)
+            expanded.append({**{k: v for k, v in entry.items() if k != "queries"}, "query": str(query)})
+    return expanded
+
+
+def _git(*args: str) -> str:
+    return subprocess.run(["git", *args], cwd=ROOT, check=True, capture_output=True, text=True).stdout.strip()
+
+
+def emit_queries(ref: str | None, scale: float, benchmarks: str, scratch: Path, tag: str) -> dict:
+    checkout = None
+    root = ROOT
+    if ref:
+        checkout = scratch / f"checkout-{tag}"
+        _git("worktree", "add", "--detach", str(checkout), ref)
+        root = checkout
+    try:
+        helper = scratch / f"emit_{tag}.py"
+        shutil.copy(EMIT, helper)
+        out = scratch / f"queries_{tag}.json"
+        environment = {**os.environ, "PYTHONPATH": str(root)}
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')",
+                str(helper),
+                "--out",
+                str(out),
+                "--scale",
+                str(scale),
+                "--benchmarks",
+                benchmarks,
+            ],
+            cwd=root,
+            env=environment,
+            check=True,
+        )
+        payload = json.loads(out.read_text(encoding="utf-8"))
+        payload["ref"] = ref or "working tree"
+        return payload
+    finally:
+        if checkout is not None:
+            subprocess.run(["git", "worktree", "remove", "--force", str(checkout)], cwd=ROOT, check=False)
+
+
+def generate_datasets(scale: float, benchmarks: list[str], scratch: Path) -> dict[str, Dataset]:
+    datasets: dict[str, Dataset] = {}
+    if "tpch" in benchmarks:
+        from benchbox.core.tpch.benchmark import TPCHBenchmark
+        from benchbox.core.tpch.schema import TABLES, get_create_all_tables_sql
+
+        directory = scratch / "data-tpch"
+        TPCHBenchmark(scale_factor=scale, output_dir=directory).generate_data()
+        datasets["tpch"] = Dataset(
+            "tpch",
+            get_create_all_tables_sql(enable_primary_keys=False, enable_foreign_keys=False),
+            {table.name: directory / f"{table.name}.tbl" for table in TABLES},
+        )
+    if "tpcds" in benchmarks:
+        from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
+        from benchbox.core.tpcds.schema import TABLES, get_create_all_tables_sql
+
+        directory = scratch / "data-tpcds"
+        TPCDSBenchmark(scale_factor=scale, output_dir=directory).generate_data()
+        datasets["tpcds"] = Dataset(
+            "tpcds",
+            get_create_all_tables_sql(enable_primary_keys=False, enable_foreign_keys=False),
+            {table.name: directory / f"{table.name}.dat" for table in TABLES},
+        )
+    return datasets
+
+
+def expected_row_counts(scale: float) -> dict[str, dict[str, int]]:
+    from benchbox.core.expected_results.loader import load_tpch_subscale_row_counts
+    from benchbox.core.expected_results.tpcds_results import tpcds_subscale_expected_row_counts
+
+    counts: dict[str, dict[str, int]] = {}
+    try:
+        counts["tpch"] = dict(load_tpch_subscale_row_counts(scale).row_counts)
+    except FileNotFoundError:
+        pass
+    tpcds = tpcds_subscale_expected_row_counts(scale)
+    if tpcds is not None:
+        counts["tpcds"] = {
+            query: tpcds[TPCDS_MULTI_PART.get(query, query)]
+            for query in map(str, range(1, 100))
+            if TPCDS_MULTI_PART.get(query, query) in tpcds
+        }
+    return counts
+
+
+def _execute(engine, sql: str) -> Outcome:
+    if sql.startswith("<") and sql.endswith(">"):
+        return Outcome(error=f"translation failed {sql}")
+    try:
+        return Outcome(rows=engine.execute(sql))
+    except QueryTimeout as error:
+        return Outcome(error=f"timeout: {error}")
+    except Exception as error:
+        return Outcome(error=f"{type(error).__name__}: {str(error).splitlines()[0][:200] if str(error) else ''}")
+
+
+def run_engines(
+    engine_classes, datasets: dict[str, Dataset], sides: dict[str, dict], timeout: float, scratch: Path
+) -> tuple[dict, dict[str, str], dict[str, float]]:
+    results: dict[tuple[str, str, str, str], Outcome] = {}
+    versions: dict[str, str] = {}
+    seconds: dict[str, float] = {}
+    for engine_class in engine_classes:
+        started = time.monotonic()
+        for benchmark, dataset in datasets.items():
+            engine = engine_class(timeout)
+            parquet_dir = scratch / f"parquet-{benchmark}"
+            parquet_dir.mkdir(exist_ok=True)
+            if engine.name != REFERENCE_ENGINE and not any(parquet_dir.glob("*.parquet")):
+                _materialise_parquet(dataset, parquet_dir, timeout)
+            engine.open(dataset, parquet_dir)
+            versions[engine.name] = engine.version
+            try:
+                cache: dict[tuple[str, str], Outcome] = {}
+                for side, emitted in sides.items():
+                    for query, per_dialect in emitted["queries"].get(benchmark, {}).items():
+                        sql = per_dialect[engine.dialect]
+                        outcome = cache.get((query, sql))
+                        if outcome is None:
+                            outcome = cache[(query, sql)] = _execute(engine, sql)
+                        results[(engine.name, benchmark, query, side)] = outcome
+            finally:
+                engine.close()
+        seconds[engine_class.name] = time.monotonic() - started
+    return results, versions, seconds
+
+
+def _materialise_parquet(dataset: Dataset, parquet_dir: Path, timeout: float) -> None:
+    from scripts.sql_execution_gate.engines import DuckdbEngine
+
+    loader = DuckdbEngine(timeout)
+    loader.open(dataset, parquet_dir)
+    loader.close()
+
+
+def evaluate(
+    results: dict,
+    sides: dict[str, dict],
+    counts: dict[str, dict[str, int]],
+    expected: list[dict],
+    engines: list[str],
+) -> Report:
+    report = Report()
+    for benchmark, queries in sides["candidate"]["queries"].items():
+        for query in queries:
+            reference = results.get((REFERENCE_ENGINE, benchmark, query, "candidate"))
+            for engine in engines:
+                _evaluate_cell(report, results, benchmark, query, engine, reference, counts)
+    matched: set[int] = set()
+    for finding in report.findings:
+        index = next((i for i, entry in enumerate(expected) if _explains(entry, finding)), None)
+        if index is None:
+            report.unexplained.append(finding)
+        else:
+            matched.add(index)
+            report.explained.append(finding)
+    scope = sides["candidate"]["queries"]
+    report.stale = [
+        entry
+        for i, entry in enumerate(expected)
+        if i not in matched and entry["engine"] in engines and entry["benchmark"] in scope and not entry.get("optional")
+    ]
+    return report
+
+
+def _explains(entry: dict, finding: Finding) -> bool:
+    return (entry["benchmark"], entry["query"], entry["engine"], entry["check"]) == finding.key and entry[
+        "match"
+    ] in finding.detail
+
+
+def _evaluate_cell(report, results, benchmark, query, engine, reference, counts) -> None:
+    candidate = results.get((engine, benchmark, query, "candidate"))
+    baseline = results.get((engine, benchmark, query, "baseline"))
+    if candidate is None:
+        return
+    report.compared[engine] = report.compared.get(engine, 0) + 1
+
+    def add(check: str, detail: str, into=report.findings) -> None:
+        into.append(Finding(benchmark, query, engine, check, detail))
+
+    if candidate.error is not None:
+        add("error", candidate.error)
+        return
+    count = counts.get(benchmark, {}).get(query)
+    if count is not None and len(candidate.rows) != count:
+        add("row-count", f"{len(candidate.rows)} rows, TPC reference {count}")
+    reference_difference = None
+    if engine != REFERENCE_ENGINE and reference is not None and reference.rows is not None:
+        reference_difference = first_difference(candidate.rows, reference.rows)
+        if reference_difference:
+            add("reference", f"differs from DuckDB: {reference_difference}")
+    if baseline is None:
+        return
+    if baseline.error is not None:
+        add("baseline", f"candidate runs, baseline failed: {baseline.error}", report.improvements)
+        return
+    baseline_difference = first_difference(candidate.rows, baseline.rows, strict=True)
+    if not baseline_difference:
+        return
+    baseline_reference = (
+        first_difference(baseline.rows, reference.rows)
+        if engine != REFERENCE_ENGINE and reference is not None and reference.rows is not None
+        else "unverifiable"
+    )
+    if engine != REFERENCE_ENGINE and reference_difference is None and baseline_reference:
+        add("baseline", f"baseline was wrong: {baseline_reference}", report.improvements)
+    else:
+        add("baseline", f"differs from baseline: {baseline_difference}")
+
+
+def render(report: Report, versions: dict[str, str], seconds: dict[str, float], sides: dict[str, dict]) -> str:
+    lines = ["SQL execution evidence gate"]
+    for side, payload in sides.items():
+        pin = payload.get("runtime_pin", {})
+        lines.append(f"  {side}: {payload['ref']} sqlglot runtime {pin.get('version', 'unknown')}")
+    for engine, version in versions.items():
+        lines.append(f"  {engine} {version}: {report.compared.get(engine, 0)} cells in {seconds.get(engine, 0.0):.1f}s")
+    for title, items in (
+        ("verified improvements over the baseline", report.improvements),
+        ("expected differences", report.explained),
+        ("UNEXPLAINED DIFFERENCES", report.unexplained),
+    ):
+        lines.append(f"{title}: {len(items)}")
+        lines.extend(f"  {f.engine} {f.benchmark} q{f.query} [{f.check}] {f.detail}" for f in items)
+    if report.stale:
+        lines.append(f"STALE expected differences (no longer occur): {len(report.stale)}")
+        lines.extend(
+            f"  {e['engine']} {e['benchmark']} q{e['query']} [{e['check']}] {e['justification']}" for e in report.stale
+        )
+    lines.append("RESULT: " + ("PASS" if report.passed else "FAIL"))
+    return "\n".join(lines)
+
+
+def default_baseline_ref() -> str | None:
+    base = os.environ.get("BASE_REF")
+    if base:
+        return _git("merge-base", "HEAD", base)
+    for candidate in ("origin/develop", "develop"):
+        probe = subprocess.run(["git", "rev-parse", "--verify", "-q", candidate], cwd=ROOT, capture_output=True)
+        if probe.returncode == 0:
+            return _git("merge-base", "HEAD", candidate)
+    return None
+
+
+def run(args: argparse.Namespace) -> int:
+    benchmarks = args.benchmarks.split(",")
+    candidate_ref = None if args.candidate_ref in (None, "working-tree") else args.candidate_ref
+    baseline_ref = (
+        default_baseline_ref()
+        if args.baseline_ref == "auto"
+        else (None if args.baseline_ref == "none" else args.baseline_ref)
+    )
+    engine_classes = available_engines(args.engines.split(",") if args.engines else None)
+    if REFERENCE_ENGINE not in {engine.name for engine in engine_classes}:
+        engine_classes = [*available_engines([REFERENCE_ENGINE]), *engine_classes]
+    scratch = Path(tempfile.mkdtemp(prefix="sql_execution_gate_"))
+    try:
+        sides = {"candidate": emit_queries(candidate_ref, args.scale, args.benchmarks, scratch, "candidate")}
+        if baseline_ref:
+            sides["baseline"] = emit_queries(baseline_ref, args.scale, args.benchmarks, scratch, "baseline")
+        datasets = generate_datasets(args.scale, benchmarks, scratch)
+        results, versions, seconds = run_engines(engine_classes, datasets, sides, args.timeout, scratch)
+        selected = [
+            engine.name for engine in engine_classes if not args.engines or engine.name in args.engines.split(",")
+        ]
+        report = evaluate(results, sides, expected_row_counts(args.scale), load_expected(Path(args.expected)), selected)
+        print(render(report, versions, seconds, sides))
+        if args.report:
+            Path(args.report).write_text(
+                json.dumps(
+                    {
+                        "passed": report.passed,
+                        "versions": versions,
+                        "seconds": seconds,
+                        "unexplained": [vars(f) for f in report.unexplained],
+                        "explained": [vars(f) for f in report.explained],
+                        "improvements": [vars(f) for f in report.improvements],
+                        "stale": report.stale,
+                    },
+                    indent=1,
+                ),
+                encoding="utf-8",
+            )
+        return 0 if report.passed else 1
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--scale", type=float, default=0.01)
+    parser.add_argument("--benchmarks", default="tpch,tpcds")
+    parser.add_argument("--engines", default="", help="comma-separated subset of sqlite,duckdb,datafusion,postgres")
+    parser.add_argument("--candidate-ref", default="working-tree")
+    parser.add_argument(
+        "--baseline-ref", default="auto", help="git ref, 'auto' (merge-base with the base branch) or 'none'"
+    )
+    parser.add_argument("--timeout", type=float, default=15.0)
+    parser.add_argument("--expected", default=str(EXPECTED))
+    parser.add_argument("--report")
+    return run(parser.parse_args(argv))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -95,6 +95,10 @@
     "fork": "SELECT a / nullIf(b, 0), c / nullIf(d, 0) FROM t",
     "legacy": "SELECT a / NULLIF(b, 0), c / NULLIF(d, 0) FROM t"
   },
+  "clickhouse.safe_division.nested_window_sum": {
+    "fork": "SELECT SUM(x) * 100 / nullIf(SUM(SUM(x)) OVER (PARTITION BY c), 0) FROM t GROUP BY c",
+    "legacy": "SELECT SUM(x) * 100 / SUM(SUM(x)) OVER (PARTITION BY c) FROM t GROUP BY c"
+  },
   "clickhouse.safe_division.parenthesized_divisor": {
     "fork": "SELECT revenue / nullIf(((store_sales + web_sales) / 2), 0) FROM metrics",
     "legacy": "SELECT revenue / NULLIF(((store_sales + web_sales) / 2), 0) FROM metrics"

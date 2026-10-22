@@ -437,6 +437,8 @@ class Fake:
             return b""
         if leaf == "json":
             return Payload()
+        if leaf == "paginate":
+            return [Payload()]
         if leaf == "default":
             return Fake(self._ledger, "credentials"), CATALOG_NAME
         return Fake(self._ledger, f"{self._name}()")

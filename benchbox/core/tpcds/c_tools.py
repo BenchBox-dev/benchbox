@@ -30,6 +30,44 @@ def tpcds_option(name: str) -> str:
     return f"{_option_prefix()}{name.upper()}"
 
 
+_WINDOWS_DSQGEN_CITIES_OVERRUN_FRAGMENTS = (
+    "Runtime ERROR: Distribution over-run/under-run",
+    "Check distribution definitions and usage for cities.",
+    "index = -1, length=1000.",
+)
+_WINDOWS_DSQGEN_MAX_ATTEMPTS = 10
+
+
+def run_dsqgen_process(
+    cmd: list[str],
+    *,
+    cwd: Union[str, Path],
+    timeout: int,
+    env: dict[str, str],
+    discard_partial_output: Optional[Callable[[], None]] = None,
+) -> subprocess.CompletedProcess[str]:
+    max_attempts = _WINDOWS_DSQGEN_MAX_ATTEMPTS if sys.platform == "win32" else 1
+
+    for attempt in range(max_attempts):
+        result = subprocess.run(
+            cmd,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+        )
+        is_transient_windows_overrun = sys.platform == "win32" and all(
+            fragment in result.stderr for fragment in _WINDOWS_DSQGEN_CITIES_OVERRUN_FRAGMENTS
+        )
+        if result.returncode == 0 or not is_transient_windows_overrun or attempt == max_attempts - 1:
+            return result
+        if discard_partial_output is not None:
+            discard_partial_output()
+
+    raise AssertionError("unreachable")
+
+
 def _resolve_tpcds_tool_and_template_paths() -> tuple[Path, Path]:
     from benchbox.utils.tpc_compilation import get_tpc_templates_dir
 
@@ -347,13 +385,12 @@ class DSQGenBinary:
             if capture_log:
                 cmd.extend([f"{opt}LOG", str(log_path)])
 
-            result = subprocess.run(
+            result = run_dsqgen_process(
                 cmd,
                 cwd=temp_dir,
-                capture_output=True,
-                text=True,
                 timeout=30,
                 env=env,
+                discard_partial_output=lambda: log_path.unlink(missing_ok=True),
             )
             if capture_log and result.returncode == 0:
                 if not log_path.exists():
