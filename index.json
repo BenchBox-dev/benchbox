@@ -13413,15 +13413,10 @@
       "title": "Replace the vacuous live canary-selection tests with targeted checks and split the full-tree tests"
     },
     "longtest-03-mcp-export-failure-real-result": {
-      "claim": {
-        "expires_at": "2026-10-23T03:51:47Z",
-        "generation": "eedb58ea70074007bb25552a5bc39ee9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Make the MCP export-failure test exercise its own path instead of recursing through a mock"
     },
     "longtest-04-cli-identical-runs-and-scale": {
