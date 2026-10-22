@@ -1,11 +1,11 @@
 {
   "acceptance": [
-    "Each of the 17 statements (1, 6, 8, 10, 15, 19, 30, 35, 44, 45, 54, 58, 69, 78, 81, 83, 91) either returns rows on SF1 OBT data or has a documented reason why an empty result is correct for the TPC-DS query it mirrors",
-    "For each fixed statement, the conversion keeps the base TPC-DS query's join and filter semantics; tests check the converted SQL for those semantics",
-    "A test fails if any converted statement returns no rows on the small OBT dataset used by tests/integration/test_tpcds_obt_parameter_draws.py, except documented exceptions",
-    "Statements returning exactly one row (16, 18, 27, 28, 36, 88, 90, 94, 95, 96 before the parameter fix) are rechecked, and any that are aggregates over an empty set are fixed or documented"
+    "Each of the 17 statements either returns rows on SF1 OBT data or has a documented reason why an empty result is correct: met (14 return rows; Q8, Q54, Q58 are empty in the base statement too, see context)",
+    "For each fixed statement, the conversion keeps the base query's join and filter semantics; tests check the converted SQL: met by the unit tests from PR 3120",
+    "A test fails if any converted statement returns no rows on the small OBT dataset, except documented exceptions: met by tests/integration/test_tpcds_obt_empty_results.py, whose only allowance is the base statement being empty too",
+    "Statements that returned exactly one row are rechecked: met (see context)"
   ],
-  "context": "Code fix merged in PR #3120 (2026-10-18). NOT finished: acceptance 1/3 still need row evidence on SF1 OBT data (worker verified conversion tests + synthetic DuckDB only; Q6/Q8/Q19/Q83/Q91 synthetic zeros attributed to fixture coverage, not live measurement). Next: run the converted statements on local SF1 OBT data (or the small-dataset no-rows test in tests/integration/test_tpcds_obt_parameter_draws.py) and finish only if all 17 return rows or have documented empty-result reasons.",
+  "context": "Code fix merged in PR #3120 (2026-10-18). Evidence and the guard test merged as PR 3276.\n\nSF1 evidence (TPC-DS SF1 and its 5,041,336-row OBT in DuckDB; OBT statement and base statement in the DuckDB dialect rendered from the same dsqgen parameters). Of the 17 statements, 14 return rows; Q8, Q54 and Q58 return none, and the base statement returns none with the same parameters, so those empty results are not conversion errors. Rows OBT/base: Q1 100/100, Q6 45/41, Q8 0/0, Q10 42/2, Q15 100/100, Q19 100/100, Q30 100/92, Q35 100/100, Q44 10/10, Q45 16/16, Q54 0/0, Q58 0/0, Q69 100/100, Q78 100/100, Q81 100/96, Q83 4/4, Q91 2/4. One-row statements: Q16, Q28, Q88, Q90, Q94, Q95, Q96 still return one row, as the base does; Q18, Q27 and Q36 return 100 rows.\n\nGuard: tests/integration/test_tpcds_obt_empty_results.py builds SF0.01 TPC-DS and the OBT in DuckDB and, for every convertible statement, fails when an OBT part returns no rows where the matching base part returns some. There is no exception list: emptiness is allowed exactly where the base is empty. Multi-part statements pair exactly (base variants a and b for Q14, Q23, Q24); the one known gap, Q14's converted statement covering part 1 only, is named and fails once the counts agree. 89 pass; wrapping Q2's OBT statement in WHERE 1 = 0 fails the test for Q2 only. The conversion's join and filter semantics are pinned by the unit tests added with PR #3120.\n\nOut of scope but found: row counts that differ from the base at SF1 and are not explained by the OBT's data model (Q91's returning-time demographics are by design): Q2 430,117 vs 2,513; Q9 3,690 vs 1; Q17 100 vs 1; Q25 100 vs 0; Q29 100 vs 0; Q34 7,674 vs 451; Q41 100 vs 0; Q73 299,821,068 vs 9. Row counts alone do not say which side is wrong, but these need their own review.",
   "description": "On local SF1 OBT data in DuckDB, 17 converted TPC-DS OBT statements still return no rows after query parameters started coming from dsqgen: 1, 6, 8, 10, 15, 19, 30, 35, 44, 45, 54, 58, 69, 78, 81, 83, 91. The cause is how the converter rewrites the base TPC-DS query against the one big table, not the parameters. For example, Q1 joins `returned_date_sk` to the sold date, so no return row matches. Any run of these statements times a query that returns nothing, so their results are not comparable with TPC-DS.\n\nThe converter is `benchbox/core/tpcds_obt/query_conversion.py`, with per-query rewrites in `query_specs.yaml`. Parameter rendering is already correct, and the parameter tests in `tests/unit/core/tpcds_obt/test_tpcds_obt_queries.py` cover it.\n\nAlso check the statements that return exactly one row. Before the parameter fix, 10 statements did (16, 18, 27, 28, 36, 88, 90, 94, 95, 96), and they are likely aggregates over an empty set. Confirm which of them are still affected now that parameters are real.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3062"
@@ -131,6 +131,14 @@
       "generation": "28fbca5e4f6743069b71abf0684db6d6",
       "op": "take",
       "op_id": "6cc3bda000874426b051e27d97647584",
+      "session_id": "7d2f94f74b1c49ec9ffc810e3c0bad68"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dce62a827220422fd68b23fc",
+      "at": "2026-10-22T09:53:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1eec63f4944f4ab7abde8039eeaabacc",
       "session_id": "7d2f94f74b1c49ec9ffc810e3c0bad68"
     }
   ]
