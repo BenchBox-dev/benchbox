@@ -2183,10 +2183,15 @@
       "title": "Raise bottom 25 modules (all <42% coverage) to 80%"
     },
     "bound-datagen-sync-and-investigate-io-stall": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T05:07:09Z",
+        "generation": "0ca81857cc4745aaa638218f05eddf6c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dce62a827220422fd68b23fc"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Investigate the macOS I/O stall that hung local validation, and bound the unbounded sync calls in the data generators"
     },
     "boundary-check-hook-scope": {
