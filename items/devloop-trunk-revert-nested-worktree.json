@@ -2,6 +2,7 @@
   "acceptance": [
     "make trunk-revert PR=<n> succeeds from a linked worktree, or the manual equivalent is documented and tested"
   ],
+  "context": "2026-10-21: `make trunk-revert PR=3200`, run from the managed linked worktree BenchBox.wt-trunk-coverage-timeouts, succeeded: it created worktree BenchBox.wt-revert-3200 and opened revert PR #3223. Re-check whether the refusal still reproduces before working this item.",
   "description": "make trunk-revert runs preflight (refuses primary clone) then invokes make worktree-create, which refuses inside a managed worktree (new worktree reads the launcher lifecycle ID). No supported invocation context; 2026-10-12 recovery replicated the steps manually.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "op": "create",
       "op_id": "d503aed9b6aa4d2a8518d7e0e3ff35d8",
       "session_id": "8be230d790474fda8edea19668121bf9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-22T15:17:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d52476d56b9c4831b0c54e8e0d5db4fa",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
     }
   ]
 }
