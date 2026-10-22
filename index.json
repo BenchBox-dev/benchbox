@@ -22936,10 +22936,15 @@
       "title": "Close out the soundness-gap batch: verify gap issues, digest closure and owner actions"
     },
     "soundness-gaps-decisions-20261022": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T19:55:13Z",
+        "generation": "c5d7e5f6c376433199326c5a914ce78e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Record the owner decisions for the soundness-gap remediation"
     },
     "soundness-merge-digest-external-review-author-20261008": {
