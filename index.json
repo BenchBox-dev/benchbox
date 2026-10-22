@@ -13467,15 +13467,10 @@
       "title": "Generate TPC-H refresh sets once per module in the strict-engine throughput tests"
     },
     "longtest-10-repo-scan-tests": {
-      "claim": {
-        "expires_at": "2026-10-23T12:33:14Z",
-        "generation": "5764a84786d54652b494108c13a5ec76",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Run the explorer help examples in-process and anonymize the corpus once for both corpus tests"
     },
     "longtest-11-anonymizer-key-cache": {
