@@ -5,7 +5,7 @@
     "BigQuery metadata table survives a second manager instance (unit test).",
     "Marker tests cover at least one pyformat fake driver and one T-SQL dialect."
   ],
-  "context": "Found 2026-10-13 by an adversarial review of recent tuning commits at origin/develop 77048bfb9 (Athena abort reproduced offline).",
+  "context": "Merged as PR 3252. Athena has no metadata store: a tuned run proceeds without a marker and records metadata_store: unsupported in the applied-tuning ledger, and reuse of an existing Athena database is refused (it is recreated), so a tuned database is never mistaken for an untuned one. Synapse and Fabric Warehouse: IF OBJECT_ID guarded CREATE TABLE with DATETIME2 (TIMESTAMP is ROWVERSION in T-SQL), SELECT TOP 1, DELETE without WHERE TRUE, DDL through the cursor (the adapters fetchall() after every statement), 'Invalid object name' recognised as a missing table, no lookup index on Fabric Warehouse. BigQuery: CREATE TABLE IF NOT EXISTS, so a second manager no longer empties the table and marker. Tests: every statement the store issues parses in its dialect and is not a sqlglot Command; a T-SQL fake driver raises when a result set is fetched after DDL; BigQuery DDL goes through the real adapter rewrite; a pyformat insert; an Athena-labelled tuned run does not abort; a marker failure where a store exists still aborts. Not verified live on Athena, Synapse, Fabric or BigQuery: no accounts available.",
   "description": "## Problem\nSince bbf073331 (#2701), a failed tuned-run marker write raises and aborts the run (`benchbox/platforms/base/adapter.py:901-905,941-945`). The tuning metadata store (`benchbox/core/tuning/metadata.py`) does not work on several platforms:\n- **Athena:** `_metadata_unsupported_reason` (~L447) makes `create_metadata_table` return False, so `write_tuned_run_marker` returns False and every tuned or `auto` Athena run aborts. The log still says \"Runs continue without persisted tuning metadata\".\n- **Synapse and Fabric DW:** the DDL uses `CREATE TABLE IF NOT EXISTS` (~L491), `TIMESTAMP`, and `LIMIT 1` (~L332, L733). None of these is valid T-SQL, and `azure_synapse.py:903-920` passes SQL through raw. The T-SQL index branch added by #2861 (~L444) is unreachable.\n- **BigQuery:** the metadata table uses plain `CREATE TABLE`, which the adapter rewrites to `CREATE OR REPLACE` (`benchbox/platforms/bigquery.py:1771`). Each new manager wipes the table, marker included.\n- **pyformat and format drivers** (Snowflake, psycopg, pymysql behind Doris/StarRocks, redshift_connector, pyathena) got `?` placeholders. That part is fixed on branch `feat/snowflake-trial-exit` and is out of scope here.\n\n**Why tests missed it:** every marker test uses SQLite. When the marker write failed in the Postgres console-claims fixture, #2701 replaced the manager with `FakeMetadataManager` instead of investigating. The DDL tests only check substrings (`tests/unit/core/tuning/test_tuning_metadata.py:231-245`).\n\n## Change\n- Treat \"no metadata store on this platform\" as an explicit marker-exempt mode with a recorded reason, not an abort, and keep the notuning-reuse refusal sound for those platforms by another means (for example, refusing reuse outright).\n- Generate valid T-SQL for Synapse and Fabric DW.\n- Use `CREATE TABLE IF NOT EXISTS` semantics on BigQuery.\n- Add per-dialect DDL tests that parse the statements with sqlglot, plus tests that a tuned run on Athena and Synapse (with a fake driver) does not abort.",
   "links": [
     "benchbox/core/tuning/metadata.py",
@@ -38,6 +38,14 @@
       "generation": "b62ff9851a6d4b4e9dd269a9eff92dc9",
       "op": "finish",
       "op_id": "29830e87ba484af2883f4446179b39c8",
+      "session_id": "7d2f94f74b1c49ec9ffc810e3c0bad68"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dce62a827220422fd68b23fc",
+      "at": "2026-10-22T04:42:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ea41c1c2faf248028eaae70ffc42d9ca",
       "session_id": "7d2f94f74b1c49ec9ffc810e3c0bad68"
     }
   ]
