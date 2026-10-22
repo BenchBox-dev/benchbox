@@ -54,6 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `ResultValidator.validate_results_exact` now accepts result sets that are exactly equal
+  (in the same order, or after sorting when order does not matter) without the per-cell
+  tolerant comparison, which makes large cross-surface and qualification comparisons much
+  faster. The shortcut never rejects: results containing NaN, non-finite decimals, integers
+  too large for a float, or values that cannot be sorted or compared go through the existing
+  comparison, so accepted and rejected outcomes and error messages are unchanged.
 - The Databricks adapter now requests the bundled SQLGlot runtime's opt-in
   `safe_division` rewrite through `apply_rewrite` after alias deduplication.
   Every division, including nested ones, still becomes `TRY_DIVIDE`, so a zero
