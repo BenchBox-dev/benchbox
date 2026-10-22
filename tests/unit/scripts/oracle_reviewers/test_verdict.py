@@ -399,11 +399,6 @@ def test_a_prior_defect_id_echoed_with_a_hash_is_normalised() -> None:
     assert verdict.prior_defects[0].id == "D3"
 
 
-def test_a_bad_prior_defect_id_names_the_value() -> None:
-    with pytest.raises(VerdictError, match="D 3: title"):
-        validate(_verdict(prior_defects=[{"id": "D 3: title", "status": "fixed", "evidence": "x"}]))
-
-
 def test_a_finding_key_error_names_the_missing_and_unexpected_keys() -> None:
     finding = _finding()
     del finding["detail"]

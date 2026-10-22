@@ -260,21 +260,48 @@ reviewer hands over to the next.
 
 ## Decisions
 
-The reviewer answers with schema 2 of the verdict (`VERDICT_SCHEMA` in
-`_project/scripts/oracle_reviewers/verdict.py`). Every property is required,
-because Codex structured outputs reject optional keys: `status` (`complete` or
-`incomplete`), `incomplete_reason`, `decision` (`SHIP`, `SHIP_WITH_FIXES`,
-`DO_NOT_SHIP`, or `NONE` when incomplete), `summary`, `files_examined`,
-`defects` and `prior_defects`. A reviewer that adds any other key, such as a
-defect count, is invalid. The brief asks for must-fix defects only, at
-most `protocol.max_defects` (10), and for `DO_NOT_SHIP` when the change needs
-rework or more defects would have to be listed.
+The canonical schema-2 response has seven reviewer-supplied properties:
+`status` (`complete` or `incomplete`), `incomplete_reason`, `decision` (`SHIP`,
+`SHIP_WITH_FIXES`, `DO_NOT_SHIP`, or `NONE` when incomplete), `summary`,
+`files_examined`, `defects` and `prior_defects`. The oracle adds the computed
+`defect_count` to stored verdicts; reviewers cannot set it. Stored artifacts
+must match the canonical fields strictly.
+
+Only reviewer ingress normalizes known harmless drift:
+
+- Missing `incomplete_reason` becomes empty. Missing `summary` becomes empty
+  except for DO_NOT_SHIP, whose summary is the published rationale.
+- Finding metadata `line_note`, `end_line_note` and `detail_extra` is removed.
+- Prior metadata `severity`, `file`, `line`, `end_line`, `title` and `detail`
+  is removed; the prior's `id`, `status` and `evidence` are never inferred.
+- An object keyed by prior ID becomes a list. An omitted embedded ID comes
+  from the key; an embedded ID must agree after the supported `#` prefix is
+  removed. Duplicate normalized IDs remain invalid.
+
+Duplicate JSON keys at any depth, unfilled response-template placeholders,
+unknown top-level keys, reviewer-supplied defect counts and missing
+decision-bearing fields remain invalid. No finding is discarded or given an
+invented location. Applied rewrites are recorded in the diagnostic. Invalid
+JSON retains a redacted final-message tail; parseable invalid output also
+gets a bounded keys-and-types fingerprint, never field values.
+
+`tests/fixtures/oracle_reviewers/pr3237_missing_text_fields.json` preserves
+decoded payloads from the retained attempt diagnostics for runs `39662535698`
+and `39669405558`. Their text is already redacted; these are not raw model
+transcripts. Both responses retain the unfixed prior finding rather than
+becoming approvals after normalization.
+
+The brief asks for must-fix defects only, at most `protocol.max_defects` (10),
+and for DO_NOT_SHIP when the change needs rework or more defects would have
+to be listed.
 
 The code, not the model, decides, and the stricter outcome wins:
 
 | Reviewer reports | Result |
 |---|---|
-| SHIP or SHIP_WITH_FIXES, no defects | SHIP |
+| SHIP, no counted or open prior defects | SHIP |
+| SHIP_WITH_FIXES, no listed or open prior defects | absent (`invalid`), never promoted to SHIP |
+| SHIP_WITH_FIXES, only out-of-scope follow-up findings | SHIP; findings are disclosed as not counted |
 | SHIP or SHIP_WITH_FIXES, 1 to 10 defects | SHIP WITH FIXES |
 | more than 10 defects | DO NOT SHIP; the defects are dropped and the summary notes the count |
 | DO_NOT_SHIP | DO NOT SHIP; the summary is kept, at most 1500 characters |
