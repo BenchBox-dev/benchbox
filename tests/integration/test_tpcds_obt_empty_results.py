@@ -12,13 +12,29 @@ pytestmark = [
 ]
 
 SCALE_FACTOR = 0.01
+BASE_PARTS_AS_VARIANTS = {14, 23, 24}
+OBT_COVERS_FEWER_PARTS = {14: "the converted statement covers part 1 of the two-part query only"}
+BASE_DOES_NOT_RUN = {90: "DuckDB rejects the alias `at` in the base statement"}
 
 
 def _select_row_counts(connection, sql: str) -> list[int]:
     counts = []
     for statement in (part.strip() for part in sql.split(";")):
-        if statement and statement.upper().lstrip("( \n").startswith(("SELECT", "WITH")):
-            counts.append(len(connection.execute(statement).fetchall()))
+        if not statement:
+            continue
+        assert statement.upper().lstrip("( \n").startswith(("SELECT", "WITH")), (
+            f"unexpected statement kind: {statement[:60]!r}"
+        )
+        counts.append(len(connection.execute(statement).fetchall()))
+    return counts
+
+
+def _base_row_counts(base, benchmark, query_id: int) -> list[int]:
+    variants = ("a", "b") if query_id in BASE_PARTS_AS_VARIANTS else (None,)
+    counts: list[int] = []
+    for variant in variants:
+        sql = benchmark.get_query(query_id, scale_factor=SCALE_FACTOR, variant=variant)
+        counts.extend(_select_row_counts(base, sql))
     return counts
 
 
@@ -58,20 +74,29 @@ def engines(tmp_path_factory: pytest.TempPathFactory):
 
 @pytest.mark.parametrize("query_id", CONVERTIBLE_QUERY_IDS)
 def test_an_obt_statement_is_empty_only_where_the_base_statement_is(engines, query_id: int) -> None:
+    duckdb = pytest.importorskip("duckdb")
     obt, base, benchmark, manager = engines
     obt_counts = _select_row_counts(obt, manager.get_query(query_id, scale_factor=SCALE_FACTOR))
     assert obt_counts, f"Q{query_id} produced no SELECT statement"
 
-    try:
-        base_counts = _select_row_counts(base, benchmark.get_query(query_id, scale_factor=SCALE_FACTOR))
-    except Exception as error:
-        base_counts = []
+    if query_id in BASE_DOES_NOT_RUN:
+        with pytest.raises(duckdb.Error):
+            _base_row_counts(base, benchmark, query_id)
         assert all(count > 0 for count in obt_counts), (
-            f"Q{query_id}: the base statement does not run on DuckDB ({error}) and the OBT statement returns no rows"
+            f"Q{query_id}: {BASE_DOES_NOT_RUN[query_id]}, so the OBT statement must return rows on its own"
+        )
+        return
+
+    base_counts = _base_row_counts(base, benchmark, query_id)
+    if query_id in OBT_COVERS_FEWER_PARTS:
+        assert len(obt_counts) < len(base_counts), f"stale exemption for Q{query_id}: the part counts now agree"
+    else:
+        assert len(obt_counts) == len(base_counts), (
+            f"Q{query_id}: the OBT statement has {len(obt_counts)} part(s), the base statement {len(base_counts)}"
         )
 
     for part, (obt_rows, base_rows) in enumerate(zip(obt_counts, base_counts, strict=False), start=1):
         assert not (obt_rows == 0 and base_rows > 0), (
-            f"Q{query_id} statement {part}: the OBT returns no rows where the base TPC-DS statement returns "
+            f"Q{query_id} part {part}: the OBT returns no rows where the base TPC-DS statement returns "
             f"{base_rows} on the same data and parameters"
         )
