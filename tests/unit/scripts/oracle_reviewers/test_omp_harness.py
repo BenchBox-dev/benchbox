@@ -73,6 +73,7 @@ def test_overlay_pins_reviewer_safety_and_keeps_omp_fallbacks(tmp_path: Path) ->
     overlay = yaml.safe_load(write_overlay(tmp_path).read_text(encoding="utf-8"))
     assert overlay["mcp"]["enableProjectConfig"] is False
     assert overlay["advisor"]["enabled"] is False
+    assert overlay["read"]["summarize"]["enabled"] is False
     assert "retry" not in overlay
 
 

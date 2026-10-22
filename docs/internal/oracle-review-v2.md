@@ -372,6 +372,52 @@ never passes.
   files named and read. A verdict that would fail (DO NOT SHIP, a defect
   counted in scope, or an earlier defect not fixed) needs neither.
 - An inline brief carries the diff, so no read is required there.
+- Read credit is exact-path equality after normalisation, never a prefix or a
+  sibling. The documented selector grammar is accepted on `read` and on a
+  single-file `grep`: `:raw`, `:N`, `:LN`, `:N-`, `:N..`, `:A-B`, `:A..B`,
+  `:LA-LB`, `:A+C`, `:-N`, comma lists such as `:1-12,-15`, and `:raw` with a
+  range in either order. A computed `?q=` read, `:conflicts` and `:img` credit
+  nothing: a query returns whatever its expression computes (one character was
+  observed), unlike a verbatim range or grep. A plain, ranged or raw `read`,
+  or a `grep` of the single file, supplies evidence.
+- A successful read of an archive listing or member (registered archive
+  extension, inside the checkout) credits the archive container only; the
+  member path never credits a repository file. An error, a binary-entry
+  notice, a `?q=` or `..` member, no match, a directory, several paths, a
+  sibling or a path outside the checkout credits nothing. Binary and
+  unreviewable content, out-of-bounds line reads and notice-only reads are
+  not solved here and stay with `oracle-verdict-labels-unreviewed-bytes` and
+  `oracle-read-evidence-tightening-20261008`; no file is exempted.
+- Partial reads keep their credit; this is exposure, not whole-file or
+  semantic proof. The reviewer overlay sets `read.summarize.enabled: false` so
+  a plain read of a large file is not replaced by a structural summary, and
+  the trace records each credited read's `details.summary` elision counts
+  (the gate does not reject them). Without summarisation an open-ended read
+  is still capped by `read.defaultLimit` (300 lines), which the gate does not
+  detect.
+- Every parsed outcome, successful or not, keeps a bounded, redacted `trace:`
+  line in the attempt diagnostic: read, grep and failed-call counts, up to
+  five credited, required and missing paths, and elision totals, so elided
+  credited reads stay measurable. It never carries the raw event stream, and
+  the OMP stdout stream is no longer excerpted into diagnostics. Read credit
+  also requires the real path to stay inside the checkout, so a committed
+  symlink to an outside file credits nothing.
+- Credentials: one list (`credentials.py`) names every forwarded broker and
+  provider variable, the gateway client token (`OMP_GATEWAY_TOKEN`) and the
+  legacy extras. Values of at least eight
+  characters are removed by exact match before and after every sanitising
+  transform and before any truncation, across control-character splits and
+  overlaps, in verdict text, absence details, diagnostics and error
+  snippets. A known value inside a structural field (file, `files_examined`,
+  prior id or an object key) invalidates the verdict with a fixed message
+  instead of moving a finding. This is known-value hygiene, not a sandbox:
+  values brokered dynamically or held only inside `OMP_AGENT_CONFIG`, and any
+  value under eight characters, cannot be matched. A local fake-sentinel probe
+  showed the reviewer's `read` returns a committed symlink target, an absolute
+  outside path and a `..` path, so the checkout is not a read boundary. The reach
+  probes also reached `/proc/self/environ` and the home configuration. Closing
+  that is owned by `oracle-response-read-boundary-prerequisite-20261021`; the
+  scoped gateway token is the planned credential boundary.
 
 The verdict is the text of the reviewer's final assistant message, taken from
 its `message_end` event; remarks the reviewer makes between tool calls are
@@ -436,7 +482,11 @@ These checks must pass before the cut-over that makes the context required.
   of the output, at most 300 characters. When the answer is not a valid
   verdict, it holds instead the last 2,000 characters of the reviewer's final
   message. Both have credentials and long tokens removed; raw output is never
-  uploaded. Add the messages to the `CALIBRATED_*_PATTERNS` tables in
+  uploaded. For OMP, stdout is never excerpted; only stderr is. A `trace:` line
+  of at most 700 characters follows on every outcome that reached verdict
+  parsing (valid, invalid, incomplete or failed evidence). Its paths are
+  redacted by known value and secret pattern, not by the generic long-token
+  filter. Add the messages to the `CALIBRATED_*_PATTERNS` tables in
   `_project/scripts/oracle_reviewers/absence.py`; until then they count as
   errors, which never pass. A quota absence means OMP's fallback chain was
   also exhausted. It skips the reviewer's whole pool for the rest of the run,
@@ -460,6 +510,12 @@ policy or the attempt jobs must also:
   two turns, and the result must be a verdict that passes the evidence check.
   After merge, dispatch a run on a soundness pull request to confirm it in
   CI. Repeat both after any change to routing or bucket floors.
+- record, beside the CI-pinned proof, a separately labelled local proof: the
+  local OMP build and version, the reviewer overlay, a plain read of a file
+  over 100 lines with no `details.summary` and no `elided; re-read needed
+  ranges` footer, and a single-file `grep`. A local macOS OMP 18.12.6 run does
+  not prove the pinned Linux build or the secret `OMP_AGENT_CONFIG`; only an
+  observed CI run does.
 - be self-reviewed across every module at the harness boundary listed above
   and its tests, not a chosen subset.
 
