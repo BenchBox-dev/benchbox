@@ -14243,7 +14243,9 @@
         "renewals": 0,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:afd83494ecacfcdab965057e"
       },
-      "needs": [],
+      "needs": [
+        "longtest-16-refresh-durations-and-measure"
+      ],
       "priority": "medium",
       "status": "active",
       "title": "Run the medium-tier generate_data tests at a reduced scale factor without losing generator coverage"
