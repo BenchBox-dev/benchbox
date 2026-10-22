@@ -22895,17 +22895,12 @@
       "title": "soundness_drain_report keys only on ci-required-result, not all ruleset required checks"
     },
     "soundness-gap-2806-external-review-20261022": {
-      "claim": {
-        "expires_at": "2026-10-23T20:06:57Z",
-        "generation": "51c8f9d23d794a1399ee5731a075c048",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601"
-      },
+      "claim": null,
       "needs": [
         "soundness-gaps-decisions-20261022"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "External review of soundness-gap commit 1f56404ef (issue 2806) and attestation if clean"
     },
     "soundness-gap-2807-external-review-20261022": {
