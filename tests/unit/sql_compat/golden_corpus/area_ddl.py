@@ -8,10 +8,11 @@ from typing import Any
 
 from benchbox.core.tuning.interface import TableTuning, TuningColumn
 
-from . import Case
+from . import Case, frozen_legacy
 
 _READ = "postgres"
 _ENGINES = "benchbox._vendor.sqlglot.benchbox.ddl_engines"
+AREA = "area_ddl"
 
 
 _ARR = r"(float|double)_array"
@@ -508,14 +509,6 @@ def _squash(text: str) -> str:
     return re.sub(r"\(\s+", "(", re.sub(r"\s+\)", ")", text))
 
 
-def _translated(sql: str, target: str, normalize_names: bool = False) -> str:
-    from benchbox.core.sql_utils import normalize_table_name_in_sql
-    from benchbox.utils.dialect_utils import SCHEMA_DDL_SCOPE, translate_sql_query
-
-    translated = translate_sql_query(sql, target, source_dialect="standard", strict=False, scope=SCHEMA_DDL_SCOPE)
-    return normalize_table_name_in_sql(translated) if normalize_names else translated
-
-
 def _fork(sql: str, write: str, target: str | None = None, read: str = _READ, **options: Any) -> str:
     from benchbox.utils.dialect_utils import NO_IDENTIFY_DIALECTS
 
@@ -529,14 +522,9 @@ def _layout(**fields: Any) -> Any:
     return importlib.import_module("benchbox._vendor.sqlglot.benchbox.layout").TableLayout(**fields)
 
 
-def _family(
-    name: str,
-    legacy: Callable[[str], str],
-    fork: Callable[[str], str],
-    inputs: dict[str, str],
-) -> list[Case]:
+def _family(name: str, fork: Callable[[str], str], inputs: dict[str, str]) -> list[Case]:
     return [
-        Case(f"{name}:{key}", (lambda sql=sql: _squash(legacy(sql))), (lambda sql=sql: fork(sql)))
+        Case(f"{name}:{key}", frozen_legacy(AREA, f"{name}:{key}"), (lambda sql=sql: fork(sql)))
         for key, sql in inputs.items()
     ]
 
@@ -557,10 +545,8 @@ def _first_column(statement: str) -> str:
 
 
 def _firebolt() -> list[Case]:
-    adapter = _bare("benchbox.platforms.firebolt", "FireboltAdapter")
     return _family(
         "firebolt",
-        lambda sql: adapter._optimize_table_definition(_translated(sql, "postgres", True)),
         lambda sql: _fork(
             sql,
             "postgres",
@@ -576,7 +562,6 @@ def _firebolt() -> list[Case]:
 
 
 def _redshift() -> list[Case]:
-    adapter = _bare("benchbox.platforms.redshift", "RedshiftAdapter")
     inputs = {
         **_inputs(),
         "diststyle_present": "CREATE TABLE t (a INT) DISTSTYLE EVEN",
@@ -584,7 +569,6 @@ def _redshift() -> list[Case]:
     }
     return _family(
         "redshift",
-        lambda sql: adapter._optimize_table_definition(_translated(sql, "redshift", True)),
         lambda sql: _fork(
             sql,
             "redshift",
@@ -609,7 +593,6 @@ def _clickhouse() -> list[Case]:
     adapter = _bare("benchbox.platforms.clickhouse.adapter", "ClickHouseAdapter")
     cases = _family(
         "clickhouse_default",
-        adapter._optimize_table_definition,
         lambda sql: _fork(
             sql,
             "clickhouse",
@@ -621,7 +604,6 @@ def _clickhouse() -> list[Case]:
     )
     cases += _family(
         "clickhouse_no_primary_keys",
-        lambda sql: adapter._optimize_table_definition(sql, None, primary_keys_enabled=False),
         lambda sql: _fork(
             sql,
             "clickhouse",
@@ -635,7 +617,6 @@ def _clickhouse() -> list[Case]:
     nullable_inputs = _select("tpcds_store_sales", "tpcds_call_center", "nullable_numeric", "tpch_orders")
     cases += _family(
         "clickhouse_nullable",
-        lambda sql: adapter._optimize_table_definition(sql, None, nullable_columns=_clickhouse_nullable(sql)),
         lambda sql: _fork(
             sql,
             "clickhouse",
@@ -646,10 +627,7 @@ def _clickhouse() -> list[Case]:
         nullable_inputs,
     )
 
-    def tuned(sql: str, table_tunings: dict[str, Any]) -> tuple[Callable[[], str], Callable[[], str]]:
-        def legacy() -> str:
-            return _squash(adapter._optimize_table_definition(sql, table_tunings))
-
+    def tuned(sql: str, table_tunings: dict[str, Any]) -> Callable[[], str]:
         def fork() -> str:
             keys = adapter._extract_primary_key_columns(sql)
             clauses = adapter._resolve_tuned_ddl_clauses(
@@ -664,7 +642,7 @@ def _clickhouse() -> list[Case]:
             )
             return _fork(sql, "clickhouse", read="duckdb", type_map={"TIME": "String"}, default_layout=layout)
 
-        return legacy, fork
+        return fork
 
     tunings = {
         "partition_and_sort": TableTuning(
@@ -689,8 +667,10 @@ def _clickhouse() -> list[Case]:
     }
     for kind, statement in statements.items():
         for label, table_tuning in tunings.items():
-            legacy, fork = tuned(statement, {"lineitem": table_tuning})
-            cases.append(Case(f"clickhouse_tuned:{kind}_{label}", legacy, fork))
+            fork = tuned(statement, {"lineitem": table_tuning})
+            cases.append(
+                Case(f"clickhouse_tuned:{kind}_{label}", frozen_legacy(AREA, f"clickhouse_tuned:{kind}_{label}"), fork)
+            )
     return cases
 
 
@@ -702,11 +682,9 @@ def _databricks() -> list[Case]:
         "using_present": "CREATE TABLE t (a INT) USING PARQUET",
         "comment_prefix": "-- header\nCREATE TABLE t (a INT)",
     }
-    delta = _bare("benchbox.platforms.databricks.adapter", "DatabricksAdapter", table_format="delta")
     for label, optimize in (("auto_optimize", True), ("no_auto_optimize", False)):
         cases += _family(
             f"databricks_delta_{label}",
-            lambda sql, optimize=optimize: _with(delta, optimize, False, _translated(sql, "databricks")),
             lambda sql, optimize=optimize: _fork(
                 sql,
                 "databricks",
@@ -718,7 +696,6 @@ def _databricks() -> list[Case]:
         )
     cases += _family(
         "databricks_delta_reset_in_place",
-        lambda sql: _with(delta, True, True, _translated(sql, "databricks")),
         lambda sql: _fork(
             sql,
             "databricks",
@@ -730,48 +707,29 @@ def _databricks() -> list[Case]:
         _select("if_not_exists", "tpch_orders"),
     )
 
-    hudi = _bare(
-        "benchbox.platforms.databricks.adapter",
-        "DatabricksAdapter",
-        table_format="hudi",
-        delta_auto_optimize=True,
-        hudi_table_type="cow",
-        hudi_primary_key="o_orderkey",
-        hudi_precombine_field="o_orderdate",
-        _schema_reset_in_place=False,
-    )
-
     def hudi_fork(sql: str) -> str:
-        rendered = " ".join(hudi._hudi_table_properties(_translated(sql, "databricks")))
-        properties = dict(re.findall(r"'([^']+)' = '([^']+)'", rendered))
-        layout = _layout(format="hudi", properties=properties)
+        hudi = {
+            "orders": {"type": "cow", "primaryKey": "o_orderkey", "preCombineField": "o_orderdate"},
+        }
+        layout = _layout(format="hudi", properties=hudi.get(_name(sql), {"type": "cow"}))
         return _fork(sql, "databricks", "databricks", or_replace=True, default_layout=layout)
 
     cases += _family(
         "databricks_hudi",
-        lambda sql: hudi._convert_to_delta_table(_translated(sql, "databricks")),
         hudi_fork,
         _select("tpch_orders", "tpch_nation", "bare_varchar"),
     )
     return cases
 
 
-def _with(adapter: Any, auto_optimize: bool, reset: bool, sql: str) -> str:
-    adapter.delta_auto_optimize = auto_optimize
-    adapter._schema_reset_in_place = reset
-    return adapter._convert_to_delta_table(sql)
-
-
 def _athena() -> list[Case]:
     cases: list[Case] = []
-    base = {"s3_bucket": "bucket", "s3_prefix": "prefix", "database": "db"}
     variants = {
-        "parquet": ({"data_format": "parquet", "default_format": "PARQUET"}, "PARQUET", None, None),
-        "csv": ({"data_format": "csv", "default_format": "CSV"}, "TEXTFILE", ",", None),
-        "other": ({"data_format": "tbl", "default_format": "OTHER"}, "TEXTFILE", "|", {"skip.header.line.count": "0"}),
+        "parquet": ("PARQUET", None, None),
+        "csv": ("TEXTFILE", ",", None),
+        "other": ("TEXTFILE", "|", {"skip.header.line.count": "0"}),
     }
-    for label, (attributes, stored_as, delimiter, props) in variants.items():
-        adapter = _bare("benchbox.platforms.athena", "AthenaAdapter", **base, **attributes)
+    for label, (stored_as, delimiter, props) in variants.items():
 
         def fork(sql: str, stored_as=stored_as, delimiter=delimiter, props=props) -> str:
             table = _name(sql)
@@ -798,18 +756,9 @@ def _athena() -> list[Case]:
 
         cases += _family(
             f"athena_{label}",
-            lambda sql, adapter=adapter: adapter._convert_to_external_table(_translated(sql, "trino", True)),
             fork,
             _inputs(),
         )
-
-    adapter = _bare(
-        "benchbox.platforms.athena",
-        "AthenaAdapter",
-        **base,
-        data_format="parquet",
-        default_format="PARQUET",
-    )
 
     def staging_fork(sql: str) -> str:
         table = _name(sql)
@@ -836,7 +785,6 @@ def _athena() -> list[Case]:
 
     cases += _family(
         "athena_staging",
-        lambda sql: adapter._convert_to_external_table(_translated(sql, "trino", True), is_staging=True),
         staging_fork,
         _only(("tpch_",), {"pk_middle": _MISC["pk_middle"], "non_create": _MISC["non_create_insert"]}),
     )
@@ -844,10 +792,8 @@ def _athena() -> list[Case]:
 
 
 def _databend() -> list[Case]:
-    adapter = _bare("benchbox.platforms.databend.adapter", "DatabendAdapter")
     return _family(
         "databend",
-        lambda sql: adapter._optimize_table_definition(_translated(sql, "snowflake")),
         lambda sql: _fork(
             sql,
             "snowflake",
@@ -888,7 +834,6 @@ def _trino() -> list[Case]:
 
         cases += _family(
             label,
-            lambda sql, adapter=adapter, write=write: adapter._optimize_table_definition(_translated(sql, write, True)),
             fork,
             _inputs(),
         )
@@ -917,7 +862,6 @@ def _starrocks_key_model(sql: str) -> str:
 
 
 def _starrocks() -> list[Case]:
-    adapter = _bare("benchbox.platforms.starrocks.adapter", "StarRocksAdapter")
     engines = importlib.import_module(_ENGINES)
 
     def fork(sql: str) -> str:
@@ -939,7 +883,7 @@ def _starrocks() -> list[Case]:
             ),
         )
 
-    return _family("starrocks", adapter._optimize_table_definition, fork, _inputs())
+    return _family("starrocks", fork, _inputs())
 
 
 def _doris() -> list[Case]:
@@ -979,7 +923,6 @@ def _doris() -> list[Case]:
 
         cases += _family(
             f"doris_{label}",
-            lambda sql, adapter=adapter: adapter._inject_doris_ddl_clauses(_translated(sql, "doris")),
             fork,
             _inputs(),
         )
@@ -989,24 +932,15 @@ def _doris() -> list[Case]:
 def _tsql() -> list[Case]:
     cases: list[Case] = []
     for distribution in ("ROUND_ROBIN", "REPLICATE"):
-        adapter = _bare(
-            "benchbox.platforms.azure_synapse",
-            "AzureSynapseAdapter",
-            schema="dbo",
-            distribution_default=distribution,
-        )
         cases += _family(
             f"synapse_{distribution.lower()}",
-            lambda sql, adapter=adapter: adapter._optimize_table_definition(_translated(sql, "tsql")),
             lambda sql, distribution=distribution: _fork(
                 sql, "tsql", "tsql", schema="dbo", default_layout=_layout(distribution=distribution.lower())
             ),
             _inputs(),
         )
-    fabric = _bare("benchbox.platforms.fabric_warehouse", "FabricWarehouseAdapter", schema="dbo")
     cases += _family(
         "fabric",
-        lambda sql: fabric._optimize_table_definition(_translated(sql, "tsql")),
         lambda sql: _fork(sql, "tsql", "tsql", schema="dbo"),
         _inputs(),
     )
@@ -1014,7 +948,6 @@ def _tsql() -> list[Case]:
 
 
 def _snowflake() -> list[Case]:
-    adapter = _bare("benchbox.platforms.snowflake", "SnowflakeAdapter")
     inputs = {
         **_inputs(),
         "quoted_identifiers": (
@@ -1025,24 +958,14 @@ def _snowflake() -> list[Case]:
     }
     return _family(
         "snowflake",
-        lambda sql: adapter._optimize_table_definition(_translated(sql, "snowflake")),
         lambda sql: _fork(sql, "snowflake", "snowflake", or_replace=True),
         inputs,
     )
 
 
 def _bigquery() -> list[Case]:
-    adapter = _bare(
-        "benchbox.platforms.bigquery",
-        "BigQueryAdapter",
-        project_id="proj",
-        dataset_id="ds",
-        partitioning_field=None,
-        clustering_fields=[],
-    )
     return _family(
         "bigquery",
-        lambda sql: adapter._convert_to_bigquery_table(_translated(sql, "bigquery")),
         lambda sql: _fork(sql, "bigquery", "bigquery", or_replace=True, schema="proj.ds", table_case="upper"),
         _inputs(),
     )
@@ -1051,7 +974,6 @@ def _bigquery() -> list[Case]:
 def _singlestore() -> list[Case]:
     from benchbox.platforms import singlestore
 
-    adapter = _bare("benchbox.platforms.singlestore", "SingleStoreAdapter")
     ddl = importlib.import_module("benchbox._vendor.sqlglot.benchbox.ddl")
     engines = importlib.import_module(_ENGINES)
 
@@ -1072,35 +994,15 @@ def _singlestore() -> list[Case]:
             singlestore=keys,
         )
 
-    def legacy(sql: str) -> str:
-        return adapter._transform_create_statement(_translated(sql, "mysql"))
-
-    return _family("singlestore", legacy, fork, _inputs())
+    return _family("singlestore", fork, _inputs())
 
 
 def _mooncake() -> list[Case]:
-    adapter = _bare("benchbox.platforms.pg_mooncake", "PgMooncakeAdapter")
     cases = _family(
         "mooncake_access_method",
-        lambda sql: adapter._add_columnstore_access_method(_translated(sql, "postgres")),
         lambda sql: _fork(sql, "postgres", "postgres", default_layout=_layout(format="mooncake")),
         _inputs(),
     )
-
-    def promote(schema: str, table: str) -> str:
-        from unittest.mock import MagicMock
-
-        adapter = _bare("benchbox.platforms.pg_mooncake", "PgMooncakeAdapter", schema=schema)
-        adapter._validate_identifier = lambda name: True
-        connection = MagicMock()
-        cursor = connection.cursor.return_value
-        cursor.fetchone.return_value = (1,)
-        adapter._promote_loaded_tables_to_mooncake(connection, [table], {table: 1})
-        rendered = []
-        for call in cursor.execute.call_args_list:
-            statement, *params = call.args
-            rendered.append(statement % tuple(f"'{value}'" for value in params[0]) if params else statement)
-        return _squash("\n".join(rendered[:2]))
 
     def mirror(schema: str, table: str) -> str:
         engines = importlib.import_module(_ENGINES)
@@ -1114,7 +1016,7 @@ def _mooncake() -> list[Case]:
             cases.append(
                 Case(
                     f"mooncake_mirror:{schema}.{table}",
-                    lambda schema=schema, table=table: promote(schema, table),
+                    frozen_legacy(AREA, f"mooncake_mirror:{schema}.{table}"),
                     lambda schema=schema, table=table: mirror(schema, table),
                 )
             )
@@ -1126,18 +1028,6 @@ def _questdb() -> list[Case]:
     questdb = importlib.import_module("benchbox.platforms.questdb")
     for label, partition in (("default", None), ("day", "DAY"), ("none", "NONE")):
         adapter = _bare("benchbox.platforms.questdb", "QuestDBAdapter", partition_by=partition)
-
-        def legacy(sql: str, adapter=adapter) -> str:
-            from benchbox.platforms.base.ddl_helpers import strip_foreign_keys
-
-            if "FOREIGN KEY" in sql.upper() or "REFERENCES" in sql.upper():
-                sql = strip_foreign_keys(sql)
-            if "PRIMARY KEY" in sql.upper():
-                sql = adapter._strip_pk_constraints(sql)
-            return adapter._apply_questdb_schema_enhancements(sql)
-
-        def legacy_translated(sql: str, legacy=legacy) -> str:
-            return legacy(_translated(sql, "postgres"))
 
         def fork(sql: str, adapter=adapter) -> str:
             table = _name(sql)
@@ -1159,14 +1049,11 @@ def _questdb() -> list[Case]:
                 default_layout=layout,
             )
 
-        cases += _family(f"questdb_{label}", legacy_translated, fork, _inputs())
+        cases += _family(f"questdb_{label}", fork, _inputs())
     return cases
 
 
 def _strip_helpers() -> list[Case]:
-    from benchbox.platforms.base.ddl_helpers import strip_foreign_keys, strip_primary_keys, strip_with_properties
-
-    ducklake = _bare("benchbox.platforms.ducklake", "DuckLakeAdapter")
     inputs = {
         **_inputs(),
         "with_properties": "CREATE TABLE t (a INT) WITH (format = 'PARQUET')",
@@ -1179,25 +1066,21 @@ def _strip_helpers() -> list[Case]:
     }
     cases = _family(
         "postgresql_strip_foreign_keys",
-        lambda sql: strip_foreign_keys(_translated(sql, "postgres")),
         lambda sql: _fork(sql, "postgres", "postgres", strip_foreign_keys=True),
         inputs,
     )
     cases += _family(
         "ducklake_strip_primary_keys",
-        lambda sql: ducklake.ducklake_strip_primary_keys(_translated(sql, "duckdb")),
         lambda sql: _fork(sql, "duckdb", "duckdb", strip_primary_keys=True),
         inputs,
     )
     cases += _family(
         "helper_strip_primary_keys",
-        strip_primary_keys,
         lambda sql: _fork(sql, "postgres", strip_primary_keys=True),
         inputs,
     )
     cases += _family(
         "helper_strip_with_properties",
-        strip_with_properties,
         lambda sql: _fork(sql, "postgres", strip_with_properties=True),
         {"with_properties": inputs["with_properties"]},
     )
@@ -1205,8 +1088,6 @@ def _strip_helpers() -> list[Case]:
 
 
 def _spark_helper() -> list[Case]:
-    from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
     inputs = {
         **_inputs(),
         "using_present": "CREATE TABLE t (a INT) USING PARQUET",
@@ -1222,14 +1103,6 @@ def _spark_helper() -> list[Case]:
     )
     for label, table_format, v1_table, _ in variants:
 
-        def legacy(sql: str, table_format=table_format, v1_table=v1_table) -> str:
-            return optimize_spark_table_definition(
-                _translated(sql, "spark"),
-                table_format=table_format,
-                strip_v1_constraints=v1_table,
-                upcast_smallint=v1_table,
-            )
-
         def fork(sql: str, table_format=table_format, v1_table=v1_table) -> str:
             options: dict[str, Any] = {"default_layout": _layout(format=table_format)}
             if v1_table:
@@ -1241,137 +1114,44 @@ def _spark_helper() -> list[Case]:
                 )
             return _fork(sql, "spark", "spark", **options)
 
-        cases += _family(label, legacy, fork, inputs)
+        cases += _family(label, fork, inputs)
     return cases
 
 
 def _spark_mixin() -> list[Case]:
-    from benchbox.core.tuning.ddl_generator import ColumnDefinition
-    from benchbox.platforms.base.cloud_spark.mixins import SparkDDLGeneratorMixin, SparkTableFormat
-
-    def adapter_for(table_format: SparkTableFormat) -> Any:
-        return type("MixinAdapter", (SparkDDLGeneratorMixin,), {"table_format": table_format})()
-
-    columns = [
-        ColumnDefinition("o_orderkey", "BIGINT"),
-        ColumnDefinition("o_orderdate", "DATE"),
-        ColumnDefinition("o_comment", "VARCHAR(79)"),
-    ]
     source = "CREATE TABLE orders (o_orderkey BIGINT, o_orderdate DATE, o_comment VARCHAR(79))"
-    lineitem_columns = [ColumnDefinition("l_orderkey", "BIGINT"), ColumnDefinition("l_shipdate", "DATE")]
     lineitem_source = "CREATE TABLE lineitem (l_orderkey BIGINT, l_shipdate DATE)"
     optimize = {"delta.autoOptimize.optimizeWrite": "true", "delta.autoOptimize.autoCompact": "true"}
-
-    def tuning(**groups: list[tuple[str, str]]) -> TableTuning:
-        return TableTuning(
-            table_name="orders",
-            **{
-                key: [TuningColumn(name=name, type=kind, order=index) for index, (name, kind) in enumerate(cols, 1)]
-                for key, cols in groups.items()
-            },
-        )
-
     specs = [
-        ("delta_untuned", SparkTableFormat.DELTA, None, "spark", {"format": "delta", "properties": optimize}),
-        (
-            "delta_partition",
-            SparkTableFormat.DELTA,
-            tuning(partitioning=[("o_orderdate", "DATE")]),
-            "spark",
-            {"format": "delta", "partition_by": ["o_orderdate"], "properties": optimize},
-        ),
-        (
-            "delta_cluster",
-            SparkTableFormat.DELTA,
-            tuning(clustering=[("o_orderkey", "BIGINT")]),
-            "databricks",
-            {"format": "delta", "cluster_by": ["o_orderkey"], "properties": optimize},
-        ),
-        (
-            "delta_distribution_zorder",
-            SparkTableFormat.DELTA,
-            tuning(distribution=[("o_orderkey", "BIGINT")]),
-            "databricks",
-            {"format": "delta", "properties": optimize},
-        ),
-        (
-            "iceberg_partition",
-            SparkTableFormat.ICEBERG,
-            tuning(partitioning=[("o_orderdate", "DATE")]),
-            "spark",
-            {"format": "iceberg", "partition_by": ["months(o_orderdate)"]},
-        ),
-        (
-            "iceberg_sorted",
-            SparkTableFormat.ICEBERG,
-            tuning(sorting=[("o_orderkey", "BIGINT")]),
-            "spark",
-            {"format": "iceberg", "properties": {"write.sort-order": "o_orderkey ASC"}},
-        ),
-        (
-            "parquet_untuned",
-            SparkTableFormat.PARQUET,
-            None,
-            "spark",
-            {"format": "parquet"},
-        ),
-        (
-            "parquet_distribution",
-            SparkTableFormat.PARQUET,
-            tuning(distribution=[("o_orderkey", "BIGINT")]),
-            "spark",
-            {"format": "parquet", "distribute_by": ["o_orderkey"], "buckets": 32},
-        ),
-        (
-            "parquet_partition_sort",
-            SparkTableFormat.PARQUET,
-            tuning(partitioning=[("o_orderdate", "DATE")], sorting=[("o_orderkey", "BIGINT")]),
-            "spark",
-            {"format": "parquet", "partition_by": ["o_orderdate"]},
-        ),
-        (
-            "hive_untuned",
-            SparkTableFormat.HIVE,
-            None,
-            "hive",
-            {"stored_as": "PARQUET"},
-        ),
-        (
-            "hive_partition",
-            SparkTableFormat.HIVE,
-            tuning(partitioning=[("o_orderdate", "DATE")]),
-            "hive",
-            {"stored_as": "PARQUET", "partition_by": ["o_orderdate"]},
-        ),
+        ("delta_untuned", "spark", {"format": "delta", "properties": optimize}),
+        ("delta_partition", "spark", {"format": "delta", "partition_by": ["o_orderdate"], "properties": optimize}),
+        ("delta_cluster", "databricks", {"format": "delta", "cluster_by": ["o_orderkey"], "properties": optimize}),
+        ("delta_distribution_zorder", "databricks", {"format": "delta", "properties": optimize}),
+        ("iceberg_partition", "spark", {"format": "iceberg", "partition_by": ["months(o_orderdate)"]}),
+        ("iceberg_sorted", "spark", {"format": "iceberg", "properties": {"write.sort-order": "o_orderkey ASC"}}),
+        ("parquet_untuned", "spark", {"format": "parquet"}),
+        ("parquet_distribution", "spark", {"format": "parquet", "distribute_by": ["o_orderkey"], "buckets": 32}),
+        ("parquet_partition_sort", "spark", {"format": "parquet", "partition_by": ["o_orderdate"]}),
+        ("hive_untuned", "hive", {"stored_as": "PARQUET"}),
+        ("hive_partition", "hive", {"stored_as": "PARQUET", "partition_by": ["o_orderdate"]}),
         (
             "hive_bucketed",
-            SparkTableFormat.HIVE,
-            tuning(distribution=[("o_orderkey", "BIGINT")], sorting=[("o_orderdate", "DATE")]),
             "hive",
             {"stored_as": "PARQUET", "distribute_by": ["o_orderkey"], "sort_by": ["o_orderdate"], "buckets": 32},
         ),
     ]
     cases = []
-    for label, table_format, table_tuning, write, layout in specs:
-        adapter = adapter_for(table_format)
-
-        def legacy(adapter=adapter, table_tuning=table_tuning) -> str:
-            return _squash(
-                adapter.generate_create_table_ddl("orders", columns, adapter.generate_tuning_clauses(table_tuning))
-            )
+    for label, write, layout in specs:
 
         def fork(write=write, layout=layout) -> str:
             return _fork(source, write, default_layout=_layout(**layout))
 
-        cases.append(Case(f"spark_mixin:{label}", legacy, fork))
+        cases.append(Case(f"spark_mixin:{label}", frozen_legacy(AREA, f"spark_mixin:{label}"), fork))
 
-    adapter = adapter_for(SparkTableFormat.DELTA)
     cases.append(
         Case(
             "spark_mixin:if_not_exists_schema",
-            lambda: _squash(
-                adapter.generate_create_table_ddl("lineitem", lineitem_columns, None, if_not_exists=True, schema="tpch")
-            ),
+            frozen_legacy(AREA, "spark_mixin:if_not_exists_schema"),
             lambda: _fork(lineitem_source, "spark", if_not_exists=True, schema="tpch"),
         )
     )
