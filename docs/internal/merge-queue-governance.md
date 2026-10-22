@@ -57,6 +57,8 @@ fails it. Checks run on the pull request head, which need not be current with
 
 `core` also measures the shadow selection. After the heavy medium-test shards finish, the aggregate downloads the shard junit reports and the `coverage-selection-<pr>-<sha>` artifact, runs `scripts/coverage_test_selection.py misses`, and writes a `Shadow selection misses` section to the step summary plus a `coverage-selection-misses-<pr>-<sha>` artifact (`selected_count`, `failed`, `missed`, `would_escalate`). A failed test counts as missed when neither its node ID nor its bare file path is in the selection; a selected sibling node does not cover it. When the selection or any junit report is missing or unparseable, the step reports `not available` with no escalation verdict instead of a clean bill. The step reports only and never fails the job.
 
+The coverage selection step in `ci-paths` should finish within 60 seconds and 3 GB peak RSS on that runner; it already prints `elapsed=` and `rss=`. Measured on PR #3264's CI run 39794063479: 21.6 s and 1384.5 MB with the v2 map, against 44.6 s and 2.2 GB for the v1 map.
+
 ---
 
 ## 3. Merge Path

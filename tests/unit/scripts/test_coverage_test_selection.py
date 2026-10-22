@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -1234,52 +1235,66 @@ def test_prune_cli_rewrites_nodeids(repo: Path, tmp_path: Path) -> None:
 def _write_junit(path: Path, cases: list[tuple[str, str, str | None]]) -> None:
     lines = ['<?xml version="1.0" encoding="utf-8"?>', '<testsuites><testsuite name="pytest">']
     for classname, name, outcome in cases:
+        source = classname.replace(".", "/") + ".py"
         if outcome is None:
-            lines.append(f'<testcase classname="{classname}" name="{name}" time="0.1" />')
+            lines.append(f'<testcase classname="{classname}" name="{name}" file="{source}" time="0.1" />')
         else:
             lines.append(
-                f'<testcase classname="{classname}" name="{name}" time="0.1">'
+                f'<testcase classname="{classname}" name="{name}" file="{source}" time="0.1">'
                 f'<{outcome} message="boom">trace</{outcome}></testcase>'
             )
     lines.append("</testsuite></testsuites>")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def test_junit_case_node_id_matches_medium_test_names() -> None:
-    assert sel.junit_case_node_id("tests.unit.scripts.test_heavy_tier_needed", "test_real_thing") == (
-        "tests/unit/scripts/test_heavy_tier_needed.py::test_real_thing",
-        "tests/unit/scripts/test_heavy_tier_needed.py",
+def _case(classname: str | None, name: str, file: str | None = None) -> ET.Element:
+    case = ET.Element("testcase", {"name": name})
+    if classname is not None:
+        case.set("classname", classname)
+    if file is not None:
+        case.set("file", file)
+    return case
+
+
+def test_junit_case_node_id_matches_medium_test_names(tmp_path: Path) -> None:
+    (tmp_path / "tests/unit/scripts").mkdir(parents=True)
+    (tmp_path / "tests/unit/scripts/test_heavy_tier_needed.py").write_text("", encoding="utf-8")
+    (tmp_path / "tests/unit/b").mkdir(parents=True)
+    (tmp_path / "tests/unit/b/test_sub.py").write_text("", encoding="utf-8")
+    node = sel.junit_case_node_id
+    assert (
+        node(tmp_path, _case("tests.unit.scripts.test_heavy_tier_needed", "test_param[True-False-True]"))
+        == "tests/unit/scripts/test_heavy_tier_needed.py::test_param[True-False-True]"
     )
-    assert sel.junit_case_node_id("tests.unit.scripts.test_heavy_tier_needed", "test_param[True-False-True]") == (
-        "tests/unit/scripts/test_heavy_tier_needed.py::test_param[True-False-True]",
-        "tests/unit/scripts/test_heavy_tier_needed.py",
+    assert (
+        node(tmp_path, _case("tests.unit.scripts.test_heavy_tier_needed.TestGroup", "test_x"))
+        == "tests/unit/scripts/test_heavy_tier_needed.py::TestGroup::test_x"
     )
-    assert sel.junit_case_node_id("tests.unit.core.test_engine", "TestGroup::test_x") == (
-        "tests/unit/core/test_engine.py::TestGroup::test_x",
-        "tests/unit/core/test_engine.py",
+    assert node(tmp_path, _case("", "test_x", "tests/unit/core/test_engine.py")) == (
+        "tests/unit/core/test_engine.py::test_x"
     )
-    assert sel.junit_case_node_id("test_smoke", "test_boot") == (
-        "test_smoke.py::test_boot",
-        "test_smoke.py",
-    )
-    assert sel.junit_case_node_id("tests.unit.a.test_one.TestGroup", "test_x", "tests/unit/a/test_one.py") == (
-        "tests/unit/a/test_one.py::TestGroup::test_x",
-        "tests/unit/a/test_one.py",
+    assert node(tmp_path, _case("", "test_x")) is None
+    assert node(tmp_path, _case("tests.unit.b.test_sub.TestSub", "test_inherited", "tests/unit/a/test_base.py")) == (
+        "tests/unit/b/test_sub.py::TestSub::test_inherited"
     )
 
 
-def test_junit_case_node_id_prefers_file_attribute_without_classname() -> None:
-    assert sel.junit_case_node_id("", "test_x", "tests/unit/core/test_engine.py") == (
-        "tests/unit/core/test_engine.py::test_x",
-        "tests/unit/core/test_engine.py",
+def test_miss_and_build_map_derive_identical_node_ids(tmp_path: Path) -> None:
+    (tmp_path / "tests/unit/a").mkdir(parents=True)
+    (tmp_path / "tests/unit/a/test_one.py").write_text("", encoding="utf-8")
+    report = tmp_path / "shard-0-junit.xml"
+    report.write_text(
+        "<testsuites><testsuite>"
+        '<testcase classname="tests.unit.a.test_one.TestG" name="test_a"><failure/></testcase>'
+        '<testcase classname="" name="test_orphan"><failure/></testcase>'
+        '<testcase classname="tests.unit.zz.test_gone.TestG" name="test_b" file="tests/unit/a/test_one.py">'
+        "<error/></testcase>"
+        "</testsuite></testsuites>",
+        encoding="utf-8",
     )
-
-
-def test_junit_case_node_id_derives_module_from_classname_on_mismatch() -> None:
-    assert sel.junit_case_node_id("tests.unit.b.test_sub.TestSub", "test_inherited", "tests/unit/a/test_base.py") == (
-        "tests/unit/b/test_sub.py::TestSub::test_inherited",
-        "tests/unit/b/test_sub.py",
-    )
+    failed, _, _ = sel.failed_node_ids([report], tmp_path)
+    assert failed == sel._junit_failed_nodeids([report], tmp_path)
+    assert failed == ["tests/unit/a/test_one.py::TestG::test_a"]
 
 
 def test_failed_node_ids_counts_failures_and_errors(tmp_path: Path) -> None:
@@ -1293,7 +1308,7 @@ def test_failed_node_ids_counts_failures_and_errors(tmp_path: Path) -> None:
             ("tests.unit.c.test_three", "test_skip", None),
         ],
     )
-    failed, parsed, unparsed = sel.failed_node_ids([report])
+    failed, parsed, unparsed = sel.failed_node_ids([report], tmp_path)
     assert parsed == 1
     assert unparsed == []
     assert failed == [

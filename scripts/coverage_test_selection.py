@@ -20,7 +20,6 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from _project.scripts import preflight_targets
-from _project.scripts.inert_paths import is_inert_path, is_machine_read_doc, load_readers, matches_exemption
 
 MAP_VERSION = 2
 MAP_ARTIFACT_PREFIX = "t2-coverage-map-"
@@ -94,9 +93,29 @@ def _junit_case_filename(repo: Path, filename: str, classname: str) -> str | Non
     return None
 
 
-def _junit_failed_nodeids(junit_files: list[Path], repo: Path) -> list[str]:
-    import xml.etree.ElementTree as ET
+def junit_case_node_id(repo: Path, case: ET.Element) -> str | None:
+    name = (case.get("name") or "").strip()
+    classname = (case.get("classname") or "").strip()
+    if not name:
+        return None
+    filename = _junit_case_filename(repo, (case.get("file") or "").strip(), classname)
+    if filename is not None:
+        module = filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
+        if classname and classname != module and not classname.startswith(module + "."):
+            filename = _junit_case_filename(repo, "", classname)
+    if filename is None:
+        return None
+    module = filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
+    if not classname or classname == module:
+        parts = [filename, name]
+    elif classname.startswith(module + "."):
+        parts = [filename, *classname[len(module) + 1 :].split("."), name]
+    else:
+        return None
+    return "::".join(part for part in parts if part)
 
+
+def _junit_failed_nodeids(junit_files: list[Path], repo: Path) -> list[str]:
     failed: set[str] = set()
     for junit in junit_files:
         try:
@@ -106,25 +125,9 @@ def _junit_failed_nodeids(junit_files: list[Path], repo: Path) -> list[str]:
         for case in root.iter("testcase"):
             if case.find("failure") is None and case.find("error") is None:
                 continue
-            name = (case.get("name") or "").strip()
-            classname = (case.get("classname") or "").strip()
-            if not name:
-                continue
-            filename = _junit_case_filename(repo, (case.get("file") or "").strip(), classname)
-            if filename is not None:
-                module = filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
-                if classname and classname != module and not classname.startswith(module + "."):
-                    filename = _junit_case_filename(repo, "", classname)
-            if filename is None:
-                continue
-            module = filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
-            if not classname or classname == module:
-                parts = [filename, name]
-            elif classname.startswith(module + "."):
-                parts = [filename, *classname[len(module) + 1 :].split("."), name]
-            else:
-                continue
-            failed.add("::".join(part for part in parts if part))
+            node = junit_case_node_id(repo, case)
+            if node is not None:
+                failed.add(node)
     return sorted(failed)
 
 
@@ -416,6 +419,8 @@ def _is_test_file(path: str) -> bool:
 
 
 def _is_inert(path: str) -> bool:
+    from _project.scripts.inert_paths import is_inert_path
+
     return is_inert_path(path)
 
 
@@ -533,6 +538,8 @@ def _classify_files(
         raw_nodes = mapping.get("nodes")
         if isinstance(raw_nodes, list):
             nodes = raw_nodes
+    from _project.scripts.inert_paths import is_machine_read_doc, matches_exemption
+
     for entry in files:
         if is_machine_read_doc(entry.path) and matches_exemption(entry.path):
             found = sorted(test for test in known_readers.get(entry.path, ()) if (repo / test).is_file())
@@ -722,6 +729,8 @@ def select_tests(
     if overlap_note is not None:
         reasons.append(overlap_note)
     index = mapping.get("files") if isinstance(mapping, dict) and isinstance(mapping.get("files"), dict) else {}
+    from _project.scripts.inert_paths import load_readers
+
     readers = load_readers(repo)
     coverage_hits, uncovered, non_python, reader_tests = _classify_files(repo, mapping, files, index, readers)
     code_routed = decision is None or decision.get("needs_code_ci") is not False
@@ -1171,39 +1180,7 @@ def _cmd_prune(args: argparse.Namespace) -> int:
     return 0
 
 
-def _junit_module_parts(classname: str) -> tuple[list[str], list[str]]:
-    parts = classname.split(".") if classname else []
-    extra: list[str] = []
-    while len(parts) > 1 and not parts[-1].startswith("test_") and not parts[-1].endswith("_test"):
-        extra.insert(0, parts.pop())
-    return parts, extra
-
-
-def junit_case_node_id(
-    classname: str, name: str, file_attr: str | None = None, repo: Path | None = None
-) -> tuple[str, str]:
-    filename: str | None = None
-    if repo is not None:
-        filename = _junit_case_filename(repo, file_attr or "", classname)
-    if filename is None:
-        filename = file_attr
-    path: str | None = None
-    extra: list[str] = []
-    if filename:
-        stem = filename[: -len(".py")] if filename.endswith(".py") else filename
-        dotted = stem.replace("/", ".")
-        if not classname or classname == dotted or classname.startswith(dotted + "."):
-            path = filename
-            if classname and classname != dotted:
-                extra = classname[len(dotted) + 1 :].split(".")
-    if path is None:
-        module, extra = _junit_module_parts(classname)
-        path = "/".join(module) + ".py"
-    node = path if not extra else f"{path}::{'::'.join(extra)}"
-    return f"{node}::{name}", path
-
-
-def failed_node_ids(paths: list[Path], repo: Path | None = None) -> tuple[list[str], int, list[str]]:
+def failed_node_ids(paths: list[Path], repo: Path) -> tuple[list[str], int, list[str]]:
     failed: set[str] = set()
     parsed = 0
     unparsed: list[str] = []
@@ -1219,8 +1196,9 @@ def failed_node_ids(paths: list[Path], repo: Path | None = None) -> tuple[list[s
         for case in root.iter("testcase"):
             if case.find("failure") is None and case.find("error") is None:
                 continue
-            node, _ = junit_case_node_id(case.get("classname", ""), case.get("name", ""), case.get("file"), repo)
-            failed.add(node)
+            node = junit_case_node_id(repo, case)
+            if node is not None:
+                failed.add(node)
     return sorted(failed), parsed, unparsed
 
 
