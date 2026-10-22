@@ -28352,10 +28352,15 @@
       "title": "is_snowflake_stage_path silently returns False for Path inputs on Windows"
     },
     "windows-tpcds-dsqgen-q46-distribution-fork-golden-corpus-20261021": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-23T01:15:44Z",
+        "generation": "2f42632ea3424fbdb94c3534d2a050fe",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Fix TPC-DS dsqgen query 46 failing on Windows in the fork golden corpus tests"
     },
     "windows-tpch-trailing-delimiter-crlf-normalization": {
