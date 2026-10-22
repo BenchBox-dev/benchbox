@@ -16158,6 +16158,13 @@
       "status": "open",
       "title": "muse SHIP verdicts on file-list briefs are self-attested"
     },
+    "oracle-staged-diff-silent-skip-and-nonatomic-write-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "stage_pull_request_diff silently drops the full diff when the target exists and writes it non-atomically"
+    },
     "oracle-standin-arming-digest-20261021": {
       "claim": null,
       "needs": [],

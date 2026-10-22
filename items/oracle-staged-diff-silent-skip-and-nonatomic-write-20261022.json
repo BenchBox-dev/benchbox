@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Failing-before test: with a file named .oracle-pull-request.diff already in the workspace, the review result or report states the full diff was not staged (or the reviewer is recorded unavailable) instead of silently omitting the pointer; the test fails on develop",
+    "Staging uses a single-step exclusive create (O_CREAT|O_EXCL|O_NOFOLLOW or equivalent); a test shows a symlink or file created between check and write is neither followed nor overwritten",
+    "The existing never-overwrite and never-follow-symlink tests pass unchanged; none deleted or loosened",
+    "PR merged with an oracle verdict on its final head; merge SHA recorded"
+  ],
+  "context": "Created 2026-10-22 from the deferred-findings inventory (soundness-deferred-findings-inventory-20261022); source plan: soundness-gap plan of 2026-10-22.",
+  "description": "Oracle Low findings deferred on merged PR 2769 and never tracked (the staged-diff hash check from PR 2798 closed only the sibling integrity finding). Threads: https://github.com/BenchBox-dev/benchbox/pull/2769#discussion_r4214441372 (staged full diff silently dropped when the target exists) and https://github.com/BenchBox-dev/benchbox/pull/2769#discussion_r4214717105 (check-then-write without O_EXCL/O_NOFOLLOW). Re-verified by the controller on origin/develop 2026-10-22: _project/scripts/oracle_reviewers/runner.py lines 52-66 return None when os.path.lexists(target), then write with target.write_text after a separate check; the caller _project/scripts/oracle_reviewers/cli.py about line 557 passes diff_path=None, so render.assemble_values emits a file-list brief with no pointer to the full diff and nothing in the report says so. Because the workspace is the pull-request checkout, a change that commits a file named .oracle-pull-request.diff makes every scoped or follow-up review run without full-diff context. tests/unit/scripts/oracle_reviewers/test_runner.py about 295-314 pin never-overwrite and never-follow-symlink and must keep passing.\n\nDECISION GATE: decide how an existing target is reported: record the reviewer as unavailable, or state in the brief and report that the full diff was not staged; choose the option that cannot let a SHIP be produced from a brief the reviewer believes is complete. Prefer failing closed.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR; no pre-registered digests; never weaken a gate; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; done = merged PR plus evidence.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-22T20:04:37Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "02dfa0aef56d4536beb64baf447a7742",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}
