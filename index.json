@@ -13514,12 +13514,7 @@
       "title": "Stop copying the whole TPC-DS template tree on every dsqgen call"
     },
     "longtest-15-module-grouped-scheduling": {
-      "claim": {
-        "expires_at": "2026-10-23T14:12:30Z",
-        "generation": "a8aa848e639f4bb38b721d5409c58310",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
-      },
+      "claim": null,
       "needs": [
         "longtest-01-delete-duplicate-tests",
         "longtest-02-canary-live-real-checks",
@@ -13533,7 +13528,7 @@
         "longtest-10-repo-scan-tests"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Keep each module's expensive fixtures on one worker and shard in the medium tier"
     },
     "longtest-16-refresh-durations-and-measure": {
