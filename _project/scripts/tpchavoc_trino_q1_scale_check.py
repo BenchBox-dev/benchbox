@@ -55,6 +55,10 @@ class TrinoClient:
     def info(self) -> dict[str, Any]:
         return self._request(f"{self.server}/v1/info", None, None)
 
+    def peak_memory_bytes(self, query_id: str) -> int:
+        info = self._request(f"{self.server}/v1/query/{query_id}", None, None)
+        return int(str(info["queryStats"]["peakUserMemoryReservation"]).removesuffix("B"))
+
     def execute(self, sql: str, schema: str | None = None) -> dict[str, Any]:
         started = time.monotonic()
         payload = self._request(f"{self.server}/v1/statement", sql.encode("utf-8"), schema)
@@ -69,6 +73,7 @@ class TrinoClient:
                     "error_message": error.get("message"),
                     "query_id": payload.get("id"),
                     "stats": payload.get("stats", {}),
+                    "peak_memory_bytes": self.peak_memory_bytes(payload["id"]),
                     "wall_seconds": time.monotonic() - started,
                 }
             if "columns" in payload and not columns:
@@ -85,6 +90,7 @@ class TrinoClient:
             "columns": columns,
             "rows": rows,
             "stats": stats,
+            "peak_memory_bytes": self.peak_memory_bytes(payload["id"]),
             "wall_seconds": time.monotonic() - started,
         }
 
@@ -126,15 +132,15 @@ def measure(client: TrinoClient, sql: str, schema: str, repeats: int) -> dict[st
             "status": "FAIL",
             "error_name": failure["error_name"],
             "error_message": failure["error_message"],
-            "peak_memory_bytes": failure["stats"].get("peakMemoryBytes"),
+            "peak_memory_bytes": failure["peak_memory_bytes"],
         }
     last = runs[-1]
     return {
         "status": "PASS",
         "rows": last["rows"],
         "row_count": len(last["rows"]),
-        "peak_memory_bytes": max(run["stats"].get("peakMemoryBytes", 0) for run in runs),
-        "peak_memory_bytes_runs": [run["stats"].get("peakMemoryBytes", 0) for run in runs],
+        "peak_memory_bytes": max(run["peak_memory_bytes"] for run in runs),
+        "peak_memory_bytes_runs": [run["peak_memory_bytes"] for run in runs],
         "wall_seconds": [round(run["wall_seconds"], 3) for run in runs],
         "cpu_millis": [run["stats"].get("cpuTimeMillis") for run in runs],
         "processed_rows": last["stats"].get("processedRows"),
