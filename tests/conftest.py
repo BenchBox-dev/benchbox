@@ -455,6 +455,7 @@ def _tree_digest(root: Path) -> dict[str, tuple[int, str]]:
 def tpch_sf001_data(tmp_path_factory: pytest.TempPathFactory):
     import shutil
 
+    from benchbox.cli.config import ConfigManager
     from benchbox.core.benchmark_loader import get_benchmark_instance
     from benchbox.core.config import BenchmarkConfig
     from benchbox.core.system import SystemProfiler
@@ -463,12 +464,17 @@ def tpch_sf001_data(tmp_path_factory: pytest.TempPathFactory):
     cache_root = tmp_path_factory.mktemp("shared_tpch_sf001")
     cached_dir = cache_root / "tpch_sf001"
     assert normalize_output_root(str(cache_root), "tpch", 0.01) == str(cached_dir)
+    cli_config = ConfigManager()
+    compress = cli_config.get("output.compression.enabled", False) and os.getenv(
+        "BENCHBOX_NO_COMPRESSION", ""
+    ).lower() not in ["true", "1", "yes", "on"]
     config = BenchmarkConfig(
         name="tpch",
         display_name="TPC-H",
         scale_factor=0.01,
-        compress_data=True,
-        compression_type="zstd",
+        compress_data=compress,
+        compression_type=cli_config.get("output.compression.type", "zstd"),
+        compression_level=cli_config.get("output.compression.level", None),
     )
     benchmark = get_benchmark_instance(
         config,
