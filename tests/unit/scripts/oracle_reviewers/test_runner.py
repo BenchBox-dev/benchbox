@@ -584,7 +584,7 @@ def test_a_prior_defect_status_is_kept_in_the_recorded_verdict(
     workspace, head = _workspace(tmp_path)
     answered = [{"id": "D1", "status": "fixed", "evidence": "line 1"}]
     _omp_says(tmp_path, monkeypatch, prior_defects=answered)
-    outcome = _review(policy, tmp_path, workspace, head)
+    outcome = _review(policy, tmp_path, workspace, head, rules={"prior": [{"id": "D1"}]})
     assert outcome.missing is None and outcome.verdict is not None
     assert [item["id"] for item in outcome.verdict["prior_defects"]] == ["D1"]
 

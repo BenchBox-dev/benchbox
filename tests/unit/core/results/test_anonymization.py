@@ -1419,3 +1419,29 @@ class TestInlinedAppliedTuningRedaction:
             {"platform": {"tuning": {"applied": anonymize_applied_tuning_payload(self._applied())}}}
         )
         assert applied == expected["platform"]["tuning"]["applied"]
+
+
+class TestIdentifierPrefixDependsOnParentKeys:
+    @pytest.mark.parametrize(
+        ("path", "expected"),
+        [
+            (("platform_timing", "requests", "id"), "statement"),
+            (("other", "requests", "id"), None),
+            (("platform_timing", "other", "id"), None),
+            (("id",), None),
+            (("mounts", "source"), "path"),
+            (("other", "source"), None),
+            (("source",), None),
+            (("a", "mounts", "target"), "path"),
+            (("Mounts", "Destination"), "path"),
+            (("Bucket-Name",), "bucket"),
+            (("x", "log_bucket"), "bucket"),
+            ((), None),
+        ],
+    )
+    def test_prefix_is_decided_by_the_last_three_keys(self, path, expected):
+        manager = AnonymizationManager()
+
+        for _ in range(2):
+            assert manager._identifier_prefix_for_key_path(path) == expected
+            assert manager._identifier_prefix_for_key_path(("unrelated",) + path) == expected
