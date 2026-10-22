@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from .retry import State
 
@@ -165,7 +166,7 @@ def head_pulls(repo: str, run: dict[str, Any]) -> list[HeadPull]:
     if not owner or not branch:
         raise GitHubError("the run does not name its head branch")
     found: list[HeadPull] = []
-    for pull in get_paginated(f"repos/{repo}/pulls?state=all&head={owner}:{branch}&per_page=100"):
+    for pull in get_paginated(f"repos/{repo}/pulls?state=all&head={owner}:{quote(branch, safe='/')}&per_page=100"):
         created_at = _parse_time(pull.get("created_at"))
         if created_at is None or not isinstance(pull.get("number"), int):
             raise GitHubError("a pull request for the head branch has no readable creation time")

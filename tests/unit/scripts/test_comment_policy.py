@@ -1814,6 +1814,536 @@ def test_consumer_digest_has_stable_python_version_encoding() -> None:
     assert python_consumer_digest(tree) == "sha256:c6aaea25c78f8f6fdbf83d97c11fe1be21e859156b678d34cfbcc79f8c261c69"
 
 
+SCOPED_BASE = """\
+import os
+import subprocess
+import sys
+
+CMD = ["tool", "--flag"]
+CONFIG = make_config()
+
+
+def helper(value):
+    return value
+
+
+@marker("one")
+def consumer(code):
+    subprocess.run([sys.executable, "-c", code, *CMD, CONFIG.mode, helper("a")])
+
+
+def unrelated():
+    return 1
+"""
+
+
+def scoped_payload(source: str) -> str:
+    findings = [f for f in python_findings("t.py", source) if f.kind == "payload-error"]
+    assert len(findings) == 1
+    assert findings[0].payload is not None
+    return findings[0].payload
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        lambda s: s.replace("return 1", "return 2"),
+        lambda s: s + "\n\ndef another():\n    return os.getcwd()\n",
+        lambda s: s + "\n\nclass Other:\n    value = 3\n",
+        lambda s: s.replace("def unrelated():", "# note\ndef unrelated(extra=None):"),
+        lambda s: s + "\n\nOTHER = [1, 2]\n",
+        lambda s: "import pytest\n" + s + '\n\n@pytest.mark.slow\ndef test_other():\n    subprocess.run(["echo"])\n',
+        lambda s: s + "\n\ndef sink(items):\n    items.append(1)\n",
+        lambda s: s + "\n\ndef shadow(helper):\n    CMD = []\n    CMD.append(helper)\n    return CMD\n",
+        lambda s: s + "\n\ndef test_patch(monkeypatch):\n    monkeypatch.setattr(sys, 'executable', 'x')\n",
+    ],
+    ids=[
+        "body",
+        "new-function",
+        "new-class",
+        "signature",
+        "new-global",
+        "decorated-test",
+        "mutating-helper-not-called",
+        "local-shadow",
+        "monkeypatch-reverted",
+    ],
+)
+def test_scoped_digest_ignores_unrelated_edits(edit: Any) -> None:
+    assert scoped_payload(edit(SCOPED_BASE)) == scoped_payload(SCOPED_BASE)
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        lambda s: s.replace('"-c", code', '"-c", code, "x"'),
+        lambda s: s.replace('@marker("one")', '@marker("two")'),
+        lambda s: s.replace("def consumer(code):", "def consumer(code, extra=1):"),
+        lambda s: s.replace('CMD = ["tool", "--flag"]', 'CMD = ["tool", "--other"]'),
+        lambda s: s.replace("CONFIG = make_config()", "CONFIG = make_config(1)"),
+        lambda s: s.replace("    return value\n", "    return value + 1\n"),
+        lambda s: s.replace("import sys\n", "import sys as system\n"),
+        lambda s: s + '\nCMD[0] = "other"\n',
+        lambda s: s + '\nCONFIG.mode = "other"\n',
+        lambda s: s + '\nCMD.append("late")\n',
+        lambda s: s + "\nregister(CMD)\n",
+        lambda s: s + '\nif os.name:\n    CMD += ["x"]\n',
+        lambda s: s + '\n\ndef mutate():\n    CMD.append("x")\n',
+        lambda s: s + '\n\ndef mutate():\n    CONFIG.mode = "x"\n',
+        lambda s: s + "\n\ndef mutate():\n    global CMD\n    CMD = []\n",
+        lambda s: s + '\n\ndef mutate():\n    sys.executable = "x"\n',
+        lambda s: s + "\n\n@register(CMD)\ndef decorated():\n    return 1\n",
+        lambda s: s + '\n\ndef sink(items):\n    items.append("x")\n\n\ndef init():\n    sink(CMD)\n\n\ninit()\n',
+        lambda s: s + '\n\ndef init():\n    alias = CMD\n    alias.append("x")\n\n\ninit()\n',
+        lambda s: s + '\n\ndef init(items=CMD):\n    items.append("x")\n\n\ninit()\n',
+        lambda s: s + "\nsetattr(CONFIG, 'mode', 'x')\n",
+        lambda s: s + "\n\ndef get():\n    return CMD\n\n\nget().append('x')\n",
+        lambda s: (
+            s
+            + "\n\nclass Holder:\n    def __init__(self):\n        self.items = CMD\n\n    def go(self):\n        self.items.append('x')\n"
+        ),
+        lambda s: (
+            s
+            + "\n\ndef run(function):\n    function()\n    return function\n\n\n@run\ndef init():\n    CMD.append('x')\n"
+        ),
+        lambda s: s + "\n\ndef init(module):\n    module.CMD = ['x']\n",
+        lambda s: s + "\n\ndef init():\n    sys.executable.replace('a', 'b')\n\n\ninit()\n",
+        lambda s: s + "\n\ndef reader():\n    return CMD\n",
+        lambda s: s + "\n\ndef init(hook):\n    hook(sys)\n",
+    ],
+    ids=[
+        "consumer",
+        "decorator",
+        "default",
+        "global",
+        "global-call",
+        "helper",
+        "import",
+        "module-subscript-target",
+        "module-attribute-target",
+        "module-method-call",
+        "module-call-argument",
+        "module-compound",
+        "function-method-call",
+        "function-attribute-store",
+        "global-declaration",
+        "imported-attribute-store",
+        "decorator-argument",
+        "mutation-through-helper",
+        "mutation-through-alias",
+        "mutation-through-default",
+        "setattr",
+        "mutation-through-return",
+        "mutation-through-instance",
+        "mutation-through-decorator-call",
+        "attribute-name-collision",
+        "method-call-on-imported-attribute",
+        "shared-reader",
+        "imported-module-escapes",
+    ],
+)
+def test_scoped_digest_tracks_what_the_consumer_reads(edit: Any) -> None:
+    assert scoped_payload(edit(SCOPED_BASE)) != scoped_payload(SCOPED_BASE)
+
+
+INDIRECT_HEAD = "import os\nimport subprocess\nimport sys\nimport pytest\nfrom pathlib import Path\nimport config\n"
+INDIRECT_CONSUME = "def consume(code):\n    subprocess.run([sys.executable, '-c', code, *CMD, str(ROOT)])\n"
+INDIRECT_STATE = (
+    INDIRECT_HEAD + "CMD = ['a']\nROOT = Path('/a')\n\n\ndef init():\n    CMD.append('a')\n\n\n" + INDIRECT_CONSUME
+)
+INDIRECT_IMPORTED = INDIRECT_HEAD + "from config import CMD\nROOT = Path('/a')\n\n\n" + INDIRECT_CONSUME
+INDIRECT_ENVIRON = (
+    "import os\nimport subprocess\nimport sys\nfrom os import environ\n\n\n"
+    "def consume(code):\n    subprocess.run([sys.executable, code, os.environ['TOOL']])\n"
+)
+INDIRECT_FIXTURE = (
+    INDIRECT_HEAD
+    + "CMD = ['a']\n\n\n@pytest.fixture\ndef cfg():\n    return CMD\n\n\n"
+    + "def test_consume(cfg, code):\n    subprocess.run([sys.executable, code, *cfg])\n"
+)
+INDIRECT_CWD = INDIRECT_HEAD + "CMD = ['a']\nROOT = Path.cwd()\n\n\n" + INDIRECT_CONSUME
+INDIRECT_CHDIR = (
+    "import os\nimport subprocess\nimport sys\nfrom os import chdir\n\n\n"
+    "def consume(code):\n    subprocess.run([sys.executable, code, os.getcwd()])\n"
+)
+INDIRECT_ADD = INDIRECT_HEAD + "from config import CMD, add\nROOT = Path('/a')\n\n\n" + INDIRECT_CONSUME
+INDIRECT_MUTATOR = (
+    INDIRECT_HEAD
+    + "from config import CMD\nROOT = Path('/a')\n\n\ndef init():\n    config.CMD.append('a')\n\n\n"
+    + INDIRECT_CONSUME
+)
+INDIRECT_CLASS = (
+    INDIRECT_HEAD
+    + "ROOT = Path('/a')\n\n\nclass H:\n    items = ['a']\n\n\n"
+    + "def consume(code):\n    subprocess.run([sys.executable, code, *H.items, str(ROOT)])\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("base", "suffix"),
+    [
+        (INDIRECT_STATE, "\n\ninit()\n"),
+        (INDIRECT_STATE, "\n\ndef test_other():\n    init()\n"),
+        (INDIRECT_STATE, "\n\nclass Holder:\n    init()\n"),
+        (INDIRECT_STATE, "\n\ndef test_other():\n    [CMD.append('X') for CMD in [CMD]]\n"),
+        (INDIRECT_STATE, "\n\nclass Holder:\n    CMD.append('X')\n    CMD = 1\n"),
+        (INDIRECT_STATE, "\n\ndef test_other():\n    Path.__str__ = None\n"),
+        (INDIRECT_STATE, "\nPath.__str__ = lambda self: 'X'\n"),
+        (INDIRECT_STATE, "\nos.chdir('/tmp/X')\n"),
+        (INDIRECT_STATE, "\nPath('s.py').write_text('X')\n"),
+        (INDIRECT_IMPORTED, "\nCMD.append('X')\n"),
+        (INDIRECT_IMPORTED, "\n\ndef other():\n    CMD.append('X')\n"),
+        (INDIRECT_IMPORTED, "\n\ndef other():\n    config.CMD.append('X')\n"),
+        (INDIRECT_ENVIRON, "\n\ndef other():\n    environ['TOOL'] = 'X'\n"),
+        (INDIRECT_FIXTURE, "\n\ndef test_other(cfg):\n    cfg.append('X')\n"),
+        (INDIRECT_CWD, "\n\ndef other():\n    return str(ROOT)\n"),
+        (SCOPED_BASE, "\n\ndef other():\n    os.chdir('/tmp/X')\n"),
+        (SCOPED_BASE, "\n\ndef other():\n    os.environ['TOOL'] = 'X'\n"),
+        (SCOPED_BASE, "\n\ndef other():\n    os.environ.update(TOOL='X')\n"),
+        (SCOPED_BASE, "\n\ndef other():\n    sys.path.insert(0, 'x')\n"),
+        (SCOPED_BASE, "\n\ndef other():\n    subprocess.run = None\n"),
+        (INDIRECT_CHDIR, "\n\ndef _unused(_=chdir('/tmp/X')):\n    pass\n"),
+        (INDIRECT_CHDIR, "\n\nclass K(chdir('/tmp/X') or object):\n    pass\n"),
+        (INDIRECT_CHDIR, "\n\nclass K:\n    def m(self, _=chdir('/tmp/X')):\n        pass\n"),
+        (INDIRECT_ADD, "\n\ndef _unused(_=add('X')):\n    pass\n"),
+        (INDIRECT_ADD, "\n\n@add('X')\nclass K:\n    pass\n"),
+        (INDIRECT_MUTATOR, "\n\ndef test_other():\n    init()\n"),
+        (INDIRECT_CLASS, "\n\ndef test_other():\n    h = H()\n    h.items.append('X')\n"),
+    ],
+    ids=[
+        "import-time-call",
+        "call-from-another-test",
+        "class-body-call",
+        "comprehension-iterable",
+        "class-body-lookup",
+        "store-into-imported-class",
+        "import-time-store-into-imported-class",
+        "import-time-chdir",
+        "import-time-file-write",
+        "imported-object-method-call",
+        "imported-object-in-function",
+        "same-object-through-module",
+        "from-import-of-read-attribute",
+        "stateful-fixture-shared",
+        "environment-dependent-constant",
+        "chdir-in-another-test",
+        "environment-store-in-another-test",
+        "environment-update-in-another-test",
+        "path-insert-in-another-test",
+        "imported-attribute-store-in-another-test",
+        "default-argument-chdir",
+        "class-base-chdir",
+        "method-default-chdir",
+        "default-argument-imported-mutator",
+        "class-decorator-imported-mutator",
+        "call-of-function-mutating-imported-data",
+        "instance-mutates-class-attribute",
+    ],
+)
+def test_scoped_digest_tracks_indirect_state_channels(base: str, suffix: str) -> None:
+    assert scoped_payload(base + suffix) != scoped_payload(base)
+
+
+def test_scoped_digest_ignores_unrelated_logging_helpers() -> None:
+    base = "import logging\n" + SCOPED_BASE + "\nlogger = logging.getLogger(__name__)\n"
+    changed = base + "\n\ndef note(value):\n    logger.debug('value')\n    return value + 1\n"
+    assert scoped_payload(changed) == scoped_payload(base)
+
+
+ALIAS_BASE = (
+    "import subprocess\nimport sys\nfrom types import SimpleNamespace\n\nCFG = SimpleNamespace(opts=['a'])\n\n\n"
+    "def test_consume(code):\n    subprocess.run([sys.executable, code, *CFG.opts])\n"
+)
+IMPORTED_BASE = (
+    "import subprocess\nimport sys\nfrom config import CMD, SETTINGS, dataclass, partial\n\n\n"
+    "def consume(code):\n    subprocess.run([sys.executable, code, *CMD, SETTINGS.cmd])\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("base", "suffix"),
+    [
+        (ALIAS_BASE, "\nOPTS = CFG.opts\n\n\ndef test_other():\n    OPTS.append('X')\n"),
+        (ALIAS_BASE, "\n\ndef test_other():\n    o = CFG.opts\n    o.append('X')\n"),
+        (ALIAS_BASE, "\n\ndef get_opts():\n    return CFG.opts\n\n\ndef test_other():\n    get_opts().append('X')\n"),
+        (ALIAS_BASE, "\n\ndef init():\n    o = CFG.opts\n    o.append('X')\n\n\ndef test_other():\n    init()\n"),
+        (SCOPED_BASE, "\nadd = CMD.append\n\n\ndef test_other():\n    add('X')\n"),
+        (IMPORTED_BASE, "\ndataclass('X')\n"),
+        (IMPORTED_BASE, "\n\ndef _unused(_=partial('X')):\n    pass\n"),
+        (IMPORTED_BASE, "\nSETTINGS.patch(cmd='X')\n"),
+    ],
+    ids=[
+        "alias-at-import",
+        "alias-in-test",
+        "alias-returned",
+        "alias-in-helper",
+        "bound-method-alias",
+        "unrelated-import-named-dataclass",
+        "unrelated-import-named-partial",
+        "attribute-named-patch",
+    ],
+)
+def test_scoped_digest_tracks_aliases_and_look_alike_calls(base: str, suffix: str) -> None:
+    assert scoped_payload(base + suffix) != scoped_payload(base)
+
+
+def test_scoped_digest_hashes_only_the_header_of_an_effectful_definition() -> None:
+    base = SCOPED_BASE + "\n\ndef test_other(argument=register_thing()):\n    return 1\n"
+    assert scoped_payload(base.replace("return 1\n", "return 2\n")) == scoped_payload(base)
+    assert scoped_payload(base.replace("register_thing", "register_other")) != scoped_payload(base)
+
+
+G_BASE = (
+    "import subprocess\nimport sys\nfrom config import CMD, add\n\n\ndef run_now(f):\n    f()\n    return f\n\n\n"
+    "def factory(value):\n    def decorate(f):\n        f()\n        return f\n\n    return decorate\n\n\n"
+    "def consume(code):\n    subprocess.run([sys.executable, code, *CMD])\n"
+)
+G_MODULE = (
+    "import subprocess\nimport sys\nimport config\n\n\n"
+    "def consume(code):\n    subprocess.run([sys.executable, code, *config.CMD])\n"
+)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        G_BASE + "\n\n@run_now\ndef init():\n    add('X')\n",
+        G_BASE + "\n\n@factory(1)\ndef init():\n    add('X')\n",
+        G_BASE + "\n\nclass K:\n    def m():\n        add('X')\n\n    m()\n",
+        G_MODULE + "\nOPTS = config.CMD\n\n\ndef test_other():\n    OPTS.append('X')\n",
+        G_MODULE + "\n\ndef get():\n    return config.CMD\n\n\ndef test_other():\n    get().append('X')\n",
+        SCOPED_BASE + "\nadd = CMD.append\n\n\ndef test_other():\n    add('X')\n",
+    ],
+    ids=[
+        "decorator-runs-body",
+        "decorator-factory-runs-body",
+        "class-body-calls-method",
+        "imported-attribute-alias",
+        "imported-attribute-getter",
+        "called-data-alias",
+    ],
+)
+def test_scoped_digest_covers_bodies_reached_indirectly(source: str) -> None:
+    assert scoped_payload(source) != scoped_payload(source.replace("'X'", "'Y'"))
+
+
+CALLER_BASE = (
+    "import subprocess\nimport sys\n\nCOMMAND = 'print(1)'\n\n\n"
+    "def run(code):\n    subprocess.run([sys.executable, '-c', code])\n\n\n"
+    "def test_caller():\n    run(COMMAND)\n\n\n"
+    "def test_method():\n    Runner().go('x')\n\n\n"
+    "class Runner:\n    def go(self, code):\n        subprocess.run([sys.executable, code])\n\n\n"
+    "def unrelated():\n    return 1\n"
+)
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        lambda s: s.replace("run(COMMAND)", "run(COMMAND + '; evil')"),
+        lambda s: s.replace("COMMAND = 'print(1)'", "COMMAND = 'print(2)'"),
+        lambda s: s.replace("Runner().go('x')", "Runner().go('y')"),
+    ],
+    ids=["caller-argument", "value-the-caller-builds", "method-caller"],
+)
+def test_scoped_digest_includes_callers_of_a_parameter_payload(edit: Any) -> None:
+    findings = [f for f in python_findings("t.py", CALLER_BASE) if f.kind == "payload-error"]
+    assert len(findings) == 2
+    changed = [f for f in python_findings("t.py", edit(CALLER_BASE)) if f.kind == "payload-error"]
+    assert [f.payload for f in changed] != [f.payload for f in findings]
+
+
+HEAD_RUN = "import subprocess\nimport sys\n\n\n"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        HEAD_RUN + "def run(code):\n    subprocess.run([sys.executable, code])\n\n\ndef helper(x):\n    run(x)\n\n\n"
+        "def test_a():\n    helper('evil')\n",
+        HEAD_RUN + "def run(code):\n    subprocess.run([sys.executable, code])\n\n\ndef h1(x):\n    run(x)\n\n\n"
+        "def h2(x):\n    h1(x)\n\n\ndef h3(x):\n    h2(x)\n\n\ndef test_a():\n    h3('evil')\n",
+        HEAD_RUN + "class Job:\n    def __init__(self, command):\n        self.command = command\n\n"
+        "    def run(self):\n        subprocess.run([sys.executable, self.command])\n\n\n"
+        "def test_a():\n    Job('evil').run()\n",
+        HEAD_RUN + "from dataclasses import dataclass\n\n\n@dataclass\nclass Job:\n    command: str\n\n"
+        "    def run(self):\n        subprocess.run([sys.executable, self.command])\n\n\n"
+        "def test_a():\n    Job('evil').run()\n",
+    ],
+    ids=["two-hop", "three-hop", "constructor-state", "dataclass-field"],
+)
+def test_scoped_digest_follows_callers_transitively_and_through_instances(source: str) -> None:
+    def payloads(text: str) -> list[str | None]:
+        return [f.payload for f in python_findings("t.py", text) if f.kind == "payload-error"]
+
+    assert payloads(source) and payloads(source.replace("evil", "other")) != payloads(source)
+    assert payloads(source + "\n\ndef unrelated():\n    return 1\n") == payloads(source)
+    assert payloads(source + "\n\ndef unrelated():\n    return 1\n".replace("1", "2")) == payloads(source)
+
+
+def test_scoped_digest_falls_back_on_dynamic_dispatch_to_callers() -> None:
+    from comment_syntax import python_consumer_digest
+
+    source = (
+        HEAD_RUN + "def run(code):\n    subprocess.run([sys.executable, code])\n\n\n"
+        "def test_a(name):\n    getattr(sys.modules, name)('x')\n    run('x')\n"
+    )
+    assert scoped_payload(source) == python_consumer_digest(ast.parse(source))
+
+
+def test_scoped_digest_for_a_parameter_payload_ignores_unrelated_edits() -> None:
+    before = [f.payload for f in python_findings("t.py", CALLER_BASE) if f.kind == "payload-error"]
+    after = [
+        f.payload
+        for f in python_findings("t.py", CALLER_BASE.replace("return 1", "return 2"))
+        if f.kind == "payload-error"
+    ]
+    assert before == after
+
+
+def test_scoped_digest_ignores_dataclass_fields() -> None:
+    base = (
+        "import subprocess\nimport sys\nfrom dataclasses import dataclass, field\n\n\n@dataclass\nclass Result:\n"
+        "    items: list[str] = field(default_factory=list)\n\n\n"
+        "def consume(code):\n    subprocess.run([sys.executable, code])\n    return Result()\n"
+    )
+    assert scoped_payload(base + "\n\ndef other():\n    return Result()\n") == scoped_payload(base)
+
+
+def test_scoped_digest_does_not_treat_class_references_as_mutation() -> None:
+    base = (
+        "import subprocess\nimport sys\n\n\nclass Failure(Exception):\n    pass\n\n\nclass Sub(Failure):\n    pass\n\n\n"
+        "def consume(code):\n    try:\n        subprocess.run([sys.executable, code])\n    except Sub:\n        pass\n"
+    )
+    changed = base + "\n\ndef other():\n    try:\n        return 1\n    except Failure:\n        return 2\n"
+    assert scoped_payload(changed) == scoped_payload(base)
+
+
+def test_scoped_digest_falls_back_for_an_aliased_fixture_decorator() -> None:
+    from comment_syntax import python_consumer_digest
+
+    source = (
+        "import subprocess\nimport sys\nfrom pytest import fixture as fx\n\nNAME = 'work'\n\n\n"
+        "@fx(name=NAME)\ndef anything():\n    return ['a']\n\n\n"
+        "def test_consume(work, code):\n    subprocess.run([sys.executable, code, *work])\n"
+    )
+    assert scoped_payload(source) == python_consumer_digest(ast.parse(source))
+
+
+def test_scoped_digest_covers_the_whole_enclosing_class() -> None:
+    base = (
+        "import subprocess\nimport sys\n\n\nclass Suite:\n    mode = 'a'\n\n"
+        "    def run(self, code):\n        subprocess.run([sys.executable, '-c', code, self.mode])\n\n"
+        "    def other(self):\n        return 1\n\n\ndef unrelated():\n    return 1\n"
+    )
+    assert scoped_payload(base.replace("def unrelated():\n    return 1", "def unrelated():\n    return 2")) == (
+        scoped_payload(base)
+    )
+    assert scoped_payload(base.replace("mode = 'a'", "mode = 'b'")) != scoped_payload(base)
+    assert scoped_payload(base.replace("def other(self):\n        return 1", "def other(self):\n        return 2")) != (
+        scoped_payload(base)
+    )
+    subclass = base + "\n\nclass Derived(Suite):\n    mode = 'c'\n"
+    assert scoped_payload(subclass) != scoped_payload(base)
+    assert scoped_payload(subclass.replace("'c'", "'d'")) != scoped_payload(subclass)
+
+
+def test_scoped_digest_covers_fixtures_hooks_and_closures() -> None:
+    base = (
+        "import subprocess\nimport sys\nimport pytest\n\n\n"
+        "@pytest.fixture(name='work')\ndef make_work():\n    return ['a']\n\n\n"
+        "@pytest.fixture(autouse=True)\ndef env():\n    return 1\n\n\n"
+        "def setup_module():\n    return 1\n\n\n"
+        "def consume(work, code):\n    def inner():\n        return work\n    subprocess.run([sys.executable, code, *inner()])\n"
+        "\n\ndef unrelated():\n    return 1\n"
+    )
+    before = scoped_payload(base)
+    assert scoped_payload(base.replace("return ['a']", "return ['b']")) != before
+    assert scoped_payload(base.replace("def env():\n    return 1", "def env():\n    return 2")) != before
+    assert (
+        scoped_payload(base.replace("def setup_module():\n    return 1", "def setup_module():\n    return 2")) != before
+    )
+    assert scoped_payload(base.replace("def unrelated():\n    return 1", "def unrelated():\n    return 2")) == before
+
+
+@pytest.mark.parametrize("scope", ["module", "function"])
+def test_scoped_digest_covers_tests_sharing_a_longer_lived_fixture(scope: str) -> None:
+    base = (
+        "import subprocess\nimport sys\nimport pytest\n\n\n"
+        f"@pytest.fixture(scope='{scope}')\ndef repo():\n    return []\n\n\n"
+        "def consume(repo, code):\n    subprocess.run([sys.executable, code, *repo])\n\n\n"
+        "def sibling(repo):\n    return 1\n"
+    )
+    changed = base.replace("return 1\n", "return 2\n")
+    assert (scoped_payload(changed) != scoped_payload(base)) is (scope == "module")
+
+
+@pytest.mark.parametrize(
+    "suffix",
+    [
+        "\nglobals()['CMD'] = ['X']\n",
+        "\nfrom sys import modules\nmodules[__name__].CMD = ['X']\n",
+        "\nimport builtins\nbuiltins.CMD = ['X']\n",
+        "\nimport importlib\nimportlib.import_module(__name__).CMD = ['X']\n",
+        "\nimport pytest\nNAME = 'work'\n\n\n@pytest.fixture(name=NAME)\ndef anything():\n    return ['X']\n",
+        "\nimport pytest\nauto = pytest.fixture(autouse=True)(sink)\n",
+        "\ndef pick(request, name):\n    return request.getfixturevalue(name)\n",
+    ],
+    ids=[
+        "globals",
+        "sys-modules-name",
+        "builtins",
+        "import-module",
+        "fixture-name-expression",
+        "fixture-by-assignment",
+        "dynamic-fixture-lookup",
+    ],
+)
+def test_scoped_digest_falls_back_when_the_namespace_is_reachable_indirectly(suffix: str) -> None:
+    from comment_syntax import python_consumer_digest
+
+    source = SCOPED_BASE + suffix
+    assert scoped_payload(source) == python_consumer_digest(ast.parse(source))
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from helpers import *\nimport subprocess\nimport sys\n\n\ndef consume(code):\n    subprocess.run([sys.executable, code])\n",
+        "import subprocess\nimport sys\n\n\ndef consume(code):\n    subprocess.run([sys.executable, code, *globals()['X']])\n",
+        "import subprocess\nimport sys\n\ncode = input()\nsubprocess.run([sys.executable, code])\n",
+    ],
+    ids=["star-import", "namespace-access", "module-level-consumer"],
+)
+def test_scoped_digest_falls_back_to_the_whole_module(source: str) -> None:
+    from comment_syntax import python_consumer_digest
+
+    assert scoped_payload(source) == python_consumer_digest(ast.parse(source))
+    assert scoped_payload(source + "\n\ndef unrelated():\n    return 1\n") != scoped_payload(source)
+
+
+def test_scoped_digest_matches_registered_entry_across_unrelated_edits() -> None:
+    finding = [f for f in python_findings("a.py", SCOPED_BASE) if f.kind == "payload-error"][0]
+    registered = policy(
+        exceptions=[
+            exception(
+                finding.text,
+                symbol=finding.symbol,
+                kind="fixture",
+                payload=finding.payload,
+                finding_kind="payload-error",
+            )
+        ]
+    )
+    assert allowed(finding, registered, SCOPED_BASE)
+    unrelated = SCOPED_BASE.replace("return 1", "return 2")
+    moved = [f for f in python_findings("a.py", unrelated) if f.kind == "payload-error"][0]
+    assert allowed(moved, registered, unrelated)
+    changed = SCOPED_BASE.replace('helper("a")', 'helper("b")')
+    broken = [f for f in python_findings("a.py", changed) if f.kind == "payload-error"][0]
+    assert not allowed(broken, registered, changed)
+
+
 REVIEW_GATED_POLICY = {"version": 1, "external": [], "completed": [], "exceptions": []}
 
 REVIEW_GATED_SCOPE_POLICY = {
