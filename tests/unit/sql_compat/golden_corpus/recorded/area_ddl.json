@@ -1203,7 +1203,7 @@
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding VECTOR(256, F64), SHARD KEY())",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY<DOUBLE>[256], SHARD KEY())",
-    "reason": "SingleStore has no ARRAY column type, so legacy wrote invalid DDL; the fork writes VECTOR(n, F32) for 4-byte floats."
+    "reason": "SingleStore has no ARRAY column type, so legacy wrote invalid DDL; the fork writes VECTOR(n, F64) for 8-byte floats."
   },
   "singlestore:float_array": {
     "classification": "legacy-bug",

@@ -22,16 +22,67 @@ def _size(text: str) -> str:
     return re.sub(r"\[\d+\]", "", text)
 
 
+def _split(statement: str) -> tuple[str, list[str], str] | None:
+    start = statement.find("(")
+    if start < 0:
+        return None
+    depth = 0
+    columns: list[str] = []
+    current = ""
+    for index in range(start, len(statement)):
+        char = statement[index]
+        if char == "(":
+            depth += 1
+            if depth == 1:
+                continue
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                columns.append(current.strip())
+                return statement[: start + 1], columns, statement[index:]
+        elif char == "," and depth == 1:
+            columns.append(current.strip())
+            current = ""
+            continue
+        current += char
+    return None
+
+
+def _embedding(legacy: str, fork: str) -> tuple[str, str] | None:
+    left, right = _split(legacy), _split(fork)
+    if left is None or right is None or left[0] != right[0] or left[2] != right[2]:
+        return None
+    if len(left[1]) != len(right[1]):
+        return None
+    found = None
+    for old, new in zip(left[1], right[1], strict=True):
+        if old == new:
+            continue
+        if found is not None or not old.startswith("embedding ") or not new.startswith("embedding "):
+            return None
+        found = (old, new)
+    return found
+
+
 def _has_size(legacy: str, fork: str) -> bool:
-    return bool(re.search(r"\[\d+\]", legacy)) and not re.search(r"\[\d+\]", fork)
+    legacy = legacy.replace("`", "").replace(" TBLPROPERTIES()", "")
+    found = _embedding(legacy, fork.replace("`", ""))
+    return found is not None and bool(re.search(r"\[\d+\]", found[0])) and not re.search(r"\[\d+\]", found[1])
 
 
 def _fork_raises(legacy: str, fork: str) -> bool:
-    return _has_size(legacy, "") and fork == "<ValueError>"
+    return bool(re.search(r"ARRAY<FLOAT>\[\d+\]\)?", legacy)) and fork == "<ValueError>"
 
 
-def _singlestore_vector(legacy: str, fork: str) -> bool:
-    return _has_size(legacy, fork) and "VECTOR(" in fork
+def _singlestore_vector(element: str):
+    def check(legacy: str, fork: str) -> bool:
+        found = _embedding(legacy, fork)
+        if found is None:
+            return False
+        size = re.search(r"\[(\d+)\]", found[0])
+        return size is not None and found[1] == f"embedding VECTOR({size.group(1)}, {element})"
+
+    return check
 
 
 def _empty_tblproperties(legacy: str, fork: str) -> bool:
@@ -75,18 +126,22 @@ def _clickhouse_order_by(legacy: str, fork: str) -> bool:
     return "ORDER BY(CONSTRAINT" in legacy and "ORDER BY(CONSTRAINT" not in fork
 
 
+def _drop_named_key(text: str) -> str:
+    return re.sub(r",? ?CONSTRAINT pk( PRIMARY KEY\(a\))?", "", text)
+
+
 def _dangling_constraint(legacy: str, fork: str) -> bool:
-    return "CONSTRAINT" in legacy and "CONSTRAINT" not in fork
+    return "CONSTRAINT" in legacy and _drop_named_key(legacy) == fork
 
 
 def _key_removed(legacy: str, fork: str) -> bool:
-    return (
-        ("PRIMARY KEY" in legacy or "CONSTRAINT" in legacy) and "PRIMARY KEY" not in fork and "CONSTRAINT" not in fork
-    )
+    stripped = _drop_named_key(legacy).replace(" PRIMARY KEY", "")
+    return stripped != legacy and stripped == fork
 
 
-def _starrocks_key_model(legacy: str, fork: str) -> bool:
-    return "DUPLICATE KEY" in legacy and "PRIMARY KEY" in fork and "DUPLICATE KEY" not in fork
+def _starrocks_duplicate_to_primary(legacy: str, fork: str) -> bool:
+    normalised = _drop_named_key(legacy).replace(" PRIMARY KEY", "").replace("DUPLICATE KEY", "PRIMARY KEY")
+    return "DUPLICATE KEY" in legacy and normalised == fork
 
 
 def _doris_varchar(legacy: str, fork: str) -> bool:
@@ -98,7 +153,13 @@ def _schema_qualified(legacy: str, fork: str) -> bool:
 
 
 def _schema_guard(legacy: str, fork: str) -> bool:
-    return "TABLE_SCHEMA" not in legacy and "TABLE_SCHEMA" in fork
+    guard = re.sub(r" AND TABLE_SCHEMA='dbo'", "", fork.replace("[dbo].", ""))
+    guard = re.sub(r" ?WITH\(DISTRIBUTION=\w+\)", "", guard)
+    return (
+        "TABLE_SCHEMA" not in legacy
+        and "TABLE_SCHEMA" in fork
+        and guard == re.sub(r" ?WITH\(DISTRIBUTION=\w+\)", "", legacy)
+    )
 
 
 def _postgres_string(legacy: str, fork: str) -> bool:
@@ -122,7 +183,10 @@ def _comment_prefix(legacy: str, fork: str) -> bool:
 
 
 def _same_tokens(legacy: str, fork: str) -> bool:
-    return sorted(re.split(r"[\s,()]+", legacy)) == sorted(re.split(r"[\s,()]+", fork))
+    def tokens(text: str) -> list[str]:
+        return sorted(token for token in re.split(r"[\s,()]+", text) if token)
+
+    return tokens(legacy) == tokens(fork)
 
 
 def _unquoted_lower(legacy: str, fork: str) -> bool:
@@ -130,15 +194,18 @@ def _unquoted_lower(legacy: str, fork: str) -> bool:
 
 
 def _repeated_partition_column(legacy: str, fork: str) -> bool:
-    return legacy.count("o_orderdate") > fork.count("o_orderdate")
+    deduplicated = legacy.replace("o_orderdate DATE, ", "", 1)
+    return deduplicated != legacy and _same_tokens(deduplicated, fork)
 
 
 def _sorted_without_cluster(legacy: str, fork: str) -> bool:
-    return "SORTED BY" in legacy and "SORTED BY" not in fork and "CLUSTERED BY" not in legacy
+    without = re.sub(r" SORTED BY\([^)]*\)", "", legacy)
+    return without != legacy and "CLUSTERED BY" not in legacy and _same_tokens(without, fork)
 
 
 def _time_type(legacy: str, fork: str) -> bool:
-    return bool(re.search(r"\bTIME\b", legacy)) and not re.search(r"\bTIME\b", fork)
+    widened = re.sub(r"(?<= )TIME(?=[,)])", "TIMESTAMP", legacy)
+    return widened != legacy and widened == fork
 
 
 def _questdb_lengths(legacy: str, fork: str) -> bool:
@@ -179,11 +246,18 @@ CLASSIFICATIONS: list[tuple[str, str, str, _Check]] = [
         _fork_raises,
     ),
     (
-        rf"singlestore:{_ARR}",
+        r"singlestore:float_array",
         "legacy-bug",
         "SingleStore has no ARRAY column type, so legacy wrote invalid DDL; the fork writes VECTOR(n, F32) for "
         "4-byte floats.",
-        _singlestore_vector,
+        _singlestore_vector("F32"),
+    ),
+    (
+        r"singlestore:double_array",
+        "legacy-bug",
+        "SingleStore has no ARRAY column type, so legacy wrote invalid DDL; the fork writes VECTOR(n, F64) for "
+        "8-byte floats.",
+        _singlestore_vector("F64"),
     ),
     (
         r"helper_strip_primary_keys:double_array",
@@ -329,7 +403,7 @@ CLASSIFICATIONS: list[tuple[str, str, str, _Check]] = [
         "legacy-bug",
         "Legacy falls back to DUPLICATE KEY on single-line DDL because its pattern needs newline-indented columns "
         "(and leaves a dangling CONSTRAINT name); on the multi-line TPC DDL it writes PRIMARY KEY like the fork.",
-        _starrocks_key_model,
+        _starrocks_duplicate_to_primary,
     ),
     (
         r"questdb_(default|day|none):lineitem_codec",

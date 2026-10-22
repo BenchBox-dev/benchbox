@@ -8,6 +8,7 @@ from tests.unit.sql_compat.golden_corpus import (
     area_cases,
     area_names,
     classified,
+    classify,
     differences,
     recorded,
 )
@@ -51,3 +52,9 @@ def test_every_recorded_difference_is_classified_and_none_is_a_fork_gap(area: st
     gaps = sorted(case_id for case_id, entry in entries.items() if entry["classification"] == "fork-gap")
     assert not gaps, f"{area}: fork gaps awaiting a fork fix {gaps[:5]}"
     assert all(entry.get("reason") for entry in entries.values())
+    stale = sorted(
+        case_id
+        for case_id, entry in entries.items()
+        if classify(area, case_id, entry) != {"classification": entry["classification"], "reason": entry["reason"]}
+    )
+    assert not stale, f"{area}: classification no longer verified by its rule {stale[:5]}"
