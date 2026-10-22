@@ -19861,6 +19861,13 @@
       "status": "done",
       "title": "✅ Result Object Migration (BenchmarkResult → BenchmarkResults)"
     },
+    "result-schema-2-4-producer-20261022": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Write result schema 2.4: method-2 timer, request counts and platform timing capture"
+    },
     "result-schema-policy-and-explorer-input-gate": {
       "claim": null,
       "needs": [

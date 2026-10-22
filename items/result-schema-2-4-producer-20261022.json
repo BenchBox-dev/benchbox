@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "The exporter writes schema 2.4 bundles that pass the loader, SchemaV2Validator and the public bundle validator.",
+    "At least one networked adapter fills request_count, result_bytes and platform_timing from real runs, captured by statement ID.",
+    "Runs record timing_method 2 only when the adapter's timer excludes setup, stats lookups, validation, plan capture and query generation.",
+    "Published results never rank or compare method-1 and method-2 runs together.",
+    "net_estimate_status is never eligible without passing the adapter conformance rule in the ADR."
+  ],
+  "context": "Readers-first rollout: #3103 added reader and validator support for 2.4 and kept the producer at 2.3. The ADR amendment 'Round Trip Removed and Platform Timings' defines the fields and the timer rule. Validation rules live in benchbox/core/results/timing_fields.py.",
+  "description": "Readers accept result schema 2.4 (#3103), but the producer still writes 2.3, so the new fields are never filled. Make the producer write them, as the locality ADR amendment requires:\n\n- Timer scope (`run.timing_method` 2): move tag setup, stats lookups, validation, plan capture and power-test query generation out of the measured query timer in every adapter.\n- `queries[].request_count`: count each `execute()` or job submit inside the query's timer, including `BEGIN` and `COMMIT`.\n- `queries[].result_bytes`: record the result bytes returned to the client.\n- `queries[].platform_timing`: capture the platform's own timing by platform statement ID, never by tag, for each adapter that exposes it (for example Snowflake QUERY_HISTORY, BigQuery job statistics, Redshift SYS_QUERY_HISTORY). Derive `platform_ms`, mark `valid`, `suspect` or `unavailable`, and keep raw `fields` numeric.\n- `run.platform_timing` summary (`source`, `definition`, `coverage`) and `run.net_estimate_status`. Every adapter starts ineligible until conformance runs earn `eligible`.\n- `environment.client_link.probed_at`, and the same statement-ID capture for the probe's own statements.\n- Set `CURRENT_SCHEMA_VERSION = \"2.4\"`.\n- Keep method-2 runs apart from method-1 runs in publication and ranking: compare and rank only within one timing method.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3103",
+    "docs/development/adr/adr-client-link-locality-disclosure.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6e4d4a73320d8851d7411e8f",
+      "at": "2026-10-22T13:40:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "11a3de9b4f0e42d7ad251e2ca35224b0",
+      "session_id": "e9f0cc7a22044c60b8b2b71e8d7d25c0"
+    }
+  ]
+}
