@@ -53,7 +53,7 @@ def comment_policy_matches(path: str, scope: str) -> bool:
 
 def load_comment_policy(raw: bytes) -> dict:
     policy = json.loads(raw)
-    if set(policy) - {"enforcement", "completed"} != {"version", "external", "exceptions"} or policy["version"] != 1:
+    if set(policy) - {"enforcement"} != {"version", "external", "exceptions"} or policy["version"] != 1:
         raise ValueError("invalid comment-policy schema")
     enforcement = policy.get("enforcement", "blocking")
     if not isinstance(enforcement, str) or enforcement not in COMMENT_POLICY_ENFORCEMENT_MODES:
@@ -67,8 +67,6 @@ def load_comment_policy(raw: bytes) -> dict:
         ):
             raise ValueError("external scope requires path, owner and provenance")
         validate_comment_policy_path(entry["path"])
-    if not isinstance(policy.get("completed", []), list):
-        raise ValueError("completed must be a list")
     identities = set()
     for entry in policy["exceptions"]:
         required = {"path", "symbol", "text", "kind", "consumer", "necessity", "alternative", "owner", "removal"}

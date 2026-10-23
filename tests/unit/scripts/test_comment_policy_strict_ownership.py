@@ -9,7 +9,7 @@ from check_comment_policy import main, ownership_base, validate_consumers
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-EMPTY_POLICY = {"version": 1, "external": [], "completed": [], "exceptions": []}
+EMPTY_POLICY = {"version": 1, "external": [], "exceptions": []}
 WHEEL = "vendor/tool-1.0-py3-none-any.whl"
 
 

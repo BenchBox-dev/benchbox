@@ -35,7 +35,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.medium]
 ROOT = Path(__file__).resolve().parents[3]
 DEVELOPMENT_TREE = (ROOT / "_project/decisions").is_dir()
 RELEASE_TREE_SKIP = "_project scripts are not in this checkout (release tree)"
-EMPTY_POLICY = {"version": 1, "external": [], "completed": [], "exceptions": []}
+EMPTY_POLICY = {"version": 1, "external": [], "exceptions": []}
 
 
 def policy(**changes: object) -> dict:
@@ -198,8 +198,7 @@ def test_structural_directive_positions(line: int, text: str, accepted: bool) ->
     assert allowed(Finding("a.py", line, "comment", text), policy(), "\n") is accepted
 
 
-def test_policy_cannot_widen_external_scopes_and_may_drop_completed() -> None:
-    check_ratchet(policy(), policy(completed=["a.py"]))
+def test_policy_cannot_widen_external_scopes() -> None:
     entry = {"path": "benchbox/", "owner": "fake", "provenance": "a.md"}
     with pytest.raises(ValueError):
         check_ratchet(policy(external=[entry]), policy())
@@ -1144,18 +1143,10 @@ def test_exception_budget_counts_each_copy() -> None:
     assert len(scan_sources(ROOT, {"a.py": b"x=1 # noqa: F401\ny=2 # noqa: F401\n"}, registered)) == 1
 
 
-@pytest.mark.parametrize("completed", [None, [], ["a.py", "vendor/"]])
-def test_policy_loads_with_or_without_completed(completed: list[str] | None) -> None:
-    raw = {key: value for key, value in policy().items() if key != "completed"}
-    if completed is not None:
-        raw["completed"] = completed
-    assert load_policy(json.dumps(raw).encode())["exceptions"] == []
-
-
-def test_policy_rejects_a_malformed_completed_list() -> None:
-    raw = {**policy(), "completed": "a.py"}
-    with pytest.raises(ValueError, match="completed"):
-        load_policy(json.dumps(raw).encode())
+@pytest.mark.parametrize("completed", [[], ["a.py", "vendor/"]])
+def test_policy_rejects_the_retired_completed_key(completed: list[str]) -> None:
+    with pytest.raises(ValueError, match="schema"):
+        load_policy(json.dumps({**policy(), "completed": completed}).encode())
 
 
 def test_fixture_exception_binds_payload_kind_text_and_count() -> None:
@@ -2358,7 +2349,7 @@ def test_scoped_digest_matches_registered_entry_across_unrelated_edits() -> None
     assert not allowed(broken, registered, changed)
 
 
-REVIEW_GATED_POLICY = {"version": 1, "external": [], "completed": [], "exceptions": []}
+REVIEW_GATED_POLICY = {"version": 1, "external": [], "exceptions": []}
 
 REVIEW_GATED_SCOPE_POLICY = {
     "version": 1,
@@ -3561,7 +3552,7 @@ def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
     monkeypatch.setattr(scope, "_verify_upstream_release", lambda *a, **k: None)
     (tmp_path / path).unlink()
 
-    base_policy_bytes = json.dumps({"version": 1, "external": external, "completed": [], "exceptions": []}).encode()
+    base_policy_bytes = json.dumps({"version": 1, "external": external, "exceptions": []}).encode()
     frozen["quality/comment-policy.json"] = base_policy_bytes
     frozen["_project/analysis/batch-rollout-evidence.json"] = json.dumps(
         {"source": {"repository": "https://github.com/joeharris76/todo-db"}}
@@ -3608,9 +3599,7 @@ def test_dependency_removed_only_by_a_verified_policy_wheel_bump(
 
     policy_file = tmp_path / "quality/comment-policy.json"
     policy_file.parent.mkdir(parents=True, exist_ok=True)
-    policy_file.write_text(
-        json.dumps({"version": 1, "external": head_external, "completed": [], "exceptions": []}), encoding="utf-8"
-    )
+    policy_file.write_text(json.dumps({"version": 1, "external": head_external, "exceptions": []}), encoding="utf-8")
 
     if case != "missing-rollout-evidence":
         evidence_file = tmp_path / "_project/analysis/batch-rollout-evidence.json"
