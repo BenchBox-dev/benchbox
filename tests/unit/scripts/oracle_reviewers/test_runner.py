@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
@@ -11,6 +12,7 @@ import pytest
 from _project.scripts.oracle_reviewers import absence, cli, runner
 from _project.scripts.oracle_reviewers.commands import Invocation
 from _project.scripts.oracle_reviewers.policy import Policy
+from _project.scripts.oracle_reviewers.verdict import RESPONSE_PLACEHOLDERS
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 skip_on_windows = pytest.mark.skipif(
@@ -214,10 +216,12 @@ def test_an_unparsable_answer_keeps_the_end_of_the_final_message(
     )
     outcome = _review(policy, tmp_path, workspace, head)
     assert outcome.missing is not None and outcome.missing.kind == absence.INVALID
-    assert outcome.diagnostic.startswith("\u2026") and outcome.diagnostic.endswith("All done.")
+    kept, _, trace = outcome.diagnostic.partition(" | trace: ")
+    assert kept.startswith("\u2026") and kept.endswith("All done.")
+    assert trace.startswith("reads=0 greps=0")
     assert "broker-secret-value" not in outcome.diagnostic and "[redacted]" in outcome.diagnostic
     assert "Let me look." not in outcome.diagnostic
-    assert len(outcome.diagnostic) <= absence.UNPARSED_LIMIT + 1
+    assert len(kept) <= absence.UNPARSED_LIMIT + 1
 
 
 @skip_on_windows
@@ -229,7 +233,7 @@ def test_an_empty_final_message_keeps_the_stderr_excerpt(
     _fake_omp(tmp_path, monkeypatch, body)
     outcome = _review(policy, tmp_path, workspace, head)
     assert outcome.missing is not None and outcome.missing.kind == absence.INVALID
-    assert outcome.diagnostic == "error: stream ended after a tool call"
+    assert outcome.diagnostic.startswith("error: stream ended after a tool call | trace: reads=1 greps=0")
 
 
 @skip_on_windows
@@ -342,6 +346,7 @@ def _plan_dir(
     brief_mode: str,
     diff: str | None,
     inline: str | None,
+    prior: tuple[dict, ...] = (),
 ) -> Path:
     plan_dir = tmp_path / "plan"
     plan_dir.mkdir()
@@ -372,7 +377,7 @@ def _plan_dir(
         "unchanged_files": [],
         "untracked_files": [],
         "diff_inline": inline,
-        "protocol": {"prior": []},
+        "protocol": {"prior": list(prior)},
         "pool_blocked_until": {},
     }
     (plan_dir / "plan.json").write_text(json.dumps(plan), encoding="utf-8")
@@ -701,3 +706,110 @@ def test_a_follow_up_ship_with_an_unchanged_file_defect_must_list_the_changed_fi
         assert outcome.missing == absence.Absence(
             absence.INCOMPLETE, "the verdict would ship but did not examine a.txt"
         )
+
+
+@skip_on_windows
+def test_a_follow_up_prompt_carries_only_verified_prior_ids_in_an_unfilled_template(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    prior = {
+        "id": "D4",
+        "severity": "High",
+        "file": "prior/path.py",
+        "line": 3,
+        "end_line": None,
+        "title": "PRIOR-TITLE",
+    }
+    plan_path = _plan_dir(
+        policy, tmp_path, head, "full", "inline", "diff --git a/a.txt b/a.txt\n+x\n", "+x\n", (prior,)
+    )
+    _fake_omp(tmp_path, monkeypatch, _capture_prompt_body(tmp_path))
+    _run_review(plan_path, workspace, tmp_path, monkeypatch)
+    prompt = (tmp_path / "prompt.txt").read_text(encoding="utf-8")
+    nonce = re.search(r"([0-9a-f]{16})-BEGIN FILE PRIORITY", prompt).group(1)
+    assert prompt.count(nonce) == 4
+    change_start = prompt.index(f"{nonce}-BEGIN CHANGE DATA")
+    change_end = prompt.index(f"{nonce}-END CHANGE DATA")
+    section = prompt[change_start:change_end]
+    after = prompt[change_end:]
+    assert "PRIOR-TITLE" in section and "prior/path.py" in section
+    assert "PRIOR-TITLE" not in prompt[:change_start] and "PRIOR-TITLE" not in after
+    assert "prior/path.py" not in prompt[:change_start] and "prior/path.py" not in after
+    template = json.loads(after[after.index("{") : after.rindex("}") + 1])
+    assert [item["id"] for item in template["prior_defects"]] == ["D4"]
+    placeholders = set(RESPONSE_PLACEHOLDERS.values())
+    assert template["prior_defects"][0]["status"] in placeholders
+    assert template["prior_defects"][0]["evidence"] in placeholders
+
+
+@skip_on_windows
+def test_an_evidence_failure_keeps_a_bounded_redacted_trace_diagnostic(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _two_files(tmp_path)
+    _omp_says(tmp_path, monkeypatch, reads=("a.txt",), files_examined=["a.txt", "b.txt"])
+    outcome = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
+    assert outcome.missing is not None and outcome.missing.kind == absence.INCOMPLETE
+    assert "trace: reads=1 greps=0" in outcome.diagnostic
+    assert "required=2" in outcome.diagnostic and "missing=[b.txt]" in outcome.diagnostic
+    assert len(outcome.diagnostic) < 1100
+
+
+@skip_on_windows
+def test_a_plain_read_and_single_file_grep_complete_a_file_list_verdict(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _two_files(tmp_path)
+    _omp_says(tmp_path, monkeypatch, reads=("a.txt?q=.version", "a.txt"), files_examined=["a.txt", "b.txt"])
+    missing = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
+    assert missing.missing is not None and "no read of b.txt" in missing.missing.detail
+    grep_call = {"type": "toolCall", "id": "g1", "name": "grep", "arguments": {"path": "b.txt"}}
+    grep_events = [
+        {"type": "message_end", "message": {"role": "assistant", "content": [grep_call]}},
+        {
+            "type": "message_end",
+            "message": {
+                "role": "toolResult",
+                "toolCallId": "g1",
+                "toolName": "grep",
+                "isError": False,
+                "content": [{"type": "text", "text": "b.txt\n*1|b"}],
+            },
+        },
+    ]
+    verdict = {**VERDICT, "files_examined": ["a.txt", "b.txt"]}
+    stdout = "\n".join([_reads("a.txt"), *(json.dumps(event) for event in grep_events), _envelope(json.dumps(verdict))])
+    _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(stdout)})")
+    done = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
+    assert done.missing is None
+
+
+@skip_on_windows
+def test_a_credential_in_the_final_verdict_text_never_reaches_the_recorded_verdict(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    secret = "fakecred-Aa1Bb2Cc3Dd4"
+    monkeypatch.setenv("OPENAI_CODEX_OAUTH_TOKEN", secret)
+    workspace, head = _workspace(tmp_path)
+    _omp_says(tmp_path, monkeypatch, summary=f"saw {secret} and {secret[:6]}\x01{secret[6:]}")
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.verdict is not None
+    assert secret not in json.dumps(outcome.verdict)
+    assert outcome.verdict["decision"] == "SHIP"
+    _omp_says(tmp_path, monkeypatch, files_examined=[f"{secret}.txt"])
+    invalid = _review(policy, tmp_path, workspace, head)
+    assert invalid.missing is not None and invalid.missing.kind == absence.INVALID
+    assert secret not in invalid.missing.detail + invalid.diagnostic
+
+
+@skip_on_windows
+def test_the_omp_event_stream_is_never_excerpted_into_the_diagnostic(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    _omp_says(tmp_path, monkeypatch, summary="tool output must stay out")
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.verdict is not None
+    assert outcome.diagnostic.startswith("trace: reads=0 greps=0")
+    assert "tool output must stay out" not in outcome.diagnostic

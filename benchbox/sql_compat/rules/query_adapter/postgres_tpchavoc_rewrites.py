@@ -19,7 +19,7 @@ for _platform in ("pg-duckdb", "pg-mooncake", "timescaledb"):
                 action=CompatAction.REWRITE_QUERY,
                 support_level=SupportLevel.REWRITTEN,
                 failure_mode=FailureMode.UNSUPPORTED_FEATURE,
-                payload=RewriteQueryPayload(transformer_id="tpchavoc_dialect_rewriter", description=_reason),
+                payload=RewriteQueryPayload(transformer_id="inline_select_aliases", description=_reason),
                 reason=_reason,
             ),
             Phase.QUERY_ADAPTER,
@@ -35,7 +35,7 @@ for _platform in ("pg-duckdb", "pg-mooncake", "timescaledb"):
                 action=CompatAction.REWRITE_QUERY,
                 support_level=SupportLevel.REWRITTEN,
                 failure_mode=FailureMode.UNSUPPORTED_FEATURE,
-                payload=RewriteQueryPayload(transformer_id="tpchavoc_dialect_rewriter", description=_reason),
+                payload=RewriteQueryPayload(transformer_id="qualify_columns_by_name", description=_reason),
                 reason=_reason,
             ),
             Phase.QUERY_ADAPTER,
@@ -44,14 +44,14 @@ for _platform in ("pg-duckdb", "pg-mooncake", "timescaledb"):
             query_id=_query_id,
         )
     for _query_id in POSTGRES_DUAL_VARIANT_IDS:
-        _reason = "Use an explicit VALUES relation instead of the generated dual-style source"
+        _reason = "Drop the one-row dual-style source so the SELECT needs no FROM"
         REGISTRY.register(
             CompatibilityDecision(
-                rule_id=f"query_adapter.{_platform}.tpchavoc.{_query_id}.values_source",
+                rule_id=f"query_adapter.{_platform}.tpchavoc.{_query_id}.drop_row_source",
                 action=CompatAction.REWRITE_QUERY,
                 support_level=SupportLevel.REWRITTEN,
                 failure_mode=FailureMode.UNSUPPORTED_FEATURE,
-                payload=RewriteQueryPayload(transformer_id="tpchavoc_dialect_rewriter", description=_reason),
+                payload=RewriteQueryPayload(transformer_id="drop_literal_row_source", description=_reason),
                 reason=_reason,
             ),
             Phase.QUERY_ADAPTER,

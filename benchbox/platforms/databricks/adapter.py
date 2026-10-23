@@ -1225,14 +1225,6 @@ class DatabricksAdapter(PlatformAdapter):
                 self.logger.error(f"Benchmark has get_schema_sql: {hasattr(benchmark, 'get_schema_sql')}")
                 raise RuntimeError(f"No schema SQL generated for {benchmark.__class__.__name__}")
 
-            original_len = len(schema_sql)
-            schema_sql = self._fix_databricks_sql_syntax(schema_sql)
-            self.log_very_verbose(
-                f"After _fix_databricks_sql_syntax: {len(schema_sql)} characters (was {original_len})"
-            )
-            if len(schema_sql) != original_len:
-                self.log_verbose(f"SQL length changed after Databricks syntax fix: {original_len} -> {len(schema_sql)}")
-
             from benchbox.platforms.cloud_shared import split_leading_sql_comments
 
             statements = [
@@ -2469,8 +2461,6 @@ class DatabricksAdapter(PlatformAdapter):
         self.log_very_verbose(f"Query SQL (first 200 chars): {query[:200]}{'...' if len(query) > 200 else ''}")
 
         try:
-            if re.sub(r"[^a-z0-9]", "", (benchmark_type or "").lower()).startswith("tpcdi"):
-                query = self._apply_tpcdi_databricks_rewrites(query)
             query = self._normalize_databricks_query(query)
             from benchbox.platforms.base.mysql_wire import split_sql_statements
 
@@ -2559,146 +2549,18 @@ class DatabricksAdapter(PlatformAdapter):
 
         return SparkQueryPlanParser()
 
-    def _apply_tpcdi_databricks_rewrites(self, query: str) -> str:
-        from benchbox.platforms.cloud_shared import rewrite_tpcdi_for_databricks
-
-        return rewrite_tpcdi_for_databricks(query)
-
     def _normalize_databricks_query(self, query: str) -> str:
-        from benchbox.utils.dialect_utils import apply_rewrite
-
-        query = self._deduplicate_output_aliases(query)
-        try:
-            return apply_rewrite("safe_division", query, "databricks")
-        except Exception as e:
-            self.log_very_verbose(f"Division safeguard skipped (unparseable Databricks SQL): {e}")
-            return query
-
-    @staticmethod
-    def _order_group_bare_refs(scope, column_cls) -> set:
-        order_group = []
-        if scope.args.get("order"):
-            order_group.extend(scope.args["order"].expressions)
-        if scope.args.get("group"):
-            order_group.extend(scope.args["group"].expressions)
-        bare_refs = set()
-        for node in order_group:
-            for col in node.find_all(column_cls):
-                if not col.table:
-                    bare_refs.add(col.name.lower())
-        return bare_refs
-
-    def _deduplicate_output_aliases(self, query: str) -> str:
-        try:
-            from benchbox._vendor import sqlglot
-            from benchbox._vendor.sqlglot import exp
-        except ImportError:
-            return query
+        from benchbox.utils.dialect_utils import apply_rewrites
 
         try:
-            tree = sqlglot.parse_one(query, read="databricks")
-        except Exception:
-            return query
-        scope = tree if isinstance(tree, exp.Select) else None
-        if scope is None:
-            return query
-        selects = scope.expressions
-        if any(isinstance(e, exp.Star) or (isinstance(e, exp.Column) and e.is_star) for e in selects):
-            return query
-
-        seen: dict[str, int] = {}
-        totals: dict[str, int] = {}
-        for e in selects:
-            name = e.output_name if isinstance(e, exp.Alias) else (e.name if isinstance(e, exp.Column) else "")
-            if not name:
-                continue
-            totals[name.lower()] = totals.get(name.lower(), 0) + 1
-
-        renames = {key for key, total in totals.items() if total > 1}
-        if not renames:
-            return query
-
-        if self._order_group_bare_refs(scope, exp.Column) & renames:
-            return query
-
-        for index, e in enumerate(selects):
-            if isinstance(e, exp.Alias):
-                key = e.output_name.lower()
-            elif isinstance(e, exp.Column):
-                key = e.name.lower()
-            else:
-                continue
-            if key not in renames:
-                continue
-            seen[key] = seen.get(key, 0) + 1
-            if seen[key] == 1:
-                continue
-            new_name = f"{e.output_name if isinstance(e, exp.Alias) else e.name}_{seen[key]}"
-            if isinstance(e, exp.Alias):
-                e.set("alias", exp.to_identifier(new_name, quoted=e.args["alias"].args.get("quoted", False)))
-            else:
-                selects[index] = exp.alias_(e.copy(), new_name)
-        return tree.sql(dialect="databricks")
-
-    def _safeguard_databricks_division(self, query: str) -> str:
-        try:
-            from benchbox._vendor import sqlglot
-            from benchbox._vendor.sqlglot import exp
-        except ImportError:
-            return query
-
-        try:
-            tree = sqlglot.parse_one(query, read="databricks")
-        except Exception as e:
-            self.log_very_verbose(f"Division safeguard skipped (unparseable Databricks SQL): {e}")
-            return query
-        if not any(isinstance(node, exp.Div) for node in tree.walk()):
-            return query
-
-        def to_try_divide(node: exp.Expression) -> exp.Expression:
-            if isinstance(node, exp.Div):
-                return exp.Anonymous(
-                    this="TRY_DIVIDE",
-                    expressions=[node.this.copy(), node.expression.copy()],
-                )
-            return node
-
-        return tree.transform(to_try_divide).sql(dialect="databricks")
-
-    def _fix_databricks_sql_syntax(self, sql: str) -> str:
-        import re
-
-        original_sql = sql
-
-        nulls_in_pk_pattern = r"\b(PRIMARY\s+KEY\s*\([^)]*?)\s+NULLS\s+(LAST|FIRST)\s*([^)]*?\))"
-
-        def remove_nulls_from_pk(match):
-            before = match.group(1)
-            after = match.group(3)
-            return f"{before} {after}".strip()
-
-        fixed_sql = re.sub(nulls_in_pk_pattern, remove_nulls_from_pk, sql, flags=re.IGNORECASE)
-
-        max_iterations = 10
-        for _ in range(max_iterations):
-            prev = fixed_sql
-            fixed_sql = re.sub(
-                r"\b(PRIMARY\s+KEY\s*\([^)]*?)\s+NULLS\s+(LAST|FIRST)\b",
-                r"\1",
-                fixed_sql,
-                flags=re.IGNORECASE,
+            return apply_rewrites(
+                query,
+                "databricks",
+                [("deduplicate_output_aliases", {"nested": False}), ("safe_division", {})],
             )
-            if fixed_sql == prev:
-                break
-
-        if fixed_sql != original_sql:
-            changes_made = original_sql != fixed_sql
-            if changes_made:
-                self.log_very_verbose("Fixed Databricks SQL syntax (removed NULLS FIRST/LAST from PRIMARY KEY)")
-                self.log_very_verbose(f"Before: {original_sql[:200]}...")
-                self.log_very_verbose(f"After:  {fixed_sql[:200]}...")
-
-        return fixed_sql
+        except Exception as e:
+            self.log_very_verbose(f"Output alias and division rewrites skipped (unparseable Databricks SQL): {e}")
+            return query
 
     def _convert_to_delta_table(self, statement: str) -> str:
         from benchbox.platforms.cloud_shared import split_leading_sql_comments

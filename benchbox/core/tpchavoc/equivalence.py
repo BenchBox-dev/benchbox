@@ -493,14 +493,12 @@ def find_datafusion_divergences(
     *,
     query_ids: list[int] | None = None,
 ) -> list[Divergence]:
-    from benchbox.platforms.datafusion_query_transformer import DataFusionQueryTransformer
+    from benchbox.platforms.datafusion_tpch_rewrites import rewrite_datafusion_tpch_query
     from benchbox.sql_compat.rules.execution_filter.datafusion_tpchavoc import DATAFUSION_TPCHAVOC_SKIPS
-
-    transformer = DataFusionQueryTransformer(verbose=False)
 
     def _canonical_sql(query_id: int) -> str:
         sql = tpch.get_query(query_id, dialect=DATAFUSION_TARGET_DIALECT)
-        return transformer.transform(sql, query_id=query_id)
+        return rewrite_datafusion_tpch_query(sql, query_id)
 
     return find_divergences(
         connection,

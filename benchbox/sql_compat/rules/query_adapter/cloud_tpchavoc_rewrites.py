@@ -24,6 +24,14 @@ _RULES = (
     ("snowflake", "14_v2", "empty_group", "Drop the unsupported empty grouping set"),
 )
 
+_TRANSFORMERS = {
+    "filtered_aggregate": "filtered_aggregates_to_conditional",
+    "one_row_source": "add_row_source_to_fromless_selects",
+    "qualified_having": "qualify_columns_by_name",
+    "window_null_order": "translate_sql_query",
+    "empty_group": "translate_sql_query",
+}
+
 for _platform, _query_id, _slug, _reason in _RULES:
     REGISTRY.register(
         CompatibilityDecision(
@@ -31,7 +39,7 @@ for _platform, _query_id, _slug, _reason in _RULES:
             action=CompatAction.REWRITE_QUERY,
             support_level=SupportLevel.REWRITTEN,
             failure_mode=FailureMode.UNSUPPORTED_FEATURE,
-            payload=RewriteQueryPayload(transformer_id="tpchavoc_cloud_query_rewriter", description=_reason),
+            payload=RewriteQueryPayload(transformer_id=_TRANSFORMERS[_slug], description=_reason),
             reason=_reason,
         ),
         Phase.QUERY_ADAPTER,

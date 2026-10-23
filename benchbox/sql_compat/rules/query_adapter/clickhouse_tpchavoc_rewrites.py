@@ -15,7 +15,7 @@ for _platform in ("clickhouse-local", "clickhouse-server", "clickhouse-cloud"):
                 action=CompatAction.REWRITE_QUERY,
                 support_level=SupportLevel.REWRITTEN,
                 failure_mode=FailureMode.UNSUPPORTED_FEATURE,
-                payload=RewriteQueryPayload(transformer_id="tpchavoc_dialect_rewriter", description=_reason),
+                payload=RewriteQueryPayload(transformer_id="filtered_aggregates_to_conditional", description=_reason),
                 reason=_reason,
             ),
             Phase.QUERY_ADAPTER,

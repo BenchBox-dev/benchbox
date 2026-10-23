@@ -78,10 +78,10 @@ def test_datafusion_tpch_rewrite_rules_registered():
 @pytest.mark.parametrize(
     "query_id,expected_transformer",
     [
-        ("11", "datafusion_query_transformer"),
-        ("16", "datafusion_query_transformer"),
-        ("18", "datafusion_query_transformer"),
-        ("20", "datafusion_query_transformer"),
+        ("11", "decorrelate_subqueries"),
+        ("16", "not_in_subquery_to_not_exists"),
+        ("18", "in_aggregate_subquery_to_exists"),
+        ("20", "decorrelate_subqueries"),
     ],
 )
 def test_datafusion_rewrite_action_and_payload(query_id: str, expected_transformer: str):
