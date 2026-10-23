@@ -734,6 +734,35 @@ def test_a_hunk_added_above_shifts_the_later_hunk_and_changes_the_patch() -> Non
     assert alone != above
 
 
+def _added(*lines: str, count: int) -> str:
+    body = "".join(f"+{line}\n" for line in lines)
+    return _file_diff(f"@@ -0,0 +1,{count} @@\n{body}")
+
+
+def test_a_form_feed_inside_an_added_line_is_not_a_line_break() -> None:
+    scope = {"READ": 1, "WRITE": 2}
+    assert eval("READ", scope) == 1
+    assert eval("READ\f+WRITE", scope) == 3
+    two_lines = _added("permissions = READ", "WRITE", count=2)
+    one_line = _added("permissions = READ\f+WRITE", count=1)
+    assert protocol.file_patches(two_lines) != protocol.file_patches(one_line)
+
+
+@pytest.mark.parametrize("separator", ["\f", "\v", "\u2028", "\u0085", "\x1c", "\r"])
+def test_a_control_character_inside_an_added_line_differs_from_splitting_there(separator: str) -> None:
+    inside = _added(f"first{separator}+second", "third", count=2)
+    split = _added("first", "second", "third", count=3)
+    same_header = _added("first", "second", "third", count=2)
+    assert protocol.file_patches(inside) != protocol.file_patches(split)
+    assert protocol.file_patches(inside) != protocol.file_patches(same_header)
+
+
+def test_hunk_line_counts_are_part_of_the_patch() -> None:
+    fewer = _file_diff("@@ -1,1 +1,1 @@\n+a\n")
+    more = _file_diff("@@ -1,1 +1,2 @@\n+a\n")
+    assert protocol.file_patches(fewer) != protocol.file_patches(more)
+
+
 def test_prose_is_untracked_apart_from_a_scoped_follow_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     notes = {"filename": "docs/notes.md", "additions": 1, "deletions": 0, "sha": "9" * 40}
     record = _record(TWO_FILE_DIFF, "SHIP")
