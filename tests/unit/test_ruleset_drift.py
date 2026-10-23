@@ -260,7 +260,7 @@ def test_main_fails_when_a_live_environment_gains_a_policy(
 
     assert ruleset_drift_check.main(["--token", "token", "--output", str(output)]) == 1
 
-    blocking = json.loads(output.read_text())["blocking_findings"]
+    blocking = json.loads(output.read_text(encoding="utf-8"))["blocking_findings"]
     assert any("pypi environment: deployment policies" in finding for finding in blocking)
     assert not any("test-pypi environment" in finding for finding in blocking)
 
