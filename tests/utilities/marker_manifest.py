@@ -21,11 +21,10 @@ def pytest_deselected(items: list[pytest.Item]) -> None:
     _deselected.extend(items)
 
 
-def _record(item: pytest.Item, *, selected: bool) -> dict[str, object]:
+def _record(item: pytest.Item) -> dict[str, object]:
     return {
         "id": item.nodeid,
         "markers": sorted({mark.name for mark in item.iter_markers()}),
-        "selected": selected,
     }
 
 
@@ -34,8 +33,8 @@ def pytest_collection_finish(session: pytest.Session) -> None:
     target = session.config.getoption("--marker-manifest")
     if not target or session.testsfailed:
         return
-    records = [_record(item, selected=True) for item in session.items]
-    records.extend(_record(item, selected=False) for item in _deselected)
+    records = [_record(item) for item in session.items]
+    records.extend(_record(item) for item in _deselected)
     path = Path(target)
     path.parent.mkdir(parents=True, exist_ok=True)
     partial = path.with_name(path.name + f".{os.getpid()}.tmp")

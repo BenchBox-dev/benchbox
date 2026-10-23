@@ -31,14 +31,12 @@ def _policy(**overrides):
     return policy
 
 
-def _write_manifest(path: Path, items: list[tuple[str, list[str], bool]], version: int = 1) -> Path:
+def _write_manifest(path: Path, items: list[tuple[str, list[str]]], version: int = 1) -> Path:
     path.write_text(
         json.dumps(
             {
                 "version": version,
-                "items": [
-                    {"id": nodeid, "markers": markers, "selected": selected} for nodeid, markers, selected in items
-                ],
+                "items": [{"id": nodeid, "markers": markers} for nodeid, markers in items],
             }
         ),
         encoding="utf-8",
@@ -66,9 +64,9 @@ def test_fast_test_with_each_forbidden_marker_is_a_violation_even_when_deselecte
     manifest = _write_manifest(
         tmp_path / "m.json",
         [
-            ("tests/a.py::test_ok", ["fast", "unit"], True),
-            (f"tests/a.py::test_bad_{marker}", ["fast", marker], False),
-            (f"tests/a.py::test_slow_{marker}", ["slow", marker], False),
+            ("tests/a.py::test_ok", ["fast", "unit"]),
+            (f"tests/a.py::test_bad_{marker}", ["fast", marker]),
+            (f"tests/a.py::test_slow_{marker}", ["slow", marker]),
         ],
     )
     violations = mod._check_fast_lane_policy(
@@ -81,9 +79,9 @@ def test_counts_are_per_expression_and_a_test_can_hit_several(tmp_path: Path) ->
     manifest = _write_manifest(
         tmp_path / "m.json",
         [
-            ("t.py::a", ["fast", "stress", "resource_heavy"], False),
-            ("t.py::b", ["fast", "stress"], False),
-            ("t.py::c", ["fast"], True),
+            ("t.py::a", ["fast", "stress", "resource_heavy"]),
+            ("t.py::b", ["fast", "stress"]),
+            ("t.py::c", ["fast"]),
         ],
     )
     violations = mod._check_fast_lane_policy(
@@ -98,7 +96,7 @@ def test_counts_are_per_expression_and_a_test_can_hit_several(tmp_path: Path) ->
 def test_compound_marker_expressions_follow_pytest_semantics(tmp_path: Path) -> None:
     manifest = _write_manifest(
         tmp_path / "m.json",
-        [("t.py::a", ["fast", "duckdb"], True), ("t.py::b", ["fast", "duckdb", "sqlite"], True)],
+        [("t.py::a", ["fast", "duckdb"]), ("t.py::b", ["fast", "duckdb", "sqlite"])],
     )
     policy = _policy(forbidden_marker_expressions=["duckdb and not sqlite", "sqlite or missing"])
     assert mod._check_fast_lane_policy(Path("/nonexistent"), policy, manifest) == [
@@ -110,7 +108,7 @@ def test_compound_marker_expressions_follow_pytest_semantics(tmp_path: Path) -> 
 def test_clean_manifest_passes(tmp_path: Path) -> None:
     manifest = _write_manifest(
         tmp_path / "m.json",
-        [("t.py::a", ["fast"], True), ("t.py::b", ["slow", "stress"], False)],
+        [("t.py::a", ["fast"]), ("t.py::b", ["slow", "stress"])],
     )
     assert (
         mod._check_fast_lane_policy(Path("/nonexistent"), _policy(forbidden_marker_expressions=_FORBIDDEN), manifest)
@@ -122,9 +120,9 @@ def test_forbidden_path_applies_to_fast_tests_only(tmp_path: Path) -> None:
     manifest = _write_manifest(
         tmp_path / "m.json",
         [
-            ("tests/unit/spark/test_x.py::test_a", ["fast"], True),
-            ("tests/unit/spark/test_slow.py::test_s", ["slow"], True),
-            ("tests/unit/core/test_y.py::test_b", ["fast"], True),
+            ("tests/unit/spark/test_x.py::test_a", ["fast"]),
+            ("tests/unit/spark/test_slow.py::test_s", ["slow"]),
+            ("tests/unit/core/test_y.py::test_b", ["fast"]),
         ],
     )
     violations = mod._check_fast_lane_policy(
@@ -153,7 +151,7 @@ def test_missing_manifest_is_an_environment_error(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("expr", ["stress and", "stress(reason='x')"])
 def test_unsupported_marker_expression_is_an_environment_error(tmp_path: Path, expr: str) -> None:
-    manifest = _write_manifest(tmp_path / "m.json", [("t.py::a", ["fast", "stress"], True)])
+    manifest = _write_manifest(tmp_path / "m.json", [("t.py::a", ["fast", "stress"])])
     with pytest.raises(mod.FastLaneCollectError):
         mod._check_fast_lane_policy(Path("/nonexistent"), _policy(forbidden_marker_expressions=[expr]), manifest)
 
@@ -188,9 +186,9 @@ def test_single_real_collection_finds_planted_violations_in_deselected_tests(tmp
     mod._collect_manifest(project, manifest)
 
     recorded = {item["id"]: item for item in json.loads(manifest.read_text(encoding="utf-8"))["items"]}
-    assert recorded["test_planted.py::test_fast_clean"]["selected"] is True
-    assert recorded["test_planted.py::test_fast_stress"]["selected"] is False
     assert len(recorded) == 5
+    assert recorded["test_planted.py::test_fast_stress"]["markers"] == ["fast", "stress"]
+    assert recorded["test_planted.py::test_fast_clean"]["markers"] == ["fast"]
 
     violations = mod._check_fast_lane_policy(project, _policy(forbidden_marker_expressions=_FORBIDDEN))
     assert violations == [
