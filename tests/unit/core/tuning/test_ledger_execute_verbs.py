@@ -605,14 +605,20 @@ class TestAdapterCreateSchema:
         fake_self = SimpleNamespace(
             dataset_id="ds",
             location="US",
-            _create_schema_with_tuning=lambda *a, **k: (
-                "CREATE TABLE t1 (a INT64, ts TIMESTAMP) PARTITION BY DATE(ts) CLUSTER BY a;\nCREATE TABLE t2 (b INT64);"
-            ),
-            _convert_to_bigquery_table=lambda statement: statement,
+            get_target_dialect=lambda: "bigquery",
+            _ddl_options=dict,
+            _create_schema_with_tuning=lambda *a, **k: "unused",
             logger=logging.getLogger("test"),
         )
 
-        with patch("benchbox.platforms.bigquery.bigquery"):
+        tuned = [
+            "CREATE OR REPLACE TABLE ds.T1 (a INT64, ts TIMESTAMP) PARTITION BY DATE(ts) CLUSTER BY a",
+            "CREATE OR REPLACE TABLE ds.T2 (b INT64)",
+        ]
+        with (
+            patch("benchbox.platforms.bigquery.bigquery"),
+            patch("benchbox.platforms.bigquery.translate_ddl", return_value=tuned),
+        ):
             BigQueryAdapter.create_schema(fake_self, SimpleNamespace(), proxy)
 
         assert len(client.submitted) == 2

@@ -117,7 +117,6 @@ class TestCreateSchema:
         with (
             patch.object(adapter, "_create_schema_with_tuning", return_value=schema_sql),
             patch.object(adapter, "_extract_table_name", return_value="lineitem"),
-            patch.object(adapter, "_optimize_table_definition", return_value="CREATE TABLE lineitem (id INT)"),
             patch.object(adapter, "drop_table"),
         ):
             elapsed = adapter.create_schema(mock_benchmark, mock_conn)
@@ -135,7 +134,6 @@ class TestCreateSchema:
         with (
             patch.object(adp, "_create_schema_with_tuning", return_value="CREATE TABLE t (id INT);"),
             patch.object(adp, "_extract_table_name", return_value="t"),
-            patch.object(adp, "_optimize_table_definition", return_value="CREATE TABLE t (id INT)"),
             patch.object(adp, "drop_table"),
         ):
             adp.create_schema(mock_benchmark, mock_conn)
@@ -150,11 +148,10 @@ class TestCreateSchema:
 
         with (
             patch.object(adapter, "_create_schema_with_tuning", return_value="CREATE TABLE t (id INT);"),
-            patch.object(adapter, "_extract_table_name", return_value="t"),
-            patch.object(adapter, "_optimize_table_definition", side_effect=Exception("permission denied")),
             patch.object(adapter, "drop_table"),
         ):
-            with pytest.raises(Exception):
+            mock_cursor.execute.side_effect = _fabric_stubs.Error("permission denied")
+            with pytest.raises(RuntimeError, match="READ-ONLY"):
                 adapter.create_schema(mock_benchmark, mock_conn)
 
 
@@ -305,21 +302,34 @@ class TestGenerateTuningClause:
         assert adapter.generate_tuning_clause(MagicMock()) == ""
 
 
-class TestOptimizeTableDefinition:
-    def test_adds_schema_prefix(self, adapter):
-        sql = "CREATE TABLE lineitem (id INT)"
-        result = adapter._optimize_table_definition(sql)
-        assert "[dbo].[lineitem]" in result
+class TestCreateSchemaDdl:
+    def test_executes_schema_qualified_statement(self, adapter):
+        mock_cursor = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value = mock_cursor
 
-    def test_no_schema_when_brackets_present(self, adapter):
-        sql = "CREATE TABLE [dbo].[lineitem] (id INT)"
-        result = adapter._optimize_table_definition(sql)
-        assert result == sql
+        with (
+            patch.object(adapter, "_create_schema_with_tuning", return_value="CREATE TABLE lineitem (id INT);"),
+            patch.object(adapter, "drop_table") as drop,
+        ):
+            adapter.create_schema(MagicMock(), mock_conn)
 
-    def test_no_match_returns_original(self, adapter):
-        sql = "SELECT 1"
-        result = adapter._optimize_table_definition(sql)
-        assert result == sql
+        drop.assert_called_once_with(mock_conn, "lineitem")
+        executed = mock_cursor.execute.call_args[0][0]
+        assert "[dbo].[lineitem]" in executed
+
+    def test_skips_non_table_statement(self, adapter):
+        mock_cursor = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        with (
+            patch.object(adapter, "_create_schema_with_tuning", return_value="CREATE INDEX ix ON t (id);"),
+            patch.object(adapter, "drop_table"),
+        ):
+            adapter.create_schema(MagicMock(), mock_conn)
+
+        mock_cursor.execute.assert_not_called()
 
 
 class TestFromConfig:
@@ -428,38 +438,6 @@ class TestTestConnection:
 
 
 class TestCreateSchemaBranches:
-    def test_skips_non_create_table_statement(self, adapter, _fabric_stubs):
-        mock_cursor = MagicMock()
-        mock_conn = MagicMock()
-        mock_conn.cursor.return_value = mock_cursor
-        mock_benchmark = MagicMock()
-
-        with (
-            patch.object(adapter, "_create_schema_with_tuning", return_value="CREATE INDEX ix ON t (id);"),
-            patch.object(adapter, "_extract_table_name", return_value="t"),
-            patch.object(adapter, "_optimize_table_definition", return_value=""),
-            patch.object(adapter, "drop_table"),
-        ):
-            adapter.create_schema(mock_benchmark, mock_conn)
-
-        mock_cursor.execute.assert_not_called()
-
-    def test_skips_when_extract_table_name_returns_none(self, adapter, _fabric_stubs):
-        mock_cursor = MagicMock()
-        mock_conn = MagicMock()
-        mock_conn.cursor.return_value = mock_cursor
-        mock_benchmark = MagicMock()
-
-        with (
-            patch.object(adapter, "_create_schema_with_tuning", return_value="CREATE TABLE (id INT);"),
-            patch.object(adapter, "_extract_table_name", return_value=None),
-            patch.object(adapter, "_optimize_table_definition", return_value=""),
-            patch.object(adapter, "drop_table"),
-        ):
-            adapter.create_schema(mock_benchmark, mock_conn)
-
-        mock_cursor.execute.assert_not_called()
-
     def test_pyodbc_non_permission_error_reraises(self, adapter, _fabric_stubs):
         mock_cursor = MagicMock()
         mock_conn = MagicMock()
@@ -468,14 +446,9 @@ class TestCreateSchemaBranches:
 
         with (
             patch.object(adapter, "_create_schema_with_tuning", return_value="CREATE TABLE t (id INT);"),
-            patch.object(adapter, "_extract_table_name", return_value="t"),
-            patch.object(
-                adapter,
-                "_optimize_table_definition",
-                side_effect=_fabric_stubs.Error("syntax error"),
-            ),
             patch.object(adapter, "drop_table"),
         ):
+            mock_cursor.execute.side_effect = _fabric_stubs.Error("syntax error")
             with pytest.raises(_fabric_stubs.Error):
                 adapter.create_schema(mock_benchmark, mock_conn)
 
