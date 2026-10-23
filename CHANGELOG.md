@@ -59,6 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `quality/comment-policy.json` no longer has a `completed` list, and a policy that still has one fails schema validation. Every first-party path is in scope, so there is no list of dead completed prefixes left to prune.
+- FlightData queries for PostgreSQL are rendered by `translate_sql_query` with the runtime's
+  `round_inputs_to_decimal` rewrite instead of local AST code; the `ast_rewrite` allowlist entry for
+  `benchbox/core/flightdata/queries.py` is gone. The ROUND casts are unchanged, but the PostgreSQL
+  text no longer quotes identifiers (`translate_sql_query` does not quote for `postgres`), so
+  `"f"."dep_delay"` is now `f.dep_delay`. All 20 queries execute on PostgreSQL 16.2 before and
+  after. No published FlightData bundle targets PostgreSQL, so no published result changes.
 - The comment-policy check compares a branch with its base using the strict rules over the whole repository. It no longer scans the base's sources or reports only newly introduced findings, so every violation fails, including old ones; none exist today. Staged runs check the staged files that differ from the base, and the whole repository when the commit changes the policy, the cleanup scope policy, the launcher or a trusted checker file. The policy ratchet, review gating for new exceptions, checks of new files under external exclusions, consumer validation, expired-exception findings and the base-copied launcher are unchanged. The `completed` list in `quality/comment-policy.json` is no longer read or ratcheted, and the policy may omit it.
 - The comment-policy scanner builds each Python file's name index once and parses YAML with the C loader when available, falling back to the pure-Python loader on any error. Findings are unchanged; a whole-tree strict scan is more than twice as fast.
 - TPC-DS OBT queries load from a hand-owned static catalog (`benchbox/core/tpcds_obt/catalog/queries.yaml`)
@@ -364,7 +370,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The bundled SQLGlot runtime moves from 30.24.0.9 to 30.24.0.10 (fork commit
   `75016d8ff27e`). It adds the `round_inputs_to_decimal` rewrite to the `apply_rewrite`
   registry and writes a one-parameter wide `DECIMAL(p)` as `BIGNUMERIC` for BigQuery DDL.
-  BenchBox does not call the rewrite yet and ships no one-parameter `DECIMAL`: the 23,667
+  BenchBox ships no one-parameter `DECIMAL`, and its first use of the rewrite (FlightData on
+  PostgreSQL) is the next entry: the 23,667
   translations of the 1,127 frozen shipped queries across 21 target dialects, the 2,600
   golden-corpus runtime outputs and `make sql-execution-gate` are unchanged from 30.24.0.9, so
   no published result changes.
