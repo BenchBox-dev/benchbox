@@ -5025,15 +5025,10 @@
       "title": "Remove comments and docstrings from Write primitives modules"
     },
     "comment-policy-ci-job-timeout-20261017": {
-      "claim": {
-        "expires_at": "2026-10-24T20:53:48Z",
-        "generation": "67a803a7e02945a1b7937e5e085f0d50",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "The required comment-policy CI job hits its 10-minute timeout on ordinary PRs"
     },
     "comment-policy-completed-dead-prefixes-20261017": {
