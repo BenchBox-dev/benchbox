@@ -21392,6 +21392,13 @@
       "status": "open",
       "title": "Make the ruleset drift check report classic branch protection rules"
     },
+    "ruleset-runbook-missing-oracle-gate-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "The ruleset drift check fails because the runbook does not list oracle-gate as a required check on develop"
+    },
     "run-lifecycle-and-export-unification-refactor": {
       "claim": null,
       "needs": [],

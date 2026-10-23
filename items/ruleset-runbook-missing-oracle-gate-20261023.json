@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "scripts/ruleset_drift_check.py reports no blocking findings against the live repository",
+    "The scheduled release canary drift job passes"
+  ],
+  "description": "`python scripts/ruleset_drift_check.py --repo BenchBox-dev/benchbox` against live GitHub on 2026-10-23 reports `develop-squash-only: required checks ['core','docs','explorer','hold','oracle-gate','oracle-review','results-data','tooling'], expected ['core','docs','explorer','hold','oracle-review','results-data','tooling']`. The live ruleset requires `oracle-gate`; the expected list parsed from `docs/internal/repo-admin-settings.md` does not include it, so the daily release canary's drift job fails with a blocking finding unrelated to any change. Update the runbook's required-checks list for `develop-squash-only` (and any doc that repeats it, such as docs/internal/merge-queue-governance.md and oracle-review-v2.md) to match the live ruleset, then run the drift check and the release canary to confirm it is green.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:48:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "75ea2f7d977b41e1a03132715b3f837c",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    }
+  ]
+}
