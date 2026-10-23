@@ -732,3 +732,15 @@ class TestSchemaDdlReadDialect:
 
         assert schema_ddl_read_dialect("CREATE TABLE t (a INT)", "spark") == "standard"
         assert schema_ddl_read_dialect("CREATE TABLE `t` (`a` INT)", "spark") == "spark"
+
+
+class TestVectorSearchSchema:
+    @pytest.mark.parametrize("dialect", ["spark", "databricks"])
+    def test_embedding_is_four_byte_float(self, dialect: str) -> None:
+        from benchbox import VectorSearch
+
+        sql = VectorSearch(scale_factor=0.01).get_create_tables_sql(dialect=dialect)
+        statements = spark_schema_statements(sql, table_format="parquet", strip_constraints=True)
+        (vectors,) = [s for s in statements if "embedding" in s.lower()]
+        assert "ARRAY<FLOAT>" in vectors.upper()
+        assert "DOUBLE" not in vectors.upper()
