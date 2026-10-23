@@ -119,7 +119,15 @@ def comparison_base(root: Path, base: str) -> str:
 
 
 def checker_command(
-    python: Path, trusted: Path, root: Path, compare_base: str, *, bootstrap: bool, staged: bool, full: bool = False
+    python: Path,
+    trusted: Path,
+    root: Path,
+    compare_base: str,
+    *,
+    bootstrap: bool,
+    staged: bool,
+    full: bool = False,
+    accept_same_commit: bool = False,
 ) -> list[str]:
     command = [
         str(python),
@@ -138,7 +146,13 @@ def checker_command(
         command.append("--staged")
     if full:
         command.append("--full")
+    if accept_same_commit:
+        command.append("--accept-same-commit-fixtures")
     return command
+
+
+def trusted_checker_supports_same_commit(trusted: Path) -> bool:
+    return "--accept-same-commit-fixtures" in (trusted / "check_comment_policy.py").read_text(encoding="utf-8")
 
 
 def plain_text(value: str) -> str:
@@ -152,6 +166,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base", default=os.environ.get("BASE_REF"))
     parser.add_argument("--staged", action="store_true")
     parser.add_argument("--full", action="store_true")
+    parser.add_argument("--accept-same-commit-fixtures", action="store_true")
     args = parser.parse_args(argv)
     root = Path.cwd().resolve()
     try:
@@ -182,6 +197,7 @@ def main(argv: list[str] | None = None) -> int:
                 bootstrap=bootstrap,
                 staged=args.staged,
                 full=args.full,
+                accept_same_commit=args.accept_same_commit_fixtures and trusted_checker_supports_same_commit(trusted),
             )
             result = subprocess.run(command, cwd=trusted, env=env, check=False).returncode
             return result
