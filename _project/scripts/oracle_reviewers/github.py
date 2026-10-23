@@ -47,6 +47,13 @@ def get_diff(repo: str, pr: int) -> str | None:
         return None
 
 
+def get_file(repo: str, path: str, ref: str) -> str | None:
+    try:
+        return _gh(f"repos/{repo}/contents/{quote(path)}?ref={ref}", accept="application/vnd.github.raw+json")
+    except GitHubError:
+        return None
+
+
 _THREADS_QUERY = """
 query($owner: String!, $name: String!, $number: Int!, $after: String) {
   repository(owner: $owner, name: $name) {
