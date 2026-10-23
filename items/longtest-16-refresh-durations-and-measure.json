@@ -12,7 +12,9 @@
       "from_item": "longtest-16-refresh-durations-and-measure",
       "id": 1,
       "reason": "Item longtest-15 was not adopted: CI A/B on 8b001aca7 cut summed medium time but improved the slowest shard in only one of two runs (weights include fixture-rebuild time); loadscope exposed an order-dependent chdb failure.",
-      "resolution": "open",
+      "resolution": "promoted",
+      "resolved_at": "2026-10-23T01:34:03Z",
+      "resolved_item": "longtest-16-refresh-durations-and-measure-deferral-1",
       "summary": "Re-evaluate module-grouped medium scheduling (closed PR #3314) after durations are regenerated and the chdb SSB tests isolate their state."
     }
   ],
@@ -85,6 +87,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "6b01c3ac394b441ca83d1e1179b31159",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-23T01:34:04Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "10f01c7b0a244bc0b8a68ef6c908c037",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]

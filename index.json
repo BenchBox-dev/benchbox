@@ -13615,6 +13615,13 @@
       "status": "active",
       "title": "Refresh the medium-tier duration weights from a full trunk run and measure the result of the long-test work"
     },
+    "longtest-16-refresh-durations-and-measure-deferral-1": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Re-evaluate module-grouped medium scheduling after fixing chdb SSB test isolation"
+    },
     "longtest-17-cli-startup-probe-and-datagen-chunks": {
       "claim": null,
       "needs": [
