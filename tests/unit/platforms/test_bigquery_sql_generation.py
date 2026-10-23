@@ -33,36 +33,34 @@ def _make_adapter(**kwargs):
 class TestBigQueryConvertToBigQueryTable:
     def test_three_part_name_in_output(self):
         adapter = _make_adapter(project_id="my-proj", dataset_id="my_dataset")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE orders (id INT64)")
-        assert "my-proj.my_dataset.ORDERS" in result
+        result = adapter._translate_create_table("CREATE TABLE orders (id INT64)")
+        assert "`my-proj`.my_dataset.ORDERS" in result
 
     def test_partition_by_added_when_configured(self):
         adapter = _make_adapter(partitioning_field="order_date")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE orders (id INT64)")
-        assert "PARTITION BY" in result
-        assert "order_date" in result
+        result = adapter._translate_create_table("CREATE TABLE orders (id INT64, order_date DATE)")
+        assert "PARTITION BY DATE(order_date)" in result
 
     def test_cluster_by_added_when_configured(self):
         adapter = _make_adapter(clustering_fields=["customer_id", "order_id"])
-        result = adapter._convert_to_bigquery_table("CREATE TABLE orders (id INT64)")
-        assert "CLUSTER BY" in result
-        assert "customer_id" in result
+        result = adapter._translate_create_table("CREATE TABLE orders (customer_id INT64, order_id INT64)")
+        assert "CLUSTER BY customer_id, order_id" in result
 
     def test_no_partition_when_not_configured(self):
         adapter = _make_adapter()
-        result = adapter._convert_to_bigquery_table("CREATE TABLE t (id INT64)")
+        result = adapter._translate_create_table("CREATE TABLE t (id INT64)")
         assert "PARTITION BY" not in result
 
     def test_no_cluster_when_not_configured(self):
         adapter = _make_adapter()
-        result = adapter._convert_to_bigquery_table("CREATE TABLE t (id INT64)")
+        result = adapter._translate_create_table("CREATE TABLE t (id INT64)")
         assert "CLUSTER BY" not in result
 
     def test_lowercase_table_normalized_to_uppercase(self):
 
         adapter = _make_adapter(project_id="my-proj", dataset_id="my_dataset")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE hits (WatchID INT64)")
-        assert result == "CREATE OR REPLACE TABLE `my-proj.my_dataset.HITS` (WatchID INT64)"
+        result = adapter._translate_create_table("CREATE TABLE hits (WatchID INT64)")
+        assert result == "CREATE OR REPLACE TABLE `my-proj`.my_dataset.HITS (WatchID INT64)"
 
 
 class TestBigQueryQualifyTableNames:
@@ -174,6 +172,6 @@ class TestBigQueryTypeMapping:
 
         adapter = _make_adapter()
 
-        result = adapter._convert_to_bigquery_table("CREATE TABLE t (id INT64, score FLOAT64)")
+        result = adapter._translate_create_table("CREATE TABLE t (id INT64, score FLOAT64)")
         assert "INT64" in result
         assert "FLOAT64" in result

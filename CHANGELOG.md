@@ -54,6 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- BigQuery builds `CREATE TABLE` text through `translate_ddl` instead of the adapter's own DDL
+  rewriter, which is deleted. It still writes `CREATE OR REPLACE TABLE`, qualifies `project.dataset`,
+  upper-cases table names and writes `PRIMARY KEY ... NOT ENFORCED`; configured partitioning and
+  clustering become a table layout (at most four clustering columns are kept). Temporary tables keep
+  their name. The output differs in spelling only: project, dataset and table are written as
+  separate identifiers, `STRING(n)` keeps its length, and fixed-size arrays are written as plain arrays.
 - Redshift and Snowflake build `CREATE TABLE` text through `translate_ddl` instead of the
   adapters' own DDL rewriters, which are deleted. Redshift still adds `DISTSTYLE AUTO SORTKEY AUTO`
   and Snowflake still writes `CREATE OR REPLACE TABLE`. Snowflake keeps the case of quoted

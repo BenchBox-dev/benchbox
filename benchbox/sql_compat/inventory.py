@@ -110,7 +110,6 @@ _DDL_HELPER_PLATFORM_KEYS: dict[tuple[str, str], tuple[str, ...]] = {
 }
 _DDL_GOVERNANCE_TRANSFORMER_ALIASES: dict[tuple[str, str], tuple[str, ...]] = {
     ("athena", "_convert_to_external_table"): ("athena_convert_to_external_table",),
-    ("bigquery", "_convert_to_bigquery_table"): ("bigquery_convert_to_bigquery_table",),
     ("clickhouse", "_optimize_table_definition"): ("clickhouse_ddl_optimizer",),
     ("clickhouse", "_resolve_tuned_ddl_clauses"): ("clickhouse_ddl_optimizer",),
     ("clickhouse", "_strip_primary_key_constraints"): ("clickhouse_ddl_optimizer",),
