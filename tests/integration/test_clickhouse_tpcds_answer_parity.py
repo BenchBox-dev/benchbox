@@ -10,7 +10,7 @@ from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
 from benchbox.core.tuning.interface import UnifiedTuningConfiguration
 from benchbox.core.tuning.packaged_templates import packaged_template_path
 from benchbox.platforms.clickhouse import ClickHouseAdapter, ClickHouseLocalClient
-from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
+from benchbox.platforms.clickhouse.query_rewrites import rewrite_query_for_clickhouse
 from tests.utilities.optional_engines import require_chdb
 
 pytestmark = [
@@ -40,8 +40,7 @@ def _drop_all_tables(client: Any) -> None:
 
 
 def _parity_sql(sql: str) -> str:
-    transformer = ClickHouseQueryTransformer()
-    return transformer.add_query_settings(transformer.transform(sql))
+    return rewrite_query_for_clickhouse(sql)
 
 
 def _query_answers(client: Any, queries: dict[str, str]) -> dict[str, list[tuple[str, ...]]]:

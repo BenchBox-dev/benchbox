@@ -205,6 +205,7 @@
     "docs/internal/merge-queue-canary-runbook.md": "core-only",
     "docs/internal/merge-queue-governance.md": "core-only",
     "docs/internal/nightly-t3.md": "core-only",
+    "docs/internal/oracle-gateway-host.md": "core-only",
     "docs/internal/oracle-review-v2.md": "core-only",
     "docs/internal/perf-smoke.md": "core-only",
     "docs/internal/pr-base-branch-policy.md": "core-only",

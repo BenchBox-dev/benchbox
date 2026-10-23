@@ -762,10 +762,7 @@ class TestTpcdsDateIntegerArithmetic:
 
         from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
 
-        runner = SimpleNamespace()
-        runner._normalize_interval_syntax = lambda sql: TPCDSBenchmark._normalize_interval_syntax(runner, sql)
-        runner._fix_query58_ambiguity = lambda sql: TPCDSBenchmark._fix_query58_ambiguity(runner, sql)
-        return TPCDSBenchmark.translate_query_text(runner, query, "netezza", target)
+        return TPCDSBenchmark.translate_query_text(SimpleNamespace(), query, "netezza", target)
 
     def test_convert_date_plus_integer(self):
         result = self._translate("SELECT * FROM t WHERE d_date + 5 > NOW()")

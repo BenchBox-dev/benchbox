@@ -6,6 +6,10 @@ from unittest.mock import MagicMock, Mock, patch, patch as _patch
 
 import pytest
 
+from benchbox.utils.dialect_utils import translate_ddl
+
+translate_ddl("CREATE TABLE t (a INT)", "athena")
+
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
@@ -59,7 +63,7 @@ class TestAthenaBuildCtasSortSql:
                 adapter._build_ctas_sort_sql("orders", [Mock()])
 
 
-class TestAthenaConvertToExternalTableStagingPath:
+class TestAthenaExternalTableDdlStagingPath:
     def test_staging_true_generates_textfile_format(self):
         with (
             patch.dict(
@@ -81,7 +85,7 @@ class TestAthenaConvertToExternalTableStagingPath:
                 default_format="PARQUET",
             )
             sql = "CREATE TABLE orders (id INT, amount DECIMAL)"
-            converted = adapter._convert_to_external_table(sql, is_staging=True)
+            converted = adapter._external_table_ddl(sql, is_staging=True)[0]
 
             assert "EXTERNAL TABLE" in converted.upper()
             assert "TEXTFILE" in converted.upper() or "DELIMITED" in converted.upper()
@@ -107,7 +111,7 @@ class TestAthenaConvertToExternalTableStagingPath:
                 default_format="PARQUET",
             )
             sql = "CREATE TABLE lineitem (l_orderkey BIGINT)"
-            converted = adapter._convert_to_external_table(sql, is_staging=False)
+            converted = adapter._external_table_ddl(sql, is_staging=False)[0]
             assert "STORED AS PARQUET" in converted.upper()
             assert "s3://test-bucket/data/benchbox_db/lineitem/" in converted
 
@@ -134,7 +138,7 @@ class TestAthenaExternalTableLocationPath:
                 database="tpch_db",
                 default_format="PARQUET",
             )
-            converted = adapter2._convert_to_external_table(sql, is_staging=False)
+            converted = adapter2._external_table_ddl(sql, is_staging=False)[0]
             assert "s3://my-bucket/benchmarks/tpch_db/nation/" in converted
 
 

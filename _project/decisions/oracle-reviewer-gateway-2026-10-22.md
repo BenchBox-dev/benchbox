@@ -101,8 +101,8 @@ scope or the reviewer's reach grows.
 
 1. The owner sets up the gateway (token and digest, clients file, launchd
    agent, `tailscale serve`, ACL for `tag:oracle-ci`) and adds the
-   `ORACLE_GATEWAY_TOKEN` and `ORACLE_GATEWAY_URL` secrets. The runbook is in
-   `docs/internal/oracle-review-v2.md`.
+   `ORACLE_GATEWAY_TOKEN` and `ORACLE_GATEWAY_URL` secrets. The runbook is
+   `docs/internal/oracle-gateway-host.md`.
 2. Merge this change, then run a canary on a soundness pull request.
 3. After the canary passes, delete the old secrets
    (`CLAUDE_CODE_OAUTH_TOKEN`, `OPENAI_API_KEY`, `META_API_KEY`,

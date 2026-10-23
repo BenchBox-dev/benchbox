@@ -582,10 +582,9 @@ def build_clickhouse_with_tpch(scale_factor: float, output_dir: str | Path) -> t
 
 
 def _clickhouse_execute_transform(sql: str) -> str:
-    from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
+    from benchbox.platforms.clickhouse.query_rewrites import rewrite_query_for_clickhouse
 
-    transformer = ClickHouseQueryTransformer()
-    return transformer.add_query_settings(transformer.transform(sql))
+    return rewrite_query_for_clickhouse(sql)
 
 
 def find_clickhouse_divergences(

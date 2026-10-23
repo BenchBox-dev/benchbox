@@ -256,8 +256,8 @@ an inline fix when:
 
 - The divergence reveals a fundamental incompatibility in how a platform
   handles a SQL construct (e.g., `INTERVAL` literals, `EXTRACT`, date
-  arithmetic) - the right fix is a new `ClickHouseQueryTransformer` rule
-  or expression-runner method, which deserves its own scoped item.
+  arithmetic) - the right fix is a new named rewrite in the bundled SQLGlot
+  runtime applied through `apply_rewrite`, which deserves its own scoped item.
 - The fix requires changes outside the validation layer (e.g., the
   platform adapter's `execute_query` path or the `TPCHDataFrameQueries`
   translation).

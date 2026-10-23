@@ -4,62 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from benchbox.platforms.base.ddl_helpers import strip_foreign_keys, strip_primary_keys, strip_with_properties
+from benchbox.platforms.base.ddl_helpers import strip_foreign_keys, strip_primary_keys
 
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
 ]
 _REPO_ROOT = Path(__file__).resolve().parents[4]
-
-
-class TestStripWithProperties:
-    def test_simple_with_clause(self):
-        sql = "CREATE TABLE t (a INT) WITH (format = 'PARQUET')"
-        assert strip_with_properties(sql) == "CREATE TABLE t (a INT)"
-
-    def test_nested_function_in_with(self):
-
-        sql = "CREATE TABLE t (a INT) WITH (partitioning = ARRAY['bucket(x, 16)'])"
-        assert strip_with_properties(sql) == "CREATE TABLE t (a INT)"
-
-    def test_nested_date_trunc_in_with(self):
-        sql = "CREATE TABLE t (a INT) WITH (sorted_by = ARRAY[date_trunc('day', ts)])"
-        assert strip_with_properties(sql) == "CREATE TABLE t (a INT)"
-
-    def test_multiple_properties_with_nested(self):
-        sql = "CREATE TABLE t (a INT) WITH (format = 'PARQUET', partitioning = ARRAY['bucket(ws_sold_date_sk, 16)'])"
-        assert strip_with_properties(sql) == "CREATE TABLE t (a INT)"
-
-    def test_no_with_clause_passthrough(self):
-        sql = "CREATE TABLE t (a INT, b TEXT)"
-        assert strip_with_properties(sql) == sql
-
-    def test_with_inside_column_default_untouched(self):
-
-        sql = "CREATE TABLE t (a INT DEFAULT (now()), b TEXT) ENGINE = MergeTree()"
-        assert strip_with_properties(sql) == sql
-
-    def test_empty_with_clause(self):
-        sql = "CREATE TABLE t (a INT) WITH ()"
-        assert strip_with_properties(sql) == "CREATE TABLE t (a INT)"
-
-    def test_whitespace_preserved_around_removal(self):
-        sql = "CREATE TABLE t (a INT)\nWITH (format = 'ORC')"
-        result = strip_with_properties(sql)
-        assert "WITH" not in result.upper()
-        assert "CREATE TABLE t (a INT)" in result
-
-    def test_no_with_keyword_no_scan(self):
-        sql = "SELECT a FROM t"
-        assert strip_with_properties(sql) == sql
-
-    def test_iceberg_complex_partitioning(self):
-        sql = (
-            "CREATE TABLE orders (o_id BIGINT, o_date DATE) "
-            "WITH (partitioning = ARRAY['month(o_date)', 'bucket(o_id, 8)'])"
-        )
-        assert strip_with_properties(sql) == "CREATE TABLE orders (o_id BIGINT, o_date DATE)"
 
 
 class TestStripPrimaryKeys:

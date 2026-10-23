@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.benchmark_mixins import CursorValidationQueryExecutionMixin
-from benchbox.core.sql_utils import normalize_table_name_in_sql
 from benchbox.platforms.base.data_loading import resolve_adapter_data_source
 from benchbox.platforms.base.external_table_mixin import HiveExternalTableMixin
 from benchbox.platforms.presto_trino_utils import (
@@ -436,35 +435,39 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
     ddl_memory_table_formats: tuple[str, ...] = ("memory",)
     ddl_memory_catalog_names: tuple[str, ...] = ()
     ddl_format_property_formats: tuple[str, ...] = ("hive",)
+    ddl_no_not_null_formats: tuple[str, ...] = ("hive",)
 
-    def _optimize_table_definition(self, statement: str) -> str:
-        from benchbox.platforms.base.ddl_helpers import strip_primary_keys, strip_with_properties
+    def _ddl_options(self) -> dict[str, Any]:
+        memory = (
+            self.table_format in self.ddl_memory_table_formats or (self.catalog or "") in self.ddl_memory_catalog_names
+        )
+        with_format = not memory and self.table_format in self.ddl_format_property_formats
+        return {
+            "strip_primary_keys": True,
+            "strip_not_null": memory or self.table_format in self.ddl_no_not_null_formats,
+            "table_case": "lower",
+            "default_layout": {"format": "PARQUET"} if with_format else None,
+        }
 
-        if not statement.upper().startswith("CREATE TABLE"):
-            return statement
+    def _schema_ddl(self, schema_sql: str) -> list[str]:
+        from benchbox.utils.dialect_utils import translate_ddl
 
-        statement = strip_primary_keys(statement)
-
-        if self.table_format in self.ddl_memory_table_formats or (self.catalog or "") in self.ddl_memory_catalog_names:
-            statement = strip_with_properties(statement)
-            statement = re.sub(r"\s+NOT\s+NULL", "", statement, flags=re.IGNORECASE)
-        elif self.table_format in self.ddl_format_property_formats:
-            if "WITH" not in statement.upper():
-                statement += " WITH (format = 'PARQUET')"
-
-        return statement
+        options = self._ddl_options()
+        statements: list[str] = []
+        for statement in (part.strip() for part in schema_sql.split(";")):
+            if statement:
+                statements.extend(translate_ddl(statement, self.get_target_dialect(), **options))
+        return statements
 
     def create_schema(self, benchmark, connection: Any) -> float:
         from benchbox.platforms.presto_trino_utils import execute_schema_statements
 
         start_time = mono_time()
-        schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+        schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
         execute_schema_statements(
-            schema_sql=schema_sql,
+            statements=self._schema_ddl(schema_sql),
             connection=connection,
             logger=self.logger,
-            normalize_table_name_in_sql=self._normalize_table_name_in_sql,
-            optimize_table_definition=self._optimize_table_definition,
             extract_table_name=self._extract_table_name,
             log_notice=self.log_notice,
         )
@@ -631,9 +634,6 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
         from benchbox.core.sql_utils import extract_table_name
 
         return extract_table_name(statement)
-
-    def _normalize_table_name_in_sql(self, sql: str) -> str:
-        return normalize_table_name_in_sql(sql)
 
     def get_query_plan(self, connection: Any, query: str) -> str | None:
         from benchbox.platforms.base.sql_execution import get_query_plan_from_cursor

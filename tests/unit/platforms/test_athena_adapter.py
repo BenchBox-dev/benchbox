@@ -9,6 +9,9 @@ import pytest
 
 from benchbox.core.exceptions import ConfigurationError
 from benchbox.platforms.base.data_loading import DataSource
+from benchbox.utils.dialect_utils import translate_ddl
+
+translate_ddl("CREATE TABLE t (a INT)", "athena")
 
 pytestmark = [
     pytest.mark.unit,
@@ -414,19 +417,38 @@ class TestAthenaAdapter:
         with pytest.raises(ConfigurationError, match="No S3 location configured"):
             AthenaAdapter(aws_profile="test-profile")
 
-    def test_normalize_table_name(self, mock_boto3, mock_pyathena, mock_aws_credentials):
+    def test_external_table_ddl_lowercases_table_name(self, mock_boto3, mock_pyathena, mock_aws_credentials):
 
         from benchbox.platforms.athena import AthenaAdapter
 
         adapter = AthenaAdapter(s3_bucket="test-bucket")
 
-        sql = 'CREATE TABLE "CUSTOMER" (id INT)'
-        normalized = adapter._normalize_table_name_in_sql(sql)
+        [converted] = adapter._external_table_ddl('CREATE TABLE "CUSTOMER" (id INT)')
 
-        assert "customer" in normalized.lower()
-        assert "(id INT)" in normalized
+        assert "`customer`" in converted
+        assert "(`id` INT)" in converted
 
-    def test_convert_to_external_table_parquet(self, mock_boto3, mock_pyathena, mock_aws_credentials):
+    def test_external_table_ddl_passes_through_non_create(self, mock_boto3, mock_pyathena, mock_aws_credentials):
+
+        from benchbox.platforms.athena import AthenaAdapter
+
+        adapter = AthenaAdapter(s3_bucket="test-bucket")
+
+        assert adapter._external_table_ddl("INSERT INTO t VALUES (1)") == ['INSERT INTO "t" VALUES (1)']
+
+    def test_external_table_ddl_splits_statements(self, mock_boto3, mock_pyathena, mock_aws_credentials):
+
+        from benchbox.platforms.athena import AthenaAdapter
+
+        adapter = AthenaAdapter(s3_bucket="test-bucket", s3_prefix="data", database="db")
+
+        converted = adapter._external_table_ddl("CREATE TABLE a (x INT); CREATE TABLE b (y INT);")
+
+        assert len(converted) == 2
+        assert "s3://test-bucket/data/db/a/" in converted[0]
+        assert "s3://test-bucket/data/db/b/" in converted[1]
+
+    def test_external_table_ddl_parquet(self, mock_boto3, mock_pyathena, mock_aws_credentials):
 
         from benchbox.platforms.athena import AthenaAdapter
 
@@ -438,7 +460,7 @@ class TestAthenaAdapter:
         )
 
         sql = "CREATE TABLE orders (id INT, amount DECIMAL)"
-        converted = adapter._convert_to_external_table(sql)
+        converted = adapter._external_table_ddl(sql)[0]
 
         assert "EXTERNAL TABLE" in converted.upper()
         assert "STORED AS PARQUET" in converted.upper()
@@ -446,7 +468,7 @@ class TestAthenaAdapter:
         assert "s3://test-bucket/data/test_db/orders/" in converted
         assert "ROW FORMAT DELIMITED" not in converted.upper()
 
-    def test_convert_to_external_table_strips_not_null(self, mock_boto3, mock_pyathena, mock_aws_credentials):
+    def test_external_table_ddl_strips_not_null(self, mock_boto3, mock_pyathena, mock_aws_credentials):
         from benchbox.platforms.athena import AthenaAdapter
 
         adapter = AthenaAdapter(
@@ -457,15 +479,15 @@ class TestAthenaAdapter:
         )
 
         sql = "CREATE TABLE region (r_regionkey INTEGER NOT NULL, r_name VARCHAR NOT NULL, r_comment VARCHAR)"
-        converted = adapter._convert_to_external_table(sql)
+        converted = adapter._external_table_ddl(sql)[0]
 
         assert "EXTERNAL TABLE" in converted.upper()
         assert "NOT NULL" not in converted.upper()
-        assert "r_regionkey INTEGER" in converted
-        assert "r_name STRING" in converted
-        assert "r_comment STRING" in converted
+        assert "`r_regionkey` INT" in converted
+        assert "`r_name` STRING" in converted
+        assert "`r_comment` STRING" in converted
 
-    def test_convert_to_external_table_tbl_format(self, mock_boto3, mock_pyathena, mock_aws_credentials):
+    def test_external_table_ddl_tbl_format(self, mock_boto3, mock_pyathena, mock_aws_credentials):
         from benchbox.platforms.athena import AthenaAdapter
 
         adapter = AthenaAdapter(
@@ -477,7 +499,7 @@ class TestAthenaAdapter:
         )
 
         sql = "CREATE TABLE lineitem (l_orderkey INT, l_partkey INT)"
-        converted = adapter._convert_to_external_table(sql)
+        converted = adapter._external_table_ddl(sql)[0]
 
         assert "EXTERNAL TABLE" in converted.upper()
         assert "IF NOT EXISTS" in converted.upper()
@@ -486,7 +508,7 @@ class TestAthenaAdapter:
         assert "STORED AS TEXTFILE" in converted.upper()
         assert "s3://test-bucket/data/test_db/lineitem/" in converted
 
-    def test_convert_to_external_table_csv_format(self, mock_boto3, mock_pyathena, mock_aws_credentials):
+    def test_external_table_ddl_csv_format(self, mock_boto3, mock_pyathena, mock_aws_credentials):
 
         from benchbox.platforms.athena import AthenaAdapter
 
@@ -499,14 +521,14 @@ class TestAthenaAdapter:
         )
 
         sql = "CREATE TABLE events (event_id INT, event_name VARCHAR)"
-        converted = adapter._convert_to_external_table(sql)
+        converted = adapter._external_table_ddl(sql)[0]
 
         assert "EXTERNAL TABLE" in converted.upper()
         assert "ROW FORMAT DELIMITED" in converted.upper()
         assert "FIELDS TERMINATED BY ','" in converted
         assert "STORED AS TEXTFILE" in converted.upper()
 
-    def test_convert_to_external_table_parquet_default(self, mock_boto3, mock_pyathena, mock_aws_credentials):
+    def test_external_table_ddl_parquet_default(self, mock_boto3, mock_pyathena, mock_aws_credentials):
         from benchbox.platforms.athena import AthenaAdapter
 
         adapter = AthenaAdapter(
@@ -516,14 +538,14 @@ class TestAthenaAdapter:
         )
 
         sql = "CREATE TABLE lineitem (l_orderkey INT, l_partkey INT)"
-        converted = adapter._convert_to_external_table(sql)
+        converted = adapter._external_table_ddl(sql)[0]
 
         assert "EXTERNAL TABLE" in converted.upper()
         assert "IF NOT EXISTS" in converted.upper()
         assert "STORED AS PARQUET" in converted.upper()
         assert "s3://test-bucket/data/test_db/lineitem/" in converted
 
-    def test_convert_to_external_table_staging(self, mock_boto3, mock_pyathena, mock_aws_credentials):
+    def test_external_table_ddl_staging(self, mock_boto3, mock_pyathena, mock_aws_credentials):
 
         from benchbox.platforms.athena import AthenaAdapter
 
@@ -535,7 +557,7 @@ class TestAthenaAdapter:
         )
 
         sql = "CREATE TABLE lineitem (l_orderkey INT, l_partkey INT)"
-        converted = adapter._convert_to_external_table(sql, is_staging=True)
+        converted = adapter._external_table_ddl(sql, is_staging=True)[0]
 
         assert "lineitem_staging" in converted.lower()
         assert "EXTERNAL TABLE" in converted.upper()
@@ -821,9 +843,9 @@ class TestAthenaAdapter:
             statements = adapter._build_external_table_statements(MagicMock())
 
         assert sorted(statements) == ["lineitem", "orders"]
-        assert "CREATE EXTERNAL TABLE IF NOT EXISTS orders" in statements["orders"]
+        assert "CREATE EXTERNAL TABLE IF NOT EXISTS `orders`" in statements["orders"]
         assert "s3://test-bucket/data/analytics/orders/" in statements["orders"]
-        assert "CREATE EXTERNAL TABLE IF NOT EXISTS lineitem" in statements["lineitem"]
+        assert "CREATE EXTERNAL TABLE IF NOT EXISTS `lineitem`" in statements["lineitem"]
 
     def test_normalize_parquet_files_filters_non_parquet_and_empty(
         self, mock_boto3, mock_pyathena, mock_aws_credentials, tmp_path

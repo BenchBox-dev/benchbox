@@ -659,8 +659,8 @@ DDL centralization.
 | Redshift | `platforms/redshift.py` | `translate_ddl` | Redshift DDL dialect |
 | Azure Synapse | `platforms/azure_synapse.py` | `_optimize_table_definition` | Synapse DDL dialect |
 | Snowflake | `platforms/snowflake.py` | `translate_ddl` | Snowflake DDL dialect (clustering/tuning) |
-| Presto | `platforms/presto.py` | `_optimize_table_definition` | Presto DDL dialect |
-| Trino | `platforms/trino.py` | `_optimize_table_definition` | Trino DDL dialect |
+| Presto | `platforms/presto_trino_adapter_base.py` | `_schema_ddl` (`translate_ddl`) | Presto DDL dialect |
+| Trino | `platforms/presto_trino_adapter_base.py` | `_schema_ddl` (`translate_ddl`) | Trino DDL dialect |
 | Spark | `platforms/spark.py` | `_optimize_table_definition` | USING DELTA/ICEBERG/ORC/PARQUET (format from `self.table_format`) |
 | Lakesail | `platforms/lakesail.py` | `_optimize_table_definition` | Lakesail DDL dialect |
 | Velox | `platforms/velox.py` | `_optimize_table_definition` | USING ORC/PARQUET (format from `self.table_format`) |
@@ -668,10 +668,9 @@ DDL centralization.
 
 Fabric Warehouse is **not** in this list - see resolution below.
 
-**Presto/Trino invocation note**: These adapters do not call `_optimize_table_definition` directly
-in their schema loop. They pass it as `optimize_table_definition=self._optimize_table_definition`
-to a standalone `execute_schema_statements()` helper, so the registry call sits inside that helper
-rather than in the per-adapter schema creation method.
+**Presto/Trino invocation note**: `PrestoTrinoAdapterBase.create_schema` builds the statements with
+`_schema_ddl`, which calls `translate_ddl`, and passes the finished list to the standalone
+`execute_schema_statements()` helper.
 
 ### Fabric Warehouse Decision: Operational, Not a DDL Compat Rule
 
