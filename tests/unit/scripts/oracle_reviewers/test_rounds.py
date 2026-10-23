@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -947,3 +948,39 @@ def test_an_unrecorded_result_posts_no_defect_ids_that_a_later_round_could_reuse
     posted = final.review["body"] + "".join(comment["body"] for comment in final.review["comments"])
     assert "oracle-defect:" not in posted
     assert not re.search(r"\bD\d+\b", posted)
+
+def _review_at(record: dict[str, Any], submitted_at: str) -> dict[str, Any]:
+    return {
+        "id": 1,
+        "login": "benchbox-oracle[bot]",
+        "user_type": "Bot",
+        "state": "COMMENTED",
+        "submitted_at": submitted_at,
+        "body": f"Decision.\n\n{protocol.encode_marker(record)}",
+    }
+
+
+def _plan_retargeted(history: protocol.History, base_changed_at: datetime | None) -> protocol.Round:
+    return _plan_same_head(history, base_changed_at=base_changed_at)
+
+
+def test_retarget_away_and_back_on_a_decided_head_carries_instead_of_skipping() -> None:
+    reviewed = "2026-10-23T10:00:00Z"
+    retargeted = datetime(2026, 10, 23, 11, 0, tzinfo=UTC)
+    history = protocol.history([_review_at(_decided(HEAD), reviewed)], "benchbox-oracle")
+    assert _plan_retargeted(history, None).kind == protocol.SKIP
+    step = _plan_retargeted(history, retargeted)
+    assert step.kind == protocol.CARRY
+    assert step.previous is not None and step.previous["head_sha"] == HEAD
+
+
+def test_a_decision_after_the_retarget_is_not_carried_again() -> None:
+    retargeted = datetime(2026, 10, 23, 11, 0, tzinfo=UTC)
+    history = protocol.history([_review_at(_decided(HEAD), "2026-10-23T12:00:00Z")], "benchbox-oracle")
+    assert _plan_retargeted(history, retargeted).kind == protocol.SKIP
+
+
+def test_a_refusal_is_not_carried_by_a_retarget() -> None:
+    refused = {**_decided(HEAD, protocol.REFUSED), "kind": protocol.REFUSAL}
+    history = protocol.history([_review_at(refused, "2026-10-23T10:00:00Z")], "benchbox-oracle")
+    assert _plan_retargeted(history, datetime(2026, 10, 23, 11, 0, tzinfo=UTC)).kind == protocol.SKIP
