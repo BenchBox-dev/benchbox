@@ -54,6 +54,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Azure Synapse and Fabric Warehouse build their `CREATE TABLE` statements with `translate_ddl`
+  instead of per-adapter text rewrites. Tables are always qualified with the configured
+  `[schema]`, and the generated statement is wrapped in a `TABLE_SCHEMA`-guarded
+  `IF NOT EXISTS ... EXEC('CREATE TABLE ...')`. Synapse still appends
+  `WITH (DISTRIBUTION=<distribution_default>)`, now written without spaces around `=`.
 - BigQuery builds `CREATE TABLE` text through `translate_ddl` instead of the adapter's own DDL
   rewriter, which is deleted. It still writes `CREATE OR REPLACE TABLE`, qualifies `project.dataset`,
   upper-cases table names and writes `PRIMARY KEY ... NOT ENFORCED`; configured partitioning and
