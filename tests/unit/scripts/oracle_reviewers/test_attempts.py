@@ -702,7 +702,36 @@ def test_a_follow_up_keeps_the_previous_reviewer_and_ignores_the_bucket(policy: 
 def test_a_follow_up_from_a_retired_reviewer_falls_back_to_the_bucket(policy: Policy) -> None:
     plan = {**_plan(policy, ("small", "large")), "follow_up_reviewer": None}
     plan["protocol"] = {**plan["protocol"], "kind": "follow-up"}
-    assert [reviewer.name for reviewer in cli._selection(plan, _classification("small")).chain] == ["small"]
+    assert [reviewer.name for reviewer in cli._selection(plan, _classification("small")).chain] == ["small", "large"]
+
+
+@pytest.mark.parametrize(
+    "bucket, follow_up, expected",
+    [
+        ("small", None, ["small", "medium", "large"]),
+        ("trivial", None, ["trivial", "medium", "large"]),
+        ("small", "medium", ["medium", "large"]),
+    ],
+)
+def test_selection_starts_at_the_chosen_reviewer_and_escalates_to_other_models(
+    policy: Policy, bucket: str, follow_up: str | None, expected: list[str]
+) -> None:
+    plan = {**_plan(policy, ("trivial", "small", "medium", "large")), "follow_up_reviewer": follow_up}
+    assert [reviewer.name for reviewer in cli._selection(plan, _classification(bucket)).chain] == expected
+
+
+def test_two_invalid_answers_hand_the_run_to_the_next_reviewer(policy: Policy, tmp_path: Path) -> None:
+    plan = _plan(policy, ("trivial", "small", "medium", "large"))
+    chosen = cli._selection(plan, _classification("small"))
+    _write(tmp_path, 1, "small", missing=Absence("invalid", "each finding must have the keys"))
+    _write(tmp_path, 2, "small", missing=Absence("invalid", "the reviewer output is not JSON"))
+    step, errors = attempts.decide(chosen, attempts.load(tmp_path, plan, RUN_ID))
+    assert errors == []
+    assert step.kind == selection.REVIEW and step.reviewer is not None and step.reviewer.name == "medium"
+    _write(tmp_path, 3, "medium", verdict=_v("Reviewed."))
+    step, errors = attempts.decide(chosen, attempts.load(tmp_path, plan, RUN_ID))
+    assert errors == []
+    assert step.kind == selection.PASS and step.reviewer is not None and step.reviewer.name == "medium"
 
 
 @pytest.mark.parametrize("error", [KeyError("size"), ValueError("unknown size bucket 'xl'"), TypeError("bad")])

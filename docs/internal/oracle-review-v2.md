@@ -105,10 +105,10 @@ Without the App secrets, the `post` job logs the result and succeeds.
    (see Inert-path manifest) gets `success`.
 2. `select-1` asks Jev, through a direct call to TypeSafe's
    `/v1/systemone` API, for the change's size bucket, review capability,
-   review template and per-file priority. The bucket names one reviewer in
-   `.github/oracle-reviewers.yml`. A change to review machinery always gets
-   the `gate` template and at least the `large` bucket. Later slots reuse
-   that classification.
+   review template and per-file priority. The bucket names the first reviewer
+   in `.github/oracle-reviewers.yml`; later slots can move up the chain (see
+   Rounds). A change to review machinery always gets the `gate` template and
+   at least the `large` bucket. Later slots reuse that classification.
    Selection skips disabled reviewers, quota-exhausted pools and, when the
    diff exceeds the brief cap, any reviewer that is not hard read-only with
    `reads_files: true`.
@@ -276,16 +276,21 @@ defect cannot become a line comment, so it is listed in the review body with a
 note that it counts like the others. Ignoring it would let a reviewer's report
 of a real defect pass because it cited an unchanged line.
 
-Reviewers run one at a time, so a decision stops the run. A reviewer whose
-attempt was absent as `invalid`, `incomplete`, `empty` or `error` runs once
-more before the chain advances, so a reviewer gets at most two attempts and the
-run at most `max_attempts`. A decision is never retried, and neither are
-`quota`, `auth` or `timeout` absences, a reviewer job that did not finish
-(`ensure-attempt` records it with the fixed `JOB_FAILURE_DETAIL` detail) or a
-reviewer that selection would skip (disabled, out of quota, or unable to take
-the brief). Selection and artifact replay share this rule, so an artifact set
-with a third attempt of one reviewer, or any attempt after a decision, is
-rejected.
+Reviewers run one at a time, so a decision stops the run. The chain starts at
+the bucket's reviewer, or at the previous reviewer for a follow-up, and then
+takes the reviewers of the larger buckets in size order, leaving out any
+reviewer whose harness, model and effort match one already in the chain:
+`trivial` and `small` share `@smol`, so a run never spends slots on both. A
+reviewer whose attempt was absent as `invalid`, `incomplete`, `empty` or
+`error` runs once more before the chain advances, so a reviewer gets at most
+two attempts and the run at most `max_attempts`. A decision is never retried,
+and neither are `quota`, `auth` or `timeout` absences, a reviewer job that did
+not finish (`ensure-attempt` records it with the fixed `JOB_FAILURE_DETAIL`
+detail) or a reviewer that selection would skip (disabled, out of quota, or
+unable to take the brief). Selection and artifact replay share this rule, so an
+artifact set with a third attempt of one reviewer, or any attempt after a
+decision, is rejected. If every reviewer in the chain is absent or skipped, the
+run stays pending.
 
 ## Decisions
 
