@@ -23046,7 +23046,9 @@
         "soundness-prereg-same-commit-entries-20261022",
         "soundness-dead-exceptions-cleanup-20261022",
         "soundness-oracle-branch-name-quote-20261022",
-        "soundness-deferred-findings-inventory-20261022"
+        "soundness-deferred-findings-inventory-20261022",
+        "soundness-gap-2808-external-rereview-20261023",
+        "soundness-3125-fixture-entry-text-20261022"
       ],
       "priority": "medium",
       "status": "open",
