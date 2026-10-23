@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Both certifi bundles inside the installed gcloud-cli contain neither emSign ECC Root CA - G3 nor AAA Certificate Services",
+    "`gcloud config get core/custom_ca_certs_file` reports the property as unset",
+    "`~/.bigqueryrc` no longer sets `--ca_certificates_file`",
+    "`gcloud projects list --limit=1` and `bq ls` succeed after the override is removed"
+  ],
+  "description": "Google Cloud CLI 590.0.0 still bundles two certifi copies that trust the roots the compromised eMudhra emSign intermediates chain to: `lib/third_party/certifi` (2026.02.25, trusts emSign ECC Root CA - G3) and `platform/bq/third_party/certifi` (2021.10.08, trusts emSign ECC Root CA - G3 and AAA Certificate Services). Both accepted the incident checker chains. As a workaround on the maintainer's Mac, gcloud and bq verify TLS against Homebrew's patched ca-certificates bundle instead:\n\n- `gcloud config set core/custom_ca_certs_file /opt/homebrew/etc/ca-certificates/cert.pem`\n- `~/.bigqueryrc` containing `--ca_certificates_file=/opt/homebrew/etc/ca-certificates/cert.pem` (the file did not exist before the workaround).\n\nThe override ties gcloud to Homebrew's bundle path; if that path disappears, gcloud fails closed. Remove it once a gcloud-cli release ships bundles without the affected roots, so gcloud returns to its vendor-maintained trust store.\n\nSteps:\n1. `brew upgrade --cask gcloud-cli`, then check both bundles: `rg -c 'emSign ECC Root CA - G3|AAA Certificate Services'` on `$(gcloud info --format='value(installation.sdk_root)')/lib/third_party/certifi/cacert.pem` and `.../platform/bq/third_party/certifi/cacert.pem` must find nothing (or both certifi copies are 2026.10.18 or newer).\n2. `gcloud config unset core/custom_ca_certs_file`.\n3. Delete `~/.bigqueryrc` (or only the `--ca_certificates_file` line if other settings were added since).\n4. Confirm `gcloud projects list --limit=1` and `bq ls` still work.\n\nIf the release is still unfixed, leave the override in place and push `not_before` out again.",
+  "links": [
+    "https://emudhra.we-have-a-problem.com/",
+    "https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2",
+    "https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576"
+  ],
+  "not_before": "2026-11-20T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T20:58:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fc0536b8308c4a739cd203ef27992739",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    }
+  ]
+}
