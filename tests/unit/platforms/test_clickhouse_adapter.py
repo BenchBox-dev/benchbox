@@ -179,9 +179,9 @@ class TestClickHouseAdapter:
         assert schema_time >= 0
         assert mock_client.execute.call_count >= 2
         executed_ddl = "\n".join(str(call.args[0]) for call in mock_client.execute.call_args_list)
-        assert "id INT NOT NULL" in executed_ddl
-        assert "optional Nullable(DECIMAL(10,2))" in executed_ddl
-        assert "name STRING" in executed_ddl
+        assert "id Int32 NOT NULL" in executed_ddl
+        assert "optional Nullable(Decimal(10, 2))" in executed_ddl
+        assert "name String" in executed_ddl
 
     @patch("benchbox.platforms.clickhouse.setup.ClickHouseClient")
     def test_load_data_with_tables(self, mock_client_class):
@@ -382,7 +382,7 @@ class TestClickHouseAdapter:
         table_tunings = {"lineitem": table_tuning}
 
         statement = "CREATE TABLE lineitem (l_orderkey Int32, l_shipdate Date)"
-        rendered = adapter._optimize_table_definition(statement, table_tunings)
+        rendered = adapter._translate_schema_statement(statement, table_tunings)
 
         assert "PARTITION BY (toYYYYMM(l_shipdate))" in rendered
         assert "ORDER BY (l_orderkey)" in rendered
@@ -424,8 +424,8 @@ class TestClickHouseAdapter:
             assert table_name is not None
             nullable_columns = nullable_by_table.get(table_name.lower(), set())
             tuning_clauses = adapter._resolve_tuned_ddl_clauses(statement, tpcds_tunings)
-            key_columns = adapter._resolve_key_columns(statement, tuning_clauses, nullable_columns)
-            rendered = adapter._optimize_table_definition(
+            key_columns = {column.lower() for column in adapter._extract_primary_key_columns(statement)}
+            rendered = adapter._translate_schema_statement(
                 statement,
                 tpcds_tunings,
                 nullable_columns=nullable_columns,
@@ -502,21 +502,21 @@ class TestClickHouseAdapter:
             adapter = ClickHouseAdapter(deployment_mode="server")
 
             original = "CREATE TABLE test (id INT, name STRING)"
-            optimized = adapter._optimize_table_definition(original)
-            expected = "CREATE TABLE test (id INT, name STRING) ENGINE = MergeTree() ORDER BY tuple()"
+            optimized = adapter._translate_schema_statement(original)
+            expected = "CREATE TABLE test (id Int32, name String) ENGINE=MergeTree() ORDER BY tuple()"
             assert optimized == expected
 
             with_engine = "CREATE TABLE test (id INT) ENGINE = ReplacingMergeTree()"
-            optimized_with_engine = adapter._optimize_table_definition(with_engine)
-            expected_with_engine = "CREATE TABLE test (id INT) ENGINE = ReplacingMergeTree() ORDER BY tuple()"
+            optimized_with_engine = adapter._translate_schema_statement(with_engine)
+            expected_with_engine = "CREATE TABLE test (id Int32) ENGINE=ReplacingMergeTree() ORDER BY tuple()"
             assert optimized_with_engine == expected_with_engine
 
             duckdb_array = "CREATE TABLE vectors (id BIGINT, embedding FLOAT[128])"
-            assert "Array(Float32)" in adapter._optimize_table_definition(duckdb_array)
-            assert "FLOAT[" not in adapter._optimize_table_definition(duckdb_array)
+            assert "Array(Float32)" in adapter._translate_schema_statement(duckdb_array)
+            assert "FLOAT[" not in adapter._translate_schema_statement(duckdb_array)
 
             duckdb_double_array = "CREATE TABLE vectors (id BIGINT, embedding DOUBLE[256])"
-            assert "Array(Float64)" in adapter._optimize_table_definition(duckdb_double_array)
+            assert "Array(Float64)" in adapter._translate_schema_statement(duckdb_double_array)
 
             from benchbox.core.vector_search.benchmark import VectorSearchBenchmark
 
@@ -524,7 +524,7 @@ class TestClickHouseAdapter:
             assert adapter._get_nullable_columns_by_table(vector_benchmark) == {}
             vector_ddl = vector_benchmark.get_create_tables_sql(dialect="duckdb")
             rendered = [
-                adapter._optimize_table_definition(statement.strip())
+                adapter._translate_schema_statement(statement.strip())
                 for statement in vector_ddl.split(";")
                 if statement.strip()
             ]
@@ -533,30 +533,30 @@ class TestClickHouseAdapter:
             assert any("query_vector Array(Float32)" in statement for statement in rendered)
 
             mixed = "CREATE TABLE t (vec FLOAT[10], my_float_col INT)"
-            mixed_out = adapter._optimize_table_definition(mixed)
+            mixed_out = adapter._translate_schema_statement(mixed)
             assert "vec Array(Float32)" in mixed_out
-            assert "my_float_col INT" in mixed_out
+            assert "my_float_col Int32" in mixed_out
             assert "FLOAT[" not in mixed_out
 
             time_ddl = (
                 "CREATE TABLE metrics (time TIMESTAMP, metric_time TIME, hostname VARCHAR(64), "
                 "PRIMARY KEY (time, hostname))"
             )
-            time_out = adapter._optimize_table_definition(time_ddl)
-            assert "time TIMESTAMP" in time_out
+            time_out = adapter._translate_schema_statement(time_ddl)
+            assert "time DateTime" in time_out
             assert "metric_time String" in time_out
             assert "PRIMARY KEY (time, hostname)" in time_out
             assert "String TIMESTAMP" not in time_out
 
             compact = "CREATE TABLE t (amount DECIMAL(10,2), next_col INTEGER, tail VARCHAR(5))"
-            compact_out = adapter._optimize_table_definition(
+            compact_out = adapter._translate_schema_statement(
                 compact,
                 nullable_columns={"amount", "next_col"},
             )
-            assert "amount Nullable(DECIMAL(10,2)), next_col Nullable(INTEGER), tail VARCHAR(5)" in compact_out
+            assert "amount Nullable(Decimal(10, 2)), next_col Nullable(Int32), tail String" in compact_out
 
             with pytest.raises(ValueError, match="source-nullable column 'amount'"):
-                adapter._optimize_table_definition(
+                adapter._translate_schema_statement(
                     "CREATE TABLE t (amount DECIMAL(10,2) NOT NULL)",
                     nullable_columns={"amount"},
                 )
@@ -570,19 +570,19 @@ class TestClickHouseAdapter:
                     sorting=[TuningColumn(name="event_id", type="INTEGER", order=1)],
                 )
             }
-            with pytest.raises(ValueError, match="tuned key columns of table 'events'"):
-                adapter._optimize_table_definition(
+            with pytest.raises(ValueError, match="table 'events'.*cannot be Nullable"):
+                adapter._translate_schema_statement(
                     "CREATE TABLE events (event_id INTEGER, event_date DATE, payload VARCHAR(50))",
                     tuned,
                     nullable_columns={"event_id", "event_date", "payload"},
                 )
-            keyed = adapter._optimize_table_definition(
+            keyed = adapter._translate_schema_statement(
                 "CREATE TABLE events (event_id INTEGER, event_date DATE, payload VARCHAR(50))",
                 tuned,
                 nullable_columns={"payload"},
             )
             assert "ORDER BY (event_id)" in keyed
-            assert "payload Nullable(VARCHAR(50))" in keyed
+            assert "payload Nullable(String)" in keyed
             assert "event_id Nullable" not in keyed
             assert "event_date Nullable" not in keyed
 

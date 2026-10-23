@@ -106,7 +106,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "clickhouse_ddl_generator:PARTITION_BY",
             "core.tuning.generators.clickhouse.ClickHouseDDLGenerator renders PARTITION BY at CREATE "
             "TABLE time. Consumed by dry-run preview and (since the ClickHouse DDL migration) real "
-            "execution in ClickHouseWorkloadMixin._optimize_table_definition.",
+            "execution through ClickHouseWorkloadMixin._translate_schema_statement and translate_ddl.",
         ),
         _T.SORTING: _ddl(
             "clickhouse_ddl_generator:ORDER_BY",
@@ -121,7 +121,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.PRIMARY_KEYS: _ddl(
             "clickhouse_order_by_or_tuple_fallback",
             "MergeTree requires ORDER BY. When no tuned sort/cluster columns are configured, "
-            "_optimize_table_definition falls back to primary-key-derived columns or ORDER BY tuple() -- "
+            "translate_ddl falls back to primary-key-derived columns or ORDER BY tuple() -- "
             "this fallback is the engine-mandatory baseline (see ADR-3 baseline policy), not tuned "
             "rendering. ClickHouse enables primary keys even without tuning, so a change to a benchmark's "
             "declared keys changes the untuned MergeTree ORDER BY: the TPC-DS composite keys moved "
@@ -136,14 +136,14 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         _T.FOREIGN_KEYS: _none(
             "clickhouse_drops_foreign_keys",
-            "ClickHouseWorkloadMixin._optimize_table_definition preserves FOREIGN KEY clauses it "
+            "translate_ddl (clickhouse layout) preserves FOREIGN KEY clauses it "
             "cannot execute (clickhouse/workload.py); the engine has no FOREIGN KEY syntax, so a "
             "requested foreign key fails at execution.",
         ),
         _T.CHECK_CONSTRAINTS: _none(
             "clickhouse_no_unique_check_rendering",
-            "The ClickHouse workload column parser terminates column types at UNIQUE/CHECK keywords "
-            "without rendering them (clickhouse/workload.py).",
+            "translate_ddl passes UNIQUE/CHECK clauses through unchanged; no ClickHouse adapter option "
+            "renders or strips them (clickhouse/workload.py).",
         ),
         _T.MATERIALIZED_VIEWS: _none(
             "unimplemented",
