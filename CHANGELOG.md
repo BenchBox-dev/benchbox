@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The comment-policy scanner builds each Python file's name index once and parses YAML with the C loader when available, falling back to the pure-Python loader on any error. Findings are unchanged; a whole-tree strict scan is more than twice as fast.
 - Trino, Presto and Athena build their `CREATE TABLE` DDL with `translate_ddl` instead of
   adapter-side text rewrites. Table names are written quoted (`"orders"` on Trino and Presto,
   `` `orders` `` on Athena) instead of bare, and Athena columns are backtick-quoted; the

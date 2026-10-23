@@ -4532,3 +4532,127 @@ def test_mdx_esm_intertoken_comments_are_reported(source: str, comment: str) -> 
     path = "website/src/content/docs/page.mdx"
     findings = scan_sources(ROOT, {path: source.encode()}, policy())
     assert [(finding.kind, finding.text) for finding in findings] == [("comment", comment)]
+
+
+YAML_COMPOSE_SOURCES = [
+    "a: 1\nb: [x, y]\nc: {d: e}\n",
+    "run: |\n  echo ok\nlist:\n  - id: one\n    sql: SELECT 1\n",
+    "base: &anchor\n  k: v\nuse: *anchor\nother: *anchor\n",
+    "first: 1\n---\nsecond: 2\n---\n- third\n",
+    "'quoted': \"double\"\nplain: text\nempty:\n",
+    "",
+    "--- !custom\nk: !!str 5\n",
+]
+
+
+def yaml_shape(node: yaml.Node | None, seen: dict[int, int] | None = None) -> object:
+    seen = {} if seen is None else seen
+    if node is None:
+        return None
+    if id(node) in seen:
+        return ("alias", seen[id(node)])
+    seen[id(node)] = len(seen)
+    if isinstance(node, yaml.ScalarNode):
+        return (node.tag, node.value, node.start_mark.line, node.start_mark.column)
+    if isinstance(node, yaml.SequenceNode):
+        return (node.tag, node.start_mark.line, [yaml_shape(item, seen) for item in node.value])
+    return (node.tag, node.start_mark.line, [(yaml_shape(k, seen), yaml_shape(v, seen)) for k, v in node.value])
+
+
+@pytest.mark.parametrize("source", YAML_COMPOSE_SOURCES)
+@pytest.mark.parametrize("lang", ["yaml", "json"])
+@pytest.mark.parametrize("accelerated", [True, False])
+def test_compose_yaml_matches_reference_loader(
+    source: str, lang: str, accelerated: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from comment_payloads import compose_yaml
+
+    if not accelerated:
+        monkeypatch.delattr(yaml, "CSafeLoader", raising=False)
+    try:
+        expected = (
+            list(yaml.compose_all(source, Loader=yaml.SafeLoader))
+            if lang == "yaml"
+            else [yaml.compose(source, Loader=yaml.SafeLoader)]
+        )
+    except yaml.YAMLError as exc:
+        with pytest.raises(type(exc)) as raised:
+            compose_yaml(source, lang)
+        assert str(raised.value) == str(exc)
+        return
+    assert [yaml_shape(tree) for tree in compose_yaml(source, lang)] == [yaml_shape(tree) for tree in expected]
+
+
+@pytest.mark.parametrize(
+    "source",
+    ["query: [invalid", "a: b: c", "key: *missing", "\tkey: 1", "a: 'unterminated", "- a\nb: c", "a: \x01"],
+)
+@pytest.mark.parametrize("accelerated", [True, False])
+def test_compose_yaml_error_text_matches_reference_loader(
+    source: str, accelerated: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from comment_payloads import compose_yaml
+
+    if not accelerated:
+        monkeypatch.delattr(yaml, "CSafeLoader", raising=False)
+    with pytest.raises(yaml.YAMLError) as reference:
+        list(yaml.compose_all(source))
+    with pytest.raises(yaml.YAMLError) as actual:
+        compose_yaml(source, "yaml")
+    assert str(actual.value) == str(reference.value)
+
+
+PYTHON_BINDING_SOURCE = """
+import subprocess as sp
+from os import system as run_shell
+cmd = "ls"
+def outer(arg, *rest, key=1):
+    inner = lambda value: sp.run([value])
+    class Box:
+        attr = cmd
+        def method(self):
+            local = (walrus := 1)
+            run_shell(local)
+            return [item for item in rest]
+    async def later():
+        sp.call(["echo", arg])
+    return Box, inner, later
+for loop in range(3):
+    sp.run(["x", str(loop)])
+"""
+
+
+def test_python_bindings_scope_and_calls_match_ancestor_walk() -> None:
+    from comment_execution import SCOPE_NODES, PythonBindings
+
+    tree = ast.parse(PYTHON_BINDING_SOURCE)
+    parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+
+    def reference_scope(node: ast.AST) -> ast.AST | None:
+        node = parents.get(node)
+        while node is not None and not isinstance(node, SCOPE_NODES):
+            node = parents.get(node)
+        return node
+
+    bindings = PythonBindings(tree)
+    assert bindings.parents == parents
+    assert bindings.calls == [node for node in ast.walk(tree) if isinstance(node, ast.Call)]
+    expected: dict[tuple[ast.AST | None, str], list[object]] = {}
+    for node in ast.walk(tree):
+        scope = reference_scope(node)
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            parent = parents.get(node)
+            value = parent.value if isinstance(parent, (ast.Assign, ast.AnnAssign, ast.NamedExpr)) else None
+            expected.setdefault((scope, node.id), []).append(value)
+        elif isinstance(node, ast.arg):
+            expected.setdefault((scope, node.arg), []).append(None)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            expected.setdefault((scope, node.name), []).append(None)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                name = alias.asname or alias.name.split(".")[0]
+                module = node.module if isinstance(node, ast.ImportFrom) else alias.name
+                actor = f"{module}.{alias.name}" if isinstance(node, ast.ImportFrom) else f"module:{module}"
+                expected.setdefault((scope, name), []).append(actor)
+    assert dict(bindings.bindings) == expected
+    assert all(bindings.scope(node) is reference_scope(node) for node in ast.walk(tree))
