@@ -37,7 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `apply_rewrite` tests pin the named registry: every TPC-Havoc, Spark, DataFusion and engine
   rewrite in the bundled SQLGlot runtime resolves by name, an unlisted runtime function fails
   the registry test, and every compat, subqueries, date-arithmetic and alias-deduplication
-  rewrite has a documented-output test.
+  rewrite has a documented-output test. The list-aggregate, zero-divisor, ORDER BY alias,
+  ClickHouse alias and decimal-division and rollup-NULL rewrites added in 30.24.0.9 are pinned
+  and have documented-output tests too.
 - A DataFusion test executes TPC-H Q11, Q16, Q18 and Q20 rewritten by the runtime's generic
   decorrelation rewrites at scale factors 0.01 and 0.1 and compares the rows with the
   recorded TPC-H reference row counts and with the unrewritten query on DuckDB.
@@ -254,6 +256,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (PostgreSQL is not run by the local gate, which needs `BENCHBOX_POSTGRES_DSN`). `make sql-execution-gate` reports 17 verified improvements and lists five
   DataFusion TPC-DS outputs (Q12, Q36, Q59, Q66, Q98) whose ratio columns now carry
   full double precision instead of six decimals.
+- The bundled SQLGlot runtime moves from 30.24.0.8 to 30.24.0.9 (fork commit
+  `6084c07075ac`). It adds BigQuery, Snowflake and Synapse table layouts to `translate_ddl`,
+  the `reduce_list_aggregates`, `nullif_zero_divisors`, `inline_order_by_aliases`,
+  `alias_qualified_projections`, `qualify_alias_shadowed_columns`, `decimal_division_to_double`
+  and `use_nulls_for_rollups` rewrites to the `apply_rewrite` registry, and keeps temporary
+  table names unqualified. BenchBox does not call the new rewrites or pass layouts to those
+  three platforms yet: the 23,667 translations of the 1,127 frozen shipped queries across 21
+  target dialects, the 2,600 golden-corpus runtime outputs and `make sql-execution-gate`
+  are unchanged from 30.24.0.8, so no published result changes.
 - SQLite TPC-DS translation marks the TPC-DS `DATE` columns through the runtime's
   `mark_date_columns` rewrite on the parsed tree (`translate_sql_query(date_columns=..)`),
   so Q72's `d3.d_date > d1.d_date + 5` adds five whole days to the date text instead of
