@@ -8,6 +8,7 @@ import re
 import zlib
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from .evidence import withdrawal_cited
@@ -97,10 +98,15 @@ class Round:
 class History:
     records: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
+    submitted: list[datetime | None] = field(default_factory=list)
 
     @property
     def latest(self) -> dict[str, Any] | None:
         return self.records[-1] if self.records else None
+
+    @property
+    def latest_at(self) -> datetime | None:
+        return self.submitted[-1] if len(self.submitted) == len(self.records) and self.records else None
 
 
 def _clip(text: str, limit: int) -> str:
@@ -254,6 +260,13 @@ def decode_marker(body: str) -> dict[str, Any] | None:
     return record
 
 
+def _review_time(value: Any) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
     own = [
         review
@@ -270,6 +283,7 @@ def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
             return History([], str(exc))
         if record is not None:
             found.records.append(record)
+            found.submitted.append(_review_time(review.get("submitted_at")))
     return found
 
 
@@ -332,6 +346,7 @@ def plan_round(
     strike_count: int,
     max_do_not_ship: int,
     force: bool = False,
+    base_changed_at: datetime | None = None,
 ) -> Round:
     latest = found.latest
     if strike_count >= max_do_not_ship:
@@ -351,6 +366,19 @@ def plan_round(
                 reason=(
                     f"forced re-review after {LABELS[latest['decision']]}: an author rebuttal disputes an open finding"
                 ),
+            )
+        decided_at = found.latest_at
+        if (
+            base_changed_at is not None
+            and latest["decision"] != REFUSED
+            and (decided_at is None or decided_at <= base_changed_at)
+        ):
+            return Round(
+                CARRY,
+                f"the base changed after the {LABELS[latest['decision']]} decision on head {head_sha}",
+                latest["cycle"],
+                latest["round"],
+                latest,
             )
         return Round(SKIP, f"head {head_sha} already has a {LABELS[latest['decision']]} decision")
     restart = latest["cycle"] + 1
