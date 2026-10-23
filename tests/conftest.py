@@ -13,6 +13,7 @@ os.environ.setdefault("MKL_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 os.environ.setdefault("BENCHBOX_MAKE_TIMINGS", "0")
+os.environ.setdefault("BENCHBOX_MIN_FREE_DISK_PERCENT", "0")
 _GIT_LOCAL_ENV_FALLBACK = [
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
     "GIT_CONFIG",
