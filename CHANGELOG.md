@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `translate_ddl` accepts an engine type map by name (`type_map="starrocks"`, `"doris"`, `"singlestore"`) so adapters do not import fork modules.
 - Result readers accept schema 2.4: the loader, normalizer, explorer input
   and bundle validator read the new optional per-query `request_count`,
   `result_bytes` and `platform_timing`, and the run-level `timing_method`,
@@ -57,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Databend and Firebolt build their `CREATE TABLE` statements with the SQLGlot fork's `translate_ddl`
   instead of per-adapter text rewrites (`_optimize_table_definition`, `_normalize_table_name_in_sql`).
   Emitted DDL matches the golden corpus; both still drop primary and foreign keys.
+- Azure Synapse and Fabric Warehouse build their `CREATE TABLE` statements with `translate_ddl`
+  instead of per-adapter text rewrites. Tables are always qualified with the configured
+  `[schema]`, and the generated statement is wrapped in a `TABLE_SCHEMA`-guarded
+  `IF NOT EXISTS ... EXEC('CREATE TABLE ...')`. Synapse still appends
+  `WITH (DISTRIBUTION=<distribution_default>)`, now written without spaces around `=`.
 - BigQuery builds `CREATE TABLE` text through `translate_ddl` instead of the adapter's own DDL
   rewriter, which is deleted. It still writes `CREATE OR REPLACE TABLE`, qualifies `project.dataset`,
   upper-cases table names and writes `PRIMARY KEY ... NOT ENFORCED`; configured partitioning and
@@ -74,10 +80,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   DataFusion Q16 runs executed the unrewritten `NOT IN` form that the registry marks as silent corruption on
   DataFusion; those Q16 rows and timings, and the plans and timings for Q11, Q18 and Q20, can differ from earlier
   results. The new rewrites are validated against DuckDB and the TPC row counts. The
-  TPC-Havoc 17_v4 PostgreSQL text no longer contains `FROM (VALUES (1))`. The 1_v7 array aggregation rewrite stays
-  in BenchBox until the fork provides list-aggregate rewrites. The TPC-DI EQ7 base query is the derived-table form
+  TPC-Havoc 17_v4 PostgreSQL text no longer contains `FROM (VALUES (1))`. The TPC-DI EQ7 base query is the derived-table form
   (no `FROM (VALUES (0))` row source), so EQ7 results on engines that rejected the VALUES form change; published EQ7
   results should be treated as superseded.
+- TPC-Havoc `1_v7` on Presto, Trino, Athena, BigQuery, Spark and Databricks is translated from its DuckDB text
+  with the fork's `order_list_aggregates` (ordered by `l_orderkey, l_linenumber`) and `reduce_list_aggregates`
+  rewrites; the BenchBox AST rewriter for the array aggregation is removed and `translate_sql_query` accepts a
+  `dialect` entry in a rewrite's arguments to run that rewrite under the target dialect. Presto, Trino and Athena now
+  reduce the arrays with `REDUCE`/`ZIP_WITH` instead of `UNNEST`; BigQuery reduces them with `GENERATE_ARRAY`
+  subqueries; Databricks uses the fork's `SORT_ARRAY` collect and `AGGREGATE`; Spark, which previously received
+  untranslated `LIST` calls, now gets the same text as Databricks. Identifiers are no longer quoted. On Trino 476,
+  PrestoDB 0.298.1 and PySpark 4.2.0 at TPC-H tiny scale the new text returns the DuckDB rows (relative tolerance
+  1e-9); Athena runs the same text and was not available. BigQuery has no emulator and stays skipped. No published bundle holds a `1_v7` row for these engines; the DuckDB bundles are
+  unchanged. Read Primitives output is unchanged on all 21 dialects.
 - A pull request title or body edit no longer holds five runners while it waits for the full CI run. The
   `CI (text edit)` check makes one decision and fails at once when the full run on the commit is missing or still
   running; the new `ci-text-edit-refresh` workflow re-runs the failed jobs of the newest `CI (text edit)` run on
