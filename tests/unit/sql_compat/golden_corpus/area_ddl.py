@@ -724,68 +724,35 @@ def _databricks() -> list[Case]:
 
 def _athena() -> list[Case]:
     cases: list[Case] = []
-    variants = {
-        "parquet": ("PARQUET", None, None),
-        "csv": ("TEXTFILE", ",", None),
-        "other": ("TEXTFILE", "|", {"skip.header.line.count": "0"}),
-    }
-    for label, (stored_as, delimiter, props) in variants.items():
-
-        def fork(sql: str, stored_as=stored_as, delimiter=delimiter, props=props) -> str:
-            table = _name(sql)
-            return _fork(
-                sql,
-                "athena",
-                "trino",
-                strip_primary_keys=True,
-                strip_foreign_keys=True,
-                strip_not_null=True,
-                if_not_exists=True,
-                table_case="lower",
-                type_map={"VARCHAR": "STRING", "CHAR": "STRING"},
-                drop_type_parameters=["STRING"],
-                default_layout=_layout(
-                    external=True,
-                    stored_as=stored_as,
-                    location=f"s3://bucket/prefix/db/{table}/",
-                    field_delimiter=delimiter,
-                    line_delimiter="\n" if delimiter else None,
-                    properties=props or {},
-                ),
-            )
-
+    variants = {"parquet": ("parquet", "PARQUET"), "csv": ("text", "CSV"), "other": ("text", "TBL")}
+    for label, (data_format, default_format) in variants.items():
+        adapter = _bare(
+            "benchbox.platforms.athena",
+            "AthenaAdapter",
+            s3_bucket="bucket",
+            s3_prefix="prefix",
+            database="db",
+            data_format=data_format,
+            default_format=default_format,
+        )
         cases += _family(
             f"athena_{label}",
-            fork,
+            lambda sql, adapter=adapter: _squash(" ".join(adapter._external_table_ddl(sql))),
             _inputs(),
         )
 
-    def staging_fork(sql: str) -> str:
-        table = _name(sql)
-        return _fork(
-            sql,
-            "athena",
-            "trino",
-            strip_primary_keys=True,
-            strip_foreign_keys=True,
-            strip_not_null=True,
-            if_not_exists=True,
-            table_case="lower",
-            table_suffix="_staging",
-            type_map={"VARCHAR": "STRING", "CHAR": "STRING"},
-            drop_type_parameters=["STRING"],
-            default_layout=_layout(
-                external=True,
-                stored_as="TEXTFILE",
-                location=f"s3://bucket/prefix/db_staging/{table}/",
-                field_delimiter="|",
-                line_delimiter="\n",
-            ),
-        )
-
+    staging = _bare(
+        "benchbox.platforms.athena",
+        "AthenaAdapter",
+        s3_bucket="bucket",
+        s3_prefix="prefix",
+        database="db",
+        data_format="parquet",
+        default_format="PARQUET",
+    )
     cases += _family(
         "athena_staging",
-        staging_fork,
+        lambda sql: _squash(" ".join(staging._external_table_ddl(sql, is_staging=True))),
         _only(("tpch_",), {"pk_middle": _MISC["pk_middle"], "non_create": _MISC["non_create_insert"]}),
     )
     return cases
@@ -809,32 +776,18 @@ def _databend() -> list[Case]:
 def _trino() -> list[Case]:
     cases: list[Case] = []
     variants = (
-        ("trino_hive", "benchbox.platforms.trino", "TrinoAdapter", "hive", "trino", "hive"),
-        ("trino_iceberg", "benchbox.platforms.trino", "TrinoAdapter", "iceberg", "trino", "iceberg"),
-        ("trino_memory", "benchbox.platforms.trino", "TrinoAdapter", "memory", "trino", "memory"),
-        ("trino_delta", "benchbox.platforms.trino", "TrinoAdapter", "delta", "trino", "delta"),
-        ("presto_hive", "benchbox.platforms.presto", "PrestoAdapter", "hive", "presto", "hive"),
-        ("presto_iceberg", "benchbox.platforms.presto", "PrestoAdapter", "iceberg", "presto", "iceberg"),
+        ("trino_hive", "benchbox.platforms.trino", "TrinoAdapter", "hive"),
+        ("trino_iceberg", "benchbox.platforms.trino", "TrinoAdapter", "iceberg"),
+        ("trino_memory", "benchbox.platforms.trino", "TrinoAdapter", "memory"),
+        ("trino_delta", "benchbox.platforms.trino", "TrinoAdapter", "delta"),
+        ("presto_hive", "benchbox.platforms.presto", "PrestoAdapter", "hive"),
+        ("presto_iceberg", "benchbox.platforms.presto", "PrestoAdapter", "iceberg"),
     )
-    for label, module, cls, table_format, write, _ in variants:
+    for label, module, cls, table_format in variants:
         adapter = _bare(module, cls, table_format=table_format, catalog=table_format)
-        memory = table_format in adapter.ddl_memory_table_formats
-        with_format = table_format in adapter.ddl_format_property_formats
-
-        def fork(sql: str, write=write, memory=memory, with_format=with_format) -> str:
-            return _fork(
-                sql,
-                write,
-                write,
-                strip_primary_keys=True,
-                strip_not_null=memory,
-                table_case="lower",
-                default_layout=_layout(format="PARQUET") if with_format else None,
-            )
-
         cases += _family(
             label,
-            fork,
+            lambda sql, adapter=adapter: _squash(" ".join(adapter._schema_ddl(sql))),
             _inputs(),
         )
     return cases

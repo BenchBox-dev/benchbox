@@ -55,6 +55,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Trino, Presto and Athena build their `CREATE TABLE` DDL with `translate_ddl` instead of
+  adapter-side text rewrites. Table names are written quoted (`"orders"` on Trino and Presto,
+  `` `orders` `` on Athena) instead of bare, and Athena columns are backtick-quoted; the
+  statements are otherwise equivalent. `ddl_helpers.strip_with_properties` is removed.
+  `translate_ddl` records one schema-DDL translation outcome per call, so schema statements still
+  appear in the result's SQL translation summary.
 - SingleStore `CREATE TABLE` statements are written by the SQLGlot fork's `translate_ddl` (foreign keys
   stripped, lower-case table names, `FLOAT` as `REAL`, `TIMESTAMP` as `DATETIME`, and the TPC-H
   `SHARD KEY`, `SORT KEY` and `REFERENCE TABLE` clauses) instead of adapter text rewrites. The
