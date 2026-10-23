@@ -55,8 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TPC-Havoc, Spark and DataFusion query rewrites run through the bundled SQLGlot fork's named rewrites
   (`translate_sql_query(..., rewrites=...)`); the BenchBox AST rewriters, `SparkTPCHavocQueryTransformer` and the
   regex `DataFusionQueryTransformer` are removed. DataFusion TPC-H Q11, Q18 and Q20 use the fork's decorrelation and
-  Q16 now rewrites `NOT IN` to `NOT EXISTS` (the earlier regex did not match the shipped Q16 text), so DataFusion
-  plans and timings for Q11, Q16, Q18 and Q20 can differ from earlier results; returned rows are unchanged. The
+  Q16 now rewrites `NOT IN` to `NOT EXISTS`. The earlier regex never matched the shipped Q16 text, so published
+  DataFusion Q16 runs executed the unrewritten `NOT IN` form that the registry marks as silent corruption on
+  DataFusion; those Q16 rows and timings, and the plans and timings for Q11, Q18 and Q20, can differ from earlier
+  results. The new rewrites are validated against DuckDB and the TPC row counts. The
   TPC-Havoc 17_v4 PostgreSQL text no longer contains `FROM (VALUES (1))`. The 1_v7 array aggregation rewrite stays
   in BenchBox until the fork provides list-aggregate rewrites. The TPC-DI EQ7 base query is the derived-table form
   (no `FROM (VALUES (0))` row source), so EQ7 results on engines that rejected the VALUES form change; published EQ7

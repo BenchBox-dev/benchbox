@@ -13,7 +13,7 @@ from benchbox.sql_compat.registry import REGISTRY
 _TRANSFORMERS = {
     "inline_select_alias": "inline_select_aliases",
     "window_filter_to_if": "filtered_aggregates_to_conditional",
-    "array_aggregation": "order_list_aggregates",
+    "array_aggregation": "tpchavoc_presto_array_aggregation",
 }
 
 for _platform, _engine_label in (("presto", "Presto"), ("trino", "Trino")):
