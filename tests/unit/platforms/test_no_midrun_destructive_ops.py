@@ -545,6 +545,7 @@ DRIVER_ROOTS = frozenset(
         "urllib3",
         "cryptography",
         "flightsql",
+        "adbc_driver_gizmosql",
         "pyiceberg",
         "vortex",
         "delta",
@@ -825,6 +826,18 @@ SPECS: dict[str, Spec] = {
     "firebolt": Spec(),
     "glue": Spec(config={**AWS, "job_role": ROLE_ARN}),
     "influxdb": Spec(),
+    "gizmosql": Spec(
+        patches={"_detect_backend": lambda *a, **k: ("duckdb", "1.5.5")},
+        scripted={
+            r"GIZMOSQL_VERSION\(\)": [("v1.39.0", "Core")],
+            r"^\s*SELECT\s+version\(\)": [("v1.5.5",)],
+            r"FROM duckdb_settings\(\) WHERE name IN": [("access_mode", "automatic")],
+            r"readonly FROM duckdb_databases": [(False,)],
+            r"FROM information_schema\.schemata": [(1,)],
+            r"FROM information_schema\.tables": [("region",)],
+            r"SELECT count\(\*\)": [(0,)],
+        },
+    ),
     "motherduck": Spec(config={"token": "tok"}, connection_sites=("execute_query", "test_connection")),
     "polars": Spec(config={"working_dir": "{world}/db/dir_db"}),
     "pyspark": Spec(),
@@ -961,6 +974,10 @@ INCOMPLETE_STAGES: dict[str, tuple[frozenset[str], str]] = {
     "fabric-lakehouse": (
         frozenset({"create_schema", "load_data"}),
         "the SQL analytics endpoint is read-only, so create_schema and load_data raise ReadOnlyPlatformError by design",
+    ),
+    "gizmosql": (
+        frozenset({"load_data"}),
+        "load_data streams Arrow batches through ADBC ingest, which the fake driver cannot accept",
     ),
 }
 NO_SQL_OBSERVED: dict[str, str] = {

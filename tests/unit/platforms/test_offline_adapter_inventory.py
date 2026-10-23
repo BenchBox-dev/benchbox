@@ -59,6 +59,7 @@ ADAPTER_DIALECTS: dict[str, str] = {
     "quanton": "spark",
     "paradedb": "postgres",
     "citus": "postgres",
+    "gizmosql": "duckdb",
 }
 
 
@@ -173,7 +174,7 @@ def _bare_adapter(key: str):
 
 
 def test_inventory_conserves_all_concrete_adapters() -> None:
-    assert len(ADAPTER_COORDINATES) == 49
+    assert len(ADAPTER_COORDINATES) == 50
     assert set(ADAPTER_DIALECTS) == set(ADAPTER_COORDINATES)
 
 

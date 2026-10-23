@@ -113,6 +113,7 @@ EXPECTED_ADAPTER_REGISTRATION_ORDER = (
     "quanton",
     "paradedb",
     "citus",
+    "gizmosql",
 )
 
 
@@ -603,7 +604,7 @@ class TestPlatformManifest:
         from benchbox.cli.platform import PLATFORM_ALIASES
         from benchbox.core.platform_registry import _OPTIONAL_ADAPTERS
 
-        assert len(PLATFORM_MANIFEST) == 52
+        assert len(PLATFORM_MANIFEST) == 53
         assert PlatformRegistry.get_all_platform_metadata() == get_platform_metadata()
         assert get_platform_aliases("cli") == EXPECTED_CLI_ALIASES
         assert get_platform_aliases("registry") == EXPECTED_REGISTRY_ALIASES

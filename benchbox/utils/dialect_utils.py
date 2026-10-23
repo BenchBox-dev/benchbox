@@ -242,6 +242,7 @@ PLATFORM_DIALECTS: dict[str, str] = {
     "influxdb": "datafusion",
     "motherduck": "duckdb",
     "ducklake": "duckdb",
+    "gizmosql": "duckdb",
     "clickhouse_local": "clickhouse",
     "clickhouse_server": "clickhouse",
     "clickhouse_cloud": "clickhouse",

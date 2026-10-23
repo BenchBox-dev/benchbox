@@ -11,7 +11,7 @@ BenchBox supports platforms across registry categories and editorial documentati
 
 <!-- benchbox-registry-counts:start -->
 
-Platform registry: **52** metadata entries; **48** SQL-capable; **18** DataFrame-capable; **14** dual-mode; support status counts: stable=5, beta=28, experimental=18, deprecated=1.
+Platform registry: **53** metadata entries; **49** SQL-capable; **18** DataFrame-capable; **14** dual-mode; support status counts: stable=5, beta=28, experimental=19, deprecated=1.
 
 <!-- benchbox-registry-counts:end -->
 
@@ -22,7 +22,7 @@ Platform registry: **52** metadata entries; **48** SQL-capable; **18** DataFrame
 | dataframe | 5 | DataFrame-only metadata entries |
 | distributed | 6 | Federated, cluster, and distributed SQL engines |
 | embedded | 1 | Built-in embedded runtime |
-| olap | 4 | PostgreSQL extension, embedded OLAP, and DuckLake lakehouse variants |
+| olap | 7 | PostgreSQL extension, embedded OLAP, DuckLake lakehouse, and GizmoSQL server variants |
 | relational | 1 | General relational database support |
 | timeseries | 3 | Time-series engines with SQL/query support |
 

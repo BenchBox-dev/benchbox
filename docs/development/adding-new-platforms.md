@@ -89,6 +89,7 @@ The following inventory is generated from the manifest:
 | `fabric-spark` | — | SQL + DataFrame | `experimental` | #38 `benchbox.platforms.azure:FabricSparkAdapter` |
 | `fabric_dw` | `fabric-dw` (cli/registry) | SQL | `beta` | #31 `benchbox.platforms.fabric_warehouse:FabricWarehouseAdapter` |
 | `firebolt` | — | SQL | `beta` | #26 `benchbox.platforms.firebolt:FireboltAdapter` |
+| `gizmosql` | — | SQL | `experimental` | #49 `benchbox.platforms.gizmosql:GizmoSQLAdapter` |
 | `glue` | — | SQL + DataFrame | `experimental` | #33 `benchbox.platforms.aws:AWSGlueAdapter` |
 | `influxdb` | — | SQL | `beta` | #30 `benchbox.platforms.influxdb:InfluxDBAdapter` |
 | `lakesail` | `lakesail-df` (cli, mode=dataframe) | SQL + DataFrame | `experimental` | #42 `benchbox.platforms.lakesail:LakeSailAdapter` |
