@@ -16118,7 +16118,12 @@
       "title": "Verify remediated oracle through real local and CI review flows"
     },
     "oracle-response-read-boundary-prerequisite-20261021": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-24T16:21:10Z",
+        "generation": "ccc69621e8a64bda8e2b338b72112464",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [
         "oracle-response-ingress-20261021",
         "oracle-response-absence-retry-20261021",
@@ -16126,7 +16131,7 @@
         "oracle-response-json-template-20261021"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Keep oracle reviewer credentials out of reach with a scoped auth-gateway client token"
     },
     "oracle-response-reliability-observation-20261021": {
