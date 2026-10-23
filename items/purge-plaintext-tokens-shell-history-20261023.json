@@ -3,6 +3,7 @@
     "No token or key values remain in zsh history, the local atuin database or atuin sync",
     "A filter prevents the same token formats from being recorded again"
   ],
+  "context": "Dependency on credential rotation dropped on 2026-10-23 at the owner's direction: scrub now, keep a private backup. Done: backed up ~/.zsh_history and a consistent copy of the atuin database to a mode-700 directory (files mode 600, outside any repository; the owner deletes it after rotating). Removed 33 zsh history entries and 199 atuin entries that matched token and password formats (Databricks PATs, Cerebras/OpenAI/Anthropic-style keys, JWTs, Google API keys, GitHub tokens, Authorization and x-api-key headers, KEY/TOKEN/SECRET/PASSWORD assignments, security add-*-password -w, --password/--token flags). Atuin entries were deleted through `atuin history prune` against a new `history_filter` and pushed with `atuin sync` (199 delete records uploaded); atuin sync is end-to-end encrypted with the local key, so the server never held plaintext, but encrypted copies of the earlier records may remain there until the account is reset (`atuin account delete`, owner decision). Recurrence: the same formats are now in atuin `history_filter` and a zshaddhistory hook in ~/.zshrc (plus HIST_IGNORE_SPACE); a synthetic-string test rejected secret-shaped lines and recorded ordinary commands. Verified afterwards: 0 matching entries in ~/.zsh_history and 0 in the live atuin database. Not covered: agent transcripts (~/.claude, ~/.codex, ~/.omp session files) were not scrubbed. Heads-up for rotation: the purged history held tokens for other systems than BenchBox's own (another Databricks workspace's PATs, a Snowflake account password, Substack session cookies, a Google API key); rotate those with the owning accounts. One short password was also displayed in clear text in this working session's tool output by a masking mistake; treat it as exposed.",
   "description": "`~/.zsh_history` and the atuin database on the maintainer's Mac contain plaintext tokens and keys (Databricks, OpenAI, Cerebras, Gemini, Meta, Claude Code and a todo-db token), typed or echoed on the command line. atuin last synced on 2026-07-27, so its sync server may hold copies. Rotate the credentials first (rotate-credentials-emudhra-exposure-20261023), then delete the entries locally and from atuin sync, and prevent recurrence (atuin `history_filter`, zsh `HIST_IGNORE_SPACE` or `zshaddhistory`, reading secrets from the keychain instead of command arguments). Rewriting history needs the owner's approval.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "46913cf836774128a1bba839b4c64013",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:48:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6d25d86b278344fbbf616947a245bf42",
       "session_id": "ba4384e41c574086bef30465f20b7231"
     }
   ]

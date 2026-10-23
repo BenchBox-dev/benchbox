@@ -18011,9 +18011,7 @@
     },
     "purge-plaintext-tokens-shell-history-20261023": {
       "claim": null,
-      "needs": [
-        "rotate-credentials-emudhra-exposure-20261023"
-      ],
+      "needs": [],
       "priority": "medium-high",
       "status": "open",
       "title": "Purge plaintext API tokens from shell history and stop recording them"
