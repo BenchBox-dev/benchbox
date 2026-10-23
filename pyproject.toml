@@ -74,6 +74,7 @@ all = [
     "pyarrow>=10.0.0",
     "firebolt-sdk>=1.18.0",
     "google-cloud-bigquery>=3.0.0",
+    "grpcio>=1.84.1",
     "google-cloud-storage>=2.0.0",
     "redshift-connector>=2.0.0",
     "snowflake-connector-python>=3.0.0",
@@ -102,6 +103,7 @@ cloud = [
     "databricks-sdk>=0.20.0",
     "firebolt-sdk>=1.18.0",
     "google-cloud-bigquery>=3.0.0",
+    "grpcio>=1.84.1",
     "google-cloud-storage>=2.0.0",
     "redshift-connector>=2.0.0",
     "snowflake-connector-python>=3.0.0",
@@ -126,6 +128,7 @@ databricks = [
 ]
 bigquery = [
     "google-cloud-bigquery>=3.0.0",
+    "grpcio>=1.84.1",
     "google-cloud-storage>=2.0.0",
     "cloudpathlib>=0.15.0",
 ]
@@ -195,8 +198,8 @@ dataframe-polars = [
     "polars>=1.35.2",
 ]
 pyspark = ["pyspark>=3.5.0"]
-lakesail = ["pyspark[connect]>=3.5.0"]
-velox = ["pyspark[connect]>=3.5.0"]
+lakesail = ["pyspark[connect]>=3.5.0", "grpcio>=1.84.1"]
+velox = ["pyspark[connect]>=3.5.0", "grpcio>=1.84.1"]
 dataframe-pyspark = [
     "pyspark>=3.5.0",
 ]
@@ -231,6 +234,7 @@ cloud-spark-aws = [
 ]
 cloud-spark-gcp = [
     "google-cloud-dataproc>=5.0.0",
+    "grpcio>=1.84.1",
     "google-cloud-storage>=2.0.0",
 ]
 cloud-spark-azure = [
@@ -246,6 +250,7 @@ cloud-spark-databricks = [
     "databricks-sql-connector>=2.0.0",
     "databricks-sdk>=0.20.0",
     "databricks-connect>=14.0.0,<19",
+    "grpcio>=1.84.1",
     "cloudpathlib>=0.15.0",
 ]
 
@@ -261,6 +266,7 @@ cloud-spark = [
     "databricks-sql-connector>=2.0.0",
     "databricks-sdk>=0.20.0",
     "databricks-connect>=14.0.0,<19",
+    "grpcio>=1.84.1",
     "cloudpathlib>=0.15.0",
 ]
 
@@ -381,6 +387,7 @@ tests_dir = ["tests/unit/"]
 "benchbox.core.nyctaxi" = ["query_catalog.yaml"]
 "benchbox.core.results" = ["benchmark_specs.yaml"]
 "benchbox.core.primitives.catalog" = ["queries.yaml"]
+"benchbox.core.tpcds_obt.catalog" = ["queries.yaml"]
 "benchbox.core.tsbs_devops" = ["query_catalog.yaml"]
 "benchbox.data.coffeeshop" = ["*.csv"]
 

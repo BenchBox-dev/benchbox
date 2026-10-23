@@ -28,6 +28,13 @@ from .verdict import DO_NOT_SHIP
 PLAN_FILE = "plan.json"
 CLASSIFICATION_FILE = "classification.json"
 DIFF_FILE = "diff.patch"
+DIFF_NOT_STAGED_DETAIL = "the full pull request diff could not be staged in the workspace"
+
+
+class DiffNotStagedError(Exception):
+    pass
+
+
 WORKFLOW_FILE = "oracle-verdict.yml"
 WORKFLOW_SOURCE = Path(".github/workflows") / WORKFLOW_FILE
 OMP_CONFIG_SOURCE = Path(__file__).resolve().parents[3] / ".github" / "oracle-omp-config.yml"
@@ -336,7 +343,12 @@ def _protocol_round(
     force: bool = False,
 ) -> protocol.Round:
     paths = sorted(item.path for item in scoped)
-    patches = protocol.file_patches(full_diff or "")
+    scope = frozenset(paths)
+
+    def read(path: str) -> str | None:
+        return github.get_file(plan["repo"], path, plan["head_sha"]) if path in scope else None
+
+    patches = protocol.file_patches(full_diff or "", read)
     current = protocol.patch_map(patches, paths)
     digest = (protocol.patch_digest(patches, paths) if full_diff is not None else None) or f"unread-{plan['head_sha']}"
     base_ref = plan["base_ref"]
@@ -564,7 +576,10 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
         diff_text: str | None = plan["diff_inline"]
     else:
         diff_text = None
-        staged = runner.stage_pull_request_diff(plan_dir / DIFF_FILE, workspace)
+        source = plan_dir / DIFF_FILE
+        staged = runner.stage_pull_request_diff(source, workspace)
+        if staged is None and source.is_file() and source.read_text(encoding="utf-8").strip():
+            raise DiffNotStagedError(DIFF_NOT_STAGED_DETAIL)
     return render_review(
         template_name=classification.template,
         classification=classification,
@@ -597,18 +612,22 @@ def command_review(args: argparse.Namespace) -> int:
         raise SystemExit(f"oracle-verdict: classification unreadable: {exc}") from exc
     workspace = Path(args.workspace)
     try:
-        prompt = _assemble_prompt(plan, plan_path.parent, classification, workspace)
+        prompt: str | None = _assemble_prompt(plan, plan_path.parent, classification, workspace)
+    except DiffNotStagedError as exc:
+        prompt = None
+        outcome = runner.ReviewOutcome(None, Absence(ERROR, str(exc)), str(exc))
     except (OversizeError, ValueError) as exc:
         raise SystemExit(f"oracle-verdict: {exc}") from exc
-    outcome = runner.review(
-        reviewer,
-        workspace=workspace,
-        head_sha=plan["head_sha"],
-        prompt=prompt,
-        scratch=Path(args.scratch),
-        now=_now(),
-        plan=plan,
-    )
+    if prompt is not None:
+        outcome = runner.review(
+            reviewer,
+            workspace=workspace,
+            head_sha=plan["head_sha"],
+            prompt=prompt,
+            scratch=Path(args.scratch),
+            now=_now(),
+            plan=plan,
+        )
     artifact = attempt_files.build_artifact(
         run_id=os.environ["GITHUB_RUN_ID"],
         pr=plan["pr"],

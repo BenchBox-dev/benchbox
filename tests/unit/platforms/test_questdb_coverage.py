@@ -11,7 +11,6 @@ import pytest
 
 import benchbox.platforms.questdb as questdb_module
 from benchbox.platforms.base.data_loading import CsvDialect
-from benchbox.platforms.base.ddl_helpers import strip_foreign_keys
 from benchbox.platforms.questdb import (
     QuestDBAdapter,
     _date_to_epoch_ns,
@@ -157,17 +156,15 @@ class TestCreateSchemaBranches:
         adapter = QuestDBAdapter()
         assert adapter._extract_table_name("SELECT * FROM t") is None
 
-    def test_apply_schema_enhancements_unknown_table(self, questdb_stubs):
+    def test_table_layout_unknown_table_is_plain(self, questdb_stubs):
         adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE unknown_table (col1 INT, col2 TEXT)"
-        result = adapter._apply_questdb_schema_enhancements(stmt)
-        assert "CREATE TABLE" in result
+        layout = adapter._questdb_table_layout("CREATE TABLE unknown_table (col1 INT, col2 TEXT)")
+        assert layout["symbol_columns"] == []
+        assert layout["designated_timestamp"] is None
+        assert layout["time_partition"] is None
 
-    def test_apply_schema_enhancements_no_table_name(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "SELECT 1"
-        result = adapter._apply_questdb_schema_enhancements(stmt)
-        assert result == stmt
+    def test_table_layout_no_table_name(self, questdb_stubs):
+        assert QuestDBAdapter()._questdb_table_layout("SELECT 1") == {}
 
     def test_get_partition_for_table_with_override(self, questdb_stubs):
         adapter = QuestDBAdapter(partition_by="YEAR")
@@ -179,101 +176,35 @@ class TestCreateSchemaBranches:
         result = adapter._get_partition_for_table("customer")
         assert result == "NONE"
 
-    def test_add_timestamp_and_partition_none_partition(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE t (ts TIMESTAMP)"
-        result = adapter._add_timestamp_and_partition(stmt, "ts", "NONE")
-        assert "timestamp(ts)" in result
-        assert "PARTITION BY" not in result
+    @staticmethod
+    def _executed(adapter, schema_sql):
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+        with patch.object(adapter, "_create_schema_with_tuning", return_value=schema_sql):
+            adapter.create_schema(Mock(), mock_conn)
+        return [call.args[0] for call in mock_cursor.execute.call_args_list]
 
-    def test_add_timestamp_and_partition_with_partition(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE t (ts TIMESTAMP)"
-        result = adapter._add_timestamp_and_partition(stmt, "ts", "MONTH")
-        assert "timestamp(ts)" in result
-        assert "PARTITION BY MONTH" in result
-
-    def test_map_column_to_symbol_varchar(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE t (l_returnflag VARCHAR(1))"
-        result = adapter._map_column_to_symbol(stmt, "l_returnflag")
-        assert "SYMBOL" in result
-        assert "VARCHAR" not in result
-
-    def test_map_column_to_symbol_strips_not_null(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE t (r_name TEXT NOT NULL, r_comment TEXT)"
-        result = adapter._map_column_to_symbol(stmt, "r_name")
-        assert "r_name SYMBOL" in result
-        assert "SYMBOL NOT NULL" not in result.upper()
-        assert "r_comment TEXT" in result
-
-    def test_map_column_to_timestamp(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE t (l_shipdate DATE)"
-        result = adapter._map_column_to_timestamp(stmt, "l_shipdate")
-        assert "TIMESTAMP" in result
-        assert "DATE" not in result
-
-    def test_strip_foreign_keys_inline_references(self, questdb_stubs):
-        stmt = "CREATE TABLE t (id INT, cust_id INT REFERENCES customer(id))"
-        result = strip_foreign_keys(stmt)
-        assert "REFERENCES" not in result
-        assert "cust_id INT" in result
-
-    def test_strip_pk_constraints_unnamed(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE t (id INT, name VARCHAR(50), PRIMARY KEY (id))"
-        result = adapter._strip_pk_constraints(stmt)
-        assert "PRIMARY KEY" not in result.upper()
-        assert "id INT" in result
-        assert "name VARCHAR(50)" in result
-
-    def test_strip_pk_constraints_named(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE t (id INT, CONSTRAINT pk_t PRIMARY KEY (id))"
-        result = adapter._strip_pk_constraints(stmt)
-        assert "PRIMARY KEY" not in result.upper()
-        assert "CONSTRAINT" not in result.upper()
-        assert "id INT" in result
-
-    def test_strip_pk_constraints_column_level(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(50))"
-        result = adapter._strip_pk_constraints(stmt)
-        assert "PRIMARY KEY" not in result.upper()
-        assert "id INT" in result
-
-    def test_strip_pk_constraints_multi_column(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE t (a INT, b INT, c INT, PRIMARY KEY (a, b))"
-        result = adapter._strip_pk_constraints(stmt)
-        assert "PRIMARY KEY" not in result.upper()
-        assert "a INT" in result
-
-    def test_strip_pk_constraints_quoted_name(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = 'CREATE TABLE t (id INT, CONSTRAINT "pk_t" PRIMARY KEY (id))'
-        result = adapter._strip_pk_constraints(stmt)
-        assert "PRIMARY KEY" not in result.upper()
-        assert "CONSTRAINT" not in result.upper()
-        assert "id INT" in result
-
-    def test_strip_pk_constraints_backtick_quoted_name(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE t (id INT, CONSTRAINT `pk_t` PRIMARY KEY (id))"
-        result = adapter._strip_pk_constraints(stmt)
-        assert "PRIMARY KEY" not in result.upper()
-        assert "CONSTRAINT" not in result.upper()
-        assert "id INT" in result
-
-    def test_strip_pk_and_fk_together(self, questdb_stubs):
-        adapter = QuestDBAdapter()
-        stmt = "CREATE TABLE t (id INT, cust_id INT REFERENCES customer(id), PRIMARY KEY (id))"
-        result = adapter._strip_pk_constraints(strip_foreign_keys(stmt))
-        assert "PRIMARY KEY" not in result.upper()
-        assert "REFERENCES" not in result.upper()
-        assert "id INT" in result
+    @pytest.mark.parametrize(
+        "stmt",
+        [
+            "CREATE TABLE t (id INT, name VARCHAR(50), PRIMARY KEY (id))",
+            "CREATE TABLE t (id INT, CONSTRAINT pk_t PRIMARY KEY (id))",
+            "CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(50))",
+            "CREATE TABLE t (id INT, b INT, c INT, PRIMARY KEY (id, b))",
+            'CREATE TABLE t (id INT, CONSTRAINT "pk_t" PRIMARY KEY (id))',
+            "CREATE TABLE t (id INT, cust_id INT REFERENCES customer(id), PRIMARY KEY (id))",
+            "CREATE TABLE t (id INT, cust_id INT, FOREIGN KEY (cust_id) REFERENCES customer(id))",
+        ],
+    )
+    def test_create_schema_strips_key_constraints(self, questdb_stubs, stmt):
+        (executed,) = self._executed(QuestDBAdapter(), stmt)
+        upper = executed.upper()
+        assert "PRIMARY KEY" not in upper
+        assert "REFERENCES" not in upper
+        assert "FOREIGN KEY" not in upper
+        assert "CONSTRAINT" not in upper
+        assert "id INT" in executed
 
 
 class TestLoadDataBranches:

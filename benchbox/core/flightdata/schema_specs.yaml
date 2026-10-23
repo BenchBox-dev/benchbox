@@ -156,7 +156,7 @@ type_mappings:
     BIGINT: NUMBER(19,0)
     INTEGER: NUMBER(10,0)
     VARCHAR: VARCHAR
-    DOUBLE: FLOAT
+    DOUBLE: DOUBLE
     DATE: DATE
 table_order:
 - airlines

@@ -198,6 +198,7 @@
     "docs/internal/implementation-decisions.md": "core-only",
     "docs/internal/independent-publication-contract.md": "core-only",
     "docs/internal/independent-publication-threat-model.md": "core-only",
+    "docs/internal/low-disk-guard.md": "core-only",
     "docs/internal/makefile-architecture.md": "core-only",
     "docs/internal/mcp-conformance-baseline.md": "core-only",
     "docs/internal/mcp-production-readiness-evidence.md": "core-only",

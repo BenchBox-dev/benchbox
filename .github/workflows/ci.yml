@@ -160,8 +160,12 @@ jobs:
         if: steps.release.outputs.release-check-needed == 'true'
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.release-version }}
+          UPSTREAM_FRESHNESS_REQUIRED: ${{ steps.release.outputs.upstream-freshness-required }}
           EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: make release-check VERSION="$RELEASE_VERSION" BASE_REF="$EVENT_BASE_SHA"
+        run: |
+          skip=
+          if [ "$UPSTREAM_FRESHNESS_REQUIRED" != "true" ]; then skip=1; fi
+          make release-check VERSION="$RELEASE_VERSION" BASE_REF="$EVENT_BASE_SHA" SKIP_UPSTREAM_FRESHNESS="$skip"
 
       - name: Fetch base branch
         run: git fetch --no-tags origin "${{ github.base_ref || 'develop' }}:refs/remotes/origin/${{ github.base_ref || 'develop' }}"
@@ -573,7 +577,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       questdb:
-        image: questdb/questdb:10.0.1
+        image: questdb/questdb:10.0.1@sha256:67eaed863ebb2383227919ea9a5499a4a39ceca3862c20b974c84a10e11cdf89
         ports:
           - 8812:8812
     steps:

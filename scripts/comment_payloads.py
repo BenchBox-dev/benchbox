@@ -2327,8 +2327,22 @@ def notebook_sources(path: str, source: str) -> list[tuple[int, str, str, str, s
     return result
 
 
+def compose_yaml(source: str, lang: str) -> list[yaml.Node | None]:
+    def compose(loader: type | None) -> list[yaml.Node | None]:
+        kwargs = {} if loader is None else {"Loader": loader}
+        return list(yaml.compose_all(source, **kwargs)) if lang == "yaml" else [yaml.compose(source, **kwargs)]
+
+    fast = getattr(yaml, "CSafeLoader", None)
+    if fast is not None:
+        try:
+            return compose(fast)
+        except (yaml.YAMLError, UnicodeError):
+            pass
+    return compose(None)
+
+
 def structured_sources(path: str, source: str, lang: str) -> list[tuple[int, str, str, str, str]]:
-    trees = list(yaml.compose_all(source)) if lang == "yaml" else [yaml.compose(source)]
+    trees = compose_yaml(source, lang)
     result = []
 
     active: set[int] = set()

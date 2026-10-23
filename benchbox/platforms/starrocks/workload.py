@@ -107,7 +107,7 @@ class StarRocksWorkloadMixin:
 
     @staticmethod
     def _ddl_options() -> dict[str, Any]:
-        return {"strip_foreign_keys": True, "float_as_real": True, "type_map": "starrocks"}
+        return {"strip_foreign_keys": True, "type_map": "starrocks"}
 
     @staticmethod
     def _starrocks_layout(columns: list[str], key: list[str], table_tuning: Any) -> dict[str, Any]:

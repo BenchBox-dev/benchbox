@@ -10,8 +10,8 @@ import socket
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from benchbox.platforms.base.ddl_helpers import strip_foreign_keys
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.dialect_utils import translate_ddl
 
 if TYPE_CHECKING:
     from benchbox.core.tuning.interface import (
@@ -357,7 +357,7 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         start_time = mono_time()
         self.log_operation_start("Schema creation", f"benchmark: {benchmark.__class__.__name__}")
 
-        schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+        schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=QUESTDB_DIALECT)
 
         self.log_very_verbose(f"Executing schema creation script ({len(schema_sql)} characters)")
 
@@ -392,27 +392,30 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
                     self.log_verbose("Skipping ALTER TABLE foreign key constraint (unsupported by QuestDB)")
                     continue
 
-                if "CREATE TABLE" in stmt_upper and ("FOREIGN KEY" in stmt_upper or "REFERENCES" in stmt_upper):
-                    stmt = strip_foreign_keys(stmt)
-                    self.log_verbose("Stripped foreign key constraints from CREATE TABLE (unsupported by QuestDB)")
-
-                if "CREATE TABLE" in stmt_upper and "PRIMARY KEY" in stmt_upper:
-                    stmt = self._strip_pk_constraints(stmt)
-                    self.log_verbose("Stripped primary key constraints from CREATE TABLE (unsupported by QuestDB)")
-
-                if "DROP TABLE" in stmt_upper:
-                    stmt = self._adapt_drop_table(stmt)
-
                 if "CREATE TABLE" in stmt_upper:
-                    stmt = self._apply_questdb_schema_enhancements(stmt)
+                    if "FOREIGN KEY" in stmt_upper or "REFERENCES" in stmt_upper:
+                        self.log_verbose("Stripping foreign key constraints from CREATE TABLE (unsupported by QuestDB)")
+                    if "PRIMARY KEY" in stmt_upper:
+                        self.log_verbose("Stripping primary key constraints from CREATE TABLE (unsupported by QuestDB)")
+                    to_run = translate_ddl(
+                        stmt,
+                        QUESTDB_DIALECT,
+                        strip_primary_keys=True,
+                        strip_foreign_keys=True,
+                        default_layout=self._questdb_table_layout(stmt),
+                    )
+                elif "DROP TABLE" in stmt_upper:
+                    to_run = [self._adapt_drop_table(stmt)]
+                else:
+                    to_run = [stmt]
 
-                try:
-                    cursor.execute(stmt)
-                except Exception as e:
-                    is_create_table = stmt.strip().upper().startswith("CREATE TABLE")
-                    if is_create_table:
-                        critical_failures.append((stmt[:80], str(e)))
-                    self.logger.warning(f"Schema statement failed: {e}")
+                for statement in to_run:
+                    try:
+                        cursor.execute(statement)
+                    except Exception as e:
+                        if statement.strip().upper().startswith("CREATE TABLE"):
+                            critical_failures.append((statement[:80], str(e)))
+                        self.logger.warning(f"Schema statement failed: {e}")
         finally:
             cursor.close()
 
@@ -424,81 +427,29 @@ class QuestDBAdapter(PsycopgConnectionMixin, PlatformAdapter):
         self.log_operation_complete("Schema creation", duration, "Schema and tables created")
         return duration
 
-    def _apply_questdb_schema_enhancements(self, stmt: str) -> str:
+    def _questdb_table_layout(self, stmt: str) -> dict[str, Any]:
         table_name = self._extract_table_name(stmt)
         if not table_name:
-            return stmt
-
+            return {}
         table_name_lower = table_name.lower()
-
-        symbol_cols = TPCH_SYMBOL_COLUMNS.get(table_name_lower, [])
-        for col in symbol_cols:
-            stmt = self._map_column_to_symbol(stmt, col)
-
-        date_cols = TPCH_DATE_COLUMNS.get(table_name_lower, [])
-        for col in date_cols:
-            stmt = self._map_column_to_timestamp(stmt, col)
-
-        ts_col = TPCH_TIMESTAMP_COLUMNS.get(table_name_lower)
-        if ts_col:
-            partition = self._get_partition_for_table(table_name_lower)
-            stmt = self._add_timestamp_and_partition(stmt, ts_col, partition)
-
-        return stmt
+        designated = TPCH_TIMESTAMP_COLUMNS.get(table_name_lower)
+        if designated and not re.search(rf"\b{re.escape(designated)}\b", stmt, re.IGNORECASE):
+            designated = None
+        return {
+            "symbol_columns": TPCH_SYMBOL_COLUMNS.get(table_name_lower, []),
+            "timestamp_columns": TPCH_DATE_COLUMNS.get(table_name_lower, []),
+            "designated_timestamp": designated,
+            "time_partition": self._get_partition_for_table(table_name_lower) if designated else None,
+        }
 
     def _extract_table_name(self, stmt: str) -> str | None:
         match = re.search(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[\"']?(\w+)[\"']?", stmt, re.IGNORECASE)
         return match.group(1) if match else None
 
-    def _map_column_to_symbol(self, stmt: str, column_name: str) -> str:
-        pattern = (
-            rf"(\b{re.escape(column_name)}\b)\s+"
-            r"(?:VARCHAR|TEXT|CHAR|CHARACTER\s+VARYING)(?:\s*\(\s*\d+\s*\))?"
-            r"(?:\s+NOT\s+NULL|\s+NULL)?"
-        )
-        replacement = r"\1 SYMBOL"
-        return re.sub(pattern, replacement, stmt, count=1, flags=re.IGNORECASE)
-
-    def _map_column_to_timestamp(self, stmt: str, column_name: str) -> str:
-        pattern = rf"(\b{re.escape(column_name)}\b)\s+(?:DATE|TIMESTAMP)"
-        replacement = r"\1 TIMESTAMP"
-        return re.sub(pattern, replacement, stmt, count=1, flags=re.IGNORECASE)
-
     def _get_partition_for_table(self, table_name_lower: str) -> str:
         if self.partition_by is not None:
             return self.partition_by
         return TPCH_PARTITION_DEFAULTS.get(table_name_lower, "NONE")
-
-    def _add_timestamp_and_partition(self, stmt: str, ts_column: str, partition: str) -> str:
-        stmt = stmt.rstrip().rstrip(";").rstrip()
-
-        suffix = f" timestamp({ts_column})"
-        if partition and partition.upper() != "NONE":
-            suffix += f" PARTITION BY {partition.upper()}"
-
-        return stmt + suffix
-
-    def _strip_pk_constraints(self, stmt: str) -> str:
-        stmt = re.sub(
-            r',?\s*CONSTRAINT\s+(?:"[^"]+"|`[^`]+`|\w+)\s+PRIMARY\s+KEY\s*\([^)]*\)',
-            "",
-            stmt,
-            flags=re.IGNORECASE,
-        )
-        stmt = re.sub(
-            r",?\s*PRIMARY\s+KEY\s*\([^)]*\)",
-            "",
-            stmt,
-            flags=re.IGNORECASE,
-        )
-        stmt = re.sub(
-            r"\s+PRIMARY\s+KEY\b",
-            "",
-            stmt,
-            flags=re.IGNORECASE,
-        )
-        stmt = re.sub(r",\s*\)", ")", stmt)
-        return stmt
 
     def _adapt_drop_table(self, stmt: str) -> str:
         stmt_upper = stmt.upper().strip()

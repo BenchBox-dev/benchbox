@@ -955,8 +955,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "PARTITION BY suffix from the first tuned PARTITIONING column (questdb.py:154-170) for "
             "dry-run preview, falling back to its own module-level TPCH_DESIGNATED_TIMESTAMP/"
             "TPCH_PARTITION_BY dicts (questdb.py:49-64, 171-182) when no tuning is configured. Real "
-            "execution (benchbox/platforms/questdb.py's QuestDBAdapter._apply_questdb_schema_"
-            "enhancements, questdb.py:521-558) never reads TableTuning at all -- it applies timestamp/"
+            "execution (benchbox/platforms/questdb.py's QuestDBAdapter._questdb_table_layout feeding "
+            "translate_ddl default_layout in create_schema) never reads TableTuning at all -- it applies timestamp/"
             "PARTITION BY using its own separate, adapter-local hardcoded TPCH_TIMESTAMP_COLUMNS/"
             "TPCH_PARTITION_DEFAULTS dicts (questdb.py:67-103), keyed by table name. For BenchBox's "
             "TPC-H defaults the two hardcoded maps happen to agree (lineitem/orders, MONTH), but any "
@@ -975,11 +975,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         _T.PRIMARY_KEYS: _none(
             "questdb_strips_primary_keys",
-            "QuestDBAdapter.create_schema strips PRIMARY KEY clauses via _strip_pk_constraints (questdb.py).",
+            "QuestDBAdapter.create_schema strips PRIMARY KEY clauses via translate_ddl strip_primary_keys (questdb.py).",
         ),
         _T.FOREIGN_KEYS: _none(
             "questdb_strips_foreign_keys",
-            "QuestDBAdapter.create_schema strips FOREIGN KEY clauses via ddl_helpers strip_foreign_keys (questdb.py).",
+            "QuestDBAdapter.create_schema strips FOREIGN KEY clauses via translate_ddl strip_foreign_keys (questdb.py).",
         ),
         **_no_unique_check_entries(
             "questdb_no_unique_check_rendering",

@@ -472,7 +472,7 @@ def test_validator_writes_only_to_ignored_output(
         "invalid-version",
     }
     if legacy_policy not in {"absent", "candidate-only"}:
-        legacy = {"version": 1, "external": [], "completed": [], "exceptions": []}
+        legacy = {"version": 1, "external": [], "exceptions": []}
         if legacy_policy == "candidate-only-ownership":
             legacy["external"] = [{"path": "src/", "owner": "upstream", "provenance": "fixture source archive"}]
         if legacy_policy == "missing-required-schema":

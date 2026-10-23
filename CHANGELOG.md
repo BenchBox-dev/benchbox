@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A pull request that edits only release enforcement files (`Makefile`, `ci.yml`, the release check scripts) no longer fails `ci-paths` when upstream SQLGlot publishes a new release before the fork is refreshed. The freshness check still runs for pull requests that change the release version or edit the freshness check or its waiver file, and in the release workflows.
+
 ### Added
 
+- Benchmark runs check free space on the output volume before any data is written and fail with the free and total bytes and the largest top-level entries when less than 5% is free. `BENCHBOX_MIN_FREE_DISK_PERCENT` changes the threshold (`0` disables it). `make disk-check` runs the same check by hand and never deletes anything.
 - `translate_ddl` accepts an engine type map by name (`type_map="starrocks"`, `"doris"`, `"singlestore"`) so adapters do not import fork modules.
 - Result readers accept schema 2.4: the loader, normalizer, explorer input
   and bundle validator read the new optional per-query `request_count`,
@@ -41,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rewrite has a documented-output test. The list-aggregate, zero-divisor, ORDER BY alias,
   ClickHouse alias and decimal-division and rollup-NULL rewrites added in 30.24.0.9 are pinned
   and have documented-output tests too.
+- The `round_inputs_to_decimal` rewrite added in 30.24.0.10 is pinned in the same registry test and
+  has documented-output tests.
 - A DataFusion test executes TPC-H Q11, Q16, Q18 and Q20 rewritten by the runtime's generic
   decorrelation rewrites at scale factors 0.01 and 0.1 and compares the rows with the
   recorded TPC-H reference row counts and with the unrewritten query on DuckDB.
@@ -56,6 +63,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The lint job collects the test suite once. `make lint-markers` collects with `--assert=plain` and records every test's markers to `$MARKER_MANIFEST`; the fast-lane guard (`fast_lane_ceiling_check.py`) evaluates each forbidden marker expression and path substring against that record with pytest's own marker-expression evaluation, instead of running one full collection per expression. Collection errors and unregistered markers still fail; violations and counts are unchanged.
+- `quality/comment-policy.json` no longer has a `completed` list, and a policy that still has one fails schema validation. Every first-party path is in scope, so there is no list of dead completed prefixes left to prune.
+- The comment-policy check compares a branch with its base using the strict rules over the whole repository. It no longer scans the base's sources or reports only newly introduced findings, so every violation fails, including old ones; none exist today. Staged runs check the staged files that differ from the base, and the whole repository when the commit changes the policy, the cleanup scope policy, the launcher or a trusted checker file. The policy ratchet, review gating for new exceptions, checks of new files under external exclusions, consumer validation, expired-exception findings and the base-copied launcher are unchanged. The `completed` list in `quality/comment-policy.json` is no longer read or ratcheted, and the policy may omit it.
+- The comment-policy scanner builds each Python file's name index once and parses YAML with the C loader when available, falling back to the pure-Python loader on any error. Findings are unchanged; a whole-tree strict scan is more than twice as fast.
+- TPC-DS OBT queries load from a hand-owned static catalog (`benchbox/core/tpcds_obt/catalog/queries.yaml`)
+  instead of being converted from the TPC-DS templates at startup. Rendered SQL is unchanged. Each entry records the
+  source template's SHA-256, its dsqgen placeholders and its identifier map, and unit tests fail when a template,
+  define or identifier choice drifts. `benchbox/core/tpcds_obt` no longer imports SQLGlot, and Doris and StarRocks
+  OBT queries get derived-table aliases from the fork's `add_derived_table_aliases` rewrite through
+  `translate_sql_query`.
+
+- `vector_search` declares its embedding columns with an explicit 4-byte element type on every
+  engine (`REAL[n]` on DuckDB and the generic default, `ARRAY<REAL>` for Spark, Databricks, Doris,
+  StarRocks, LakeSail, PySpark and Velox), matching the float32 data it generates. Engines that read the
+  old `FLOAT` as double precision now store `REAL`: DuckDB (`DOUBLE[n]` to `REAL[n]`), Spark and
+  Databricks (`ARRAY<DOUBLE>` to `ARRAY<FLOAT>`), Doris (`ARRAY<DOUBLE>` to `ARRAY<FLOAT>`), Trino
+  (`ARRAY(DOUBLE)` to `ARRAY(REAL)`) and Redshift (`DOUBLE PRECISION` to `REAL`). Top-k ids are
+  identical, but `vector_search` load and query timings change on those six engines, so do not compare
+  them with earlier runs. PostgreSQL, Snowflake, ClickHouse, SingleStore, StarRocks and BigQuery keep
+  their column types. A guard test rejects bare `FLOAT` in benchmark schema specs, the Snowflake
+  FlightData type map writes `DOUBLE` instead of `FLOAT` (the same 64-bit type), and the StarRocks and
+  SingleStore adapters no longer pass `float_as_real` because no benchmark schema declares a bare `FLOAT`.
+- The PostgreSQL, DuckLake, pg_mooncake and QuestDB adapters build `CREATE TABLE` text through
+  `translate_ddl` instead of their own rewrites. QuestDB writes `VARCHAR` for `CHAR(n)` and
+  `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake quotes identifiers, and the pg_mooncake
+  mirror statements come from the SQLGlot runtime. The key
+  stripping, `SYMBOL` columns, designated timestamp and partitioning keep their results.
 - Trino, Presto and Athena build their `CREATE TABLE` DDL with `translate_ddl` instead of
   adapter-side text rewrites. Table names are written quoted (`"orders"` on Trino and Presto,
   `` `orders` `` on Athena) instead of bare, and Athena columns are backtick-quoted; the
@@ -333,6 +366,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   three platforms yet: the 23,667 translations of the 1,127 frozen shipped queries across 21
   target dialects, the 2,600 golden-corpus runtime outputs and `make sql-execution-gate`
   are unchanged from 30.24.0.8, so no published result changes.
+- The bundled SQLGlot runtime moves from 30.24.0.9 to 30.24.0.10 (fork commit
+  `75016d8ff27e`). It adds the `round_inputs_to_decimal` rewrite to the `apply_rewrite`
+  registry and writes a one-parameter wide `DECIMAL(p)` as `BIGNUMERIC` for BigQuery DDL.
+  BenchBox does not call the rewrite yet and ships no one-parameter `DECIMAL`: the 23,667
+  translations of the 1,127 frozen shipped queries across 21 target dialects, the 2,600
+  golden-corpus runtime outputs and `make sql-execution-gate` are unchanged from 30.24.0.9, so
+  no published result changes.
 - SQLite TPC-DS translation marks the TPC-DS `DATE` columns through the runtime's
   `mark_date_columns` rewrite on the parsed tree (`translate_sql_query(date_columns=..)`),
   so Q72's `d3.d_date > d1.d_date + 5` adds five whole days to the date text instead of
@@ -470,6 +510,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   substituted package.
 - The `benchbox-agent`, Velox and LakeSail images install Python packages with
   uv 0.13.5 instead of pip. Rebuild existing images to pick up the change.
+- The `bigquery`, `cloud`, `cloud-spark`, `cloud-spark-gcp`,
+  `cloud-spark-databricks`, `lakesail`, `velox` and `all` extras now require
+  `grpcio` 1.84.1 or newer. Older `grpcio` releases verify TLS against their own
+  bundled root list, which still trusts the roots the compromised eMudhra emSign
+  intermediates chain to, so BigQuery Storage, Dataproc, Databricks Connect and
+  Spark Connect connections stayed exposed even after the `certifi` upgrade.
 
 ## [0.5.0rc1] - 2026-10-20
 
