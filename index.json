@@ -5043,6 +5043,15 @@
       "status": "open",
       "title": "Let the comment policy drop completed-scope entries for paths that no longer exist"
     },
+    "comment-policy-dead-exceptions-bulk-cleanup-20261023": {
+      "claim": null,
+      "needs": [
+        "soundness-dead-exceptions-cleanup-20261022"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove the 158 remaining dead comment-policy exceptions after owner approval"
+    },
     "comment-policy-digest-and-base-exception-catch22-20261008": {
       "claim": null,
       "needs": [],
