@@ -248,6 +248,7 @@ TRANSLATION_FILES = (
 )
 TRANSLATION_PREFIXES = (
     "benchbox/_vendor/",
+    "make/",
     "scripts/sql_execution_gate/",
     "tests/unit/sql_compat/golden_corpus/",
 )

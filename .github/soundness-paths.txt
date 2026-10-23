@@ -125,6 +125,7 @@ file	scripts/sync_sqlglot_runtime.py
 file	scripts/check_sqlglot_repro_retirement.py
 file	scripts/sqlglot_fork_diff.py
 file	Makefile
+prefix	make/
 file	tests/unit/sql_compat/test_fork_golden_corpus.py
 file	_project/scripts/check_uv_lock_revision.py
 file	_project/decisions/single-repo-migration.md
