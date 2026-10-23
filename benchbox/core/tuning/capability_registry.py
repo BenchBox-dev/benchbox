@@ -842,11 +842,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "firebolt_ddl_generator:preview_only",
             "core.tuning.generators.firebolt.FireboltDDLGenerator computes a real PRIMARY INDEX "
             "(col1, col2) clause from tuned distribution columns for dry-run preview "
-            "(firebolt.py:144-149, 195-196), but benchbox/platforms/firebolt.py's FireboltAdapter never "
+            "but benchbox/platforms/firebolt.py's FireboltAdapter never "
             "consumes it: create_schema uses _create_schema_with_tuning (primary/foreign-key toggle "
             "only) then _translate_schema_ddl, which calls translate_ddl (type-mapping/"
-            "constraint-stripping only). FireboltAdapter.generate_tuning_clause (firebolt.py:1374-1411) "
-            "has no call site anywhere in the codebase. apply_table_tunings (firebolt.py:1413-1421) only "
+            "constraint-stripping only). FireboltAdapter.generate_tuning_clause "
+            "has no call site anywhere in the codebase. apply_table_tunings only "
             "logs via log_partition_tunings(...).",
         ),
         _T.PARTITIONING: _none(
