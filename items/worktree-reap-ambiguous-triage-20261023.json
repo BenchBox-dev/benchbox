@@ -3,6 +3,7 @@
     "Every ambiguous worktree is removed or recorded as intentionally kept",
     "git worktree list reports no prunable entries"
   ],
+  "context": "Triaged 2026-10-23 (131 worktrees examined). Removed 42 with plain `git worktree remove` (no --force) after proving each was clean, unlocked, unused for 6+ hours, without an open PR or stash, and that its HEAD and branch tip were reachable from a remote ref, patch-equivalent to a develop commit (`git cherry`), or patch-id-equal to a squash-merged PR; local branches deleted atomically with `git update-ref -d` against the expected old OID. Pruned the two stale release-curation registrations (`git worktree prune`, dry run listed only those two); `git worktree list` now has no prunable entries (92 entries, was 134). Kept 89 on purpose: 25 with open PRs (reap after merge), 28 active within 6 hours or locked (re-triage later; several have 1-7 unpushed commits), 12 with uncommitted changes (commit or discard), 3 with unpushed commits and no proof of merge (pr-text-integration 4 commits, windows-t3 3 commits, wt-prefixes 1 commit: push, open a PR or discard), and about 15 holding unusual ignored local artifacts (.todo-batch ledgers, evil.duckdb, memory.db, build outputs; site-split-c1 has 11 unpushed commits): review, delete by hand if worthless, then re-run `make worktree-reap`. Nothing was kept silently: each kept tree failed at least one removal criterion and needs the owner action named above.",
   "description": "`make worktree-reap APPLY=1` on 2026-10-22 removed 81 merged worktrees but left 42 it could not classify: 12 in detached HEAD, 11 with legacy lifecycle provenance (mostly under .muse/worktrees), 9 whose branch commits do not match the merged PR head, 3 with malformed provenance, 2 registered directories that no longer exist (temporary release-curation trees; `git worktree prune` on the host clears them) and the rest with unmerged PRs. It also kept 12 worktrees with uncommitted changes. Review each group and remove or keep it deliberately.",
   "sessions": [
     {
@@ -20,6 +21,14 @@
       "generation": "42e166b15b384297af2d726deaa619eb",
       "op": "take",
       "op_id": "50ef4df624c2454395b2b1ed27eeb535",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:23:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5172b068eefc467287694e6729cf88ca",
       "session_id": "ba4384e41c574086bef30465f20b7231"
     }
   ]
