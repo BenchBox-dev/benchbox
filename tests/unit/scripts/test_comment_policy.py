@@ -21,7 +21,6 @@ from check_comment_policy import (
     allowed,
     check_ratchet,
     expired_policy_findings,
-    introduced,
     load_policy,
     main,
     scan_sources,
@@ -71,7 +70,7 @@ def test_python_strings_help_and_reads_are_data() -> None:
 def test_runtime_assignment_payload_is_part_of_identity() -> None:
     before = python_findings("a.py", 'f.__doc__ = "before"')
     after = python_findings("a.py", 'f.__doc__ = "after"')
-    assert introduced(after, before, []) == after
+    assert {f.identity for f in after}.isdisjoint(f.identity for f in before)
 
 
 @pytest.mark.parametrize("source", ["def broken(", '"unterminated', "if True:\n"])
@@ -166,14 +165,16 @@ def test_expired_directive_is_reported_and_does_not_allow_source() -> None:
     assert [finding.kind for finding in policy_findings] == ["policy-error"]
     assert check_comment_policy.exit_status("strict", registered, policy_findings) == 1
     assert check_comment_policy.exit_status("report", registered, policy_findings) == 0
-    assert check_comment_policy.exit_status("transition", policy(enforcement="advisory"), policy_findings) == 0
+    assert (
+        check_comment_policy.exit_status("strict", policy(enforcement="advisory"), policy_findings, compared=True) == 0
+    )
+    assert check_comment_policy.exit_status("strict", policy(enforcement="advisory"), policy_findings) == 1
     assert (
         check_comment_policy.exit_status(
-            "transition", policy(enforcement="advisory"), policy_findings, policy_owner_failure=True
+            "strict", policy(enforcement="advisory"), policy_findings, compared=True, policy_owner_failure=True
         )
         == 1
     )
-    assert introduced(policy_findings, policy_findings, []) == []
     assert not allowed(finding, registered, "# noqa: F401\n")
 
 
@@ -197,20 +198,8 @@ def test_structural_directive_positions(line: int, text: str, accepted: bool) ->
     assert allowed(Finding("a.py", line, "comment", text), policy(), "\n") is accepted
 
 
-def test_delta_compares_exact_multisets_and_completed_scopes() -> None:
-    old = Finding("a.py", 1, "comment", "# old", "f")
-    moved = Finding("a.py", 100, "comment", "# old", "f")
-    replacement = Finding("a.py", 1, "comment", "# new", "f")
-    assert not introduced([moved], [old], [])
-    assert introduced([old, old], [old], []) == [old]
-    assert introduced([replacement], [old], []) == [replacement]
-    assert introduced([moved], [old], ["a.py"]) == [moved]
-    assert introduced([Finding("a.py", 1, "comment", "# old", "g")], [old], [])
-
-
-def test_policy_cannot_weaken_completed_or_external_scopes() -> None:
-    with pytest.raises(ValueError):
-        check_ratchet(policy(), policy(completed=["a.py"]))
+def test_policy_cannot_widen_external_scopes_and_may_drop_completed() -> None:
+    check_ratchet(policy(), policy(completed=["a.py"]))
     entry = {"path": "benchbox/", "owner": "fake", "provenance": "a.md"}
     with pytest.raises(ValueError):
         check_ratchet(policy(external=[entry]), policy())
@@ -279,9 +268,9 @@ def git_repo(tmp_path: Path, source: str) -> str:
     return subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
 
 
-def test_transition_worktree_and_staged_content(tmp_path: Path) -> None:
-    base = git_repo(tmp_path, "# old\nx = 1\n")
-    args = ["--root", str(tmp_path), "--mode", "transition", "--base", base]
+def test_base_comparison_reads_worktree_and_staged_content(tmp_path: Path) -> None:
+    base = git_repo(tmp_path, "x = 1\n")
+    args = ["--root", str(tmp_path), "--mode", "strict", "--base", base]
     assert main(args) == 0
     (tmp_path / "a.py").write_text("# new\nx = 1\n", encoding="utf-8")
     assert main(args) == 1
@@ -295,11 +284,9 @@ def launcher_source(files: tuple[str, ...] = ("scripts/comment_syntax.py",)) -> 
     return f"TRUSTED_FILES = {files!r}\n"
 
 
-def completed_repo(tmp_path: Path) -> str:
+def inherited_violation_repo(tmp_path: Path) -> str:
     git_repo(tmp_path, "x = 1\n")
-    (tmp_path / "quality/comment-policy.json").write_text(
-        json.dumps(policy(completed=["a.py", "b.py"])), encoding="utf-8"
-    )
+    (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy()), encoding="utf-8")
     (tmp_path / "b.py").write_text("# inherited\ny = 1\n", encoding="utf-8")
     (tmp_path / "scripts").mkdir(exist_ok=True)
     (tmp_path / "scripts/run_comment_policy.py").write_text(launcher_source(), encoding="utf-8")
@@ -320,7 +307,7 @@ def completed_repo(tmp_path: Path) -> str:
             "commit.gpgsign=false",
             "commit",
             "-qm",
-            "completed scope",
+            "inherited violation",
         ],
         check=True,
     )
@@ -328,8 +315,8 @@ def completed_repo(tmp_path: Path) -> str:
 
 
 def test_staged_scan_covers_only_changed_sources(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    base = completed_repo(tmp_path)
-    args = ["--root", str(tmp_path), "--mode", "transition", "--base", base]
+    base = inherited_violation_repo(tmp_path)
+    args = ["--root", str(tmp_path), "--mode", "strict", "--base", base]
     assert main(args) == 1
     (tmp_path / "a.py").write_text("x = 2\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
@@ -351,11 +338,11 @@ def test_staged_scan_covers_only_changed_sources(tmp_path: Path, capsys: pytest.
 def test_staged_scan_stays_global_when_policy_or_checker_changes(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], target: str
 ) -> None:
-    base = completed_repo(tmp_path)
-    args = ["--root", str(tmp_path), "--mode", "transition", "--base", base, "--staged"]
+    base = inherited_violation_repo(tmp_path)
+    args = ["--root", str(tmp_path), "--mode", "strict", "--base", base, "--staged"]
     path = tmp_path / target
     path.parent.mkdir(exist_ok=True)
-    path.write_text(json.dumps(policy(completed=["a.py", "b.py", "c.py"])) if target.endswith(".json") else "x = 1\n")
+    path.write_text(json.dumps(policy(enforcement="blocking")) if target.endswith(".json") else "x = 1\n")
     subprocess.run(["git", "-C", str(tmp_path), "add", target], check=True)
     capsys.readouterr()
     assert main(args) == 1
@@ -365,14 +352,14 @@ def test_staged_scan_stays_global_when_policy_or_checker_changes(
 def test_candidate_launcher_cannot_drop_a_trusted_file_from_the_trigger_list(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    base = completed_repo(tmp_path)
+    base = inherited_violation_repo(tmp_path)
     (tmp_path / "scripts/run_comment_policy.py").write_text(launcher_source(("scripts/other.py",)), encoding="utf-8")
     (tmp_path / "scripts/comment_syntax.py").write_text("x = 1\n", encoding="utf-8")
     subprocess.run(
         ["git", "-C", str(tmp_path), "add", "scripts/run_comment_policy.py", "scripts/comment_syntax.py"], check=True
     )
     capsys.readouterr()
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base, "--staged"]) == 1
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base, "--staged"]) == 1
     assert "b.py:1: CP comment" in capsys.readouterr().out
 
 
@@ -380,7 +367,7 @@ def test_candidate_launcher_cannot_drop_a_trusted_file_from_the_trigger_list(
 def test_unreadable_base_launcher_fails_closed_to_a_global_scan(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], launcher: str
 ) -> None:
-    completed_repo(tmp_path)
+    inherited_violation_repo(tmp_path)
     (tmp_path / "scripts/run_comment_policy.py").write_text(launcher, encoding="utf-8")
     subprocess.run(["git", "-C", str(tmp_path), "add", "scripts/run_comment_policy.py"], check=True)
     subprocess.run(
@@ -404,7 +391,7 @@ def test_unreadable_base_launcher_fails_closed_to_a_global_scan(
     (tmp_path / "a.py").write_text("x = 2\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
     capsys.readouterr()
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base, "--staged"]) == 1
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base, "--staged"]) == 1
     assert "b.py:1: CP comment" in capsys.readouterr().out
 
 
@@ -448,9 +435,10 @@ def test_expired_policy_fails_owner_transition_but_not_inherited_advisory(
     advisory_base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
     expired = policy(enforcement="advisory", exceptions=[exception(consumer="a.py", expires="2000-01-01")])
     (tmp_path / "quality/comment-policy.json").write_text(json.dumps(expired), encoding="utf-8")
-    args = ["--root", str(tmp_path), "--mode", "transition", "--base", advisory_base]
+    args = ["--root", str(tmp_path), "--mode", "strict", "--base", advisory_base]
     assert main(args) == 1
     assert "quality/comment-policy.json:1: CP policy-error" in capsys.readouterr().out
+    assert main(["--root", str(tmp_path), "--mode", "report", "--base", advisory_base]) == 0
     subprocess.run(["git", "-C", str(tmp_path), "add", "quality/comment-policy.json"], check=True)
     subprocess.run(
         [
@@ -471,7 +459,7 @@ def test_expired_policy_fails_owner_transition_but_not_inherited_advisory(
     )
     inherited_base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
     (tmp_path / "a.py").write_text("# noqa: F401\nx = 1\n", encoding="utf-8")
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", inherited_base]) == 0
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", inherited_base]) == 0
     assert "configuration or parser failure" not in capsys.readouterr().err
 
 
@@ -500,7 +488,7 @@ def test_advisory_enforcement_reports_findings_without_failing_the_comparison(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     base = git_repo(tmp_path, "x = 1\n")
-    args = ["--root", str(tmp_path), "--mode", "transition", "--base", base]
+    args = ["--root", str(tmp_path), "--mode", "strict", "--base", base]
     (tmp_path / "a.py").write_text("# new\nx = 1\n", encoding="utf-8")
     assert main(args) == 1
     (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy(enforcement="advisory")), encoding="utf-8")
@@ -524,14 +512,14 @@ def test_advisory_enforcement_reports_findings_without_failing_the_comparison(
     )
     advisory_base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
     capsys.readouterr()
-    advisory = ["--root", str(tmp_path), "--mode", "transition", "--base", advisory_base]
+    advisory = ["--root", str(tmp_path), "--mode", "strict", "--base", advisory_base]
     assert main(advisory) == 0
     out = capsys.readouterr().out
     assert "a.py:1: CP comment" in out
     assert "enforcement is advisory" in out
     subprocess.run(["git", "-C", str(tmp_path), "update-ref", "refs/remotes/origin/develop", "HEAD"], check=True)
     assert main(["--root", str(tmp_path), "--mode", "strict"]) == 1
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", "f" * 40]) == 2
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", "f" * 40]) == 2
 
 
 def test_advisory_annotations_escape_path_and_text(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -539,7 +527,7 @@ def test_advisory_annotations_escape_path_and_text(monkeypatch: pytest.MonkeyPat
     printed: list[str] = []
     monkeypatch.setattr("builtins.print", lambda *args, **_: printed.append(" ".join(map(str, args))))
     finding = Finding("dir,x::y%z.py", 7, "comment", "# 100%\r::set-output name=a::b")
-    assert check_comment_policy.exit_status("transition", policy(enforcement="advisory"), [finding]) == 0
+    assert check_comment_policy.exit_status("strict", policy(enforcement="advisory"), [finding], compared=True) == 0
     annotation = next(line for line in printed if line.startswith("::warning"))
     assert annotation.startswith("::warning file=dir%2Cx%3A%3Ay%25z.py,line=7::")
     assert "\r" not in annotation and "set-output" not in annotation
@@ -576,7 +564,7 @@ def test_advisory_reports_unanalyzable_input_but_still_returns_zero(
     base = commit_policy(tmp_path, "advisory")
     (tmp_path / "a.py").write_text("def broken(\n", encoding="utf-8")
     capsys.readouterr()
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 0
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 0
     out = capsys.readouterr().out
     assert "CP coverage-error" in out
     assert "(1 are inputs the checker could not analyze)" in out
@@ -587,7 +575,7 @@ def test_flipping_to_blocking_does_not_block_itself_but_the_next_change_is(tmp_p
     advisory_base = commit_policy(tmp_path, "advisory")
     (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy(enforcement="blocking")), encoding="utf-8")
     (tmp_path / "a.py").write_text("# new\nx = 1\n", encoding="utf-8")
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", advisory_base]) == 0
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", advisory_base]) == 0
     subprocess.run(["git", "-C", str(tmp_path), "add", "a.py", "quality/comment-policy.json"], check=True)
     subprocess.run(
         [
@@ -608,7 +596,7 @@ def test_flipping_to_blocking_does_not_block_itself_but_the_next_change_is(tmp_p
     )
     blocking_base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
     (tmp_path / "a.py").write_text("# new\n# another\nx = 1\n", encoding="utf-8")
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", blocking_base]) == 1
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", blocking_base]) == 1
     assert main(["--root", str(tmp_path), "--mode", "report"]) == 0
 
 
@@ -627,7 +615,7 @@ def test_hostile_paths_cannot_start_a_workflow_command_in_the_output(
     except OSError:
         newline_name = ""
     capsys.readouterr()
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 0
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 0
     output = capsys.readouterr().out
     lines = output.splitlines()
     assert "##[" not in output
@@ -696,7 +684,7 @@ def test_candidate_cannot_relax_blocking_enforcement_in_a_comparison(tmp_path: P
     base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
     (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy(enforcement="advisory")), encoding="utf-8")
     (tmp_path / "a.py").write_text("# new\nx = 1\n", encoding="utf-8")
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 2
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 2
 
 
 def test_new_exception_cannot_self_authorize_source(tmp_path: Path) -> None:
@@ -706,14 +694,14 @@ def test_new_exception_cannot_self_authorize_source(tmp_path: Path) -> None:
         json.dumps(policy(exceptions=[exception()])), encoding="utf-8"
     )
     (tmp_path / "a.py").write_text("x = 1 # noqa: F401\n", encoding="utf-8")
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 1
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 1
 
 
 def test_missing_base_and_unpinned_bootstrap_fail(tmp_path: Path) -> None:
     base = git_repo(tmp_path, "x = 1\n")
-    assert main(["--root", str(tmp_path), "--mode", "transition"]) == 2
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", "f" * 40]) == 2
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base, "--bootstrap"]) == 2
+    assert main(["--root", str(tmp_path), "--mode", "strict"]) == 2
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", "f" * 40]) == 2
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base, "--bootstrap"]) == 2
 
 
 def test_bootstrap_base_is_refused_when_a_policy_registry_exists(
@@ -795,6 +783,32 @@ def test_checker_command_compares_against_the_given_base(tmp_path: Path) -> None
     assert command[command.index("--base") + 1] == "c" * 40
     assert "--bootstrap" in command
     assert "--staged" not in command
+
+
+def test_launcher_runs_the_base_copy_of_the_checker_in_strict_mode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    git_repo(tmp_path, "x = 1\n")
+    recorded = tmp_path / "argv.json"
+    entry = tmp_path / "scripts/comment_policy_entry.py"
+    entry.parent.mkdir()
+    entry.write_text(
+        f"import json, sys\nopen({str(recorded)!r}, 'w').write(json.dumps(sys.argv[1:]))\nraise SystemExit(0)\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "-C", str(tmp_path), "add", "scripts/comment_policy_entry.py"], check=True)
+    base = commit_change(tmp_path, "x = 2\n")
+    entry.write_text("raise SystemExit(7)\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "scripts/comment_policy_entry.py"], check=True)
+    commit_change(tmp_path, "x = 3\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.setattr(policy_runner, "TRUSTED_FILES", ("scripts/comment_policy_entry.py",))
+    monkeypatch.setattr(policy_runner, "parser_environment", lambda _trusted: (Path(sys.executable), dict(os.environ)))
+    assert policy_runner.main(["--base", base]) == 0
+    argv = json.loads(recorded.read_text(encoding="utf-8"))
+    assert argv[argv.index("--mode") + 1] == "strict"
+    assert argv[argv.index("--base") + 1] == base
 
 
 def test_local_default_base_is_the_branch_point_when_develop_moved_on(
@@ -910,11 +924,6 @@ def test_sql_literals_and_fstrings_in_python(source: str) -> None:
     assert [f.text for f in python_findings("a.py", source)] == ["-- explanation"]
 
 
-def test_changed_unsupported_source_cannot_cancel_coverage_failure() -> None:
-    finding = Finding("a.tpl", 1, "coverage-error", "unsupported")
-    assert introduced([finding], [finding], []) == [finding]
-
-
 @pytest.mark.parametrize(
     "path",
     [".gitignore", ".gitattributes", ".dockerignore", ".importlinter", "skill-sync.conf", "scripts/a.zsh", "scripts/a"],
@@ -959,7 +968,7 @@ def test_removing_exception_revokes_permission(tmp_path: Path) -> None:
     )
     base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
     registry.write_text(json.dumps(policy()), encoding="utf-8")
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 1
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 1
 
 
 @pytest.mark.parametrize("source", ['__doc__: str = "prose"', '__doc__ += "prose"', 'f"inert {value}"'])
@@ -1130,18 +1139,23 @@ def test_rst_nested_code_is_dedented() -> None:
     assert [(f.line, f.text) for f in scan("docs/a.rst", source, "examples")] == [(4, "# explanation")]
 
 
-def test_exception_budget_and_completed_external_overlap() -> None:
+def test_exception_budget_counts_each_copy() -> None:
     registered = load_policy(json.dumps(policy(exceptions=[exception()])).encode())
     assert len(scan_sources(ROOT, {"a.py": b"x=1 # noqa: F401\ny=2 # noqa: F401\n"}, registered)) == 1
-    with pytest.raises(ValueError, match="overlap"):
-        load_policy(
-            json.dumps(
-                policy(
-                    completed=["vendor/"],
-                    external=[{"path": "vendor/a.py", "owner": "upstream", "provenance": "README.md"}],
-                )
-            ).encode()
-        )
+
+
+@pytest.mark.parametrize("completed", [None, [], ["a.py", "vendor/"]])
+def test_policy_loads_with_or_without_completed(completed: list[str] | None) -> None:
+    raw = {key: value for key, value in policy().items() if key != "completed"}
+    if completed is not None:
+        raw["completed"] = completed
+    assert load_policy(json.dumps(raw).encode())["exceptions"] == []
+
+
+def test_policy_rejects_a_malformed_completed_list() -> None:
+    raw = {**policy(), "completed": "a.py"}
+    with pytest.raises(ValueError, match="completed"):
+        load_policy(json.dumps(raw).encode())
 
 
 def test_fixture_exception_binds_payload_kind_text_and_count() -> None:
@@ -2397,7 +2411,7 @@ def test_transition_self_registered_exception_fails_without_review(
 ) -> None:
     base = _review_gated_repo(tmp_path)
     monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda root: False)
-    assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 1
+    assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 1
 
 
 def test_transition_self_registered_exception_counts_with_review(
@@ -2405,7 +2419,7 @@ def test_transition_self_registered_exception_counts_with_review(
 ) -> None:
     base = _review_gated_repo(tmp_path)
     monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda root: True)
-    assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "transition", "--base", base]) == 0
+    assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 0
 
 
 def _check_runs_payload(*runs: dict, total: int | None = None) -> bytes:
@@ -3070,7 +3084,7 @@ def test_immutable_ownership_respects_explicit_owned_override(tmp_path: Path) ->
 
 def test_transition_cannot_select_different_ownership_base(tmp_path: Path) -> None:
     base, _ = ownership_repo(tmp_path)
-    assert main(["--root", str(tmp_path), "--mode", "transition", "--base", base, "--ownership-base", "a" * 40]) == 2
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base, "--ownership-base", "a" * 40]) == 2
 
 
 @pytest.mark.parametrize("mode", ["strict", "report"])
