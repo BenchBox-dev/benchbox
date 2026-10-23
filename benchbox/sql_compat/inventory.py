@@ -49,6 +49,10 @@ _DIALECT_PLATFORMS = {
 
 _SKIP_FUNC_NAMES = {"get_platform_skip_queries", "get_df_platform_skip_queries"}
 _DDL_FUNC_NAMES = {"_supports_primary_keys"}
+_DDL_OPTIMIZE_FUNC_NAMES = {
+    "_optimize_table_definition",
+    "_transform_create_statement",
+}
 _DDL_REWRITE_FUNCTION_NAME_FRAGMENTS = (
     "create",
     "ddl",
@@ -58,6 +62,7 @@ _DDL_REWRITE_FUNCTION_NAME_FRAGMENTS = (
 _DDL_TEXT_TRANSFORM_CALL_NAMES = {
     "replace",
     "sub",
+    "strip_foreign_keys",
 }
 _DDL_REWRITE_OUTPUT_MARKERS = (
     "create external table",
@@ -338,6 +343,16 @@ def _detect_named_functions(tree: ast.Module, filepath: Path, root: Path) -> Ite
                 platforms=platforms,
                 suggested_phase="schema_emit",
                 description=f"PK support predicate: {name}()",
+            )
+
+        elif name in _DDL_OPTIMIZE_FUNC_NAMES:
+            yield InventoryEntry(
+                file=rel,
+                line=node.lineno,
+                kind="ddl",
+                platforms=[],
+                suggested_phase="ddl_optimize",
+                description=f"DDL optimization function: {name}()",
             )
 
         elif name in _TYPE_MAP_FUNC_NAMES:
@@ -744,7 +759,9 @@ def _iter_ddl_rewrite_functions(
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        if _looks_like_create_table_rewrite(node):
+        if node.name in _DDL_OPTIMIZE_FUNC_NAMES:
+            yield node, "known-function-name", "function name is registered as a DDL optimizer signature"
+        elif _looks_like_create_table_rewrite(node):
             yield (
                 node,
                 "create-table-rewrite-signature",
