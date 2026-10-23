@@ -23101,15 +23101,10 @@
       "title": "SOUNDNESS_PREFIXES exact-file entries match by prefix, so .bak siblings are gated"
     },
     "soundness-paths-cover-translation-wrapper": {
-      "claim": {
-        "expires_at": "2026-10-24T13:15:55Z",
-        "generation": "03dad8a598b8458a97761438e7ada9e4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dce62a827220422fd68b23fc"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Add the SQL translation wrapper paths to the soundness path list"
     },
     "soundness-pr-drain-signal": {
