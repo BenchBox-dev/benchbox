@@ -13633,7 +13633,9 @@
     },
     "longtest-16-refresh-durations-and-measure-deferral-1": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "chdb-ssb-tests-share-instance-state-20261023"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Re-evaluate module-grouped medium scheduling after fixing chdb SSB test isolation"
