@@ -16036,15 +16036,10 @@
       "title": "Bind the oracle carry digest to hunk positions so a moved edit is re-reviewed"
     },
     "oracle-patch-hash-splitlines-control-chars-20261023": {
-      "claim": {
-        "expires_at": "2026-10-24T16:56:16Z",
-        "generation": "ba224bc3b88f4536b711255a8d7a5898",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Stop file_patches from treating control characters as line breaks and bind hunk counts"
     },
     "oracle-post-guard-reread-retry-20261009": {
