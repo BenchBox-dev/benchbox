@@ -196,7 +196,6 @@ class BenchmarkOrchestrator:
 
             self._apply_default_cloud_output_dir(database_config)
             output_root = self._resolve_output_root(config, benchmark, platform_cfg)
-            self._ensure_free_disk(output_root)
 
             self._warn_on_execute_without_load(config, database_config, phases_to_run)
 
@@ -284,14 +283,6 @@ class BenchmarkOrchestrator:
         if default_output:
             self.custom_output_dir = default_output
             self.console.print(f"[dim]Using default output location from credentials: {default_output}[/dim]")
-
-    def _ensure_free_disk(self, output_root) -> None:
-        from benchbox.utils.cloud_storage import is_cloud_path
-        from benchbox.utils.disk_guard import ensure_free_space
-
-        ensure_free_space(self.directory_manager.base_dir)
-        if output_root is not None and not is_cloud_path(output_root):
-            ensure_free_space(Path(str(output_root)))
 
     def _resolve_output_root(self, config: BenchmarkConfig, benchmark, platform_cfg):
         if self.custom_output_dir:

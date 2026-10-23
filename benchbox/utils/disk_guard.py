@@ -155,3 +155,12 @@ def ensure_free_space(
         return status
     consumers = largest_consumers(status.path, top_n=top_n, budget_seconds=scan_budget_seconds)
     raise LowDiskSpaceError(format_low_disk_message(status, consumers))
+
+
+def ensure_run_output_space(output_root: object, min_free_percent: float | None = None) -> None:
+    from benchbox.utils.cloud_storage import is_cloud_path
+    from benchbox.utils.path_utils import resolve_benchmark_runs_dir
+
+    ensure_free_space(resolve_benchmark_runs_dir(), min_free_percent)
+    if output_root is not None and not is_cloud_path(str(output_root)):
+        ensure_free_space(Path(str(output_root)), min_free_percent)

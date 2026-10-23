@@ -10,10 +10,11 @@ makes a run fail loudly while there is still room to act.
 
 - `benchbox/utils/disk_guard.py` compares free bytes with total bytes for a path
   (the nearest existing parent when the path does not exist yet).
-- `BenchmarkOrchestrator.execute_benchmark` calls it after the output root is
-  resolved and before any adapter or data generation starts. It checks the
-  benchmark runs directory and, when it is a local path, the custom output
-  directory. Cloud output paths are not checked.
+- `execute_run` in `benchbox/core/run_service.py` calls it before the adapter is
+  built or any data is generated. Every entry point that runs a benchmark goes
+  through it: the CLI orchestrator and the MCP `run_benchmark` tool. It checks
+  the benchmark runs directory and, when it is a local path, the run output
+  root. Cloud output paths are not checked.
 - Below the threshold the run fails with a message that names free and total
   bytes, the percentage, the threshold, and the largest top-level entries under
   the path. The scan has a 10 second budget; entries cut short are marked

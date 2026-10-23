@@ -4,11 +4,12 @@ import importlib.util
 import shutil
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 from benchbox.cli.orchestrator import BenchmarkOrchestrator
+from benchbox.core import run_service
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.utils import disk_guard
 from benchbox.utils.disk_guard import (
@@ -135,16 +136,67 @@ def test_script_exit_codes(tmp_path, capsys):
     assert check_free_disk.main(["--path", str(tmp_path), "--min-free-percent", "200"]) == 2
 
 
-def test_orchestrator_fails_before_writes_when_disk_low(tmp_path, monkeypatch):
+def _low_usage():
+    return patch.object(disk_guard.shutil, "disk_usage", return_value=_usage(1 * GIB))
+
+
+def _run_service_kwargs(output_root, adapter_factory):
+    return {
+        "config": BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=0.01),
+        "benchmark_instance": object(),
+        "database_config": None,
+        "system_profile": None,
+        "platform_config": None,
+        "output_root": output_root,
+        "phases_to_run": None,
+        "adapter_factory": adapter_factory,
+        "verbosity": None,
+    }
+
+
+def test_execute_run_fails_before_adapter_or_writes_when_disk_low(tmp_path, monkeypatch):
+    monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path / "runs"))
+    factory = Mock()
+    with _low_usage(), patch("benchbox.core.run_service.run_benchmark_lifecycle") as lifecycle:
+        with pytest.raises(LowDiskSpaceError):
+            run_service.execute_run(**_run_service_kwargs(str(tmp_path / "out"), factory))
+    factory.assert_not_called()
+    lifecycle.assert_not_called()
+    assert not (tmp_path / "out").exists()
+
+
+def test_execute_run_checks_local_output_root_on_its_own_volume(tmp_path, monkeypatch):
+    monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path / "runs"))
+    seen = []
+
+    def usage(path):
+        seen.append(Path(path))
+        return _usage(1 * GIB) if Path(path) == tmp_path.absolute() / "out" else _usage(50 * GIB)
+
+    (tmp_path / "out").mkdir()
+    with patch.object(disk_guard.shutil, "disk_usage", side_effect=usage):
+        with pytest.raises(LowDiskSpaceError):
+            run_service.execute_run(**_run_service_kwargs(str(tmp_path / "out"), Mock()))
+    assert tmp_path.absolute() / "out" in seen
+
+
+def test_execute_run_skips_cloud_output_root(tmp_path, monkeypatch):
+    monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path / "runs"))
+    with patch.object(disk_guard.shutil, "disk_usage", return_value=_usage(50 * GIB)) as usage:
+        disk_guard.ensure_run_output_space("s3://bucket/prefix")
+    assert all(call.args[0] != Path("s3://bucket/prefix") for call in usage.call_args_list)
+
+
+def test_orchestrator_run_below_threshold_returns_failure_without_writes(tmp_path, monkeypatch):
     monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path / "runs"))
     orchestrator = BenchmarkOrchestrator()
     config = BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=0.01)
     with (
         patch.object(orchestrator, "_get_benchmark_instance", return_value=object()),
         patch.object(orchestrator, "_apply_default_cloud_output_dir"),
-        patch.object(disk_guard.shutil, "disk_usage", return_value=_usage(1 * GIB)),
-        patch("benchbox.cli.orchestrator.execute_run") as execute_run,
+        _low_usage(),
+        patch("benchbox.core.run_service.run_benchmark_lifecycle") as lifecycle,
     ):
         result = orchestrator.execute_benchmark(config, system_profile=None, database_config=None)
-    execute_run.assert_not_called()
-    assert "Low disk space" in str(result.validation_details or result.__dict__)
+    lifecycle.assert_not_called()
+    assert "Low disk space" in str(result.__dict__)
