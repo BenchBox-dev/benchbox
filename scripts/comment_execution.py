@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 import re
-from collections import defaultdict
+from collections import defaultdict, deque
 
 from comment_payloads import (
     RUNNER_COMMANDS,
@@ -188,13 +188,24 @@ OS_EXEC_ACTORS = {
 } | {"pty.spawn"}
 
 
+SCOPE_NODES = (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+
+
 class PythonBindings:
     def __init__(self, tree: ast.AST) -> None:
-        self.parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+        self.parents: dict[ast.AST, ast.AST] = {}
+        self.calls: list[ast.Call] = []
         self.bindings: dict[tuple[ast.AST | None, str], list[ast.AST | str | None]] = defaultdict(list)
-        for node in ast.walk(tree):
-            scope = self.scope(node)
-            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+        pending = deque([(tree, None)])
+        while pending:
+            node, scope = pending.popleft()
+            child_scope = node if isinstance(node, SCOPE_NODES) else scope
+            for child in ast.iter_child_nodes(node):
+                self.parents[child] = node
+                pending.append((child, child_scope))
+            if isinstance(node, ast.Call):
+                self.calls.append(node)
+            elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
                 parent = self.parents.get(node)
                 value = parent.value if isinstance(parent, (ast.Assign, ast.AnnAssign, ast.NamedExpr)) else None
                 self.bindings[scope, node.id].append(value)
@@ -211,9 +222,7 @@ class PythonBindings:
 
     def scope(self, node: ast.AST) -> ast.AST | None:
         node = self.parents.get(node)
-        while node is not None and not isinstance(
-            node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
-        ):
+        while node is not None and not isinstance(node, SCOPE_NODES):
             node = self.parents.get(node)
         return node
 
@@ -680,12 +689,10 @@ class PythonBindings:
         return None
 
 
-def python_html_sources(source: str, tree: ast.AST | None = None) -> list[tuple[int, str | None, str]]:
-    tree = ast.parse(source) if tree is None else tree
-    bindings = PythonBindings(tree)
+def python_html_sources(source: str, bindings: PythonBindings) -> list[tuple[int, str | None, str]]:
     result = []
-    for node in ast.walk(tree):
-        expression = bindings.html_payload(node) if isinstance(node, ast.Call) else None
+    for node in bindings.calls:
+        expression = bindings.html_payload(node)
         if expression is None:
             continue
         origin = bindings.dereference(expression)

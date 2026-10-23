@@ -364,8 +364,9 @@ def python_findings(path: str, source: str) -> list[Finding]:
         if token.type == tokenize.COMMENT:
             symbol = next((name for start, end, name in reversed(scopes) if start <= token.start[0] <= end), "")
             result.append(Finding(path, token.start[0], "comment", token.string, symbol))
-    result.extend(python_executable_findings(path, tree, scopes))
-    for line, text, symbol in python_html_sources(source, tree):
+    bindings = PythonBindings(tree)
+    result.extend(python_executable_findings(path, tree, scopes, bindings))
+    for line, text, symbol in python_html_sources(source, bindings):
         if text is None:
             result.append(
                 Finding(
@@ -1443,11 +1444,12 @@ def python_scoped_digest(tree: ast.AST, line: int) -> str:
     return python_consumer_digest(tree) if parts is None else _digest_canonical(("scoped", parts))
 
 
-def python_executable_findings(path: str, tree: ast.AST, scopes: list[tuple[int, int, str]]) -> list[Finding]:
+def python_executable_findings(
+    path: str, tree: ast.AST, scopes: list[tuple[int, int, str]], bindings: PythonBindings
+) -> list[Finding]:
     result = []
-    bindings = PythonBindings(tree)
-    for node in ast.walk(tree):
-        payload = bindings.payload(node) if isinstance(node, ast.Call) else None
+    for node in bindings.calls:
+        payload = bindings.payload(node)
         if payload is None:
             continue
         expression, lang, text = payload
