@@ -143,3 +143,13 @@ def test_use_nulls_for_rollups_adds_the_setting_only_to_a_rollup_query():
     assert rolled == "SELECT a, SUM(b) FROM t GROUP BY ROLLUP (a) SETTINGS group_by_use_nulls = 1"
     plain = "SELECT a, SUM(b) FROM t GROUP BY a"
     assert apply_rewrite("use_nulls_for_rollups", plain, "clickhouse") == plain
+
+
+def test_round_inputs_to_decimal_casts_every_round_input_once():
+    result = apply_rewrite("round_inputs_to_decimal", "SELECT ROUND(AVG(x), 2), ROUND(y) FROM t", "postgres")
+    assert result == "SELECT ROUND(CAST(AVG(x) AS DECIMAL), 2), ROUND(CAST(y AS DECIMAL)) FROM t"
+    assert apply_rewrite("round_inputs_to_decimal", result, "postgres") == result
+
+
+def test_round_inputs_to_decimal_leaves_a_query_without_round_unchanged():
+    assert apply_rewrite("round_inputs_to_decimal", "SELECT a FROM t", "postgres") == "SELECT a FROM t"
