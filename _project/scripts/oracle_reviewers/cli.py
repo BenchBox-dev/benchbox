@@ -373,7 +373,9 @@ def _protocol_round(
 
     patches = protocol.file_patches(full_diff or "", read)
     current = protocol.patch_map(patches, paths)
-    digest = (protocol.patch_digest(patches, paths) if full_diff is not None else None) or f"unread-{plan['head_sha']}"
+    digest = (
+        protocol.patch_digest(patches, paths) if full_diff is not None else None
+    ) or f"{protocol.UNREAD_DIGEST}{plan['head_sha']}"
     base_ref = plan["base_ref"]
     step = protocol.plan_round(
         found,

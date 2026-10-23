@@ -27,6 +27,7 @@ SKIP = "skip"
 REFUSAL = "refused"
 KINDS = (FIRST, FOLLOW_UP, CARRY, REFUSAL)
 
+UNREAD_DIGEST = "unread-"
 MARKER_VERSION = 1
 MARKER_LIMIT = 4096
 MARKER_OPEN = "<!-- oracle-protocol:"
@@ -368,11 +369,14 @@ def plan_round(
                 ),
             )
         decided_at = found.latest_at
-        if (
+        stale = (
             base_changed_at is not None
             and latest["decision"] != REFUSED
             and (decided_at is None or decided_at <= base_changed_at)
-        ):
+        )
+        if not stale:
+            return Round(SKIP, f"head {head_sha} already has a {LABELS[latest['decision']]} decision")
+        if latest["patch_digest"] == digest and not digest.startswith(UNREAD_DIGEST):
             return Round(
                 CARRY,
                 f"the base changed after the {LABELS[latest['decision']]} decision on head {head_sha}",
@@ -380,13 +384,12 @@ def plan_round(
                 latest["round"],
                 latest,
             )
-        return Round(SKIP, f"head {head_sha} already has a {LABELS[latest['decision']]} decision")
     restart = latest["cycle"] + 1
     if latest["base_ref"] != base_ref:
         return Round(FIRST, f"the base changed from {latest['base_ref']} to {base_ref}", restart, 1, latest)
     if latest["decision"] == REFUSED:
         return Round(FIRST, "the strike limit no longer applies", restart, 1, latest)
-    if latest["patch_digest"] == digest:
+    if latest["patch_digest"] == digest and not digest.startswith(UNREAD_DIGEST):
         if force and latest["decision"] in (SHIP, SHIP_WITH_FIXES):
             return _forced_round(
                 found.records,

@@ -880,3 +880,18 @@ def test_a_refusal_is_not_carried_by_a_retarget() -> None:
     refused = {**_decided(HEAD, protocol.REFUSED), "kind": protocol.REFUSAL}
     history = protocol.history([_review_at(refused, "2026-10-23T10:00:00Z")], "benchbox-oracle")
     assert _plan_retargeted(history, datetime(2026, 10, 23, 11, 0, tzinfo=UTC)).kind == protocol.SKIP
+
+
+def test_a_stale_decision_is_not_carried_when_the_patch_digest_differs() -> None:
+    history = protocol.history([_review_at(_decided(HEAD), "2026-10-23T10:00:00Z")], "benchbox-oracle")
+    step = _plan_same_head(history, digest="e" * 32, base_changed_at=datetime(2026, 10, 23, 11, 0, tzinfo=UTC))
+    assert step.kind == protocol.FOLLOW_UP
+
+
+def test_a_stale_decision_is_not_carried_when_the_diff_was_unread() -> None:
+    unread = f"{protocol.UNREAD_DIGEST}{HEAD}"
+    history = protocol.history(
+        [_review_at({**_decided(HEAD), "patch_digest": unread}, "2026-10-23T10:00:00Z")], "benchbox-oracle"
+    )
+    step = _plan_same_head(history, digest=unread, base_changed_at=datetime(2026, 10, 23, 11, 0, tzinfo=UTC))
+    assert step.kind in (protocol.FOLLOW_UP, protocol.FIRST)
