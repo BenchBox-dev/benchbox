@@ -37,10 +37,10 @@ def test_tuned_sort_on_nullable_column_raises_actionable_error() -> None:
         _optimize(_STATEMENT, tunings, {"ss_sold_date_sk"})
     message = str(excinfo.value)
     assert "store_sales" in message
-    assert "sort_by" in message
+    assert "ss_sold_date_sk" in message
 
 
-def test_tuned_partition_on_nullable_column_names_partition_role() -> None:
+def test_tuned_partition_on_nullable_column_raises() -> None:
     tunings = {
         "store_sales": TableTuning(
             table_name="STORE_SALES",
@@ -49,7 +49,7 @@ def test_tuned_partition_on_nullable_column_names_partition_role() -> None:
     }
     with pytest.raises(ValueError, match="ss_sold_date_sk") as excinfo:
         _optimize(_STATEMENT, tunings, {"ss_sold_date_sk"})
-    assert "partition_by" in str(excinfo.value)
+    assert "cannot be Nullable" in str(excinfo.value)
 
 
 def test_tuned_sort_on_non_nullable_column_renders_and_wraps_others() -> None:
