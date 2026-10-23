@@ -15972,17 +15972,12 @@
       "title": "An oversize pull request never gets a review, yet the sweep keeps retrying it and posting pending reviews"
     },
     "oracle-patch-hash-hunk-positions-20261008": {
-      "claim": {
-        "expires_at": "2026-10-24T11:43:11Z",
-        "generation": "e7e6c4c3bf4840708bfeffc04b03e218",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601"
-      },
+      "claim": null,
       "needs": [
         "soundness-gaps-decisions-20261022"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Bind the oracle carry digest to hunk positions so a moved edit is re-reviewed"
     },
     "oracle-post-guard-reread-retry-20261009": {
