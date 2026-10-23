@@ -13587,12 +13587,7 @@
       "title": "Keep each module's expensive fixtures on one worker and shard in the medium tier"
     },
     "longtest-16-refresh-durations-and-measure": {
-      "claim": {
-        "expires_at": "2026-10-23T22:24:49Z",
-        "generation": "3003bc6e7de1411ba343425539473a6a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
-      },
+      "claim": null,
       "needs": [
         "longtest-01-delete-duplicate-tests",
         "longtest-02-canary-live-real-checks",
@@ -13612,7 +13607,7 @@
         "longtest-17-cli-startup-probe-and-datagen-chunks"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Refresh the medium-tier duration weights from a full trunk run and measure the result of the long-test work"
     },
     "longtest-16-refresh-durations-and-measure-deferral-1": {
