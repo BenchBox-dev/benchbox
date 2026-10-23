@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "pypi accepts deployments only from v* tags",
+    "test-pypi has a deployment policy that still admits the rehearsal",
+    "repo-admin-settings.md records both"
+  ],
+  "description": "The `pypi` GitHub deployment environment requires the owner's approval but has no deployment branch or tag policy, and `test-pypi` has no protection rules at all (checked 2026-10-23). A run of the registered publishing workflow on any ref can therefore deploy to either environment: after approval for pypi, immediately for test-pypi. Restrict `pypi` to `v*` tags and give `test-pypi` a policy that still admits the release rehearsal (see dlv2-52a-testpypi-rehearsal). This is an owner-only repository setting; record the new configuration in docs/internal/repo-admin-settings.md and, if the settings drift check covers environments, its expected values.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:03:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "abe4ba1dbfda48f1a3c03b981100d428",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    }
+  ]
+}

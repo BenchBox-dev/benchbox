@@ -18126,6 +18126,13 @@
       "status": "blocked",
       "title": "Draft the blog post on Polars 2.0 performance across versions"
     },
+    "pypi-environment-protection-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Restrict the pypi deployment environment to release tags and protect test-pypi"
+    },
     "pypi-environment-protection-drift-canary-20260805": {
       "claim": null,
       "needs": [
