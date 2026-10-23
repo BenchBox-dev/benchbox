@@ -436,8 +436,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rows whose only changes are non-SCD. Before this it only counted them. Statements use bound
   parameters and run in one transaction; the returned counts are the rows the database reports
   as affected. A failed read of the current dimension or a failed `BEGIN` now aborts the run
-  before any write instead of treating the table as empty. The processor is not called by the
-  TPC-DI ETL pipeline, so published TPC-DI results are unchanged.
+  before any write instead of treating the table as empty. Table and column names are checked
+  against an allow-list before any SQL is built, a caller-owned transaction is protected with
+  a SAVEPOINT (the run fails closed on connections without SAVEPOINT support, such as DuckDB),
+  and non-SCD attributes that are NULL on both sides no longer count as changed. The processor
+  is not called by the TPC-DI ETL pipeline, so published TPC-DI results are unchanged.
 - A pull request title or body edit no longer leaves an armed pull request blocked
   with every required check green. The CI run such an edit starts now reports each
   required check (`core`, `explorer`, `results-data`, `docs`, `tooling`) by copying

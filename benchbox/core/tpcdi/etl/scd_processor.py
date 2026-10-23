@@ -24,6 +24,7 @@ HISTORY_TRACKING_TABLES = frozenset({"DimAccount", "DimBroker", "DimCompany", "D
 
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _PARAMETER_CHUNK = 500
+_SAVEPOINT_NAME = "benchbox_scd_changes"
 
 
 def _validated_identifier(name: str) -> str:
@@ -166,6 +167,7 @@ class EnhancedSCDType2Processor:
         self._next_surrogate_key = {}
 
         try:
+            self._validated_table(table_name)
             if self.config.enable_validation:
                 validation_results = self._validate_input_data(new_data, business_keys, scd_columns)
                 change_stats["data_quality_issues"] = validation_results["issues_found"]
@@ -277,11 +279,13 @@ class EnhancedSCDType2Processor:
 
     def _load_current_dimension_data(self, table_name: str) -> pd.DataFrame:
 
-        sk_column = f"SK_{table_name.replace('Dim', '')}ID"
+        table = self._validated_table(table_name)
+        sk_column = _validated_identifier(f"SK_{table_name.replace('Dim', '')}ID")
+        is_current = _validated_identifier(self.config.is_current_column)
 
         query = f"""
-        SELECT * FROM {table_name}
-        WHERE {self.config.is_current_column} = 1
+        SELECT * FROM {table}
+        WHERE {is_current} = 1
         ORDER BY {sk_column}
         """
 
@@ -420,7 +424,8 @@ class EnhancedSCDType2Processor:
             current_col = f"{col}_current"
 
             if new_col in merged_data.columns and current_col in merged_data.columns:
-                col_changed = merged_data[new_col] != merged_data[current_col]
+                both_null = merged_data[new_col].isna() & merged_data[current_col].isna()
+                col_changed = (merged_data[new_col] != merged_data[current_col]) & ~both_null
                 change_mask = change_mask | col_changed
 
         return change_mask
@@ -645,27 +650,36 @@ class EnhancedSCDType2Processor:
     @contextmanager
     def _transaction(self) -> Iterator[None]:
         if self._caller_owns_transaction():
-            owned = False
-            logger.debug("Connection already in a transaction; deferring commit to the caller")
-        else:
             try:
-                self.connection.execute("BEGIN")
-                owned = True
+                self.connection.execute(f"SAVEPOINT {_SAVEPOINT_NAME}")
             except Exception as error:
-                message = str(error).lower()
-                if "transaction" not in message or ("within" not in message and "already" not in message):
-                    raise
-                owned = False
-                logger.debug("Connection already in a transaction; deferring commit to the caller")
+                raise RuntimeError(
+                    "Connection is in a caller-owned transaction without SAVEPOINT support; "
+                    "the SCD changes cannot be applied atomically"
+                ) from error
+            try:
+                yield
+            except BaseException:
+                self.connection.execute(f"ROLLBACK TO SAVEPOINT {_SAVEPOINT_NAME}")
+                self.connection.execute(f"RELEASE SAVEPOINT {_SAVEPOINT_NAME}")
+                raise
+            self.connection.execute(f"RELEASE SAVEPOINT {_SAVEPOINT_NAME}")
+            return
+
+        try:
+            self.connection.execute("BEGIN")
+        except Exception as error:
+            message = str(error).lower()
+            if "transaction" not in message or ("within" not in message and "already" not in message):
+                raise
+            raise RuntimeError("Connection is already in a transaction that could not be detected") from error
 
         try:
             yield
         except BaseException:
-            if owned:
-                self.connection.execute("ROLLBACK")
+            self.connection.execute("ROLLBACK")
             raise
-        if owned:
-            self.connection.execute("COMMIT")
+        self.connection.execute("COMMIT")
 
     def _process_non_scd_updates(
         self,

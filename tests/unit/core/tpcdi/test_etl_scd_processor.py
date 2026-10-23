@@ -7,7 +7,7 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from benchbox.core.tpcdi.etl.scd_processor import EnhancedSCDType2Processor
+from benchbox.core.tpcdi.etl.scd_processor import EnhancedSCDType2Processor, SCDProcessingConfig
 
 pytestmark = [
     pytest.mark.unit,
@@ -146,6 +146,10 @@ class _RecordingConn:
         self.inner = inner
         self.fail_on = fail_on
         self.calls: list[tuple[str, Any]] = []
+
+    @property
+    def in_transaction(self) -> bool | None:
+        return getattr(self.inner, "in_transaction", None)
 
     def execute(self, sql: str, params: list[Any] | None = None) -> Any:
         self.calls.append((sql, params))
@@ -309,13 +313,17 @@ def test_begin_failure_other_than_active_transaction_runs_no_statement(dim_custo
     assert _rows(dim_customer) == before
 
 
-def test_active_transaction_is_left_to_the_caller(dim_customer) -> None:
+def test_caller_transaction_without_savepoint_support_fails_closed(dim_customer) -> None:
     dim_customer.execute("BEGIN")
-    stats = _apply(dim_customer, pd.DataFrame({"CustomerID": [1, 2], "Status": ["B", "A"], "Attr": [5, 7]}))
+    before = _rows(dim_customer)
+    conn = _RecordingConn(dim_customer)
+    stats = _apply(conn, pd.DataFrame({"CustomerID": [1, 2], "Status": ["B", "A"], "Attr": [5, 7]}))
 
-    assert stats["success"] is True
+    assert stats["success"] is False
+    assert "SAVEPOINT" in stats["error_message"]
+    assert not any(sql.lstrip().upper().startswith(("UPDATE", "INSERT")) for sql, _ in conn.calls)
+    assert _rows(dim_customer) == before
     dim_customer.execute("ROLLBACK")
-    assert len(_rows(dim_customer)) == 2
 
 
 def test_dml_uses_bound_parameters(dim_customer) -> None:
@@ -356,12 +364,13 @@ def test_failed_insert_rolls_back_expiration(dim_customer) -> None:
     assert scd.get_change_audit_trail() == []
 
 
-def test_unlisted_table_name_is_rejected_before_any_write(dim_customer) -> None:
+def test_unlisted_table_name_executes_no_statement(dim_customer) -> None:
+    dim_customer.execute("CREATE TABLE Unlisted AS SELECT * FROM DimCustomer")
     conn = _RecordingConn(dim_customer)
     scd = EnhancedSCDType2Processor(connection=conn)
     stats = scd.process_scd_changes(
         new_data=pd.DataFrame({"CustomerID": [1], "Status": ["B"]}),
-        table_name="DimCustomer; DROP TABLE DimCustomer",
+        table_name="Unlisted",
         business_keys=["CustomerID"],
         scd_columns=["Status"],
         batch_id=2,
@@ -369,5 +378,85 @@ def test_unlisted_table_name_is_rejected_before_any_write(dim_customer) -> None:
     )
 
     assert stats["success"] is False
-    assert not any(sql.lstrip().upper().startswith(("UPDATE", "INSERT")) for sql, _ in conn.calls)
+    assert conn.calls == []
     assert len(_rows(dim_customer)) == 2
+
+
+def test_extract_current_data_rejects_unlisted_table(dim_customer) -> None:
+    conn = _RecordingConn(dim_customer)
+    scd = EnhancedSCDType2Processor(connection=conn)
+
+    with pytest.raises(ValueError):
+        scd._extract_current_data("Unlisted")
+    assert conn.calls == []
+
+
+def test_invalid_config_column_is_rejected_before_any_statement(dim_customer) -> None:
+    conn = _RecordingConn(dim_customer)
+    scd = EnhancedSCDType2Processor(connection=conn, config=SCDProcessingConfig(is_current_column="IsCurrent = 1 OR 1"))
+    stats = scd.process_scd_changes(
+        new_data=pd.DataFrame({"CustomerID": [1], "Status": ["B"]}),
+        table_name="DimCustomer",
+        business_keys=["CustomerID"],
+        scd_columns=["Status"],
+        batch_id=2,
+        effective_date=EFFECTIVE,
+    )
+
+    assert stats["success"] is False
+    assert conn.calls == []
+
+
+def test_both_null_non_scd_attribute_is_not_updated(dim_customer) -> None:
+    dim_customer.execute("UPDATE DimCustomer SET Attr = NULL WHERE CustomerID = 1")
+    before = _rows(dim_customer)
+    stats = _apply(dim_customer, pd.DataFrame({"CustomerID": [1, 2], "Status": ["A", "A"], "Attr": [None, 7]}), 3)
+
+    assert stats["success"] is True
+    assert stats["updated_records"] == 0
+    assert _rows(dim_customer) == before
+
+
+def test_null_to_value_non_scd_attribute_is_updated(dim_customer) -> None:
+    dim_customer.execute("UPDATE DimCustomer SET Attr = NULL WHERE CustomerID = 1")
+    stats = _apply(dim_customer, pd.DataFrame({"CustomerID": [1, 2], "Status": ["A", "A"], "Attr": [4, 7]}), 3)
+
+    assert stats["success"] is True
+    assert stats["updated_records"] == 1
+    rows = _rows(dim_customer)
+    assert rows[0][3] == 4
+    assert rows[0][5] == 3
+    assert rows[1][5] == 1
+
+
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_failed_insert_in_caller_transaction_rolls_back_to_savepoint() -> None:
+    sqlite3 = pytest.importorskip("sqlite3")
+    raw = sqlite3.connect(":memory:", isolation_level=None)
+    raw.execute(DIM_CUSTOMER_DDL)
+    raw.execute(
+        "INSERT INTO DimCustomer VALUES (10, 1, 'A', 5, 1, 1, '2024-01-01', '9999-12-31'),"
+        "(20, 2, 'A', 7, 1, 1, '2024-01-01', '9999-12-31')"
+    )
+    raw.execute("BEGIN")
+    raw.execute("INSERT INTO DimCustomer VALUES (30, 3, 'A', 9, 1, 1, '2024-01-01', '9999-12-31')")
+    conn = _RecordingConn(raw, fail_on="INSERT")
+    scd = EnhancedSCDType2Processor(connection=conn)
+    stats = scd.process_scd_changes(
+        new_data=pd.DataFrame({"CustomerID": [1], "Status": ["B"], "Attr": [5]}),
+        table_name="DimCustomer",
+        business_keys=["CustomerID"],
+        scd_columns=["Status"],
+        batch_id=2,
+        effective_date=EFFECTIVE,
+    )
+
+    assert stats["success"] is False
+    assert any("SAVEPOINT" in sql for sql, _ in conn.calls)
+    assert raw.in_transaction is True
+    current = raw.execute("SELECT SK_CustomerID FROM DimCustomer WHERE IsCurrent = 1 ORDER BY 1").fetchall()
+    assert current == [(10,), (20,), (30,)]
+    assert raw.execute("SELECT EndDate FROM DimCustomer WHERE SK_CustomerID = 10").fetchone() == ("9999-12-31",)
+    raw.execute("COMMIT")
+    assert raw.execute("SELECT COUNT(*) FROM DimCustomer").fetchone() == (3,)
+    raw.close()
