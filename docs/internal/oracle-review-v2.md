@@ -381,6 +381,13 @@ Changing a role or a chain is a pull request to that file, and a change to the
 file must keep one chain per primary model and no role-name keys (a test
 checks this). An empty `effort` takes the role's thinking level.
 
+`@smol` maps to `openai-codex/gpt-6-luna:xhigh`, whose first usage-limit
+fallback is `anthropic/claude-sonnet-5-5:medium`. `trivial` and `small` are in
+the `codex` pool and every other reviewer is in the `claude` pool, so a quota
+absence on one provider leaves the other provider's reviewers available. The
+comparison behind this choice, and why Claude Haiku was dropped, is in
+`_project/decisions/oracle-small-reviewer-model-2026-10-23.md`.
+
 The review records the reviewer name from the policy, not the model that
 answered. Reviews do not exclude the author's model family: the owner chose
 role-based selection with OMP fallback over family exclusion, so a change
