@@ -270,6 +270,25 @@ def test_translate_sql_query_applies_rewrites_to_the_source_tree_before_generati
     assert "IsCurrent IS TRUE" in result
 
 
+def test_translate_sql_query_runs_a_rewrite_under_its_own_dialect_when_the_rewrite_names_one():
+    from benchbox.utils.dialect_utils import translate_sql_query
+
+    source = "SELECT LIST(x) AS xs FROM t"
+    rewrite = ("order_list_aggregates", {"order_by": ["k"], "dialect": "databricks"})
+
+    result = translate_sql_query(source, "databricks", source_dialect="duckdb", identify=False, rewrites=[rewrite])
+    assert "SORT_ARRAY(COLLECT_LIST(STRUCT(k AS _k0, x AS _v)))" in result
+
+    default = translate_sql_query(
+        source,
+        "databricks",
+        source_dialect="duckdb",
+        identify=False,
+        rewrites=[("order_list_aggregates", {"order_by": ["k"]})],
+    )
+    assert "SORT_ARRAY" not in default
+
+
 def test_unqualified_table_names_skips_ctes_schema_qualified_tables_and_deduplicates():
     from benchbox.utils.dialect_utils import unqualified_table_names
 

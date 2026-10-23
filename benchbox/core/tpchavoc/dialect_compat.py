@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from benchbox._vendor import sqlglot
-from benchbox._vendor.sqlglot import exp
-from benchbox.core.tpchavoc.cloud_compat import _ordered_array, rewrite_cloud_variant
-from benchbox.utils.dialect_utils import translate_sql_query
+from benchbox.core.tpchavoc.cloud_compat import rewrite_cloud_variant
+from benchbox.utils.dialect_utils import resolve_sql_dialect, translate_sql_query
 
 POSTGRES_ALIAS_VARIANT_IDS = frozenset({"3_v7", "4_v7", "5_v7", "7_v7", "9_v7", "10_v7", "11_v7"})
 POSTGRES_QUALIFIED_COLUMNS: dict[str, dict[str, str]] = {
@@ -15,7 +13,9 @@ CLICKHOUSE_FILTER_VARIANT_IDS = frozenset({"1_v6", "12_v7"})
 DATAFUSION_EMPTY_GROUP_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
 PRESTO_ALIAS_VARIANT_IDS = POSTGRES_ALIAS_VARIANT_IDS
 PRESTO_WINDOW_FILTER_VARIANT_IDS = frozenset({"2_v7"})
-PRESTO_ARRAY_AGGREGATION_VARIANT_IDS = frozenset({"1_v7"})
+LIST_AGGREGATE_VARIANT_IDS = frozenset({"1_v7"})
+LIST_AGGREGATE_DIALECTS = frozenset({"presto", "trino", "athena", "bigquery", "spark", "databricks"})
+LIST_AGGREGATE_ORDER = ("l_orderkey", "l_linenumber")
 SCALAR_GROUP_BY_VARIANT_IDS = frozenset({"1_v1", "3_v1", "7_v1", "8_v1", "9_v1", "10_v1", "12_v1", "16_v1"})
 GROUP_BY_EMPTY_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
 DUAL_VARIANT_IDS = frozenset({"17_v4"})
@@ -85,37 +85,28 @@ def rewrite_dialect_variant(query_id: str, query: str, target_dialect: str) -> s
     rewrites = _variant_rewrites(query_id, target)
     if rewrites:
         query = translate_sql_query(query, target, source_dialect=target, identify=False, rewrites=rewrites)
-    if target in _PRESTO_TRINO_DIALECTS and query_id in PRESTO_ARRAY_AGGREGATION_VARIANT_IDS:
-        query = _rewrite_presto_array_aggregation(query, target)
     return query
 
 
-_PRESTO_UNNEST_AGGREGATION = """
-SELECT l_returnflag, l_linestatus,
-    SUM(quantity) AS sum_qty,
-    SUM(price) AS sum_base_price,
-    SUM(price * (1 - discount)) AS sum_disc_price,
-    SUM(price * (1 - discount) * (1 + tax)) AS sum_charge,
-    AVG(quantity) AS avg_qty,
-    AVG(price) AS avg_price,
-    AVG(discount) AS avg_disc,
-    COUNT(*) AS count_order
-FROM aggregated
-CROSS JOIN UNNEST(quantities, prices, discounts, taxes) AS item(quantity, price, discount, tax)
-GROUP BY l_returnflag, l_linestatus
-ORDER BY l_returnflag, l_linestatus
-"""
+def list_aggregate_variant_rewrites(target_dialect: str) -> list[Rewrite]:
+    resolved = resolve_sql_dialect(target_dialect)
+    return [
+        ("order_list_aggregates", {"order_by": list(LIST_AGGREGATE_ORDER), "dialect": resolved}),
+        ("reduce_list_aggregates", {"dialect": resolved}),
+    ]
 
 
-def _rewrite_presto_array_aggregation(query: str, dialect: str = "presto") -> str:
-    tree = sqlglot.parse_one(query, read=dialect)
-    with_ = tree.find(exp.With).transform(
-        lambda node: _ordered_array(node.expressions[0], dialect) if isinstance(node, exp.List) else node
+def translate_list_aggregate_variant(query_id: str, duckdb_query: str, target_dialect: str) -> str | None:
+    target = target_dialect.lower()
+    if query_id not in LIST_AGGREGATE_VARIANT_IDS or target not in LIST_AGGREGATE_DIALECTS:
+        return None
+    return translate_sql_query(
+        duckdb_query,
+        target,
+        source_dialect="duckdb",
+        identify=False,
+        rewrites=list_aggregate_variant_rewrites(target),
     )
-    outer = sqlglot.parse_one(_PRESTO_UNNEST_AGGREGATION, read=dialect)
-    for cte in with_.expressions:
-        outer.with_(cte.alias, as_=cte.this, copy=False)
-    return outer.sql(dialect=dialect)
 
 
 __all__ = [
@@ -123,15 +114,19 @@ __all__ = [
     "DATAFUSION_EMPTY_GROUP_VARIANT_IDS",
     "DUAL_VARIANT_IDS",
     "GROUP_BY_EMPTY_VARIANT_IDS",
+    "LIST_AGGREGATE_DIALECTS",
+    "LIST_AGGREGATE_ORDER",
+    "LIST_AGGREGATE_VARIANT_IDS",
     "POSTGRES_ALIAS_VARIANT_IDS",
     "POSTGRES_DUAL_VARIANT_IDS",
     "POSTGRES_QUALIFIED_COLUMNS",
     "PRESTO_ALIAS_VARIANT_IDS",
-    "PRESTO_ARRAY_AGGREGATION_VARIANT_IDS",
     "PRESTO_WINDOW_FILTER_VARIANT_IDS",
     "SCALAR_GROUP_BY_VARIANT_IDS",
     "SPARK_VARIANT_IDS",
+    "list_aggregate_variant_rewrites",
     "normalize_variant_id",
     "rewrite_dialect_variant",
     "rewrite_spark_variant",
+    "translate_list_aggregate_variant",
 ]

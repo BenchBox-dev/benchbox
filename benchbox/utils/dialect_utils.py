@@ -360,7 +360,8 @@ def translate_sql_query(
             translated = ""
         else:
             for rewrite_name, rewrite_args in rewrites or ():
-                expression = apply_rewrite(rewrite_name, expression, src, **rewrite_args)
+                rewrite_args = dict(rewrite_args)
+                expression = apply_rewrite(rewrite_name, expression, rewrite_args.pop("dialect", src), **rewrite_args)
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt, **SQLITE_DISCOUNT_BOUNDS)
                 if date_columns:

@@ -154,7 +154,6 @@ order by
 s_name;"""
 CLOUD_DIALECTS = ("bigquery", "databricks", "snowflake")
 PRESTO_DIALECTS = ("presto", "trino", "athena")
-ARRAY_ORDER = ["l_orderkey", "l_linenumber"]
 POSTGRES_ID_SETS = (
     dialect_compat.POSTGRES_ALIAS_VARIANT_IDS
     | set(dialect_compat.POSTGRES_QUALIFIED_COLUMNS)
@@ -204,11 +203,16 @@ def _variant_ids(target: str) -> list[str]:
         ids = (
             set(dialect_compat.PRESTO_ALIAS_VARIANT_IDS)
             | set(dialect_compat.PRESTO_WINDOW_FILTER_VARIANT_IDS)
-            | set(dialect_compat.PRESTO_ARRAY_AGGREGATION_VARIANT_IDS)
+            | set(dialect_compat.LIST_AGGREGATE_VARIANT_IDS)
         )
     else:
         ids = set(POSTGRES_ID_SETS)
     return sorted(ids | {CONTROL_ID})
+
+
+def _havoc_output(query_id: str, translated: str, target: str) -> str:
+    rewritten = dialect_compat.translate_list_aggregate_variant(query_id, _benchmark().get_query(query_id), target)
+    return rewritten if rewritten is not None else dialect_compat.rewrite_dialect_variant(query_id, translated, target)
 
 
 def _havoc_target_cases() -> list[Case]:
@@ -220,7 +224,7 @@ def _havoc_target_cases() -> list[Case]:
                 Case(
                     f"havoc:{target}:{query_id}",
                     frozen_legacy(AREA, f"havoc:{target}:{query_id}"),
-                    lambda q=query, i=query_id, t=target: dialect_compat.rewrite_dialect_variant(i, q, t),
+                    lambda q=query, i=query_id, t=target: _havoc_output(i, q, t),
                 )
             )
     return cases

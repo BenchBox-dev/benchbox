@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from benchbox.core.tpchavoc.dialect_compat import (
+    LIST_AGGREGATE_VARIANT_IDS,
     PRESTO_ALIAS_VARIANT_IDS,
-    PRESTO_ARRAY_AGGREGATION_VARIANT_IDS,
     PRESTO_WINDOW_FILTER_VARIANT_IDS,
 )
 from benchbox.sql_compat.actions import CompatAction
@@ -13,7 +13,7 @@ from benchbox.sql_compat.registry import REGISTRY
 _TRANSFORMERS = {
     "inline_select_alias": "inline_select_aliases",
     "window_filter_to_if": "filtered_aggregates_to_conditional",
-    "array_aggregation": "tpchavoc_presto_array_aggregation",
+    "array_aggregation": "reduce_list_aggregates",
 }
 
 for _platform, _engine_label in (("presto", "Presto"), ("trino", "Trino")):
@@ -29,9 +29,9 @@ for _platform, _engine_label in (("presto", "Presto"), ("trino", "Trino")):
             "{engine} rejects FILTER on window aggregates; move the condition into the aggregate argument",
         ),
         (
-            PRESTO_ARRAY_AGGREGATION_VARIANT_IDS,
+            LIST_AGGREGATE_VARIANT_IDS,
             "array_aggregation",
-            "Replace DuckDB LIST functions with {engine} ARRAY_AGG and aggregate the zipped arrays with UNNEST",
+            "Order the LIST aggregates as {engine} ARRAY_AGG and reduce the DuckDB list functions to {engine} array functions",
         ),
     ):
         _reason = _reason_template.format(engine=_engine_label)
