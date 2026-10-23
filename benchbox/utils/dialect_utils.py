@@ -316,6 +316,7 @@ def translate_sql_query(
     strict: bool | None = None,
     scope: str | None = None,
     date_columns: Iterable[str] | None = None,
+    rewrites: Sequence[tuple[str, dict]] | None = None,
 ) -> str:
     import logging
 
@@ -358,6 +359,8 @@ def translate_sql_query(
         if expression is None:
             translated = ""
         else:
+            for rewrite_name, rewrite_args in rewrites or ():
+                expression = apply_rewrite(rewrite_name, expression, src, **rewrite_args)
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt, **SQLITE_DISCOUNT_BOUNDS)
                 if date_columns:
@@ -443,6 +446,39 @@ def apply_rewrite(name: str, sql_or_expression, dialect: str, **args):
         expression = sqlglot.parse_one(sql_or_expression, read=resolved)
         return function(expression, **args).sql(dialect=resolved)
     return function(sql_or_expression, **args)
+
+
+def apply_rewrites(sql: str, dialect: str, rewrites: Sequence[tuple[str, dict]]) -> str:
+    from benchbox._vendor import sqlglot
+
+    resolved = resolve_sql_dialect(dialect)
+    original = sqlglot.parse_one(sql, read=resolved)
+    rewritten = original
+    for name, args in rewrites:
+        rewritten = apply_rewrite(name, rewritten, resolved, **args)
+    return sql if rewritten == original else rewritten.sql(dialect=resolved)
+
+
+def unqualified_table_names(sql: str, dialect: str) -> list[str] | None:
+    import importlib
+
+    from benchbox._vendor import sqlglot
+
+    resolved = resolve_sql_dialect(dialect)
+    try:
+        statements = sqlglot.parse(sql, read=resolved)
+    except Exception:
+        return None
+    if not statements or any(statement is None for statement in statements):
+        return None
+    unqualified_tables = importlib.import_module("benchbox._vendor.sqlglot.benchbox.rewrites").unqualified_tables
+    names: list[str] = []
+    for statement in statements:
+        for table in unqualified_tables(statement):
+            name = table.name.upper()
+            if name not in names:
+                names.append(name)
+    return names
 
 
 def translate_ddl(

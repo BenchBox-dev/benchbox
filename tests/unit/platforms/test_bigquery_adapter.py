@@ -12,6 +12,7 @@ import pytest
 
 from benchbox.platforms.base import DriverIsolationCapability
 from benchbox.platforms.bigquery import BigQueryAdapter
+from benchbox.utils.dialect_utils import unqualified_table_names
 from benchbox.utils.iceberg_layout import local_iceberg_location
 
 pytestmark = [
@@ -1985,15 +1986,13 @@ class TestConvertToBigqueryTable:
         assert "DEFAULT 'REFERENCES parent(id)'" in result
         assert "REFERENCES `proj.ds.P` (a) NOT ENFORCED" in result
 
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_extract_unqualified_tables_skips_earlier_sibling_ctes(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
+    def test_unqualified_table_names_skips_earlier_sibling_ctes(self):
         query = (
             "WITH first_cte AS (SELECT a FROM base_one), "
             "second_cte AS (SELECT f.a FROM orders o JOIN first_cte f ON o.a = f.a) "
             "SELECT * FROM second_cte"
         )
-        assert adapter._extract_unqualified_tables(query) == ["BASE_ONE", "ORDERS"]
+        assert unqualified_table_names(query, "bigquery") == ["BASE_ONE", "ORDERS"]
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_qualify_aliases_table_referenced_with_backticked_prefix(self, mock_bigquery):
@@ -2003,11 +2002,9 @@ class TestConvertToBigqueryTable:
         assert "FROM `proj.ds.LINEITEM` AS lineitem," in result
         assert "`proj.ds.PART` AS" not in result
 
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_extract_unqualified_tables_keeps_self_shadowed_base_table(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
+    def test_unqualified_table_names_keeps_self_shadowed_base_table(self):
         query = "WITH orders AS (SELECT * FROM orders WHERE a > 1) SELECT * FROM orders"
-        assert adapter._extract_unqualified_tables(query) == ["ORDERS"]
+        assert unqualified_table_names(query, "bigquery") == ["ORDERS"]
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_inline_pk_survives_parameterized_types(self, mock_bigquery):
@@ -2608,64 +2605,6 @@ class TestNormalizeTableNamesCase:
         result = adapter._normalize_table_names_case(query)
         assert "`CUSTOMER`" in result
         assert result == query
-
-
-@pytest.mark.usefixtures("dependencies_available")
-class TestApplyTpcdiBigqueryRewrites:
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_flag_literals_become_boolean(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._apply_tpcdi_bigquery_rewrites("SELECT * FROM DimCustomer WHERE IsCurrent = 1 AND BatchID = 1")
-        assert "IsCurrent = TRUE" in result
-        assert "BatchID = 1" in result
-
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_quoted_flag_literals_become_boolean(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._apply_tpcdi_bigquery_rewrites("SELECT * FROM `DIMCUSTOMER` WHERE `ISCURRENT` = 1")
-        assert result == "SELECT * FROM `DIMCUSTOMER` WHERE `ISCURRENT` = TRUE"
-
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_julianday_and_now_rewritten(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._apply_tpcdi_bigquery_rewrites("SELECT JULIANDAY(DATE('now')) - JULIANDAY(MIN(d.DateValue))")
-        assert "JULIANDAY" not in result
-        assert "DATE('now')" not in result
-        assert "UNIX_DATE" in result
-
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_relative_date_uses_bigquery_interval_syntax(self, mock_bigquery):
-        from benchbox._vendor import sqlglot
-        from benchbox.core.tpcdi.query_analytics import TPCDIAnalyticalQueries
-
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._apply_tpcdi_bigquery_rewrites(TPCDIAnalyticalQueries().get_query("AQ7"))
-
-        assert "DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY)" in result
-        sqlglot.parse_one(result, read="bigquery")
-
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_relative_now_uses_interval(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._apply_tpcdi_bigquery_rewrites("SELECT * FROM t WHERE d.DateValue >= DATE('now', '-90 days')")
-        assert "DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY)" in result
-        assert "DATE('now'" not in result
-
-
-@pytest.mark.usefixtures("dependencies_available")
-class TestSafeguardDivisionByZero:
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_division_routed_through_safe_divide(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._safeguard_division_by_zero("SELECT a / b FROM `T`")
-        assert "SAFE_DIVIDE" in result
-        assert " / " not in result
-
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_query_without_division_unchanged(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        query = "SELECT a FROM `T` WHERE b = 1"
-        assert adapter._safeguard_division_by_zero(query) == query
 
 
 @pytest.mark.usefixtures("dependencies_available")
