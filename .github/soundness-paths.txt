@@ -119,9 +119,11 @@ file	scripts/sqlglot_refresh_waiver.json
 prefix	benchbox/_vendor/
 file	benchbox/utils/dialect_utils.py
 file	scripts/sqlglot_runtime_baseline.json
-file	scripts/sql_execution_gate/expected_differences.json
-prefix	tests/unit/sql_compat/golden_corpus/recorded/
-prefix	tests/unit/sql_compat/golden_corpus/frozen/
+prefix	scripts/sql_execution_gate/
+prefix	tests/unit/sql_compat/golden_corpus/
+file	scripts/sync_sqlglot_runtime.py
+file	scripts/check_sqlglot_repro_retirement.py
+file	scripts/sqlglot_fork_diff.py
 file	_project/scripts/check_uv_lock_revision.py
 file	_project/decisions/single-repo-migration.md
 file	.github/workflows/release.yml

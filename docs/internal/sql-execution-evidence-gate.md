@@ -95,10 +95,14 @@ them with `git diff <old> <new> -- <path>` in a fork clone. Paste the output
 into the PR description next to the gate output. A rollback adoption prints
 `Direction: not-descendant`.
 
-The runtime pin, wheel, wrapper (`benchbox/utils/dialect_utils.py`), runtime
-baseline, golden-corpus `recorded/` and `frozen/` files and
-`expected_differences.json` are soundness paths (`.github/soundness-paths.txt`),
-so a change to any of them needs an oracle success review on the current head.
+The evidence and the code that judges it are soundness paths
+(`.github/soundness-paths.txt`): the runtime pin and bundled wheel
+(`benchbox/_vendor/`), the wrapper (`benchbox/utils/dialect_utils.py`), the
+runtime baseline, everything under `scripts/sql_execution_gate/` (the gate
+logic and `expected_differences.json`), everything under
+`tests/unit/sql_compat/golden_corpus/` (harness, `recorded/` and `frozen/`),
+and the pin, retirement and fork-diff scripts. A change to any of them needs an
+oracle success review on the current head.
 
 ## Regression proofs
 

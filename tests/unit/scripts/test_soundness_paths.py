@@ -240,12 +240,20 @@ def test_selection_logic_paths_are_pinned_in_manifest() -> None:
 TRANSLATION_FILES = (
     "benchbox/utils/dialect_utils.py",
     "scripts/sqlglot_runtime_baseline.json",
-    "scripts/sql_execution_gate/expected_differences.json",
+    "scripts/sync_sqlglot_runtime.py",
+    "scripts/check_sqlglot_repro_retirement.py",
+    "scripts/sqlglot_fork_diff.py",
 )
 TRANSLATION_PREFIXES = (
     "benchbox/_vendor/",
-    "tests/unit/sql_compat/golden_corpus/recorded/",
-    "tests/unit/sql_compat/golden_corpus/frozen/",
+    "scripts/sql_execution_gate/",
+    "tests/unit/sql_compat/golden_corpus/",
+)
+TRANSLATION_DATA_FILES = (
+    "scripts/sql_execution_gate/expected_differences.json",
+    "tests/unit/sql_compat/golden_corpus/recorded/area_ddl.json",
+    "tests/unit/sql_compat/golden_corpus/frozen/area_ddl.json",
+    "benchbox/_vendor/sqlglot.json",
 )
 
 
@@ -258,23 +266,24 @@ def test_translation_paths_are_pinned_in_manifest() -> None:
     for prefix in TRANSLATION_PREFIXES:
         assert f"prefix\t{prefix}" in manifest
         assert (ROOT / prefix).is_dir(), f"{prefix} no longer exists; update the soundness manifest"
+    for path in TRANSLATION_DATA_FILES:
+        assert (ROOT / path).is_file(), f"{path} no longer exists; update the soundness manifest"
+        assert soundness.is_soundness_path(path) is True
 
 
-def test_translation_prefixes_cover_every_pin_and_corpus_file() -> None:
-    covered = [
-        "benchbox/_vendor/sqlglot.json",
-        "benchbox/_vendor/__init__.py",
-        "benchbox/_vendor/SQLGLOT_LICENSE.txt",
-    ]
-    covered += [
-        path.relative_to(ROOT).as_posix()
-        for prefix in TRANSLATION_PREFIXES[1:]
-        for path in sorted((ROOT / prefix).glob("*.json"))
-    ]
-    wheels = sorted((ROOT / "benchbox" / "_vendor").glob("*.whl.zip"))
-    assert wheels, "no bundled runtime wheel archive"
-    covered += [wheel.relative_to(ROOT).as_posix() for wheel in wheels]
-    assert len(covered) > 5
+def test_translation_prefixes_cover_every_file_beneath_them() -> None:
+    covered: list[str] = []
+    for prefix in TRANSLATION_PREFIXES:
+        covered += [
+            path.relative_to(ROOT).as_posix()
+            for path in sorted((ROOT / prefix).rglob("*"))
+            if path.is_file() and "__pycache__" not in path.parts
+        ]
+    assert any(path.endswith(".whl.zip") for path in covered), "no bundled runtime wheel archive"
+    assert any(path.startswith("scripts/sql_execution_gate/") and path.endswith("gate.py") for path in covered)
+    assert any("golden_corpus/area_" in path and path.endswith(".py") for path in covered)
+    assert any("/recorded/" in path for path in covered)
+    assert any("/frozen/" in path for path in covered)
     for path in covered:
         assert soundness.is_soundness_path(path) is True, path
 
@@ -286,10 +295,10 @@ def test_translation_prefixes_cover_every_pin_and_corpus_file() -> None:
         "benchbox/utils/dialect_utils.py.bak",
         "benchbox/utils/dialect_helpers.py",
         "scripts/sqlglot_runtime_baseline.json.bak",
-        "scripts/sql_execution_gate/gate.py",
-        "tests/unit/sql_compat/golden_corpus/area_ddl.py",
-        "tests/unit/sql_compat/golden_corpus/recordedx/area_ddl.json",
-        "tests/unit/sql_compat/golden_corpus/frozenx/area_ddl.json",
+        "scripts/sql_execution_gatex/gate.py",
+        "scripts/sync_sqlglot_runtime.py.bak",
+        "tests/unit/sql_compat/golden_corpusx/area_ddl.py",
+        "tests/unit/sql_compat/test_golden_corpus.py",
     ],
 )
 def test_translation_paths_do_not_overmatch_neighbours(path: str) -> None:
