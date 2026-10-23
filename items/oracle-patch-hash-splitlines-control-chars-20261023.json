@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Failing-before test using the exact reviewer example (the two diffs above; assert Python results 1 and 3 and different hashes): fails on develop, passes after",
+    "A test with form feed, vertical tab, line separator (U+2028) and next-line (U+0085) characters inside added lines shows each yields a hash distinct from the variant that splits the line at that character",
+    "Existing rebase-shift, replay of PR 2769, reorder and moved-hunk tests pass unchanged; none deleted or loosened",
+    "PR merged with an oracle verdict on its final head; merge SHA recorded"
+  ],
+  "context": "Created 2026-10-23 from the codex review of gap issue 2808 (commit 5ca12e6ca plus merged fix PR 3316): reviewer output /Users/joe/Developer/soundness-reviews/2808/raw-run1.txt sha256 252d352256c6b45a8214c719bc554e4b9520b24cfe96ed8585bd856f38d42ec8. Finding verified by the controller where stated; line numbers are leads, re-verify on current develop.",
+  "description": "High finding on the oracle carry digest, REPRODUCED by the controller on origin/develop 2026-10-23: _project/scripts/oracle_reviewers/protocol.py file_patches iterates body.splitlines(), which splits on form feed and other control characters, and the hunk counts are discarded from the hashed header. Two different patches therefore hash identically: a diff adding the source lines 'permissions = READ' and '+WRITE' (hunk +1,2; Python gives permissions == 1) and a diff adding the single line 'permissions = READ<FF>+WRITE' (hunk +1,1; Python gives permissions == 3) produce equal file_patches, so plan_round can return CARRY and a prior SHIP covers behavior-changing edits without review.\n\nDECISION GATE: split only on the newline character that git uses for diff lines (body.split('\\n')) and keep every other byte; include each hunk's old and new line counts in the hashed header in a rebase-stable way (counts are not absolute positions, so a plain rebase keeps them). Verify the existing rebase tests (a hunk at line 1 versus line 9 equal) and the PR 2769 replay still pass unchanged; if including counts breaks either, stop and report options instead of loosening a test.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR (soundness path _project/scripts/oracle_reviewers); no pre-registered digests; never weaken a gate; no skip/xfail; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; never close/label/edit gap issues; done = merged PR plus evidence.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-23T11:56:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "db2d96fef04a42ce8a94e501bb5d4fe9",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}
