@@ -52,6 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A pull request title or body edit no longer holds five runners while it waits for the full CI run. The
+  `CI (text edit)` check makes one decision and fails at once when the full run on the commit is missing or still
+  running; the new `ci-text-edit-refresh` workflow re-runs the failed jobs of the newest `CI (text edit)` run on
+  that commit when the full CI run completes. The `oracle-gate` workflow now shares one concurrency group per
+  pull request head commit for runs started by `pull_request` or `pull_request_target` workflows, so superseded
+  gate runs are cancelled.
 - Results anonymization precompiles the key-normalising pattern and caches the
   normalised key and the identifier prefix for a key path (bounded caches, both pure
   functions of their arguments). Anonymizing the committed results corpus is about a third

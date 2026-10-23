@@ -100,6 +100,8 @@ file	.github/workflows/ci.yml
 file	.github/ci-units.yml
 file	scripts/ci_units.py
 file	scripts/ci_unit_result.py
+file	scripts/ci_text_edit_verdict.py
+file	.github/workflows/ci-text-edit-refresh.yml
 file	scripts/release_flow.py
 file	scripts/release_artifact_consumer.py
 file	scripts/release_admitted_dist.py
