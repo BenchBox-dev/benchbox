@@ -23020,17 +23020,12 @@
       "title": "The soundness merge digest accepts an external-review comment from any author"
     },
     "soundness-oracle-branch-name-quote-20261022": {
-      "claim": {
-        "expires_at": "2026-10-24T11:43:21Z",
-        "generation": "2f8c40f5c30a41fb96caed719e5bd2ef",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601"
-      },
+      "claim": null,
       "needs": [
         "soundness-gaps-decisions-20261022"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "URL-encode the branch name in the oracle reviewer pull-request query"
     },
     "soundness-path-prefix-not-exact-file": {
