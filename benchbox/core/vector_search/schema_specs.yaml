@@ -33,18 +33,18 @@ table_order:
 - vectors
 - vector_queries
 embedding_type_map:
-  duckdb: FLOAT[{dim}]
+  duckdb: REAL[{dim}]
   postgresql: VECTOR({dim})
   postgres: VECTOR({dim})
   snowflake: VECTOR(FLOAT, {dim})
   clickhouse: Array(Float32)
   bigquery: ARRAY<FLOAT64>
-  starrocks: ARRAY<FLOAT>
-  doris: ARRAY<FLOAT>
-  spark: ARRAY<FLOAT>
-  lakesail: ARRAY<FLOAT>
-  pyspark: ARRAY<FLOAT>
-  velox: ARRAY<FLOAT>
-  databricks: ARRAY<FLOAT>
+  starrocks: ARRAY<REAL>
+  doris: ARRAY<REAL>
+  spark: ARRAY<REAL>
+  lakesail: ARRAY<REAL>
+  pyspark: ARRAY<REAL>
+  velox: ARRAY<REAL>
+  databricks: ARRAY<REAL>
   mysql: VECTOR({dim}, F32)
-  default: FLOAT[{dim}]
+  default: REAL[{dim}]

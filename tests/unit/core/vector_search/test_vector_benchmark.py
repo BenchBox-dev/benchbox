@@ -332,8 +332,8 @@ class TestVectorSearchSchema:
     def test_duckdb_embedding_type(self):
         from benchbox.core.vector_search.schema import get_embedding_type
 
-        assert get_embedding_type("duckdb", 128) == "FLOAT[128]"
-        assert get_embedding_type("duckdb", 768) == "FLOAT[768]"
+        assert get_embedding_type("duckdb", 128) == "REAL[128]"
+        assert get_embedding_type("duckdb", 768) == "REAL[768]"
 
     def test_postgresql_embedding_type(self):
         from benchbox.core.vector_search.schema import get_embedding_type
@@ -353,20 +353,20 @@ class TestVectorSearchSchema:
     def test_doris_embedding_type(self):
         from benchbox.core.vector_search.schema import get_embedding_type
 
-        assert get_embedding_type("doris", 128) == "ARRAY<FLOAT>"
+        assert get_embedding_type("doris", 128) == "ARRAY<REAL>"
 
     def test_spark_family_embedding_type(self):
         from benchbox.core.vector_search.schema import get_embedding_type
 
-        assert get_embedding_type("lakesail", 128) == "ARRAY<FLOAT>"
-        assert get_embedding_type("spark", 768) == "ARRAY<FLOAT>"
+        assert get_embedding_type("lakesail", 128) == "ARRAY<REAL>"
+        assert get_embedding_type("spark", 768) == "ARRAY<REAL>"
 
     def test_get_create_table_sql_vectors(self):
         from benchbox.core.vector_search.schema import get_create_table_sql
 
         sql = get_create_table_sql("vectors", dialect="duckdb", dimensions=128)
         assert "CREATE TABLE vectors" in sql
-        assert "FLOAT[128]" in sql
+        assert "REAL[128]" in sql
         assert "category" in sql
         assert "doc_id" in sql
 
@@ -387,14 +387,14 @@ class TestVectorSearchSchema:
         from benchbox.core.vector_search.schema import get_create_table_sql
 
         sql = get_create_table_sql("vectors", dialect="doris", dimensions=128)
-        assert "ARRAY<FLOAT>" in sql
+        assert "ARRAY<REAL>" in sql
         assert "[128]" not in sql
 
     def test_get_create_table_sql_lakesail_uses_unsized_array(self):
         from benchbox.core.vector_search.schema import get_create_table_sql
 
         sql = get_create_table_sql("vectors", dialect="lakesail", dimensions=128)
-        assert "ARRAY<FLOAT>" in sql
+        assert "ARRAY<REAL>" in sql
         assert "[128]" not in sql
 
     def test_ddl_dimensions_parameter(self):
@@ -402,9 +402,9 @@ class TestVectorSearchSchema:
 
         ddl_128 = get_all_create_table_sql(dimensions=128)
         ddl_768 = get_all_create_table_sql(dimensions=768)
-        assert "FLOAT[128]" in ddl_128
-        assert "FLOAT[768]" in ddl_768
-        assert "FLOAT[128]" not in ddl_768
+        assert "REAL[128]" in ddl_128
+        assert "REAL[768]" in ddl_768
+        assert "REAL[128]" not in ddl_768
 
 
 class TestVectorSearchMetrics:
@@ -652,7 +652,7 @@ class TestVectorSearchBenchmark:
         b = VectorSearchBenchmark(scale_factor=0.01, output_dir=tmp_path)
         ddl = b.get_create_tables_sql(dialect="duckdb")
         assert "CREATE TABLE vectors" in ddl
-        assert "FLOAT[128]" in ddl
+        assert "REAL[128]" in ddl
 
     def test_get_schema_returns_tables_dict(self, tmp_path):
         from benchbox.core.vector_search import VectorSearchBenchmark
