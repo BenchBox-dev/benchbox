@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Each CI example installs and runs `benchbox --version` on a clean image, shown by running it in a container for at least the generic shell steps"
+  ],
+  "description": "`docs/advanced/ci-cd-integration.md` examples run `uv pip install benchbox[all]` right after installing uv, with no `uv venv` first. In a fresh CI image that has no active virtual environment, `uv pip install` refuses to install into the system interpreter, so the example would fail unless `--system` is added. Check each example on a clean runner image (GitLab, Jenkins, CircleCI, Azure examples; the GitHub Actions ones too) and add `uv venv` plus activation, or `uv run --with benchbox[all]`, or `--system`, whichever the page's own conventions favour.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:49:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "98d745c76e23453b90cfbdc860c46b2b",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    }
+  ]
+}

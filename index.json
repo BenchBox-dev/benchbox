@@ -8725,6 +8725,13 @@
       "status": "open",
       "title": "CI/CD integration guide installs uv with an unpinned installer and adds the wrong directory to PATH"
     },
+    "docs-ci-cd-uv-pip-install-no-venv-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "CI/CD guide runs `uv pip install benchbox[all]` without a virtual environment"
+    },
     "docs-cli-reference-scope-coverage": {
       "claim": null,
       "needs": [],
