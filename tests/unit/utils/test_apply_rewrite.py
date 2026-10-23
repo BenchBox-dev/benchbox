@@ -81,9 +81,18 @@ ENGINE_REWRITES = (
     "add_derived_table_aliases",
     "qualify_order_by_columns",
 )
+LIST_AND_RUNNER_REWRITES = (
+    "reduce_list_aggregates",
+    "nullif_zero_divisors",
+    "inline_order_by_aliases",
+    "alias_qualified_projections",
+    "qualify_alias_shadowed_columns",
+    "decimal_division_to_double",
+    "use_nulls_for_rollups",
+)
 
 
-@pytest.mark.parametrize("name", [*HAVOC_REWRITES, *SUBQUERY_REWRITES, *ENGINE_REWRITES])
+@pytest.mark.parametrize("name", [*HAVOC_REWRITES, *SUBQUERY_REWRITES, *ENGINE_REWRITES, *LIST_AND_RUNNER_REWRITES])
 def test_named_registry_resolves_every_moved_rewrite(name: str):
     assert callable(_fork_rewrite(name))
 
@@ -117,6 +126,7 @@ def test_registry_exposes_no_unlisted_rewrites():
         *HAVOC_REWRITES,
         *SUBQUERY_REWRITES,
         *ENGINE_REWRITES,
+        *LIST_AND_RUNNER_REWRITES,
     }
     assert exposed == listed
 
