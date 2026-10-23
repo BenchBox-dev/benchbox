@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -8,7 +7,6 @@ from pathlib import Path
 
 from .credentials import FORWARDED_ENV
 from .policy import OMP_THINKING_LEVELS, Reviewer
-from .verdict import VERDICT_SCHEMA
 
 FORBIDDEN_FLAGS = ("--dangerously-skip-permissions", "--yolo", "--dangerously-bypass-approvals-and-sandbox")
 OMP_READ_TOOLS = "read,grep,glob"
@@ -56,10 +54,6 @@ class Invocation:
     cwd: Path
     output_file: Path | None
     env: Mapping[str, str] | None = None
-
-
-def schema_text() -> str:
-    return json.dumps(VERDICT_SCHEMA, sort_keys=True, separators=(",", ":"))
 
 
 def omp_env() -> dict[str, str]:

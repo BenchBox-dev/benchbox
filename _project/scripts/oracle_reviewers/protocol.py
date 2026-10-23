@@ -31,7 +31,7 @@ MARKER_LIMIT = 4096
 MARKER_OPEN = "<!-- oracle-protocol:"
 _MARKER = re.compile(r"<!-- oracle-protocol: v1 (?P<data>[A-Za-z0-9_-]+) -->\s*\Z")
 _HUNK = re.compile(r"^@@ -(?P<start>\d+)(?:,(?P<count>\d+))? \+\d+(?:,\d+)? @@(?P<section>.*)$")
-_DEFECT_ID = re.compile(r"D([1-9][0-9]{0,3})")
+DEFECT_ID = re.compile(r"D([1-9][0-9]{0,3})")
 NOT_COUNTED_LIMIT = 5
 PATCH_HEX = 16
 MISSING = "missing"
@@ -178,7 +178,7 @@ def _valid_defect(item: Any) -> bool:
         isinstance(item, dict)
         and set(item) == set(DEFECT_KEYS)
         and isinstance(item["id"], str)
-        and _DEFECT_ID.fullmatch(item["id"]) is not None
+        and DEFECT_ID.fullmatch(item["id"]) is not None
         and item["severity"] in SEVERITIES
         and isinstance(item["file"], str)
         and isinstance(item["line"], int)

@@ -54,48 +54,6 @@ FINDING_METADATA = frozenset({"line_note", "end_line_note", "detail_extra"})
 _KEY_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,39}")
 _PRIOR_ID = re.compile(r"[A-Za-z0-9-]{1,32}")
 
-VERDICT_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": list(VERDICT_KEYS),
-    "properties": {
-        "status": {"type": "string", "enum": list(STATUSES)},
-        "incomplete_reason": {"type": "string"},
-        "decision": {"type": "string", "enum": list(DECISIONS)},
-        "summary": {"type": "string"},
-        "files_examined": {"type": "array", "items": {"type": "string"}},
-        "defects": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": list(FINDING_KEYS),
-                "properties": {
-                    "severity": {"type": "string", "enum": list(SEVERITIES)},
-                    "file": {"type": "string"},
-                    "line": {"type": "integer"},
-                    "end_line": {"type": ["integer", "null"]},
-                    "title": {"type": "string"},
-                    "detail": {"type": "string"},
-                },
-            },
-        },
-        "prior_defects": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": list(PRIOR_KEYS),
-                "properties": {
-                    "id": {"type": "string"},
-                    "status": {"type": "string", "enum": list(PRIOR_STATUSES)},
-                    "evidence": {"type": "string"},
-                },
-            },
-        },
-    },
-}
-
 SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(?:-----END [A-Z ]*PRIVATE KEY-----|\Z)", re.DOTALL),
     re.compile(r"\bsk-ant-[A-Za-z0-9_\-]{8,}"),

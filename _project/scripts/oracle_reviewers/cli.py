@@ -570,6 +570,7 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
             prior or None, plan.get("reviewed_head"), int(plan["max_defects"]), bool(disputes)
         ),
         prior_block=prior_block,
+        prior_ids=[item["id"] for item in prior],
         files_block=files_block,
         diff_text=diff_text,
         diff_path=staged,
@@ -590,7 +591,7 @@ def command_review(args: argparse.Namespace) -> int:
     workspace = Path(args.workspace)
     try:
         prompt = _assemble_prompt(plan, plan_path.parent, classification, workspace)
-    except OversizeError as exc:
+    except (OversizeError, ValueError) as exc:
         raise SystemExit(f"oracle-verdict: {exc}") from exc
     outcome = runner.review(
         reviewer,
