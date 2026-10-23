@@ -42,3 +42,6 @@ lxml:
 
 certifi:
   reason: "Floor for the CA bundle that requests uses to verify TLS; 2026.10.19 is the release the Python security advisory names for the eMudhra emSign CA compromise. Not imported directly."
+
+grpcio:
+  reason: "Floor for the root-certificate bundle that gRPC clients (BigQuery Storage, Dataproc, Databricks Connect, Spark Connect) use to verify TLS; 1.84.1 ships a bundle without the compromised eMudhra emSign and AAA Certificate Services roots. Not imported directly."

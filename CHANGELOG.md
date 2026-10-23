@@ -474,6 +474,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   substituted package.
 - The `benchbox-agent`, Velox and LakeSail images install Python packages with
   uv 0.13.5 instead of pip. Rebuild existing images to pick up the change.
+- The `bigquery`, `cloud`, `cloud-spark`, `cloud-spark-gcp`,
+  `cloud-spark-databricks`, `lakesail`, `velox` and `all` extras now require
+  `grpcio` 1.84.1 or newer. Older `grpcio` releases verify TLS against their own
+  bundled root list, which still trusts the roots the compromised eMudhra emSign
+  intermediates chain to, so BigQuery Storage, Dataproc, Databricks Connect and
+  Spark Connect connections stayed exposed even after the `certifi` upgrade.
 
 ## [0.5.0rc1] - 2026-10-20
 
