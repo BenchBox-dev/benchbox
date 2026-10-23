@@ -68,9 +68,21 @@ Haiku and Luna xhigh found.
 
 ## Consequences
 
-Luna xhigh missed one checked defect in all three runs: a CI workflow that
-skips the freshness check exactly when a pull request edits that check. The
-small tier will miss some subtle cross-file defects that Haiku caught; the
-`medium` and `large` reviewers remain the backstop. Revisit the choice if Luna
-xhigh's usable rate in CI falls below 95%, or if a new small model is tested
-on the same cases with better results.
+A SHIP from the small tier ends the run. The `medium` and `large` reviewers see
+a change only when the small tier gives no usable answer, so they are not a
+backstop for a wrong SHIP. Luna xhigh shipped one checked defect in all three
+of its runs: a CI workflow that skips the freshness check exactly when a pull
+request edits that check. Sonnet at medium missed it too; only Haiku caught it
+every time.
+
+The owner accepted that risk on 2026-10-23 in exchange for far fewer stalled
+pull requests: in the comparison, 18 of Haiku's 48 attempts were unusable,
+against 1 of Luna's. Two options were rejected: having the `medium` reviewer
+confirm every small-tier SHIP (one more Sonnet review per small pull request)
+and sending the classifier's logic paths straight to `large` (it would not
+have caught the missed defect). Changes to review machinery still start at
+the `large` reviewer, in follow-ups too.
+
+Revisit the choice if Luna xhigh's usable rate in CI falls below 95%, if a
+wrong SHIP from the small tier is found after merge, or if a new small model is
+tested on the same cases with better results.

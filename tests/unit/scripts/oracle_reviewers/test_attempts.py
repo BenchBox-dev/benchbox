@@ -694,9 +694,23 @@ def test_selection_maps_the_bucket_through_the_policy(policy: Policy) -> None:
     assert [reviewer.name for reviewer in chain] == ["medium"]
 
 
-def test_a_follow_up_keeps_the_previous_reviewer_and_ignores_the_bucket(policy: Policy) -> None:
+def test_a_follow_up_keeps_a_stronger_previous_reviewer_over_a_smaller_bucket(policy: Policy) -> None:
     plan = {**_plan(policy, ("small", "large")), "follow_up_reviewer": "large"}
     assert [reviewer.name for reviewer in cli._selection(plan, _classification("small")).chain] == ["large"]
+
+
+def test_a_follow_up_into_a_larger_bucket_starts_at_that_bucket(policy: Policy) -> None:
+    plan = {**_plan(policy, ("trivial", "small", "medium", "large")), "follow_up_reviewer": "small"}
+    plan["protocol"] = {**plan["protocol"], "kind": "follow-up"}
+    gated = Classification(
+        size_bucket="large",
+        capability="routine",
+        template="gate",
+        confidence=0.9,
+        gate_flags=("_project/scripts/oracle_reviewers/*",),
+        files=(),
+    )
+    assert [reviewer.name for reviewer in cli._selection(plan, gated).chain] == ["large"]
 
 
 def test_a_follow_up_from_a_retired_reviewer_falls_back_to_the_bucket(policy: Policy) -> None:

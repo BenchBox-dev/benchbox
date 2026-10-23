@@ -221,7 +221,8 @@ counts as not fixed. Unfixed earlier defects stay open, and a new
 defect counts only in a file changed since the last review; new defects in
 other files are listed, collapsed and capped at five, as not counted. More
 than 10 open defects in total give DO NOT SHIP. The previous reviewer is tried
-first. A follow-up runs for every size bucket.
+first unless the follow-up's own bucket names a larger reviewer, as it does for
+a push that touches review machinery. A follow-up runs for every size bucket.
 
 A forced follow-up rejudges rather than skips: its brief adds the disputed
 threads under "Disputed findings", with each reply quoted as data, and tells
@@ -277,20 +278,21 @@ note that it counts like the others. Ignoring it would let a reviewer's report
 of a real defect pass because it cited an unchanged line.
 
 Reviewers run one at a time, so a decision stops the run. The chain starts at
-the bucket's reviewer, or at the previous reviewer for a follow-up, and then
-takes the reviewers of the larger buckets in size order, leaving out any
-reviewer whose harness, model and effort match one already in the chain:
-`trivial` and `small` share `@smol`, so a run never spends slots on both. A
-reviewer whose attempt was absent as `invalid`, `incomplete`, `empty` or
-`error` runs once more before the chain advances, so a reviewer gets at most
-two attempts and the run at most `max_attempts`. A decision is never retried,
-and neither are `quota`, `auth` or `timeout` absences, a reviewer job that did
-not finish (`ensure-attempt` records it with the fixed `JOB_FAILURE_DETAIL`
-detail) or a reviewer that selection would skip (disabled, out of quota, or
-unable to take the brief). Selection and artifact replay share this rule, so an
-artifact set with a third attempt of one reviewer, or any attempt after a
-decision, is rejected. If every reviewer in the chain is absent or skipped, the
-run stays pending.
+the bucket's reviewer or, for a follow-up, at the previous reviewer if that one
+belongs to a larger bucket, and then takes the reviewers of the larger buckets
+in size order, leaving out any reviewer whose harness, model and effort match
+one already in the chain: `trivial` and `small` share `@smol`, so a run never
+spends slots on both. A reviewer whose attempt was absent as `invalid`,
+`incomplete`, `empty` or `error` runs once more before the chain advances, so
+a reviewer gets at most two attempts and the run at most `max_attempts`. A
+decision is never retried, and neither are `quota`, `auth` or `timeout`
+absences, a reviewer job that did not finish (`ensure-attempt` records it with
+the fixed `JOB_FAILURE_DETAIL` detail) or a reviewer that selection would skip
+(disabled, out of quota, or unable to take the brief). Selection and artifact
+replay share this rule, so an artifact set with a third attempt of one
+reviewer, or any attempt after a decision, is rejected. If every reviewer in
+the chain is absent or skipped, the run stays pending. A SHIP from the first
+reviewer that answers ends the run like any other decision.
 
 ## Decisions
 
