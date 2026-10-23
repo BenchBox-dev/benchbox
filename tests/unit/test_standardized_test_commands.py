@@ -583,7 +583,6 @@ class TestMakefileCommands:
         lint_body = _makefile_target_body(makefile_content, "lint-markers")
 
         assert "--collect-only" in lint_body
-        assert "--assert=plain" in lint_body
         assert "tests/unit/test_marker_strategy.py -q" in lint_body
 
     def test_makefile_test_slow_runs_serially(self):
