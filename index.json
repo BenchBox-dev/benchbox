@@ -8706,6 +8706,13 @@
       "status": "done",
       "title": "Sync browser-duckdb-schema.sql with the ADR-2 physical_mechanisms / physical_rendering_id columns"
     },
+    "docs-ci-cd-uv-install-stale-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "CI/CD integration guide installs uv with an unpinned installer and adds the wrong directory to PATH"
+    },
     "docs-cli-reference-scope-coverage": {
       "claim": null,
       "needs": [],

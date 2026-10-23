@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Every example installs a uv version >= 0.13.4 and puts it on PATH correctly",
+    "The GitHub Actions example uses astral-sh/setup-uv"
+  ],
+  "description": "`docs/advanced/ci-cd-integration.md` installs uv with `curl -LsSf https://astral.sh/uv/install.sh | sh` in every example and, in the GitLab, Jenkins and CircleCI examples, then runs `export PATH=\"$HOME/.cargo/bin:$PATH\"`. Current uv installers put the binary in `~/.local/bin`, so the PATH line no longer finds it. The GitHub Actions example should use `astral-sh/setup-uv` like the repository's own workflows, and the other examples should pin a uv version at or above 0.13.4 (older uv trusts the compromised eMudhra emSign CAs) and add the correct directory to PATH.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:03:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cb22e6b2a2724049a0b342b6ee4a13ac",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    }
+  ]
+}
