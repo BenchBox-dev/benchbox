@@ -1290,6 +1290,12 @@ class TestDorisTableModel:
         assert "UNIQUE KEY" in translated
         assert "c_customer_sk" in translated.split("UNIQUE KEY", 1)[1]
 
+    @pytest.mark.parametrize("model", ["duplicate", "unique", "aggregate"])
+    def test_create_table_as_select_passes_through(self, model):
+        adapter = DorisAdapter(table_model=model)
+        statement = "CREATE TABLE t2 AS SELECT a FROM t1"
+        assert adapter._translate_create_table(statement) == statement
+
     def test_from_config_passes_table_model(self):
         config = {"table_model": "unique"}
         adapter = DorisAdapter.from_config(config)

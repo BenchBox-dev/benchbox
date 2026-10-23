@@ -798,6 +798,8 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
             "type_map": "doris",
         }
         table_name, columns, _ = create_table_shape(stmt)
+        if not columns:
+            return stmt
         key_model = self.table_model if self.table_model in {"duplicate", "aggregate", "unique"} else "duplicate"
         tpch_keys = _TPCH_TABLE_KEYS.get(table_name, [])
         key_columns = tpch_keys if tpch_keys and set(tpch_keys) <= set(columns) else []
