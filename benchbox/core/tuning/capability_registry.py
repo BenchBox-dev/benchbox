@@ -512,8 +512,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "delta_ddl_generator:preview_only_tsql_ignores",
             "The Delta preview generator computes partitioning, but FabricWarehouseAdapter executes "
             "T-SQL (FABRIC_DIALECT='tsql'): the shared builder's tsql output ignores tuned partition "
-            "columns, generate_tuning_clause returns '' and _optimize_table_definition only adds the "
-            "schema (fabric_warehouse.py:857-883). Previously aliased to databricks (rendered _ddl) "
+            "columns, generate_tuning_clause returns '' and translate_ddl only adds the "
+            "schema (FabricWarehouseAdapter.create_schema). Previously aliased to databricks (rendered _ddl) "
             "-- that claim was false for the warehouse execution path.",
         ),
         **_pk_fk_entries(),
