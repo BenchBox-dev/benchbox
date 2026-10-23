@@ -1,5 +1,5 @@
 {
-  "description": "Promoted from deferral 1 on longtest-16-refresh-durations-and-measure: Item longtest-15 was not adopted: CI A/B on 8b001aca7 cut summed medium time but improved the slowest shard in only one of two runs (weights include fixture-rebuild time); loadscope exposed an order-dependent chdb failure.\n\nEVIDENCE: Closed PR #3314 (branch fix/module-grouped-scheduling, head fdbeba60b) implemented whole-module shard assignment in scripts/release_canary_sharding.py and --dist loadscope in the medium steps of ci.yml, trunk.yml, trunk-coverage.yml and test.yml (loadgroup was rejected: it rewrites node ids to <id>@group and breaks shard evidence, durations keys and coverage contexts). CI A/B on merge base 8b001aca7: per-test runs 39844766448/39844728932/39844929895 slowest shard 404/367/399 s, summed 2169/1934/2234 s; module-grouped run 39825163467 attempt 1 slowest 386 s summed 1839 s, attempt 3 slowest 263 s summed 1648 s.\n\nPREREQUISITES: (1) make the chdb-backed SSB tests isolate in-process state: tests/... test_ssb_query_execution_clickhouse and test_ssb_schema_creation_without_engine fail with 'Table default.date already exists' when they share a worker; (2) shard weights now come from the refreshed tests/fixtures/medium_shard_durations.json (source run 39824593139, merged 853f7a024), which no longer charges fixture rebuilds per worker as heavily.\n\nCHANGE: after (1), rebase or recreate the #3314 change on develop, re-run the shard simulation, and run a CI A/B on one merge base with at least two runs per arm. Adopt only if both the slowest shard and the summed medium time improve in every run; otherwise close and record the numbers.",
+  "description": "Promoted from deferral 1 on longtest-16-refresh-durations-and-measure: Item longtest-15 was not adopted: CI A/B on 8b001aca7 cut summed medium time but improved the slowest shard in only one of two runs (weights include fixture-rebuild time); loadscope exposed an order-dependent chdb failure.\n\nEVIDENCE: Closed PR #3314 (branch fix/module-grouped-scheduling, head fdbeba60b) implemented whole-module shard assignment in scripts/release_canary_sharding.py and --dist loadscope in the medium steps of ci.yml, trunk.yml, trunk-coverage.yml and test.yml (loadgroup was rejected: it rewrites node ids to <id>@group and breaks shard evidence, durations keys and coverage contexts). CI A/B on merge base 8b001aca7: per-test runs 39844766448/39844728932/39844929895 slowest shard 404/367/399 s, summed 2169/1934/2234 s; module-grouped run 39825163467 attempt 1 slowest 386 s summed 1839 s, attempt 3 slowest 263 s summed 1648 s.\n\nPREREQUISITES: (1) make the chdb-backed SSB tests isolate in-process state: tests/integration/test_ssb_clickhouse_integration.py tests test_ssb_query_execution_clickhouse and test_ssb_schema_creation_without_engine fail with 'Table default.date already exists' when they share a worker; (2) shard weights now come from the refreshed tests/fixtures/medium_shard_durations.json (source run 39824593139, merged 853f7a024), which no longer charges fixture rebuilds per worker as heavily.\n\nCHANGE: after (1), rebase or recreate the #3314 change on develop, re-run the shard simulation, and run a CI A/B on one merge base with at least two runs per arm. Adopt only if both the slowest shard and the summed medium time improve in every run; otherwise close and record the numbers.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
@@ -15,6 +15,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "185ccb8a182c4bfd9e53fcae13ab4417",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-23T01:34:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fe7f16d60ddf441a9f90f59dfd39daf2",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]
