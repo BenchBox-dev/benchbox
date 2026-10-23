@@ -1276,6 +1276,20 @@ class TestDorisTableModel:
         flat = translated.replace("`", "").replace(" (", "(")
         assert expected in flat
 
+    @pytest.mark.parametrize("model", ["unique", "aggregate"])
+    def test_keyed_model_on_table_without_key_raises_instead_of_narrow_key(self, model):
+        adapter = DorisAdapter(table_model=model)
+        with pytest.raises(ValueError):
+            adapter._translate_create_table("CREATE TABLE store_sales (ss_sold_date_sk INT, ss_item_sk INT)")
+
+    def test_tpch_keys_ignored_for_same_named_table_of_another_benchmark(self):
+        adapter = DorisAdapter(table_model="unique")
+        translated = adapter._translate_create_table(
+            "CREATE TABLE customer (c_customer_sk INT, c_name VARCHAR(20), PRIMARY KEY (c_customer_sk))"
+        )
+        assert "UNIQUE KEY" in translated
+        assert "c_customer_sk" in translated.split("UNIQUE KEY", 1)[1]
+
     def test_from_config_passes_table_model(self):
         config = {"table_model": "unique"}
         adapter = DorisAdapter.from_config(config)

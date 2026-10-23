@@ -361,6 +361,14 @@ class TestStarRocksAdapter:
         assert "DUPLICATE KEY" not in optimized
         assert "DISTRIBUTED BY HASH" in optimized
 
+    def test_tuned_column_not_in_table_raises(self, mock_pymysql):
+        from benchbox.core.tuning.interface import TableTuning, TuningColumn
+
+        adapter = StarRocksAdapter()
+        tuning = TableTuning(table_name="test", distribution=[TuningColumn(name="missing", type="INTEGER", order=1)])
+        with pytest.raises(ValueError, match="missing"):
+            adapter._translate_schema_statement("CREATE TABLE test (id INT, name VARCHAR(10))", {"test": tuning})
+
     def test_non_leading_primary_key_uses_duplicate_model(self, mock_pymysql):
         adapter = StarRocksAdapter()
         original = "CREATE TABLE test (name VARCHAR(100), id INT, PRIMARY KEY (id))"

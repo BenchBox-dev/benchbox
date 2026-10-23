@@ -365,7 +365,9 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         return _DorisConnectionWrapper(conn, ddl_optimizer=self._translate_create_table)
 
     def _create_schema_with_tuning(self, benchmark: Any, source_dialect: str = "standard") -> str:
-        return super()._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
+        return benchmark.get_create_tables_sql(
+            dialect="standard", tuning_config=self.get_effective_tuning_configuration()
+        )
 
     def _transform_schema_statement(self, stmt: str, benchmark: Any) -> str:
         scale_factor: float | None = getattr(benchmark, "scale_factor", None)
@@ -797,8 +799,11 @@ class DorisAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapte
         }
         table_name, columns, _ = create_table_shape(stmt)
         key_model = self.table_model if self.table_model in {"duplicate", "aggregate", "unique"} else "duplicate"
-        key_columns = _TPCH_TABLE_KEYS.get(table_name) or (columns[:1] if key_model != "duplicate" else [])
+        tpch_keys = _TPCH_TABLE_KEYS.get(table_name, [])
+        key_columns = tpch_keys if tpch_keys and set(tpch_keys) <= set(columns) else []
         distribution_key = _TPCH_DISTRIBUTION_KEYS.get(table_name)
+        if distribution_key not in columns:
+            distribution_key = None
         options["default_layout"] = {
             "key_model": key_model,
             "key_columns": key_columns,

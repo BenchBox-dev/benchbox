@@ -117,6 +117,12 @@ class StarRocksWorkloadMixin:
 
         table_tuning, tuning_clauses = self._resolve_table_tuning(table_name, table_tunings)
         layout = self._starrocks_layout(columns, key, table_tuning)
+        undefined = sorted(
+            {name.lower() for field in ("distribute_by", "partition_by", "sort_by") for name in layout.get(field, [])}
+            - set(columns)
+        )
+        if undefined:
+            raise ValueError(f"Tuned columns {undefined} are not defined by table {table_name!r}")
         if table_tunings is not None and layout["key_model"] == "primary":
             self._record_starrocks_tuning_to_ledger(table_name, [f"PRIMARY KEY ({', '.join(key)})"])
         if tuning_clauses is not None:

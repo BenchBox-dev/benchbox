@@ -88,3 +88,14 @@ def test_doris_translates_every_shipped_schema(name, statement, partitioning):
         assert "DISTRIBUTED BY" in translated.upper()
         assert "PRIMARY KEY" not in translated.upper()
         assert "FOREIGN KEY" not in translated.upper()
+
+
+def test_doris_requests_schema_in_standard_dialect():
+    from unittest.mock import Mock
+
+    adapter = _doris(False)
+    adapter.get_effective_tuning_configuration = Mock(return_value=None)
+    benchmark = Mock()
+    benchmark.get_create_tables_sql.return_value = "CREATE TABLE t (a INT)"
+    adapter._create_schema_with_tuning(benchmark)
+    assert benchmark.get_create_tables_sql.call_args.kwargs["dialect"] == "standard"
