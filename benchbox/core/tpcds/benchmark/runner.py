@@ -589,6 +589,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             identify=True,
             pre_processors=pre_procs,
             post_processors=[self._fix_query58_ambiguity],
+            date_columns=_DATE_COLUMNS if tgt == "sqlite" else None,
         )
 
     def generate_table_data(self, table_name: str, output_dir: Optional[str] = None) -> Iterator[str]:

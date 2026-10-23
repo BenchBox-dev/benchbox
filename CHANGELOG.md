@@ -23,9 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Differences must be listed with a justification in
   `scripts/sql_execution_gate/expected_differences.json`. The `sql-execution-evidence` CI job
   runs it when SQL translation changes, and the pull request template asks for its output on
-  every wheel adoption. It reports DataFusion and PostgreSQL integer-division truncation in
-  TPC-DS Q21, Q78 and Q83 (tracked), and the bundled wheel's SQLite gaps (no ROLLUP, GROUPING
-  or STDDEV_SAMP, parenthesised EXCEPT operands in Q87).
+  every wheel adoption.
 - `benchbox.utils.dialect_utils.translate_ddl(ddl, target_dialect, source_dialect, identify, **options)`
   translates DDL with the bundled SQLGlot runtime's `DdlOptions` and engine-specific
   table layouts. It is the only module allowed to import the runtime's DDL module; a
@@ -223,6 +221,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   operands are integers (literal-only integer division keeps PostgreSQL
   semantics). Results published before this change for the affected SQLite
   queries were computed with different SQL.
+- The bundled SQLGlot runtime moves from 30.24.0.7 to 30.24.0.8 (fork commit
+  `be7ef8643780`). A corpus of 1,127 shipped queries (22 benchmarks, frozen once) across
+  21 target dialects (23,667 translations, no errors in either runtime) changes in 843
+  outputs. Exact division: possibly-truncating divisions are now written with a cast to
+  an approximate numeric on Athena, DataFusion, PostgreSQL, Presto, QuestDB, Redshift,
+  Teradata, Trino and T-SQL (90 outputs each: TPC-DS 24, TPC-DS OBT 22, TPC-DI 13,
+  TPC-Havoc 11, NYC Taxi 6, CoffeeShop 5, FlightData 4, Read Primitives 2, TPC-H 1,
+  TPC-H Skew 1, Data Vault 1). SQLite grouping sets (`ROLLUP`, `CUBE`, `GROUPING`),
+  population and sample variance and standard deviation, and parenthesised compound
+  operands are now expanded to SQL SQLite runs (33 outputs: TPC-DS 14, TPC-DS OBT 12,
+  TPC-DI 3, Read Primitives 3, TPC-Havoc 1). Results published before this change for
+  the affected queries on these engines were computed with different SQL; TPC-DS
+  Q21, Q78 and Q83 on DataFusion returned truncated ratios and now match DuckDB
+  (PostgreSQL is not run by the local gate, which needs `BENCHBOX_POSTGRES_DSN`). `make sql-execution-gate` reports 17 verified improvements and lists five
+  DataFusion TPC-DS outputs (Q12, Q36, Q59, Q66, Q98) whose ratio columns now carry
+  full double precision instead of six decimals.
+- SQLite TPC-DS translation marks the TPC-DS `DATE` columns through the runtime's
+  `mark_date_columns` rewrite on the parsed tree (`translate_sql_query(date_columns=..)`),
+  so Q72's `d3.d_date > d1.d_date + 5` adds five whole days to the date text instead of
+  adding 5 to the leading number of the text. Q72 is the only shipped TPC-DS query whose
+  SQLite text changes; TPC-DS Q72 results published for SQLite were computed with the
+  unmarked predicate.
 - The DDL golden corpus passes the runtime's new DDL options (`table_case`,
   `strip_with_properties`, QuestDB layout fields, SingleStore `DATETIME`, StarRocks
   `float_as_real`) and records a classification and reason (`equivalent`,

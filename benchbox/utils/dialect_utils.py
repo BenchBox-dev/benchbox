@@ -3,7 +3,7 @@
 
 import hashlib
 from collections import Counter
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
@@ -315,6 +315,7 @@ def translate_sql_query(
     post_processors: list[Callable[[str], str]] | None = None,
     strict: bool | None = None,
     scope: str | None = None,
+    date_columns: Iterable[str] | None = None,
 ) -> str:
     import logging
 
@@ -359,6 +360,8 @@ def translate_sql_query(
         else:
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt, **SQLITE_DISCOUNT_BOUNDS)
+                if date_columns:
+                    expression = apply_rewrite("mark_date_columns", expression, tgt, date_columns=date_columns)
             translated = expression.sql(dialect=tgt, identify=should_identify)
 
         if post_processors:
