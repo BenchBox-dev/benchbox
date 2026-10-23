@@ -6581,6 +6581,13 @@
       "status": "done",
       "title": "Databricks Example Modernization ✅ COMPLETED"
     },
+    "databricks-explicit-none-strategy-promoted-to-zorder": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Databricks promotes an explicit clustering strategy of none to z_order when tables have clustering columns"
+    },
     "databricks-liquid-clustering-tuning-review-20260526": {
       "claim": null,
       "needs": [

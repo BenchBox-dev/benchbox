@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "An explicit none strategy runs no ZORDER on Databricks, with a test",
+    "An unset strategy with clustering columns still resolves to z_order for every caller listed in the description",
+    "Docs and CHANGELOG describe the rule"
+  ],
+  "description": "benchbox/platforms/databricks/adapter.py (_resolve_databricks_clustering_strategy, around lines 407-413) returns z_order when the strategy is none and any table tuning has clustering or distribution columns. UnifiedTuningConfiguration.from_dict (benchbox/core/tuning/interface.py:1334-1342) already promotes only when databricks_clustering_strategy is absent, so for a loaded config the adapter branch only ever fires for an explicit none, and disable_platform_optimization(Z_ORDERING) (interface.py:1173-1176) sets none and is promoted back. An explicit none is therefore not honoured. Other callers build configs without the loader and rely on the promotion: the tuning wizard (benchbox/cli/tuning.py:180), _enable_table_layout (interface.py:1024-1030), metadata._as_unified_tunings (benchbox/core/tuning/metadata.py:648) and tests/unit/platforms/test_physical_identifier_resolution_databricks_bigquery.py:101-106. Decide where unset becomes z_order (config construction) and make the adapter honour an explicit none, migrating those callers.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dce62a827220422fd68b23fc",
+      "at": "2026-10-23T13:18:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fabcd12d07494d1785c9415e3c0b4a07",
+      "session_id": "7d2f94f74b1c49ec9ffc810e3c0bad68"
+    }
+  ]
+}
