@@ -286,7 +286,7 @@ Translates DDL for `target_dialect` and applies the structural changes of the bu
 
 - `ddl`: one or more statements in `source_dialect`.
 - `target_dialect`, `source_dialect`: normalized like `translate_sql_query`. Identifier quoting is skipped for the dialects in `NO_IDENTIFY_DIALECTS`, as it is there.
-- `**options`: any `DdlOptions` field (`strip_primary_keys`, `strip_foreign_keys`, `or_replace`, `type_map`, `schema`, `table_suffix`, ...). `default_layout` and the values of `layouts` are `TableLayout` field mappings, and `singlestore` is a `SingleStoreKeys` field mapping. An unknown option raises `ValueError`.
+- `**options`: any `DdlOptions` field (`strip_primary_keys`, `strip_foreign_keys`, `or_replace`, `type_map`, `schema`, `table_suffix`, ...). `default_layout` and the values of `layouts` are `TableLayout` field mappings, and `singlestore` is a `SingleStoreKeys` field mapping. `type_map` is a mapping or the name of an engine type map (`doris`, `starrocks`, `singlestore`); an unknown name raises `ValueError`. An unknown option raises `ValueError`.
 
 ```python
 from benchbox.utils.dialect_utils import translate_ddl
