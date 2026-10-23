@@ -355,6 +355,36 @@ def test_cli_select_finalize_and_ensure_attempt(
     assert "Defects on diff lines" in comment["body"]
 
 
+def test_cli_finalize_keeps_carriage_returns_inside_diff_lines(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_dir = tmp_path / "plan"
+    plan_dir.mkdir()
+    (plan_dir / "plan.json").write_text(json.dumps(_plan(policy, ("small",))), encoding="utf-8")
+    with (plan_dir / "diff.patch").open("w", encoding="utf-8", newline="") as handle:
+        handle.write(DIFF.replace("@@ -1,1 +1,2 @@", "@@ -1,1 +1,3 @@").replace("+b = 2\n", "+b = 2\r+c = 3\n"))
+    (plan_dir / "classification.json").write_text(json.dumps(_classification("small").to_json()), encoding="utf-8")
+    attempts_dir = tmp_path / "attempts"
+    attempts_dir.mkdir()
+    _write(attempts_dir, 1, "small", verdict=_v("", [_finding("Critical", line=3)]))
+    final_dir = tmp_path / "final"
+    _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_dir / "plan.json"),
+        "--attempts-dir",
+        str(attempts_dir),
+        "--out-dir",
+        str(final_dir),
+        "--classification",
+        str(plan_dir / "classification.json"),
+    )
+    comment = json.loads((final_dir / "comment.json").read_text(encoding="utf-8"))
+    assert "Defects on diff lines" not in comment["body"]
+
+
 def test_cli_finalize_refuses_a_plan_from_another_run(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
