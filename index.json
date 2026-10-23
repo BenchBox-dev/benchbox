@@ -21343,6 +21343,13 @@
       "status": "open",
       "title": "Two more tests assume a non-root user, beyond the one already tracked"
     },
+    "rotate-credentials-emudhra-exposure-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Rotate credentials that passed through TLS clients trusting the compromised eMudhra CAs"
+    },
     "ruleset-drift-check-home-20261009": {
       "claim": null,
       "needs": [],
