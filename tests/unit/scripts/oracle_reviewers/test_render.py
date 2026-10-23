@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from typing import Any
 
 import pytest
 
@@ -261,7 +262,7 @@ def test_select_prior_rule_adds_the_dispute_rule_only_with_disputes() -> None:
 _FENCE_NONCE = re.compile(r"([0-9a-f]{16})-BEGIN FILE PRIORITY")
 
 
-def _response_json(text: str) -> dict[str, object]:
+def _response_json(text: str) -> dict[str, Any]:
     tail = text.rsplit("## RESPONSE TEMPLATE", 1)[1]
     return json.loads(tail[tail.index("{") : tail.rindex("}") + 1])
 
