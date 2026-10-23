@@ -28536,6 +28536,13 @@
       "status": "done",
       "title": "Vector Search Benchmark Support"
     },
+    "velox-gluten-ansi-mode-fallback-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Gluten 1.6.0 on Spark 4.0.2 falls back to vanilla Spark for every plan because ANSI mode is on"
+    },
     "velox-gluten-spark-adapter": {
       "claim": null,
       "needs": [],

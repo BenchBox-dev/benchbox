@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A TPC-H query on the Velox image executes with Velox native operators, shown in the plan or log",
+    "The adapter or run result records when Gluten fell back to vanilla Spark",
+    "The Velox docs state the required ANSI setting"
+  ],
+  "description": "While verifying the rebuilt Velox image (amd64 under emulation), the Spark Connect server with the Gluten plugin logged `Validation failed for plan ..., due to: does not support ansi mode` for every plan. Spark 4 enables ANSI mode by default and Gluten 1.6.0 does not support it, so queries silently run on vanilla Spark instead of Velox, which would make Velox benchmark results measure Spark. The Spark runtime in the image is 4.0.2 while Gluten's fully tested version is 4.0.1. `docker/velox/entrypoint.sh` sets no `spark.sql.ansi.enabled`, and the `velox:local` adapter path may behave the same.\n\nDecide and fix: set `spark.sql.ansi.enabled=false` for Gluten sessions (entrypoint connect mode, the local adapter and the remote adapter's documented configuration), or pin a Spark version Gluten supports, and add a check that fails the run (or reports it in the result) when the plugin falls back. Verify by reading the server log or Spark UI for native (Velox) operators on a TPC-H query.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:48:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9ac9c89ed7004a23832f7981f1f83e30",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    }
+  ]
+}
