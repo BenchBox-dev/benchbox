@@ -35,6 +35,7 @@ DOMAIN_JOBS = [
     "liveness",
     "ruleset-drift",
     "windows",
+    "tpcds-obt",
     "durations-refresh",
 ]
 SUPPORT_JOBS = ["mirror-images", "mirror-cedardb"]
