@@ -55,6 +55,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- SingleStore `CREATE TABLE` statements are written by the SQLGlot fork's `translate_ddl` (foreign keys
+  stripped, lower-case table names, `FLOAT` as `REAL`, `TIMESTAMP` as `DATETIME`, and the TPC-H
+  `SHARD KEY`, `SORT KEY` and `REFERENCE TABLE` clauses) instead of adapter text rewrites. The
+  `BaseDdlOptimizer` mixin and the `singlestore_*` rewrite methods are removed; the four SingleStore
+  DDL rules remain as governance rows naming the `translate_ddl` options. Array columns, which SingleStore
+  cannot store, now become `VECTOR(n, F32|F64)` rather than invalid DDL.
 - ClickHouse `create_schema` writes its table DDL with `translate_ddl` (MergeTree engine, `Nullable` only
   for the columns the benchmark schema marks nullable, tuned `PARTITION BY` / `ORDER BY` / `PRIMARY KEY`)
   instead of the adapter's own text rewriting. The adapter's `_optimize_table_definition`,
