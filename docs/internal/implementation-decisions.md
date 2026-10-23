@@ -5,18 +5,16 @@ behaviour lives in the code and how the SQL compatibility catalog is governed.
 
 ## SQL Compatibility Governance Decision
 
-`sql_compat` is a hybrid
-governance catalog plus optional runtime dispatcher. `BaseDdlOptimizer` is the
-preferred dispatch path for ordered statement-to-statement DDL transforms, but
-adapters may keep local CREATE TABLE rewrite paths when the rewrite depends on
-adapter state, SDK-specific create/load loops, or platform deployment settings.
+`sql_compat` is a governance catalog. CREATE TABLE rewriting is performed by the
+SQLGlot fork through `translate_ddl`; adapters supply the options and the
+benchmark-owned key tables.
 
 `governance_only=True` rules are allowed to represent real runtime behavior.
 They are not dispatch targets; they are the auditable source of intent that the
 drift checker requires before CI can call DDL governance clean. `compat_lint CLEAN`
 means the source scanner found no unregistered or uninspectable adapter
-CREATE TABLE rewrite behavior. It does not mean every DDL rewrite flows through
-`BaseDdlOptimizer`.
+CREATE TABLE rewrite behavior. It does not prove semantic equivalence of the
+rewrite output.
 
 ## DataFrame Runner Lifecycle Decision
 

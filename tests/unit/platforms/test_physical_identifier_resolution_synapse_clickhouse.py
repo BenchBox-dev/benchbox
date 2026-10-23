@@ -94,7 +94,7 @@ def _clickhouse_created_tables(statements: list[str]) -> dict[str, list[str]]:
     for statement in statements:
         match = re.match(r"\s*CREATE TABLE\s+(\w+)\s*\((.*)\)\s*ENGINE", statement, re.IGNORECASE | re.DOTALL)
         if match:
-            created[match.group(1)] = re.findall(r"^\s*(\w+)\s+[A-Za-z]", match.group(2), re.MULTILINE)
+            created[match.group(1)] = re.findall(r"(?:^|,)\s*(\w+)\s+[A-Za-z]", match.group(2))
     return created
 
 
@@ -136,7 +136,7 @@ class TestClickHousePhysicalIdentifiers:
 
         lineitem = next(s for s in client.statements if re.match(r"\s*CREATE TABLE lineitem\b", s))
         assert lineitem.startswith("CREATE TABLE lineitem (")
-        assert "l_orderkey INTEGER NOT NULL" in lineitem
+        assert "l_orderkey Int32 NOT NULL" in lineitem
 
     def test_apply_table_tunings_never_optimizes(self, clickhouse_factory, adapter_cls, kwargs):
         adapter = clickhouse_factory(adapter_cls, {**kwargs, "optimize_after_load": True, "tuning_enabled": True})

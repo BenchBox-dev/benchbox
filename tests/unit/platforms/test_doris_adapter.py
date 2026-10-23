@@ -1256,41 +1256,45 @@ class TestDorisTableModel:
         with pytest.raises(ValueError, match="Invalid table_model"):
             DorisAdapter(table_model="invalid")
 
-    def test_get_table_model_clause_duplicate_lineitem(self):
-        adapter = DorisAdapter(table_model="duplicate")
-        clause = adapter.get_table_model_clause("lineitem")
-        assert clause == "DUPLICATE KEY(l_orderkey, l_linenumber)"
+    @pytest.mark.parametrize(
+        ("model", "table", "expected"),
+        [
+            ("duplicate", "lineitem", "DUPLICATE KEY(l_orderkey)"),
+            ("aggregate", "orders", "AGGREGATE KEY(o_orderkey)"),
+            ("unique", "customer", "UNIQUE KEY(c_custkey)"),
+        ],
+    )
+    def test_translated_ddl_uses_table_model_and_tpch_keys(self, model, table, expected):
+        from benchbox.core.tpch.schema import get_create_all_tables_sql
 
-    def test_get_table_model_clause_aggregate_orders(self):
-        adapter = DorisAdapter(table_model="aggregate")
-        clause = adapter.get_table_model_clause("orders")
-        assert clause == "AGGREGATE KEY(o_orderkey)"
+        adapter = DorisAdapter(table_model=model)
+        statements = get_create_all_tables_sql().split(";")
+        statement = next(
+            s.strip() for s in statements if f"CREATE TABLE {table} " in s or f"CREATE TABLE {table}(" in s
+        )
+        translated = adapter._translate_create_table(statement)
+        flat = translated.replace("`", "").replace(" (", "(")
+        assert expected in flat
 
-    def test_get_table_model_clause_unique_customer(self):
+    @pytest.mark.parametrize("model", ["unique", "aggregate"])
+    def test_keyed_model_on_table_without_key_raises_instead_of_narrow_key(self, model):
+        adapter = DorisAdapter(table_model=model)
+        with pytest.raises(ValueError):
+            adapter._translate_create_table("CREATE TABLE store_sales (ss_sold_date_sk INT, ss_item_sk INT)")
+
+    def test_tpch_keys_ignored_for_same_named_table_of_another_benchmark(self):
         adapter = DorisAdapter(table_model="unique")
-        clause = adapter.get_table_model_clause("customer")
-        assert clause == "UNIQUE KEY(c_custkey)"
+        translated = adapter._translate_create_table(
+            "CREATE TABLE customer (c_customer_sk INT, c_name VARCHAR(20), PRIMARY KEY (c_customer_sk))"
+        )
+        assert "UNIQUE KEY" in translated
+        assert "c_customer_sk" in translated.split("UNIQUE KEY", 1)[1]
 
-    def test_get_table_model_clause_all_tpch_tables(self):
-        adapter = DorisAdapter()
-        tpch_tables = [
-            "lineitem",
-            "orders",
-            "customer",
-            "part",
-            "supplier",
-            "partsupp",
-            "nation",
-            "region",
-        ]
-        for table in tpch_tables:
-            clause = adapter.get_table_model_clause(table)
-            assert clause.startswith("DUPLICATE KEY("), f"Missing key for {table}"
-
-    def test_get_table_model_clause_unknown_table(self):
-        adapter = DorisAdapter()
-        clause = adapter.get_table_model_clause("unknown_table")
-        assert clause == ""
+    @pytest.mark.parametrize("model", ["duplicate", "unique", "aggregate"])
+    def test_create_table_as_select_passes_through(self, model):
+        adapter = DorisAdapter(table_model=model)
+        statement = "CREATE TABLE t2 AS SELECT a FROM t1"
+        assert adapter._translate_create_table(statement) == statement
 
     def test_from_config_passes_table_model(self):
         config = {"table_model": "unique"}
@@ -1307,52 +1311,19 @@ class TestDorisDistribution:
         adapter = DorisAdapter(default_buckets=32)
         assert adapter.default_buckets == 32
 
-    def test_distribution_clause_lineitem(self):
-        adapter = DorisAdapter()
-        clause = adapter.get_distribution_clause("lineitem")
-        assert "DISTRIBUTED BY HASH(l_orderkey)" in clause
-        assert "BUCKETS" in clause
-
-    def test_distribution_clause_customer(self):
-        adapter = DorisAdapter()
-        clause = adapter.get_distribution_clause("customer")
-        assert "DISTRIBUTED BY HASH(c_custkey)" in clause
-
-    def test_distribution_clause_all_tpch_tables(self):
-        adapter = DorisAdapter()
-        tpch_tables = [
-            "lineitem",
-            "orders",
-            "customer",
-            "part",
-            "supplier",
-            "partsupp",
-            "nation",
-            "region",
-        ]
-        for table in tpch_tables:
-            clause = adapter.get_distribution_clause(table)
-            assert "DISTRIBUTED BY HASH" in clause, f"Missing distribution for {table}"
-            assert "BUCKETS" in clause
-
-    def test_distribution_clause_unknown_table(self):
+    def test_translated_ddl_distributes_by_tpch_key_with_default_buckets(self):
         adapter = DorisAdapter(default_buckets=8)
-        clause = adapter.get_distribution_clause("unknown_table")
-        assert "BUCKETS 8" in clause
+        translated = adapter._translate_create_table("CREATE TABLE customer (c_custkey INT, c_name VARCHAR(25))")
+        flat = translated.replace("`", "").replace(" (", "(")
+        assert "DISTRIBUTED BY HASH(c_custkey) BUCKETS 8" in flat
 
     def test_bucket_count_scales_with_sf(self):
         adapter = DorisAdapter(default_buckets=4)
-        small_clause = adapter.get_distribution_clause("lineitem", scale_factor=0.01)
-        large_clause = adapter.get_distribution_clause("lineitem", scale_factor=100)
-        small_buckets = int(small_clause.split("BUCKETS ")[-1])
-        large_buckets = int(large_clause.split("BUCKETS ")[-1])
-        assert large_buckets > small_buckets
+        assert adapter._compute_bucket_count("lineitem", 100) > adapter._compute_bucket_count("lineitem", 0.01)
 
     def test_bucket_count_capped_at_128(self):
         adapter = DorisAdapter()
-        clause = adapter.get_distribution_clause("lineitem", scale_factor=10000)
-        buckets = int(clause.split("BUCKETS ")[-1])
-        assert buckets <= 128
+        assert adapter._compute_bucket_count("lineitem", 10000) <= 128
 
     def test_from_config_passes_default_buckets(self):
         config = {"default_buckets": 16}
@@ -1797,44 +1768,44 @@ class TestDorisParquetStreamLoad:
 
 
 class TestDorisDdlAndIntegrityValidation:
-    def test_inject_doris_ddl_clauses_strips_array_dimensions(self):
+    def test_translate_create_table_strips_array_dimensions(self):
         adapter = DorisAdapter()
         ddl = """\
 CREATE TABLE vectors (
     id BIGINT PRIMARY KEY,
-    embedding ARRAY<FLOAT>[128] NOT NULL,
+    embedding FLOAT[128] NOT NULL,
     tag VARCHAR(32)
 );
 """
 
-        rewritten = adapter._inject_doris_ddl_clauses(ddl)
+        rewritten = adapter._translate_create_table(ddl)
 
-        assert "ARRAY<FLOAT>[128]" not in rewritten
-        assert "ARRAY<FLOAT>" in rewritten
+        assert "[128]" not in rewritten
+        assert "ARRAY<" in rewritten
         assert "VARCHAR(32)" in rewritten
 
-    def test_inject_doris_ddl_clauses_strips_table_level_pk_with_leading_comma(self):
+    def test_translate_create_table_strips_table_level_pk_with_leading_comma(self):
         adapter = DorisAdapter()
         ddl = "CREATE TABLE t (id BIGINT, name VARCHAR(32), PRIMARY KEY (id))"
 
-        rewritten = adapter._inject_doris_ddl_clauses(ddl)
+        rewritten = adapter._translate_create_table(ddl)
 
         assert "PRIMARY KEY" not in rewritten
 
-    def test_inject_doris_ddl_clauses_strips_bare_table_level_pk(self):
+    def test_translate_create_table_strips_bare_table_level_pk(self):
         adapter = DorisAdapter()
         ddl = "CREATE TABLE t (PRIMARY KEY (id), id BIGINT, name VARCHAR(32))"
 
-        rewritten = adapter._inject_doris_ddl_clauses(ddl)
+        rewritten = adapter._translate_create_table(ddl)
 
         assert "PRIMARY KEY" not in rewritten
         assert "(," not in rewritten
 
-    def test_inject_doris_ddl_clauses_strips_column_level_pk(self):
+    def test_translate_create_table_strips_column_level_pk(self):
         adapter = DorisAdapter()
         ddl = "CREATE TABLE t (id BIGINT PRIMARY KEY, name VARCHAR(32))"
 
-        rewritten = adapter._inject_doris_ddl_clauses(ddl)
+        rewritten = adapter._translate_create_table(ddl)
 
         assert "PRIMARY KEY" not in rewritten
 

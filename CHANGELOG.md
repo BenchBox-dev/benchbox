@@ -60,6 +60,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake quotes identifiers, and the pg_mooncake
   mirror statements come from the SQLGlot runtime. The key
   stripping, `SYMBOL` columns, designated timestamp and partitioning keep their results.
+- SingleStore `CREATE TABLE` statements are written by the SQLGlot fork's `translate_ddl` (foreign keys
+  stripped, lower-case table names, `FLOAT` as `REAL`, `TIMESTAMP` as `DATETIME`, and the TPC-H
+  `SHARD KEY`, `SORT KEY` and `REFERENCE TABLE` clauses) instead of adapter text rewrites. The
+  `BaseDdlOptimizer` mixin and the `singlestore_*` rewrite methods are removed; the four SingleStore
+  DDL rules remain as governance rows naming the `translate_ddl` options. Array columns, which SingleStore
+  cannot store, now become `VECTOR(n, F32|F64)` rather than invalid DDL.
+- ClickHouse `create_schema` writes its table DDL with `translate_ddl` (MergeTree engine, `Nullable` only
+  for the columns the benchmark schema marks nullable, tuned `PARTITION BY` / `ORDER BY` / `PRIMARY KEY`)
+  instead of the adapter's own text rewriting. The adapter's `_optimize_table_definition`,
+  `_strip_primary_key_constraints` and `Nullable`/key text helpers are removed. Types are spelled the
+  ClickHouse way (`Int32`, `String`, `Decimal(15, 2)`, `DateTime`), and tuned key columns that are
+  nullable fail with the table name and the column names. Cases are listed in
+  `tests/unit/sql_compat/golden_corpus/recorded/area_ddl.json`.
 - Databend and Firebolt build their `CREATE TABLE` statements with the SQLGlot fork's `translate_ddl`
   instead of per-adapter text rewrites (`_optimize_table_definition`, `_normalize_table_name_in_sql`).
   Emitted DDL matches the golden corpus; both still drop primary and foreign keys.
@@ -108,6 +121,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   normalised key and the identifier prefix for a key path (bounded caches, both pure
   functions of their arguments). Anonymizing the committed results corpus is about a third
   faster locally; published output is byte-identical.
+- StarRocks and Doris `CREATE TABLE` statements are now written by the SQLGlot fork's `translate_ddl`
+  instead of regex rewrites in the adapters. Doris keeps the TPC-H key, distribution and partition tables
+  and its `table_model`, bucket and replication options; StarRocks keeps the leading-primary-key rule
+  (`PRIMARY KEY` model when the key columns lead the table, else `DUPLICATE KEY` on the first column).
+  Output differences: identifiers are quoted, a leading primary key written on one line now selects the
+  `PRIMARY KEY` model, and statements other than `CREATE TABLE` on Doris are sent unchanged. A Doris
+  `unique` or `aggregate` table model on a table whose key columns do not lead the table now raises
+  instead of silently writing a narrower key. A test runs both adapters over every shipped schema.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed

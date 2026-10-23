@@ -7,6 +7,7 @@ import os
 import pytest
 
 from benchbox.platforms.singlestore import SingleStoreAdapter
+from benchbox.utils.dialect_utils import translate_ddl
 
 from .conftest import skip_unless_docker_service
 
@@ -139,10 +140,10 @@ class TestLiveSingleStoreDDL:
             cursor.execute("DROP TABLE IF EXISTS `orders`")
 
             stmt = "CREATE TABLE `orders` (o_orderkey BIGINT NOT NULL, o_totalprice DECIMAL(15,2))"
-            transformed = singlestore_adapter._transform_create_statement(stmt)
+            (transformed,) = translate_ddl(stmt, "singlestore", "singlestore", **singlestore_adapter._ddl_options())
 
-            assert "SHARD KEY (o_orderkey)" in transformed
-            assert "SORT KEY (o_orderkey)" in transformed
+            assert "SHARD KEY (`o_orderkey`)" in transformed
+            assert "SORT KEY (`o_orderkey`)" in transformed
             cursor.execute(transformed)
 
             cursor.execute("SHOW TABLES LIKE 'orders'")
@@ -162,7 +163,7 @@ class TestLiveSingleStoreDDL:
             cursor.execute("DROP TABLE IF EXISTS `nation`")
 
             stmt = "CREATE TABLE `nation` (n_nationkey INT NOT NULL, n_name VARCHAR(25))"
-            transformed = singlestore_adapter._transform_create_statement(stmt)
+            (transformed,) = translate_ddl(stmt, "singlestore", "singlestore", **singlestore_adapter._ddl_options())
 
             assert "CREATE REFERENCE TABLE" in transformed
             cursor.execute(transformed)

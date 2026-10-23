@@ -9,25 +9,21 @@ rewriting queries and DDL in adapter code, each intentional transformation is
 `compat_lint` walks the rule files at CI time and fails if any transformation
 is found in adapter code that has no matching registry entry.
 
-## Design: hybrid governance plus optional runtime dispatch
+## Design: governance catalogue over the fork's DDL transpiler
 
 The registry is the authoritative governance catalogue for SQL compatibility
-decisions.  `BaseDdlOptimizer` is the runtime dispatch path for adapters that
-opt in; adapters that keep a local rewrite path must still register the behavior
-with `RewriteDDLPayload(governance_only=True)` unless the rewrite has an
-explicit drift exemption.
+decisions.  DDL rewriting is performed by the SQLGlot fork through
+`benchbox.utils.dialect_utils.translate_ddl`; each rewrite is registered with
+`RewriteDDLPayload(governance_only=True)` unless the rewrite has an explicit
+drift exemption.
 
-Adapter methods remain in `benchbox/platforms/<platform>.py` when the
-transformation is tightly coupled to platform state, SDK load loops, or
-deployment settings (SHARD KEY syntax, EXTERNAL TABLE locations, schema
-prefixes, etc.) and are tested alongside the adapter.  The registry makes those
-decisions discoverable, auditable, and enforceable without forcing every
-platform through one runtime abstraction.
+Adapters keep only benchmark data (key, shard and partition tables) and the
+tuning-to-option mapping.  The registry makes those decisions discoverable,
+auditable, and enforceable.
 
 ```
-Registry rule     →  declares transformer_id "myplatform_strip_fk"
-Adapter method    →  implements def myplatform_strip_fk(self, stmt): ...
-BaseDdlOptimizer  →  dispatches each rule to getattr(self, transformer_id)(stmt)
+Registry rule     →  declares transformer_id "translate_ddl:strip_foreign_keys"
+Adapter           →  passes the matching option to translate_ddl
 compat_lint       →  verifies every regex/DDL-text branch in adapter code
                      maps to a registered rule_id
 ```
@@ -35,17 +31,11 @@ compat_lint       →  verifies every regex/DDL-text branch in adapter code
 Decision rules:
 
 - Every detected adapter CREATE TABLE rewrite must be registered under
-  `Phase.DDL_OPTIMIZE`, runtime-dispatched by `BaseDdlOptimizer`, or explicitly
-  exempted with rationale.
-- `governance_only=True` is allowed for runtime behavior that remains in an
-  adapter-specific path; it means the rule is authoritative documentation and a
+  `Phase.DDL_OPTIMIZE` or explicitly exempted with rationale.
+- `governance_only=True` means the rule is authoritative documentation and a
   CI governance anchor, not a dispatch target.
-- Local rewrites outside `BaseDdlOptimizer` are allowed when they need adapter
-  state or SDK-specific load/create loops, but they must have representative
-  runtime tests and a governance rule.
 - `compat_lint CLEAN` means no source-detected CREATE TABLE rewrite is
-  unregistered or uninspectable. It does not mean every DDL rewrite is routed
-  through `BaseDdlOptimizer`, nor does it prove semantic equivalence of the
+  unregistered or uninspectable. It does not prove semantic equivalence of the
   rewrite output.
 
 ## Phase.DDL_OPTIMIZE — adding a new platform
@@ -78,28 +68,24 @@ Decision rules:
    )
    ```
 
-   `optimize_table_definition()` is inherited, and transformers are dispatched automatically in registration order, so no manual wiring is needed.
+   DDL rewriting itself is performed by the SQLGlot fork through
+   `benchbox.utils.dialect_utils.translate_ddl`; the rule is a governance anchor
+   (`governance_only=True`) whose `transformer_id` names the `translate_ddl`
+   option that performs the rewrite (for example
+   `translate_ddl:strip_foreign_keys`).
 
-2. **Implement** the method in your adapter. Prefer `BaseDdlOptimizer` for new
-   platforms when the transform can be expressed as ordered statement-to-
-   statement functions:
+2. **Wire** the adapter by building the `translate_ddl` options from adapter
+   state and calling it on the generated schema script; keep only benchmark data
+   (key, shard and partition tables) in BenchBox:
 
    ```python
-   from typing import ClassVar
-   from benchbox.platforms.base.ddl_helpers import strip_foreign_keys
-   from benchbox.platforms.base.ddl_optimizer import BaseDdlOptimizer
+   from benchbox.utils.dialect_utils import translate_ddl
 
-   class MyPlatformAdapter(BaseDdlOptimizer, PlatformAdapter):
-       _platform_key: ClassVar[str] = "myplatform"
-
-       def myplatform_strip_foreign_keys(self, stmt: str) -> str:
-           return strip_foreign_keys(stmt)
-
+   class MyPlatformAdapter(PlatformAdapter):
+       def _schema_statements(self, benchmark):
+           script = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+           return translate_ddl(script, "myplatform", "standard", strip_foreign_keys=True)
    ```
-
-   If the adapter must keep a local create/load path instead, set
-   `governance_only=True` on the payload and name the local method in the rule
-   `reason`.
 
 3. **Confirm** `compat_lint` runs clean:
 
@@ -107,37 +93,20 @@ Decision rules:
    uv run -- python -m benchbox.sql_compat.inventory --check-ddl-drift
    ```
 
-## BaseDdlOptimizer — automatic dispatch
-
-`BaseDdlOptimizer` (in `benchbox/platforms/base/ddl_optimizer.py`) is a mixin
-that adapters can inherit to get automatic dispatch.  On the first call to
-`optimize_table_definition(stmt, table_name)` it:
-
-1. Lazily imports `benchbox.sql_compat.rules.ddl_optimize.<platform_key>_ddl_rewrites`
-   to ensure rules are registered (the registry is idempotent on re-import).
-2. Calls `REGISTRY.resolve_all(ctx)` to get all registered rules in
-   registration order.
-3. For each rule's `RewriteDDLPayload.transformer_id`, calls
-   `getattr(self, transformer_id)(stmt)` and passes the result to the
-   next transformer.
-
-**Registration order is application order.**  If one transform depends on
-another (e.g., `SHARD KEY` skip-guard needs `REFERENCE TABLE` to already be
-in the stmt), register the prerequisite rule first.
-
 ## Canonical example: SingleStore
 
-SingleStore has four DDL_OPTIMIZE rules applied in this order:
+SingleStore has four DDL_OPTIMIZE governance rules, all performed by
+`translate_ddl` in one pass:
 
-| # | rule_id suffix                    | transformer_id                    | What it does |
-|---|-----------------------------------|-----------------------------------|--------------|
-| 1 | `strip_foreign_keys`              | `singlestore_strip_foreign_keys`  | Removes FK clauses (error 2752) |
-| 2 | `reference_table_for_dimensions`  | `singlestore_reference_table`     | `CREATE TABLE` → `CREATE REFERENCE TABLE` for nation/region |
-| 3 | `inject_shard_key`                | `singlestore_inject_shard_key`    | Injects `SHARD KEY` (skips `REFERENCE TABLE`) |
-| 4 | `inject_sort_key`                 | `singlestore_inject_sort_key`     | Injects `SORT KEY` (skips `REFERENCE TABLE`) |
+| # | rule_id suffix                    | transformer_id                              | What it does |
+|---|-----------------------------------|---------------------------------------------|--------------|
+| 1 | `strip_foreign_keys`              | `translate_ddl:strip_foreign_keys`          | Removes FK clauses (error 2752) |
+| 2 | `reference_table_for_dimensions`  | `translate_ddl:singlestore.reference_tables`| `CREATE TABLE` → `CREATE REFERENCE TABLE` for nation/region |
+| 3 | `inject_shard_key`                | `translate_ddl:singlestore.shard_keys`      | Injects `SHARD KEY` (skips `REFERENCE TABLE`) |
+| 4 | `inject_sort_key`                 | `translate_ddl:singlestore.sort_keys`       | Injects `SORT KEY` (skips `REFERENCE TABLE`) |
 
 Rule file: `benchbox/sql_compat/rules/ddl_optimize/singlestore_ddl_rewrites.py`
-Adapter:   `benchbox/platforms/singlestore.py` — `SingleStoreAdapter` inherits `BaseDdlOptimizer`
+Adapter:   `benchbox/platforms/singlestore.py` — `SingleStoreAdapter._schema_statements` supplies the shard, sort and reference-table data
 
 ## DDL helper input constraint
 
@@ -158,8 +127,8 @@ SingleStore) will cause `REGISTRY.resolve()` to raise
 `CompatibilityRegistryConflict`.  Use `REGISTRY.resolve_all(ctx)` for
 governance queries on these platforms.
 
-`BaseDdlOptimizer` uses `resolve_all()` internally and is safe for any number
-of rules.
+Every `DDL_OPTIMIZE` rule on such a platform is a governance anchor, so callers
+that enumerate them should use `resolve_all()`.
 
 ## compat_lint enforcement
 
@@ -169,7 +138,7 @@ detected behavior in five buckets:
 
 | Status | Meaning |
 |---|---|
-| `registered_runtime_behavior` | A registered `DDL_OPTIMIZE` rule dispatches at runtime through `BaseDdlOptimizer`. |
+| `registered_runtime_behavior` | A registered `DDL_OPTIMIZE` rule is wired to runtime code that rewrites the statement. |
 | `registered_governance_only_intent` | The adapter performs the rewrite locally and the registry rule documents/enforces that intent. |
 | `explicit_exemption` | The local rewrite is intentionally outside the registry and carries an exemption rationale. |
 | `unregistered_detected_behavior` | Source inspection found CREATE TABLE rewrite behavior with no rule or exemption; CI fails. |

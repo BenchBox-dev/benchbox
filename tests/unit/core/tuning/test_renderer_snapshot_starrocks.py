@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 from unittest.mock import Mock
 
 import pytest
@@ -23,37 +24,44 @@ def _preview_clauses(table_tuning: TableTuning):
     return generator.generate_tuning_clauses(table_tuning)
 
 
+def _flat(text: str) -> str:
+    return re.sub(r"\s+\(", "(", text.replace("`", ""))
+
+
+def _render(adapter, statement, table_tunings):
+    return _flat(adapter._translate_schema_statement(statement, table_tunings))
+
+
 class _HostAdapter(StarRocksWorkloadMixin):
     def __init__(self):
         self.logger = Mock()
 
 
 _BASELINE_REGION_DDL = (
-    "CREATE TABLE region (r_regionkey INT, r_name VARCHAR(25))\n"
-    "DUPLICATE KEY(`r_regionkey`)\n"
-    "DISTRIBUTED BY HASH(`r_regionkey`) BUCKETS 8"
+    "CREATE TABLE region(r_regionkey INT, r_name VARCHAR(25)) "
+    "DUPLICATE KEY(r_regionkey) DISTRIBUTED BY HASH(r_regionkey) BUCKETS 8"
 )
 
 
 class TestStarRocksEngineMandatoryBaselineUnchanged:
     def test_untuned_output_is_byte_identical(self):
         adapter = _HostAdapter()
-        statement = "CREATE TABLE region (r_regionkey INT, r_name VARCHAR(25))"
-        assert adapter._optimize_table_definition(statement, None) == _BASELINE_REGION_DDL
+        statement = "CREATE TABLE region(r_regionkey INT, r_name VARCHAR(25))"
+        assert _render(adapter, statement, None) == _BASELINE_REGION_DDL
 
     def test_tuning_disabled_passes_none_and_gets_baseline(self):
         adapter = _HostAdapter()
         statement = "CREATE TABLE lineitem (l_orderkey INT, l_shipdate DATE)"
-        rendered = adapter._optimize_table_definition(statement, None)
-        assert "DISTRIBUTED BY HASH(`l_orderkey`) BUCKETS 8" in rendered
+        rendered = _render(adapter, statement, None)
+        assert "DISTRIBUTED BY HASH(l_orderkey) BUCKETS 8" in rendered
         assert "PARTITION BY" not in rendered
         assert rendered.count("DISTRIBUTED BY") == 1
 
     def test_table_absent_from_tunings_gets_baseline(self):
         adapter = _HostAdapter()
         statement = "CREATE TABLE untuned_table (id INT, payload VARCHAR(20))"
-        rendered = adapter._optimize_table_definition(statement, {"lineitem": Mock()})
-        assert "DISTRIBUTED BY HASH(`id`) BUCKETS 8" in rendered
+        rendered = _render(adapter, statement, {"lineitem": Mock()})
+        assert "DISTRIBUTED BY HASH(id) BUCKETS 8" in rendered
         assert "PARTITION BY" not in rendered
         assert rendered.count("DISTRIBUTED BY") == 1
 
@@ -76,11 +84,11 @@ class TestStarRocksPreviewExecutionParity:
 
         adapter = _HostAdapter()
         statement = "CREATE TABLE lineitem (l_orderkey INT, l_linenumber INT, l_shipdate DATE)"
-        rendered = adapter._optimize_table_definition(statement, table_tunings)
+        rendered = _render(adapter, statement, table_tunings)
 
-        assert preview.partition_by in rendered
-        assert preview.distribute_by in rendered
-        assert preview.order_by in rendered
+        assert _flat(preview.partition_by) in rendered
+        assert _flat(preview.distribute_by) in rendered
+        assert _flat(preview.order_by) in rendered
 
         assert rendered.count("DISTRIBUTED BY") == 1
         assert rendered.index("PARTITION BY") < rendered.index("DISTRIBUTED BY") < rendered.index("ORDER BY")
@@ -95,10 +103,10 @@ class TestStarRocksPreviewExecutionParity:
 
         adapter = _HostAdapter()
         statement = "CREATE TABLE orders (o_orderkey INT, o_custkey INT, o_orderdate DATE)"
-        rendered = adapter._optimize_table_definition(statement, {"orders": table_tuning})
+        rendered = _render(adapter, statement, {"orders": table_tuning})
 
-        assert "DISTRIBUTED BY HASH(`o_custkey`) BUCKETS 8" in rendered
-        assert "HASH(`o_orderkey`)" not in rendered
+        assert "DISTRIBUTED BY HASH(o_custkey) BUCKETS 8" in rendered
+        assert "HASH(o_orderkey)" not in rendered
         assert rendered.count("DISTRIBUTED BY") == 1
 
     def test_case_insensitive_table_lookup(self):
@@ -108,8 +116,8 @@ class TestStarRocksPreviewExecutionParity:
         )
         adapter = _HostAdapter()
         statement = "CREATE TABLE lineitem (l_orderkey INT, l_shipdate DATE)"
-        rendered = adapter._optimize_table_definition(statement, {"LINEITEM": table_tuning})
-        assert "DISTRIBUTED BY HASH(`l_orderkey`) BUCKETS 8" in rendered
+        rendered = _render(adapter, statement, {"LINEITEM": table_tuning})
+        assert "DISTRIBUTED BY HASH(l_orderkey) BUCKETS 8" in rendered
 
 
 class TestStarRocksAppliedLedgerInstrumentation:
@@ -131,7 +139,7 @@ class TestStarRocksAppliedLedgerInstrumentation:
             sorting=[TuningColumn(name="l_linenumber", type="INTEGER", order=1)],
         )
         statement = "CREATE TABLE lineitem (l_orderkey INT, l_linenumber INT, l_shipdate DATE)"
-        adapter._optimize_table_definition(statement, {"lineitem": table_tuning})
+        _render(adapter, statement, {"lineitem": table_tuning})
 
         ledger = adapter._applied_tuning_ledger
         recorded = [s.statement for s in ledger.statements]
@@ -144,8 +152,8 @@ class TestStarRocksAppliedLedgerInstrumentation:
 
     def test_untuned_records_nothing(self):
         adapter = self._host_with_ledger()
-        statement = "CREATE TABLE region (r_regionkey INT, r_name VARCHAR(25))"
-        adapter._optimize_table_definition(statement, None)
+        statement = "CREATE TABLE region(r_regionkey INT, r_name VARCHAR(25))"
+        _render(adapter, statement, None)
         assert adapter._applied_tuning_ledger.is_empty()
 
     def test_engine_mandatory_distribution_not_recorded_as_tuning(self):
@@ -155,7 +163,7 @@ class TestStarRocksAppliedLedgerInstrumentation:
             partitioning=[TuningColumn(name="l_shipdate", type="DATE", order=1)],
         )
         statement = "CREATE TABLE lineitem (l_orderkey INT, l_shipdate DATE)"
-        adapter._optimize_table_definition(statement, {"lineitem": table_tuning})
+        _render(adapter, statement, {"lineitem": table_tuning})
         recorded = [s.statement for s in adapter._applied_tuning_ledger.statements]
         assert recorded == ["PARTITION BY (l_shipdate)"]
 
@@ -163,9 +171,9 @@ class TestStarRocksAppliedLedgerInstrumentation:
         adapter = self._host_with_ledger()
         statement = "CREATE TABLE nation (\n  n_nationkey INT,\n  n_name VARCHAR(25),\n  PRIMARY KEY (n_nationkey)\n)"
 
-        rendered = adapter._optimize_table_definition(statement, {})
+        rendered = _render(adapter, statement, {})
 
-        assert "PRIMARY KEY (n_nationkey)" in rendered
+        assert "PRIMARY KEY(n_nationkey)" in rendered
         [recorded] = adapter._applied_tuning_ledger.statements
         assert (recorded.statement, recorded.table) == ("PRIMARY KEY (n_nationkey)", "nation")
 
@@ -173,9 +181,9 @@ class TestStarRocksAppliedLedgerInstrumentation:
         adapter = self._host_with_ledger()
         statement = "CREATE TABLE nation (\n  n_nationkey INT,\n  n_name VARCHAR(25),\n  PRIMARY KEY (n_nationkey)\n)"
 
-        rendered = adapter._optimize_table_definition(statement, None)
+        rendered = _render(adapter, statement, None)
 
-        assert "PRIMARY KEY (n_nationkey)" in rendered
+        assert "PRIMARY KEY(n_nationkey)" in rendered
         assert adapter._applied_tuning_ledger.is_empty()
 
     def test_no_ledger_attribute_is_a_safe_noop(self):
@@ -185,8 +193,8 @@ class TestStarRocksAppliedLedgerInstrumentation:
             distribution=[TuningColumn(name="l_orderkey", type="INTEGER", order=1)],
         )
         statement = "CREATE TABLE lineitem (l_orderkey INT)"
-        rendered = adapter._optimize_table_definition(statement, {"lineitem": table_tuning})
-        assert "DISTRIBUTED BY HASH(`l_orderkey`) BUCKETS 8" in rendered
+        rendered = _render(adapter, statement, {"lineitem": table_tuning})
+        assert "DISTRIBUTED BY HASH(l_orderkey) BUCKETS 8" in rendered
 
 
 class TestStarRocksDryRunEntryParity:
@@ -213,7 +221,7 @@ class TestStarRocksDryRunEntryParity:
 
         adapter = _HostAdapter()
         statement = "CREATE TABLE lineitem (l_orderkey INT, l_linenumber INT, l_shipdate DATE)"
-        rendered = adapter._optimize_table_definition(statement, {"lineitem": table_tuning})
-        assert "DISTRIBUTED BY HASH(`l_orderkey`) BUCKETS 8" in rendered
+        rendered = _render(adapter, statement, {"lineitem": table_tuning})
+        assert "DISTRIBUTED BY HASH(l_orderkey) BUCKETS 8" in rendered
         assert rendered.count("DISTRIBUTED BY") == 1
         assert rendered.index("PARTITION BY") < rendered.index("DISTRIBUTED BY") < rendered.index("ORDER BY")

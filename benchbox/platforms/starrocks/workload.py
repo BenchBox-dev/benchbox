@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.tuning.generators.starrocks import DEFAULT_BUCKET_COUNT
 from benchbox.platforms.base.data_loading import (
     DataSource,
     FileFormatHandler,
@@ -15,9 +16,9 @@ from benchbox.platforms.base.data_loading import (
     resolve_csv_dialect,
     validate_sql_identifier,
 )
-from benchbox.platforms.base.ddl_helpers import strip_foreign_keys
 from benchbox.platforms.base.sql_execution import execute_sql_query
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.dialect_utils import create_table_shape, is_create_table, translate_ddl
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ class StarRocksWorkloadMixin:
                     pass
 
                 for statement in statements:
-                    statement = self._optimize_table_definition(statement, table_tunings)
+                    statement = self._translate_schema_statement(statement, table_tunings)
                     cursor.execute(statement)
                     self.logger.debug(f"Executed schema statement: {statement[:100]}...")
             finally:
@@ -106,103 +107,69 @@ class StarRocksWorkloadMixin:
 
         return elapsed_seconds(start_time)
 
-    def _optimize_table_definition(self, statement: str, table_tunings: dict[str, Any] | None = None) -> str:
-        if not statement.upper().startswith("CREATE TABLE"):
+    def _translate_schema_statement(self, statement: str, table_tunings: dict[str, Any] | None = None) -> str:
+        if not is_create_table(statement):
             return statement
 
-        statement = re.sub(r"\bAUTOINCREMENT\b", "", statement, flags=re.IGNORECASE)
-        statement = re.sub(r"\bAUTO_INCREMENT\b", "", statement, flags=re.IGNORECASE)
+        table_name, columns, key = create_table_shape(statement)
+        if not columns:
+            return "; ".join(translate_ddl(statement, "starrocks", source_dialect="standard", **self._ddl_options()))
 
-        statement = re.sub(r"\s+ENGINE\s*=\s*\w+(\([^)]*\))?", "", statement, flags=re.IGNORECASE)
+        table_tuning, tuning_clauses = self._resolve_table_tuning(table_name, table_tunings)
+        layout = self._starrocks_layout(columns, key, table_tuning)
+        undefined = sorted(
+            {name.lower() for field in ("distribute_by", "partition_by", "sort_by") for name in layout.get(field, [])}
+            - set(columns)
+        )
+        if undefined:
+            raise ValueError(f"Tuned columns {undefined} are not defined by table {table_name!r}")
+        if table_tunings is not None and layout["key_model"] == "primary":
+            self._record_starrocks_tuning_to_ledger(table_name, [f"PRIMARY KEY ({', '.join(key)})"])
+        if tuning_clauses is not None:
+            self._record_starrocks_tuning_to_ledger(
+                table_name,
+                [
+                    clause
+                    for clause in (tuning_clauses.partition_by, tuning_clauses.distribute_by, tuning_clauses.order_by)
+                    if clause
+                ],
+            )
+        return "; ".join(
+            translate_ddl(
+                statement, "starrocks", source_dialect="standard", default_layout=layout, **self._ddl_options()
+            )
+        )
 
-        statement = self._convert_types(statement)
+    @staticmethod
+    def _ddl_options() -> dict[str, Any]:
+        return {"strip_foreign_keys": True, "float_as_real": True, "type_map": "starrocks"}
 
-        statement = strip_foreign_keys(statement)
+    @staticmethod
+    def _starrocks_layout(columns: list[str], key: list[str], table_tuning: Any) -> dict[str, Any]:
+        first = columns[0]
+        primary = bool(key) and set(key) == set(columns[: len(set(key))])
+        layout: dict[str, Any] = {
+            "key_model": "primary" if primary else "duplicate",
+            "key_columns": [] if primary else [first],
+            "distribution": "hash",
+            "distribute_by": [first],
+            "buckets": DEFAULT_BUCKET_COUNT,
+        }
+        if table_tuning is not None:
+            from benchbox.core.tuning.interface import TuningType
 
-        pk_match = re.search(r"\bPRIMARY\s+KEY\s*\(([^)]+)\)", statement, re.IGNORECASE)
-        if pk_match:
-            pk_cols_raw = pk_match.group(1)
-        else:
-            pk_inline = re.search(r"^\s+(\w+)\s+\w[\w()]*.*\bPRIMARY\s+KEY\b", statement, re.IGNORECASE | re.MULTILINE)
-            pk_cols_raw = pk_inline.group(1) if pk_inline else None
+            def tuned(tuning_type: Any) -> list[str]:
+                return [c.name for c in sorted(table_tuning.get_columns_by_type(tuning_type), key=lambda c: c.order)]
 
-        statement = re.sub(r",?\s*PRIMARY\s+KEY\s*\([^)]+\)", "", statement, flags=re.IGNORECASE)
+            distribution = tuned(TuningType.DISTRIBUTION)
+            if distribution:
+                layout["distribute_by"] = distribution[:1]
+            layout["partition_by"] = tuned(TuningType.PARTITIONING)
+            layout["sort_by"] = tuned(TuningType.SORTING)
+        return layout
 
-        statement = re.sub(r"\s+PRIMARY\s+KEY\b", "", statement, flags=re.IGNORECASE)
-
-        first_col = self._extract_first_column(statement)
-
-        current_upper = statement.upper()
-        if "DUPLICATE KEY" not in current_upper and "PRIMARY KEY" not in current_upper:
-            use_pk = False
-            if pk_cols_raw:
-                pk_cols = [c.strip().strip("`").strip('"') for c in pk_cols_raw.split(",")]
-                col_names = re.findall(r"^\s+(\w+)\s+\w", statement, re.MULTILINE)
-                use_pk = len(col_names) > 0 and len(col_names) >= len(pk_cols) and col_names[: len(pk_cols)] == pk_cols
-
-            if use_pk and pk_cols_raw:
-                pk_clause = f"PRIMARY KEY ({pk_cols_raw.strip()})"
-                if table_tunings is not None:
-                    self._record_starrocks_tuning_to_ledger(self._created_table_name(statement), [pk_clause])
-                stripped = statement.rstrip()
-                if stripped.endswith(";"):
-                    statement = stripped[:-1] + f"\n{pk_clause};"
-                else:
-                    statement = stripped + f"\n{pk_clause}"
-            elif first_col:
-                stripped = statement.rstrip()
-                if stripped.endswith(";"):
-                    statement = stripped[:-1] + f"\nDUPLICATE KEY(`{first_col}`);"
-                else:
-                    statement = stripped + f"\nDUPLICATE KEY(`{first_col}`)"
-
-        current_upper = statement.upper()
-
-        from benchbox.core.tuning.ddl_generator import get_ddl_generator
-
-        generator = get_ddl_generator("starrocks")
-        tuning_clauses, tuned_table_name = self._resolve_tuned_ddl_clauses(statement, table_tunings, generator)
-
-        if "DISTRIBUTED BY" not in current_upper and first_col:
-            suffix_clauses: list[str] = []
-            tuned_clauses: list[str] = []
-
-            if tuning_clauses is not None and tuning_clauses.partition_by and "PARTITION BY" not in current_upper:
-                partition_clause = tuning_clauses.partition_by
-                suffix_clauses.append(partition_clause)
-                tuned_clauses.append(partition_clause)
-
-            dist_tuned = bool(tuning_clauses and tuning_clauses.distribute_by)
-            if dist_tuned:
-                distribution_clause = tuning_clauses.distribute_by
-            else:
-                distribution_clause = generator.render_distribution_clause(first_col)
-            suffix_clauses.append(distribution_clause)
-            if dist_tuned:
-                tuned_clauses.append(distribution_clause)
-
-            if tuning_clauses is not None and tuning_clauses.order_by and "ORDER BY" not in current_upper:
-                order_clause = tuning_clauses.order_by
-                suffix_clauses.append(order_clause)
-                tuned_clauses.append(order_clause)
-
-            suffix = "\n".join(suffix_clauses)
-            stripped = statement.rstrip()
-            if stripped.endswith(";"):
-                statement = stripped[:-1] + f"\n{suffix};"
-            else:
-                statement = stripped + f"\n{suffix}"
-
-            self._record_starrocks_tuning_to_ledger(tuned_table_name, tuned_clauses)
-
-        return statement
-
-    def _resolve_tuned_ddl_clauses(self, statement: str, table_tunings: dict[str, Any] | None, generator: Any):
-        if not table_tunings:
-            return None, None
-
-        table_name = self._created_table_name(statement)
-        if table_name is None:
+    def _resolve_table_tuning(self, table_name: str | None, table_tunings: dict[str, Any] | None):
+        if not table_tunings or table_name is None:
             return None, None
 
         table_tuning = None
@@ -212,17 +179,14 @@ class StarRocksWorkloadMixin:
                 break
 
         if table_tuning is None or not table_tuning.has_any_tuning():
-            return None, table_name
+            return None, None
 
-        clauses = generator.generate_tuning_clauses(table_tuning)
+        from benchbox.core.tuning.ddl_generator import get_ddl_generator
+
+        clauses = get_ddl_generator("starrocks").generate_tuning_clauses(table_tuning)
         if clauses.is_empty():
-            return None, table_name
-        return clauses, table_name
-
-    @staticmethod
-    def _created_table_name(statement: str) -> str | None:
-        match = re.search(r"CREATE TABLE(?:\s+IF NOT EXISTS)?\s+`?(\w+)`?", statement, re.IGNORECASE)
-        return match.group(1) if match else None
+            return None, None
+        return table_tuning, clauses
 
     def _record_starrocks_tuning_to_ledger(self, table_name: str | None, clauses: list[str]) -> None:
         ledger = getattr(self, "_applied_tuning_ledger", None)
@@ -235,46 +199,6 @@ class StarRocksWorkloadMixin:
                 ledger.record(clause, PHASE_DDL, mechanism="starrocks_ddl_generator", table=table_name)
         except Exception as exc:
             self.logger.debug("StarRocks applied-ledger record degraded: %s", exc)
-
-    _TYPE_MAPPINGS: tuple[tuple[str, str, bool], ...] = (
-        (r"\bHUGEINT\b", "LARGEINT", False),
-        (r"\bINTEGER\b", "INT", False),
-        (r"\bSMALLINT\b", "INT", False),
-        (r"\bTIMESTAMP\b", "DATETIME", True),
-        (r"\bTIME\b", "VARCHAR(10)", True),
-        (r"\bSTRING\b", "VARCHAR(65533)", False),
-        (r"\bTEXT\b", "VARCHAR(65533)", False),
-        (r"\bVARCHAR\b(?!\s*\()", "VARCHAR(65533)", False),
-        (r"\bBOOLEAN\b", "BOOLEAN", False),
-        (r"\bDOUBLE\s+PRECISION\b", "DOUBLE", False),
-        (r"\bREAL\b", "FLOAT", False),
-        (r"\bBLOB\b", "VARCHAR(65533)", False),
-        (r"\bFLOAT\[\d+\]", "ARRAY<FLOAT>", False),
-    )
-
-    def _convert_types(self, statement: str) -> str:
-        for pattern, replacement, case_sensitive in self._TYPE_MAPPINGS:
-            flags = 0 if case_sensitive else re.IGNORECASE
-            statement = re.sub(pattern, replacement, statement, flags=flags)
-        statement = re.sub(r"(\w+\s+)timestamp\b", r"\1DATETIME", statement)
-        statement = re.sub(r"(\w+\s+)time\b", r"\1VARCHAR(10)", statement)
-        return statement
-
-    def _extract_first_column(self, statement: str) -> str | None:
-        paren_start = statement.find("(")
-        if paren_start == -1:
-            return None
-
-        content = statement[paren_start + 1 :]
-        match = re.match(r"\s*`?(\w+)`?", content)
-        if not match:
-            return None
-        name = match.group(1)
-        try:
-            validate_sql_identifier(name, "column name")
-        except ValueError:
-            return None
-        return name
 
     def load_data(
         self, benchmark, connection: Any, data_dir: Path

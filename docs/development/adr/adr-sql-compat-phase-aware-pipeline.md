@@ -652,7 +652,7 @@ DDL centralization.
 
 | Adapter | File(s) | Hook | DDL concern |
 |---------|---------|------|-------------|
-| ClickHouse | `platforms/clickhouse/workload.py` | `_optimize_table_definition` | Strip Nullable NOT NULL, add ENGINE=MergeTree(), ORDER BY |
+| ClickHouse | `platforms/clickhouse/workload.py` | `translate_ddl` layout (`_translate_schema_statement`) | Nullable only for listed columns, ENGINE=MergeTree(), PARTITION BY / ORDER BY / PRIMARY KEY from the tuned layout |
 | Databricks | `platforms/databricks/adapter.py` | `_convert_to_delta_table` (pre-pass loop) | CREATE OR REPLACE, USING DELTA, TBLPROPERTIES (config-dependent) |
 | Databend | `platforms/databend/adapter.py` | `_optimize_table_definition` | Databend-specific DDL dialect |
 | Firebolt | `platforms/firebolt.py` | `_optimize_table_definition` | Firebolt DDL dialect |

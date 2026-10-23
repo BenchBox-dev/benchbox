@@ -659,11 +659,8 @@ class TestBenchmarkDdlAndAdapterBehavior:
         from benchbox.platforms.clickhouse.workload import ClickHouseWorkloadMixin
 
         mixin = ClickHouseWorkloadMixin.__new__(ClickHouseWorkloadMixin)
-        create = (
-            "CREATE TABLE orders (o_orderkey INTEGER, FOREIGN KEY (o_orderkey) REFERENCES c (x)) "
-            "ENGINE = MergeTree() ORDER BY tuple();"
-        )
-        assert "FOREIGN KEY" in ClickHouseWorkloadMixin._optimize_table_definition(mixin, create, None)
+        create = "CREATE TABLE orders (o_orderkey INTEGER, FOREIGN KEY (o_orderkey) REFERENCES c (x))"
+        assert "FOREIGN KEY" in ClickHouseWorkloadMixin._translate_schema_statement(mixin, create, None)
 
     def test_azure_synapse_optimize_uses_engine_default(self) -> None:
         from benchbox.utils.dialect_utils import translate_ddl

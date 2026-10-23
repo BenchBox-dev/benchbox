@@ -106,7 +106,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "clickhouse_ddl_generator:PARTITION_BY",
             "core.tuning.generators.clickhouse.ClickHouseDDLGenerator renders PARTITION BY at CREATE "
             "TABLE time. Consumed by dry-run preview and (since the ClickHouse DDL migration) real "
-            "execution in ClickHouseWorkloadMixin._optimize_table_definition.",
+            "execution through ClickHouseWorkloadMixin._translate_schema_statement and translate_ddl.",
         ),
         _T.SORTING: _ddl(
             "clickhouse_ddl_generator:ORDER_BY",
@@ -121,7 +121,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.PRIMARY_KEYS: _ddl(
             "clickhouse_order_by_or_tuple_fallback",
             "MergeTree requires ORDER BY. When no tuned sort/cluster columns are configured, "
-            "_optimize_table_definition falls back to primary-key-derived columns or ORDER BY tuple() -- "
+            "translate_ddl falls back to primary-key-derived columns or ORDER BY tuple() -- "
             "this fallback is the engine-mandatory baseline (see ADR-3 baseline policy), not tuned "
             "rendering. ClickHouse enables primary keys even without tuning, so a change to a benchmark's "
             "declared keys changes the untuned MergeTree ORDER BY: the TPC-DS composite keys moved "
@@ -136,14 +136,14 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         _T.FOREIGN_KEYS: _none(
             "clickhouse_drops_foreign_keys",
-            "ClickHouseWorkloadMixin._optimize_table_definition preserves FOREIGN KEY clauses it "
+            "translate_ddl (clickhouse layout) preserves FOREIGN KEY clauses it "
             "cannot execute (clickhouse/workload.py); the engine has no FOREIGN KEY syntax, so a "
             "requested foreign key fails at execution.",
         ),
         _T.CHECK_CONSTRAINTS: _none(
             "clickhouse_no_unique_check_rendering",
-            "The ClickHouse workload column parser terminates column types at UNIQUE/CHECK keywords "
-            "without rendering them (clickhouse/workload.py).",
+            "translate_ddl passes UNIQUE/CHECK clauses through unchanged; no ClickHouse adapter option "
+            "renders or strips them (clickhouse/workload.py).",
         ),
         _T.MATERIALIZED_VIEWS: _none(
             "unimplemented",
@@ -409,8 +409,9 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.FOREIGN_KEYS: _none(
             "singlestore_strips_foreign_keys",
             "SingleStore strips FOREIGN KEY clauses from every CREATE TABLE at execution "
-            "(singlestore.py singlestore_strip_foreign_keys at 379-380, wired by the DDL_OPTIMIZE "
-            "strip_foreign_keys rule in sql_compat/rules/ddl_optimize/singlestore_ddl_rewrites.py:6-16). "
+            "(singlestore.py SingleStoreAdapter._ddl_options passes strip_foreign_keys to translate_ddl, "
+            "governed by the DDL_OPTIMIZE strip_foreign_keys rule in "
+            "sql_compat/rules/ddl_optimize/singlestore_ddl_rewrites.py). "
             "Requested foreign keys never reach the engine (SingleStore error 2752).",
         ),
         **_no_unique_check_entries(
@@ -651,17 +652,18 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             _INLINE_CONSTRAINT,
             "Tuned primary keys choose the StarRocks key model: the workload rewrite reads the "
             "PK columns from the tuned DDL and emits PRIMARY KEY when they lead the table, else "
-            "DUPLICATE KEY (starrocks/workload.py:122-152).",
+            "DUPLICATE KEY (StarRocksWorkloadMixin._starrocks_layout).",
         ),
         _T.FOREIGN_KEYS: _none(
             "starrocks_strips_foreign_keys",
-            "StarRocksWorkloadMixin strips foreign keys from every CREATE TABLE (starrocks/workload.py:120).",
+            "StarRocksWorkloadMixin translates every CREATE TABLE with "
+            "translate_ddl(strip_foreign_keys=True) (StarRocksWorkloadMixin._translate_schema_statement).",
         ),
         _T.UNIQUE_CONSTRAINTS: _none(
             "starrocks_no_unique_check_rendering",
-            "StarRocksWorkloadMixin._optimize_table_definition handles PARTITION/DISTRIBUTION/"
-            "ORDER BY plus PK-model selection and foreign-key stripping only (starrocks/workload.py:"
-            "109-198); nothing renders, strips, or validates UNIQUE/CHECK clauses.",
+            "StarRocksWorkloadMixin._translate_schema_statement maps PARTITION/DISTRIBUTION/ORDER BY "
+            "tuning plus PK-model selection into a translate_ddl layout and strips foreign keys only; "
+            "nothing renders, strips, or validates UNIQUE/CHECK clauses.",
         ),
         _T.CHECK_CONSTRAINTS: _none(
             "starrocks_no_unique_check_rendering",
@@ -672,7 +674,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.PARTITIONING: _none(
             "doris_ddl_generator:preview_only",
             "core.tuning.generators.doris.DorisDDLGenerator computes PARTITION BY from tuned columns "
-            "for dry-run preview, but DorisAdapter inherits NoOpTableTuningMixin (doris.py:187) and "
+            "for dry-run preview, but DorisAdapter inherits NoOpTableTuningMixin and "
             "renders nothing at execution. Corrects the prior unaudited _ddl claim.",
         ),
         _T.SORTING: _none(
@@ -690,11 +692,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.PRIMARY_KEYS: _none(
             "doris_strips_primary_keys",
             "The shared tuning-aware DDL path would emit tuned primary keys, but DorisAdapter "
-            "strips PRIMARY KEY clauses from every CREATE TABLE (doris.py:803-805).",
+            "strips PRIMARY KEY clauses from every CREATE TABLE (DorisAdapter._translate_create_table).",
         ),
         _T.FOREIGN_KEYS: _none(
             "doris_strips_foreign_keys",
-            "DorisAdapter strips foreign keys from every CREATE TABLE (doris.py:802).",
+            "DorisAdapter strips foreign keys from every CREATE TABLE (DorisAdapter._translate_create_table).",
         ),
         _T.UNIQUE_CONSTRAINTS: _none(
             "doris_no_unique_check_rendering",

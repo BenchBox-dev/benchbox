@@ -57,7 +57,6 @@ _REWRITE_FUNC_NAMES = {
 _DDL_OPTIMIZE_FUNC_NAMES = {
     "_optimize_table_definition",
     "_transform_create_statement",
-    "_inject_doris_ddl_clauses",
 }
 _DDL_REWRITE_FUNCTION_NAME_FRAGMENTS = (
     "create",
@@ -109,18 +108,13 @@ _DDL_HELPER_PLATFORM_KEYS: dict[tuple[str, str], tuple[str, ...]] = {
 }
 _DDL_GOVERNANCE_TRANSFORMER_ALIASES: dict[tuple[str, str], tuple[str, ...]] = {
     ("athena", "_convert_to_external_table"): ("athena_convert_to_external_table",),
-    ("clickhouse", "_optimize_table_definition"): ("clickhouse_ddl_optimizer",),
-    ("clickhouse", "_resolve_tuned_ddl_clauses"): ("clickhouse_ddl_optimizer",),
-    ("clickhouse", "_strip_primary_key_constraints"): ("clickhouse_ddl_optimizer",),
+    ("clickhouse", "_resolve_tuned_ddl_clauses"): ("translate_ddl:clickhouse_layout",),
     ("databricks", "_convert_to_delta_table"): ("databricks_delta_ddl_optimizer",),
     ("databricks", "_convert_to_hudi_table"): ("databricks_delta_ddl_optimizer",),
     ("databricks", "_hudi_table_properties"): ("databricks_delta_ddl_optimizer",),
-    ("doris", "_inject_doris_ddl_clauses"): ("doris_inject_ddl_clauses",),
     ("lakesail", "optimize_spark_table_definition"): ("lakesail_ddl_optimizer",),
     ("presto", "_optimize_table_definition"): ("presto_ddl_optimizer",),
     ("spark", "optimize_spark_table_definition"): ("spark_ddl_optimizer",),
-    ("starrocks", "_optimize_table_definition"): ("starrocks_ddl_optimizer",),
-    ("starrocks", "_resolve_tuned_ddl_clauses"): ("starrocks_ddl_optimizer",),
     ("trino", "_optimize_table_definition"): ("trino_ddl_optimizer",),
     ("velox", "optimize_spark_table_definition"): ("velox_ddl_optimizer",),
 }

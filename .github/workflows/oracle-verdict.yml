@@ -188,6 +188,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             .github/oracle-reviewers.yml
+            .github/oracle-omp-config.yml
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
@@ -226,18 +227,14 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install the owner's OMP model roles
+      - name: Write the reviewer's OMP home
+        working-directory: trusted
         env:
-          OMP_AGENT_CONFIG: ${{ secrets.OMP_AGENT_CONFIG }}
-        run: |
-          if [ -z "$OMP_AGENT_CONFIG" ]; then
-            echo "oracle-verdict: error: OMP_AGENT_CONFIG is not set, so role aliases would resolve to built-in models" >&2
-            exit 1
-          fi
-          mkdir -p "$HOME/.omp/agent"
-          printf '%s\n' "$OMP_AGENT_CONFIG" > "$HOME/.omp/agent/config.yml"
+          ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli reviewer-home --home "$HOME" --gateway-url "$ORACLE_GATEWAY_URL"
 
-      - name: Join the tailnet to reach the credential broker
+      - name: Join the tailnet to reach the credential gateway
         if: env.HAS_TAILNET == 'true'
         uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd
         with:
@@ -248,12 +245,7 @@ jobs:
       - name: Run the reviewer
         working-directory: trusted
         env:
-          ANTHROPIC_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          META_API_KEY: ${{ secrets.META_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OMP_AUTH_BROKER_URL: ${{ secrets.OMP_AUTH_BROKER_URL }}
-          OMP_AUTH_BROKER_TOKEN: ${{ secrets.OMP_AUTH_BROKER_TOKEN }}
+          OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           REVIEWER: ${{ needs.select-1.outputs.reviewer }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 1 --reviewer "$REVIEWER" --harness omp
@@ -348,6 +340,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             .github/oracle-reviewers.yml
+            .github/oracle-omp-config.yml
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
@@ -386,18 +379,14 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install the owner's OMP model roles
+      - name: Write the reviewer's OMP home
+        working-directory: trusted
         env:
-          OMP_AGENT_CONFIG: ${{ secrets.OMP_AGENT_CONFIG }}
-        run: |
-          if [ -z "$OMP_AGENT_CONFIG" ]; then
-            echo "oracle-verdict: error: OMP_AGENT_CONFIG is not set, so role aliases would resolve to built-in models" >&2
-            exit 1
-          fi
-          mkdir -p "$HOME/.omp/agent"
-          printf '%s\n' "$OMP_AGENT_CONFIG" > "$HOME/.omp/agent/config.yml"
+          ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli reviewer-home --home "$HOME" --gateway-url "$ORACLE_GATEWAY_URL"
 
-      - name: Join the tailnet to reach the credential broker
+      - name: Join the tailnet to reach the credential gateway
         if: env.HAS_TAILNET == 'true'
         uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd
         with:
@@ -408,12 +397,7 @@ jobs:
       - name: Run the reviewer
         working-directory: trusted
         env:
-          ANTHROPIC_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          META_API_KEY: ${{ secrets.META_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OMP_AUTH_BROKER_URL: ${{ secrets.OMP_AUTH_BROKER_URL }}
-          OMP_AUTH_BROKER_TOKEN: ${{ secrets.OMP_AUTH_BROKER_TOKEN }}
+          OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           REVIEWER: ${{ needs.select-2.outputs.reviewer }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 2 --reviewer "$REVIEWER" --harness omp
@@ -508,6 +492,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             .github/oracle-reviewers.yml
+            .github/oracle-omp-config.yml
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
@@ -546,18 +531,14 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install the owner's OMP model roles
+      - name: Write the reviewer's OMP home
+        working-directory: trusted
         env:
-          OMP_AGENT_CONFIG: ${{ secrets.OMP_AGENT_CONFIG }}
-        run: |
-          if [ -z "$OMP_AGENT_CONFIG" ]; then
-            echo "oracle-verdict: error: OMP_AGENT_CONFIG is not set, so role aliases would resolve to built-in models" >&2
-            exit 1
-          fi
-          mkdir -p "$HOME/.omp/agent"
-          printf '%s\n' "$OMP_AGENT_CONFIG" > "$HOME/.omp/agent/config.yml"
+          ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli reviewer-home --home "$HOME" --gateway-url "$ORACLE_GATEWAY_URL"
 
-      - name: Join the tailnet to reach the credential broker
+      - name: Join the tailnet to reach the credential gateway
         if: env.HAS_TAILNET == 'true'
         uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd
         with:
@@ -568,12 +549,7 @@ jobs:
       - name: Run the reviewer
         working-directory: trusted
         env:
-          ANTHROPIC_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          META_API_KEY: ${{ secrets.META_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OMP_AUTH_BROKER_URL: ${{ secrets.OMP_AUTH_BROKER_URL }}
-          OMP_AUTH_BROKER_TOKEN: ${{ secrets.OMP_AUTH_BROKER_TOKEN }}
+          OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           REVIEWER: ${{ needs.select-3.outputs.reviewer }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 3 --reviewer "$REVIEWER" --harness omp
@@ -668,6 +644,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             .github/oracle-reviewers.yml
+            .github/oracle-omp-config.yml
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
@@ -706,18 +683,14 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install the owner's OMP model roles
+      - name: Write the reviewer's OMP home
+        working-directory: trusted
         env:
-          OMP_AGENT_CONFIG: ${{ secrets.OMP_AGENT_CONFIG }}
-        run: |
-          if [ -z "$OMP_AGENT_CONFIG" ]; then
-            echo "oracle-verdict: error: OMP_AGENT_CONFIG is not set, so role aliases would resolve to built-in models" >&2
-            exit 1
-          fi
-          mkdir -p "$HOME/.omp/agent"
-          printf '%s\n' "$OMP_AGENT_CONFIG" > "$HOME/.omp/agent/config.yml"
+          ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli reviewer-home --home "$HOME" --gateway-url "$ORACLE_GATEWAY_URL"
 
-      - name: Join the tailnet to reach the credential broker
+      - name: Join the tailnet to reach the credential gateway
         if: env.HAS_TAILNET == 'true'
         uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd
         with:
@@ -728,12 +701,7 @@ jobs:
       - name: Run the reviewer
         working-directory: trusted
         env:
-          ANTHROPIC_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          META_API_KEY: ${{ secrets.META_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OMP_AUTH_BROKER_URL: ${{ secrets.OMP_AUTH_BROKER_URL }}
-          OMP_AUTH_BROKER_TOKEN: ${{ secrets.OMP_AUTH_BROKER_TOKEN }}
+          OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           REVIEWER: ${{ needs.select-4.outputs.reviewer }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 4 --reviewer "$REVIEWER" --harness omp
@@ -828,6 +796,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             .github/oracle-reviewers.yml
+            .github/oracle-omp-config.yml
             .github/soundness-paths.txt
             _project/scripts/oracle_reviewers
             _project/scripts/soundness_paths.py
@@ -866,18 +835,14 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install the owner's OMP model roles
+      - name: Write the reviewer's OMP home
+        working-directory: trusted
         env:
-          OMP_AGENT_CONFIG: ${{ secrets.OMP_AGENT_CONFIG }}
-        run: |
-          if [ -z "$OMP_AGENT_CONFIG" ]; then
-            echo "oracle-verdict: error: OMP_AGENT_CONFIG is not set, so role aliases would resolve to built-in models" >&2
-            exit 1
-          fi
-          mkdir -p "$HOME/.omp/agent"
-          printf '%s\n' "$OMP_AGENT_CONFIG" > "$HOME/.omp/agent/config.yml"
+          ORACLE_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli reviewer-home --home "$HOME" --gateway-url "$ORACLE_GATEWAY_URL"
 
-      - name: Join the tailnet to reach the credential broker
+      - name: Join the tailnet to reach the credential gateway
         if: env.HAS_TAILNET == 'true'
         uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd
         with:
@@ -888,12 +853,7 @@ jobs:
       - name: Run the reviewer
         working-directory: trusted
         env:
-          ANTHROPIC_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          META_API_KEY: ${{ secrets.META_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OMP_AUTH_BROKER_URL: ${{ secrets.OMP_AUTH_BROKER_URL }}
-          OMP_AUTH_BROKER_TOKEN: ${{ secrets.OMP_AUTH_BROKER_TOKEN }}
+          OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
           REVIEWER: ${{ needs.select-5.outputs.reviewer }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli review --plan "$RUNNER_TEMP/oracle-plan/plan.json" --slot 5 --reviewer "$REVIEWER" --harness omp

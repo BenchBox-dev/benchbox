@@ -42,13 +42,14 @@ release notes a matching fix so the workaround does not linger past its need.
   benchmark path to reproduce; do not retire the workaround on the minimal
   repro alone.
 
-## ClickHouse DDL via DuckDB dialect plus rewrite
+## ClickHouse DDL via DuckDB dialect plus translate_ddl
 
 - **Symptom**: the ClickHouse schema pipeline asks each benchmark for
-  `dialect="duckdb"` and rewrites DuckDB-only syntax in
-  `_optimize_table_definition` (`Nullable() NOT NULL` strip, `FLOAT[N]` to
-  `Array(Float32)`, `DOUBLE[N]` to `Array(Float64)`, ENGINE/ORDER BY
-  injection) instead of consuming ClickHouse-native DDL directly.
+  `dialect="duckdb"` and translates it with `translate_ddl` and a ClickHouse
+  layout (`Nullable() NOT NULL` handling, `FLOAT[N]` to `Array(Float32)`,
+  `DOUBLE[N]` to `Array(Float64)`, ENGINE/ORDER BY injection) in
+  `_translate_schema_statement`, instead of consuming ClickHouse-native DDL
+  directly.
 - **Why not native yet**: `transaction_primitives` and `write_primitives`
   drop their inline PRIMARY KEY under `dialect="clickhouse"` (pk_capability
   rules), and that PK string is what `_extract_primary_key_columns` reads to
