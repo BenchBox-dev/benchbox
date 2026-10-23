@@ -75,7 +75,7 @@ def connection():
 def _run(connection, *, apply_partition: bool) -> tuple[str, dict[str, str]]:
     adapter = _tuned_adapter()
     tunings = _combined_tunings()
-    optimized = adapter._optimize_table_definition(SOURCE_DDL, tunings, nullable_columns=set())
+    optimized = adapter._translate_schema_statement(SOURCE_DDL, tunings, nullable_columns=set())
 
     executed = optimized if apply_partition else optimized.replace(TUNED_PARTITION_CLAUSE, "")
     connection.execute(executed)
@@ -121,7 +121,7 @@ class TestAppliedLedgerAgainstLiveClickHouse:
 
     def test_catalog_reports_the_partition_expression_with_its_closing_paren(self, connection):
         adapter = _tuned_adapter()
-        optimized = adapter._optimize_table_definition(SOURCE_DDL, _combined_tunings(), nullable_columns=set())
+        optimized = adapter._translate_schema_statement(SOURCE_DDL, _combined_tunings(), nullable_columns=set())
         connection.execute(optimized)
 
         rows = list(

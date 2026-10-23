@@ -15,7 +15,7 @@ _STATEMENT = "CREATE TABLE store_sales (ss_item_sk INTEGER, ss_sold_date_sk INTE
 
 def _optimize(statement: str, table_tunings, nullable_columns: set[str], *, primary_keys_enabled: bool = True) -> str:
     mixin = ClickHouseWorkloadMixin()
-    return mixin._optimize_table_definition(
+    return mixin._translate_schema_statement(
         statement, table_tunings, nullable_columns=nullable_columns, primary_keys_enabled=primary_keys_enabled
     )
 
@@ -37,11 +37,10 @@ def test_tuned_sort_on_nullable_column_raises_actionable_error() -> None:
         _optimize(_STATEMENT, tunings, {"ss_sold_date_sk"})
     message = str(excinfo.value)
     assert "store_sales" in message
-    assert "ORDER BY" in message
-    assert "NOT NULL" in message
+    assert "ss_sold_date_sk" in message
 
 
-def test_tuned_partition_on_nullable_column_names_partition_role() -> None:
+def test_tuned_partition_on_nullable_column_raises() -> None:
     tunings = {
         "store_sales": TableTuning(
             table_name="STORE_SALES",
@@ -50,20 +49,20 @@ def test_tuned_partition_on_nullable_column_names_partition_role() -> None:
     }
     with pytest.raises(ValueError, match="ss_sold_date_sk") as excinfo:
         _optimize(_STATEMENT, tunings, {"ss_sold_date_sk"})
-    assert "PARTITION BY" in str(excinfo.value)
+    assert "cannot be Nullable" in str(excinfo.value)
 
 
 def test_tuned_sort_on_non_nullable_column_renders_and_wraps_others() -> None:
     tunings = _sorting_tuning("ss_item_sk")
     rendered = _optimize(_STATEMENT, tunings, {"ss_quantity"})
     assert "ORDER BY (ss_item_sk)" in rendered
-    assert "ss_quantity Nullable(" in rendered or "Nullable(INTEGER)" in rendered
+    assert "ss_quantity Nullable(Int32)" in rendered
     assert "ss_item_sk Nullable(" not in rendered
 
 
 def test_untuned_nullable_columns_never_raise() -> None:
     rendered = _optimize(_STATEMENT, None, {"ss_sold_date_sk", "ss_quantity"})
-    assert "Nullable(INTEGER)" in rendered
+    assert "Nullable(Int32)" in rendered
 
 
 @pytest.mark.usefixtures("chdb_probe_satisfied")
@@ -87,9 +86,9 @@ def test_registry_tunings_reject_nullable_keys_on_the_real_tpcds_schema(tmp_path
         assert table_name is not None
         nullable_columns = nullable_by_table.get(table_name.lower(), set())
         try:
-            adapter._optimize_table_definition(statement, tpcds_tunings, nullable_columns=nullable_columns)
+            adapter._translate_schema_statement(statement, tpcds_tunings, nullable_columns=nullable_columns)
         except ValueError as exc:
-            assert "are nullable in the source schema" in str(exc)
+            assert "cannot be Nullable" in str(exc)
             rejected.add(table_name)
     assert rejected == {
         "store_sales",

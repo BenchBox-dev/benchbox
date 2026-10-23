@@ -57,7 +57,6 @@ _REWRITE_FUNC_NAMES = {
 _DDL_OPTIMIZE_FUNC_NAMES = {
     "_optimize_table_definition",
     "_transform_create_statement",
-    "_inject_doris_ddl_clauses",
     "_strip_pk_constraints",
 }
 _DDL_REWRITE_FUNCTION_NAME_FRAGMENTS = (
@@ -109,23 +108,11 @@ _DDL_HELPER_PLATFORM_KEYS: dict[tuple[str, str], tuple[str, ...]] = {
 }
 _DDL_GOVERNANCE_TRANSFORMER_ALIASES: dict[tuple[str, str], tuple[str, ...]] = {
     ("athena", "_convert_to_external_table"): ("athena_convert_to_external_table",),
-    ("bigquery", "_convert_to_bigquery_table"): ("bigquery_convert_to_bigquery_table",),
-    ("clickhouse", "_optimize_table_definition"): ("clickhouse_ddl_optimizer",),
-    ("clickhouse", "_resolve_tuned_ddl_clauses"): ("clickhouse_ddl_optimizer",),
-    ("clickhouse", "_strip_primary_key_constraints"): ("clickhouse_ddl_optimizer",),
-    ("databend", "_optimize_table_definition"): ("databend_ddl_optimizer",),
-    ("doris", "_inject_doris_ddl_clauses"): ("doris_inject_ddl_clauses",),
-    ("fabric_dw", "_optimize_table_definition"): ("fabric_dw_ddl_optimizer",),
-    ("firebolt", "_optimize_table_definition"): ("firebolt_ddl_optimizer",),
+    ("clickhouse", "_resolve_tuned_ddl_clauses"): ("translate_ddl:clickhouse_layout",),
     ("pg_mooncake", "_transform_create_statement"): ("pg_mooncake_heap_load_then_mirror",),
     ("postgresql", "_transform_create_statement"): ("postgresql_strip_foreign_keys",),
     ("presto", "_optimize_table_definition"): ("presto_ddl_optimizer",),
     ("questdb", "_strip_pk_constraints"): ("questdb_strip_fk_and_pk_constraints",),
-    ("redshift", "_optimize_table_definition"): ("redshift_ddl_optimizer",),
-    ("snowflake", "_optimize_table_definition"): ("snowflake_ddl_optimizer",),
-    ("starrocks", "_optimize_table_definition"): ("starrocks_ddl_optimizer",),
-    ("starrocks", "_resolve_tuned_ddl_clauses"): ("starrocks_ddl_optimizer",),
-    ("synapse", "_optimize_table_definition"): ("azure_synapse_ddl_optimizer",),
     ("trino", "_optimize_table_definition"): ("trino_ddl_optimizer",),
 }
 

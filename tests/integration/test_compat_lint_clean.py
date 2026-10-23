@@ -88,33 +88,9 @@ def test_ddl_governance_statuses_distinguish_runtime_governance_and_no_rewrite_p
     statuses = collect_ddl_governance_statuses(_BENCHBOX_ROOT)
     by_key = {(entry.inferred_platform_key, entry.func_name): entry for entry in statuses}
 
-    assert by_key[("bigquery", "_convert_to_bigquery_table")].status == "registered_governance_only_intent"
     assert by_key[("athena", "_convert_to_external_table")].status == "registered_governance_only_intent"
     assert by_key[("singlestore", "_transform_create_statement")].status == "registered_runtime_behavior"
     assert all(entry.inferred_platform_key != "duckdb" for entry in statuses)
-
-
-def test_bigquery_runtime_ddl_rewrite_is_represented_in_governance_inventory():
-    from benchbox.platforms.bigquery import BigQueryAdapter
-    from benchbox.sql_compat.inventory import collect_ddl_governance_statuses
-
-    adapter = BigQueryAdapter.__new__(BigQueryAdapter)
-    adapter.project_id = "proj"
-    adapter.dataset_id = "ds"
-    adapter.partitioning_field = "created_at"
-    adapter.clustering_fields = ["customer_id"]
-
-    converted = adapter._convert_to_bigquery_table("CREATE TABLE orders (created_at DATE, customer_id INT64)")
-
-    assert "CREATE OR REPLACE TABLE `proj.ds.ORDERS`" in converted
-    assert "PARTITION BY DATE(created_at)" in converted
-    assert "CLUSTER BY customer_id" in converted
-    status = next(
-        entry
-        for entry in collect_ddl_governance_statuses(_BENCHBOX_ROOT)
-        if entry.inferred_platform_key == "bigquery" and entry.func_name == "_convert_to_bigquery_table"
-    )
-    assert status.status == "registered_governance_only_intent"
 
 
 def test_athena_runtime_ddl_rewrite_is_represented_in_governance_inventory():

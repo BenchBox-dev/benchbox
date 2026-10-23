@@ -1769,50 +1769,49 @@ benchbox-fixture-key-material
             adapter.apply_constraint_configuration(mock_primary_key_config, mock_foreign_key_config, mock_connection)
 
 
-class TestSnowflakeOptimizeTableDefinition:
-    @patch("benchbox.platforms.snowflake.snowflake")
-    def test_create_table_becomes_create_or_replace(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
-        result = adapter._optimize_table_definition("CREATE TABLE orders (id INT)")
-        assert result == "CREATE OR REPLACE TABLE orders (id INT)"
+class TestSnowflakeSchemaDdl:
+    @staticmethod
+    def _executed(ddl):
+        with patch("benchbox.platforms.snowflake.snowflake"):
+            adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        cursor = Mock()
+        connection = Mock()
+        connection.cursor.return_value = cursor
+        with (
+            patch.object(adapter, "_should_skip_schema_creation", return_value=False),
+            patch.object(adapter, "_create_schema_with_tuning", return_value=ddl),
+        ):
+            adapter.create_schema(Mock(), connection)
+        return [str(call.args[0]) for call in cursor.execute.call_args_list][-1]
 
-    @patch("benchbox.platforms.snowflake.snowflake")
-    def test_already_has_or_replace_is_unchanged(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+    def test_create_table_becomes_create_or_replace(self):
+        assert self._executed("CREATE TABLE orders (id INT)") == "CREATE OR REPLACE TABLE orders (id INT)"
+
+    def test_already_has_or_replace_is_unchanged(self):
         stmt = "CREATE OR REPLACE TABLE orders (id INT)"
-        result = adapter._optimize_table_definition(stmt)
-        assert result == stmt
+        assert self._executed(stmt) == stmt
 
-    @patch("benchbox.platforms.snowflake.snowflake")
-    def test_non_create_table_statement_is_passthrough(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
-        stmt = "ALTER TABLE orders ADD COLUMN name VARCHAR(100)"
-        result = adapter._optimize_table_definition(stmt)
-        assert result == stmt
+    def test_if_not_exists_is_kept_without_or_replace(self):
+        stmt = "CREATE TABLE IF NOT EXISTS DimDate (SK_DateID BIGINT)"
+        assert self._executed(stmt) == stmt
 
-    @patch("benchbox.platforms.snowflake.snowflake")
-    def test_comment_prefixed_create_still_gets_or_replace(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
-        chunk = "-- Generated staging load tables\nCREATE TABLE orders_stage (id INT)"
-        result = adapter._optimize_table_definition(chunk)
-        assert result.startswith("-- Generated staging load tables\n")
+    def test_non_create_table_statement_is_passed_through(self):
+        stmt = "CREATE INDEX idx ON ORDERS(o_orderkey)"
+        assert self._executed(stmt) == stmt
+
+    def test_comment_prefixed_create_still_gets_or_replace(self):
+        result = self._executed("-- Generated staging load tables\nCREATE TABLE orders_stage (id INT)")
         assert "CREATE OR REPLACE TABLE orders_stage (id INT)" in result
 
-    @patch("benchbox.platforms.snowflake.snowflake")
-    def test_lowercase_create_table_is_not_modified(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
-        stmt = "create table orders (id INT)"
-        result = adapter._optimize_table_definition(stmt)
-        assert result == stmt
+    def test_lowercase_create_table_gets_or_replace(self):
+        assert self._executed("create table orders (id INT)") == "CREATE OR REPLACE TABLE orders (id INT)"
 
-    @patch("benchbox.platforms.snowflake.snowflake")
-    def test_quoted_identifiers_uppercased_single_quotes_untouched(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
-        result = adapter._optimize_table_definition(
+    def test_quoted_identifiers_keep_their_case(self):
+        result = self._executed(
             'CREATE TABLE "hits" ("WatchID" BIGINT NOT NULL, "note" VARCHAR DEFAULT \'keep "me" lower\')'
         )
         assert result == (
-            'CREATE OR REPLACE TABLE "HITS" ("WATCHID" BIGINT NOT NULL, "NOTE" VARCHAR DEFAULT \'keep "me" lower\')'
+            'CREATE OR REPLACE TABLE "hits" ("WatchID" BIGINT NOT NULL, "note" VARCHAR DEFAULT \'keep "me" lower\')'
         )
 
 
@@ -2710,7 +2709,6 @@ class TestSnowflakeCreateSchemaSQL:
         with (
             patch.object(adapter, "_should_skip_schema_creation", return_value=False),
             patch.object(adapter, "_create_schema_with_tuning", return_value="CREATE TABLE t (id INT)"),
-            patch.object(adapter, "_optimize_table_definition", side_effect=lambda s: s),
         ):
             elapsed = adapter.create_schema(mock_benchmark, mock_connection)
 
@@ -2721,7 +2719,7 @@ class TestSnowflakeCreateSchemaSQL:
         assert "CREATE SCHEMA IF NOT EXISTS MY_SCHEMA" in execute_calls
         assert "USE SCHEMA MY_SCHEMA" in execute_calls
         assert any("BenchBox_schema_creation" in sql for sql in execute_calls)
-        assert "CREATE TABLE t (id INT)" in execute_calls
+        assert "CREATE OR REPLACE TABLE t (id INT)" in execute_calls
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_create_schema_skips_when_tables_exist(self, mock_snowflake):

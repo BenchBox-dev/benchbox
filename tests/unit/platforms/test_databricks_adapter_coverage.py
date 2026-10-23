@@ -1164,27 +1164,6 @@ class TestBuildCtasSortSql:
             adapter._build_ctas_sort_sql("ORDERS", [self._make_col("col1")])
 
 
-class TestFixDatabricksSqlSyntax:
-    def test_removes_nulls_last_from_pk(self):
-        adapter = _make_adapter()
-        sql = "CREATE TABLE t (id INT, PRIMARY KEY (id NULLS LAST))"
-        result = adapter._fix_databricks_sql_syntax(sql)
-        assert "NULLS LAST" not in result
-        assert "PRIMARY KEY" in result
-
-    def test_removes_nulls_first_from_pk(self):
-        adapter = _make_adapter()
-        sql = "CREATE TABLE t (id INT, PRIMARY KEY (id NULLS FIRST))"
-        result = adapter._fix_databricks_sql_syntax(sql)
-        assert "NULLS FIRST" not in result
-
-    def test_returns_unchanged_sql_without_nulls_clause(self):
-        adapter = _make_adapter()
-        sql = "CREATE TABLE t (id INT, name VARCHAR(100))"
-        result = adapter._fix_databricks_sql_syntax(sql)
-        assert result == sql
-
-
 class TestSchemaDdlOptions:
     def _convert(self, adapter, sql):
         from benchbox.utils.dialect_utils import translate_ddl
@@ -1226,38 +1205,6 @@ class TestSchemaDdlOptions:
         assert len(results) == 3
         assert all("CREATE OR REPLACE TABLE" in r for r in results)
         assert all("USING DELTA" in r for r in results)
-
-
-class TestApplyTpcdiDatabricksRewrites:
-    def test_flag_literals_become_boolean(self):
-        adapter = _make_adapter()
-        result = adapter._apply_tpcdi_databricks_rewrites(
-            "SELECT * FROM DimCustomer WHERE IsCurrent = 1 AND BatchID = 1"
-        )
-        assert "IsCurrent IS TRUE" in result
-        assert "BatchID = 1" in result
-
-    def test_zero_flag_literal_becomes_false(self):
-        adapter = _make_adapter()
-        result = adapter._apply_tpcdi_databricks_rewrites(
-            "SELECT CASE WHEN TT_IS_SELL = 0 THEN 1 ELSE 0 END FROM TradeType"
-        )
-        assert "TT_IS_SELL IS FALSE" in result
-
-    def test_julianday_and_now_rewritten(self):
-        adapter = _make_adapter()
-        result = adapter._apply_tpcdi_databricks_rewrites("SELECT JULIANDAY(DATE('now')) - JULIANDAY(MIN(d.DateValue))")
-        assert "JULIANDAY" not in result
-        assert "DATE('now')" not in result
-        assert "DATEDIFF" in result
-        assert "CURRENT_DATE()" in result
-
-    def test_relative_now_rewritten(self):
-        adapter = _make_adapter()
-        result = adapter._apply_tpcdi_databricks_rewrites(
-            "SELECT * FROM t WHERE d.DateValue >= DATE('now', '-90 days')"
-        )
-        assert "DATE_SUB(CURRENT_DATE(), 90)" in result
 
 
 class TestOptimizeAndVacuumTable:
@@ -2649,7 +2596,7 @@ class TestUploadSingleTablePath:
             )
 
 
-class TestDeduplicateOutputAliases:
+class TestNormalizeOutputAliases:
     def test_self_join_duplicates_get_suffixes(self):
         adapter = _make_adapter()
         sql = (
@@ -2657,7 +2604,7 @@ class TestDeduplicateOutputAliases:
             "FROM (SELECT syear, COUNT(*) AS cnt FROM t GROUP BY syear) a "
             "JOIN (SELECT syear, COUNT(*) AS cnt FROM t GROUP BY syear) b ON a.syear = b.syear"
         )
-        result = adapter._deduplicate_output_aliases(sql)
+        result = adapter._normalize_databricks_query(sql)
         assert "syear_2" in result
         assert "cnt_2" in result
         assert "JOIN" in result
@@ -2665,7 +2612,7 @@ class TestDeduplicateOutputAliases:
     def test_unique_outputs_unchanged(self):
         adapter = _make_adapter()
         sql = "SELECT a, b, COUNT(*) AS cnt FROM t GROUP BY a, b"
-        assert adapter._deduplicate_output_aliases(sql) == sql
+        assert adapter._normalize_databricks_query(sql) == sql
 
 
 class TestUploadFileContentToUc:

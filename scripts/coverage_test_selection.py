@@ -10,6 +10,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -19,9 +20,9 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from _project.scripts import preflight_targets
-from _project.scripts.inert_paths import is_inert_path, is_machine_read_doc, load_readers, matches_exemption
 
 MAP_VERSION = 2
+UNIDENTIFIED_TESTCASE = "<unidentified testcase>"
 MAP_ARTIFACT_PREFIX = "t2-coverage-map-"
 MAX_MAP_BEHIND_COMMITS = 50
 MAX_SELECTION_RUNTIME_SECONDS = 900.0
@@ -82,20 +83,44 @@ def _relative_name(repo: Path, filename: str) -> str | None:
         return None
 
 
-def _junit_case_filename(repo: Path, filename: str, classname: str) -> str | None:
-    if filename:
-        return filename
+def _classname_filename(repo: Path, classname: str) -> str | None:
     parts = [part for part in classname.split(".") if part]
+    if not parts:
+        return None
     for width in range(len(parts), 0, -1):
         candidate = "/".join(parts[:width]) + ".py"
         if (repo / candidate).is_file():
             return candidate
-    return None
+    test_widths = [
+        width
+        for width in range(len(parts), 0, -1)
+        if parts[width - 1].startswith("test_") or parts[width - 1].endswith("_test")
+    ]
+    return "/".join(parts[: test_widths[0] if test_widths else len(parts)]) + ".py"
+
+
+def _junit_module(filename: str) -> str:
+    return filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
+
+
+def junit_case_node_id(repo: Path, case: ET.Element) -> str:
+    name = (case.get("name") or "").strip()
+    classname = (case.get("classname") or "").strip()
+    filename = (case.get("file") or "").strip() or None
+    if filename is not None and classname:
+        module = _junit_module(filename)
+        if classname != module and not classname.startswith(module + "."):
+            filename = None
+    if filename is None:
+        filename = _classname_filename(repo, classname)
+    if filename is None:
+        return name or UNIDENTIFIED_TESTCASE
+    module = _junit_module(filename)
+    extra = classname[len(module) + 1 :].split(".") if classname.startswith(module + ".") else []
+    return "::".join(part for part in (filename, *extra, name) if part)
 
 
 def _junit_failed_nodeids(junit_files: list[Path], repo: Path) -> list[str]:
-    import xml.etree.ElementTree as ET
-
     failed: set[str] = set()
     for junit in junit_files:
         try:
@@ -105,21 +130,7 @@ def _junit_failed_nodeids(junit_files: list[Path], repo: Path) -> list[str]:
         for case in root.iter("testcase"):
             if case.find("failure") is None and case.find("error") is None:
                 continue
-            name = (case.get("name") or "").strip()
-            classname = (case.get("classname") or "").strip()
-            if not name:
-                continue
-            filename = _junit_case_filename(repo, (case.get("file") or "").strip(), classname)
-            if filename is None:
-                continue
-            module = filename[:-3].replace("/", ".") if filename.endswith(".py") else filename
-            if not classname or classname == module:
-                parts = [filename, name]
-            elif classname.startswith(module + "."):
-                parts = [filename, *classname[len(module) + 1 :].split("."), name]
-            else:
-                parts = [filename, classname.replace(".", "::"), name]
-            failed.add("::".join(part for part in parts if part))
+            failed.add(junit_case_node_id(repo, case))
     return sorted(failed)
 
 
@@ -411,6 +422,8 @@ def _is_test_file(path: str) -> bool:
 
 
 def _is_inert(path: str) -> bool:
+    from _project.scripts.inert_paths import is_inert_path
+
     return is_inert_path(path)
 
 
@@ -528,6 +541,8 @@ def _classify_files(
         raw_nodes = mapping.get("nodes")
         if isinstance(raw_nodes, list):
             nodes = raw_nodes
+    from _project.scripts.inert_paths import is_machine_read_doc, matches_exemption
+
     for entry in files:
         if is_machine_read_doc(entry.path) and matches_exemption(entry.path):
             found = sorted(test for test in known_readers.get(entry.path, ()) if (repo / test).is_file())
@@ -717,6 +732,8 @@ def select_tests(
     if overlap_note is not None:
         reasons.append(overlap_note)
     index = mapping.get("files") if isinstance(mapping, dict) and isinstance(mapping.get("files"), dict) else {}
+    from _project.scripts.inert_paths import load_readers
+
     readers = load_readers(repo)
     coverage_hits, uncovered, non_python, reader_tests = _classify_files(repo, mapping, files, index, readers)
     code_routed = decision is None or decision.get("needs_code_ci") is not False
@@ -1166,6 +1183,102 @@ def _cmd_prune(args: argparse.Namespace) -> int:
     return 0
 
 
+def failed_node_ids(paths: list[Path], repo: Path) -> tuple[list[str], int, list[str]]:
+    failed: set[str] = set()
+    parsed = 0
+    unparsed: list[str] = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            root = ET.parse(path).getroot()
+        except (ET.ParseError, UnicodeDecodeError):
+            unparsed.append(str(path))
+            continue
+        parsed += 1
+        for case in root.iter("testcase"):
+            if case.find("failure") is None and case.find("error") is None:
+                continue
+            failed.add(junit_case_node_id(repo, case))
+    return sorted(failed), parsed, unparsed
+
+
+def shadow_misses(selected: list[str], failed: list[str]) -> list[str]:
+    have = set(selected)
+    files = {entry for entry in selected if "::" not in entry}
+    return sorted({node for node in failed if node not in have and node.split("::")[0] not in files})
+
+
+def miss_report(selected: list[str], failed: list[str]) -> dict:
+    missed = shadow_misses(selected, failed)
+    return {
+        "selected_count": len(selected),
+        "failed": sorted(set(failed)),
+        "missed": missed,
+        "would_escalate": bool(missed),
+    }
+
+
+def _miss_junit_paths(raw: list[Path]) -> list[Path]:
+    paths: list[Path] = []
+    for entry in raw or []:
+        if entry.is_dir():
+            paths.extend(sorted(entry.rglob("*-junit.xml")))
+        elif entry.is_file():
+            paths.append(entry)
+    return paths
+
+
+def _cmd_misses(args: argparse.Namespace) -> int:
+    notes: list[str] = []
+    selected: list[str] = []
+    if args.selection_in is None:
+        notes.append("no selection input")
+    else:
+        try:
+            payload = json.loads(args.selection_in.read_text(encoding="utf-8"))
+            selected = [str(node) for node in payload["selected"]]
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            notes.append(f"cannot read selection {args.selection_in}: {exc}")
+    junit_paths = _miss_junit_paths(args.junit)
+    if not junit_paths:
+        notes.append("no junit reports")
+    failed, parsed, unparsed = failed_node_ids(junit_paths, args.repo_root)
+    if junit_paths and not parsed:
+        notes.append("no junit reports parsed")
+    elif args.expected_shards is not None and parsed < args.expected_shards:
+        notes.append(f"only {parsed} of {args.expected_shards} shard junit reports parsed")
+    notes.extend(f"cannot parse junit report {name}" for name in unparsed)
+    report = miss_report(selected, failed)
+    if notes:
+        report.update({"missed": [], "would_escalate": None, "available": False, "reason": "; ".join(notes)})
+    else:
+        report.update({"available": True, "reason": ""})
+    lines = ["## Shadow selection misses"]
+    picked = f"{len(selected)} test" if len(selected) == 1 else f"{len(selected)} tests"
+    broken = f"{len(failed)} test" if len(failed) == 1 else f"{len(failed)} tests"
+    if notes:
+        lines.append(f"Shadow selection misses: not available ({'; '.join(notes)}).")
+    elif not failed:
+        lines.append(f"No failures in the medium-test shards; shadow selection of {picked} has nothing to miss.")
+        lines.append(f"Would escalate on misses: {'yes' if report['would_escalate'] else 'no'}.")
+    elif not report["missed"]:
+        lines.append(f"No misses: all {broken} were covered by the shadow selection of {picked}.")
+        lines.append(f"Would escalate on misses: {'yes' if report['would_escalate'] else 'no'}.")
+    else:
+        lines.append(f"Shadow selection of {picked} missed {len(report['missed'])} of {broken}.")
+        lines.extend(f"- {node}" for node in report["missed"])
+        lines.append(f"Would escalate on misses: {'yes' if report['would_escalate'] else 'no'}.")
+    for line in lines:
+        _append_summary(args.summary, line)
+    if args.json_out is not None:
+        args.json_out.parent.mkdir(parents=True, exist_ok=True)
+        args.json_out.write_text(json.dumps(report, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"misses={len(report['missed'])} failed={len(failed)} selected={len(selected)}")
+    print(f"available={str(report['available']).lower()}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
@@ -1203,6 +1316,13 @@ def build_parser() -> argparse.ArgumentParser:
     prune_parser.add_argument("--nodeids-out", type=Path, required=True)
     prune_parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     prune_parser.set_defaults(func=_cmd_prune)
+    misses_parser = sub.add_parser("misses")
+    misses_parser.add_argument("--selection-in", type=Path, default=None)
+    misses_parser.add_argument("--junit", type=Path, action="append", default=None)
+    misses_parser.add_argument("--expected-shards", type=int, default=None)
+    misses_parser.add_argument("--json-out", type=Path, default=None)
+    misses_parser.add_argument("--summary", type=Path, default=None)
+    misses_parser.set_defaults(func=_cmd_misses)
     return parser
 
 

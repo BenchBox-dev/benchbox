@@ -147,28 +147,28 @@ class TestInjectMissingSubqueryAliases:
 class TestOptimizeTableDefinition:
     def test_primary_key_preserved_when_leading(self, mixin):
         ddl = "CREATE TABLE t (\n  id INT NOT NULL,\n  name VARCHAR(50),\n  PRIMARY KEY (id)\n)"
-        out = mixin._optimize_table_definition(ddl)
-        assert "PRIMARY KEY (id)" in out
+        out = mixin._translate_schema_statement(ddl)
+        assert "PRIMARY KEY (`id`)" in out
         assert "DUPLICATE KEY" not in out
 
     def test_falls_back_to_duplicate_key_when_pk_not_leading(self, mixin):
 
         ddl = "CREATE TABLE t (\n  name VARCHAR(50),\n  id INT NOT NULL,\n  PRIMARY KEY (id)\n)"
-        out = mixin._optimize_table_definition(ddl)
+        out = mixin._translate_schema_statement(ddl)
         assert "DUPLICATE KEY" in out
         assert "PRIMARY KEY" not in out
 
     def test_timestamp_column_name_preserved(self, mixin):
 
         ddl = "CREATE TABLE t (id INT, timestamp VARCHAR(20))"
-        out = mixin._optimize_table_definition(ddl)
-        assert "timestamp VARCHAR(20)" in out
+        out = mixin._translate_schema_statement(ddl)
+        assert "`timestamp` VARCHAR(20)" in out
         assert "DATETIME" not in out
 
     def test_uppercase_timestamp_type_converted(self, mixin):
         ddl = "CREATE TABLE t (id INT, ts TIMESTAMP)"
-        out = mixin._optimize_table_definition(ddl)
-        assert "ts DATETIME" in out
+        out = mixin._translate_schema_statement(ddl)
+        assert "`ts` DATETIME" in out
 
 
 class TestStreamLoadEmptyAsNull:

@@ -96,7 +96,7 @@ class StarRocksSetupMixin:
             cursor.close()
 
             self.logger.info(f"Connected to StarRocks at {host}:{port}")
-            ddl_optimizer = getattr(self, "_optimize_table_definition", None)
+            ddl_optimizer = getattr(self, "_translate_schema_statement", None)
             return _StarRocksConnectionWrapper(conn, ddl_optimizer=ddl_optimizer)
 
         except Exception as e:

@@ -1429,50 +1429,6 @@ class TestSchemaDdlOptions:
         assert "'type'='cow'" in region
 
 
-class TestFixDatabricksSqlSyntax:
-    def _make_adapter(self):
-        with patch("benchbox.platforms.databricks.adapter.databricks_sql"):
-            return DatabricksAdapter(
-                server_hostname="test.cloud.databricks.com",
-                http_path="/sql/1.0/warehouses/test",
-                access_token="tok",
-            )
-
-    def test_removes_nulls_last_from_pk(self):
-        adapter = self._make_adapter()
-        sql = "CREATE TABLE t (id INT, PRIMARY KEY (id NULLS LAST))"
-        result = adapter._fix_databricks_sql_syntax(sql)
-        assert "NULLS LAST" not in result
-        assert "PRIMARY KEY" in result
-
-    def test_removes_nulls_first_from_pk(self):
-        adapter = self._make_adapter()
-        sql = "CREATE TABLE t (id INT, PRIMARY KEY (id NULLS FIRST))"
-        result = adapter._fix_databricks_sql_syntax(sql)
-        assert "NULLS FIRST" not in result
-        assert "PRIMARY KEY" in result
-
-    def test_removes_multiple_nulls_clauses(self):
-        adapter = self._make_adapter()
-        sql = "CREATE TABLE t (a INT, b INT, PRIMARY KEY (a NULLS LAST, b NULLS FIRST))"
-        result = adapter._fix_databricks_sql_syntax(sql)
-        assert "NULLS LAST" not in result
-        assert "NULLS FIRST" not in result
-        assert "PRIMARY KEY" in result
-
-    def test_no_change_without_nulls(self):
-        adapter = self._make_adapter()
-        sql = "CREATE TABLE t (id INT, PRIMARY KEY (id))"
-        result = adapter._fix_databricks_sql_syntax(sql)
-        assert result == sql
-
-    def test_no_change_without_pk(self):
-        adapter = self._make_adapter()
-        sql = "CREATE TABLE t (id INT) ORDER BY id NULLS LAST"
-        result = adapter._fix_databricks_sql_syntax(sql)
-        assert result == sql
-
-
 class TestBuildCtasSortSql:
     def _make_adapter(self):
         with patch("benchbox.platforms.databricks.adapter.databricks_sql"):
@@ -2103,9 +2059,8 @@ class TestUnityCatalogNaming:
         mock_benchmark = Mock()
 
         with patch.object(adapter, "_create_schema_with_tuning", return_value="CREATE TABLE t (id INT)"):
-            with patch.object(adapter, "_fix_databricks_sql_syntax", side_effect=lambda x: x):
-                with patch.object(adapter, "_execute_schema_statements", return_value=(1, [])):
-                    adapter.create_schema(mock_benchmark, conn)
+            with patch.object(adapter, "_execute_schema_statements", return_value=(1, [])):
+                adapter.create_schema(mock_benchmark, conn)
 
         calls = [c.args[0] for c in cursor.execute.call_args_list]
         assert "CREATE SCHEMA IF NOT EXISTS workspace.tpch_sf1" in calls
@@ -2129,9 +2084,8 @@ class TestUnityCatalogNaming:
         mock_benchmark = Mock()
 
         with patch.object(adapter, "_create_schema_with_tuning", return_value="CREATE TABLE t (id INT)"):
-            with patch.object(adapter, "_fix_databricks_sql_syntax", side_effect=lambda x: x):
-                with patch.object(adapter, "_execute_schema_statements", return_value=(1, [])):
-                    adapter.create_schema(mock_benchmark, conn)
+            with patch.object(adapter, "_execute_schema_statements", return_value=(1, [])):
+                adapter.create_schema(mock_benchmark, conn)
 
         calls = [c.args[0] for c in cursor.execute.call_args_list]
         assert "CREATE CATALOG IF NOT EXISTS new_catalog" in calls

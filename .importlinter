@@ -49,7 +49,7 @@ ignore_imports =
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.clickhouse.query_transformer
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.clickhouse_local
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.datafusion
-    benchbox.core.tpchavoc.equivalence -> benchbox.platforms.datafusion_query_transformer
+    benchbox.core.tpchavoc.equivalence -> benchbox.platforms.datafusion_tpch_rewrites
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.duckdb
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.postgresql
     benchbox.core.write_primitives.benchmark -> benchbox.platforms.base.data_loading

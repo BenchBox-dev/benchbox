@@ -26,7 +26,6 @@ from benchbox.core.deployment import deployment_class, select_adapter_deployment
 from benchbox.core.exceptions import ConfigurationError
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.data_loading import FileFormatRegistry, resolve_adapter_data_source
-from benchbox.platforms.base.ddl_helpers import strip_foreign_keys
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
@@ -262,15 +261,9 @@ class DatabendAdapter(PlatformAdapter):
             connection.exec(f"CREATE DATABASE IF NOT EXISTS {self._quote_identifier(self.database)}")
             connection.exec(f"USE {self._quote_identifier(self.database)}")
 
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
 
-            statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
-
-            for statement in statements:
-                if not statement:
-                    continue
-
-                statement = self._optimize_table_definition(statement)
+            for statement in self._translate_schema_ddl(schema_sql):
                 try:
                     connection.exec(statement)
                     self.logger.debug(f"Executed schema statement: {statement[:100]}...")
@@ -677,20 +670,16 @@ class DatabendAdapter(PlatformAdapter):
     def analyze_table(self, connection: Any, table_name: str) -> None:
         self.logger.debug(f"Databend collects statistics automatically - skipping explicit ANALYZE for {table_name}")
 
-    def _optimize_table_definition(self, statement: str) -> str:
-        if not statement.upper().strip().startswith("CREATE"):
-            return statement
+    def _translate_schema_ddl(self, schema_sql: str) -> list[str]:
+        from benchbox.utils.dialect_utils import translate_ddl
 
-        statement = re.sub(r"\bCHAR\s*\(\s*(\d+)\s*\)", r"VARCHAR(\1)", statement, flags=re.IGNORECASE)
-
-        statement = re.sub(r",?\s*PRIMARY\s+KEY\s*\([^)]*\)", "", statement, flags=re.IGNORECASE)
-
-        statement = strip_foreign_keys(statement)
-
-        statement = re.sub(r",\s*,", ",", statement)
-        statement = re.sub(r",\s*\)", ")", statement)
-
-        return statement
+        return translate_ddl(
+            schema_sql,
+            self.get_target_dialect(),
+            strip_primary_keys=True,
+            strip_foreign_keys=True,
+            type_map={"CHAR": "VARCHAR"},
+        )
 
     def _extract_table_name(self, statement: str) -> str | None:
         try:

@@ -652,13 +652,13 @@ DDL centralization.
 
 | Adapter | File(s) | Hook | DDL concern |
 |---------|---------|------|-------------|
-| ClickHouse | `platforms/clickhouse/workload.py` | `_optimize_table_definition` | Strip Nullable NOT NULL, add ENGINE=MergeTree(), ORDER BY |
+| ClickHouse | `platforms/clickhouse/workload.py` | `translate_ddl` layout (`_translate_schema_statement`) | Nullable only for listed columns, ENGINE=MergeTree(), PARTITION BY / ORDER BY / PRIMARY KEY from the tuned layout |
 | Databricks | `platforms/databricks/adapter.py` | `translate_ddl` (`_schema_ddl_options`) | CREATE OR REPLACE, USING DELTA, TBLPROPERTIES (config-dependent) |
 | Databend | `platforms/databend/adapter.py` | `_optimize_table_definition` | Databend-specific DDL dialect |
 | Firebolt | `platforms/firebolt.py` | `_optimize_table_definition` | Firebolt DDL dialect |
-| Redshift | `platforms/redshift.py` | `_optimize_table_definition` | Redshift DDL dialect |
+| Redshift | `platforms/redshift.py` | `translate_ddl` | Redshift DDL dialect |
 | Azure Synapse | `platforms/azure_synapse.py` | `_optimize_table_definition` | Synapse DDL dialect |
-| Snowflake | `platforms/snowflake.py` | `_optimize_table_definition` | Snowflake DDL dialect (clustering/tuning) |
+| Snowflake | `platforms/snowflake.py` | `translate_ddl` | Snowflake DDL dialect (clustering/tuning) |
 | Presto | `platforms/presto.py` | `_optimize_table_definition` | Presto DDL dialect |
 | Trino | `platforms/trino.py` | `_optimize_table_definition` | Trino DDL dialect |
 | Spark | `platforms/spark.py` | `_optimize_table_definition` | USING DELTA/ICEBERG/ORC/PARQUET (format from `self.table_format`) |

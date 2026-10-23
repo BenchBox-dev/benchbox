@@ -94,24 +94,32 @@ class TestSynapseGenerateTuningClause:
         assert adapter.generate_tuning_clause(None) == ""
 
 
-class TestSynapseOptimizeTableDefinition:
-    def test_adds_round_robin_when_missing(self):
-        adapter = _make_adapter(distribution_default="ROUND_ROBIN")
-        result = adapter._optimize_table_definition("CREATE TABLE orders (id INT)")
-        assert "DISTRIBUTION = ROUND_ROBIN" in result
+class TestSynapseCreateSchemaDdl:
+    @staticmethod
+    def _executed(adapter, ddl):
+        cursor = MagicMock()
+        connection = MagicMock()
+        connection.cursor.return_value = cursor
+        with patch.object(adapter, "_create_schema_with_tuning", return_value=ddl):
+            adapter.create_schema(MagicMock(), connection)
+        return [call[0][0] for call in cursor.execute.call_args_list]
 
-    def test_preserves_existing_distribution(self):
-        adapter = _make_adapter(distribution_default="ROUND_ROBIN")
-        stmt = "CREATE TABLE orders (id INT) WITH (DISTRIBUTION = HASH([id]))"
-        result = adapter._optimize_table_definition(stmt)
-        assert "DISTRIBUTION = HASH([id])" in result
+    def test_adds_round_robin_and_schema(self):
+        adapter = _make_adapter(distribution_default="ROUND_ROBIN", schema="dbo")
+        executed = self._executed(adapter, "CREATE TABLE orders (id INT);")
+        create = executed[-1]
+        assert "[dbo].[orders]" in create
+        assert "DISTRIBUTION=ROUND_ROBIN" in create
 
-        assert result.count("DISTRIBUTION") == 1
+    def test_uses_configured_distribution_default(self):
+        adapter = _make_adapter(distribution_default="REPLICATE", schema="dbo")
+        executed = self._executed(adapter, "CREATE TABLE orders (id INT);")
+        assert "DISTRIBUTION=REPLICATE" in executed[-1]
 
-    def test_adds_schema_prefix(self):
+    def test_drops_existing_table_before_create(self):
         adapter = _make_adapter(schema="dbo")
-        result = adapter._optimize_table_definition("CREATE TABLE orders (id INT)")
-        assert "[dbo]" in result or "dbo" in result
+        executed = self._executed(adapter, "CREATE TABLE orders (id INT);")
+        assert "DROP TABLE [dbo].[orders]" in executed[0]
 
 
 class TestSynapseConnectionString:

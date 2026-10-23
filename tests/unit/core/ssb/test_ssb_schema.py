@@ -70,21 +70,27 @@ class TestLoOrderdateNonNullable:
     def test_ssb_tuned_sort_key_passes_nullable_guard(self):
         from types import SimpleNamespace
 
+        from benchbox.core.tuning.interface import TableTuning, TuningColumn
         from benchbox.platforms.clickhouse.workload import ClickHouseWorkloadMixin
 
         benchmark = SimpleNamespace(get_schema=lambda: TABLES)
         nullable_by_table = ClickHouseWorkloadMixin._get_nullable_columns_by_table(benchmark)
+        nullable_columns = nullable_by_table.get("lineorder", set())
 
-        assert "lo_orderdate" not in nullable_by_table.get("lineorder", set())
+        assert "lo_orderdate" not in nullable_columns
 
-        clauses = SimpleNamespace(
-            partition_by=None,
-            sort_by="lo_orderdate, lo_orderkey, lo_linenumber",
-            order_by=None,
-            cluster_by=None,
-            primary_key=None,
+        statement = "CREATE TABLE lineorder (lo_orderkey INTEGER, lo_linenumber INTEGER, lo_orderdate INTEGER)"
+        tunings = {
+            "lineorder": TableTuning(
+                table_name="lineorder",
+                sorting=[
+                    TuningColumn(name=name, type="INTEGER", order=order)
+                    for order, name in enumerate(("lo_orderdate", "lo_orderkey", "lo_linenumber"), start=1)
+                ],
+            )
+        }
+        rendered = ClickHouseWorkloadMixin()._translate_schema_statement(
+            statement, tunings, nullable_columns=nullable_columns
         )
-        mixin = ClickHouseWorkloadMixin()
-        matched = mixin._tuned_nullable_key_columns(clauses, nullable_by_table.get("lineorder", set()))
 
-        assert matched == {}
+        assert "ORDER BY (lo_orderdate, lo_orderkey, lo_linenumber)" in rendered
