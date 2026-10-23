@@ -25904,6 +25904,13 @@
       "status": "open",
       "title": "Rerun the six published TPC-DS OBT SF1 results with correct queries and restore their rankings"
     },
+    "tpcds-obt-static-query-catalog": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Replace the TPC-DS OBT runtime converter with a static OBT query catalog and an executed OBT-vs-TPC-DS equivalence test"
+    },
     "tpcds-parity-b0-diagnose": {
       "claim": null,
       "needs": [],

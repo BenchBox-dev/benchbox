@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Result-comparing equivalence test exists and runs in CI/nightly with an explicit expected-divergence list that shrinks to empty or documented deviations.",
+    "benchbox/core/tpcds_obt has no benchbox._vendor.sqlglot imports and the ast_rewrite allowlist entry is removed.",
+    "Static catalog with template hash drift check replaces query_conversion.py, query_specs.yaml and dead manual queries.",
+    "Published OBT results flagged for rerun and a benchmark version bump recorded."
+  ],
+  "description": "Advisor review (agent ObtAdvisor, SF1 on DuckDB with identical dsqgen parameters): 29 of 89 served OBT queries return different results from TPC-DS, 6 unverifiable, 54 equal; Q73 does not finish in 120 s at SF1; 35 of 120 per-query regex patches in benchbox/core/tpcds_obt/query_conversion.py are silent no-ops; the integration test only checks emptiness (tests/integration/test_tpcds_obt_empty_results.py:75-92). Root causes: no correctness contract and no result-comparing test; no reviewable OBT query definitions (runtime AST rewrite stands in); OBT model loses information (customer-current address/cdemo/hdemo roles, return-side keys sr_store_sk/cr_call_center_sk/cr_catalog_page_sk/wr_web_page_sk) and is encoded redundantly in schema_specs.yaml, query_specs.yaml, query_conversion.py, etl/transformer.py. Parsing as postgres misreads TPC-DS '- 30 days'. Recommendation: static catalog benchmark/core/tpcds_obt/catalog/queries.yaml (DuckDB-source SQL with dsqgen placeholders, template_sha256 drift check, status equivalent|deviates|excluded), no generator, no sqlglot imports in tpcds_obt, dialect fix-ups through translate_sql_query and fork rewrites (add_derived_table_aliases, nullif_zero_divisors, ClickHouse overrides). Steps: (1) result-comparing equivalence test with expected-failure list (SF0.01 PR, SF1 nightly); (2) owner decisions on contract, schema roles, joins, IDs/versioning; (3) behavior-preserving freeze to catalog, delete converter/manual queries/specs and allowlist entry; (4) fix queries by class; (5) dialect fix-ups to fork; (6) declarative OBT model drives ETL; (7) separate DataFrame ID namespace. Published OBT results are affected (version bump). Measure: equivalent count 54/89, allowlist entries 2->0, sqlglot references 79->0, regex ops on SQL 120->0.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c196539bd596dfa2c5536f3b",
+      "at": "2026-10-23T13:03:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b0f10daff9454f5ea62248730a88ac51",
+      "session_id": "ea33e0e9a667469f905c4d3119e03265"
+    }
+  ]
+}
