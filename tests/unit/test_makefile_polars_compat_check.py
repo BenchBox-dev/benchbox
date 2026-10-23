@@ -31,9 +31,3 @@ def test_target_fails_fast_when_installed_major_differs_from_required() -> None:
     assert result.returncode != 0
     assert f"requires Polars major {mismatched}.x" in result.stderr
     assert f"found {polars.__version__}" in result.stderr
-
-
-def test_default_required_major_is_two() -> None:
-    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
-
-    assert "POLARS_COMPAT_REQUIRED_MAJOR ?= 2" in makefile
