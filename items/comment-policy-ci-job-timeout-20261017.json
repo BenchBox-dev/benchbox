@@ -55,6 +55,17 @@
       "op": "update",
       "op_id": "22c16e18a6ac4921890b0b7fca621f9b",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-23T20:53:48Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "generation": "67a803a7e02945a1b7937e5e085f0d50",
+      "op": "takeover",
+      "op_id": "c0655e4786214c4486a2fa64fbc13b39",
+      "reason": "Same orchestrating session before a process restart on 2026-10-23; the old MCP worker identity ended with that process and cannot resume. The work is complete (PRs #3343, #3362, #3364 merged); taking over only to finish.",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }

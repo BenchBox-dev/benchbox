@@ -5026,10 +5026,10 @@
     },
     "comment-policy-ci-job-timeout-20261017": {
       "claim": {
-        "expires_at": "2026-10-24T15:20:35Z",
-        "generation": "c81089ec246a47d28261ca7fd212ab09",
+        "expires_at": "2026-10-24T20:53:48Z",
+        "generation": "67a803a7e02945a1b7937e5e085f0d50",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
       },
       "needs": [],
       "priority": "medium",
