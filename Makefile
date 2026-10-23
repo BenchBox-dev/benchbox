@@ -450,6 +450,7 @@ lint:
 .PHONY: uv-lock-revision-check
 uv-lock-revision-check:
 	uv run -- python _project/scripts/check_uv_lock_revision.py $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",)
+	for project in _project/sql-translation-ml _project/scripts; do uv lock --check --project "$$project" || exit 1; done
 
 .PHONY: sqlglot-upstream-freshness-check
 sqlglot-upstream-freshness-check:
