@@ -277,6 +277,7 @@
     "docs/platforms/fabric-spark.md": "site-owned",
     "docs/platforms/firebolt.md": "site-owned",
     "docs/platforms/gcp-dataproc.md": "site-owned",
+    "docs/platforms/gizmosql.md": "site-owned",
     "docs/platforms/index.md": "site-owned",
     "docs/platforms/influxdb.md": "site-owned",
     "docs/platforms/lakesail.md": "site-owned",

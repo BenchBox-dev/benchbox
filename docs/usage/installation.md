@@ -41,6 +41,7 @@ later by running the matching install command again.
 | `[cloudstorage]` | Cloud path helpers (S3, GCS, Azure) | `uv add benchbox --extra cloudstorage` | `uv pip install "benchbox[cloudstorage]"` |
 | `[cloud]` | Databricks, BigQuery, Redshift, Snowflake connectors | `uv add benchbox --extra cloud` | `uv pip install "benchbox[cloud]"` |
 | `[clickhouse]` | ClickHouse native driver | `uv add benchbox --extra clickhouse` | `uv pip install "benchbox[clickhouse]"` |
+| `[gizmosql]` | GizmoSQL Core over Arrow Flight SQL (ADBC driver) | `uv add benchbox --extra gizmosql` | `uv pip install "benchbox[gizmosql]"` |
 | `[databricks]` / `[bigquery]` / `[redshift]` / `[snowflake]` | Single-platform installs | `uv add benchbox --extra databricks` | `uv pip install "benchbox[databricks]"` |
 | `[all]` | Everything listed above | `uv add benchbox --extra all` | `uv pip install "benchbox[all]"` |
 
