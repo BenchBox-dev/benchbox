@@ -5,7 +5,7 @@
     "RUBRIC 3 CI: the two lint steps' combined CI time on the PR run and on two later PR runs, against runs 39941303986, 39938631956, 39927651797 (161-222 s); target under 60 s",
     "RUBRIC 4 scope: no marker policy or expression list weakened; strict-markers/strict-config behaviour unchanged"
   ],
-  "context": "Approved 2026-10-23 as steps L1-L2 of the CI slow-checks proposal (Advisor report /Users/joe/.cache/ci-slow-checks-advice.md). L3 (moving promoted reproducers) held for an owner question; L4 (medium-collect reusing the manifest) not adopted.",
+  "context": "DECISION 2026-10-23 (owner): L3 dropped. Moving 'Run promoted regression reproducers' out of lint saves no runner time (the step reuses lint's checkout and uv setup), lint is not the PR critical path (the longest PR job is 'test (ubuntu-latest, 3.14)' at 478-803 s CI), and moving it would require re-pinning test_cross_surface_gates_are_pinned_in_make_and_ci.\n\nApproved 2026-10-23 as steps L1-L2 of the CI slow-checks proposal (Advisor report /Users/joe/.cache/ci-slow-checks-advice.md). L3 (moving promoted reproducers) held for an owner question; L4 (medium-collect reusing the manifest) not adopted.",
   "description": "PROBLEM: the CI lint job (271-410 s) runs four full-suite pytest --collect-only passes per PR: `make lint-markers` (Makefile ~line 500: one collection, 94-126 s CI, cold assertion rewriting) and `_project/scripts/fast_lane_ceiling_check.py --strict` (one collection per forbidden marker expression in `_project/config/fast_test_lane_policy.json`: resource_heavy, stress, live_integration; 67-96 s CI). Local: cold collection 45.0 s vs 14.5 s with --assert=plain; warm 13 s vs 11 s. Assertion rewriting does nothing for --collect-only. One collection can answer every -m expression (pytest evaluates -m per collected item after collection).\n\nCHANGE: L1 run the lint-markers collection with --assert=plain (prior art: PR #3253 for medium-collect). L2 make the fast-lane guard evaluate all forbidden expressions (and path substrings) against one collection, sharing L1's collection pass so the lint job collects once.",
   "links": [
     "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-18T23-52-50-730Z_01a1516e-af2a-70ba-8b0e-81c1898c948f/local/ci-slow-checks-proposal.md"
@@ -18,6 +18,14 @@
       "op": "create",
       "op_id": "6c56a6de992a43769b729d389b1193d4",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-23T16:20:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fd884ea491ba4ff2a792402ba235c4b2",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
