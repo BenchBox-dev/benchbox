@@ -565,6 +565,17 @@ class TestLakeSailAdapterExecution:
 
 
 class TestLakeSailAdapterRegistration:
+    @pytest.fixture(autouse=True)
+    def fresh_registry(self):
+        from benchbox.core.platform_registry import PlatformRegistry
+
+        saved = (PlatformRegistry._adapters, PlatformRegistry._auto_registered, PlatformRegistry._availability_cache)
+        PlatformRegistry._adapters = {}
+        PlatformRegistry._auto_registered = False
+        PlatformRegistry._availability_cache = None
+        yield
+        PlatformRegistry._adapters, PlatformRegistry._auto_registered, PlatformRegistry._availability_cache = saved
+
     def test_lakesail_in_platform_list(self):
 
         from benchbox.platforms import list_available_platforms
