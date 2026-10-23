@@ -5,7 +5,7 @@
     "Existing rebase-shift, replay of PR 2769, reorder and moved-hunk tests pass unchanged; none deleted or loosened",
     "PR merged with an oracle verdict on its final head; merge SHA recorded"
   ],
-  "context": "Created 2026-10-23 from the codex review of gap issue 2808 (commit 5ca12e6ca plus merged fix PR 3316): reviewer output /Users/joe/Developer/soundness-reviews/2808/raw-run1.txt sha256 252d352256c6b45a8214c719bc554e4b9520b24cfe96ed8585bd856f38d42ec8. Finding verified by the controller where stated; line numbers are leads, re-verify on current develop.",
+  "context": "Created 2026-10-23 from the codex review of gap issue 2808 (commit 5ca12e6ca plus merged fix PR 3316): reviewer output /Users/joe/Developer/soundness-reviews/2808/raw-run1.txt sha256 252d352256c6b45a8214c719bc554e4b9520b24cfe96ed8585bd856f38d42ec8. Finding verified by the controller where stated; line numbers are leads, re-verify on current develop.\n\nCHECKPOINT 2026-10-23: PR #3331 head e00961126, armed, oracle verdict pending. protocol.file_patches now splits diff bodies on '\\n' only (dropping one trailing empty element so a missing final newline hashes as before) and the hashed hunk header is '@@ gap=<g> old=<n> new=<m><section>' (counts are not absolute positions, so equal rebase shifts keep the hash). Failing-before on develop protocol.py: test_a_form_feed_inside_an_added_line_is_not_a_line_break (Python 1 vs 3, different hashes), test_a_control_character_inside_an_added_line_differs_from_splitting_there (six cases: FF, VT, U+2028, U+0085, 0x1c, CR), test_hunk_line_counts_are_part_of_the_patch. 821 oracle_reviewers tests pass, rebase-shift/reorder/moved-hunk/PR 2769 replay unchanged; preflight and comment-policy-check pass. Worker note: make pr-open filled a wrong title/body (a SingleStore refactor); overwritten with gh pr edit; the PR holds only the two intended files. Residual: every previously recorded patch hash changes (the header format changed), so the first round on already-open soundness PRs re-judges once; other splitlines uses in the package unchecked by the worker (controller grep: see closeout). NEXT: finish after merge.",
   "description": "High finding on the oracle carry digest, REPRODUCED by the controller on origin/develop 2026-10-23: _project/scripts/oracle_reviewers/protocol.py file_patches iterates body.splitlines(), which splits on form feed and other control characters, and the hunk counts are discarded from the hashed header. Two different patches therefore hash identically: a diff adding the source lines 'permissions = READ' and '+WRITE' (hunk +1,2; Python gives permissions == 1) and a diff adding the single line 'permissions = READ<FF>+WRITE' (hunk +1,1; Python gives permissions == 3) produce equal file_patches, so plan_round can return CARRY and a prior SHIP covers behavior-changing edits without review.\n\nDECISION GATE: split only on the newline character that git uses for diff lines (body.split('\\n')) and keep every other byte; include each hunk's old and new line counts in the hashed header in a rebase-stable way (counts are not absolute positions, so a plain rebase keeps them). Verify the existing rebase tests (a hunk at line 1 versus line 9 equal) and the PR 2769 replay still pass unchanged; if including counts breaks either, stop and report options instead of loosening a test.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR (soundness path _project/scripts/oracle_reviewers); no pre-registered digests; never weaken a gate; no skip/xfail; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; never close/label/edit gap issues; done = merged PR plus evidence.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "db2d96fef04a42ce8a94e501bb5d4fe9",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-23T12:08:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "523e1b2a951d449aa9789f4bbdf6d4fc",
       "session_id": "db427a9694db441d88b0b3b12151b3f1"
     }
   ]
