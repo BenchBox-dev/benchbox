@@ -58,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   adapter-side text rewrites. Table names are written quoted (`"orders"` on Trino and Presto,
   `` `orders` `` on Athena) instead of bare, and Athena columns are backtick-quoted; the
   statements are otherwise equivalent. `ddl_helpers.strip_with_properties` is removed.
+  `translate_ddl` records one schema-DDL translation outcome per call, so schema statements still
+  appear in the result's SQL translation summary.
 - TPC-Havoc, Spark and DataFusion query rewrites run through the bundled SQLGlot fork's named rewrites
   (`translate_sql_query(..., rewrites=...)`); the BenchBox AST rewriters, `SparkTPCHavocQueryTransformer` and the
   regex `DataFusionQueryTransformer` are removed. DataFusion TPC-H Q11, Q18 and Q20 use the fork's decorrelation and

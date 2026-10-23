@@ -509,13 +509,39 @@ def translate_ddl(
 
     read = resolve_sql_dialect(source_dialect)
     write = resolve_sql_dialect(target_dialect)
-    return ddl_module.transpile_ddl(
-        ddl,
-        read=read,
-        write=write,
-        options=ddl_module.DdlOptions(**options),
-        identify=identify and write not in NO_IDENTIFY_DIALECTS,
-    )
+    strict_mode = current_sql_translation_strict_mode()
+    fingerprint = _fingerprint_sql(ddl) if translation_collection_active() else None
+
+    def record(status: str, error: Exception | None = None) -> None:
+        record_sql_translation_outcome(
+            SqlTranslationOutcome(
+                source_dialect=source_dialect,
+                target_dialect=target_dialect,
+                normalized_source_dialect=read,
+                normalized_target_dialect=write,
+                translator="sqlglot",
+                status=status,
+                strict_mode=strict_mode,
+                error_category=None if error is None else "translation_failed",
+                message=None if error is None else str(error),
+                scope=SCHEMA_DDL_SCOPE,
+                query_fingerprint=fingerprint,
+            )
+        )
+
+    try:
+        statements = ddl_module.transpile_ddl(
+            ddl,
+            read=read,
+            write=write,
+            options=ddl_module.DdlOptions(**options),
+            identify=identify and write not in NO_IDENTIFY_DIALECTS,
+        )
+    except Exception as error:
+        record("failed", error)
+        raise
+    record("success")
+    return statements
 
 
 def contains_division(sql: str, dialect: str) -> bool:

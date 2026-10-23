@@ -45,3 +45,15 @@ def test_layouts_by_table_and_singlestore_mappings_are_converted():
 def test_unknown_option_is_rejected():
     with pytest.raises(ValueError, match="Unknown DDL options"):
         translate_ddl(TABLE, "postgres", strip_everything=True)
+
+
+def test_translate_ddl_records_schema_ddl_outcomes() -> None:
+    from benchbox.utils.dialect_utils import SCHEMA_DDL_SCOPE, sql_translation_context
+
+    with sql_translation_context() as outcomes:
+        translate_ddl("CREATE TABLE t (a INT)", "postgres")
+        with pytest.raises(Exception):
+            translate_ddl("CREATE TABLE (", "postgres")
+
+    assert [outcome.status for outcome in outcomes] == ["success", "failed"]
+    assert {outcome.scope for outcome in outcomes} == {SCHEMA_DDL_SCOPE}
