@@ -16283,10 +16283,15 @@
       "title": "muse SHIP verdicts on file-list briefs are self-attested"
     },
     "oracle-staged-diff-silent-skip-and-nonatomic-write-20261022": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-24T20:52:59Z",
+        "generation": "1f38b327970b41e8b68454246aeeb691",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "stage_pull_request_diff silently drops the full diff when the target exists and writes it non-atomically"
     },
     "oracle-standin-arming-digest-20261021": {
