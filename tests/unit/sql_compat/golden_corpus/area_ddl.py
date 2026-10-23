@@ -940,6 +940,7 @@ def _singlestore() -> list[Case]:
             sql,
             "singlestore",
             "mysql",
+            read="singlestore",
             strip_foreign_keys=True,
             table_case="lower",
             float_as_real=True,

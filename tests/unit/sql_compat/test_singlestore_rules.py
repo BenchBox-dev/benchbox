@@ -20,19 +20,19 @@ def _mock_singlestoredb(monkeypatch):
 _EXPECTED_RULES = [
     {
         "rule_id": "ddl_optimize.singlestore.all.strip_foreign_keys",
-        "transformer_id": "singlestore_strip_foreign_keys",
+        "transformer_id": "translate_ddl:strip_foreign_keys",
     },
     {
         "rule_id": "ddl_optimize.singlestore.all.reference_table_for_dimensions",
-        "transformer_id": "singlestore_reference_table",
+        "transformer_id": "translate_ddl:singlestore.reference_tables",
     },
     {
         "rule_id": "ddl_optimize.singlestore.all.inject_shard_key",
-        "transformer_id": "singlestore_inject_shard_key",
+        "transformer_id": "translate_ddl:singlestore.shard_keys",
     },
     {
         "rule_id": "ddl_optimize.singlestore.all.inject_sort_key",
-        "transformer_id": "singlestore_inject_sort_key",
+        "transformer_id": "translate_ddl:singlestore.sort_keys",
     },
 ]
 
@@ -76,14 +76,6 @@ class TestSingleStoreRuleStructure:
     def test_transformer_id_matches_expected(self, expected, singlestore_decisions):
         decision = next(d for d in singlestore_decisions if d.rule_id == expected["rule_id"])
         assert decision.payload.transformer_id == expected["transformer_id"]
-
-    @pytest.mark.parametrize("expected", _EXPECTED_RULES, ids=[r["rule_id"] for r in _EXPECTED_RULES])
-    def test_transformer_id_is_callable_on_adapter(self, expected):
-        from benchbox.platforms.singlestore import SingleStoreAdapter
-
-        adapter = SingleStoreAdapter()
-        method = getattr(adapter, expected["transformer_id"], None)
-        assert callable(method), f"SingleStoreAdapter has no method {expected['transformer_id']!r}"
 
     @pytest.mark.parametrize("expected", _EXPECTED_RULES, ids=[r["rule_id"] for r in _EXPECTED_RULES])
     def test_rule_has_non_empty_description(self, expected, singlestore_decisions):

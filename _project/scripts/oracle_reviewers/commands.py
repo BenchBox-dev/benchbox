@@ -5,12 +5,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from .credentials import FORWARDED_ENV
+from .credentials import GATEWAY_ENV
 from .policy import OMP_THINKING_LEVELS, Reviewer
 
 FORBIDDEN_FLAGS = ("--dangerously-skip-permissions", "--yolo", "--dangerously-bypass-approvals-and-sandbox")
 OMP_READ_TOOLS = "read,grep,glob"
 OMP_BASE_ENV = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "LC_ALL", "TZ", "USER", "LOGNAME", "SHELL")
+
 OMP_OVERLAY_TEXT = """mcp:
   enableProjectConfig: false
 advisor:
@@ -57,7 +58,7 @@ class Invocation:
 
 
 def omp_env() -> dict[str, str]:
-    names = (*OMP_BASE_ENV, *FORWARDED_ENV)
+    names = (*OMP_BASE_ENV, *GATEWAY_ENV)
     return {name: value for name in names if (value := os.environ.get(name))}
 
 

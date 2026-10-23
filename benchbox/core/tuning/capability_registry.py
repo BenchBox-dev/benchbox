@@ -409,8 +409,9 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.FOREIGN_KEYS: _none(
             "singlestore_strips_foreign_keys",
             "SingleStore strips FOREIGN KEY clauses from every CREATE TABLE at execution "
-            "(singlestore.py singlestore_strip_foreign_keys at 379-380, wired by the DDL_OPTIMIZE "
-            "strip_foreign_keys rule in sql_compat/rules/ddl_optimize/singlestore_ddl_rewrites.py:6-16). "
+            "(singlestore.py SingleStoreAdapter._ddl_options passes strip_foreign_keys to translate_ddl, "
+            "governed by the DDL_OPTIMIZE strip_foreign_keys rule in "
+            "sql_compat/rules/ddl_optimize/singlestore_ddl_rewrites.py). "
             "Requested foreign keys never reach the engine (SingleStore error 2752).",
         ),
         **_no_unique_check_entries(

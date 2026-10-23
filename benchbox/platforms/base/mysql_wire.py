@@ -280,21 +280,27 @@ class MySqlWireLifecycleMixin:
     def _transform_schema_statement(self, stmt: str, benchmark: Any) -> str:
         return stmt
 
+    def _schema_statements(self, benchmark: Any) -> list[str]:
+        schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+        return [
+            self._transform_schema_statement(stmt, benchmark)
+            for stmt in [s.strip() for s in schema_sql.split(";") if s.strip()]
+        ]
+
     def create_schema(self, benchmark: Any, connection: Any) -> float:
         start_time = mono_time()
         self.log_operation_start("Schema creation", f"benchmark: {benchmark.__class__.__name__}")
-        schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
-        self.log_very_verbose(f"Executing schema creation script ({len(schema_sql)} characters)")
+        statements = self._schema_statements(benchmark)
+        self.log_very_verbose(f"Executing {len(statements)} schema creation statements")
 
         cursor = connection.cursor()
         critical_failures = []
         try:
-            for stmt in [s.strip() for s in schema_sql.split(";") if s.strip()]:
-                transformed = self._transform_schema_statement(stmt, benchmark)
+            for stmt in statements:
                 try:
-                    cursor.execute(transformed)
+                    cursor.execute(stmt)
                 except Exception as exc:
-                    if stmt.strip().upper().startswith("CREATE TABLE"):
+                    if stmt.strip().upper().startswith(("CREATE TABLE", "CREATE REFERENCE TABLE")):
                         critical_failures.append((stmt[:80], str(exc)))
                     self.logger.warning(f"Schema statement failed: {exc}")
             connection.commit()

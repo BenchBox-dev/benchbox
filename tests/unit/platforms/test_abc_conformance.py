@@ -63,7 +63,7 @@ def _collect_adapter_method_overrides() -> list[tuple[str, str, str, list[str]]]
                 elif isinstance(base, ast.Attribute):
                     base_names.add(base.attr)
 
-            is_abstract_base = node.name in {"PlatformAdapter", "BaseDdlOptimizer"}
+            is_abstract_base = node.name in {"PlatformAdapter"}
             if is_abstract_base:
                 continue
 
