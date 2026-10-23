@@ -18010,10 +18010,15 @@
       "title": "Flag or rerun published results computed with superseded SQL translations"
     },
     "purge-plaintext-tokens-shell-history-20261023": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-24T21:48:02Z",
+        "generation": "171d93d44ac945bbb406b89efdf719ac",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Purge plaintext API tokens from shell history and stop recording them"
     },
     "purge-stale-agent-identity-remediation-instructions": {
