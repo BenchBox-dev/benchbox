@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "RUBRIC 1 identity: on the same commit, the set of collected node ids and each forbidden expression's matched count and violation list are identical before and after (recorded)",
+    "RUBRIC 2 failure paths: an unregistered marker still fails lint-markers; a planted test marked fast and resource_heavy (and one per other expression) still fails the guard; a collection error still fails",
+    "RUBRIC 3 CI: the two lint steps' combined CI time on the PR run and on two later PR runs, against runs 39941303986, 39938631956, 39927651797 (161-222 s); target under 60 s",
+    "RUBRIC 4 scope: no marker policy or expression list weakened; strict-markers/strict-config behaviour unchanged"
+  ],
+  "context": "Approved 2026-10-23 as steps L1-L2 of the CI slow-checks proposal (Advisor report /Users/joe/.cache/ci-slow-checks-advice.md). L3 (moving promoted reproducers) held for an owner question; L4 (medium-collect reusing the manifest) not adopted.",
+  "description": "PROBLEM: the CI lint job (271-410 s) runs four full-suite pytest --collect-only passes per PR: `make lint-markers` (Makefile ~line 500: one collection, 94-126 s CI, cold assertion rewriting) and `_project/scripts/fast_lane_ceiling_check.py --strict` (one collection per forbidden marker expression in `_project/config/fast_test_lane_policy.json`: resource_heavy, stress, live_integration; 67-96 s CI). Local: cold collection 45.0 s vs 14.5 s with --assert=plain; warm 13 s vs 11 s. Assertion rewriting does nothing for --collect-only. One collection can answer every -m expression (pytest evaluates -m per collected item after collection).\n\nCHANGE: L1 run the lint-markers collection with --assert=plain (prior art: PR #3253 for medium-collect). L2 make the fast-lane guard evaluate all forbidden expressions (and path substrings) against one collection, sharing L1's collection pass so the lint job collects once.",
+  "links": [
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-18T23-52-50-730Z_01a1516e-af2a-70ba-8b0e-81c1898c948f/local/ci-slow-checks-proposal.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-23T15:20:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6c56a6de992a43769b729d389b1193d4",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    }
+  ]
+}
