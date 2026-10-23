@@ -2792,6 +2792,13 @@
       "status": "done",
       "title": "Pinned chDB 4.1.6 does not load on macOS 27; ClickHouse local e2e tests are skipped there"
     },
+    "chdb-ssb-tests-share-instance-state-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "chDB SSB integration tests fail with 'Table default.date already exists' when they share a worker"
+    },
     "check-scope-reports-ok-when-no-scope-rules-exist": {
       "claim": null,
       "needs": [],

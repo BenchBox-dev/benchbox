@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "RUBRIC 1 repro: a run of the module on one worker in both test orders (e.g. -p no:randomly with explicit ordering, or pytest -n 1) fails before the fix; command and output recorded",
+    "RUBRIC 2 fix: the same command passes in both orders after the fix, locally or on CI, with the run named",
+    "RUBRIC 3 no masking: no retry, xfail, skip or broad exception handling added; assertions unchanged"
+  ],
+  "description": "PROBLEM: tests/integration/test_ssb_clickhouse_integration.py::test_ssb_query_execution_clickhouse and ::test_ssb_schema_creation_without_engine failed with 'Table default.date already exists' when pytest-xdist ran the whole module on one worker (--dist loadscope) in CI run 39825163467 attempt 1 and its failed-job rerun; a full rerun with the same assignment passed (attempt 3). Under the default load distribution the two tests usually land on different workers, which hides the leak. Likely cause: in-process chDB (ClickHouseLocalClient) state persists across tests in one process, so a later test sees tables created by an earlier one. Not reproduced locally (the module skips without chdb).\n\nCHANGE: make each test use an isolated chDB session/path (or drop what it creates) so the module passes in any order on one worker. Do not add retries or skips.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3314",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/39825163467"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-23T11:42:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d159e4b8dd4d4a3b9bc34c4ffa0fe5d9",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    }
+  ]
+}
