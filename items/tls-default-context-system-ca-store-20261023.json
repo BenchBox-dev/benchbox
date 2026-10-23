@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Databricks SQL connections verify against the chosen trust source, with an override for custom CA bundles",
+    "The stdlib urllib download paths use the same trust source",
+    "A test pins which trust source each path uses",
+    "CHANGELOG Security entry describes the change"
+  ],
+  "description": "BenchBox relies on certifi for `requests`-based clients, but several connections use Python's default `ssl` context, whose trust comes from the interpreter's OpenSSL default paths. On python-build-standalone (uv-managed) CPython on macOS that is `/etc/ssl/cert.pem`, which Apple does not update and which still trusted the compromised eMudhra emSign intermediates (via emSign ECC Root CA - G3 and AAA Certificate Services) until it was edited by hand on the maintainer's Mac. Linux users get whatever their distribution's ca-certificates package holds.\n\nAffected paths:\n- `benchbox/platforms/databricks/adapter.py` and `benchbox/platforms/databricks/credentials.py` call `databricks_sql.connect(...)` without `_tls_trusted_ca_file`; databricks-sql-connector then builds `ssl.create_default_context(cafile=None)`. The connection carries the Databricks PAT.\n- `benchbox/core/expected_results/download.py` (`_fetch_url`) and `benchbox/platforms/credentials/redshift.py` (public-IP lookup) call `urllib.request.urlopen` with the default context. `benchbox/core/flightdata/downloader.py` does too, but its payloads are sha256-pinned.\n\nOptions to decide between: pass certifi's bundle (`certifi.where()`), which tracks Mozilla but ignores enterprise roots; use `truststore` (OS verifier, honours OS revocation and enterprise roots; on macOS Apple already blocks the compromised intermediates); or keep the default but document it. Whatever is chosen should be overridable (for example an existing CA-bundle option) and covered by a test that the context is built from the chosen source.",
+  "links": [
+    "https://emudhra.we-have-a-problem.com/"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:03:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f41044becb914043828fb1f693cde25f",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    }
+  ]
+}

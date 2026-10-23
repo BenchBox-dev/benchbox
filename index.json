@@ -25324,6 +25324,13 @@
       "status": "done",
       "title": "Migrate runtime elapsed and timeout timing to centralized monotonic clock"
     },
+    "tls-default-context-system-ca-store-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Databricks SQL connections and stdlib downloads verify TLS against the interpreter's system CA store, not a maintained bundle"
+    },
     "todo-add-todo-validation-to-pr-preflight": {
       "claim": null,
       "needs": [],
