@@ -22974,17 +22974,12 @@
       "title": "SOUNDNESS_PREFIXES matches exact-file entries by prefix so sibling files are gated"
     },
     "soundness-dead-exception-report-20261022": {
-      "claim": {
-        "expires_at": "2026-10-24T16:56:01Z",
-        "generation": "4849afe31caa477399183d13218b1845",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [
         "soundness-gaps-decisions-20261022"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Add a report of comment-policy exceptions that no longer match any finding"
     },
     "soundness-dead-exceptions-cleanup-20261022": {
