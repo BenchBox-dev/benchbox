@@ -30,7 +30,7 @@ The benchmark is ideal for evaluating column pruning efficiency, wide table scan
 
 - **Lakehouse performance testing** - Evaluate denormalized table performance
 - **Column pruning benchmarks** - Test how efficiently engines skip unused columns
-- **Wide table handling** - Stress test databases with 200+ column tables
+- **Wide table handling** - Stress test databases with a 715-column table
 - **Storage format comparison** - Compare Parquet, Delta Lake, Iceberg on wide tables
 - **Scan-heavy workloads** - Benchmark pure analytical scan performance without join overhead
 
@@ -49,13 +49,13 @@ The OBT schema denormalizes all 25 TPC-DS tables into a single wide table:
 | Aspect | Value |
 |--------|-------|
 | **Tables** | 1 (denormalized) |
-| **Columns** | ~200+ |
+| **Columns** | 715 at `dimension_mode=full` |
 | **Source Tables** | All 25 TPC-DS tables flattened |
 | **Primary Grain** | store_sales fact table |
 
 ### Column Groups
 
-The denormalized table contains columns from all TPC-DS dimensions:
+The denormalized table contains columns from all TPC-DS dimensions. The [column lineage](tpc-ds-obt-lineage.md) page lists every fact source and dimension role:
 
 | Source Table | Columns Added | Prefix |
 |--------------|---------------|--------|
@@ -120,7 +120,7 @@ The first command uses minimal dimensions and the store channel only. Parquet is
 
 ### Storage format
 
-Parquet is the default because the OBT is a very wide table (518 columns at `dimension_mode=full`)
+Parquet is the default because the OBT is a very wide table (715 columns at `dimension_mode=full`)
 with high null density - store rows carry NULL for all `web_site_*`, `web_page_*`, and
 `call_center_*` columns, and so on per channel. Columnar storage with null suppression
 reduces the SF1 artifact by an order of magnitude vs the 11 GB pipe-delimited `.dat`,
@@ -142,8 +142,8 @@ against a single denormalized fact:
 | Inventory fact | Q21, Q22, Q37, Q39, Q72, Q82 | Use the inventory fact table, a separate fact domain not included in the OBT denormalization |
 | External customer dimensions | Q46, Q64, Q68, Q84 | Require the customer's *current* address/demographics (independent of the sales fact), which the OBT cannot recover from the single-row grain. Q64 additionally uses a cross-channel self-join that defeats OBT's single-scan design |
 
-Queries 14 and 49 are included but hand-written rather than produced by the
-automatic converter because their semantics require manual rewrites.
+The OBT queries are a hand-owned catalog, `benchbox/core/tpcds_obt/catalog/queries.yaml`. Each entry records the
+SHA-256 of the TPC-DS template it derives from, and tests fail when a template or its parameters change.
 
 ### Example: Query 1
 

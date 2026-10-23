@@ -44,7 +44,7 @@ class TPCDSOBTBenchmark(BaseBenchmark):
             raise ValueError("TPC-DS-OBT requires scale_factor >= 1.0 to align with TPC-DS generation.")
 
         self._name = "TPC-DS One Big Table Benchmark"
-        self._version = "0.1"
+        self._version = "0.2"
         self._description = (
             "TPC-DS benchmark adapted to a single wide One Big Table with sales + returns merged across channels."
         )

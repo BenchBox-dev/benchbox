@@ -104,6 +104,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   FlightData type map writes `DOUBLE` instead of `FLOAT` (the same 64-bit type), and the StarRocks and
   SingleStore adapters no longer pass `float_as_real` because no benchmark schema declares a bare `FLOAT`.
 - DuckDB and SQLite build their schema script with one `translate_ddl` call that also removes the TPC-DS foreign keys, instead of `translate_sql` followed by a regex strip; the generated statements are unchanged. The `ddl_helpers` regex helpers `strip_foreign_keys`, `strip_primary_keys` and `strip_tpcds_foreign_keys` are removed; the inventory keeps the `_optimize_table_definition` / `_transform_create_statement` signature detection so a reintroduced per-adapter DDL hook still fails the drift check; the `sql_compat` README, the SQLGlot and phase-aware-pipeline ADRs and the new-platform guide describe `translate_ddl` instead of per-adapter hooks.
+- The TPC-DS OBT schema, ETL, `CREATE TABLE` statement and lineage page come from one declarative model,
+  `benchbox/core/tpcds_obt/model.yaml`. The table gains 12 roles and 197 columns (518 to 715 at
+  `dimension_mode=full`): the billing and returning customer's current address, demographics and household
+  demographics, the billing customer's first sales and first ship-to dates, and the return-side store, call center,
+  catalog page and web page. Column lineage is derived from the columns the ETL reads, which corrects `store_sk`
+  and other fact columns that named a returns column the ETL never used. A full-width build at scale factor 1 or above
+  fails when a calendar day from 1998 to 2002 has no sale or an item never appears, and the manifest records the
+  coverage. The OBT benchmark version is 0.2, so published SQL OBT results need a rerun.
+
 - The PostgreSQL, DuckLake, pg_mooncake and QuestDB adapters build `CREATE TABLE` text through
   `translate_ddl` instead of their own rewrites. QuestDB writes `VARCHAR` for `CHAR(n)` and
   `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake quotes identifiers, and the pg_mooncake
