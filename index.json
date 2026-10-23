@@ -16269,15 +16269,10 @@
       "title": "Fix stand-in approval docs: the check rejects comments that quote the owner"
     },
     "oracle-strike-count-distinct-patches-20261008": {
-      "claim": {
-        "expires_at": "2026-10-24T12:22:15Z",
-        "generation": "6354c2c2a42e4ef8b1f7bdb8208c2b37",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "The oracle's retry-state strike count rises on every DO NOT SHIP, not once per distinct patch"
     },
     "oracle-sweep-schedule-drops-most-runs-20261022": {
