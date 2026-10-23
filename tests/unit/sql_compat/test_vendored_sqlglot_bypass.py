@@ -33,7 +33,6 @@ class AllowlistEntry:
 
 DATAFRAME_PARSE_ONLY = "Parses SQL into an AST to build DataFrame operations; emits no dialect SQL"
 HAVOC_AST_REWRITE = "Rewrites the 1_v7 array aggregation on the AST until the fork provides list-aggregate rewrites"
-ADAPTER_AST_REWRITE = "Rewrites already-translated SQL on the AST at execution time; moves to apply_rewrite"
 OBT_AST_REWRITE = "Rewrites query structure on the AST to target the one-big-table schema; moves to apply_rewrite"
 FLIGHTDATA_AST_REWRITE = "Casts ROUND inputs on the AST before printing PostgreSQL; moves to apply_rewrite"
 
@@ -53,9 +52,6 @@ BYPASS_ALLOWLIST: dict[str, AllowlistEntry] = {
     "benchbox/core/tpcds_obt/query_conversion.py": AllowlistEntry(2, AST_REWRITE, OBT_AST_REWRITE),
     "benchbox/core/tpchavoc/cloud_compat.py": AllowlistEntry(5, AST_REWRITE, HAVOC_AST_REWRITE),
     "benchbox/core/tpchavoc/dialect_compat.py": AllowlistEntry(3, AST_REWRITE, HAVOC_AST_REWRITE),
-    "benchbox/platforms/bigquery.py": AllowlistEntry(3, AST_REWRITE, ADAPTER_AST_REWRITE),
-    "benchbox/platforms/databricks/adapter.py": AllowlistEntry(4, AST_REWRITE, ADAPTER_AST_REWRITE),
-    "benchbox/platforms/snowflake.py": AllowlistEntry(2, AST_REWRITE, ADAPTER_AST_REWRITE),
 }
 
 

@@ -22,7 +22,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: oracle-gate-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || github.event.workflow_run.pull_requests[0].number || format('run-{0}', github.run_id) }}
+  group: oracle-gate-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || github.event.workflow_run.pull_requests[0].number || ((github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'pull_request_target') && format('sha-{0}', github.event.workflow_run.head_sha)) || format('run-{0}', github.run_id) }}
   cancel-in-progress: true
 
 jobs:

@@ -95,55 +95,6 @@ class TestSnowflakeOptimizeTableDefinition:
             assert "'keep me'" in result
 
 
-class TestSnowflakeSafeguardDivision:
-    def test_division_routed_through_nullif(self):
-
-        from benchbox.platforms.snowflake import SnowflakeAdapter
-
-        with patch("benchbox.platforms.snowflake.snowflake"):
-            adapter = SnowflakeAdapter(
-                account="acct",
-                username="u",
-                password="p",
-            )
-            result = adapter._safeguard_snowflake_division("SELECT a / b FROM t")
-            assert "NULLIF" in result
-            assert result.count("NULLIF") == 1
-
-    def test_query_without_division_unchanged(self):
-        from benchbox.platforms.snowflake import SnowflakeAdapter
-
-        with patch("benchbox.platforms.snowflake.snowflake"):
-            adapter = SnowflakeAdapter(
-                account="acct",
-                username="u",
-                password="p",
-            )
-            sql = "SELECT a FROM t"
-            assert adapter._safeguard_snowflake_division(sql) == sql
-
-    def test_realistic_multi_join_query_guarded(self):
-
-        from benchbox.platforms.snowflake import SnowflakeAdapter
-
-        with patch("benchbox.platforms.snowflake.snowflake"):
-            adapter = SnowflakeAdapter(
-                account="acct",
-                username="u",
-                password="p",
-            )
-            sql = (
-                "SELECT CAST(amc AS DECIMAL(15, 4)) / CAST(pmc AS DECIMAL(15, 4)) AS am_pm_ratio "
-                "FROM (SELECT COUNT(*) AS amc FROM web_sales, time_dim "
-                "WHERE ws_sold_time_sk = time_dim.t_time_sk) AS at, "
-                "(SELECT COUNT(*) AS pmc FROM web_sales) AS pm"
-            )
-            result = adapter._safeguard_snowflake_division(sql)
-            assert "NULLIF" in result
-            assert "am_pm_ratio" in result
-            assert "web_sales" in result
-
-
 class TestSnowflakeForkSafeDivision:
     def _adapter(self):
         from benchbox.platforms.snowflake import SnowflakeAdapter

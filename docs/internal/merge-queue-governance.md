@@ -53,6 +53,12 @@ fails it. Checks run on the pull request head, which need not be current with
 | `tooling` | `.github/workflows/ci.yml` | Every event. Base-branch guard, comment policy, content guard, skill integrity, and audit checks by path. |
 | `oracle-review` | `.github/workflows/oracle-review.yml` (job and check name `oracle-review`) | Passes when only paths listed as inert by `.github/inert-paths.txt` (see Inert-path manifest in `docs/internal/oracle-review-v2.md`) change, or when the `benchbox-oracle` app's latest review of the current head, submitted after any retarget, reports success and none of the app's threads is unresolved. Each new head gets its own oracle result (`.github/workflows/oracle-verdict.yml`; rerun with a `/oracle-review` comment): a full review, a follow-up on files whose patch changed, or the earlier decision carried over when a rebase or prose-only push leaves the patch unchanged (Rounds in `docs/internal/oracle-review-v2.md`). If the oracle cannot review or its verdict is overruled, the check also passes on an independent stand-in review of the exact head followed by a `Stand-in oracle review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the oracle's latest review of that head (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. |
 
+### Shadow selection miss report
+
+`core` also measures the shadow selection. After the heavy medium-test shards finish, the aggregate downloads the shard junit reports and the `coverage-selection-<pr>-<sha>` artifact, runs `scripts/coverage_test_selection.py misses`, and writes a `Shadow selection misses` section to the step summary plus a `coverage-selection-misses-<pr>-<sha>` artifact (`selected_count`, `failed`, `missed`, `would_escalate`). A failed test counts as missed when neither its node ID nor its bare file path is in the selection; a selected sibling node does not cover it. When the selection or any junit report is missing or unparseable, the step reports `not available` with no escalation verdict instead of a clean bill. The step reports only and never fails the job.
+
+The coverage selection step in `ci-paths` should finish within 60 seconds and 3 GB peak RSS on that runner; it already prints `elapsed=` and `rss=`. Measured on PR #3264's CI run 39794063479: 21.6 s and 1384.5 MB with the v2 map, against 44.6 s and 2.2 GB for the v1 map.
+
 ---
 
 ## 3. Merge Path
