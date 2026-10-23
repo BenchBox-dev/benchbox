@@ -33,28 +33,46 @@ its own.
      job;
    - `TYPESAFE_API_KEY`, used only by `select-1` to classify the change with
      TypeSafe's Jev model;
-   - the reviewer credentials, used only by the `attempt-N-omp` jobs. Either
-     set `OMP_AUTH_BROKER_URL` and `OMP_AUTH_BROKER_TOKEN` for an OMP auth
-     broker that holds the owner's subscription logins, or set provider
-     credentials directly: `CLAUDE_CODE_OAUTH_TOKEN` (from
-     `claude setup-token`, passed to OMP as `ANTHROPIC_OAUTH_TOKEN`),
-     `OPENAI_API_KEY`, `META_API_KEY` and `GEMINI_API_KEY`. Unset secrets are
-     not passed. Only providers with a credential can serve a fallback.
-4. Remove `CLAUDE_CODE_OAUTH_TOKEN` from the repository secrets, because
-   same-repository pull request workflows can read those.
+   - `ORACLE_GATEWAY_TOKEN` and `ORACLE_GATEWAY_URL`, used only by the
+     `attempt-N-omp` jobs: the reviewer's client token for the credential
+     gateway (see Credential gateway) and the gateway's HTTPS URL. No
+     provider key, broker URL or broker token is stored for the reviewer, and
+     the owner's OMP config is not stored as a secret: the reviewer's model
+     roles and fallback chains are committed in `.github/oracle-omp-config.yml`;
+   - `TS_OAUTH_CLIENT_ID` and `TS_AUDIENCE`, used to join the tailnet.
+4. Keep provider credentials, `CLAUDE_CODE_OAUTH_TOKEN` included, out of the
+   repository secrets, because same-repository pull request workflows can
+   read those.
 
 Each attempt job installs a pinned OMP Linux build and checks its SHA-256
 before running it.
 
-### Credential broker
+### Credential gateway
 
-The broker runs on the owner's Mac, not in a container, so it shares the
-owner's OMP credential store and is the only process that refreshes OAuth
-tokens. A launchd agent (`~/Library/LaunchAgents/dev.omp.auth-broker.plist`)
-runs `omp auth-broker serve --bind=127.0.0.1:8765 --trust-proxy-headers`, and
-`tailscale serve --bg --https=8765 http://127.0.0.1:8765` publishes it to the
-tailnet only, over HTTPS. Reviews reach it only while the Mac is awake and
-online; otherwise attempts are absent and the hourly sweep retries.
+The reviewer holds no provider credential. Each attempt job runs the pinned
+OMP with one environment variable, `OMP_GATEWAY_TOKEN`, a client token for an
+`omp auth-gateway` on the owner's Mac. The gateway sits in front of the
+credential broker: it checks the token, limits the client to the listed models
+and accounts, and forwards the request with the owner's real credential, so
+neither the broker token nor a provider key reaches the runner. The job writes
+the reviewer's OMP home first (`cli.py reviewer-home --home "$HOME"
+--gateway-url "$ORACLE_GATEWAY_URL"`): a copy of
+`.github/oracle-omp-config.yml` as `config.yml`, and a `models.yml` that
+points the providers `anthropic`, `openai-codex`, `muse-code` and
+`google-antigravity` at the gateway with `transport: pi-native` and
+`apiKey: OMP_GATEWAY_TOKEN` (the variable name, not a value). The command
+refuses an empty URL or one that is not `https://`.
+
+Reviews reach the gateway only while the Mac is awake and online; otherwise
+attempts are absent and the hourly sweep retries.
+
+**Accepted risk.** The reviewer is not confined to files. It can read any file
+the runner user can read, and it can read its own client token, for example
+from `/proc/self/environ`. This is accepted because the token is scoped to the
+listed models, reachable only over the tailnet and quick to rotate. The
+overlay and the prompt neutralization limit what a pull request can steer the
+reviewer to read, but are not a boundary. Do not enable OMP's `secrets.enabled`
+setting: it restores real values into URLs and output.
 
 Each attempt job joins the tailnet through `tailscale/github-action` with
 GitHub's OIDC token (`id-token: write`), so no long-lived Tailscale secret
@@ -63,27 +81,77 @@ are set. The tailnet policy must:
 
 - own `tag:oracle-ci` (`tagOwners`), and limit the default allow-all rule's
   source to `autogroup:member`, so tagged nodes match nothing else;
-- grant `tag:oracle-ci` only `tcp:8765` on the broker host.
+- grant `tag:oracle-ci` only the gateway port (`tcp:4000`) on the gateway
+  host. During the cut-over it also keeps the broker's `tcp:8765`, so a
+  revert still works; step 6 of the runbook removes that entry.
 
 The Tailscale OIDC credential carries the `auth_keys` write scope and
 `tag:oracle-ci`. This repository uses GitHub's immutable OIDC subject, so
 restrict the credential's subject to
 `repo:BenchBox-dev@319264189/benchbox@1135770337:environment:oracle`; the
-name-only form is rejected with a 403. Add `TS_OAUTH_CLIENT_ID`,
-`TS_AUDIENCE`, `OMP_AUTH_BROKER_URL`
-(`https://<host>.<tailnet>.ts.net:8765`) and `OMP_AUTH_BROKER_TOKEN` to the
-`oracle` environment. Rotate the broker token with
-`omp auth-broker token --regenerate`, restart the agent with
-`launchctl kickstart -k gui/$(id -u)/dev.omp.auth-broker`, and update the
-secret. Disable key expiry for the broker host in the Tailscale console.
+name-only form is rejected with a 403. Disable key expiry for the gateway host
+in the Tailscale console.
 
-The broker serves credentials, not model roles. Store the owner's
-`~/.omp/agent/config.yml`, which maps each role alias to a model and its
-fallback chain, as the `OMP_AGENT_CONFIG` secret, and refresh it after
-changing roles:
-`gh secret set OMP_AGENT_CONFIG --env oracle < ~/.omp/agent/config.yml`.
-Attempt jobs fail without it, because role aliases would otherwise resolve
-to OMP's built-in models.
+**Owner runbook.**
+
+1. Make a token and its digest. The clients file holds only the digest:
+   `T=$(openssl rand -base64 36 | tr -d '\n'); printf %s "$T" | shasum -a 256`.
+   Keep `$T` for the `ORACLE_GATEWAY_TOKEN` secret.
+2. List the OAuth identity keys with `omp usage accounts --json` (it shows
+   emails). Write the clients file, mode 0600:
+
+   ```json
+   {
+     "oracle-ci": {
+       "tokenSha256": "<hex digest>",
+       "models": [
+         "anthropic/claude-haiku-5-5", "anthropic/claude-sonnet-5-5",
+         "anthropic/claude-opus-5-5", "anthropic/claude-fable-5",
+         "openai-codex/gpt-6-luna", "openai-codex/gpt-6.1-sol",
+         "openai-codex/gpt-6-astra",
+         "muse-code/muse-spark-1.3-contributor",
+         "muse-code/muse-wonder-1.0-contributor",
+         "google-antigravity/gemini-3.8-flash",
+         "google-antigravity/gemini-4-argon"
+       ],
+       "accounts": {
+         "anthropic": ["<identityKey>"],
+         "openai-codex": ["<identityKey>"],
+         "muse-code": ["<identityKey>"],
+         "google-antigravity": ["<identityKey>"]
+       }
+     }
+   }
+   ```
+
+   The models are the four primaries and the seven fallbacks in
+   `.github/oracle-omp-config.yml`; keep the two in step. `accounts` pins each
+   provider to one identity and is also an allow-list: stored or environment
+   API keys are then never used for those providers. Leave it out for plain
+   model scoping. Replace the file atomically (write a temporary file, then
+   `mv` over it): the gateway re-reads it every 10 seconds, and removing the
+   entry refuses the token from its next request.
+3. Run the gateway under its own launchd agent, beside the broker's, with the
+   broker's `OMP_AUTH_BROKER_URL` and `OMP_AUTH_BROKER_TOKEN` in its
+   environment: `omp auth-gateway serve --bind=127.0.0.1:4000
+   --clients=<file>`.
+4. Publish it to the tailnet only, over HTTPS:
+   `tailscale serve --bg --https=4000 http://127.0.0.1:4000`. Update the ACL
+   as above.
+5. Add `ORACLE_GATEWAY_TOKEN` (the token) and `ORACLE_GATEWAY_URL`
+   (`https://<host>.<tailnet>.ts.net:4000`) to the `oracle` environment as
+   secrets.
+6. After a hosted run passes on the gateway, delete `CLAUDE_CODE_OAUTH_TOKEN`,
+   `OPENAI_API_KEY`, `META_API_KEY`, `OMP_AUTH_BROKER_URL`,
+   `OMP_AUTH_BROKER_TOKEN` and `OMP_AGENT_CONFIG` from the environment, remove
+   the broker's `tcp:8765` ACL entry for `tag:oracle-ci`, and rotate those
+   credentials once. Until then reverting the cut-over restores the old
+   setup. `GEMINI_API_KEY` was referenced by the old workflow but never set in
+   the environment, so there is nothing to delete for it.
+
+To rotate the client token, make a new token and digest, replace the digest in
+the clients file, and update `ORACLE_GATEWAY_TOKEN`; the old token stops
+working within 10 seconds.
 
 Without the App secrets, the `post` job logs the result and succeeds.
 
@@ -352,11 +420,18 @@ the pull request pending.
 
 Each reviewer in `.github/oracle-reviewers.yml` names an OMP role alias,
 not a model: `trivial` and `small` use `@smol`, `medium` uses `@default`,
-`large` uses `@review`, `huge` uses `@plan` and `max` uses `@slow`. OMP
-resolves the role to a model and, when that model hits a usage limit or an
-outage, walks the role's own fallback chain. The oracle does not restate
-models or chains, and its overlay leaves OMP's retry settings alone. An
-empty `effort` takes the role's thinking level.
+`large` uses `@review`, `huge` uses `@plan` and `max` uses `@slow`. The
+committed `.github/oracle-omp-config.yml` maps each alias to a model
+(`modelRoles`) and each primary model to its fallback chain
+(`retry.fallbackChains`). Chains are keyed by the primary model id, not by
+role: on the pinned OMP build a role-keyed chain makes every `--model @role`
+walk the `default` chain, while a key containing `/` is matched by model and
+restores each role's own chain. `retry.fallbackOn` is `usage-limit`, so only a
+usage limit walks the chain; a revoked token, an out-of-scope model or an
+outage fails the attempt instead of silently swapping the model family.
+Changing a role or a chain is a pull request to that file, and a change to the
+file must keep one chain per primary model and no role-name keys (a test
+checks this). An empty `effort` takes the role's thinking level.
 
 The review records the reviewer name from the policy, not the model that
 answered. Reviews do not exclude the author's model family: the owner chose
@@ -430,9 +505,11 @@ never passes.
   the OMP stdout stream is no longer excerpted into diagnostics. Read credit
   also requires the real path to stay inside the checkout, so a committed
   symlink to an outside file credits nothing.
-- Credentials: one list (`credentials.py`) names every forwarded broker and
-  provider variable, the gateway client token (`OMP_GATEWAY_TOKEN`) and the
-  legacy extras. Values of at least eight
+- Credentials: `commands.omp_env()` forwards only the base environment and
+  the gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`). One list
+  (`credentials.py` `NAMES`) names that token, the broker and provider
+  variables the attempt jobs no longer receive, and the legacy extras, so a
+  local run that still holds them is redacted too. Values of at least eight
   characters are removed by exact match before and after every sanitising
   transform and before any truncation, across control-character splits and
   overlaps, in verdict text, absence details, diagnostics and error
@@ -443,9 +520,9 @@ never passes.
   value under eight characters, cannot be matched. A local fake-sentinel probe
   showed the reviewer's `read` returns a committed symlink target, an absolute
   outside path and a `..` path, so the checkout is not a read boundary. The reach
-  probes also reached `/proc/self/environ` and the home configuration. Closing
-  that is owned by `oracle-response-read-boundary-prerequisite-20261021`; the
-  scoped gateway token is the planned credential boundary.
+  probes also reached `/proc/self/environ` and the home configuration, which
+  is why the reviewer holds only the scoped gateway client token
+  (`oracle-response-read-boundary-prerequisite-20261021`).
 
 The verdict is the text of the reviewer's final assistant message, taken from
 its `message_end` event; remarks the reviewer makes between tool calls are
@@ -502,9 +579,9 @@ These checks must pass before the cut-over that makes the context required.
 - **P2:** a `pull_request_target` run from a same-repository test pull request
   enters the `oracle` environment; a `pull_request` run from the pull request
   branch cannot.
-- **P3:** each reviewer authenticates in CI through the configured broker or
-  provider secrets. A reviewer that cannot is set to `enabled: false` with a
-  `disabled_reason`. The workflow has five slots.
+- **P3:** each reviewer authenticates in CI through the credential gateway
+  with the `ORACLE_GATEWAY_TOKEN` client token. A reviewer that cannot is set
+  to `enabled: false` with a `disabled_reason`. The workflow has five slots.
 - **P4:** capture each reviewer's quota, authentication and outage output from
   real runs. The attempt artifact's `diagnostic` field holds one redacted line
   of the output, at most 300 characters. When the answer is not a valid
@@ -533,9 +610,10 @@ policy or the attempt jobs must also:
   `grep`, and then answers. Replace machine paths and check it for
   credentials. Never hand-edit it into the shape the code expects.
 - be smoke-tested before merge by running `runner.review` on a file-list
-  brief, with the reviewer and model that CI will select and the
-  configuration stored in `OMP_AGENT_CONFIG`. The reviewer must take at least
-  two turns, and the result must be a verdict that passes the evidence check.
+  brief, with the reviewer and model that CI will select and the committed
+  `.github/oracle-omp-config.yml` (written into a scratch `HOME` with
+  `reviewer-home`). The reviewer must take at least two turns, and the result
+  must be a verdict that passes the evidence check.
   After merge, dispatch a run on a soundness pull request to confirm it in
   CI. Repeat both after any change to routing or bucket floors.
 - record, beside the CI-pinned proof, a separately labelled local proof: the

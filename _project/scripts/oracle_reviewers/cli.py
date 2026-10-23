@@ -29,6 +29,9 @@ CLASSIFICATION_FILE = "classification.json"
 DIFF_FILE = "diff.patch"
 WORKFLOW_FILE = "oracle-verdict.yml"
 WORKFLOW_SOURCE = Path(".github/workflows") / WORKFLOW_FILE
+OMP_CONFIG_SOURCE = Path(__file__).resolve().parents[3] / ".github" / "oracle-omp-config.yml"
+GATEWAY_TOKEN_ENV = "OMP_GATEWAY_TOKEN"
+GATEWAY_PROVIDERS = ("anthropic", "openai-codex", "muse-code", "google-antigravity")
 DEVELOP_REF = "refs/heads/develop"
 NEW_DIFF_ACTIONS = ("opened", "synchronize")
 REVIEW = "review"
@@ -755,6 +758,23 @@ def command_sweep(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_reviewer_home(args: argparse.Namespace) -> int:
+    url = args.gateway_url.strip()
+    if not url:
+        raise SystemExit("oracle-verdict: error: the gateway URL is empty; set the ORACLE_GATEWAY_URL secret")
+    if not url.startswith("https://") or len(url) == len("https://"):
+        raise SystemExit("oracle-verdict: error: the gateway URL must be an https:// URL")
+    agent_dir = Path(args.home) / ".omp" / "agent"
+    agent_dir.mkdir(parents=True, exist_ok=True)
+    (agent_dir / "config.yml").write_text(OMP_CONFIG_SOURCE.read_text(encoding="utf-8"), encoding="utf-8")
+    providers = "".join(
+        f"  {provider}:\n    transport: pi-native\n    baseUrl: {json.dumps(url)}\n    apiKey: {GATEWAY_TOKEN_ENV}\n"
+        for provider in GATEWAY_PROVIDERS
+    )
+    (agent_dir / "models.yml").write_text(f"providers:\n{providers}", encoding="utf-8")
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="oracle-verdict")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -797,6 +817,10 @@ def _parser() -> argparse.ArgumentParser:
     sweep = commands.add_parser("sweep")
     sweep.add_argument("--policy", required=True)
     sweep.set_defaults(handler=command_sweep)
+    home = commands.add_parser("reviewer-home")
+    home.add_argument("--home", required=True)
+    home.add_argument("--gateway-url", required=True)
+    home.set_defaults(handler=command_reviewer_home)
     return parser
 
 
