@@ -23499,15 +23499,10 @@
       "title": "Generate type-valid SQL families and held-out compositions"
     },
     "sql-translation-ml-lock-drift-20261023": {
-      "claim": {
-        "expires_at": "2026-10-24T22:50:24Z",
-        "generation": "35fb001086434c0fb0b206ca9d0aee91",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Nothing keeps _project/sql-translation-ml/uv.lock in sync with BenchBox's pyproject.toml"
     },
     "sql-translation-ml-models": {
