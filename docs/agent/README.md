@@ -34,7 +34,7 @@ requires a human audience that belongs on benchbox.dev. A new
 | `handoffs.md` | Where resumable session state goes, and why handoff files are retired |
 | `cloud-builder.md` | How a cloud session builds, verifies, and hands off one change |
 | `merge-authority.md` | Owner holds, stand-in approvals, and bypassing required checks |
-| `emergency-merge.md` | Owner-approved bypass when a required gate is broken by the base: evidence, announcement, restore, follow-up |
+| `emergency-merge.md` | What an agent does when a required gate is broken by the base: reproduce, record evidence, stop; GitHub-side action is the owner's |
 | `primary-clone-guard.md` | Dirty-primary check, absolute worktree paths for workers, and the lost-edit cause |
 | `remote-closeout.md` | Closing out a PR from the primary clone without a checkout |
 
