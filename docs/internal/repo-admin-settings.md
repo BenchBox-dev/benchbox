@@ -503,9 +503,9 @@ does not prove that `pypi` has `required_reviewers` configured; only a live
 environments API read does. GitHub enforces a configured gate at deployment
 time. `scripts/ruleset_drift_check.py` reads that API in the release-canary
 drift job and fails closed when the environment, required-reviewers rule,
-reviewer identity, admin-bypass posture, or self-review posture differs from
-the pin below. It reuses `RULESET_DRIFT_TOKEN`, so that token needs
-environment-read visibility as well as full ruleset visibility.
+reviewer identity, admin-bypass posture, self-review posture, or deployment
+policy differs from the pins below. It reuses `RULESET_DRIFT_TOKEN`, so that
+token needs environment-read visibility as well as full ruleset visibility.
 
 Verify:
 
@@ -533,24 +533,66 @@ or replaced reviewer set, a deleted environment, or a changed bypass or
 self-review flag. When it reports drift, re-run the verify command above to
 diagnose.
 
-`test-pypi` intentionally has no protection rules, to keep dry-run publish
-paths low-friction. Observed on 2026-08-05:
+Deployment policies (applied 2026-10-23): both environments admit only
+selected refs, so a workflow run on an arbitrary branch cannot request them.
+`pypi` accepts deployments from tags matching `v*` only. `test-pypi` accepts
+tags matching `v*` and the `develop` and `release` branches, which keeps a
+`release.yml` TestPyPI dispatch from those branches working. A manual
+`release-v2.yml` dispatch deploys under the ref it was started from, so start
+it from the release tag
+(`gh workflow run release-v2.yml --ref vX.Y.Z -f tag=vX.Y.Z`); a dispatch from
+a branch is refused by the `pypi` policy. The drift check pins both policies
+and the `deployment_branch_policy` flags, and fails closed on an added,
+removed or retyped policy.
+
+Verify:
+
+```bash
+for e in pypi test-pypi; do
+  gh api repos/BenchBox-dev/BenchBox/environments/$e \
+    --jq '{name, deployment_branch_policy}'
+  gh api repos/BenchBox-dev/BenchBox/environments/$e/deployment-branch-policies \
+    --jq '[.branch_policies[] | {type, name}]'
+done
+```
+
+`test-pypi` intentionally has no required reviewers, to keep dry-run publish
+paths low-friction; its only protection is the deployment policy above. Observed
+on 2026-08-05, before the deployment policy existed:
 
 ```bash
 gh api repos/BenchBox-dev/BenchBox/environments/test-pypi --jq '{name, protection_rules}'
 ```
 
-The command returns `{"name":"test-pypi","protection_rules":[]}`, accepted by
-design. Do not copy the real-PyPI `required_reviewers` rule onto `test-pypi`
-unless a future policy explicitly wants that friction on the test path.
+The command returned `{"name":"test-pypi","protection_rules":[]}`; it now lists
+one `branch_policy` rule and still no `required_reviewers`. Do not copy the
+real-PyPI `required_reviewers` rule onto `test-pypi` unless a future policy
+explicitly wants that friction on the test path.
 
-Historical re-apply reference (admin only, if the live check ever shows the
-gate missing):
+Re-apply reference (admin only, if the live check shows a gate or policy
+missing). The environments `PUT` replaces the whole configuration, so always
+send the reviewers and flags together with the deployment policy, then create
+each policy:
 
 ```bash
 gh api -X PUT repos/BenchBox-dev/BenchBox/environments/pypi \
-  -f 'reviewers[][type]=User' \
-  -f 'reviewers[][id]=57046'
+  -F wait_timer=0 -F prevent_self_review=false -F can_admins_bypass=true \
+  -f 'reviewers[][type]=User' -F 'reviewers[][id]=57046' \
+  -F 'deployment_branch_policy[protected_branches]=false' \
+  -F 'deployment_branch_policy[custom_branch_policies]=true'
+gh api -X POST repos/BenchBox-dev/BenchBox/environments/pypi/deployment-branch-policies \
+  -f name='v*' -f type=tag
+
+gh api -X PUT repos/BenchBox-dev/BenchBox/environments/test-pypi \
+  -F wait_timer=0 -F can_admins_bypass=true \
+  -F 'deployment_branch_policy[protected_branches]=false' \
+  -F 'deployment_branch_policy[custom_branch_policies]=true'
+gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-branch-policies \
+  -f name='v*' -f type=tag
+gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-branch-policies \
+  -f name=develop -f type=branch
+gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-branch-policies \
+  -f name=release -f type=branch
 ```
 
 ## Release canary and ruleset drift

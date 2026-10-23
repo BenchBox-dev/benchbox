@@ -9,6 +9,7 @@ import pytest
 from scripts import ruleset_drift_check
 from scripts.ruleset_drift_check import (
     compare_ruleset,
+    deployment_policy_findings,
     environment_protection_findings,
     merge_queue_findings,
     parse_expected_rulesets,
@@ -173,6 +174,97 @@ def test_fetch_environment_uses_pypi_endpoint(monkeypatch: pytest.MonkeyPatch) -
     assert seen == [("https://api.github.com/repos/owner/repo/environments/pypi", "secret")]
 
 
+def _deployment_environment() -> dict:
+    return {"deployment_branch_policy": {"protected_branches": False, "custom_branch_policies": True}}
+
+
+def _deployment_policies(name: str) -> dict:
+    return {
+        "branch_policies": [
+            {"type": kind, "name": pattern}
+            for kind, pattern in ruleset_drift_check.ENVIRONMENT_DEPLOYMENT_POLICIES[name]
+        ]
+    }
+
+
+@pytest.mark.parametrize("name", ["pypi", "test-pypi"])
+def test_matching_deployment_policies_have_no_findings(name: str) -> None:
+    assert deployment_policy_findings(name, _deployment_environment(), _deployment_policies(name)) == []
+
+
+@pytest.mark.parametrize(
+    ("name", "mutate_environment", "mutate_policies", "expected"),
+    [
+        ("pypi", lambda env: env.update(deployment_branch_policy=None), lambda p: None, "deployment_branch_policy"),
+        (
+            "pypi",
+            lambda env: env["deployment_branch_policy"].update(protected_branches=True),
+            lambda p: None,
+            "deployment_branch_policy",
+        ),
+        ("pypi", lambda env: None, lambda p: p["branch_policies"].append({"type": "branch", "name": "*"}), "pypi"),
+        ("pypi", lambda env: None, lambda p: p["branch_policies"].clear(), "deployment policies"),
+        (
+            "pypi",
+            lambda env: None,
+            lambda p: p["branch_policies"][0].update(type="branch"),
+            "deployment policies",
+        ),
+        (
+            "test-pypi",
+            lambda env: None,
+            lambda p: p["branch_policies"].remove({"type": "branch", "name": "release"}),
+            "deployment policies",
+        ),
+        ("pypi", lambda env: None, lambda p: p.update(branch_policies=None), "missing or malformed"),
+        ("pypi", lambda env: None, lambda p: p["branch_policies"].append("v*"), "deployment policies"),
+    ],
+)
+def test_deployment_policy_drift_is_reported(name: str, mutate_environment, mutate_policies, expected: str) -> None:
+    environment = _deployment_environment()
+    policies = _deployment_policies(name)
+    mutate_environment(environment)
+    mutate_policies(policies)
+
+    findings = deployment_policy_findings(name, environment, policies)
+
+    assert findings
+    assert any(expected in finding for finding in findings)
+
+
+def test_deployment_policies_absent_from_the_api_response_are_drift() -> None:
+    findings = deployment_policy_findings("pypi", {"deployment_branch_policy": None}, {"message": "Not Found"})
+
+    assert len(findings) == 2
+
+
+def test_main_fails_when_a_live_environment_gains_a_policy(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "ruleset-drift.json"
+    policies = {
+        "pypi": _deployment_policies("pypi"),
+        "test-pypi": _deployment_policies("test-pypi"),
+    }
+    policies["pypi"]["branch_policies"].append({"type": "branch", "name": "*"})
+    monkeypatch.setattr(ruleset_drift_check, "_fetch_live_rulesets", lambda _repo, _token: {})
+    monkeypatch.setattr(
+        ruleset_drift_check,
+        "_fetch_environment",
+        lambda _repo, _token, name: {**_pypi_environment(), **_deployment_environment(), "name": name},
+    )
+    monkeypatch.setattr(ruleset_drift_check, "_fetch_environment_policies", lambda _repo, _token, name: policies[name])
+    monkeypatch.delenv("RELEASE_READINESS_OVERRIDE_SHA", raising=False)
+    monkeypatch.delenv("RELEASE_READINESS_OVERRIDE_REASON", raising=False)
+
+    assert ruleset_drift_check.main(["--token", "token", "--output", str(output)]) == 1
+
+    blocking = json.loads(output.read_text())["blocking_findings"]
+    assert any("pypi environment: deployment policies" in finding for finding in blocking)
+    assert not any("test-pypi environment" in finding for finding in blocking)
+
+
 def test_token_stdin_is_forwarded_to_all_github_queries(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[str] = []
     monkeypatch.setattr(ruleset_drift_check.sys, "stdin", io.StringIO("stdin-token\n"))
@@ -180,11 +272,16 @@ def test_token_stdin_is_forwarded_to_all_github_queries(monkeypatch: pytest.Monk
     monkeypatch.setattr(
         ruleset_drift_check,
         "_fetch_environment",
-        lambda _repo, token: seen.append(token) or _pypi_environment(),
+        lambda _repo, token, _name: seen.append(token) or {**_pypi_environment(), **_deployment_environment()},
+    )
+    monkeypatch.setattr(
+        ruleset_drift_check,
+        "_fetch_environment_policies",
+        lambda _repo, token, name: seen.append(token) or _deployment_policies(name),
     )
 
     assert ruleset_drift_check.main(["--token-stdin"]) == 1
-    assert seen == ["stdin-token", "stdin-token"]
+    assert seen == ["stdin-token"] * 5
 
 
 def test_github_api_failure_is_reported_without_traceback(
