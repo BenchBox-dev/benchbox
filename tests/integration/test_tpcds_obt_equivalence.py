@@ -22,15 +22,9 @@ pytestmark = [
 SCALE_FACTOR = float(os.environ.get("BENCHBOX_OBT_EQUIVALENCE_SF", "0.01"))
 QUERY_TIMEOUT_SECONDS = float(os.environ.get("BENCHBOX_OBT_EQUIVALENCE_TIMEOUT", "60"))
 
-COVERAGE = (
-    "scale factors below 1 leave calendar days without a sale, which the OBT calendar is read from; "
-    "the ETL coverage check enforces full coverage from scale factor 1"
-)
 EMPTY = "the base query returns no rows for every candidate parameter seed at this scale, so equality is vacuous"
 
-DIVERGENT_AT_SF_0_01: dict[int, str] = {
-    2: COVERAGE,
-}
+DIVERGENT_AT_SF_0_01: dict[int, str] = {}
 UNVERIFIABLE_AT_SF_0_01: dict[int, str] = {
     4: EMPTY,
     10: EMPTY,

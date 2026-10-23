@@ -18,7 +18,7 @@ The benchmark is ideal for evaluating column pruning efficiency, wide table scan
 ## Key Features
 
 - **Single wide table** - All TPC-DS data flattened into one denormalized table
-- **89 of 99 queries** - TPC-DS queries rewritten for flat schema (10 queries are not OBT-convertible; see below)
+- **90 of 99 queries** - TPC-DS queries rewritten for flat schema (9 queries are not OBT-convertible; see below)
 - **No joins required** - Tests pure scan and aggregation performance
 - **Column pruning focus** - Evaluates optimizer column projection efficiency
 - **Modern lakehouse pattern** - Simulates real-world denormalized data models
@@ -133,14 +133,14 @@ as parquet and log the path of the stale `.dat` so you can reclaim disk space ma
 
 ## Query Adaptations
 
-TPC-DS-OBT provides 89 of the standard 99 TPC-DS queries rewritten to work
-with the flat schema. 10 queries are excluded because they cannot be expressed
-against a single denormalized fact:
+TPC-DS-OBT provides 90 of the standard 99 TPC-DS queries rewritten to run against the flat table and return the
+TPC-DS result. 9 queries are excluded because they cannot be expressed against a single denormalized fact; the
+catalog records each one with its reason, and requesting one raises `QuerySkippedError`:
 
 | Category | Queries | Reason for exclusion |
 |----------|---------|----------------------|
 | Inventory fact | Q21, Q22, Q37, Q39, Q72, Q82 | Use the inventory fact table, a separate fact domain not included in the OBT denormalization |
-| External customer dimensions | Q46, Q64, Q68, Q84 | Require the customer's *current* address/demographics (independent of the sales fact), which the OBT cannot recover from the single-row grain. Q64 additionally uses a cross-channel self-join that defeats OBT's single-scan design |
+| Dimension rows with no sales | Q8, Q54, Q84 | Need customers, zip codes or stores that have no sales rows, and the OBT only carries dimension rows reachable from a sale line |
 
 The OBT queries are a hand-owned catalog, `benchbox/core/tpcds_obt/catalog/queries.yaml`. Each entry records the
 SHA-256 of the TPC-DS template it derives from, and tests fail when a template or its parameters change.

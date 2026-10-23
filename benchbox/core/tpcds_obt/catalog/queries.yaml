@@ -89,14 +89,43 @@ queries:
         channel IN ('web', 'catalog') AND sold_date_d_date_sk IS NOT NULL
       GROUP BY
         1
+    ), yrs AS (
+      SELECT 1997 AS d_year, 2450450 AS lo, 2450814 AS hi
+      UNION ALL
+      SELECT 1998, 2450815, 2451179
+      UNION ALL
+      SELECT 1999, 2451180, 2451544
+      UNION ALL
+      SELECT 2000, 2451545, 2451910
+      UNION ALL
+      SELECT 2001, 2451911, 2452275
+      UNION ALL
+      SELECT 2002, 2452276, 2452640
+      UNION ALL
+      SELECT 2003, 2452641, 2453005
+    ), nums AS (
+      SELECT 0 AS n
+      UNION ALL
+      SELECT 1
+      UNION ALL
+      SELECT 2
+      UNION ALL
+      SELECT 3
+      UNION ALL
+      SELECT 4
+      UNION ALL
+      SELECT 5
+      UNION ALL
+      SELECT 6
     ), cal AS (
-      SELECT DISTINCT
-        sold_date_d_date_sk AS d_date_sk,
-        sold_date_d_week_seq AS d_week_seq,
-        sold_date_d_year AS d_year
-      FROM tpcds_sales_returns_obt
+      SELECT
+        w.d_week_seq AS d_week_seq,
+        yrs.d_year AS d_year
+      FROM wswscs AS w
+      CROSS JOIN nums
+      CROSS JOIN yrs
       WHERE
-        sold_date_d_date_sk IS NOT NULL
+        2415015 + 7 * w.d_week_seq + nums.n BETWEEN yrs.lo AND yrs.hi
     )
     SELECT
       d_week_seq1,
