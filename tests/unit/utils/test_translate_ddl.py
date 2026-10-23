@@ -48,10 +48,14 @@ def test_unknown_option_is_rejected():
 
 
 def test_type_map_may_name_a_fork_engine_map():
-    import importlib
-
-    engines = importlib.import_module("benchbox._vendor.sqlglot.benchbox.ddl_engines")
-    named = translate_ddl(TABLE, "doris", source_dialect="duckdb", type_map="doris")
-    assert named == translate_ddl(TABLE, "doris", source_dialect="duckdb", type_map=engines.DORIS_TYPE_MAP)
+    columns = "CREATE TABLE t (a TEXT, b TIME, c SMALLINT)"
+    assert translate_ddl(columns, "doris", source_dialect="duckdb", type_map="doris") == [
+        "CREATE TABLE `t` (`a` VARCHAR(65533), `b` VARCHAR(8), `c` INT)"
+    ]
+    assert translate_ddl(columns, "starrocks", source_dialect="duckdb", type_map="starrocks") == [
+        "CREATE TABLE `t` (`a` VARCHAR(65533), `b` VARCHAR(10), `c` INT)"
+    ]
+    [singlestore] = translate_ddl("CREATE TABLE t (e TIMESTAMP)", "singlestore", type_map="singlestore")
+    assert "DATETIME" in singlestore
     with pytest.raises(ValueError, match="Unknown DDL type map"):
         translate_ddl(TABLE, "starrocks", type_map="nonexistent")
