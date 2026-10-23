@@ -435,6 +435,7 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
     ddl_memory_table_formats: tuple[str, ...] = ("memory",)
     ddl_memory_catalog_names: tuple[str, ...] = ()
     ddl_format_property_formats: tuple[str, ...] = ("hive",)
+    ddl_no_not_null_formats: tuple[str, ...] = ("hive",)
 
     def _ddl_options(self) -> dict[str, Any]:
         memory = (
@@ -443,7 +444,7 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
         with_format = not memory and self.table_format in self.ddl_format_property_formats
         return {
             "strip_primary_keys": True,
-            "strip_not_null": memory,
+            "strip_not_null": memory or self.table_format in self.ddl_no_not_null_formats,
             "table_case": "lower",
             "default_layout": {"format": "PARQUET"} if with_format else None,
         }

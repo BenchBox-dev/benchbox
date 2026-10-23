@@ -218,6 +218,10 @@ def _time_type(legacy: str, fork: str) -> bool:
     return widened != legacy and widened == fork
 
 
+def _not_null_stripped(legacy: str, fork: str) -> bool:
+    return legacy != fork and re.sub(r" NOT NULL", "", legacy) == fork
+
+
 def _questdb_lengths(legacy: str, fork: str) -> bool:
     return re.sub(r"\b(?:VARCHAR|CHAR)\(\d+\)", "VARCHAR", legacy) == fork
 
@@ -241,6 +245,13 @@ CLASSIFICATIONS: list[tuple[str, str, str, _Check]] = [
         "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on "
         "10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type.",
         _has_size,
+    ),
+    (
+        r"(trino|presto)_hive:(tpch_.*|tpcds_.*|pk_.*|time_column|nullable_numeric|if_not_exists|lineitem_codec)",
+        "legacy-bug",
+        "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so "
+        "create_schema failed on hive; the fork strips NOT NULL for the hive table format.",
+        _not_null_stripped,
     ),
     (
         rf"databricks_delta_no_auto_optimize:{_ARR}",
