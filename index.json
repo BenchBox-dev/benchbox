@@ -5914,17 +5914,12 @@
       "title": "Turn coverage selection live once shadow data shows zero misses"
     },
     "cov-select-shadow-miss-report-20261021": {
-      "claim": {
-        "expires_at": "2026-10-24T00:02:24Z",
-        "generation": "f03f7f2707e940abbdafba6337dc37a8",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d"
-      },
+      "claim": null,
       "needs": [
         "cov-select-shadow-mode-20261021"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Report heavy-tier test failures that the shadow coverage selection would have missed"
     },
     "cov-select-shadow-mode-20261021": {
