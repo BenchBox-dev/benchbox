@@ -18142,6 +18142,13 @@
       "status": "done",
       "title": "Automate drift detection for pypi environment required_reviewers"
     },
+    "pypi-github-security-review-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Owner review of PyPI and GitHub security history for the eMudhra CA exposure window"
+    },
     "pypi-installability-canary-and-rollback": {
       "claim": null,
       "needs": [
