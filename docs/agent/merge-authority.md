@@ -77,3 +77,8 @@ PR in the current request. Then:
 
 Do not bypass a check for a problem another open PR already fixes; rebase onto
 the fix instead.
+
+When the failing check is itself broken by the contents of `develop`, so that
+no PR can pass it, follow `docs/agent/emergency-merge.md`. It adds the
+evidence, announcement, restore, and follow-up steps to this section; it does
+not change who may approve a bypass.
