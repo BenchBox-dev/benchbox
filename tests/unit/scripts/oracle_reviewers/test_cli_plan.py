@@ -560,6 +560,7 @@ def test_a_retarget_restarts_and_keeps_strikes(monkeypatch: pytest.MonkeyPatch, 
     assert plan["protocol"]["kind"] == "first" and plan["protocol"]["cycle"] == 2
     assert plan["protocol"]["reason"] == "the base changed from release to develop"
     assert plan["protocol"]["strikes"] == 1
+    assert plan["protocol"]["struck_digests"] == [struck["patch_digest"]]
 
 
 def test_a_head_that_already_has_a_decision_runs_no_reviewer(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

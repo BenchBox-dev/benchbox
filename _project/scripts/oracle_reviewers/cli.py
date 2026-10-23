@@ -356,6 +356,7 @@ def _protocol_round(
         "patch_map": current,
         "patch_digest": digest,
         "strikes": strike_count,
+        "struck_digests": sorted(protocol.struck_digests(found.records)),
         "max_do_not_ship": policy.protocol.max_do_not_ship,
         "prior": list(latest.get("open_defects", [])) if follow_up else [],
         "next_id": int(latest.get("next_id", 1)) if follow_up else 1,

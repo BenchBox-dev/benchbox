@@ -195,7 +195,11 @@ def finalize(
     fresh, repeated = dedup.split(defects, plan.get("open_findings", ()))
     placement = place(fresh, commentable)
     strikes = int(rules.get("strikes", 0))
-    if judgement is not None and judgement.decision == protocol.DO_NOT_SHIP:
+    if (
+        judgement is not None
+        and judgement.decision == protocol.DO_NOT_SHIP
+        and rules.get("patch_digest") not in rules.get("struck_digests", ())
+    ):
         strikes += 1
     if pending_cause == OVERSIZE:
         description = OVERSIZE_DESCRIPTION
