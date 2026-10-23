@@ -6,6 +6,9 @@ import pytest
 import yaml
 
 from _project.scripts.oracle_reviewers import cli
+from _project.scripts.oracle_reviewers.classifier import matching
+from _project.scripts.oracle_reviewers.policy import Policy
+from _project.scripts.soundness_paths import is_soundness_path
 
 from .conftest import REPO_ROOT
 
@@ -60,3 +63,9 @@ def test_each_role_primary_has_exactly_one_model_keyed_chain() -> None:
 
 def test_fallback_walks_only_on_usage_limits() -> None:
     assert _load(CONFIG_PATH)["retry"]["fallbackOn"] == "usage-limit"
+
+
+def test_reviewer_model_config_is_a_soundness_and_gate_path(policy: Policy) -> None:
+    path = CONFIG_PATH.relative_to(REPO_ROOT).as_posix()
+    assert is_soundness_path(path)
+    assert matching([path], policy.classifier.gate_paths) == [path]

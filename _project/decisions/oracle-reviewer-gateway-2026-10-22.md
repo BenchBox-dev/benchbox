@@ -34,12 +34,16 @@ tailnet.
 - Provider keys, the broker URL and token, and the `OMP_AGENT_CONFIG` secret
   leave the attempt jobs.
 - The model roles and fallback chains are committed in
-  `.github/oracle-omp-config.yml`; role changes are now pull requests.
+  `.github/oracle-omp-config.yml`; role changes are now pull requests. The
+  file is a soundness path and a classifier gate path, so a change to a
+  reviewer model or to `fallbackOn` gets gate-tier oracle review before merge.
 - Each attempt job runs `cli.py reviewer-home`, which writes that config and a
   `models.yml` pointing the four providers at the gateway URL
   (`ORACLE_GATEWAY_URL`) with `transport: pi-native` and
   `apiKey: OMP_GATEWAY_TOKEN`. It refuses an empty or non-`https://` URL.
-- The overlay is unchanged here; its hardening keys arrive separately.
+- The review overlay (fetch disabled, context and rule providers disabled) is
+  unchanged by this decision; it is defense in depth, not the credential
+  boundary.
 
 ## Rejected: a `--trusted-extension` tool-call guard
 
