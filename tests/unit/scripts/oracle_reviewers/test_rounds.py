@@ -842,3 +842,65 @@ def test_the_patch_map_is_kept_up_to_about_two_hundred_files_and_dropped_above()
     assert fits is not None and fits["patch_map"] == kept
     assert over is not None and "patch_map" not in over and over["patch_digest"] == DIGEST
     assert 190 <= largest <= 210
+
+
+def _cjk_text(seed: str, length: int) -> str:
+    digest = b"".join(hashlib.sha256(f"{seed}{block}".encode()).digest() for block in range(length // 16 + 1))
+    return "".join(chr(0x4E00 + int.from_bytes(digest[2 * i : 2 * i + 2], "big") % 20000) for i in range(length))
+
+
+def _cjk_path(index: int) -> str:
+    return _cjk_text(f"path{index}", 199 - len(f"{index}.py")) + f"{index}.py"
+
+
+def _cjk_findings() -> list[dict[str, Any]]:
+    return [
+        {
+            **_finding("High", index + 1),
+            "file": _cjk_path(index),
+            "title": _cjk_text(f"title{index}", 200),
+            "detail": "detail",
+        }
+        for index in range(3)
+    ]
+
+
+def _cjk_plan(policy: Policy, **over: Any) -> dict[str, Any]:
+    paths = [_cjk_path(index) for index in range(3)]
+    plan = _protocol_plan(policy, **over)
+    return {**plan, "evidence_files": paths, "scope_paths": paths}
+
+
+def _cjk_verdict(findings: list[dict[str, Any]]) -> dict[str, Any]:
+    return {**_v("bad", findings), "files_examined": [finding["file"] for finding in findings]}
+
+
+def test_three_long_cjk_findings_still_fit_the_marker_and_round_trip(policy: Policy, tmp_path: Path) -> None:
+    findings = _cjk_findings()
+    final = _final(policy, tmp_path, _cjk_plan(policy, strikes=1), _cjk_verdict(findings))
+    record = _record(final)
+    assert final.state == "failure" and final.review is not None
+    assert (
+        len(final.review["body"].rsplit(protocol.MARKER_OPEN, 1)[1]) + len(protocol.MARKER_OPEN)
+        <= protocol.MARKER_LIMIT
+    )
+    assert record["decision"] == "SHIP_WITH_FIXES" and record["strikes_after"] == 1
+    assert [item["id"] for item in record["open_defects"]] == ["D1", "D2", "D3"]
+    assert [item["line"] for item in record["open_defects"]] == [1, 2, 3]
+    assert all(
+        finding["file"] in final.review["body"] and finding["title"] in final.review["body"] for finding in findings
+    )
+    assert sum(1 for finding in findings if finding["file"] in final.body) == 3
+
+
+def test_a_record_that_cannot_fit_even_trimmed_goes_pending_with_every_finding(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(protocol, "MARKER_LIMIT", 200)
+    findings = _cjk_findings()
+    final = _final(policy, tmp_path, _cjk_plan(policy), _cjk_verdict(findings))
+    assert final.state == "pending" and final.pending_cause == "marker-limit" and final.strikes is None
+    assert final.review is not None and protocol.MARKER_OPEN not in final.review["body"]
+    assert "does not fit" in final.description
+    posted = final.review["body"] + "".join(comment["body"] for comment in final.review["comments"])
+    assert all(finding["file"] in posted and finding["title"] in posted for finding in findings)
