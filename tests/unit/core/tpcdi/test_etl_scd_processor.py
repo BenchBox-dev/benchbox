@@ -346,6 +346,42 @@ def test_dml_uses_bound_parameters(dim_customer) -> None:
     assert 20 in batch_params
 
 
+class _CommitFailsOnceConn(_RecordingConn):
+    def __init__(self, inner: Any) -> None:
+        super().__init__(inner)
+        self.commit_failures = 1
+
+    def execute(self, sql: str, params: list[Any] | None = None) -> Any:
+        if sql.strip().upper() == "COMMIT" and self.commit_failures:
+            self.commit_failures -= 1
+            self.calls.append((sql, params))
+            raise RuntimeError("database is locked")
+        return super().execute(sql, params)
+
+
+def test_failed_commit_rolls_back_and_next_run_commits(dim_customer) -> None:
+    before = _rows(dim_customer)
+    conn = _CommitFailsOnceConn(dim_customer)
+    data = pd.DataFrame({"CustomerID": [1, 2], "Status": ["B", "A"], "Attr": [5, 7]})
+
+    failed = _apply(conn, data)
+
+    assert failed["success"] is False
+    assert failed["new_records"] == 0
+    assert failed["scd_type2_changes"] == 0
+    assert failed["updated_records"] == 0
+    assert [sql for sql, _ in conn.calls if sql in ("COMMIT", "ROLLBACK")] == ["COMMIT", "ROLLBACK"]
+    assert _rows(dim_customer) == before
+
+    conn.calls.clear()
+    retried = _apply(conn, data)
+
+    assert retried["success"] is True
+    assert not any("SAVEPOINT" in sql for sql, _ in conn.calls)
+    assert [sql for sql, _ in conn.calls if sql in ("BEGIN", "COMMIT")] == ["BEGIN", "COMMIT"]
+    assert len(dim_customer.cursor().execute("SELECT * FROM DimCustomer").fetchall()) == 3
+
+
 def test_failed_later_step_reports_no_applied_counts(dim_customer) -> None:
     before = _rows(dim_customer)
     conn = _RecordingConn(dim_customer, fail_on="UPDATE")

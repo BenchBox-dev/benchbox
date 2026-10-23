@@ -678,10 +678,13 @@ class EnhancedSCDType2Processor:
 
         try:
             yield
+            self.connection.execute("COMMIT")
         except BaseException:
-            self.connection.execute("ROLLBACK")
+            try:
+                self.connection.execute("ROLLBACK")
+            except Exception:
+                logger.exception("ROLLBACK failed after an SCD transaction error")
             raise
-        self.connection.execute("COMMIT")
 
     def _process_non_scd_updates(
         self,
