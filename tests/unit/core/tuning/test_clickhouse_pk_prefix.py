@@ -195,32 +195,32 @@ class TestDateFirstSortKeyDdl:
     def test_primary_keys_disabled_emits_no_primary_key_clause(self):
         tuning = _orders_tuning(sorting=("O_ORDERDATE", "O_ORDERKEY"))
 
-        rendered = _Host()._optimize_table_definition(
+        rendered = _Host()._translate_schema_statement(
             ORDERS_STATEMENT_WITH_PRIMARY_KEY,
             {"ORDERS": tuning},
             primary_keys_enabled=False,
         )
 
         assert _primary_key_clauses(rendered) == []
-        assert rendered.endswith("ENGINE = MergeTree() ORDER BY (o_orderdate, o_orderkey)")
+        assert rendered.endswith("ENGINE=MergeTree() ORDER BY (o_orderdate, o_orderkey)")
 
     def test_primary_keys_disabled_with_schema_that_has_no_primary_key(self):
         tuning = _orders_tuning(sorting=("O_ORDERDATE", "O_ORDERKEY"))
 
-        rendered = _Host()._optimize_table_definition(
+        rendered = _Host()._translate_schema_statement(
             ORDERS_STATEMENT_WITHOUT_PRIMARY_KEY,
             {"ORDERS": tuning},
             primary_keys_enabled=False,
         )
 
         assert _primary_key_clauses(rendered) == []
-        assert rendered.endswith("ENGINE = MergeTree() ORDER BY (o_orderdate, o_orderkey)")
+        assert rendered.endswith("ENGINE=MergeTree() ORDER BY (o_orderdate, o_orderkey)")
 
     def test_enabled_non_prefix_primary_key_is_a_named_error(self):
         tuning = _orders_tuning(sorting=("O_ORDERDATE", "O_ORDERKEY"))
 
         with pytest.raises(ClickHousePrimaryKeyPrefixError) as excinfo:
-            _Host()._optimize_table_definition(
+            _Host()._translate_schema_statement(
                 ORDERS_STATEMENT_WITH_PRIMARY_KEY,
                 {"ORDERS": tuning},
                 primary_keys_enabled=True,
@@ -231,15 +231,15 @@ class TestDateFirstSortKeyDdl:
     def test_enabled_prefix_primary_key_is_emitted_once_after_order_by(self):
         tuning = _orders_tuning(sorting=("O_ORDERKEY", "O_ORDERDATE"))
 
-        rendered = _Host()._optimize_table_definition(
+        rendered = _Host()._translate_schema_statement(
             ORDERS_STATEMENT_WITH_PRIMARY_KEY,
             {"ORDERS": tuning},
             primary_keys_enabled=True,
         )
 
         assert _primary_key_clauses(rendered) == ["PRIMARY KEY (o_orderkey)"]
-        assert rendered.endswith("ENGINE = MergeTree() ORDER BY (o_orderkey, o_orderdate) PRIMARY KEY (o_orderkey)")
-        assert "o_comment VARCHAR(79) NOT NULL\n)" in rendered
+        assert rendered.endswith("ENGINE=MergeTree() ORDER BY (o_orderkey, o_orderdate) PRIMARY KEY (o_orderkey)")
+        assert "o_comment String NOT NULL)" in rendered
 
     def test_partition_only_tuning_keeps_the_schema_primary_key(self):
         tuning = TableTuning(
@@ -247,13 +247,13 @@ class TestDateFirstSortKeyDdl:
             partitioning=[TuningColumn(name="O_ORDERDATE", type="DATE", order=1)],
         )
 
-        rendered = _Host()._optimize_table_definition(
+        rendered = _Host()._translate_schema_statement(
             ORDERS_STATEMENT_WITH_PRIMARY_KEY,
             {"ORDERS": tuning},
             primary_keys_enabled=True,
         )
 
-        assert "PRIMARY KEY (o_orderkey)\n)" in rendered
+        assert "PRIMARY KEY (o_orderkey))" in rendered
         assert rendered.endswith("PARTITION BY (toYYYYMM(o_orderdate)) ORDER BY (o_orderkey)")
 
 
@@ -356,7 +356,7 @@ class TestUntunedDdlSnapshot:
         rendered = {}
         for statement in [part.strip() for part in schema_sql.split(";") if part.strip()]:
             table_name = _Host._extract_table_name(statement)
-            rendered[table_name] = host._optimize_table_definition(
+            rendered[table_name] = host._translate_schema_statement(
                 statement, None, nullable_columns=nullable_columns.get(table_name.lower(), set())
             )
         return rendered
@@ -365,7 +365,7 @@ class TestUntunedDdlSnapshot:
         ("snapshot_key", "primary_keys_enabled"),
         [("primary_keys_enabled", True), ("primary_keys_disabled", False)],
     )
-    def test_untuned_tpch_ddl_is_byte_identical_to_the_recorded_baseline(self, snapshot_key, primary_keys_enabled):
+    def test_untuned_tpch_ddl_matches_the_recorded_baseline(self, snapshot_key, primary_keys_enabled):
         expected = json.loads(SNAPSHOT_PATH.read_text())[snapshot_key]
 
         assert self._render_untuned(primary_keys_enabled) == expected

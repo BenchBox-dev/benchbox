@@ -320,14 +320,13 @@ class TestDatabendSchemaOperations:
         assert schema_time >= 0
         assert mock_connection.exec.call_count >= 4
 
-    def test_optimize_table_definition_char_to_varchar(self):
+    def test_translate_schema_ddl_char_to_varchar(self):
         try:
             adapter = DatabendAdapter(host="localhost", ssl=False, password="")
         except ImportError:
             pytest.skip("databend-driver not installed")
 
-        sql = "CREATE TABLE test (id INTEGER, code CHAR(10), name VARCHAR(100))"
-        optimized = adapter._optimize_table_definition(sql)
+        (optimized,) = adapter._translate_schema_ddl("CREATE TABLE test (id INTEGER, code CHAR(10), name VARCHAR(100))")
 
         import re
 
@@ -335,25 +334,27 @@ class TestDatabendSchemaOperations:
         assert "VARCHAR(10)" in optimized
         assert "VARCHAR(100)" in optimized
 
-    def test_optimize_table_definition_removes_primary_key(self):
+    def test_translate_schema_ddl_removes_primary_key(self):
         try:
             adapter = DatabendAdapter(host="localhost", ssl=False, password="")
         except ImportError:
             pytest.skip("databend-driver not installed")
 
-        sql = "CREATE TABLE test (id INTEGER, name VARCHAR(100), PRIMARY KEY (id))"
-        optimized = adapter._optimize_table_definition(sql)
+        (optimized,) = adapter._translate_schema_ddl(
+            "CREATE TABLE test (id INTEGER, name VARCHAR(100), PRIMARY KEY (id))"
+        )
 
         assert "PRIMARY KEY" not in optimized
 
-    def test_optimize_table_definition_removes_foreign_key(self):
+    def test_translate_schema_ddl_removes_foreign_key(self):
         try:
             adapter = DatabendAdapter(host="localhost", ssl=False, password="")
         except ImportError:
             pytest.skip("databend-driver not installed")
 
-        sql = "CREATE TABLE test (id INTEGER, other_id INTEGER, FOREIGN KEY (other_id) REFERENCES other(id))"
-        optimized = adapter._optimize_table_definition(sql)
+        (optimized,) = adapter._translate_schema_ddl(
+            "CREATE TABLE test (id INTEGER, other_id INTEGER, FOREIGN KEY (other_id) REFERENCES other(id))"
+        )
 
         assert "FOREIGN KEY" not in optimized
         assert "REFERENCES" not in optimized

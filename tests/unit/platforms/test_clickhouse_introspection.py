@@ -144,7 +144,7 @@ class TestTunedSortKeyFold:
         adapter = self._tuned_adapter()
         tunings = _sorted_tuning_config().table_tunings
         original = "CREATE TABLE lineitem (l_orderkey INTEGER, l_linenumber INTEGER, l_comment VARCHAR)"
-        optimized = adapter._optimize_table_definition(original, tunings, nullable_columns=set())
+        optimized = adapter._translate_schema_statement(original, tunings, nullable_columns=set())
         assert "ORDER BY (l_orderkey, l_linenumber)" in optimized
 
         adapter._record_tuned_sort_key_op(original, optimized, "lineitem", tunings)
@@ -157,7 +157,7 @@ class TestTunedSortKeyFold:
         adapter = self._tuned_adapter()
         tunings = _sorted_tuning_config().table_tunings
         original = "CREATE TABLE lineitem (l_orderkey INTEGER, l_linenumber INTEGER, l_comment VARCHAR)"
-        optimized = adapter._optimize_table_definition(original, tunings, nullable_columns=set())
+        optimized = adapter._translate_schema_statement(original, tunings, nullable_columns=set())
 
         adapter._record_tuned_sort_key_op(original, optimized, "lineitem", tunings)
 
@@ -171,7 +171,7 @@ class TestTunedSortKeyFold:
         adapter = self._tuned_adapter()
         tunings = _sorted_tuning_config().table_tunings
         original = "CREATE TABLE lineitem (l_orderkey INTEGER, l_linenumber INTEGER, l_comment VARCHAR)"
-        optimized = adapter._optimize_table_definition(original, tunings, nullable_columns=set())
+        optimized = adapter._translate_schema_statement(original, tunings, nullable_columns=set())
         adapter._record_tuned_sort_key_op(original, optimized, "lineitem", tunings)
 
         conn = _FakeCHConnection([("lineitem", "l_orderkey, l_linenumber", "")])
@@ -184,7 +184,7 @@ class TestTunedSortKeyFold:
         adapter = self._tuned_adapter()
         tunings = _sorted_tuning_config().table_tunings
         original = "CREATE TABLE nation (n_nationkey INTEGER PRIMARY KEY, n_name VARCHAR)"
-        optimized = adapter._optimize_table_definition(original, tunings, nullable_columns=set())
+        optimized = adapter._translate_schema_statement(original, tunings, nullable_columns=set())
         adapter._record_tuned_sort_key_op(original, optimized, "nation", tunings)
         assert _sort_key_statements(adapter._applied_tuning_ledger) == []
 
@@ -241,7 +241,7 @@ class TestCombinedPartitionAndSortKey:
         original = (
             "CREATE TABLE lineitem (l_orderkey INTEGER, l_linenumber INTEGER, l_shipdate DATE, l_comment VARCHAR)"
         )
-        optimized = adapter._optimize_table_definition(original, tunings, nullable_columns=set())
+        optimized = adapter._translate_schema_statement(original, tunings, nullable_columns=set())
         adapter._record_tuned_sort_key_op(original, optimized, "lineitem", tunings)
         return optimized
 
@@ -286,7 +286,7 @@ class TestCombinedPartitionAndSortKey:
         adapter = self._tuned_adapter()
         tunings = _partitioned_only_tuning_config().table_tunings
         original = "CREATE TABLE orders (o_orderkey INTEGER PRIMARY KEY, o_orderdate DATE)"
-        optimized = adapter._optimize_table_definition(original, tunings, nullable_columns=set())
+        optimized = adapter._translate_schema_statement(original, tunings, nullable_columns=set())
         assert "PARTITION BY (toYYYYMM(o_orderdate))" in optimized
 
         adapter._record_tuned_sort_key_op(original, optimized, "orders", tunings)
@@ -300,7 +300,7 @@ class TestCombinedPartitionAndSortKey:
             "CREATE TABLE orders (o_orderkey INTEGER PRIMARY KEY, "
             "note VARCHAR DEFAULT 'ORDER BY (decoy)', o_orderdate DATE)"
         )
-        optimized = adapter._optimize_table_definition(original, tunings, nullable_columns=set())
+        optimized = adapter._translate_schema_statement(original, tunings, nullable_columns=set())
 
         adapter._record_tuned_sort_key_op(original, optimized, "orders", tunings)
 
@@ -314,7 +314,7 @@ class TestCombinedPartitionAndSortKey:
         lineitem = "CREATE TABLE lineitem (l_orderkey INTEGER, l_linenumber INTEGER)"
         adapter._record_tuned_sort_key_op(
             lineitem,
-            adapter._optimize_table_definition(lineitem, sort_tunings, nullable_columns=set()),
+            adapter._translate_schema_statement(lineitem, sort_tunings, nullable_columns=set()),
             "lineitem",
             sort_tunings,
         )
@@ -323,7 +323,7 @@ class TestCombinedPartitionAndSortKey:
         orders = "CREATE TABLE orders (o_orderkey INTEGER PRIMARY KEY, o_orderdate DATE)"
         adapter._record_tuned_sort_key_op(
             orders,
-            adapter._optimize_table_definition(orders, part_tunings, nullable_columns=set()),
+            adapter._translate_schema_statement(orders, part_tunings, nullable_columns=set()),
             "orders",
             part_tunings,
         )
@@ -369,7 +369,7 @@ class TestPrimaryKeyOrderEvidence:
 
     def _record(self, adapter: ClickHouseAdapter, config: UnifiedTuningConfiguration) -> str:
         tunings = config.table_tunings or None
-        executed = adapter._optimize_table_definition(self._ORIGINAL, tunings, nullable_columns=set())
+        executed = adapter._translate_schema_statement(self._ORIGINAL, tunings, nullable_columns=set())
         adapter._record_tuned_sort_key_op(self._ORIGINAL, executed, "orders", tunings)
         adapter._record_primary_key_order_op(self._ORIGINAL, executed, "orders", tunings, config)
         return executed

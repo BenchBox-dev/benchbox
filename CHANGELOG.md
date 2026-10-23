@@ -61,6 +61,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   statements are otherwise equivalent. `ddl_helpers.strip_with_properties` is removed.
   `translate_ddl` records one schema-DDL translation outcome per call, so schema statements still
   appear in the result's SQL translation summary.
+- ClickHouse `create_schema` writes its table DDL with `translate_ddl` (MergeTree engine, `Nullable` only
+  for the columns the benchmark schema marks nullable, tuned `PARTITION BY` / `ORDER BY` / `PRIMARY KEY`)
+  instead of the adapter's own text rewriting. The adapter's `_optimize_table_definition`,
+  `_strip_primary_key_constraints` and `Nullable`/key text helpers are removed. Types are spelled the
+  ClickHouse way (`Int32`, `String`, `Decimal(15, 2)`, `DateTime`), and tuned key columns that are
+  nullable fail with the table name and the column names. Cases are listed in
+  `tests/unit/sql_compat/golden_corpus/recorded/area_ddl.json`.
+- Databend and Firebolt build their `CREATE TABLE` statements with the SQLGlot fork's `translate_ddl`
+  instead of per-adapter text rewrites (`_optimize_table_definition`, `_normalize_table_name_in_sql`).
+  Emitted DDL matches the golden corpus; both still drop primary and foreign keys.
 - Azure Synapse and Fabric Warehouse build their `CREATE TABLE` statements with `translate_ddl`
   instead of per-adapter text rewrites. Tables are always qualified with the configured
   `[schema]`, and the generated statement is wrapped in a `TABLE_SCHEMA`-guarded
@@ -106,6 +116,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   normalised key and the identifier prefix for a key path (bounded caches, both pure
   functions of their arguments). Anonymizing the committed results corpus is about a third
   faster locally; published output is byte-identical.
+- StarRocks and Doris `CREATE TABLE` statements are now written by the SQLGlot fork's `translate_ddl`
+  instead of regex rewrites in the adapters. Doris keeps the TPC-H key, distribution and partition tables
+  and its `table_model`, bucket and replication options; StarRocks keeps the leading-primary-key rule
+  (`PRIMARY KEY` model when the key columns lead the table, else `DUPLICATE KEY` on the first column).
+  Output differences: identifiers are quoted, a leading primary key written on one line now selects the
+  `PRIMARY KEY` model, and statements other than `CREATE TABLE` on Doris are sent unchanged. A Doris
+  `unique` or `aggregate` table model on a table whose key columns do not lead the table now raises
+  instead of silently writing a narrower key. A test runs both adapters over every shipped schema.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed

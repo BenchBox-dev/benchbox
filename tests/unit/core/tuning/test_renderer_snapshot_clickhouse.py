@@ -43,7 +43,7 @@ class TestClickHousePreviewExecutionParity:
 
         adapter = _HostAdapter()
         statement = "CREATE TABLE lineitem (l_orderkey INT, l_shipdate DATE)"
-        rendered = adapter._optimize_table_definition(statement, table_tunings)
+        rendered = adapter._translate_schema_statement(statement, table_tunings)
 
         assert f"PARTITION BY ({preview.partition_by})" in rendered
         assert f"ORDER BY ({preview.sort_by})" in rendered
@@ -52,7 +52,7 @@ class TestClickHousePreviewExecutionParity:
         adapter = _HostAdapter()
         statement = "CREATE TABLE untuned_table (id INT)"
 
-        rendered = adapter._optimize_table_definition(statement, {"lineitem": Mock()})
+        rendered = adapter._translate_schema_statement(statement, {"lineitem": Mock()})
 
         assert "ORDER BY tuple()" in rendered
 
@@ -60,7 +60,7 @@ class TestClickHousePreviewExecutionParity:
         adapter = _HostAdapter()
         statement = "CREATE TABLE lineitem (l_orderkey INT PRIMARY KEY, l_shipdate DATE)"
 
-        rendered = adapter._optimize_table_definition(statement, None)
+        rendered = adapter._translate_schema_statement(statement, None)
 
         assert "ORDER BY (l_orderkey)" in rendered
         assert "PARTITION BY" not in rendered
