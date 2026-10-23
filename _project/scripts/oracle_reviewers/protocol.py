@@ -247,14 +247,16 @@ def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
     return found
 
 
-def strikes(records: Iterable[Mapping[str, Any]]) -> int:
-    return len(
-        {
-            record["patch_digest"]
-            for record in records
-            if record["decision"] == DO_NOT_SHIP and record["kind"] in (FIRST, FOLLOW_UP) and not record["carried"]
-        }
+def struck_digests(records: Iterable[Mapping[str, Any]]) -> frozenset[str]:
+    return frozenset(
+        record["patch_digest"]
+        for record in records
+        if record["decision"] == DO_NOT_SHIP and record["kind"] in (FIRST, FOLLOW_UP) and not record["carried"]
     )
+
+
+def strikes(records: Iterable[Mapping[str, Any]]) -> int:
+    return len(struck_digests(records))
 
 
 FORCED_ROUND_LIMIT = 2
