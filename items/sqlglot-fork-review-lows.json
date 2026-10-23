@@ -3,6 +3,7 @@
     "Each listed item has a recorded disposition (fixed with test, documented gap, or declined with reason) in this item's context.",
     "Manifest has an upstream-state field and each carried patch has an entry (offered/not offered/declined) with a link where offered."
   ],
+  "context": "Dispositions (2026-10-23): L2 fixed with test: fork #56 (7e2407ee) adds patches.json `infrastructure` ownership for Makefile, setup.py, README.md, package-test.yml, downstream tooling, tests/test_downstream_*.py, workflows; test_every_changed_path_has_an_owner fails on unowned changed files (caught postgres-round-inputs gap). L3 process: evidence recorded in item context on finish. L4 documented gap: QuestDB comma-join rewrite cannot attribute unqualified columns without a schema; rows unaffected (inner join ON/WHERE equivalent; TestCommaJoins runs on real QuestDB); plan/timing may move; ENGINE-GAPS 'Accepted limitations'. L5 fixed: ENGINE-GAPS netezza/Greenplum/Vertica text (fork #55 b8cadb82); BenchBox ci.yml QuestDB pinned by digest (#3344 de1e9672) and all five fork CI images pinned tag@sha256; checker default credentials declined (built-in QuestDB login on ephemeral loopback container, no secret). L7: DECIMAL(38) -> BIGNUMERIC(38) fixed with test (fork #53 1ba80421; NUMERIC requires S<=9, P<=S+29); Spark layout USING override intentional and tested, README corrected; BigQuery window NULLS for aggregate windows remains a documented gap (upstream drops NULLS with an unsupported warning; extending needs changing upstream test_null_ordering; BigQuery grammar lists no NULLS modifier; no engine available). L8 declined, documented: lone JULIANDAY differs by 0.5 day; only TPC-DI AQ7/AQ8/AQ10 use it by subtracting DATE columns, where results match. M9 fixed with test: all 17 carried patches carry upstream_state/upstream_reason (13 not_offered, 4 declined: platform-dialects, postgres-exact-division, sqlite-exact-integer-division, sqlite-grouping-sets; validated, offered requires links); SQLite exact division stays generator behavior per owner decision (benchmark correctness).",
   "description": "Adversarial review Lows and M9: (L2) fork manifest gaps: upstream-owned files edited with no carried entry (Makefile, setup.py, README.md, package-test.yml) and new files with no entry (tests/test_downstream_{contract,distribution,refresh}.py, two workflows); (L3) tracker finish summaries must carry evidence in context and acceptance criteria met or deviations recorded; (L4) QuestDB comma-join rewrite attaches unqualified equalities to the first comma join (Q5 plan/timing may move); (L5) ENGINE-GAPS.md:173 netezza description stale, QuestDB CI image pinned by tag not digest (ci.yml:571), checker uses default QuestDB credentials; (L7) BigQuery window NULLS fix limited to FIRST_VALUE/LAST_VALUE/NTH_VALUE (aggregate windows with default RANGE frame may hit the same rejection), DECIMAL(38) one-parameter becomes NUMERIC(38) (BigQuery rejects), Spark layout format overrides a statement's own USING contrary to the README; (L8) netezza lone JULIANDAY(x) 2458850 vs SQLite 2458849.5, timestamp day differences differ between engines; (M9) none of the 13 carried patches has been offered upstream and the manifest has no upstream-state field; the SQLite division change alters transpile() for every caller including SQLite->SQLite (consider an opt-in exact_division rewrite like safe_division instead of generator behavior). Triage each: fix, document with evidence, or decline with a reason.",
   "sessions": [
     {
@@ -20,6 +21,14 @@
       "generation": "e8d7d0cb6605431ba297d9474b7f37b3",
       "op": "take",
       "op_id": "db90d8591828493c80d058665b62eef9",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-23T19:04:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "79b7a3c8636a4e5aa23381b9cd54fa8b",
       "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
