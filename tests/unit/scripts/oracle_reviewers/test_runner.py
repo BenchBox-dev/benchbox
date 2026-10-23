@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
@@ -11,6 +12,7 @@ import pytest
 from _project.scripts.oracle_reviewers import absence, cli, runner
 from _project.scripts.oracle_reviewers.commands import Invocation
 from _project.scripts.oracle_reviewers.policy import Policy
+from _project.scripts.oracle_reviewers.verdict import RESPONSE_PLACEHOLDERS
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 skip_on_windows = pytest.mark.skipif(
@@ -344,6 +346,7 @@ def _plan_dir(
     brief_mode: str,
     diff: str | None,
     inline: str | None,
+    prior: tuple[dict, ...] = (),
 ) -> Path:
     plan_dir = tmp_path / "plan"
     plan_dir.mkdir()
@@ -374,7 +377,7 @@ def _plan_dir(
         "unchanged_files": [],
         "untracked_files": [],
         "diff_inline": inline,
-        "protocol": {"prior": []},
+        "protocol": {"prior": list(prior)},
         "pool_blocked_until": {},
     }
     (plan_dir / "plan.json").write_text(json.dumps(plan), encoding="utf-8")
@@ -703,6 +706,41 @@ def test_a_follow_up_ship_with_an_unchanged_file_defect_must_list_the_changed_fi
         assert outcome.missing == absence.Absence(
             absence.INCOMPLETE, "the verdict would ship but did not examine a.txt"
         )
+
+
+@skip_on_windows
+def test_a_follow_up_prompt_carries_only_verified_prior_ids_in_an_unfilled_template(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    prior = {
+        "id": "D4",
+        "severity": "High",
+        "file": "prior/path.py",
+        "line": 3,
+        "end_line": None,
+        "title": "PRIOR-TITLE",
+    }
+    plan_path = _plan_dir(
+        policy, tmp_path, head, "full", "inline", "diff --git a/a.txt b/a.txt\n+x\n", "+x\n", (prior,)
+    )
+    _fake_omp(tmp_path, monkeypatch, _capture_prompt_body(tmp_path))
+    _run_review(plan_path, workspace, tmp_path, monkeypatch)
+    prompt = (tmp_path / "prompt.txt").read_text(encoding="utf-8")
+    nonce = re.search(r"([0-9a-f]{16})-BEGIN FILE PRIORITY", prompt).group(1)
+    assert prompt.count(nonce) == 4
+    change_start = prompt.index(f"{nonce}-BEGIN CHANGE DATA")
+    change_end = prompt.index(f"{nonce}-END CHANGE DATA")
+    section = prompt[change_start:change_end]
+    after = prompt[change_end:]
+    assert "PRIOR-TITLE" in section and "prior/path.py" in section
+    assert "PRIOR-TITLE" not in prompt[:change_start] and "PRIOR-TITLE" not in after
+    assert "prior/path.py" not in prompt[:change_start] and "prior/path.py" not in after
+    template = json.loads(after[after.index("{") : after.rindex("}") + 1])
+    assert [item["id"] for item in template["prior_defects"]] == ["D4"]
+    placeholders = set(RESPONSE_PLACEHOLDERS.values())
+    assert template["prior_defects"][0]["status"] in placeholders
+    assert template["prior_defects"][0]["evidence"] in placeholders
 
 
 @skip_on_windows

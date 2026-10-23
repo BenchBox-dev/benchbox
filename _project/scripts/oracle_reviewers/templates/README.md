@@ -1,4 +1,4 @@
-# Review templates: slot contract (v1)
+# Review templates: slot contract (v2)
 
 Three prompt templates (`standard.md`, `deep.md`, `gate.md`) rendered by filling
 typed slots with change data. Templates are versioned review machinery: changes
@@ -28,7 +28,9 @@ The renderer rejects unknown or missing slots, over-byte values, a
 `template_name` that does not match the rendered file, a `size_bucket` or
 `capability` outside the enums, non-integer `pr` / `max_defects` /
 `template_version`, non-sha `base` / `head`, a `repo` outside `owner/name`
-shape, non-numeric `confidence`, and a non-JSON `schema`. A compromised or
+shape, non-numeric `confidence`, and a `response_template` that is not JSON, does
+not hold exactly the seven verdict keys, carries a prior id outside the
+defect id grammar, or differs from the unpopulated template built for those ids. A compromised or
 buggy caller cannot smuggle prose through a trusted slot.
 
 ## Slots
@@ -40,7 +42,7 @@ instruction prose of the template itself.
 | Slot | Type | Max bytes | Contents |
 |---|---|---|---|
 | `template_name` | identifier | 16 | `standard`, `deep`, or `gate`; must match the file |
-| `template_version` | integer | 4 | template version, currently `1` |
+| `template_version` | integer | 4 | template version, currently `2` |
 | `repo` | `owner/name` | 128 | repository under review |
 | `pr` | integer | 8 | pull request number |
 | `base` | hex sha | 40 | base commit |
@@ -53,7 +55,7 @@ instruction prose of the template itself.
 | `max_defects` | integer | 4 | protocol defect cap from policy |
 | `prior_rule` | prose | 2048 | first / ship / follow-up prior-defect rule |
 | `change_data` | prose+diff | 100000 | file list, then inline diff or read instructions per brief mode; fenced |
-| `schema` | JSON | 16384 | verdict JSON Schema |
+| `response_template` | JSON | 16384 | JSON template to populate, rendered after `change_data`; see below |
 
 Rendered briefs must fit `brief_max_bytes` (policy, currently 100000).
 `change_data` dominates the budget; when the inline diff does not fit, the
@@ -61,3 +63,16 @@ renderer falls back to file-list mode and the reviewer reads from the working
 directory. Placeholders use Python `str.format` braces; literal braces in
 template prose must be doubled. Brace sequences inside slot values are inert:
 formatting applies to the template, never to the values.
+
+## Response template
+
+The output contract is the last section of every template, after the fenced
+CHANGE DATA, and ends with the `response_template` slot. It is a template to
+populate, never a filled example: the seven verdict keys, placeholder strings
+from `verdict.RESPONSE_PLACEHOLDERS`, `line` 0 and `end_line` null. In a
+follow-up, `prior_defects` lists the actual prior ids from
+`plan.protocol.prior`, each revalidated against the defect id grammar
+(`protocol.DEFECT_ID`) by `render.response_template`, with unfilled `status`
+and `evidence`. The slot never carries prior titles, paths or author text.
+Ingress rejects any reply that leaves a placeholder in place. Callers pass the
+ids to `render_review(prior_ids=...)`; the renderer does not parse `prior_block`.

@@ -384,6 +384,16 @@ The brief asks for must-fix defects only, at most `protocol.max_defects` (10),
 and for DO_NOT_SHIP when the change needs rework or more defects would have
 to be listed.
 
+The prompt ends, after the fenced change data, with a response template: JSON
+to populate, not an example and not a schema. It carries the seven verdict keys
+with placeholder strings from `verdict.RESPONSE_PLACEHOLDERS` (line `0`,
+`end_line` null), and in a follow-up the actual prior defect ids, revalidated
+against the defect id grammar, with unfilled `status` and `evidence`. Ingress
+rejects a reply that leaves any placeholder in place. The three prompt
+templates (`standard`, `gate`, `deep`) are at version 2. Only a plain,
+line-ranged or raw read, or a single-file grep, supplies read evidence; a
+computed read query (`?q=`) does not.
+
 The code, not the model, decides, and the stricter outcome wins:
 
 | Reviewer reports | Result |
