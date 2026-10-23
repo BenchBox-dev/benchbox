@@ -42,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rewrite has a documented-output test. The list-aggregate, zero-divisor, ORDER BY alias,
   ClickHouse alias and decimal-division and rollup-NULL rewrites added in 30.24.0.9 are pinned
   and have documented-output tests too.
+- The `round_inputs_to_decimal` rewrite added in 30.24.0.10 is pinned in the same registry test and
+  has documented-output tests.
 - A DataFusion test executes TPC-H Q11, Q16, Q18 and Q20 rewritten by the runtime's generic
   decorrelation rewrites at scale factors 0.01 and 0.1 and compares the rows with the
   recorded TPC-H reference row counts and with the unrewritten query on DuckDB.
@@ -357,6 +359,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   three platforms yet: the 23,667 translations of the 1,127 frozen shipped queries across 21
   target dialects, the 2,600 golden-corpus runtime outputs and `make sql-execution-gate`
   are unchanged from 30.24.0.8, so no published result changes.
+- The bundled SQLGlot runtime moves from 30.24.0.9 to 30.24.0.10 (fork commit
+  `75016d8ff27e`). It adds the `round_inputs_to_decimal` rewrite to the `apply_rewrite`
+  registry and writes a one-parameter wide `DECIMAL(p)` as `BIGNUMERIC` for BigQuery DDL.
+  BenchBox does not call the rewrite yet and ships no one-parameter `DECIMAL`: the 23,667
+  translations of the 1,127 frozen shipped queries across 21 target dialects, the 2,600
+  golden-corpus runtime outputs and `make sql-execution-gate` are unchanged from 30.24.0.9, so
+  no published result changes.
 - SQLite TPC-DS translation marks the TPC-DS `DATE` columns through the runtime's
   `mark_date_columns` rewrite on the parsed tree (`translate_sql_query(date_columns=..)`),
   so Q72's `d3.d_date > d1.d_date + 5` adds five whole days to the date text instead of
