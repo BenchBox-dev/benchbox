@@ -52,7 +52,11 @@ def test_a_failed_scan_alerts_through_an_issue_and_still_fails_the_run() -> None
     fail = steps["Fail the run when the scan failed"]
     assert fail["if"] == "steps.scan.outcome == 'failure'"
     assert fail["run"] == "exit 1"
-    assert steps["Close the failure issue after a clean scan"]["if"] == "steps.scan.outcome == 'success'"
+    close = steps["Close the failure issue after a clean scan"]
+    assert close["if"] == "steps.scan.outcome == 'success'"
+    for step in (alert, close):
+        assert "GITHUB_SHA" not in step["run"]
+        assert "git rev-parse HEAD" in step["run"]
 
 
 def test_nightly_uses_the_same_pinned_actions_as_the_pull_request_job() -> None:

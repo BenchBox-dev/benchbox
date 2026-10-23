@@ -47,7 +47,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          body="The whole-tree comment-policy scan of develop at ${GITHUB_SHA} failed. Run: ${RUN_URL}"
+          body="The whole-tree comment-policy scan of develop at $(git rev-parse HEAD) failed. Run: ${RUN_URL}"
           number="$(gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" --json number,title --jq "[.[] | select(.title == \"${ISSUE_TITLE}\")][0].number // empty")"
           if [[ -n "${number}" ]]; then
             gh issue comment "${number}" --body "${body}"
@@ -64,7 +64,7 @@ jobs:
           gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" --json number,title \
             --jq ".[] | select(.title == \"${ISSUE_TITLE}\") | .number" |
             while read -r number; do
-              gh issue close "${number}" --comment "The whole-tree scan of develop at ${GITHUB_SHA} passed."
+              gh issue close "${number}" --comment "The whole-tree scan of develop at $(git rev-parse HEAD) passed."
             done
       - name: Fail the run when the scan failed
         if: steps.scan.outcome == 'failure'
