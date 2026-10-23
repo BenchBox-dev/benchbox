@@ -653,3 +653,17 @@ class TestModernSQLFeatures:
             sql = queries[qid]
             assert sql and len(sql.strip()) > 0, f"Empty SQL for: {qid}"
             assert "SELECT" in sql.upper(), f"No SELECT in: {qid}"
+
+
+@pytest.mark.parametrize("dialect", ["presto", "trino", "athena", "bigquery", "spark", "databricks"])
+def test_array_and_lambda_queries_do_not_pass_through_the_havoc_list_rewrites(dialect):
+    queries = ReadPrimitivesBenchmark(scale_factor=0.01).get_queries(dialect=dialect)
+
+    assert ("list_transform" in queries) == (dialect != "bigquery")
+    for query_id in ("array_length", "list_transform"):
+        sql = queries.get(query_id)
+        if sql is None:
+            continue
+        assert "_item" not in sql
+        assert "_acc" not in sql
+        assert "GENERATE_ARRAY(" not in sql

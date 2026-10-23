@@ -6,16 +6,14 @@ from benchbox._vendor import sqlglot
 from benchbox._vendor.sqlglot import exp
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
 from benchbox.core.tpchavoc.dialect_compat import (
+    LIST_AGGREGATE_VARIANT_IDS,
     PRESTO_ALIAS_VARIANT_IDS,
-    PRESTO_ARRAY_AGGREGATION_VARIANT_IDS,
     PRESTO_WINDOW_FILTER_VARIANT_IDS,
 )
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-PRESTO_REWRITTEN_VARIANT_IDS = (
-    PRESTO_ALIAS_VARIANT_IDS | PRESTO_WINDOW_FILTER_VARIANT_IDS | PRESTO_ARRAY_AGGREGATION_VARIANT_IDS
-)
+PRESTO_REWRITTEN_VARIANT_IDS = PRESTO_ALIAS_VARIANT_IDS | PRESTO_WINDOW_FILTER_VARIANT_IDS | LIST_AGGREGATE_VARIANT_IDS
 
 
 @pytest.fixture(scope="module", params=("presto", "trino", "athena"))
@@ -71,15 +69,14 @@ def test_presto_window_filter_covers_star_and_distinct(dialect, sql):
     assert "IF(x > 0" in rewritten
 
 
-def test_presto_array_aggregation_uses_presto_functions(presto_trino_queries):
+def test_presto_list_aggregate_variant_orders_arrays_and_reduces_with_presto_functions(presto_trino_queries):
     dialect, queries = presto_trino_queries
-    for query_id in PRESTO_ARRAY_AGGREGATION_VARIANT_IDS:
+    for query_id in LIST_AGGREGATE_VARIANT_IDS:
         query = queries[query_id]
         tree = sqlglot.parse_one(query, read=dialect)
         with_ = tree.find(exp.With)
         assert with_ is not None and with_.expressions[0].alias == "aggregated"
         arrays = list(with_.find_all(exp.ArrayAgg))
-        assert len(arrays) == 4
         assert {aggregate.find(exp.Column).name for aggregate in arrays} == {
             "l_quantity",
             "l_extendedprice",
@@ -90,10 +87,10 @@ def test_presto_array_aggregation_uses_presto_functions(presto_trino_queries):
             order = aggregate.find(exp.Order)
             assert order is not None
             assert [ordered.this.name for ordered in order.expressions] == ["l_orderkey", "l_linenumber"]
-        unnest = tree.find(exp.Unnest)
-        assert unnest is not None
-        assert [column.name for column in unnest.expressions] == ["quantities", "prices", "discounts", "taxes"]
-        assert unnest.alias_column_names == ["quantity", "price", "discount", "tax"]
+        assert "REDUCE(" in query
+        assert tree.find(exp.Unnest) is None
+        for duckdb_function in ("LIST_SUM", "LIST_AVG", "LIST_ZIP", "LIST_TRANSFORM", "LEN("):
+            assert duckdb_function not in query.upper()
 
 
 @pytest.mark.parametrize("platform", ("presto", "trino"))
