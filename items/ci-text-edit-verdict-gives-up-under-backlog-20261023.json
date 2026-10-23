@@ -4,6 +4,7 @@
     "A failing full run still produces failing text-edit checks",
     "A test covers the queued and in-progress full-run cases"
   ],
+  "context": "Duplicate, dropped on creation day: the behaviour was already fixed by PR #3319 (merged 0e86fbbe8, 2026-10-23 02:06 UTC), which made text-edit verdicts decide once and added ci-text-edit-refresh.yml to re-run a failed text-edit run when the full CI run completes. The observation here (run 39793776095, 2026-10-22) predates that fix. Remaining live verification is tracked by ci-text-edit-fail-fast-live-check-20261023.",
   "description": "Editing a pull request's title or body starts a `CI (text edit)` run whose required jobs (`core`, `docs`, `explorer`, `results-data`, `tooling`) copy the verdict of the newest full CI run on the same head via `scripts/ci_text_edit_verdict.py`. When hosted runners are backlogged, the full run can still be queued or in progress when the copy step polls; the step then fails with `gave up waiting: full CI run <id> is still in progress`. Those failures are newer than the full run's later passes, so GitHub keeps the pull request BLOCKED even after every real check is green, until someone re-runs the failed text-edit jobs (`gh run rerun <id> --failed`).\n\nObserved on 2026-10-22: text-edit run 39793776095 failed all five units after about 1h50m while full run 39793750006 was still running; the armed pull request stayed blocked until the failed jobs were re-run, after which they copied the passing verdict and auto-merge proceeded.\n\nThe fix should make the copied verdict converge without manual action, for example by re-running or re-posting the text-edit verdict when the full run completes, or by waiting on the full run's completion instead of a fixed poll budget, without ever reporting success the full run did not earn.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "e03502493f0f4c27b302abcf4f3abae0",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:04:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bf28efec653a4ad7a27c7abbbd512bc5",
       "session_id": "ba4384e41c574086bef30465f20b7231"
     }
   ]
