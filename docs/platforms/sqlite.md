@@ -104,6 +104,15 @@ and they preserve query results and status classification. Generated `.tbl` data
 is still reusable across TPC-H-derived workloads; only loaded SQLite database
 files need cleanup when disk space is constrained.
 
+### Empty Fields and NULL
+
+The SQLite loader follows the table's declared null marker. For `.tbl` and `.dat` data
+(marker `""`, which TPC-DS and AMPLab rely on) an empty field in a nullable column loads
+as `NULL`, matching the DuckDB loader, so `SUM` over an all-empty group is `NULL` rather
+than `0.0`. For `.csv` data without a null marker, only nullable non-text columns load an
+empty field as `NULL`; empty text is kept. Columns declared `NOT NULL` always keep their
+empty string.
+
 ### Connection PRAGMAs
 
 Write-ahead logging, the page cache size, and in-memory temp storage are already set on every connection (see [Connection Settings](#connection-settings)). BenchBox does not expose other PRAGMAs, such as `mmap_size`.

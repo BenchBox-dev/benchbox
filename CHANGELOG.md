@@ -418,6 +418,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Catalog 'hive' does not support non-null column`; TPC-H (8 tables) and TPC-DS (25 tables) now create on a Trino
   Hive catalog. No published result can use this path, because schema creation failed on it.
 
+- The SQLite loader stores a NULL for an empty field in a nullable column instead of
+  empty text. Before, `SUM` over an all-empty group returned `0.0` where DuckDB returns
+  `NULL`, which made TPC-DS Q20 and Q98 differ between SQLite and DuckDB (405,815 cells
+  at SF 0.1). The table's declared null marker decides: `.tbl` and `.dat` data (marker
+  `""`) nulls every nullable column, text included, as the DuckDB loader does; a
+  marker-less `.csv` nulls only nullable non-text columns and keeps empty text. Columns
+  declared `NOT NULL` keep their empty string. SQLite results produced before this fix
+  on data with empty fields (TPC-DS, AMPLab) should be rerun.
 - A pull request title or body edit no longer leaves an armed pull request blocked
   with every required check green. The CI run such an edit starts now reports each
   required check (`core`, `explorer`, `results-data`, `docs`, `tooling`) by copying
