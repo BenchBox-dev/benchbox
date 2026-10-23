@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -904,3 +905,45 @@ def test_a_record_that_cannot_fit_even_trimmed_goes_pending_with_every_finding(
     assert "does not fit" in final.description
     posted = final.review["body"] + "".join(comment["body"] for comment in final.review["comments"])
     assert all(finding["file"] in posted and finding["title"] in posted for finding in findings)
+
+
+def test_trimmed_marker_defects_stay_identifiable_at_every_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    findings = _cjk_findings()
+    record = {
+        **_big_record({}),
+        "open_defects": [
+            {**_prior(f"D{index + 1}", file=item["file"], line=index + 1), "title": item["title"]}
+            for index, item in enumerate(findings)
+        ],
+    }
+    fitted = 0
+    for limit in range(100, protocol.MARKER_LIMIT, 25):
+        monkeypatch.setattr(protocol, "MARKER_LIMIT", limit)
+        try:
+            marker = protocol.encode_marker(record)
+        except protocol.MarkerError:
+            continue
+        fitted += 1
+        decoded = protocol.decode_marker(marker)
+        assert decoded is not None
+        for kept, original in zip(decoded["open_defects"], record["open_defects"], strict=True):
+            assert (kept["id"], kept["severity"], kept["line"]) == (
+                original["id"],
+                original["severity"],
+                original["line"],
+            )
+            assert len(kept["title"]) >= 24 and len(kept["file"]) >= 24
+            assert original["title"].startswith(kept["title"].rstrip("…"))
+            assert original["file"].endswith(kept["file"].lstrip("…"))
+    assert fitted
+
+
+def test_an_unrecorded_result_posts_no_defect_ids_that_a_later_round_could_reuse(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(protocol, "MARKER_LIMIT", 200)
+    final = _final(policy, tmp_path, _cjk_plan(policy, next_id=5), _cjk_verdict(_cjk_findings()))
+    assert final.state == "pending" and final.review is not None
+    posted = final.review["body"] + "".join(comment["body"] for comment in final.review["comments"])
+    assert "oracle-defect:" not in posted
+    assert not re.search(r"\bD\d+\b", posted)

@@ -28,7 +28,7 @@ KINDS = (FIRST, FOLLOW_UP, CARRY, REFUSAL)
 
 MARKER_VERSION = 1
 MARKER_LIMIT = 4096
-MARKER_TRIMS = ((120, 120), (60, 80), (30, 50), (10, 30), (0, 20), (0, 8))
+MARKER_TRIMS = ((120, 120), (80, 80), (50, 60), (32, 40), (24, 24))
 MARKER_OPEN = "<!-- oracle-protocol:"
 _MARKER = re.compile(r"<!-- oracle-protocol: v1 (?P<data>[A-Za-z0-9_-]+) -->\s*\Z")
 _HUNK = re.compile(

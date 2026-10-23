@@ -20,7 +20,8 @@ MARKER_LIMIT_DESCRIPTION = "pending: the protocol record does not fit in a revie
 MARKER_LIMIT_NOTE = (
     "The decision and its defects are listed in full in this review, but the protocol record they must be saved in "
     "exceeds the size limit of a review marker even after shortening titles and paths. This head has no recorded "
-    "decision and is not retried; push a new head with fewer or shorter findings."
+    "decision and is not retried; push a new head with fewer or shorter findings. The defects below carry no "
+    "identifiers and open no tracked threads, so they are not carried into the next review."
 )
 STATES = {selection.PASS: SUCCESS, selection.FAIL: FAILURE, selection.PENDING: PENDING}
 
@@ -208,11 +209,6 @@ def _description(step: Step, judgement: protocol.Judgement | None, reviewer: str
     return f"{reviewer}: {judgement.label}"
 
 
-def _unrecorded(plan: Mapping[str, Any], body: str, state: str) -> str:
-    rest = body.splitlines()[len(_header(plan, state)) :]
-    return "\n".join([*_header(plan, PENDING), MARKER_LIMIT_NOTE, "", *rest]).rstrip() + "\n"
-
-
 def finalize(
     plan: Mapping[str, Any],
     step: Step,
@@ -255,11 +251,18 @@ def finalize(
         and rules.get("patch_digest") not in rules.get("struck_digests", ())
     ):
         strikes += 1
-    description = _description(step, judgement, reviewer, pending_cause)
+    marker = _marked(plan, judgement, reviewer or "", ids, next_id, strikes) if judgement and rules else None
+    unrecorded = bool(judgement and rules and marker is None)
+    if unrecorded:
+        ids, markers = {}, {}
+        state, pending_cause = PENDING, MARKER_LIMIT
+    description = MARKER_LIMIT_DESCRIPTION if unrecorded else _description(step, judgement, reviewer, pending_cause)
     delivery = plan.get("findings_delivery", "comment")
-    findings_lines = [_finding_line(finding, ids[finding]) for finding in placement.inline]
-    other_lines = [_finding_line(finding, ids[finding]) for finding in placement.summary]
+    findings_lines = [_finding_line(finding, ids.get(finding)) for finding in placement.inline]
+    other_lines = [_finding_line(finding, ids.get(finding)) for finding in placement.summary]
     lines = [*_header(plan, state)]
+    if unrecorded:
+        lines += [MARKER_LIMIT_NOTE, ""]
     if pending_cause == OVERSIZE:
         lines += [OVERSIZE_NOTE, ""]
     if judgement is not None:
@@ -284,7 +287,10 @@ def finalize(
         lines += ["Defects outside the diff count like the others: fix them before merge.", ""]
     lines += _section(
         "Defects already open as review threads, not posted again",
-        [f"- **{finding.severity}** `{finding.file}`: {ids[finding]}: {finding.title}" for finding in repeated],
+        [
+            f"- **{finding.severity}** `{finding.file}`: {ids.get(finding, '')}{': ' if finding in ids else ''}{finding.title}"
+            for finding in repeated
+        ],
     )
     if judgement is not None and judgement.not_counted:
         hidden = "\n".join(_finding_line(finding) for finding in judgement.not_counted)
@@ -298,20 +304,15 @@ def finalize(
         ]
     if plan.get("scope") == "changed":
         lines += [f"Scope: files changed since head `{plan['reviewed_head']}` was reviewed.", ""]
-    lines += _strike_line(plan, strikes if judgement is not None else int(rules.get("strikes", 0)))
+    lines += _strike_line(plan, strikes if judgement is not None and not unrecorded else int(rules.get("strikes", 0)))
     lines += _section("Reviewers not available", _absences(attempts, step))
     body = "\n".join(lines).rstrip() + "\n"
-    if judgement is not None and rules:
-        marker = _marked(plan, judgement, reviewer or "", ids, next_id, strikes)
-        if marker is None:
-            body = _unrecorded(plan, body, state)
-            state, judgement, pending_cause, description = PENDING, None, MARKER_LIMIT, MARKER_LIMIT_DESCRIPTION
-        else:
-            body += "\n" + marker
+    if marker is not None:
+        body += "\n" + marker
     has_content = bool(defects or judgement is None or judgement.decision != protocol.SHIP or state != SUCCESS)
     review = _review_payload(plan, body, placement, commentable, markers) if delivery == "review" else None
     cause = pending_cause if state == PENDING else None
-    final_strikes = strikes if judgement is not None else None
+    final_strikes = strikes if judgement is not None and not unrecorded else None
     return Final(state, _clip(description), body if has_content else "", review, reviewer, cause, final_strikes)
 
 
