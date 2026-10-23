@@ -5032,15 +5032,10 @@
       "title": "Let the comment policy drop completed-scope entries for paths that no longer exist"
     },
     "comment-policy-digest-and-base-exception-catch22-20261008": {
-      "claim": {
-        "expires_at": "2026-10-24T11:43:32Z",
-        "generation": "25864e3c803b4cfaa10a2ff53b8a9fb2",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Comment-policy exceptions, digest-keyed fixtures and pinned external notices are read only from the base, so any edit needs a second PR"
     },
     "comment-policy-fixture-exception-wording-cleanup": {
