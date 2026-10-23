@@ -4,7 +4,7 @@
     "A test covers a restart on an unchanged patch that does not add a strike, and reproduces the sequence above (P1, restart on P1, P2) ending with 2 strikes, not 3",
     "A run whose diff is unreadable (digest unread-<head>, cli.py:251) gets a stable digest so it does not count as a new patch on every head, or the unreadable-diff case is scoped out explicitly with the reason"
   ],
-  "context": "2026-10-09 tracker review: added the reproduction and the criterion for the unreadable-diff digest. The fix belongs in report.finalize (report.py:194-196); retry.py:118 only keeps the maximum.",
+  "context": "2026-10-09 tracker review: added the reproduction and the criterion for the unreadable-diff digest. The fix belongs in report.finalize (report.py:194-196); retry.py:118 only keeps the maximum.\n\nNOTE 2026-10-23: the codex review of gap issue 2808 re-reported this defect as live on develop (report.finalize increments strikes unconditionally while protocol.strikes counts distinct rejected digests; sequence p->DO_NOT_SHIP, q->SHIP, p->DO_NOT_SHIP, q->DO_NOT_SHIP stores three strikes for two distinct patches and the next head becomes REFUSED; retry.next_state preserves the inflated count). This item is a prerequisite of the 2808 re-review.",
   "description": "report.finalize adds one to the plan's strike count for every DO NOT SHIP and writes it as strikes_after and into the retry state, and the plan takes the max of history and state. Two cases add a strike for a patch already counted: a base or tier restart on an unchanged patch, and runs with an unreadable diff (the \"unread-<head>\" digest, _project/scripts/oracle_reviewers/cli.py:251, is unique per head). A pull request can then be refused before three DO NOT SHIP decisions on distinct patches. Deferred from #2784 (Low).\n\nReproduction:\n1. The oracle returns DO NOT SHIP on patch P1.\n2. A tier label is applied, or the PR is retargeted.\n3. The first restart reviews the same P1 and returns DO NOT SHIP again. This writes strikes = 2 (report.py:194-196).\n4. A DO NOT SHIP on a new patch P2 writes strikes = 3.\n5. The PR is refused at the limit of 3 after only two distinct patches.\nThe refusal is permanent, because the state never decreases (retry.py:118 keeps the max of the new and previous strikes).\n\nThe fix belongs in report.finalize.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/2784"
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "2fbe0e5c2f304f4089d9dd9a66911fd0",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-23T11:56:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6a197330b5fb46af824ced8b17aa6aba",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
     }
   ]
 }
