@@ -28379,7 +28379,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Update the remaining clients that still trust the compromised eMudhra CAs"
     },
     "upgrade-pandas-to-3x": {
