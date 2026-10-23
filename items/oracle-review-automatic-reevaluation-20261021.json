@@ -5,7 +5,7 @@
     "Auto-merge stays set across the re-evaluation",
     "A test fails if the mechanism re-evaluates a head with no success verdict or with an unresolved oracle thread"
   ],
-  "context": "Found 2026-10-21 during the follow-up batch (finished item oracle-review-stale-failure-recurrence-20261020). Owner asked for this follow-up. Evidence is from that session; re-verify before editing. Unclaimed.",
+  "context": "UPDATE 2026-10-23: two more cases on 2026-10-22. PR #3287: oracle-verdict posted SHIP but the required oracle-gate check stayed red on a cancelled earlier run until `gh run rerun` (make pr-rerun reported nothing to re-run). PR #3277: after an owner-authorised stand-in, the comment-triggered oracle-gate run was cancelled by a later run in the same concurrency group and the check stayed red on a pre-stand-in result until a workflow_dispatch gate run (pr=3277) was queued and eventually passed.\n\nFound 2026-10-21 during the follow-up batch (finished item oracle-review-stale-failure-recurrence-20261020). Owner asked for this follow-up. Evidence is from that session; re-verify before editing. Unclaimed.",
   "description": "Resolving a review thread, or an oracle verdict posting after a failed oracle-review run, starts no GitHub Actions run, so the required oracle-review check stays red until someone runs make oracle-review-recover PR=<n> (which also closes and reopens the PR and clears auto-merge). PRs 3149, 3156, 3158 stayed blocked for hours or more than a day this way. GitHub Actions has no pull_request_review_thread trigger (PR 3193 attempted one; the workflow failed to parse). Work: design the smallest sound mechanism that re-evaluates the check for open PRs whose head has a success verdict, for example a scheduled workflow (cron) that runs the existing recover logic for open soundness PRs, or reacting to an event that does exist (pull_request_review, workflow_run of oracle-verdict, issue_comment); weigh each. Guardrails: no stand-in verdict, no weaker decision logic, no new secrets, and any cron or permission change needs owner approval; the recovery must not clear auto-merge (re-arm it or avoid close/reopen, for example by re-requesting the check run instead).",
   "links": [
     "item:oracle-review-stale-failure-recurrence-20261020"
@@ -18,6 +18,14 @@
       "op": "create",
       "op_id": "495752fb68524e6dba4b648612ba5336",
       "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-23T11:43:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "90b06682f49747189c21056f68a4e5c2",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]
 }
