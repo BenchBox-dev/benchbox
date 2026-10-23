@@ -15,9 +15,10 @@ assignment. Keep a help string or protocol record only if something reads it.
 
 ## Check your work
 
-Run `make comment-policy-check` before you open a pull request. It compares
-your branch with `origin/develop`, then runs the parser's own tests, which can
-also fail it. To reproduce a CI result, set `BASE_REF` to the commit SHA CI
+Run `make comment-policy-check` before you open a pull request. It scans the
+whole repository and compares your policy with `origin/develop`, then runs the
+parser's own tests, which can also fail it. To reproduce a CI result, set
+`BASE_REF` to the commit SHA CI
 used. You need Python, `uv`, Node, and npm.
 
 If you do not set `BASE_REF` and `origin/develop` is not an ancestor of
@@ -43,11 +44,11 @@ Other tools:
   the commit hook do not run it.
 - The pre-commit hook checks staged files, with the same result as
   `make comment-policy-check` for the files you changed. It scans only the
-  files that differ from the base, and falls back to every file in a completed
-  scope when the commit changes `quality/comment-policy.json`, the cleanup
-  scope policy, the launcher itself, any file in the base launcher's
-  `TRUSTED_FILES` (also when it cannot read that list), or removes an exception. An expired exception fails only when the
-  commit introduces it or changes the policy.
+  staged files that differ from the base, and scans the whole repository when
+  the commit changes `quality/comment-policy.json`, the cleanup scope policy,
+  the launcher itself, any file in the base launcher's `TRUSTED_FILES` (also
+  when it cannot read that list), or removes an exception. An expired
+  exception fails every run, including the hook.
 - `scripts/check_comment_policy.py --path <prefix>` checks one file or
   directory.
 
@@ -83,7 +84,7 @@ Enforcement is blocking. `quality/comment-policy.json` sets
 commit, not your branch.
 
 CI runs `scripts/run_comment_policy.py` against the base commit and passes only
-at zero violations. It fails if a changed file or completed scope gains a
+at zero violations anywhere in the repository. It fails if any file gains a
 violation or contains input the checker cannot analyze (a coverage error), or
 if configuration or parsing fails.
 
@@ -196,21 +197,22 @@ counts every copy. Deleting an unrelated comment does not pay for a new one.
 Copying a comment, editing it, or moving it to another symbol fails. No archive
 of removed text is kept.
 
-A base comparison checks changed files and completed scopes. Report and strict
-modes check everything.
+A base comparison applies the strict rules to every file in the repository: it
+reads the base only for the policy, the trusted checker files, the ownership
+manifest, and the list of files that existed at the base. It never scans the
+base's sources. Every violation fails, including old ones.
 
-- **Completed scopes:** after you clean a file or directory, add its path to
-  `completed`. Every violation there then fails, including old ones. You cannot
-  remove a completed scope.
 - **External exclusions:** each names its upstream owner and a provenance file.
-  A pull request cannot widen one or overlap it with a completed scope. New
-  files under an exclusion are still checked in a base comparison.
+  A pull request cannot widen one. New files under an exclusion are still
+  checked in a base comparison.
 - **Policy ratchet:** a base comparison (`--base` without `--bootstrap`, as
   `make comment-policy-check`, the hook, and CI run it) compares your policy
   with the base policy. It fails if enforcement moves from blocking to
-  advisory, a completed scope is removed, or an external exclusion is added
-  or changed. Report and strict runs without `--base`, and bootstrap runs,
-  skip it.
+  advisory or an external exclusion is added or changed. Report and strict
+  runs without `--base`, and bootstrap runs, skip it.
+- **No completed scopes:** every first-party path is in scope. The checker
+  ignores a `completed` list if the policy still has one, and the policy does
+  not need it.
 - **Wheel bumps:** the one allowed external change replaces a pinned `.whl`
   entry with a wheel of the same distribution in the same directory, with the
   same `owner` and `provenance`; the old entry must go. The checker then
