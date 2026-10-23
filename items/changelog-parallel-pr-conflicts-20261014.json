@@ -4,7 +4,7 @@
     "The released CHANGELOG keeps its current format and ordering.",
     "The PR-time check that requires a CHANGELOG entry still works."
   ],
-  "context": "Both batch agents reported this; it happened on most of #2965 to #2985. Options:\n- per-PR changelog fragments assembled at release time;\n- a git `merge=union` attribute for CHANGELOG.md;\n- keeping the single file but letting a bot apply CHANGELOG-only rebases.\n\nCheck the release tooling and the CHANGELOG checks in `make pr-preflight` before choosing.",
+  "context": "UPDATE 2026-10-23: PR #3285 sat armed but DIRTY/CONFLICTING on GitHub after #3284 merged, although `git merge origin/develop` was clean locally: CHANGELOG.md has `merge=union` in .gitattributes, and GitHub does not apply local merge drivers. Merging develop into the branch and pushing (new head, full CI and oracle again) was the only fix. The fragment cutover (changelog-fragments-03) retires the union rule.\n\nBoth batch agents reported this; it happened on most of #2965 to #2985. Options:\n- per-PR changelog fragments assembled at release time;\n- a git `merge=union` attribute for CHANGELOG.md;\n- keeping the single file but letting a bot apply CHANGELOG-only rebases.\n\nCheck the release tooling and the CHANGELOG checks in `make pr-preflight` before choosing.",
   "description": "During the two concurrent execution-variant batches on 2026-10-14, every PR conflicted on `CHANGELOG.md` more than once. Each one added an entry to the same Unreleased Fixed list, so whenever another PR merged first, the rest needed a rebase and a manual resolution. Each rebase restarted CI, at about 90 minutes per PR, so the conflicts added hours to the batch.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "19cf029cfd73411c9305b40566c164aa",
       "session_id": "18469f668aeb45d59c8d4c94d2f79433"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-23T11:43:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7fc4e166819647f0a7d0478cdeb10ae9",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]
 }
