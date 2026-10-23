@@ -138,7 +138,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `SETTINGS` clause is replaced instead of duplicated, a query that starts with a
   hint comment receives the session setting, JOIN-derived and nested subqueries on
   StarRocks receive aliases, a scalar subquery in an expression list no longer receives
-  one. SQL the runtime cannot parse still fails before reaching the engine (`ParseError`). Q58 on
+  one, and a double-quoted token in StarRocks SQL keeps StarRocks' string-literal reading instead
+  of being converted to an identifier (translated benchmark queries already use backticks).
+  SQL the runtime cannot parse still fails before reaching the engine (`ParseError`). Q58 on
   BigQuery, Spark, Databricks and SingleStore now qualifies `item_id` in `ORDER BY`
   (the regex matched only double-quoted output). Query text is otherwise re-rendered
   by SQLGlot; across the ClickHouse query sets of every benchmark 745 of 749 queries are

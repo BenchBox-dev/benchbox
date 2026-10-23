@@ -167,6 +167,18 @@
     "legacy": "SELECT x AS `value` FROM t",
     "reason": "StarRocks reserves VALUES but not VALUE (docs.starrocks.io keywords list), so the unquoted alias parses; the legacy list over-quoted it."
   },
+  "starrocks.unit.identifier_mixed": {
+    "classification": "legacy-bug",
+    "fork": "SELECT 'col' FROM t WHERE s = 'x'",
+    "legacy": "SELECT `col` FROM t WHERE s = 'x'",
+    "reason": "StarRocks reads a double-quoted token as a string literal (docs.starrocks.io), so the legacy conversion of \"col\" to an identifier changed the meaning of the statement; the runtime keeps StarRocks' own reading. Benchmark queries reach execution already translated with backtick identifiers."
+  },
+  "starrocks.unit.identifier_quote": {
+    "classification": "legacy-bug",
+    "fork": "SELECT 'col' FROM t",
+    "legacy": "SELECT `col` FROM t",
+    "reason": "StarRocks reads a double-quoted token as a string literal (docs.starrocks.io), so the legacy conversion of \"col\" to an identifier changed the meaning of the statement; the runtime keeps StarRocks' own reading. Benchmark queries reach execution already translated with backtick identifiers."
+  },
   "starrocks.unit.subquery_exists": {
     "classification": "equivalent",
     "fork": "SELECT * FROM t WHERE EXISTS(SELECT 1 FROM s WHERE s.id = t.id)",

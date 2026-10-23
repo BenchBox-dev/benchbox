@@ -336,7 +336,7 @@ def _starrocks_cases() -> list[Case]:
             Case(
                 case_id,
                 frozen_legacy(AREA, case_id),
-                lambda sql=sql: _fork_starrocks_execute_rewrites(sql, "postgres"),
+                lambda sql=sql: _alias_derived_tables(sql),
             )
         )
     for name, sql in STARROCKS_SQL.items():
@@ -345,7 +345,7 @@ def _starrocks_cases() -> list[Case]:
             Case(
                 case_id,
                 frozen_legacy(AREA, case_id),
-                lambda sql=sql: _fork_starrocks_execute_rewrites(sql, "postgres"),
+                lambda sql=sql: _alias_derived_tables(sql),
             )
         )
     for query_id in TPCH_IDS:
@@ -525,6 +525,10 @@ def _nested_substring(legacy: str, fork: str) -> bool:
     return "FROM 1 FOR 3" in legacy and "LOWER(col), 1, 3" in fork
 
 
+def _double_quote_stays_literal(legacy: str, fork: str) -> bool:
+    return "`col`" in legacy and "'col'" in fork
+
+
 _FORMAT_ONLY = "Only spacing, keyword case or the NULLIF spelling differs; ClickHouse accepts both spellings."
 
 CLASSIFICATIONS: list[tuple[str, str, str, Callable[[str, str], bool]]] = [
@@ -622,6 +626,14 @@ CLASSIFICATIONS: list[tuple[str, str, str, Callable[[str, str], bool]]] = [
         "The legacy regex left SUBSTRING(... FROM ... FOR ...) around a function argument, which StarRocks "
         "rejects (it logged a warning); the runtime writes the comma form.",
         _nested_substring,
+    ),
+    (
+        r"starrocks\.unit\.identifier_(quote|mixed)",
+        "legacy-bug",
+        "StarRocks reads a double-quoted token as a string literal (docs.starrocks.io), so the legacy conversion of "
+        '"col" to an identifier changed the meaning of the statement; the runtime keeps StarRocks\' own reading. '
+        "Benchmark queries reach execution already translated with backtick identifiers.",
+        _double_quote_stays_literal,
     ),
     (
         r"tpcds_clickhouse_override\.q(10|35)\.seed[123]",
