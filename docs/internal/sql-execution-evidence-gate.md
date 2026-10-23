@@ -101,8 +101,10 @@ The evidence and the code that judges it are soundness paths
 runtime baseline, everything under `scripts/sql_execution_gate/` (the gate
 logic and `expected_differences.json`), everything under
 `tests/unit/sql_compat/golden_corpus/` (harness, `recorded/` and `frozen/`),
-and the pin, retirement and fork-diff scripts. A change to any of them needs an
-oracle success review on the current head.
+`tests/unit/sql_compat/test_fork_golden_corpus.py` (the corpus assertions), the
+`Makefile` (CI runs the gate through `make sql-execution-gate`), and the pin,
+retirement and fork-diff scripts. A change to any of them needs an oracle
+success review on the current head.
 
 ## Regression proofs
 

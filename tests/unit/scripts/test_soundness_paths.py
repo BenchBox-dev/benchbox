@@ -242,6 +242,8 @@ TRANSLATION_FILES = (
     "scripts/sqlglot_runtime_baseline.json",
     "scripts/sync_sqlglot_runtime.py",
     "scripts/check_sqlglot_repro_retirement.py",
+    "Makefile",
+    "tests/unit/sql_compat/test_fork_golden_corpus.py",
     "scripts/sqlglot_fork_diff.py",
 )
 TRANSLATION_PREFIXES = (
