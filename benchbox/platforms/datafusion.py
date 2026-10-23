@@ -1319,14 +1319,12 @@ class DataFusionAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
 
         benchmark_slug = (benchmark_type or "").lower().replace("-", "")
         if not benchmark_type or benchmark_slug == "tpch":
-            from benchbox.platforms.datafusion_query_transformer import DataFusionQueryTransformer
+            from benchbox.platforms.datafusion_tpch_rewrites import rewrite_datafusion_tpch_query
 
-            transformer = DataFusionQueryTransformer(verbose=getattr(self, "very_verbose", False))
-            query = transformer.transform(query, query_id=query_id)
-            if transformer.get_transformations_applied():
-                self.log_verbose(
-                    f"Query {query_id}: Applied transformations: {', '.join(transformer.get_transformations_applied())}"
-                )
+            rewritten = rewrite_datafusion_tpch_query(query, query_id)
+            if rewritten != query:
+                self.log_verbose(f"Query {query_id}: Applied fork rewrite for DataFusion")
+            query = rewritten
 
         if self.dry_run_mode:
             self.capture_sql(query, "query", None)

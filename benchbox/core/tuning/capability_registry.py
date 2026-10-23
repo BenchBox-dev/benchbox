@@ -512,8 +512,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "delta_ddl_generator:preview_only_tsql_ignores",
             "The Delta preview generator computes partitioning, but FabricWarehouseAdapter executes "
             "T-SQL (FABRIC_DIALECT='tsql'): the shared builder's tsql output ignores tuned partition "
-            "columns, generate_tuning_clause returns '' and _optimize_table_definition only adds the "
-            "schema (fabric_warehouse.py:857-883). Previously aliased to databricks (rendered _ddl) "
+            "columns, generate_tuning_clause returns '' and translate_ddl only adds the "
+            "schema (FabricWarehouseAdapter.create_schema). Previously aliased to databricks (rendered _ddl) "
             "-- that claim was false for the warehouse execution path.",
         ),
         **_pk_fk_entries(),
@@ -544,13 +544,13 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.MATERIALIZED_VIEWS: _none("unimplemented", "Compatible per the legacy map; no adapter implementation."),
         _T.PRIMARY_KEYS: _none(
             "databend_strips_primary_keys",
-            "DatabendAdapter strips PRIMARY KEY clauses from every executed CREATE TABLE via "
-            "inline regex (databend/adapter.py:678), alongside the foreign-key strip. Tuned keys "
+            "DatabendAdapter passes strip_primary_keys to translate_ddl for every executed CREATE TABLE "
+            "(databend/adapter.py), alongside the foreign-key strip. Tuned keys "
             "reach the DDL builder but never reach the engine.",
         ),
         _T.FOREIGN_KEYS: _none(
             "databend_strips_foreign_keys",
-            "DatabendAdapter strips foreign keys from every CREATE TABLE (databend/adapter.py:680); "
+            "DatabendAdapter passes strip_foreign_keys to translate_ddl for every CREATE TABLE (databend/adapter.py); "
             "remaining constraint configuration is informational log-only.",
         ),
         _T.UNIQUE_CONSTRAINTS: _none(
@@ -842,11 +842,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "firebolt_ddl_generator:preview_only",
             "core.tuning.generators.firebolt.FireboltDDLGenerator computes a real PRIMARY INDEX "
             "(col1, col2) clause from tuned distribution columns for dry-run preview "
-            "(firebolt.py:144-149, 195-196), but benchbox/platforms/firebolt.py's FireboltAdapter never "
+            "but benchbox/platforms/firebolt.py's FireboltAdapter never "
             "consumes it: create_schema uses _create_schema_with_tuning (primary/foreign-key toggle "
-            "only) then _optimize_table_definition (firebolt.py:1267-1296, type-mapping/"
-            "constraint-stripping only). FireboltAdapter.generate_tuning_clause (firebolt.py:1374-1411) "
-            "has no call site anywhere in the codebase. apply_table_tunings (firebolt.py:1413-1421) only "
+            "only) then _translate_schema_ddl, which calls translate_ddl (type-mapping/"
+            "constraint-stripping only). FireboltAdapter.generate_tuning_clause "
+            "has no call site anywhere in the codebase. apply_table_tunings only "
             "logs via log_partition_tunings(...).",
         ),
         _T.PARTITIONING: _none(
@@ -868,13 +868,13 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         _T.PRIMARY_KEYS: _none(
             "firebolt_strips_primary_keys",
-            "FireboltAdapter._optimize_table_definition strips PRIMARY KEY clauses from every "
-            "CREATE TABLE via ddl_helpers strip_primary_keys (firebolt.py).",
+            "FireboltAdapter.create_schema passes strip_primary_keys to translate_ddl, which removes "
+            "PRIMARY KEY clauses from every CREATE TABLE (firebolt.py).",
         ),
         _T.FOREIGN_KEYS: _none(
             "firebolt_strips_foreign_keys",
-            "FireboltAdapter._optimize_table_definition strips FOREIGN KEY clauses from every "
-            "CREATE TABLE via ddl_helpers strip_foreign_keys (firebolt.py).",
+            "FireboltAdapter.create_schema passes strip_foreign_keys to translate_ddl, which removes "
+            "FOREIGN KEY clauses from every CREATE TABLE (firebolt.py).",
         ),
         **_no_unique_check_entries(
             "firebolt_no_unique_check_rendering",
@@ -884,8 +884,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
     "azure-synapse": {
         _T.DISTRIBUTION: _none(
             "engine_default_not_tuned",
-            "benchbox/platforms/azure_synapse.py's real _optimize_table_definition "
-            "(azure_synapse.py:1046-1069, called at actual schema-creation time) does add a real "
+            "benchbox/platforms/azure_synapse.py's real schema creation (translate_ddl with the adapter's "
+            "default distribution layout, called at actual schema-creation time) does add a real "
             "WITH (DISTRIBUTION = ...) clause, but the value always comes from self.distribution_default "
             "(a platform/CLI option defaulted to ROUND_ROBIN, azure_synapse.py:117), never from "
             "TableTuning.distribution columns. The generator "
@@ -900,8 +900,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "azure_synapse_ddl_generator:preview_only",
             "The generator computes a real (if structurally incomplete -- the RANGE RIGHT FOR VALUES () "
             "boundary list is always empty) PARTITION clause from tuned columns for dry-run preview "
-            "(azure_synapse.py:201-209, 254-255), but real execution's _optimize_table_definition "
-            "(azure_synapse.py:1046-1069) never adds a PARTITION clause at all.",
+            "(azure_synapse.py:201-209, 254-255), but real execution's translate_ddl call "
+            "never adds a PARTITION clause at all.",
         ),
         _T.SORTING: _none(
             "azure_synapse_ddl_generator:log_only",

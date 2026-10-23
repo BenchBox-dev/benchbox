@@ -695,6 +695,45 @@ def test_a_binary_change_is_never_mistaken_for_an_unchanged_patch() -> None:
     assert protocol.file_patches(text.format("222", 1)) == protocol.file_patches(text.format("333", 9))
 
 
+def _file_diff(*hunks: str) -> str:
+    return "diff --git a/a.py b/a.py\nindex 111..222 100644\n--- a/a.py\n+++ b/a.py\n" + "".join(hunks)
+
+
+GUARDED = "@@ -{0},3 +{0},4 @@ def {1}(user):\n a\n+require_admin(user)\n b\n c\n"
+MOVE_OUT = "@@ -{0},4 +{0},3 @@\n a\n-require_admin(user)\n b\n c\n"
+MOVE_IN = "@@ -{0},3 +{0},4 @@\n a\n+require_admin(user)\n b\n c\n"
+
+
+def test_the_same_added_line_in_a_different_function_is_a_different_patch() -> None:
+    guarded = protocol.file_patches(_file_diff(GUARDED.format(10, "guarded_write")))
+    public = protocol.file_patches(_file_diff(GUARDED.format(40, "public_read")))
+    assert guarded != public
+
+
+def test_a_line_moved_to_another_place_is_a_different_patch() -> None:
+    near = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(20)))
+    far = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(50)))
+    assert near != far
+
+
+def test_a_rebase_that_shifts_every_hunk_equally_keeps_the_patch() -> None:
+    before = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(20)))
+    after = protocol.file_patches(_file_diff(MOVE_OUT.format(18), MOVE_IN.format(28)))
+    assert before == after
+
+
+def test_reordered_hunks_are_a_different_patch() -> None:
+    one = MOVE_OUT.format(10)
+    two = MOVE_IN.format(20)
+    assert protocol.file_patches(_file_diff(one, two)) != protocol.file_patches(_file_diff(two, one))
+
+
+def test_a_hunk_added_above_shifts_the_later_hunk_and_changes_the_patch() -> None:
+    alone = protocol.file_patches(_file_diff(MOVE_IN.format(30)))
+    above = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(30)))
+    assert alone != above
+
+
 def test_prose_is_untracked_apart_from_a_scoped_follow_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     notes = {"filename": "docs/notes.md", "additions": 1, "deletions": 0, "sha": "9" * 40}
     record = _record(TWO_FILE_DIFF, "SHIP")
@@ -764,7 +803,7 @@ def _decided_head(open_defects: list[dict[str, Any]] | None = None) -> dict[str,
     return _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", head_sha=HEAD, open_defects=open_defects or [DEFECT], next_id=2)
 
 
-def _disputed_thread() -> dict[str, Any]:
+def _disputed_thread(association: str | None = "OWNER") -> dict[str, Any]:
     return {
         "author": "benchbox-oracle[bot]",
         "author_type": "Bot",
@@ -775,6 +814,7 @@ def _disputed_thread() -> dict[str, Any]:
             {
                 "author": "joe",
                 "author_type": "User",
+                "association": association,
                 "body": "Dispute: pkg/kept.py:12 keeps the row, so the defect is wrong.",
             }
         ],
@@ -788,7 +828,7 @@ def _acked_thread() -> dict[str, Any]:
         "resolved": False,
         "path": CAPTURE,
         "body": "**High**: Drops a row",
-        "replies": [{"author": "joe", "author_type": "User", "body": "done"}],
+        "replies": [{"author": "joe", "author_type": "User", "association": "OWNER", "body": "done"}],
     }
 
 
@@ -840,6 +880,17 @@ def test_push_with_only_an_acknowledgement_still_carries(monkeypatch: pytest.Mon
     assert values["decision"] == "carry" and values["post"] == "true"
     assert plan["manual"] is False
     assert plan["protocol"]["kind"] == "carry" and plan["protocol"]["forced"] is False
+    assert plan.get("disputes", []) == []
+
+
+@pytest.mark.parametrize("association", ["NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR", None])
+def test_a_dispute_from_outside_the_repository_is_ignored(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, association: str | None
+) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2)
+    _, values, plan = _plan(monkeypatch, tmp_path, _thread_fake(record, [_disputed_thread(association)]))
+    assert values["decision"] == "carry"
+    assert plan["protocol"]["forced"] is False
     assert plan.get("disputes", []) == []
 
 

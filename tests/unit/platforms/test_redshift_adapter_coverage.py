@@ -472,27 +472,6 @@ class TestLoadTableViaS3:
         assert "ZSTD" in copy_call
 
 
-class TestOptimizeTableDefinition:
-    def test_non_create_table_returned_unchanged(self):
-        adapter = _make_adapter()
-        sql = "SELECT * FROM lineitem"
-        assert adapter._optimize_table_definition(sql) == sql
-
-    def test_create_table_gets_diststyle_and_sortkey(self):
-        adapter = _make_adapter()
-        sql = "CREATE TABLE orders (o_orderkey INT)"
-        result = adapter._optimize_table_definition(sql)
-        assert "DISTSTYLE AUTO" in result
-        assert "SORTKEY AUTO" in result
-
-    def test_existing_diststyle_not_duplicated(self):
-        adapter = _make_adapter()
-        sql = "CREATE TABLE orders (o_orderkey INT) DISTSTYLE EVEN"
-        result = adapter._optimize_table_definition(sql)
-        assert result.upper().count("DISTSTYLE") == 1
-        assert "SORTKEY AUTO" in result
-
-
 class TestCreateDirectConnectionWlm:
     def test_wlm_queue_name_issues_set_statement(self):
         adapter = _make_adapter(wlm_query_queue_name="my_queue")
@@ -1740,11 +1719,6 @@ class TestGetQueryStatistics:
 
 
 class TestNormalizeAndExtractTableName:
-    def test_normalize_table_name_lowercases_table(self):
-        adapter = _make_adapter()
-        result = adapter._normalize_table_name_in_sql("SELECT * FROM LINEITEM")
-        assert isinstance(result, str)
-
     def test_extract_table_name_from_create_table(self):
         adapter = _make_adapter()
         result = adapter._extract_table_name("CREATE TABLE lineitem (l_orderkey INT)")
@@ -2008,10 +1982,8 @@ class TestCreateSchema:
             "_create_schema_with_tuning",
             return_value="CREATE TABLE lineitem (l_orderkey INT); CREATE TABLE orders (o_orderkey INT)",
         ):
-            with patch.object(adapter, "_normalize_table_name_in_sql", side_effect=lambda s: s):
-                with patch.object(adapter, "_extract_table_name", return_value="lineitem"):
-                    with patch.object(adapter, "_optimize_table_definition", side_effect=lambda s: s):
-                        adapter.create_schema(mock_benchmark, mock_conn)
+            with patch.object(adapter, "_extract_table_name", return_value="lineitem"):
+                adapter.create_schema(mock_benchmark, mock_conn)
 
         assert mock_cursor.execute.call_count >= 2
 
@@ -2025,8 +1997,7 @@ class TestCreateSchema:
         mock_benchmark = MagicMock()
 
         with patch.object(adapter, "_create_schema_with_tuning", return_value=""):
-            with patch.object(adapter, "_normalize_table_name_in_sql", side_effect=lambda s: s):
-                adapter.create_schema(mock_benchmark, mock_conn)
+            adapter.create_schema(mock_benchmark, mock_conn)
 
         execute_calls = [str(c) for c in mock_cursor.execute.call_args_list]
         assert any("CREATE SCHEMA" in c for c in execute_calls)
@@ -2045,10 +2016,9 @@ class TestCreateSchema:
             "_create_schema_with_tuning",
             return_value="CREATE TABLE lineitem (l_orderkey INT)",
         ):
-            with patch.object(adapter, "_normalize_table_name_in_sql", side_effect=lambda s: s):
-                with patch.object(adapter, "_extract_table_name", return_value="lineitem"):
-                    with pytest.raises(Exception, match="syntax error"):
-                        adapter.create_schema(mock_benchmark, mock_conn)
+            with patch.object(adapter, "_extract_table_name", return_value="lineitem"):
+                with pytest.raises(Exception, match="syntax error"):
+                    adapter.create_schema(mock_benchmark, mock_conn)
 
 
 class TestLoadTableViaInsert:
@@ -3330,8 +3300,6 @@ class TestCreateSchema:
         with (
             patch.object(adapter, "_create_schema_with_tuning", return_value=create_stmt + ";"),
             patch.object(adapter, "_extract_table_name", return_value="lineitem"),
-            patch.object(adapter, "_normalize_table_name_in_sql", side_effect=lambda s: s),
-            patch.object(adapter, "_optimize_table_definition", side_effect=lambda s: s),
         ):
             adapter.create_schema(MagicMock(), mock_conn)
 

@@ -20,7 +20,9 @@ def test_postgres_replaces_julianday_date_arithmetic() -> None:
     for query_id in ("AQ7", "AQ8", "AQ10"):
         query = queries[query_id]
         assert "JULIANDAY" not in query.upper(), f"{query_id} retained JULIANDAY:\n{query}"
-        assert "CAST(" in query and " AS DATE)" in query, f"{query_id} should use PostgreSQL date subtraction:\n{query}"
+        assert "EXTRACT(epoch FROM" in query and "/ 86400" in query, (
+            f"{query_id} should use PostgreSQL timestamp subtraction:\n{query}"
+        )
 
 
 def test_postgres_renders_boolean_numeric_comparisons() -> None:

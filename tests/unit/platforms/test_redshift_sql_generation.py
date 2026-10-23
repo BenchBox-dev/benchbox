@@ -119,30 +119,6 @@ class TestRedshiftBuildS3CopySourceSingleFile:
         mock_s3.put_object.assert_not_called()
 
 
-class TestRedshiftOptimizeTableDefinition:
-    def test_adds_diststyle_auto_when_missing(self):
-        adapter = _make_adapter()
-        result = adapter._optimize_table_definition("CREATE TABLE t (id INT)")
-        assert "DISTSTYLE AUTO" in result
-
-    def test_adds_sortkey_auto_when_missing(self):
-        adapter = _make_adapter()
-        result = adapter._optimize_table_definition("CREATE TABLE t (id INT)")
-        assert "SORTKEY AUTO" in result
-
-    def test_preserves_existing_diststyle_even(self):
-        adapter = _make_adapter()
-        result = adapter._optimize_table_definition("CREATE TABLE t (id INT) DISTSTYLE EVEN")
-        assert "DISTSTYLE EVEN" in result
-        assert "DISTSTYLE AUTO" not in result
-
-    def test_preserves_existing_sortkey(self):
-        adapter = _make_adapter()
-        result = adapter._optimize_table_definition("CREATE TABLE t (id INT) SORTKEY (id)")
-        assert "SORTKEY (id)" in result
-        assert "SORTKEY AUTO" not in result
-
-
 class TestRedshiftConnectionConfig:
     def test_connection_params_include_host_port_db(self):
         adapter = _make_adapter(

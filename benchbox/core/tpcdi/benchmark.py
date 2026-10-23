@@ -7,7 +7,6 @@
 
 import csv
 import json
-import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import (
@@ -58,26 +57,16 @@ from benchbox.sql_compat.rules.execution_filter.lakesail_tpcdi import LAKESAIL_T
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.printing import emit
 
-_JULIANDAY_DIFF_RE = re.compile(
-    r"JULIANDAY\s*\(([^)]+(?:\([^)]*\)[^)]*)*)\)\s*-\s*JULIANDAY\s*\(([^)]+(?:\([^)]*\)[^)]*)*)\)",
-    re.IGNORECASE,
-)
-_DATE_INTERVAL_RE = re.compile(
-    r"DATE\s*\(\s*['\"]now['\"]\s*,\s*['\"]?-(\d+)\s+days?['\"]?\s*\)",
-    re.IGNORECASE,
-)
-_DATE_NOW_RE = re.compile(r"DATE\s*\(\s*['\"]now['\"]\s*\)", re.IGNORECASE)
 DATAFRAME_ETL_TABLE_DIR = "dataframe-etl-tables"
 
-_DOUBLE_COUNT_RE = re.compile(
-    r"\(\s*SELECT\s+COUNT\s*\(\s*\*\s*\)\s+FROM\s+\(\s*(?:(?:/\*[^*]*\*/|--[^\n]*)\s*)?"
-    r"SELECT\s+COUNT\s*\(\s*\*\s*\)\s+AS\s+\w+\s+(FROM\s+[^)]+)\)\s*\)",
-    re.IGNORECASE,
-)
-_POSTGRES_BOOLEAN_NUMBER_RE = re.compile(
-    r"(?P<column>\b(?:IsCurrent|TT_IS_SELL|HolidayFlag)\b)\s*=\s*(?P<value>[01])",
-    re.IGNORECASE,
-)
+TPCDI_FLAG_COLUMNS = ["IsCurrent", "TT_IS_SELL", "HolidayFlag"]
+BOOLEAN_FLAG_STYLES = {
+    "postgres": "is",
+    "postgresql": "is",
+    "datafusion": "is",
+    "databricks": "is",
+    "bigquery": "equals",
+}
 
 
 class TPCDITransformationError(RuntimeError):
@@ -360,10 +349,14 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             )
         if query_id == "EQ7":
             from benchbox.sql_compat.rules.query_source.tpcdi_variants import STARROCKS_EQ7_SQL
+            from benchbox.utils.dialect_utils import apply_rewrite
 
-            return _POSTGRES_BOOLEAN_NUMBER_RE.sub(
-                lambda m: f"{m.group('column')} IS {'TRUE' if m.group('value') == '1' else 'FALSE'}",
+            return apply_rewrite(
+                "flag_comparisons_to_boolean",
                 STARROCKS_EQ7_SQL,
+                "postgres",
+                columns=TPCDI_FLAG_COLUMNS,
+                use_is=True,
             )
         return query_sql
 
@@ -375,101 +368,21 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
     def translate_query_text(self, query_text: str, target_dialect: str) -> str:
         from benchbox.utils.dialect_utils import translate_sql_query
 
-        if target_dialect in {"duckdb", "postgres", "postgresql"}:
-            query_text = _DATE_INTERVAL_RE.sub(
-                lambda m: f"(CURRENT_DATE - INTERVAL '{m.group(1)} days')",
-                query_text,
+        rewrites = []
+        flag_style = BOOLEAN_FLAG_STYLES.get(target_dialect.lower())
+        if flag_style is not None:
+            rewrites.append(
+                (
+                    "flag_comparisons_to_boolean",
+                    {"columns": TPCDI_FLAG_COLUMNS, "use_is": flag_style == "is"},
+                )
             )
-            query_text = _DATE_NOW_RE.sub("CURRENT_DATE", query_text)
-            query_text = _JULIANDAY_DIFF_RE.sub(
-                lambda m: f"({m.group(1).strip()}::DATE - {m.group(2).strip()}::DATE)",
-                query_text,
-            )
-
-        elif target_dialect.lower() == "datafusion":
-            query_text = _DATE_INTERVAL_RE.sub(
-                lambda m: f"(CURRENT_DATE - INTERVAL '{m.group(1)} days')",
-                query_text,
-            )
-            query_text = _DATE_NOW_RE.sub("CURRENT_DATE", query_text)
-            query_text = _POSTGRES_BOOLEAN_NUMBER_RE.sub(
-                lambda m: f"{m.group('column')} IS {'TRUE' if m.group('value') == '1' else 'FALSE'}",
-                query_text,
-            )
-
-        elif target_dialect.lower() == "snowflake":
-            query_text = _DATE_INTERVAL_RE.sub(
-                lambda m: f"DATEADD(day, -{m.group(1)}, CURRENT_DATE())",
-                query_text,
-            )
-            query_text = _DATE_NOW_RE.sub("CURRENT_DATE()", query_text)
-
-        elif (
-            "clickhouse" in target_dialect.lower()
-            or "starrocks" in target_dialect.lower()
-            or "doris" in target_dialect.lower()
-        ):
-            query_text = _DOUBLE_COUNT_RE.sub(r"(SELECT COUNT(*) \1)", query_text)
-
-        query_text = translate_sql_query(
+        return translate_sql_query(
             query=query_text,
             target_dialect=target_dialect,
             source_dialect="netezza",
+            rewrites=rewrites,
         )
-
-        if "clickhouse" in target_dialect.lower():
-            query_text = _JULIANDAY_DIFF_RE.sub(
-                lambda m: f"dateDiff('day', {m.group(2).strip()}, {m.group(1).strip()})",
-                query_text,
-            )
-            query_text = _DATE_INTERVAL_RE.sub(lambda m: f"(today() - {m.group(1)})", query_text)
-            query_text = _DATE_NOW_RE.sub("today()", query_text)
-
-            query_text = re.sub(
-                r"\bFROM\s*\(?\s*VALUES\s*\((\d+)\)\s*\)?\s*(?:AS\s+)?(\w+)",
-                r"FROM (SELECT \1) AS \2",
-                query_text,
-                flags=re.IGNORECASE,
-            )
-
-        elif "starrocks" in target_dialect.lower() or "doris" in target_dialect.lower():
-            query_text = _JULIANDAY_DIFF_RE.sub(
-                lambda m: f"DATEDIFF({m.group(1).strip()}, {m.group(2).strip()})",
-                query_text,
-            )
-            query_text = _DATE_INTERVAL_RE.sub(
-                lambda m: f"DATE_SUB(CURDATE(), INTERVAL {m.group(1)} DAY)",
-                query_text,
-            )
-            query_text = _DATE_NOW_RE.sub("CURDATE()", query_text)
-
-        elif target_dialect.lower() == "datafusion":
-            query_text = _JULIANDAY_DIFF_RE.sub(
-                lambda m: f"({m.group(1).strip()} - {m.group(2).strip()})",
-                query_text,
-            )
-
-        elif target_dialect in {"postgres", "postgresql"}:
-            query_text = _POSTGRES_BOOLEAN_NUMBER_RE.sub(
-                lambda m: f"{m.group('column')} IS {'TRUE' if m.group('value') == '1' else 'FALSE'}",
-                query_text,
-            )
-
-        elif target_dialect.lower() == "snowflake":
-            query_text = re.sub(
-                r"JULIANDAY\s*\(((?:[^()]|\([^()]*\))*)\)\s*-\s*JULIANDAY\s*\(((?:[^()]|\([^()]*\))*)\)",
-                r"DATEDIFF(day, \2, \1)",
-                query_text,
-                flags=re.IGNORECASE,
-            )
-            query_text = re.sub(
-                r"JULIANDAY\s*\(((?:[^()]|\([^()]*\))*)\)",
-                r"(DATEDIFF(day, DATE '1970-01-01', \1) + 2440588)",
-                query_text,
-                flags=re.IGNORECASE,
-            )
-
-        return query_text
 
     def get_all_queries(self) -> dict[str, str]:
         return self.query_manager.get_all_queries()

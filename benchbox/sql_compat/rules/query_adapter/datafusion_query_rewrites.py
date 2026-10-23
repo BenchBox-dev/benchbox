@@ -13,6 +13,13 @@ from benchbox.sql_compat.registry import REGISTRY
 _P = Phase.QUERY_ADAPTER
 _B = "tpch"
 
+_TRANSFORMERS = {
+    "11": "decorrelate_subqueries",
+    "16": "not_in_subquery_to_not_exists",
+    "18": "in_aggregate_subquery_to_exists",
+    "20": "decorrelate_subqueries",
+}
+
 _REWRITES = [
     (
         "11",
@@ -44,7 +51,7 @@ for _qid, _slug, _reason in _REWRITES:
             support_level=SupportLevel.REWRITTEN,
             failure_mode=FailureMode.SILENT_CORRUPTION,
             payload=RewriteQueryPayload(
-                transformer_id="datafusion_query_transformer",
+                transformer_id=_TRANSFORMERS[_qid],
                 description=_reason,
             ),
             reason=_reason,

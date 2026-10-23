@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from itertools import islice
 from typing import Any
 
+from . import credentials
+from .credentials import REDACTED
 from .policy import SEVERITIES
 
 MAX_LISTED = 50
@@ -52,48 +54,6 @@ FINDING_METADATA = frozenset({"line_note", "end_line_note", "detail_extra"})
 _KEY_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,39}")
 _PRIOR_ID = re.compile(r"[A-Za-z0-9-]{1,32}")
 
-VERDICT_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": list(VERDICT_KEYS),
-    "properties": {
-        "status": {"type": "string", "enum": list(STATUSES)},
-        "incomplete_reason": {"type": "string"},
-        "decision": {"type": "string", "enum": list(DECISIONS)},
-        "summary": {"type": "string"},
-        "files_examined": {"type": "array", "items": {"type": "string"}},
-        "defects": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": list(FINDING_KEYS),
-                "properties": {
-                    "severity": {"type": "string", "enum": list(SEVERITIES)},
-                    "file": {"type": "string"},
-                    "line": {"type": "integer"},
-                    "end_line": {"type": ["integer", "null"]},
-                    "title": {"type": "string"},
-                    "detail": {"type": "string"},
-                },
-            },
-        },
-        "prior_defects": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": list(PRIOR_KEYS),
-                "properties": {
-                    "id": {"type": "string"},
-                    "status": {"type": "string", "enum": list(PRIOR_STATUSES)},
-                    "evidence": {"type": "string"},
-                },
-            },
-        },
-    },
-}
-
 SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(?:-----END [A-Z ]*PRIVATE KEY-----|\Z)", re.DOTALL),
     re.compile(r"\bsk-ant-[A-Za-z0-9_\-]{8,}"),
@@ -115,7 +75,6 @@ _MENTION = re.compile(r"(?<![A-Za-z0-9_`])@(?=[A-Za-z0-9])")
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _COMMENT_OPEN = re.compile(r"<\s*!\s*-\s*-")
 _COMMENT_CLOSE = re.compile(r"-\s*-\s*>")
-REDACTED = "[redacted]"
 LINK_REMOVED = "[link removed]"
 _SANITIZE_PASSES = 32
 
@@ -182,8 +141,9 @@ class Verdict:
         }
 
 
-def sanitize(text: str, limit: int) -> str:
-    cleaned = _CONTROL.sub("", text)
+def sanitize(text: str, limit: int, extra: Iterable[str] = ()) -> str:
+    known = tuple(extra)
+    cleaned = _CONTROL.sub("", credentials.redact(text, known))
     for pattern in SECRET_PATTERNS:
         cleaned = pattern.sub(REDACTED, cleaned)
     cleaned = _MARKDOWN_LINK.sub(lambda match: match.group(1), cleaned)
@@ -191,7 +151,33 @@ def sanitize(text: str, limit: int) -> str:
     cleaned = _MENTION.sub("", cleaned)
     cleaned = _COMMENT_OPEN.sub("&lt;!--", cleaned)
     cleaned = _COMMENT_CLOSE.sub("--&gt;", cleaned)
+    cleaned = credentials.redact(cleaned, known)
     return cleaned if len(cleaned) <= limit else cleaned[: limit - 1] + "…"
+
+
+def _structural_strings(data: Any) -> Iterator[str]:
+    if isinstance(data, dict):
+        for key, value in data.items():
+            yield str(key)
+            yield from _structural_strings(value)
+    elif isinstance(data, list):
+        for item in data:
+            yield from _structural_strings(item)
+
+
+def _reject_structural_credentials(data: dict[str, Any]) -> None:
+    strings = list(_structural_strings(data))
+    examined = data.get("files_examined")
+    strings += [item for item in examined if isinstance(item, str)] if isinstance(examined, list) else []
+    for field, key in (("defects", "file"), ("prior_defects", "id")):
+        items = data.get(field)
+        for item in items if isinstance(items, list) else ():
+            if isinstance(item, dict) and isinstance(item.get(key), str):
+                strings.append(item[key])
+    _require(
+        not any(credentials.contains(text) for text in strings),
+        "the verdict carries a credential in a structural field",
+    )
 
 
 def _require(condition: bool, message: str) -> None:
@@ -367,6 +353,7 @@ def _prior(data: Any) -> PriorDefect:
 
 def validate(data: Any, *, trusted: bool = False) -> Verdict:
     _require(isinstance(data, dict), "the verdict must be a JSON object")
+    _reject_structural_credentials(data)
     _reject_placeholders(data)
     _require(trusted or "defect_count" not in data, "defect_count is set by the oracle, not the reviewer")
     keys = set(data) - {"defect_count"}
