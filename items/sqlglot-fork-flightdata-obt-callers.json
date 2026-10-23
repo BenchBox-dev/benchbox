@@ -4,6 +4,7 @@
     "The tpcds_obt converter is classified by an owner decision recorded here; either its allowlist entry carries a reviewed reason or the generic parts move to the fork.",
     "rg and the bypass test show no BenchBox module outside translate_sql_query and apply_rewrite calls fork translation logic."
   ],
+  "context": "Owner decision 2026-10-23 (tpcds_obt): the runtime converter is replaced by a hand-owned static OBT query catalog with no fork imports in benchbox/core/tpcds_obt; tracked in tpcds-obt-static-query-catalog (owner decisions recorded there). The OBT allowlist entry is removed by that item's freeze step; this item's OBT acceptance is satisfied when that step merges. flightdata ROUND handling still moves to the fork here.",
   "description": "After D1, benchbox/core/flightdata/queries.py and benchbox/core/tpcds_obt/query_conversion.py stay in the bypass-test allowlist (ast_rewrite). flightdata: one-argument ROUND(double) rounds half to even on PostgreSQL but half away from zero on DuckDB/DECIMAL, and the flightdata queries use ROUND(x*10) on DOUBLE columns, so ties differ; the most correct result requires a fork rewrite that casts ROUND inputs to DECIMAL (generic, named, opt-in argument or generator behavior) with an executed Postgres/DuckDB test. tpcds_obt: about 1,500 lines of benchmark-specific AST restructuring that builds the one-big-table query set; it is benchmark definition logic, not dialect translation, so it needs an owner classification: keep as benchmark logic with a documented allowlist reason (it does not translate between dialects) or split into generic fork rewrites plus benchmark data. Until decided, the allowlist cannot be reduced to parse-only entries.",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "op": "create",
       "op_id": "ed493668a1744b1b9f2e524d6d15cf29",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-23T15:46:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5a076c37f1f245cdbca6e0821958cdba",
+      "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
 }
