@@ -253,7 +253,7 @@ def test_make_release_check_refuses_stale_lock_without_modifying_it(
     subprocess.run(["uv", "lock", "--offline"], cwd=tree, check=True, capture_output=True)
     original = (tree / "uv.lock").read_bytes()
     project = tree / "pyproject.toml"
-    project.write_text(project.read_text().replace('version = "1.2.3"', 'version = "1.2.4"'))
+    project.write_text(project.read_text(encoding="utf-8").replace('version = "1.2.3"', 'version = "1.2.4"'))
     result = subprocess.run(
         ["make", "-f", str(REPO_ROOT / "Makefile"), "release-check", "VERSION=1.2.4"],
         cwd=tree,
@@ -444,7 +444,7 @@ def candidate_tree(tmp_path: Path) -> tuple[Path, str]:
 def test_candidate_selection_catches_each_split_version_bump(candidate_tree: tuple[Path, str], path: str) -> None:
     root, base = candidate_tree
     file = root / path
-    file.write_text(file.read_text().replace(VERSION, "1.2.4"))
+    file.write_text(file.read_text(encoding="utf-8").replace(VERSION, "1.2.4"))
     selected, _version, freshness_required = release_flow.select_candidate(root, base)
     assert selected
     assert freshness_required
@@ -467,7 +467,7 @@ def test_candidate_selection_catches_release_section_and_lock_schema(
 ) -> None:
     root, base = candidate_tree
     file = root / path
-    file.write_text(file.read_text().replace(old, new))
+    file.write_text(file.read_text(encoding="utf-8").replace(old, new))
     assert release_flow.select_candidate(root, base)[0]
 
 
@@ -476,12 +476,14 @@ def test_candidate_selection_preserves_ordinary_prose_dependency_and_source_edit
 ) -> None:
     root, base = candidate_tree
     readme = root / "README.md"
-    readme.write_text(readme.read_text() + "\nInstallation instructions improved.\n")
+    readme.write_text(readme.read_text(encoding="utf-8") + "\nInstallation instructions improved.\n")
     project = root / "pyproject.toml"
-    project.write_text(project.read_text().replace("[tool.ruff]", 'dependencies = ["packaging>=24"]\n\n[tool.ruff]'))
+    project.write_text(
+        project.read_text(encoding="utf-8").replace("[tool.ruff]", 'dependencies = ["packaging>=24"]\n\n[tool.ruff]')
+    )
     (root / "benchbox/new_module.py").write_text('"""Ordinary module."""\n')
     changelog = root / "CHANGELOG.md"
-    changelog.write_text(changelog.read_text().replace("Earlier entry.", "Clarified older entry."))
+    changelog.write_text(changelog.read_text(encoding="utf-8").replace("Earlier entry.", "Clarified older entry."))
     assert release_flow.select_candidate(root, base) == (False, VERSION, False)
 
 
@@ -501,7 +503,9 @@ def test_candidate_selection_includes_committed_enforcement_changes(
     root, base = candidate_tree
     file = root / path
     file.parent.mkdir(parents=True, exist_ok=True)
-    file.write_text(file.read_text() + "\n# Updated enforcement.\n" if file.exists() else "# Updated enforcement.\n")
+    file.write_text(
+        file.read_text(encoding="utf-8") + "\n# Updated enforcement.\n" if file.exists() else "# Updated enforcement.\n"
+    )
     git(root, "add", "--", path)
     git(root, "commit", "-q", "-m", "Update release enforcement")
     assert release_flow.select_candidate(root, base) == (True, VERSION, False)
@@ -514,7 +518,7 @@ def test_candidate_selection_requires_freshness_when_the_gate_itself_changes(
     root, base = candidate_tree
     file = root / path
     file.parent.mkdir(parents=True, exist_ok=True)
-    file.write_text(file.read_text() + "\n" if file.exists() else "\n")
+    file.write_text(file.read_text(encoding="utf-8") + "\n" if file.exists() else "\n")
     git(root, "add", "--", path)
     git(root, "commit", "-q", "-m", "Update freshness gate")
     assert release_flow.select_candidate(root, base) == (True, VERSION, True)
@@ -528,7 +532,7 @@ def test_ci_release_check_step_passes_skip_only_when_freshness_not_required(
 ) -> None:
     import yaml
 
-    workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
+    workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     check = next(step for step in workflow["jobs"]["ci-paths"]["steps"] if step.get("name") == "Check release content")
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -546,7 +550,7 @@ def test_ci_release_check_step_passes_skip_only_when_freshness_not_required(
     step_script = tmp_path / "step.sh"
     step_script.write_text(check["run"])
     subprocess.run(["sh", "-c", '. "$1"', "sh", str(step_script)], env=env, check=True)
-    args = calls.read_text().split()
+    args = calls.read_text(encoding="utf-8").split()
     assert args[0] == "release-check"
     skip = [a for a in args if a.startswith("SKIP_UPSTREAM_FRESHNESS=")]
     assert skip == ([expected] if expected else ["SKIP_UPSTREAM_FRESHNESS="])
@@ -592,7 +596,7 @@ def test_candidate_selection_cli_is_stdlib_only_and_preserves_lock(
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert (
-        output.read_text()
+        output.read_text(encoding="utf-8")
         == f"release-check-needed=false\nrelease-version={VERSION}\nupstream-freshness-required=false\n"
     )
     assert (root / "uv.lock").read_bytes() == original
@@ -601,7 +605,7 @@ def test_candidate_selection_cli_is_stdlib_only_and_preserves_lock(
 def test_candidate_check_is_required_on_pull_requests_without_changing_legacy_publisher() -> None:
     import yaml
 
-    workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
+    workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     classifier = workflow["jobs"]["ci-paths"]
     assert classifier.get("if") == "${{ !(github.event.action == 'edited' && !github.event.changes.base) }}"
     steps = classifier["steps"]
@@ -617,7 +621,7 @@ def test_candidate_check_is_required_on_pull_requests_without_changing_legacy_pu
     assert "ci-paths" in core["needs"]
     aggregate = next(step for step in core["steps"] if step.get("id") == "aggregate")
     assert "--always ci-paths" in aggregate["run"]
-    assert "origin/release" in (REPO_ROOT / ".github/workflows/release.yml").read_text()
+    assert "origin/release" in (REPO_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
 
 
 def test_make_targets_exist_and_legacy_release_targets_are_kept() -> None:
