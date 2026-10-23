@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The lint job collects the test suite once. `make lint-markers` collects with `--assert=plain` and records every test's markers to `$MARKER_MANIFEST`; the fast-lane guard (`fast_lane_ceiling_check.py`) evaluates each forbidden marker expression and path substring against that record with pytest's own marker-expression evaluation, instead of running one full collection per expression. Collection errors and unregistered markers still fail; violations and counts are unchanged.
 - Trino, Presto and Athena build their `CREATE TABLE` DDL with `translate_ddl` instead of
   adapter-side text rewrites. Table names are written quoted (`"orders"` on Trino and Presto,
   `` `orders` `` on Athena) instead of bare, and Athena columns are backtick-quoted; the

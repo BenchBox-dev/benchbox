@@ -639,6 +639,8 @@ jobs:
       - name: Validate test marker annotations
         id: guard-lint-markers
         continue-on-error: true
+        env:
+          MARKER_MANIFEST: ${{ runner.temp }}/marker-manifest.json
         run: make lint-markers
 
       - name: Validate import layering
@@ -674,6 +676,8 @@ jobs:
       - name: Fast lane marker and path guards
         id: guard-fast-lane-markers
         continue-on-error: true
+        env:
+          MARKER_MANIFEST: ${{ runner.temp }}/marker-manifest.json
         run: uv run -- python _project/scripts/fast_lane_ceiling_check.py --strict
 
       - name: UAT spec LOC table drift check

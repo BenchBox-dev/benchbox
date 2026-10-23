@@ -40,6 +40,8 @@ jobs:
         run: make typecheck
 
       - name: Validate test marker annotations
+        env:
+          MARKER_MANIFEST: ${{ runner.temp }}/marker-manifest.json
         run: make lint-markers
 
       - name: Timing policy (wall-clock allowlist)
@@ -48,6 +50,8 @@ jobs:
 
       - name: Fast lane ceiling
         if: hashFiles('_project/scripts/fast_lane_ceiling_check.py') != ''
+        env:
+          MARKER_MANIFEST: ${{ runner.temp }}/marker-manifest.json
         run: uv run -- python _project/scripts/fast_lane_ceiling_check.py --strict
 
       - name: UAT spec LOC table drift check

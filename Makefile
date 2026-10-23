@@ -498,7 +498,7 @@ comment-policy-report:
 
 .PHONY: lint-markers
 lint-markers:
-	uv run -- python -m pytest --collect-only -q -p no:warnings
+	uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $(if $(MARKER_MANIFEST),--marker-manifest=$(MARKER_MANIFEST))
 	uv run -- python -m pytest tests/unit/test_marker_strategy.py -q
 
 .PHONY: lint-imports
@@ -640,6 +640,8 @@ ci-lint:
 	@echo "Running CI lint checks..."
 	@case " $(MAKEFLAGS) " in *" n "*|*" -n "*|*" --just-print "*) echo "Dry-run: ci-lint guards suppressed"; exit 0;; esac; \
 	set +e; failed=""; \
+	MARKER_MANIFEST=$$(mktemp "$${TMPDIR:-/tmp}/benchbox-marker-manifest.XXXXXX"); export MARKER_MANIFEST; \
+	trap 'rm -f "$$MARKER_MANIFEST"' EXIT; \
 	uv run ruff check .; \
 	[ $$? -eq 0 ] || failed="$$failed ruff-check"; \
 	uv run ruff format --check .; \

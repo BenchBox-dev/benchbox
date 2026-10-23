@@ -3,11 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import Callable, TypedDict, cast
+
+from _pytest.mark.expression import Expression
 
 
 class FastLanePolicy(TypedDict, total=False):
@@ -25,97 +27,109 @@ def _load_fast_lane_policy(path: Path) -> FastLanePolicy:
     return cast(FastLanePolicy, data)
 
 
-_COLLECT_COUNT_PATTERN = re.compile(r"(\d+)/(\d+) tests collected(?: \((\d+) deselected\))?")
+_MANIFEST_PLUGIN = "tests.utilities.marker_manifest"
 
 
-def _run_pytest_collect(repo_root: Path, markexpr: str) -> tuple[int, str]:
+def _collect_manifest(repo_root: Path, manifest: Path) -> None:
     env = dict(os.environ)
     env["BENCHBOX_SKIP_TEST_LOCK"] = "1"
+    plugin_root = str(Path(__file__).resolve().parents[2])
+    env["PYTHONPATH"] = os.pathsep.join(part for part in (plugin_root, env.get("PYTHONPATH", "")) if part)
     cmd = [
         sys.executable,
         "-m",
         "pytest",
         "-n",
         "0",
-        "-m",
-        markexpr,
         "--collect-only",
         "-q",
+        "-p",
+        "no:warnings",
+        "--assert=plain",
+        "-p",
+        _MANIFEST_PLUGIN,
+        f"--marker-manifest={manifest}",
     ]
-    result = subprocess.run(
-        cmd,
-        cwd=repo_root,
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=180,
-        check=False,
-    )
-    output = "\n".join(part for part in (result.stdout, result.stderr) if part)
-    return result.returncode, output
+    result = subprocess.run(cmd, cwd=repo_root, env=env, capture_output=True, text=True, timeout=300, check=False)
+    if result.returncode not in (0, 5) or not manifest.is_file():
+        output = "\n".join(part for part in (result.stdout, result.stderr) if part)
+        raise _collect_environment_error(f"exit {result.returncode}", output)
 
 
 class FastLaneCollectError(RuntimeError):
-    def __init__(self, message: str, *, violations: list[str] | None = None) -> None:
-        super().__init__(message)
-        self.violations = list(violations or [])
+    pass
 
 
-def _collect_environment_error(
-    markexpr: str, returncode: int, output: str, *, violations: list[str] | None = None
-) -> FastLaneCollectError:
+def _collect_environment_error(reason: str, output: str) -> FastLaneCollectError:
     tail = "\n".join(line for line in output.strip().splitlines()[-5:])
     return FastLaneCollectError(
-        f"could not run pytest --collect-only for '-m {markexpr}' "
-        f"(exit {returncode}) using interpreter {sys.executable}. "
+        f"could not run pytest --collect-only ({reason}) using interpreter {sys.executable}. "
         "This usually means pytest or benchbox is not importable in that "
         "environment - run the check from the project environment, e.g. "
         "`uv run -- python _project/scripts/fast_lane_ceiling_check.py --strict`. "
-        f"Last output lines:\n{tail}",
-        violations=violations,
+        f"Last output lines:\n{tail}"
     )
 
 
-def _parse_collect_count(output: str) -> int | None:
-    match = _COLLECT_COUNT_PATTERN.search(output)
-    if match:
-        return int(match.group(1))
-    if "no tests collected" in output.lower():
-        return 0
-    return None
+def _read_manifest(path: Path) -> list[tuple[str, frozenset[str]]]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if data["version"] != 1:
+            raise ValueError(f"unsupported manifest version {data['version']!r}")
+        return [(str(item["id"]), frozenset(item["markers"])) for item in data["items"]]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise FastLaneCollectError(f"marker manifest {path} is missing or unreadable: {exc}") from exc
 
 
-def _check_fast_lane_policy(repo_root: Path, policy: FastLanePolicy) -> list[str]:
+def _compile_marker_expression(expr: str) -> Expression:
+    try:
+        return Expression.compile(expr)
+    except Exception as exc:
+        raise FastLaneCollectError(f"invalid marker expression {expr!r}: {exc}") from exc
+
+
+def _marker_matcher(markers: frozenset[str]) -> Callable[..., bool]:
+    def _match(name: str, /, **kwargs: object) -> bool:
+        if kwargs:
+            raise FastLaneCollectError(f"marker expression arguments are not supported: {name}({kwargs})")
+        return name in markers
+
+    return _match
+
+
+def _check_fast_lane_policy(repo_root: Path, policy: FastLanePolicy, manifest: Path | None = None) -> list[str]:
     if not policy or not policy.get("enabled", True):
         return []
 
-    violations: list[str] = []
     forbidden_marker_expressions = policy.get("forbidden_marker_expressions", [])
     forbidden_path_substrings = policy.get("forbidden_path_substrings", [])
+    if not forbidden_marker_expressions and not forbidden_path_substrings:
+        return []
+
+    if manifest is not None:
+        items = _read_manifest(manifest)
+    else:
+        with tempfile.TemporaryDirectory(prefix="benchbox-marker-manifest-") as tmp:
+            target = Path(tmp) / "manifest.json"
+            _collect_manifest(repo_root, target)
+            items = _read_manifest(target)
+
+    violations: list[str] = []
+    fast_items = [(nodeid, markers) for nodeid, markers in items if _marker_matcher(markers)("fast")]
+    print(f"Fast lane collected {len(fast_items)} test(s) from {len(items)} in the marker manifest")
 
     if forbidden_path_substrings:
-        rc, fast_output = _run_pytest_collect(repo_root, "fast")
-        print(f"Fast lane collect exit code: {rc}")
-        if rc not in (0, 5):
-            raise _collect_environment_error("fast", rc, fast_output)
-        if _parse_collect_count(fast_output) is None:
-            raise _collect_environment_error("fast", rc, fast_output)
-        offending_lines = [
-            line
-            for line in fast_output.splitlines()
-            if "::" in line and any(substring in line for substring in forbidden_path_substrings)
+        offending_ids = [
+            nodeid
+            for nodeid, _ in fast_items
+            if "::" in nodeid and any(substring in nodeid for substring in forbidden_path_substrings)
         ]
-        if offending_lines:
-            violations.append("fast lane includes Java/Spark-adjacent test paths: " + ", ".join(offending_lines[:10]))
+        if offending_ids:
+            violations.append("fast lane includes Java/Spark-adjacent test paths: " + ", ".join(offending_ids[:10]))
 
     for expr in forbidden_marker_expressions:
-        rc, output = _run_pytest_collect(repo_root, f"fast and {expr}")
-        print(f"Fast lane intersection '{expr}' exit code: {rc}")
-        if rc not in (0, 5):
-            raise _collect_environment_error(f"fast and {expr}", rc, output, violations=violations)
-        count = _parse_collect_count(output)
-        if count is None:
-            raise _collect_environment_error(f"fast and {expr}", rc, output, violations=violations)
+        compiled = _compile_marker_expression(f"fast and {expr}")
+        count = sum(1 for _, markers in items if compiled.evaluate(_marker_matcher(markers)))
         print(f"Fast lane intersection '{expr}' count: {count}")
         if count != 0:
             violations.append(f"fast lane unexpectedly includes {count} test(s) matching 'fast and {expr}'")
@@ -130,6 +144,11 @@ def main() -> int:
         default="_project/config/fast_test_lane_policy.json",
         help="Fast-lane guardrail JSON file path",
     )
+    parser.add_argument(
+        "--manifest",
+        default=os.environ.get("MARKER_MANIFEST") or None,
+        help="Marker manifest written by `make lint-markers` (default: $MARKER_MANIFEST); collected here when unset",
+    )
     parser.add_argument("--strict", action="store_true", help="Fail on any fast-lane policy violation")
     args = parser.parse_args()
 
@@ -139,9 +158,11 @@ def main() -> int:
     fast_lane_violations: list[str]
     fast_lane_environment_error = False
     try:
-        fast_lane_violations = _check_fast_lane_policy(repo_root, fast_lane_policy)
+        fast_lane_violations = _check_fast_lane_policy(
+            repo_root, fast_lane_policy, Path(args.manifest) if args.manifest else None
+        )
     except FastLaneCollectError as exc:
-        fast_lane_violations = exc.violations
+        fast_lane_violations = []
         print(f"Fast lane policy violations: {len(fast_lane_violations)}")
         for violation in fast_lane_violations:
             print(f"FAST_LANE_VIOLATION: {violation}")
