@@ -28595,6 +28595,13 @@
       "status": "done",
       "title": "Verify the validate-submission CI workflow end-to-end with a real PR"
     },
+    "verify-curl-installed-binaries-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Verify binaries installed with curl | sh while system curl trusted the compromised CAs"
+    },
     "verify-flag-separator-collides-with-pytest-node-ids": {
       "claim": null,
       "needs": [],

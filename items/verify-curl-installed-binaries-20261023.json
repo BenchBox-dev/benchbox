@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Each listed binary matches its publisher's checksum or signature, or has been reinstalled from a verified download or removed"
+  ],
+  "description": "These tools on the maintainer's Mac were installed or updated with `curl ... | sh` through `/usr/bin/curl`, which trusted the compromised eMudhra emSign CAs until 2026-10-23, and carry only ad-hoc signatures, so nothing independent of TLS vouches for them: px0, clickhousectl, jcode, cedardb, prime-agent and `/tmp/chbin/clickhouse`. Compare each against its publisher's checksums or signatures fetched with a trusted client (uv 0.13.5, or Python with certifi >= 2026.10.18), and reinstall or remove any that do not match. `muse` updates itself hourly through `/usr/bin/curl` and checks a sha256 fetched over the same channel; the system bundle is fixed now, but consider asking for a signed update or pinning.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:03:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "905d2a9df9ff4ee8a054a83705c25fbe",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    }
+  ]
+}
