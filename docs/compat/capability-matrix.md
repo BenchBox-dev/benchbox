@@ -458,7 +458,7 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 | query_adapter | benchmark=tpchavoc, query=10_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-duckdb.tpchavoc.10_v7.inline_select_alias` |
 | query_adapter | benchmark=tpchavoc, query=11_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-duckdb.tpchavoc.11_v7.inline_select_alias` |
 | query_adapter | benchmark=tpchavoc, query=17_v2 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-duckdb.tpchavoc.17_v2.qualify_columns` |
-| query_adapter | benchmark=tpchavoc, query=17_v4 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-duckdb.tpchavoc.17_v4.values_source` |
+| query_adapter | benchmark=tpchavoc, query=17_v4 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-duckdb.tpchavoc.17_v4.drop_row_source` |
 | query_adapter | benchmark=tpchavoc, query=2_v5 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-duckdb.tpchavoc.2_v5.qualify_columns` |
 | query_adapter | benchmark=tpchavoc, query=3_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-duckdb.tpchavoc.3_v7.inline_select_alias` |
 | query_adapter | benchmark=tpchavoc, query=4_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-duckdb.tpchavoc.4_v7.inline_select_alias` |
@@ -490,7 +490,7 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 | query_adapter | benchmark=tpchavoc, query=10_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-mooncake.tpchavoc.10_v7.inline_select_alias` |
 | query_adapter | benchmark=tpchavoc, query=11_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-mooncake.tpchavoc.11_v7.inline_select_alias` |
 | query_adapter | benchmark=tpchavoc, query=17_v2 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-mooncake.tpchavoc.17_v2.qualify_columns` |
-| query_adapter | benchmark=tpchavoc, query=17_v4 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-mooncake.tpchavoc.17_v4.values_source` |
+| query_adapter | benchmark=tpchavoc, query=17_v4 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-mooncake.tpchavoc.17_v4.drop_row_source` |
 | query_adapter | benchmark=tpchavoc, query=2_v5 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-mooncake.tpchavoc.2_v5.qualify_columns` |
 | query_adapter | benchmark=tpchavoc, query=3_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-mooncake.tpchavoc.3_v7.inline_select_alias` |
 | query_adapter | benchmark=tpchavoc, query=4_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.pg-mooncake.tpchavoc.4_v7.inline_select_alias` |
@@ -742,7 +742,7 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 | query_adapter | benchmark=tpchavoc, query=10_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.timescaledb.tpchavoc.10_v7.inline_select_alias` |
 | query_adapter | benchmark=tpchavoc, query=11_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.timescaledb.tpchavoc.11_v7.inline_select_alias` |
 | query_adapter | benchmark=tpchavoc, query=17_v2 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.timescaledb.tpchavoc.17_v2.qualify_columns` |
-| query_adapter | benchmark=tpchavoc, query=17_v4 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.timescaledb.tpchavoc.17_v4.values_source` |
+| query_adapter | benchmark=tpchavoc, query=17_v4 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.timescaledb.tpchavoc.17_v4.drop_row_source` |
 | query_adapter | benchmark=tpchavoc, query=2_v5 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.timescaledb.tpchavoc.2_v5.qualify_columns` |
 | query_adapter | benchmark=tpchavoc, query=3_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.timescaledb.tpchavoc.3_v7.inline_select_alias` |
 | query_adapter | benchmark=tpchavoc, query=4_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.timescaledb.tpchavoc.4_v7.inline_select_alias` |

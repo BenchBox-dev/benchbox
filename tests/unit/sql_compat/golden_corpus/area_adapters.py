@@ -3,8 +3,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from unittest.mock import patch
 
-from benchbox.utils.dialect_utils import apply_rewrite
-from tests.unit.sql_compat.golden_corpus import Case
+from benchbox.utils.dialect_utils import apply_rewrite, unqualified_table_names
+from tests.unit.sql_compat.golden_corpus import Case, frozen_legacy
+
+AREA = "area_adapters"
 
 BIGQUERY_DIVISION = [
     "SELECT a / b FROM `T`",
@@ -251,19 +253,6 @@ def _bigquery_legacy(method: str, *args) -> Callable[[], str]:
     return run
 
 
-def _snowflake_legacy(sql: str) -> Callable[[], str]:
-    def run() -> str:
-        from benchbox.platforms.snowflake import SnowflakeAdapter
-
-        with (
-            patch("benchbox.platforms.snowflake.check_platform_dependencies", return_value=(True, [])),
-            patch("benchbox.platforms.snowflake.snowflake"),
-        ):
-            return SnowflakeAdapter(account="acct", username="u", password="p")._safeguard_snowflake_division(sql)
-
-    return run
-
-
 def _databricks_adapter():
     from benchbox.platforms.databricks import DatabricksAdapter
 
@@ -278,7 +267,7 @@ def _databricks_adapter():
         )
 
 
-def _databricks_legacy(method: str, sql: str) -> Callable[[], str]:
+def _databricks_adapter_call(method: str, sql: str) -> Callable[[], str]:
     def run() -> str:
         return getattr(_databricks_adapter(), method)(sql)
 
@@ -366,15 +355,7 @@ def _bigquery_qualify_fork(sql: str) -> Callable[[], str]:
 
 def _bigquery_extract_fork(sql: str) -> Callable[[], str]:
     def run() -> str:
-        from benchbox._vendor import sqlglot
-
-        names: list[str] = []
-        for statement in sqlglot.parse(sql, read="bigquery"):
-            for table in _unqualified_tables(statement):
-                name = table.name.upper()
-                if name not in names:
-                    names.append(name)
-        return str(names)
+        return str(unqualified_table_names(sql, "bigquery"))
 
     return run
 
@@ -386,7 +367,7 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"bigquery_division_{index}",
-                _bigquery_legacy("_safeguard_division_by_zero", sql),
+                frozen_legacy(AREA, f"bigquery_division_{index}"),
                 _fork_rewrite("safe_division", sql, "bigquery"),
             )
         )
@@ -395,21 +376,21 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"bigquery_division_tpch_q{number}",
-                _bigquery_legacy("_safeguard_division_by_zero", sql),
+                frozen_legacy(AREA, f"bigquery_division_tpch_q{number}"),
                 _fork_rewrite("safe_division", sql, "bigquery"),
             )
         )
         found.append(
             Case(
                 f"snowflake_division_tpch_q{number}",
-                _snowflake_legacy(sql),
+                frozen_legacy(AREA, f"snowflake_division_tpch_q{number}"),
                 _fork_rewrite("safe_division", sql, "snowflake"),
             )
         )
         found.append(
             Case(
                 f"databricks_division_tpch_q{number}",
-                _databricks_legacy("_safeguard_databricks_division", sql),
+                frozen_legacy(AREA, f"databricks_division_tpch_q{number}"),
                 _fork_rewrite("safe_division", sql, "databricks"),
             )
         )
@@ -425,7 +406,7 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"snowflake_division_{index}",
-                _snowflake_legacy(sql),
+                frozen_legacy(AREA, f"snowflake_division_{index}"),
                 _fork_rewrite("safe_division", sql, "snowflake"),
             )
         )
@@ -434,7 +415,7 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"databricks_division_{index}",
-                _databricks_legacy("_safeguard_databricks_division", sql),
+                frozen_legacy(AREA, f"databricks_division_{index}"),
                 _fork_rewrite("safe_division", sql, "databricks"),
             )
         )
@@ -503,8 +484,8 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"databricks_dedupe_{index}",
-                _databricks_legacy("_deduplicate_output_aliases", sql),
-                _fork_rewrite("deduplicate_output_aliases", sql, "databricks"),
+                frozen_legacy(AREA, f"databricks_dedupe_{index}"),
+                _fork_rewrite("deduplicate_output_aliases", sql, "databricks", nested=False),
             )
         )
 
@@ -512,8 +493,8 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"databricks_normalize_{index}",
-                _databricks_legacy("_normalize_databricks_query", sql),
-                _databricks_normalize_fork(sql),
+                frozen_legacy(AREA, f"databricks_normalize_{index}"),
+                _databricks_adapter_call("_normalize_databricks_query", sql),
             )
         )
 
@@ -521,7 +502,7 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"databricks_pk_ddl_{index}",
-                _databricks_legacy("_fix_databricks_sql_syntax", sql),
+                frozen_legacy(AREA, f"databricks_pk_ddl_{index}"),
                 _databricks_ddl_fork(sql),
             )
         )
@@ -539,20 +520,9 @@ def cases() -> list[Case]:
         found.append(
             Case(
                 f"bigquery_extract_{index}",
-                _bigquery_legacy("_extract_unqualified_tables", sql),
+                frozen_legacy(AREA, f"bigquery_extract_{index}"),
                 _bigquery_extract_fork(sql),
             )
         )
 
     return found
-
-
-def _databricks_normalize_fork(sql: str) -> Callable[[], str]:
-    def run() -> str:
-        from benchbox._vendor import sqlglot
-
-        expression = sqlglot.parse_one(sql, read="databricks")
-        expression = apply_rewrite("deduplicate_output_aliases", expression, "databricks")
-        return apply_rewrite("safe_division", expression, "databricks").sql(dialect="databricks")
-
-    return run

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.dialect_utils import translate_ddl
 
 if TYPE_CHECKING:
     from benchbox.core.tuning.interface import (
@@ -719,22 +720,21 @@ class SnowflakeAdapter(PlatformAdapter):
             cursor.execute(f"ALTER SESSION SET QUERY_TAG = '{self.query_tag}_schema_creation'")
 
             self.log_very_verbose("Retrieving schema SQL from benchmark")
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
 
             from benchbox.platforms.cloud_shared import split_leading_sql_comments
 
             statements = [
-                stmt.strip()
-                for stmt in schema_sql.split(";")
-                if stmt.strip() and split_leading_sql_comments(stmt)[1].strip()
+                statement
+                for statement in translate_ddl(schema_sql, self.get_target_dialect(), or_replace=True)
+                if split_leading_sql_comments(statement)[1].strip()
             ]
 
             self.log_verbose(f"Executing {len(statements)} schema statements")
 
             for i, statement in enumerate(statements, 1):
-                optimized_statement = self._optimize_table_definition(statement)
-                self.log_very_verbose(f"Executing statement {i}/{len(statements)}: {optimized_statement[:100]}...")
-                cursor.execute(optimized_statement)
+                self.log_very_verbose(f"Executing statement {i}/{len(statements)}: {statement[:100]}...")
+                cursor.execute(statement)
 
             self.log_verbose("Schema created successfully")
 
@@ -1342,27 +1342,6 @@ class SnowflakeAdapter(PlatformAdapter):
 
         return SnowflakeQueryPlanParser()
 
-    def _optimize_table_definition(self, statement: str) -> str:
-        from benchbox.platforms.cloud_shared import split_leading_sql_comments
-
-        prefix, body = split_leading_sql_comments(statement)
-        if not body.upper().startswith("CREATE TABLE"):
-            return statement
-
-        if "CREATE TABLE" in body and "OR REPLACE" not in body.upper():
-            if "IF NOT EXISTS" not in body.upper():
-                body = body.replace("CREATE TABLE", "CREATE OR REPLACE TABLE", 1)
-        statement = prefix + body
-
-        import re
-
-        parts = re.split(r"('(?:[^']|'')*')", statement)
-        for index in range(0, len(parts), 2):
-            parts[index] = re.sub(r'"([^"]+)"', lambda m: m.group(0).upper(), parts[index])
-        statement = "".join(parts)
-
-        return statement
-
     def _apply_fork_safe_division(self, query: str) -> str:
         from benchbox.utils.dialect_utils import apply_rewrite
 
@@ -1373,34 +1352,6 @@ class SnowflakeAdapter(PlatformAdapter):
         except Exception as e:
             self.log_very_verbose(f"Division safeguard skipped (unparseable Snowflake SQL): {e}")
             return query
-
-    def _safeguard_snowflake_division(self, query: str) -> str:
-        try:
-            from benchbox._vendor import sqlglot
-            from benchbox._vendor.sqlglot import exp
-        except ImportError:
-            return query
-
-        try:
-            tree = sqlglot.parse_one(query, read="snowflake")
-        except Exception as e:
-            self.log_very_verbose(f"Division safeguard skipped (unparseable Snowflake SQL): {e}")
-            return query
-        if not any(isinstance(node, exp.Div) for node in tree.walk()):
-            return query
-
-        def to_nullif_divisor(node: exp.Expression) -> exp.Expression:
-            if isinstance(node, exp.Div):
-                return exp.Div(
-                    this=node.this.copy(),
-                    expression=exp.Anonymous(
-                        this="NULLIF",
-                        expressions=[node.expression.copy(), exp.Literal.number(0)],
-                    ),
-                )
-            return node
-
-        return tree.transform(to_nullif_divisor).sql(dialect="snowflake")
 
     def _get_existing_tables(self, connection: Any) -> list[str]:
         try:

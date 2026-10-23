@@ -5,8 +5,8 @@ from benchbox.sql_compat.rules._registration import register_ddl_rewrite
 register_ddl_rewrite(
     platform="bigquery",
     rule_name="convert_to_bigquery_table",
-    transformer_id="bigquery_convert_to_bigquery_table",
-    description="Convert DuckDB-style CREATE TABLE to BigQuery DDL: CREATE OR REPLACE TABLE, "
+    transformer_id="translate_ddl:or_replace+schema+table_case",
+    description="Convert DuckDB-style CREATE TABLE to BigQuery DDL through translate_ddl: CREATE OR REPLACE TABLE, "
     "project.dataset table qualification, DECIMAL/NUMERIC(p,s) exceeding NUMERIC limits rewritten "
     "to BIGNUMERIC, inline PRIMARY KEY converted to a NOT ENFORCED table constraint, "
     "and optional PARTITION BY / CLUSTER BY clauses.",

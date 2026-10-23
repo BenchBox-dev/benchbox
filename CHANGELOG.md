@@ -23,9 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Differences must be listed with a justification in
   `scripts/sql_execution_gate/expected_differences.json`. The `sql-execution-evidence` CI job
   runs it when SQL translation changes, and the pull request template asks for its output on
-  every wheel adoption. It reports DataFusion and PostgreSQL integer-division truncation in
-  TPC-DS Q21, Q78 and Q83 (tracked), and the bundled wheel's SQLite gaps (no ROLLUP, GROUPING
-  or STDDEV_SAMP, parenthesised EXCEPT operands in Q87).
+  every wheel adoption.
 - `benchbox.utils.dialect_utils.translate_ddl(ddl, target_dialect, source_dialect, identify, **options)`
   translates DDL with the bundled SQLGlot runtime's `DdlOptions` and engine-specific
   table layouts. It is the only module allowed to import the runtime's DDL module; a
@@ -39,7 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `apply_rewrite` tests pin the named registry: every TPC-Havoc, Spark, DataFusion and engine
   rewrite in the bundled SQLGlot runtime resolves by name, an unlisted runtime function fails
   the registry test, and every compat, subqueries, date-arithmetic and alias-deduplication
-  rewrite has a documented-output test.
+  rewrite has a documented-output test. The list-aggregate, zero-divisor, ORDER BY alias,
+  ClickHouse alias and decimal-division and rollup-NULL rewrites added in 30.24.0.9 are pinned
+  and have documented-output tests too.
 - A DataFusion test executes TPC-H Q11, Q16, Q18 and Q20 rewritten by the runtime's generic
   decorrelation rewrites at scale factors 0.01 and 0.1 and compares the rows with the
   recorded TPC-H reference row counts and with the unrewritten query on DuckDB.
@@ -57,6 +57,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Databend and Firebolt build their `CREATE TABLE` statements with the SQLGlot fork's `translate_ddl`
   instead of per-adapter text rewrites (`_optimize_table_definition`, `_normalize_table_name_in_sql`).
   Emitted DDL matches the golden corpus; both still drop primary and foreign keys.
+- BigQuery builds `CREATE TABLE` text through `translate_ddl` instead of the adapter's own DDL
+  rewriter, which is deleted. It still writes `CREATE OR REPLACE TABLE`, qualifies `project.dataset`,
+  upper-cases table names and writes `PRIMARY KEY ... NOT ENFORCED`; configured partitioning and
+  clustering become a table layout (at most four clustering columns are kept). Temporary tables keep
+  their name. The output differs in spelling only: project, dataset and table are written as
+  separate identifiers, `STRING(n)` keeps its length, and fixed-size arrays are written as plain arrays.
+- Redshift and Snowflake build `CREATE TABLE` text through `translate_ddl` instead of the
+  adapters' own DDL rewriters, which are deleted. Redshift still adds `DISTSTYLE AUTO SORTKEY AUTO`
+  and Snowflake still writes `CREATE OR REPLACE TABLE`. Snowflake keeps the case of quoted
+  identifiers instead of upper-casing them, and fixed-size arrays are written as plain arrays.
+- TPC-Havoc, Spark and DataFusion query rewrites run through the bundled SQLGlot fork's named rewrites
+  (`translate_sql_query(..., rewrites=...)`); the BenchBox AST rewriters, `SparkTPCHavocQueryTransformer` and the
+  regex `DataFusionQueryTransformer` are removed. DataFusion TPC-H Q11, Q18 and Q20 use the fork's decorrelation and
+  Q16 now rewrites `NOT IN` to `NOT EXISTS`. The earlier regex never matched the shipped Q16 text, so published
+  DataFusion Q16 runs executed the unrewritten `NOT IN` form that the registry marks as silent corruption on
+  DataFusion; those Q16 rows and timings, and the plans and timings for Q11, Q18 and Q20, can differ from earlier
+  results. The new rewrites are validated against DuckDB and the TPC row counts. The
+  TPC-Havoc 17_v4 PostgreSQL text no longer contains `FROM (VALUES (1))`. The 1_v7 array aggregation rewrite stays
+  in BenchBox until the fork provides list-aggregate rewrites. The TPC-DI EQ7 base query is the derived-table form
+  (no `FROM (VALUES (0))` row source), so EQ7 results on engines that rejected the VALUES form change; published EQ7
+  results should be treated as superseded.
+- A pull request title or body edit no longer holds five runners while it waits for the full CI run. The
+  `CI (text edit)` check makes one decision and fails at once when the full run on the commit is missing or still
+  running; the new `ci-text-edit-refresh` workflow re-runs the failed jobs of the newest `CI (text edit)` run on
+  that commit when the full CI run completes. The `oracle-gate` workflow now shares one concurrency group per
+  pull request head commit for runs started by `pull_request` or `pull_request_target` workflows, so superseded
+  gate runs are cancelled.
 - Results anonymization precompiles the key-normalising pattern and caches the
   normalised key and the identifier prefix for a key path (bounded caches, both pure
   functions of their arguments). Anonymizing the committed results corpus is about a third
@@ -226,6 +253,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   operands are integers (literal-only integer division keeps PostgreSQL
   semantics). Results published before this change for the affected SQLite
   queries were computed with different SQL.
+- The bundled SQLGlot runtime moves from 30.24.0.7 to 30.24.0.8 (fork commit
+  `be7ef8643780`). A corpus of 1,127 shipped queries (22 benchmarks, frozen once) across
+  21 target dialects (23,667 translations, no errors in either runtime) changes in 843
+  outputs. Exact division: possibly-truncating divisions are now written with a cast to
+  an approximate numeric on Athena, DataFusion, PostgreSQL, Presto, QuestDB, Redshift,
+  Teradata, Trino and T-SQL (90 outputs each: TPC-DS 24, TPC-DS OBT 22, TPC-DI 13,
+  TPC-Havoc 11, NYC Taxi 6, CoffeeShop 5, FlightData 4, Read Primitives 2, TPC-H 1,
+  TPC-H Skew 1, Data Vault 1). SQLite grouping sets (`ROLLUP`, `CUBE`, `GROUPING`),
+  population and sample variance and standard deviation, and parenthesised compound
+  operands are now expanded to SQL SQLite runs (33 outputs: TPC-DS 14, TPC-DS OBT 12,
+  TPC-DI 3, Read Primitives 3, TPC-Havoc 1). Results published before this change for
+  the affected queries on these engines were computed with different SQL; TPC-DS
+  Q21, Q78 and Q83 on DataFusion returned truncated ratios and now match DuckDB
+  (PostgreSQL is not run by the local gate, which needs `BENCHBOX_POSTGRES_DSN`). `make sql-execution-gate` reports 17 verified improvements and lists five
+  DataFusion TPC-DS outputs (Q12, Q36, Q59, Q66, Q98) whose ratio columns now carry
+  full double precision instead of six decimals.
+- The bundled SQLGlot runtime moves from 30.24.0.8 to 30.24.0.9 (fork commit
+  `6084c07075ac`). It adds BigQuery, Snowflake and Synapse table layouts to `translate_ddl`,
+  the `reduce_list_aggregates`, `nullif_zero_divisors`, `inline_order_by_aliases`,
+  `alias_qualified_projections`, `qualify_alias_shadowed_columns`, `decimal_division_to_double`
+  and `use_nulls_for_rollups` rewrites to the `apply_rewrite` registry, and keeps temporary
+  table names unqualified. BenchBox does not call the new rewrites or pass layouts to those
+  three platforms yet: the 23,667 translations of the 1,127 frozen shipped queries across 21
+  target dialects, the 2,600 golden-corpus runtime outputs and `make sql-execution-gate`
+  are unchanged from 30.24.0.8, so no published result changes.
+- SQLite TPC-DS translation marks the TPC-DS `DATE` columns through the runtime's
+  `mark_date_columns` rewrite on the parsed tree (`translate_sql_query(date_columns=..)`),
+  so Q72's `d3.d_date > d1.d_date + 5` adds five whole days to the date text instead of
+  adding 5 to the leading number of the text. Q72 is the only shipped TPC-DS query whose
+  SQLite text changes; TPC-DS Q72 results published for SQLite were computed with the
+  unmarked predicate.
 - The DDL golden corpus passes the runtime's new DDL options (`table_case`,
   `strip_with_properties`, QuestDB layout fields, SingleStore `DATETIME`, StarRocks
   `float_as_real`) and records a classification and reason (`equivalent`,
@@ -235,6 +293,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on SingleStore and `VECTOR(n)` on a SQL Server or Azure SQL target with the
   `vector_type` option; on every other T-SQL target (Synapse, Fabric) the runtime
   raises a `ValueError` instead of writing an array type those engines reject.
+- The BigQuery, Snowflake and Databricks adapters no longer carry their own AST
+  division safeguards, the Databricks output-alias deduplication, the unqualified-table
+  scan, the `PRIMARY KEY ... NULLS` syntax fix, the TPC-DI SQLite-idiom regexes
+  (`JULIANDAY`, `DATE('now')`, flag comparisons) or the ClickBench Snowflake
+  regex-group rewrite; the bundled SQLGlot runtime owns each of them. The Databricks
+  adapter now applies alias deduplication (top-level `SELECT` only) and `safe_division`
+  in one parse and returns the query text untouched when neither changes it.
+  `translate_sql_query` accepts `rewrites=` to apply named runtime rewrites to the source
+  tree before generation; `apply_rewrites` applies several to one query with a single
+  parse; `unqualified_table_names` lists the tables a BigQuery statement leaves
+  unqualified. TPC-DI now renders `IsCurrent`, `TT_IS_SELL` and `HolidayFlag`
+  comparisons as booleans for BigQuery (`= TRUE`) and Databricks (`IS TRUE`) at
+  translation time, and the runtime's generators emit the date arithmetic: PostgreSQL
+  `JULIANDAY` differences are `EXTRACT(epoch ...) / 86400` cast to `BIGINT`, DuckDB uses
+  `DATE_DIFF('DAY', ...)`, relative dates use interval arithmetic. Zero divisors still
+  return NULL. The golden corpus records the remaining text differences.
 
 ### Fixed
 
@@ -266,6 +340,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the stall lasted. The flush now has a 30 second bound, is abandoned when it
   does not finish, and logs a warning that timing measurements may include
   unflushed writes.
+- TPC-DI `EQ3` counted the rows of a nested `COUNT(*)` for `source_records`, which is
+  always 1. It now counts the `DimCustomer` rows of the batch, so `source_records`
+  changes on every platform and `transformation_success_rate` is unchanged; previously
+  only ClickHouse, StarRocks and Doris rewrote it at translation time.
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
   `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
   clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`
@@ -316,6 +394,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   password in full. A test-session probe seeds a sentinel credential in the
   caller's home and checks that an isolated pytest run never reads it and writes
   nothing to that home; a live-only run still reads it.
+
+### Security
+
+- BenchBox now requires `certifi` 2026.10.19 or newer. Older releases of the CA
+  bundle that `requests` uses still trust the compromised eMudhra emSign
+  certificate authorities, so an attacker on the network path could impersonate
+  a cloud endpoint and capture the tokens that `requests`-based adapters send,
+  such as the Fabric and Synapse Spark adapters. Upgrading BenchBox now upgrades
+  `certifi` as well. See the
+  [Python advisory](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576).
+- Releases publish with `pypa/gh-action-pypi-publish` 1.14.3, which removes the
+  same authorities from the CA bundle that Sigstore uses for Trusted Publishing
+  and attestations. Release jobs install pip 26.2.2 and their helper packages
+  from hash-pinned wheels, so an older pip on the runner cannot be served a
+  substituted package.
+- The `benchbox-agent`, Velox and LakeSail images install Python packages with
+  uv 0.13.5 instead of pip. Rebuild existing images to pick up the change.
 
 ## [0.5.0rc1] - 2026-10-20
 

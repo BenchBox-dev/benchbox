@@ -18,49 +18,6 @@ pytestmark = [
 
 pytest.importorskip("pandas")
 
-import types
-
-_dummy_cli_main = types.ModuleType("benchbox.cli.main")
-_dummy_cli_main.setup_verbose_logging = lambda level, quiet=False: (
-    None,
-    types.SimpleNamespace(
-        verbose=level > 0,
-        level=level,
-        verbose_enabled=level > 0,
-        very_verbose=level > 1,
-        quiet=quiet,
-    ),
-)
-_dummy_cli_main.main = lambda: None
-
-_dummy_commands = types.ModuleType("benchbox.cli.commands")
-
-
-def _noop(*args, **kwargs):
-    return None
-
-
-_dummy_commands.register_commands = _noop
-_dummy_commands.PlatformOptionParamType = type("PlatformOptionParamType", (), {})
-_dummy_commands.TuningModeParamType = type("TuningModeParamType", (), {})
-_dummy_commands.benchmark_option = _noop
-_dummy_commands.check_dependencies = _noop
-_dummy_commands.create_sample_tuning = _noop
-_dummy_commands.BENCHBOX_CLI_VERSION = "0.0-test"
-_dummy_commands.__getattr__ = lambda name: _noop
-_dummy_commands.__all__ = [
-    "register_commands",
-    "PlatformOptionParamType",
-    "TuningModeParamType",
-    "benchmark_option",
-    "check_dependencies",
-    "create_sample_tuning",
-    "BENCHBOX_CLI_VERSION",
-]
-
-sys.modules.setdefault("benchbox.cli.main", _dummy_cli_main)
-sys.modules.setdefault("benchbox.cli.commands", _dummy_commands)
-sys.modules.setdefault("benchbox.cli.commands.platform", types.ModuleType("benchbox.cli.commands.platform"))
 
 examples_dir = Path(__file__).parent.parent.parent.parent / "examples"
 sys.path.insert(0, str(examples_dir))

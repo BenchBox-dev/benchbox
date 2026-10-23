@@ -138,8 +138,8 @@ project, or in project-specific layers). We would happily contribute to
 such an artifact if one emerges.
 
 **Implementation**:
-[`benchbox/platforms/datafusion_query_transformer.py`](../../../benchbox/platforms/datafusion_query_transformer.py)
-rewrites four TPC-H queries (Q11, Q16, Q18, Q20). The
+[`benchbox/platforms/datafusion_tpch_rewrites.py`](../../../benchbox/platforms/datafusion_tpch_rewrites.py)
+applies the fork's named rewrites to four TPC-H queries (Q11, Q16, Q18, Q20). The
 [`query_adapter` rules](../../../benchbox/sql_compat/rules/query_adapter/datafusion_query_rewrites.py)
 register them as `REWRITE_QUERY` actions with a `transformer_id` per query.
 Each rewrite is validated against TPC-H reference answers.
