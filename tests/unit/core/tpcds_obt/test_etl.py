@@ -187,6 +187,21 @@ def test_small_scale_build_records_broken_coverage_without_failing(
     }
 
 
+def test_a_mixed_case_full_mode_still_enforces_coverage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from benchbox.core.tpcds_obt.etl.transformer import OBTCoverageError
+
+    transformer = _make_fake_transform(tmp_path, monkeypatch)
+
+    with pytest.raises(OBTCoverageError, match="15 calendar days"):
+        transformer.transform(
+            tpcds_dir=tmp_path,
+            output_dir=tmp_path / "out",
+            mode="Full",
+            channels=SUPPORTED_CHANNELS,
+            scale_factor=1.0,
+        )
+
+
 def test_wide_tables_get_fewer_threads(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("os.cpu_count", lambda: 16)
 

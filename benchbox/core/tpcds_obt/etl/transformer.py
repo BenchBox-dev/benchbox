@@ -50,6 +50,7 @@ class TPCDSOBTTransformer:
         output_format: str = "parquet",
         scale_factor: float | None = None,
     ) -> dict[str, Path]:
+        mode = mode.lower()
         channel_list = [c.lower() for c in (channels or SUPPORTED_CHANNELS)]
         self._validate_channels(channel_list)
 
