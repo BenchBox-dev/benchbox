@@ -103,6 +103,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   normalised key and the identifier prefix for a key path (bounded caches, both pure
   functions of their arguments). Anonymizing the committed results corpus is about a third
   faster locally; published output is byte-identical.
+- StarRocks and Doris `CREATE TABLE` statements are now written by the SQLGlot fork's `translate_ddl`
+  instead of regex rewrites in the adapters. Doris keeps the TPC-H key, distribution and partition tables
+  and its `table_model`, bucket and replication options; StarRocks keeps the leading-primary-key rule
+  (`PRIMARY KEY` model when the key columns lead the table, else `DUPLICATE KEY` on the first column).
+  Output differences: identifiers are quoted, a leading primary key written on one line now selects the
+  `PRIMARY KEY` model, and statements other than `CREATE TABLE` on Doris are sent unchanged. A Doris
+  `unique` or `aggregate` table model on a table whose key columns do not lead the table now raises
+  instead of silently writing a narrower key. A test runs both adapters over every shipped schema.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed
