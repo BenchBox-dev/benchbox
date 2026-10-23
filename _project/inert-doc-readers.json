@@ -77,6 +77,9 @@
   "docs/benchmarks/support-status.md": [
     "tests/unit/core/test_benchmark_api_contract.py"
   ],
+  "docs/benchmarks/tpc-ds-obt-lineage.md": [
+    "tests/unit/core/tpcds_obt/test_tpcds_obt_model.py"
+  ],
   "docs/benchmarks/write-primitives-sketch-functions.md": [
     "tests/unit/core/write_primitives/test_doc_yaml_consistency.py",
     "tests/unit/docs/test_write_primitives_sketch_functions_docs.py"

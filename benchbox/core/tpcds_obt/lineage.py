@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from benchbox.core.tpcds_obt.schema import (
     CHANNELS,
     INCOME_BAND_TABLE,
@@ -71,4 +73,4 @@ def render_lineage_markdown() -> str:
 
 
 if __name__ == "__main__":
-    print(render_lineage_markdown(), end="")
+    sys.stdout.write(render_lineage_markdown())
