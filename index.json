@@ -16006,10 +16006,15 @@
       "title": "Normalize harmless oracle response drift without weakening decisions"
     },
     "oracle-response-json-template-20261021": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-24T01:24:13Z",
+        "generation": "a3e67138ae994e38b1ac79e02b88c1b5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Give oracle reviewers a JSON response template to populate"
     },
     "oracle-response-live-verification-20261021": {
