@@ -56,6 +56,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The comment-policy scanner builds each Python file's name index once and parses YAML with the C loader when available, falling back to the pure-Python loader on any error. Findings are unchanged; a whole-tree strict scan is more than twice as fast.
+- TPC-DS OBT queries load from a hand-owned static catalog (`benchbox/core/tpcds_obt/catalog/queries.yaml`)
+  instead of being converted from the TPC-DS templates at startup. Rendered SQL is unchanged. Each entry records the
+  source template's SHA-256, its dsqgen placeholders and its identifier map, and unit tests fail when a template,
+  define or identifier choice drifts. `benchbox/core/tpcds_obt` no longer imports SQLGlot, and Doris and StarRocks
+  OBT queries get derived-table aliases from the fork's `add_derived_table_aliases` rewrite through
+  `translate_sql_query`.
+
 - The PostgreSQL, DuckLake, pg_mooncake and QuestDB adapters build `CREATE TABLE` text through
   `translate_ddl` instead of their own rewrites. QuestDB writes `VARCHAR` for `CHAR(n)` and
   `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake quotes identifiers, and the pg_mooncake

@@ -1,45 +1,22 @@
 from __future__ import annotations
 
-from pathlib import Path
+import re
 from typing import Any
 
-import yaml
-
 from benchbox.core.tpcds.c_tools import DSQGenBinary
-from benchbox.core.tpcds_obt.manual_queries import MANUAL_QUERY_IDS, get_manual_query, render_manual_query
-from benchbox.core.tpcds_obt.query_conversion import QueryConverter
+from benchbox.core.tpcds_obt.catalog.loader import PLACEHOLDER_PATTERN, OBTQuery, load_catalog
 
 
-def _load_query_specs() -> dict[str, Any]:
-    with (Path(__file__).with_name("query_specs.yaml")).open(encoding="utf-8") as handle:
-        return yaml.safe_load(handle) or {}
-
-
-CONVERTIBLE_QUERY_IDS = tuple(_load_query_specs()["convertible_query_ids"])
+def __getattr__(name: str) -> Any:
+    if name == "CONVERTIBLE_QUERY_IDS":
+        return tuple(sorted(load_catalog()))
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 class TPCDSOBTQueryManager:
-    def __init__(self, converter: QueryConverter | None = None, dsqgen: DSQGenBinary | None = None) -> None:
-        self.converter = converter or QueryConverter()
-        self._converted = self._load_queries()
-        self._manual_queries = self._load_manual_queries()
+    def __init__(self, dsqgen: DSQGenBinary | None = None) -> None:
         self._dsqgen = dsqgen
         self._drawn: dict[tuple[int, int | None, float, int], dict[str, str]] = {}
-
-    def _load_queries(self) -> dict[int, Any]:
-        queries: dict[int, Any] = {}
-        for qid in CONVERTIBLE_QUERY_IDS:
-            if qid in MANUAL_QUERY_IDS:
-                continue
-            queries[qid] = self.converter.convert(qid)
-        return queries
-
-    def _load_manual_queries(self) -> dict[int, Any]:
-        manual: dict[int, Any] = {}
-        for qid in CONVERTIBLE_QUERY_IDS:
-            if qid in MANUAL_QUERY_IDS:
-                manual[qid] = get_manual_query(qid)
-        return manual
 
     def get_query(
         self,
@@ -50,9 +27,8 @@ class TPCDSOBTQueryManager:
         scale_factor: float = 1.0,
         stream_id: int = 0,
     ) -> str:
-        qid_int = self._normalize_id(query_id)
-        converted = None if qid_int in self._manual_queries else self._get_converted(query_id)
-        values = {**self.drawn_parameters(qid_int, seed=seed, scale_factor=scale_factor, stream_id=stream_id)}
+        query = self._get_query(query_id)
+        values = {**self.drawn_parameters(query.id, seed=seed, scale_factor=scale_factor, stream_id=stream_id)}
         for name, value in (parameters or {}).items():
             base, _, index = name.partition(".")
             if index:
@@ -60,10 +36,25 @@ class TPCDSOBTQueryManager:
             else:
                 values.update({key: str(value) for key in values if key.split(".")[0] == base})
                 values[f"{base}.01"] = str(value)
-        if converted is None:
-            names = self._manual_queries[qid_int].parameters
-            return render_manual_query(qid_int, {name: values[f"{name}.01"] for name in names})
-        return self.converter.render(converted, values)
+        return self._render(query, values)
+
+    @staticmethod
+    def _render(query: OBTQuery, values: dict[str, str]) -> str:
+        def substitute(match: re.Match[str]) -> str:
+            name = match.group(1)
+            key = f"{name}.{int(match.group(2) or 1):02d}"
+            if name not in query.parameters:
+                return match.group(0)
+            if key not in values:
+                raise ValueError(f"Query {query.id} has no value for parameter {key}")
+            value = str(values[key])
+            if name in query.identifier_parameters:
+                return ", ".join(
+                    query.identifier_map.get(item.strip().lower(), item.strip()) for item in value.split(",")
+                )
+            return value
+
+        return PLACEHOLDER_PATTERN.sub(substitute, query.sql)
 
     def drawn_parameters(
         self, query_id: int, *, seed: int | None = None, scale_factor: float = 1.0, stream_id: int = 0
@@ -79,10 +70,7 @@ class TPCDSOBTQueryManager:
         return self._drawn[key]
 
     def get_template(self, query_id: int | str) -> str:
-        qid_int = self._normalize_id(query_id)
-        if qid_int in self._manual_queries:
-            return self._manual_queries[qid_int].template_sql
-        return self._get_converted(query_id).template_sql
+        return self._get_query(query_id).sql
 
     def get_queries(
         self, parameters: dict[str, Any] | None = None, *, seed: int | None = None, scale_factor: float = 1.0
@@ -92,16 +80,14 @@ class TPCDSOBTQueryManager:
         }
 
     def list_query_ids(self) -> list[int]:
-        all_ids = set(self._converted.keys()) | set(self._manual_queries.keys())
-        return sorted(all_ids)
+        return sorted(load_catalog())
 
-    def _get_converted(self, query_id: int | str) -> Any:
+    def _get_query(self, query_id: int | str) -> OBTQuery:
         qid_int = self._normalize_id(query_id)
-        if qid_int in self._manual_queries:
-            raise ValueError(f"Query {query_id} is a manual query, use get_query() instead")
-        if qid_int not in self._converted:
+        query = load_catalog().get(qid_int)
+        if query is None:
             raise ValueError(f"Unknown query id: {query_id}")
-        return self._converted[qid_int]
+        return query
 
     def _normalize_id(self, query_id: int | str) -> int:
         if isinstance(query_id, int):
@@ -112,4 +98,4 @@ class TPCDSOBTQueryManager:
             raise ValueError(f"Unknown query id: {query_id}") from exc
 
 
-__all__ = ["CONVERTIBLE_QUERY_IDS", "TPCDSOBTQueryManager"]
+__all__ = ["TPCDSOBTQueryManager"]
