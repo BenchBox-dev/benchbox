@@ -32,7 +32,6 @@ class AllowlistEntry:
 
 
 DATAFRAME_PARSE_ONLY = "Parses SQL into an AST to build DataFrame operations; emits no dialect SQL"
-FLIGHTDATA_AST_REWRITE = "Casts ROUND inputs on the AST before printing PostgreSQL; moves to apply_rewrite"
 
 BYPASS_ALLOWLIST: dict[str, AllowlistEntry] = {
     "benchbox/core/equivalence/builders/tpcds.py": AllowlistEntry(
@@ -41,7 +40,6 @@ BYPASS_ALLOWLIST: dict[str, AllowlistEntry] = {
     "benchbox/core/equivalence/cross_surface.py": AllowlistEntry(
         7, PARSE_ONLY, "Normalizes SQL and DataFrame surfaces to one AST form to compare them"
     ),
-    "benchbox/core/flightdata/queries.py": AllowlistEntry(2, AST_REWRITE, FLIGHTDATA_AST_REWRITE),
     "benchbox/core/joinorder/dataframe_queries.py": AllowlistEntry(2, PARSE_ONLY, DATAFRAME_PARSE_ONLY),
     "benchbox/core/joinorder_synthetic/dataframe_queries.py": AllowlistEntry(3, PARSE_ONLY, DATAFRAME_PARSE_ONLY),
     "benchbox/core/read_primitives/variant_contracts.py": AllowlistEntry(
