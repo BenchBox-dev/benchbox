@@ -103,6 +103,40 @@ def test_unknown_prior_ids_do_not_discard_a_blocking_verdict(decision: str) -> N
     assert protocol.judge_planned(verdict, plan).decision == decision
 
 
+def test_a_shipping_verdict_that_could_not_finish_is_invalid() -> None:
+    verdict = validate(_payload(decision="SHIP", defects=[], incomplete_reason="Could not read the changed files"))
+    plan = {"max_defects": 10, "protocol": {"prior": []}}
+    assert protocol.judge_planned(verdict, plan).decision == "SHIP"
+    assert protocol.contradiction(verdict, plan) is not None
+
+
+def test_a_blocking_verdict_that_could_not_finish_keeps_its_findings() -> None:
+    verdict = validate(_payload(incomplete_reason="Could not read every caller"))
+    plan = {"max_defects": 10, "protocol": {"prior": []}}
+    assert protocol.contradiction(verdict, plan) is None
+    assert protocol.judge_planned(verdict, plan).decision == "SHIP_WITH_FIXES"
+
+
+@pytest.mark.parametrize("status", ["fixed", "withdrawn"])
+@pytest.mark.parametrize("evidence", ["", "   "])
+def test_a_prior_cleared_without_evidence_cannot_ship(status: str, evidence: str) -> None:
+    priors = [{"id": "D1", "status": "fixed", "evidence": "a.py:3 now checks the bound"}]
+    priors.append({"id": "D2", "status": status, "evidence": evidence})
+    verdict = validate(_payload(decision="SHIP", defects=[], prior_defects=priors))
+    plan = {"max_defects": 10, "protocol": {"prior": [{"id": "D1"}, {"id": "D2"}]}}
+    assert protocol.judge_planned(verdict, plan).decision == "SHIP"
+    assert protocol.contradiction(verdict, plan) == (
+        "the verdict would ship but clears prior defect(s) D2 without evidence"
+    )
+
+
+def test_a_prior_cleared_with_evidence_still_ships() -> None:
+    priors = [{"id": "D2", "status": "fixed", "evidence": "a.py:3 now checks the bound"}]
+    verdict = validate(_payload(decision="SHIP", defects=[], prior_defects=priors))
+    plan = {"max_defects": 10, "protocol": {"prior": [{"id": "D2"}]}}
+    assert protocol.contradiction(verdict, plan) is None
+
+
 @pytest.mark.parametrize("embedded", [None, "D2", "#D2"])
 def test_dictionary_priors_keep_the_key_and_status(embedded: str | None) -> None:
     value = {"status": "not_fixed", "evidence": "Still present"}
