@@ -7,10 +7,14 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: comment-policy-nightly
   cancel-in-progress: false
+
+env:
+  ISSUE_TITLE: Comment policy nightly scan failed on develop
 
 jobs:
   whole-tree:
@@ -32,4 +36,36 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Scan the whole tree against the checked-out develop commit
+        id: scan
+        continue-on-error: true
         run: python -I scripts/run_comment_policy.py --full
+      - name: Open or update the failure issue
+        if: steps.scan.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          body="The whole-tree comment-policy scan of develop at ${GITHUB_SHA} failed. Run: ${RUN_URL}"
+          number="$(gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" --json number,title --jq "[.[] | select(.title == \"${ISSUE_TITLE}\")][0].number // empty")"
+          if [[ -n "${number}" ]]; then
+            gh issue comment "${number}" --body "${body}"
+          else
+            gh issue create --title "${ISSUE_TITLE}" --body "${body}"
+          fi
+      - name: Close the failure issue after a clean scan
+        if: steps.scan.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" --json number,title \
+            --jq ".[] | select(.title == \"${ISSUE_TITLE}\") | .number" |
+            while read -r number; do
+              gh issue close "${number}" --comment "The whole-tree scan of develop at ${GITHUB_SHA} passed."
+            done
+      - name: Fail the run when the scan failed
+        if: steps.scan.outcome == 'failure'
+        run: exit 1

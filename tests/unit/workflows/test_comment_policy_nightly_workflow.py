@@ -31,15 +31,28 @@ def test_nightly_runs_on_a_schedule_and_on_demand_but_never_on_pull_requests() -
 
 def test_nightly_scans_develop_with_read_only_permissions() -> None:
     workflow = _load(NIGHTLY)
-    assert workflow["permissions"] == {"contents": "read"}
+    assert workflow["permissions"] == {"contents": "read", "issues": "write"}
     checkout = next(step for step in _steps() if step.get("uses", "").startswith("actions/checkout@"))
     assert checkout["with"]["ref"] == "develop"
     assert checkout["with"]["persist-credentials"] is False
 
 
 def test_nightly_runs_the_launcher_over_the_whole_tree_without_a_base() -> None:
-    commands = [step["run"] for step in _steps() if "run" in step]
-    assert commands == ["python -I scripts/run_comment_policy.py --full"]
+    scan = next(step for step in _steps() if step.get("id") == "scan")
+    assert scan["run"] == "python -I scripts/run_comment_policy.py --full"
+
+
+def test_a_failed_scan_alerts_through_an_issue_and_still_fails_the_run() -> None:
+    steps = {step["name"]: step for step in _steps() if "name" in step}
+    scan = next(step for step in _steps() if step.get("id") == "scan")
+    assert scan["continue-on-error"] is True
+    alert = steps["Open or update the failure issue"]
+    assert alert["if"] == "steps.scan.outcome == 'failure'"
+    assert "gh issue create" in alert["run"] and "gh issue comment" in alert["run"]
+    fail = steps["Fail the run when the scan failed"]
+    assert fail["if"] == "steps.scan.outcome == 'failure'"
+    assert fail["run"] == "exit 1"
+    assert steps["Close the failure issue after a clean scan"]["if"] == "steps.scan.outcome == 'success'"
 
 
 def test_nightly_uses_the_same_pinned_actions_as_the_pull_request_job() -> None:

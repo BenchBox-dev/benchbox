@@ -90,8 +90,10 @@ repository after a global change. It fails if any scanned file gains a
 violation or contains input the checker cannot analyze (a coverage error), or
 if configuration or parsing fails. A scheduled workflow,
 `.github/workflows/comment-policy-nightly.yml`, scans the whole of `develop`
-every night (and on demand) with `scripts/run_comment_policy.py --full` and
-fails visibly when any file, changed or not, has a violation.
+every night (and on demand) with `scripts/run_comment_policy.py --full`. When
+any file, changed or not, has a violation, the run fails and opens (or comments
+on) an issue titled "Comment policy nightly scan failed on develop"; a clean
+run closes that issue.
 
 The check prints up to 100 failures. It escapes control characters in paths and
 text from the pull request and never starts a line with `::`, so a pull request
@@ -213,7 +215,10 @@ under an exclusion, consumer and provenance validation, and expired-exception
 findings. It reads the base only for the policy, the trusted checker files, the
 ownership manifest, and the list of files that existed at the base. It never
 scans the base's sources. Every violation in a scanned file fails, including old
-ones; the nightly scan covers the files a pull request leaves unchanged.
+ones. The nightly scan covers the files a pull request leaves unchanged,
+including files that come into scope when the base's scope policy changes
+which paths it excludes; those are first scanned by the nightly run, not by a
+pull request.
 
 - **External exclusions:** each names its upstream owner and a provenance file.
   A pull request cannot widen one. New files under an exclusion are still
