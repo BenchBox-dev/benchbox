@@ -31,7 +31,7 @@ from benchbox.utils.dependencies import (
     get_dependency_error_message,
     get_package_install_message,
 )
-from benchbox.utils.dialect_utils import ddl_column_names, translate_ddl
+from benchbox.utils.dialect_utils import ddl_column_names, schema_ddl_read_dialect, translate_ddl
 from benchbox.utils.file_format import COMPRESSION_EXTENSIONS
 
 try:
@@ -1199,7 +1199,10 @@ class DatabricksAdapter(PlatformAdapter):
                 raise RuntimeError(f"No schema SQL generated for {benchmark.__class__.__name__}")
 
             statements = translate_ddl(
-                schema_sql, self.get_target_dialect(), "standard", **self._schema_ddl_options(schema_sql)
+                schema_sql,
+                self.get_target_dialect(),
+                schema_ddl_read_dialect(schema_sql, self.get_target_dialect()),
+                **self._schema_ddl_options(schema_sql),
             )
 
             self.log_verbose(f"Parsed {len(statements)} CREATE TABLE statements from schema SQL")
@@ -2538,7 +2541,9 @@ class DatabricksAdapter(PlatformAdapter):
             options["default_layout"] = {"format": "hudi", "properties": {"type": self.hudi_table_type}}
             options["layouts"] = {
                 table: {"format": "hudi", "properties": self._hudi_table_properties(columns)}
-                for table, columns in ddl_column_names(schema_sql).items()
+                for table, columns in ddl_column_names(
+                    schema_sql, schema_ddl_read_dialect(schema_sql, "databricks")
+                ).items()
             }
         else:
             properties = (

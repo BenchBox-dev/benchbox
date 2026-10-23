@@ -718,3 +718,17 @@ class TestSessionTuningConfEntries:
         entries = spark_session_tuning_conf_entries(64, False, tuning_enabled=tuning_enabled)
         assert entries["spark.sql.shuffle.partitions"] == "64"
         assert all(entries[key] == "false" for key in SPARK_AQE_KEYS)
+
+
+class TestSchemaDdlReadDialect:
+    def test_target_dialect_ddl_with_backticks_is_read_as_target(self) -> None:
+        sql = "CREATE TABLE `hub_x` (`id` BIGINT, `n` STRING, PRIMARY KEY (`id`))"
+        (result,) = spark_schema_statements(sql, table_format="delta", strip_constraints=False)
+        assert result.startswith("CREATE TABLE `hub_x`")
+        assert result.endswith("USING DELTA")
+
+    def test_standard_ddl_is_read_as_standard(self) -> None:
+        from benchbox.utils.dialect_utils import schema_ddl_read_dialect
+
+        assert schema_ddl_read_dialect("CREATE TABLE t (a INT)", "spark") == "standard"
+        assert schema_ddl_read_dialect("CREATE TABLE `t` (`a` INT)", "spark") == "spark"

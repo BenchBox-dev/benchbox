@@ -525,6 +525,16 @@ def translate_ddl(
     )
 
 
+def schema_ddl_read_dialect(ddl: str, target_dialect: str) -> str:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    trees = sqlglot.parse(ddl, read=resolve_sql_dialect("standard"))
+    if any(isinstance(tree, exp.Command) for tree in trees):
+        return target_dialect
+    return "standard"
+
+
 def ddl_column_names(ddl: str, source_dialect: str = "standard") -> dict[str, list[str]]:
     from benchbox._vendor import sqlglot
     from benchbox._vendor.sqlglot import exp
