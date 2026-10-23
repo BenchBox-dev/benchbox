@@ -432,10 +432,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EnhancedSCDType2Processor.process_scd_changes` now writes its changes to the database. It
   expires the current version of a changed history-tracking dimension row (`IsCurrent` 0 and
   `EndDate` set to the new `EffectiveDate`, TPC-DI clause 4.4.1.3), inserts the new version
-  and new natural keys, and updates the `BatchID` of rows with only non-SCD changes. Before this
-  it only counted them. Statements use bound parameters, run in one transaction, and the
-  returned counts are the rows the database reports as affected. The processor is not called
-  by the TPC-DI ETL pipeline, so published TPC-DI results are unchanged.
+  and new natural keys, and overwrites the non-SCD attribute columns and `BatchID` in place on
+  rows whose only changes are non-SCD. Before this it only counted them. Statements use bound
+  parameters and run in one transaction; the returned counts are the rows the database reports
+  as affected. A failed read of the current dimension or a failed `BEGIN` now aborts the run
+  before any write instead of treating the table as empty. The processor is not called by the
+  TPC-DI ETL pipeline, so published TPC-DI results are unchanged.
 - A pull request title or body edit no longer leaves an armed pull request blocked
   with every required check green. The CI run such an edit starts now reports each
   required check (`core`, `explorer`, `results-data`, `docs`, `tooling`) by copying

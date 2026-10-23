@@ -240,7 +240,7 @@ def test_new_business_key_is_inserted_as_current(dim_customer) -> None:
     assert new[0][7].isoformat() == "9999-12-31"
 
 
-def test_non_scd_change_updates_batch_id_only(dim_customer) -> None:
+def test_non_scd_change_overwrites_attribute_and_batch_id(dim_customer) -> None:
     stats = _apply(dim_customer, pd.DataFrame({"CustomerID": [1, 2], "Status": ["A", "A"], "Attr": [6, 7]}), 3)
 
     assert stats["success"] is True
@@ -251,8 +251,71 @@ def test_non_scd_change_updates_batch_id_only(dim_customer) -> None:
     assert rows[0][0] == 10
     assert rows[0][4] is True
     assert rows[0][5] == 3
-    assert rows[0][3] == 5
+    assert rows[0][3] == 6
+    assert rows[0][2] == "A"
     assert rows[1][5] == 1
+    assert rows[1][3] == 7
+
+
+class _FailingReadConn(_RecordingConn):
+    def execute(self, sql: str, params: list[Any] | None = None) -> Any:
+        if sql.lstrip().upper().startswith("SELECT *"):
+            self.calls.append((sql, params))
+            raise RuntimeError("read failed")
+        return super().execute(sql, params)
+
+
+class _BeginFailsConn(_RecordingConn):
+    def execute(self, sql: str, params: list[Any] | None = None) -> Any:
+        if sql.strip().upper() == "BEGIN":
+            self.calls.append((sql, params))
+            raise RuntimeError("disk I/O error")
+        return super().execute(sql, params)
+
+
+def test_failed_current_read_aborts_without_writes(dim_customer) -> None:
+    before = _rows(dim_customer)
+    conn = _FailingReadConn(dim_customer)
+    stats = _apply(conn, pd.DataFrame({"CustomerID": [1, 2], "Status": ["B", "A"], "Attr": [5, 7]}))
+
+    assert stats["success"] is False
+    assert not any(sql.lstrip().upper().startswith(("UPDATE", "INSERT", "BEGIN")) for sql, _ in conn.calls)
+    assert _rows(dim_customer) == before
+    assert dim_customer.execute("SELECT COUNT(*) FROM DimCustomer WHERE IsCurrent GROUP BY CustomerID").fetchall() == [
+        (1,),
+        (1,),
+    ]
+
+
+def test_empty_dimension_is_not_a_read_failure() -> None:
+    duckdb = pytest.importorskip("duckdb")
+    conn = duckdb.connect(":memory:")
+    conn.execute(DIM_CUSTOMER_DDL)
+    stats = _apply(conn, pd.DataFrame({"CustomerID": [1], "Status": ["A"], "Attr": [5]}))
+
+    assert stats["success"] is True
+    assert stats["new_records"] == 1
+    assert len(_rows(conn)) == 1
+    conn.close()
+
+
+def test_begin_failure_other_than_active_transaction_runs_no_statement(dim_customer) -> None:
+    before = _rows(dim_customer)
+    conn = _BeginFailsConn(dim_customer)
+    stats = _apply(conn, pd.DataFrame({"CustomerID": [1, 2], "Status": ["B", "A"], "Attr": [5, 7]}))
+
+    assert stats["success"] is False
+    assert not any(sql.lstrip().upper().startswith(("UPDATE", "INSERT")) for sql, _ in conn.calls)
+    assert _rows(dim_customer) == before
+
+
+def test_active_transaction_is_left_to_the_caller(dim_customer) -> None:
+    dim_customer.execute("BEGIN")
+    stats = _apply(dim_customer, pd.DataFrame({"CustomerID": [1, 2], "Status": ["B", "A"], "Attr": [5, 7]}))
+
+    assert stats["success"] is True
+    dim_customer.execute("ROLLBACK")
+    assert len(_rows(dim_customer)) == 2
 
 
 def test_dml_uses_bound_parameters(dim_customer) -> None:

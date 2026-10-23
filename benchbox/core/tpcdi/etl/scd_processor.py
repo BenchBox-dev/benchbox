@@ -202,7 +202,9 @@ class EnhancedSCDType2Processor:
 
                 non_scd_updates = change_analysis["non_scd_updates"]
                 if len(non_scd_updates) > 0:
-                    update_result = self._process_non_scd_updates(non_scd_updates, table_name, batch_id)
+                    update_result = self._process_non_scd_updates(
+                        non_scd_updates, table_name, batch_id, non_scd_columns, table_columns
+                    )
                     change_stats["updated_records"] = update_result["records_updated"]
 
             unchanged_records = change_analysis["unchanged_records"]
@@ -283,21 +285,16 @@ class EnhancedSCDType2Processor:
         ORDER BY {sk_column}
         """
 
-        try:
-            if self.dialect != "duckdb":
-                query = translate_sql_query(query, self.dialect, source_dialect="duckdb", identify=False)
+        if self.dialect != "duckdb":
+            query = translate_sql_query(query, self.dialect, source_dialect="duckdb", identify=False)
 
-            cursor = self.connection.execute(query)
-            columns = [desc[0] for desc in cursor.description]
-            data = cursor.fetchall()
-            result = pd.DataFrame(data, columns=columns)
+        cursor = self.connection.execute(query)
+        columns = [desc[0] for desc in cursor.description]
+        data = cursor.fetchall()
+        result = pd.DataFrame(data, columns=columns)
 
-            logger.debug(f"Loaded {len(result)} current records from {table_name}")
-            return result
-
-        except Exception as e:
-            logger.warning(f"Could not load current data from {table_name}: {str(e)}")
-            return pd.DataFrame()
+        logger.debug(f"Loaded {len(result)} current records from {table_name}")
+        return result
 
     def _analyze_dimension_changes(
         self,
@@ -632,14 +629,34 @@ class EnhancedSCDType2Processor:
             raise ValueError(f"Table {table_name!r} is not a TPC-DI history-tracking dimension")
         return table_name
 
+    def _caller_owns_transaction(self) -> bool:
+        in_transaction = getattr(self.connection, "in_transaction", None)
+        if isinstance(in_transaction, bool):
+            return in_transaction
+        if self.dialect != "duckdb":
+            return False
+        try:
+            first = self.connection.execute("SELECT current_transaction_id()").fetchone()
+            second = self.connection.execute("SELECT current_transaction_id()").fetchone()
+        except Exception:
+            return False
+        return first is not None and first == second
+
     @contextmanager
     def _transaction(self) -> Iterator[None]:
-        try:
-            self.connection.execute("BEGIN")
-            owned = True
-        except Exception:
+        if self._caller_owns_transaction():
             owned = False
             logger.debug("Connection already in a transaction; deferring commit to the caller")
+        else:
+            try:
+                self.connection.execute("BEGIN")
+                owned = True
+            except Exception as error:
+                message = str(error).lower()
+                if "transaction" not in message or ("within" not in message and "already" not in message):
+                    raise
+                owned = False
+                logger.debug("Connection already in a transaction; deferring commit to the caller")
 
         try:
             yield
@@ -650,7 +667,14 @@ class EnhancedSCDType2Processor:
         if owned:
             self.connection.execute("COMMIT")
 
-    def _process_non_scd_updates(self, non_scd_updates: pd.DataFrame, table_name: str, batch_id: int) -> dict[str, Any]:
+    def _process_non_scd_updates(
+        self,
+        non_scd_updates: pd.DataFrame,
+        table_name: str,
+        batch_id: int,
+        non_scd_columns: Optional[list[str]] = None,
+        table_columns: Optional[list[str]] = None,
+    ) -> dict[str, Any]:
 
         if len(non_scd_updates) == 0:
             return {"records_updated": 0}
@@ -662,25 +686,32 @@ class EnhancedSCDType2Processor:
             logger.warning(f"Cannot process non-SCD updates: missing {sk_column}")
             return {"records_updated": 0}
 
-        surrogate_keys = [_to_db_value(key) for key in non_scd_updates[current_sk_col].tolist()]
         table = self._validated_table(table_name)
         batch_column = _validated_identifier(self.config.batch_id_column)
         sk_name = _validated_identifier(sk_column)
+        allowed = set(table_columns) if table_columns is not None else None
+
+        value_sources: list[tuple[str, str]] = []
+        for col in non_scd_columns or []:
+            if allowed is not None and col not in allowed:
+                continue
+            source = f"{col}_new" if f"{col}_new" in non_scd_updates.columns else col
+            if source in non_scd_updates.columns:
+                value_sources.append((_validated_identifier(col), source))
+
+        assignments = ", ".join([f"{batch_column} = ?", *(f"{col} = ?" for col, _ in value_sources)])
+        sql = f"UPDATE {table} SET {assignments} WHERE {sk_name} = ?"
 
         records_updated = 0
-        for chunk in _chunks(surrogate_keys, _PARAMETER_CHUNK):
-            placeholders = ",".join(["?"] * len(chunk))
-            records_updated += self._execute_dml(
-                f"UPDATE {table} SET {batch_column} = ? WHERE {sk_name} IN ({placeholders})",
-                [batch_id, *chunk],
-            )
+        for _idx, row in non_scd_updates.iterrows():
+            params = [batch_id, *(_to_db_value(row[source]) for _, source in value_sources)]
+            params.append(_to_db_value(row[current_sk_col]))
+            updated = self._execute_dml(sql, params)
+            if updated != 1:
+                raise RuntimeError(f"Non-SCD update on {table_name} changed {updated} rows for one surrogate key")
+            records_updated += updated
 
-        if records_updated != len(surrogate_keys):
-            raise RuntimeError(
-                f"Batch-id update on {table_name} changed {records_updated} rows for {len(surrogate_keys)} keys"
-            )
-
-        logger.debug(f"Updated batch id on {records_updated} records in {table_name}")
+        logger.debug(f"Overwrote non-SCD columns and batch id on {records_updated} records in {table_name}")
 
         return {"records_updated": records_updated}
 
