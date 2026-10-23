@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Failing-before test: the reviewer reproduction (same removal at line 3 vs line 11 of one function, identical context) shows equal digests on develop and different digests after the fix",
+    "Rebase tests pass unchanged: a diff whose hunks all shift by the same amount because the base moved still hashes equal; the PR 2769 replay still shows the rebase carried",
+    "The chosen option and the rejected ones with reasons are recorded in the item, including its re-review cost (state how many of the last 50 soundness PR heads would have re-reviewed, measured or estimated with the method stated)",
+    "Residual risk statement after the fix",
+    "PR merged with an oracle verdict on its final head; merge SHA recorded, or the item is blocked with the owner decision needed"
+  ],
+  "context": "Created 2026-10-23 from the codex review of gap issue 2808 (commit 5ca12e6ca plus merged fix PR 3316): reviewer output /Users/joe/Developer/soundness-reviews/2808/raw-run1.txt sha256 252d352256c6b45a8214c719bc554e4b9520b24cfe96ed8585bd856f38d42ec8. Finding verified by the controller where stated; line numbers are leads, re-verify on current develop.",
+  "description": "High finding, REPRODUCED by the controller on origin/develop 2026-10-23 after PR 3316: file_patches gives the first hunk the gap value 'first' regardless of position, so the same removal of 'require_admin(user)' with identical three context lines and the same function heading, at line 3 versus line 11 of one function, hashes identically and plan_round CARRYs the earlier SHIP. PR 3316 fixed relocation across different functions and between hunks, but not this case. The worker recorded this as a residual risk because a bare line number cannot be told apart from a rebase shift.\n\nDECISION GATE (needs the owner if no option works): evaluate (1) bind the per-file hash to the post-image blob id: relocation changes the blob, but any rebase that touches the file elsewhere also changes it, so more re-reviews (safe direction); it conflicts with the existing test test_a_binary_change_is_never_mistaken_for_an_unchanged_patch which expects equal hashes across different blob ids, so the test's intent must be re-read first: if it protects binary files only, scope option 1 to text files and keep the test meaning; (2) add the position of the first hunk relative to a stable anchor (for example the distance from the nearest preceding line that matches the hunk header's function context in the post-image, requiring the file content at review time, which the planner may be able to read via git); (3) accept re-review whenever the first hunk's absolute new-side start differs from the reviewed one AND the file also differs in the base blob at the preimage (i.e. distinguish rebase shifts, where the preimage also shifted, from relocations, where only the hunk moved): compare the hunk's old-side start against the preimage blob path position. Choose the cheapest option that makes BOTH the relocation test and the plain rebase test pass; if none does, STOP and report the options and a recommendation to the owner; never loosen a test.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR (soundness path _project/scripts/oracle_reviewers); no pre-registered digests; never weaken a gate; no skip/xfail; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; never close/label/edit gap issues; done = merged PR plus evidence.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-23T11:56:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1d7f9b7988454237b389eb9422362738",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}

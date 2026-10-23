@@ -15973,6 +15973,15 @@
       "status": "done",
       "title": "An oversize pull request never gets a review, yet the sweep keeps retrying it and posting pending reviews"
     },
+    "oracle-patch-hash-first-hunk-relocation-20261023": {
+      "claim": null,
+      "needs": [
+        "oracle-patch-hash-splitlines-control-chars-20261023"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Detect an edit relocated between identical blocks inside one function"
+    },
     "oracle-patch-hash-hunk-positions-20261008": {
       "claim": null,
       "needs": [
