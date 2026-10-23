@@ -999,17 +999,17 @@ class TestAthenaAdditionalCoverage:
             adapter.drop_database(database="db3")
             assert glue.delete_database.called
 
-    def test_convert_to_external_table_modes(self):
+    def test_external_table_ddl_modes(self):
         adapter = self._make_adapter()
         sql = "CREATE TABLE orders (o_orderkey BIGINT NOT NULL, o_comment VARCHAR(20))"
 
-        staging = adapter._convert_to_external_table(sql, is_staging=True)
+        [staging] = adapter._external_table_ddl(sql, is_staging=True)
         assert "CREATE EXTERNAL TABLE" in staging
         assert "_staging" in staging
 
         adapter.default_format = "CSV"
         adapter.data_format = "text"
-        text_mode = adapter._convert_to_external_table(sql, is_staging=False)
+        [text_mode] = adapter._external_table_ddl(sql, is_staging=False)
         assert "FIELDS TERMINATED BY ','" in text_mode
 
     def test_helper_and_plan_paths(self):
@@ -1025,7 +1025,6 @@ class TestAthenaAdditionalCoverage:
 
         assert adapter._extract_table_name("CREATE TABLE MixedName (id INT)") == "mixedname"
         assert adapter._extract_table_name("SELECT 1") is None
-        assert "create table" not in adapter._normalize_table_name_in_sql('CREATE TABLE "Orders" (id INT)')
 
         conn = MagicMock()
         cur = MagicMock()

@@ -37,6 +37,7 @@ DOMAIN_JOBS = {
     "liveness": "t3:liveness",
     "ruleset-drift": "t3:ruleset-drift",
     "windows": "t3:windows",
+    "tpcds-obt": "t3:tpcds-obt",
     "durations-refresh": "t3:durations",
 }
 

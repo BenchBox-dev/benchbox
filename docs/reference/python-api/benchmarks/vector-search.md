@@ -115,11 +115,14 @@ The returned dict is not stored: `benchmark.tables` stays empty.
 
 | Dialect | Type for 8 dimensions |
 | --- | --- |
-| `duckdb` | `FLOAT[8]` |
+| `duckdb` | `REAL[8]` |
 | `postgresql` | `VECTOR(8)` |
 | `snowflake` | `VECTOR(FLOAT, 8)` |
 | `clickhouse` | `Array(Float32)` |
 | `bigquery` | `ARRAY<FLOAT64>` |
+| `spark`, `databricks`, `doris`, `starrocks`, `lakesail`, `pyspark`, `velox` | `ARRAY<REAL>` |
+| `mysql` | `VECTOR(8, F32)` |
+| other | `REAL[8]` |
 
 With `tuning_config=None`, no keys are emitted. A `UnifiedTuningConfiguration()` with its default primary-key setting adds `PRIMARY KEY` to `vectors.id` and `vector_queries.query_id`.
 

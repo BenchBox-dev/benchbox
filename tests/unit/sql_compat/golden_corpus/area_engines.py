@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import importlib
 import re
+from collections.abc import Callable
 from functools import cache, lru_cache
 
-from benchbox.utils.dialect_utils import NO_IDENTIFY_DIALECTS, apply_rewrite
+from benchbox.utils.dialect_utils import apply_rewrite
 
-from . import Case
+from . import Case, frozen_legacy
+
+AREA = "area_engines"
 
 LOWERCASE_PATTERNS = [
     r"SR_RETURN_AMT",
@@ -35,12 +38,6 @@ STARROCKS_ALIAS_ROUTE_ARGS = {"prefix": "_sq", "quoted": True}
 
 def _sqlglot():
     return importlib.import_module("benchbox._vendor.sqlglot")
-
-
-def _transformer():
-    from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
-
-    return ClickHouseQueryTransformer()
 
 
 @cache
@@ -73,20 +70,10 @@ def _tpcds_clickhouse_translated(query_id: int, seed: int = 1) -> str:
     return _tpcds().translate_query_text(_tpcds_raw_netezza(query_id, seed), "netezza", "clickhouse")
 
 
-def _fork_clickhouse_pipeline(sql: str, additional: dict[str, str | int] | None = None) -> str:
-    expression = _sqlglot().parse_one(sql, read="clickhouse")
-    expression = apply_rewrite("lowercase_identifiers", expression, "clickhouse", patterns=LOWERCASE_PATTERNS)
-    expression = apply_rewrite("decimal_zero_literals", expression, "clickhouse", precision=15, scale=2)
-    expression = apply_rewrite("safe_division", expression, "clickhouse")
-    expression = apply_rewrite(
-        "add_query_settings", expression, "clickhouse", settings={**BASE_SETTINGS, **(additional or {})}
-    )
-    return expression.sql(dialect="clickhouse")
+def _production_clickhouse_pipeline(sql: str, additional: dict[str, str | int] | None = None) -> str:
+    from benchbox.platforms.clickhouse.query_rewrites import rewrite_query_for_clickhouse
 
-
-def _legacy_clickhouse_pipeline(sql: str, additional: tuple[tuple[str, str | int], ...] = ()) -> str:
-    transformer = _transformer()
-    return transformer.add_query_settings(transformer.transform(sql), additional)
+    return rewrite_query_for_clickhouse(sql, additional)
 
 
 CASE_NORMALIZATION_SQL = {
@@ -148,7 +135,6 @@ SAFE_DIVISION_SQL = {
 }
 
 SETTINGS_SQL = {
-    "ddl": "CREATE TABLE foo (id Int32) ENGINE = MergeTree() ORDER BY id",
     "select_one": "SELECT 1",
     "count_star": "SELECT count(*) FROM store_sales",
     "trailing_semicolon": "SELECT 1 FROM t;",
@@ -156,7 +142,6 @@ SETTINGS_SQL = {
     "lowercase_select": "select a from t",
     "with_cte": "WITH c AS (SELECT 1 AS x) SELECT x FROM c",
     "union": "SELECT a FROM t UNION ALL SELECT b FROM u",
-    "insert": "INSERT INTO t VALUES (1)",
     "q47_like": (
         "WITH v1 AS (SELECT d_year, SUM(ss_sales_price) AS sum_sales, "
         "AVG(SUM(ss_sales_price)) OVER (PARTITION BY i_category, d_year) AS avg_sales "
@@ -183,55 +168,61 @@ def _clickhouse_cases() -> list[Case]:
     cases: list[Case] = []
 
     for name, sql in CASE_NORMALIZATION_SQL.items():
+        case_id = f"clickhouse.normalize_case.{name}"
         cases.append(
             Case(
-                f"clickhouse.normalize_case.{name}",
-                lambda sql=sql: _transformer().normalize_case(sql),
+                case_id,
+                frozen_legacy(AREA, case_id),
                 lambda sql=sql: apply_rewrite("lowercase_identifiers", sql, "clickhouse", patterns=LOWERCASE_PATTERNS),
             )
         )
 
     for name, sql in TYPE_CAST_SQL.items():
+        case_id = f"clickhouse.fix_type_casts.{name}"
         cases.append(
             Case(
-                f"clickhouse.fix_type_casts.{name}",
-                lambda sql=sql: _transformer().fix_type_casts(sql),
+                case_id,
+                frozen_legacy(AREA, case_id),
                 lambda sql=sql: apply_rewrite("decimal_zero_literals", sql, "clickhouse", precision=15, scale=2),
             )
         )
 
     for name, sql in DECIMAL_DIVISION_SQL.items():
+        case_id = f"clickhouse.fix_decimal_division_by_zero.{name}"
         cases.append(
             Case(
-                f"clickhouse.fix_decimal_division_by_zero.{name}",
-                lambda sql=sql: _transformer().fix_decimal_division_by_zero(sql),
+                case_id,
+                frozen_legacy(AREA, case_id),
                 lambda sql=sql: apply_rewrite("safe_division", sql, "clickhouse"),
             )
         )
 
     for name, sql in SAFE_DIVISION_SQL.items():
+        case_id = f"clickhouse.safe_division.{name}"
         cases.append(
             Case(
-                f"clickhouse.safe_division.{name}",
-                lambda sql=sql: _transformer().safe_division(sql),
+                case_id,
+                frozen_legacy(AREA, case_id),
                 lambda sql=sql: apply_rewrite("safe_division", sql, "clickhouse"),
             )
         )
 
     for name, sql in SETTINGS_SQL.items():
+        case_id = f"clickhouse.add_query_settings.{name}"
         cases.append(
             Case(
-                f"clickhouse.add_query_settings.{name}",
-                lambda sql=sql: _transformer().add_query_settings(sql),
+                case_id,
+                frozen_legacy(AREA, case_id),
                 lambda sql=sql: apply_rewrite("add_query_settings", sql, "clickhouse", settings=BASE_SETTINGS),
             )
         )
 
     for index, additional in enumerate(ADDITIONAL_SETTINGS):
+        case_id = f"clickhouse.add_query_settings.additional_{index}"
         cases.append(
             Case(
-                f"clickhouse.add_query_settings.additional_{index}",
-                lambda additional=additional: _transformer().add_query_settings("SELECT 1", additional),
+                case_id,
+                frozen_legacy(AREA, case_id),
                 lambda additional=additional: apply_rewrite(
                     "add_query_settings", "SELECT 1", "clickhouse", settings={**BASE_SETTINGS, **dict(additional)}
                 ),
@@ -239,10 +230,11 @@ def _clickhouse_cases() -> list[Case]:
         )
 
     existing_settings = "SELECT 1 FROM t SETTINGS joined_subquery_requires_alias = 1"
+    case_id = "clickhouse.add_query_settings.existing_settings"
     cases.append(
         Case(
-            "clickhouse.add_query_settings.existing_settings",
-            lambda: _transformer().add_query_settings(existing_settings),
+            case_id,
+            frozen_legacy(AREA, case_id),
             lambda: apply_rewrite("add_query_settings", existing_settings, "clickhouse", settings=BASE_SETTINGS),
         )
     )
@@ -254,44 +246,41 @@ def _clickhouse_cases() -> list[Case]:
         **{f"safe_division.{k}": v for k, v in SAFE_DIVISION_SQL.items()},
     }
     for name, sql in unit_inputs.items():
-        cases.append(
-            Case(
-                f"clickhouse.pipeline.unit.{name}",
-                lambda sql=sql: _legacy_clickhouse_pipeline(sql),
-                lambda sql=sql: _fork_clickhouse_pipeline(sql),
-            )
-        )
+        case_id = f"clickhouse.pipeline.unit.{name}"
+        cases.append(Case(case_id, frozen_legacy(AREA, case_id), lambda sql=sql: _production_clickhouse_pipeline(sql)))
 
     for query_id in TPCH_IDS:
+        case_id = f"clickhouse.pipeline.tpch_q{query_id}"
         cases.append(
             Case(
-                f"clickhouse.pipeline.tpch_q{query_id}",
-                lambda query_id=query_id: _legacy_clickhouse_pipeline(_tpch_query(query_id, "clickhouse")),
-                lambda query_id=query_id: _fork_clickhouse_pipeline(_tpch_query(query_id, "clickhouse")),
+                case_id,
+                frozen_legacy(AREA, case_id),
+                lambda query_id=query_id: _production_clickhouse_pipeline(_tpch_query(query_id, "clickhouse")),
             )
         )
 
     cases.append(
         Case(
             "clickhouse.pipeline.tpch_q5_grace_hash",
-            lambda: _legacy_clickhouse_pipeline(_tpch_query(5, "clickhouse"), ADDITIONAL_SETTINGS[0]),
-            lambda: _fork_clickhouse_pipeline(_tpch_query(5, "clickhouse"), dict(ADDITIONAL_SETTINGS[0])),
+            frozen_legacy(AREA, "clickhouse.pipeline.tpch_q5_grace_hash"),
+            lambda: _production_clickhouse_pipeline(_tpch_query(5, "clickhouse"), dict(ADDITIONAL_SETTINGS[0])),
         )
     )
     cases.append(
         Case(
             "clickhouse.pipeline.tpch_q21_hash",
-            lambda: _legacy_clickhouse_pipeline(_tpch_query(21, "clickhouse"), ADDITIONAL_SETTINGS[1]),
-            lambda: _fork_clickhouse_pipeline(_tpch_query(21, "clickhouse"), dict(ADDITIONAL_SETTINGS[1])),
+            frozen_legacy(AREA, "clickhouse.pipeline.tpch_q21_hash"),
+            lambda: _production_clickhouse_pipeline(_tpch_query(21, "clickhouse"), dict(ADDITIONAL_SETTINGS[1])),
         )
     )
 
     for query_id in TPCDS_CLICKHOUSE_IDS:
+        case_id = f"clickhouse.pipeline.tpcds_q{query_id}"
         cases.append(
             Case(
-                f"clickhouse.pipeline.tpcds_q{query_id}",
-                lambda query_id=query_id: _legacy_clickhouse_pipeline(_tpcds_query(query_id, "clickhouse")),
-                lambda query_id=query_id: _fork_clickhouse_pipeline(_tpcds_query(query_id, "clickhouse")),
+                case_id,
+                frozen_legacy(AREA, case_id),
+                lambda query_id=query_id: _production_clickhouse_pipeline(_tpcds_query(query_id, "clickhouse")),
             )
         )
 
@@ -326,18 +315,10 @@ STARROCKS_SQL = {
 }
 
 
-def _starrocks_mixin():
-    from benchbox.platforms.starrocks.workload import StarRocksWorkloadMixin
+def _alias_derived_tables(sql: str) -> str:
+    from benchbox.platforms.starrocks.workload import _alias_derived_tables as production
 
-    return StarRocksWorkloadMixin.__new__(StarRocksWorkloadMixin)
-
-
-def _legacy_starrocks_execute_rewrites(sql: str) -> str:
-    mixin = _starrocks_mixin()
-    sql = mixin._quote_reserved_aliases(sql)
-    sql = mixin._translate_ansi_substring(sql)
-    sql = mixin._translate_ansi_identifiers(sql)
-    return mixin._inject_missing_subquery_aliases(sql)
+    return production(sql)
 
 
 def _fork_starrocks_execute_rewrites(sql: str, read: str = "starrocks", identify: bool = False) -> str:
@@ -350,33 +331,37 @@ def _starrocks_cases() -> list[Case]:
     cases: list[Case] = []
     for alias in STARROCKS_RESERVED_ALIASES:
         sql = f"SELECT x AS {alias} FROM t"
+        case_id = f"starrocks.reserved_alias.{alias}"
         cases.append(
             Case(
-                f"starrocks.reserved_alias.{alias}",
-                lambda sql=sql: _legacy_starrocks_execute_rewrites(sql),
-                lambda sql=sql: _fork_starrocks_execute_rewrites(sql, "postgres"),
+                case_id,
+                frozen_legacy(AREA, case_id),
+                lambda sql=sql: _alias_derived_tables(sql),
             )
         )
     for name, sql in STARROCKS_SQL.items():
+        case_id = f"starrocks.unit.{name}"
         cases.append(
             Case(
-                f"starrocks.unit.{name}",
-                lambda sql=sql: _legacy_starrocks_execute_rewrites(sql),
-                lambda sql=sql: _fork_starrocks_execute_rewrites(sql, "postgres"),
+                case_id,
+                frozen_legacy(AREA, case_id),
+                lambda sql=sql: _alias_derived_tables(sql),
             )
         )
     for query_id in TPCH_IDS:
+        translated_id = f"starrocks.tpch_q{query_id}.translated"
         cases.append(
             Case(
-                f"starrocks.tpch_q{query_id}.translated",
-                lambda query_id=query_id: _legacy_starrocks_execute_rewrites(_tpch_query(query_id, "starrocks")),
-                lambda query_id=query_id: _fork_starrocks_execute_rewrites(_tpch_query(query_id, "starrocks")),
+                translated_id,
+                frozen_legacy(AREA, translated_id),
+                lambda query_id=query_id: _alias_derived_tables(_tpch_query(query_id, "starrocks")),
             )
         )
+        end_to_end_id = f"starrocks.tpch_q{query_id}.end_to_end"
         cases.append(
             Case(
-                f"starrocks.tpch_q{query_id}.end_to_end",
-                lambda query_id=query_id: _legacy_starrocks_execute_rewrites(_tpch_query(query_id, "starrocks")),
+                end_to_end_id,
+                frozen_legacy(AREA, end_to_end_id),
                 lambda query_id=query_id: _fork_starrocks_execute_rewrites(
                     _tpch_query(query_id, None), "postgres", identify=True
                 ),
@@ -385,39 +370,32 @@ def _starrocks_cases() -> list[Case]:
     return cases
 
 
-def _legacy_clickhouse_override(query_id: int, seed: int) -> str:
-    return _tpcds().get_query(query_id, seed=seed, dialect="clickhouse")
-
-
-def _fork_clickhouse_override(query_id: int, seed: int) -> str:
-    return apply_rewrite(
-        "correlated_exists_to_in", _tpcds_clickhouse_translated(query_id, seed), "clickhouse", expected=3
-    )
+def _production_clickhouse_override(query_id: int, query: str) -> str:
+    return _tpcds()._apply_target_dialect_overrides(query_id, query, "clickhouse")
 
 
 def _tpcds_override_cases() -> list[Case]:
     cases: list[Case] = []
     for query_id in (10, 35):
         for seed in (1, 2, 3):
+            case_id = f"tpcds_clickhouse_override.q{query_id}.seed{seed}"
             cases.append(
                 Case(
-                    f"tpcds_clickhouse_override.q{query_id}.seed{seed}",
-                    lambda query_id=query_id, seed=seed: _legacy_clickhouse_override(query_id, seed),
-                    lambda query_id=query_id, seed=seed: _fork_clickhouse_override(query_id, seed),
+                    case_id,
+                    frozen_legacy(AREA, case_id),
+                    lambda query_id=query_id, seed=seed: _production_clickhouse_override(
+                        query_id, _tpcds_clickhouse_translated(query_id, seed)
+                    ),
                 )
             )
 
-    def legacy_fail_closed(name: str) -> str:
-        from benchbox.core.tpcds.benchmark import clickhouse_overrides
-
-        return getattr(clickhouse_overrides, name)("SELECT * FROM store_sales")
-
     for query_id in (10, 35):
+        case_id = f"tpcds_clickhouse_override.q{query_id}.fail_closed"
         cases.append(
             Case(
-                f"tpcds_clickhouse_override.q{query_id}.fail_closed",
-                lambda query_id=query_id: legacy_fail_closed(f"rewrite_q{query_id}_for_clickhouse"),
-                lambda: apply_rewrite("correlated_exists_to_in", "SELECT * FROM store_sales", "clickhouse", expected=3),
+                case_id,
+                frozen_legacy(AREA, case_id),
+                lambda query_id=query_id: _production_clickhouse_override(query_id, "SELECT * FROM store_sales"),
             )
         )
     return cases
@@ -454,13 +432,8 @@ Q58_UNIT_SQL = {
 INTERVAL_TARGETS = ("duckdb", "clickhouse")
 
 
-def _fork_netezza_transpile(sql: str, target: str, qualifiers: dict[str, str] | None = None) -> str:
-    sg = _sqlglot()
-    expression = sg.parse_one(sql, read="netezza")
-    lowered = sql.lower()
-    if qualifiers and all(name in lowered for name in ("ss_items", "cs_items", "ws_items")):
-        expression = apply_rewrite("qualify_order_by_columns", expression, "netezza", qualifiers=qualifiers)
-    return expression.sql(dialect=target, identify=target not in NO_IDENTIFY_DIALECTS)
+def _production_tpcds_translation(sql: str, target: str) -> str:
+    return _tpcds().translate_query_text(sql, "netezza", target)
 
 
 @lru_cache(maxsize=1)
@@ -471,37 +444,205 @@ def _interval_query_ids() -> tuple[int, ...]:
 
 def _tpcds_translation_cases() -> list[Case]:
     cases: list[Case] = []
-    qualifiers = {"item_id": "ss_items"}
     for target in INTERVAL_TARGETS:
         for name, sql in INTERVAL_UNIT_SQL.items():
+            case_id = f"tpcds_interval.unit.{name}.{target}"
             cases.append(
                 Case(
-                    f"tpcds_interval.unit.{name}.{target}",
-                    lambda sql=sql, target=target: _tpcds().translate_query_text(sql, "netezza", target),
-                    lambda sql=sql, target=target: _fork_netezza_transpile(sql, target),
+                    case_id,
+                    frozen_legacy(AREA, case_id),
+                    lambda sql=sql, target=target: _production_tpcds_translation(sql, target),
                 )
             )
         for name, sql in Q58_UNIT_SQL.items():
+            case_id = f"tpcds_q58.unit.{name}.{target}"
             cases.append(
                 Case(
-                    f"tpcds_q58.unit.{name}.{target}",
-                    lambda sql=sql, target=target: _tpcds().translate_query_text(sql, "netezza", target),
-                    lambda sql=sql, target=target: _fork_netezza_transpile(sql, target, qualifiers),
+                    case_id,
+                    frozen_legacy(AREA, case_id),
+                    lambda sql=sql, target=target: _production_tpcds_translation(sql, target),
                 )
             )
         for query_id in (*_interval_query_ids(), 58):
+            case_id = f"tpcds_interval.q{query_id}.{target}"
             cases.append(
                 Case(
-                    f"tpcds_interval.q{query_id}.{target}",
-                    lambda query_id=query_id, target=target: _tpcds().translate_query_text(
-                        _tpcds_raw_netezza(query_id), "netezza", target
-                    ),
-                    lambda query_id=query_id, target=target: _fork_netezza_transpile(
-                        _tpcds_raw_netezza(query_id), target, qualifiers
+                    case_id,
+                    frozen_legacy(AREA, case_id),
+                    lambda query_id=query_id, target=target: _production_tpcds_translation(
+                        _tpcds_raw_netezza(query_id), target
                     ),
                 )
             )
     return cases
+
+
+def _norm(sql: str) -> str:
+    return re.sub(r"\s+", "", sql).lower()
+
+
+def _same_ignoring_format(legacy: str, fork: str) -> bool:
+    return _norm(legacy) == _norm(fork)
+
+
+def _same_with_cross_join(legacy: str, fork: str) -> bool:
+    return _norm(legacy) == _norm(fork.replace(" CROSS JOIN ", ", "))
+
+
+def _literal_kept(literal: str):
+    return lambda legacy, fork: literal in fork and literal not in legacy
+
+
+def _divisor_guarded(legacy: str, fork: str) -> bool:
+    return "nullif" not in legacy.lower() and "nullIf(" in fork
+
+
+def _duplicate_settings(legacy: str, fork: str) -> bool:
+    return legacy.count("SETTINGS") == 2 and fork.count("SETTINGS") == 1
+
+
+def _zero_in_parens(legacy: str, fork: str) -> bool:
+    return "(x + 0.0)" in legacy and "(x + CAST(0 AS Decimal(15, 2)))" in fork
+
+
+def _implicit_alias(legacy: str, fork: str) -> bool:
+    return _norm(legacy) == _norm(fork.replace(" AS sq", " sq"))
+
+
+def _value_alias(legacy: str, fork: str) -> bool:
+    return legacy == "SELECT x AS `value` FROM t" and fork == "SELECT x AS value FROM t"
+
+
+def _join_alias(legacy: str, fork: str) -> bool:
+    return "_sq" not in legacy and "AS `_sq0` ON" in fork
+
+
+def _nested_alias(legacy: str, fork: str) -> bool:
+    return legacy.count("_sq") == 1 and fork.count("_sq") == 2
+
+
+def _nested_substring(legacy: str, fork: str) -> bool:
+    return "FROM 1 FOR 3" in legacy and "LOWER(col), 1, 3" in fork
+
+
+def _double_quote_stays_literal(legacy: str, fork: str) -> bool:
+    return "`col`" in legacy and "'col'" in fork
+
+
+_FORMAT_ONLY = "Only spacing, keyword case or the NULLIF spelling differs; ClickHouse accepts both spellings."
+
+CLASSIFICATIONS: list[tuple[str, str, str, Callable[[str, str], bool]]] = [
+    (
+        r"clickhouse\.fix_type_casts\.(coalesce_zero|else_zero|q6_between|then_else_zero|zero_arithmetic)",
+        "equivalent",
+        _FORMAT_ONLY,
+        _same_ignoring_format,
+    ),
+    (
+        r"clickhouse\.(fix_decimal_division_by_zero\.nullable_decimal_(18_2|divisor)|"
+        r"safe_division\.(already_nullif|function_call|multiple|parenthesized_divisor|string_literal|"
+        r"sum_function|window_divisor)|add_query_settings\.(lowercase_select|q66_like))",
+        "equivalent",
+        _FORMAT_ONLY,
+        _same_ignoring_format,
+    ),
+    (
+        r"clickhouse\.normalize_case\.already_lower",
+        "equivalent",
+        "The runtime renders the comma join as CROSS JOIN, which ClickHouse treats the same way.",
+        _same_with_cross_join,
+    ),
+    (
+        r"(clickhouse\.normalize_case\.string_literal|clickhouse\.pipeline\.unit\.normalize_case\.string_literal)",
+        "legacy-bug",
+        "The legacy regex lowercased column-like text inside a string literal and changed the compared value; "
+        "the runtime rewrites identifiers only.",
+        _literal_kept("'SR_FEE and D_YEAR'"),
+    ),
+    (
+        r"(clickhouse\.fix_type_casts\.string_literal|clickhouse\.pipeline\.unit\.type_casts\.string_literal)",
+        "legacy-bug",
+        "The legacy regex rewrote 0.0 inside string literals; the runtime casts zero literals in expressions only.",
+        _literal_kept("'THEN 0.0'"),
+    ),
+    (
+        r"(clickhouse\.fix_type_casts\.zero_in_parens|clickhouse\.pipeline\.unit\.type_casts\.zero_in_parens)",
+        "legacy-bug",
+        "The legacy regex skipped a zero literal followed by a closing parenthesis and left a Float64 zero in a "
+        "Decimal expression; the runtime casts it.",
+        _zero_in_parens,
+    ),
+    (
+        r"clickhouse\.(fix_decimal_division_by_zero\.(non_nullable_decimal|plain_division)|"
+        r"safe_division\.nested_window_sum)",
+        "legacy-bug",
+        "The legacy method guarded only Nullable(Decimal) divisors (or missed a divisor after a scaled numerator) "
+        "and the production pipeline had already moved to the runtime's safe_division; the runtime wraps every "
+        "non-literal divisor as nullIf(divisor, 0).",
+        _divisor_guarded,
+    ),
+    (
+        r"clickhouse\.add_query_settings\.existing_settings",
+        "legacy-bug",
+        "The legacy method appended a second SETTINGS clause, which ClickHouse rejects; the runtime replaces the "
+        "setting in the existing clause.",
+        _duplicate_settings,
+    ),
+    (
+        r"starrocks\.reserved_alias\.value",
+        "equivalent",
+        "StarRocks reserves VALUES but not VALUE (docs.starrocks.io keywords list), so the unquoted alias parses; "
+        "the legacy list over-quoted it.",
+        _value_alias,
+    ),
+    (
+        r"starrocks\.unit\.subquery_exists",
+        "equivalent",
+        "Only the space after EXISTS differs.",
+        _same_ignoring_format,
+    ),
+    (
+        r"starrocks\.unit\.subquery_implicit_alias",
+        "equivalent",
+        "The runtime writes the implicit alias with AS.",
+        _implicit_alias,
+    ),
+    (
+        r"starrocks\.unit\.subquery_join",
+        "legacy-bug",
+        "The legacy scanner aliased only FROM and comma subqueries, so a JOIN-derived table reached StarRocks "
+        "without an alias and failed to parse; the runtime aliases it.",
+        _join_alias,
+    ),
+    (
+        r"starrocks\.unit\.subquery_nested",
+        "legacy-bug",
+        "The legacy scanner aliased only the outer derived table; the runtime aliases every level.",
+        _nested_alias,
+    ),
+    (
+        r"starrocks\.unit\.substring_nested_function",
+        "legacy-bug",
+        "The legacy regex left SUBSTRING(... FROM ... FOR ...) around a function argument, which StarRocks "
+        "rejects (it logged a warning); the runtime writes the comma form.",
+        _nested_substring,
+    ),
+    (
+        r"starrocks\.unit\.identifier_(quote|mixed)",
+        "legacy-bug",
+        "StarRocks reads a double-quoted token as a string literal (docs.starrocks.io), so the legacy conversion of "
+        '"col" to an identifier changed the meaning of the statement; the runtime keeps StarRocks\' own reading. '
+        "Benchmark queries reach execution already translated with backtick identifiers.",
+        _double_quote_stays_literal,
+    ),
+    (
+        r"tpcds_clickhouse_override\.q(10|35)\.seed[123]",
+        "equivalent",
+        "The rewritten query is re-rendered by the runtime, which writes each comma join as CROSS JOIN; "
+        "ClickHouse treats both the same way and the semi-join predicates are identical.",
+        _same_with_cross_join,
+    ),
+]
 
 
 def cases() -> list[Case]:

@@ -71,11 +71,11 @@ def test_get_query_variant_fallback_without_dsqgen(tpcds_benchmark):
     assert "SELECT" in query
 
 
-def test_normalize_interval_syntax(tpcds_benchmark):
+def test_translate_query_text_converts_day_suffixes_to_intervals(tpcds_benchmark):
     raw = "select cast('2000-01-01' as date) + 60 days - 30 days"
-    normalized = tpcds_benchmark._normalize_interval_syntax(raw)
-    assert "+ INTERVAL 60 DAY" in normalized
-    assert "- INTERVAL 30 DAY" in normalized
+    translated = tpcds_benchmark.translate_query_text(raw, "netezza", "duckdb")
+    assert "+ INTERVAL '60' DAY" in translated
+    assert "- INTERVAL '30' DAY" in translated
 
 
 def test_spark_q90_rewrite_guards_zero_denominator(tpcds_benchmark):
@@ -167,12 +167,12 @@ def test_postgres_rollup_order_alias_rewrite_repeats_grouping_expression(tpcds_b
     ) in rewritten
 
 
-def test_fix_query58_ambiguity(tpcds_benchmark):
+def test_translate_query_text_qualifies_query58_order_by(tpcds_benchmark):
     query = (
         "WITH ss_items AS (SELECT 1 AS item_id), cs_items AS (SELECT 1 AS item_id), "
         'ws_items AS (SELECT 1 AS item_id) SELECT * FROM ss_items ORDER BY "item_id"'
     )
-    fixed = tpcds_benchmark._fix_query58_ambiguity(query)
+    fixed = tpcds_benchmark.translate_query_text(query, "netezza", "duckdb")
     assert 'ORDER BY "ss_items"."item_id"' in fixed
 
 

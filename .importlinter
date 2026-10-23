@@ -46,7 +46,7 @@ ignore_imports =
     benchbox.core.runner.runner -> benchbox.platforms.dataframe.benchmark_mixin
     benchbox.core.tpcds.dataframe_queries.rollup_helper -> benchbox.platforms.dataframe.unified_frame
     benchbox.core.tpcds.dataframe_queries.rollup_helper -> benchbox.platforms.dataframe.unified_pandas_frame
-    benchbox.core.tpchavoc.equivalence -> benchbox.platforms.clickhouse.query_transformer
+    benchbox.core.tpchavoc.equivalence -> benchbox.platforms.clickhouse.query_rewrites
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.clickhouse_local
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.datafusion
     benchbox.core.tpchavoc.equivalence -> benchbox.platforms.datafusion_tpch_rewrites

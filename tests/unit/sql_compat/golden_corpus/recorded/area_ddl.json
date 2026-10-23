@@ -881,6 +881,66 @@
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) WITH(format='PARQUET')",
     "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
+  "presto_hive:tpcds_call_center": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE call_center(cc_call_center_sk INT, cc_call_center_id CHAR(16), cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT, cc_open_date_sk INT, cc_name VARCHAR(50), cc_class VARCHAR(50), cc_employees INT, cc_sq_ft INT, cc_hours CHAR(20), cc_manager VARCHAR(40), cc_mkt_id INT, cc_mkt_class CHAR(50), cc_mkt_desc VARCHAR(100), cc_market_manager VARCHAR(40), cc_division INT, cc_division_name VARCHAR(50), cc_company INT, cc_company_name CHAR(50), cc_street_number CHAR(10), cc_street_name VARCHAR(60), cc_street_type CHAR(15), cc_suite_number CHAR(10), cc_city VARCHAR(60), cc_county VARCHAR(30), cc_state CHAR(2), cc_zip CHAR(10), cc_country VARCHAR(20), cc_gmt_offset DECIMAL(15, 2), cc_tax_percentage DECIMAL(15, 2)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE call_center(cc_call_center_sk INT NOT NULL, cc_call_center_id CHAR(16) NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT, cc_open_date_sk INT, cc_name VARCHAR(50), cc_class VARCHAR(50), cc_employees INT, cc_sq_ft INT, cc_hours CHAR(20), cc_manager VARCHAR(40), cc_mkt_id INT, cc_mkt_class CHAR(50), cc_mkt_desc VARCHAR(100), cc_market_manager VARCHAR(40), cc_division INT, cc_division_name VARCHAR(50), cc_company INT, cc_company_name CHAR(50), cc_street_number CHAR(10), cc_street_name VARCHAR(60), cc_street_type CHAR(15), cc_suite_number CHAR(10), cc_city VARCHAR(60), cc_county VARCHAR(30), cc_state CHAR(2), cc_zip CHAR(10), cc_country VARCHAR(20), cc_gmt_offset DECIMAL(15, 2), cc_tax_percentage DECIMAL(15, 2)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "presto_hive:tpcds_store_sales": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE store_sales(ss_sold_date_sk INT, ss_sold_time_sk INT, ss_item_sk INT, ss_customer_sk INT, ss_cdemo_sk INT, ss_hdemo_sk INT, ss_addr_sk INT, ss_store_sk INT, ss_promo_sk INT, ss_ticket_number INT, ss_quantity INT, ss_wholesale_cost DECIMAL(15, 2), ss_list_price DECIMAL(15, 2), ss_sales_price DECIMAL(15, 2), ss_ext_discount_amt DECIMAL(15, 2), ss_ext_sales_price DECIMAL(15, 2), ss_ext_wholesale_cost DECIMAL(15, 2), ss_ext_list_price DECIMAL(15, 2), ss_ext_tax DECIMAL(15, 2), ss_coupon_amt DECIMAL(15, 2), ss_net_paid DECIMAL(15, 2), ss_net_paid_inc_tax DECIMAL(15, 2), ss_net_profit DECIMAL(15, 2)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE store_sales(ss_sold_date_sk INT, ss_sold_time_sk INT, ss_item_sk INT NOT NULL, ss_customer_sk INT, ss_cdemo_sk INT, ss_hdemo_sk INT, ss_addr_sk INT, ss_store_sk INT, ss_promo_sk INT, ss_ticket_number INT NOT NULL, ss_quantity INT, ss_wholesale_cost DECIMAL(15, 2), ss_list_price DECIMAL(15, 2), ss_sales_price DECIMAL(15, 2), ss_ext_discount_amt DECIMAL(15, 2), ss_ext_sales_price DECIMAL(15, 2), ss_ext_wholesale_cost DECIMAL(15, 2), ss_ext_list_price DECIMAL(15, 2), ss_ext_tax DECIMAL(15, 2), ss_coupon_amt DECIMAL(15, 2), ss_net_paid DECIMAL(15, 2), ss_net_paid_inc_tax DECIMAL(15, 2), ss_net_profit DECIMAL(15, 2)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "presto_hive:tpch_customer": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE customer(c_custkey INT, c_name VARCHAR(25), c_address VARCHAR(40), c_nationkey INT, c_phone CHAR(15), c_acctbal DECIMAL(15, 2), c_mktsegment CHAR(10), c_comment VARCHAR(117), FOREIGN KEY(c_nationkey) REFERENCES nation(n_nationkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment CHAR(10) NOT NULL, c_comment VARCHAR(117) NOT NULL, FOREIGN KEY(c_nationkey) REFERENCES nation(n_nationkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "presto_hive:tpch_lineitem": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE lineitem(l_orderkey INT, l_partkey INT, l_suppkey INT, l_linenumber INT, l_quantity DECIMAL(15, 2), l_extendedprice DECIMAL(15, 2), l_discount DECIMAL(15, 2), l_tax DECIMAL(15, 2), l_returnflag CHAR(1), l_linestatus CHAR(1), l_shipdate DATE, l_commitdate DATE, l_receiptdate DATE, l_shipinstruct CHAR(25), l_shipmode CHAR(10), l_comment VARCHAR(44), FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL, FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "presto_hive:tpch_nation": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE nation(n_nationkey INT, n_name CHAR(25), n_regionkey INT, n_comment VARCHAR(152), FOREIGN KEY(n_regionkey) REFERENCES region(r_regionkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE nation(n_nationkey INT NOT NULL, n_name CHAR(25) NOT NULL, n_regionkey INT NOT NULL, n_comment VARCHAR(152), FOREIGN KEY(n_regionkey) REFERENCES region(r_regionkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "presto_hive:tpch_orders": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE orders(o_orderkey INT, o_custkey INT, o_orderstatus CHAR(1), o_totalprice DECIMAL(15, 2), o_orderdate DATE, o_orderpriority CHAR(15), o_clerk CHAR(15), o_shippriority INT, o_comment VARCHAR(79), FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus CHAR(1) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority CHAR(15) NOT NULL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL, FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "presto_hive:tpch_part": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE part(p_partkey INT, p_name VARCHAR(55), p_mfgr CHAR(25), p_brand CHAR(10), p_type VARCHAR(25), p_size INT, p_container CHAR(10), p_retailprice DECIMAL(15, 2), p_comment VARCHAR(23)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr CHAR(25) NOT NULL, p_brand CHAR(10) NOT NULL, p_type VARCHAR(25) NOT NULL, p_size INT NOT NULL, p_container CHAR(10) NOT NULL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "presto_hive:tpch_partsupp": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE partsupp(ps_partkey INT, ps_suppkey INT, ps_availqty INT, ps_supplycost DECIMAL(15, 2), ps_comment VARCHAR(199), FOREIGN KEY(ps_partkey) REFERENCES part(p_partkey), FOREIGN KEY(ps_suppkey) REFERENCES supplier(s_suppkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE partsupp(ps_partkey INT NOT NULL, ps_suppkey INT NOT NULL, ps_availqty INT NOT NULL, ps_supplycost DECIMAL(15, 2) NOT NULL, ps_comment VARCHAR(199) NOT NULL, FOREIGN KEY(ps_partkey) REFERENCES part(p_partkey), FOREIGN KEY(ps_suppkey) REFERENCES supplier(s_suppkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "presto_hive:tpch_region": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE region(r_regionkey INT, r_name CHAR(25), r_comment VARCHAR(152)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE region(r_regionkey INT NOT NULL, r_name CHAR(25) NOT NULL, r_comment VARCHAR(152)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "presto_hive:tpch_supplier": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE supplier(s_suppkey INT, s_name CHAR(25), s_address VARCHAR(40), s_nationkey INT, s_phone CHAR(15), s_acctbal DECIMAL(15, 2), s_comment VARCHAR(101), FOREIGN KEY(s_nationkey) REFERENCES nation(n_nationkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE supplier(s_suppkey INT NOT NULL, s_name CHAR(25) NOT NULL, s_address VARCHAR(40) NOT NULL, s_nationkey INT NOT NULL, s_phone CHAR(15) NOT NULL, s_acctbal DECIMAL(15, 2) NOT NULL, s_comment VARCHAR(101) NOT NULL, FOREIGN KEY(s_nationkey) REFERENCES nation(n_nationkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
   "presto_iceberg:double_array": {
     "classification": "legacy-bug",
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE))",
@@ -1474,6 +1534,66 @@
     "fork": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)) WITH(format='PARQUET')",
     "legacy": "CREATE TABLE vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) WITH(format='PARQUET')",
     "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
+  },
+  "trino_hive:tpcds_call_center": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE call_center(cc_call_center_sk INT, cc_call_center_id CHAR(16), cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT, cc_open_date_sk INT, cc_name VARCHAR(50), cc_class VARCHAR(50), cc_employees INT, cc_sq_ft INT, cc_hours CHAR(20), cc_manager VARCHAR(40), cc_mkt_id INT, cc_mkt_class CHAR(50), cc_mkt_desc VARCHAR(100), cc_market_manager VARCHAR(40), cc_division INT, cc_division_name VARCHAR(50), cc_company INT, cc_company_name CHAR(50), cc_street_number CHAR(10), cc_street_name VARCHAR(60), cc_street_type CHAR(15), cc_suite_number CHAR(10), cc_city VARCHAR(60), cc_county VARCHAR(30), cc_state CHAR(2), cc_zip CHAR(10), cc_country VARCHAR(20), cc_gmt_offset DECIMAL(15, 2), cc_tax_percentage DECIMAL(15, 2)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE call_center(cc_call_center_sk INT NOT NULL, cc_call_center_id CHAR(16) NOT NULL, cc_rec_start_date DATE, cc_rec_end_date DATE, cc_closed_date_sk INT, cc_open_date_sk INT, cc_name VARCHAR(50), cc_class VARCHAR(50), cc_employees INT, cc_sq_ft INT, cc_hours CHAR(20), cc_manager VARCHAR(40), cc_mkt_id INT, cc_mkt_class CHAR(50), cc_mkt_desc VARCHAR(100), cc_market_manager VARCHAR(40), cc_division INT, cc_division_name VARCHAR(50), cc_company INT, cc_company_name CHAR(50), cc_street_number CHAR(10), cc_street_name VARCHAR(60), cc_street_type CHAR(15), cc_suite_number CHAR(10), cc_city VARCHAR(60), cc_county VARCHAR(30), cc_state CHAR(2), cc_zip CHAR(10), cc_country VARCHAR(20), cc_gmt_offset DECIMAL(15, 2), cc_tax_percentage DECIMAL(15, 2)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "trino_hive:tpcds_store_sales": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE store_sales(ss_sold_date_sk INT, ss_sold_time_sk INT, ss_item_sk INT, ss_customer_sk INT, ss_cdemo_sk INT, ss_hdemo_sk INT, ss_addr_sk INT, ss_store_sk INT, ss_promo_sk INT, ss_ticket_number INT, ss_quantity INT, ss_wholesale_cost DECIMAL(15, 2), ss_list_price DECIMAL(15, 2), ss_sales_price DECIMAL(15, 2), ss_ext_discount_amt DECIMAL(15, 2), ss_ext_sales_price DECIMAL(15, 2), ss_ext_wholesale_cost DECIMAL(15, 2), ss_ext_list_price DECIMAL(15, 2), ss_ext_tax DECIMAL(15, 2), ss_coupon_amt DECIMAL(15, 2), ss_net_paid DECIMAL(15, 2), ss_net_paid_inc_tax DECIMAL(15, 2), ss_net_profit DECIMAL(15, 2)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE store_sales(ss_sold_date_sk INT, ss_sold_time_sk INT, ss_item_sk INT NOT NULL, ss_customer_sk INT, ss_cdemo_sk INT, ss_hdemo_sk INT, ss_addr_sk INT, ss_store_sk INT, ss_promo_sk INT, ss_ticket_number INT NOT NULL, ss_quantity INT, ss_wholesale_cost DECIMAL(15, 2), ss_list_price DECIMAL(15, 2), ss_sales_price DECIMAL(15, 2), ss_ext_discount_amt DECIMAL(15, 2), ss_ext_sales_price DECIMAL(15, 2), ss_ext_wholesale_cost DECIMAL(15, 2), ss_ext_list_price DECIMAL(15, 2), ss_ext_tax DECIMAL(15, 2), ss_coupon_amt DECIMAL(15, 2), ss_net_paid DECIMAL(15, 2), ss_net_paid_inc_tax DECIMAL(15, 2), ss_net_profit DECIMAL(15, 2)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "trino_hive:tpch_customer": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE customer(c_custkey INT, c_name VARCHAR(25), c_address VARCHAR(40), c_nationkey INT, c_phone CHAR(15), c_acctbal DECIMAL(15, 2), c_mktsegment CHAR(10), c_comment VARCHAR(117), FOREIGN KEY(c_nationkey) REFERENCES nation(n_nationkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE customer(c_custkey INT NOT NULL, c_name VARCHAR(25) NOT NULL, c_address VARCHAR(40) NOT NULL, c_nationkey INT NOT NULL, c_phone CHAR(15) NOT NULL, c_acctbal DECIMAL(15, 2) NOT NULL, c_mktsegment CHAR(10) NOT NULL, c_comment VARCHAR(117) NOT NULL, FOREIGN KEY(c_nationkey) REFERENCES nation(n_nationkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "trino_hive:tpch_lineitem": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE lineitem(l_orderkey INT, l_partkey INT, l_suppkey INT, l_linenumber INT, l_quantity DECIMAL(15, 2), l_extendedprice DECIMAL(15, 2), l_discount DECIMAL(15, 2), l_tax DECIMAL(15, 2), l_returnflag CHAR(1), l_linestatus CHAR(1), l_shipdate DATE, l_commitdate DATE, l_receiptdate DATE, l_shipinstruct CHAR(25), l_shipmode CHAR(10), l_comment VARCHAR(44), FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE lineitem(l_orderkey INT NOT NULL, l_partkey INT NOT NULL, l_suppkey INT NOT NULL, l_linenumber INT NOT NULL, l_quantity DECIMAL(15, 2) NOT NULL, l_extendedprice DECIMAL(15, 2) NOT NULL, l_discount DECIMAL(15, 2) NOT NULL, l_tax DECIMAL(15, 2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44) NOT NULL, FOREIGN KEY(l_orderkey) REFERENCES orders(o_orderkey), FOREIGN KEY(l_partkey) REFERENCES part(p_partkey), FOREIGN KEY(l_suppkey) REFERENCES supplier(s_suppkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "trino_hive:tpch_nation": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE nation(n_nationkey INT, n_name CHAR(25), n_regionkey INT, n_comment VARCHAR(152), FOREIGN KEY(n_regionkey) REFERENCES region(r_regionkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE nation(n_nationkey INT NOT NULL, n_name CHAR(25) NOT NULL, n_regionkey INT NOT NULL, n_comment VARCHAR(152), FOREIGN KEY(n_regionkey) REFERENCES region(r_regionkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "trino_hive:tpch_orders": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE orders(o_orderkey INT, o_custkey INT, o_orderstatus CHAR(1), o_totalprice DECIMAL(15, 2), o_orderdate DATE, o_orderpriority CHAR(15), o_clerk CHAR(15), o_shippriority INT, o_comment VARCHAR(79), FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE orders(o_orderkey INT NOT NULL, o_custkey INT NOT NULL, o_orderstatus CHAR(1) NOT NULL, o_totalprice DECIMAL(15, 2) NOT NULL, o_orderdate DATE NOT NULL, o_orderpriority CHAR(15) NOT NULL, o_clerk CHAR(15) NOT NULL, o_shippriority INT NOT NULL, o_comment VARCHAR(79) NOT NULL, FOREIGN KEY(o_custkey) REFERENCES customer(c_custkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "trino_hive:tpch_part": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE part(p_partkey INT, p_name VARCHAR(55), p_mfgr CHAR(25), p_brand CHAR(10), p_type VARCHAR(25), p_size INT, p_container CHAR(10), p_retailprice DECIMAL(15, 2), p_comment VARCHAR(23)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE part(p_partkey INT NOT NULL, p_name VARCHAR(55) NOT NULL, p_mfgr CHAR(25) NOT NULL, p_brand CHAR(10) NOT NULL, p_type VARCHAR(25) NOT NULL, p_size INT NOT NULL, p_container CHAR(10) NOT NULL, p_retailprice DECIMAL(15, 2) NOT NULL, p_comment VARCHAR(23) NOT NULL) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "trino_hive:tpch_partsupp": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE partsupp(ps_partkey INT, ps_suppkey INT, ps_availqty INT, ps_supplycost DECIMAL(15, 2), ps_comment VARCHAR(199), FOREIGN KEY(ps_partkey) REFERENCES part(p_partkey), FOREIGN KEY(ps_suppkey) REFERENCES supplier(s_suppkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE partsupp(ps_partkey INT NOT NULL, ps_suppkey INT NOT NULL, ps_availqty INT NOT NULL, ps_supplycost DECIMAL(15, 2) NOT NULL, ps_comment VARCHAR(199) NOT NULL, FOREIGN KEY(ps_partkey) REFERENCES part(p_partkey), FOREIGN KEY(ps_suppkey) REFERENCES supplier(s_suppkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "trino_hive:tpch_region": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE region(r_regionkey INT, r_name CHAR(25), r_comment VARCHAR(152)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE region(r_regionkey INT NOT NULL, r_name CHAR(25) NOT NULL, r_comment VARCHAR(152)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
+  },
+  "trino_hive:tpch_supplier": {
+    "classification": "legacy-bug",
+    "fork": "CREATE TABLE supplier(s_suppkey INT, s_name CHAR(25), s_address VARCHAR(40), s_nationkey INT, s_phone CHAR(15), s_acctbal DECIMAL(15, 2), s_comment VARCHAR(101), FOREIGN KEY(s_nationkey) REFERENCES nation(n_nationkey)) WITH(format='PARQUET')",
+    "legacy": "CREATE TABLE supplier(s_suppkey INT NOT NULL, s_name CHAR(25) NOT NULL, s_address VARCHAR(40) NOT NULL, s_nationkey INT NOT NULL, s_phone CHAR(15) NOT NULL, s_acctbal DECIMAL(15, 2) NOT NULL, s_comment VARCHAR(101) NOT NULL, FOREIGN KEY(s_nationkey) REFERENCES nation(n_nationkey)) WITH(format='PARQUET')",
+    "reason": "Trino 476 rejects NOT NULL on the Hive connector (Catalog 'hive' does not support non-null column), so create_schema failed on hive; the fork strips NOT NULL for the hive table format."
   },
   "trino_iceberg:double_array": {
     "classification": "legacy-bug",

@@ -327,9 +327,6 @@
       "WA002": 1,
       "WA003": 8
     },
-    "tests/unit/scripts/test_release_flow.py": {
-      "WA003": 10
-    },
     "tests/unit/scripts/test_todo_state_workflow.py": {
       "WA003": 1
     },

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -27,11 +28,20 @@ from .verdict import DO_NOT_SHIP
 PLAN_FILE = "plan.json"
 CLASSIFICATION_FILE = "classification.json"
 DIFF_FILE = "diff.patch"
+DIFF_NOT_STAGED_DETAIL = "the full pull request diff could not be staged in the workspace"
+
+
+class DiffNotStagedError(Exception):
+    pass
+
+
 WORKFLOW_FILE = "oracle-verdict.yml"
 WORKFLOW_SOURCE = Path(".github/workflows") / WORKFLOW_FILE
 OMP_CONFIG_SOURCE = Path(__file__).resolve().parents[3] / ".github" / "oracle-omp-config.yml"
 GATEWAY_TOKEN_ENV = "OMP_GATEWAY_TOKEN"
 GATEWAY_PROVIDERS = ("anthropic", "openai-codex", "muse-code", "google-antigravity")
+GATEWAY_CLIENT = "oracle-ci"
+GATEWAY_TOKEN_MIN_LENGTH = 32
 DEVELOP_REF = "refs/heads/develop"
 NEW_DIFF_ACTIONS = ("opened", "synchronize")
 REVIEW = "review"
@@ -333,7 +343,12 @@ def _protocol_round(
     force: bool = False,
 ) -> protocol.Round:
     paths = sorted(item.path for item in scoped)
-    patches = protocol.file_patches(full_diff or "")
+    scope = frozenset(paths)
+
+    def read(path: str) -> str | None:
+        return github.get_file(plan["repo"], path, plan["head_sha"]) if path in scope else None
+
+    patches = protocol.file_patches(full_diff or "", read)
     current = protocol.patch_map(patches, paths)
     digest = (protocol.patch_digest(patches, paths) if full_diff is not None else None) or f"unread-{plan['head_sha']}"
     base_ref = plan["base_ref"]
@@ -359,6 +374,7 @@ def _protocol_round(
         "patch_map": current,
         "patch_digest": digest,
         "strikes": strike_count,
+        "struck_digests": sorted(protocol.struck_digests(found.records)),
         "max_do_not_ship": policy.protocol.max_do_not_ship,
         "prior": list(latest.get("open_defects", [])) if follow_up else [],
         "next_id": int(latest.get("next_id", 1)) if follow_up else 1,
@@ -560,7 +576,10 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
         diff_text: str | None = plan["diff_inline"]
     else:
         diff_text = None
-        staged = runner.stage_pull_request_diff(plan_dir / DIFF_FILE, workspace)
+        source = plan_dir / DIFF_FILE
+        staged = runner.stage_pull_request_diff(source, workspace)
+        if staged is None and source.is_file() and source.read_text(encoding="utf-8").strip():
+            raise DiffNotStagedError(DIFF_NOT_STAGED_DETAIL)
     return render_review(
         template_name=classification.template,
         classification=classification,
@@ -593,18 +612,22 @@ def command_review(args: argparse.Namespace) -> int:
         raise SystemExit(f"oracle-verdict: classification unreadable: {exc}") from exc
     workspace = Path(args.workspace)
     try:
-        prompt = _assemble_prompt(plan, plan_path.parent, classification, workspace)
+        prompt: str | None = _assemble_prompt(plan, plan_path.parent, classification, workspace)
+    except DiffNotStagedError as exc:
+        prompt = None
+        outcome = runner.ReviewOutcome(None, Absence(ERROR, str(exc)), str(exc))
     except (OversizeError, ValueError) as exc:
         raise SystemExit(f"oracle-verdict: {exc}") from exc
-    outcome = runner.review(
-        reviewer,
-        workspace=workspace,
-        head_sha=plan["head_sha"],
-        prompt=prompt,
-        scratch=Path(args.scratch),
-        now=_now(),
-        plan=plan,
-    )
+    if prompt is not None:
+        outcome = runner.review(
+            reviewer,
+            workspace=workspace,
+            head_sha=plan["head_sha"],
+            prompt=prompt,
+            scratch=Path(args.scratch),
+            now=_now(),
+            plan=plan,
+        )
     artifact = attempt_files.build_artifact(
         run_id=os.environ["GITHUB_RUN_ID"],
         pr=plan["pr"],
@@ -674,7 +697,7 @@ def command_finalize(args: argparse.Namespace) -> int:
         loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"])
         step, errors = attempt_files.decide(selection_input, loaded)
         diff_path = Path(args.plan).parent / DIFF_FILE
-        commentable = commentable_lines(diff_path.read_text(encoding="utf-8")) if diff_path.is_file() else {}
+        commentable = commentable_lines(diff_path.read_bytes().decode("utf-8")) if diff_path.is_file() else {}
         final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable)
         previous = plan.get("previous_state")
         state = retry.next_state(
@@ -775,6 +798,59 @@ def command_reviewer_home(args: argparse.Namespace) -> int:
     return 0
 
 
+def _gateway_model(target: str) -> str:
+    provider, _, model = target.partition("/")
+    return f"{provider}/{model.split(':', 1)[0]}"
+
+
+def gateway_models(config: Mapping[str, Any]) -> list[str]:
+    chains = config["retry"]["fallbackChains"]
+    targets = [*config["modelRoles"].values(), *chains, *(target for chain in chains.values() for target in chain)]
+    return list(dict.fromkeys(_gateway_model(target) for target in targets))
+
+
+def _gateway_accounts(path: Path, providers: list[str]) -> dict[str, list[str]]:
+    listed = _read_json(path).get("accounts", [])
+    accounts = {
+        provider: [
+            entry["identityKey"] for entry in listed if entry.get("provider") == provider and entry.get("identityKey")
+        ]
+        for provider in providers
+    }
+    missing = [provider for provider, keys in accounts.items() if not keys]
+    if missing:
+        raise SystemExit(f"oracle-verdict: error: no logged-in broker account for {', '.join(missing)}")
+    return accounts
+
+
+def command_gateway_clients(args: argparse.Namespace) -> int:
+    import yaml
+
+    token = Path(args.token_file).read_text(encoding="utf-8")
+    if len(token) < GATEWAY_TOKEN_MIN_LENGTH or token != token.strip():
+        raise SystemExit(
+            f"oracle-verdict: error: the client token must be at least {GATEWAY_TOKEN_MIN_LENGTH} characters "
+            "with no surrounding whitespace"
+        )
+    models = gateway_models(yaml.safe_load(OMP_CONFIG_SOURCE.read_text(encoding="utf-8")))
+    providers = list(dict.fromkeys(model.split("/", 1)[0] for model in models))
+    unknown = [provider for provider in providers if provider not in GATEWAY_PROVIDERS]
+    if unknown:
+        raise SystemExit(
+            f"oracle-verdict: error: the reviewer config names providers the gateway does not serve: {unknown}"
+        )
+    client: dict[str, Any] = {"tokenSha256": hashlib.sha256(token.encode("utf-8")).hexdigest(), "models": models}
+    if args.accounts:
+        client["accounts"] = _gateway_accounts(Path(args.accounts), providers)
+    out = Path(args.out)
+    staged = out.with_name(f".{out.name}.{os.getpid()}.tmp")
+    write_private(staged, json.dumps({GATEWAY_CLIENT: client}, indent=2) + "\n")
+    os.replace(staged, out)
+    pinned = ", ".join(f"{provider}={len(keys)}" for provider, keys in client.get("accounts", {}).items())
+    print(f"{GATEWAY_CLIENT}: {len(models)} models; pinned accounts: {pinned or 'none'}")
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="oracle-verdict")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -821,6 +897,11 @@ def _parser() -> argparse.ArgumentParser:
     home.add_argument("--home", required=True)
     home.add_argument("--gateway-url", required=True)
     home.set_defaults(handler=command_reviewer_home)
+    clients = commands.add_parser("gateway-clients")
+    clients.add_argument("--token-file", required=True)
+    clients.add_argument("--accounts")
+    clients.add_argument("--out", required=True)
+    clients.set_defaults(handler=command_gateway_clients)
     return parser
 
 

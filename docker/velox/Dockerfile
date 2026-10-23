@@ -58,7 +58,17 @@ RUN set -eux; \
     echo "Built: /opt/spark/jars/benchbox-zstd-codec.jar"
 
 COPY --chown=spark:spark . /opt/benchbox
-RUN uv pip install --system --no-cache "/opt/benchbox[velox]"
+ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
+
+RUN set -eux; \
+    uv venv --python 3.12 "${VIRTUAL_ENV}"; \
+    echo "pyspark==$(cat /opt/spark/SPARK_VERSION)" > /tmp/pyspark-constraint.txt; \
+    uv pip install --python "${VIRTUAL_ENV}/bin/python" --no-cache \
+        --constraint /tmp/pyspark-constraint.txt "/opt/benchbox[velox]"; \
+    rm -f /tmp/pyspark-constraint.txt; \
+    chmod -R a+rX "${VIRTUAL_ENV}" "${UV_PYTHON_INSTALL_DIR}"
 
 COPY docker/velox/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 import zlib
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -30,7 +30,9 @@ MARKER_VERSION = 1
 MARKER_LIMIT = 4096
 MARKER_OPEN = "<!-- oracle-protocol:"
 _MARKER = re.compile(r"<!-- oracle-protocol: v1 (?P<data>[A-Za-z0-9_-]+) -->\s*\Z")
-_HUNK = re.compile(r"^@@ -(?P<start>\d+)(?:,(?P<count>\d+))? \+\d+(?:,\d+)? @@(?P<section>.*)$")
+_HUNK = re.compile(
+    r"^@@ -(?P<start>\d+)(?:,(?P<count>\d+))? \+(?P<new_start>\d+)(?:,(?P<new_count>\d+))? @@(?P<section>.*)$"
+)
 DEFECT_ID = re.compile(r"D([1-9][0-9]{0,3})")
 NOT_COUNTED_LIMIT = 5
 PATCH_HEX = 16
@@ -109,7 +111,19 @@ def _short(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]
 
 
-def file_patches(diff_text: str) -> dict[str, str]:
+def _heading_gap(section: str, new_start: int, new_count: int, content: str | None, old_start: int) -> str:
+    heading = section.strip()
+    if content is None or not heading:
+        return f"at{old_start}"
+    lines = content.split("\n")
+    begin = new_start + (1 if new_count == 0 else 0)
+    for index in range(min(begin - 2, len(lines) - 1), -1, -1):
+        if lines[index].strip().startswith(heading):
+            return f"fn{begin - 1 - index}"
+    return f"at{old_start}"
+
+
+def file_patches(diff_text: str, read: Callable[[str], str | None] | None = None) -> dict[str, str]:
     patches: dict[str, str] = {}
     for section in re.split(r"(?m)^(?=diff --git )", diff_text):
         header, _, body = section.partition("\n")
@@ -117,9 +131,13 @@ def file_patches(diff_text: str) -> dict[str, str]:
         if match is None:
             continue
         binary = "\nBinary files " in f"\n{body}" or "\nGIT binary patch" in f"\n{body}"
+        deleted = "\ndeleted file mode " in f"\n{body}"
         kept = []
         previous_end: int | None = None
-        for line in body.splitlines():
+        lines = body.split("\n")
+        if lines[-1] == "":
+            lines.pop()
+        for line in lines:
             if not binary and line.startswith("index "):
                 continue
             hunk = _HUNK.match(line)
@@ -127,10 +145,18 @@ def file_patches(diff_text: str) -> dict[str, str]:
                 kept.append(line)
                 continue
             count = 1 if hunk["count"] is None else int(hunk["count"])
+            new_count = 1 if hunk["new_count"] is None else int(hunk["new_count"])
             first = int(hunk["start"]) + (1 if count == 0 else 0)
-            gap = "first" if previous_end is None else str(first - previous_end)
+            if previous_end is not None:
+                gap = str(first - previous_end)
+            elif read is None or deleted or not hunk["section"].strip():
+                gap = "first"
+            else:
+                gap = _heading_gap(
+                    hunk["section"], int(hunk["new_start"]), new_count, read(match.group("new")), int(hunk["start"])
+                )
             previous_end = first + count
-            kept.append(f"@@ gap={gap}{hunk['section']}")
+            kept.append(f"@@ gap={gap} old={count} new={new_count}{hunk['section']}")
         patches[match.group("new")] = hashlib.sha256("\n".join(kept).encode("utf-8")).hexdigest()
     return patches
 
@@ -247,14 +273,16 @@ def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
     return found
 
 
-def strikes(records: Iterable[Mapping[str, Any]]) -> int:
-    return len(
-        {
-            record["patch_digest"]
-            for record in records
-            if record["decision"] == DO_NOT_SHIP and record["kind"] in (FIRST, FOLLOW_UP) and not record["carried"]
-        }
+def struck_digests(records: Iterable[Mapping[str, Any]]) -> frozenset[str]:
+    return frozenset(
+        record["patch_digest"]
+        for record in records
+        if record["decision"] == DO_NOT_SHIP and record["kind"] in (FIRST, FOLLOW_UP) and not record["carried"]
     )
+
+
+def strikes(records: Iterable[Mapping[str, Any]]) -> int:
+    return len(struck_digests(records))
 
 
 FORCED_ROUND_LIMIT = 2

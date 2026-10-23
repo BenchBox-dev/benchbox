@@ -114,22 +114,18 @@ class TestValidateCatalogExists:
 class TestExecuteSchemaStatements:
     def _run(
         self,
-        schema_sql: str,
+        statements: list[str],
         cursor: MagicMock,
         *,
-        normalize=lambda s: s,
-        optimize=lambda s: s,
         extract=lambda s: None,
     ) -> MagicMock:
         connection = MagicMock()
         connection.cursor.return_value = cursor
         notices = MagicMock()
         execute_schema_statements(
-            schema_sql,
+            statements,
             connection,
             _logger(),
-            normalize_table_name_in_sql=normalize,
-            optimize_table_definition=optimize,
             extract_table_name=extract,
             log_notice=notices,
         )
@@ -137,28 +133,16 @@ class TestExecuteSchemaStatements:
 
     def test_executes_each_statement_and_closes_cursor(self) -> None:
         cursor = MagicMock()
-        self._run("CREATE TABLE a (x INT); CREATE TABLE b (y INT)", cursor)
+        self._run(["CREATE TABLE a (x INT)", "CREATE TABLE b (y INT)"], cursor)
         executed = [c[0][0] for c in cursor.execute.call_args_list]
         assert executed == ["CREATE TABLE a (x INT)", "CREATE TABLE b (y INT)"]
         cursor.close.assert_called_once_with()
-
-    def test_applies_normalize_and_optimize_in_order(self) -> None:
-        cursor = MagicMock()
-        order: list[str] = []
-        self._run(
-            "create table A (x int)",
-            cursor,
-            normalize=lambda s: order.append("normalize") or s.upper(),
-            optimize=lambda s: order.append("optimize") or s + " WITH (format='PARQUET')",
-        )
-        assert order == ["normalize", "optimize"]
-        assert cursor.execute.call_args[0][0] == "CREATE TABLE A (X INT) WITH (format='PARQUET')"
 
     def test_already_exists_drops_and_recreates(self) -> None:
         cursor = MagicMock()
         cursor.execute.side_effect = [RuntimeError("Table 't' already exists"), None, None]
         notices = self._run(
-            "CREATE TABLE t (x INT)",
+            ["CREATE TABLE t (x INT)"],
             cursor,
             extract=lambda s: "t",
         )
@@ -171,7 +155,7 @@ class TestExecuteSchemaStatements:
         cursor = MagicMock()
         cursor.execute.side_effect = RuntimeError("relation already exists")
         with pytest.raises(RuntimeError, match="already exists"):
-            self._run("CREATE TABLE t (x INT)", cursor, extract=lambda s: None)
+            self._run(["CREATE TABLE t (x INT)"], cursor, extract=lambda s: None)
         cursor.execute.assert_called_once_with("CREATE TABLE t (x INT)")
         cursor.close.assert_called_once_with()
 
@@ -179,17 +163,17 @@ class TestExecuteSchemaStatements:
         cursor = MagicMock()
         cursor.execute.side_effect = RuntimeError("syntax error at or near FOO")
         with pytest.raises(RuntimeError, match="syntax error"):
-            self._run("CREATE TABLE t (x INT)", cursor)
+            self._run(["CREATE TABLE t (x INT)"], cursor)
         cursor.close.assert_called_once_with()
 
     def test_empty_statements_execute_nothing(self) -> None:
         cursor = MagicMock()
-        self._run("  ;  ", cursor)
+        self._run([], cursor)
         cursor.execute.assert_not_called()
         cursor.close.assert_called_once_with()
 
     def test_match_is_case_insensitive_for_already_exists(self) -> None:
         cursor = MagicMock()
         cursor.execute.side_effect = [RuntimeError("Already Exists"), None, None]
-        self._run("CREATE TABLE t (x INT)", cursor, extract=lambda s: "t")
+        self._run(["CREATE TABLE t (x INT)"], cursor, extract=lambda s: "t")
         assert cursor.execute.call_count == 3

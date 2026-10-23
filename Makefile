@@ -354,6 +354,11 @@ test-benchmarks:
 test-tpcds:
 	uv run -- python -m pytest -m "tpcds" --tb=short
 
+TPCDS_OBT_EQUIVALENCE_SF ?= 0.01
+.PHONY: tpcds-obt-equivalence
+tpcds-obt-equivalence:
+	BENCHBOX_TEST_TIER=t2 BENCHBOX_OBT_EQUIVALENCE_REQUIRED=1 BENCHBOX_OBT_EQUIVALENCE_SF=$(TPCDS_OBT_EQUIVALENCE_SF) uv run -- python -m pytest tests/integration/test_tpcds_obt_equivalence.py --tb=short -n 0 --timeout=3600 $(PYTEST_ARGS)
+
 test-olap:
 	uv run -- python -m pytest -m "olap" --tb=short
 
@@ -445,6 +450,7 @@ lint:
 .PHONY: uv-lock-revision-check
 uv-lock-revision-check:
 	uv run -- python _project/scripts/check_uv_lock_revision.py $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",)
+	for project in _project/sql-translation-ml _project/scripts; do uv lock --check --project "$$project" || exit 1; done
 
 .PHONY: sqlglot-upstream-freshness-check
 sqlglot-upstream-freshness-check:
@@ -495,6 +501,10 @@ comment-policy-strict:
 .PHONY: comment-policy-report
 comment-policy-report:
 	uv run -- python scripts/check_comment_policy.py --mode report
+
+.PHONY: comment-policy-dead-exceptions
+comment-policy-dead-exceptions:
+	uv run -- python scripts/report_dead_comment_exceptions.py
 
 .PHONY: lint-markers
 lint-markers:
@@ -578,6 +588,10 @@ skill-integrity-check:
 	$(MAKE) agent-identity-check; \
 	$(MAKE) agent-commit-range-check; \
 	$(MAKE) artifact-hygiene
+
+.PHONY: disk-check
+disk-check:
+	uv run -- python scripts/check_free_disk.py $(if $(DISK_PATH),--path "$(DISK_PATH)",) $(if $(MIN_FREE_PERCENT),--min-free-percent "$(MIN_FREE_PERCENT)",)
 
 .PHONY: duplicate-check
 duplicate-check:
@@ -976,7 +990,7 @@ release-prep:
 .PHONY: release-check
 release-check:
 	@test -n "$(VERSION)" || (echo "Usage: make release-check VERSION=X.Y.Z" && exit 1)
-	uv run --locked -- python scripts/release_flow.py check --version "$(VERSION)" $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",)
+	uv run --locked -- python scripts/release_flow.py check --version "$(VERSION)" $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",) $(if $(SKIP_UPSTREAM_FRESHNESS),--skip-upstream-freshness,)
 
 
 MAKE_TIMING_SHELL := $(BENCHBOX_MAKEFILE_ROOT)scripts/make_timing_shell.sh

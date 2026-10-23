@@ -49,15 +49,9 @@ _DIALECT_PLATFORMS = {
 
 _SKIP_FUNC_NAMES = {"get_platform_skip_queries", "get_df_platform_skip_queries"}
 _DDL_FUNC_NAMES = {"_supports_primary_keys"}
-_REWRITE_FUNC_NAMES = {
-    "_inject_missing_subquery_aliases",
-    "add_subquery_aliases",
-    "add_query_settings",
-}
 _DDL_OPTIMIZE_FUNC_NAMES = {
     "_optimize_table_definition",
     "_transform_create_statement",
-    "_strip_pk_constraints",
 }
 _DDL_REWRITE_FUNCTION_NAME_FRAGMENTS = (
     "create",
@@ -69,7 +63,6 @@ _DDL_TEXT_TRANSFORM_CALL_NAMES = {
     "replace",
     "sub",
     "strip_foreign_keys",
-    "strip_with_properties",
 }
 _DDL_REWRITE_OUTPUT_MARKERS = (
     "create external table",
@@ -103,17 +96,9 @@ _FILE_STEM_TO_PLATFORM_KEY: dict[str, str] = {
     "fabric_warehouse": "fabric_dw",
 }
 
-_DDL_HELPER_PLATFORM_KEYS: dict[tuple[str, str], tuple[str, ...]] = {
-    ("presto_trino_adapter_base.py", "_optimize_table_definition"): ("presto", "trino"),
-}
+_DDL_HELPER_PLATFORM_KEYS: dict[tuple[str, str], tuple[str, ...]] = {}
 _DDL_GOVERNANCE_TRANSFORMER_ALIASES: dict[tuple[str, str], tuple[str, ...]] = {
-    ("athena", "_convert_to_external_table"): ("athena_convert_to_external_table",),
     ("clickhouse", "_resolve_tuned_ddl_clauses"): ("translate_ddl:clickhouse_layout",),
-    ("pg_mooncake", "_transform_create_statement"): ("pg_mooncake_heap_load_then_mirror",),
-    ("postgresql", "_transform_create_statement"): ("postgresql_strip_foreign_keys",),
-    ("presto", "_optimize_table_definition"): ("presto_ddl_optimizer",),
-    ("questdb", "_strip_pk_constraints"): ("questdb_strip_fk_and_pk_constraints",),
-    ("trino", "_optimize_table_definition"): ("trino_ddl_optimizer",),
 }
 
 _SESSION_SETTING_RES = [
@@ -350,16 +335,6 @@ def _detect_named_functions(tree: ast.Module, filepath: Path, root: Path) -> Ite
                 platforms=platforms,
                 suggested_phase="schema_emit",
                 description=f"PK support predicate: {name}()",
-            )
-
-        elif name in _REWRITE_FUNC_NAMES:
-            yield InventoryEntry(
-                file=rel,
-                line=node.lineno,
-                kind="session_setting" if name == "add_query_settings" else "rewrite",
-                platforms=[],
-                suggested_phase="query_adapter",
-                description=f"Query rewrite / session policy function: {name}()",
             )
 
         elif name in _DDL_OPTIMIZE_FUNC_NAMES:

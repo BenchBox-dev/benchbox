@@ -22,14 +22,14 @@ they are rather than inventing a finished state.
 things call it.
 
 1. **The comment-policy checker.** `scripts/check_comment_policy.py` imports
-   `immutable_external_ownership` and runs it in `transition` and `strict`
-   modes. That covers `make comment-policy-check`, the pre-commit hook,
+   `immutable_external_ownership` and runs it in `strict` mode, with or
+   without a comparison base. That covers `make comment-policy-check`, the pre-commit hook,
    `make comment-policy-strict`, and the CI step "Enforce comment and
    docstring policy" in `.github/workflows/ci.yml`. It reads the ledger from a
    trusted commit, not from the working tree:
-   - `transition` mode (local check, hook, and CI) uses the comparison base. In
+   - A run with a comparison base (local check, hook, and CI) uses that base. In
      CI that is the pull request's base SHA.
-   - `strict` mode uses the merge-base of `HEAD` and `origin/develop`, or an
+   - A run without one uses the merge-base of `HEAD` and `origin/develop`, or an
      explicit `--ownership-base` that is an ancestor of it.
 2. **The pinned-notice drift check.** `--check-drift` runs in
    `make comment-policy-check`, `make check-comment-scope`, and the CI step
@@ -89,7 +89,7 @@ fails, when:
 
 For a notice under an external selector, the working-tree file must keep the
 pinned bytes, and a whole-file pin must match the whole file. A pull request
-may change these pins only in `transition` mode, and only after a success
+may change these pins only in a run with a comparison base, and only after a success
 verdict from `benchbox-oracle` covers its head. Even then a changed pin must
 name a path already pinned at the base, stay inside the base range, keep those
 bytes identical to the base, and not turn a partial pin into a whole-file pin.

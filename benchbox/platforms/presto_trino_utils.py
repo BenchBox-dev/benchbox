@@ -133,26 +133,16 @@ def validate_catalog_exists(
 
 
 def execute_schema_statements(
-    schema_sql: str,
+    statements: list[str],
     connection: Any,
     logger: Logger,
-    normalize_table_name_in_sql: Callable[[str], str],
-    optimize_table_definition: Callable[[str], str],
     extract_table_name: Callable[[str], str | None],
     log_notice: Callable[[str], None],
 ) -> None:
     cursor = connection.cursor()
 
     try:
-        statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
-
         for statement in statements:
-            if not statement:
-                continue
-
-            statement = normalize_table_name_in_sql(statement)
-            statement = optimize_table_definition(statement)
-
             try:
                 cursor.execute(statement)
                 logger.debug(f"Executed schema statement: {statement[:100]}...")

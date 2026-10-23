@@ -576,6 +576,7 @@ class TestDuckDBAdapter:
 
         mock_benchmark = Mock()
         mock_benchmark.__class__.__name__ = "TPCDSBenchmark"
+        mock_benchmark._name = "TPC-DS"
         mock_benchmark.get_create_tables_sql.return_value = """
             CREATE TABLE store_sales (
                 ss_sold_date_sk INTEGER,
@@ -588,7 +589,10 @@ class TestDuckDBAdapter:
         schema_time = adapter.create_schema(mock_benchmark, mock_connection)
 
         assert isinstance(schema_time, float)
-        mock_connection.execute.assert_called()
+        executed = [c.args[0] for c in mock_connection.execute.call_args_list if c.args]
+        creates = [s for s in executed if "CREATE TABLE" in s]
+        assert creates
+        assert all("FOREIGN" not in s.upper() and "REFERENCES" not in s.upper() for s in creates)
 
     @patch("benchbox.platforms.duckdb.duckdb")
     def test_load_data_with_benchmark_tables(self, mock_duckdb):

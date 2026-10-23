@@ -89,6 +89,7 @@ LIST_AND_RUNNER_REWRITES = (
     "qualify_alias_shadowed_columns",
     "decimal_division_to_double",
     "use_nulls_for_rollups",
+    "round_inputs_to_decimal",
 )
 
 

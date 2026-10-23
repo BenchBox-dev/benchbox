@@ -122,7 +122,7 @@ def checker_command(
         "--root",
         str(root),
         "--mode",
-        "transition",
+        "strict",
         "--base",
         compare_base,
     ]
