@@ -5,7 +5,7 @@
     "The existing never-overwrite and never-follow-symlink tests pass unchanged; none deleted or loosened",
     "PR merged with an oracle verdict on its final head; merge SHA recorded"
   ],
-  "context": "Created 2026-10-22 from the deferred-findings inventory (soundness-deferred-findings-inventory-20261022); source plan: soundness-gap plan of 2026-10-22.",
+  "context": "Created 2026-10-22 from the deferred-findings inventory (soundness-deferred-findings-inventory-20261022); source plan: soundness-gap plan of 2026-10-22.\n\n### Completion Evidence (2026-10-23)\nPR 3348 merged as 877fbdecc (full SHA from gh: see PR) with oracle verdict SUCCESS on its final head cce4afcc869a1e41f1dfffbcd9aecc552db2be26. Decision: fail closed. The staged diff is created with O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW; if a non-empty diff cannot be staged the reviewer is recorded absent (error, 'the full pull request diff could not be staged in the workspace') and never run. Two new tests fail on develop (existing-file case; symlink created between check and write) and pass after; the oracle_reviewers suite passed (836). Caller list: cli._assemble_prompt is the only production caller of stage_pull_request_diff; command_review the only caller of _assemble_prompt. Residual risk: a staging failure records that reviewer slot as error; whether the chain falls through to another reviewer follows the existing chain logic.",
   "description": "Oracle Low findings deferred on merged PR 2769 and never tracked (the staged-diff hash check from PR 2798 closed only the sibling integrity finding). Threads: https://github.com/BenchBox-dev/benchbox/pull/2769#discussion_r4214441372 (staged full diff silently dropped when the target exists) and https://github.com/BenchBox-dev/benchbox/pull/2769#discussion_r4214717105 (check-then-write without O_EXCL/O_NOFOLLOW). Re-verified by the controller on origin/develop 2026-10-22: _project/scripts/oracle_reviewers/runner.py lines 52-66 return None when os.path.lexists(target), then write with target.write_text after a separate check; the caller _project/scripts/oracle_reviewers/cli.py about line 557 passes diff_path=None, so render.assemble_values emits a file-list brief with no pointer to the full diff and nothing in the report says so. Because the workspace is the pull-request checkout, a change that commits a file named .oracle-pull-request.diff makes every scoped or follow-up review run without full-diff context. tests/unit/scripts/oracle_reviewers/test_runner.py about 295-314 pin never-overwrite and never-follow-symlink and must keep passing.\n\nDECISION GATE: decide how an existing target is reported: record the reviewer as unavailable, or state in the brief and report that the full diff was not staged; choose the option that cannot let a SHIP be produced from a brief the reviewer believes is complete. Prefer failing closed.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR; no pre-registered digests; never weaken a gate; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; done = merged PR plus evidence.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "generation": "1f38b327970b41e8b68454246aeeb691",
       "op": "take",
       "op_id": "2526f99fd20a4b11b10f9242e0ff84ff",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-23T20:53:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3d62271a2a7247318011b42297731183",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
