@@ -8,6 +8,7 @@ import pytest
 
 import benchbox.platforms.questdb as questdb_module
 from benchbox.platforms.questdb import QuestDBAdapter
+from benchbox.utils.dialect_utils import translate_ddl
 
 pytestmark = [
     pytest.mark.unit,
@@ -57,9 +58,21 @@ PART_DDL = """CREATE TABLE part (
 )"""
 
 
+def _render(adapter: QuestDBAdapter, ddl: str) -> str:
+    return " ".join(
+        translate_ddl(
+            ddl,
+            "questdb",
+            strip_primary_keys=True,
+            strip_foreign_keys=True,
+            default_layout=adapter._questdb_table_layout(ddl),
+        )
+    )
+
+
 class TestLineitemEnhancement:
     def test_lineitem_symbols_timestamps_and_partition(self, questdb_stubs) -> None:
-        result = QuestDBAdapter()._apply_questdb_schema_enhancements(LINEITEM_DDL)
+        result = _render(QuestDBAdapter(), LINEITEM_DDL)
         assert "l_returnflag SYMBOL" in result
         assert "l_linestatus SYMBOL" in result
         assert "l_shipinstruct SYMBOL" in result
@@ -72,14 +85,14 @@ class TestLineitemEnhancement:
         assert "PARTITION BY MONTH" in result
 
     def test_lineitem_numeric_columns_untouched(self, questdb_stubs) -> None:
-        result = QuestDBAdapter()._apply_questdb_schema_enhancements(LINEITEM_DDL)
+        result = _render(QuestDBAdapter(), LINEITEM_DDL)
         assert "l_orderkey BIGINT" in result
         assert "l_quantity DOUBLE" in result
 
 
 class TestOrdersEnhancement:
     def test_orders_symbols_timestamps_and_partition(self, questdb_stubs) -> None:
-        result = QuestDBAdapter()._apply_questdb_schema_enhancements(ORDERS_DDL)
+        result = _render(QuestDBAdapter(), ORDERS_DDL)
         assert "o_orderstatus SYMBOL" in result
         assert "o_orderpriority SYMBOL" in result
         assert "o_orderdate TIMESTAMP" in result
@@ -89,7 +102,7 @@ class TestOrdersEnhancement:
 
 class TestDimensionTables:
     def test_part_symbols_without_timestamp_or_partition(self, questdb_stubs) -> None:
-        result = QuestDBAdapter()._apply_questdb_schema_enhancements(PART_DDL)
+        result = _render(QuestDBAdapter(), PART_DDL)
         assert "p_brand SYMBOL" in result
         assert "p_type SYMBOL" in result
         assert "timestamp(" not in result
@@ -97,6 +110,6 @@ class TestDimensionTables:
 
     def test_adapter_partition_override_wins(self, questdb_stubs) -> None:
         adapter = QuestDBAdapter(partition_by="YEAR")
-        result = adapter._apply_questdb_schema_enhancements(ORDERS_DDL)
+        result = _render(adapter, ORDERS_DDL)
         assert "PARTITION BY YEAR" in result
         assert "PARTITION BY MONTH" not in result

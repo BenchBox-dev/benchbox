@@ -147,40 +147,8 @@ class TestPgMooncakeAdapter:
         assert info["configuration"]["storage_mode"] == "local"
 
 
-class TestPgMooncakeColumnstoreDDL:
-    def test_add_columnstore_basic(self, pg_mooncake_stubs):
-        adapter = PgMooncakeAdapter()
-
-        result = adapter._add_columnstore_access_method("CREATE TABLE foo (id INT, name TEXT);")
-
-        assert "USING mooncake" in result
-        assert result.endswith(";")
-
-    def test_add_columnstore_no_semicolon(self, pg_mooncake_stubs):
-        adapter = PgMooncakeAdapter()
-
-        result = adapter._add_columnstore_access_method("CREATE TABLE foo (id INT)")
-
-        assert "USING mooncake" in result
-
-    def test_add_columnstore_already_present(self, pg_mooncake_stubs):
-        adapter = PgMooncakeAdapter()
-
-        ddl = "CREATE TABLE foo (id INT) USING mooncake;"
-        result = adapter._add_columnstore_access_method(ddl)
-
-        assert result.count("USING mooncake") == 1
-
-    def test_add_columnstore_skips_non_create_table(self, pg_mooncake_stubs):
-        adapter = PgMooncakeAdapter()
-
-        alter = "ALTER TABLE foo ADD COLUMN bar TEXT;"
-        assert adapter._add_columnstore_access_method(alter) == alter
-
-        index = "CREATE INDEX idx ON foo (id);"
-        assert adapter._add_columnstore_access_method(index) == index
-
-    def test_create_schema_adds_columnstore(self, pg_mooncake_stubs):
+class TestPgMooncakeHeapDDL:
+    def test_create_schema_creates_heap_tables(self, pg_mooncake_stubs):
         adapter = PgMooncakeAdapter()
         conn = Mock()
         cursor = Mock()
@@ -327,10 +295,10 @@ class TestPgMooncakeLoadPromotion:
 
         executed = [call.args for call in cursor.execute.call_args_list]
         assert ('ALTER TABLE "orders" RENAME TO "__bb_moon_src_orders"',) in executed
-        assert ("CALL mooncake.create_table(%s, %s)", ("orders", "__bb_moon_src_orders")) in executed
+        assert ("CALL mooncake.create_table('orders', '__bb_moon_src_orders')",) in executed
         assert ('SELECT COUNT(*) FROM "orders"',) in executed
         assert ('ALTER TABLE "lineitem" RENAME TO "__bb_moon_src_lineitem"',) in executed
-        assert ("CALL mooncake.create_table(%s, %s)", ("lineitem", "__bb_moon_src_lineitem")) in executed
+        assert ("CALL mooncake.create_table('lineitem', '__bb_moon_src_lineitem')",) in executed
         assert ('SELECT COUNT(*) FROM "lineitem"',) in executed
         assert all("empty" not in str(args) for args in executed)
         cursor.close.assert_called_once()
@@ -390,7 +358,7 @@ class TestPgMooncakeLoadPromotion:
         executed = [call.args for call in cursor.execute.call_args_list]
         assert executed == [
             ('ALTER TABLE "orders" RENAME TO "__bb_moon_src_orders"',),
-            ("CALL mooncake.create_table(%s, %s)", ("orders", "__bb_moon_src_orders")),
+            ("CALL mooncake.create_table('orders', '__bb_moon_src_orders')",),
             ('ALTER TABLE "__bb_moon_src_orders" RENAME TO "orders"',),
         ]
         cursor.close.assert_called_once()
@@ -783,7 +751,7 @@ class _MirrorCursor:
     def execute(self, sql, params=()):
         self.executed.append(sql)
         self.calls.append((sql, params))
-        if "CALL mooncake.create_table" in sql and params and params[0] == self._fail_create:
+        if "CALL mooncake.create_table" in sql and self._fail_create and f"create_table('{self._fail_create}'" in sql:
             raise RuntimeError("mirror creation failed")
         if "SELECT COUNT(*)" in sql:
             if self._fail_count:

@@ -55,6 +55,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The PostgreSQL, DuckLake, pg_mooncake and QuestDB adapters build `CREATE TABLE` text through
+  `translate_ddl` instead of their own rewrites. QuestDB writes `VARCHAR` for `CHAR(n)` and
+  `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake quotes identifiers, and the pg_mooncake
+  mirror statements come from the SQLGlot runtime. The key
+  stripping, `SYMBOL` columns, designated timestamp and partitioning keep their results.
 - Trino, Presto and Athena build their `CREATE TABLE` DDL with `translate_ddl` instead of
   adapter-side text rewrites. Table names are written quoted (`"orders"` on Trino and Presto,
   `` `orders` `` on Athena) instead of bare, and Athena columns are backtick-quoted; the
