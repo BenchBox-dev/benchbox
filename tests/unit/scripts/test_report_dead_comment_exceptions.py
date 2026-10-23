@@ -85,11 +85,12 @@ def test_report_is_not_wired_into_ci_or_hooks() -> None:
         ]
         if path.is_file()
         and (
-            "report_dead_comment_exceptions" in path.read_text() or "comment-policy-dead-exceptions" in path.read_text()
+            "report_dead_comment_exceptions" in path.read_text(encoding="utf-8")
+            or "comment-policy-dead-exceptions" in path.read_text(encoding="utf-8")
         )
     ]
     assert wired == []
-    makefile = (root / "Makefile").read_text()
+    makefile = (root / "Makefile").read_text(encoding="utf-8")
     for line in makefile.splitlines():
         if line.startswith("\t") and "comment-policy-dead-exceptions" in line:
             raise AssertionError(line)
