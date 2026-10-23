@@ -405,19 +405,6 @@ class TestAzureSynapseAdapter:
         assert adapter._extract_table_name("CREATE TABLE [my_table] (id INT)") == "my_table"
         assert adapter._extract_table_name("SELECT * FROM test") is None
 
-    def test_optimize_table_definition_adds_distribution(self, synapse_stubs):
-        adapter = AzureSynapseAdapter(
-            server="test.sql.azuresynapse.net",
-            username="admin",
-            password="secret",
-            distribution_default="ROUND_ROBIN",
-        )
-
-        statement = "CREATE TABLE test_table (id INT, name VARCHAR(100))"
-        optimized = adapter._optimize_table_definition(statement)
-
-        assert "DISTRIBUTION = ROUND_ROBIN" in optimized
-
     def test_missing_server_raises_error(self, synapse_stubs):
         from benchbox.core.exceptions import ConfigurationError
 

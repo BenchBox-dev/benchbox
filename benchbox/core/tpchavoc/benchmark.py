@@ -12,7 +12,11 @@ from pathlib import Path
 from typing import Any, Union
 
 from benchbox.core.tpch.benchmark import TPCHBenchmark
-from benchbox.core.tpchavoc.dialect_compat import rewrite_dialect_variant
+from benchbox.core.tpchavoc.dialect_compat import (
+    LIST_AGGREGATE_VARIANT_IDS,
+    rewrite_dialect_variant,
+    translate_list_aggregate_variant,
+)
 from benchbox.core.tpchavoc.queries import TPCHavocQueryManager
 from benchbox.core.tpchavoc.validation import ResultValidator, ValidationReport
 from benchbox.sql_compat.rules.execution_filter.clickhouse_tpchavoc import CLICKHOUSE_TPCHAVOC_SKIPS
@@ -64,7 +68,14 @@ class TPCHavocBenchmark(TPCHBenchmark):
     def get_queries(self, dialect: str | None = None, base_dialect: str | None = None) -> dict[str, str]:
         queries = super().get_queries(dialect=dialect, base_dialect=base_dialect)
         target = (dialect or "").lower()
-        return {query_id: rewrite_dialect_variant(query_id, query, target) for query_id, query in queries.items()}
+        queries = {query_id: rewrite_dialect_variant(query_id, query, target) for query_id, query in queries.items()}
+        raw_queries = self.query_manager.get_all_queries(scale_factor=self.scale_factor)
+        for query_id in LIST_AGGREGATE_VARIANT_IDS:
+            if query_id in queries and (
+                rewritten := translate_list_aggregate_variant(query_id, raw_queries[query_id], target)
+            ):
+                queries[query_id] = rewritten
+        return queries
 
     def get_query(
         self,
@@ -85,6 +96,8 @@ class TPCHavocBenchmark(TPCHBenchmark):
         if dialect is None:
             return query
         target = dialect.lower()
+        if rewritten := translate_list_aggregate_variant(str(query_id), query, target):
+            return rewritten
         translated = self.translate_query_text(query, (base_dialect or "netezza").lower(), target)
         return rewrite_dialect_variant(str(query_id), translated, target)
 

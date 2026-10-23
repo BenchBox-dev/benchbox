@@ -161,7 +161,7 @@ def test_bigquery_store_is_created_without_replacing_an_existing_table():
 
     for _ in range(2):
         create_sql = TuningMetadataManager(_Adapter("bigquery"))._get_create_table_sql()
-        sent = adapter._convert_to_bigquery_table(create_sql)
+        sent = adapter._translate_create_table(create_sql)
         assert "CREATE TABLE IF NOT EXISTS" in sent
         assert "OR REPLACE" not in sent.upper()
         parsed = sqlglot.parse_one(sent, dialect="bigquery", error_level=sqlglot.ErrorLevel.RAISE)

@@ -18,7 +18,9 @@ from benchbox.platforms.databricks import DatabricksAdapter
 pytestmark = [pytest.mark.unit, pytest.mark.fast, pytest.mark.cloud_import]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-CREATE_TABLE = re.compile(r"CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`([^`]+)`\s*\((.*)\)", re.S)
+CREATE_TABLE = re.compile(
+    r"CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?((?:`[^`]+`\.)*`[^`]+`)\s*\((.*)\)", re.S
+)
 COLUMN = re.compile(r"`(\w+)`\s+[A-Z]")
 
 
@@ -27,7 +29,7 @@ def _created_tables(statements: list[str]) -> dict[str, list[str]]:
     for statement in statements:
         match = CREATE_TABLE.search(statement)
         if match:
-            tables[match.group(1).split(".")[-1]] = COLUMN.findall(match.group(2))
+            tables[match.group(1).strip("`").replace("`", "").split(".")[-1]] = COLUMN.findall(match.group(2))
     return tables
 
 

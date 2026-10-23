@@ -3,7 +3,7 @@
 
 import hashlib
 from collections import Counter
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
@@ -315,6 +315,8 @@ def translate_sql_query(
     post_processors: list[Callable[[str], str]] | None = None,
     strict: bool | None = None,
     scope: str | None = None,
+    date_columns: Iterable[str] | None = None,
+    rewrites: Sequence[tuple[str, dict]] | None = None,
 ) -> str:
     import logging
 
@@ -357,8 +359,13 @@ def translate_sql_query(
         if expression is None:
             translated = ""
         else:
+            for rewrite_name, rewrite_args in rewrites or ():
+                rewrite_args = dict(rewrite_args)
+                expression = apply_rewrite(rewrite_name, expression, rewrite_args.pop("dialect", src), **rewrite_args)
             if tgt == "sqlite":
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt, **SQLITE_DISCOUNT_BOUNDS)
+                if date_columns:
+                    expression = apply_rewrite("mark_date_columns", expression, tgt, date_columns=date_columns)
             translated = expression.sql(dialect=tgt, identify=should_identify)
 
         if post_processors:
@@ -442,6 +449,39 @@ def apply_rewrite(name: str, sql_or_expression, dialect: str, **args):
     return function(sql_or_expression, **args)
 
 
+def apply_rewrites(sql: str, dialect: str, rewrites: Sequence[tuple[str, dict]]) -> str:
+    from benchbox._vendor import sqlglot
+
+    resolved = resolve_sql_dialect(dialect)
+    original = sqlglot.parse_one(sql, read=resolved)
+    rewritten = original
+    for name, args in rewrites:
+        rewritten = apply_rewrite(name, rewritten, resolved, **args)
+    return sql if rewritten == original else rewritten.sql(dialect=resolved)
+
+
+def unqualified_table_names(sql: str, dialect: str) -> list[str] | None:
+    import importlib
+
+    from benchbox._vendor import sqlglot
+
+    resolved = resolve_sql_dialect(dialect)
+    try:
+        statements = sqlglot.parse(sql, read=resolved)
+    except Exception:
+        return None
+    if not statements or any(statement is None for statement in statements):
+        return None
+    unqualified_tables = importlib.import_module("benchbox._vendor.sqlglot.benchbox.rewrites").unqualified_tables
+    names: list[str] = []
+    for statement in statements:
+        for table in unqualified_tables(statement):
+            name = table.name.upper()
+            if name not in names:
+                names.append(name)
+    return names
+
+
 def translate_ddl(
     ddl: str,
     target_dialect: str,
@@ -467,6 +507,12 @@ def translate_ddl(
         options["layouts"] = {name: layout(value) for name, value in options["layouts"].items()}
     if isinstance(options.get("singlestore"), dict):
         options["singlestore"] = ddl_module.SingleStoreKeys(**options["singlestore"])
+    if isinstance(options.get("type_map"), str):
+        engines = importlib.import_module("benchbox._vendor.sqlglot.benchbox.ddl_engines")
+        name = f"{options['type_map'].upper()}_TYPE_MAP"
+        if not hasattr(engines, name):
+            raise ValueError(f"Unknown DDL type map: {options['type_map']!r}")
+        options["type_map"] = getattr(engines, name)
 
     read = resolve_sql_dialect(source_dialect)
     write = resolve_sql_dialect(target_dialect)

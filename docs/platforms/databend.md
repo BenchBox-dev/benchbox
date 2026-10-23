@@ -202,7 +202,7 @@ Databend claims ~100% Snowflake SQL compatibility. BenchBox leverages this by:
 
 1. Translating benchmark SQL from DuckDB dialect to **Snowflake dialect** via SQLGlot
 2. Sending Snowflake-compatible SQL directly to Databend
-3. Applying edge-case optimizations in `_optimize_table_definition()`:
+3. Applying DDL options through the SQLGlot fork's `translate_ddl`:
    - `CHAR(n)` to `VARCHAR(n)` conversion
    - Primary key constraint removal
    - Foreign key constraint removal

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from .retry import State
 
@@ -55,7 +56,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
         nodes {
           isResolved
           path
-          comments(first: 50) { nodes { author { __typename login } body } }
+          comments(first: 50) { nodes { author { __typename login } authorAssociation body } }
         }
       }
     }
@@ -89,6 +90,7 @@ def review_threads(repo: str, pr: int) -> list[dict[str, Any]]:
                         {
                             "author": (item.get("author") or {}).get("login"),
                             "author_type": (item.get("author") or {}).get("__typename"),
+                            "association": item.get("authorAssociation"),
                             "body": item.get("body") or "",
                         }
                         for item in comments[1:]
@@ -123,6 +125,7 @@ WORKFLOW_PATH = ".github/workflows/oracle-verdict.yml"
 LEGACY_WORKFLOW_PATH = ".github/workflows/oracle-review-shadow.yml"
 STATE_SOURCES = ((STATE_ARTIFACT_PREFIX, WORKFLOW_PATH), (LEGACY_STATE_ARTIFACT_PREFIX, LEGACY_WORKFLOW_PATH))
 TRUSTED_EVENTS = frozenset({"pull_request_target", "issue_comment", "schedule", "workflow_dispatch"})
+TRUSTED_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
 
 
 def on_develop(repo: str, sha: str) -> bool:
@@ -163,7 +166,7 @@ def head_pulls(repo: str, run: dict[str, Any]) -> list[HeadPull]:
     if not owner or not branch:
         raise GitHubError("the run does not name its head branch")
     found: list[HeadPull] = []
-    for pull in get_paginated(f"repos/{repo}/pulls?state=all&head={owner}:{branch}&per_page=100"):
+    for pull in get_paginated(f"repos/{repo}/pulls?state=all&head={owner}:{quote(branch, safe='/')}&per_page=100"):
         created_at = _parse_time(pull.get("created_at"))
         if created_at is None or not isinstance(pull.get("number"), int):
             raise GitHubError("a pull request for the head branch has no readable creation time")

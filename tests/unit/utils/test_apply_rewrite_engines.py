@@ -59,3 +59,87 @@ def test_qualify_order_by_columns_qualifies_the_named_columns():
 def test_qualify_order_by_columns_requires_its_qualifiers():
     with pytest.raises(TypeError):
         apply_rewrite("qualify_order_by_columns", "SELECT i_id FROM a ORDER BY i_id", "netezza")
+
+
+@pytest.mark.parametrize(
+    ("dialect", "expected"),
+    [
+        (
+            "trino",
+            "SELECT REDUCE(xs, CAST(NULL AS DOUBLE), (_acc, _v) -> CASE WHEN _v IS NULL THEN _acc "
+            "WHEN _acc IS NULL THEN CAST(_v AS DOUBLE) ELSE _acc + CAST(_v AS DOUBLE) END, _acc -> _acc) FROM t",
+        ),
+        (
+            "spark",
+            "SELECT AGGREGATE(xs, CAST(NULL AS DOUBLE), (_acc, _v) -> CASE WHEN _v IS NULL THEN _acc "
+            "WHEN _acc IS NULL THEN CAST(_v AS DOUBLE) ELSE _acc + CAST(_v AS DOUBLE) END) FROM t",
+        ),
+        ("bigquery", "SELECT (SELECT SUM(_item) FROM UNNEST(xs) AS _item) FROM t"),
+        ("duckdb", "SELECT LIST_SUM(xs) FROM t"),
+    ],
+)
+def test_reduce_list_aggregates_rewrites_list_sum_for_engines_without_it(dialect: str, expected: str):
+    assert apply_rewrite("reduce_list_aggregates", "SELECT LIST_SUM(xs) FROM t", dialect) == expected
+
+
+def test_nullif_zero_divisors_guards_only_the_named_divisor_columns():
+    result = apply_rewrite(
+        "nullif_zero_divisors", "SELECT a / CAST(pmc AS DECIMAL(15, 4)), a / b FROM t", "postgres", columns=["PMC"]
+    )
+    assert result == "SELECT a / NULLIF(CAST(pmc AS DECIMAL(15, 4)), 0), a / b FROM t"
+
+
+def test_nullif_zero_divisors_requires_its_columns():
+    with pytest.raises(TypeError):
+        apply_rewrite("nullif_zero_divisors", "SELECT a / b FROM t", "postgres")
+
+
+def test_inline_order_by_aliases_inlines_an_alias_used_inside_a_sort_expression():
+    sql = "SELECT GROUPING(a) AS g, a FROM t GROUP BY ROLLUP (a) ORDER BY {key}"
+    inlined = apply_rewrite("inline_order_by_aliases", sql.format(key="CASE WHEN g = 0 THEN a END"), "postgres")
+    assert inlined == sql.format(key="CASE WHEN GROUPING(a) = 0 THEN a END")
+    bare = sql.format(key="g")
+    assert apply_rewrite("inline_order_by_aliases", bare, "postgres") == bare
+
+
+def test_inline_order_by_aliases_limits_inlining_to_the_named_aliases():
+    sql = "SELECT a + 1 AS x, b + 1 AS y FROM t ORDER BY x * 2, y * 2"
+    result = apply_rewrite("inline_order_by_aliases", sql, "postgres", names=["x"])
+    assert result == "SELECT a + 1 AS x, b + 1 AS y FROM t ORDER BY (a + 1) * 2, y * 2"
+
+
+def test_alias_qualified_projections_names_a_nested_qualified_column_after_the_column():
+    sql = "WITH v1 AS (SELECT v1.d_year FROM v1, v1 AS v1_lag) SELECT * FROM v1"
+    result = apply_rewrite("alias_qualified_projections", sql, "clickhouse")
+    assert result == "WITH v1 AS (SELECT v1.d_year AS d_year FROM v1 CROSS JOIN v1 AS v1_lag) SELECT * FROM v1"
+
+
+def test_alias_qualified_projections_touches_the_outermost_query_only_on_request():
+    assert apply_rewrite("alias_qualified_projections", "SELECT x.a FROM x", "clickhouse") == "SELECT x.a FROM x"
+    result = apply_rewrite("alias_qualified_projections", "SELECT x.a FROM x", "clickhouse", top_level=True)
+    assert result == "SELECT x.a AS a FROM x"
+
+
+def test_qualify_alias_shadowed_columns_qualifies_a_column_hidden_by_a_same_named_alias():
+    sql = "SELECT SUM(jan_sales) AS jan_sales, SUM(jan_sales / sq_ft) AS per FROM (SELECT 1 AS jan_sales, 2 AS sq_ft) AS x"
+    result = apply_rewrite("qualify_alias_shadowed_columns", sql, "clickhouse")
+    assert result == (
+        "SELECT SUM(x.jan_sales) AS jan_sales, SUM(x.jan_sales / sq_ft) AS per "
+        "FROM (SELECT 1 AS jan_sales, 2 AS sq_ft) AS x"
+    )
+
+
+def test_decimal_division_to_double_casts_the_dividend_once():
+    result = apply_rewrite("decimal_division_to_double", "SELECT a / b FROM t", "clickhouse")
+    assert result == "SELECT CAST(a AS Nullable(Float64)) / b FROM t"
+    assert apply_rewrite("decimal_division_to_double", "SELECT 1.5 / b FROM t", "clickhouse") == "SELECT 1.5 / b FROM t"
+    assert apply_rewrite("decimal_division_to_double", "SELECT a / b FROM t", "duckdb") == (
+        "SELECT CAST(a AS DOUBLE) / b FROM t"
+    )
+
+
+def test_use_nulls_for_rollups_adds_the_setting_only_to_a_rollup_query():
+    rolled = apply_rewrite("use_nulls_for_rollups", "SELECT a, SUM(b) FROM t GROUP BY ROLLUP (a)", "clickhouse")
+    assert rolled == "SELECT a, SUM(b) FROM t GROUP BY ROLLUP (a) SETTINGS group_by_use_nulls = 1"
+    plain = "SELECT a, SUM(b) FROM t GROUP BY a"
+    assert apply_rewrite("use_nulls_for_rollups", plain, "clickhouse") == plain

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 
 [[package]]
@@ -13,9 +13,10 @@ wheels = [
 
 [[package]]
 name = "benchbox"
-version = "0.4.0"
+version = "0.5.0rc1"
 source = { editable = "../../" }
 dependencies = [
+    { name = "certifi" },
     { name = "click" },
     { name = "keyring" },
     { name = "numpy" },
@@ -26,14 +27,12 @@ dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
     { name = "rich" },
-    { name = "sqlglot" },
     { name = "textcharts" },
     { name = "zstandard" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "ablog", marker = "python_full_version >= '3.11' and extra == 'docs'", specifier = ">=0.11.13" },
     { name = "azure-identity", marker = "extra == 'all'", specifier = ">=1.15.0" },
     { name = "azure-identity", marker = "extra == 'cloud-spark'", specifier = ">=1.15.0" },
     { name = "azure-identity", marker = "extra == 'cloud-spark-azure'", specifier = ">=1.15.0" },
@@ -48,6 +47,7 @@ requires-dist = [
     { name = "boto3", marker = "extra == 'cloud-spark'", specifier = ">=1.34.0" },
     { name = "boto3", marker = "extra == 'cloud-spark-aws'", specifier = ">=1.34.0" },
     { name = "boto3", marker = "extra == 'redshift'", specifier = ">=1.20.0" },
+    { name = "certifi", specifier = ">=2026.10.19" },
     { name = "chdb", marker = "sys_platform != 'win32' and extra == 'all'", specifier = ">=0.10.0" },
     { name = "chdb", marker = "sys_platform != 'win32' and extra == 'clickhouse-local'", specifier = ">=0.10.0" },
     { name = "click", specifier = ">=8.3.3,<9.0.0" },
@@ -68,15 +68,15 @@ requires-dist = [
     { name = "cloudpathlib", extras = ["azure", "gs", "s3"], marker = "extra == 'cloud'", specifier = ">=0.15.0" },
     { name = "cloudpathlib", extras = ["azure", "gs", "s3"], marker = "extra == 'cloudstorage'", specifier = ">=0.15.0" },
     { name = "cloudpathlib", extras = ["azure", "gs", "s3"], marker = "extra == 'snowflake'", specifier = ">=0.15.0" },
-    { name = "dask", extras = ["distributed"], marker = "extra == 'all'", specifier = ">=2024.1.0" },
-    { name = "dask", extras = ["distributed"], marker = "extra == 'dask'", specifier = ">=2024.1.0" },
-    { name = "dask", extras = ["distributed"], marker = "extra == 'dataframe-all'", specifier = ">=2024.1.0" },
-    { name = "dask", extras = ["distributed"], marker = "extra == 'dataframe-dask'", specifier = ">=2024.1.0" },
-    { name = "dask", extras = ["distributed"], marker = "extra == 'dataframe-pandas-family'", specifier = ">=2024.1.0" },
+    { name = "dask", extras = ["distributed"], marker = "extra == 'all'", specifier = ">=2025.1.0" },
+    { name = "dask", extras = ["distributed"], marker = "extra == 'dask'", specifier = ">=2025.1.0" },
+    { name = "dask", extras = ["distributed"], marker = "extra == 'dataframe-all'", specifier = ">=2025.1.0" },
+    { name = "dask", extras = ["distributed"], marker = "extra == 'dataframe-dask'", specifier = ">=2025.1.0" },
+    { name = "dask", extras = ["distributed"], marker = "extra == 'dataframe-pandas-family'", specifier = ">=2025.1.0" },
     { name = "databend-driver", marker = "extra == 'databend'", specifier = ">=0.28.0" },
-    { name = "databricks-connect", marker = "extra == 'all'", specifier = ">=14.0.0" },
-    { name = "databricks-connect", marker = "extra == 'cloud-spark'", specifier = ">=14.0.0" },
-    { name = "databricks-connect", marker = "extra == 'cloud-spark-databricks'", specifier = ">=14.0.0" },
+    { name = "databricks-connect", marker = "extra == 'all'", specifier = ">=14.0.0,<19" },
+    { name = "databricks-connect", marker = "extra == 'cloud-spark'", specifier = ">=14.0.0,<19" },
+    { name = "databricks-connect", marker = "extra == 'cloud-spark-databricks'", specifier = ">=14.0.0,<19" },
     { name = "databricks-sdk", marker = "extra == 'all'", specifier = ">=0.20.0" },
     { name = "databricks-sdk", marker = "extra == 'cloud'", specifier = ">=0.20.0" },
     { name = "databricks-sdk", marker = "extra == 'cloud-spark'", specifier = ">=0.20.0" },
@@ -87,23 +87,22 @@ requires-dist = [
     { name = "databricks-sql-connector", marker = "extra == 'cloud-spark'", specifier = ">=2.0.0" },
     { name = "databricks-sql-connector", marker = "extra == 'cloud-spark-databricks'", specifier = ">=2.0.0" },
     { name = "databricks-sql-connector", marker = "extra == 'databricks'", specifier = ">=2.0.0" },
-    { name = "datafusion", marker = "extra == 'all'", specifier = ">=50.1.0" },
-    { name = "datafusion", marker = "extra == 'dataframe-all'", specifier = ">=50.1.0" },
-    { name = "datafusion", marker = "extra == 'dataframe-datafusion'", specifier = ">=50.1.0" },
-    { name = "datafusion", marker = "extra == 'dataframe-expression-family'", specifier = ">=50.1.0" },
-    { name = "datafusion", marker = "extra == 'datafusion'", specifier = ">=50.1.0" },
+    { name = "datafusion", marker = "extra == 'all'", specifier = ">=54.0.0" },
+    { name = "datafusion", marker = "extra == 'dataframe-all'", specifier = ">=54.0.0" },
+    { name = "datafusion", marker = "extra == 'dataframe-datafusion'", specifier = ">=54.0.0" },
+    { name = "datafusion", marker = "extra == 'dataframe-expression-family'", specifier = ">=54.0.0" },
+    { name = "datafusion", marker = "extra == 'datafusion'", specifier = ">=54.0.0" },
     { name = "deltalake", marker = "extra == 'all'", specifier = ">=1.2.1" },
     { name = "deltalake", marker = "extra == 'table-formats'", specifier = ">=1.2.1" },
-    { name = "duckdb", marker = "extra == 'all'", specifier = ">=1.3.0,<2.0.0" },
-    { name = "duckdb", marker = "extra == 'dev'", specifier = ">=1.3.0,<2.0.0" },
-    { name = "duckdb", marker = "extra == 'duckdb'", specifier = ">=1.3.0,<2.0.0" },
-    { name = "duckdb", marker = "extra == 'ducklake'", specifier = ">=1.3.0,<2.0.0" },
+    { name = "duckdb", marker = "extra == 'all'", specifier = ">=1.5.0,<2.0.0" },
+    { name = "duckdb", marker = "extra == 'dev'", specifier = ">=1.5.0,<2.0.0" },
+    { name = "duckdb", marker = "extra == 'duckdb'", specifier = ">=1.5.0,<2.0.0" },
+    { name = "duckdb", marker = "extra == 'ducklake'", specifier = ">=1.5.0,<2.0.0" },
     { name = "duckdb", marker = "extra == 'explorer'", specifier = ">=1.0.0,<2.0.0" },
-    { name = "duckdb", marker = "extra == 'mcp'", specifier = ">=1.3.0,<2.0.0" },
+    { name = "duckdb", marker = "extra == 'mcp'", specifier = ">=1.5.0,<2.0.0" },
     { name = "firebolt-sdk", marker = "extra == 'all'", specifier = ">=1.18.0" },
     { name = "firebolt-sdk", marker = "extra == 'cloud'", specifier = ">=1.18.0" },
     { name = "firebolt-sdk", marker = "extra == 'firebolt'", specifier = ">=1.18.0" },
-    { name = "furo", marker = "extra == 'docs'", specifier = ">=2025.9.25" },
     { name = "google-cloud-bigquery", marker = "extra == 'all'", specifier = ">=3.0.0" },
     { name = "google-cloud-bigquery", marker = "extra == 'bigquery'", specifier = ">=3.0.0" },
     { name = "google-cloud-bigquery", marker = "extra == 'cloud'", specifier = ">=3.0.0" },
@@ -118,26 +117,18 @@ requires-dist = [
     { name = "influxdb3-python", marker = "extra == 'influxdb'", specifier = ">=0.10.0" },
     { name = "keyring", specifier = ">=25.0.0" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=2,<3" },
-    { name = "modin", extras = ["ray"], marker = "extra == 'all'", specifier = ">=0.32.0" },
-    { name = "modin", extras = ["ray"], marker = "extra == 'dataframe-all'", specifier = ">=0.32.0" },
-    { name = "modin", extras = ["ray"], marker = "extra == 'dataframe-modin'", specifier = ">=0.32.0" },
-    { name = "modin", extras = ["ray"], marker = "extra == 'dataframe-pandas-family'", specifier = ">=0.32.0" },
-    { name = "modin", extras = ["ray"], marker = "extra == 'modin'", specifier = ">=0.32.0" },
-    { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=2.0.0" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'mcp'", specifier = ">=1.44,<2" },
     { name = "opentelemetry-sdk", marker = "extra == 'mcp'", specifier = ">=1.44,<2" },
     { name = "packaging", specifier = ">=24.0" },
-    { name = "pandas", marker = "extra == 'all'", specifier = ">=2.0.0" },
-    { name = "pandas", marker = "extra == 'dask'", specifier = ">=2.0.0" },
-    { name = "pandas", marker = "extra == 'dataframe-all'", specifier = ">=2.0.0" },
-    { name = "pandas", marker = "extra == 'dataframe-dask'", specifier = ">=2.0.0" },
-    { name = "pandas", marker = "extra == 'dataframe-modin'", specifier = ">=2.0.0" },
-    { name = "pandas", marker = "extra == 'dataframe-pandas'", specifier = ">=2.0.0" },
-    { name = "pandas", marker = "extra == 'dataframe-pandas-family'", specifier = ">=2.0.0" },
-    { name = "pandas", marker = "extra == 'modin'", specifier = ">=2.0.0" },
-    { name = "pandas", marker = "extra == 'pandas'", specifier = ">=2.0.0" },
-    { name = "pandas", marker = "extra == 'tpcdi'", specifier = ">=2.0.0" },
+    { name = "pandas", marker = "extra == 'all'", specifier = ">=3.0.0" },
+    { name = "pandas", marker = "extra == 'dask'", specifier = ">=3.0.0" },
+    { name = "pandas", marker = "extra == 'dataframe-all'", specifier = ">=3.0.0" },
+    { name = "pandas", marker = "extra == 'dataframe-dask'", specifier = ">=3.0.0" },
+    { name = "pandas", marker = "extra == 'dataframe-pandas'", specifier = ">=3.0.0" },
+    { name = "pandas", marker = "extra == 'dataframe-pandas-family'", specifier = ">=3.0.0" },
+    { name = "pandas", marker = "extra == 'pandas'", specifier = ">=3.0.0" },
+    { name = "pandas", marker = "extra == 'tpcdi'", specifier = ">=3.0.0" },
     { name = "polars", marker = "extra == 'all'", specifier = ">=1.35.2" },
     { name = "polars", marker = "extra == 'dataframe-all'", specifier = ">=1.35.2" },
     { name = "polars", marker = "extra == 'dataframe-expression-family'", specifier = ">=1.35.2" },
@@ -159,7 +150,6 @@ requires-dist = [
     { name = "pyathena", marker = "extra == 'athena'", specifier = ">=3.0.0" },
     { name = "pyathena", marker = "extra == 'cloud'", specifier = ">=3.0.0" },
     { name = "pydantic", specifier = ">=2.0.0,<3.0.0" },
-    { name = "pygments", marker = "extra == 'docs'", specifier = ">=2.18.0" },
     { name = "pyiceberg", marker = "extra == 'all'", specifier = ">=0.10.0" },
     { name = "pyiceberg", marker = "extra == 'table-formats'", specifier = ">=0.10.0" },
     { name = "pymysql", marker = "extra == 'all'", specifier = ">=1.1.0" },
@@ -182,6 +172,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
+    { name = "pytest-timeout", marker = "extra == 'dev'", specifier = ">=2.4.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "redshift-connector", marker = "extra == 'all'", specifier = ">=2.0.0" },
@@ -192,7 +183,6 @@ requires-dist = [
     { name = "requests", marker = "extra == 'cloud-spark-azure'", specifier = ">=2.31.0" },
     { name = "requests", marker = "extra == 'questdb'", specifier = ">=2.28.0" },
     { name = "rich", specifier = ">=13.0.0" },
-    { name = "roman-numerals", marker = "extra == 'docs'", specifier = "<4.0" },
     { name = "sentence-transformers", marker = "extra == 'ai-primitives'", specifier = ">=2.0.0" },
     { name = "singlestoredb", marker = "extra == 'all'", specifier = ">=1.0.0" },
     { name = "singlestoredb", marker = "extra == 'singlestore'", specifier = ">=1.0.0" },
@@ -202,14 +192,8 @@ requires-dist = [
     { name = "snowflake-snowpark-python", marker = "extra == 'cloud-spark'", specifier = ">=1.11.0" },
     { name = "snowflake-snowpark-python", marker = "extra == 'cloud-spark-snowflake'", specifier = ">=1.11.0" },
     { name = "spacy", marker = "extra == 'ai-primitives'", specifier = ">=3.0.0" },
-    { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.2.0" },
-    { name = "sphinx-design", marker = "extra == 'docs'", specifier = ">=0.6.0" },
-    { name = "sphinx-tags", marker = "extra == 'docs'", specifier = ">=0.4.0" },
-    { name = "sphinxcontrib-mermaid", marker = "extra == 'docs'", specifier = ">=0.8.1" },
-    { name = "sqlglot", specifier = ">=25.6.0,<31.0.0" },
     { name = "textblob", marker = "extra == 'ai-primitives'", specifier = ">=0.17.0" },
     { name = "textcharts", specifier = ">=0.1.0" },
-    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
     { name = "torch", marker = "extra == 'ai-primitives'", specifier = ">=2.0.0" },
     { name = "tox", marker = "extra == 'dev'", specifier = ">=4.13.0" },
     { name = "trino", marker = "extra == 'all'", specifier = ">=0.328.0" },
@@ -218,12 +202,11 @@ requires-dist = [
     { name = "vortex-data", marker = "extra == 'table-formats'", specifier = ">=0.29.0" },
     { name = "zstandard", specifier = ">=0.20.0" },
 ]
-provides-extras = ["dev", "docs", "viz", "explorer", "all", "cloud", "cloudstorage", "duckdb", "ducklake", "clickhouse", "clickhouse-server", "clickhouse-cloud", "databricks", "bigquery", "redshift", "snowflake", "trino", "presto", "postgresql", "questdb", "synapse", "fabric", "athena", "datafusion", "firebolt", "databend", "doris", "influxdb", "starrocks", "singlestore", "tpcdi", "clickhouse-local", "table-formats", "ai-primitives", "pandas", "dataframe-pandas", "modin", "dataframe-modin", "dask", "dataframe-dask", "cudf", "dataframe-cudf", "polars", "dataframe-polars", "pyspark", "lakesail", "velox", "dataframe-pyspark", "dataframe-datafusion", "dataframe-pandas-family", "dataframe-expression-family", "dataframe-all", "quick-start", "cloud-spark-aws", "cloud-spark-gcp", "cloud-spark-azure", "cloud-spark-snowflake", "cloud-spark-databricks", "cloud-spark", "mcp", "spark"]
+provides-extras = ["dev", "viz", "explorer", "all", "cloud", "cloudstorage", "duckdb", "ducklake", "clickhouse", "clickhouse-server", "clickhouse-cloud", "databricks", "bigquery", "redshift", "snowflake", "trino", "presto", "postgresql", "questdb", "synapse", "fabric", "athena", "datafusion", "firebolt", "databend", "doris", "influxdb", "starrocks", "singlestore", "tpcdi", "clickhouse-local", "table-formats", "ai-primitives", "pandas", "dataframe-pandas", "dask", "dataframe-dask", "cudf", "dataframe-cudf", "polars", "dataframe-polars", "pyspark", "lakesail", "velox", "dataframe-pyspark", "dataframe-datafusion", "dataframe-pandas-family", "dataframe-expression-family", "dataframe-all", "quick-start", "cloud-spark-aws", "cloud-spark-gcp", "cloud-spark-azure", "cloud-spark-snowflake", "cloud-spark-databricks", "cloud-spark", "mcp", "spark"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "ablog", marker = "python_full_version >= '3.11'", specifier = ">=0.11.13" },
-    { name = "ansi2html", specifier = ">=1.8.0" },
+    { name = "bashlex", specifier = "==0.18" },
     { name = "chdb", marker = "sys_platform != 'win32'", specifier = ">=0.10.0" },
     { name = "clickhouse-connect", specifier = ">=0.10.0" },
     { name = "clickhouse-driver", specifier = ">=0.2.0" },
@@ -231,25 +214,25 @@ dev = [
     { name = "codespell", specifier = ">=2.4.2" },
     { name = "dask", extras = ["distributed"], specifier = ">=2026.1.1" },
     { name = "databricks-sdk", specifier = ">=0.20.0" },
-    { name = "datafusion", specifier = ">=40.0.0" },
+    { name = "datafusion", specifier = ">=54.0.0" },
     { name = "delta-spark", specifier = ">=4.1.0" },
     { name = "deltalake", specifier = ">=1.2.1" },
-    { name = "duckdb", specifier = ">=1.3.0,<2.0.0" },
+    { name = "duckdb", specifier = ">=1.5.0,<2.0.0" },
     { name = "firebolt-sdk", specifier = ">=1.18.0" },
-    { name = "furo", specifier = ">=2025.9.25" },
     { name = "import-linter", specifier = ">=2.13" },
     { name = "influxdb3-python", specifier = ">=0.10.0" },
+    { name = "lxml", specifier = ">=6.0.0" },
+    { name = "markdown-it-py", specifier = ">=4.0.0" },
     { name = "mcp", specifier = ">=2,<3" },
     { name = "mutmut", specifier = ">=3.5.0" },
-    { name = "myst-parser", specifier = ">=3.0.1" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.44,<2" },
     { name = "opentelemetry-sdk", specifier = ">=1.44,<2" },
-    { name = "pandas", specifier = ">=2.0.0" },
-    { name = "pillow", specifier = ">=12.3.0" },
+    { name = "pandas", specifier = ">=3.0.0" },
     { name = "polars", specifier = ">=1.35.2" },
     { name = "pre-commit", specifier = ">=4.6.0" },
     { name = "presto-python-client", specifier = ">=0.8.4" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.1" },
+    { name = "pygments", specifier = ">=2.18.0" },
     { name = "pyiceberg", extras = ["sql-sqlite", "pyarrow"], specifier = ">=0.10.0" },
     { name = "pymysql", specifier = ">=1.1.2" },
     { name = "pyspark", specifier = ">=3.5.0" },
@@ -259,23 +242,18 @@ dev = [
     { name = "pytest-json-report", specifier = ">=1.5.0" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
-    { name = "roman-numerals", specifier = "<4.0" },
-    { name = "ruff", specifier = "==0.11.13" },
-    { name = "sphinx", specifier = ">=7.4.7" },
-    { name = "sphinx-design", specifier = ">=0.6.1" },
-    { name = "sphinx-tags", specifier = ">=0.4" },
-    { name = "sphinxcontrib-mermaid", specifier = ">=1.2.3" },
+    { name = "ruff", specifier = "==0.16.7" },
     { name = "trino", specifier = ">=0.336.0" },
     { name = "ty", specifier = ">=0.0.1a14" },
 ]
 
 [[package]]
 name = "certifi"
-version = "2026.7.22"
+version = "2026.10.19"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a3/c2/24167ea9858356b47a87a50d39908bfdb72ceeefe0041586e704e5376b3a/certifi-2026.7.22.tar.gz", hash = "sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55", size = 138112, upload-time = "2026-07-22T03:35:12.644Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/bd/1436c50cc46699de0230fbaacc1d1de7bfec413176099949e9d5112e88f2/certifi-2026.10.19.tar.gz", hash = "sha256:035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae", size = 137598, upload-time = "2026-10-20T02:24:16.604Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl", hash = "sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775", size = 136983, upload-time = "2026-07-22T03:35:11.276Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/51/29046e48f693c54e5b7412216d447a1d8362c9653148d98c02cdf65fa733/certifi-2026.10.19-py3-none-any.whl", hash = "sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b", size = 136464, upload-time = "2026-10-20T02:24:15.072Z" },
 ]
 
 [[package]]

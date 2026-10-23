@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib
 import json
 import sys
 import tempfile
@@ -21,13 +20,10 @@ def _runtime_pin() -> dict[str, str]:
 
 def _adapter_stage(benchmark_name: str, dialect: str, query_id: int):
     if dialect == "datafusion" and benchmark_name == "tpch":
-        module, name = "benchbox.platforms.datafusion_query_transformer", "DataFusionQueryTransformer"
-        return lambda sql: _instance(module, name).transform(sql, query_id=str(query_id))
+        from benchbox.platforms.datafusion_tpch_rewrites import rewrite_datafusion_tpch_query
+
+        return lambda sql: rewrite_datafusion_tpch_query(sql, str(query_id))
     return None
-
-
-def _instance(module: str, name: str):
-    return getattr(importlib.import_module(module), name)()
 
 
 def _emit(benchmark_name: str, benchmark, ids, seed, dialects) -> dict[str, dict[str, str]]:

@@ -6,9 +6,10 @@ import pytest
 from benchbox._vendor import sqlglot
 from benchbox.core.tpch.benchmark import TPCHBenchmark
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
-from benchbox.core.tpchavoc.cloud_compat import BIGQUERY_FILTER_IDS, rewrite_cloud_variant
+from benchbox.core.tpchavoc.cloud_compat import BIGQUERY_FILTER_IDS
 from benchbox.sql_compat.rules.execution_filter.cloud_tpchavoc import CLOUD_TPCHAVOC_SKIPS
 from benchbox.tpchavoc import TPCHavoc
+from benchbox.utils.dialect_utils import translate_sql_query
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -49,14 +50,19 @@ def test_filtered_aggregate_rewrite_preserves_null_and_distinct_semantics():
         ) AS t
     """
     expected = duckdb.sql(source).fetchall()
-    for candidate in (source, sqlglot.transpile(source, read="duckdb", write="bigquery")[0]):
-        rewritten = rewrite_cloud_variant("1_v6", candidate, "bigquery")
+    for candidate in (source, translate_sql_query(source, "bigquery", source_dialect="duckdb", identify=False)):
+        rewritten = translate_sql_query(
+            candidate,
+            "bigquery",
+            source_dialect="duckdb" if candidate is source else "bigquery",
+            identify=False,
+        )
         executable = sqlglot.transpile(rewritten, read="bigquery", write="duckdb")[0]
         assert " FILTER(" not in rewritten.upper() and " FILTER (" not in rewritten.upper()
         assert duckdb.sql(executable).fetchall() == expected
 
 
-def test_q1_v7_native_array_rewrite_parses_but_stays_skipped_until_live_compile():
+def test_q1_v7_list_aggregate_rewrite_parses_but_stays_skipped_until_live_compile():
     benchmark = TPCHavocBenchmark(scale_factor=0.1)
     queries = {dialect: benchmark.get_query("1_v7", dialect=dialect) for dialect in CLOUD_TPCHAVOC_SKIPS}
 
@@ -64,9 +70,10 @@ def test_q1_v7_native_array_rewrite_parses_but_stays_skipped_until_live_compile(
         assert "1_v7" in CLOUD_TPCHAVOC_SKIPS[dialect]
         assert sqlglot.parse_one(query, read=dialect)
     for dialect in ("bigquery", "databricks"):
-        assert "LIST_SUM" not in queries[dialect].upper()
-        assert "LIST_ZIP" not in queries[dialect].upper()
+        for duckdb_function in ("LIST_SUM", "LIST_AVG", "LIST_ZIP", "LIST_TRANSFORM"):
+            assert duckdb_function not in queries[dialect].upper()
 
+    assert "LIST(" in queries["snowflake"]
     assert "REDUCE(" not in queries["snowflake"]
     assert "ARRAY_AGG(" in queries["bigquery"]
     assert "ORDER BY l_orderkey, l_linenumber" in queries["bigquery"]
@@ -75,8 +82,21 @@ def test_q1_v7_native_array_rewrite_parses_but_stays_skipped_until_live_compile(
     assert "COLLECT_LIST(" in queries["databricks"]
     assert "SORT_ARRAY(" in queries["databricks"]
     assert "AGGREGATE(" in queries["databricks"]
-    assert "TRANSFORM(" in queries["databricks"]
     assert "ZIP_WITH(" in queries["databricks"]
+
+
+def test_q1_v7_spark_dialect_is_rewritten_like_databricks():
+    benchmark = TPCHavocBenchmark(scale_factor=0.1)
+
+    assert benchmark.get_query("1_v7", dialect="spark") == benchmark.get_query("1_v7", dialect="databricks")
+
+
+def test_q1_v7_get_query_and_get_queries_agree_on_every_list_aggregate_dialect():
+    from benchbox.core.tpchavoc.dialect_compat import LIST_AGGREGATE_DIALECTS
+
+    benchmark = TPCHavocBenchmark(scale_factor=0.1)
+    for dialect in sorted(LIST_AGGREGATE_DIALECTS):
+        assert benchmark.get_queries(dialect=dialect)["1_v7"] == benchmark.get_query("1_v7", dialect=dialect)
 
 
 def test_snowflake_2_v2_stays_skipped_until_live_compile_passes():

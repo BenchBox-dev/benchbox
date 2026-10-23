@@ -81,9 +81,18 @@ ENGINE_REWRITES = (
     "add_derived_table_aliases",
     "qualify_order_by_columns",
 )
+LIST_AND_RUNNER_REWRITES = (
+    "reduce_list_aggregates",
+    "nullif_zero_divisors",
+    "inline_order_by_aliases",
+    "alias_qualified_projections",
+    "qualify_alias_shadowed_columns",
+    "decimal_division_to_double",
+    "use_nulls_for_rollups",
+)
 
 
-@pytest.mark.parametrize("name", [*HAVOC_REWRITES, *SUBQUERY_REWRITES, *ENGINE_REWRITES])
+@pytest.mark.parametrize("name", [*HAVOC_REWRITES, *SUBQUERY_REWRITES, *ENGINE_REWRITES, *LIST_AND_RUNNER_REWRITES])
 def test_named_registry_resolves_every_moved_rewrite(name: str):
     assert callable(_fork_rewrite(name))
 
@@ -117,6 +126,7 @@ def test_registry_exposes_no_unlisted_rewrites():
         *HAVOC_REWRITES,
         *SUBQUERY_REWRITES,
         *ENGINE_REWRITES,
+        *LIST_AND_RUNNER_REWRITES,
     }
     assert exposed == listed
 
@@ -231,3 +241,62 @@ def test_wrap_grouped_scalar_subqueries_takes_the_aggregate_class():
         aggregate=sqlglot.exp.First,
     )
     assert result == "SELECT FIRST((SELECT 1)) FROM t GROUP BY a"
+
+
+def test_apply_rewrites_returns_the_input_text_when_no_rewrite_changes_the_tree():
+    from benchbox.utils.dialect_utils import apply_rewrites
+
+    sql = "select   a  ,b from   t where c = 1"
+    rewrites = [("deduplicate_output_aliases", {"nested": False}), ("safe_division", {})]
+    assert apply_rewrites(sql, "databricks", rewrites) is sql
+
+
+def test_apply_rewrites_parses_once_and_renders_the_combined_result():
+    from benchbox.utils.dialect_utils import apply_rewrites
+
+    rewrites = [("deduplicate_output_aliases", {"nested": False}), ("safe_division", {})]
+    result = apply_rewrites("SELECT a.k, b.k, x / y FROM a, b", "databricks", rewrites)
+    assert result == "SELECT a.k, b.k AS k_2, TRY_DIVIDE(x, y) FROM a CROSS JOIN b"
+
+
+def test_translate_sql_query_applies_rewrites_to_the_source_tree_before_generation():
+    from benchbox.utils.dialect_utils import translate_sql_query
+
+    result = translate_sql_query(
+        "SELECT 1 FROM t WHERE IsCurrent = 1",
+        "postgres",
+        rewrites=[("flag_comparisons_to_boolean", {"columns": ["IsCurrent"], "use_is": True})],
+    )
+    assert "IsCurrent IS TRUE" in result
+
+
+def test_translate_sql_query_runs_a_rewrite_under_its_own_dialect_when_the_rewrite_names_one():
+    from benchbox.utils.dialect_utils import translate_sql_query
+
+    source = "SELECT LIST(x) AS xs FROM t"
+    rewrite = ("order_list_aggregates", {"order_by": ["k"], "dialect": "databricks"})
+
+    result = translate_sql_query(source, "databricks", source_dialect="duckdb", identify=False, rewrites=[rewrite])
+    assert "SORT_ARRAY(COLLECT_LIST(STRUCT(k AS _k0, x AS _v)))" in result
+
+    default = translate_sql_query(
+        source,
+        "databricks",
+        source_dialect="duckdb",
+        identify=False,
+        rewrites=[("order_list_aggregates", {"order_by": ["k"]})],
+    )
+    assert "SORT_ARRAY" not in default
+
+
+def test_unqualified_table_names_skips_ctes_schema_qualified_tables_and_deduplicates():
+    from benchbox.utils.dialect_utils import unqualified_table_names
+
+    sql = "WITH c AS (SELECT 1 FROM base) SELECT * FROM c JOIN ds.qualified q ON TRUE JOIN base b ON TRUE"
+    assert unqualified_table_names(sql, "bigquery") == ["BASE"]
+
+
+def test_unqualified_table_names_returns_none_for_unparseable_sql():
+    from benchbox.utils.dialect_utils import unqualified_table_names
+
+    assert unqualified_table_names("SELECT FROM WHERE (", "bigquery") is None

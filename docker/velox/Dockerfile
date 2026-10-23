@@ -9,7 +9,7 @@ LABEL org.opencontainers.image.version="${GLUTEN_VERSION}"
 
 USER root
 
-RUN pip install --no-cache-dir uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /usr/local/bin/
 
 RUN set -eux; \
     SPARK_VER="$(grep '__version__' "${SPARK_HOME}/python/pyspark/version.py" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"; \

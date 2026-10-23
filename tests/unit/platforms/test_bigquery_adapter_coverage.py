@@ -2055,88 +2055,91 @@ class TestConvertToBigQueryTable:
         adapter = _make_adapter(project_id="my-proj", dataset_id="my_ds")
 
         stmt = "SELECT 1 AS test"
-        result = adapter._convert_to_bigquery_table(stmt)
+        result = adapter._translate_create_table(stmt)
         assert result == stmt
 
     def test_create_table_adds_or_replace_and_dataset(self):
         adapter = _make_adapter(project_id="my-proj", dataset_id="my_ds")
 
         stmt = "CREATE TABLE LINEITEM (l_orderkey INT64)"
-        result = adapter._convert_to_bigquery_table(stmt)
+        result = adapter._translate_create_table(stmt)
 
         assert "OR REPLACE" in result
         assert "my-proj" in result
         assert "my_ds" in result
         assert "LINEITEM" in result
 
-    def test_partition_added_when_partitioning_field_set(self):
-        adapter = _make_adapter(project_id="my-proj", dataset_id="my_ds", partitioning_field="l_shipdate")
-
-        stmt = "CREATE TABLE LINEITEM (l_shipdate DATE)"
-        result = adapter._convert_to_bigquery_table(stmt)
-
-        assert "PARTITION BY" in result
-        assert "l_shipdate" in result
-
-    def test_cluster_added_when_clustering_fields_set(self):
-        adapter = _make_adapter(project_id="my-proj", dataset_id="my_ds", clustering_fields=["l_orderkey", "l_partkey"])
-
-        stmt = "CREATE TABLE LINEITEM (l_orderkey INT64)"
-        result = adapter._convert_to_bigquery_table(stmt)
-
-        assert "CLUSTER BY" in result
-        assert "l_orderkey" in result
-        assert "l_partkey" in result
-
     def test_existing_or_replace_not_doubled(self):
         adapter = _make_adapter(project_id="my-proj", dataset_id="my_ds")
 
         stmt = "CREATE OR REPLACE TABLE LINEITEM (l_orderkey INT64)"
-        result = adapter._convert_to_bigquery_table(stmt)
+        result = adapter._translate_create_table(stmt)
 
         assert result.count("OR REPLACE") == 1
 
     def test_ctas_table_target_still_qualified(self):
         adapter = _make_adapter(project_id="my-proj", dataset_id="my_ds")
 
-        result = adapter._convert_to_bigquery_table("CREATE TABLE t AS SELECT 1")
+        result = adapter._translate_create_table("CREATE TABLE t AS SELECT 1")
 
-        assert "CREATE OR REPLACE TABLE" in result
-        assert "`my-proj.my_ds.T`" in result
+        assert result == "CREATE OR REPLACE TABLE `my-proj`.my_ds.T AS SELECT 1"
 
-    def test_ctas_view_statements_keep_view_shape_with_qualified_target(self):
+    def test_views_keep_view_shape(self):
         adapter = _make_adapter(project_id="my-proj", dataset_id="my_ds")
 
-        result = adapter._convert_to_bigquery_table(
+        result = adapter._translate_create_table(
             "CREATE VIEW orders_view AS SELECT o_orderkey FROM orders WHERE o_orderkey <= 1000"
         )
-        assert result.startswith("CREATE VIEW `my-proj.my_ds.ORDERS_VIEW` AS")
+        assert result.startswith("CREATE VIEW orders_view AS")
         assert "TABLE" not in result.split("AS")[0]
 
         assert (
-            adapter._convert_to_bigquery_table("CREATE OR REPLACE VIEW v AS SELECT 1")
-            == "CREATE OR REPLACE VIEW `my-proj.my_ds.V` AS SELECT 1"
+            adapter._translate_create_table("CREATE OR REPLACE VIEW v AS SELECT 1")
+            == "CREATE OR REPLACE VIEW v AS SELECT 1"
         )
-        for stmt in (
-            "CREATE TEMP VIEW v AS SELECT 1",
-            "CREATE TEMPORARY VIEW v AS SELECT 1",
-        ):
-            assert adapter._convert_to_bigquery_table(stmt) == stmt
 
-    def test_ctas_materialized_view_keeps_shape_with_qualified_target(self):
+    def test_materialized_view_keeps_shape(self):
         adapter = _make_adapter(project_id="my-proj", dataset_id="my_ds")
 
-        result = adapter._convert_to_bigquery_table("CREATE MATERIALIZED VIEW mv AS SELECT 1")
-        assert result == "CREATE MATERIALIZED VIEW `my-proj.my_ds.MV` AS SELECT 1"
+        result = adapter._translate_create_table("CREATE MATERIALIZED VIEW mv AS SELECT 1")
+        assert result == "CREATE MATERIALIZED VIEW mv AS SELECT 1"
 
-    def test_ctas_temp_tables_pass_through_unqualified(self):
+    def test_partition_added_when_partitioning_field_set(self):
+        adapter = _make_adapter(project_id="my-proj", dataset_id="my_ds", partitioning_field="l_shipdate")
+
+        result = adapter._translate_create_table("CREATE TABLE LINEITEM (l_shipdate DATE)")
+
+        assert "PARTITION BY DATE(l_shipdate)" in result
+
+    def test_cluster_added_when_clustering_fields_set(self):
+        adapter = _make_adapter(project_id="my-proj", dataset_id="my_ds", clustering_fields=["l_orderkey", "l_partkey"])
+
+        result = adapter._translate_create_table("CREATE TABLE LINEITEM (l_orderkey INT64, l_partkey INT64)")
+
+        assert "CLUSTER BY l_orderkey, l_partkey" in result
+
+    def test_cluster_fields_beyond_four_are_truncated(self):
+        adapter = _make_adapter(clustering_fields=["a", "b", "c", "d", "e"])
+
+        result = adapter._translate_create_table("CREATE TABLE t (a INT64, b INT64, c INT64, d INT64, e INT64)")
+
+        assert "CLUSTER BY a, b, c, d" in result
+        assert "d, e" not in result
+
+    def test_existing_partition_clause_is_not_duplicated(self):
+        adapter = _make_adapter(partitioning_field="ts")
+
+        result = adapter._translate_create_table("CREATE TABLE t (id INT64, ts DATE) PARTITION BY ts")
+
+        assert result.count("PARTITION BY") == 1
+
+    def test_temp_tables_keep_their_name(self):
         adapter = _make_adapter(project_id="my-proj", dataset_id="my_ds")
 
-        for stmt in (
-            "CREATE TEMP TABLE temp_orders AS SELECT * FROM orders",
-            "CREATE TEMPORARY TABLE temp_orders AS SELECT * FROM orders",
-        ):
-            assert adapter._convert_to_bigquery_table(stmt) == stmt
+        result = adapter._translate_create_table("CREATE TEMP TABLE temp_orders AS SELECT * FROM orders")
+
+        assert result.startswith("CREATE TEMPORARY TABLE temp_orders AS")
+        assert "my-proj" not in result
 
 
 class TestFilterValidFiles:
