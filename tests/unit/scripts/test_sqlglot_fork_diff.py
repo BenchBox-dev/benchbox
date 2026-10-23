@@ -27,14 +27,14 @@ def fork(tmp_path: Path) -> tuple[Path, str, str]:
     repo.mkdir()
     git(repo, "init", "--quiet")
     (repo / "downstream").mkdir()
-    (repo / "downstream" / "patches.json").write_text('{"patches": []}\n')
+    (repo / "downstream" / "patches.json").write_text('{"patches": []}\n', encoding="utf-8")
     (repo / "sqlglot").mkdir()
-    (repo / "sqlglot" / "dialects.py").write_text("A = 1\n")
+    (repo / "sqlglot" / "dialects.py").write_text("A = 1\n", encoding="utf-8")
     git(repo, "add", ".")
     git(repo, "commit", "-m", "base", "--quiet")
     old = git(repo, "rev-parse", "HEAD")
-    (repo / "downstream" / "patches.json").write_text('{"patches": ["fix: retain 1"]}\n')
-    (repo / "sqlglot" / "dialects.py").write_text("A = 2\n")
+    (repo / "downstream" / "patches.json").write_text('{"patches": ["fix: retain 1"]}\n', encoding="utf-8")
+    (repo / "sqlglot" / "dialects.py").write_text("A = 2\n", encoding="utf-8")
     git(repo, "commit", "-am", "fix: retain 1", "--quiet")
     return repo, old, git(repo, "rev-parse", "HEAD")
 
@@ -71,16 +71,16 @@ def test_main_defaults_old_to_base_ref_pin_and_new_to_working_tree(
     root = tmp_path / "benchbox"
     (root / "benchbox" / "_vendor").mkdir(parents=True)
     pin = root / "benchbox" / "_vendor" / "sqlglot.json"
-    pin.write_text(json.dumps({"fork_sha": old}))
+    pin.write_text(json.dumps({"fork_sha": old}), encoding="utf-8")
     git(root, "init", "--quiet")
     git(root, "add", ".")
     git(root, "commit", "-m", "pin", "--quiet")
-    pin.write_text(json.dumps({"fork_sha": new}))
+    pin.write_text(json.dumps({"fork_sha": new}), encoding="utf-8")
     monkeypatch.setattr(sqlglot_fork_diff, "ROOT", root)
     output = tmp_path / "diff.md"
     status = sqlglot_fork_diff.main(["--base-ref", "HEAD", "--repository", str(repo), "--output", str(output)])
     assert status == 0
-    text = output.read_text()
+    text = output.read_text(encoding="utf-8")
     assert f"Old fork_sha: `{old}`" in text
     assert f"New fork_sha: `{new}`" in text
 
