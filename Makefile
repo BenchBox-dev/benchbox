@@ -354,6 +354,11 @@ test-benchmarks:
 test-tpcds:
 	uv run -- python -m pytest -m "tpcds" --tb=short
 
+TPCDS_OBT_EQUIVALENCE_SF ?= 0.01
+.PHONY: tpcds-obt-equivalence
+tpcds-obt-equivalence:
+	BENCHBOX_TEST_TIER=t2 BENCHBOX_OBT_EQUIVALENCE_SF=$(TPCDS_OBT_EQUIVALENCE_SF) uv run -- python -m pytest tests/integration/test_tpcds_obt_equivalence.py --tb=short -n 0 --timeout=3600 $(PYTEST_ARGS)
+
 test-olap:
 	uv run -- python -m pytest -m "olap" --tb=short
 

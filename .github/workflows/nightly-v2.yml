@@ -942,6 +942,39 @@ jobs:
           path: junit-fast-windows.xml
           if-no-files-found: ignore
           retention-days: 14
+  tpcds-obt:
+    name: "t3:tpcds-obt | OBT vs TPC-DS results (SF1)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      BENCHBOX_TEST_TIER: t3
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Compare OBT and TPC-DS results at SF1
+        run: make tpcds-obt-equivalence TPCDS_OBT_EQUIVALENCE_SF=1 PYTEST_ARGS="--junitxml=junit-tpcds-obt.xml -rs"
+
+      - name: Upload OBT equivalence report
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: t3-tpcds-obt
+          path: junit-tpcds-obt.xml
+          if-no-files-found: ignore
+          retention-days: 14
+
   durations-refresh:
     name: "t3:durations | duration refresh"
     runs-on: ubuntu-latest
@@ -1082,6 +1115,7 @@ jobs:
       - liveness
       - ruleset-drift
       - windows
+      - tpcds-obt
       - durations-refresh
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
@@ -1104,7 +1138,7 @@ jobs:
           result_of() {
             printf '%s' "$NEEDS_JSON" | jq -r --arg j "$1" '.[$j].result // "skipped"'
           }
-          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine linkcheck liveness ruleset-drift windows durations-refresh; do
+          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine linkcheck liveness ruleset-drift windows tpcds-obt durations-refresh; do
             case "$job" in
               durations-refresh) domain=durations ;;
               *) domain="$job" ;;
