@@ -64,6 +64,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   OBT queries get derived-table aliases from the fork's `add_derived_table_aliases` rewrite through
   `translate_sql_query`.
 
+- `vector_search` declares its embedding columns with an explicit 4-byte element type on every
+  engine (`REAL[n]` on DuckDB and the generic default, `ARRAY<REAL>` for Spark, Databricks, Doris,
+  StarRocks, LakeSail, PySpark and Velox), matching the float32 data it generates. Engines that read the
+  old `FLOAT` as double precision now store `REAL`: DuckDB (`DOUBLE[n]` to `REAL[n]`), Spark and
+  Databricks (`ARRAY<DOUBLE>` to `ARRAY<FLOAT>`), Doris (`ARRAY<DOUBLE>` to `ARRAY<FLOAT>`), Trino
+  (`ARRAY(DOUBLE)` to `ARRAY(REAL)`) and Redshift (`DOUBLE PRECISION` to `REAL`). Top-k ids are
+  identical, but `vector_search` load and query timings change on those six engines, so do not compare
+  them with earlier runs. PostgreSQL, Snowflake, ClickHouse, SingleStore, StarRocks and BigQuery keep
+  their column types. A guard test rejects bare `FLOAT` in benchmark schema specs, the Snowflake
+  FlightData type map writes `DOUBLE` instead of `FLOAT` (the same 64-bit type), and the StarRocks and
+  SingleStore adapters no longer pass `float_as_real` because no benchmark schema declares a bare `FLOAT`.
 - The PostgreSQL, DuckLake, pg_mooncake and QuestDB adapters build `CREATE TABLE` text through
   `translate_ddl` instead of their own rewrites. QuestDB writes `VARCHAR` for `CHAR(n)` and
   `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake quotes identifiers, and the pg_mooncake
