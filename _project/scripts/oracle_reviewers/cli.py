@@ -336,7 +336,12 @@ def _protocol_round(
     force: bool = False,
 ) -> protocol.Round:
     paths = sorted(item.path for item in scoped)
-    patches = protocol.file_patches(full_diff or "")
+    scope = frozenset(paths)
+
+    def read(path: str) -> str | None:
+        return github.get_file(plan["repo"], path, plan["head_sha"]) if path in scope else None
+
+    patches = protocol.file_patches(full_diff or "", read)
     current = protocol.patch_map(patches, paths)
     digest = (protocol.patch_digest(patches, paths) if full_diff is not None else None) or f"unread-{plan['head_sha']}"
     base_ref = plan["base_ref"]

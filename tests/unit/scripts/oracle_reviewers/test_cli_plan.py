@@ -52,6 +52,7 @@ class FakeGitHub:
         self.threads = None if threads is None else list(threads)
         self.diff = diff
         self.dispatched: list[int] = []
+        self.contents: dict[str, str] = {}
         self.reviews: list[dict[str, Any]] | None = []
         self.reread_sha: str | None = None
         self._pull_reads = 0
@@ -64,6 +65,7 @@ class FakeGitHub:
         monkeypatch.setattr(github, "latest_state", lambda repo, pr: self.state)
         monkeypatch.setattr(github, "dispatch", lambda repo, workflow, pr: self.dispatched.append(pr))
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
+        monkeypatch.setattr(github, "get_file", lambda repo, path, ref: self.contents.get(path))
 
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.reviews is None:
@@ -762,6 +764,64 @@ def test_hunk_line_counts_are_part_of_the_patch() -> None:
     fewer = _file_diff("@@ -1,1 +1,1 @@\n+a\n")
     more = _file_diff("@@ -1,1 +1,2 @@\n+a\n")
     assert protocol.file_patches(fewer) != protocol.file_patches(more)
+
+
+def _function(pad: int = 0) -> str:
+    body = ["def guarded(user):"]
+    for _ in range(3):
+        body += ["a", "b", "c", "", ""]
+    return "\n".join(["# pad"] * pad + body) + "\n"
+
+
+def _removal(block: int, pad: int = 0, path: str = "a.py") -> str:
+    start = pad + 2 + block * 5
+    hunk = f"@@ -{start},4 +{start},3 @@ def guarded(user):\n a\n-require_admin(user)\n b\n c\n"
+    return _file_diff(hunk).replace("a.py", path)
+
+
+def _read_patches(diff: str, content: str) -> dict[str, str]:
+    return protocol.file_patches(diff, lambda path: content)
+
+
+def test_the_same_removal_at_two_places_in_one_function_is_a_different_patch() -> None:
+    assert protocol.file_patches(_removal(0)) == protocol.file_patches(_removal(2))
+    assert _read_patches(_removal(0), _function()) != _read_patches(_removal(2), _function())
+
+
+def test_a_rebase_that_shifts_a_function_keeps_its_first_hunk_patch() -> None:
+    assert _read_patches(_removal(2), _function()) == _read_patches(_removal(2, pad=8), _function(pad=8))
+
+
+def test_an_unreadable_file_binds_the_first_hunk_to_its_line_number() -> None:
+    assert protocol.file_patches(_removal(0), lambda path: None) != protocol.file_patches(
+        _removal(0, pad=8), lambda path: None
+    )
+
+
+def test_a_heading_missing_from_the_file_binds_the_first_hunk_to_its_line_number() -> None:
+    assert _read_patches(_removal(0), "x\n" * 40) != _read_patches(_removal(0, pad=8), "x\n" * 40)
+
+
+def test_a_relocated_first_hunk_is_reviewed_again_and_a_rebase_is_carried(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    stored = _removal(0, path=CHECKER)
+    patches = _read_patches(stored, _function())
+    record = _record(stored, "SHIP", paths=[CHECKER])
+    record["patch_map"] = protocol.patch_map(patches, [CHECKER])
+    record["patch_digest"] = protocol.patch_digest(patches, [CHECKER])
+    files = [{"filename": CHECKER, "additions": 0, "deletions": 1, "sha": "1" * 40}]
+    outcomes = []
+    for name, diff, content in (
+        ("relocated", _removal(2, path=CHECKER), _function()),
+        ("rebased", _removal(0, pad=8, path=CHECKER), _function(pad=8)),
+    ):
+        fake = _fake(_review(record), files=files, diff=diff)
+        fake.contents = {CHECKER: content}
+        (tmp_path / name).mkdir()
+        _, values, _ = _plan(monkeypatch, tmp_path / name, fake)
+        outcomes.append(values["decision"])
+    assert outcomes == ["review", "carry"]
 
 
 def test_prose_is_untracked_apart_from_a_scoped_follow_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
