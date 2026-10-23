@@ -6,6 +6,10 @@ from unittest.mock import MagicMock, Mock, patch, patch as _patch
 
 import pytest
 
+from benchbox.utils.dialect_utils import translate_ddl
+
+translate_ddl("CREATE TABLE t (a INT)", "athena")
+
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
