@@ -15772,6 +15772,15 @@
       "status": "done",
       "title": "Make the oracle coverage map disclose oracle STRENGTH and SCALE, not just existence"
     },
+    "oracle-diff-parser-splitlines-20261023": {
+      "claim": null,
+      "needs": [
+        "oracle-patch-hash-splitlines-control-chars-20261023"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Check the oracle diff parser for the same control-character line splitting"
+    },
     "oracle-evidence-crediting-20261021": {
       "claim": null,
       "needs": [],
