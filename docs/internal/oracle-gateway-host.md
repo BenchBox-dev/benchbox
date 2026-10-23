@@ -156,7 +156,7 @@ rm ~/Library/LaunchAgents/dev.omp.auth-broker.plist
 | Symptom | Cause and fix |
 | --- | --- |
 | Attempts end absent with connection errors | The Mac is asleep, offline or logged out, or an agent is down. Run `check`. |
-| Attempts end absent with `exit code 1` after about two minutes while `check` passes | The tailnet policy does not let `tag:oracle-ci` reach the host on port 4000. Add the port to that rule. On the host, `tailscale debug netmap \| jq -r '.PacketFilterRules[].DstPorts[] \| select(.Ports.Last < 65535) \| "\(.IP):\(.Ports.First)"'` lists the ports opened to anything narrower than the member rule. |
+| Attempts end absent with `exit code 1` after about two minutes while `check` passes | The tailnet policy does not let `tag:oracle-ci` reach the host on port 4000. Add the port to that rule. While an attempt job is on the tailnet, `tailscale debug netmap \| jq -r '.PacketFilterRules[].DstPorts[] \| select(.Ports.Last < 65535) \| "\(.IP):\(.Ports.First)"'` on the host lists the ports open to it; with no tagged node online it prints nothing. |
 | Gateway answers 401 | `ORACLE_GATEWAY_TOKEN` does not match `client.token`. Run `secrets`. |
 | Gateway answers 403 for a model | The model is not in `clients.json`. Pull `develop` and run `gateway`. |
 | `check` reports fewer models than `clients.json` | The gateway has not loaded the file. Run `gateway`. |
