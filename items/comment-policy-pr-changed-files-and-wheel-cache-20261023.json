@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "RUBRIC 1 P4 selection: a violation planted in a changed file fails the PR-mode run; one planted in an unchanged file passes the PR-mode run and fails the nightly whole-tree run; a global change (each trigger) scans the whole tree - each pinned by a test, with a mutation check",
+    "RUBRIC 2 P4 unconditional checks: ratchet, review gating, external_members, consumer validation and expired-exception findings still fail a PR that changes no source file (tests)",
+    "RUBRIC 3 nightly: the scheduled workflow runs whole-tree strict on develop, is registered wherever scheduled workflows must be (liveness/ledger checks pass), and a dispatched run is green",
+    "RUBRIC 4 P6: a second CI run shows a cache hit and the install step faster; a tampered cache cannot change installed content (hash verification still enforced; shown by test or argument with file:line)",
+    "RUBRIC 5 timing: comment-policy job CI time on PRs opened after the P4 merge vs 74-90 s"
+  ],
+  "context": "Approved by the owner 2026-10-23 (proposal steps P4 and P6). Prior chain: #3343 35309e0e7, #3362 634c165b1, #3364 ca810ea0e.",
+  "description": "After #3343/#3362/#3364 the CI comment-policy job runs the strict checker over the whole registered tree on every PR (74-90 s CI; local whole-tree 28 s). Owner approved two further steps on 2026-10-23.\n\nP4: in non-staged base comparisons (CI and `make comment-policy-check`), scan only files that differ from the base, unless a global change (policy file, cleanup scope policy, launcher, any base-launcher TRUSTED_FILES entry or an unreadable list, a revoked exception or external entry), in which case scan the whole tree - the rule staged mode already uses. Policy-level checks (ratchet, review gating, external_members, consumer validation, expired-exception findings) stay unconditional. Add a scheduled whole-tree strict run on develop (nightly) that fails visibly, as the backstop for unchanged files.\n\nP6: cache the comment-policy job's pinned wheels in CI, keyed on the base commit's quality/comment-policy-requirements.txt hash; installs still use --require-hashes. Note run_comment_policy.py strips UV_* variables (including UV_CACHE_DIR) before uv runs, so the cache must target the path uv actually uses.",
+  "links": [
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-18T23-52-50-730Z_01a1516e-af2a-70ba-8b0e-81c1898c948f/local/ci-slow-checks-proposal.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-23T21:09:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d9c5a276997f45c29d1354faa5429046",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}

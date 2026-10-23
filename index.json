@@ -5087,6 +5087,13 @@
       "status": "done",
       "title": "Required CI must reject LICENSE/COPYRIGHT.md notice drift that would break later PRs"
     },
+    "comment-policy-pr-changed-files-and-wheel-cache-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Scan only changed files in the PR comment-policy job, add a nightly whole-tree sweep, and cache the checker's wheels"
+    },
     "comment-policy-ratchet-wheel-upgrade": {
       "claim": null,
       "needs": [],
