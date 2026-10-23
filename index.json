@@ -15810,6 +15810,13 @@
       "status": "done",
       "title": "Move oracle-review consumers to oracle-gate"
     },
+    "oracle-gate-run-name-says-sweep-for-single-pr-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "oracle-gate runs triggered by workflow_run are titled 'pr=sweep' although they gate one PR"
+    },
     "oracle-gate-status-20261021": {
       "claim": null,
       "needs": [],
