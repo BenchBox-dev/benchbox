@@ -22992,14 +22992,19 @@
       "title": "Add a report of comment-policy exceptions that no longer match any finding"
     },
     "soundness-dead-exceptions-cleanup-20261022": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-24T20:53:22Z",
+        "generation": "4d33c081ba074040a13d452e88f7acaf",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [
         "soundness-gaps-decisions-20261022",
         "soundness-dead-exception-report-20261022",
         "comment-policy-digest-and-base-exception-catch22-20261008"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Remove the dead comment-policy exceptions found by the report"
     },
     "soundness-deferred-findings-inventory-20261022": {
