@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.dialect_utils import translate_ddl
 
 if TYPE_CHECKING:
     from benchbox.core.tuning.interface import (
@@ -406,24 +407,19 @@ class FabricWarehouseAdapter(PlatformAdapter):
                 """
                 )
 
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
 
-            statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
+            statements = translate_ddl(schema_sql, self.get_target_dialect(), schema=self.schema)
 
             for statement in statements:
-                if not statement.upper().startswith("CREATE TABLE"):
-                    continue
-
                 table_name = self._extract_table_name(statement)
                 if not table_name:
                     continue
 
-                optimized_sql = self._optimize_table_definition(statement)
-
                 self.drop_table(connection, table_name)
 
                 self.log_verbose(f"Creating table: {table_name}")
-                cursor.execute(optimized_sql)
+                cursor.execute(statement)
 
         except pyodbc.Error as e:
             error_msg = str(e)
@@ -859,25 +855,6 @@ class FabricWarehouseAdapter(PlatformAdapter):
         _constraint_configs: tuple[Any, Any, Any] | None = None,
     ) -> str:
         return ""
-
-    def _optimize_table_definition(self, table_sql: str, table_tuning: Any = None) -> str:
-        if "[" not in table_sql and self.schema:
-            schema = self.schema
-
-            def _add_schema(m: re.Match) -> str:
-                ifne = m.group(1) or ""
-                name = m.group(2).strip("[]")
-                return f"CREATE TABLE {ifne}[{schema}].[{name}]"
-
-            table_sql = re.sub(
-                r"CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(\[?\w+\]?)",
-                _add_schema,
-                table_sql,
-                count=1,
-                flags=re.IGNORECASE,
-            )
-
-        return table_sql
 
     def _extract_table_name(self, create_statement: str) -> str | None:
         match = re.search(

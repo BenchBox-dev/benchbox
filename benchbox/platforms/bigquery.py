@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     )
 
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
+from benchbox.utils.dialect_utils import translate_ddl
 from benchbox.utils.file_format import detect_compression, detect_data_format
 from benchbox.utils.iceberg_layout import relocate_iceberg_table, resolve_iceberg_metadata_file
 from benchbox.utils.printing import emit
@@ -925,23 +926,21 @@ class BigQueryAdapter(PlatformAdapter):
                 dataset = connection.create_dataset(dataset)
                 self.logger.info(f"Created dataset {self.dataset_id}")
 
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
 
             from benchbox.platforms.cloud_shared import split_leading_sql_comments
 
             statements = [
-                stmt.strip()
-                for stmt in schema_sql.split(";")
-                if stmt.strip() and split_leading_sql_comments(stmt)[1].strip()
+                statement
+                for statement in translate_ddl(schema_sql, self.get_target_dialect(), **self._ddl_options())
+                if split_leading_sql_comments(statement)[1].strip()
             ]
 
             for statement in statements:
-                bq_statement = self._convert_to_bigquery_table(statement)
-
-                query_job = connection.query(bq_statement)
+                query_job = connection.query(statement)
                 query_job.result()
 
-                self.logger.debug(f"Executed schema statement: {bq_statement[:100]}...")
+                self.logger.debug(f"Executed schema statement: {statement[:100]}...")
 
             self.logger.info("Schema created")
 
@@ -1540,22 +1539,19 @@ class BigQueryAdapter(PlatformAdapter):
         start_time = mono_time()
 
         try:
-            translated_query = self._convert_to_bigquery_table(query)
+            translated_query = query
             if "`" in translated_query:
                 translated_query = self._normalize_table_names_case(translated_query)
                 translated_query = self._qualify_table_names(translated_query, allow_fallback=("`" not in query))
             else:
                 translated_query = self._qualify_table_names(translated_query)
 
-            import re
-
-            if re.sub(r"[^a-z0-9]", "", (benchmark_type or "").lower()).startswith("tpcdi"):
-                translated_query = self._apply_tpcdi_bigquery_rewrites(translated_query)
-
             translated_query = self._apply_safe_division(translated_query)
 
             if "`" in translated_query:
                 translated_query = self._normalize_table_names_case(translated_query)
+
+            translated_query = self._translate_create_table(translated_query)
 
             job_config = getattr(connection, "_default_job_config", bigquery.QueryJobConfig())
             if hasattr(job_config, "dry_run") and job_config.dry_run != self.dry_run:
@@ -1639,224 +1635,35 @@ class BigQueryAdapter(PlatformAdapter):
                 "error_type": type(e).__name__,
             }
 
-    @staticmethod
-    def _inline_pk_columns(search_text: str) -> list[str]:
-        import re
+    def _ddl_options(self) -> dict[str, Any]:
+        options: dict[str, Any] = {
+            "or_replace": True,
+            "schema": f"{self.project_id}.{self.dataset_id}",
+            "table_case": "upper",
+        }
+        layout: dict[str, Any] = {}
+        if self.partitioning_field:
+            layout["partition_by"] = [f"DATE({self.partitioning_field})"]
+        if self.clustering_fields:
+            layout["cluster_by"] = list(self.clustering_fields)[:4]
+        if layout:
+            options["default_layout"] = layout
+        return options
 
-        if not re.search(r"PRIMARY\s+KEY", search_text, flags=re.IGNORECASE):
-            return []
-        _pk_keywords = {"PRIMARY", "CONSTRAINT", "FOREIGN", "UNIQUE", "CHECK", "KEY"}
-
-        def _match_segment(segment: str) -> str | None:
-            match = re.search(
-                r"[`\"']?(\w+)[`\"']?\s+(?:[A-Z0-9_]+\s*(?:\([^()]*\))?\s*)+?"
-                r"PRIMARY\s+KEY(?!\s*\()",
-                segment,
-                flags=re.IGNORECASE,
-            )
-            if match and match.group(1).upper() not in _pk_keywords:
-                return match.group(1)
-            return None
-
-        names = []
-        depth = 0
-        current: list[str] = []
-        for char in search_text:
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth = max(0, depth - 1)
-            if char == "," and depth == 0:
-                found = _match_segment("".join(current))
-                if found is not None:
-                    names.append(found)
-                current = []
-            else:
-                current.append(char)
-        found = _match_segment("".join(current))
-        if found is not None:
-            names.append(found)
-        return names
-
-    @staticmethod
-    def _normalize_bq_column_types(text: str) -> str:
-        import re
-
-        def _decimal_to_bignumeric(match: re.Match[str]) -> str:
-            precision, scale = int(match.group(2)), int(match.group(3))
-            if scale > 9 or precision > 38:
-                return f"BIGNUMERIC({precision},{scale})"
-            return match.group(0)
-
-        text = re.sub(
-            r"\b(DECIMAL|NUMERIC)\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)",
-            _decimal_to_bignumeric,
-            text,
-            flags=re.IGNORECASE,
-        )
-        return re.sub(
-            r"\bVARCHAR\s*(\(\s*\d+\s*\))?",
-            "STRING",
-            text,
-            flags=re.IGNORECASE,
-        )
-
-    def _qualify_table_target(self, raw_target: str) -> str:
-        target_bare = raw_target.strip("`")
-        if "." in target_bare:
-            *qualifier, bare = target_bare.split(".")
-            normalized = ".".join([*qualifier, bare.upper()])
-        else:
-            normalized = target_bare.upper()
-
-        if f"{self.dataset_id}." not in normalized:
-            return f"`{self.project_id}.{self.dataset_id}.{normalized}`"
-        elif not normalized.startswith("`"):
-            *qualifier, bare = normalized.split(".")
-            return "`" + ".".join([*qualifier, bare.upper()]) + "`"
-        return normalized
-
-    def _qualify_ctas_target(self, work: str) -> str:
-        import re
-
-        ctas = re.match(
-            r"^(\s*CREATE\s+(.+?)\s+)(`?[A-Za-z0-9_.]+`?)(\s+AS\b.*)",
-            work,
-            flags=re.IGNORECASE | re.DOTALL,
-        )
-        if not ctas:
-            return work
-
-        raw_prefix = ctas.group(1)
-        modifiers = ctas.group(2).upper()
-        raw_target = ctas.group(3)
-        as_and_rest = ctas.group(4)
-
-        if "VIEW" in modifiers or "TEMP" in modifiers or "TEMPORARY" in modifiers:
-            if re.fullmatch(
-                r"(?:VIEW|OR\s+REPLACE\s+VIEW|MATERIALIZED\s+VIEW|OR\s+REPLACE\s+MATERIALIZED\s+VIEW)",
-                modifiers.strip(),
-                flags=re.IGNORECASE,
-            ):
-                qualified_target = self._qualify_table_target(raw_target)
-                return raw_prefix + qualified_target + as_and_rest
-            return work
-
-        leading_space = raw_prefix[: len(raw_prefix) - len(raw_prefix.lstrip())]
-        if "IF NOT EXISTS" in modifiers:
-            verb = f"{leading_space}CREATE TABLE IF NOT EXISTS "
-        else:
-            verb = f"{leading_space}CREATE OR REPLACE TABLE "
-
-        qualified_target = self._qualify_table_target(raw_target)
-        return verb + qualified_target + as_and_rest
-
-    def _convert_to_bigquery_table(self, statement: str) -> str:
-        import re
-
+    def _translate_create_table(self, statement: str) -> str:
         from benchbox.platforms.cloud_shared import split_leading_sql_comments
 
-        prefix, work = split_leading_sql_comments(statement)
-
-        if not work.strip().upper().startswith("CREATE"):
+        if not split_leading_sql_comments(statement)[1].upper().startswith("CREATE"):
             return statement
-
-        pattern = re.compile(
-            r"^\s*CREATE\s+(?:(OR\s+REPLACE)\s+)?TABLE\s+(?:(IF\s+NOT\s+EXISTS)\s+)?`?([a-zA-Z0-9_.]+)`?\s*(\(.*)",
-            re.IGNORECASE | re.DOTALL,
-        )
-        match = pattern.match(work)
-        if match:
-            has_if_not_exists = bool(match.group(2))
-            create_verb = "CREATE TABLE IF NOT EXISTS" if has_if_not_exists else "CREATE OR REPLACE TABLE"
-            qualified_table = self._qualify_table_target(match.group(3))
-            rest = self._normalize_bq_column_types(match.group(4))
-            work = f"{create_verb} {qualified_table} {rest}"
-        else:
-            ctas_work = self._qualify_ctas_target(work)
-            if ctas_work != work:
-                work = ctas_work
-            else:
-                if (
-                    re.search(r"\bCREATE\s+TABLE\b", work, flags=re.IGNORECASE)
-                    and not re.search(r"\bOR\s+REPLACE\b", work, flags=re.IGNORECASE)
-                    and not re.search(r"\bIF\s+NOT\s+EXISTS\b", work, flags=re.IGNORECASE)
-                ):
-                    work = re.sub(
-                        r"\bCREATE\s+TABLE\b",
-                        "CREATE OR REPLACE TABLE",
-                        work,
-                        count=1,
-                        flags=re.IGNORECASE,
-                    )
-            work = self._normalize_bq_column_types(work)
-
-        pk_cols = self._inline_pk_columns(rest if match else work)
-        if match:
-            rest = re.sub(r"\s+PRIMARY\s+KEY(?!\s*\()\b", "", rest, flags=re.IGNORECASE)
-            has_table_pk = re.search(r"PRIMARY\s+KEY\s*\(", rest, flags=re.IGNORECASE) is not None
-            if pk_cols and not has_table_pk:
-                scan = re.sub(
-                    r"'(?:[^'\\]|\\.|'')*'|\"(?:[^\"\\]|\\.|\"\")*\"|--[^\n]*|/\*.*?\*/",
-                    lambda match: " " * len(match.group(0)),
-                    rest,
-                    flags=re.DOTALL,
-                )
-                depth = 0
-                for i, ch in enumerate(scan):
-                    if ch == "(":
-                        depth += 1
-                    elif ch == ")":
-                        depth -= 1
-                        if depth == 0:
-                            rest = rest[:i] + f", PRIMARY KEY ({', '.join(pk_cols)}) NOT ENFORCED" + rest[i:]
-                            break
-            work = f"{create_verb} {qualified_table} {rest}"
-        else:
-            work = re.sub(r"\s+PRIMARY\s+KEY(?!\s*\()\b", "", work, flags=re.IGNORECASE)
-
-        work = re.sub(
-            r"PRIMARY\s+KEY\s*\(([^()]*)\)(?!\s*NOT\s+ENFORCED)",
-            r"PRIMARY KEY (\1) NOT ENFORCED",
-            work,
-            flags=re.IGNORECASE,
-        )
-
-        references_pattern = re.compile(
-            r"REFERENCES\s+(`?[a-zA-Z0-9_.]+`?)\s*\(([^()]*)\)(?!\s*NOT\s+ENFORCED)",
-            flags=re.IGNORECASE,
-        )
-        masked_work = re.sub(
-            r"'(?:[^'\\]|\\.|'')*'|\"(?:[^\"\\]|\\.|\"\")*\"|--[^\n]*|/\*.*?\*/",
-            lambda match: " " * len(match.group(0)),
-            work,
-            flags=re.DOTALL,
-        )
-        pieces: list[str] = []
-        cursor = 0
-        for match in references_pattern.finditer(masked_work):
-            original_match = work[match.start() : match.end()]
-            inner = re.match(
-                r"REFERENCES\s+(`?[a-zA-Z0-9_.]+`?)\s*\(([^()]*)\)(?!\s*NOT\s+ENFORCED)",
-                original_match,
-                flags=re.IGNORECASE,
+        return ";\n".join(
+            translate_ddl(
+                statement,
+                self.get_target_dialect(),
+                source_dialect="bigquery",
+                identify=False,
+                **self._ddl_options(),
             )
-            if inner is None:
-                continue
-            pieces.append(work[cursor : match.start()])
-            pieces.append(f"REFERENCES {self._qualify_table_target(inner.group(1))} ({inner.group(2)}) NOT ENFORCED")
-            cursor = match.end()
-        pieces.append(work[cursor:])
-        work = "".join(pieces)
-
-        if "PARTITION BY" not in work.upper() and self.partitioning_field:
-            work += f" PARTITION BY DATE({self.partitioning_field})"
-
-        if "CLUSTER BY" not in work.upper() and self.clustering_fields:
-            clustering = ", ".join(self.clustering_fields)
-            work += f" CLUSTER BY {clustering}"
-
-        return prefix + work
+        )
 
     _FALLBACK_QUALIFY_TABLES = (
         "REGION",
@@ -1906,53 +1713,12 @@ class BigQueryAdapter(PlatformAdapter):
         }
     )
 
-    def _extract_unqualified_tables(self, query: str) -> list[str] | None:
-        try:
-            from benchbox._vendor import sqlglot
-            from benchbox._vendor.sqlglot import exp
-        except ImportError:
-            return None
-        try:
-            trees = sqlglot.parse(query, read="bigquery")
-        except Exception:
-            return None
-        if not trees or any(tree is None for tree in trees):
-            return None
-        cte_names = set()
-        for tree in trees:
-            for cte in tree.find_all(exp.CTE):
-                name = (cte.alias_or_name or "").upper()
-                if name:
-                    cte_names.add(name)
-        tables: list[str] = []
-        for tree in trees:
-            for cte in tree.find_all(exp.CTE):
-                earlier_ctes = set()
-                with_clause = cte.parent
-                if isinstance(with_clause, exp.With):
-                    for sibling in with_clause.expressions:
-                        if sibling is cte:
-                            break
-                        earlier_ctes.add((sibling.alias_or_name or "").upper())
-                for table in cte.this.find_all(exp.Table):
-                    if table.db or table.catalog:
-                        continue
-                    name = (table.name or "").upper()
-                    if name and name not in tables and name not in earlier_ctes:
-                        tables.append(name)
-            for table in tree.find_all(exp.Table):
-                if table.db or table.catalog:
-                    continue
-                name = (table.name or "").upper()
-                if not name or name in cte_names or name in tables:
-                    continue
-                tables.append(name)
-        return tables
-
     def _qualify_single_statement(self, statement: str, allow_fallback: bool = True) -> str:
         import re
 
-        table_names = self._extract_unqualified_tables(statement)
+        from benchbox.utils.dialect_utils import unqualified_table_names
+
+        table_names = unqualified_table_names(statement, "bigquery")
         if table_names is None:
             if not allow_fallback:
                 return statement
@@ -2133,11 +1899,6 @@ class BigQueryAdapter(PlatformAdapter):
 
         return re.sub(pattern, uppercase_table, query)
 
-    def _apply_tpcdi_bigquery_rewrites(self, query: str) -> str:
-        from benchbox.platforms.cloud_shared import rewrite_tpcdi_for_bigquery
-
-        return rewrite_tpcdi_for_bigquery(query)
-
     def _apply_safe_division(self, query: str) -> str:
         if "/" not in query:
             return query
@@ -2151,31 +1912,6 @@ class BigQueryAdapter(PlatformAdapter):
         except Exception as e:
             self.log_very_verbose(f"Division safeguard skipped (unparseable BigQuery SQL): {e}")
             return query
-
-    def _safeguard_division_by_zero(self, query: str) -> str:
-        try:
-            from benchbox._vendor import sqlglot
-            from benchbox._vendor.sqlglot import exp
-        except ImportError:
-            return query
-
-        try:
-            tree = sqlglot.parse_one(query, read="bigquery")
-        except Exception as e:
-            self.log_very_verbose(f"Division safeguard skipped (unparseable BigQuery SQL): {e}")
-            return query
-        if not any(isinstance(node, exp.Div) for node in tree.walk()):
-            return query
-
-        def to_safe_divide(node: exp.Expression) -> exp.Expression:
-            if isinstance(node, exp.Div):
-                return exp.Anonymous(
-                    this="SAFE_DIVIDE",
-                    expressions=[node.this.copy(), node.expression.copy()],
-                )
-            return node
-
-        return tree.transform(to_safe_divide).sql(dialect="bigquery", identify=True)
 
     def _get_platform_metadata(self, connection: Any) -> dict[str, Any]:
         metadata = {

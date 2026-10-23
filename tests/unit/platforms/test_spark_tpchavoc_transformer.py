@@ -6,11 +6,11 @@ from __future__ import annotations
 import pytest
 
 from benchbox._vendor import sqlglot
-from benchbox.platforms.spark_query_transformer import (
+from benchbox.core.tpchavoc.dialect_compat import (
     DUAL_VARIANT_IDS,
     GROUP_BY_EMPTY_VARIANT_IDS,
     SCALAR_GROUP_BY_VARIANT_IDS,
-    SparkTPCHavocQueryTransformer,
+    rewrite_spark_variant,
 )
 
 pytestmark = [
@@ -40,10 +40,7 @@ def _assert_spark_parseable(sql: str, variant_id: str) -> None:
 
 @pytest.mark.parametrize("variant_id", SCALAR_IDS)
 def test_scalar_group_by_variants_wrapped_in_first(variant_id: str):
-    original = _variant_sql(variant_id)
-    transformer = SparkTPCHavocQueryTransformer()
-    rewritten = transformer.transform(original, query_id=variant_id)
-    assert transformer.get_transformations_applied() == ["scalar_group_by_first"]
+    rewritten = rewrite_spark_variant(variant_id, _variant_sql(variant_id))
     expected_first_count = 2 if variant_id in {"1_v1", "8_v1", "12_v1"} else 1
     assert rewritten.upper().count("FIRST(") == expected_first_count
     _assert_spark_parseable(rewritten, variant_id)
@@ -53,9 +50,7 @@ def test_scalar_group_by_variants_wrapped_in_first(variant_id: str):
 def test_group_by_empty_variants_drop_empty_grouping(variant_id: str):
     original = _variant_sql(variant_id)
     assert "group by" in original.lower()
-    transformer = SparkTPCHavocQueryTransformer()
-    rewritten = transformer.transform(original, query_id=variant_id)
-    assert transformer.get_transformations_applied() == ["group_by_empty_drop"]
+    rewritten = rewrite_spark_variant(variant_id, original)
     assert "group by" not in rewritten.lower()
     assert "having" in rewritten.lower()
     _assert_spark_parseable(rewritten, variant_id)
@@ -63,10 +58,7 @@ def test_group_by_empty_variants_drop_empty_grouping(variant_id: str):
 
 @pytest.mark.parametrize("variant_id", DUAL_IDS)
 def test_dual_variants_gain_column_alias(variant_id: str):
-    original = _variant_sql(variant_id)
-    transformer = SparkTPCHavocQueryTransformer()
-    rewritten = transformer.transform(original, query_id=variant_id)
-    assert transformer.get_transformations_applied() == ["dual_column_alias"]
+    rewritten = rewrite_spark_variant(variant_id, _variant_sql(variant_id))
     assert "dual_col" in rewritten.lower()
     assert "union all" in rewritten.lower()
     _assert_spark_parseable(rewritten, variant_id)
@@ -75,32 +67,24 @@ def test_dual_variants_gain_column_alias(variant_id: str):
 @pytest.mark.parametrize("variant_id", ["2_v1", "5_v5", "22_v10", "Q99", "11"])
 def test_unlisted_query_ids_pass_through_unchanged(variant_id: str):
     original = _variant_sql("2_v1")
-    transformer = SparkTPCHavocQueryTransformer()
-    assert transformer.transform(original, query_id=variant_id) == original
-    assert transformer.get_transformations_applied() == []
+    assert rewrite_spark_variant(variant_id, original) == original
 
 
 def test_none_query_id_passes_through_unchanged():
     original = _variant_sql("1_v1")
-    transformer = SparkTPCHavocQueryTransformer()
-    assert transformer.transform(original, query_id=None) == original
-    assert transformer.get_transformations_applied() == []
+    assert rewrite_spark_variant(None, original) == original
 
 
 def test_query_id_normalization_accepts_prefixed_forms():
     original = _variant_sql("1_v1")
     for form in ("Q1_V1", "q1_v1", "1-V1", " 1_v1 ", "Q01_V1", "01_v1"):
-        transformer = SparkTPCHavocQueryTransformer()
-        rewritten = transformer.transform(original, query_id=form)
-        assert transformer.get_transformations_applied() == ["scalar_group_by_first"], form
-        assert "FIRST(" in rewritten.upper()
+        assert "FIRST(" in rewrite_spark_variant(form, original).upper(), form
 
 
 @pytest.mark.parametrize("variant_id", SCALAR_IDS + EMPTY_IDS + DUAL_IDS)
 def test_rewrites_are_idempotent(variant_id: str):
-    original = _variant_sql(variant_id)
-    first_pass = SparkTPCHavocQueryTransformer().transform(original, query_id=variant_id)
-    second_pass = SparkTPCHavocQueryTransformer().transform(first_pass, query_id=variant_id)
+    first_pass = rewrite_spark_variant(variant_id, _variant_sql(variant_id))
+    second_pass = rewrite_spark_variant(variant_id, first_pass)
     assert second_pass == first_pass
     assert "FIRST(FIRST(" not in second_pass.upper()
 
@@ -158,7 +142,11 @@ def test_spark_tpchavoc_rule_resolution(variant_id: str):
     assert decision is not None, f"No rule for spark/tpchavoc/{variant_id}"
     assert decision.action is CompatAction.REWRITE_QUERY
     assert isinstance(decision.payload, RewriteQueryPayload)
-    assert decision.payload.transformer_id == "spark_tpchavoc_query_transformer"
+    assert decision.payload.transformer_id in {
+        "wrap_grouped_scalar_subqueries",
+        "name_literal_subquery_columns",
+        "translate_sql_query",
+    }
 
 
 def test_spark_tpchavoc_unlisted_variant_has_no_rule():

@@ -5,7 +5,7 @@
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, call, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 
@@ -1814,33 +1814,6 @@ class TestRedshiftAdapter:
     def test_map_external_column_type(self, column_type, expected):
         assert RedshiftAdapter._map_external_column_type(column_type) == expected
 
-    @pytest.mark.parametrize(
-        ("statement", "expected"),
-        [
-            (
-                "CREATE TABLE public.orders (id INTEGER)",
-                "CREATE TABLE public.orders (id INTEGER) DISTSTYLE AUTO SORTKEY AUTO",
-            ),
-            (
-                "CREATE TABLE public.orders (id INTEGER) DISTSTYLE EVEN SORTKEY (id)",
-                "CREATE TABLE public.orders (id INTEGER) DISTSTYLE EVEN SORTKEY (id)",
-            ),
-            ("DROP TABLE public.orders", "DROP TABLE public.orders"),
-        ],
-    )
-    def test_optimize_table_definition(self, statement, expected):
-        try:
-            adapter = RedshiftAdapter(
-                host="test-cluster.redshift.amazonaws.com",
-                database="test_db",
-                username="test_user",
-                password="test_pass",
-            )
-        except ImportError:
-            pytest.skip("Redshift drivers not installed")
-
-        assert adapter._optimize_table_definition(statement) == expected
-
     def test_generate_tuning_clause_none(self):
         try:
             adapter = RedshiftAdapter(
@@ -2571,46 +2544,42 @@ class TestCtasSortSql:
                 adapter._build_ctas_sort_sql("orders", [Mock()])
 
 
-class TestOptimizeTableDefinition:
-    def test_adds_diststyle_auto_and_sortkey_auto(self):
+class TestSchemaDdl:
+    def _executed(self, ddl):
         adapter = _make_adapter()
-        result = adapter._optimize_table_definition("CREATE TABLE t (id INT)")
-        assert result == "CREATE TABLE t (id INT) DISTSTYLE AUTO SORTKEY AUTO"
+        cursor = MagicMock()
+        connection = MagicMock()
+        connection.cursor.return_value = cursor
+        with patch.object(adapter, "_create_schema_with_tuning", return_value=ddl):
+            adapter.create_schema(MagicMock(), connection)
+        return [call.args[0] for call in cursor.execute.call_args_list]
+
+    def test_adds_diststyle_auto_and_sortkey_auto(self):
+        executed = self._executed("CREATE TABLE t (id INT)")
+        assert executed[-1] == 'CREATE TABLE "t" ("id" INTEGER) DISTSTYLE AUTO SORTKEY AUTO'
 
     def test_preserves_existing_diststyle(self):
-        adapter = _make_adapter()
-        result = adapter._optimize_table_definition("CREATE TABLE t (id INT) DISTSTYLE ALL")
-        assert "DISTSTYLE ALL" in result
-        assert "DISTSTYLE AUTO" not in result
-        assert "SORTKEY AUTO" in result
+        statement = self._executed("CREATE TABLE t (id INT) DISTSTYLE ALL")[-1]
+        assert "DISTSTYLE ALL" in statement
+        assert "DISTSTYLE AUTO" not in statement
+        assert "SORTKEY AUTO" in statement
 
     def test_preserves_existing_sortkey(self):
-        adapter = _make_adapter()
-        result = adapter._optimize_table_definition("CREATE TABLE t (id INT) SORTKEY (id)")
-        assert "SORTKEY (id)" in result
-        assert "SORTKEY AUTO" not in result
-        assert "DISTSTYLE AUTO" in result
-
-    def test_preserves_both_existing_dist_and_sort(self):
-        adapter = _make_adapter()
-        stmt = "CREATE TABLE t (id INT) DISTSTYLE KEY DISTKEY (id) SORTKEY (created_at)"
-        result = adapter._optimize_table_definition(stmt)
-        assert result == stmt
+        statement = self._executed("CREATE TABLE t (id INT) SORTKEY (id)")[-1]
+        assert "SORTKEY(id)" in statement.replace('"', "")
+        assert "SORTKEY AUTO" not in statement
+        assert "DISTSTYLE AUTO" in statement
 
     def test_non_create_statement_unchanged(self):
-        adapter = _make_adapter()
-        stmt = "ALTER TABLE t ADD COLUMN x INT"
-        assert adapter._optimize_table_definition(stmt) == stmt
+        assert self._executed("ALTER TABLE t ADD COLUMN x INT")[-1].startswith("ALTER TABLE")
 
     def test_drop_table_unchanged(self):
-        adapter = _make_adapter()
-        assert adapter._optimize_table_definition("DROP TABLE t") == "DROP TABLE t"
+        assert "DROP TABLE" in self._executed("DROP TABLE t")[-1]
 
-    def test_case_insensitive_detection(self):
-        adapter = _make_adapter()
-        result = adapter._optimize_table_definition("CREATE TABLE t (id INT) diststyle even")
-        assert "DISTSTYLE AUTO" not in result
-        assert "SORTKEY AUTO" in result
+    def test_create_table_drops_existing_table_first(self):
+        executed = self._executed("CREATE TABLE Orders (id INT)")
+        assert "DROP TABLE IF EXISTS" in executed[-2]
+        assert "orders" in executed[-2]
 
 
 class TestExternalColumnTypeMapping:
