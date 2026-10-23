@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "An attempt whose only `401` text comes from pull request content is not classified as auth; a test feeds a real-shaped omp failure whose output contains a diff line with `401` and expects the error kind.",
+    "A genuine gateway or provider 401 is still classified as auth (existing calibrated fixtures keep passing)."
+  ],
+  "context": "Found while running the first gateway canary after #3296 merged. Root cause of the underlying failure was the tailnet ACL (tag:oracle-ci allowed only tcp:8765, not tcp:4000); the misclassification is independent of that.",
+  "description": "The OMP auth absence pattern `401[^\\n]{0,80}` (absence.CALIBRATED_AUTH_PATTERNS) matches any `401` in the text it scans, including pull request content echoed into the reviewer's output. On 2026-10-23 the attempt for PR #3332 (head ece15c335, run 39952339xxx family; oracle-verdict status `large: absent (auth: 401 | `ORACLE_GATEWAY_TOKEN` does not match `client.token`. Run `secrets`. |\\n+| Ga)`) failed with omp exit code 1 because the tailnet policy did not open the gateway port. The same failure on PR #3331 in run 39951571685 was recorded correctly as `error: exit code 1`. The `+|` prefix in the captured detail shows it is a diff line from the PR's new troubleshooting table, not an HTTP response. An auth absence is treated differently from an error (auth absences are excluded from the same-reviewer retry), so diff text can change retry behavior and mislead diagnosis.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3332",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/39951571685"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
+      "at": "2026-10-23T13:08:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "318f40f739c148bfa8d5ac55b8255b98",
+      "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    }
+  ]
+}
