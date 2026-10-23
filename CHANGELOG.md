@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Benchmark runs check free space on the output volume before any data is written and fail with the free and total bytes and the largest top-level entries when less than 5% is free. `BENCHBOX_MIN_FREE_DISK_PERCENT` changes the threshold (`0` disables it). `make disk-check` runs the same check by hand and never deletes anything.
 - `translate_ddl` accepts an engine type map by name (`type_map="starrocks"`, `"doris"`, `"singlestore"`) so adapters do not import fork modules.
 - Result readers accept schema 2.4: the loader, normalizer, explorer input
   and bundle validator read the new optional per-query `request_count`,

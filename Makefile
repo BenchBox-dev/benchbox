@@ -579,6 +579,10 @@ skill-integrity-check:
 	$(MAKE) agent-commit-range-check; \
 	$(MAKE) artifact-hygiene
 
+.PHONY: disk-check
+disk-check:
+	uv run -- python scripts/check_free_disk.py $(if $(DISK_PATH),--path "$(DISK_PATH)",) $(if $(MIN_FREE_PERCENT),--min-free-percent "$(MIN_FREE_PERCENT)",)
+
 .PHONY: duplicate-check
 duplicate-check:
 	uv run -- python scripts/check_duplicate_code.py
