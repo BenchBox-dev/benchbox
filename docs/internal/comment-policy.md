@@ -16,7 +16,8 @@ assignment. Keep a help string or protocol record only if something reads it.
 ## Check your work
 
 Run `make comment-policy-check` before you open a pull request. It scans the
-whole repository and compares your policy with `origin/develop`, then runs the
+files that differ from `origin/develop`, or the whole repository after a global
+change (see below), and compares your policy with `origin/develop`, then runs the
 parser's own tests, which can also fail it. To reproduce a CI result, set
 `BASE_REF` to the commit SHA CI
 used. You need Python, `uv`, Node, and npm.
@@ -83,10 +84,14 @@ Enforcement is blocking. `quality/comment-policy.json` sets
 `advisory`. The check, the hook, and CI read this setting from the base
 commit, not your branch.
 
-CI runs `scripts/run_comment_policy.py` against the base commit and passes only
-at zero violations anywhere in the repository. It fails if any file gains a
+CI runs `scripts/run_comment_policy.py` against the base commit. It passes only
+at zero violations in every file that differs from the base, or anywhere in the
+repository after a global change. It fails if any scanned file gains a
 violation or contains input the checker cannot analyze (a coverage error), or
-if configuration or parsing fails.
+if configuration or parsing fails. A scheduled workflow,
+`.github/workflows/comment-policy-nightly.yml`, scans the whole of `develop`
+every night (and on demand) with `scripts/run_comment_policy.py --full` and
+fails visibly when any file, changed or not, has a violation.
 
 The check prints up to 100 failures. It escapes control characters in paths and
 text from the pull request and never starts a line with `::`, so a pull request
@@ -197,10 +202,18 @@ counts every copy. Deleting an unrelated comment does not pay for a new one.
 Copying a comment, editing it, or moving it to another symbol fails. No archive
 of removed text is kept.
 
-A base comparison applies the strict rules to every file in the repository: it
-reads the base only for the policy, the trusted checker files, the ownership
-manifest, and the list of files that existed at the base. It never scans the
-base's sources. Every violation fails, including old ones.
+A base comparison applies the strict rules to the files that differ from the
+base, and to every file in the repository after a global change: a change to
+the policy, the cleanup scope policy, the launcher, any file in the base
+launcher's `TRUSTED_FILES` (also when that list is unreadable), or a removed
+exception or exclusion. A file that holds an exception is also scanned when the
+exception's consumer file changes. The policy-level checks never depend on
+which files changed: the ratchet, review gating for new exceptions, new files
+under an exclusion, consumer and provenance validation, and expired-exception
+findings. It reads the base only for the policy, the trusted checker files, the
+ownership manifest, and the list of files that existed at the base. It never
+scans the base's sources. Every violation in a scanned file fails, including old
+ones; the nightly scan covers the files a pull request leaves unchanged.
 
 - **External exclusions:** each names its upstream owner and a provenance file.
   A pull request cannot widen one. New files under an exclusion are still
