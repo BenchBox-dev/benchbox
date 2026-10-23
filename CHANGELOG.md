@@ -57,8 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The PostgreSQL, DuckLake, pg_mooncake and QuestDB adapters build `CREATE TABLE` text through
   `translate_ddl` instead of their own rewrites. QuestDB writes `VARCHAR` for `CHAR(n)` and
-  `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake and the PostgreSQL foreign-key retry quote
-  identifiers, and the pg_mooncake mirror statements come from the SQLGlot runtime. The key
+  `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake quotes identifiers, and the pg_mooncake
+  mirror statements come from the SQLGlot runtime. The key
   stripping, `SYMBOL` columns, designated timestamp and partitioning keep their results.
 - Databend and Firebolt build their `CREATE TABLE` statements with the SQLGlot fork's `translate_ddl`
   instead of per-adapter text rewrites (`_optimize_table_definition`, `_normalize_table_name_in_sql`).
