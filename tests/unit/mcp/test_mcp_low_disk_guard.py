@@ -13,6 +13,11 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 GIB = 1024**3
 
 
+@pytest.fixture(autouse=True)
+def _guard_enabled(monkeypatch):
+    monkeypatch.setenv(disk_guard.MIN_FREE_PERCENT_ENV, str(disk_guard.DEFAULT_MIN_FREE_PERCENT))
+
+
 @pytest.fixture(scope="module")
 def tool_functions() -> dict[str, Any]:
     import benchbox.utils.printing as printing

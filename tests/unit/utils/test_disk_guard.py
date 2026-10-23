@@ -37,6 +37,11 @@ def _usage(free: int, total: int = 100 * GIB):
     return shutil._ntuple_diskusage(total, total - free, free)
 
 
+@pytest.fixture(autouse=True)
+def _guard_enabled(monkeypatch):
+    monkeypatch.setenv(MIN_FREE_PERCENT_ENV, str(DEFAULT_MIN_FREE_PERCENT))
+
+
 def _populate(root: Path) -> None:
     (root / "big").mkdir()
     (root / "big" / "a.bin").write_bytes(b"x" * 5000)
