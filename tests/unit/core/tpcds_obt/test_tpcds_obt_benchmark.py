@@ -264,21 +264,23 @@ def test_spark_dialect_translates_space_containing_aliases() -> None:
 
 
 @pytest.mark.parametrize("query_id", [47, 57])
-def test_clickhouse_monthly_queries_materialize_nested_aggregates(query_id: int) -> None:
+def test_clickhouse_monthly_queries_alias_qualified_projections(query_id: int) -> None:
     benchmark = TPCDSOBTBenchmark(scale_factor=1.0)
 
     query = benchmark.get_query(query_id, dialect="clickhouse-local")
 
-    assert "AVG(SUM(" not in query.upper()
-    assert "SELECT v2.* FROM v2 AS v2" in query
+    assert "AVG(SUM(" in query.upper()
+    assert "v1.d_year AS d_year" in query
+    assert "v1.sum_sales AS sum_sales" in query
 
 
-def test_clickhouse_q66_materializes_monthly_aliases() -> None:
+def test_clickhouse_q66_qualifies_alias_shadowed_columns() -> None:
     benchmark = TPCDSOBTBenchmark(scale_factor=1.0)
 
     query = benchmark.get_query(66, dialect="clickhouse-local")
 
     assert "SUM(jan_sales)" not in query
     assert "SUM(jan_net)" not in query
-    assert "WITH channel_sales AS (" in query
+    assert "SUM(x.jan_sales)" in query
+    assert "SUM(x.jan_net)" in query
     assert re.search(r"\bw_warehouse_sq_ft\b", query) is None

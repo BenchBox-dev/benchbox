@@ -1,6 +1,5 @@
 import dataclasses
 import logging
-import re
 import time
 import warnings
 from collections.abc import Iterator
@@ -24,10 +23,9 @@ from benchbox.core.validation import (
     DataValidationEngine,
     ValidationResult,
 )
-from benchbox.utils.dialect_utils import apply_rewrite
+from benchbox.utils.dialect_utils import apply_rewrite, apply_rewrites, resolve_sql_dialect
 from benchbox.utils.file_format import get_delimiter_for_file
 from benchbox.utils.printing import emit
-from benchbox.utils.sql_parsing import find_matching_parenthesis
 
 from ..c_tools import TPCDSCTools
 from ..compliance import validate_tpcds_scale
@@ -79,23 +77,11 @@ _DATE_COLUMNS = tuple(
     sorted({column.name for table in TABLES for column in table.columns if column.data_type == DataType.DATE})
 )
 
+_POSTGRES_ROLLUP_ORDER_QUERY_IDS = frozenset({36, 70, 86})
+_Q90_ZERO_DIVISOR_COLUMNS = ("pmc",)
+
 
 class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
-    _MONTH_ALIASES: tuple[tuple[str, int], ...] = (
-        ("jan", 1),
-        ("feb", 2),
-        ("mar", 3),
-        ("apr", 4),
-        ("may", 5),
-        ("jun", 6),
-        ("jul", 7),
-        ("aug", 8),
-        ("sep", 9),
-        ("oct", 10),
-        ("nov", 11),
-        ("dec", 12),
-    )
-
     def __init__(
         self,
         scale_factor: float = 1.0,
@@ -219,270 +205,21 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         variant: str | None = None,
     ) -> str:
         target = target_dialect.lower()
+        rewrites: list[tuple[str, dict[str, Any]]] = []
 
-        if query_id in {36, 70, 86} and target == "postgres":
-            return self._rewrite_postgres_rollup_order_aliases(query_id, query)
-
-        if query_id == 90 and target in {"postgres", "datafusion"}:
-            return self._rewrite_postgres_q90_zero_denominator(query)
-
-        if query_id == 90 and target in {"spark", "lakesail"}:
-            return self._rewrite_spark_q90_zero_denominator(query)
-
+        if query_id in _POSTGRES_ROLLUP_ORDER_QUERY_IDS and resolve_sql_dialect(target) == "postgres":
+            rewrites.append(("inline_order_by_aliases", {}))
         if query_id == 90:
-            return self._rewrite_default_q90_zero_denominator(query)
+            rewrites.append(("nullif_zero_divisors", {"columns": _Q90_ZERO_DIVISOR_COLUMNS}))
+        if "clickhouse" in target:
+            if query_id in {47, 57}:
+                rewrites.append(("alias_qualified_projections", {}))
+            if query_id in {10, 35} and variant is None:
+                rewrites.append(("correlated_exists_to_in", {"expected": 3}))
+            if query_id == 66:
+                rewrites.append(("qualify_alias_shadowed_columns", {}))
 
-        if "clickhouse" not in target:
-            return query
-
-        if query_id in (47, 57):
-            return self._rewrite_clickhouse_monthly_avg_query(query_id, query)
-        if query_id in (10, 35) and variant is None:
-            return apply_rewrite("correlated_exists_to_in", query, "clickhouse", expected=3)
-        if query_id == 66:
-            return self._rewrite_clickhouse_q66(query)
-        return query
-
-    @staticmethod
-    def _rewrite_spark_q90_zero_denominator(query: str) -> str:
-        return re.sub(
-            r"/\s+CAST\(`pmc`\s+AS\s+DECIMAL\(15,\s*4\)\)",
-            "/ NULLIF(CAST(`pmc` AS DECIMAL(15, 4)), 0)",
-            query,
-            count=1,
-            flags=re.IGNORECASE,
-        )
-
-    @staticmethod
-    def _rewrite_postgres_q90_zero_denominator(query: str) -> str:
-        return re.sub(
-            r"/\s+CAST\(pmc\s+AS\s+DECIMAL\(15,\s*4\)\)",
-            "/ NULLIF(CAST(pmc AS DECIMAL(15, 4)), 0)",
-            query,
-            count=1,
-            flags=re.IGNORECASE,
-        )
-
-    @staticmethod
-    def _rewrite_default_q90_zero_denominator(query: str) -> str:
-        return re.sub(
-            r'/\s*CAST\(\s*(?P<denominator>pmc|`pmc`|"pmc"|\[pmc\])\s+AS\s+'
-            r"(?P<type>(?:DECIMAL|NUMERIC)\s*\(\s*15\s*,\s*4\s*\))\s*\)",
-            lambda match: f"/CAST(NULLIF({match.group('denominator')}, 0) AS {match.group('type')})",
-            query,
-            count=1,
-            flags=re.IGNORECASE,
-        )
-
-    @staticmethod
-    def _rewrite_postgres_rollup_order_aliases(query_id: int, query: str) -> str:
-        rollup_columns_by_query = {
-            36: ("i_category", "i_class", "i_category"),
-            70: ("s_state", "s_county", "s_state"),
-            86: ("i_category", "i_class", "i_category"),
-        }
-        rollup_columns = rollup_columns_by_query.get(query_id)
-        if rollup_columns is None:
-            return query
-
-        first_col, second_col, hierarchy_key = rollup_columns
-        hierarchy_expr = f"GROUPING({first_col}) + GROUPING({second_col})"
-        return re.sub(
-            rf"ORDER BY\s+lochierarchy\s+DESC,\s+CASE\s+WHEN\s+lochierarchy\s*=\s*0\s+THEN\s+{hierarchy_key}\s+END",
-            f"ORDER BY {hierarchy_expr} DESC, CASE WHEN {hierarchy_expr} = 0 THEN {hierarchy_key} END",
-            query,
-            count=1,
-            flags=re.IGNORECASE,
-        )
-
-    @classmethod
-    def _rewrite_clickhouse_monthly_avg_query(cls, query_id: int, query: str) -> str:
-        if "AVG(SUM(" not in query.upper():
-            return query
-
-        prefix = "WITH v1 AS ("
-        if not query.startswith(prefix):
-            raise ValueError(f"Unsupported ClickHouse Q{query_id} shape: expected leading v1 CTE")
-
-        open_index = len(prefix) - 1
-        close_index = cls._find_matching_parenthesis(query, open_index)
-        v1_body = query[open_index + 1 : close_index]
-        suffix = cls._alias_clickhouse_rank_neighbor_projections(query[close_index + 1 :])
-
-        pattern = re.compile(
-            r"SELECT (?P<select_dims>.+), SUM\((?P<sum_expr>.+)\) AS sum_sales, "
-            r"AVG\(SUM\((?P=sum_expr)\)\) OVER \(PARTITION BY (?P<avg_partition>.+)\) AS avg_monthly_sales, "
-            r"RANK\(\) OVER \(PARTITION BY (?P<rank_partition>.+) ORDER BY (?P<rank_order>.+)\) AS rn "
-            r"FROM (?P<from_clause>.+) GROUP BY (?P<group_by>.+)",
-            re.IGNORECASE | re.DOTALL,
-        )
-        match = pattern.fullmatch(v1_body)
-        if match is None:
-            raise ValueError(f"Unsupported ClickHouse Q{query_id} monthly aggregate shape")
-
-        groups = match.groupdict()
-        rewritten = (
-            f"WITH v1_monthly AS (SELECT {groups['select_dims']}, SUM({groups['sum_expr']}) AS sum_sales "
-            f"FROM {groups['from_clause']} GROUP BY {groups['group_by']}), "
-            f"v1 AS (SELECT {groups['select_dims']}, sum_sales, "
-            f"AVG(sum_sales) OVER (PARTITION BY {groups['avg_partition']}) AS avg_monthly_sales, "
-            f"RANK() OVER (PARTITION BY {groups['rank_partition']} ORDER BY {groups['rank_order']}) AS rn "
-            f"FROM v1_monthly){suffix}"
-        )
-        if "AVG(SUM(" in rewritten.upper():
-            raise ValueError(f"ClickHouse Q{query_id} rewrite still contains nested aggregate-over-window pattern")
-        return rewritten
-
-    @staticmethod
-    def _alias_clickhouse_rank_neighbor_projections(suffix: str) -> str:
-        pattern = r"(,\s*v2\s+AS\s+\(SELECT\s+)(.*?)(\s+FROM\s+v1,\s+v1\s+AS\s+v1_lag,\s+v1\s+AS\s+v1_lead)"
-
-        def alias_projection(match: re.Match[str]) -> str:
-            aliased_items = []
-            for item in match.group(2).split(","):
-                stripped = item.strip()
-                plain_v1_column = re.fullmatch(r"v1\.([a-zA-Z_][a-zA-Z0-9_]*)", stripped, re.IGNORECASE)
-                if plain_v1_column:
-                    column_name = plain_v1_column.group(1)
-                    aliased_items.append(f"v1.{column_name} AS {column_name}")
-                else:
-                    aliased_items.append(stripped)
-            return f"{match.group(1)}{', '.join(aliased_items)}{match.group(3)}"
-
-        return re.sub(pattern, alias_projection, suffix, flags=re.IGNORECASE | re.DOTALL)
-
-    @classmethod
-    def _rewrite_clickhouse_q66(cls, query: str) -> str:
-        if "SUM(jan_sales)" not in query and "SUM(jan_net)" not in query:
-            return query
-
-        from_marker = " FROM ("
-        outer_from_index = query.find(from_marker)
-        if outer_from_index == -1:
-            raise ValueError("Unsupported ClickHouse Q66 shape: missing derived table")
-
-        outer_select = query[len("SELECT ") : outer_from_index]
-        subquery_open = query.find("(", outer_from_index + len(" FROM "))
-        if subquery_open == -1:
-            raise ValueError("Unsupported ClickHouse Q66 shape: missing derived table body")
-
-        subquery_close = cls._find_matching_parenthesis(query, subquery_open)
-        union_body = query[subquery_open + 1 : subquery_close]
-        suffix = query[subquery_close + 1 :]
-
-        outer_match = re.match(
-            r"(?P<dimensions>.+), SUM\(jan_sales\) AS jan_sales, ",
-            outer_select,
-            re.IGNORECASE | re.DOTALL,
-        )
-        if outer_match is None:
-            raise ValueError("Unsupported ClickHouse Q66 shape: missing outer dimension projection")
-
-        suffix_match = re.fullmatch(
-            r"\s+AS x GROUP BY (?P<group_by>.+) ORDER BY (?P<order_by>.+) LIMIT (?P<limit>\d+)",
-            suffix,
-            re.IGNORECASE | re.DOTALL,
-        )
-        if suffix_match is None:
-            raise ValueError("Unsupported ClickHouse Q66 shape: missing outer GROUP BY / ORDER BY / LIMIT")
-
-        branch_a, branch_b = cls._split_top_level_union_all(union_body)
-        parsed_a = cls._parse_clickhouse_q66_branch(branch_a)
-        parsed_b = cls._parse_clickhouse_q66_branch(branch_b)
-
-        dimensions = outer_match.group("dimensions")
-        grouped_columns = suffix_match.group("group_by")
-        order_by = suffix_match.group("order_by")
-        limit = suffix_match.group("limit")
-
-        monthly_sales = ", ".join(
-            f"SUM(CASE WHEN d_moy = {month_num} THEN sales_amount ELSE 0 END) AS {month_name}_sales"
-            for month_name, month_num in cls._MONTH_ALIASES
-        )
-        monthly_sales_per_sq_foot = ", ".join(
-            f"SUM(CASE WHEN d_moy = {month_num} THEN sales_amount / w_warehouse_sq_ft ELSE 0 END) "
-            f"AS {month_name}_sales_per_sq_foot"
-            for month_name, month_num in cls._MONTH_ALIASES
-        )
-        monthly_net = ", ".join(
-            f"SUM(CASE WHEN d_moy = {month_num} THEN net_amount ELSE 0 END) AS {month_name}_net"
-            for month_name, month_num in cls._MONTH_ALIASES
-        )
-
-        rewritten = (
-            "WITH channel_sales AS ("
-            f"SELECT {parsed_a['dimensions']}, {parsed_a['ship_expr']} AS ship_carriers, d_year AS year, d_moy, "
-            f"{parsed_a['sales_expr']} AS sales_amount, {parsed_a['net_expr']} AS net_amount "
-            f"FROM {parsed_a['from_clause']} WHERE {parsed_a['where_clause']} UNION ALL "
-            f"SELECT {parsed_b['dimensions']}, {parsed_b['ship_expr']} AS ship_carriers, d_year AS year, d_moy, "
-            f"{parsed_b['sales_expr']} AS sales_amount, {parsed_b['net_expr']} AS net_amount "
-            f"FROM {parsed_b['from_clause']} WHERE {parsed_b['where_clause']}) "
-            f"SELECT {dimensions}, {monthly_sales}, {monthly_sales_per_sq_foot}, {monthly_net} "
-            f"FROM channel_sales GROUP BY {grouped_columns} ORDER BY {order_by} LIMIT {limit}"
-        )
-        if re.search(r"\bSUM\s*\(\s*jan_(?:sales|net)\b", rewritten, re.IGNORECASE):
-            raise ValueError("ClickHouse Q66 rewrite still contains analyzer-hostile alias aggregation")
-        return rewritten
-
-    @classmethod
-    def _parse_clickhouse_q66_branch(cls, branch: str) -> dict[str, str]:
-        sales_patterns = []
-        net_patterns = []
-        for month_name, month_num in cls._MONTH_ALIASES:
-            if month_num == 1:
-                sales_patterns.append(
-                    rf"SUM\(CASE WHEN d_moy = {month_num} THEN (?P<sales_expr>.+?) ELSE 0 END\) AS {month_name}_sales"
-                )
-                net_patterns.append(
-                    rf"SUM\(CASE WHEN d_moy = {month_num} THEN (?P<net_expr>.+?) ELSE 0 END\) AS {month_name}_net"
-                )
-            else:
-                sales_patterns.append(
-                    rf"SUM\(CASE WHEN d_moy = {month_num} THEN (?P=sales_expr) ELSE 0 END\) AS {month_name}_sales"
-                )
-                net_patterns.append(
-                    rf"SUM\(CASE WHEN d_moy = {month_num} THEN (?P=net_expr) ELSE 0 END\) AS {month_name}_net"
-                )
-
-        pattern = re.compile(
-            rf"SELECT (?P<dimensions>.+), (?P<ship_expr>.+) AS ship_carriers, d_year AS year, "
-            rf"{', '.join(sales_patterns)}, {', '.join(net_patterns)} "
-            rf"FROM (?P<from_clause>.+) WHERE (?P<where_clause>.+) GROUP BY (?P<group_by>.+)",
-            re.IGNORECASE | re.DOTALL,
-        )
-        match = pattern.fullmatch(branch)
-        if match is None:
-            raise ValueError("Unsupported ClickHouse Q66 branch shape")
-        return match.groupdict()
-
-    @staticmethod
-    def _find_matching_parenthesis(text: str, open_index: int) -> int:
-        return find_matching_parenthesis(text, open_index)
-
-    @classmethod
-    def _split_top_level_union_all(cls, query: str) -> tuple[str, str]:
-        marker = " UNION ALL "
-        depth = 0
-        in_single_quote = False
-        index = 0
-
-        while index < len(query):
-            char = query[index]
-            if char == "'":
-                if in_single_quote and index + 1 < len(query) and query[index + 1] == "'":
-                    index += 2
-                    continue
-                in_single_quote = not in_single_quote
-            elif not in_single_quote:
-                if char == "(":
-                    depth += 1
-                elif char == ")":
-                    depth -= 1
-                elif depth == 0 and query.startswith(marker, index):
-                    return query[:index], query[index + len(marker) :]
-            index += 1
-
-        raise ValueError("Expected top-level UNION ALL in ClickHouse Q66")
+        return apply_rewrites(query, target, rewrites) if rewrites else query
 
     @staticmethod
     def _validate_get_query_args(

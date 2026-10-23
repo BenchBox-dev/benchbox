@@ -14,7 +14,9 @@ SESSION_SETTING = "SETTINGS joined_subquery_requires_alias = 0"
 class TestDecimalLiterals:
     def test_non_zero_decimal_literals_are_preserved(self):
         result = rewrite_query_for_clickhouse("SELECT col + 0.06, col - 0.01, col * 0.05, col / 0.07 FROM t")
-        assert result == f"SELECT col + 0.06, col - 0.01, col * 0.05, col / 0.07 FROM t {SESSION_SETTING}"
+        assert result == (
+            f"SELECT col + 0.06, col - 0.01, col * 0.05, CAST(col AS Nullable(Float64)) / 0.07 FROM t {SESSION_SETTING}"
+        )
 
     def test_pure_zero_decimal_is_cast(self):
         result = rewrite_query_for_clickhouse("SELECT col + 0.0 FROM t")
@@ -24,11 +26,18 @@ class TestDecimalLiterals:
         result = rewrite_query_for_clickhouse("SELECT CASE WHEN a THEN 0.0 ELSE b END FROM t")
         assert "THEN CAST(0 AS Decimal(15, 2)) ELSE b" in result
 
-    def test_q6_between_bounds_are_preserved(self):
+    def test_q6_between_bounds_are_folded_for_lineitem_discount(self):
         sql = (
             "SELECT SUM(l_extendedprice * l_discount) AS revenue FROM lineitem "
             "WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
         )
+        assert rewrite_query_for_clickhouse(sql) == (
+            "SELECT SUM(l_extendedprice * l_discount) AS revenue FROM lineitem "
+            f"WHERE l_discount BETWEEN 0.05 AND 0.07 {SESSION_SETTING}"
+        )
+
+    def test_between_bounds_on_other_tables_are_preserved(self):
+        sql = "SELECT 1 FROM orders WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
         assert rewrite_query_for_clickhouse(sql) == f"{sql} {SESSION_SETTING}"
 
     def test_string_literals_are_not_rewritten(self):
@@ -82,7 +91,26 @@ class TestSafeDivision:
     def test_division_inside_a_string_literal_is_untouched(self):
         result = rewrite_query_for_clickhouse("SELECT 'a/b' AS label, x / y FROM t")
         assert "'a/b'" in result
-        assert "x / nullIf(y, 0)" in result
+        assert "/ nullIf(y, 0)" in result
+
+
+class TestDecimalDivision:
+    def test_dividend_is_cast_to_nullable_float64(self):
+        result = rewrite_query_for_clickhouse("SELECT CAST(a AS Decimal(9, 2)) / 7 FROM t")
+        assert result.startswith("SELECT CAST(CAST(a AS Decimal(9, 2)) AS Nullable(Float64)) / 7 FROM t")
+
+    def test_rewrite_is_idempotent(self):
+        once = rewrite_query_for_clickhouse("SELECT a / b FROM t")
+        assert rewrite_query_for_clickhouse(once) == once
+
+
+class TestRollupNulls:
+    def test_rollup_query_uses_nulls_for_rolled_up_keys(self):
+        result = rewrite_query_for_clickhouse("SELECT a, b, SUM(c) FROM t GROUP BY ROLLUP (a, b)")
+        assert result.endswith("SETTINGS group_by_use_nulls = 1, joined_subquery_requires_alias = 0")
+
+    def test_query_without_rollup_is_not_given_the_setting(self):
+        assert "group_by_use_nulls" not in rewrite_query_for_clickhouse("SELECT a, SUM(c) FROM t GROUP BY a")
 
 
 class TestCaseNormalization:

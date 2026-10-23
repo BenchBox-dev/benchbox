@@ -81,7 +81,7 @@ def test_no_transform_leaves_sql_unchanged():
 def test_clickhouse_execute_transform_mirrors_production_sequence():
 
     out = _clickhouse_execute_transform("SELECT revenue / SUM(quantity) FROM t")
-    assert "revenue / nullIf(SUM(quantity), 0)" in out
+    assert "CAST(revenue AS Nullable(Float64)) / nullIf(SUM(quantity), 0)" in out
     assert out.rstrip().endswith("SETTINGS joined_subquery_requires_alias = 0")
 
 

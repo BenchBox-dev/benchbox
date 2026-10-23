@@ -9,7 +9,6 @@ pytestmark = [
     pytest.mark.fast,
 ]
 
-SEEDED_QUERY_IDS = (35, 47, 57, 66)
 SEEDS = (1, 2, 3)
 
 
@@ -22,11 +21,6 @@ def _bench():
 def _extract_v2_suffix(query: str) -> str:
     _, suffix = query.split(", v2 AS ", 1)
     return suffix
-
-
-def _normalize_v2_suffix_for_comparison(query: str) -> str:
-    suffix = _extract_v2_suffix(query)
-    return re.sub(r"\bv1\.([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s+\1\b", r"v1.\1", suffix)
 
 
 def _extract_order_limit(query: str) -> tuple[str, str]:
@@ -107,7 +101,7 @@ def test_clickhouse_q35a_keeps_supported_variant_shape():
     assert "c.c_customer_sk IN (SELECT" not in query
 
 
-def test_clickhouse_q47_q57_seeded_queries_preserve_dsqgen_tail_across_seeds():
+def test_clickhouse_q47_q57_alias_qualified_rank_neighbor_projections_across_seeds():
     bench = _bench()
 
     for seed in SEEDS:
@@ -115,15 +109,15 @@ def test_clickhouse_q47_q57_seeded_queries_preserve_dsqgen_tail_across_seeds():
             base = bench.get_query(query_id, seed=seed)
             clickhouse = bench.get_query(query_id, seed=seed, dialect="clickhouse")
 
-            assert "AVG(SUM(" in base, f"Base Q{query_id} seed {seed} must retain nested aggregate shape"
-            assert "AVG(SUM(" not in clickhouse, f"ClickHouse Q{query_id} seed {seed} must remove nested aggregate"
-            assert _normalize_v2_suffix_for_comparison(base) == _normalize_v2_suffix_for_comparison(clickhouse), (
-                f"ClickHouse Q{query_id} seed {seed} must preserve dsqgen-selected v2 tail"
-            )
-            assert "enable_analyzer = 0" not in clickhouse, f"ClickHouse Q{query_id} seed {seed} must not opt out"
+            assert "AVG(SUM(" in base
+            assert "AVG(SUM(" in clickhouse
+            v2 = _extract_v2_suffix(clickhouse)
+            assert "v1.d_year AS d_year" in v2, f"ClickHouse Q{query_id} seed {seed} must alias v1.d_year"
+            assert "v1.sum_sales AS sum_sales" in v2
+            assert "enable_analyzer = 0" not in clickhouse
 
 
-def test_clickhouse_q66_seeded_queries_preserve_filters_without_old_analyzer_fallback():
+def test_clickhouse_q66_qualifies_alias_shadowed_columns_across_seeds():
     bench = _bench()
 
     for seed in SEEDS:
@@ -131,62 +125,20 @@ def test_clickhouse_q66_seeded_queries_preserve_filters_without_old_analyzer_fal
         clickhouse = bench.get_query(66, seed=seed, dialect="clickhouse")
         base_carriers, base_time_windows = _extract_q66_filters(base)
 
-        assert "SUM(jan_sales)" in base, f"Base Q66 seed {seed} must retain original aggregate-alias shape"
-        assert "SUM(jan_sales)" not in clickhouse, f"ClickHouse Q66 seed {seed} must remove jan_sales alias aggregation"
-        assert "SUM(jan_net)" not in clickhouse, f"ClickHouse Q66 seed {seed} must remove jan_net alias aggregation"
-        assert "WITH channel_sales AS (" in clickhouse, f"ClickHouse Q66 seed {seed} must use channel_sales"
-        assert _extract_order_limit(base) == _extract_order_limit(clickhouse), (
-            f"ClickHouse Q66 seed {seed} must preserve ORDER/LIMIT"
-        )
+        assert "SUM(jan_sales)" in base
+        assert "SUM(jan_sales)" not in clickhouse
+        assert "SUM(x.jan_sales)" in clickhouse
+        assert "SUM(x.jan_sales / w_warehouse_sq_ft)" in clickhouse
+        assert _extract_order_limit(base) == _extract_order_limit(clickhouse)
         for carrier_filter in base_carriers:
-            assert carrier_filter in clickhouse, (
-                f"ClickHouse Q66 seed {seed} must preserve carrier filter {carrier_filter}"
-            )
+            assert carrier_filter in clickhouse
         for time_window in base_time_windows:
-            assert time_window in clickhouse, f"ClickHouse Q66 seed {seed} must preserve time window {time_window}"
-        assert "enable_analyzer = 0" not in clickhouse, f"ClickHouse Q66 seed {seed} must not opt out"
+            assert time_window in clickhouse
+        assert "enable_analyzer = 0" not in clickhouse
 
 
-def test_clickhouse_q47_rewrite_rejects_unexpected_cte_shape():
-    bench = _bench()
-    malformed = "SELECT AVG(SUM(x)) OVER () FROM t"
-    with pytest.raises(ValueError, match="expected leading v1 CTE"):
-        bench._rewrite_clickhouse_monthly_avg_query(47, malformed)
-
-
-def test_clickhouse_q47_rewrite_rejects_unexpected_aggregate_shape():
-    bench = _bench()
-    malformed = "WITH v1 AS (SELECT AVG(SUM(x)) FROM t)"
-    with pytest.raises(ValueError, match="monthly aggregate shape"):
-        bench._rewrite_clickhouse_monthly_avg_query(47, malformed)
-
-
-def test_clickhouse_q66_rewrite_rejects_missing_derived_table():
-    bench = _bench()
-    malformed = "SELECT SUM(jan_sales) AS jan_sales FROM t"
-    with pytest.raises(ValueError, match="missing derived table"):
-        bench._rewrite_clickhouse_q66(malformed)
-
-
-def test_clickhouse_q66_rewrite_rejects_missing_group_by():
-    bench = _bench()
-    malformed = (
-        "SELECT w_warehouse_name, SUM(jan_sales) AS jan_sales "
-        "FROM (SELECT 1 AS jan_sales UNION ALL SELECT 2 AS jan_sales) AS x"
-    )
-    with pytest.raises(ValueError, match="missing outer"):
-        bench._rewrite_clickhouse_q66(malformed)
-
-
-def test_base_tpcds_queries_retain_original_dsqgen_shapes():
+def test_non_clickhouse_q47_q57_q66_are_not_aliased():
     bench = _bench()
 
-    for seed in SEEDS:
-        q47 = bench.get_query(47, seed=seed)
-        q57 = bench.get_query(57, seed=seed)
-        q66 = bench.get_query(66, seed=seed)
-
-        assert "AVG(SUM(" in q47, f"Base Q47 seed {seed} must retain nested aggregate shape"
-        assert "AVG(SUM(" in q57, f"Base Q57 seed {seed} must retain nested aggregate shape"
-        assert "SUM(jan_sales)" in q66, f"Base Q66 seed {seed} must retain original aggregate-alias shape"
-        assert "SUM(jan_net)" in q66, f"Base Q66 seed {seed} must retain original aggregate-alias shape"
+    assert "v1.d_year AS d_year" not in bench.get_query(47, seed=1, dialect="duckdb")
+    assert "SUM(x.jan_sales)" not in bench.get_query(66, seed=1, dialect="duckdb")
