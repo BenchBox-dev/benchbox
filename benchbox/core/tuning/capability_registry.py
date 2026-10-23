@@ -844,7 +844,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "(col1, col2) clause from tuned distribution columns for dry-run preview "
             "(firebolt.py:144-149, 195-196), but benchbox/platforms/firebolt.py's FireboltAdapter never "
             "consumes it: create_schema uses _create_schema_with_tuning (primary/foreign-key toggle "
-            "only) then _optimize_table_definition (firebolt.py:1267-1296, type-mapping/"
+            "only) then _translate_schema_ddl, which calls translate_ddl (type-mapping/"
             "constraint-stripping only). FireboltAdapter.generate_tuning_clause (firebolt.py:1374-1411) "
             "has no call site anywhere in the codebase. apply_table_tunings (firebolt.py:1413-1421) only "
             "logs via log_partition_tunings(...).",
