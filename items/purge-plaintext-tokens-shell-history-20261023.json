@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "No token or key values remain in zsh history, the local atuin database or atuin sync",
+    "A filter prevents the same token formats from being recorded again"
+  ],
+  "description": "`~/.zsh_history` and the atuin database on the maintainer's Mac contain plaintext tokens and keys (Databricks, OpenAI, Cerebras, Gemini, Meta, Claude Code and a todo-db token), typed or echoed on the command line. atuin last synced on 2026-07-27, so its sync server may hold copies. Rotate the credentials first (rotate-credentials-emudhra-exposure-20261023), then delete the entries locally and from atuin sync, and prevent recurrence (atuin `history_filter`, zsh `HIST_IGNORE_SPACE` or `zshaddhistory`, reading secrets from the keychain instead of command arguments). Rewriting history needs the owner's approval.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:03:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "46913cf836774128a1bba839b4c64013",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    }
+  ]
+}
