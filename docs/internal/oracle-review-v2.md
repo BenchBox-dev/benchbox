@@ -657,7 +657,9 @@ cancel-in-progress, so a newer run for a pull request cancels the earlier one
 instead of racing it.
 
 The cutover keeps `oracle-review` required while `oracle-gate` runs
-alongside it. Once production runs show the two contexts agreeing, the owner
-adds `oracle-gate` to the required checks in `repo-admin-settings.md` and the
-live ruleset, scoped to the `benchbox-oracle` App's integration ID, and only
-then retires the `pull_request`-triggered check.
+alongside it. The intended order is that production runs show the two contexts
+agreeing before the owner adds `oracle-gate` to the required checks, scoped to
+the `benchbox-oracle` App's integration ID, and only then the
+`pull_request`-triggered check is retired. The live ruleset requires
+`oracle-gate` as of 2026-10-21T19:37-04:00; that the agreement precondition was
+met is not verified (see `repo-admin-settings.md`).

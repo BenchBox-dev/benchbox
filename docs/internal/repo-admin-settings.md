@@ -85,7 +85,7 @@ check stays pending forever on a change that does not touch it.
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
 | `oracle-review` | every PR; review required unless only inert paths change | `benchbox-oracle` success review of the current head, or the stand-in approval, with oracle threads resolved; inert-only changes report success |
-| `oracle-gate` | every PR, from `develop` code on trusted triggers | the same decision as `oracle-review`, posted by the `benchbox-oracle` App; required with that App's integration ID |
+| `oracle-gate` | every PR, from `develop` code on trusted triggers | the same decision as `oracle-review`, posted by the `benchbox-oracle` App; requires `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` in the `oracle` environment, else nothing is posted and the head cannot merge |
 
 The public site is built, compared and deployed in `BenchBox-dev/benchbox-site`.
 
@@ -194,8 +194,15 @@ passes when any of these holds:
 
 A plain owner comment does not count. See [soundness drain](soundness-drain.md).
 
-The `oracle-gate` context is required next to `oracle-review`, scoped to the
-`benchbox-oracle` App's integration ID in the live ruleset.
+The live `develop-squash-only` ruleset requires `oracle-gate` next to
+`oracle-review`, with `integration_id` 5201041 (read back 2026-10-23 with
+`gh api repos/BenchBox-dev/benchbox/rulesets/15611785`, `updated_at`
+2026-10-21T19:37:02-04:00). Whether 5201041 is the `benchbox-oracle` App's
+integration ID is not recorded in the repository and was not verified. The
+cutover precondition in `docs/internal/oracle-review-v2.md` (production runs
+showing `oracle-gate` agreeing with `oracle-review`) was not verified when the
+ruleset was updated.
+
 `.github/workflows/oracle-gate.yml` runs only `develop` code and posts
 `oracle-gate` for the pull request head through the same oracle App. The unit
 test fails when any other workflow could post that context, but a same-repo pull
@@ -204,6 +211,14 @@ not the enforcement; the integration-ID scoping is. It applies the checker's
 rule unchanged: success when only exempt paths changed, when the App's latest
 review of the head reports success with no unresolved oracle thread, or when a
 valid stand-in covers the exact head, and failure otherwise.
+
+The workflow posts the context only when `ORACLE_APP_ID` and
+`ORACLE_APP_PRIVATE_KEY` are set as secrets in the `oracle` environment; when
+either is missing it only logs the decision with `--no-post`. With the check
+required, a head that never receives the context cannot merge. Check that both
+names exist with
+`gh api repos/BenchBox-dev/benchbox/environments/oracle/secrets --jq '.secrets[].name'`
+(names only; never read values).
 
 ### Soundness-path review enforcement
 
@@ -231,9 +246,8 @@ The soundness gate, as operated:
   half is the ruleset binding: the required `oracle-gate` check must be scoped
   to the `benchbox-oracle` App's integration ID, since only that binding stops
   a pull request workflow with `statuses: write` from posting a forged success
-  to its own head. The live ruleset carries that binding;
-  `scripts/ruleset_drift_check.py` compares context names only, so the
-  integration ID is checked by hand.
+  to its own head. `scripts/ruleset_drift_check.py` compares context names
+  only, so the integration ID is checked by hand.
 - `make pr-open` does not arm auto-merge when it creates a PR. `make pr-arm`
   (or `make pr-open READY=1`) arms it after a live check of the PR, so a PR
   cannot merge while a follow-up commit is still being written. Arm only when
