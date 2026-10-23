@@ -23933,15 +23933,10 @@
       "title": "Fork: never downgrade or narrow the Doris/StarRocks key model silently (lineitem loses rows under table_model=unique)"
     },
     "sqlglot-fork-review-lows": {
-      "claim": {
-        "expires_at": "2026-10-24T19:04:12Z",
-        "generation": "e8d7d0cb6605431ba297d9474b7f37b3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Close the adversarial review's Low findings (manifest gaps, stale docs, CI pinning, DDL edge cases, upstream-offer tracking)"
     },
     "sqlglot-fork-review-m3-sqlite-date-semantics": {
