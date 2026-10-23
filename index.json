@@ -23715,14 +23715,19 @@
       "title": "BenchBox: move DDL creation for the remaining adapters (Athena, Redshift, Synapse, Fabric, Spark family, Presto/Trino, QuestDB, others) to translate_ddl"
     },
     "sqlglot-fork-d4-delete-havoc-datafusion-transformers": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-24T15:39:58Z",
+        "generation": "6690bc48d49442739aa320c0e1b7b33c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
+      },
       "needs": [
         "sqlglot-fork-a4-adopt-havoc-wheel",
         "sqlglot-fork-b2-migrate-direct-importers",
         "sqlglot-fork-d1-delete-wrapper-fixups"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "BenchBox: delete TPC-Havoc, Spark and DataFusion query transformers"
     },
     "sqlglot-fork-d5-delete-clickhouse-starrocks-rewrites": {
