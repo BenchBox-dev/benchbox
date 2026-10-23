@@ -28572,15 +28572,10 @@
       "title": "Add Velox + Gluten Spark Acceleration Platform Adapter"
     },
     "velox-image-uv-copy-unverified-20261023": {
-      "claim": {
-        "expires_at": "2026-10-24T22:50:41Z",
-        "generation": "3c50c79ae0a241179a67b39c36294005",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "The Velox image has not been built since it switched to copying uv from the uv image"
     },
     "velox-spark-map-live-verification-20261017": {
