@@ -95,7 +95,6 @@ def _live_develop_ruleset(
                         {"context": "tooling"},
                         *(_status_check(context) for context in oracle_contexts),
                         {"context": "hold"},
-                        {"context": "oracle-gate"},
                     ],
                 },
             },
