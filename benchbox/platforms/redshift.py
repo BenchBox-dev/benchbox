@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.core.benchmark_mixins import CursorValidationQueryExecutionMixin
-from benchbox.core.sql_utils import normalize_table_name_in_sql
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.dialect_utils import translate_ddl
 from benchbox.utils.iceberg_layout import is_iceberg_directory, relocate_iceberg_table
 
 if TYPE_CHECKING:
@@ -1085,15 +1085,17 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             self.log_very_verbose(f"Setting search_path to: {self.schema}")
             cursor.execute(f'SET search_path TO "{self.schema}"')
 
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
 
-            statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
+            statements = translate_ddl(
+                schema_sql,
+                self.get_target_dialect(),
+                table_case="lower",
+                default_layout={"distribution": "auto", "sort_auto": True},
+            )
 
             for statement in statements:
-                statement = self._normalize_table_name_in_sql(statement)
-                is_create_table = statement.upper().startswith("CREATE TABLE")
-
-                if is_create_table:
+                if statement.upper().startswith("CREATE TABLE"):
                     table_name = self._extract_table_name(statement)
                     if table_name:
                         table_name_lower = table_name.strip('"').lower()
@@ -1101,7 +1103,6 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
                         self.log_notice(f"Executing destructive schema reset: {drop_statement}")
                         cursor.execute(drop_statement)
 
-                statement = self._optimize_table_definition(statement)
                 cursor.execute(statement)
                 self.logger.info(f"Executed schema statement: {statement[:100]}...")
 
@@ -1886,21 +1887,6 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         from benchbox.core.sql_utils import extract_table_name
 
         return extract_table_name(statement)
-
-    def _normalize_table_name_in_sql(self, sql: str) -> str:
-        return normalize_table_name_in_sql(sql)
-
-    def _optimize_table_definition(self, statement: str) -> str:
-        if not statement.upper().startswith("CREATE TABLE"):
-            return statement
-
-        if "DISTSTYLE" not in statement.upper():
-            statement += " DISTSTYLE AUTO"
-
-        if "SORTKEY" not in statement.upper():
-            statement += " SORTKEY AUTO"
-
-        return statement
 
     def _get_platform_metadata(self, connection: Any) -> dict[str, Any]:
         metadata = {

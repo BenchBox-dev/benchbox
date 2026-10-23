@@ -126,8 +126,6 @@ _DDL_GOVERNANCE_TRANSFORMER_ALIASES: dict[tuple[str, str], tuple[str, ...]] = {
     ("postgresql", "_transform_create_statement"): ("postgresql_strip_foreign_keys",),
     ("presto", "_optimize_table_definition"): ("presto_ddl_optimizer",),
     ("questdb", "_strip_pk_constraints"): ("questdb_strip_fk_and_pk_constraints",),
-    ("redshift", "_optimize_table_definition"): ("redshift_ddl_optimizer",),
-    ("snowflake", "_optimize_table_definition"): ("snowflake_ddl_optimizer",),
     ("spark", "optimize_spark_table_definition"): ("spark_ddl_optimizer",),
     ("starrocks", "_optimize_table_definition"): ("starrocks_ddl_optimizer",),
     ("starrocks", "_resolve_tuned_ddl_clauses"): ("starrocks_ddl_optimizer",),

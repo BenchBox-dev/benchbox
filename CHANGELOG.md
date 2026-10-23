@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Redshift and Snowflake build `CREATE TABLE` text through `translate_ddl` instead of the
+  adapters' own DDL rewriters, which are deleted. Redshift still adds `DISTSTYLE AUTO SORTKEY AUTO`
+  and Snowflake still writes `CREATE OR REPLACE TABLE`. Snowflake keeps the case of quoted
+  identifiers instead of upper-casing them, and fixed-size arrays are written as plain arrays.
 - TPC-Havoc, Spark and DataFusion query rewrites run through the bundled SQLGlot fork's named rewrites
   (`translate_sql_query(..., rewrites=...)`); the BenchBox AST rewriters, `SparkTPCHavocQueryTransformer` and the
   regex `DataFusionQueryTransformer` are removed. DataFusion TPC-H Q11, Q18 and Q20 use the fork's decorrelation and
