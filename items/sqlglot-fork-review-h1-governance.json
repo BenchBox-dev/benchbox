@@ -4,6 +4,7 @@
     "Soundness paths include the listed files; a test pins each; the change is merged with a current-head oracle SHIP.",
     "Adoption PR template/script includes the fork diff; at least one adoption PR demonstrates it."
   ],
+  "context": "Owner decision 2026-10-23: fork main (BenchBox-dev/benchbox-sqlglot) requires the hosted checks including engine jobs; no required review. Fork semantics are reviewed at adoption time: BenchBox adoption PRs must carry the fork diff (old fork_sha..new fork_sha) so the BenchBox oracle reads it. Settings to be applied by the owner (Governance agent prepares the exact gh api command).",
   "description": "Adversarial review H1: all 30+ fork PRs merged with 0 reviews; fork main has no branch protection or rulesets; the BenchBox oracle cannot read the vendored wheel ('I could not read the vendored wheel') so it never reviews fork semantics; .github/soundness-paths.txt does not cover benchbox/_vendor/**, benchbox/utils/dialect_utils.py, scripts/sqlglot_runtime_baseline.json or the golden-corpus recorded/** files. Needed: (owner settings, fork repo) branch protection requiring the fork engine jobs and a review on fork main; (BenchBox, needs oracle review) add those paths to the soundness list; adoption PRs carry the fork diff between old and new fork_sha (git diff old..new) so the oracle can read it. Supersedes/merges with soundness-paths-cover-translation-wrapper.",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "op": "create",
       "op_id": "af9b4e15803549d78f05ce85cc6139e3",
       "session_id": "e3f34e9f9a684a2192d05f6743bac61b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-23T16:42:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ee4276bf31814f4c86343ee096e4bc12",
+      "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
 }
