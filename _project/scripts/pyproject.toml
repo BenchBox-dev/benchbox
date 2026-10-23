@@ -13,6 +13,7 @@ dependencies = [
 
 [tool.uv]
 managed = true
+required-version = ">=0.13.4"
 
 [tool.uv.sources]
 todo-db = { path = "vendor/todo_db-0.10.1-py3-none-any.whl" }

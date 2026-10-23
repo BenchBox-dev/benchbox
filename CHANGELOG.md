@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `pyproject.toml` now requires uv 0.13.4 or newer (`required-version`); older uv releases fail with a clear error instead of running with root certificates that trust the compromised eMudhra emSign CAs.
 - `quality/comment-policy.json` no longer has a `completed` list, and a policy that still has one fails schema validation. Every first-party path is in scope, so there is no list of dead completed prefixes left to prune.
 - The comment-policy check compares a branch with its base using the strict rules over the whole repository. It no longer scans the base's sources or reports only newly introduced findings, so every violation fails, including old ones; none exist today. Staged runs check the staged files that differ from the base, and the whole repository when the commit changes the policy, the cleanup scope policy, the launcher or a trusted checker file. The policy ratchet, review gating for new exceptions, checks of new files under external exclusions, consumer validation, expired-exception findings and the base-copied launcher are unchanged. The `completed` list in `quality/comment-policy.json` is no longer read or ratcheted, and the policy may omit it.
 - The comment-policy scanner builds each Python file's name index once and parses YAML with the C loader when available, falling back to the pure-Python loader on any error. Findings are unchanged; a whole-tree strict scan is more than twice as fast.

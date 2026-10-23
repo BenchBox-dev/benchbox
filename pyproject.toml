@@ -39,6 +39,9 @@ dependencies = [
     "certifi>=2026.10.19",
 ]
 
+[tool.uv]
+required-version = ">=0.13.4"
+
 [tool.setuptools]
 include-package-data = true
 
