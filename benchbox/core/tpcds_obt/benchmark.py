@@ -16,77 +16,7 @@ from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 logger = logging.getLogger(__name__)
 
 
-_FROM_SUBQUERY_RE = re.compile(r"\bFROM\s*\(", re.IGNORECASE)
-
-_NO_ALIAS_KEYWORDS = frozenset(
-    {
-        "where",
-        "on",
-        "having",
-        "group",
-        "order",
-        "limit",
-        "union",
-        "intersect",
-        "except",
-        "join",
-        "left",
-        "right",
-        "inner",
-        "outer",
-        "full",
-        "cross",
-        "with",
-        "select",
-    }
-)
-
-
-def _add_derived_table_aliases(sql: str) -> str:
-    parts: list[str] = []
-    scan_pos = 0
-    counter = 0
-
-    for m in _FROM_SUBQUERY_RE.finditer(sql):
-        open_paren = m.end() - 1
-        if open_paren < scan_pos:
-            continue
-
-        parts.append(sql[scan_pos : m.end()])
-        scan_pos = m.end()
-
-        depth = 1
-        i = scan_pos
-        while i < len(sql) and depth > 0:
-            if sql[i] == "(":
-                depth += 1
-            elif sql[i] == ")":
-                depth -= 1
-            i += 1
-
-        parts.append(sql[scan_pos:i])
-        scan_pos = i
-
-        j = scan_pos
-        while j < len(sql) and sql[j] in " \t\n\r":
-            j += 1
-
-        peek = sql[j : j + 60].lower()
-
-        if peek.startswith("as ") or peek.startswith("as\n") or peek.startswith("as\t"):
-            continue
-
-        word_match = re.match(r"(\w+)", peek)
-        if word_match:
-            next_word = word_match.group(1)
-            if next_word not in _NO_ALIAS_KEYWORDS:
-                continue
-
-        counter += 1
-        parts.append(f" AS _t{counter}")
-
-    parts.append(sql[scan_pos:])
-    return "".join(parts)
+_DERIVED_TABLE_ALIAS_DIALECTS = frozenset({"doris", "starrocks"})
 
 
 _ALTERNATE_FORMAT: dict[str, str] = {"parquet": "dat", "dat": "parquet"}
@@ -345,12 +275,11 @@ class TPCDSOBTBenchmark(BaseBenchmark):
                 target_dialect=translation_target,
                 source_dialect="duckdb",
                 identify=True,
+                rewrites=[("add_derived_table_aliases", {})] if target in _DERIVED_TABLE_ALIAS_DIALECTS else None,
             )
 
         if target in {"clickhouse", "clickhouse-local"} and query_id is not None:
             query_text = self._rewrite_clickhouse_query(query_id, query_text)
-        if target in {"doris", "starrocks"}:
-            query_text = _add_derived_table_aliases(query_text)
         return query_text
 
     def get_queries(self, dialect: str | None = None) -> dict[str, str]:

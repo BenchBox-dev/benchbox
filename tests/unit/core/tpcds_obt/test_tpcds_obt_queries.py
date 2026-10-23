@@ -2,8 +2,8 @@ import re
 
 import pytest
 
+from benchbox.core.tpcds_obt.catalog.loader import load_catalog
 from benchbox.core.tpcds_obt.queries import CONVERTIBLE_QUERY_IDS, TPCDSOBTQueryManager
-from benchbox.core.tpcds_obt.query_conversion import TemplateLoader
 from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME, get_obt_columns
 
 pytestmark = [
@@ -274,15 +274,14 @@ def test_rendering_is_deterministic_for_a_seed() -> None:
 
 def test_every_parameter_renders_the_dsqgen_draw() -> None:
     manager = TPCDSOBTQueryManager()
-    for query_id, converted in manager._converted.items():
+    for query_id, query in load_catalog().items():
         sql = manager.get_query(query_id)
-        assert not re.search(r"\[[A-Z_]+(?:\.\d+)?\]|__BB_PARAM_", sql), query_id
+        assert not re.search(r"\[[A-Z_]+(?:\.\d+)?\]", sql), query_id
         drawn = manager.drawn_parameters(query_id)
-        definitions = TemplateLoader(query_id).definitions
-        for name, param in converted.parameters.items():
-            if not param.indices or not definitions[name].lower().startswith(("dist", "sub")):
+        for name, indices in query.parameters.items():
+            if name in query.identifier_parameters:
                 continue
-            for index in param.indices:
+            for index in indices:
                 assert drawn[f"{name}.{index:02d}"] in sql, (query_id, name, index)
 
 

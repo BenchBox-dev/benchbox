@@ -32,7 +32,6 @@ class AllowlistEntry:
 
 
 DATAFRAME_PARSE_ONLY = "Parses SQL into an AST to build DataFrame operations; emits no dialect SQL"
-OBT_AST_REWRITE = "Rewrites query structure on the AST to target the one-big-table schema; moves to apply_rewrite"
 FLIGHTDATA_AST_REWRITE = "Casts ROUND inputs on the AST before printing PostgreSQL; moves to apply_rewrite"
 
 BYPASS_ALLOWLIST: dict[str, AllowlistEntry] = {
@@ -48,7 +47,6 @@ BYPASS_ALLOWLIST: dict[str, AllowlistEntry] = {
     "benchbox/core/read_primitives/variant_contracts.py": AllowlistEntry(
         1, PARSE_ONLY, "Reads projection names from variant SQL to check result contracts; emits no SQL"
     ),
-    "benchbox/core/tpcds_obt/query_conversion.py": AllowlistEntry(2, AST_REWRITE, OBT_AST_REWRITE),
 }
 
 

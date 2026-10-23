@@ -387,6 +387,7 @@ tests_dir = ["tests/unit/"]
 "benchbox.core.nyctaxi" = ["query_catalog.yaml"]
 "benchbox.core.results" = ["benchmark_specs.yaml"]
 "benchbox.core.primitives.catalog" = ["queries.yaml"]
+"benchbox.core.tpcds_obt.catalog" = ["queries.yaml"]
 "benchbox.core.tsbs_devops" = ["query_catalog.yaml"]
 "benchbox.data.coffeeshop" = ["*.csv"]
 
