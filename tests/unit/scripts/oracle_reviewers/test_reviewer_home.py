@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import stat
 from pathlib import Path
 
 import pytest
@@ -18,10 +21,33 @@ CONFIG_PATH = REPO_ROOT / ".github" / "oracle-omp-config.yml"
 POLICY_PATH = REPO_ROOT / ".github" / "oracle-reviewers.yml"
 GATEWAY_URL = "https://example.ts.net:4000"
 PROVIDERS = {"anthropic", "openai-codex", "muse-code", "google-antigravity"}
+TOKEN = "t" * 48
+ACCOUNTS = {
+    "accounts": [
+        {"provider": "anthropic", "identityKey": "email:a@example.com"},
+        {"provider": "openai-codex", "identityKey": "email:o@example.com"},
+        {"provider": "muse-code", "identityKey": "account:m@example.com"},
+        {"provider": "google-antigravity", "identityKey": "email:g@example.com"},
+        {"provider": "xai", "identityKey": "email:x@example.com"},
+    ]
+}
 
 
 def _load(path: Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def _gateway_clients(tmp_path: Path, token: str = TOKEN, accounts: dict | None = None) -> Path:
+    token_file = tmp_path / "client.token"
+    token_file.write_text(token, encoding="utf-8")
+    out = tmp_path / "clients.json"
+    argv = ["gateway-clients", "--token-file", str(token_file), "--out", str(out)]
+    if accounts is not None:
+        accounts_file = tmp_path / "accounts.json"
+        accounts_file.write_text(json.dumps(accounts), encoding="utf-8")
+        argv += ["--accounts", str(accounts_file)]
+    assert cli.main(argv) == 0
+    return out
 
 
 def test_reviewer_home_writes_the_config_and_the_gateway_providers(tmp_path: Path) -> None:
@@ -69,3 +95,46 @@ def test_reviewer_model_config_is_a_soundness_and_gate_path(policy: Policy) -> N
     path = CONFIG_PATH.relative_to(REPO_ROOT).as_posix()
     assert is_soundness_path(path)
     assert matching([path], policy.classifier.gate_paths) == [path]
+
+
+def test_gateway_clients_scope_the_token_to_every_reviewer_model(tmp_path: Path) -> None:
+    out = _gateway_clients(tmp_path)
+    config = _load(CONFIG_PATH)
+    expected = {target.rsplit(":", 1)[0] for target in config["modelRoles"].values()}
+    expected |= {target.rsplit(":", 1)[0] for chain in config["retry"]["fallbackChains"].values() for target in chain}
+    client = json.loads(out.read_text(encoding="utf-8"))["oracle-ci"]
+    assert client["tokenSha256"] == hashlib.sha256(TOKEN.encode()).hexdigest()
+    assert sorted(client["models"]) == sorted(expected)
+    assert "accounts" not in client
+    assert stat.S_IMODE(out.stat().st_mode) == 0o600
+
+
+def test_gateway_clients_pin_each_gateway_provider_to_its_logged_in_accounts(tmp_path: Path) -> None:
+    client = json.loads(_gateway_clients(tmp_path, accounts=ACCOUNTS).read_text(encoding="utf-8"))["oracle-ci"]
+    assert client["accounts"] == {
+        "anthropic": ["email:a@example.com"],
+        "openai-codex": ["email:o@example.com"],
+        "muse-code": ["account:m@example.com"],
+        "google-antigravity": ["email:g@example.com"],
+    }
+
+
+def test_gateway_clients_refuse_a_provider_without_a_logged_in_account(tmp_path: Path) -> None:
+    partial = {"accounts": [entry for entry in ACCOUNTS["accounts"] if entry["provider"] != "muse-code"]}
+    with pytest.raises(SystemExit, match="no logged-in broker account for muse-code"):
+        _gateway_clients(tmp_path, accounts=partial)
+    assert not (tmp_path / "clients.json").exists()
+
+
+@pytest.mark.parametrize("token", [TOKEN + "\n", "short"])
+def test_gateway_clients_refuse_a_token_the_secret_would_not_match(tmp_path: Path, token: str) -> None:
+    with pytest.raises(SystemExit, match="client token"):
+        _gateway_clients(tmp_path, token=token)
+    assert not (tmp_path / "clients.json").exists()
+
+
+def test_gateway_clients_replace_an_existing_file(tmp_path: Path) -> None:
+    (tmp_path / "clients.json").write_text("{}", encoding="utf-8")
+    out = _gateway_clients(tmp_path)
+    assert "oracle-ci" in json.loads(out.read_text(encoding="utf-8"))
+    assert [path.name for path in tmp_path.iterdir() if path.name.endswith(".tmp")] == []
