@@ -503,8 +503,10 @@ problem it finds. It verifies that:
   release-enforcement change. The check needs network access to the upstream
   repository and fails when it is unreachable. The pull request check runs it
   only when the pull request changes the release identity (version markers or
-  the `[X.Y.Z]` changelog section); a pull request that only edits release
-  enforcement files (`Makefile`, `ci.yml`, the check scripts) passes
+  the `[X.Y.Z]` changelog section) or edits the check itself
+  (`scripts/check_sqlglot_upstream_freshness.py`,
+  `scripts/sqlglot_refresh_waiver.json`); a pull request that only edits other
+  release enforcement files (`Makefile`, `ci.yml`, the other check scripts) passes
   `SKIP_UPSTREAM_FRESHNESS=1` so an upstream SQLGlot release cannot block
   unrelated merges. The release workflows and `release-readiness` still run
   the check unconditionally.

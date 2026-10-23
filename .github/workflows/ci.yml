@@ -160,11 +160,11 @@ jobs:
         if: steps.release.outputs.release-check-needed == 'true'
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.release-version }}
-          RELEASE_IDENTITY_CHANGED: ${{ steps.release.outputs.release-identity-changed }}
+          UPSTREAM_FRESHNESS_REQUIRED: ${{ steps.release.outputs.upstream-freshness-required }}
           EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           skip=
-          if [ "$RELEASE_IDENTITY_CHANGED" != "true" ]; then skip=1; fi
+          if [ "$UPSTREAM_FRESHNESS_REQUIRED" != "true" ]; then skip=1; fi
           make release-check VERSION="$RELEASE_VERSION" BASE_REF="$EVENT_BASE_SHA" SKIP_UPSTREAM_FRESHNESS="$skip"
 
       - name: Fetch base branch

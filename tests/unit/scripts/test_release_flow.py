@@ -445,9 +445,9 @@ def test_candidate_selection_catches_each_split_version_bump(candidate_tree: tup
     root, base = candidate_tree
     file = root / path
     file.write_text(file.read_text().replace(VERSION, "1.2.4"))
-    selected, _version, identity_changed = release_flow.select_candidate(root, base)
+    selected, _version, freshness_required = release_flow.select_candidate(root, base)
     assert selected
-    assert identity_changed
+    assert freshness_required
     assert release_flow.run_checks(root, _version, ok_runner, baseline_ref=base)
 
 
@@ -490,10 +490,9 @@ def test_candidate_selection_preserves_ordinary_prose_dependency_and_source_edit
     [
         "scripts/release_flow.py",
         "scripts/check_dependency_bounds.py",
-        "scripts/check_sqlglot_upstream_freshness.py",
-        "scripts/sqlglot_refresh_waiver.json",
         "_project/decisions/single-repo-migration.md",
         ".github/workflows/ci.yml",
+        "Makefile",
     ],
 )
 def test_candidate_selection_includes_committed_enforcement_changes(
@@ -506,6 +505,51 @@ def test_candidate_selection_includes_committed_enforcement_changes(
     git(root, "add", "--", path)
     git(root, "commit", "-q", "-m", "Update release enforcement")
     assert release_flow.select_candidate(root, base) == (True, VERSION, False)
+
+
+@pytest.mark.parametrize("path", ["scripts/check_sqlglot_upstream_freshness.py", "scripts/sqlglot_refresh_waiver.json"])
+def test_candidate_selection_requires_freshness_when_the_gate_itself_changes(
+    candidate_tree: tuple[Path, str], path: str
+) -> None:
+    root, base = candidate_tree
+    file = root / path
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text(file.read_text() + "\n" if file.exists() else "\n")
+    git(root, "add", "--", path)
+    git(root, "commit", "-q", "-m", "Update freshness gate")
+    assert release_flow.select_candidate(root, base) == (True, VERSION, True)
+
+
+@pytest.mark.parametrize(
+    ("required", "expected"), [("true", ""), ("false", "SKIP_UPSTREAM_FRESHNESS=1"), ("", "SKIP_UPSTREAM_FRESHNESS=1")]
+)
+def test_ci_release_check_step_passes_skip_only_when_freshness_not_required(
+    tmp_path: Path, required: str, expected: str
+) -> None:
+    import yaml
+
+    workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
+    check = next(step for step in workflow["jobs"]["ci-paths"]["steps"] if step.get("name") == "Check release content")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake = bin_dir / "make"
+    fake.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$CALLS"\n')
+    fake.chmod(0o755)
+    calls = tmp_path / "calls.txt"
+    env = {
+        "PATH": f"{bin_dir}:/usr/bin:/bin",
+        "CALLS": str(calls),
+        "RELEASE_VERSION": VERSION,
+        "EVENT_BASE_SHA": "a" * 40,
+        "UPSTREAM_FRESHNESS_REQUIRED": required,
+    }
+    step_script = tmp_path / "step.sh"
+    step_script.write_text(check["run"])
+    subprocess.run(["sh", "-c", '. "$1"', "sh", str(step_script)], env=env, check=True)
+    args = calls.read_text().split()
+    assert args[0] == "release-check"
+    skip = [a for a in args if a.startswith("SKIP_UPSTREAM_FRESHNESS=")]
+    assert skip == ([expected] if expected else ["SKIP_UPSTREAM_FRESHNESS="])
 
 
 @pytest.mark.parametrize("base", ["HEAD", "", "0" * 40])
@@ -548,7 +592,8 @@ def test_candidate_selection_cli_is_stdlib_only_and_preserves_lock(
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert (
-        output.read_text() == f"release-check-needed=false\nrelease-version={VERSION}\nrelease-identity-changed=false\n"
+        output.read_text()
+        == f"release-check-needed=false\nrelease-version={VERSION}\nupstream-freshness-required=false\n"
     )
     assert (root / "uv.lock").read_bytes() == original
 
@@ -565,9 +610,9 @@ def test_candidate_check_is_required_on_pull_requests_without_changing_legacy_pu
     assert 'git fetch --no-tags origin "$EVENT_BASE_SHA"' in selection["run"]
     check = next(step for step in steps if step.get("name") == "Check release content")
     assert check["if"] == "steps.release.outputs.release-check-needed == 'true'"
-    assert check["env"]["RELEASE_IDENTITY_CHANGED"] == "${{ steps.release.outputs.release-identity-changed }}"
+    assert check["env"]["UPSTREAM_FRESHNESS_REQUIRED"] == "${{ steps.release.outputs.upstream-freshness-required }}"
     assert 'SKIP_UPSTREAM_FRESHNESS="$skip"' in check["run"]
-    assert 'if [ "$RELEASE_IDENTITY_CHANGED" != "true" ]; then skip=1; fi' in check["run"]
+    assert 'if [ "$UPSTREAM_FRESHNESS_REQUIRED" != "true" ]; then skip=1; fi' in check["run"]
     core = workflow["jobs"]["core"]
     assert "ci-paths" in core["needs"]
     aggregate = next(step for step in core["steps"] if step.get("id") == "aggregate")

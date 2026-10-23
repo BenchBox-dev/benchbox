@@ -344,6 +344,7 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool]:
     code, changed = run_command(["git", "--no-replace-objects", "diff", "--name-only", base_sha, "HEAD", "--"], root)
     if code != 0:
         raise ValueError("release selection cannot read changed enforcement inputs")
+    freshness_inputs = {"scripts/check_sqlglot_upstream_freshness.py", "scripts/sqlglot_refresh_waiver.json"}
     enforcement = {
         "scripts/release_flow.py",
         "scripts/update_version.py",
@@ -357,8 +358,9 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool]:
         "Makefile",
         ".github/workflows/ci.yml",
     }
-    identity_changed = before != after
-    return identity_changed or bool(enforcement.intersection(changed.splitlines())), after[0], identity_changed
+    changed_paths = set(changed.splitlines())
+    freshness_required = before != after or bool(freshness_inputs.intersection(changed_paths))
+    return freshness_required or bool(enforcement.intersection(changed_paths)), after[0], freshness_required
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -387,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "select":
         try:
-            selected, version, identity_changed = select_candidate(args.root, args.base_sha)
+            selected, version, freshness_required = select_candidate(args.root, args.base_sha)
         except (OSError, ValueError, KeyError, TypeError) as exc:
             print(f"release selection FAILED: {exc}", file=sys.stderr)
             return 1
@@ -395,7 +397,7 @@ def main(argv: list[str] | None = None) -> int:
             output.write(
                 f"release-check-needed={str(selected).lower()}\n"
                 f"release-version={version}\n"
-                f"release-identity-changed={str(identity_changed).lower()}\n"
+                f"upstream-freshness-required={str(freshness_required).lower()}\n"
             )
         print(f"release selection: {'check required' if selected else 'unchanged release identity'}")
         return 0
