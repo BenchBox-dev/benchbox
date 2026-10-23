@@ -4,7 +4,7 @@
     "The job stays under its timeout with margin, by speeding up the check (for example caching the isolated venv, or scanning only changed files on PRs) or by a justified timeout change",
     "No comment-policy timeout across 20 consecutive PR runs after the change"
   ],
-  "context": "Found while landing #3083 and #3092 in the tuning-local fix batch (2026-10-17).",
+  "context": "PLAN 2026-10-23 (approved by the owner): resolve via the CI slow-checks proposal (local://ci-slow-checks-proposal.md; Advisor report /Users/joe/.cache/ci-slow-checks-advice.md). Root cause: CI still runs the cleanup-era transition comparison (rescans 5,317 files under 176 completed scopes at head and base, 206 s local) although the cleanup finished; whole-tree strict mode on develop c4865ef10 checks 6,488 files with 0 violations in 76 s local. Chain of PRs, merged in order (trusted files are read from the base, so each takes effect after merge): (1) P3 scanner cost - share the Python bindings per file, libyaml CSafeLoader for YAML composing - with whole-tree finding identity; (2) P1+P5 - base comparisons use strict rules (every finding fails) with no base-side scan: CI scans the whole tree, staged/hook scans staged changes unless a global change; keep the ratchet, review gating for new exceptions, checking new files under external exclusions, consumer validation; stop reading/ratcheting `completed` and tolerate its absence; docs; (3) P2 - remove `completed` from quality/comment-policy.json and its remaining references. Not adopted: P4 changed-files-only CI, P6 CI wheel cache.\n\nFound while landing #3083 and #3092 in the tuning-local fix batch (2026-10-17).",
   "description": "The `comment-policy` job in .github/workflows/ci.yml (job at line 22, `timeout-minutes: 10` at line 24) timed out with no findings on two unrelated PRs on 2026-10-17: #3083 run 39012350807 (\"The job has exceeded the maximum execution time of 10m0s\"), and #3092 run 39051349806, where it ran 10m8s and the run was cancelled. Both passed on a plain rerun. Locally, `make comment-policy-check` took 5m21s on a quiet host. So the job's runtime sits near its limit, and runner variance pushes it over. Each timeout blocks the `tooling` and `core` aggregates until someone reruns it by hand.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "12ee31386c104f8fa60ca502d81725f4",
       "session_id": "400c76c14fce4783943655593419ae3c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-23T15:20:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0c502041a7194c74b0f2a2e693c72df6",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
     }
   ]
 }
