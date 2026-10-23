@@ -2,6 +2,7 @@
   "acceptance": [
     "Each listed binary matches its publisher's checksum or signature, or has been reinstalled from a verified download or removed"
   ],
+  "context": "Verified 2026-10-23 over trusted clients only (python + certifi >= 2026.10.19 with an explicit cafile, gh, and the system curl after its CA file was fixed; each rejected the 14 incident checker hosts first). MATCH, byte-identical to the publisher artifact: px0 0.1.10 (GitHub release asset), clickhousectl 0.4.2 (GitHub release asset), jcode 0.88.0 (release tarball; Homebrew formula pins the same sha256), prime-agent 0.7.0 (vendor tarball matches its SHA256SUMS; 180 bundled npm dependencies compared with the registry), muse 1.4.10 (release manifest checksum; Meta Developer ID signature valid), grok 1.0.25 and two older copies (X.AI Developer ID signature valid), rustup 1.29.2 (published checksum). No mismatches. cedardb was never installed on this Mac (the installer only fetches a Linux archive). The clickhouse binary at /tmp/chbin was a rolling 'master' build whose URL now serves a different build and whose sidecar checksums are not public, so no reference existed; it was an agent scratch download and was deleted. muse still fetches its update manifest and the sha256 over the same TLS channel as the binary (guards against corruption, not a compromised channel); its Developer ID signature is the only independent check, and a codesign verification step in its launcher would add it. A dangling ~/.local/bin/cursor-agent symlink (from a 2025-08 installer, before the exposure window) was left alone.",
   "description": "These tools on the maintainer's Mac were installed or updated with `curl ... | sh` through `/usr/bin/curl`, which trusted the compromised eMudhra emSign CAs until 2026-10-23, and carry only ad-hoc signatures, so nothing independent of TLS vouches for them: px0, clickhousectl, jcode, cedardb, prime-agent and `/tmp/chbin/clickhouse`. Compare each against its publisher's checksums or signatures fetched with a trusted client (uv 0.13.5, or Python with certifi >= 2026.10.18), and reinstall or remove any that do not match. `muse` updates itself hourly through `/usr/bin/curl` and checks a sha256 fetched over the same channel; the system bundle is fixed now, but consider asking for a signed update or pinning.",
   "sessions": [
     {
@@ -19,6 +20,14 @@
       "generation": "fc6493fc4ead4b5384ccc8f3e1c9c158",
       "op": "take",
       "op_id": "95d60a2682904ff89fc5094bc86684cb",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:19:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3c45ce1800d14d62a73aa79d351cc6e7",
       "session_id": "ba4384e41c574086bef30465f20b7231"
     }
   ]
