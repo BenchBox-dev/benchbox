@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Every ambiguous worktree is removed or recorded as intentionally kept",
+    "git worktree list reports no prunable entries"
+  ],
+  "description": "`make worktree-reap APPLY=1` on 2026-10-22 removed 81 merged worktrees but left 42 it could not classify: 12 in detached HEAD, 11 with legacy lifecycle provenance (mostly under .muse/worktrees), 9 whose branch commits do not match the merged PR head, 3 with malformed provenance, 2 registered directories that no longer exist (temporary release-curation trees; `git worktree prune` on the host clears them) and the rest with unmerged PRs. It also kept 12 worktrees with uncommitted changes. Review each group and remove or keep it deliberately.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:04:00Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6468da7a1c984a829a29c2373b48e336",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    }
+  ]
+}
