@@ -13,7 +13,7 @@ import shutil
 import subprocess
 import tempfile
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -664,25 +664,68 @@ class SchemaInspector:
         return None
 
 
+_TEXT_TYPE_PREFIXES = ("CHAR", "VARCHAR", "NCHAR", "NVARCHAR", "TEXT", "STRING", "CLOB", "BPCHAR", "CHARACTER")
+
+
+def _column_field(column: Any, key: str) -> Any:
+    if isinstance(column, dict):
+        return column.get(key)
+    return getattr(column, key, None)
+
+
+def _is_text_type(type_name: Any) -> bool:
+    return isinstance(type_name, str) and type_name.strip().upper().startswith(_TEXT_TYPE_PREFIXES)
+
+
+def resolve_null_columns(
+    benchmark: Any, table_name: str, column_count: int, *, include_text: bool
+) -> list[bool] | None:
+    schema = benchmark.get_schema() if hasattr(benchmark, "get_schema") else {}
+    columns = _schema_table_columns(_resolve_table_schema(schema, table_name))
+    if columns is None or len(columns) != column_count:
+        return None
+
+    mask: list[bool] = []
+    for column in columns:
+        nullable = _column_field(column, "nullable")
+        if nullable is None:
+            nullable = not _column_field(column, "primary_key")
+        text = _is_text_type(_column_field(column, "type"))
+        mask.append(bool(nullable) and (include_text or not text))
+    return mask if any(mask) else None
+
+
 class RowBatchProcessor:
     def __init__(self, batch_size: int = 1000):
         self.batch_size = batch_size
 
-    def process_file(self, file_handle: Any, delimiter: str, column_count: int) -> Iterator[tuple[list[tuple], int]]:
+    def process_file(
+        self,
+        file_handle: Any,
+        delimiter: str,
+        column_count: int,
+        null_columns: Sequence[bool] | None = None,
+        null_token: str = "",
+    ) -> Iterator[tuple[list[tuple], int]]:
         batch_data = []
         row_count = 0
+        null_indexes = [i for i, flag in enumerate(null_columns) if flag] if null_columns else []
 
         for line in file_handle:
             line = line.strip()
             if not line:
                 continue
 
-            fields = line.split(delimiter)
+            fields: list[Any] = line.split(delimiter)
 
             while len(fields) < column_count:
                 fields.append("")
 
             fields = fields[:column_count]
+
+            for index in null_indexes:
+                if fields[index] == null_token:
+                    fields[index] = None
 
             batch_data.append(tuple(fields))
             row_count += 1
@@ -719,8 +762,9 @@ class FileFormatHandler(ABC):
 
 
 class DelimitedFileHandler(FileFormatHandler):
-    def __init__(self, delimiter: str):
+    def __init__(self, delimiter: str, null_marker: str | None = None):
         self.delimiter_char = delimiter
+        self.null_marker = null_marker
 
     def get_delimiter(self) -> str:
         return self.delimiter_char
@@ -742,8 +786,20 @@ class DelimitedFileHandler(FileFormatHandler):
 
             processor = RowBatchProcessor()
             total_rows = 0
+            null_columns = resolve_null_columns(
+                benchmark,
+                validated_table,
+                column_count,
+                include_text=self.null_marker is not None,
+            )
 
-            for batch_data, current_count in processor.process_file(f, self.delimiter_char, column_count):
+            for batch_data, current_count in processor.process_file(
+                f,
+                self.delimiter_char,
+                column_count,
+                null_columns,
+                self.null_marker if self.null_marker is not None else "",
+            ):
                 connection.executemany(insert_sql, batch_data)
                 total_rows = current_count
 
@@ -1746,8 +1802,8 @@ def is_delta_table_dir(path: Path | str) -> bool:
 class FileFormatRegistry:
     _format_handlers = {
         ".csv": lambda: DelimitedFileHandler(","),
-        ".tbl": lambda: DelimitedFileHandler("|"),
-        ".dat": lambda: DelimitedFileHandler("|"),
+        ".tbl": lambda: DelimitedFileHandler("|", null_marker=""),
+        ".dat": lambda: DelimitedFileHandler("|", null_marker=""),
         ".parquet": lambda: ParquetFileHandler(),
         ".vortex": lambda: VortexFileHandler(),
     }

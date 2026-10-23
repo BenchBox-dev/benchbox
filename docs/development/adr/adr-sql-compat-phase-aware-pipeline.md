@@ -633,8 +633,9 @@ and records the adapter migration inventory.
 - `CompatibilityContext` shape unchanged; no DDL-specific fields added.
 - Rule modules live in `benchbox/sql_compat/rules/{phase}/`; no separate transformers tree.
 - All 13 adapter platforms have `ddl_optimize` rules registered (see
-  `benchbox/sql_compat/rules/ddl_optimize/`). The adapter's own `_optimize_table_definition()`
-  method is the rule implementation; the registry entry serves governance and lint purposes.
+  `benchbox/sql_compat/rules/ddl_optimize/`). DDL rewriting is performed by
+  `benchbox.utils.dialect_utils.translate_ddl`; the registry entry is a governance anchor whose
+  `transformer_id` names the `translate_ddl` option set.
 - `schema_emit` rules cover nyctaxi and tsbs_devops.
 - `platform_transform_fn` callback removed from `base/data_loading.py`; Databricks now
   applies `_convert_to_delta_table` in a pre-pass loop before calling `_execute_schema_statements`.
@@ -654,17 +655,17 @@ DDL centralization.
 |---------|---------|------|-------------|
 | ClickHouse | `platforms/clickhouse/workload.py` | `translate_ddl` layout (`_translate_schema_statement`) | Nullable only for listed columns, ENGINE=MergeTree(), PARTITION BY / ORDER BY / PRIMARY KEY from the tuned layout |
 | Databricks | `platforms/databricks/adapter.py` | `_convert_to_delta_table` (pre-pass loop) | CREATE OR REPLACE, USING DELTA, TBLPROPERTIES (config-dependent) |
-| Databend | `platforms/databend/adapter.py` | `_optimize_table_definition` | Databend-specific DDL dialect |
-| Firebolt | `platforms/firebolt.py` | `_optimize_table_definition` | Firebolt DDL dialect |
+| Databend | `platforms/databend/adapter.py` | `translate_ddl` | Databend-specific DDL dialect |
+| Firebolt | `platforms/firebolt.py` | `translate_ddl` | Firebolt DDL dialect |
 | Redshift | `platforms/redshift.py` | `translate_ddl` | Redshift DDL dialect |
-| Azure Synapse | `platforms/azure_synapse.py` | `_optimize_table_definition` | Synapse DDL dialect |
+| Azure Synapse | `platforms/azure_synapse.py` | `translate_ddl` | Synapse DDL dialect |
 | Snowflake | `platforms/snowflake.py` | `translate_ddl` | Snowflake DDL dialect (clustering/tuning) |
 | Presto | `platforms/presto_trino_adapter_base.py` | `_schema_ddl` (`translate_ddl`) | Presto DDL dialect |
 | Trino | `platforms/presto_trino_adapter_base.py` | `_schema_ddl` (`translate_ddl`) | Trino DDL dialect |
 | Spark | `platforms/spark.py` | `_optimize_table_definition` | USING DELTA/ICEBERG/ORC/PARQUET (format from `self.table_format`) |
 | Lakesail | `platforms/lakesail.py` | `_optimize_table_definition` | Lakesail DDL dialect |
 | Velox | `platforms/velox.py` | `_optimize_table_definition` | USING ORC/PARQUET (format from `self.table_format`) |
-| StarRocks | `platforms/starrocks/workload.py` | `_optimize_table_definition` | Strip AUTO_INCREMENT/FK, reconstitute PK as DUPLICATE KEY or PRIMARY KEY model, add DISTRIBUTED BY HASH |
+| StarRocks | `platforms/starrocks/workload.py` | `translate_ddl` (`_translate_schema_statement`) | Strip AUTO_INCREMENT/FK, reconstitute PK as DUPLICATE KEY or PRIMARY KEY model, add DISTRIBUTED BY HASH |
 
 Fabric Warehouse is **not** in this list - see resolution below.
 
@@ -674,25 +675,16 @@ Fabric Warehouse is **not** in this list - see resolution below.
 
 ### Fabric Warehouse Decision: Operational, Not a DDL Compat Rule
 
-`FabricWarehouseAdapter._optimize_table_definition` injects a schema-qualified table name using
-`self.schema` (runtime adapter configuration, not SQL content). The operation is:
-
-```python
-table_sql = table_sql.replace(
-    f"CREATE TABLE {table_name}",
-    f"CREATE TABLE [{self.schema}].[{table_name}]",
-)
-```
+`FabricWarehouseAdapter.create_schema` injects a schema-qualified table name by passing
+`schema=self.schema` (runtime adapter configuration, not SQL content) to `translate_ddl`.
 
 This is **operational context injection**, not a DDL compatibility rewrite:
 - It depends on `self.schema`, which is adapter state set from connection configuration.
-- A pure `Callable[[str], str]` cannot express this without closure capture of adapter config.
 - The decision mirrors how catalog/schema setup is handled in other adapters: it stays in
   `create_schema()` as an operational responsibility.
 
-**Decision**: Fabric Warehouse's `_optimize_table_definition` is NOT migrated to a `ddl_optimize`
-registry rule. It remains adapter-local operational logic. No `RewriteDDLPayload` extension is
-needed.
+**Decision**: the Fabric Warehouse schema qualification is NOT a `ddl_optimize` runtime rule.
+It stays adapter state passed to `translate_ddl`. No `RewriteDDLPayload` extension is needed.
 
 ### Config-Dependent Transforms (Databricks, Spark, Velox)
 

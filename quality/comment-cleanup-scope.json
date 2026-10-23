@@ -3967,14 +3967,6 @@
       "proof": "tests/unit/mcp/test_surface_defect_regressions.py: test_generate_chart_docstring_matches_the_renderer asserts that the source of register_visualization_tools contains \"ANSI-color-free\", which is docstring text at visualization.py line 386."
     },
     {
-      "producer": "benchbox/platforms/base/ddl_helpers.py",
-      "consumer": "tests/unit/platforms/base/test_ddl_helpers.py",
-      "owner": "comment-cleanup-platform-base",
-      "state": "blocked",
-      "blocking_disposition": "The test requires this docstring text to be present. Move the contract to an actual reference or change the assertion first, then delete the docstring.",
-      "proof": "tests/unit/platforms/base/test_ddl_helpers.py: test_comment_literal_primary_key_limitation_is_documented asserts that strip_primary_keys.__doc__ contains \"string-literal false positive\"."
-    },
-    {
       "producer": "benchbox/platforms/credentials/singlestore.py",
       "consumer": "tests/unit/platforms/credentials/test_singlestore_credentials.py",
       "owner": "comment-cleanup-security-credentials",

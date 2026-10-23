@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A pull request that edits only release enforcement files (`Makefile`, `ci.yml`, the release check scripts) no longer fails `ci-paths` when upstream SQLGlot publishes a new release before the fork is refreshed. The freshness check still runs for pull requests that change the release version or edit the freshness check or its waiver file, and in the release workflows.
+
 ### Added
 
 - Benchmark runs check free space on the output volume before any data is written and fail with the free and total bytes and the largest top-level entries when less than 5% is free. `BENCHBOX_MIN_FREE_DISK_PERCENT` changes the threshold (`0` disables it). `make disk-check` runs the same check by hand and never deletes anything.
@@ -59,7 +63,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The comment-policy check in CI and `make comment-policy-check` scans only the files that differ from the base, as the hook already did, and the whole repository after a global change: the policy, the cleanup scope policy, the launcher, a trusted checker file (or an unreadable trusted-file list), or a removed exception or exclusion. Files holding an exception are also scanned when the exception's consumer changes. The ratchet, review gating, new files under exclusions, consumer validation and expired-exception findings still run on every pull request. A new `Comment Policy Nightly` workflow scans the whole of develop every night and on demand (`scripts/run_comment_policy.py --full`); when any file has a violation it fails and opens or updates an issue, and a clean run closes it.
+- `pyproject.toml` now requires uv 0.13.4 or newer (`required-version`); older uv releases fail with a clear error instead of running with root certificates that trust the compromised eMudhra emSign CAs.
 - `quality/comment-policy.json` no longer has a `completed` list, and a policy that still has one fails schema validation. Every first-party path is in scope, so there is no list of dead completed prefixes left to prune.
+- FlightData queries for PostgreSQL are rendered by `translate_sql_query` with the runtime's
+  `round_inputs_to_decimal` rewrite instead of local AST code; the `ast_rewrite` allowlist entry for
+  `benchbox/core/flightdata/queries.py` is gone. The ROUND casts are unchanged, but the PostgreSQL
+  text no longer quotes identifiers (`translate_sql_query` does not quote for `postgres`), so
+  `"f"."dep_delay"` is now `f.dep_delay`. All 20 queries execute on PostgreSQL 16.2 before and
+  after. No published FlightData bundle targets PostgreSQL, so no published result changes.
 - The comment-policy check compares a branch with its base using the strict rules over the whole repository. It no longer scans the base's sources or reports only newly introduced findings, so every violation fails, including old ones; none exist today. Staged runs check the staged files that differ from the base, and the whole repository when the commit changes the policy, the cleanup scope policy, the launcher or a trusted checker file. The policy ratchet, review gating for new exceptions, checks of new files under external exclusions, consumer validation, expired-exception findings and the base-copied launcher are unchanged. The `completed` list in `quality/comment-policy.json` is no longer read or ratcheted, and the policy may omit it.
 - The comment-policy scanner builds each Python file's name index once and parses YAML with the C loader when available, falling back to the pure-Python loader on any error. Findings are unchanged; a whole-tree strict scan is more than twice as fast.
 - TPC-DS OBT queries load from a hand-owned static catalog (`benchbox/core/tpcds_obt/catalog/queries.yaml`)
@@ -80,6 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   their column types. A guard test rejects bare `FLOAT` in benchmark schema specs, the Snowflake
   FlightData type map writes `DOUBLE` instead of `FLOAT` (the same 64-bit type), and the StarRocks and
   SingleStore adapters no longer pass `float_as_real` because no benchmark schema declares a bare `FLOAT`.
+- DuckDB and SQLite build their schema script with one `translate_ddl` call that also removes the TPC-DS foreign keys, instead of `translate_sql` followed by a regex strip; the generated statements are unchanged. The `ddl_helpers` regex helpers `strip_foreign_keys`, `strip_primary_keys` and `strip_tpcds_foreign_keys` are removed; the inventory keeps the `_optimize_table_definition` / `_transform_create_statement` signature detection so a reintroduced per-adapter DDL hook still fails the drift check; the `sql_compat` README, the SQLGlot and phase-aware-pipeline ADRs and the new-platform guide describe `translate_ddl` instead of per-adapter hooks.
 - The PostgreSQL, DuckLake, pg_mooncake and QuestDB adapters build `CREATE TABLE` text through
   `translate_ddl` instead of their own rewrites. QuestDB writes `VARCHAR` for `CHAR(n)` and
   `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake quotes identifiers, and the pg_mooncake
@@ -365,7 +377,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The bundled SQLGlot runtime moves from 30.24.0.9 to 30.24.0.10 (fork commit
   `75016d8ff27e`). It adds the `round_inputs_to_decimal` rewrite to the `apply_rewrite`
   registry and writes a one-parameter wide `DECIMAL(p)` as `BIGNUMERIC` for BigQuery DDL.
-  BenchBox does not call the rewrite yet and ships no one-parameter `DECIMAL`: the 23,667
+  BenchBox ships no one-parameter `DECIMAL`, and its first use of the rewrite (FlightData on
+  PostgreSQL) is the next entry: the 23,667
   translations of the 1,127 frozen shipped queries across 21 target dialects, the 2,600
   golden-corpus runtime outputs and `make sql-execution-gate` are unchanged from 30.24.0.9, so
   no published result changes.
@@ -403,10 +416,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Velox Docker image builds again. BenchBox now runs in a uv-managed Python 3.12 virtual environment with `pyspark` pinned to the Spark version in the base image, instead of the base image's Python 3.10.
 - Trino and Presto `create_schema` on the Hive connector no longer writes `NOT NULL`, which Trino 476 rejects with
   `Catalog 'hive' does not support non-null column`; TPC-H (8 tables) and TPC-DS (25 tables) now create on a Trino
   Hive catalog. No published result can use this path, because schema creation failed on it.
 
+- The SQLite loader stores a NULL for an empty field in a nullable column instead of
+  empty text. Before, `SUM` over an all-empty group returned `0.0` where DuckDB returns
+  `NULL`, which made TPC-DS Q20 and Q98 differ between SQLite and DuckDB (405,815 cells
+  at SF 0.1). The table's declared null marker decides: `.tbl` and `.dat` data (marker
+  `""`) nulls every nullable column, text included, as the DuckDB loader does; a
+  marker-less `.csv` nulls only nullable non-text columns and keeps empty text. Columns
+  declared `NOT NULL` keep their empty string. SQLite results produced before this fix
+  on data with empty fields (TPC-DS, AMPLab) should be rerun.
 - A pull request title or body edit no longer leaves an armed pull request blocked
   with every required check green. The CI run such an edit starts now reports each
   required check (`core`, `explorer`, `results-data`, `docs`, `tooling`) by copying

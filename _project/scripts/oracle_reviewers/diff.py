@@ -17,7 +17,7 @@ def commentable_lines(diff_text: str) -> dict[str, frozenset[int]]:
     path: str | None = None
     new_line = 0
     remaining = 0
-    for line in diff_text.splitlines():
+    for line in diff_text.split("\n"):
         if line.startswith("diff --git "):
             path = None
             remaining = 0

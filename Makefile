@@ -450,6 +450,7 @@ lint:
 .PHONY: uv-lock-revision-check
 uv-lock-revision-check:
 	uv run -- python _project/scripts/check_uv_lock_revision.py $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",)
+	for project in _project/sql-translation-ml _project/scripts; do uv lock --check --project "$$project" || exit 1; done
 
 .PHONY: sqlglot-upstream-freshness-check
 sqlglot-upstream-freshness-check:
@@ -989,7 +990,7 @@ release-prep:
 .PHONY: release-check
 release-check:
 	@test -n "$(VERSION)" || (echo "Usage: make release-check VERSION=X.Y.Z" && exit 1)
-	uv run --locked -- python scripts/release_flow.py check --version "$(VERSION)" $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",)
+	uv run --locked -- python scripts/release_flow.py check --version "$(VERSION)" $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",) $(if $(SKIP_UPSTREAM_FRESHNESS),--skip-upstream-freshness,)
 
 
 MAKE_TIMING_SHELL := $(BENCHBOX_MAKEFILE_ROOT)scripts/make_timing_shell.sh
