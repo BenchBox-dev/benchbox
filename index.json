@@ -28608,15 +28608,10 @@
       "title": "Verify the validate-submission CI workflow end-to-end with a real PR"
     },
     "verify-curl-installed-binaries-20261023": {
-      "claim": {
-        "expires_at": "2026-10-24T21:19:37Z",
-        "generation": "fc6493fc4ead4b5384ccc8f3e1c9c158",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Verify binaries installed with curl | sh while system curl trusted the compromised CAs"
     },
     "verify-flag-separator-collides-with-pytest-node-ids": {
