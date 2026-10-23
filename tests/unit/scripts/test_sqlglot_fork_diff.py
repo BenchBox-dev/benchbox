@@ -60,8 +60,26 @@ def test_oversized_files_are_listed_not_silently_dropped(fork: tuple[Path, str, 
     repo, old, new = fork
     text = sqlglot_fork_diff.fork_diff(old, new, str(repo), 1)
     assert "Omitted for size (2 files)" in text
-    assert "- `sqlglot/dialects.py`" in text
+    assert "\nsqlglot/dialects.py\n" in text
     assert "+A = 2" not in text
+
+
+def test_fence_outgrows_backtick_runs_in_fork_content() -> None:
+    body = "line\n ```\n<!-- hidden\n````\nend"
+    fenced = sqlglot_fork_diff._fence(body, "diff")
+    assert fenced.startswith("`````diff\n")
+    assert fenced.endswith("\n`````")
+    assert sqlglot_fork_diff._fence("plain").startswith("```\n")
+
+
+def test_markdown_fence_in_patch_cannot_close_the_block(fork: tuple[Path, str, str]) -> None:
+    repo, old, new = fork
+    (repo / "NOTES.md").write_text("```\n<!-- hidden\n", encoding="utf-8")
+    git(repo, "add", "NOTES.md")
+    git(repo, "commit", "-m", "notes", "--quiet")
+    text = sqlglot_fork_diff.fork_diff(old, git(repo, "rev-parse", "HEAD"), str(repo), 50_000)
+    assert "````diff\n" in text
+    assert "+```\n+<!-- hidden" in text
 
 
 def test_main_defaults_old_to_base_ref_pin_and_new_to_working_tree(

@@ -45,6 +45,12 @@ def _priority(path: str) -> tuple[int, str]:
     return len(PRIORITY), path
 
 
+def _fence(body: str, info: str = "") -> str:
+    longest = max((len(run) for run in re.findall(r"`+", body)), default=0)
+    mark = "`" * max(3, longest + 1)
+    return f"{mark}{info}\n{body}\n{mark}"
+
+
 def render(fork: Path, old: str, new: str, max_bytes: int, repository: str) -> str:
     ancestor = subprocess.run(
         ["git", "merge-base", "--is-ancestor", old, new], cwd=fork, capture_output=True, check=False
@@ -64,13 +70,11 @@ def render(fork: Path, old: str, new: str, max_bytes: int, repository: str) -> s
         "",
         "### Commits",
         "",
-        commits or "(none reachable from the new sha)",
+        _fence(commits or "(none reachable from the new sha)"),
         "",
         "### Files",
         "",
-        "```",
-        stat or "(no file changes)",
-        "```",
+        _fence(stat or "(no file changes)"),
         "",
         "### Diff",
     ]
@@ -78,7 +82,7 @@ def render(fork: Path, old: str, new: str, max_bytes: int, repository: str) -> s
     omitted: list[str] = []
     for name in names:
         patch = _git(fork, "diff", old, new, "--", name)
-        block = f"\n```diff\n{patch.rstrip()}\n```"
+        block = "\n" + _fence(patch.rstrip(), "diff")
         if used + len(block) > max_bytes:
             omitted.append(name)
             continue
@@ -91,7 +95,7 @@ def render(fork: Path, old: str, new: str, max_bytes: int, repository: str) -> s
                 f"Omitted for size ({len(omitted)} files); read them with "
                 f"`git diff {old} {new} -- <path>` in a clone of the fork:",
                 "",
-                *[f"- `{name}`" for name in omitted],
+                _fence("\n".join(omitted)),
             ]
         )
     return "\n".join(lines) + "\n"

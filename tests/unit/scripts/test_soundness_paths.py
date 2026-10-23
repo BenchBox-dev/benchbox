@@ -243,19 +243,23 @@ TRANSLATION_FILES = (
     "scripts/sync_sqlglot_runtime.py",
     "scripts/check_sqlglot_repro_retirement.py",
     "Makefile",
-    "tests/unit/sql_compat/test_fork_golden_corpus.py",
     "scripts/sqlglot_fork_diff.py",
 )
 TRANSLATION_PREFIXES = (
     "benchbox/_vendor/",
     "make/",
     "scripts/sql_execution_gate/",
-    "tests/unit/sql_compat/golden_corpus/",
+    "tests/unit/sql_compat/",
 )
 TRANSLATION_DATA_FILES = (
     "scripts/sql_execution_gate/expected_differences.json",
     "tests/unit/sql_compat/golden_corpus/recorded/area_ddl.json",
     "tests/unit/sql_compat/golden_corpus/frozen/area_ddl.json",
+    "tests/unit/sql_compat/test_fork_golden_corpus.py",
+    "tests/unit/sql_compat/test_wrapper_matches_fork.py",
+    "tests/unit/sql_compat/test_vendored_sqlglot_bypass.py",
+    "tests/unit/sql_compat/test_translate_sql_delegation.py",
+    "tests/unit/sql_compat/test_datafusion_fork_rewrites_reference.py",
     "benchbox/_vendor/sqlglot.json",
 )
 
@@ -300,8 +304,8 @@ def test_translation_prefixes_cover_every_file_beneath_them() -> None:
         "scripts/sqlglot_runtime_baseline.json.bak",
         "scripts/sql_execution_gatex/gate.py",
         "scripts/sync_sqlglot_runtime.py.bak",
-        "tests/unit/sql_compat/golden_corpusx/area_ddl.py",
-        "tests/unit/sql_compat/test_golden_corpus.py",
+        "tests/unit/sql_compatx/golden_corpus/area_ddl.py",
+        "tests/unit/sql_compat.py",
     ],
 )
 def test_translation_paths_do_not_overmatch_neighbours(path: str) -> None:

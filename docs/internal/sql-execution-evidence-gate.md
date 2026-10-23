@@ -100,8 +100,8 @@ The evidence and the code that judges it are soundness paths
 (`benchbox/_vendor/`), the wrapper (`benchbox/utils/dialect_utils.py`), the
 runtime baseline, everything under `scripts/sql_execution_gate/` (the gate
 logic and `expected_differences.json`), everything under
-`tests/unit/sql_compat/golden_corpus/` (harness, `recorded/` and `frozen/`),
-`tests/unit/sql_compat/test_fork_golden_corpus.py` (the corpus assertions), the
+`tests/unit/sql_compat/` (the corpus harness, its `recorded/` and `frozen/`
+data and the corpus, wrapper and bypass assertion tests), the
 `Makefile` and the `make/` fragments (CI runs the gate through
 `make sql-execution-gate`), and the pin, retirement and fork-diff scripts. A
 change to any of them needs an oracle success review on the current head.
