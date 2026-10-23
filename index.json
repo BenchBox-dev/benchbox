@@ -8719,15 +8719,10 @@
       "title": "Sync browser-duckdb-schema.sql with the ADR-2 physical_mechanisms / physical_rendering_id columns"
     },
     "docs-ci-cd-uv-install-stale-20261023": {
-      "claim": {
-        "expires_at": "2026-10-24T22:50:32Z",
-        "generation": "a3c5deafa22b48778dc8232982255082",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "CI/CD integration guide installs uv with an unpinned installer and adds the wrong directory to PATH"
     },
     "docs-ci-cd-uv-pip-install-no-venv-20261023": {
