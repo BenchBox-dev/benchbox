@@ -5,7 +5,7 @@
     "`~/.bigqueryrc` no longer sets `--ca_certificates_file`",
     "`gcloud projects list --limit=1` and `bq ls` succeed after the override is removed"
   ],
-  "context": "Cleared the hold early: gcloud-cli 590.0.1 (released after the item was filed) ships no affected roots in any bundled certifi or botocore copy; verified and applied 2026-10-23.",
+  "context": "Done 2026-10-23, earlier than the planned date: gcloud-cli 590.0.1 (published after this item was filed; tarball sha256 02f20618... fetched over a trusted client and inspected before installing) ships lib/third_party/certifi, platform/bq/third_party/certifi, platform/gsutil/third_party/certifi and lib/third_party/botocore bundles with neither emSign ECC Root CA - G3 nor AAA Certificate Services. Installed with `brew upgrade --cask gcloud-cli`, rechecked the installed copies (all clean), `gcloud config unset core/custom_ca_certs_file` (now unset), deleted ~/.bigqueryrc (it held only the override), `gcloud projects list --limit=1` and `bq ls` succeed. Note: update_item not_before=\"\" did not clear the hold through the MCP bridge (the argument is dropped); it was released by setting a near-term not_before instead.",
   "description": "Google Cloud CLI 590.0.0 still bundles two certifi copies that trust the roots the compromised eMudhra emSign intermediates chain to: `lib/third_party/certifi` (2026.02.25, trusts emSign ECC Root CA - G3) and `platform/bq/third_party/certifi` (2021.10.08, trusts emSign ECC Root CA - G3 and AAA Certificate Services). Both accepted the incident checker chains. As a workaround on the maintainer's Mac, gcloud and bq verify TLS against Homebrew's patched ca-certificates bundle instead:\n\n- `gcloud config set core/custom_ca_certs_file /opt/homebrew/etc/ca-certificates/cert.pem`\n- `~/.bigqueryrc` containing `--ca_certificates_file=/opt/homebrew/etc/ca-certificates/cert.pem` (the file did not exist before the workaround).\n\nThe override ties gcloud to Homebrew's bundle path; if that path disappears, gcloud fails closed. Remove it once a gcloud-cli release ships bundles without the affected roots, so gcloud returns to its vendor-maintained trust store.\n\nSteps:\n1. `brew upgrade --cask gcloud-cli`, then check both bundles: `rg -c 'emSign ECC Root CA - G3|AAA Certificate Services'` on `$(gcloud info --format='value(installation.sdk_root)')/lib/third_party/certifi/cacert.pem` and `.../platform/bq/third_party/certifi/cacert.pem` must find nothing (or both certifi copies are 2026.10.18 or newer).\n2. `gcloud config unset core/custom_ca_certs_file`.\n3. Delete `~/.bigqueryrc` (or only the `--ca_certificates_file` line if other settings were added since).\n4. Confirm `gcloud projects list --limit=1` and `bq ls` still work.\n\nIf the release is still unfixed, leave the override in place and push `not_before` out again.",
   "links": [
     "https://emudhra.we-have-a-problem.com/",
@@ -53,6 +53,14 @@
       "generation": "4e7232ad49fe49719e8a7a9108905404",
       "op": "take",
       "op_id": "06604c7a285c41e88a0621f112398dd8",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:38:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ab3a47f3a708464885e150444aaf53e6",
       "session_id": "ba4384e41c574086bef30465f20b7231"
     }
   ]
