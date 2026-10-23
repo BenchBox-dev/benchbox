@@ -489,7 +489,7 @@ def _test_tcp_connectivity(host: str, port: int, timeout: int = 5) -> tuple[bool
 
 def _get_public_ip() -> Optional[str]:
     try:
-        import urllib.request
+        from benchbox.utils import tls
 
         services = [
             "https://api.ipify.org",
@@ -499,7 +499,7 @@ def _get_public_ip() -> Optional[str]:
 
         for service in services:
             try:
-                with urllib.request.urlopen(service, timeout=3) as response:
+                with tls.urlopen(service, timeout=3) as response:
                     ip = response.read().decode("utf-8").strip()
                     if ip:
                         return ip

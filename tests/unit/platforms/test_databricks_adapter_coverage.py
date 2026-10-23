@@ -1034,6 +1034,17 @@ class TestCreateAdminConnection:
         call_kwargs = mock_sql.connect.call_args
         assert "BenchBox" in call_kwargs.kwargs.get("user_agent_entry", "")
 
+    def test_verifies_against_explicit_ca_bundle(self, monkeypatch):
+        monkeypatch.setenv("SSL_CERT_FILE", "/tmp/corp-ca.pem")
+        monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
+        adapter = _make_adapter()
+
+        with patch("benchbox.platforms.databricks.adapter.databricks_sql") as mock_sql:
+            mock_sql.connect.return_value = MagicMock()
+            adapter._create_admin_connection()
+
+        assert mock_sql.connect.call_args.kwargs["_tls_trusted_ca_file"] == "/tmp/corp-ca.pem"
+
 
 class TestCheckServerDatabaseExists:
     def test_returns_true_when_catalog_and_schema_exist(self):

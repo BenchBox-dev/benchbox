@@ -12,7 +12,6 @@ import logging
 import os
 import re
 import tempfile
-import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Union
@@ -28,6 +27,7 @@ from benchbox.core.nyctaxi.schema import (
     get_trips_columns,
 )
 from benchbox.utils.compression_mixin import CompressionMixin
+from benchbox.utils.tls import download_to_file
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
 
 
@@ -223,7 +223,7 @@ class _TripDataDownloader(CompressionMixin, VerbosityMixin):
         fd, tmp_name = tempfile.mkstemp(suffix=".parquet")
         os.close(fd)
         try:
-            urllib.request.urlretrieve(url, tmp_name)
+            download_to_file(url, tmp_name, timeout=120)
             with open(tmp_name, "rb") as handle:
                 actual_sha256 = hashlib.sha256(handle.read()).hexdigest()
             expected_sha256 = PINNED_SOURCE_SHA256.get(url)

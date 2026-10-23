@@ -12,8 +12,9 @@ import tarfile
 import tempfile
 import time
 import urllib.error
-import urllib.request
 from pathlib import Path
+
+from benchbox.utils import tls
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ def is_download_disabled() -> bool:
 
 
 def _fetch_url(url: str, timeout: int = 60) -> bytes:
-    with urllib.request.urlopen(url, timeout=timeout) as response:
+    with tls.urlopen(url, timeout=timeout) as response:
         return response.read()
 
 

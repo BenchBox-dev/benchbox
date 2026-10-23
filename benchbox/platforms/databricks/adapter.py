@@ -33,6 +33,7 @@ from benchbox.utils.dependencies import (
 )
 from benchbox.utils.dialect_utils import ddl_column_names, schema_ddl_read_dialect, translate_ddl
 from benchbox.utils.file_format import COMPRESSION_EXTENSIONS
+from benchbox.utils.tls import ca_bundle_path
 
 try:
     from databricks import sql as databricks_sql
@@ -1098,7 +1099,7 @@ class DatabricksAdapter(PlatformAdapter):
     def _create_admin_connection(self, **connection_config) -> Any:
         params = self._get_connection_params(**connection_config)
 
-        return databricks_sql.connect(**params, user_agent_entry="BenchBox/1.0")
+        return databricks_sql.connect(**params, user_agent_entry="BenchBox/1.0", _tls_trusted_ca_file=ca_bundle_path())
 
     def check_server_database_exists(self, **connection_config) -> bool:
         try:
