@@ -28365,6 +28365,13 @@
       "status": "done",
       "title": "✅ Update Documentation"
     },
+    "update-remaining-exposed-tls-clients-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Update the remaining clients that still trust the compromised eMudhra CAs"
+    },
     "upgrade-pandas-to-3x": {
       "claim": null,
       "needs": [],

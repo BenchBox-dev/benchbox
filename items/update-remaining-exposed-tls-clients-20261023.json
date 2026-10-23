@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Each listed client is updated and rejects the checker hosts at emudhra.we-have-a-problem.com, or is removed",
+    "/etc/ssl/cert.pem still lacks both affected roots after the next macOS update"
+  ],
+  "description": "After the 2026-10-23 updates, these clients on the maintainer's Mac still embed emSign ECC Root CA - G3 (or AAA Certificate Services) or could not be checked:\n- omp (Bun-built): Homebrew omp 18.9.1 and the installed 18.12.6. Bun 1.4.4 is the fixed runtime.\n- memex, installed with cargo from ~/Developer/memex, whose Cargo.lock pins webpki-roots 1.0.4 (fixed in 1.0.10).\n- DataGrip's bundled Java runtime (JBR 25.0.3), Gemini.app's gRPC roots and Homebrew's portable Ruby certificate file.\n- Electron apps below the fixed Electron versions, not scanned: VS Code, Cursor, Antigravity, Discord, GitHub Desktop and Omnigent.\n- uv-managed CPython 3.10.22 bundles pip 23.0.1 in ensurepip, so `python3.10 -m venv` seeds a vulnerable pip; 3.10 is end of life and unused, so uninstalling it is an option.\n\nAlso re-check `/etc/ssl/cert.pem` after each macOS update: two roots were removed from it by hand (backup at /etc/ssl/cert.pem.bak-emsign), and an update may restore the old file.",
+  "links": [
+    "https://emudhra.we-have-a-problem.com/"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:03:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "578320a37a3d43d0976455dd8fb80568",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    }
+  ]
+}
