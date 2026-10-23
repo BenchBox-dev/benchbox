@@ -41,6 +41,7 @@ dependencies = [
 
 [tool.uv]
 required-version = ">=0.13.4"
+override-dependencies = ["filelock>=4.2.1"]
 
 [tool.setuptools]
 include-package-data = true
