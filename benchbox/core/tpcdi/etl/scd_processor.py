@@ -6,6 +6,9 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import logging
+import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Optional, Union
@@ -16,6 +19,41 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import translate_sql_query
 
 logger = logging.getLogger(__name__)
+
+HISTORY_TRACKING_TABLES = frozenset({"DimAccount", "DimBroker", "DimCompany", "DimCustomer", "DimSecurity"})
+
+_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_PARAMETER_CHUNK = 500
+
+
+def _validated_identifier(name: str) -> str:
+    if not isinstance(name, str) or not _IDENTIFIER_PATTERN.fullmatch(name):
+        raise ValueError(f"Invalid SQL identifier: {name!r}")
+    return name
+
+
+def _chunks(items: list[Any], size: int) -> Iterator[list[Any]]:
+    for start in range(0, len(items), size):
+        yield items[start : start + size]
+
+
+def _current_sk_column(frame: pd.DataFrame, sk_column: str) -> Optional[str]:
+    for candidate in (f"{sk_column}_current", sk_column):
+        if candidate in frame.columns:
+            return candidate
+    return None
+
+
+def _to_db_value(value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, pd.Timestamp):
+        return value.to_pydatetime()
+    if pd.isna(value):
+        return None
+    if hasattr(value, "item") and not isinstance(value, (str, bytes)):
+        return value.item()
+    return value
 
 
 @dataclass
@@ -74,6 +112,7 @@ class EnhancedSCDType2Processor:
         self.config = config or SCDProcessingConfig()
         self.change_audit_trail: list[SCDChangeRecord] = []
         self.processing_stats: dict[str, Any] = {}
+        self._next_surrogate_key: dict[str, int] = {}
 
     def process_dimension(
         self,
@@ -123,6 +162,9 @@ class EnhancedSCDType2Processor:
             "error_message": None,
         }
 
+        trail_length = len(self.change_audit_trail)
+        self._next_surrogate_key = {}
+
         try:
             if self.config.enable_validation:
                 validation_results = self._validate_input_data(new_data, business_keys, scd_columns)
@@ -133,6 +175,7 @@ class EnhancedSCDType2Processor:
 
             current_data = self._load_current_dimension_data(table_name)
             logger.debug(f"Loaded {len(current_data)} current records from {table_name}")
+            table_columns = list(current_data.columns) if len(current_data.columns) > 0 else None
 
             change_analysis = self._analyze_dimension_changes(
                 current_data,
@@ -142,24 +185,25 @@ class EnhancedSCDType2Processor:
                 non_scd_columns or [],
             )
 
-            new_records = change_analysis["new_records"]
-            if len(new_records) > 0:
-                insert_result = self._insert_new_dimension_records(
-                    new_records, table_name, business_keys, batch_id, effective_date
-                )
-                change_stats["new_records"] = insert_result["records_inserted"]
+            with self._transaction():
+                new_records = change_analysis["new_records"]
+                if len(new_records) > 0:
+                    insert_result = self._insert_new_dimension_records(
+                        new_records, table_name, business_keys, batch_id, effective_date, table_columns
+                    )
+                    change_stats["new_records"] = insert_result["records_inserted"]
 
-            scd_changes = change_analysis["scd_changes"]
-            if len(scd_changes) > 0:
-                scd_result = self._process_scd_type2_changes(
-                    scd_changes, table_name, business_keys, batch_id, effective_date
-                )
-                change_stats["scd_type2_changes"] = scd_result["records_updated"]
+                scd_changes = change_analysis["scd_changes"]
+                if len(scd_changes) > 0:
+                    scd_result = self._process_scd_type2_changes(
+                        scd_changes, table_name, business_keys, batch_id, effective_date, table_columns
+                    )
+                    change_stats["scd_type2_changes"] = scd_result["records_updated"]
 
-            non_scd_updates = change_analysis["non_scd_updates"]
-            if len(non_scd_updates) > 0:
-                update_result = self._process_non_scd_updates(non_scd_updates, table_name, batch_id)
-                change_stats["updated_records"] = update_result["records_updated"]
+                non_scd_updates = change_analysis["non_scd_updates"]
+                if len(non_scd_updates) > 0:
+                    update_result = self._process_non_scd_updates(non_scd_updates, table_name, batch_id)
+                    change_stats["updated_records"] = update_result["records_updated"]
 
             unchanged_records = change_analysis["unchanged_records"]
             change_stats["unchanged_records"] = len(unchanged_records)
@@ -188,6 +232,7 @@ class EnhancedSCDType2Processor:
             return change_stats
 
         except Exception as e:
+            del self.change_audit_trail[trail_length:]
             error_msg = f"SCD Type 2 processing failed for {table_name}: {str(e)}"
             logger.error(error_msg, exc_info=True)
             change_stats["error_message"] = error_msg
@@ -390,6 +435,7 @@ class EnhancedSCDType2Processor:
         business_keys: list[str],
         batch_id: int,
         effective_date: datetime,
+        table_columns: Optional[list[str]] = None,
     ) -> dict[str, Any]:
 
         if len(new_records) == 0:
@@ -405,25 +451,29 @@ class EnhancedSCDType2Processor:
 
         sk_column = f"SK_{table_name.replace('Dim', '')}ID"
         if sk_column not in records_to_insert.columns:
-            start_sk = 1000000 + batch_id * 100000
-            records_to_insert[sk_column] = range(start_sk, start_sk + len(records_to_insert))
+            records_to_insert[sk_column] = self._allocate_surrogate_keys(table_name, sk_column, len(records_to_insert))
 
+        audit_entries = []
         for _idx, record in records_to_insert.iterrows():
             business_key = {col: record[col] for col in business_keys}
-            change_record = SCDChangeRecord(
-                table_name=table_name,
-                business_key=business_key,
-                surrogate_key=record[sk_column],
-                change_type="INSERT",
-                effective_date=effective_date,
-                batch_id=batch_id,
-                source_record=record.to_dict(),
+            audit_entries.append(
+                SCDChangeRecord(
+                    table_name=table_name,
+                    business_key=business_key,
+                    surrogate_key=record[sk_column],
+                    change_type="INSERT",
+                    effective_date=effective_date,
+                    batch_id=batch_id,
+                    source_record=record.to_dict(),
+                )
             )
-            self.change_audit_trail.append(change_record)
 
-        logger.debug(f"Generated {len(records_to_insert)} insert records for {table_name}")
+        records_inserted = self._insert_rows(table_name, records_to_insert.to_dict("records"), table_columns)
+        self.change_audit_trail.extend(audit_entries)
 
-        return {"records_inserted": len(records_to_insert)}
+        logger.debug(f"Inserted {records_inserted} records into {table_name}")
+
+        return {"records_inserted": records_inserted}
 
     def _process_scd_type2_changes(
         self,
@@ -432,29 +482,33 @@ class EnhancedSCDType2Processor:
         business_keys: list[str],
         batch_id: int,
         effective_date: datetime,
+        table_columns: Optional[list[str]] = None,
     ) -> dict[str, Any]:
 
         if len(scd_changes) == 0:
-            return {"records_updated": 0}
+            return {"records_updated": 0, "records_expired": 0, "records_inserted": 0}
 
         logger.debug(f"Processing {len(scd_changes)} SCD Type 2 changes for {table_name}")
 
         sk_column = f"SK_{table_name.replace('Dim', '')}ID"
-        records_updated = 0
+        current_sk_col = _current_sk_column(scd_changes, sk_column)
+        if current_sk_col is None:
+            raise ValueError(f"Cannot expire current versions of {table_name}: missing {sk_column}")
 
-        current_sk_col = f"{sk_column}_current"
-        if current_sk_col in scd_changes.columns:
-            surrogate_keys = scd_changes[current_sk_col].tolist()
-
-            logger.debug(f"Generated expire query for {len(surrogate_keys)} records in {table_name}")
-            records_updated += len(surrogate_keys)
-
+        surrogate_keys = [_to_db_value(key) for key in scd_changes[current_sk_col].tolist()]
+        new_sks = self._allocate_surrogate_keys(table_name, sk_column, len(scd_changes))
         new_current_records = []
+        audit_entries = []
 
-        for _idx, row in scd_changes.iterrows():
-            new_record = {}
-            business_key = {}
+        for position, (_idx, row) in enumerate(scd_changes.iterrows()):
+            new_record: dict[str, Any] = {}
             changed_columns = []
+
+            for col in row.index:
+                if col.endswith("_current"):
+                    new_record.setdefault(col[: -len("_current")], row[col])
+                elif not col.endswith("_new"):
+                    new_record[col] = row[col]
 
             for col in row.index:
                 if col.endswith("_new"):
@@ -462,9 +516,6 @@ class EnhancedSCDType2Processor:
                     current_col = f"{original_col}_current"
 
                     new_record[original_col] = row[col]
-
-                    if original_col in business_keys:
-                        business_key[original_col] = row[col]
 
                     if current_col in row.index and row[col] != row[current_col]:
                         changed_columns.append(
@@ -475,33 +526,129 @@ class EnhancedSCDType2Processor:
                             }
                         )
 
+            business_key = {col: new_record[col] for col in business_keys if col in new_record}
+
             new_record[self.config.batch_id_column] = batch_id
             new_record[self.config.is_current_column] = 1
             new_record[self.config.effective_date_column] = effective_date
             new_record[self.config.end_date_column] = self.config.default_end_date
-
-            old_sk = row[current_sk_col] if current_sk_col in row.index else 0
-            new_record[sk_column] = old_sk + 1000000
+            new_record[sk_column] = new_sks[position]
 
             new_current_records.append(new_record)
 
-            change_record = SCDChangeRecord(
-                table_name=table_name,
-                business_key=business_key,
-                surrogate_key=new_record[sk_column],
-                change_type="SCD_TYPE2_UPDATE",
-                changed_columns=changed_columns,
-                effective_date=effective_date,
-                batch_id=batch_id,
-                source_record=new_record.copy(),
-                target_record=row.to_dict(),
+            audit_entries.append(
+                SCDChangeRecord(
+                    table_name=table_name,
+                    business_key=business_key,
+                    surrogate_key=new_record[sk_column],
+                    change_type="SCD_TYPE2_UPDATE",
+                    changed_columns=changed_columns,
+                    effective_date=effective_date,
+                    batch_id=batch_id,
+                    source_record=new_record.copy(),
+                    target_record=row.to_dict(),
+                )
             )
-            self.change_audit_trail.append(change_record)
 
-        logger.debug(f"Generated {len(new_current_records)} new current records for {table_name}")
-        records_updated += len(new_current_records)
+        records_expired = self._expire_current_versions(table_name, sk_column, surrogate_keys, effective_date)
+        if records_expired != len(surrogate_keys):
+            raise RuntimeError(
+                f"Expired {records_expired} rows in {table_name} for {len(surrogate_keys)} superseded versions"
+            )
 
-        return {"records_updated": records_updated}
+        records_inserted = self._insert_rows(table_name, new_current_records, table_columns)
+        self.change_audit_trail.extend(audit_entries)
+
+        logger.debug(f"Expired {records_expired} and inserted {records_inserted} versions for {table_name}")
+
+        return {
+            "records_updated": records_expired + records_inserted,
+            "records_expired": records_expired,
+            "records_inserted": records_inserted,
+        }
+
+    def _expire_current_versions(
+        self, table_name: str, sk_column: str, surrogate_keys: list[Any], effective_date: datetime
+    ) -> int:
+        table = self._validated_table(table_name)
+        is_current = _validated_identifier(self.config.is_current_column)
+        end_date = _validated_identifier(self.config.end_date_column)
+        sk_name = _validated_identifier(sk_column)
+
+        expired = 0
+        for chunk in _chunks(surrogate_keys, _PARAMETER_CHUNK):
+            placeholders = ",".join(["?"] * len(chunk))
+            expired += self._execute_dml(
+                f"UPDATE {table} SET {is_current} = 0, {end_date} = ? WHERE {sk_name} IN ({placeholders}) "
+                f"AND {is_current} = 1",
+                [effective_date, *chunk],
+            )
+        return expired
+
+    def _insert_rows(self, table_name: str, rows: list[dict[str, Any]], table_columns: Optional[list[str]]) -> int:
+        if not rows:
+            return 0
+
+        table = self._validated_table(table_name)
+        allowed = set(table_columns) if table_columns is not None else None
+        columns = [col for col in rows[0] if allowed is None or col in allowed]
+        column_sql = ", ".join(_validated_identifier(col) for col in columns)
+        row_placeholder = "(" + ",".join(["?"] * len(columns)) + ")"
+        rows_per_statement = max(1, _PARAMETER_CHUNK // len(columns))
+
+        inserted = 0
+        for chunk in _chunks(rows, rows_per_statement):
+            params = [_to_db_value(row[col]) for row in chunk for col in columns]
+            inserted += self._execute_dml(
+                f"INSERT INTO {table} ({column_sql}) VALUES {', '.join([row_placeholder] * len(chunk))}", params
+            )
+        return inserted
+
+    def _allocate_surrogate_keys(self, table_name: str, sk_column: str, count: int) -> list[int]:
+        if table_name not in self._next_surrogate_key:
+            table = self._validated_table(table_name)
+            sk_name = _validated_identifier(sk_column)
+            row = self.connection.execute(f"SELECT COALESCE(MAX({sk_name}), 0) FROM {table}").fetchone()
+            self._next_surrogate_key[table_name] = int(row[0]) + 1
+        start = self._next_surrogate_key[table_name]
+        self._next_surrogate_key[table_name] = start + count
+        return list(range(start, start + count))
+
+    def _execute_dml(self, sql: str, params: list[Any]) -> int:
+        cursor = self.connection.execute(sql, params)
+        affected = getattr(cursor, "rowcount", None)
+        if isinstance(affected, int) and affected >= 0:
+            return affected
+        try:
+            result = cursor.fetchone()
+        except Exception:
+            result = None
+        if result is not None and len(result) == 1 and isinstance(result[0], int):
+            return result[0]
+        raise RuntimeError("Database driver did not report the number of affected rows")
+
+    def _validated_table(self, table_name: str) -> str:
+        if table_name not in HISTORY_TRACKING_TABLES:
+            raise ValueError(f"Table {table_name!r} is not a TPC-DI history-tracking dimension")
+        return table_name
+
+    @contextmanager
+    def _transaction(self) -> Iterator[None]:
+        try:
+            self.connection.execute("BEGIN")
+            owned = True
+        except Exception:
+            owned = False
+            logger.debug("Connection already in a transaction; deferring commit to the caller")
+
+        try:
+            yield
+        except BaseException:
+            if owned:
+                self.connection.execute("ROLLBACK")
+            raise
+        if owned:
+            self.connection.execute("COMMIT")
 
     def _process_non_scd_updates(self, non_scd_updates: pd.DataFrame, table_name: str, batch_id: int) -> dict[str, Any]:
 
@@ -509,17 +656,33 @@ class EnhancedSCDType2Processor:
             return {"records_updated": 0}
 
         sk_column = f"SK_{table_name.replace('Dim', '')}ID"
-        current_sk_col = f"{sk_column}_current"
+        current_sk_col = _current_sk_column(non_scd_updates, sk_column)
 
-        if current_sk_col not in non_scd_updates.columns:
-            logger.warning(f"Cannot process non-SCD updates: missing {current_sk_col}")
+        if current_sk_col is None:
+            logger.warning(f"Cannot process non-SCD updates: missing {sk_column}")
             return {"records_updated": 0}
 
-        surrogate_keys = non_scd_updates[current_sk_col].tolist()
+        surrogate_keys = [_to_db_value(key) for key in non_scd_updates[current_sk_col].tolist()]
+        table = self._validated_table(table_name)
+        batch_column = _validated_identifier(self.config.batch_id_column)
+        sk_name = _validated_identifier(sk_column)
 
-        logger.debug(f"Generated non-SCD update query for {len(surrogate_keys)} records in {table_name}")
+        records_updated = 0
+        for chunk in _chunks(surrogate_keys, _PARAMETER_CHUNK):
+            placeholders = ",".join(["?"] * len(chunk))
+            records_updated += self._execute_dml(
+                f"UPDATE {table} SET {batch_column} = ? WHERE {sk_name} IN ({placeholders})",
+                [batch_id, *chunk],
+            )
 
-        return {"records_updated": len(surrogate_keys)}
+        if records_updated != len(surrogate_keys):
+            raise RuntimeError(
+                f"Batch-id update on {table_name} changed {records_updated} rows for {len(surrogate_keys)} keys"
+            )
+
+        logger.debug(f"Updated batch id on {records_updated} records in {table_name}")
+
+        return {"records_updated": records_updated}
 
     def _generate_change_audit_trail(
         self,

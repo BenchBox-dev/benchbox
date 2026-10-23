@@ -349,6 +349,8 @@ def process_customer_scd_type2(new_customer_data, existing_dim_customer):
 
 This is a simplified example of the transformation logic for SCD Type 2 processing of the customer dimension. The first statement closes existing records that have changed. The second inserts new records for changed customers and new customers.
 
+`EnhancedSCDType2Processor.process_scd_changes` (`benchbox/core/tpcdi/etl/scd_processor.py`) applies this rule to DimAccount, DimBroker, DimCompany, DimCustomer and DimSecurity through a DB-API connection that accepts `?` placeholders (DuckDB, SQLite). For each natural key whose Type 2 columns changed it sets `IsCurrent = 0` and `EndDate` to the new `EffectiveDate` on the current row, then inserts the new version with `IsCurrent = 1` and `EndDate = 9999-12-31`, as TPC-DI clause 4.4.1.3 requires. Rows whose only changes are non-SCD columns get their `BatchID` updated. All statements run in one transaction with bound parameters, and the returned counts are the rows the database reports as affected.
+
 ## Performance Characteristics
 
 ### ETL Performance Patterns
