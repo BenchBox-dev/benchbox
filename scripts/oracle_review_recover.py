@@ -7,11 +7,11 @@ import re
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, NamedTuple
 
 CHECK_NAME = "oracle-review"
 WORKFLOW_PATH = ".github/workflows/oracle-review.yml"
-CHECK_RUN_FILTER = "{name, head_sha, status, conclusion, details_url}"
+CHECK_RUN_FILTER = ".check_runs[] | {name, head_sha, status, conclusion, details_url}"
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 REPOSITORY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$")
 RUN_ID_RE = re.compile(r"/actions/runs/([1-9][0-9]*)(?:/|$)")
@@ -21,6 +21,11 @@ Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
 class RecoveryError(RuntimeError):
     pass
+
+
+class Recovery(NamedTuple):
+    reruns: int
+    reopened: bool
 
 
 def _subprocess_runner(command: list[str]) -> subprocess.CompletedProcess[str]:
@@ -56,7 +61,7 @@ def _read_pull_request(runner: Runner, repo: str, pr: int) -> dict[str, Any]:
             "--repo",
             repo,
             "--json",
-            "number,state,baseRefName,headRefName,headRefOid,headRepository,isCrossRepository",
+            "number,state,baseRefName,headRefName,headRefOid,headRepository,isCrossRepository,autoMergeRequest",
         ],
     )
     if not isinstance(payload, dict):
@@ -228,7 +233,7 @@ def _close_and_reopen(runner: Runner, repo: str, pr: int, head: str, branch: str
         raise
 
 
-def recover(repo: str, pr: int, runner: Runner = _subprocess_runner) -> int:
+def recover(repo: str, pr: int, runner: Runner = _subprocess_runner) -> Recovery:
     if not REPOSITORY_RE.fullmatch(repo):
         raise RecoveryError("repository must be a GitHub owner/name")
     head, branch, head_repository = _pull_request_snapshot(runner, repo, pr)
@@ -247,8 +252,12 @@ def recover(repo: str, pr: int, runner: Runner = _subprocess_runner) -> int:
             if _process_run(runner, repo, pr, head, branch, head_repository, run_id):
                 reruns += 1
             processed.add(run_id)
+    current = _read_pull_request(runner, repo, pr)
+    _validate_pull_request(current, repo, pr, expected_head=head, expected_branch=branch)
+    if current.get("autoMergeRequest"):
+        return Recovery(reruns, False)
     _close_and_reopen(runner, repo, pr, head, branch)
-    return reruns
+    return Recovery(reruns, True)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -260,12 +269,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("oracle-review recovery requires PR=<positive number>", file=sys.stderr)
         return 2
     try:
-        reruns = recover(args.repo, int(args.pr))
+        result = recover(args.repo, int(args.pr))
     except RecoveryError as exc:
         print(f"oracle-review recovery: {exc}", file=sys.stderr)
         return 1
-    print(f"Reran {reruns} unsuccessful oracle-review run(s) serially for PR #{args.pr}.")
-    print(f"Closed and reopened PR #{args.pr}; the fresh pull_request event requeues its checks.")
+    print(f"Reran {result.reruns} unsuccessful oracle-review run(s) serially for PR #{args.pr}.")
+    if result.reopened:
+        print(f"Closed and reopened PR #{args.pr}; the fresh pull_request event requeues its checks.")
+    else:
+        print(
+            f"PR #{args.pr} has auto-merge enabled, so it was not closed and reopened: "
+            "closing a pull request turns auto-merge off. Auto-merge is still armed."
+        )
     return 0
 
 

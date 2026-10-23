@@ -71,6 +71,12 @@ _REWRITES = [
     ),
 ]
 
+_TRANSFORMERS = {
+    "scalar_group_by_first": "wrap_grouped_scalar_subqueries",
+    "group_by_empty_drop": "translate_sql_query",
+    "dual_column_alias": "name_literal_subquery_columns",
+}
+
 for _platform in ("spark", "velox", "lakesail", "databricks"):
     for _qid, _slug, _reason in _REWRITES:
         REGISTRY.register(
@@ -80,7 +86,7 @@ for _platform in ("spark", "velox", "lakesail", "databricks"):
                 support_level=SupportLevel.REWRITTEN,
                 failure_mode=FailureMode.UNSUPPORTED_FEATURE,
                 payload=RewriteQueryPayload(
-                    transformer_id="spark_tpchavoc_query_transformer",
+                    transformer_id=_TRANSFORMERS[_slug.split("_", 1)[1]],
                     description=_reason,
                 ),
                 reason=_reason,

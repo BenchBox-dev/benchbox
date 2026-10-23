@@ -282,6 +282,25 @@ def test_head_pulls_reads_every_pull_request_for_the_head_branch(monkeypatch: py
 
 
 @pytest.mark.parametrize(
+    ("branch", "encoded"),
+    [
+        ("fix/some-branch", "fix/some-branch"),
+        ("a&per_page=1", "a%26per_page%3D1"),
+        ("a#frag", "a%23frag"),
+        ("a b", "a%20b"),
+        ("100%", "100%25"),
+    ],
+)
+def test_head_pulls_encodes_the_head_branch_in_the_query(
+    monkeypatch: pytest.MonkeyPatch, branch: str, encoded: str
+) -> None:
+    api = _pulls_api([], {})
+    monkeypatch.setattr(github, "get_paginated", api)
+    github.head_pulls(REPO, _full_run(head_branch=branch))
+    assert api.paths == [f"repos/{REPO}/pulls?state=all&head=BenchBox-dev:{encoded}&per_page=100"]
+
+
+@pytest.mark.parametrize(
     "run", [_full_run(head_branch=None), _full_run(head_repository={"owner": {}}), _full_run(head_repository=None)]
 )
 def test_head_pulls_needs_the_head_branch_and_owner(monkeypatch: pytest.MonkeyPatch, run: dict[str, Any]) -> None:

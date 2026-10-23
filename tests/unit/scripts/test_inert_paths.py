@@ -252,7 +252,7 @@ def test_machine_read_change_selects_its_readers() -> None:
 
 
 def test_live_readers_send_agents_md_to_skill_delivery() -> None:
-    assert "tests/integration/worktree/test_batch_skill_delivery.py" in sel.load_readers(ROOT)["AGENTS.md"]
+    assert "tests/integration/worktree/test_batch_skill_delivery.py" in inert.load_readers(ROOT)["AGENTS.md"]
 
 
 def test_machine_read_docs_route_as_code() -> None:

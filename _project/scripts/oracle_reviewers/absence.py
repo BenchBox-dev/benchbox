@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import os
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from .verdict import REDACTED, sanitize
+from . import credentials
+from .verdict import sanitize
 
 OK = "ok"
 QUOTA = "quota"
@@ -77,17 +77,6 @@ _MONTHS = {
 _LONG_TOKEN = re.compile(r"[A-Za-z0-9_\-]{32,}")
 EXCERPT_LIMIT = 300
 UNPARSED_LIMIT = 2000
-CREDENTIAL_ENV = (
-    "CLAUDE_CODE_OAUTH_TOKEN",
-    "OPENAI_API_KEY",
-    "CODEX_API_KEY",
-    "META_API_KEY",
-    "GEMINI_API_KEY",
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_OAUTH_TOKEN",
-    "TYPESAFE_API_KEY",
-    "OMP_AUTH_BROKER_TOKEN",
-)
 
 
 @dataclass(frozen=True)
@@ -95,6 +84,9 @@ class Absence:
     kind: str
     detail: str = ""
     reset_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "detail", credentials.redact(self.detail))
 
     @property
     def absent(self) -> bool:
@@ -129,15 +121,8 @@ def parse_reset(text: str, now: datetime) -> datetime | None:
     return None
 
 
-def redact_detail(detail: str, credentials: Iterable[str] = ()) -> str:
-    seen: list[str] = []
-    for credential in (*credentials, *(os.environ.get(name, "") for name in CREDENTIAL_ENV)):
-        if len(credential) >= 8 and credential not in seen:
-            seen.append(credential)
-    text = detail
-    for credential in seen:
-        text = text.replace(credential, REDACTED)
-    text = _LONG_TOKEN.sub(REDACTED, sanitize(text, EXCERPT_LIMIT * 4))
+def redact_detail(detail: str, extra: Iterable[str] = ()) -> str:
+    text = _LONG_TOKEN.sub(credentials.REDACTED, sanitize(detail, EXCERPT_LIMIT * 4, extra))
     return text if len(text) <= EXCERPT_LIMIT else text[: EXCERPT_LIMIT - 1] + "\u2026"
 
 
@@ -175,24 +160,21 @@ def classify(
     return Absence(OK)
 
 
-def _redact(text: str, credentials: Iterable[str], limit: int) -> str:
-    for credential in credentials:
-        if len(credential) >= 8:
-            text = text.replace(credential, REDACTED)
-    return _LONG_TOKEN.sub(REDACTED, sanitize(text, limit))
+def _redact(text: str, extra: Iterable[str], limit: int) -> str:
+    return _LONG_TOKEN.sub(credentials.REDACTED, sanitize(text, limit, extra))
 
 
-def excerpt(stdout: str, stderr: str, credentials: Iterable[str] = ()) -> str:
+def excerpt(stdout: str, stderr: str, extra: Iterable[str] = ()) -> str:
     lines = [line.strip() for line in stderr.splitlines() if line.strip()]
     lines = lines or [line.strip() for line in stdout.splitlines() if line.strip()]
     if not lines:
         return ""
     errors = [line for line in lines if line.startswith("error:")]
-    text = _redact((errors or lines)[-1][: EXCERPT_LIMIT * 4], credentials, EXCERPT_LIMIT * 4)
+    text = _redact((errors or lines)[-1], extra, EXCERPT_LIMIT * 4)
     return text if len(text) <= EXCERPT_LIMIT else text[: EXCERPT_LIMIT - 1] + "\u2026"
 
 
-def unparsed(text: str, credentials: Iterable[str] = ()) -> str:
-    redacted = _redact(text, credentials, 2 * len(text) + 64)
+def unparsed(text: str, extra: Iterable[str] = ()) -> str:
+    redacted = _redact(text, extra, 2 * len(text) + 64)
     tail = redacted[-UNPARSED_LIMIT:]
     return ("\u2026" if len(redacted) > UNPARSED_LIMIT else "") + tail

@@ -86,12 +86,13 @@ def test_postgres_ambiguous_columns_are_qualified():
             assert any(column.name == column_name and column.table == table for column in tree.find_all(exp.Column))
 
 
-def test_postgres_dual_variant_uses_values_source():
+def test_postgres_dual_variant_drops_the_one_row_source():
     query = TPCHavocBenchmark(scale_factor=0.1).get_query("17_v4", dialect="postgres")
 
     assert "17_v4" not in POSTGRES_TPCHAVOC_SKIPS
-    assert "(VALUES (1)) AS dual(dual_col)" in query
-    assert "FROM (SELECT 1) AS dual" not in query
+    assert "VALUES" not in query.upper()
+    assert "dual" not in query
+    assert "SELECT 0 AS revenue WHERE FALSE" in query
     assert sqlglot.parse_one(query, read="postgres")
 
 
@@ -120,12 +121,18 @@ def test_clickhouse_filtered_aggregates_use_native_combinators():
     assert q12.count("countIf(") == 2
 
 
-def test_clickhouse_filter_rewrite_rejects_unhandled_aggregate_shapes():
-    from benchbox.core.tpchavoc.dialect_compat import _rewrite_clickhouse_filters
+@pytest.mark.parametrize("aggregate", ["COUNT(l_orderkey)", "MIN(l_orderkey)", "MAX(l_orderkey)"])
+def test_clickhouse_filter_rewrite_handles_every_aggregate_shape(aggregate):
+    from benchbox.utils.dialect_utils import apply_rewrite
 
-    for aggregate in ("COUNT(l_orderkey)", "MIN(l_orderkey)", "MAX(l_orderkey)"):
-        with pytest.raises(NotImplementedError, match="ClickHouse FILTER rewrite handles only"):
-            _rewrite_clickhouse_filters(f"SELECT {aggregate} FILTER (WHERE l_orderkey > 0) FROM lineitem")
+    rewritten = apply_rewrite(
+        "filtered_aggregates_to_conditional",
+        f"SELECT {aggregate} FILTER (WHERE l_orderkey > 0) FROM lineitem",
+        "clickhouse",
+    )
+
+    assert "FILTER" not in rewritten.upper()
+    assert "l_orderkey > 0" in rewritten
 
 
 def test_clickhouse_filter_rules_cover_each_deployment_mode():
