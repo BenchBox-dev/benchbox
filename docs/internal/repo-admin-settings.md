@@ -178,6 +178,10 @@ History of the required contexts:
 - 2026-10-03 and 2026-10-04: the merge queue and the strict up-to-date rule
   were removed, and `oracle-review` became required. Recorded in
   `_project/decisions/merge-queue-retirement-2026-10-03.md`.
+- 2026-10-21: `oracle-gate` became required, bound to the `benchbox-oracle`
+  App (`integration_id` 5201041); `oracle-review` stays required. Recorded
+  with full before and after JSON in
+  `_project/decisions/oracle-gate-required-check-2026-10-21.md`.
 
 ### No merge queue
 
@@ -203,23 +207,22 @@ A plain owner comment does not count. See [soundness drain](soundness-drain.md).
 The live `develop-squash-only` ruleset requires `oracle-gate` next to
 `oracle-review`, with `integration_id` 5201041 (read back 2026-10-23 with
 `gh api repos/BenchBox-dev/benchbox/rulesets/15611785`, `updated_at`
-2026-10-21T19:37:02-04:00). The repository records 5201041 as the expected
-binding (`ORACLE_GATE_INTEGRATION_ID` in
-`_project/scripts/ruleset_review_enforcement.py`, hard-coded in the unit
-tests), but contains no evidence that the value is the real `benchbox-oracle`
-App's ID, and it was not verified. The
-cutover precondition in `docs/internal/oracle-review-v2.md` (production runs
-showing `oracle-gate` agreeing with `oracle-review`) was not verified when the
-ruleset was updated.
+2026-10-21T19:37:02-04:00). 5201041 is the `benchbox-oracle` App's ID
+(`gh api apps/benchbox-oracle --jq .id`, checked 2026-10-23) and matches
+`ORACLE_GATE_INTEGRATION_ID` in `_project/scripts/ruleset_review_enforcement.py`.
+The cutover precondition in `docs/internal/oracle-review-v2.md` (production
+runs showing `oracle-gate` agreeing with `oracle-review`) was not verified
+when the ruleset was updated.
 
 `.github/workflows/oracle-gate.yml` runs only `develop` code and posts
-`oracle-gate` for the pull request head through the same oracle App. The unit
-test fails when any other workflow could post that context, but a same-repo pull
-request with `statuses: write` could still forge it, so the workflow alone is
-not the enforcement; the integration-ID scoping is. It applies the checker's
-rule unchanged: success when only exempt paths changed, when the App's latest
-review of the head reports success with no unresolved oracle thread, or when a
-valid stand-in covers the exact head, and failure otherwise.
+`oracle-gate` for the pull request head as a commit status through the same
+oracle App. The unit test fails when any other workflow could post that
+context, but a same-repo pull request with `statuses: write` could still post
+a status with that name, so the workflow alone is not the enforcement; the
+integration-ID binding is (see the residual-risk note below). It applies the
+checker's rule unchanged: success when only exempt paths changed, when the
+App's latest review of the head reports success with no unresolved oracle
+thread, or when a valid stand-in covers the exact head, and failure otherwise.
 
 The workflow posts the context only when `ORACLE_APP_ID` and
 `ORACLE_APP_PRIVATE_KEY` are set as secrets in the `oracle` environment; when
@@ -252,17 +255,29 @@ The soundness gate, as operated:
   soundness-path commit that merged without an oracle success review or another
   review signal; the `oracle-gate` workflow closes the first half of this gap by
   evaluating the same rule from `develop` code on trusted triggers. The second
-  half is the ruleset binding: the required `oracle-gate` check must be scoped
-  to the `benchbox-oracle` App's integration ID, since only that binding stops
-  a pull request workflow with `statuses: write` from posting a forged success
-  to its own head. The drift check does not validate the value in practice:
-  its context comparison ignores `integration_id`, and the develop review
-  check (`review_enforcement_findings`) passes when any oracle check is
-  present, which a bare `oracle-review` satisfies without an ID, and the live
-  ruleset requires both. Check the binding by hand with the
-  `required_check_bindings` field of the Verify command above, or
+  half is the ruleset binding of the required `oracle-gate` check to the
+  `benchbox-oracle` App's integration ID. GitHub documents that a required
+  check bound to an app is satisfied only by a check run or commit status
+  that app set ("If the status is set by any other person or integration,
+  merging won't be allowed", [available rules for
+  rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-status-checks-to-pass-before-merging)),
+  which is what stops a pull request workflow with `statuses: write` from
+  posting a forged success to its own head. This repository has observed only
+  the positive case: the App's own `oracle-gate` commit status satisfies the
+  check (pull request #3340, 2026-10-23). The forged case is untested here. To
+  test it, on a throwaway pull request whose App-posted `oracle-gate` is
+  `failure`, post `oracle-gate` `success` with a user token
+  (`gh api repos/BenchBox-dev/benchbox/statuses/<head> -f context=oracle-gate -f state=success`)
+  and confirm `gh pr view <n> --json mergeStateStatus` stays `BLOCKED` and the
+  merge box still lists `oracle-gate` as required; then close the pull
+  request. The drift check does not validate the binding in practice: its
+  context comparison ignores `integration_id`, and the develop review check
+  (`review_enforcement_findings`) passes when any oracle check is present,
+  which a bare `oracle-review` satisfies without an ID, and the live ruleset
+  requires both. Check the binding by hand with the `required_check_bindings`
+  field of the Verify command above, or
   `gh api repos/BenchBox-dev/benchbox/rulesets/15611785 --jq '[.rules[] | select(.type == "required_status_checks") | .parameters.required_status_checks[]? | {context, integration_id}]'`,
-  and compare the `oracle-gate` entry with the `benchbox-oracle` App's ID.
+  and compare the `oracle-gate` entry with `gh api apps/benchbox-oracle --jq .id`.
 - `make pr-open` does not arm auto-merge when it creates a PR. `make pr-arm`
   (or `make pr-open READY=1`) arms it after a live check of the PR, so a PR
   cannot merge while a follow-up commit is still being written. Arm only when
