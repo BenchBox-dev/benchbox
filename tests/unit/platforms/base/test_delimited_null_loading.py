@@ -79,6 +79,8 @@ class TestNullableNumericColumns:
         ):
             expected = duck_con.execute(sql).fetchone()
             actual = sqlite_con.execute(sql).fetchone()
+            assert expected is not None
+            assert actual is not None
             assert [None if v is None else float(v) for v in actual] == [
                 None if v is None else float(v) for v in expected
             ], sql
