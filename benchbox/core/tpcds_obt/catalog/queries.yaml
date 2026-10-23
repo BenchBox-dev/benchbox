@@ -24,40 +24,48 @@ queries:
   sql: |-
     WITH customer_total_return AS (
       SELECT
-        obt.returning_customer_c_customer_sk AS ctr_customer_sk,
-        obt.store_sk AS ctr_store_sk,
+        returning_customer_c_customer_sk AS ctr_customer_sk,
+        return_store_s_store_sk AS ctr_store_sk,
         SUM([AGG_FIELD]) AS ctr_total_return
-      FROM tpcds_sales_returns_obt AS obt
+      FROM tpcds_sales_returns_obt
       WHERE
-        (
-          obt.returned_date_sk = obt.return_date_d_date_sk
-          AND obt.return_date_d_year = [YEAR]
-        )
-        AND channel = 'store'
+        channel = 'store' AND has_return = 'Y' AND return_date_d_year = [YEAR]
       GROUP BY
-        obt.returning_customer_c_customer_sk,
-        obt.store_sk
+        returning_customer_c_customer_sk,
+        return_store_s_store_sk
+    ), store_attr AS (
+      SELECT DISTINCT
+        return_store_s_store_sk AS s_store_sk,
+        return_store_s_state AS s_state
+      FROM tpcds_sales_returns_obt
+      WHERE
+        channel = 'store' AND return_store_s_store_sk IS NOT NULL
+    ), cust AS (
+      SELECT DISTINCT
+        returning_customer_c_customer_sk AS c_customer_sk,
+        returning_customer_c_customer_id AS c_customer_id
+      FROM tpcds_sales_returns_obt
+      WHERE
+        channel = 'store' AND returning_customer_c_customer_sk IS NOT NULL
     )
     SELECT
-      obt.bill_customer_c_customer_id
-    FROM tpcds_sales_returns_obt AS obt
-    CROSS JOIN customer_total_return AS ctr1
+      cust.c_customer_id
+    FROM customer_total_return AS ctr1
+    JOIN store_attr AS s
+      ON s.s_store_sk = ctr1.ctr_store_sk
+    JOIN cust
+      ON ctr1.ctr_customer_sk = cust.c_customer_sk
     WHERE
-      (
-        ctr1.ctr_total_return > (
-          SELECT
-            AVG(ctr_total_return) * 1.2
-          FROM customer_total_return AS ctr2
-          WHERE
-            ctr1.ctr_store_sk = ctr2.ctr_store_sk
-        )
-        AND obt.store_s_store_sk = ctr1.ctr_store_sk
-        AND obt.store_s_state = '[STATE]'
-        AND ctr1.ctr_customer_sk = obt.bill_customer_c_customer_sk
+      ctr1.ctr_total_return > (
+        SELECT
+          AVG(ctr_total_return) * 1.2
+        FROM customer_total_return AS ctr2
+        WHERE
+          ctr1.ctr_store_sk = ctr2.ctr_store_sk
       )
-      AND channel = 'store'
+      AND s.s_state = '[STATE]'
     ORDER BY
-      obt.bill_customer_c_customer_id
+      cust.c_customer_id
     LIMIT 100
 - id: 2
   template: query2.tpl
@@ -66,98 +74,29 @@ queries:
     YEAR:
     - 1
   sql: |-
-    WITH wscs AS (
+    WITH wswscs AS (
       SELECT
-        sold_date_sk,
-        sales_price
-      FROM (
-        SELECT
-          obt.sold_date_sk AS sold_date_sk,
-          obt.ext_sales_price AS sales_price
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          channel = 'web'
-        UNION ALL
-        SELECT
-          obt.sold_date_sk AS sold_date_sk,
-          obt.ext_sales_price AS sales_price
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          channel = 'catalog'
-      )
-    ), wswscs AS (
-      SELECT
-        obt.sold_date_d_week_seq AS d_week_seq,
-        obt.sold_date_d_year AS d_year,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Sunday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS sun_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Monday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS mon_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Tuesday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS tue_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Wednesday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS wed_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Thursday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS thu_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Friday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS fri_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Saturday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS sat_sales
-      FROM tpcds_sales_returns_obt AS obt
+        sold_date_d_week_seq AS d_week_seq,
+        SUM(CASE WHEN sold_date_d_day_name = 'Sunday' THEN ext_sales_price ELSE NULL END) AS sun_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Monday' THEN ext_sales_price ELSE NULL END) AS mon_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Tuesday' THEN ext_sales_price ELSE NULL END) AS tue_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Wednesday' THEN ext_sales_price ELSE NULL END) AS wed_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Thursday' THEN ext_sales_price ELSE NULL END) AS thu_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Friday' THEN ext_sales_price ELSE NULL END) AS fri_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Saturday' THEN ext_sales_price ELSE NULL END) AS sat_sales
+      FROM tpcds_sales_returns_obt
       WHERE
-        obt.sold_date_d_date_sk = obt.sold_date_sk AND channel IN ('catalog', 'web')
+        channel IN ('web', 'catalog') AND sold_date_d_date_sk IS NOT NULL
       GROUP BY
-        d_week_seq,
-        d_year
+        1
+    ), cal AS (
+      SELECT DISTINCT
+        sold_date_d_date_sk AS d_date_sk,
+        sold_date_d_week_seq AS d_week_seq,
+        sold_date_d_year AS d_year
+      FROM tpcds_sales_returns_obt
+      WHERE
+        sold_date_d_date_sk IS NOT NULL
     )
     SELECT
       d_week_seq1,
@@ -170,7 +109,7 @@ queries:
       ROUND(sat_sales1 / sat_sales2, 2)
     FROM (
       SELECT
-        wswscs.d_week_seq AS d_week_seq1,
+        w.d_week_seq AS d_week_seq1,
         sun_sales AS sun_sales1,
         mon_sales AS mon_sales1,
         tue_sales AS tue_sales1,
@@ -178,14 +117,14 @@ queries:
         thu_sales AS thu_sales1,
         fri_sales AS fri_sales1,
         sat_sales AS sat_sales1
-      FROM wswscs AS wswscs
+      FROM wswscs AS w
+      JOIN cal
+        ON cal.d_week_seq = w.d_week_seq
       WHERE
-        (
-          d_year = [YEAR]
-        )
+        cal.d_year = [YEAR]
     ) AS y, (
       SELECT
-        wswscs.d_week_seq AS d_week_seq2,
+        w.d_week_seq AS d_week_seq2,
         sun_sales AS sun_sales2,
         mon_sales AS mon_sales2,
         tue_sales AS tue_sales2,
@@ -193,14 +132,11 @@ queries:
         thu_sales AS thu_sales2,
         fri_sales AS fri_sales2,
         sat_sales AS sat_sales2
-      FROM tpcds_sales_returns_obt AS obt
-      CROSS JOIN wswscs AS wswscs
+      FROM wswscs AS w
+      JOIN cal
+        ON cal.d_week_seq = w.d_week_seq
       WHERE
-        (
-          obt.sold_date_d_week_seq = wswscs.d_week_seq
-          AND obt.sold_date_d_year = [YEAR] + 1
-        )
-        AND channel IN ('catalog', 'web')
+        cal.d_year = [YEAR] + 1
     ) AS z
     WHERE
       d_week_seq1 = d_week_seq2 - 53
@@ -426,177 +362,52 @@ queries:
     YEAR: []
   sql: |-
     WITH ssr AS (
-      SELECT
-        obt.store_s_store_id,
-        SUM(obt.sales_price) AS sales,
-        SUM(profit) AS profit,
-        SUM(return_amt) AS returns,
-        SUM(net_loss) AS profit_loss
-      FROM tpcds_sales_returns_obt AS obt
-      CROSS JOIN (
-        SELECT
-          obt.store_sk AS store_sk,
-          obt.sold_date_sk AS date_sk,
-          obt.ext_sales_price AS sales_price,
-          obt.net_profit AS profit,
-          CAST(0 AS DECIMAL(7, 2)) AS return_amt,
-          CAST(0 AS DECIMAL(7, 2)) AS net_loss
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          channel = 'store'
+      SELECT s_store_id, SUM(sales_price) AS sales, SUM(profit) AS profit, SUM(return_amt) AS returns, SUM(net_loss) AS profit_loss
+      FROM (
+        SELECT store_s_store_id AS s_store_id, sold_date_d_date AS d_date, ext_sales_price AS sales_price, net_profit AS profit,
+               CAST(0 AS DECIMAL(7, 2)) AS return_amt, CAST(0 AS DECIMAL(7, 2)) AS net_loss
+        FROM tpcds_sales_returns_obt WHERE channel = 'store' AND store_s_store_sk IS NOT NULL
         UNION ALL
-        SELECT
-          obt.store_sk AS store_sk,
-          obt.returned_date_sk AS date_sk,
-          CAST(0 AS DECIMAL(7, 2)) AS sales_price,
-          CAST(0 AS DECIMAL(7, 2)) AS profit,
-          obt.return_amount AS return_amt,
-          obt.return_net_loss AS net_loss
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          channel = 'store'
-      ) AS salesreturns
-      WHERE
-        (
-          date_sk = obt.sold_date_d_date_sk
-          AND obt.sold_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (
-            CAST('[SALES_DATE]' AS DATE) + INTERVAL 14 DAY
-          )
-          AND obt.store_sk = obt.store_s_store_sk
-        )
-        AND channel IN ('catalog', 'store', 'web')
-      GROUP BY
-        obt.store_s_store_id
+        SELECT return_store_s_store_id, return_date_d_date, CAST(0 AS DECIMAL(7, 2)), CAST(0 AS DECIMAL(7, 2)), return_amount, return_net_loss
+        FROM tpcds_sales_returns_obt WHERE channel = 'store' AND has_return = 'Y' AND return_store_s_store_sk IS NOT NULL
+      ) AS x
+      WHERE d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (CAST('[SALES_DATE]' AS DATE) + INTERVAL '14' DAY)
+      GROUP BY s_store_id
     ), csr AS (
-      SELECT
-        obt.catalog_page_cp_catalog_page_id,
-        SUM(obt.sales_price) AS sales,
-        SUM(profit) AS profit,
-        SUM(return_amt) AS returns,
-        SUM(net_loss) AS profit_loss
-      FROM tpcds_sales_returns_obt AS obt
-      CROSS JOIN (
-        SELECT
-          obt.catalog_page_sk AS page_sk,
-          obt.sold_date_sk AS date_sk,
-          obt.ext_sales_price AS sales_price,
-          obt.net_profit AS profit,
-          CAST(0 AS DECIMAL(7, 2)) AS return_amt,
-          CAST(0 AS DECIMAL(7, 2)) AS net_loss
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          channel = 'catalog'
+      SELECT cp_catalog_page_id, SUM(sales_price) AS sales, SUM(profit) AS profit, SUM(return_amt) AS returns, SUM(net_loss) AS profit_loss
+      FROM (
+        SELECT catalog_page_cp_catalog_page_id AS cp_catalog_page_id, sold_date_d_date AS d_date, ext_sales_price AS sales_price, net_profit AS profit,
+               CAST(0 AS DECIMAL(7, 2)) AS return_amt, CAST(0 AS DECIMAL(7, 2)) AS net_loss
+        FROM tpcds_sales_returns_obt WHERE channel = 'catalog' AND catalog_page_cp_catalog_page_sk IS NOT NULL
         UNION ALL
-        SELECT
-          obt.catalog_page_sk AS page_sk,
-          obt.returned_date_sk AS date_sk,
-          CAST(0 AS DECIMAL(7, 2)) AS sales_price,
-          CAST(0 AS DECIMAL(7, 2)) AS profit,
-          obt.return_amount AS return_amt,
-          obt.return_net_loss AS net_loss
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          channel = 'catalog'
-      ) AS salesreturns
-      WHERE
-        (
-          date_sk = obt.sold_date_d_date_sk
-          AND obt.sold_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (
-            CAST('[SALES_DATE]' AS DATE) + INTERVAL 14 DAY
-          )
-          AND page_sk = obt.catalog_page_cp_catalog_page_sk
-        )
-        AND channel IN ('catalog', 'store', 'web')
-      GROUP BY
-        obt.catalog_page_cp_catalog_page_id
+        SELECT return_catalog_page_cp_catalog_page_id, return_date_d_date, CAST(0 AS DECIMAL(7, 2)), CAST(0 AS DECIMAL(7, 2)), return_amount, return_net_loss
+        FROM tpcds_sales_returns_obt WHERE channel = 'catalog' AND has_return = 'Y' AND return_catalog_page_cp_catalog_page_sk IS NOT NULL
+      ) AS x
+      WHERE d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (CAST('[SALES_DATE]' AS DATE) + INTERVAL '14' DAY)
+      GROUP BY cp_catalog_page_id
     ), wsr AS (
-      SELECT
-        obt.web_site_web_site_id,
-        SUM(obt.sales_price) AS sales,
-        SUM(profit) AS profit,
-        SUM(return_amt) AS returns,
-        SUM(net_loss) AS profit_loss
-      FROM tpcds_sales_returns_obt AS obt
-      CROSS JOIN (
-        SELECT
-          obt.web_site_sk AS wsr_web_site_sk,
-          obt.sold_date_sk AS date_sk,
-          obt.ext_sales_price AS sales_price,
-          obt.net_profit AS profit,
-          CAST(0 AS DECIMAL(7, 2)) AS return_amt,
-          CAST(0 AS DECIMAL(7, 2)) AS net_loss
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          channel = 'web'
+      SELECT web_site_id, SUM(sales_price) AS sales, SUM(profit) AS profit, SUM(return_amt) AS returns, SUM(net_loss) AS profit_loss
+      FROM (
+        SELECT web_site_web_site_id AS web_site_id, sold_date_d_date AS d_date, ext_sales_price AS sales_price, net_profit AS profit,
+               CAST(0 AS DECIMAL(7, 2)) AS return_amt, CAST(0 AS DECIMAL(7, 2)) AS net_loss
+        FROM tpcds_sales_returns_obt WHERE channel = 'web' AND web_site_web_site_sk IS NOT NULL
         UNION ALL
-        SELECT
-          obt.web_site_sk AS wsr_web_site_sk,
-          obt.returned_date_sk AS date_sk,
-          CAST(0 AS DECIMAL(7, 2)) AS sales_price,
-          CAST(0 AS DECIMAL(7, 2)) AS profit,
-          obt.return_amount AS return_amt,
-          obt.return_net_loss AS net_loss
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          channel = 'web'
-      ) AS salesreturns
-      WHERE
-        (
-          date_sk = obt.sold_date_d_date_sk
-          AND obt.sold_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (
-            CAST('[SALES_DATE]' AS DATE) + INTERVAL 14 DAY
-          )
-          AND wsr_web_site_sk = obt.web_site_web_site_sk
-        )
-        AND channel IN ('catalog', 'store', 'web')
-      GROUP BY
-        obt.web_site_web_site_id
+        SELECT web_site_web_site_id, return_date_d_date, CAST(0 AS DECIMAL(7, 2)), CAST(0 AS DECIMAL(7, 2)), return_amount, return_net_loss
+        FROM tpcds_sales_returns_obt WHERE channel = 'web' AND has_return = 'Y' AND web_site_web_site_sk IS NOT NULL
+      ) AS x
+      WHERE d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (CAST('[SALES_DATE]' AS DATE) + INTERVAL '14' DAY)
+      GROUP BY web_site_id
     )
-    SELECT
-      channel,
-      id,
-      SUM(sales) AS sales,
-      SUM(returns) AS returns,
-      SUM(profit) AS profit
+    SELECT channel, id, SUM(sales) AS sales, SUM(returns) AS returns, SUM(profit) AS profit
     FROM (
-      SELECT
-        'store channel' AS channel,
-        'store' || store_s_store_id AS id,
-        sales,
-        returns,
-        (
-          profit - profit_loss
-        ) AS profit
-      FROM ssr
+      SELECT 'store channel' AS channel, 'store' || s_store_id AS id, sales, returns, (profit - profit_loss) AS profit FROM ssr
       UNION ALL
-      SELECT
-        'catalog channel' AS channel,
-        'catalog_page' || catalog_page_cp_catalog_page_id AS id,
-        sales,
-        returns,
-        (
-          profit - profit_loss
-        ) AS profit
-      FROM csr
+      SELECT 'catalog channel', 'catalog_page' || cp_catalog_page_id, sales, returns, (profit - profit_loss) FROM csr
       UNION ALL
-      SELECT
-        'web channel' AS channel,
-        'web_site' || web_site_web_site_id AS id,
-        sales,
-        returns,
-        (
-          profit - profit_loss
-        ) AS profit
-      FROM wsr
+      SELECT 'web channel', 'web_site' || web_site_id, sales, returns, (profit - profit_loss) FROM wsr
     ) AS x
-    GROUP BY
-      ROLLUP (
-        channel,
-        id
-      )
-    ORDER BY
-      channel,
-      id
+    GROUP BY ROLLUP (channel, id)
+    ORDER BY channel, id
     LIMIT 100
 - id: 6
   template: query6.tpl
@@ -607,43 +418,46 @@ queries:
     YEAR:
     - 1
   sql: |-
+    WITH cat_avg AS (
+      SELECT
+        item_i_category AS cat,
+        AVG(item_i_current_price) AS avg_price
+      FROM (
+        SELECT DISTINCT
+          item_i_item_sk,
+          item_i_category,
+          item_i_current_price
+        FROM tpcds_sales_returns_obt
+        WHERE
+          item_i_item_sk IS NOT NULL
+      ) AS items
+      GROUP BY
+        item_i_category
+    )
     SELECT
-      obt.bill_addr_ca_state AS state,
+      obt.bill_cur_addr_ca_state AS state,
       COUNT(*) AS cnt
     FROM tpcds_sales_returns_obt AS obt
+    JOIN cat_avg
+      ON obt.item_i_category = cat_avg.cat
     WHERE
-      (
-        obt.bill_customer_c_customer_sk = obt.ship_customer_sk
-        AND obt.sold_date_sk = obt.sold_date_d_date_sk
-        AND obt.item_sk = obt.item_i_item_sk
-        AND obt.sold_date_d_month_seq = (
-          SELECT DISTINCT
-            (
-              obt.sold_date_d_month_seq
-            )
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            (
-              obt.sold_date_d_year = [YEAR] AND obt.sold_date_d_moy = [MONTH]
-            )
-            AND channel = 'store'
-        )
-        AND obt.item_i_current_price > 1.2 * (
-          SELECT
-            AVG(obt.item_i_current_price)
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.item_i_category = obt.item_i_category AND channel = 'store'
-        )
+      obt.channel = 'store'
+      AND obt.bill_cur_addr_ca_address_sk IS NOT NULL
+      AND obt.sold_date_d_month_seq = (
+        SELECT DISTINCT
+          sold_date_d_month_seq
+        FROM tpcds_sales_returns_obt
+        WHERE
+          sold_date_d_year = [YEAR] AND sold_date_d_moy = [MONTH]
       )
-      AND channel = 'store'
+      AND obt.item_i_current_price > 1.2 * cat_avg.avg_price
     GROUP BY
-      obt.bill_addr_ca_state
+      obt.bill_cur_addr_ca_state
     HAVING
       COUNT(*) >= 10
     ORDER BY
       cnt,
-      obt.bill_addr_ca_state
+      state
     LIMIT 100
 - id: 7
   template: query7.tpl
@@ -685,866 +499,6 @@ queries:
     ORDER BY
       obt.item_i_item_id
     LIMIT 100
-- id: 8
-  template: query8.tpl
-  template_sha256: 378c3fec4638dd57cef1732be700659fc70d78d0a5e04b5d2e5f3b12b0a9babe
-  parameters:
-    QOY:
-    - 1
-    YEAR:
-    - 1
-    ZIP:
-    - 1
-    - 2
-    - 3
-    - 4
-    - 5
-    - 6
-    - 7
-    - 8
-    - 9
-    - 10
-    - 11
-    - 12
-    - 13
-    - 14
-    - 15
-    - 16
-    - 17
-    - 18
-    - 19
-    - 20
-    - 21
-    - 22
-    - 23
-    - 24
-    - 25
-    - 26
-    - 27
-    - 28
-    - 29
-    - 30
-    - 31
-    - 32
-    - 33
-    - 34
-    - 35
-    - 36
-    - 37
-    - 38
-    - 39
-    - 40
-    - 41
-    - 42
-    - 43
-    - 44
-    - 45
-    - 46
-    - 47
-    - 48
-    - 49
-    - 50
-    - 51
-    - 52
-    - 53
-    - 54
-    - 55
-    - 56
-    - 57
-    - 58
-    - 59
-    - 60
-    - 61
-    - 62
-    - 63
-    - 64
-    - 65
-    - 66
-    - 67
-    - 68
-    - 69
-    - 70
-    - 71
-    - 72
-    - 73
-    - 74
-    - 75
-    - 76
-    - 77
-    - 78
-    - 79
-    - 80
-    - 81
-    - 82
-    - 83
-    - 84
-    - 85
-    - 86
-    - 87
-    - 88
-    - 89
-    - 90
-    - 91
-    - 92
-    - 93
-    - 94
-    - 95
-    - 96
-    - 97
-    - 98
-    - 99
-    - 100
-    - 101
-    - 102
-    - 103
-    - 104
-    - 105
-    - 106
-    - 107
-    - 108
-    - 109
-    - 110
-    - 111
-    - 112
-    - 113
-    - 114
-    - 115
-    - 116
-    - 117
-    - 118
-    - 119
-    - 120
-    - 121
-    - 122
-    - 123
-    - 124
-    - 125
-    - 126
-    - 127
-    - 128
-    - 129
-    - 130
-    - 131
-    - 132
-    - 133
-    - 134
-    - 135
-    - 136
-    - 137
-    - 138
-    - 139
-    - 140
-    - 141
-    - 142
-    - 143
-    - 144
-    - 145
-    - 146
-    - 147
-    - 148
-    - 149
-    - 150
-    - 151
-    - 152
-    - 153
-    - 154
-    - 155
-    - 156
-    - 157
-    - 158
-    - 159
-    - 160
-    - 161
-    - 162
-    - 163
-    - 164
-    - 165
-    - 166
-    - 167
-    - 168
-    - 169
-    - 170
-    - 171
-    - 172
-    - 173
-    - 174
-    - 175
-    - 176
-    - 177
-    - 178
-    - 179
-    - 180
-    - 181
-    - 182
-    - 183
-    - 184
-    - 185
-    - 186
-    - 187
-    - 188
-    - 189
-    - 190
-    - 191
-    - 192
-    - 193
-    - 194
-    - 195
-    - 196
-    - 197
-    - 198
-    - 199
-    - 200
-    - 201
-    - 202
-    - 203
-    - 204
-    - 205
-    - 206
-    - 207
-    - 208
-    - 209
-    - 210
-    - 211
-    - 212
-    - 213
-    - 214
-    - 215
-    - 216
-    - 217
-    - 218
-    - 219
-    - 220
-    - 221
-    - 222
-    - 223
-    - 224
-    - 225
-    - 226
-    - 227
-    - 228
-    - 229
-    - 230
-    - 231
-    - 232
-    - 233
-    - 234
-    - 235
-    - 236
-    - 237
-    - 238
-    - 239
-    - 240
-    - 241
-    - 242
-    - 243
-    - 244
-    - 245
-    - 246
-    - 247
-    - 248
-    - 249
-    - 250
-    - 251
-    - 252
-    - 253
-    - 254
-    - 255
-    - 256
-    - 257
-    - 258
-    - 259
-    - 260
-    - 261
-    - 262
-    - 263
-    - 264
-    - 265
-    - 266
-    - 267
-    - 268
-    - 269
-    - 270
-    - 271
-    - 272
-    - 273
-    - 274
-    - 275
-    - 276
-    - 277
-    - 278
-    - 279
-    - 280
-    - 281
-    - 282
-    - 283
-    - 284
-    - 285
-    - 286
-    - 287
-    - 288
-    - 289
-    - 290
-    - 291
-    - 292
-    - 293
-    - 294
-    - 295
-    - 296
-    - 297
-    - 298
-    - 299
-    - 300
-    - 301
-    - 302
-    - 303
-    - 304
-    - 305
-    - 306
-    - 307
-    - 308
-    - 309
-    - 310
-    - 311
-    - 312
-    - 313
-    - 314
-    - 315
-    - 316
-    - 317
-    - 318
-    - 319
-    - 320
-    - 321
-    - 322
-    - 323
-    - 324
-    - 325
-    - 326
-    - 327
-    - 328
-    - 329
-    - 330
-    - 331
-    - 332
-    - 333
-    - 334
-    - 335
-    - 336
-    - 337
-    - 338
-    - 339
-    - 340
-    - 341
-    - 342
-    - 343
-    - 344
-    - 345
-    - 346
-    - 347
-    - 348
-    - 349
-    - 350
-    - 351
-    - 352
-    - 353
-    - 354
-    - 355
-    - 356
-    - 357
-    - 358
-    - 359
-    - 360
-    - 361
-    - 362
-    - 363
-    - 364
-    - 365
-    - 366
-    - 367
-    - 368
-    - 369
-    - 370
-    - 371
-    - 372
-    - 373
-    - 374
-    - 375
-    - 376
-    - 377
-    - 378
-    - 379
-    - 380
-    - 381
-    - 382
-    - 383
-    - 384
-    - 385
-    - 386
-    - 387
-    - 388
-    - 389
-    - 390
-    - 391
-    - 392
-    - 393
-    - 394
-    - 395
-    - 396
-    - 397
-    - 398
-    - 399
-    - 400
-  sql: |-
-    SELECT
-      obt.store_s_store_name,
-      SUM(obt.net_profit)
-    FROM tpcds_sales_returns_obt AS obt
-    CROSS JOIN (
-      SELECT
-        ca_zip
-      FROM (
-        SELECT
-          SUBSTRING(bill_addr_ca_zip, 1, 5) AS ca_zip
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          SUBSTRING(obt.bill_addr_ca_zip, 1, 5) IN (
-            '[ZIP]',
-            '[ZIP.2]',
-            '[ZIP.3]',
-            '[ZIP.4]',
-            '[ZIP.5]',
-            '[ZIP.6]',
-            '[ZIP.7]',
-            '[ZIP.8]',
-            '[ZIP.9]',
-            '[ZIP.10]',
-            '[ZIP.11]',
-            '[ZIP.12]',
-            '[ZIP.13]',
-            '[ZIP.14]',
-            '[ZIP.15]',
-            '[ZIP.16]',
-            '[ZIP.17]',
-            '[ZIP.18]',
-            '[ZIP.19]',
-            '[ZIP.20]',
-            '[ZIP.21]',
-            '[ZIP.22]',
-            '[ZIP.23]',
-            '[ZIP.24]',
-            '[ZIP.25]',
-            '[ZIP.26]',
-            '[ZIP.27]',
-            '[ZIP.28]',
-            '[ZIP.29]',
-            '[ZIP.30]',
-            '[ZIP.31]',
-            '[ZIP.32]',
-            '[ZIP.33]',
-            '[ZIP.34]',
-            '[ZIP.35]',
-            '[ZIP.36]',
-            '[ZIP.37]',
-            '[ZIP.38]',
-            '[ZIP.39]',
-            '[ZIP.40]',
-            '[ZIP.41]',
-            '[ZIP.42]',
-            '[ZIP.43]',
-            '[ZIP.44]',
-            '[ZIP.45]',
-            '[ZIP.46]',
-            '[ZIP.47]',
-            '[ZIP.48]',
-            '[ZIP.49]',
-            '[ZIP.50]',
-            '[ZIP.51]',
-            '[ZIP.52]',
-            '[ZIP.53]',
-            '[ZIP.54]',
-            '[ZIP.55]',
-            '[ZIP.56]',
-            '[ZIP.57]',
-            '[ZIP.58]',
-            '[ZIP.59]',
-            '[ZIP.60]',
-            '[ZIP.61]',
-            '[ZIP.62]',
-            '[ZIP.63]',
-            '[ZIP.64]',
-            '[ZIP.65]',
-            '[ZIP.66]',
-            '[ZIP.67]',
-            '[ZIP.68]',
-            '[ZIP.69]',
-            '[ZIP.70]',
-            '[ZIP.71]',
-            '[ZIP.72]',
-            '[ZIP.73]',
-            '[ZIP.74]',
-            '[ZIP.75]',
-            '[ZIP.76]',
-            '[ZIP.77]',
-            '[ZIP.78]',
-            '[ZIP.79]',
-            '[ZIP.80]',
-            '[ZIP.81]',
-            '[ZIP.82]',
-            '[ZIP.83]',
-            '[ZIP.84]',
-            '[ZIP.85]',
-            '[ZIP.86]',
-            '[ZIP.87]',
-            '[ZIP.88]',
-            '[ZIP.89]',
-            '[ZIP.90]',
-            '[ZIP.91]',
-            '[ZIP.92]',
-            '[ZIP.93]',
-            '[ZIP.94]',
-            '[ZIP.95]',
-            '[ZIP.96]',
-            '[ZIP.97]',
-            '[ZIP.98]',
-            '[ZIP.99]',
-            '[ZIP.100]',
-            '[ZIP.101]',
-            '[ZIP.102]',
-            '[ZIP.103]',
-            '[ZIP.104]',
-            '[ZIP.105]',
-            '[ZIP.106]',
-            '[ZIP.107]',
-            '[ZIP.108]',
-            '[ZIP.109]',
-            '[ZIP.110]',
-            '[ZIP.111]',
-            '[ZIP.112]',
-            '[ZIP.113]',
-            '[ZIP.114]',
-            '[ZIP.115]',
-            '[ZIP.116]',
-            '[ZIP.117]',
-            '[ZIP.118]',
-            '[ZIP.119]',
-            '[ZIP.120]',
-            '[ZIP.121]',
-            '[ZIP.122]',
-            '[ZIP.123]',
-            '[ZIP.124]',
-            '[ZIP.125]',
-            '[ZIP.126]',
-            '[ZIP.127]',
-            '[ZIP.128]',
-            '[ZIP.129]',
-            '[ZIP.130]',
-            '[ZIP.131]',
-            '[ZIP.132]',
-            '[ZIP.133]',
-            '[ZIP.134]',
-            '[ZIP.135]',
-            '[ZIP.136]',
-            '[ZIP.137]',
-            '[ZIP.138]',
-            '[ZIP.139]',
-            '[ZIP.140]',
-            '[ZIP.141]',
-            '[ZIP.142]',
-            '[ZIP.143]',
-            '[ZIP.144]',
-            '[ZIP.145]',
-            '[ZIP.146]',
-            '[ZIP.147]',
-            '[ZIP.148]',
-            '[ZIP.149]',
-            '[ZIP.150]',
-            '[ZIP.151]',
-            '[ZIP.152]',
-            '[ZIP.153]',
-            '[ZIP.154]',
-            '[ZIP.155]',
-            '[ZIP.156]',
-            '[ZIP.157]',
-            '[ZIP.158]',
-            '[ZIP.159]',
-            '[ZIP.160]',
-            '[ZIP.161]',
-            '[ZIP.162]',
-            '[ZIP.163]',
-            '[ZIP.164]',
-            '[ZIP.165]',
-            '[ZIP.166]',
-            '[ZIP.167]',
-            '[ZIP.168]',
-            '[ZIP.169]',
-            '[ZIP.170]',
-            '[ZIP.171]',
-            '[ZIP.172]',
-            '[ZIP.173]',
-            '[ZIP.174]',
-            '[ZIP.175]',
-            '[ZIP.176]',
-            '[ZIP.177]',
-            '[ZIP.178]',
-            '[ZIP.179]',
-            '[ZIP.180]',
-            '[ZIP.181]',
-            '[ZIP.182]',
-            '[ZIP.183]',
-            '[ZIP.184]',
-            '[ZIP.185]',
-            '[ZIP.186]',
-            '[ZIP.187]',
-            '[ZIP.188]',
-            '[ZIP.189]',
-            '[ZIP.190]',
-            '[ZIP.191]',
-            '[ZIP.192]',
-            '[ZIP.193]',
-            '[ZIP.194]',
-            '[ZIP.195]',
-            '[ZIP.196]',
-            '[ZIP.197]',
-            '[ZIP.198]',
-            '[ZIP.199]',
-            '[ZIP.200]',
-            '[ZIP.201]',
-            '[ZIP.202]',
-            '[ZIP.203]',
-            '[ZIP.204]',
-            '[ZIP.205]',
-            '[ZIP.206]',
-            '[ZIP.207]',
-            '[ZIP.208]',
-            '[ZIP.209]',
-            '[ZIP.210]',
-            '[ZIP.211]',
-            '[ZIP.212]',
-            '[ZIP.213]',
-            '[ZIP.214]',
-            '[ZIP.215]',
-            '[ZIP.216]',
-            '[ZIP.217]',
-            '[ZIP.218]',
-            '[ZIP.219]',
-            '[ZIP.220]',
-            '[ZIP.221]',
-            '[ZIP.222]',
-            '[ZIP.223]',
-            '[ZIP.224]',
-            '[ZIP.225]',
-            '[ZIP.226]',
-            '[ZIP.227]',
-            '[ZIP.228]',
-            '[ZIP.229]',
-            '[ZIP.230]',
-            '[ZIP.231]',
-            '[ZIP.232]',
-            '[ZIP.233]',
-            '[ZIP.234]',
-            '[ZIP.235]',
-            '[ZIP.236]',
-            '[ZIP.237]',
-            '[ZIP.238]',
-            '[ZIP.239]',
-            '[ZIP.240]',
-            '[ZIP.241]',
-            '[ZIP.242]',
-            '[ZIP.243]',
-            '[ZIP.244]',
-            '[ZIP.245]',
-            '[ZIP.246]',
-            '[ZIP.247]',
-            '[ZIP.248]',
-            '[ZIP.249]',
-            '[ZIP.250]',
-            '[ZIP.251]',
-            '[ZIP.252]',
-            '[ZIP.253]',
-            '[ZIP.254]',
-            '[ZIP.255]',
-            '[ZIP.256]',
-            '[ZIP.257]',
-            '[ZIP.258]',
-            '[ZIP.259]',
-            '[ZIP.260]',
-            '[ZIP.261]',
-            '[ZIP.262]',
-            '[ZIP.263]',
-            '[ZIP.264]',
-            '[ZIP.265]',
-            '[ZIP.266]',
-            '[ZIP.267]',
-            '[ZIP.268]',
-            '[ZIP.269]',
-            '[ZIP.270]',
-            '[ZIP.271]',
-            '[ZIP.272]',
-            '[ZIP.273]',
-            '[ZIP.274]',
-            '[ZIP.275]',
-            '[ZIP.276]',
-            '[ZIP.277]',
-            '[ZIP.278]',
-            '[ZIP.279]',
-            '[ZIP.280]',
-            '[ZIP.281]',
-            '[ZIP.282]',
-            '[ZIP.283]',
-            '[ZIP.284]',
-            '[ZIP.285]',
-            '[ZIP.286]',
-            '[ZIP.287]',
-            '[ZIP.288]',
-            '[ZIP.289]',
-            '[ZIP.290]',
-            '[ZIP.291]',
-            '[ZIP.292]',
-            '[ZIP.293]',
-            '[ZIP.294]',
-            '[ZIP.295]',
-            '[ZIP.296]',
-            '[ZIP.297]',
-            '[ZIP.298]',
-            '[ZIP.299]',
-            '[ZIP.300]',
-            '[ZIP.301]',
-            '[ZIP.302]',
-            '[ZIP.303]',
-            '[ZIP.304]',
-            '[ZIP.305]',
-            '[ZIP.306]',
-            '[ZIP.307]',
-            '[ZIP.308]',
-            '[ZIP.309]',
-            '[ZIP.310]',
-            '[ZIP.311]',
-            '[ZIP.312]',
-            '[ZIP.313]',
-            '[ZIP.314]',
-            '[ZIP.315]',
-            '[ZIP.316]',
-            '[ZIP.317]',
-            '[ZIP.318]',
-            '[ZIP.319]',
-            '[ZIP.320]',
-            '[ZIP.321]',
-            '[ZIP.322]',
-            '[ZIP.323]',
-            '[ZIP.324]',
-            '[ZIP.325]',
-            '[ZIP.326]',
-            '[ZIP.327]',
-            '[ZIP.328]',
-            '[ZIP.329]',
-            '[ZIP.330]',
-            '[ZIP.331]',
-            '[ZIP.332]',
-            '[ZIP.333]',
-            '[ZIP.334]',
-            '[ZIP.335]',
-            '[ZIP.336]',
-            '[ZIP.337]',
-            '[ZIP.338]',
-            '[ZIP.339]',
-            '[ZIP.340]',
-            '[ZIP.341]',
-            '[ZIP.342]',
-            '[ZIP.343]',
-            '[ZIP.344]',
-            '[ZIP.345]',
-            '[ZIP.346]',
-            '[ZIP.347]',
-            '[ZIP.348]',
-            '[ZIP.349]',
-            '[ZIP.350]',
-            '[ZIP.351]',
-            '[ZIP.352]',
-            '[ZIP.353]',
-            '[ZIP.354]',
-            '[ZIP.355]',
-            '[ZIP.356]',
-            '[ZIP.357]',
-            '[ZIP.358]',
-            '[ZIP.359]',
-            '[ZIP.360]',
-            '[ZIP.361]',
-            '[ZIP.362]',
-            '[ZIP.363]',
-            '[ZIP.364]',
-            '[ZIP.365]',
-            '[ZIP.366]',
-            '[ZIP.367]',
-            '[ZIP.368]',
-            '[ZIP.369]',
-            '[ZIP.370]',
-            '[ZIP.371]',
-            '[ZIP.372]',
-            '[ZIP.373]',
-            '[ZIP.374]',
-            '[ZIP.375]',
-            '[ZIP.376]',
-            '[ZIP.377]',
-            '[ZIP.378]',
-            '[ZIP.379]',
-            '[ZIP.380]',
-            '[ZIP.381]',
-            '[ZIP.382]',
-            '[ZIP.383]',
-            '[ZIP.384]',
-            '[ZIP.385]',
-            '[ZIP.386]',
-            '[ZIP.387]',
-            '[ZIP.388]',
-            '[ZIP.389]',
-            '[ZIP.390]',
-            '[ZIP.391]',
-            '[ZIP.392]',
-            '[ZIP.393]',
-            '[ZIP.394]',
-            '[ZIP.395]',
-            '[ZIP.396]',
-            '[ZIP.397]',
-            '[ZIP.398]',
-            '[ZIP.399]',
-            '[ZIP.400]'
-          )
-          AND channel = 'store'
-        INTERSECT
-        SELECT
-        ca_zip
-      FROM (
-          SELECT
-            SUBSTRING(bill_addr_ca_zip, 1, 5) AS ca_zip,
-            COUNT(*) AS cnt
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            (
-              obt.bill_customer_c_preferred_cust_flag = 'Y'
-            ) AND channel = 'store'
-          GROUP BY
-            obt.bill_addr_ca_zip
-          HAVING
-            COUNT(*) > 10
-        ) AS A1
-      ) AS A2
-    ) AS V1
-    WHERE
-      (
-        obt.store_sk = obt.store_s_store_sk
-        AND obt.sold_date_sk = obt.sold_date_d_date_sk
-        AND obt.sold_date_d_qoy = [QOY]
-        AND obt.sold_date_d_year = [YEAR]
-        AND (
-          SUBSTRING(obt.store_s_zip, 1, 2) = SUBSTRING(V1.ca_zip, 1, 2)
-        )
-      )
-      AND channel = 'store'
-    GROUP BY
-      obt.store_s_store_name
-    ORDER BY
-      obt.store_s_store_name
-    LIMIT 100
 - id: 9
   template: query9.tpl
   template_sha256: 2db1d593f05a0d364831bb4c5b4870743f8b91b68a9bee62f3f71b3023cedb29
@@ -1574,122 +528,74 @@ queries:
     SELECT
       CASE
         WHEN (
-          SELECT
-            COUNT(*)
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 1 AND 20 AND channel = 'store'
+          SELECT COUNT(*) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 1 AND 20
         ) > [RC]
         THEN (
-          SELECT
-            AVG([AGGCTHEN])
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 1 AND 20 AND channel = 'store'
+          SELECT AVG([AGGCTHEN]) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 1 AND 20
         )
         ELSE (
-          SELECT
-            AVG([AGGCELSE])
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 1 AND 20 AND channel = 'store'
+          SELECT AVG([AGGCELSE]) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 1 AND 20
         )
       END AS bucket1,
       CASE
         WHEN (
-          SELECT
-            COUNT(*)
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 21 AND 40 AND channel = 'store'
+          SELECT COUNT(*) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 21 AND 40
         ) > [RC.2]
         THEN (
-          SELECT
-            AVG([AGGCTHEN])
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 21 AND 40 AND channel = 'store'
+          SELECT AVG([AGGCTHEN]) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 21 AND 40
         )
         ELSE (
-          SELECT
-            AVG([AGGCELSE])
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 21 AND 40 AND channel = 'store'
+          SELECT AVG([AGGCELSE]) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 21 AND 40
         )
       END AS bucket2,
       CASE
         WHEN (
-          SELECT
-            COUNT(*)
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 41 AND 60 AND channel = 'store'
+          SELECT COUNT(*) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 41 AND 60
         ) > [RC.3]
         THEN (
-          SELECT
-            AVG([AGGCTHEN])
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 41 AND 60 AND channel = 'store'
+          SELECT AVG([AGGCTHEN]) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 41 AND 60
         )
         ELSE (
-          SELECT
-            AVG([AGGCELSE])
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 41 AND 60 AND channel = 'store'
+          SELECT AVG([AGGCELSE]) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 41 AND 60
         )
       END AS bucket3,
       CASE
         WHEN (
-          SELECT
-            COUNT(*)
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 61 AND 80 AND channel = 'store'
+          SELECT COUNT(*) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 61 AND 80
         ) > [RC.4]
         THEN (
-          SELECT
-            AVG([AGGCTHEN])
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 61 AND 80 AND channel = 'store'
+          SELECT AVG([AGGCTHEN]) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 61 AND 80
         )
         ELSE (
-          SELECT
-            AVG([AGGCELSE])
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 61 AND 80 AND channel = 'store'
+          SELECT AVG([AGGCELSE]) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 61 AND 80
         )
       END AS bucket4,
       CASE
         WHEN (
-          SELECT
-            COUNT(*)
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 81 AND 100 AND channel = 'store'
+          SELECT COUNT(*) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 81 AND 100
         ) > [RC.5]
         THEN (
-          SELECT
-            AVG([AGGCTHEN])
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 81 AND 100 AND channel = 'store'
+          SELECT AVG([AGGCTHEN]) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 81 AND 100
         )
         ELSE (
-          SELECT
-            AVG([AGGCELSE])
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            obt.quantity BETWEEN 81 AND 100 AND channel = 'store'
+          SELECT AVG([AGGCELSE]) FROM tpcds_sales_returns_obt
+          WHERE channel = 'store' AND quantity BETWEEN 81 AND 100
         )
       END AS bucket5
-    FROM tpcds_sales_returns_obt AS obt
-    WHERE
-      obt.reason_r_reason_sk = 1 AND channel = 'store'
 - id: 10
   template: query10.tpl
   template_sha256: 937882b86b0a0c545d771e9f23622819fda4304339d3da79cbf7eb626b1b4591
@@ -1705,74 +611,79 @@ queries:
     YEAR:
     - 1
   sql: |-
+    WITH c AS (
+      SELECT DISTINCT
+        bill_customer_c_customer_sk AS c_customer_sk,
+        bill_cur_cdemo_cd_gender AS cd_gender,
+        bill_cur_cdemo_cd_marital_status AS cd_marital_status,
+        bill_cur_cdemo_cd_education_status AS cd_education_status,
+        bill_cur_cdemo_cd_purchase_estimate AS cd_purchase_estimate,
+        bill_cur_cdemo_cd_credit_rating AS cd_credit_rating,
+        bill_cur_cdemo_cd_dep_count AS cd_dep_count,
+        bill_cur_cdemo_cd_dep_employed_count AS cd_dep_employed_count,
+        bill_cur_cdemo_cd_dep_college_count AS cd_dep_college_count
+      FROM tpcds_sales_returns_obt
+      WHERE
+        channel = 'store'
+        AND bill_customer_c_customer_sk IS NOT NULL
+        AND sold_date_d_year = [YEAR]
+        AND sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 3
+        AND bill_cur_addr_ca_county IN ('[COUNTY]', '[COUNTY.2]', '[COUNTY.3]', '[COUNTY.4]', '[COUNTY.5]')
+        AND bill_cur_cdemo_cd_demo_sk IS NOT NULL
+    )
     SELECT
-      obt.bill_cdemo_cd_gender,
-      obt.bill_cdemo_cd_marital_status,
-      obt.bill_cdemo_cd_education_status,
+      cd_gender,
+      cd_marital_status,
+      cd_education_status,
       COUNT(*) AS cnt1,
-      obt.bill_cdemo_cd_purchase_estimate,
+      cd_purchase_estimate,
       COUNT(*) AS cnt2,
-      obt.bill_cdemo_cd_credit_rating,
+      cd_credit_rating,
       COUNT(*) AS cnt3,
-      obt.bill_cdemo_cd_dep_count,
+      cd_dep_count,
       COUNT(*) AS cnt4,
-      obt.bill_cdemo_cd_dep_employed_count,
+      cd_dep_employed_count,
       COUNT(*) AS cnt5,
-      obt.bill_cdemo_cd_dep_college_count,
+      cd_dep_college_count,
       COUNT(*) AS cnt6
-    FROM tpcds_sales_returns_obt AS obt
+    FROM c
     WHERE
-      (
-        obt.bill_addr_ca_county IN ('[COUNTY]', '[COUNTY.2]', '[COUNTY.3]', '[COUNTY.4]', '[COUNTY.5]')
-        AND EXISTS(
-          SELECT
-            *
-          FROM tpcds_sales_returns_obt AS ex_obt WHERE ( ex_obt.bill_customer_c_customer_sk = obt.bill_customer_c_customer_sk
-              AND ex_obt.sold_date_sk = ex_obt.sold_date_d_date_sk
-              AND ex_obt.sold_date_d_year = [YEAR]
-              AND ex_obt.sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 3
-            ) AND ex_obt.channel = 'store'
-        )
-        AND (
-          EXISTS(
-            SELECT
-              *
-            FROM tpcds_sales_returns_obt AS ex_obt WHERE ( ex_obt.bill_customer_c_customer_sk = obt.bill_customer_c_customer_sk
-                AND ex_obt.sold_date_sk = ex_obt.sold_date_d_date_sk
-                AND ex_obt.sold_date_d_year = [YEAR]
-                AND ex_obt.sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 3
-              ) AND ex_obt.channel = 'web'
-          )
-          OR EXISTS(
-            SELECT
-              *
-            FROM tpcds_sales_returns_obt AS ex_obt WHERE ( ex_obt.bill_customer_c_customer_sk = obt.bill_customer_c_customer_sk
-                AND ex_obt.sold_date_sk = ex_obt.sold_date_d_date_sk
-                AND ex_obt.sold_date_d_year = [YEAR]
-                AND ex_obt.sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 3
-              ) AND ex_obt.channel = 'catalog'
-          )
-        )
+      EXISTS(
+        SELECT 1
+        FROM tpcds_sales_returns_obt AS w
+        WHERE
+          w.channel = 'web'
+          AND w.bill_customer_sk = c.c_customer_sk
+          AND w.sold_date_d_year = [YEAR]
+          AND w.sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 3
       )
-      AND channel IN ('catalog', 'store', 'web')
+      OR EXISTS(
+        SELECT 1
+        FROM tpcds_sales_returns_obt AS k
+        WHERE
+          k.channel = 'catalog'
+          AND k.ship_customer_sk = c.c_customer_sk
+          AND k.sold_date_d_year = [YEAR]
+          AND k.sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 3
+      )
     GROUP BY
-      obt.bill_cdemo_cd_gender,
-      obt.bill_cdemo_cd_marital_status,
-      obt.bill_cdemo_cd_education_status,
-      obt.bill_cdemo_cd_purchase_estimate,
-      obt.bill_cdemo_cd_credit_rating,
-      obt.bill_cdemo_cd_dep_count,
-      obt.bill_cdemo_cd_dep_employed_count,
-      obt.bill_cdemo_cd_dep_college_count
+      cd_gender,
+      cd_marital_status,
+      cd_education_status,
+      cd_purchase_estimate,
+      cd_credit_rating,
+      cd_dep_count,
+      cd_dep_employed_count,
+      cd_dep_college_count
     ORDER BY
-      obt.bill_cdemo_cd_gender,
-      obt.bill_cdemo_cd_marital_status,
-      obt.bill_cdemo_cd_education_status,
-      obt.bill_cdemo_cd_purchase_estimate,
-      obt.bill_cdemo_cd_credit_rating,
-      obt.bill_cdemo_cd_dep_count,
-      obt.bill_cdemo_cd_dep_employed_count,
-      obt.bill_cdemo_cd_dep_college_count
+      cd_gender,
+      cd_marital_status,
+      cd_education_status,
+      cd_purchase_estimate,
+      cd_credit_rating,
+      cd_dep_count,
+      cd_dep_employed_count,
+      cd_dep_college_count
     LIMIT 100
 - id: 11
   template: query11.tpl
@@ -2008,28 +919,36 @@ queries:
   template: query14.tpl
   template_sha256: a550cd5c5a82a8cd6fed17380bed8cf2069c3e9e52d5e7a2349a811fb533ff5e
   parameters:
+    DAY:
+    - 1
     YEAR:
     - 1
-  sql: |
+  sql: |-
     WITH cross_items AS (
       SELECT
-        item_i_item_sk,
-        item_i_brand_id,
-        item_i_class_id,
-        item_i_category_id
+        item_i_item_sk
       FROM (
-        SELECT
+        SELECT DISTINCT
           item_i_item_sk,
           item_i_brand_id,
           item_i_class_id,
-          item_i_category_id,
-          channel
+          item_i_category_id
         FROM tpcds_sales_returns_obt
-        WHERE sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
-        GROUP BY item_i_item_sk, item_i_brand_id, item_i_class_id, item_i_category_id, channel
-      ) items_by_channel
-      GROUP BY item_i_item_sk, item_i_brand_id, item_i_class_id, item_i_category_id
-      HAVING COUNT(DISTINCT channel) = 3
+        WHERE item_i_item_sk IS NOT NULL
+      ) AS i
+      WHERE (item_i_brand_id, item_i_class_id, item_i_category_id) IN (
+        SELECT item_i_brand_id, item_i_class_id, item_i_category_id
+        FROM tpcds_sales_returns_obt
+        WHERE channel = 'store' AND sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
+        INTERSECT
+        SELECT item_i_brand_id, item_i_class_id, item_i_category_id
+        FROM tpcds_sales_returns_obt
+        WHERE channel = 'catalog' AND sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
+        INTERSECT
+        SELECT item_i_brand_id, item_i_class_id, item_i_category_id
+        FROM tpcds_sales_returns_obt
+        WHERE channel = 'web' AND sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
+      )
     ),
     avg_sales AS (
       SELECT AVG(quantity * list_price) AS average_sales
@@ -2057,9 +976,97 @@ queries:
         AND sold_date_d_moy = 11
       GROUP BY channel, item_i_brand_id, item_i_class_id, item_i_category_id
       HAVING SUM(quantity * list_price) > (SELECT average_sales FROM avg_sales)
-    ) y
+    ) AS y
     GROUP BY ROLLUP (channel, i_brand_id, i_class_id, i_category_id)
     ORDER BY channel, i_brand_id, i_class_id, i_category_id
+    LIMIT 100;
+    WITH cross_items AS (
+      SELECT
+        item_i_item_sk
+      FROM (
+        SELECT DISTINCT
+          item_i_item_sk,
+          item_i_brand_id,
+          item_i_class_id,
+          item_i_category_id
+        FROM tpcds_sales_returns_obt
+        WHERE item_i_item_sk IS NOT NULL
+      ) AS i
+      WHERE (item_i_brand_id, item_i_class_id, item_i_category_id) IN (
+        SELECT item_i_brand_id, item_i_class_id, item_i_category_id
+        FROM tpcds_sales_returns_obt
+        WHERE channel = 'store' AND sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
+        INTERSECT
+        SELECT item_i_brand_id, item_i_class_id, item_i_category_id
+        FROM tpcds_sales_returns_obt
+        WHERE channel = 'catalog' AND sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
+        INTERSECT
+        SELECT item_i_brand_id, item_i_class_id, item_i_category_id
+        FROM tpcds_sales_returns_obt
+        WHERE channel = 'web' AND sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
+      )
+    ),
+    avg_sales AS (
+      SELECT AVG(quantity * list_price) AS average_sales
+      FROM tpcds_sales_returns_obt
+      WHERE sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
+    ),
+    weekly AS (
+      SELECT
+        sold_date_d_week_seq AS week_seq,
+        item_i_brand_id AS i_brand_id,
+        item_i_class_id AS i_class_id,
+        item_i_category_id AS i_category_id,
+        SUM(quantity * list_price) AS sales,
+        COUNT(*) AS number_sales
+      FROM tpcds_sales_returns_obt
+      WHERE channel = 'store'
+        AND item_sk IN (SELECT item_i_item_sk FROM cross_items)
+        AND sold_date_d_week_seq IN (
+          SELECT DISTINCT sold_date_d_week_seq
+          FROM tpcds_sales_returns_obt
+          WHERE sold_date_d_year IN ([YEAR], [YEAR] + 1)
+            AND sold_date_d_moy = 12
+            AND sold_date_d_dom = [DAY]
+        )
+      GROUP BY sold_date_d_week_seq, item_i_brand_id, item_i_class_id, item_i_category_id
+      HAVING SUM(quantity * list_price) > (SELECT average_sales FROM avg_sales)
+    )
+    SELECT
+      this_year.channel AS ty_channel,
+      this_year.i_brand_id AS ty_brand,
+      this_year.i_class_id AS ty_class,
+      this_year.i_category_id AS ty_category,
+      this_year.sales AS ty_sales,
+      this_year.number_sales AS ty_number_sales,
+      last_year.channel AS ly_channel,
+      last_year.i_brand_id AS ly_brand,
+      last_year.i_class_id AS ly_class,
+      last_year.i_category_id AS ly_category,
+      last_year.sales AS ly_sales,
+      last_year.number_sales AS ly_number_sales
+    FROM (
+      SELECT 'store' AS channel, w.*
+      FROM weekly AS w
+      WHERE week_seq = (
+        SELECT DISTINCT sold_date_d_week_seq
+        FROM tpcds_sales_returns_obt
+        WHERE sold_date_d_year = [YEAR] + 1 AND sold_date_d_moy = 12 AND sold_date_d_dom = [DAY]
+      )
+    ) AS this_year,
+    (
+      SELECT 'store' AS channel, w.*
+      FROM weekly AS w
+      WHERE week_seq = (
+        SELECT DISTINCT sold_date_d_week_seq
+        FROM tpcds_sales_returns_obt
+        WHERE sold_date_d_year = [YEAR] AND sold_date_d_moy = 12 AND sold_date_d_dom = [DAY]
+      )
+    ) AS last_year
+    WHERE this_year.i_brand_id = last_year.i_brand_id
+      AND this_year.i_class_id = last_year.i_class_id
+      AND this_year.i_category_id = last_year.i_category_id
+    ORDER BY this_year.channel, this_year.i_brand_id, this_year.i_class_id, this_year.i_category_id
     LIMIT 100
 - id: 15
   template: query15.tpl
@@ -2071,26 +1078,23 @@ queries:
     - 1
   sql: |-
     SELECT
-      obt.bill_addr_ca_zip,
-      SUM(obt.sales_price)
-    FROM tpcds_sales_returns_obt AS obt
+      bill_cur_addr_ca_zip AS ca_zip,
+      SUM(sales_price)
+    FROM tpcds_sales_returns_obt
     WHERE
-      (
-        obt.bill_customer_sk = obt.bill_customer_c_customer_sk
-        AND (
-          SUBSTRING(obt.bill_addr_ca_zip, 1, 5) IN ('85669', '86197', '88274', '83405', '86475', '85392', '85460', '80348', '81792')
-          OR obt.bill_addr_ca_state IN ('CA', 'WA', 'GA')
-          OR obt.sales_price > 500
-        )
-        AND obt.sold_date_sk = obt.sold_date_d_date_sk
-        AND obt.sold_date_d_qoy = [QOY]
-        AND obt.sold_date_d_year = [YEAR]
+      channel = 'catalog'
+      AND bill_cur_addr_ca_address_sk IS NOT NULL
+      AND (
+        SUBSTRING(bill_cur_addr_ca_zip, 1, 5) IN ('85669', '86197', '88274', '83405', '86475', '85392', '85460', '80348', '81792')
+        OR bill_cur_addr_ca_state IN ('CA', 'WA', 'GA')
+        OR sales_price > 500
       )
-      AND channel = 'catalog'
+      AND sold_date_d_qoy = [QOY]
+      AND sold_date_d_year = [YEAR]
     GROUP BY
-      obt.bill_addr_ca_zip
+      bill_cur_addr_ca_zip
     ORDER BY
-      obt.bill_addr_ca_zip
+      ca_zip
     LIMIT 100
 - id: 16
   template: query16.tpl
@@ -2152,47 +1156,43 @@ queries:
     - 1
   sql: |-
     SELECT
-      obt.item_i_item_id,
-      obt.item_i_item_desc,
-      obt.store_s_state,
-      COUNT(obt.quantity) AS store_sales_quantitycount,
-      AVG(obt.quantity) AS store_sales_quantityave,
-      STDDEV_SAMP(obt.quantity) AS store_sales_quantitystdev,
-      STDDEV_SAMP(obt.quantity) / AVG(obt.quantity) AS store_sales_quantitycov,
-      COUNT(obt.return_quantity) AS store_returns_quantitycount,
-      AVG(obt.return_quantity) AS store_returns_quantityave,
-      STDDEV_SAMP(obt.return_quantity) AS store_returns_quantitystdev,
-      STDDEV_SAMP(obt.return_quantity) / AVG(obt.return_quantity) AS store_returns_quantitycov,
-      COUNT(obt.quantity) AS catalog_sales_quantitycount,
-      AVG(obt.quantity) AS catalog_sales_quantityave,
-      STDDEV_SAMP(obt.quantity) AS catalog_sales_quantitystdev,
-      STDDEV_SAMP(obt.quantity) / AVG(obt.quantity) AS catalog_sales_quantitycov
-    FROM tpcds_sales_returns_obt AS obt
+      s.item_i_item_id AS i_item_id,
+      s.item_i_item_desc AS i_item_desc,
+      s.store_s_state AS s_state,
+      COUNT(s.quantity) AS store_sales_quantitycount,
+      AVG(s.quantity) AS store_sales_quantityave,
+      STDDEV_SAMP(s.quantity) AS store_sales_quantitystdev,
+      STDDEV_SAMP(s.quantity) / AVG(s.quantity) AS store_sales_quantitycov,
+      COUNT(s.return_quantity) AS store_returns_quantitycount,
+      AVG(s.return_quantity) AS store_returns_quantityave,
+      STDDEV_SAMP(s.return_quantity) AS store_returns_quantitystdev,
+      STDDEV_SAMP(s.return_quantity) / AVG(s.return_quantity) AS store_returns_quantitycov,
+      COUNT(c.quantity) AS catalog_sales_quantitycount,
+      AVG(c.quantity) AS catalog_sales_quantityave,
+      STDDEV_SAMP(c.quantity) AS catalog_sales_quantitystdev,
+      STDDEV_SAMP(c.quantity) / AVG(c.quantity) AS catalog_sales_quantitycov
+    FROM tpcds_sales_returns_obt AS s
+    JOIN tpcds_sales_returns_obt AS c
+      ON c.bill_customer_sk = s.returning_customer_c_customer_sk
+      AND c.item_sk = s.item_sk
     WHERE
-      (
-        obt.sold_date_d_quarter_name = '[YEAR]Q1'
-        AND obt.sold_date_d_date_sk = obt.sold_date_sk
-        AND obt.item_i_item_sk = obt.item_sk
-        AND obt.store_s_store_sk = obt.store_sk
-        AND obt.ship_customer_sk = obt.returning_customer_c_customer_sk
-        AND obt.item_sk = obt.item_sk
-        AND obt.sale_id = obt.sale_id
-        AND obt.returned_date_sk = obt.return_date_d_date_sk
-        AND obt.return_date_d_quarter_name IN ('[YEAR]Q1', '[YEAR]Q2', '[YEAR]Q3')
-        AND obt.returning_customer_c_customer_sk = obt.bill_customer_sk
-        AND obt.item_sk = obt.item_sk
-        AND obt.sold_date_sk = obt.sold_date_d_date_sk
-        AND obt.sold_date_d_quarter_name IN ('[YEAR]Q1', '[YEAR]Q2', '[YEAR]Q3')
-      )
-      AND channel IN ('catalog', 'store')
+      s.channel = 'store'
+      AND s.has_return = 'Y'
+      AND c.channel = 'catalog'
+      AND s.sold_date_d_quarter_name = '[YEAR]Q1'
+      AND s.item_i_item_sk IS NOT NULL
+      AND s.store_s_store_sk IS NOT NULL
+      AND s.bill_customer_sk = s.returning_customer_c_customer_sk
+      AND s.return_date_d_quarter_name IN ('[YEAR]Q1', '[YEAR]Q2', '[YEAR]Q3')
+      AND c.sold_date_d_quarter_name IN ('[YEAR]Q1', '[YEAR]Q2', '[YEAR]Q3')
     GROUP BY
-      obt.item_i_item_id,
-      obt.item_i_item_desc,
-      obt.store_s_state
+      s.item_i_item_id,
+      s.item_i_item_desc,
+      s.store_s_state
     ORDER BY
-      obt.item_i_item_id,
-      obt.item_i_item_desc,
-      obt.store_s_state
+      s.item_i_item_id,
+      s.item_i_item_desc,
+      s.store_s_state
     LIMIT 100
 - id: 18
   template: query18.tpl
@@ -2221,43 +1221,40 @@ queries:
     - 1
   sql: |-
     SELECT
-      obt.item_i_item_id,
-      obt.bill_addr_ca_country,
-      obt.bill_addr_ca_state,
-      obt.bill_addr_ca_county,
-      AVG(CAST(obt.quantity AS DECIMAL(12, 2))) AS agg1,
-      AVG(CAST(obt.list_price AS DECIMAL(12, 2))) AS agg2,
-      AVG(CAST(obt.coupon_amt AS DECIMAL(12, 2))) AS agg3,
-      AVG(CAST(obt.sales_price AS DECIMAL(12, 2))) AS agg4,
-      AVG(CAST(obt.net_profit AS DECIMAL(12, 2))) AS agg5,
-      AVG(CAST(obt.bill_customer_c_birth_year AS DECIMAL(12, 2))) AS agg6,
-      AVG(CAST(obt.bill_cdemo_cd_dep_count AS DECIMAL(12, 2))) AS agg7
-    FROM tpcds_sales_returns_obt AS obt
+      item_i_item_id AS i_item_id,
+      bill_cur_addr_ca_country AS ca_country,
+      bill_cur_addr_ca_state AS ca_state,
+      bill_cur_addr_ca_county AS ca_county,
+      AVG(CAST(quantity AS DECIMAL(12, 2))) AS agg1,
+      AVG(CAST(list_price AS DECIMAL(12, 2))) AS agg2,
+      AVG(CAST(coupon_amt AS DECIMAL(12, 2))) AS agg3,
+      AVG(CAST(sales_price AS DECIMAL(12, 2))) AS agg4,
+      AVG(CAST(net_profit AS DECIMAL(12, 2))) AS agg5,
+      AVG(CAST(bill_customer_c_birth_year AS DECIMAL(12, 2))) AS agg6,
+      AVG(CAST(bill_cdemo_cd_dep_count AS DECIMAL(12, 2))) AS agg7
+    FROM tpcds_sales_returns_obt
     WHERE
-      (
-        obt.sold_date_sk = obt.sold_date_d_date_sk
-        AND obt.item_sk = obt.item_i_item_sk
-        AND obt.bill_cdemo_sk = obt.bill_cdemo_cd_demo_sk
-        AND obt.bill_customer_sk = obt.bill_customer_c_customer_sk
-        AND obt.bill_cdemo_cd_gender = '[GEN]'
-        AND obt.bill_cdemo_cd_education_status = '[ES]'
-        AND obt.bill_customer_c_birth_month IN ([MONTH], [MONTH.2], [MONTH.3], [MONTH.4], [MONTH.5], [MONTH.6])
-        AND obt.sold_date_d_year = [YEAR]
-        AND obt.bill_addr_ca_state IN ('[STATE]', '[STATE.2]', '[STATE.3]', '[STATE.4]', '[STATE.5]', '[STATE.6]', '[STATE.7]')
-      )
-      AND channel = 'catalog'
+      channel = 'catalog'
+      AND sold_date_d_year = [YEAR]
+      AND item_i_item_sk IS NOT NULL
+      AND bill_cdemo_cd_gender = '[GEN]'
+      AND bill_cdemo_cd_education_status = '[ES]'
+      AND bill_cur_cdemo_cd_demo_sk IS NOT NULL
+      AND bill_cur_addr_ca_address_sk IS NOT NULL
+      AND bill_customer_c_birth_month IN ([MONTH], [MONTH.2], [MONTH.3], [MONTH.4], [MONTH.5], [MONTH.6])
+      AND bill_cur_addr_ca_state IN ('[STATE]', '[STATE.2]', '[STATE.3]', '[STATE.4]', '[STATE.5]', '[STATE.6]', '[STATE.7]')
     GROUP BY
       ROLLUP (
-        obt.item_i_item_id,
-        obt.bill_addr_ca_country,
-        obt.bill_addr_ca_state,
-        obt.bill_addr_ca_county
+        item_i_item_id,
+        bill_cur_addr_ca_country,
+        bill_cur_addr_ca_state,
+        bill_cur_addr_ca_county
       )
     ORDER BY
-      obt.bill_addr_ca_country,
-      obt.bill_addr_ca_state,
-      obt.bill_addr_ca_county,
-      obt.item_i_item_id
+      ca_country,
+      ca_state,
+      ca_county,
+      i_item_id
     LIMIT 100
 - id: 19
   template: query19.tpl
@@ -2272,35 +1269,31 @@ queries:
     - 1
   sql: |-
     SELECT
-      obt.item_i_brand_id AS brand_id,
-      obt.item_i_brand AS brand,
-      obt.item_i_manufact_id,
-      obt.item_i_manufact,
-      SUM(obt.ext_sales_price) AS ext_price
-    FROM tpcds_sales_returns_obt AS obt
+      item_i_brand_id AS brand_id,
+      item_i_brand AS brand,
+      item_i_manufact_id AS i_manufact_id,
+      item_i_manufact AS i_manufact,
+      SUM(ext_sales_price) AS ext_price
+    FROM tpcds_sales_returns_obt
     WHERE
-      (
-        obt.sold_date_d_date_sk = obt.sold_date_sk
-        AND obt.item_sk = obt.item_i_item_sk
-        AND obt.item_i_manager_id = [MANAGER]
-        AND obt.sold_date_d_moy = [MONTH]
-        AND obt.sold_date_d_year = [YEAR]
-        AND obt.ship_customer_sk = obt.bill_customer_c_customer_sk
-        AND SUBSTRING(obt.bill_addr_ca_zip, 1, 5) <> SUBSTRING(obt.store_s_zip, 1, 5)
-        AND obt.store_sk = obt.store_s_store_sk
-      )
-      AND channel = 'store'
+      channel = 'store'
+      AND item_i_manager_id = [MANAGER]
+      AND sold_date_d_moy = [MONTH]
+      AND sold_date_d_year = [YEAR]
+      AND bill_cur_addr_ca_address_sk IS NOT NULL
+      AND store_s_store_sk IS NOT NULL
+      AND SUBSTRING(bill_cur_addr_ca_zip, 1, 5) <> SUBSTRING(store_s_zip, 1, 5)
     GROUP BY
-      obt.item_i_brand,
-      obt.item_i_brand_id,
-      obt.item_i_manufact_id,
-      obt.item_i_manufact
+      item_i_brand,
+      item_i_brand_id,
+      item_i_manufact_id,
+      item_i_manufact
     ORDER BY
       ext_price DESC NULLS FIRST,
-      obt.item_i_brand,
-      obt.item_i_brand_id,
-      obt.item_i_manufact_id,
-      obt.item_i_manufact
+      brand,
+      brand_id,
+      i_manufact_id,
+      i_manufact
     LIMIT 100
 - id: 20
   template: query20.tpl
@@ -2730,44 +1723,40 @@ queries:
   identifier_map: {}
   sql: |-
     SELECT
-      obt.item_i_item_id,
-      obt.item_i_item_desc,
-      obt.store_s_store_id,
-      obt.store_s_store_name,
-      [AGG](obt.net_profit) AS store_sales_profit,
-      [AGG](obt.return_net_loss) AS store_returns_loss,
-      [AGG](obt.net_profit) AS catalog_sales_profit
-    FROM tpcds_sales_returns_obt AS obt
+      s.item_i_item_id AS i_item_id,
+      s.item_i_item_desc AS i_item_desc,
+      s.store_s_store_id AS s_store_id,
+      s.store_s_store_name AS s_store_name,
+      [AGG](s.net_profit) AS store_sales_profit,
+      [AGG](s.return_net_loss) AS store_returns_loss,
+      [AGG](c.net_profit) AS catalog_sales_profit
+    FROM tpcds_sales_returns_obt AS s
+    JOIN tpcds_sales_returns_obt AS c
+      ON c.bill_customer_sk = s.returning_customer_c_customer_sk
+      AND c.item_sk = s.item_sk
     WHERE
-      (
-        obt.sold_date_d_moy = 4
-        AND obt.sold_date_d_year = [YEAR]
-        AND obt.sold_date_d_date_sk = obt.sold_date_sk
-        AND obt.item_i_item_sk = obt.item_sk
-        AND obt.store_s_store_sk = obt.store_sk
-        AND obt.ship_customer_sk = obt.returning_customer_c_customer_sk
-        AND obt.item_sk = obt.item_sk
-        AND obt.sale_id = obt.sale_id
-        AND obt.returned_date_sk = obt.return_date_d_date_sk
-        AND obt.return_date_d_moy BETWEEN 4 AND 10
-        AND obt.return_date_d_year = [YEAR]
-        AND obt.returning_customer_c_customer_sk = obt.bill_customer_sk
-        AND obt.item_sk = obt.item_sk
-        AND obt.sold_date_sk = obt.sold_date_d_date_sk
-        AND obt.sold_date_d_moy BETWEEN 4 AND 10
-        AND obt.sold_date_d_year = [YEAR]
-      )
-      AND channel IN ('catalog', 'store')
+      s.channel = 'store'
+      AND s.has_return = 'Y'
+      AND c.channel = 'catalog'
+      AND s.sold_date_d_moy = 4
+      AND s.sold_date_d_year = [YEAR]
+      AND s.item_i_item_sk IS NOT NULL
+      AND s.store_s_store_sk IS NOT NULL
+      AND s.bill_customer_sk = s.returning_customer_c_customer_sk
+      AND s.return_date_d_moy BETWEEN 4 AND 10
+      AND s.return_date_d_year = [YEAR]
+      AND c.sold_date_d_moy BETWEEN 4 AND 10
+      AND c.sold_date_d_year = [YEAR]
     GROUP BY
-      obt.item_i_item_id,
-      obt.item_i_item_desc,
-      obt.store_s_store_id,
-      obt.store_s_store_name
+      s.item_i_item_id,
+      s.item_i_item_desc,
+      s.store_s_store_id,
+      s.store_s_store_name
     ORDER BY
-      obt.item_i_item_id,
-      obt.item_i_item_desc,
-      obt.store_s_store_id,
-      obt.store_s_store_name
+      s.item_i_item_id,
+      s.item_i_item_desc,
+      s.store_s_store_id,
+      s.store_s_store_name
     LIMIT 100
 - id: 26
   template: query26.tpl
@@ -3007,43 +1996,39 @@ queries:
   identifier_map: {}
   sql: |-
     SELECT
-      obt.item_i_item_id,
-      obt.item_i_item_desc,
-      obt.store_s_store_id,
-      obt.store_s_store_name,
-      [AGG](obt.quantity) AS store_sales_quantity,
-      [AGG](obt.return_quantity) AS store_returns_quantity,
-      [AGG](obt.quantity) AS catalog_sales_quantity
-    FROM tpcds_sales_returns_obt AS obt
+      s.item_i_item_id AS i_item_id,
+      s.item_i_item_desc AS i_item_desc,
+      s.store_s_store_id AS s_store_id,
+      s.store_s_store_name AS s_store_name,
+      [AGG](s.quantity) AS store_sales_quantity,
+      [AGG](s.return_quantity) AS store_returns_quantity,
+      [AGG](c.quantity) AS catalog_sales_quantity
+    FROM tpcds_sales_returns_obt AS s
+    JOIN tpcds_sales_returns_obt AS c
+      ON c.bill_customer_sk = s.returning_customer_c_customer_sk
+      AND c.item_sk = s.item_sk
     WHERE
-      (
-        obt.sold_date_d_moy = [MONTH]
-        AND obt.sold_date_d_year = [YEAR]
-        AND obt.sold_date_d_date_sk = obt.sold_date_sk
-        AND obt.item_i_item_sk = obt.item_sk
-        AND obt.store_s_store_sk = obt.store_sk
-        AND obt.ship_customer_sk = obt.returning_customer_c_customer_sk
-        AND obt.item_sk = obt.item_sk
-        AND obt.sale_id = obt.sale_id
-        AND obt.returned_date_sk = obt.return_date_d_date_sk
-        AND obt.return_date_d_moy BETWEEN [MONTH] AND [MONTH] + 3
-        AND obt.return_date_d_year = [YEAR]
-        AND obt.returning_customer_c_customer_sk = obt.bill_customer_sk
-        AND obt.item_sk = obt.item_sk
-        AND obt.sold_date_sk = obt.sold_date_d_date_sk
-        AND obt.sold_date_d_year IN ([YEAR], [YEAR] + 1, [YEAR] + 2)
-      )
-      AND channel IN ('catalog', 'store')
+      s.channel = 'store'
+      AND s.has_return = 'Y'
+      AND c.channel = 'catalog'
+      AND s.sold_date_d_moy = [MONTH]
+      AND s.sold_date_d_year = [YEAR]
+      AND s.item_i_item_sk IS NOT NULL
+      AND s.store_s_store_sk IS NOT NULL
+      AND s.bill_customer_sk = s.returning_customer_c_customer_sk
+      AND s.return_date_d_moy BETWEEN [MONTH] AND [MONTH] + 3
+      AND s.return_date_d_year = [YEAR]
+      AND c.sold_date_d_year IN ([YEAR], [YEAR] + 1, [YEAR] + 2)
     GROUP BY
-      obt.item_i_item_id,
-      obt.item_i_item_desc,
-      obt.store_s_store_id,
-      obt.store_s_store_name
+      s.item_i_item_id,
+      s.item_i_item_desc,
+      s.store_s_store_id,
+      s.store_s_store_name
     ORDER BY
-      obt.item_i_item_id,
-      obt.item_i_item_desc,
-      obt.store_s_store_id,
-      obt.store_s_store_name
+      s.item_i_item_id,
+      s.item_i_item_desc,
+      s.store_s_store_id,
+      s.store_s_store_name
     LIMIT 100
 - id: 30
   template: query30.tpl
@@ -3056,63 +2041,79 @@ queries:
   sql: |-
     WITH customer_total_return AS (
       SELECT
-        obt.returning_customer_c_customer_sk AS ctr_customer_sk,
-        obt.returning_addr_ca_state AS ctr_state,
-        SUM(obt.return_amount) AS ctr_total_return
-      FROM tpcds_sales_returns_obt AS obt
+        returning_customer_c_customer_sk AS ctr_customer_sk,
+        returning_addr_ca_state AS ctr_state,
+        SUM(return_amount) AS ctr_total_return
+      FROM tpcds_sales_returns_obt
       WHERE
-        (
-          obt.returned_date_sk = obt.return_date_d_date_sk
-          AND obt.return_date_d_year = [YEAR]
-          AND obt.returning_addr_ca_address_sk = obt.returning_addr_ca_address_sk
-        )
-        AND channel = 'web'
+        channel = 'web'
+        AND has_return = 'Y'
+        AND return_date_d_year = [YEAR]
+        AND returning_addr_ca_address_sk IS NOT NULL
       GROUP BY
-        obt.returning_customer_c_customer_sk,
-        obt.returning_addr_ca_state
+        returning_customer_c_customer_sk,
+        returning_addr_ca_state
+    ), cust AS (
+      SELECT DISTINCT
+        returning_customer_c_customer_sk AS c_customer_sk,
+        returning_customer_c_customer_id AS c_customer_id,
+        returning_customer_c_salutation AS c_salutation,
+        returning_customer_c_first_name AS c_first_name,
+        returning_customer_c_last_name AS c_last_name,
+        returning_customer_c_preferred_cust_flag AS c_preferred_cust_flag,
+        returning_customer_c_birth_day AS c_birth_day,
+        returning_customer_c_birth_month AS c_birth_month,
+        returning_customer_c_birth_year AS c_birth_year,
+        returning_customer_c_birth_country AS c_birth_country,
+        returning_customer_c_login AS c_login,
+        returning_customer_c_email_address AS c_email_address,
+        returning_customer_c_last_review_date_sk AS c_last_review_date_sk,
+        returning_cur_addr_ca_state AS cur_state
+      FROM tpcds_sales_returns_obt
+      WHERE
+        channel = 'web'
+        AND has_return = 'Y'
+        AND returning_customer_c_customer_sk IS NOT NULL
     )
     SELECT
-      obt.bill_customer_c_customer_id,
-      obt.bill_customer_c_salutation,
-      obt.bill_customer_c_first_name,
-      obt.bill_customer_c_last_name,
-      obt.bill_customer_c_preferred_cust_flag,
-      obt.bill_customer_c_birth_day,
-      obt.bill_customer_c_birth_month,
-      obt.bill_customer_c_birth_year,
-      obt.bill_customer_c_birth_country,
-      obt.bill_customer_c_login,
-      obt.bill_customer_c_email_address,
-      obt.bill_customer_c_last_review_date_sk,
+      c_customer_id,
+      c_salutation,
+      c_first_name,
+      c_last_name,
+      c_preferred_cust_flag,
+      c_birth_day,
+      c_birth_month,
+      c_birth_year,
+      c_birth_country,
+      c_login,
+      c_email_address,
+      c_last_review_date_sk,
       ctr_total_return
-    FROM tpcds_sales_returns_obt AS obt
-    CROSS JOIN customer_total_return AS ctr1
+    FROM customer_total_return AS ctr1
+    JOIN cust
+      ON ctr1.ctr_customer_sk = cust.c_customer_sk
     WHERE
-      (
-        ctr1.ctr_total_return > (
-          SELECT
-            AVG(ctr_total_return) * 1.2
-          FROM customer_total_return AS ctr2
-          WHERE
-            ctr1.ctr_state = ctr2.ctr_state
-        )
-        AND obt.bill_addr_ca_state = '[STATE]'
-        AND ctr1.ctr_customer_sk = obt.bill_customer_c_customer_sk
+      ctr1.ctr_total_return > (
+        SELECT
+          AVG(ctr_total_return) * 1.2
+        FROM customer_total_return AS ctr2
+        WHERE
+          ctr1.ctr_state = ctr2.ctr_state
       )
-      AND channel = 'web'
+      AND cust.cur_state = '[STATE]'
     ORDER BY
-      obt.bill_customer_c_customer_id,
-      obt.bill_customer_c_salutation,
-      obt.bill_customer_c_first_name,
-      obt.bill_customer_c_last_name,
-      obt.bill_customer_c_preferred_cust_flag,
-      obt.bill_customer_c_birth_day,
-      obt.bill_customer_c_birth_month,
-      obt.bill_customer_c_birth_year,
-      obt.bill_customer_c_birth_country,
-      obt.bill_customer_c_login,
-      obt.bill_customer_c_email_address,
-      obt.bill_customer_c_last_review_date_sk,
+      c_customer_id,
+      c_salutation,
+      c_first_name,
+      c_last_name,
+      c_preferred_cust_flag,
+      c_birth_day,
+      c_birth_month,
+      c_birth_year,
+      c_birth_country,
+      c_login,
+      c_email_address,
+      c_last_review_date_sk,
       ctr_total_return
     LIMIT 100
 - id: 31
@@ -3203,32 +2204,25 @@ queries:
     YEAR: []
   sql: |-
     SELECT
-      SUM(obt.ext_discount_amt) AS "excess discount amount"
-    FROM tpcds_sales_returns_obt AS obt
+      SUM(o.ext_discount_amt) AS "excess discount amount"
+    FROM tpcds_sales_returns_obt AS o
     WHERE
-      (
-        obt.item_i_manufact_id = [IMID]
-        AND obt.item_i_item_sk = obt.item_sk
-        AND obt.sold_date_d_date BETWEEN '[CSDATE]' AND (
-          CAST('[CSDATE]' AS DATE) + INTERVAL 90 DAY
-        )
-        AND obt.sold_date_d_date_sk = obt.sold_date_sk
-        AND obt.ext_discount_amt > (
-          SELECT
-            1.3 * AVG(obt.ext_discount_amt)
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            (
-              obt.item_sk = obt.item_i_item_sk
-              AND obt.sold_date_d_date BETWEEN '[CSDATE]' AND (
-                CAST('[CSDATE]' AS DATE) + INTERVAL 90 DAY
-              )
-              AND obt.sold_date_d_date_sk = obt.sold_date_sk
-            )
-            AND channel = 'catalog'
-        )
+      o.channel = 'catalog'
+      AND o.item_i_manufact_id = [IMID]
+      AND o.sold_date_d_date BETWEEN '[CSDATE]' AND (
+        CAST('[CSDATE]' AS DATE) + INTERVAL 90 DAY
       )
-      AND channel = 'catalog'
+      AND o.ext_discount_amt > (
+        SELECT
+          1.3 * AVG(i.ext_discount_amt)
+        FROM tpcds_sales_returns_obt AS i
+        WHERE
+          i.channel = 'catalog'
+          AND i.item_sk = o.item_i_item_sk
+          AND i.sold_date_d_date BETWEEN '[CSDATE]' AND (
+            CAST('[CSDATE]' AS DATE) + INTERVAL 90 DAY
+          )
+      )
     LIMIT 100
 - id: 33
   template: query33.tpl
@@ -3377,68 +2371,69 @@ queries:
   identifier_map: {}
   sql: |-
     SELECT
-      obt.bill_customer_c_last_name,
-      obt.bill_customer_c_first_name,
-      obt.bill_customer_c_salutation,
-      obt.bill_customer_c_preferred_cust_flag,
-      obt.sale_id,
+      c_last_name,
+      c_first_name,
+      c_salutation,
+      c_preferred_cust_flag,
+      ss_ticket_number,
       cnt
-    FROM tpcds_sales_returns_obt AS obt
-    CROSS JOIN (
+    FROM (
       SELECT
-        sub_obt.sale_id AS dn_sale_id,
-        sub_obt.ship_customer_sk AS dn_ship_customer_sk,
+        sale_id AS ss_ticket_number,
+        bill_customer_c_customer_sk AS cust_sk,
+        bill_customer_c_last_name AS c_last_name,
+        bill_customer_c_first_name AS c_first_name,
+        bill_customer_c_salutation AS c_salutation,
+        bill_customer_c_preferred_cust_flag AS c_preferred_cust_flag,
         COUNT(*) AS cnt
-      FROM tpcds_sales_returns_obt AS sub_obt
+      FROM tpcds_sales_returns_obt
       WHERE
-        (
-          sub_obt.sold_date_sk = obt.sold_date_d_date_sk
-          AND obt.store_sk = obt.store_s_store_sk
-          AND sub_obt.ship_hdemo_sk = obt.bill_hdemo_hd_demo_sk
-          AND (
-            obt.sold_date_d_dom BETWEEN 1 AND 3 OR obt.sold_date_d_dom BETWEEN 25 AND 28
-          )
-          AND (
-            obt.bill_hdemo_hd_buy_potential = '[BPONE]'
-            OR obt.bill_hdemo_hd_buy_potential = '[BPTWO]'
-          )
-          AND obt.bill_hdemo_hd_vehicle_count > 0
-          AND (
-            CASE
-              WHEN obt.bill_hdemo_hd_vehicle_count > 0
-              THEN obt.bill_hdemo_hd_dep_count / obt.bill_hdemo_hd_vehicle_count
-              ELSE NULL
-            END
-          ) > 1.2
-          AND obt.sold_date_d_year IN ([YEAR], [YEAR] + 1, [YEAR] + 2)
-          AND obt.store_s_county IN (
-            '[COUNTY_A]',
-            '[COUNTY_B]',
-            '[COUNTY_C]',
-            '[COUNTY_D]',
-            '[COUNTY_E]',
-            '[COUNTY_F]',
-            '[COUNTY_G]',
-            '[COUNTY_H]'
-          )
+        channel = 'store'
+        AND sold_date_d_date_sk IS NOT NULL
+        AND store_s_store_sk IS NOT NULL
+        AND bill_hdemo_hd_demo_sk IS NOT NULL
+        AND (
+          sold_date_d_dom BETWEEN 1 AND 3 OR sold_date_d_dom BETWEEN 25 AND 28
         )
-        AND channel = 'store'
+        AND (
+          bill_hdemo_hd_buy_potential = '[BPONE]' OR bill_hdemo_hd_buy_potential = '[BPTWO]'
+        )
+        AND bill_hdemo_hd_vehicle_count > 0
+        AND (
+          CASE
+            WHEN bill_hdemo_hd_vehicle_count > 0
+            THEN bill_hdemo_hd_dep_count / bill_hdemo_hd_vehicle_count
+            ELSE NULL
+          END
+        ) > 1.2
+        AND sold_date_d_year IN ([YEAR], [YEAR] + 1, [YEAR] + 2)
+        AND store_s_county IN (
+          '[COUNTY_A]',
+          '[COUNTY_B]',
+          '[COUNTY_C]',
+          '[COUNTY_D]',
+          '[COUNTY_E]',
+          '[COUNTY_F]',
+          '[COUNTY_G]',
+          '[COUNTY_H]'
+        )
       GROUP BY
-        sub_obt.sale_id,
-        sub_obt.ship_customer_sk
+        sale_id,
+        bill_customer_sk,
+        bill_customer_c_customer_sk,
+        bill_customer_c_last_name,
+        bill_customer_c_first_name,
+        bill_customer_c_salutation,
+        bill_customer_c_preferred_cust_flag
     ) AS dn
     WHERE
-      obt.sale_id = dn.dn_sale_id AND obt.ship_customer_sk = dn.dn_ship_customer_sk AND
-      (
-        obt.ship_customer_sk = obt.bill_customer_c_customer_sk AND cnt BETWEEN 15 AND 20
-      )
-      AND channel = 'store'
+      cust_sk IS NOT NULL AND cnt BETWEEN 15 AND 20
     ORDER BY
-      obt.bill_customer_c_last_name,
-      obt.bill_customer_c_first_name,
-      obt.bill_customer_c_salutation,
-      obt.bill_customer_c_preferred_cust_flag DESC NULLS FIRST,
-      obt.sale_id
+      c_last_name,
+      c_first_name,
+      c_salutation,
+      c_preferred_cust_flag DESC NULLS FIRST,
+      ss_ticket_number
 - id: 35
   template: query35.tpl
   template_sha256: e02104bb39c696768aa5bbeed537f052f5397535525ee83c03cfca37a9f56574
@@ -3457,73 +2452,77 @@ queries:
   - AGGTWO
   identifier_map: {}
   sql: |-
+    WITH c AS (
+      SELECT DISTINCT
+        bill_customer_c_customer_sk AS c_customer_sk,
+        bill_cur_addr_ca_state AS ca_state,
+        bill_cur_cdemo_cd_gender AS cd_gender,
+        bill_cur_cdemo_cd_marital_status AS cd_marital_status,
+        bill_cur_cdemo_cd_dep_count AS cd_dep_count,
+        bill_cur_cdemo_cd_dep_employed_count AS cd_dep_employed_count,
+        bill_cur_cdemo_cd_dep_college_count AS cd_dep_college_count
+      FROM tpcds_sales_returns_obt
+      WHERE
+        channel = 'store'
+        AND bill_customer_c_customer_sk IS NOT NULL
+        AND sold_date_d_year = [YEAR]
+        AND sold_date_d_qoy < 4
+        AND bill_cur_addr_ca_address_sk IS NOT NULL
+        AND bill_cur_cdemo_cd_demo_sk IS NOT NULL
+    )
     SELECT
-      obt.bill_addr_ca_state,
-      obt.bill_cdemo_cd_gender,
-      obt.bill_cdemo_cd_marital_status,
-      obt.bill_cdemo_cd_dep_count,
+      ca_state,
+      cd_gender,
+      cd_marital_status,
+      cd_dep_count,
       COUNT(*) AS cnt1,
-      [AGGONE](obt.bill_cdemo_cd_dep_count) AS aggone1,
-      [AGGTWO](obt.bill_cdemo_cd_dep_count) AS aggtwo1,
-      [AGGTHREE](obt.bill_cdemo_cd_dep_count) AS aggthree1,
-      obt.bill_cdemo_cd_dep_employed_count,
+      [AGGONE](cd_dep_count) AS aggone1,
+      [AGGTWO](cd_dep_count) AS aggtwo1,
+      [AGGTHREE](cd_dep_count) AS aggthree1,
+      cd_dep_employed_count,
       COUNT(*) AS cnt2,
-      [AGGONE](obt.bill_cdemo_cd_dep_employed_count) AS aggone2,
-      [AGGTWO](obt.bill_cdemo_cd_dep_employed_count) AS aggtwo2,
-      [AGGTHREE](obt.bill_cdemo_cd_dep_employed_count) AS aggthree2,
-      obt.bill_cdemo_cd_dep_college_count,
+      [AGGONE](cd_dep_employed_count) AS aggone2,
+      [AGGTWO](cd_dep_employed_count) AS aggtwo2,
+      [AGGTHREE](cd_dep_employed_count) AS aggthree2,
+      cd_dep_college_count,
       COUNT(*) AS cnt3,
-      [AGGONE](obt.bill_cdemo_cd_dep_college_count) AS aggone3,
-      [AGGTWO](obt.bill_cdemo_cd_dep_college_count) AS aggtwo3,
-      [AGGTHREE](obt.bill_cdemo_cd_dep_college_count) AS aggthree3
-    FROM tpcds_sales_returns_obt AS obt
+      [AGGONE](cd_dep_college_count) AS aggone3,
+      [AGGTWO](cd_dep_college_count) AS aggtwo3,
+      [AGGTHREE](cd_dep_college_count) AS aggthree3
+    FROM c
     WHERE
-      (
-        EXISTS(
-          SELECT
-            *
-          FROM tpcds_sales_returns_obt AS ex_obt WHERE ( ex_obt.bill_customer_c_customer_sk = obt.bill_customer_c_customer_sk
-              AND ex_obt.sold_date_sk = ex_obt.sold_date_d_date_sk
-              AND ex_obt.sold_date_d_year = [YEAR]
-              AND ex_obt.sold_date_d_qoy < 4
-            ) AND ex_obt.channel = 'store'
-        )
-        AND (
-          EXISTS(
-            SELECT
-              *
-            FROM tpcds_sales_returns_obt AS ex_obt WHERE ( ex_obt.bill_customer_c_customer_sk = obt.bill_customer_c_customer_sk
-                AND ex_obt.sold_date_sk = ex_obt.sold_date_d_date_sk
-                AND ex_obt.sold_date_d_year = [YEAR]
-                AND ex_obt.sold_date_d_qoy < 4
-              ) AND ex_obt.channel = 'web'
-          )
-          OR EXISTS(
-            SELECT
-              *
-            FROM tpcds_sales_returns_obt AS ex_obt WHERE ( ex_obt.bill_customer_c_customer_sk = obt.bill_customer_c_customer_sk
-                AND ex_obt.sold_date_sk = ex_obt.sold_date_d_date_sk
-                AND ex_obt.sold_date_d_year = [YEAR]
-                AND ex_obt.sold_date_d_qoy < 4
-              ) AND ex_obt.channel = 'catalog'
-          )
-        )
+      EXISTS(
+        SELECT 1
+        FROM tpcds_sales_returns_obt AS w
+        WHERE
+          w.channel = 'web'
+          AND w.bill_customer_sk = c.c_customer_sk
+          AND w.sold_date_d_year = [YEAR]
+          AND w.sold_date_d_qoy < 4
       )
-      AND channel IN ('catalog', 'store', 'web')
+      OR EXISTS(
+        SELECT 1
+        FROM tpcds_sales_returns_obt AS k
+        WHERE
+          k.channel = 'catalog'
+          AND k.ship_customer_sk = c.c_customer_sk
+          AND k.sold_date_d_year = [YEAR]
+          AND k.sold_date_d_qoy < 4
+      )
     GROUP BY
-      obt.bill_addr_ca_state,
-      obt.bill_cdemo_cd_gender,
-      obt.bill_cdemo_cd_marital_status,
-      obt.bill_cdemo_cd_dep_count,
-      obt.bill_cdemo_cd_dep_employed_count,
-      obt.bill_cdemo_cd_dep_college_count
+      ca_state,
+      cd_gender,
+      cd_marital_status,
+      cd_dep_count,
+      cd_dep_employed_count,
+      cd_dep_college_count
     ORDER BY
-      obt.bill_addr_ca_state,
-      obt.bill_cdemo_cd_gender,
-      obt.bill_cdemo_cd_marital_status,
-      obt.bill_cdemo_cd_dep_count,
-      obt.bill_cdemo_cd_dep_employed_count,
-      obt.bill_cdemo_cd_dep_college_count
+      ca_state,
+      cd_gender,
+      cd_marital_status,
+      cd_dep_count,
+      cd_dep_employed_count,
+      cd_dep_college_count
     LIMIT 100
 - id: 36
   template: query36.tpl
@@ -3735,127 +2734,141 @@ queries:
     - 15
     - 16
   sql: |-
+    WITH item AS (
+      SELECT DISTINCT
+        item_i_item_sk,
+        item_i_manufact_id,
+        item_i_manufact,
+        item_i_product_name,
+        item_i_category,
+        item_i_color,
+        item_i_units,
+        item_i_size
+      FROM tpcds_sales_returns_obt
+      WHERE
+        item_i_item_sk IS NOT NULL
+    )
     SELECT DISTINCT
       (
-        obt.item_i_product_name
-      )
-    FROM tpcds_sales_returns_obt AS obt
+        i1.item_i_product_name
+      ) AS i_product_name
+    FROM item AS i1
     WHERE
-      obt.item_i_manufact_id BETWEEN [MANUFACT] AND [MANUFACT] + 40
+      i1.item_i_manufact_id BETWEEN [MANUFACT] AND [MANUFACT] + 40
       AND (
         SELECT
           COUNT(*) AS item_cnt
-        FROM tpcds_sales_returns_obt AS obt
+        FROM item
         WHERE
           (
-            obt.item_i_manufact = obt.item_i_manufact
+            item_i_manufact = i1.item_i_manufact
             AND (
               (
-                obt.item_i_category = 'Women'
+                item_i_category = 'Women'
                 AND (
-                  obt.item_i_color = '[COLOR]' OR obt.item_i_color = '[COLOR.2]'
+                  item_i_color = '[COLOR]' OR item_i_color = '[COLOR.2]'
                 )
                 AND (
-                  obt.item_i_units = '[UNIT]' OR obt.item_i_units = '[UNIT.2]'
+                  item_i_units = '[UNIT]' OR item_i_units = '[UNIT.2]'
                 )
                 AND (
-                  obt.item_i_size = '[SIZE]' OR obt.item_i_size = '[SIZE.2]'
-                )
-              )
-              OR (
-                obt.item_i_category = 'Women'
-                AND (
-                  obt.item_i_color = '[COLOR.3]' OR obt.item_i_color = '[COLOR.4]'
-                )
-                AND (
-                  obt.item_i_units = '[UNIT.3]' OR obt.item_i_units = '[UNIT.4]'
-                )
-                AND (
-                  obt.item_i_size = '[SIZE.3]' OR obt.item_i_size = '[SIZE.4]'
+                  item_i_size = '[SIZE]' OR item_i_size = '[SIZE.2]'
                 )
               )
               OR (
-                obt.item_i_category = 'Men'
+                item_i_category = 'Women'
                 AND (
-                  obt.item_i_color = '[COLOR.5]' OR obt.item_i_color = '[COLOR.6]'
+                  item_i_color = '[COLOR.3]' OR item_i_color = '[COLOR.4]'
                 )
                 AND (
-                  obt.item_i_units = '[UNIT.5]' OR obt.item_i_units = '[UNIT.6]'
+                  item_i_units = '[UNIT.3]' OR item_i_units = '[UNIT.4]'
                 )
                 AND (
-                  obt.item_i_size = '[SIZE.5]' OR obt.item_i_size = '[SIZE.6]'
+                  item_i_size = '[SIZE.3]' OR item_i_size = '[SIZE.4]'
                 )
               )
               OR (
-                obt.item_i_category = 'Men'
+                item_i_category = 'Men'
                 AND (
-                  obt.item_i_color = '[COLOR.7]' OR obt.item_i_color = '[COLOR.8]'
+                  item_i_color = '[COLOR.5]' OR item_i_color = '[COLOR.6]'
                 )
                 AND (
-                  obt.item_i_units = '[UNIT.7]' OR obt.item_i_units = '[UNIT.8]'
+                  item_i_units = '[UNIT.5]' OR item_i_units = '[UNIT.6]'
                 )
                 AND (
-                  obt.item_i_size = '[SIZE]' OR obt.item_i_size = '[SIZE.2]'
+                  item_i_size = '[SIZE.5]' OR item_i_size = '[SIZE.6]'
+                )
+              )
+              OR (
+                item_i_category = 'Men'
+                AND (
+                  item_i_color = '[COLOR.7]' OR item_i_color = '[COLOR.8]'
+                )
+                AND (
+                  item_i_units = '[UNIT.7]' OR item_i_units = '[UNIT.8]'
+                )
+                AND (
+                  item_i_size = '[SIZE]' OR item_i_size = '[SIZE.2]'
                 )
               )
             )
           )
           OR (
-            obt.item_i_manufact = obt.item_i_manufact
+            item_i_manufact = i1.item_i_manufact
             AND (
               (
-                obt.item_i_category = 'Women'
+                item_i_category = 'Women'
                 AND (
-                  obt.item_i_color = '[COLOR.9]' OR obt.item_i_color = '[COLOR.10]'
+                  item_i_color = '[COLOR.9]' OR item_i_color = '[COLOR.10]'
                 )
                 AND (
-                  obt.item_i_units = '[UNIT.9]' OR obt.item_i_units = '[UNIT.10]'
+                  item_i_units = '[UNIT.9]' OR item_i_units = '[UNIT.10]'
                 )
                 AND (
-                  obt.item_i_size = '[SIZE]' OR obt.item_i_size = '[SIZE.2]'
-                )
-              )
-              OR (
-                obt.item_i_category = 'Women'
-                AND (
-                  obt.item_i_color = '[COLOR.11]' OR obt.item_i_color = '[COLOR.12]'
-                )
-                AND (
-                  obt.item_i_units = '[UNIT.11]' OR obt.item_i_units = '[UNIT.12]'
-                )
-                AND (
-                  obt.item_i_size = '[SIZE.3]' OR obt.item_i_size = '[SIZE.4]'
+                  item_i_size = '[SIZE]' OR item_i_size = '[SIZE.2]'
                 )
               )
               OR (
-                obt.item_i_category = 'Men'
+                item_i_category = 'Women'
                 AND (
-                  obt.item_i_color = '[COLOR.13]' OR obt.item_i_color = '[COLOR.14]'
+                  item_i_color = '[COLOR.11]' OR item_i_color = '[COLOR.12]'
                 )
                 AND (
-                  obt.item_i_units = '[UNIT.13]' OR obt.item_i_units = '[UNIT.14]'
+                  item_i_units = '[UNIT.11]' OR item_i_units = '[UNIT.12]'
                 )
                 AND (
-                  obt.item_i_size = '[SIZE.5]' OR obt.item_i_size = '[SIZE.6]'
+                  item_i_size = '[SIZE.3]' OR item_i_size = '[SIZE.4]'
                 )
               )
               OR (
-                obt.item_i_category = 'Men'
+                item_i_category = 'Men'
                 AND (
-                  obt.item_i_color = '[COLOR.15]' OR obt.item_i_color = '[COLOR.16]'
+                  item_i_color = '[COLOR.13]' OR item_i_color = '[COLOR.14]'
                 )
                 AND (
-                  obt.item_i_units = '[UNIT.15]' OR obt.item_i_units = '[UNIT.16]'
+                  item_i_units = '[UNIT.13]' OR item_i_units = '[UNIT.14]'
                 )
                 AND (
-                  obt.item_i_size = '[SIZE]' OR obt.item_i_size = '[SIZE.2]'
+                  item_i_size = '[SIZE.5]' OR item_i_size = '[SIZE.6]'
+                )
+              )
+              OR (
+                item_i_category = 'Men'
+                AND (
+                  item_i_color = '[COLOR.15]' OR item_i_color = '[COLOR.16]'
+                )
+                AND (
+                  item_i_units = '[UNIT.15]' OR item_i_units = '[UNIT.16]'
+                )
+                AND (
+                  item_i_size = '[SIZE]' OR item_i_size = '[SIZE.2]'
                 )
               )
             )
           )
       ) > 0
     ORDER BY
-      obt.item_i_product_name
+      1
     LIMIT 100
 - id: 42
   template: query42.tpl
@@ -4099,40 +3112,75 @@ queries:
   identifier_parameters:
   - GBOBC
   identifier_map:
-    ca_city: bill_addr_ca_city
-    ca_county: bill_addr_ca_county
-    ca_state: bill_addr_ca_state
+    ca_city: bill_cur_addr_ca_city
+    ca_county: bill_cur_addr_ca_county
+    ca_state: bill_cur_addr_ca_state
   sql: |-
     SELECT
-      obt.bill_addr_ca_zip,
+      bill_cur_addr_ca_zip AS ca_zip,
       [GBOBC],
-      SUM(obt.sales_price)
-    FROM tpcds_sales_returns_obt AS obt
+      SUM(sales_price)
+    FROM tpcds_sales_returns_obt
     WHERE
-      (
-        obt.bill_customer_sk = obt.bill_customer_c_customer_sk
-        AND obt.item_sk = obt.item_i_item_sk
-        AND (
-          SUBSTRING(obt.bill_addr_ca_zip, 1, 5) IN ('85669', '86197', '88274', '83405', '86475', '85392', '85460', '80348', '81792')
-          OR obt.item_i_item_id IN (
-            SELECT
-              obt.item_i_item_id
-            FROM tpcds_sales_returns_obt AS obt
-            WHERE
-              obt.item_i_item_sk IN (2, 3, 5, 7, 11, 13, 17, 19, 23, 29) AND channel = 'web'
-          )
+      channel = 'web'
+      AND bill_cur_addr_ca_address_sk IS NOT NULL
+      AND item_i_item_sk IS NOT NULL
+      AND (
+        SUBSTRING(bill_cur_addr_ca_zip, 1, 5) IN ('85669', '86197', '88274', '83405', '86475', '85392', '85460', '80348', '81792')
+        OR item_i_item_id IN (
+          SELECT DISTINCT
+            item_i_item_id
+          FROM tpcds_sales_returns_obt
+          WHERE
+            item_i_item_sk IN (2, 3, 5, 7, 11, 13, 17, 19, 23, 29)
         )
-        AND obt.sold_date_sk = obt.sold_date_d_date_sk
-        AND obt.sold_date_d_qoy = [QOY]
-        AND obt.sold_date_d_year = [YEAR]
       )
-      AND channel = 'web'
+      AND sold_date_d_qoy = [QOY]
+      AND sold_date_d_year = [YEAR]
     GROUP BY
-      obt.bill_addr_ca_zip,
+      bill_cur_addr_ca_zip,
       [GBOBC]
     ORDER BY
-      obt.bill_addr_ca_zip,
+      ca_zip,
       [GBOBC]
+    LIMIT 100
+- id: 46
+  template: query46.tpl
+  template_sha256: e1d3dd65a7ee00443b0aa2ed5a06db5cd1c38c1f843532e1028cb80ea7203c54
+  parameters:
+    CITY_A:
+    - 1
+    CITY_B:
+    - 1
+    CITY_C:
+    - 1
+    CITY_D:
+    - 1
+    CITY_E:
+    - 1
+    DEPCNT:
+    - 1
+    VEHCNT:
+    - 1
+    YEAR:
+    - 1
+  sql: |-
+    SELECT c_last_name, c_first_name, ca_city, bought_city, ss_ticket_number, amt, profit
+    FROM (
+      SELECT sale_id AS ss_ticket_number, bill_customer_c_customer_sk AS cust_sk, bill_addr_ca_city AS bought_city,
+        bill_customer_c_last_name AS c_last_name, bill_customer_c_first_name AS c_first_name, bill_cur_addr_ca_city AS ca_city,
+        SUM(coupon_amt) AS amt, SUM(net_profit) AS profit
+      FROM tpcds_sales_returns_obt
+      WHERE channel = 'store' AND sold_date_d_date_sk IS NOT NULL AND store_s_store_sk IS NOT NULL
+        AND bill_hdemo_hd_demo_sk IS NOT NULL AND bill_addr_ca_address_sk IS NOT NULL
+        AND (bill_hdemo_hd_dep_count = [DEPCNT] OR bill_hdemo_hd_vehicle_count = [VEHCNT])
+        AND sold_date_d_dow IN (6, 0) AND sold_date_d_year IN ([YEAR], [YEAR] + 1, [YEAR] + 2)
+        AND store_s_city IN ('[CITY_A]', '[CITY_B]', '[CITY_C]', '[CITY_D]', '[CITY_E]')
+      GROUP BY sale_id, bill_customer_sk, bill_addr_sk, bill_addr_ca_city, bill_customer_c_customer_sk,
+               bill_customer_c_last_name, bill_customer_c_first_name, bill_cur_addr_ca_city
+    ) AS dn
+    WHERE cust_sk IS NOT NULL AND ca_city <> bought_city
+    ORDER BY c_last_name, c_first_name, ca_city, bought_city, ss_ticket_number
     LIMIT 100
 - id: 47
   template: query47.tpl
@@ -4703,106 +3751,6 @@ queries:
       sum_sales,
       item_i_manufact_id
     LIMIT 100
-- id: 54
-  template: query54.tpl
-  template_sha256: cde384d141c912b85addbff254f29abdc9028b103d25b2a010b295d28dc58d6e
-  parameters:
-    CATEGORY:
-    - 1
-    CINDX: []
-    CLASS:
-    - 1
-    MONTH:
-    - 1
-    YEAR:
-    - 1
-  sql: |-
-    WITH my_customers AS (
-      SELECT DISTINCT
-        obt.bill_customer_c_customer_sk,
-        obt.bill_customer_c_current_addr_sk
-      FROM tpcds_sales_returns_obt AS obt
-      CROSS JOIN (
-        SELECT
-          obt.sold_date_sk AS sold_date_sk,
-          obt.bill_customer_sk AS customer_sk,
-          obt.item_sk AS item_sk
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          channel = 'catalog'
-        UNION ALL
-        SELECT
-          obt.sold_date_sk AS sold_date_sk,
-          obt.bill_customer_sk AS customer_sk,
-          obt.item_sk AS item_sk
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          channel = 'web'
-      ) AS cs_or_ws_sales
-      WHERE
-        (
-          obt.sold_date_sk = obt.sold_date_d_date_sk
-          AND obt.item_sk = obt.item_i_item_sk
-          AND obt.item_i_category = '[CATEGORY]'
-          AND obt.item_i_class = '[CLASS]'
-          AND obt.bill_customer_c_customer_sk = cs_or_ws_sales.customer_sk
-          AND obt.sold_date_d_moy = [MONTH]
-          AND obt.sold_date_d_year = [YEAR]
-        )
-        AND channel IN ('catalog', 'store', 'web')
-    ), my_revenue AS (
-      SELECT
-        obt.bill_customer_c_customer_sk,
-        SUM(obt.ext_sales_price) AS revenue
-      FROM tpcds_sales_returns_obt AS obt
-      CROSS JOIN my_customers AS my_customers
-      WHERE
-        (
-          obt.bill_addr_ca_county = obt.store_s_county
-          AND obt.bill_addr_ca_state = obt.store_s_state
-          AND obt.sold_date_sk = obt.sold_date_d_date_sk
-          AND obt.bill_customer_c_customer_sk = my_customers.bill_customer_c_customer_sk
-          AND obt.sold_date_d_month_seq BETWEEN (
-            SELECT DISTINCT
-              obt.sold_date_d_month_seq + 1
-            FROM tpcds_sales_returns_obt AS obt
-            WHERE
-              (
-                obt.sold_date_d_year = [YEAR] AND obt.sold_date_d_moy = [MONTH]
-              )
-              AND channel IN ('catalog', 'store', 'web')
-          ) AND (
-            SELECT DISTINCT
-              obt.sold_date_d_month_seq + 3
-            FROM tpcds_sales_returns_obt AS obt
-            WHERE
-              (
-                obt.sold_date_d_year = [YEAR] AND obt.sold_date_d_moy = [MONTH]
-              )
-              AND channel IN ('catalog', 'store', 'web')
-          )
-        )
-        AND channel = 'store'
-      GROUP BY
-        obt.bill_customer_c_customer_sk
-    ), segments AS (
-      SELECT
-        CAST((
-          revenue / 50
-        ) AS INT) AS segment
-      FROM my_revenue
-    )
-    SELECT
-      segment,
-      COUNT(*) AS num_customers,
-      segment * 50 AS segment_base
-    FROM segments
-    GROUP BY
-      segment
-    ORDER BY
-      segment,
-      num_customers
-    LIMIT 100
 - id: 55
   template: query55.tpl
   template_sha256: dacd58d6fdf24fd54a7d7d77ef608df6d98c0e8c701eff77f3ef65252d3dddef
@@ -5176,87 +4124,41 @@ queries:
   sql: |-
     WITH wss AS (
       SELECT
-        obt.sold_date_d_week_seq,
-        obt.store_sk,
-        obt.store_s_store_name,
-        obt.store_s_store_id,
-        obt.sold_date_d_month_seq,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Sunday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS sun_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Monday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS mon_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Tuesday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS tue_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Wednesday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS wed_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Thursday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS thu_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Friday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS fri_sales,
-        SUM(
-          CASE
-            WHEN (
-              obt.sold_date_d_day_name = 'Saturday'
-            )
-            THEN obt.sales_price
-            ELSE NULL
-          END
-        ) AS sat_sales
-      FROM tpcds_sales_returns_obt AS obt
+        sold_date_d_week_seq AS d_week_seq,
+        store_sk AS ss_store_sk,
+        SUM(CASE WHEN sold_date_d_day_name = 'Sunday' THEN sales_price ELSE NULL END) AS sun_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Monday' THEN sales_price ELSE NULL END) AS mon_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Tuesday' THEN sales_price ELSE NULL END) AS tue_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Wednesday' THEN sales_price ELSE NULL END) AS wed_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Thursday' THEN sales_price ELSE NULL END) AS thu_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Friday' THEN sales_price ELSE NULL END) AS fri_sales,
+        SUM(CASE WHEN sold_date_d_day_name = 'Saturday' THEN sales_price ELSE NULL END) AS sat_sales
+      FROM tpcds_sales_returns_obt
       WHERE
-        obt.sold_date_d_date_sk = obt.sold_date_sk AND channel = 'store'
+        channel = 'store' AND sold_date_d_date_sk IS NOT NULL
       GROUP BY
-        obt.sold_date_d_week_seq,
-        obt.store_sk,
-        obt.store_s_store_name,
-        obt.store_s_store_id,
-        obt.sold_date_d_month_seq
+        1,
+        2
+    ), cal AS (
+      SELECT DISTINCT
+        sold_date_d_date_sk AS d_date_sk,
+        sold_date_d_week_seq AS d_week_seq,
+        sold_date_d_month_seq AS d_month_seq
+      FROM tpcds_sales_returns_obt
+      WHERE
+        sold_date_d_date_sk IS NOT NULL
+    ), st AS (
+      SELECT DISTINCT
+        store_s_store_sk AS s_store_sk,
+        store_s_store_name AS s_store_name,
+        store_s_store_id AS s_store_id
+      FROM tpcds_sales_returns_obt
+      WHERE
+        store_s_store_sk IS NOT NULL
     )
     SELECT
-      s_store_name1 AS store_s_store_name,
-      s_store_id1 AS store_s_store_id,
+      s_store_name1,
+      s_store_id1,
       d_week_seq1,
       sun_sales1 / sun_sales2,
       mon_sales1 / mon_sales2,
@@ -5267,9 +4169,9 @@ queries:
       sat_sales1 / sat_sales2
     FROM (
       SELECT
-        wss.store_s_store_name AS s_store_name1,
-        wss.sold_date_d_week_seq AS d_week_seq1,
-        wss.store_s_store_id AS s_store_id1,
+        st.s_store_name AS s_store_name1,
+        wss.d_week_seq AS d_week_seq1,
+        st.s_store_id AS s_store_id1,
         sun_sales AS sun_sales1,
         mon_sales AS mon_sales1,
         tue_sales AS tue_sales1,
@@ -5278,13 +4180,17 @@ queries:
         fri_sales AS fri_sales1,
         sat_sales AS sat_sales1
       FROM wss
+      JOIN st
+        ON wss.ss_store_sk = st.s_store_sk
+      JOIN cal AS d
+        ON d.d_week_seq = wss.d_week_seq
       WHERE
-        wss.sold_date_d_month_seq BETWEEN [DMS] AND [DMS] + 11
+        d.d_month_seq BETWEEN [DMS] AND [DMS] + 11
     ) AS y, (
       SELECT
-        wss.store_s_store_name AS s_store_name2,
-        wss.sold_date_d_week_seq AS d_week_seq2,
-        wss.store_s_store_id AS s_store_id2,
+        st.s_store_name AS s_store_name2,
+        wss.d_week_seq AS d_week_seq2,
+        st.s_store_id AS s_store_id2,
         sun_sales AS sun_sales2,
         mon_sales AS mon_sales2,
         tue_sales AS tue_sales2,
@@ -5293,14 +4199,18 @@ queries:
         fri_sales AS fri_sales2,
         sat_sales AS sat_sales2
       FROM wss
+      JOIN st
+        ON wss.ss_store_sk = st.s_store_sk
+      JOIN cal AS d
+        ON d.d_week_seq = wss.d_week_seq
       WHERE
-        wss.sold_date_d_month_seq BETWEEN [DMS] + 12 AND [DMS] + 23
+        d.d_month_seq BETWEEN [DMS] + 12 AND [DMS] + 23
     ) AS x
     WHERE
       s_store_id1 = s_store_id2 AND d_week_seq1 = d_week_seq2 - 52
     ORDER BY
-      store_s_store_name,
-      store_s_store_id,
+      s_store_name1,
+      s_store_id1,
       d_week_seq1
     LIMIT 100
 - id: 60
@@ -5623,6 +4533,56 @@ queries:
       avg_monthly_sales,
       sum_sales
     LIMIT 100
+- id: 64
+  template: query64.tpl
+  template_sha256: dac0f9c9e0cf71596ee8c76d7cd2e32db190124e52f25a7722fb73fa4d041d93
+  parameters:
+    COLOR:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    PRICE:
+    - 1
+    YEAR:
+    - 1
+  sql: |-
+    WITH cs_ui AS (
+      SELECT item_sk AS cs_item_sk, SUM(ext_list_price) AS sale, SUM(refunded_cash + reversed_charge + store_credit) AS refund
+      FROM tpcds_sales_returns_obt WHERE channel = 'catalog' AND has_return = 'Y'
+      GROUP BY item_sk
+      HAVING SUM(ext_list_price) > 2 * SUM(refunded_cash + reversed_charge + store_credit)
+    ), cross_sales AS (
+      SELECT o.item_i_product_name AS product_name, o.item_i_item_sk AS item_sk, o.store_s_store_name AS store_name, o.store_s_zip AS store_zip,
+        o.bill_addr_ca_street_number AS b_street_number, o.bill_addr_ca_street_name AS b_street_name, o.bill_addr_ca_city AS b_city, o.bill_addr_ca_zip AS b_zip,
+        o.bill_cur_addr_ca_street_number AS c_street_number, o.bill_cur_addr_ca_street_name AS c_street_name, o.bill_cur_addr_ca_city AS c_city, o.bill_cur_addr_ca_zip AS c_zip,
+        o.sold_date_d_year AS syear, o.bill_first_sales_date_d_year AS fsyear, o.bill_first_shipto_date_d_year AS s2year,
+        COUNT(*) AS cnt, SUM(o.wholesale_cost) AS s1, SUM(o.list_price) AS s2, SUM(o.coupon_amt) AS s3
+      FROM tpcds_sales_returns_obt AS o JOIN cs_ui ON o.item_sk = cs_ui.cs_item_sk
+      WHERE o.channel = 'store' AND o.has_return = 'Y'
+        AND o.store_s_store_sk IS NOT NULL AND o.sold_date_d_date_sk IS NOT NULL AND o.bill_customer_c_customer_sk IS NOT NULL
+        AND o.bill_cdemo_cd_demo_sk IS NOT NULL AND o.bill_hdemo_hd_demo_sk IS NOT NULL AND o.bill_addr_ca_address_sk IS NOT NULL
+        AND o.item_i_item_sk IS NOT NULL AND o.bill_cur_cdemo_cd_demo_sk IS NOT NULL AND o.bill_cur_hdemo_hd_demo_sk IS NOT NULL
+        AND o.bill_cur_addr_ca_address_sk IS NOT NULL AND o.bill_first_sales_date_d_date_sk IS NOT NULL
+        AND o.bill_first_shipto_date_d_date_sk IS NOT NULL AND o.promo_p_promo_sk IS NOT NULL
+        AND o.bill_hdemo_ib_lower_bound IS NOT NULL AND o.bill_cur_hdemo_ib_lower_bound IS NOT NULL
+        AND o.bill_cdemo_cd_marital_status <> o.bill_cur_cdemo_cd_marital_status
+        AND o.item_i_color IN ('[COLOR.1]', '[COLOR.2]', '[COLOR.3]', '[COLOR.4]', '[COLOR.5]', '[COLOR.6]')
+        AND o.item_i_current_price BETWEEN [PRICE] AND [PRICE] + 10 AND o.item_i_current_price BETWEEN [PRICE] + 1 AND [PRICE] + 15
+      GROUP BY o.item_i_product_name, o.item_i_item_sk, o.store_s_store_name, o.store_s_zip,
+        o.bill_addr_ca_street_number, o.bill_addr_ca_street_name, o.bill_addr_ca_city, o.bill_addr_ca_zip,
+        o.bill_cur_addr_ca_street_number, o.bill_cur_addr_ca_street_name, o.bill_cur_addr_ca_city, o.bill_cur_addr_ca_zip,
+        o.sold_date_d_year, o.bill_first_sales_date_d_year, o.bill_first_shipto_date_d_year
+    )
+    SELECT cs1.product_name, cs1.store_name, cs1.store_zip, cs1.b_street_number, cs1.b_street_name, cs1.b_city, cs1.b_zip,
+      cs1.c_street_number, cs1.c_street_name, cs1.c_city, cs1.c_zip, cs1.syear, cs1.cnt, cs1.s1 AS s11, cs1.s2 AS s21, cs1.s3 AS s31,
+      cs2.s1 AS s12, cs2.s2 AS s22, cs2.s3 AS s32, cs2.syear, cs2.cnt
+    FROM cross_sales AS cs1, cross_sales AS cs2
+    WHERE cs1.item_sk = cs2.item_sk AND cs1.syear = [YEAR] AND cs2.syear = [YEAR] + 1 AND cs2.cnt <= cs1.cnt
+      AND cs1.store_name = cs2.store_name AND cs1.store_zip = cs2.store_zip
+    ORDER BY cs1.product_name, cs1.store_name, cs2.cnt, cs1.s1, cs2.s1
 - id: 65
   template: query65.tpl
   template_sha256: 4769a55171ba59d35d667d6b108a6d7d5e5723f704823e2a875474cf4604c838
@@ -5630,64 +4590,56 @@ queries:
     DMS:
     - 1
   sql: |-
-    SELECT
-      obt.store_s_store_name,
-      obt.item_i_item_desc,
-      sc.revenue,
-      obt.item_i_current_price,
-      obt.item_i_wholesale_cost,
-      obt.item_i_brand
-    FROM tpcds_sales_returns_obt AS obt
-    CROSS JOIN (
+    WITH sc AS (
+      SELECT
+        store_sk,
+        item_sk,
+        store_s_store_name,
+        item_i_item_desc,
+        item_i_current_price,
+        item_i_wholesale_cost,
+        item_i_brand,
+        store_s_store_sk,
+        item_i_item_sk,
+        SUM(sales_price) AS revenue
+      FROM tpcds_sales_returns_obt
+      WHERE
+        channel = 'store' AND sold_date_d_month_seq BETWEEN [DMS] AND [DMS] + 11
+      GROUP BY
+        store_sk,
+        item_sk,
+        store_s_store_name,
+        item_i_item_desc,
+        item_i_current_price,
+        item_i_wholesale_cost,
+        item_i_brand,
+        store_s_store_sk,
+        item_i_item_sk
+    ), sb AS (
       SELECT
         store_sk,
         AVG(revenue) AS ave
-      FROM (
-        SELECT
-          obt.store_sk,
-          obt.item_sk,
-          SUM(obt.sales_price) AS revenue
-        FROM tpcds_sales_returns_obt AS obt
-        WHERE
-          (
-            obt.sold_date_sk = obt.sold_date_d_date_sk
-            AND obt.sold_date_d_month_seq BETWEEN [DMS] AND [DMS] + 11
-          )
-          AND channel = 'store'
-        GROUP BY
-          obt.store_sk,
-          obt.item_sk
-      ) AS sa
+      FROM sc
       GROUP BY
         store_sk
-    ) AS sb
-    CROSS JOIN (
-      SELECT
-        obt.store_sk AS store_sk,
-        obt.item_sk AS item_sk,
-        SUM(obt.sales_price) AS revenue
-      FROM tpcds_sales_returns_obt AS obt
-      WHERE
-        (
-          obt.sold_date_sk = obt.sold_date_d_date_sk
-          AND obt.sold_date_d_month_seq BETWEEN [DMS] AND [DMS] + 11
-        )
-        AND channel = 'store'
-      GROUP BY
-        obt.store_sk,
-        obt.item_sk
-    ) AS sc
+    )
+    SELECT
+      sc.store_s_store_name AS s_store_name,
+      sc.item_i_item_desc AS i_item_desc,
+      sc.revenue,
+      sc.item_i_current_price AS i_current_price,
+      sc.item_i_wholesale_cost AS i_wholesale_cost,
+      sc.item_i_brand AS i_brand
+    FROM sb
+    JOIN sc
+      ON sb.store_sk = sc.store_sk
     WHERE
-      (
-        sb.store_sk = sc.store_sk
-        AND sc.revenue <= 0.1 * sb.ave
-        AND obt.store_s_store_sk = sc.store_sk
-        AND obt.item_i_item_sk = sc.item_sk
-      )
-      AND channel = 'store'
+      sc.revenue <= 0.1 * sb.ave
+      AND sc.store_s_store_sk IS NOT NULL
+      AND sc.item_i_item_sk IS NOT NULL
     ORDER BY
-      obt.store_s_store_name,
-      obt.item_i_item_desc
+      s_store_name,
+      i_item_desc
     LIMIT 100
 - id: 66
   template: query66.tpl
@@ -6181,6 +5133,37 @@ queries:
       sumsales,
       rk
     LIMIT 100
+- id: 68
+  template: query68.tpl
+  template_sha256: b8894f13bdd1b82f9dba3aeae49f8d5687c83b99c29b134c35e239b8ceca8b07
+  parameters:
+    CITY_A:
+    - 1
+    CITY_B:
+    - 1
+    DEPCNT:
+    - 1
+    VEHCNT:
+    - 1
+    YEAR:
+    - 1
+  sql: |-
+    SELECT c_last_name, c_first_name, ca_city, bought_city, ss_ticket_number, extended_price, extended_tax, list_price
+    FROM (
+      SELECT sale_id AS ss_ticket_number, bill_customer_c_customer_sk AS cust_sk, bill_addr_ca_city AS bought_city,
+        bill_customer_c_last_name AS c_last_name, bill_customer_c_first_name AS c_first_name, bill_cur_addr_ca_city AS ca_city,
+        SUM(ext_sales_price) AS extended_price, SUM(ext_list_price) AS list_price, SUM(ext_tax) AS extended_tax
+      FROM tpcds_sales_returns_obt
+      WHERE channel = 'store' AND sold_date_d_date_sk IS NOT NULL AND store_s_store_sk IS NOT NULL
+        AND bill_hdemo_hd_demo_sk IS NOT NULL AND bill_addr_ca_address_sk IS NOT NULL
+        AND sold_date_d_dom BETWEEN 1 AND 2 AND (bill_hdemo_hd_dep_count = [DEPCNT] OR bill_hdemo_hd_vehicle_count = [VEHCNT])
+        AND sold_date_d_year IN ([YEAR], [YEAR] + 1, [YEAR] + 2) AND store_s_city IN ('[CITY_A]', '[CITY_B]')
+      GROUP BY sale_id, bill_customer_sk, bill_addr_sk, bill_addr_ca_city, bill_customer_c_customer_sk,
+               bill_customer_c_last_name, bill_customer_c_first_name, bill_cur_addr_ca_city
+    ) AS dn
+    WHERE cust_sk IS NOT NULL AND ca_city <> bought_city
+    ORDER BY c_last_name, ss_ticket_number
+    LIMIT 100
 - id: 69
   template: query69.tpl
   template_sha256: f02e8b9792ebf3adae7440c25f513492485dcbcef85f6d4a97c183f707aa562a
@@ -6194,62 +5177,64 @@ queries:
     YEAR:
     - 1
   sql: |-
+    WITH c AS (
+      SELECT DISTINCT
+        bill_customer_c_customer_sk AS c_customer_sk,
+        bill_cur_cdemo_cd_gender AS cd_gender,
+        bill_cur_cdemo_cd_marital_status AS cd_marital_status,
+        bill_cur_cdemo_cd_education_status AS cd_education_status,
+        bill_cur_cdemo_cd_purchase_estimate AS cd_purchase_estimate,
+        bill_cur_cdemo_cd_credit_rating AS cd_credit_rating
+      FROM tpcds_sales_returns_obt
+      WHERE
+        channel = 'store'
+        AND bill_customer_c_customer_sk IS NOT NULL
+        AND sold_date_d_year = [YEAR]
+        AND sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 2
+        AND bill_cur_addr_ca_state IN ('[STATE]', '[STATE.2]', '[STATE.3]')
+        AND bill_cur_cdemo_cd_demo_sk IS NOT NULL
+    )
     SELECT
-      obt.bill_cdemo_cd_gender,
-      obt.bill_cdemo_cd_marital_status,
-      obt.bill_cdemo_cd_education_status,
+      cd_gender,
+      cd_marital_status,
+      cd_education_status,
       COUNT(*) AS cnt1,
-      obt.bill_cdemo_cd_purchase_estimate,
+      cd_purchase_estimate,
       COUNT(*) AS cnt2,
-      obt.bill_cdemo_cd_credit_rating,
+      cd_credit_rating,
       COUNT(*) AS cnt3
-    FROM tpcds_sales_returns_obt AS obt
+    FROM c
     WHERE
-      (
-        obt.bill_addr_ca_state IN ('[STATE]', '[STATE.2]', '[STATE.3]')
-        AND EXISTS(
-          SELECT
-            *
-          FROM tpcds_sales_returns_obt AS ex_obt WHERE ( ex_obt.bill_customer_c_customer_sk = obt.bill_customer_c_customer_sk
-              AND ex_obt.sold_date_sk = ex_obt.sold_date_d_date_sk
-              AND ex_obt.sold_date_d_year = [YEAR]
-              AND ex_obt.sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 2
-            ) AND ex_obt.channel = 'store'
-        )
-        AND (
-          NOT EXISTS(
-            SELECT
-              *
-            FROM tpcds_sales_returns_obt AS ex_obt WHERE ( ex_obt.bill_customer_c_customer_sk = obt.bill_customer_c_customer_sk
-                AND ex_obt.sold_date_sk = ex_obt.sold_date_d_date_sk
-                AND ex_obt.sold_date_d_year = [YEAR]
-                AND ex_obt.sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 2
-              ) AND ex_obt.channel = 'web'
-          )
-          AND NOT EXISTS(
-            SELECT
-              *
-            FROM tpcds_sales_returns_obt AS ex_obt WHERE ( ex_obt.bill_customer_c_customer_sk = obt.bill_customer_c_customer_sk
-                AND ex_obt.sold_date_sk = ex_obt.sold_date_d_date_sk
-                AND ex_obt.sold_date_d_year = [YEAR]
-                AND ex_obt.sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 2
-              ) AND ex_obt.channel = 'catalog'
-          )
-        )
+      NOT EXISTS(
+        SELECT 1
+        FROM tpcds_sales_returns_obt AS w
+        WHERE
+          w.channel = 'web'
+          AND w.bill_customer_sk = c.c_customer_sk
+          AND w.sold_date_d_year = [YEAR]
+          AND w.sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 2
       )
-      AND channel IN ('catalog', 'store', 'web')
+      AND NOT EXISTS(
+        SELECT 1
+        FROM tpcds_sales_returns_obt AS k
+        WHERE
+          k.channel = 'catalog'
+          AND k.ship_customer_sk = c.c_customer_sk
+          AND k.sold_date_d_year = [YEAR]
+          AND k.sold_date_d_moy BETWEEN [MONTH] AND [MONTH] + 2
+      )
     GROUP BY
-      obt.bill_cdemo_cd_gender,
-      obt.bill_cdemo_cd_marital_status,
-      obt.bill_cdemo_cd_education_status,
-      obt.bill_cdemo_cd_purchase_estimate,
-      obt.bill_cdemo_cd_credit_rating
+      cd_gender,
+      cd_marital_status,
+      cd_education_status,
+      cd_purchase_estimate,
+      cd_credit_rating
     ORDER BY
-      obt.bill_cdemo_cd_gender,
-      obt.bill_cdemo_cd_marital_status,
-      obt.bill_cdemo_cd_education_status,
-      obt.bill_cdemo_cd_purchase_estimate,
-      obt.bill_cdemo_cd_credit_rating
+      cd_gender,
+      cd_marital_status,
+      cd_education_status,
+      cd_purchase_estimate,
+      cd_credit_rating
     LIMIT 100
 - id: 70
   template: query70.tpl
@@ -6316,73 +5301,28 @@ queries:
     - 1
   sql: |-
     SELECT
-      obt.item_i_brand_id AS brand_id,
-      obt.item_i_brand AS brand,
-      sold_time_t_hour,
-      sold_time_t_minute,
-      SUM(ext_price) AS ext_price
-    FROM tpcds_sales_returns_obt AS obt
-    CROSS JOIN (
-      SELECT
-        obt.ext_sales_price AS ext_price,
-        obt.sold_date_sk AS sold_date_sk,
-        obt.item_sk AS sold_item_sk,
-        obt.sold_time_sk AS time_sk
-      FROM tpcds_sales_returns_obt AS obt
-      WHERE
-        (
-          obt.sold_date_d_date_sk = obt.sold_date_sk
-          AND obt.sold_date_d_moy = [MONTH]
-          AND obt.sold_date_d_year = [YEAR]
-        )
-        AND channel = 'web'
-      UNION ALL
-      SELECT
-        obt.ext_sales_price AS ext_price,
-        obt.sold_date_sk AS sold_date_sk,
-        obt.item_sk AS sold_item_sk,
-        obt.sold_time_sk AS time_sk
-      FROM tpcds_sales_returns_obt AS obt
-      WHERE
-        (
-          obt.sold_date_d_date_sk = obt.sold_date_sk
-          AND obt.sold_date_d_moy = [MONTH]
-          AND obt.sold_date_d_year = [YEAR]
-        )
-        AND channel = 'catalog'
-      UNION ALL
-      SELECT
-        obt.ext_sales_price AS ext_price,
-        obt.sold_date_sk AS sold_date_sk,
-        obt.item_sk AS sold_item_sk,
-        obt.sold_time_sk AS time_sk
-      FROM tpcds_sales_returns_obt AS obt
-      WHERE
-        (
-          obt.sold_date_d_date_sk = obt.sold_date_sk
-          AND obt.sold_date_d_moy = [MONTH]
-          AND obt.sold_date_d_year = [YEAR]
-        )
-        AND channel = 'store'
-    ) AS tmp
+      item_i_brand_id AS brand_id,
+      item_i_brand AS brand,
+      sold_time_t_hour AS t_hour,
+      sold_time_t_minute AS t_minute,
+      SUM(ext_sales_price) AS ext_price
+    FROM tpcds_sales_returns_obt
     WHERE
-      (
-        sold_item_sk = obt.item_i_item_sk
-        AND obt.item_i_manager_id = 1
-        AND time_sk = sold_time_t_time_sk
-        AND (
-          sold_time_t_meal_time = 'breakfast' OR sold_time_t_meal_time = 'dinner'
-        )
+      sold_date_d_moy = [MONTH]
+      AND sold_date_d_year = [YEAR]
+      AND item_i_manager_id = 1
+      AND sold_time_t_time_sk IS NOT NULL
+      AND (
+        sold_time_t_meal_time = 'breakfast' OR sold_time_t_meal_time = 'dinner'
       )
-      AND channel IN ('catalog', 'store', 'web')
     GROUP BY
-      obt.item_i_brand,
-      obt.item_i_brand_id,
+      item_i_brand,
+      item_i_brand_id,
       sold_time_t_hour,
       sold_time_t_minute
     ORDER BY
       ext_price DESC NULLS FIRST,
-      obt.item_i_brand_id
+      brand_id
 - id: 73
   template: query73.tpl
   template_sha256: 6f501a02843b22a99d85ecc830999d05e77cf15d814f4278ce7e717af628d037
@@ -6408,51 +5348,53 @@ queries:
   identifier_map: {}
   sql: |-
     SELECT
-      obt.bill_customer_c_last_name,
-      obt.bill_customer_c_first_name,
-      obt.bill_customer_c_salutation,
-      obt.bill_customer_c_preferred_cust_flag,
-      obt.sale_id,
+      c_last_name,
+      c_first_name,
+      c_salutation,
+      c_preferred_cust_flag,
+      ss_ticket_number,
       cnt
-    FROM tpcds_sales_returns_obt AS obt
-    CROSS JOIN (
+    FROM (
       SELECT
-        obt.sale_id,
-        obt.ship_customer_sk,
+        sale_id AS ss_ticket_number,
+        bill_customer_c_customer_sk AS cust_sk,
+        bill_customer_c_last_name AS c_last_name,
+        bill_customer_c_first_name AS c_first_name,
+        bill_customer_c_salutation AS c_salutation,
+        bill_customer_c_preferred_cust_flag AS c_preferred_cust_flag,
         COUNT(*) AS cnt
-      FROM tpcds_sales_returns_obt AS obt
+      FROM tpcds_sales_returns_obt
       WHERE
-        (
-          obt.sold_date_sk = obt.sold_date_d_date_sk
-          AND obt.store_sk = obt.store_s_store_sk
-          AND obt.ship_hdemo_sk = obt.bill_hdemo_hd_demo_sk
-          AND obt.sold_date_d_dom BETWEEN 1 AND 2
-          AND (
-            obt.bill_hdemo_hd_buy_potential = '[BPONE]'
-            OR obt.bill_hdemo_hd_buy_potential = '[BPTWO]'
-          )
-          AND obt.bill_hdemo_hd_vehicle_count > 0
-          AND CASE
-            WHEN obt.bill_hdemo_hd_vehicle_count > 0
-            THEN obt.bill_hdemo_hd_dep_count / obt.bill_hdemo_hd_vehicle_count
-            ELSE NULL
-          END > 1
-          AND obt.sold_date_d_year IN ([YEAR], [YEAR] + 1, [YEAR] + 2)
-          AND obt.store_s_county IN ('[COUNTY_A]', '[COUNTY_B]', '[COUNTY_C]', '[COUNTY_D]')
+        channel = 'store'
+        AND sold_date_d_date_sk IS NOT NULL
+        AND store_s_store_sk IS NOT NULL
+        AND bill_hdemo_hd_demo_sk IS NOT NULL
+        AND sold_date_d_dom BETWEEN 1 AND 2
+        AND (
+          bill_hdemo_hd_buy_potential = '[BPONE]' OR bill_hdemo_hd_buy_potential = '[BPTWO]'
         )
-        AND channel = 'store'
+        AND bill_hdemo_hd_vehicle_count > 0
+        AND CASE
+          WHEN bill_hdemo_hd_vehicle_count > 0
+          THEN bill_hdemo_hd_dep_count / bill_hdemo_hd_vehicle_count
+          ELSE NULL
+        END > 1
+        AND sold_date_d_year IN ([YEAR], [YEAR] + 1, [YEAR] + 2)
+        AND store_s_county IN ('[COUNTY_A]', '[COUNTY_B]', '[COUNTY_C]', '[COUNTY_D]')
       GROUP BY
-        obt.sale_id,
-        obt.ship_customer_sk
+        sale_id,
+        bill_customer_sk,
+        bill_customer_c_customer_sk,
+        bill_customer_c_last_name,
+        bill_customer_c_first_name,
+        bill_customer_c_salutation,
+        bill_customer_c_preferred_cust_flag
     ) AS dj
     WHERE
-      (
-        obt.ship_customer_sk = obt.bill_customer_c_customer_sk AND cnt BETWEEN 1 AND 5
-      )
-      AND channel = 'store'
+      cust_sk IS NOT NULL AND cnt BETWEEN 1 AND 5
     ORDER BY
       cnt DESC NULLS FIRST,
-      obt.bill_customer_c_last_name ASC
+      c_last_name ASC
 - id: 74
   template: query74.tpl
   template_sha256: a19d9ecdd4d24515c7d8fa7b3a9fa585d91c28369346b47738cf71f2ef070c47
@@ -6705,7 +5647,7 @@ queries:
     FROM (
       SELECT
         'store' AS channel,
-        '[NULLCOLSS]' AS col_name,
+        'ss_' || REPLACE('[NULLCOLSS]', 'ship_', '') AS col_name,
         obt.sold_date_d_year,
         obt.sold_date_d_qoy,
         obt.item_i_category,
@@ -6721,7 +5663,7 @@ queries:
       UNION ALL
       SELECT
         'web' AS channel,
-        '[NULLCOLWS]' AS col_name,
+        'ws_' || '[NULLCOLWS]' AS col_name,
         obt.sold_date_d_year,
         obt.sold_date_d_qoy,
         obt.item_i_category,
@@ -6737,7 +5679,7 @@ queries:
       UNION ALL
       SELECT
         'catalog' AS channel,
-        '[NULLCOLCS]' AS col_name,
+        'cs_' || '[NULLCOLCS]' AS col_name,
         obt.sold_date_d_year,
         obt.sold_date_d_qoy,
         obt.item_i_category,
@@ -6773,155 +5715,54 @@ queries:
     YEAR: []
   sql: |-
     WITH ss AS (
-      SELECT
-        obt.store_s_store_sk AS s_store_sk,
-        SUM(obt.ext_sales_price) AS sales,
-        SUM(obt.net_profit) AS profit
-      FROM tpcds_sales_returns_obt AS obt
-      WHERE
-        (
-          obt.sold_date_sk = obt.sold_date_d_date_sk
-          AND obt.sold_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (
-            CAST('[SALES_DATE]' AS DATE) + INTERVAL 30 DAY
-          )
-          AND obt.store_sk = obt.store_s_store_sk
-        )
-        AND channel = 'store'
-      GROUP BY
-        obt.store_s_store_sk
+      SELECT store_s_store_sk AS s_store_sk, SUM(ext_sales_price) AS sales, SUM(net_profit) AS profit
+      FROM tpcds_sales_returns_obt
+      WHERE channel = 'store' AND store_s_store_sk IS NOT NULL
+        AND sold_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (CAST('[SALES_DATE]' AS DATE) + INTERVAL '30' DAY)
+      GROUP BY 1
     ), sr AS (
-      SELECT
-        obt.store_s_store_sk AS s_store_sk,
-        SUM(obt.return_amount) AS returns,
-        SUM(obt.return_net_loss) AS profit_loss
-      FROM tpcds_sales_returns_obt AS obt
-      WHERE
-        (
-          obt.returned_date_sk = obt.return_date_d_date_sk
-          AND obt.return_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (
-            CAST('[SALES_DATE]' AS DATE) + INTERVAL 30 DAY
-          )
-          AND obt.store_sk = obt.store_s_store_sk
-        )
-        AND channel = 'store'
-      GROUP BY
-        obt.store_s_store_sk
+      SELECT return_store_s_store_sk AS s_store_sk, SUM(return_amount) AS returns, SUM(return_net_loss) AS profit_loss
+      FROM tpcds_sales_returns_obt
+      WHERE channel = 'store' AND has_return = 'Y' AND return_store_s_store_sk IS NOT NULL
+        AND return_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (CAST('[SALES_DATE]' AS DATE) + INTERVAL '30' DAY)
+      GROUP BY 1
     ), cs AS (
-      SELECT
-        obt.call_center_sk,
-        SUM(obt.ext_sales_price) AS sales,
-        SUM(obt.net_profit) AS profit
-      FROM tpcds_sales_returns_obt AS obt
-      WHERE
-        (
-          obt.sold_date_sk = obt.sold_date_d_date_sk
-          AND obt.sold_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (
-            CAST('[SALES_DATE]' AS DATE) + INTERVAL 30 DAY
-          )
-        )
-        AND channel = 'catalog'
-      GROUP BY
-        obt.call_center_sk
+      SELECT call_center_sk AS cs_call_center_sk, SUM(ext_sales_price) AS sales, SUM(net_profit) AS profit
+      FROM tpcds_sales_returns_obt
+      WHERE channel = 'catalog'
+        AND sold_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (CAST('[SALES_DATE]' AS DATE) + INTERVAL '30' DAY)
+      GROUP BY 1
     ), cr AS (
-      SELECT
-        obt.call_center_sk,
-        SUM(obt.return_amount) AS returns,
-        SUM(obt.return_net_loss) AS profit_loss
-      FROM tpcds_sales_returns_obt AS obt
-      WHERE
-        (
-          obt.returned_date_sk = obt.return_date_d_date_sk
-          AND obt.return_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (
-            CAST('[SALES_DATE]' AS DATE) + INTERVAL 30 DAY
-          )
-        )
-        AND channel = 'catalog'
-      GROUP BY
-        obt.call_center_sk
+      SELECT return_call_center_cc_call_center_sk AS cr_call_center_sk, SUM(return_amount) AS returns, SUM(return_net_loss) AS profit_loss
+      FROM tpcds_sales_returns_obt
+      WHERE channel = 'catalog' AND has_return = 'Y'
+        AND return_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (CAST('[SALES_DATE]' AS DATE) + INTERVAL '30' DAY)
+      GROUP BY 1
     ), ws AS (
-      SELECT
-        obt.web_page_wp_web_page_sk AS wp_web_page_sk,
-        SUM(obt.ext_sales_price) AS sales,
-        SUM(obt.net_profit) AS profit
-      FROM tpcds_sales_returns_obt AS obt
-      WHERE
-        (
-          obt.sold_date_sk = obt.sold_date_d_date_sk
-          AND obt.sold_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (
-            CAST('[SALES_DATE]' AS DATE) + INTERVAL 30 DAY
-          )
-          AND obt.web_page_sk = obt.web_page_wp_web_page_sk
-        )
-        AND channel = 'web'
-      GROUP BY
-        obt.web_page_wp_web_page_sk
+      SELECT web_page_wp_web_page_sk AS wp_web_page_sk, SUM(ext_sales_price) AS sales, SUM(net_profit) AS profit
+      FROM tpcds_sales_returns_obt
+      WHERE channel = 'web' AND web_page_wp_web_page_sk IS NOT NULL
+        AND sold_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (CAST('[SALES_DATE]' AS DATE) + INTERVAL '30' DAY)
+      GROUP BY 1
     ), wr AS (
-      SELECT
-        obt.web_page_wp_web_page_sk AS wp_web_page_sk,
-        SUM(obt.return_amount) AS returns,
-        SUM(obt.return_net_loss) AS profit_loss
-      FROM tpcds_sales_returns_obt AS obt
-      WHERE
-        (
-          obt.returned_date_sk = obt.return_date_d_date_sk
-          AND obt.return_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (
-            CAST('[SALES_DATE]' AS DATE) + INTERVAL 30 DAY
-          )
-          AND obt.web_page_sk = obt.web_page_wp_web_page_sk
-        )
-        AND channel = 'web'
-      GROUP BY
-        obt.web_page_wp_web_page_sk
+      SELECT return_web_page_wp_web_page_sk AS wp_web_page_sk, SUM(return_amount) AS returns, SUM(return_net_loss) AS profit_loss
+      FROM tpcds_sales_returns_obt
+      WHERE channel = 'web' AND has_return = 'Y' AND return_web_page_wp_web_page_sk IS NOT NULL
+        AND return_date_d_date BETWEEN CAST('[SALES_DATE]' AS DATE) AND (CAST('[SALES_DATE]' AS DATE) + INTERVAL '30' DAY)
+      GROUP BY 1
     )
-    SELECT
-      channel,
-      id,
-      SUM(sales) AS sales,
-      SUM(returns) AS returns,
-      SUM(profit) AS profit
+    SELECT channel, id, SUM(sales) AS sales, SUM(returns) AS returns, SUM(profit) AS profit
     FROM (
-      SELECT
-        'store channel' AS channel,
-        ss.s_store_sk AS id,
-        sales,
-        COALESCE(returns, 0) AS returns,
-        (
-          profit - COALESCE(profit_loss, 0)
-        ) AS profit
-      FROM ss
-      LEFT JOIN sr
-        ON ss.s_store_sk = sr.s_store_sk
+      SELECT 'store channel' AS channel, ss.s_store_sk AS id, sales, COALESCE(returns, 0) AS returns, (profit - COALESCE(profit_loss, 0)) AS profit
+      FROM ss LEFT JOIN sr ON ss.s_store_sk = sr.s_store_sk
       UNION ALL
-      SELECT
-        'catalog channel' AS channel,
-        cs.call_center_sk AS id,
-        sales,
-        returns,
-        (
-          profit - profit_loss
-        ) AS profit
-      FROM cs, cr
+      SELECT 'catalog channel' AS channel, cs_call_center_sk AS id, sales, returns, (profit - profit_loss) AS profit FROM cs, cr
       UNION ALL
-      SELECT
-        'web channel' AS channel,
-        ws.wp_web_page_sk AS id,
-        sales,
-        COALESCE(returns, 0) AS returns,
-        (
-          profit - COALESCE(profit_loss, 0)
-        ) AS profit
-      FROM ws
-      LEFT JOIN wr
-        ON ws.wp_web_page_sk = wr.wp_web_page_sk
+      SELECT 'web channel' AS channel, ws.wp_web_page_sk AS id, sales, COALESCE(returns, 0) AS returns, (profit - COALESCE(profit_loss, 0)) AS profit
+      FROM ws LEFT JOIN wr ON ws.wp_web_page_sk = wr.wp_web_page_sk
     ) AS x
-    GROUP BY
-      ROLLUP (
-        channel,
-        id
-      )
-    ORDER BY
-      channel,
-      id
+    GROUP BY ROLLUP (channel, id)
+    ORDER BY channel, id
     LIMIT 100
 - id: 78
   template: query78.tpl
@@ -7044,48 +5885,48 @@ queries:
     - 1
   sql: |-
     SELECT
-      obt.bill_customer_c_last_name,
-      obt.bill_customer_c_first_name,
-      SUBSTRING(obt.store_s_city, 1, 30),
-      obt.sale_id,
+      c_last_name,
+      c_first_name,
+      SUBSTRING(s_city, 1, 30),
+      ss_ticket_number,
       amt,
       profit
-    FROM tpcds_sales_returns_obt AS obt
-    CROSS JOIN (
+    FROM (
       SELECT
-        sub_obt.sale_id AS ms_sale_id,
-        sub_obt.ship_customer_sk AS ms_ship_customer_sk,
-        obt.store_s_city,
-        SUM(sub_obt.coupon_amt) AS amt,
-        SUM(sub_obt.net_profit) AS profit
-      FROM tpcds_sales_returns_obt AS sub_obt
+        sale_id AS ss_ticket_number,
+        bill_customer_c_customer_sk AS cust_sk,
+        bill_customer_c_last_name AS c_last_name,
+        bill_customer_c_first_name AS c_first_name,
+        store_s_city AS s_city,
+        SUM(coupon_amt) AS amt,
+        SUM(net_profit) AS profit
+      FROM tpcds_sales_returns_obt
       WHERE
-        (
-          sub_obt.sold_date_sk = obt.sold_date_d_date_sk
-          AND obt.store_sk = obt.store_s_store_sk
-          AND sub_obt.ship_hdemo_sk = obt.bill_hdemo_hd_demo_sk
-          AND (
-            obt.bill_hdemo_hd_dep_count = [DEPCNT]
-            OR obt.bill_hdemo_hd_vehicle_count > [VEHCNT]
-          )
-          AND obt.sold_date_d_dow = 1
-          AND obt.sold_date_d_year IN ([YEAR], [YEAR] + 1, [YEAR] + 2)
-          AND obt.store_s_number_employees BETWEEN 200 AND 295
+        channel = 'store'
+        AND sold_date_d_date_sk IS NOT NULL
+        AND store_s_store_sk IS NOT NULL
+        AND bill_hdemo_hd_demo_sk IS NOT NULL
+        AND (
+          bill_hdemo_hd_dep_count = [DEPCNT] OR bill_hdemo_hd_vehicle_count > [VEHCNT]
         )
-        AND channel = 'store'
+        AND sold_date_d_dow = 1
+        AND sold_date_d_year IN ([YEAR], [YEAR] + 1, [YEAR] + 2)
+        AND store_s_number_employees BETWEEN 200 AND 295
       GROUP BY
-        sub_obt.sale_id,
-        sub_obt.ship_customer_sk,
-        sub_obt.ship_addr_sk,
-        obt.store_s_city
+        sale_id,
+        bill_customer_sk,
+        bill_addr_sk,
+        store_s_city,
+        bill_customer_c_customer_sk,
+        bill_customer_c_last_name,
+        bill_customer_c_first_name
     ) AS ms
     WHERE
-      obt.sale_id = ms.ms_sale_id AND obt.ship_customer_sk = ms.ms_ship_customer_sk AND
-      obt.ship_customer_sk = obt.bill_customer_c_customer_sk AND channel = 'store'
+      cust_sk IS NOT NULL
     ORDER BY
-      obt.bill_customer_c_last_name,
-      obt.bill_customer_c_first_name,
-      SUBSTRING(obt.store_s_city, 1, 30),
+      c_last_name,
+      c_first_name,
+      SUBSTRING(s_city, 1, 30),
       profit
     LIMIT 100
 - id: 80
@@ -7214,69 +6055,87 @@ queries:
   sql: |-
     WITH customer_total_return AS (
       SELECT
-        obt.returning_customer_c_customer_sk AS ctr_customer_sk,
-        obt.returning_addr_ca_state AS ctr_state,
-        SUM(obt.return_amount_inc_tax) AS ctr_total_return
-      FROM tpcds_sales_returns_obt AS obt
+        returning_customer_c_customer_sk AS ctr_customer_sk,
+        returning_addr_ca_state AS ctr_state,
+        SUM(return_amount_inc_tax) AS ctr_total_return
+      FROM tpcds_sales_returns_obt
       WHERE
-        (
-          obt.returned_date_sk = obt.return_date_d_date_sk
-          AND obt.return_date_d_year = [YEAR]
-          AND obt.returning_addr_ca_address_sk = obt.returning_addr_ca_address_sk
-        )
-        AND channel = 'catalog'
+        channel = 'catalog'
+        AND has_return = 'Y'
+        AND return_date_d_year = [YEAR]
+        AND returning_addr_ca_address_sk IS NOT NULL
       GROUP BY
-        obt.returning_customer_c_customer_sk,
-        obt.returning_addr_ca_state
+        returning_customer_c_customer_sk,
+        returning_addr_ca_state
+    ), cust AS (
+      SELECT DISTINCT
+        returning_customer_c_customer_sk AS c_customer_sk,
+        returning_customer_c_customer_id AS c_customer_id,
+        returning_customer_c_salutation AS c_salutation,
+        returning_customer_c_first_name AS c_first_name,
+        returning_customer_c_last_name AS c_last_name,
+        returning_cur_addr_ca_street_number AS ca_street_number,
+        returning_cur_addr_ca_street_name AS ca_street_name,
+        returning_cur_addr_ca_street_type AS ca_street_type,
+        returning_cur_addr_ca_suite_number AS ca_suite_number,
+        returning_cur_addr_ca_city AS ca_city,
+        returning_cur_addr_ca_county AS ca_county,
+        returning_cur_addr_ca_state AS ca_state,
+        returning_cur_addr_ca_zip AS ca_zip,
+        returning_cur_addr_ca_country AS ca_country,
+        returning_cur_addr_ca_gmt_offset AS ca_gmt_offset,
+        returning_cur_addr_ca_location_type AS ca_location_type
+      FROM tpcds_sales_returns_obt
+      WHERE
+        channel = 'catalog'
+        AND has_return = 'Y'
+        AND returning_customer_c_customer_sk IS NOT NULL
     )
     SELECT
-      obt.bill_customer_c_customer_id,
-      obt.bill_customer_c_salutation,
-      obt.bill_customer_c_first_name,
-      obt.bill_customer_c_last_name,
-      obt.bill_addr_ca_street_number,
-      obt.bill_addr_ca_street_name,
-      obt.bill_addr_ca_street_type,
-      obt.bill_addr_ca_suite_number,
-      obt.bill_addr_ca_city,
-      obt.bill_addr_ca_county,
-      obt.bill_addr_ca_state,
-      obt.bill_addr_ca_zip,
-      obt.bill_addr_ca_country,
-      obt.bill_addr_ca_gmt_offset,
-      obt.bill_addr_ca_location_type,
+      c_customer_id,
+      c_salutation,
+      c_first_name,
+      c_last_name,
+      ca_street_number,
+      ca_street_name,
+      ca_street_type,
+      ca_suite_number,
+      ca_city,
+      ca_county,
+      ca_state,
+      ca_zip,
+      ca_country,
+      ca_gmt_offset,
+      ca_location_type,
       ctr_total_return
-    FROM tpcds_sales_returns_obt AS obt
-    CROSS JOIN customer_total_return AS ctr1
+    FROM customer_total_return AS ctr1
+    JOIN cust
+      ON ctr1.ctr_customer_sk = cust.c_customer_sk
     WHERE
-      (
-        ctr1.ctr_total_return > (
-          SELECT
-            AVG(ctr_total_return) * 1.2
-          FROM customer_total_return AS ctr2
-          WHERE
-            ctr1.ctr_state = ctr2.ctr_state
-        )
-        AND obt.bill_addr_ca_state = '[STATE]'
-        AND ctr1.ctr_customer_sk = obt.bill_customer_c_customer_sk
+      ctr1.ctr_total_return > (
+        SELECT
+          AVG(ctr_total_return) * 1.2
+        FROM customer_total_return AS ctr2
+        WHERE
+          ctr1.ctr_state = ctr2.ctr_state
       )
-      AND channel = 'catalog'
+      AND cust.ca_state = '[STATE]'
     ORDER BY
-      obt.bill_customer_c_customer_id,
-      obt.bill_customer_c_salutation,
-      obt.bill_customer_c_first_name,
-      obt.bill_customer_c_last_name,
-      obt.bill_addr_ca_street_number,
-      obt.bill_addr_ca_street_name,
-      obt.bill_addr_ca_street_type,
-      obt.bill_addr_ca_suite_number,
-      obt.bill_addr_ca_city,
-      obt.bill_addr_ca_county,
-      obt.bill_addr_ca_state,
-      obt.bill_addr_ca_zip,
-      obt.bill_addr_ca_country,
-      obt.bill_addr_ca_gmt_offset,
-      obt.bill_addr_ca_location_type,
+      c_customer_id,
+      c_salutation,
+      c_first_name,
+      c_last_name,
+      ca_street_number,
+      ca_street_name,
+      ca_street_type,
+      ca_suite_number,
+      ca_city,
+      ca_county,
+      ca_state,
+      ca_zip,
+      ca_country,
+      ca_gmt_offset,
+      ca_location_type,
       ctr_total_return
     LIMIT 100
 - id: 83
@@ -7929,7 +6788,7 @@ queries:
     - 1
   sql: |-
     SELECT
-      CAST(amc AS DECIMAL(15, 4)) / CAST(pmc AS DECIMAL(15, 4)) AS am_pm_ratio
+      CAST(amc AS DECIMAL(15, 4)) / NULLIF(CAST(pmc AS DECIMAL(15, 4)), 0) AS am_pm_ratio
     FROM (
       SELECT
         COUNT(*) AS amc
@@ -7980,40 +6839,41 @@ queries:
   identifier_map: {}
   sql: |-
     SELECT
-      obt.call_center_cc_call_center_id AS Call_Center,
-      obt.call_center_cc_name AS Call_Center_Name,
-      obt.call_center_cc_manager AS Manager,
-      SUM(obt.return_net_loss) AS Returns_Loss
-    FROM tpcds_sales_returns_obt AS obt
+      return_call_center_cc_call_center_id AS Call_Center,
+      return_call_center_cc_name AS Call_Center_Name,
+      return_call_center_cc_manager AS Manager,
+      SUM(return_net_loss) AS Returns_Loss
+    FROM tpcds_sales_returns_obt
     WHERE
-      (
-        obt.call_center_sk = obt.call_center_cc_call_center_sk
-        AND obt.returned_date_sk = obt.return_date_d_date_sk
-        AND obt.returning_customer_c_customer_sk = obt.returning_customer_c_customer_sk
-        AND obt.return_date_d_year = [YEAR]
-        AND obt.return_date_d_moy = [MONTH]
-        AND (
-          (
-            obt.returning_cdemo_cd_marital_status = 'M'
-            AND obt.returning_cdemo_cd_education_status = 'Unknown'
-          )
-          OR (
-            obt.returning_cdemo_cd_marital_status = 'W'
-            AND obt.returning_cdemo_cd_education_status = 'Advanced Degree'
-          )
+      channel = 'catalog'
+      AND has_return = 'Y'
+      AND return_call_center_cc_call_center_sk IS NOT NULL
+      AND return_date_d_year = [YEAR]
+      AND return_date_d_moy = [MONTH]
+      AND returning_customer_c_customer_sk IS NOT NULL
+      AND returning_cur_cdemo_cd_demo_sk IS NOT NULL
+      AND returning_cur_hdemo_hd_demo_sk IS NOT NULL
+      AND returning_cur_addr_ca_address_sk IS NOT NULL
+      AND (
+        (
+          returning_cur_cdemo_cd_marital_status = 'M'
+          AND returning_cur_cdemo_cd_education_status = 'Unknown'
         )
-        AND obt.returning_hdemo_hd_buy_potential LIKE '[BUY_POTENTIAL]%'
-        AND obt.returning_addr_ca_gmt_offset = [GMT]
+        OR (
+          returning_cur_cdemo_cd_marital_status = 'W'
+          AND returning_cur_cdemo_cd_education_status = 'Advanced Degree'
+        )
       )
-      AND channel = 'catalog'
+      AND returning_cur_hdemo_hd_buy_potential LIKE '[BUY_POTENTIAL]%'
+      AND returning_cur_addr_ca_gmt_offset = [GMT]
     GROUP BY
-      obt.call_center_cc_call_center_id,
-      obt.call_center_cc_name,
-      obt.call_center_cc_manager,
-      obt.returning_cdemo_cd_marital_status,
-      obt.returning_cdemo_cd_education_status
+      return_call_center_cc_call_center_id,
+      return_call_center_cc_name,
+      return_call_center_cc_manager,
+      returning_cur_cdemo_cd_marital_status,
+      returning_cur_cdemo_cd_education_status
     ORDER BY
-      SUM(obt.return_net_loss) DESC NULLS FIRST
+      SUM(return_net_loss) DESC NULLS FIRST
 - id: 92
   template: query92.tpl
   template_sha256: a8e6c13375da18c2ca9cce8d044bedf179e66d199e77b0b53ddf0c8c1f289ee2
@@ -8025,34 +6885,27 @@ queries:
     YEAR: []
   sql: |-
     SELECT
-      SUM(obt.ext_discount_amt) AS "Excess Discount Amount"
-    FROM tpcds_sales_returns_obt AS obt
+      SUM(o.ext_discount_amt) AS "Excess Discount Amount"
+    FROM tpcds_sales_returns_obt AS o
     WHERE
-      (
-        obt.item_i_manufact_id = [IMID]
-        AND obt.item_i_item_sk = obt.item_sk
-        AND obt.sold_date_d_date BETWEEN '[WSDATE]' AND (
-          CAST('[WSDATE]' AS DATE) + INTERVAL 90 DAY
-        )
-        AND obt.sold_date_d_date_sk = obt.sold_date_sk
-        AND obt.ext_discount_amt > (
-          SELECT
-            1.3 * AVG(obt.ext_discount_amt)
-          FROM tpcds_sales_returns_obt AS obt
-          WHERE
-            (
-              obt.item_sk = obt.item_i_item_sk
-              AND obt.sold_date_d_date BETWEEN '[WSDATE]' AND (
-                CAST('[WSDATE]' AS DATE) + INTERVAL 90 DAY
-              )
-              AND obt.sold_date_d_date_sk = obt.sold_date_sk
-            )
-            AND channel = 'web'
-        )
+      o.channel = 'web'
+      AND o.item_i_manufact_id = [IMID]
+      AND o.sold_date_d_date BETWEEN '[WSDATE]' AND (
+        CAST('[WSDATE]' AS DATE) + INTERVAL 90 DAY
       )
-      AND channel = 'web'
+      AND o.ext_discount_amt > (
+        SELECT
+          1.3 * AVG(i.ext_discount_amt)
+        FROM tpcds_sales_returns_obt AS i
+        WHERE
+          i.channel = 'web'
+          AND i.item_sk = o.item_i_item_sk
+          AND i.sold_date_d_date BETWEEN '[WSDATE]' AND (
+            CAST('[WSDATE]' AS DATE) + INTERVAL 90 DAY
+          )
+      )
     ORDER BY
-      SUM(obt.ext_discount_amt)
+      SUM(o.ext_discount_amt)
     LIMIT 100
 - id: 93
   template: query93.tpl
@@ -8391,3 +7244,40 @@ queries:
       obt.ship_mode_sm_type,
       obt.call_center_cc_name
     LIMIT 100
+excluded:
+- id: 8
+  template: query8.tpl
+  template_sha256: 378c3fec4638dd57cef1732be700659fc70d78d0a5e04b5d2e5f3b12b0a9babe
+  reason: Needs customer zip codes and stores that have no sales rows; the OBT only carries dimension rows reachable from a sale line.
+- id: 21
+  template: query21.tpl
+  template_sha256: 4713d6437ea565c54f1543e894280b782dbb7a1c132b677d4c07f11ee42b6c67
+  reason: Reads the inventory fact table, a separate fact domain the OBT does not carry.
+- id: 22
+  template: query22.tpl
+  template_sha256: ba0b994760186422f07223d6a08415c4292ec1da5be170a2b03c921e56b6896d
+  reason: Reads the inventory fact table, a separate fact domain the OBT does not carry.
+- id: 37
+  template: query37.tpl
+  template_sha256: 95642c6a3dd175cf932a8937a0d60034a2a6537021c011ba1ed612db57e08131
+  reason: Reads the inventory fact table, a separate fact domain the OBT does not carry.
+- id: 39
+  template: query39.tpl
+  template_sha256: 9498ef818487075a8f0f5e9628d3c7701d76797faceee6988d38cd79ee7699ca
+  reason: Reads the inventory fact table, a separate fact domain the OBT does not carry.
+- id: 54
+  template: query54.tpl
+  template_sha256: cde384d141c912b85addbff254f29abdc9028b103d25b2a010b295d28dc58d6e
+  reason: Needs customers and stores that have no sales rows; the county and state match runs over every customer and store.
+- id: 72
+  template: query72.tpl
+  template_sha256: 5f9117a8a7184d36125ca4c4224110da7b76dcefa24678d4c8c2d7efb0cd31f1
+  reason: Reads the inventory fact table, a separate fact domain the OBT does not carry.
+- id: 82
+  template: query82.tpl
+  template_sha256: e6fbe19cb97f43d473b20934491ba48bdcccc3a1c132dfef5b96bd0fdac08c29
+  reason: Reads the inventory fact table, a separate fact domain the OBT does not carry.
+- id: 84
+  template: query84.tpl
+  template_sha256: 7eed933ac66a43af5e776c604dc16d4b6624bef0ac8d10d1e983f5c5648bf7af
+  reason: Needs customers that have no sales rows; the query joins customers to store returns through the customer's current address and income band.

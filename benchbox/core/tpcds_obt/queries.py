@@ -3,8 +3,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from benchbox.core.query_catalog_base import QuerySkippedError
 from benchbox.core.tpcds.c_tools import DSQGenBinary
-from benchbox.core.tpcds_obt.catalog.loader import PLACEHOLDER_PATTERN, OBTQuery, load_catalog
+from benchbox.core.tpcds_obt.catalog.loader import PLACEHOLDER_PATTERN, OBTQuery, load_catalog, load_exclusions
 
 
 def __getattr__(name: str) -> Any:
@@ -86,6 +87,9 @@ class TPCDSOBTQueryManager:
         qid_int = self._normalize_id(query_id)
         query = load_catalog().get(qid_int)
         if query is None:
+            exclusion = load_exclusions().get(qid_int)
+            if exclusion is not None:
+                raise QuerySkippedError(f"TPC-DS OBT does not provide query {qid_int}: {exclusion.reason}")
             raise ValueError(f"Unknown query id: {query_id}")
         return query
 

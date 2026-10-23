@@ -22,92 +22,31 @@ pytestmark = [
 SCALE_FACTOR = float(os.environ.get("BENCHBOX_OBT_EQUIVALENCE_SF", "0.01"))
 QUERY_TIMEOUT_SECONDS = float(os.environ.get("BENCHBOX_OBT_EQUIVALENCE_TIMEOUT", "60"))
 
-GRAIN = "the flattened sale-line grain changes cardinality for a dimension-only scope or a per-entity aggregate"
-CORRELATION = "a correlated subquery, self-join or cross-join binds to different rows on the flattened grain"
-CURRENT_POINTER = "customer-current address, demographics or household role is not carried by the OBT"
-RETURN_KEY = "a return-side store, call-center, catalog-page or web-page key is not carried by the OBT"
-MISSING_PART = "the converted statement covers fewer parts than the base query"
-LABEL = "the OBT column name leaks into a result label"
-ZERO_DIVISOR = "a zero divisor yields NaN where the base query yields NULL"
+COVERAGE = (
+    "scale factors below 1 leave calendar days without a sale, which the OBT calendar is read from; "
+    "the ETL coverage check enforces full coverage from scale factor 1"
+)
 EMPTY = "the base query returns no rows for every candidate parameter seed at this scale, so equality is vacuous"
 
 DIVERGENT_AT_SF_0_01: dict[int, str] = {
-    1: GRAIN,
-    2: CORRELATION,
-    5: RETURN_KEY,
-    6: CURRENT_POINTER,
-    9: GRAIN,
-    14: MISSING_PART,
-    15: CURRENT_POINTER,
-    17: CORRELATION,
-    18: CURRENT_POINTER,
-    25: CORRELATION,
-    29: CORRELATION,
-    30: GRAIN,
-    34: CORRELATION,
-    35: CURRENT_POINTER,
-    45: CURRENT_POINTER,
-    59: CORRELATION,
-    69: CURRENT_POINTER,
-    73: CORRELATION,
-    76: LABEL,
-    77: RETURN_KEY,
-    79: CORRELATION,
-    81: GRAIN,
-    90: ZERO_DIVISOR,
-    91: CURRENT_POINTER,
+    2: COVERAGE,
 }
 UNVERIFIABLE_AT_SF_0_01: dict[int, str] = {
     4: EMPTY,
-    8: EMPTY,
     10: EMPTY,
     23: EMPTY,
     24: EMPTY,
     31: EMPTY,
     41: EMPTY,
-    54: EMPTY,
     58: EMPTY,
     65: EMPTY,
     85: EMPTY,
 }
 
-DIVERGENT_AT_SF_1: dict[int, str] = {
-    1: GRAIN,
-    2: CORRELATION,
-    5: RETURN_KEY,
-    6: CURRENT_POINTER,
-    9: GRAIN,
-    10: CURRENT_POINTER,
-    14: MISSING_PART,
-    15: CURRENT_POINTER,
-    17: CORRELATION,
-    18: CURRENT_POINTER,
-    19: CURRENT_POINTER,
-    25: CORRELATION,
-    29: CORRELATION,
-    30: GRAIN,
-    32: CORRELATION,
-    34: CORRELATION,
-    35: CURRENT_POINTER,
-    41: GRAIN,
-    45: CURRENT_POINTER,
-    59: CORRELATION,
-    65: GRAIN,
-    69: CURRENT_POINTER,
-    71: CORRELATION,
-    73: CORRELATION,
-    76: LABEL,
-    77: RETURN_KEY,
-    79: CORRELATION,
-    81: GRAIN,
-    91: CURRENT_POINTER,
-    92: CORRELATION,
-}
+DIVERGENT_AT_SF_1: dict[int, str] = {}
 UNVERIFIABLE_AT_SF_1: dict[int, str] = {
-    8: EMPTY,
     23: EMPTY,
     24: EMPTY,
-    54: EMPTY,
 }
 
 EXPECTED_DIVERGENT: dict[float, dict[int, str]] = {0.01: DIVERGENT_AT_SF_0_01, 1.0: DIVERGENT_AT_SF_1}
