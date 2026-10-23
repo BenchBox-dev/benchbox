@@ -37,18 +37,18 @@ class TestDuckLakeRuleStructure:
         (decision,) = ducklake_decisions
         assert isinstance(decision.payload, RewriteDDLPayload)
 
-    def test_transformer_id_names_adapter_method(self, tmp_path: Path, ducklake_decisions):
-        from benchbox.platforms.ducklake import DuckLakeAdapter
+    def test_transformer_id_names_translate_ddl_option(self, ducklake_decisions):
+        from dataclasses import fields
+
+        from benchbox._vendor.sqlglot.benchbox.ddl import DdlOptions
 
         (decision,) = ducklake_decisions
-        adapter = DuckLakeAdapter(
-            metadata_path=str(tmp_path / "catalog.ducklake"),
-            data_path=str(tmp_path / "data"),
-        )
-        assert decision.payload.transformer_id == "ducklake_strip_primary_keys"
-        assert callable(getattr(adapter, decision.payload.transformer_id, None))
+        assert decision.payload.governance_only
+        prefix, _, option = decision.payload.transformer_id.partition(":")
+        assert prefix == "translate_ddl"
+        assert option in {field.name for field in fields(DdlOptions)}
 
-    def test_rewrite_routes_through_registered_transformer(self, tmp_path: Path):
+    def test_rewrite_strips_primary_keys_through_translate_ddl(self, tmp_path: Path):
         from benchbox.platforms.ducklake import DuckLakeAdapter
 
         adapter = DuckLakeAdapter(
@@ -56,5 +56,4 @@ class TestDuckLakeRuleStructure:
             data_path=str(tmp_path / "data"),
         )
         statement = "CREATE TABLE t (\n  id INTEGER PRIMARY KEY\n);"
-        assert "PRIMARY KEY" not in adapter.ducklake_strip_primary_keys(statement)
-        assert adapter._rewrite_schema_statement(statement) == adapter.ducklake_strip_primary_keys(statement)
+        assert "PRIMARY KEY" not in adapter._rewrite_schema_statement(statement)

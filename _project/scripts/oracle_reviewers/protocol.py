@@ -30,7 +30,7 @@ MARKER_VERSION = 1
 MARKER_LIMIT = 4096
 MARKER_OPEN = "<!-- oracle-protocol:"
 _MARKER = re.compile(r"<!-- oracle-protocol: v1 (?P<data>[A-Za-z0-9_-]+) -->\s*\Z")
-_HUNK = re.compile(r"^@@ -(?P<start>\d+)(?:,(?P<count>\d+))? \+\d+(?:,\d+)? @@(?P<section>.*)$")
+_HUNK = re.compile(r"^@@ -(?P<start>\d+)(?:,(?P<count>\d+))? \+\d+(?:,(?P<new_count>\d+))? @@(?P<section>.*)$")
 DEFECT_ID = re.compile(r"D([1-9][0-9]{0,3})")
 NOT_COUNTED_LIMIT = 5
 PATCH_HEX = 16
@@ -119,7 +119,10 @@ def file_patches(diff_text: str) -> dict[str, str]:
         binary = "\nBinary files " in f"\n{body}" or "\nGIT binary patch" in f"\n{body}"
         kept = []
         previous_end: int | None = None
-        for line in body.splitlines():
+        lines = body.split("\n")
+        if lines[-1] == "":
+            lines.pop()
+        for line in lines:
             if not binary and line.startswith("index "):
                 continue
             hunk = _HUNK.match(line)
@@ -127,10 +130,11 @@ def file_patches(diff_text: str) -> dict[str, str]:
                 kept.append(line)
                 continue
             count = 1 if hunk["count"] is None else int(hunk["count"])
+            new_count = 1 if hunk["new_count"] is None else int(hunk["new_count"])
             first = int(hunk["start"]) + (1 if count == 0 else 0)
             gap = "first" if previous_end is None else str(first - previous_end)
             previous_end = first + count
-            kept.append(f"@@ gap={gap}{hunk['section']}")
+            kept.append(f"@@ gap={gap} old={count} new={new_count}{hunk['section']}")
         patches[match.group("new")] = hashlib.sha256("\n".join(kept).encode("utf-8")).hexdigest()
     return patches
 

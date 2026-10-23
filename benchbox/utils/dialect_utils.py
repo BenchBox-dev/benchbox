@@ -551,6 +551,13 @@ def translate_ddl(
     return statements
 
 
+def mooncake_mirror_statements(table: str, staging_table: str, schema: str | None = None) -> list[str]:
+    import importlib
+
+    engines = importlib.import_module("benchbox._vendor.sqlglot.benchbox.ddl_engines")
+    return engines.mooncake_mirror_statements(table, staging_table, schema)
+
+
 def contains_division(sql: str, dialect: str) -> bool:
     from benchbox._vendor import sqlglot
     from benchbox._vendor.sqlglot import exp

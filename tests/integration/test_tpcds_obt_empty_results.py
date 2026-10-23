@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from benchbox.core.tpcds_obt.queries import CONVERTIBLE_QUERY_IDS
+from tests.integration._tpcds_obt_utils import build_engines
 
 pytestmark = [
     pytest.mark.integration,
@@ -39,34 +38,9 @@ def _base_row_counts(base, benchmark, query_id: int) -> list[int]:
 
 @pytest.fixture(scope="module")
 def engines(tmp_path_factory: pytest.TempPathFactory):
-    duckdb = pytest.importorskip("duckdb")
-    from benchbox.core.tpcds.generator.manager import TPCDSDataGenerator
-    from benchbox.core.tpcds_obt.etl.transformer import TPCDSOBTTransformer
-    from benchbox.core.tpcds_obt.queries import TPCDSOBTQueryManager
-    from benchbox.platforms.duckdb import DuckDBAdapter
-    from benchbox.tpcds import TPCDS
-
     root = tmp_path_factory.mktemp("tpcds_obt_empty_results")
-    generator = TPCDSDataGenerator(
-        scale_factor=SCALE_FACTOR, output_dir=root / "tpcds", compress_data=False, quiet=True
-    )
-    if not generator.dsdgen_available:
-        pytest.skip("dsdgen is not available")
-    generator.generate()
-
-    outputs = TPCDSOBTTransformer().transform(root / "tpcds", root / "obt", scale_factor=SCALE_FACTOR)
-    obt = duckdb.connect()
-    obt.execute(
-        f"CREATE VIEW tpcds_sales_returns_obt AS SELECT * FROM read_parquet('{Path(outputs['table']).as_posix()}')"
-    )
-
-    benchmark = TPCDS(scale_factor=SCALE_FACTOR, output_dir=root / "tpcds")
-    adapter = DuckDBAdapter(database_path=":memory:")
-    base = adapter.create_connection()
-    adapter.create_schema(benchmark, base)
-    adapter.load_data(benchmark, base, root / "tpcds")
-
-    yield obt, base, benchmark, TPCDSOBTQueryManager()
+    obt, base, benchmark, manager, adapter = build_engines(root, SCALE_FACTOR)
+    yield obt, base, benchmark, manager
     obt.close()
     adapter.close_connection(base)
 

@@ -9,8 +9,8 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from benchbox.platforms.base.ddl_helpers import strip_foreign_keys
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.dialect_utils import translate_ddl
 
 if TYPE_CHECKING:
     from benchbox.core.tuning.interface import (
@@ -553,22 +553,18 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
         for raw_stmt in statements:
             stmt, partition_children = self.partitioned_create_statements(raw_stmt, benchmark)
             try:
-                cursor.execute(self._transform_create_statement(stmt))
+                cursor.execute(stmt)
             except Exception as e:
                 connection.rollback()
                 self.logger.warning(f"Schema statement failed: {e}")
-                if re.search(r"\bCREATE\s+TABLE\b", stmt, re.IGNORECASE) and "FOREIGN" in stmt.upper():
-                    stripped = strip_foreign_keys(stmt)
-                    if stripped != stmt:
-                        try:
-                            cursor.execute(self._transform_create_statement(stripped))
-                        except Exception as e2:
-                            connection.rollback()
-                            self.logger.error(f"Schema statement failed even without FK constraints: {e2}")
-                            raise
-                    else:
-                        raise
-                else:
+                if not (re.search(r"\bCREATE\s+TABLE\b", stmt, re.IGNORECASE) and "FOREIGN" in stmt.upper()):
+                    raise
+                try:
+                    for stripped in translate_ddl(stmt, "postgres", "postgres", strip_foreign_keys=True):
+                        cursor.execute(stripped)
+                except Exception as e2:
+                    connection.rollback()
+                    self.logger.error(f"Schema statement failed even without FK constraints: {e2}")
                     raise
             for child in partition_children:
                 cursor.execute(child)
@@ -621,9 +617,6 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
             return
         columns = ", ".join(column.name for column in sorted(partition_columns, key=lambda column: column.order))
         ledger.record_dropped(f"partitioning:{table_tuning.table_name} ({columns})", PARTITIONING_WITH_KEYS_REASON)
-
-    def _transform_create_statement(self, stmt: str) -> str:
-        return stmt
 
     @staticmethod
     def _group_files_into_copy_sessions(

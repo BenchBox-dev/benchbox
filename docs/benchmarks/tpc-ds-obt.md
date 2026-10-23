@@ -166,6 +166,12 @@ WHERE d_year = 2000
   ...
 ```
 
+### Result Equivalence
+
+`tests/integration/test_tpcds_obt_equivalence.py` runs every served OBT query and its TPC-DS counterpart on DuckDB over the same generated data, with identical dsqgen parameters, and compares the result multisets (integers and decimals exactly, floating-point values within a relative tolerance of 1e-9, NULL-aware, row order ignored). Where the default parameter draw makes the TPC-DS query return no rows, the test searches seeds 1 to 12 for one that does. Queries whose results differ, and queries with no rows to compare at any seed, are recorded per scale factor with a cause class in the test module. A listed query that starts matching fails the test, as does an unlisted query that diverges, so the lists can only shrink on purpose.
+
+Run it with `make tpcds-obt-equivalence` (SF0.01 by default) or `make tpcds-obt-equivalence TPCDS_OBT_EQUIVALENCE_SF=1`. The PR tier runs SF0.01 and the nightly `t3:tpcds-obt` domain runs SF1.
+
 ## Performance Considerations
 
 ### Advantages of OBT

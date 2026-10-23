@@ -16,8 +16,8 @@ from typing import Any
 from benchbox.core.config_inheritance import resolve_dialect_for_query_translation
 from benchbox.core.deployment import deployment_class, select_adapter_deployment
 from benchbox.platforms.base.data_loading import escape_sql_string_literal
-from benchbox.platforms.base.ddl_helpers import strip_primary_keys
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
+from benchbox.utils.dialect_utils import translate_ddl
 
 from .duckdb import DuckDBAdapter, DuckDBConnectionWrapper
 from .postgresql import _build_postgres_connection_kwargs
@@ -590,11 +590,8 @@ class DuckLakeAdapter(DuckDBAdapter):
                 "and tuning configuration). Use --force or a fresh catalog."
             )
 
-    def ducklake_strip_primary_keys(self, statement: str) -> str:
-        return strip_primary_keys(statement)
-
     def _rewrite_schema_statement(self, statement: str) -> str:
-        return self.ducklake_strip_primary_keys(statement)
+        return ";\n".join(translate_ddl(statement, "duckdb", strip_primary_keys=True))
 
     def create_schema(self, benchmark: Any, connection: Any) -> float:
         elapsed = super().create_schema(benchmark, connection)

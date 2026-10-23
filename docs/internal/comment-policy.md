@@ -36,6 +36,11 @@ Other tools:
   it. Use it to diagnose; CI does not run it.
 - `make comment-policy-report` lists every violation, including old ones. It
   fails only if configuration or parsing fails.
+- `make comment-policy-dead-exceptions` lists every registered exception with no
+  current finding at its path and digest, or whose path no longer exists, with
+  the commit and PR that registered it. It reuses the checker's scan, never
+  edits the policy, exits 0 unless configuration or parsing fails, and CI and
+  the commit hook do not run it.
 - The pre-commit hook checks staged files, with the same result as
   `make comment-policy-check` for the files you changed. It scans only the
   files that differ from the base, and falls back to every file in a completed
