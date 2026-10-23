@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "RUBRIC 1 append: a progress note can be added to context without resending the existing text, with a test",
+    "RUBRIC 2 docs: defer's summary limit and the done-item restriction appear in the tool schema or description"
+  ],
+  "description": "On 2026-10-22, updating item context with a progress note (update_item with context) replaced the field and removed the COMMON GUARDRAILS C1-C10 block from 15 batch items; they were restored by hand from the original specs. There is no append mode, and nothing warns that a large field is being replaced by a much shorter one. Related friction in the same session: defer is refused on a done item, so the order finish-then-defer silently loses the deferral; the deferral summary has an undocumented 200-character limit (not in the tool schema).\n\nCHANGE: add an append/prepend option for text fields (or a separate note operation), and document field limits and lifecycle restrictions in the tool schemas.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-23T11:43:00Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8a2ef96065424d23bb36837483332322",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    }
+  ]
+}
