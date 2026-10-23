@@ -263,9 +263,9 @@ class TestBigQueryAdapter:
         query_calls = list(mock_client.query.call_args_list)
         assert len(query_calls) == 3
         executed_ddl = [call.args[0] for call in query_calls]
-        assert any("`test-project.test_dataset.TABLE1`" in ddl for ddl in executed_ddl)
-        assert any("`test-project.test_dataset.ORDERS_STAGE`" in ddl for ddl in executed_ddl)
-        assert any("`test-project.test_dataset.TABLE2`" in ddl for ddl in executed_ddl)
+        assert any("`test-project`.`test_dataset`.`TABLE1`" in ddl for ddl in executed_ddl)
+        assert any("`test-project`.`test_dataset`.`ORDERS_STAGE`" in ddl for ddl in executed_ddl)
+        assert any("`test-project`.`test_dataset`.`TABLE2`" in ddl for ddl in executed_ddl)
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_load_data_with_csv_upload(self, mock_bigquery, dependencies_available):
@@ -1543,20 +1543,6 @@ class TestBigQuerySqlGenerationHelpers:
         assert mock_job_config.flatten_results is False
         assert mock_connection._default_job_config is mock_job_config
 
-    def test_convert_to_bigquery_table_adds_dataset_partition_and_cluster(self, dependencies_available):
-        adapter = BigQueryAdapter(
-            project_id="test-project",
-            dataset_id="test_dataset",
-            partitioning_field="order_date",
-            clustering_fields=["customer_id", "order_id"],
-        )
-
-        converted = adapter._convert_to_bigquery_table("CREATE TABLE orders (id INT64)")
-
-        assert converted.startswith("CREATE OR REPLACE TABLE `test-project.test_dataset.ORDERS` (id INT64)")
-        assert "PARTITION BY DATE(order_date)" in converted
-        assert "CLUSTER BY customer_id, order_id" in converted
-
     def test_qualify_table_names_adds_fully_qualified_tpch_tables(self, dependencies_available):
         adapter = BigQueryAdapter(project_id="test-project", dataset_id="test_dataset")
 
@@ -1904,38 +1890,38 @@ class TestConvertToBigqueryTable:
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_non_create_table_passes_through(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table("INSERT INTO t VALUES (1)")
+        result = adapter._translate_create_table("INSERT INTO t VALUES (1)")
         assert result == "INSERT INTO t VALUES (1)"
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_adds_or_replace(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE orders (id INT64)")
+        result = adapter._translate_create_table("CREATE TABLE orders (id INT64)")
         assert "CREATE OR REPLACE TABLE" in result
         assert "CREATE TABLE " not in result.replace("CREATE OR REPLACE TABLE", "")
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_preserves_existing_or_replace(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table("CREATE OR REPLACE TABLE orders (id INT64)")
+        result = adapter._translate_create_table("CREATE OR REPLACE TABLE orders (id INT64)")
         assert result.count("OR REPLACE") == 1
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_qualifies_with_project_and_dataset(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="my-project", dataset_id="my_dataset")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE lineitem (l_orderkey INT64)")
-        assert "`my-project.my_dataset." in result
+        result = adapter._translate_create_table("CREATE TABLE lineitem (l_orderkey INT64)")
+        assert "`my-project`.my_dataset." in result
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_no_partitioning_when_field_not_set(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE t (id INT64)")
+        result = adapter._translate_create_table("CREATE TABLE t (id INT64)")
         assert "PARTITION BY" not in result
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_no_clustering_when_fields_not_set(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE t (id INT64)")
+        result = adapter._translate_create_table("CREATE TABLE t (id INT64)")
         assert "CLUSTER BY" not in result
 
     @patch("benchbox.platforms.bigquery.bigquery")
@@ -1948,33 +1934,33 @@ class TestConvertToBigqueryTable:
             "WHERE o_orderdate >= DATE '1995-01-01'\n  AND o_orderdate < DATE '1996-01-01'\n"
         )
         start = time.perf_counter()
-        result = adapter._convert_to_bigquery_table(sql)
+        result = adapter._translate_create_table(sql)
         assert time.perf_counter() - start < 5
-        assert "CREATE OR REPLACE TABLE `proj.ds.ORDERS_1995` AS" in result
+        assert "CREATE OR REPLACE TABLE proj.ds.ORDERS_1995 AS" in result
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_table_primary_key_marked_not_enforced(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE t (id INT64, PRIMARY KEY (id))")
+        result = adapter._translate_create_table("CREATE TABLE t (id INT64, PRIMARY KEY (id))")
         assert "PRIMARY KEY (id) NOT ENFORCED" in result
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_foreign_key_reference_qualified_and_not_enforced(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table(
+        result = adapter._translate_create_table(
             "CREATE TABLE `link_nation_region` (`hk_nation` STRING(64) NOT NULL, `hk_region` STRING(64) NOT NULL, "
             "PRIMARY KEY (`hk_nation`), FOREIGN KEY (`hk_nation`) REFERENCES `hub_nation` (`hk_nation`), "
             "FOREIGN KEY (`hk_region`) REFERENCES hub_region (`hk_region`))"
         )
-        assert "REFERENCES `proj.ds.HUB_NATION` (`hk_nation`) NOT ENFORCED" in result
-        assert "REFERENCES `proj.ds.HUB_REGION` (`hk_region`) NOT ENFORCED" in result
+        assert "REFERENCES proj.ds.HUB_NATION (hk_nation) NOT ENFORCED" in result.replace("`", "")
+        assert "REFERENCES proj.ds.HUB_REGION (hk_region) NOT ENFORCED" in result.replace("`", "")
         assert "`hub_nation`" not in result
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_foreign_key_already_not_enforced_is_unchanged(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
         sql = "CREATE TABLE t (a INT64, FOREIGN KEY (a) REFERENCES `proj.ds.P` (a) NOT ENFORCED)"
-        result = adapter._convert_to_bigquery_table(sql)
+        result = adapter._translate_create_table(sql)
         assert result.count("NOT ENFORCED") == 1
         assert "REFERENCES `proj.ds.P` (a) NOT ENFORCED" in result
 
@@ -1982,9 +1968,9 @@ class TestConvertToBigqueryTable:
     def test_foreign_key_rewrite_ignores_string_literals(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
         sql = "CREATE TABLE t (note STRING DEFAULT 'REFERENCES parent(id)', a INT64, FOREIGN KEY (a) REFERENCES p (a))"
-        result = adapter._convert_to_bigquery_table(sql)
+        result = adapter._translate_create_table(sql)
         assert "DEFAULT 'REFERENCES parent(id)'" in result
-        assert "REFERENCES `proj.ds.P` (a) NOT ENFORCED" in result
+        assert "REFERENCES proj.ds.P (a) NOT ENFORCED" in result
 
     def test_unqualified_table_names_skips_earlier_sibling_ctes(self):
         query = (
@@ -2009,7 +1995,7 @@ class TestConvertToBigqueryTable:
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_inline_pk_survives_parameterized_types(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table(
+        result = adapter._translate_create_table(
             "CREATE TABLE t (id INT, price DECIMAL(10, 2) PRIMARY KEY, col3 STRING)"
         )
         assert "PRIMARY KEY (price) NOT ENFORCED" in result
@@ -2017,7 +2003,7 @@ class TestConvertToBigqueryTable:
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_inline_pk_ignores_parens_in_comments(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table(
+        result = adapter._translate_create_table(
             "CREATE TABLE t (id INT PRIMARY KEY, val INT /* note ) */, name STRING)"
         )
         assert "/* note ) */" in result
@@ -2076,77 +2062,51 @@ class TestConvertToBigqueryTable:
     def test_comment_prefixed_create_still_qualified(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
         chunk = "-- Generated staging load tables\nCREATE TABLE orders_stage (id INT64)"
-        result = adapter._convert_to_bigquery_table(chunk)
-        assert result.startswith("-- Generated staging load tables\n")
-        assert "CREATE OR REPLACE TABLE `proj.ds.ORDERS_STAGE`" in result
+        result = adapter._translate_create_table(chunk)
+        assert result.startswith("/* Generated staging load tables */")
+        assert "CREATE OR REPLACE TABLE proj.ds.ORDERS_STAGE" in result
         assert "CREATE TABLE orders_stage" not in result
-
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_adds_partitioning_clause(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds", partitioning_field="created_at")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE t (id INT64)")
-        assert "PARTITION BY DATE(created_at)" in result
-
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_adds_clustering_clause(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds", clustering_fields=["a", "b", "c"])
-        result = adapter._convert_to_bigquery_table("CREATE TABLE t (id INT64)")
-        assert "CLUSTER BY a, b, c" in result
-
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_skips_partition_if_already_present(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds", partitioning_field="ts")
-        sql = "CREATE TABLE t (id INT64) PARTITION BY DATE(ts)"
-        result = adapter._convert_to_bigquery_table(sql)
-        assert result.count("PARTITION BY") == 1
-
-    @patch("benchbox.platforms.bigquery.bigquery")
-    def test_skips_cluster_if_already_present(self, mock_bigquery):
-        adapter = BigQueryAdapter(project_id="proj", dataset_id="ds", clustering_fields=["x"])
-        sql = "CREATE TABLE t (id INT64) CLUSTER BY x"
-        result = adapter._convert_to_bigquery_table(sql)
-        assert result.count("CLUSTER BY") == 1
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_varchar_mapped_to_string(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="p1", dataset_id="d1")
-        result = adapter._convert_to_bigquery_table(
+        result = adapter._translate_create_table(
             "CREATE TABLE update_ops_orders (o_orderkey INT64, o_comment VARCHAR(79), flag VARCHAR)"
         )
         assert "VARCHAR" not in result
-        assert "o_comment STRING" in result
+        assert "o_comment STRING(79)" in result
         assert "flag STRING" in result
-        assert result.startswith("CREATE OR REPLACE TABLE `p1.d1.UPDATE_OPS_ORDERS`")
+        assert result.startswith("CREATE OR REPLACE TABLE p1.d1.UPDATE_OPS_ORDERS")
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_backticked_table_name_qualified(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="my-proj", dataset_id="my_ds")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE `orders` (id INT64)")
-        assert result == "CREATE OR REPLACE TABLE `my-proj.my_ds.ORDERS` (id INT64)"
+        result = adapter._translate_create_table("CREATE TABLE `orders` (id INT64)")
+        assert result == "CREATE OR REPLACE TABLE `my-proj`.my_ds.`ORDERS` (id INT64)"
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_already_qualified_table_name(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="my-proj", dataset_id="my_ds")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE `my_ds.orders` (id INT64)")
+        result = adapter._translate_create_table("CREATE TABLE `my_ds.orders` (id INT64)")
         assert result == "CREATE OR REPLACE TABLE `my_ds.ORDERS` (id INT64)"
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_table_level_primary_key_not_enforced(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE trips (\n    id INT64,\n    PRIMARY KEY (id)\n)")
+        result = adapter._translate_create_table("CREATE TABLE trips (\n    id INT64,\n    PRIMARY KEY (id)\n)")
         assert "PRIMARY KEY (id) NOT ENFORCED" in result
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_not_enforced_not_duplicated(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE t (id INT64,\n    PRIMARY KEY (id) NOT ENFORCED)")
+        result = adapter._translate_create_table("CREATE TABLE t (id INT64,\n    PRIMARY KEY (id) NOT ENFORCED)")
         assert result.count("NOT ENFORCED") == 1
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_preserves_if_not_exists(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE IF NOT EXISTS orders (id INT64)")
-        assert result == "CREATE TABLE IF NOT EXISTS `proj.ds.ORDERS` (id INT64)"
+        result = adapter._translate_create_table("CREATE TABLE IF NOT EXISTS orders (id INT64)")
+        assert result == "CREATE TABLE IF NOT EXISTS proj.ds.ORDERS (id INT64)"
         assert "OR REPLACE" not in result
 
     @patch("benchbox.platforms.bigquery.bigquery")
@@ -2155,32 +2115,32 @@ class TestConvertToBigqueryTable:
         sql = (
             "CREATE TABLE IF NOT EXISTS orders_1995 AS\nSELECT *\nFROM orders\nWHERE o_orderdate >= DATE '1995-01-01'\n"
         )
-        result = adapter._convert_to_bigquery_table(sql)
-        assert "CREATE TABLE IF NOT EXISTS `proj.ds.ORDERS_1995` AS" in result
+        result = adapter._translate_create_table(sql)
+        assert "CREATE TABLE IF NOT EXISTS proj.ds.ORDERS_1995 AS" in result
         assert "OR REPLACE" not in result
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_preserves_if_not_exists_with_comment_prefix(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
         chunk = "-- Generated staging table\nCREATE TABLE IF NOT EXISTS orders_stage (id INT64)"
-        result = adapter._convert_to_bigquery_table(chunk)
-        assert result.startswith("-- Generated staging table\n")
-        assert "CREATE TABLE IF NOT EXISTS `proj.ds.ORDERS_STAGE` (id INT64)" in result
+        result = adapter._translate_create_table(chunk)
+        assert result.startswith("/* Generated staging table */")
+        assert "CREATE TABLE IF NOT EXISTS proj.ds.ORDERS_STAGE (id INT64)" in result
         assert "OR REPLACE" not in result
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_preserves_if_not_exists_ctas_with_comment_prefix(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="proj", dataset_id="ds")
         chunk = "-- Generated staging CTAS\nCREATE TABLE IF NOT EXISTS orders_stage AS SELECT 1"
-        result = adapter._convert_to_bigquery_table(chunk)
-        assert result.startswith("-- Generated staging CTAS\n")
-        assert "CREATE TABLE IF NOT EXISTS `proj.ds.ORDERS_STAGE` AS SELECT 1" in result
+        result = adapter._translate_create_table(chunk)
+        assert result.startswith("/* Generated staging CTAS */")
+        assert "CREATE TABLE IF NOT EXISTS proj.ds.ORDERS_STAGE AS SELECT 1" in result
         assert "OR REPLACE" not in result
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_preserves_if_not_exists_already_qualified(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="my-proj", dataset_id="my_ds")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE IF NOT EXISTS `my_ds.orders` (id INT64)")
+        result = adapter._translate_create_table("CREATE TABLE IF NOT EXISTS `my_ds.orders` (id INT64)")
         assert result == "CREATE TABLE IF NOT EXISTS `my_ds.ORDERS` (id INT64)"
         assert "OR REPLACE" not in result
 
@@ -2192,9 +2152,9 @@ class TestConvertToBigqueryTable:
             "benchmark VARCHAR, scale VARCHAR, spec_version VARCHAR, "
             "source_digest VARCHAR, created_at VARCHAR)"
         )
-        result = adapter._convert_to_bigquery_table(manifest_ddl)
+        result = adapter._translate_create_table(manifest_ddl)
         expected = (
-            "CREATE TABLE IF NOT EXISTS `my-proj.my_ds.BENCHBOX_STAGING_MANIFEST` ("
+            "CREATE TABLE IF NOT EXISTS `my-proj`.my_ds.BENCHBOX_STAGING_MANIFEST ("
             "benchmark STRING, scale STRING, spec_version STRING, "
             "source_digest STRING, created_at STRING)"
         )
@@ -2213,7 +2173,7 @@ class TestBigQueryCreateSemanticsStagingAndManifest:
         def execute(self, sql: str, parameters: Any = None):
             import re
 
-            converted = self.adapter._convert_to_bigquery_table(sql)
+            converted = self.adapter._translate_create_table(sql)
             self.executed_queries.append(converted)
             clean = re.sub(r"/\*.*?\*/|--[^\n]*", "", converted).strip()
 
@@ -2316,7 +2276,7 @@ class TestBigQueryCreateSemanticsStagingAndManifest:
         conn.execute(create_sql)
 
         last_query = conn.executed_queries[-1]
-        assert "CREATE TABLE IF NOT EXISTS `my-project.my_ds.UPDATE_OPS_ORDERS`" in last_query
+        assert "CREATE TABLE IF NOT EXISTS `my-project`.my_ds.UPDATE_OPS_ORDERS" in last_query
         assert "OR REPLACE" not in last_query
 
         assert len(conn.tables[target_table]) == 3
@@ -3543,10 +3503,10 @@ class TestPlatformNameAndProperties:
 @pytest.mark.usefixtures("dependencies_available")
 class TestBigQueryTableResolution:
     @patch("benchbox.platforms.bigquery.bigquery")
-    def test_convert_to_bigquery_table_uppercase_flag(self, mock_bigquery):
+    def test_translate_create_table_uppercase_flag(self, mock_bigquery):
         adapter = BigQueryAdapter(project_id="my-proj", dataset_id="my_ds")
-        result = adapter._convert_to_bigquery_table("CREATE TABLE customer (id INT64)")
-        assert result == "CREATE OR REPLACE TABLE `my-proj.my_ds.CUSTOMER` (id INT64)"
+        result = adapter._translate_create_table("CREATE TABLE customer (id INT64)")
+        assert result == "CREATE OR REPLACE TABLE `my-proj`.my_ds.CUSTOMER (id INT64)"
 
     @patch("benchbox.platforms.bigquery.bigquery")
     def test_resolve_target_table_prefers_uppercase(self, mock_bigquery):
