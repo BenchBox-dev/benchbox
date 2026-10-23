@@ -397,9 +397,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The bundled SQLGlot runtime moves from 30.24.0.10 to 30.24.0.11 (fork commit
   `dec472e77a7a`). `decimal_zero_literals` keeps a `0.0` that shares its `CASE`/`IF` with a
   quotient already cast to `DOUBLE`, and `decimal_division_to_double` writes a `DOUBLE` zero
-  beside such a quotient, so ClickHouse needs no Variant type (TPC-DS Q11). BenchBox does not
-  call either rewrite on its shipped path: the 23,667 translations of the 1,127 frozen shipped
-  queries across 21 target dialects, the 2,600 golden-corpus runtime outputs and
+  beside such a quotient, so ClickHouse needs no Variant type (TPC-DS Q11). BenchBox calls
+  `decimal_zero_literals` in `rewrite_query_for_clickhouse` but never `decimal_division_to_double`,
+  and the changed guard only applies to a `0.0` beside a quotient whose dividend is already cast
+  to `DOUBLE`: `rewrite_query_for_clickhouse` output for all 1,127 frozen shipped queries, the
+  23,667 translations across 21 target dialects, the 2,600 golden-corpus runtime outputs and
   `make sql-execution-gate` are unchanged from 30.24.0.10, so no published result changes.
 - SQLite TPC-DS translation marks the TPC-DS `DATE` columns through the runtime's
   `mark_date_columns` rewrite on the parsed tree (`translate_sql_query(date_columns=..)`),
