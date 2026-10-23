@@ -23926,15 +23926,10 @@
       "title": "Close the adversarial review's Low findings (manifest gaps, stale docs, CI pinning, DDL edge cases, upstream-offer tracking)"
     },
     "sqlglot-fork-review-m3-sqlite-date-semantics": {
-      "claim": {
-        "expires_at": "2026-10-24T15:39:39Z",
-        "generation": "255bb89719564e95970cf0b78f99bc8c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Fork: SQLite date arithmetic gaps (TPC-DS Q72 date + integer, DATE_TRUNC on DATE)"
     },
     "sqlglot-fork-review-m4-engine-versions": {
