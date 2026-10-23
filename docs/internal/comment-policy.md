@@ -210,9 +210,8 @@ base's sources. Every violation fails, including old ones.
   with the base policy. It fails if enforcement moves from blocking to
   advisory or an external exclusion is added or changed. Report and strict
   runs without `--base`, and bootstrap runs, skip it.
-- **No completed scopes:** every first-party path is in scope. The checker
-  ignores a `completed` list if the policy still has one, and the policy does
-  not need it.
+- **Scope:** every first-party path is in scope. The policy has no list of
+  cleaned scopes, and a `completed` key fails schema validation.
 - **Wheel bumps:** the one allowed external change replaces a pinned `.whl`
   entry with a wheel of the same distribution in the same directory, with the
   same `owner` and `provenance`; the old entry must go. The checker then

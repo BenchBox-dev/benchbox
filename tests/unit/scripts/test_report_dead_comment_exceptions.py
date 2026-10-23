@@ -30,7 +30,7 @@ def entry(path: str, text: str = "# noqa: F401", **changes: str) -> dict:
 
 
 def repo(tmp_path: Path, exceptions: list[dict]) -> dict:
-    policy = {"version": 1, "external": [], "completed": [], "exceptions": exceptions}
+    policy = {"version": 1, "external": [], "exceptions": exceptions}
     (tmp_path / "quality").mkdir()
     (tmp_path / POLICY_PATH).write_text(json.dumps(policy), encoding="utf-8")
     (tmp_path / "live.py").write_text("import os  # noqa: F401\n", encoding="utf-8")
@@ -125,10 +125,8 @@ def commit_policy(tmp_path: Path, policy: dict, message: str) -> None:
 def test_registration_names_the_commit_that_added_the_exact_entry(tmp_path: Path) -> None:
     first, second = entry("live.py"), entry("changed.py")
     repo(tmp_path, [])
-    commit_policy(tmp_path, {"version": 1, "external": [], "completed": [], "exceptions": [first]}, "add first (#11)")
-    commit_policy(
-        tmp_path, {"version": 1, "external": [], "completed": [], "exceptions": [first, second]}, "add second (#12)"
-    )
+    commit_policy(tmp_path, {"version": 1, "external": [], "exceptions": [first]}, "add first (#11)")
+    commit_policy(tmp_path, {"version": 1, "external": [], "exceptions": [first, second]}, "add second (#12)")
     assert registration(tmp_path, first).endswith("PR #11")
     assert registration(tmp_path, second).endswith("PR #12")
 
@@ -139,7 +137,7 @@ def test_registration_handles_quotes_and_flags_ambiguous_identity(tmp_path: Path
     repo(tmp_path, [])
     commit_policy(
         tmp_path,
-        {"version": 1, "external": [], "completed": [], "exceptions": [quoted, twin_a, twin_b]},
+        {"version": 1, "external": [], "exceptions": [quoted, twin_a, twin_b]},
         "add (#13)",
     )
     assert registration(tmp_path, quoted).endswith("PR #13")
@@ -151,10 +149,10 @@ def test_registration_matches_non_ascii_entries_as_stored(tmp_path: Path) -> Non
     repo(tmp_path, [])
     commit_policy(
         tmp_path,
-        {"version": 1, "external": [], "completed": [], "exceptions": []},
+        {"version": 1, "external": [], "exceptions": []},
         "empty (#20)",
     )
-    policy = {"version": 1, "external": [], "completed": [], "exceptions": [unicode_entry]}
+    policy = {"version": 1, "external": [], "exceptions": [unicode_entry]}
     (tmp_path / POLICY_PATH).write_text(json.dumps(policy, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(tmp_path), "add", POLICY_PATH], check=True)
     subprocess.run(
