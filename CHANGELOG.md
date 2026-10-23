@@ -502,8 +502,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   results measured plain compaction while the ledger recorded `z_order` as
   applied. The statement is now recorded in the `post_load` phase and replaces
   the plain `OPTIMIZE` for that table. The strategy resolves to `z_order` as
-  before: an explicit `z_order` setting, or a tuning with clustering or
-  distribution columns and no explicit strategy. No published result is affected:
+  before: an explicit `z_order` setting, or any tuning with clustering or
+  distribution columns whose strategy is `none`, whether left unset or set
+  explicitly. No published result is affected:
   all 51 Databricks bundles in `results-data/` and on `published-results` record
   a resolved strategy of `none` and no requested tuning.
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
