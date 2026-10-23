@@ -111,14 +111,17 @@ install_agent() {
   echo "$label: loaded"
 }
 
+broker_omp() {
+  OMP_AUTH_BROKER_URL="http://127.0.0.1:$BROKER_PORT" OMP_AUTH_BROKER_TOKEN=$(cat "$BROKER_TOKEN_FILE") "$OMP" "$@"
+}
+
 broker_ok() {
-  OMP_AUTH_BROKER_URL="http://127.0.0.1:$BROKER_PORT" OMP_AUTH_BROKER_TOKEN=$(cat "$BROKER_TOKEN_FILE") \
-    "$OMP" auth-broker status --json 2>/dev/null | jq -e '.ok == true' >/dev/null
+  broker_omp auth-broker status --json 2>/dev/null | jq -e '.ok == true' >/dev/null
 }
 
 missing_logins() {
   local present provider
-  present=$("$OMP" usage accounts --json 2>/dev/null | jq -r '.accounts[].provider' | sort -u) || present=""
+  present=$(broker_omp usage accounts --json 2>/dev/null | jq -r '.accounts[].provider' | sort -u) || present=""
   for provider in "${GATEWAY_PROVIDERS[@]}"; do
     printf '%s\n' "$present" | grep -x "$provider" >/dev/null || echo "$provider"
   done
@@ -200,7 +203,7 @@ cmd_gateway() {
   fi
   chmod 600 "$CLIENT_TOKEN_FILE"
   trap 'rm -f "$ACCOUNTS_FILE"' EXIT
-  "$OMP" usage accounts --json > "$ACCOUNTS_FILE"
+  broker_omp usage accounts --json > "$ACCOUNTS_FILE"
   (cd "$REPO_ROOT" && uv run --quiet --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- \
     python -m _project.scripts.oracle_reviewers.cli gateway-clients \
     --token-file "$CLIENT_TOKEN_FILE" --accounts "$ACCOUNTS_FILE" --out "$CLIENTS_FILE")
