@@ -244,6 +244,14 @@ TRANSLATION_FILES = (
     "scripts/check_sqlglot_repro_retirement.py",
     "Makefile",
     "scripts/sqlglot_fork_diff.py",
+    "tests/unit/scripts/test_sql_execution_gate.py",
+    "tests/unit/scripts/test_sync_sqlglot_runtime.py",
+    "tests/unit/scripts/test_check_sqlglot_repro_retirement.py",
+    "tests/unit/scripts/test_sqlglot_fork_diff.py",
+    "tests/unit/utils/test_dialect_utils.py",
+    "tests/unit/utils/test_apply_rewrite.py",
+    "tests/unit/utils/test_apply_rewrite_engines.py",
+    "tests/unit/utils/test_translate_ddl.py",
 )
 TRANSLATION_PREFIXES = (
     "benchbox/_vendor/",

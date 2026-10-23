@@ -17,7 +17,13 @@ DEFAULT_MAX_BYTES = 50_000
 
 
 def _git(cwd: Path, *args: str) -> str:
-    result = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        ["git", "--literal-pathspecs", "-c", "core.quotePath=false", *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     if result.returncode != 0:
         raise ValueError(f"git {' '.join(args[:2])} failed: {result.stderr.strip()}")
     return result.stdout
@@ -56,7 +62,7 @@ def render(fork: Path, old: str, new: str, max_bytes: int, repository: str) -> s
         ["git", "merge-base", "--is-ancestor", old, new], cwd=fork, capture_output=True, check=False
     ).returncode
     direction = "forward" if ancestor == 0 else "not-descendant (rollback or divergent history)"
-    names = sorted(_git(fork, "diff", "--name-only", old, new).split("\n"), key=_priority)
+    names = sorted(_git(fork, "diff", "--name-only", "-z", old, new).split("\0"), key=_priority)
     names = [name for name in names if name]
     commits = _git(fork, "log", "--no-merges", "--format=- %h %s", f"{old}..{new}").strip()
     stat = _git(fork, "diff", "--stat=100", old, new).rstrip()
@@ -82,6 +88,8 @@ def render(fork: Path, old: str, new: str, max_bytes: int, repository: str) -> s
     omitted: list[str] = []
     for name in names:
         patch = _git(fork, "diff", old, new, "--", name)
+        if not patch.strip():
+            raise ValueError(f"git produced no diff for the changed path {name!r}")
         block = "\n" + _fence(patch.rstrip(), "diff")
         if used + len(block) > max_bytes:
             omitted.append(name)
@@ -93,7 +101,7 @@ def render(fork: Path, old: str, new: str, max_bytes: int, repository: str) -> s
             [
                 "",
                 f"Omitted for size ({len(omitted)} files); read them with "
-                f"`git diff {old} {new} -- <path>` in a clone of the fork:",
+                f"`git --literal-pathspecs diff {old} {new} -- <path>` in a clone of the fork:",
                 "",
                 _fence("\n".join(omitted)),
             ]

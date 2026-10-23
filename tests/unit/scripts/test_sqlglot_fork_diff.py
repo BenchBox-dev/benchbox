@@ -106,3 +106,19 @@ def test_main_defaults_old_to_base_ref_pin_and_new_to_working_tree(
 def test_main_rejects_non_sha_arguments(capsys: pytest.CaptureFixture[str]) -> None:
     assert sqlglot_fork_diff.main(["--old", "main", "--new", "a" * 40]) == 1
     assert "40-character" in capsys.readouterr().err
+
+
+def test_non_ascii_and_glob_like_names_get_their_own_literal_diff(fork: tuple[Path, str, str]) -> None:
+    repo, old, _ = fork
+    (repo / "sqlglot" / "dialects").mkdir()
+    (repo / "sqlglot" / "dialects" / "a.py").write_text("PLAIN = 1\n", encoding="utf-8")
+    (repo / "sqlglot" / "d*.py").write_text("GLOB = 1\n", encoding="utf-8")
+    (repo / "sqlglot" / "é.py").write_text("UNICODE = 1\n", encoding="utf-8")
+    git(repo, "add", ".")
+    git(repo, "commit", "-m", "odd names", "--quiet")
+    text = sqlglot_fork_diff.fork_diff(old, git(repo, "rev-parse", "HEAD"), str(repo), 50_000)
+    assert "+GLOB = 1" in text
+    assert "+UNICODE = 1" in text
+    assert "+PLAIN = 1" in text
+    assert text.count("+GLOB = 1") == 1
+    assert "diff --git a/sqlglot/é.py b/sqlglot/é.py" in text

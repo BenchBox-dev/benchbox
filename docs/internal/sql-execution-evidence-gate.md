@@ -103,8 +103,12 @@ logic and `expected_differences.json`), everything under
 `tests/unit/sql_compat/` (the corpus harness, its `recorded/` and `frozen/`
 data and the corpus, wrapper and bypass assertion tests), the
 `Makefile` and the `make/` fragments (CI runs the gate through
-`make sql-execution-gate`), and the pin, retirement and fork-diff scripts. A
-change to any of them needs an oracle success review on the current head.
+`make sql-execution-gate`), the pin, retirement and fork-diff scripts, and
+their tests (`test_sql_execution_gate.py`, which holds the regression proofs
+below, `test_sync_sqlglot_runtime.py`, `test_check_sqlglot_repro_retirement.py`,
+`test_sqlglot_fork_diff.py` and the wrapper tests
+under `tests/unit/utils/`). A change to any of them needs an oracle success
+review on the current head.
 
 ## Regression proofs
 
