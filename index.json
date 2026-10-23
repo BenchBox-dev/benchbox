@@ -23674,12 +23674,7 @@
       "title": "BenchBox: delete wrapper fix-ups, dialect normalization and the QuestDB rewriter"
     },
     "sqlglot-fork-d2-delete-adapter-rewrites": {
-      "claim": {
-        "expires_at": "2026-10-24T15:39:52Z",
-        "generation": "4ad0a9aada174ca38467f6a121946abe",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-fork-a2-adopt-adapter-wheel",
         "sqlglot-fork-d1-delete-wrapper-fixups",
@@ -23688,7 +23683,7 @@
         "sqlglot-fork-adapter-databricks-safe-division"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "BenchBox: delete adapter AST safeguards, alias dedupe and TPC-DI/ClickBench regex rewrites"
     },
     "sqlglot-fork-d3-delete-ddl-rule-bodies": {
