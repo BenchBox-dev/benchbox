@@ -2,6 +2,7 @@
   "acceptance": [
     "Either required-version is set and CI passes with it, or the decision not to enforce is recorded"
   ],
+  "context": "Done in PR #3366: `required-version = \">=0.13.4\"` under [tool.uv] in the root, _project/scripts and _project/sql-translation-ml pyproject.toml, plus a changelog entry. Proof: `uvx uv@0.12.1 lock --check` exits 2 with the required-version error; uv 0.13.5 `uv lock --check` passes in all three projects. CI uses astral-sh/setup-uv (v7.6.0, pinned by SHA, no `version:` input), which reads required-version and installs a compatible uv; the Dockerfiles already copy uv 0.13.5; no test pins [tool.uv].",
   "description": "`docs/development/development.md` asks contributors for uv 0.13.4 or newer, because older uv embeds root certificates that trust the compromised eMudhra emSign CAs (GHSA-hq85-5cpj-mr62). Nothing enforces it: `pyproject.toml` has no `[tool.uv] required-version`, and CI installs whatever `astral-sh/setup-uv` resolves. A contributor or container with an older uv keeps working silently. Decide whether to add `required-version = \">=0.13.4\"` (uv refuses to run below it) and check that CI, the `benchbox-agent` image and the release workflows satisfy it.",
   "links": [
     "https://github.com/astral-sh/uv/security/advisories/GHSA-hq85-5cpj-mr62"
@@ -13,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0127caa6d91a4c068acd8500258603e8",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T22:50:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "886f99606729471d996eb5e2a6e536bd",
       "session_id": "ba4384e41c574086bef30465f20b7231"
     }
   ]
