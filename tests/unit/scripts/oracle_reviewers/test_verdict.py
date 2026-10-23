@@ -11,7 +11,6 @@ from _project.scripts.oracle_reviewers.diff import commentable_lines, select_fil
 from _project.scripts.oracle_reviewers.verdict import (
     LINK_REMOVED,
     REDACTED,
-    VERDICT_SCHEMA,
     VerdictError,
     comment_span,
     extract_omp_text,
@@ -77,43 +76,6 @@ def _verdict(*findings: dict[str, Any], summary: str = "Reviewed.", **over: Any)
     }
     verdict.update(over)
     return verdict
-
-
-def _schema_nodes(node: Any) -> list[dict[str, Any]]:
-    if isinstance(node, dict):
-        return [node, *(child for value in node.values() for child in _schema_nodes(value))]
-    if isinstance(node, list):
-        return [child for value in node for child in _schema_nodes(value)]
-    return []
-
-
-def test_every_object_in_the_schema_requires_all_its_properties() -> None:
-    objects = [node for node in _schema_nodes(VERDICT_SCHEMA) if node.get("type") == "object"]
-    assert len(objects) == 3
-    for node in objects:
-        assert node["additionalProperties"] is False
-        assert sorted(node["required"]) == sorted(node["properties"])
-
-
-def test_the_schema_has_no_nullable_enum() -> None:
-    enums = [node for node in _schema_nodes(VERDICT_SCHEMA) if "enum" in node]
-    assert {tuple(node["enum"]) for node in enums} >= {
-        ("complete", "incomplete"),
-        ("SHIP", "SHIP_WITH_FIXES", "DO_NOT_SHIP", "NONE"),
-        ("fixed", "not_fixed", "withdrawn"),
-    }
-    assert all(node["type"] == "string" and None not in node["enum"] for node in enums)
-
-
-def test_schema_is_strict() -> None:
-    assert VERDICT_SCHEMA["additionalProperties"] is False
-    item = VERDICT_SCHEMA["properties"]["defects"]["items"]
-    assert item["additionalProperties"] is False
-    assert item["required"] == ["severity", "file", "line", "end_line", "title", "detail"]
-    assert set(item["required"]) == set(item["properties"])
-    assert item["properties"]["end_line"]["type"] == ["integer", "null"]
-    assert item["properties"]["severity"]["enum"] == ["Critical", "High", "Medium", "Low"]
-    assert "head_sha" not in VERDICT_SCHEMA["properties"]
 
 
 def test_end_line_is_optional_and_normalised() -> None:
@@ -397,11 +359,6 @@ def test_a_trusted_defect_count_must_cover_the_listed_defects(count: Any) -> Non
 def test_a_prior_defect_id_echoed_with_a_hash_is_normalised() -> None:
     verdict = validate(_verdict(prior_defects=[{"id": "#D3", "status": "fixed", "evidence": "line 4"}]))
     assert verdict.prior_defects[0].id == "D3"
-
-
-def test_a_bad_prior_defect_id_names_the_value() -> None:
-    with pytest.raises(VerdictError, match="D 3: title"):
-        validate(_verdict(prior_defects=[{"id": "D 3: title", "status": "fixed", "evidence": "x"}]))
 
 
 def test_a_finding_key_error_names_the_missing_and_unexpected_keys() -> None:

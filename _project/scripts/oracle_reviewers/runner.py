@@ -11,10 +11,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import absence, evidence, protocol
+from . import absence, credentials, evidence, protocol
 from .commands import Invocation, build
 from .policy import Reviewer
-from .verdict import INCOMPLETE, SHIP, VerdictError, extract_omp_text, parse_output, validate
+from .verdict import (
+    INCOMPLETE,
+    SHIP,
+    VerdictError,
+    extract_omp_text,
+    normalize_reviewer,
+    parse_output,
+    shape_fingerprint,
+    validate,
+)
 
 
 @dataclass(frozen=True)
@@ -89,17 +98,25 @@ def execute(invocation: Invocation, timeout_seconds: int) -> RunResult:
     return RunResult(process.returncode, stdout or "", stderr or "", False)
 
 
-def _credentials() -> list[str]:
-    return [os.environ.get(name, "") for name in absence.CREDENTIAL_ENV]
+def _credentials() -> tuple[str, ...]:
+    return credentials.known()
 
 
-def _diagnostic(result: RunResult) -> str:
-    return absence.excerpt(result.stdout, result.stderr, _credentials())
+def _diagnostic(harness: str, result: RunResult) -> str:
+    stdout = "" if harness == "omp" else result.stdout
+    return absence.excerpt(stdout, result.stderr, _credentials())
 
 
 def _unparsed(harness: str, output: str, fallback: str) -> str:
     text = extract_omp_text(output) if harness == "omp" else output
     return absence.unparsed(text, _credentials()) if text.strip() else fallback
+
+
+def _with_trace(diagnostic: str, harness: str, stdout: str, plan: Mapping[str, Any], workspace: Path) -> str:
+    if harness not in evidence.TRACED:
+        return diagnostic
+    summary = evidence.describe(evidence.trace(harness, stdout), plan.get("evidence_files", ()), workspace)
+    return f"{diagnostic} | {summary}" if diagnostic else summary
 
 
 def review(
@@ -125,7 +142,7 @@ def review(
     output = result.stdout
     if invocation.output_file is not None:
         output = invocation.output_file.read_text(encoding="utf-8") if invocation.output_file.is_file() else ""
-    diagnostic = _diagnostic(result)
+    diagnostic = _diagnostic(reviewer.harness, result)
     missing = absence.classify(
         reviewer.harness,
         result.exit_code,
@@ -141,15 +158,35 @@ def review(
         return ReviewOutcome(None, absence.Absence(absence.INVALID, reason), diagnostic)
     if missing.absent:
         return ReviewOutcome(None, missing, diagnostic)
+    payload: Any = None
+    parsed = False
+    rewrites: tuple[str, ...] = ()
     try:
-        verdict = validate(parse_output(reviewer.harness, output))
+        payload = parse_output(reviewer.harness, output)
+        parsed = True
+        normalized, rewrites = normalize_reviewer(payload)
+        verdict = validate(normalized)
     except VerdictError as exc:
-        unparsed = _unparsed(reviewer.harness, output, diagnostic)
-        return ReviewOutcome(None, absence.Absence(absence.INVALID, str(exc)), unparsed)
+        unparsed = _with_trace(
+            _unparsed(reviewer.harness, output, diagnostic), reviewer.harness, result.stdout, plan, workspace
+        )
+        if parsed:
+            fingerprint = shape_fingerprint(payload, _credentials())
+            unparsed = f"shape={fingerprint}\n{unparsed}"
+        if rewrites:
+            unparsed = f"rewrites={','.join(rewrites)}\n{unparsed}"
+        detail = absence.redact_detail(str(exc), _credentials())
+        return ReviewOutcome(None, absence.Absence(absence.INVALID, detail), unparsed)
+    traced = _with_trace(diagnostic, reviewer.harness, result.stdout, plan, workspace)
+    if rewrites:
+        traced = f"rewrites={','.join(rewrites)}\n{traced}"
     if verdict.status == INCOMPLETE:
         reason = verdict.incomplete_reason or "the reviewer reported its review incomplete"
-        return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, reason), diagnostic)
+        return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, reason), traced)
     verdict = evidence.mark_citations(verdict, workspace)
+    problem = protocol.contradiction(verdict, plan)
+    if problem is not None:
+        return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), traced)
     problem = evidence.check(
         verdict,
         ships=protocol.judge_planned(verdict, plan).decision == SHIP,
@@ -160,5 +197,5 @@ def review(
         run=evidence.trace(reviewer.harness, result.stdout),
     )
     if problem is not None:
-        return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, problem), diagnostic)
-    return ReviewOutcome(verdict.to_json(), None, diagnostic)
+        return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, problem), traced)
+    return ReviewOutcome(verdict.to_json(), None, traced)

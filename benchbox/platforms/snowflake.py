@@ -1374,34 +1374,6 @@ class SnowflakeAdapter(PlatformAdapter):
             self.log_very_verbose(f"Division safeguard skipped (unparseable Snowflake SQL): {e}")
             return query
 
-    def _safeguard_snowflake_division(self, query: str) -> str:
-        try:
-            from benchbox._vendor import sqlglot
-            from benchbox._vendor.sqlglot import exp
-        except ImportError:
-            return query
-
-        try:
-            tree = sqlglot.parse_one(query, read="snowflake")
-        except Exception as e:
-            self.log_very_verbose(f"Division safeguard skipped (unparseable Snowflake SQL): {e}")
-            return query
-        if not any(isinstance(node, exp.Div) for node in tree.walk()):
-            return query
-
-        def to_nullif_divisor(node: exp.Expression) -> exp.Expression:
-            if isinstance(node, exp.Div):
-                return exp.Div(
-                    this=node.this.copy(),
-                    expression=exp.Anonymous(
-                        this="NULLIF",
-                        expressions=[node.expression.copy(), exp.Literal.number(0)],
-                    ),
-                )
-            return node
-
-        return tree.transform(to_nullif_divisor).sql(dialect="snowflake")
-
     def _get_existing_tables(self, connection: Any) -> list[str]:
         try:
             cursor = connection.cursor()

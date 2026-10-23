@@ -18,14 +18,6 @@ if TYPE_CHECKING:
     from benchbox.core.tuning.interface import UnifiedTuningConfiguration
 
 
-def _rewrite_snowflake_regex_groups(translated: str) -> str:
-
-    bs = chr(92)
-    translated = translated.replace("(?:www" + bs * 2 + ".)?", "(www" + bs * 2 + ".)?")
-    translated = translated.replace("'" + bs * 2 + "1'", "'" + bs * 2 + "2'")
-    return translated
-
-
 class ClickBenchBenchmark(GeneratorOutputDirMixin, SimpleBenchmarkMixin, DataGenerationMixin, BaseBenchmark):
     _benchmark_label = "ClickBench"
     _table_load_order = ["hits"]
@@ -63,16 +55,13 @@ class ClickBenchBenchmark(GeneratorOutputDirMixin, SimpleBenchmarkMixin, DataGen
 
         from benchbox.utils.dialect_utils import translate_sql_query
 
-        translated = translate_sql_query(
+        return translate_sql_query(
             query,
             dialect,
             source_dialect="clickhouse",
             identify=False,
             strict=True,
         )
-        if dialect.lower() == "snowflake":
-            translated = _rewrite_snowflake_regex_groups(translated)
-        return translated
 
     def get_query(self, query_id: Union[int, str], *, params: Optional[dict[str, Any]] = None) -> str:
 

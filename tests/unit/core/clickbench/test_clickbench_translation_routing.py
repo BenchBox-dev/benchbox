@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from benchbox._vendor import sqlglot
-from benchbox.core.clickbench.benchmark import ClickBenchBenchmark, _rewrite_snowflake_regex_groups
+from benchbox.core.clickbench.benchmark import ClickBenchBenchmark
 from benchbox.core.clickbench.queries import ClickBenchQueryManager
 from benchbox.utils.dialect_utils import SQLTranslationError
 
@@ -44,10 +44,7 @@ ALIAS_DIALECTS_MAPPED_TO_POSTGRES = ("ansi", "standard", "postgresql")
 
 def translate_before_routing(query: str, dialect: str) -> str:
     try:
-        translated = sqlglot.transpile(query, read="clickhouse", write=dialect.lower())[0]
-        if dialect.lower() == "snowflake":
-            translated = _rewrite_snowflake_regex_groups(translated)
-        return translated
+        return sqlglot.transpile(query, read="clickhouse", write=dialect.lower())[0]
     except Exception:
         return query
 

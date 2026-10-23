@@ -6,9 +6,10 @@ import pytest
 from benchbox._vendor import sqlglot
 from benchbox.core.tpch.benchmark import TPCHBenchmark
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
-from benchbox.core.tpchavoc.cloud_compat import BIGQUERY_FILTER_IDS, rewrite_cloud_variant
+from benchbox.core.tpchavoc.cloud_compat import BIGQUERY_FILTER_IDS
 from benchbox.sql_compat.rules.execution_filter.cloud_tpchavoc import CLOUD_TPCHAVOC_SKIPS
 from benchbox.tpchavoc import TPCHavoc
+from benchbox.utils.dialect_utils import translate_sql_query
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -49,8 +50,13 @@ def test_filtered_aggregate_rewrite_preserves_null_and_distinct_semantics():
         ) AS t
     """
     expected = duckdb.sql(source).fetchall()
-    for candidate in (source, sqlglot.transpile(source, read="duckdb", write="bigquery")[0]):
-        rewritten = rewrite_cloud_variant("1_v6", candidate, "bigquery")
+    for candidate in (source, translate_sql_query(source, "bigquery", source_dialect="duckdb", identify=False)):
+        rewritten = translate_sql_query(
+            candidate,
+            "bigquery",
+            source_dialect="duckdb" if candidate is source else "bigquery",
+            identify=False,
+        )
         executable = sqlglot.transpile(rewritten, read="bigquery", write="duckdb")[0]
         assert " FILTER(" not in rewritten.upper() and " FILTER (" not in rewritten.upper()
         assert duckdb.sql(executable).fetchall() == expected

@@ -50,12 +50,26 @@ def _tag_ruleset(
 
 
 def _develop_expected():
-    return parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())[
+    expected = parse_expected_rulesets((REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text())[
         "develop-squash-only"
     ]
+    base = tuple(check for check in expected.required_checks if not check.startswith("oracle-"))
+    return replace(expected, required_checks=(*base, "oracle-review", "oracle-gate"))
 
 
-def _live_develop_ruleset(*, review_count: int = 0, thread_resolution: bool = True) -> dict:
+def _status_check(context: str) -> dict:
+    check: dict = {"context": context}
+    if context == "oracle-gate":
+        check["integration_id"] = 5201041
+    return check
+
+
+def _live_develop_ruleset(
+    *,
+    review_count: int = 0,
+    thread_resolution: bool = True,
+    oracle_contexts: tuple[str, ...] = ("oracle-review", "oracle-gate"),
+) -> dict:
     return {
         "name": "develop-squash-only",
         "enforcement": "active",
@@ -79,7 +93,7 @@ def _live_develop_ruleset(*, review_count: int = 0, thread_resolution: bool = Tr
                         {"context": "results-data"},
                         {"context": "docs"},
                         {"context": "tooling"},
-                        {"context": "oracle-review"},
+                        *(_status_check(context) for context in oracle_contexts),
                         {"context": "hold"},
                     ],
                 },
@@ -105,19 +119,32 @@ def test_develop_review_rule_passes_when_live_rule_is_present():
     assert compare_ruleset(_develop_expected(), _live_develop_ruleset()) == []
 
 
-def test_missing_oracle_review_is_blocking_despite_stale_expected_contexts():
+def _expected_with_oracle_contexts(*contexts: str):
     expected = _develop_expected()
-    expected = replace(
-        expected, required_checks=tuple(check for check in expected.required_checks if check != "oracle-review")
-    )
-    live = _live_develop_ruleset()
-    checks = live["rules"][1]["parameters"]["required_status_checks"]
-    checks[:] = [check for check in checks if check["context"] != "oracle-review"]
+    base = tuple(check for check in expected.required_checks if not check.startswith("oracle-"))
+    return replace(expected, required_checks=(*base, *contexts))
+
+
+@pytest.mark.parametrize(
+    "contexts",
+    [("oracle-review", "oracle-gate"), ("oracle-gate",), ("oracle-review",)],
+)
+def test_develop_drift_passes_with_any_supported_oracle_context_set(contexts):
+    expected = _expected_with_oracle_contexts(*contexts)
+    live = _live_develop_ruleset(oracle_contexts=contexts)
+
+    assert compare_ruleset(expected, live) == []
+
+
+def test_missing_oracle_contexts_are_blocking_despite_stale_expected_contexts():
+    expected = _expected_with_oracle_contexts()
+    live = _live_develop_ruleset(oracle_contexts=())
 
     findings = compare_ruleset(expected, live)
 
-    assert "required_status_checks must include oracle-review" in findings
-    assert "required_status_checks must include oracle-review" in blocking_findings(findings)
+    message = "required_status_checks must include oracle-review or oracle-gate scoped to the oracle App"
+    assert message in findings
+    assert message in blocking_findings(findings)
 
 
 def test_develop_review_rule_can_be_warn_only_for_explicit_migration_override():
@@ -381,3 +408,16 @@ def test_tag_creation_findings_can_be_switched_to_blocking_explicitly():
     assert findings, "expected a blocking finding once tag-rule enforcement is on"
     assert not any(f.startswith(WARNING_PREFIX) for f in findings)
     assert blocking_findings(findings) == findings
+
+
+def test_oracle_gate_without_the_oracle_app_binding_is_blocking():
+    expected = _expected_with_oracle_contexts("oracle-gate")
+    live = _live_develop_ruleset(oracle_contexts=("oracle-gate",))
+    for check in live["rules"][1]["parameters"]["required_status_checks"]:
+        check.pop("integration_id", None)
+
+    findings = compare_ruleset(expected, live)
+
+    assert "required_status_checks must include oracle-review or oracle-gate scoped to the oracle App" in (
+        blocking_findings(findings)
+    )

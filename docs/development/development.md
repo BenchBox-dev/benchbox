@@ -12,11 +12,16 @@ This guide provides information for developers who want to contribute to BenchBo
 ### Prerequisites
 
 - Python 3.11+
-- [`uv`](https://docs.astral.sh/uv/) **0.8 or newer** (recommended for environment
-  management). The committed `uv.lock` uses lockfile `revision = 3`; an older uv
-  silently rewrites it to revision 2 as a side effect of any `uv add`/`uv lock`
-  run. A pre-commit guard (also runnable via `make uv-lock-revision-check`)
-  rejects such a downgrade — if it fires, upgrade uv (`uv self update`) and regenerate the lock.
+- [`uv`](https://docs.astral.sh/uv/) **0.13.4 or newer** (recommended for environment
+  management). Older releases still trust the compromised eMudhra emSign CAs
+  ([GHSA-hq85-5cpj-mr62](https://github.com/astral-sh/uv/security/advisories/GHSA-hq85-5cpj-mr62)).
+  Upgrade a standalone install with `UV_SYSTEM_CERTS=true uv self update`, so the
+  update itself uses the system CA store instead of the old built-in list. The
+  committed `uv.lock` uses lockfile
+  `revision = 5`; an older uv silently rewrites it to a lower revision as a side
+  effect of any `uv add`/`uv lock` run. A pre-commit guard (also runnable via
+  `make uv-lock-revision-check`) rejects such a downgrade — if it fires, upgrade uv
+  and regenerate the lock.
 - `git`
 
 ### Setting up the Development Environment

@@ -66,6 +66,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 
 | File | Classification | Property or reason |
 | --- | --- | --- |
+| `ci-text-edit-refresh.yml` | product-safety | When a full CI run completes on a pull request head, re-runs the failed jobs of the newest `CI (text edit)` run on that head so a title or body edit does not hold runners while it waits |
 | `corpus-drift-check.yml` | product-safety | Corpus drift detection |
 | `corpus-event-bridge.yml` | product-safety | Corpus event integrity |
 | `corpus-reconciler.yml` | product-safety | Corpus reconciliation |
