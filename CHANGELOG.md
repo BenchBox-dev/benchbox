@@ -55,6 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Databend and Firebolt build their `CREATE TABLE` statements with the SQLGlot fork's `translate_ddl`
+  instead of per-adapter text rewrites (`_optimize_table_definition`, `_normalize_table_name_in_sql`).
+  Emitted DDL matches the golden corpus; both still drop primary and foreign keys.
 - Azure Synapse and Fabric Warehouse build their `CREATE TABLE` statements with `translate_ddl`
   instead of per-adapter text rewrites. Tables are always qualified with the configured
   `[schema]`, and the generated statement is wrapped in a `TABLE_SCHEMA`-guarded

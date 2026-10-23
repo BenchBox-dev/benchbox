@@ -302,65 +302,6 @@ class TestFireboltSchemaOperations:
         assert mock_cursor.execute.call_count >= 2
         mock_cursor.close.assert_called_once()
 
-    def test_optimize_table_definition_varchar_to_text(self):
-        try:
-            adapter = FireboltAdapter()
-        except ImportError:
-            pytest.skip("Firebolt SDK not installed")
-
-        sql = "CREATE TABLE test (id INTEGER, name VARCHAR(100), data VARCHAR)"
-        optimized = adapter._optimize_table_definition(sql)
-
-        assert "VARCHAR" not in optimized
-        assert "TEXT" in optimized
-
-    def test_optimize_table_definition_decimal_to_numeric(self):
-        try:
-            adapter = FireboltAdapter()
-        except ImportError:
-            pytest.skip("Firebolt SDK not installed")
-
-        sql = "CREATE TABLE test (id INTEGER, amount DECIMAL(10,2))"
-        optimized = adapter._optimize_table_definition(sql)
-
-        assert "DECIMAL" not in optimized
-        assert "NUMERIC" in optimized
-        assert "(10,2)" in optimized
-
-    def test_optimize_table_definition_removes_primary_key(self):
-        try:
-            adapter = FireboltAdapter()
-        except ImportError:
-            pytest.skip("Firebolt SDK not installed")
-
-        sql = "CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)"
-        optimized = adapter._optimize_table_definition(sql)
-
-        assert "PRIMARY KEY" not in optimized
-
-    def test_optimize_table_definition_removes_foreign_key(self):
-        try:
-            adapter = FireboltAdapter()
-        except ImportError:
-            pytest.skip("Firebolt SDK not installed")
-
-        sql = "CREATE TABLE test (id INTEGER, other_id INTEGER, FOREIGN KEY (other_id) REFERENCES other(id))"
-        optimized = adapter._optimize_table_definition(sql)
-
-        assert "FOREIGN KEY" not in optimized
-        assert "REFERENCES" not in optimized
-
-    def test_normalize_table_name_in_sql(self):
-        try:
-            adapter = FireboltAdapter()
-        except ImportError:
-            pytest.skip("Firebolt SDK not installed")
-
-        sql = 'CREATE TABLE "CUSTOMER" (id INTEGER, name TEXT)'
-        normalized = adapter._normalize_table_name_in_sql(sql)
-
-        assert "CREATE TABLE customer" in normalized
-
     def test_extract_table_name(self):
         try:
             adapter = FireboltAdapter()
