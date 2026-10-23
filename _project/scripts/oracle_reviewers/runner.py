@@ -62,7 +62,9 @@ def stage_pull_request_diff(source: Path, workspace: Path) -> Path | None:
         exclude_path.parent.mkdir(parents=True, exist_ok=True)
         with exclude_path.open("a", encoding="utf-8") as handle:
             handle.write(f"/{STAGED_DIFF_NAME}\n")
-        target.write_text(text, encoding="utf-8")
+        descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(text)
     except OSError:
         return None
     return target
