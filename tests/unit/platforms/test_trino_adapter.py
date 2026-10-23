@@ -1287,7 +1287,7 @@ class TestTrinoTableDefinitionOptimization:
         assert "FOREIGN KEY" in result
 
     def test_catalog_name_alone_does_not_trigger_memory_stripping(self):
-        adapter = self._adapter(table_format="hive", catalog="memory")
+        adapter = self._adapter(table_format="iceberg", catalog="memory")
         [result] = adapter._schema_ddl("CREATE TABLE orders (id BIGINT NOT NULL)")
         assert "WITH (format='PARQUET')" in result
         assert "NOT NULL" in result
@@ -1301,7 +1301,7 @@ class TestTrinoTableDefinitionOptimization:
         options = adapter._ddl_options()
         assert options["strip_primary_keys"] is True
         assert options["table_case"] == "lower"
-        assert options["strip_not_null"] is (table_format == "memory")
+        assert options["strip_not_null"] is (table_format in ("memory", "hive"))
         assert (options["default_layout"] == {"format": "PARQUET"}) is adds_format
 
     @pytest.mark.parametrize(
@@ -1323,7 +1323,7 @@ class TestTrinoTableDefinitionOptimization:
 
         assert "PRIMARY KEY" not in result_upper
         assert "CONSTRAINT" not in result_upper
-        assert ("NOT NULL" in result_upper) is (table_format != "memory")
+        assert ("NOT NULL" in result_upper) is (table_format not in ("memory", "hive"))
         assert result.endswith("WITH (format='PARQUET')") is adds_format
         assert ("WITH" in result_upper) is adds_format
 

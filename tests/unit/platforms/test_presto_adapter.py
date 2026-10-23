@@ -689,7 +689,7 @@ class TestPrestoAdapter:
         [translated] = adapter._schema_ddl("CREATE TABLE kind_type (id INTEGER PRIMARY KEY, kind VARCHAR(15) NOT NULL)")
 
         assert "PRIMARY KEY" not in translated
-        assert "NOT NULL" in translated
+        assert "NOT NULL" not in translated
         assert translated.endswith("WITH (format='PARQUET')")
 
     def test_schema_ddl_memory_catalog_name(self, presto_stubs):
