@@ -4699,6 +4699,11 @@ FIXTURE_SOURCE = 'import subprocess\n\n\ndef run(x):\n    subprocess.run(f"{x} e
 FIXTURE_TEXT = "unresolved executable source: f'{x} echo hi'"
 
 
+@pytest.fixture(autouse=True)
+def local_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+
 def fixture_finding(source: str = FIXTURE_SOURCE, path: str = "a.py") -> Finding:
     (finding,) = scan(path, source, "python")
     return finding
@@ -4745,18 +4750,25 @@ def test_same_commit_fixture_is_rejected_by_default_and_accepted_with_the_flag(t
 
 
 def test_same_commit_fixture_is_not_accepted_for_an_unchanged_file(tmp_path: Path) -> None:
-    other = fixture_entry("b.py")
-    base = stage_fixture_commit(tmp_path, [other], {"a.py": FIXTURE_SOURCE})
+    git_repo(tmp_path, "x = 1\n")
     (tmp_path / "b.py").write_text(FIXTURE_SOURCE, encoding="utf-8")
-    subprocess.run(["git", "-C", str(tmp_path), "add", "b.py"], check=True)
+    (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy()), encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "b.py", "quality/comment-policy.json"], check=True)
     subprocess.run(
         ["git", "-C", str(tmp_path), "-c", "user.name=F", "-c", "user.email=f@example.invalid", "commit", "-qm", "b"],
         check=True,
     )
-    unchanged = fixture_entry("b.py")
-    (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy(exceptions=[unchanged])), encoding="utf-8")
-    subprocess.run(["git", "-C", str(tmp_path), "add", "quality/comment-policy.json"], check=True)
-    assert main(staged_args(tmp_path, base, ACCEPT)) == 1
+    base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+    args = staged_args(tmp_path, base, ACCEPT)
+    assert main(args) == 1
+    registered = policy(exceptions=[fixture_entry("b.py")])
+    (tmp_path / "quality/comment-policy.json").write_text(json.dumps(registered), encoding="utf-8")
+    (tmp_path / "a.py").write_text("y = 2\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py", "quality/comment-policy.json"], check=True)
+    assert main(args) == 1
+    (tmp_path / "b.py").write_text(FIXTURE_SOURCE + "\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "b.py"], check=True)
+    assert main(args) == 0
 
 
 def test_same_commit_fixture_rejects_wrong_or_foreign_digest(tmp_path: Path) -> None:
@@ -4793,7 +4805,7 @@ def test_same_commit_acceptance_does_not_cover_directives(tmp_path: Path) -> Non
     assert main(staged_args(tmp_path, base, ACCEPT)) == 1
 
 
-def test_same_commit_fixture_acceptance_is_refused_outside_a_staged_transition(
+def test_same_commit_fixture_acceptance_is_refused_outside_a_staged_comparison(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     base = stage_fixture_commit(tmp_path, [fixture_entry()], {"a.py": FIXTURE_SOURCE})

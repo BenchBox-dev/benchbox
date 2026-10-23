@@ -133,7 +133,7 @@ against the base, its digest equals the digest the checker computes from the
 staged content of that file, and the entry has no `count` above one, so it
 cannot excuse a second finding or another path. The hook passes
 `--accept-same-commit-fixtures` for this; the option is off by default, the
-checker refuses it outside a staged transition check or when `GITHUB_ACTIONS`
+checker refuses it outside a staged comparison with a base or when `GITHUB_ACTIONS`
 is set, and the CI job never passes it. CI behavior is unchanged: it still
 ignores every new entry until the verdict covers the registry head, so a commit
 that registers a fixture for a file it changes to hide a new finding passes the
