@@ -149,6 +149,12 @@ gh api repos/BenchBox-dev/BenchBox/rulesets/15611785 --jq '
       | select(.type == "required_status_checks")
       | .parameters.required_status_checks[]?.context
     ],
+    required_check_bindings: [
+      .rules[]
+      | select(.type == "required_status_checks")
+      | .parameters.required_status_checks[]?
+      | {context, integration_id}
+    ],
     strict_base: (
       .rules[]
       | select(.type == "required_status_checks")
@@ -197,8 +203,11 @@ A plain owner comment does not count. See [soundness drain](soundness-drain.md).
 The live `develop-squash-only` ruleset requires `oracle-gate` next to
 `oracle-review`, with `integration_id` 5201041 (read back 2026-10-23 with
 `gh api repos/BenchBox-dev/benchbox/rulesets/15611785`, `updated_at`
-2026-10-21T19:37:02-04:00). Whether 5201041 is the `benchbox-oracle` App's
-integration ID is not recorded in the repository and was not verified. The
+2026-10-21T19:37:02-04:00). The repository records 5201041 as the expected
+binding (`ORACLE_GATE_INTEGRATION_ID` in
+`_project/scripts/ruleset_review_enforcement.py`, hard-coded in the unit
+tests), but contains no evidence that the value is the real `benchbox-oracle`
+App's ID, and it was not verified. The
 cutover precondition in `docs/internal/oracle-review-v2.md` (production runs
 showing `oracle-gate` agreeing with `oracle-review`) was not verified when the
 ruleset was updated.
@@ -246,8 +255,14 @@ The soundness gate, as operated:
   half is the ruleset binding: the required `oracle-gate` check must be scoped
   to the `benchbox-oracle` App's integration ID, since only that binding stops
   a pull request workflow with `statuses: write` from posting a forged success
-  to its own head. `scripts/ruleset_drift_check.py` compares context names
-  only, so the integration ID is checked by hand.
+  to its own head. The drift check does not validate the value in practice:
+  its context comparison ignores `integration_id`, and the develop review
+  check (`review_enforcement_findings`) passes when any oracle check is
+  present, which a bare `oracle-review` satisfies without an ID, and the live
+  ruleset requires both. Check the binding by hand with the
+  `required_check_bindings` field of the Verify command above, or
+  `gh api repos/BenchBox-dev/benchbox/rulesets/15611785 --jq '[.rules[] | select(.type == "required_status_checks") | .parameters.required_status_checks[]? | {context, integration_id}]'`,
+  and compare the `oracle-gate` entry with the `benchbox-oracle` App's ID.
 - `make pr-open` does not arm auto-merge when it creates a PR. `make pr-arm`
   (or `make pr-open READY=1`) arms it after a live check of the PR, so a PR
   cannot merge while a follow-up commit is still being written. Arm only when
