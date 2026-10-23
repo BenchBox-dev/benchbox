@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import decimal
 import math
+import os
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,9 +11,10 @@ from typing import Any
 
 BASE_PARTS_AS_VARIANTS = {14, 23, 24}
 SEED_CANDIDATES: tuple[int | None, ...] = (None, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
-ABS_TOLERANCE = 0.011
-REL_TOLERANCE = 1e-6
+FLOAT_ABS_TOLERANCE = 1e-6
+FLOAT_REL_TOLERANCE = 1e-9
 ROUNDING_DIGITS = 2
+REQUIRED_ENV = "BENCHBOX_OBT_EQUIVALENCE_REQUIRED"
 
 Row = tuple[Any, ...]
 
@@ -28,10 +30,6 @@ class Comparison:
 
 
 def normalise(value: Any) -> Any:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (decimal.Decimal, float, int)):
-        return float(value)
     if isinstance(value, (datetime.date, datetime.datetime)):
         return value.isoformat()
     if isinstance(value, str):
@@ -39,12 +37,16 @@ def normalise(value: Any) -> Any:
     return value
 
 
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float, decimal.Decimal)) and not isinstance(value, bool)
+
+
 def _sort_key(row: Row) -> tuple:
     return tuple(
         (1, "", 0.0)
         if value is None
-        else (0, "", round(value, ROUNDING_DIGITS))
-        if isinstance(value, float)
+        else (0, "", round(float(value), ROUNDING_DIGITS))
+        if _is_number(value)
         else (0, str(value), 0.0)
         for value in row
     )
@@ -53,10 +55,13 @@ def _sort_key(row: Row) -> tuple:
 def _values_match(left: Any, right: Any) -> bool:
     if left is None or right is None:
         return left is None and right is None
-    if isinstance(left, float) and isinstance(right, float) and math.isnan(left) and math.isnan(right):
-        return True
-    if isinstance(left, float) and isinstance(right, float):
-        return math.isclose(left, right, rel_tol=REL_TOLERANCE, abs_tol=ABS_TOLERANCE)
+    if _is_number(left) and _is_number(right):
+        if isinstance(left, float) or isinstance(right, float):
+            left_float, right_float = float(left), float(right)
+            if math.isnan(left_float) or math.isnan(right_float):
+                return math.isnan(left_float) and math.isnan(right_float)
+            return math.isclose(left_float, right_float, rel_tol=FLOAT_REL_TOLERANCE, abs_tol=FLOAT_ABS_TOLERANCE)
+        return decimal.Decimal(left) == decimal.Decimal(right)
     return left == right
 
 
@@ -147,6 +152,8 @@ def build_engines(root: Path, scale_factor: float):
         scale_factor=scale_factor, output_dir=root / "tpcds", compress_data=False, quiet=True
     )
     if not generator.dsdgen_available:
+        if os.environ.get(REQUIRED_ENV):
+            pytest.fail("dsdgen is not available and the OBT equivalence run is required")
         pytest.skip("dsdgen is not available")
     generator.generate()
 
