@@ -55,9 +55,6 @@
   "_sources/tpc-h/PATCHES.md": [
     "tests/unit/scripts/test_comment_cleanup_scope.py"
   ],
-  "benchbox/sql_compat/README.md": [
-    "tests/unit/platforms/base/test_ddl_helpers.py"
-  ],
   "docs/CLI_REFERENCE.md": [
     "tests/unit/test_cli_documentation.py"
   ],
