@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Failing-before test using the reviewer example (three valid findings, 199-character CJK paths, 200-character titles) raises MarkerError on develop and produces a marker within the limit that round-trips decision, strikes and carried defect ids after the fix",
+    "No finding is dropped silently from the posted review body (test counts findings in vs out)",
+    "Existing marker tests pass unchanged",
+    "PR merged with an oracle verdict on its final head; merge SHA recorded"
+  ],
+  "context": "Created 2026-10-23 from the codex review of gap issue 2808 (commit 5ca12e6ca plus merged fix PR 3316): reviewer output /Users/joe/Developer/soundness-reviews/2808/raw-run1.txt sha256 252d352256c6b45a8214c719bc554e4b9520b24cfe96ed8585bd856f38d42ec8. Finding verified by the controller where stated; line numbers are leads, re-verify on current develop.",
+  "description": "Low finding from the 2808 review (re-verify): _project/scripts/oracle_reviewers/protocol.py encode_marker drops patch_map and then summary but can still exceed MARKER_LIMIT (4,096 characters), then raises MarkerError, so report.finalize aborts and no status, review or retry state is written. The reviewer built it from three valid findings with 199-character CJK paths and 200-character titles.\n\nDECISION GATE: do not silently drop findings. Choose a fail-soft that keeps the verdict and decision: trim long titles/paths inside the marker record deterministically (the visible review body keeps the full text), or store only finding ids and digests in the marker; the marker must still parse back to the decision, strikes and carried defects needed by later rounds. If a later round needs fields that cannot fit, record that as a limit and fail closed with an explicit pending state rather than an exception that loses the review.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR (soundness path _project/scripts/oracle_reviewers); no pre-registered digests; never weaken a gate; no skip/xfail; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; never close/label/edit gap issues; done = merged PR plus evidence.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-23T11:56:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c052eef3916149d0aa501bb297776b7f",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}
