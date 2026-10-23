@@ -91,6 +91,7 @@ classifier:
   gate_paths:
     - .github/oracle-reviewers.yml
     - .github/oracle-omp-config.yml
+    - _project/scripts/oracle_gateway_host.sh
     - .github/soundness-paths.txt
     - .github/workflows/oracle-review.yml
     - .github/workflows/oracle-verdict.yml

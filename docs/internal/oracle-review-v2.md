@@ -77,81 +77,21 @@ setting: it restores real values into URLs and output.
 Each attempt job joins the tailnet through `tailscale/github-action` with
 GitHub's OIDC token (`id-token: write`), so no long-lived Tailscale secret
 is stored. The step runs only when `TS_OAUTH_CLIENT_ID` and `TS_AUDIENCE`
-are set. The tailnet policy must:
+are set.
 
-- own `tag:oracle-ci` (`tagOwners`), and limit the default allow-all rule's
-  source to `autogroup:member`, so tagged nodes match nothing else;
-- grant `tag:oracle-ci` only the gateway port (`tcp:4000`) on the gateway
-  host. During the cut-over it also keeps the broker's `tcp:8765`, so a
-  revert still works; step 6 of the runbook removes that entry.
+[`oracle-gateway-host.md`](oracle-gateway-host.md) builds, checks, rotates and
+moves the gateway host, and lists the Tailscale OIDC credential and tailnet
+policy the attempt jobs need.
 
-The Tailscale OIDC credential carries the `auth_keys` write scope and
-`tag:oracle-ci`. This repository uses GitHub's immutable OIDC subject, so
-restrict the credential's subject to
-`repo:BenchBox-dev@319264189/benchbox@1135770337:environment:oracle`; the
-name-only form is rejected with a 403. Disable key expiry for the gateway host
-in the Tailscale console.
-
-**Owner runbook.**
-
-1. Make a token and its digest. The clients file holds only the digest:
-   `T=$(openssl rand -base64 36 | tr -d '\n'); printf %s "$T" | shasum -a 256`.
-   Keep `$T` for the `ORACLE_GATEWAY_TOKEN` secret.
-2. List the OAuth identity keys with `omp usage accounts --json` (it shows
-   emails). Write the clients file, mode 0600:
-
-   ```json
-   {
-     "oracle-ci": {
-       "tokenSha256": "<hex digest>",
-       "models": [
-         "anthropic/claude-haiku-5-5", "anthropic/claude-sonnet-5-5",
-         "anthropic/claude-opus-5-5", "anthropic/claude-fable-5",
-         "openai-codex/gpt-6-luna", "openai-codex/gpt-6.1-sol",
-         "openai-codex/gpt-6-astra",
-         "muse-code/muse-spark-1.3-contributor",
-         "muse-code/muse-wonder-1.0-contributor",
-         "google-antigravity/gemini-3.8-flash",
-         "google-antigravity/gemini-4-argon"
-       ],
-       "accounts": {
-         "anthropic": ["<identityKey>"],
-         "openai-codex": ["<identityKey>"],
-         "muse-code": ["<identityKey>"],
-         "google-antigravity": ["<identityKey>"]
-       }
-     }
-   }
-   ```
-
-   The models are the four primaries and the seven fallbacks in
-   `.github/oracle-omp-config.yml`; keep the two in step. `accounts` pins each
-   provider to one identity and is also an allow-list: stored or environment
-   API keys are then never used for those providers. Leave it out for plain
-   model scoping. Replace the file atomically (write a temporary file, then
-   `mv` over it): the gateway re-reads it every 10 seconds, and removing the
-   entry refuses the token from its next request.
-3. Run the gateway under its own launchd agent, beside the broker's, with the
-   broker's `OMP_AUTH_BROKER_URL` and `OMP_AUTH_BROKER_TOKEN` in its
-   environment: `omp auth-gateway serve --bind=127.0.0.1:4000
-   --clients=<file>`.
-4. Publish it to the tailnet only, over HTTPS:
-   `tailscale serve --bg --https=4000 http://127.0.0.1:4000`. Update the ACL
-   as above.
-5. Add `ORACLE_GATEWAY_TOKEN` (the token) and `ORACLE_GATEWAY_URL`
-   (`https://<host>.<tailnet>.ts.net:4000`) to the `oracle` environment as
-   secrets.
-6. After a hosted run passes on the gateway, delete `CLAUDE_CODE_OAUTH_TOKEN`,
-   `OPENAI_API_KEY`, `META_API_KEY`, `OMP_AUTH_BROKER_URL`,
-   `OMP_AUTH_BROKER_TOKEN` and `OMP_AGENT_CONFIG` from the environment, remove
-   the broker's `tcp:8765` ACL entry for `tag:oracle-ci`, and rotate those
-   credentials once. Until then reverting the cut-over restores the old
-   setup. `GEMINI_API_KEY` was referenced by the old workflow but never set in
-   the environment, so there is nothing to delete for it.
-
-To rotate the client token, make a new token and digest, replace the digest in
-the clients file, and update `ORACLE_GATEWAY_TOKEN`; the old token stops
-working within 10 seconds.
+**Cut-over cleanup (one time).** After a hosted run passes on the gateway,
+delete `CLAUDE_CODE_OAUTH_TOKEN`, `OPENAI_API_KEY`, `META_API_KEY`,
+`OMP_AUTH_BROKER_URL`, `OMP_AUTH_BROKER_TOKEN` and `OMP_AGENT_CONFIG` from the
+`oracle` environment, remove the rule that still lets `tag:oracle-ci` reach
+the broker on `tcp:8765`, and rotate those credentials once. If nothing else
+reaches the broker over the tailnet, also stop publishing it
+(`tailscale serve --https=8765 off`). Until then, reverting the cut-over
+restores the old setup. `GEMINI_API_KEY` was referenced by the old workflow but
+never set in the environment, so there is nothing to delete for it.
 
 Without the App secrets, the `post` job logs the result and succeeds.
 

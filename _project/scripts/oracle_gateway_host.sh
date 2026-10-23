@@ -1,0 +1,270 @@
+#!/bin/bash
+set -euo pipefail
+umask 077
+
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+REPO_SLUG=${REPO_SLUG:-BenchBox-dev/benchbox}
+OMP=${OMP:-$(command -v omp || true)}
+BROKER_PORT=${BROKER_PORT:-8765}
+GATEWAY_PORT=${GATEWAY_PORT:-4000}
+GATEWAY_DIR=${GATEWAY_DIR:-$HOME/.omp/oracle-gateway}
+BROKER_TOKEN_FILE=$HOME/.omp/auth-broker.token
+CLIENT_TOKEN_FILE=$GATEWAY_DIR/client.token
+CLIENTS_FILE=$GATEWAY_DIR/clients.json
+ACCOUNTS_FILE=$GATEWAY_DIR/.accounts.json
+RUN_FILE=$GATEWAY_DIR/run.sh
+LOG_DIR=$HOME/.omp/logs
+AGENT_DIR=$HOME/Library/LaunchAgents
+DOMAIN=gui/$(id -u)
+BROKER_LABEL=dev.omp.auth-broker
+GATEWAY_LABEL=dev.omp.auth-gateway
+GATEWAY_PROVIDERS=(anthropic openai-codex muse-code google-antigravity)
+
+usage() {
+  echo "usage: $(basename "$0") broker|gateway|secrets|check" >&2
+  exit 2
+}
+
+fail() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+require_omp() {
+  [ -n "$OMP" ] && [ -x "$OMP" ] || fail "omp not found; install it or set OMP=/path/to/omp"
+}
+
+xml_escape() {
+  printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
+render_plist() {
+  local label=$1 log=$2 argument
+  shift 2
+  cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$label</string>
+  <key>ProgramArguments</key>
+  <array>
+EOF
+  for argument in "$@"; do
+    echo "    <string>$(xml_escape "$argument")</string>"
+  done
+  cat <<EOF
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>StandardOutPath</key>
+  <string>$(xml_escape "$log")</string>
+  <key>StandardErrorPath</key>
+  <string>$(xml_escape "$log")</string>
+</dict>
+</plist>
+EOF
+}
+
+agent_loaded() {
+  launchctl print "$DOMAIN/$1" >/dev/null 2>&1
+}
+
+agent_unloaded() {
+  ! agent_loaded "$1"
+}
+
+wait_for() {
+  local _
+  for _ in $(seq 1 20); do
+    "$@" && return 0
+    sleep 1
+  done
+  return 1
+}
+
+install_agent() {
+  local label=$1 log=$2 changed=$3 plist staged
+  shift 3
+  plist=$AGENT_DIR/$label.plist
+  mkdir -p "$AGENT_DIR" "$LOG_DIR"
+  staged=$(mktemp)
+  render_plist "$label" "$log" "$@" > "$staged"
+  plutil -lint "$staged" >/dev/null
+  if [ "$changed" = no ] && agent_loaded "$label" && cmp -s "$staged" "$plist"; then
+    rm -f "$staged"
+    echo "$label: unchanged, left running"
+    return 0
+  fi
+  chmod 644 "$staged"
+  mv "$staged" "$plist"
+  if agent_loaded "$label"; then
+    launchctl bootout "$DOMAIN/$label" 2>/dev/null || true
+    wait_for agent_unloaded "$label" || fail "launchd did not unload $label"
+  fi
+  launchctl bootstrap "$DOMAIN" "$plist"
+  echo "$label: loaded"
+}
+
+broker_ok() {
+  OMP_AUTH_BROKER_URL="http://127.0.0.1:$BROKER_PORT" OMP_AUTH_BROKER_TOKEN=$(cat "$BROKER_TOKEN_FILE") \
+    "$OMP" auth-broker status --json 2>/dev/null | jq -e '.ok == true' >/dev/null
+}
+
+missing_logins() {
+  local present provider
+  present=$("$OMP" usage accounts --json 2>/dev/null | jq -r '.accounts[].provider' | sort -u) || present=""
+  for provider in "${GATEWAY_PROVIDERS[@]}"; do
+    printf '%s\n' "$present" | grep -x "$provider" >/dev/null || echo "$provider"
+  done
+}
+
+gateway_curl() {
+  local url=$1
+  shift
+  printf 'Authorization: Bearer %s\n' "$(cat "$CLIENT_TOKEN_FILE")" | curl -s --max-time 10 -H @- "$@" "$url"
+}
+
+gateway_code() {
+  gateway_curl "$1" -o /dev/null -w '%{http_code}' || true
+}
+
+gateway_healthy() {
+  [ "$(gateway_code "http://127.0.0.1:$GATEWAY_PORT/healthz")" = 200 ]
+}
+
+tailnet_url() {
+  local host
+  host=$(tailscale status --json 2>/dev/null | jq -r '.Self.DNSName // empty' | sed 's/\.$//') || host=""
+  [ -n "$host" ] || fail "tailscale is not running or not logged in on this Mac"
+  echo "https://$host:$GATEWAY_PORT"
+}
+
+check_gateway_scope() {
+  local base=$1 expected health models usage
+  expected=$(jq -r '."oracle-ci".models | length' "$CLIENTS_FILE")
+  health=$(gateway_code "$base/healthz")
+  [ "$health" = 200 ] || fail "$base/healthz answered '$health'; is the gateway running and published?"
+  models=$(gateway_curl "$base/v1/models" | jq -r '[.data[]?.id] | length') || fail "$base/v1/models did not answer"
+  usage=$(gateway_code "$base/v1/usage")
+  echo "$base: healthz=$health models=$models/$expected usage=$usage"
+  [ "$models" = "$expected" ] || fail "$base lists $models models; the clients file allows $expected"
+  [ "$usage" = 403 ] || fail "$base answered /v1/usage with $usage; expected 403"
+}
+
+warn_unless_develop() {
+  local branch
+  branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null) || branch=unknown
+  if [ "$branch" != develop ]; then
+    echo "warning: $REPO_ROOT is on '$branch', not develop; the client is scoped to that checkout's reviewer models" >&2
+  fi
+}
+
+cmd_broker() {
+  require_omp
+  "$OMP" auth-broker token >/dev/null
+  [ -s "$BROKER_TOKEN_FILE" ] || fail "omp auth-broker token did not create $BROKER_TOKEN_FILE"
+  chmod 600 "$BROKER_TOKEN_FILE"
+  install_agent "$BROKER_LABEL" "$LOG_DIR/auth-broker.log" no \
+    "$OMP" auth-broker serve "--bind=127.0.0.1:$BROKER_PORT" --trust-proxy-headers
+  wait_for broker_ok || fail "the broker did not report ok; see $LOG_DIR/auth-broker.log"
+  echo "broker: running on 127.0.0.1:$BROKER_PORT"
+  local missing provider
+  missing=$(missing_logins)
+  if [ -n "$missing" ]; then
+    echo "log in to each missing provider, then run '$(basename "$0") gateway':"
+    for provider in $missing; do
+      echo "  omp auth-broker login $provider"
+    done
+  fi
+}
+
+cmd_gateway() {
+  require_omp
+  if ! { [ -s "$BROKER_TOKEN_FILE" ] && broker_ok; }; then
+    fail "the broker is not running; run '$(basename "$0") broker' first"
+  fi
+  local missing
+  missing=$(missing_logins)
+  [ -z "$missing" ] || fail "no broker login for: $(printf '%s\n' "$missing" | paste -sd ' ' -)"
+  warn_unless_develop
+  mkdir -p "$GATEWAY_DIR/home"
+  chmod 700 "$GATEWAY_DIR" "$GATEWAY_DIR/home"
+  if [ ! -s "$CLIENT_TOKEN_FILE" ]; then
+    openssl rand -base64 36 | tr -d '\n' > "$CLIENT_TOKEN_FILE"
+  fi
+  chmod 600 "$CLIENT_TOKEN_FILE"
+  trap 'rm -f "$ACCOUNTS_FILE"' EXIT
+  "$OMP" usage accounts --json > "$ACCOUNTS_FILE"
+  (cd "$REPO_ROOT" && uv run --quiet --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- \
+    python -m _project.scripts.oracle_reviewers.cli gateway-clients \
+    --token-file "$CLIENT_TOKEN_FILE" --accounts "$ACCOUNTS_FILE" --out "$CLIENTS_FILE")
+  rm -f "$ACCOUNTS_FILE"
+  local staged changed=no
+  staged=$(mktemp)
+  cat > "$staged" <<EOF
+#!/bin/sh
+set -eu
+export HOME="$GATEWAY_DIR/home"
+export OMP_AUTH_BROKER_URL="http://127.0.0.1:$BROKER_PORT"
+OMP_AUTH_BROKER_TOKEN=\$(cat "$BROKER_TOKEN_FILE")
+export OMP_AUTH_BROKER_TOKEN
+exec "$OMP" auth-gateway serve --bind=127.0.0.1:$GATEWAY_PORT --clients="$CLIENTS_FILE"
+EOF
+  if cmp -s "$staged" "$RUN_FILE"; then
+    rm -f "$staged"
+  else
+    chmod 700 "$staged"
+    mv "$staged" "$RUN_FILE"
+    changed=yes
+  fi
+  install_agent "$GATEWAY_LABEL" "$LOG_DIR/auth-gateway.log" "$changed" /bin/sh "$RUN_FILE"
+  wait_for gateway_healthy || fail "the gateway did not answer /healthz; see $LOG_DIR/auth-gateway.log"
+  check_gateway_scope "http://127.0.0.1:$GATEWAY_PORT"
+  tailscale serve --bg "--https=$GATEWAY_PORT" "http://127.0.0.1:$GATEWAY_PORT"
+  local url
+  url=$(tailnet_url)
+  echo "gateway: published at $url"
+}
+
+cmd_secrets() {
+  [ -s "$CLIENT_TOKEN_FILE" ] || fail "no client token; run '$(basename "$0") gateway' first"
+  local url
+  url=$(tailnet_url)
+  gh secret set ORACLE_GATEWAY_TOKEN --env oracle --repo "$REPO_SLUG" < "$CLIENT_TOKEN_FILE"
+  gh secret set ORACLE_GATEWAY_URL --env oracle --repo "$REPO_SLUG" --body "$url"
+  echo "secrets: ORACLE_GATEWAY_TOKEN and ORACLE_GATEWAY_URL=$url set on the oracle environment"
+}
+
+cmd_check() {
+  require_omp
+  broker_ok || fail "the broker is not running"
+  echo "broker: ok on 127.0.0.1:$BROKER_PORT"
+  local missing url secrets name
+  missing=$(missing_logins)
+  [ -z "$missing" ] || fail "no broker login for: $(printf '%s\n' "$missing" | paste -sd ' ' -)"
+  echo "logins: ${GATEWAY_PROVIDERS[*]}"
+  check_gateway_scope "http://127.0.0.1:$GATEWAY_PORT"
+  url=$(tailnet_url)
+  check_gateway_scope "$url"
+  secrets=$(gh secret list --env oracle --repo "$REPO_SLUG" --json name --jq '.[].name') \
+    || fail "gh could not list the oracle environment secrets; run 'gh auth login'"
+  for name in ORACLE_GATEWAY_TOKEN ORACLE_GATEWAY_URL; do
+    printf '%s\n' "$secrets" | grep -x "$name" >/dev/null || fail "the oracle environment has no $name secret"
+  done
+  echo "secrets: ORACLE_GATEWAY_TOKEN and ORACLE_GATEWAY_URL are set"
+}
+
+[ $# -eq 1 ] || usage
+case $1 in
+  broker) cmd_broker ;;
+  gateway) cmd_gateway ;;
+  secrets) cmd_secrets ;;
+  check) cmd_check ;;
+  *) usage ;;
+esac
