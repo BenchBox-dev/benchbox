@@ -91,8 +91,9 @@ def test_fallback_walks_only_on_usage_limits() -> None:
     assert _load(CONFIG_PATH)["retry"]["fallbackOn"] == "usage-limit"
 
 
-def test_reviewer_model_config_is_a_soundness_and_gate_path(policy: Policy) -> None:
-    path = CONFIG_PATH.relative_to(REPO_ROOT).as_posix()
+@pytest.mark.parametrize("path", [".github/oracle-omp-config.yml", "_project/scripts/oracle_gateway_host.sh"])
+def test_reviewer_credential_scope_files_are_soundness_and_gate_paths(policy: Policy, path: str) -> None:
+    assert (REPO_ROOT / path).is_file()
     assert is_soundness_path(path)
     assert matching([path], policy.classifier.gate_paths) == [path]
 
