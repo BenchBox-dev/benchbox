@@ -307,8 +307,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unflushed writes.
 - TPC-DI `EQ3` counted the rows of a nested `COUNT(*)` for `source_records`, which is
   always 1. It now counts the `DimCustomer` rows of the batch, so `source_records`
-  and `transformation_success_rate` change on every platform; previously only
-  ClickHouse, StarRocks and Doris rewrote it at translation time.
+  changes on every platform and `transformation_success_rate` is unchanged; previously
+  only ClickHouse, StarRocks and Doris rewrote it at translation time.
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
   `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
   clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`
