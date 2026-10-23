@@ -3,6 +3,7 @@
     "A pull request that changes the root pyproject.toml without relocking _project/sql-translation-ml fails a check, or the path dependency is gone",
     "The check is wired into CI"
   ],
+  "context": "Done in PR #3366: `make uv-lock-revision-check` (already run by the tooling CI job) now also runs `uv lock --check --project` for _project/sql-translation-ml and _project/scripts. Proof: with the root certifi floor raised in a scratch edit the target failed (`The lockfile at uv.lock needs to be updated`, exit 2), and it passes on the real tree. Note _project/scripts' lock does not depend on BenchBox, so only the sql-translation-ml check can actually catch drift; it was included because it costs nothing.",
   "description": "`_project/sql-translation-ml` depends on BenchBox by path, so its `uv.lock` embeds BenchBox's version and full requirement metadata. No check runs `uv lock --check` for that project, so the lock drifts whenever the root `pyproject.toml` changes: on 2026-10-22 it still described BenchBox 0.4.0 with older floors for dask, datafusion, duckdb and databricks-connect until it was relocked by hand. Any later dependency change repeats this.\n\nEither add `uv lock --check` for `_project/sql-translation-ml` (and `_project/scripts`) to an existing lock gate such as `make uv-lock-revision-check` or the pre-commit lock hook, or remove the path dependency if the experiment no longer needs BenchBox's metadata.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "488ee0be379a403684d19189c99bd53f",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T22:50:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "20ca27cca816437ab4a585f4bde890d9",
       "session_id": "ba4384e41c574086bef30465f20b7231"
     }
   ]
