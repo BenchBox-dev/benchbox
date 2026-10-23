@@ -456,7 +456,9 @@ def main(argv: list[str] | None = None) -> int:
             )
             if args.staged and not global_change:
                 paths = [path for path in paths if path in changed]
-        policy_owner_failure = compared and POLICY_PATH in changed and bool(expired_policy_findings(policy))
+        policy_owner_failure = (
+            args.mode == "strict" and compared and POLICY_PATH in changed and bool(expired_policy_findings(policy))
+        )
         if args.path:
             paths = [path for path in paths if any(matches(path, scope) for scope in args.path)]
         sources = {

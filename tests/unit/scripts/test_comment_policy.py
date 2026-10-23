@@ -438,6 +438,7 @@ def test_expired_policy_fails_owner_transition_but_not_inherited_advisory(
     args = ["--root", str(tmp_path), "--mode", "strict", "--base", advisory_base]
     assert main(args) == 1
     assert "quality/comment-policy.json:1: CP policy-error" in capsys.readouterr().out
+    assert main(["--root", str(tmp_path), "--mode", "report", "--base", advisory_base]) == 0
     subprocess.run(["git", "-C", str(tmp_path), "add", "quality/comment-policy.json"], check=True)
     subprocess.run(
         [
