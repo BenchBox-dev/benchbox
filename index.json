@@ -11706,10 +11706,15 @@
       "title": "Gate monitoring behind a benchbox[monitoring] optional extra"
     },
     "gcloud-emsign-ca-workaround-revert": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-24T21:38:29Z",
+        "generation": "4e7232ad49fe49719e8a7a9108905404",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Remove the gcloud and bq CA-bundle override once gcloud ships a fixed certifi"
     },
     "gcp-dataproc-platform": {
