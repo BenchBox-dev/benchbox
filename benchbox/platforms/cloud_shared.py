@@ -119,64 +119,6 @@ def validate_session_cache_control(
     return result
 
 
-_TPCDI_FLAG_COLUMNS = r"IsCurrent|TT_IS_SELL|HolidayFlag"
-
-
-def rewrite_tpcdi_sqlite_idioms(
-    query: str,
-    *,
-    flag_true: str,
-    flag_false: str,
-    julianday_replacement: str,
-    relative_date_replacement: str,
-) -> str:
-    query = re.sub(
-        rf"\b({_TPCDI_FLAG_COLUMNS})(`?)\s*=\s*1\b",
-        flag_true,
-        query,
-        flags=re.IGNORECASE,
-    )
-    query = re.sub(
-        rf"\b({_TPCDI_FLAG_COLUMNS})(`?)\s*=\s*0\b",
-        flag_false,
-        query,
-        flags=re.IGNORECASE,
-    )
-    for _ in range(3):
-        rewritten = re.sub(
-            r"DATE\s*\(\s*'now'\s*,\s*'-(\d+)\s+days?'\s*\)",
-            relative_date_replacement,
-            query,
-            flags=re.IGNORECASE,
-        )
-        rewritten = re.sub(
-            r"DATE\s*\(\s*'now'\s*\)",
-            "CURRENT_DATE()",
-            rewritten,
-            flags=re.IGNORECASE,
-        )
-        rewritten = re.sub(
-            r"JULIANDAY\s*\(((?:[^()]|\([^()]*\))*)\)",
-            julianday_replacement,
-            rewritten,
-            flags=re.IGNORECASE,
-        )
-        if rewritten == query:
-            break
-        query = rewritten
-    return query
-
-
-def rewrite_tpcdi_for_bigquery(query: str) -> str:
-    return rewrite_tpcdi_sqlite_idioms(
-        query,
-        flag_true=r"\1\2 = TRUE",
-        flag_false=r"\1\2 = FALSE",
-        julianday_replacement=r"(UNIX_DATE(\1) + 2440588)",
-        relative_date_replacement=r"DATE_SUB(CURRENT_DATE(), INTERVAL \1 DAY)",
-    )
-
-
 _LEADING_SQL_COMMENTS_RE = re.compile(r"\A(?:\s|--[^\n]*(?:\n|\Z)|/\*.*?\*/)*", re.DOTALL)
 
 
@@ -184,13 +126,3 @@ def split_leading_sql_comments(statement: str) -> tuple[str, str]:
     match = _LEADING_SQL_COMMENTS_RE.match(statement)
     prefix = match.group(0) if match else ""
     return prefix, statement[len(prefix) :]
-
-
-def rewrite_tpcdi_for_databricks(query: str) -> str:
-    return rewrite_tpcdi_sqlite_idioms(
-        query,
-        flag_true=r"\1\2 IS TRUE",
-        flag_false=r"\1\2 IS FALSE",
-        julianday_replacement=r"(DATEDIFF(\1, '1970-01-01') + 2440588)",
-        relative_date_replacement=r"DATE_SUB(CURRENT_DATE(), \1)",
-    )

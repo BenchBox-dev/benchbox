@@ -1547,11 +1547,6 @@ class BigQueryAdapter(PlatformAdapter):
             else:
                 translated_query = self._qualify_table_names(translated_query)
 
-            import re
-
-            if re.sub(r"[^a-z0-9]", "", (benchmark_type or "").lower()).startswith("tpcdi"):
-                translated_query = self._apply_tpcdi_bigquery_rewrites(translated_query)
-
             translated_query = self._apply_safe_division(translated_query)
 
             if "`" in translated_query:
@@ -1906,53 +1901,12 @@ class BigQueryAdapter(PlatformAdapter):
         }
     )
 
-    def _extract_unqualified_tables(self, query: str) -> list[str] | None:
-        try:
-            from benchbox._vendor import sqlglot
-            from benchbox._vendor.sqlglot import exp
-        except ImportError:
-            return None
-        try:
-            trees = sqlglot.parse(query, read="bigquery")
-        except Exception:
-            return None
-        if not trees or any(tree is None for tree in trees):
-            return None
-        cte_names = set()
-        for tree in trees:
-            for cte in tree.find_all(exp.CTE):
-                name = (cte.alias_or_name or "").upper()
-                if name:
-                    cte_names.add(name)
-        tables: list[str] = []
-        for tree in trees:
-            for cte in tree.find_all(exp.CTE):
-                earlier_ctes = set()
-                with_clause = cte.parent
-                if isinstance(with_clause, exp.With):
-                    for sibling in with_clause.expressions:
-                        if sibling is cte:
-                            break
-                        earlier_ctes.add((sibling.alias_or_name or "").upper())
-                for table in cte.this.find_all(exp.Table):
-                    if table.db or table.catalog:
-                        continue
-                    name = (table.name or "").upper()
-                    if name and name not in tables and name not in earlier_ctes:
-                        tables.append(name)
-            for table in tree.find_all(exp.Table):
-                if table.db or table.catalog:
-                    continue
-                name = (table.name or "").upper()
-                if not name or name in cte_names or name in tables:
-                    continue
-                tables.append(name)
-        return tables
-
     def _qualify_single_statement(self, statement: str, allow_fallback: bool = True) -> str:
         import re
 
-        table_names = self._extract_unqualified_tables(statement)
+        from benchbox.utils.dialect_utils import unqualified_table_names
+
+        table_names = unqualified_table_names(statement, "bigquery")
         if table_names is None:
             if not allow_fallback:
                 return statement
@@ -2133,11 +2087,6 @@ class BigQueryAdapter(PlatformAdapter):
 
         return re.sub(pattern, uppercase_table, query)
 
-    def _apply_tpcdi_bigquery_rewrites(self, query: str) -> str:
-        from benchbox.platforms.cloud_shared import rewrite_tpcdi_for_bigquery
-
-        return rewrite_tpcdi_for_bigquery(query)
-
     def _apply_safe_division(self, query: str) -> str:
         if "/" not in query:
             return query
@@ -2151,31 +2100,6 @@ class BigQueryAdapter(PlatformAdapter):
         except Exception as e:
             self.log_very_verbose(f"Division safeguard skipped (unparseable BigQuery SQL): {e}")
             return query
-
-    def _safeguard_division_by_zero(self, query: str) -> str:
-        try:
-            from benchbox._vendor import sqlglot
-            from benchbox._vendor.sqlglot import exp
-        except ImportError:
-            return query
-
-        try:
-            tree = sqlglot.parse_one(query, read="bigquery")
-        except Exception as e:
-            self.log_very_verbose(f"Division safeguard skipped (unparseable BigQuery SQL): {e}")
-            return query
-        if not any(isinstance(node, exp.Div) for node in tree.walk()):
-            return query
-
-        def to_safe_divide(node: exp.Expression) -> exp.Expression:
-            if isinstance(node, exp.Div):
-                return exp.Anonymous(
-                    this="SAFE_DIVIDE",
-                    expressions=[node.this.copy(), node.expression.copy()],
-                )
-            return node
-
-        return tree.transform(to_safe_divide).sql(dialect="bigquery", identify=True)
 
     def _get_platform_metadata(self, connection: Any) -> dict[str, Any]:
         metadata = {

@@ -122,10 +122,67 @@ when the scanned checkout is the reviewed head, or a merge commit of the base
 and the reviewed head with no other content; a stale event or a modified
 checkout gets no review cover.
 
-One fixture lets a test run conditions taken from the Makefile, to prove a
-broken gate still runs its guard. It allows no comment text. Changing
-the code that reads it breaks the match. Its syntax-tree digest ignores only
-empty type-parameter lists, so all Python versions agree.
+A fixture for an input the checker cannot read statically (an unresolved
+executable or HTML source) binds to a digest of its consumer and the code in
+the same module that can change that input. The digest covers the top-level
+function or class that holds the call, plus every other top-level statement
+that, repeatedly:
+
+- runs at import time and has an effect: a module-level or class-level call,
+  delete, or attribute or subscript store, or a call in a decorator, default
+  argument, or base class, other than a call to a known pure function (a
+  builtin, `pytest`, `unittest.mock.patch`, `dataclasses`, `functools`) and
+  other than assigning a constant or a path built only from constants. A
+  definition included only for such a header contributes its header, not its
+  body;
+- defines or rebinds a name that covered code uses;
+- passes module-level data that covered code uses to a call, stores it, or
+  reads one of its attributes or items into a value, or calls a method on
+  it, unless the value is a constant;
+- calls or instantiates a covered function or class that mutates module-level
+  data, a global, an imported object, or the process environment, or that
+  has mutable class attributes;
+- passes a covered function, class, or imported name as a value, assigns
+  into it, or calls a method on it;
+- sets an attribute named like a covered module-level name, or reaches the
+  same object through another import of it;
+- subclasses a covered class;
+- references the consumer, or any definition enclosing the call, when the payload can come from
+  the caller: a parameter, `self` or `cls` state, a constructor, or a dataclass field. Callers are
+  followed transitively, through every definition they contain. The digest falls back to the
+  whole module when a followed statement uses `getattr`, `setattr` or `delattr` with a
+  non-literal name;
+- takes a pytest fixture that covered code takes, when the fixture has module
+  scope or wider or mutates module-level state.
+
+Names resolve through enclosing function scopes, so a parameter or local that
+shadows a module name does not link statements. Pytest entry points that run
+implicitly (autouse fixtures, `pytestmark`, `setup_module` and the other
+setup and teardown hooks, `pytest_*` hooks) are always covered, and
+`monkeypatch` calls are not, because pytest reverts them.
+
+Editing an unrelated function, class, or constant leaves the digest and the
+registered entry matching, so you do not register a future digest early.
+Editing the consumer, its decorators, or anything it reads changes the
+digest, and the new digest is a new entry, which needs the review cover
+described above. The digest falls back to the whole module when the module
+has a star import; when it reaches the module namespace (`globals`, `locals`,
+`vars`, `eval`, `exec`, `__import__`, `import_module`, `builtins`, `modules`,
+`__dict__`, `__globals__`, frame access); when a fixture is registered in a
+way the checker cannot read (a `name=` that is not a literal, `fixture(...)`
+outside a decorator, `getfixturevalue` with a non-literal name); or when the
+call is not inside a top-level function or class.
+
+The digest does not track state that lives outside the covered statements:
+`conftest.py`, the code of imported modules, and process-wide state such as
+the working directory or environment that an unrelated test body changes
+without `monkeypatch`. The whole-module digest caught an edit to such a test
+body because it hashed every test; the scoped digest does not, so a review
+of a change to the consumer or to import-time code has to cover process
+state. Its syntax-tree hashing ignores only empty type-parameter lists, so
+all Python versions agree. When the checker changes how a digest is computed,
+re-hash every registered fixture in the same pull request; that change is a
+new entry and takes the same review path.
 
 ## What the checker compares
 

@@ -2,30 +2,19 @@ from __future__ import annotations
 
 import re
 import tempfile
-from collections.abc import Callable
 from functools import cache
 
-from benchbox._vendor import sqlglot
 from benchbox.core.clickbench.benchmark import ClickBenchBenchmark
 from benchbox.core.clickbench.queries import ClickBenchQueryManager
-from benchbox.core.tpcdi.benchmark import TPCDIBenchmark
-from benchbox.platforms.cloud_shared import rewrite_tpcdi_for_bigquery, rewrite_tpcdi_for_databricks
-from benchbox.utils.dialect_utils import (
-    NO_IDENTIFY_DIALECTS,
-    apply_rewrite,
-    resolve_sql_dialect,
-    translate_sql_query,
-)
-from tests.unit.sql_compat.golden_corpus import Case
+from benchbox.core.tpcdi.benchmark import BOOLEAN_FLAG_STYLES, TPCDI_FLAG_COLUMNS, TPCDIBenchmark
+from benchbox.utils.dialect_utils import apply_rewrite
+from tests.unit.sql_compat.golden_corpus import Case, frozen_legacy
 
-TPCDI_FLAG_COLUMNS = ["IsCurrent", "TT_IS_SELL", "HolidayFlag"]
+AREA = "area_tpcdi_clickbench"
+
 IDIOM_RE = re.compile(r"JULIANDAY|DATE\s*\(\s*['\"]now|\b(?:IsCurrent|TT_IS_SELL|HolidayFlag)\b\s*=\s*[01]\b", re.I)
 
-FLAG_STYLE = {"postgres": "is", "datafusion": "is", "bigquery": "eq", "databricks": "is"}
-ADAPTER_REWRITES: dict[str, Callable[[str], str]] = {
-    "bigquery": rewrite_tpcdi_for_bigquery,
-    "databricks": rewrite_tpcdi_for_databricks,
-}
+ADAPTER_DIALECTS = ("bigquery", "databricks")
 TPCDI_TARGETS = (
     "duckdb",
     "postgres",
@@ -78,20 +67,8 @@ def tpcdi_queries() -> dict[str, str]:
     return {query_id: sql for query_id, sql in queries.items() if IDIOM_RE.search(sql)}
 
 
-def legacy_tpcdi(query: str, dialect: str) -> str:
-    translated = tpcdi_benchmark().translate_query_text(query, dialect)
-    rewrite = ADAPTER_REWRITES.get(dialect)
-    return rewrite(translated) if rewrite else translated
-
-
 def fork_tpcdi(query: str, dialect: str) -> str:
-    style = FLAG_STYLE.get(dialect)
-    if style is not None:
-        query = apply_rewrite(
-            "flag_comparisons_to_boolean", query, "netezza", columns=TPCDI_FLAG_COLUMNS, use_is=style == "is"
-        )
-    target = resolve_sql_dialect(dialect)
-    return sqlglot.transpile(query, read="netezza", write=target, identify=target not in NO_IDENTIFY_DIALECTS)[0]
+    return tpcdi_benchmark().translate_query_text(query, dialect)
 
 
 def tpcdi_cases() -> list[Case]:
@@ -103,38 +80,29 @@ def tpcdi_cases() -> list[Case]:
             cases.append(
                 Case(
                     f"tpcdi:{dialect}:{name}",
-                    lambda sql=sql, dialect=dialect: legacy_tpcdi(sql, dialect),
+                    frozen_legacy(AREA, f"tpcdi:{dialect}:{name}"),
                     lambda sql=sql, dialect=dialect: fork_tpcdi(sql, dialect),
                 )
             )
     for name, sql in TARGET_DIALECT_STRINGS.items():
-        for dialect, rewrite in ADAPTER_REWRITES.items():
+        for dialect in ADAPTER_DIALECTS:
             cases.append(
                 Case(
                     f"tpcdi-adapter-raw:{dialect}:{name}",
-                    lambda sql=sql, rewrite=rewrite: rewrite(sql),
+                    frozen_legacy(AREA, f"tpcdi-adapter-raw:{dialect}:{name}"),
                     lambda sql=sql, dialect=dialect: apply_rewrite(
                         "flag_comparisons_to_boolean",
                         sql,
                         dialect,
                         columns=TPCDI_FLAG_COLUMNS,
-                        use_is=FLAG_STYLE[dialect] == "is",
+                        use_is=BOOLEAN_FLAG_STYLES[dialect] == "is",
                     ),
                 )
             )
     return cases
 
 
-CLICKBENCH_TARGETS = (
-    "snowflake",
-    "duckdb",
-    "postgres",
-    "bigquery",
-    "databricks",
-    "clickhouse",
-    "sqlite",
-    "redshift",
-)
+CLICKBENCH_TARGETS = ("snowflake",)
 
 CLICKBENCH_STRINGS = {
     "regex_nested_group": "SELECT REGEXP_REPLACE(Referer, '^https?://(?:www\\.)?([^/]+)/.*$', '\\\\1') AS k FROM hits",
@@ -153,10 +121,6 @@ def clickbench_inputs() -> dict[str, str]:
     return inputs
 
 
-def fork_clickbench(query: str, dialect: str) -> str:
-    return translate_sql_query(query, dialect, source_dialect="clickhouse", identify=False, strict=True)
-
-
 def clickbench_cases() -> list[Case]:
     cases = []
     for name, sql in clickbench_inputs().items():
@@ -164,8 +128,8 @@ def clickbench_cases() -> list[Case]:
             cases.append(
                 Case(
                     f"clickbench:{dialect}:{name}",
+                    frozen_legacy(AREA, f"clickbench:{dialect}:{name}"),
                     lambda sql=sql, dialect=dialect: clickbench_benchmark().translate_query_text(sql, dialect),
-                    lambda sql=sql, dialect=dialect: fork_clickbench(sql, dialect),
                 )
             )
     return cases

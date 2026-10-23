@@ -9,7 +9,6 @@ from benchbox.core.tpchavoc.dialect_compat import (
     PRESTO_ALIAS_VARIANT_IDS,
     PRESTO_ARRAY_AGGREGATION_VARIANT_IDS,
     PRESTO_WINDOW_FILTER_VARIANT_IDS,
-    _rewrite_window_filters,
 )
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -63,9 +62,13 @@ def test_presto_window_aggregates_have_no_filter_clause(presto_trino_queries):
         "SELECT SUM(DISTINCT y) FILTER (WHERE x > 0) OVER (PARTITION BY k) FROM t",
     ],
 )
-def test_presto_window_filter_rejects_star_and_distinct(dialect, sql):
-    with pytest.raises(NotImplementedError, match=r"COUNT\(\*\) or DISTINCT"):
-        _rewrite_window_filters(sql, dialect)
+def test_presto_window_filter_covers_star_and_distinct(dialect, sql):
+    from benchbox.utils.dialect_utils import apply_rewrite
+
+    rewritten = apply_rewrite("filtered_aggregates_to_conditional", sql, dialect, windows_only=True)
+
+    assert "FILTER" not in rewritten.upper()
+    assert "IF(x > 0" in rewritten
 
 
 def test_presto_array_aggregation_uses_presto_functions(presto_trino_queries):

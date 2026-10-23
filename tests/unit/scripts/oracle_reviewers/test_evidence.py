@@ -11,6 +11,7 @@ from _project.scripts.oracle_reviewers.evidence import (
     UNVERIFIED_WITHDRAWAL,
     Trace,
     check,
+    describe,
     mark_citations,
     relative,
     trace,
@@ -25,19 +26,19 @@ OMP_STREAM = (
 ).read_text(encoding="utf-8")
 
 
-def _tool_events(name: str, path: str, *, is_error: bool, output: str = "match") -> str:
+def _tool_events(name: str, path: str, *, is_error: bool, output: str = "match", call_id: str = "c1") -> str:
     call = {
         "type": "message_end",
         "message": {
             "role": "assistant",
-            "content": [{"type": "toolCall", "id": "c1", "name": name, "arguments": {"path": path}}],
+            "content": [{"type": "toolCall", "id": call_id, "name": name, "arguments": {"path": path}}],
         },
     }
     result = {
         "type": "message_end",
         "message": {
             "role": "toolResult",
-            "toolCallId": "c1",
+            "toolCallId": call_id,
             "toolName": name,
             "isError": is_error,
             "content": [{"type": "text", "text": output}],
@@ -368,3 +369,189 @@ def test_mark_citations_reopens_a_withdrawal_citing_an_unexamined_file(tmp_path:
     (workspace / "pkg" / "a.py").write_text("one\ntwo\nthree\n")
     marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:2", ()), workspace)
     assert marked.prior_defects[0].status == "not_fixed"
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        "",
+        ":raw",
+        ":5",
+        ":L5",
+        ":5-",
+        ":5..",
+        ":5-10",
+        ":5..10",
+        ":L5-L10",
+        ":5+20",
+        ":L5+L20",
+        ":-30",
+        ":1-12,-15",
+        ":1-30,:-30",
+        ":5-16,960-973",
+        ":5-10:raw",
+        ":raw:5-10",
+        ":17:raw",
+        ":5-:raw",
+        ":5+20:raw",
+    ],
+)
+def test_every_documented_line_and_raw_selector_credits_the_exact_path(tmp_path: Path, selector: str) -> None:
+    run = Trace((f"pkg/a.py{selector}",))
+    assert unread("omp", ["pkg/a.py", "pkg/ab.py"], run, tmp_path) == ["pkg/ab.py"]
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "pkg/a.py?q=.version",
+        "pkg/a.py:conflicts",
+        "pkg/a.py:img",
+        "pkg/a.py:5:7",
+        "pkg/a.py:0x",
+        "pkg/a.pyx",
+        "pkg/a.py.bak:5",
+        "pkg/sub/../ab.py",
+        "../outside/pkg/a.py",
+        "pkg/a.py:../../../pkg/ab.py",
+        "pkg",
+        "pkg/*.py",
+    ],
+)
+def test_unrecognized_selectors_siblings_and_traversal_credit_nothing(tmp_path: Path, path: str) -> None:
+    assert unread("omp", ["pkg/a.py"], Trace((path,)), tmp_path) == ["pkg/a.py"]
+
+
+def test_a_computed_query_read_stays_uncredited_while_a_plain_read_credits(tmp_path: Path) -> None:
+    queried = trace("omp", _tool_events("read", "pkg/a.py?q=.version", is_error=False, output="1"))
+    plain = trace("omp", _tool_events("read", "pkg/a.py", is_error=False, output="def f(): ..."))
+    assert unread("omp", ["pkg/a.py"], queried, tmp_path) == ["pkg/a.py"]
+    assert unread("omp", ["pkg/a.py"], plain, tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["dist/x.whl", "dist/x.whl:", "dist/x.whl:pkg/mod.py", "dist/x.whl:pkg/mod.py:5-9", "dist/x.tar.gz:a/b.txt"],
+)
+def test_a_successful_archive_read_credits_its_container_only(tmp_path: Path, path: str) -> None:
+    container = path.split(":", 1)[0]
+    required = [container, "pkg/mod.py", "a/b.txt"]
+    run = trace("omp", _tool_events("read", path, is_error=False, output="pkg/\nmod.py (12)"))
+    assert unread("omp", required, run, tmp_path) == ["pkg/mod.py", "a/b.txt"]
+
+
+@pytest.mark.parametrize(
+    ("path", "is_error", "output"),
+    [
+        ("dist/x.whl:pkg/mod.py", True, "Archive entry not found"),
+        ("dist/x.whl:pkg/mod.py", False, "[Cannot read binary archive entry 'pkg/mod.so' (12 bytes)]"),
+        ("dist/x.whl:../../pkg/mod.py", False, "x"),
+        ("dist/x.whl:pkg/mod.py?q=.x", False, "x"),
+        ("dist/x.txt:pkg/mod.py", False, "x"),
+        ("other/x.whl:pkg/mod.py", False, "x"),
+        ("pkg/a.py;dist/x.whl:pkg/mod.so", False, "def f(): ...\n[Cannot read binary archive entry 'pkg/mod.so']"),
+        ("pkg/a.py;dist/x.whl:pkg/mod.py", False, "x"),
+        ("dist/x.whl:pkg/mod.py;pkg/a.py", False, "x"),
+    ],
+)
+def test_failed_unsafe_or_unrelated_archive_reads_do_not_credit_the_container(
+    tmp_path: Path, path: str, is_error: bool, output: str
+) -> None:
+    run = trace("omp", _tool_events("read", path, is_error=is_error, output=output))
+    assert unread("omp", ["dist/x.whl"], run, tmp_path) == ["dist/x.whl"]
+
+
+def test_grep_credit_accepts_the_documented_selector_grammar_for_one_file_only(tmp_path: Path) -> None:
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "pkg" / "ab.py").write_text("x = 1\n", encoding="utf-8")
+    for path in ("pkg/a.py:1-20", "pkg/a.py:raw", "pkg/a.py:5+20:raw"):
+        run = trace("omp", _tool_events("grep", path, is_error=False, output="pkg/a.py\n*1|x"))
+        assert unread("omp", ["pkg/a.py", "pkg/ab.py"], run, tmp_path) == ["pkg/ab.py"]
+    run = trace("omp", _tool_events("grep", "pkg/*.py", is_error=False, output="pkg/a.py\n*1|x"))
+    assert unread("omp", ["pkg/a.py"], run, tmp_path) == ["pkg/a.py"]
+
+
+def _summarized_read(path: str, spans: int, lines: int) -> str:
+    events = [json.loads(line) for line in _tool_events("read", path, is_error=False, output="x").splitlines()]
+    events[1]["message"]["details"] = {"summary": {"lines": 64, "elidedSpans": spans, "elidedLines": lines}}
+    return "".join(json.dumps(event) + "\n" for event in events)
+
+
+def test_summarized_reads_stay_credited_and_their_elisions_are_recorded(tmp_path: Path) -> None:
+    run = trace("omp", _summarized_read("pkg/a.py", 7, 107))
+    assert run.elisions == (("pkg/a.py", 7, 107),)
+    assert unread("omp", ["pkg/a.py"], run, tmp_path) == []
+    assert trace("omp", _summarized_read("pkg/a.py", 0, 0)).elisions == ()
+
+
+def test_describe_reports_bounded_counts_not_raw_streams(tmp_path: Path) -> None:
+    failed = _tool_events("read", "pkg/gone.py", is_error=True, call_id="c2")
+    events = _summarized_read("pkg/a.py", 7, 107) + failed
+    required = [f"pkg/f{index}.py" for index in range(12)] + ["pkg/a.py"]
+    text = describe(trace("omp", events), required, tmp_path)
+    assert "reads=1" in text and "failed=1" in text and "elided_spans=7" in text and "elided_lines=107" in text
+    assert "required=13" in text and "and 7 more" in text
+    assert len(text) <= 700
+
+
+def test_describe_redacts_credentials_in_requested_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    secret = "fakecred-Aa1Bb2Cc3Dd4"
+    monkeypatch.setenv("OPENAI_API_KEY", secret)
+    run = trace("omp", _tool_events("read", f"pkg/{secret}.py", is_error=False, output="x"))
+    assert secret not in describe(run, [], tmp_path)
+
+
+def test_a_symlink_leaving_the_checkout_credits_nothing_for_read_archive_or_grep(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "secret.txt").write_text("x\n", encoding="utf-8")
+    (outside / "x.whl").write_text("z", encoding="utf-8")
+    workspace = tmp_path / "ws"
+    (workspace / "pkg").mkdir(parents=True)
+    (workspace / "pkg" / "inside.py").write_text("x\n", encoding="utf-8")
+    (workspace / "link.txt").symlink_to(outside / "secret.txt")
+    (workspace / "link.whl").symlink_to(outside / "x.whl")
+    for name, path in (("read", "link.txt"), ("read", "link.whl:pkg/m.py"), ("grep", "link.txt")):
+        run = trace("omp", _tool_events(name, path, is_error=False, output="x"))
+        assert unread("omp", ["link.txt", "link.whl"], run, workspace) == ["link.txt", "link.whl"]
+
+
+def test_a_symlink_staying_inside_the_checkout_is_still_credited(tmp_path: Path) -> None:
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "inside.py").write_text("x\n", encoding="utf-8")
+    (tmp_path / "pkg" / "alias.py").symlink_to(tmp_path / "pkg" / "inside.py")
+    run = trace("omp", _tool_events("read", "pkg/alias.py", is_error=False, output="x"))
+    assert unread("omp", ["pkg/alias.py"], run, tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    "literal",
+    ["a.py:raw", "a.py:1-2", "a.py:5", "a.py:conflicts", "a.py:img", "a.py?q=.x", "a.py:table", "a.py:pkg/m.py"],
+)
+def test_a_literal_filename_that_collides_with_a_selector_credits_nothing(tmp_path: Path, literal: str) -> None:
+    (tmp_path / "a.py").write_text("base\n", encoding="utf-8")
+    (tmp_path / literal).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / literal).write_text("literal\n", encoding="utf-8")
+    for name in ("read", "grep"):
+        run = trace("omp", _tool_events(name, literal, is_error=False, output="literal"))
+        assert unread("omp", ["a.py", literal], run, tmp_path) == ["a.py", literal]
+
+
+@pytest.mark.parametrize("literal", ["a.py:raw", "a.py:1-2"])
+def test_a_literal_filename_without_a_base_file_is_credited_exactly(tmp_path: Path, literal: str) -> None:
+    (tmp_path / literal).write_text("literal\n", encoding="utf-8")
+    run = trace("omp", _tool_events("read", literal, is_error=False, output="literal"))
+    assert unread("omp", [literal], run, tmp_path) == []
+
+
+def test_a_selector_credits_the_base_file_when_no_such_literal_file_exists(tmp_path: Path) -> None:
+    (tmp_path / "a.py").write_text("base\n", encoding="utf-8")
+    run = trace("omp", _tool_events("read", "a.py:raw", is_error=False, output="base"))
+    assert unread("omp", ["a.py"], run, tmp_path) == []
+
+
+def test_required_symlink_inside_checkout_is_credited_by_real_path(tmp_path):
+    (tmp_path / "real.md").write_text("x\n")
+    (tmp_path / "link.md").symlink_to("real.md")
+    assert unread("omp", ["link.md"], Trace(("real.md",)), tmp_path) == []

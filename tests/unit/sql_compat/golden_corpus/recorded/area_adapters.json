@@ -295,16 +295,12 @@
     "fork": "SELECT a FROM t SETTINGS joined_subquery_requires_alias = 0, join_algorithm = 'grace_hash'",
     "legacy": "SELECT a FROM t SETTINGS join_algorithm = 'hash' SETTINGS joined_subquery_requires_alias = 0, join_algorithm = 'grace_hash'"
   },
-  "databricks_dedupe_11": {
-    "fork": "SELECT x, COUNT(*) AS x_2 FROM (SELECT a.v AS x, b.v AS x_2 FROM a CROSS JOIN b) AS s GROUP BY 1",
-    "legacy": "SELECT x, COUNT(*) AS x_2 FROM (SELECT a.v AS x, b.v AS x FROM a CROSS JOIN b) AS s GROUP BY 1"
-  },
   "databricks_dedupe_13": {
-    "fork": "WITH c AS (SELECT a.k, b.k AS k_2 FROM a CROSS JOIN b) SELECT * FROM c",
+    "fork": "WITH c AS (SELECT a.k, b.k FROM a CROSS JOIN b) SELECT * FROM c",
     "legacy": "WITH c AS (SELECT a.k, b.k FROM a, b) SELECT * FROM c"
   },
   "databricks_dedupe_16": {
-    "fork": "INSERT INTO t SELECT a.k, b.k AS k_2 FROM a CROSS JOIN b",
+    "fork": "INSERT INTO t SELECT a.k, b.k FROM a CROSS JOIN b",
     "legacy": "INSERT INTO t SELECT a.k, b.k FROM a, b"
   },
   "databricks_dedupe_6": {

@@ -14,7 +14,7 @@ for _query_id in DATAFUSION_EMPTY_GROUP_VARIANT_IDS:
             action=CompatAction.REWRITE_QUERY,
             support_level=SupportLevel.REWRITTEN,
             failure_mode=FailureMode.UNSUPPORTED_FEATURE,
-            payload=RewriteQueryPayload(transformer_id="tpchavoc_dialect_rewriter", description=_reason),
+            payload=RewriteQueryPayload(transformer_id="translate_sql_query", description=_reason),
             reason=_reason,
         ),
         Phase.QUERY_ADAPTER,
