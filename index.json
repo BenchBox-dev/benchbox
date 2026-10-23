@@ -6012,6 +6012,13 @@
       "status": "done",
       "title": "Test Infrastructure & Coverage Improvement"
     },
+    "coverage-map-missing-comment-policy-ids-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "81 medium test ids from test_comment_policy.py are missing from the medium coverage map"
+    },
     "coverage-per-module-50-remaining-wave-2026-02-10": {
       "claim": null,
       "needs": [],

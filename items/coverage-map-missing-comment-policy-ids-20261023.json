@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "RUBRIC 1 cause: the reason for each class of missing id is stated with evidence from the coverage run's artifacts or a local reproduction",
+    "RUBRIC 2 result: after the fix, a named trunk-coverage run's map contains every medium id from test_comment_policy.py (count compared), or the item records why selection is unaffected",
+    "RUBRIC 3 guard: if the cause can recur for other modules, a check reports collected medium ids absent from the map"
+  ],
+  "description": "PROBLEM: trunk-coverage run 39869359327 (develop 853f7a024) built a green medium coverage map (15,246 nodes, failed_nodes empty), but 81 medium ids in tests/unit/scripts/test_comment_policy.py are absent from it while 858 other ids from the same module are present. PR test selection uses the map, so these ids may never be selected by changed-file impact. Cause not investigated.\n\nCHANGE: find why these ids have no map entry (parametrization ids, collection differences between the coverage run and the medium list, or recording failures) and fix the cause so the map covers every collected medium id, or record why the gap is harmless.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/39869359327"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3b38a8564826452148b729e0",
+      "at": "2026-10-23T11:42:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7be3fd051ab44cd5bc47813d9bb9e262",
+      "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    }
+  ]
+}
