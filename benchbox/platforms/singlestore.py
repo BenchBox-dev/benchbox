@@ -189,7 +189,7 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
 
     def _schema_statements(self, benchmark: Any) -> list[str]:
         schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
-        return translate_ddl(schema_sql, "singlestore", "standard", **self._ddl_options())
+        return translate_ddl(schema_sql, "singlestore", "singlestore", **self._ddl_options())
 
     def _load_table_name(self, table_name: str) -> str:
         return table_name.lower()

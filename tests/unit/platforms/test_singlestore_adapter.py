@@ -1137,3 +1137,8 @@ class TestSingleStoreDDLTransformation:
         (result,) = self._statements("CREATE TABLE partsupp (ps_partkey BIGINT, ps_suppkey BIGINT)")
         assert "SHARD KEY (`ps_partkey`)" in result
         assert "SORT KEY (`ps_partkey`, `ps_suppkey`)" in result
+
+    def test_vector_column_in_mysql_dialect_ddl(self):
+        (result,) = self._statements("CREATE TABLE vectors (id BIGINT, embedding VECTOR(128, F32))")
+        assert "VECTOR(128, F32)" in result
+        assert "SHARD KEY ()" in result

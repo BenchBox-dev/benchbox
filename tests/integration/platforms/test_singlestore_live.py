@@ -140,7 +140,7 @@ class TestLiveSingleStoreDDL:
             cursor.execute("DROP TABLE IF EXISTS `orders`")
 
             stmt = "CREATE TABLE `orders` (o_orderkey BIGINT NOT NULL, o_totalprice DECIMAL(15,2))"
-            (transformed,) = translate_ddl(stmt, "singlestore", "standard", **singlestore_adapter._ddl_options())
+            (transformed,) = translate_ddl(stmt, "singlestore", "singlestore", **singlestore_adapter._ddl_options())
 
             assert "SHARD KEY (`o_orderkey`)" in transformed
             assert "SORT KEY (`o_orderkey`)" in transformed
@@ -163,7 +163,7 @@ class TestLiveSingleStoreDDL:
             cursor.execute("DROP TABLE IF EXISTS `nation`")
 
             stmt = "CREATE TABLE `nation` (n_nationkey INT NOT NULL, n_name VARCHAR(25))"
-            (transformed,) = translate_ddl(stmt, "singlestore", "standard", **singlestore_adapter._ddl_options())
+            (transformed,) = translate_ddl(stmt, "singlestore", "singlestore", **singlestore_adapter._ddl_options())
 
             assert "CREATE REFERENCE TABLE" in transformed
             cursor.execute(transformed)
