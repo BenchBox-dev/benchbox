@@ -73,6 +73,33 @@ versions, per-engine cell counts, verified improvements and expected
 differences) into its description. Verified improvements are published-result
 impacts and are listed as such.
 
+## Fork diff
+
+The gate shows what the new wheel does to the shipped queries; it does not show
+what changed inside the fork. Each wheel adoption PR therefore also carries the
+fork diff from the previous pinned `fork_sha` to the new one, so the oracle and
+human reviewers read the translation semantics they are admitting:
+
+```
+make sqlglot-fork-diff OUT=/tmp/fork-diff.md
+make sqlglot-fork-diff OLD=<old fork_sha> NEW=<new fork_sha> OUT=/tmp/fork-diff.md
+```
+
+`OLD` defaults to the `fork_sha` in `benchbox/_vendor/sqlglot.json` at
+`BASE_REF` (default `origin/develop`); `NEW` defaults to the pin in the working
+tree. The tool fetches both commits from the fork into a throwaway bare
+repository and writes Markdown with the commit list, the diffstat and the
+per-file diff, `downstream/` and `sqlglot/benchbox/` first. Files that do not
+fit the size budget (50 KB by default) are listed by name, not dropped; read
+them with `git diff <old> <new> -- <path>` in a fork clone. Paste the output
+into the PR description next to the gate output. A rollback adoption prints
+`Direction: not-descendant`.
+
+The runtime pin, wheel, wrapper (`benchbox/utils/dialect_utils.py`), runtime
+baseline, golden-corpus `recorded/` and `frozen/` files and
+`expected_differences.json` are soundness paths (`.github/soundness-paths.txt`),
+so a change to any of them needs an oracle success review on the current head.
+
 ## Regression proofs
 
 The gate is built to catch the two regressions that the text corpus accepted:

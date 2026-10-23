@@ -235,3 +235,62 @@ def test_selection_logic_paths_are_pinned_in_manifest() -> None:
         assert f"file\t{path}" in manifest
         assert (ROOT / path).is_file(), f"{path} no longer exists; update the soundness manifest"
         assert soundness.is_soundness_path(path) is True
+
+
+TRANSLATION_FILES = (
+    "benchbox/utils/dialect_utils.py",
+    "scripts/sqlglot_runtime_baseline.json",
+    "scripts/sql_execution_gate/expected_differences.json",
+)
+TRANSLATION_PREFIXES = (
+    "benchbox/_vendor/",
+    "tests/unit/sql_compat/golden_corpus/recorded/",
+    "tests/unit/sql_compat/golden_corpus/frozen/",
+)
+
+
+def test_translation_paths_are_pinned_in_manifest() -> None:
+    manifest = (ROOT / ".github" / "soundness-paths.txt").read_text(encoding="utf-8").splitlines()
+    for path in TRANSLATION_FILES:
+        assert f"file\t{path}" in manifest
+        assert (ROOT / path).is_file(), f"{path} no longer exists; update the soundness manifest"
+        assert soundness.is_soundness_path(path) is True
+    for prefix in TRANSLATION_PREFIXES:
+        assert f"prefix\t{prefix}" in manifest
+        assert (ROOT / prefix).is_dir(), f"{prefix} no longer exists; update the soundness manifest"
+
+
+def test_translation_prefixes_cover_every_pin_and_corpus_file() -> None:
+    covered = [
+        "benchbox/_vendor/sqlglot.json",
+        "benchbox/_vendor/__init__.py",
+        "benchbox/_vendor/SQLGLOT_LICENSE.txt",
+    ]
+    covered += [
+        path.relative_to(ROOT).as_posix()
+        for prefix in TRANSLATION_PREFIXES[1:]
+        for path in sorted((ROOT / prefix).glob("*.json"))
+    ]
+    wheels = sorted((ROOT / "benchbox" / "_vendor").glob("*.whl.zip"))
+    assert wheels, "no bundled runtime wheel archive"
+    covered += [wheel.relative_to(ROOT).as_posix() for wheel in wheels]
+    assert len(covered) > 5
+    for path in covered:
+        assert soundness.is_soundness_path(path) is True, path
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "benchbox/_vendorx/sqlglot.json",
+        "benchbox/utils/dialect_utils.py.bak",
+        "benchbox/utils/dialect_helpers.py",
+        "scripts/sqlglot_runtime_baseline.json.bak",
+        "scripts/sql_execution_gate/gate.py",
+        "tests/unit/sql_compat/golden_corpus/area_ddl.py",
+        "tests/unit/sql_compat/golden_corpus/recordedx/area_ddl.json",
+        "tests/unit/sql_compat/golden_corpus/frozenx/area_ddl.json",
+    ],
+)
+def test_translation_paths_do_not_overmatch_neighbours(path: str) -> None:
+    assert soundness.is_soundness_path(path) is False
