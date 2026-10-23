@@ -62,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The comment-policy check in CI and `make comment-policy-check` scans only the files that differ from the base, as the hook already did, and the whole repository after a global change: the policy, the cleanup scope policy, the launcher, a trusted checker file (or an unreadable trusted-file list), or a removed exception or exclusion. Files holding an exception are also scanned when the exception's consumer changes. The ratchet, review gating, new files under exclusions, consumer validation and expired-exception findings still run on every pull request. A new `Comment Policy Nightly` workflow scans the whole of develop every night and on demand (`scripts/run_comment_policy.py --full`); when any file has a violation it fails and opens or updates an issue, and a clean run closes it.
 - `pyproject.toml` now requires uv 0.13.4 or newer (`required-version`); older uv releases fail with a clear error instead of running with root certificates that trust the compromised eMudhra emSign CAs.
 - `quality/comment-policy.json` no longer has a `completed` list, and a policy that still has one fails schema validation. Every first-party path is in scope, so there is no list of dead completed prefixes left to prune.
 - FlightData queries for PostgreSQL are rendered by `translate_sql_query` with the runtime's

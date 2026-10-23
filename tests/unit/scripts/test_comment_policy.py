@@ -316,7 +316,6 @@ def inherited_violation_repo(tmp_path: Path) -> str:
 def test_staged_scan_covers_only_changed_sources(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     base = inherited_violation_repo(tmp_path)
     args = ["--root", str(tmp_path), "--mode", "strict", "--base", base]
-    assert main(args) == 1
     (tmp_path / "a.py").write_text("x = 2\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
     capsys.readouterr()
@@ -808,6 +807,41 @@ def test_launcher_runs_the_base_copy_of_the_checker_in_strict_mode(
     argv = json.loads(recorded.read_text(encoding="utf-8"))
     assert argv[argv.index("--mode") + 1] == "strict"
     assert argv[argv.index("--base") + 1] == base
+
+
+def test_launcher_full_scan_compares_against_the_checked_out_commit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    git_repo(tmp_path, "x = 1\n")
+    recorded = tmp_path / "argv.json"
+    entry = tmp_path / "scripts/comment_policy_entry.py"
+    entry.parent.mkdir()
+    entry.write_text(
+        f"import json, sys\nopen({str(recorded)!r}, 'w').write(json.dumps(sys.argv[1:]))\nraise SystemExit(0)\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "-C", str(tmp_path), "add", "scripts/comment_policy_entry.py"], check=True)
+    head = commit_change(tmp_path, "x = 2\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("BASE_REF", raising=False)
+    monkeypatch.setattr(policy_runner, "TRUSTED_FILES", ("scripts/comment_policy_entry.py",))
+    monkeypatch.setattr(policy_runner, "parser_environment", lambda _trusted: (Path(sys.executable), dict(os.environ)))
+    assert policy_runner.main(["--full"]) == 0
+    argv = json.loads(recorded.read_text(encoding="utf-8"))
+    assert "--full" in argv
+    assert argv[argv.index("--base") + 1] == head
+    assert policy_runner.main(["--full", "--base", head]) == 2
+
+
+def test_launcher_without_full_does_not_ask_for_a_full_scan() -> None:
+    command = policy_runner.checker_command(
+        Path("python"), Path("t"), Path("r"), "c" * 40, bootstrap=False, staged=False
+    )
+    assert "--full" not in command
+    assert "--full" in policy_runner.checker_command(
+        Path("python"), Path("t"), Path("r"), "c" * 40, bootstrap=False, staged=False, full=True
+    )
 
 
 def test_local_default_base_is_the_branch_point_when_develop_moved_on(

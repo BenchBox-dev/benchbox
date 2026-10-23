@@ -409,6 +409,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--bootstrap", action="store_true")
     parser.add_argument("--json-out", type=Path)
     parser.add_argument("--path", action="append", default=[])
+    parser.add_argument("--full", action="store_true")
     args = parser.parse_args(argv)
     try:
         root = args.root.resolve()
@@ -450,11 +451,13 @@ def main(argv: list[str] | None = None) -> int:
                 changed.update(git(root, "ls-files", "--others", "--exclude-standard", "-z").decode().split("\0"))
             trusted = launcher_trusted_files(root, args.base)
             global_change = (
-                bool(revoked)
+                args.full
+                or bool(revoked)
                 or trusted is None
                 or bool(changed & {POLICY_PATH, SCOPE_POLICY_PATH, LAUNCHER_PATH, *trusted})
             )
-            if args.staged and not global_change:
+            if not global_change:
+                changed.update(entry["path"] for entry in policy["exceptions"] if entry["consumer"] in changed)
                 paths = [path for path in paths if path in changed]
         policy_owner_failure = (
             args.mode == "strict" and compared and POLICY_PATH in changed and bool(expired_policy_findings(policy))
