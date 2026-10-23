@@ -21366,7 +21366,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Rotate credentials that passed through TLS clients trusting the compromised eMudhra CAs"
     },
     "ruleset-drift-check-home-20261009": {
