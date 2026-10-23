@@ -18165,7 +18165,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner review of PyPI and GitHub security history for the eMudhra CA exposure window"
     },
     "pypi-installability-canary-and-rollback": {

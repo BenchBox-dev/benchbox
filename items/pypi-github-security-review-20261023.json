@@ -3,6 +3,7 @@
     "PyPI and TestPyPI histories reviewed with no unexplained events, or findings recorded as new items",
     "Each listed App installation and secret change confirmed as intended or revoked"
   ],
+  "context": "Owner-only: needs PyPI and GitHub UI access and judgement that an agent cannot supply. What the public record already shows (2026-10-23): all 26 PyPI files and 4 TestPyPI files of benchbox match CI-recorded hashes, GitHub release assets and independent rebuilds from each tag; no unexpected publication, deploy key, webhook, invitation or collaborator; only one role (Owner) on both PyPI projects. NOT visible to an agent: PyPI/TestPyPI security history (uploads, deleted files, API tokens, trusted-publisher edits) and the GitHub organisation audit log (plan does not expose it). To review: PyPI > benchbox > Security history, and the same on TestPyPI, from 2025-04-30 to now, especially 2026-08-28 03:14-12:22 UTC (two v0.4.0 publish attempts failed with invalid-publisher, the third succeeded); GitHub Apps installed since 2026-09 (benchbox-publication-controller 09-01, benchbox-oracle 10-05, benchbox-site-bridge 10-09, claude 10-17 with contents/workflows/actions/hooks write on all repositories); repository secrets created or updated since 2026-07 (names only: RULESET_DRIFT_TOKEN updated 08-17, TODO_DB_RO_AUTH_TOKEN 08-11, TODO_DB_URL and TODO_EXPORT_PR_TOKEN created 07-19, SITE_BRIDGE_APP_ID and SITE_BRIDGE_PRIVATE_KEY created 10-09, BENCHBOX_MACHINE_ID_SALT 10-15); why the v0.4.0 and v0.4.2 GitHub Releases were edited after their jobs ended. Since 2026-10-23 the pypi and test-pypi environments admit only selected refs (see pypi-environment-protection-20261023).",
   "description": "BenchBox releases up to 0.4.2 were published with pypa/gh-action-pypi-publish releases older than the v1.14.3 fix for the compromised eMudhra emSign CAs (GHSA-5xjx-3w67-w9x9), and the maintainer's tools reached PyPI and GitHub through clients that trusted them. A public audit found every PyPI file reproducible from source and no unexpected publication, but it could not see owner-only records. The owner should review:\n\n- PyPI and TestPyPI project security history for `benchbox` (uploads, deleted files, API tokens, trusted-publisher changes) from 2025-04-30 to now, especially 2026-08-28 03:14-12:22 UTC, when two v0.4.0 publish attempts failed with `invalid-publisher` and a third succeeded.\n- GitHub App installations made since 2026-09 (benchbox-publication-controller, benchbox-oracle, benchbox-site-bridge, and the `claude` app, which can write contents, workflows, actions and repository hooks on all repositories) and repository secrets created or updated since 2026-07.\n- Why the v0.4.0 and v0.4.2 GitHub Releases were edited shortly after their release jobs finished (asset digests are unchanged).\n\nThe organisation audit-log API is unavailable on the current plan, so this is a UI review.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "ff2aab048da2469194d8d172809e59a0",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-23T21:48:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "aaffcd34d157483b9798a815928a92bc",
       "session_id": "ba4384e41c574086bef30465f20b7231"
     }
   ]
