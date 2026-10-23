@@ -3,21 +3,155 @@ from __future__ import annotations
 from functools import cache, lru_cache
 
 from benchbox._vendor import sqlglot
-from benchbox._vendor.sqlglot import exp
 from benchbox.core.tpchavoc import cloud_compat, dialect_compat
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
-from benchbox.core.tpchavoc.spark_query_transformer import (
+from benchbox.core.tpchavoc.dialect_compat import (
     DUAL_VARIANT_IDS,
     GROUP_BY_EMPTY_VARIANT_IDS,
     SCALAR_GROUP_BY_VARIANT_IDS,
-    SparkTPCHavocQueryTransformer,
+    rewrite_spark_variant,
 )
 from benchbox.core.tpchavoc.variants import VARIANT_REGISTRY
-from benchbox.platforms.datafusion_query_transformer import DataFusionQueryTransformer
+from benchbox.platforms.datafusion_tpch_rewrites import rewrite_datafusion_tpch_query
 from benchbox.utils.dialect_utils import apply_rewrite, resolve_sql_dialect
-from tests.unit.platforms.test_datafusion_query_transformer import Q11_SQL, Q16_SQL, Q18_SQL, Q20_SQL
-from tests.unit.sql_compat.golden_corpus import Case
+from tests.unit.sql_compat.golden_corpus import Case, frozen_legacy
 
+AREA = "area_variants"
+
+Q11_SQL = """\
+select
+ps_partkey,
+sum(ps_supplycost * ps_availqty) as value
+from
+partsupp,
+supplier,
+nation
+where
+ps_suppkey = s_suppkey
+and s_nationkey = n_nationkey
+and n_name = 'GERMANY'
+group by
+ps_partkey having
+sum(ps_supplycost * ps_availqty) > (
+select
+sum(ps_supplycost * ps_availqty) * 0.0001000000
+from
+partsupp,
+supplier,
+nation
+where
+ps_suppkey = s_suppkey
+and s_nationkey = n_nationkey
+and n_name = 'GERMANY'
+)
+order by
+value desc;"""
+
+Q16_SQL = """\
+select
+p_brand,
+p_type,
+p_size,
+count(distinct ps_suppkey) as supplier_cnt
+from
+partsupp,
+part
+where
+p_partkey = ps_partkey
+and p_brand <> 'Brand#45'
+and p_type not like 'MEDIUM POLISHED%'
+and p_size in (49, 14, 23, 45, 19, 3, 36, 9)
+and ps_suppkey not in (
+select
+s_suppkey
+from
+supplier
+where
+s_comment like '%Customer%Complaints%'
+)
+group by
+p_brand,
+p_type,
+p_size
+order by
+supplier_cnt desc,
+p_brand,
+p_type,
+p_size;"""
+
+Q18_SQL = """\
+select
+c_name,
+c_custkey,
+o_orderkey,
+o_orderdate,
+o_totalprice,
+sum(l_quantity)
+from
+customer,
+orders,
+lineitem
+where
+o_orderkey in (
+select
+l_orderkey
+from
+lineitem
+group by
+l_orderkey having
+sum(l_quantity) > 300
+)
+and c_custkey = o_custkey
+and o_orderkey = l_orderkey
+group by
+c_name,
+c_custkey,
+o_orderkey,
+o_orderdate,
+o_totalprice
+order by
+o_totalprice desc,
+o_orderdate
+LIMIT 100;"""
+
+Q20_SQL = """\
+select
+s_name,
+s_address
+from
+supplier,
+nation
+where
+s_suppkey in (
+select
+ps_suppkey
+from
+partsupp
+where
+ps_partkey in (
+select
+p_partkey
+from
+part
+where
+p_name like 'forest%'
+)
+and ps_availqty > (
+select
+0.5 * sum(l_quantity)
+from
+lineitem
+where
+l_partkey = ps_partkey
+and l_suppkey = ps_suppkey
+and l_shipdate >= date '1994-01-01'
+and l_shipdate < date '1994-01-01' + interval '1' year
+)
+)
+and s_nationkey = n_nationkey
+and n_name = 'CANADA'
+order by
+s_name;"""
 CLOUD_DIALECTS = ("bigquery", "databricks", "snowflake")
 PRESTO_DIALECTS = ("presto", "trino", "athena")
 ARRAY_ORDER = ["l_orderkey", "l_linenumber"]
@@ -46,12 +180,6 @@ def _variant_sql(variant_id: str) -> str:
     return VARIANT_REGISTRY[int(query)][int(variant)].generate("base_query")
 
 
-def _tpch_schema() -> dict[str, dict[str, str]]:
-    from benchbox.core.tpch.schema import TABLES
-
-    return {table.name: {column.name: column.get_sql_type() for column in table.columns} for table in TABLES}
-
-
 def _fork(sql: str, dialect: str, *steps: tuple[str, dict]) -> str:
     resolved = resolve_sql_dialect(dialect)
     tree = sqlglot.parse_one(sql, read=resolved)
@@ -60,79 +188,12 @@ def _fork(sql: str, dialect: str, *steps: tuple[str, dict]) -> str:
     return tree.sql(dialect=resolved)
 
 
-def _bigquery_steps(query_id: str) -> list[tuple[str, dict]]:
-    steps: list[tuple[str, dict]] = []
-    if query_id == "1_v7":
-        steps.append(("order_list_aggregates", {"order_by": ARRAY_ORDER}))
-    if query_id in cloud_compat.BIGQUERY_FILTER_IDS:
-        steps.append(("filtered_aggregates_to_conditional", {}))
-    if query_id in cloud_compat._BIGQUERY_FROMLESS_IDS:
-        steps.append(("add_row_source_to_fromless_selects", {"source": "UNNEST([1])"}))
-    if column := cloud_compat._BIGQUERY_HAVING_COLUMNS.get(query_id):
-        steps.append(
-            ("qualify_columns_by_name", {"tables": {column: "combined"}, "clauses": ["having"], "quoted": True})
-        )
-    return steps
-
-
-def _databricks_steps(query_id: str) -> list[tuple[str, dict]]:
-    if query_id == "1_v7":
-        return [("order_list_aggregates", {"order_by": ARRAY_ORDER})]
-    if query_id in SCALAR_GROUP_BY_VARIANT_IDS:
-        return [("wrap_grouped_scalar_subqueries", {"aggregate": exp.First})]
-    if query_id in DUAL_VARIANT_IDS:
-        return [("name_literal_subquery_columns", {"column": "dual_col"})]
-    return []
-
-
-def _presto_steps(query_id: str) -> list[tuple[str, dict]]:
-    steps: list[tuple[str, dict]] = []
-    if query_id in dialect_compat.PRESTO_ALIAS_VARIANT_IDS:
-        steps.append(("inline_select_aliases", {}))
-    if query_id in dialect_compat.PRESTO_WINDOW_FILTER_VARIANT_IDS:
-        steps.append(("filtered_aggregates_to_conditional", {"windows_only": True}))
-    if query_id in dialect_compat.PRESTO_ARRAY_AGGREGATION_VARIANT_IDS:
-        steps.append(("order_list_aggregates", {"order_by": ARRAY_ORDER}))
-    return steps
-
-
-def _postgres_steps(query_id: str) -> list[tuple[str, dict]]:
-    steps: list[tuple[str, dict]] = []
-    if query_id in dialect_compat.POSTGRES_ALIAS_VARIANT_IDS:
-        steps.append(("inline_select_aliases", {}))
-    if columns := dialect_compat.POSTGRES_QUALIFIED_COLUMNS.get(query_id):
-        steps.append(("qualify_columns_by_name", {"tables": columns}))
-    if query_id in dialect_compat.POSTGRES_DUAL_VARIANT_IDS:
-        steps.append(("drop_literal_row_source", {"alias": "dual"}))
-    return steps
-
-
-def _fork_text(query_id: str, query: str, target: str) -> str:
-    if target == "bigquery":
-        steps = _bigquery_steps(query_id)
-    elif target == "databricks":
-        steps = _databricks_steps(query_id)
-    elif target == "clickhouse":
-        steps = (
-            [("filtered_aggregates_to_conditional", {})]
-            if query_id in dialect_compat.CLICKHOUSE_FILTER_VARIANT_IDS
-            else []
-        )
-    elif target in PRESTO_DIALECTS:
-        steps = _presto_steps(query_id)
-    elif target == "postgres":
-        steps = _postgres_steps(query_id)
-    else:
-        steps = []
-    return _fork(query, target, *steps)
-
-
 def _variant_ids(target: str) -> list[str]:
     if target == "bigquery":
         ids = set(cloud_compat.BIGQUERY_FILTER_IDS) | set(cloud_compat._BIGQUERY_FROMLESS_IDS)
         ids |= set(cloud_compat._BIGQUERY_HAVING_COLUMNS) | {BIGQUERY_ORDER_ID, "1_v7"}
     elif target == "databricks":
-        ids = set(SparkTPCHavocQueryTransformer.known_variant_ids()) | {"1_v7"}
+        ids = set(dialect_compat.SPARK_VARIANT_IDS) | {"1_v7"}
     elif target == "snowflake":
         ids = set(cloud_compat._SNOWFLAKE_EMPTY_GROUP_IDS) | {"1_v7"}
     elif target == "clickhouse":
@@ -158,8 +219,8 @@ def _havoc_target_cases() -> list[Case]:
             cases.append(
                 Case(
                     f"havoc:{target}:{query_id}",
+                    frozen_legacy(AREA, f"havoc:{target}:{query_id}"),
                     lambda q=query, i=query_id, t=target: dialect_compat.rewrite_dialect_variant(i, q, t),
-                    lambda q=query, i=query_id, t=target: _fork_text(i, q, t),
                 )
             )
     return cases
@@ -173,16 +234,16 @@ def _spark_raw_cases() -> list[Case]:
         cases.append(
             Case(
                 f"spark_raw:{query_id}",
-                lambda q=query, i=query_id: SparkTPCHavocQueryTransformer().transform(q, query_id=i),
-                lambda q=query, i=query_id: _fork_text(i, q, "databricks"),
+                frozen_legacy(AREA, f"spark_raw:{query_id}"),
+                lambda q=query, i=query_id: rewrite_spark_variant(i, q),
             )
         )
     control = _variant_sql("2_v1")
     cases.append(
         Case(
             "spark_raw:2_v1",
-            lambda: SparkTPCHavocQueryTransformer().transform(control, query_id="2_v1"),
-            lambda: _fork_text("2_v1", control, "databricks"),
+            frozen_legacy(AREA, "spark_raw:2_v1"),
+            lambda: rewrite_spark_variant("2_v1", control),
         )
     )
     return cases
@@ -214,7 +275,7 @@ def _helper_cases() -> list[Case]:
         cases.append(
             Case(
                 f"havoc_helper:clickhouse_filter:{aggregate}",
-                lambda s=sql: dialect_compat._rewrite_clickhouse_filters(s),
+                frozen_legacy(AREA, f"havoc_helper:clickhouse_filter:{aggregate}"),
                 lambda s=sql: _fork(s, "clickhouse", ("filtered_aggregates_to_conditional", {})),
             )
         )
@@ -223,7 +284,7 @@ def _helper_cases() -> list[Case]:
             cases.append(
                 Case(
                     f"havoc_helper:window_filter:{dialect}:{index}",
-                    lambda s=sql, d=dialect: dialect_compat._rewrite_window_filters(s, d),
+                    frozen_legacy(AREA, f"havoc_helper:window_filter:{dialect}:{index}"),
                     lambda s=sql, d=dialect: _fork(
                         s, d, ("filtered_aggregates_to_conditional", {"windows_only": True})
                     ),
@@ -234,7 +295,7 @@ def _helper_cases() -> list[Case]:
         cases.append(
             Case(
                 f"cloud_helper:filter_semantics:{label}",
-                lambda c=candidate: cloud_compat.rewrite_cloud_variant("1_v6", c, "bigquery"),
+                frozen_legacy(AREA, f"cloud_helper:filter_semantics:{label}"),
                 lambda c=candidate: _fork(c, "bigquery", ("filtered_aggregates_to_conditional", {})),
             )
         )
@@ -263,27 +324,14 @@ def _datafusion_inputs() -> dict[str, tuple[str, str]]:
     return inputs
 
 
-def _datafusion_fork(query_id: str, sql: str) -> str:
-    schema = _tpch_schema()
-    if query_id in {"11", "20"}:
-        return _fork(sql, "datafusion", ("decorrelate_subqueries", {"schema": schema}))
-    if query_id == "16":
-        return _fork(
-            sql, "datafusion", ("not_in_subquery_to_not_exists", {"non_null_columns": ["ps_suppkey", "s_suppkey"]})
-        )
-    if query_id == "18":
-        return _fork(sql, "datafusion", ("in_aggregate_subquery_to_exists", {"alias": "t"}))
-    return sql
-
-
 def _datafusion_cases() -> list[Case]:
     cases = []
     for label, (query_id, sql) in _datafusion_inputs().items():
         cases.append(
             Case(
                 f"datafusion:{label}",
-                lambda s=sql, i=query_id: DataFusionQueryTransformer().transform(s, query_id=i),
-                lambda s=sql, i=query_id: _datafusion_fork(i, s),
+                frozen_legacy(AREA, f"datafusion:{label}"),
+                lambda s=sql, i=query_id: rewrite_datafusion_tpch_query(s, i),
             )
         )
     return cases

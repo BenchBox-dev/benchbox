@@ -321,19 +321,17 @@ class SparkQueryExecutionMixin:
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        from benchbox.platforms.spark_query_transformer import SparkTPCHavocQueryTransformer
+        from benchbox.core.tpchavoc.dialect_compat import SPARK_VARIANT_IDS, normalize_variant_id, rewrite_spark_variant
 
         benchmark_slug = (benchmark_type or "").lower().replace("-", "")
-        transformer = SparkTPCHavocQueryTransformer()
         needs_rewrite = benchmark_slug == "tpchavoc" or (
-            benchmark_type is None and transformer.normalize_query_id(query_id) in transformer.known_variant_ids()
+            benchmark_type is None and normalize_variant_id(query_id) in SPARK_VARIANT_IDS
         )
         if needs_rewrite:
-            query = transformer.transform(query, query_id=query_id)
-            if transformer.get_transformations_applied():
-                self.log_very_verbose(
-                    f"Query {query_id}: Applied transformations: {', '.join(transformer.get_transformations_applied())}"
-                )
+            rewritten = rewrite_spark_variant(query_id, query)
+            if rewritten != query:
+                self.log_very_verbose(f"Query {query_id}: Applied fork rewrite for Spark")
+            query = rewritten
         return self._execute_query_spark(
             connection=connection,
             query=query,

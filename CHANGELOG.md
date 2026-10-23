@@ -52,6 +52,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- TPC-Havoc, Spark and DataFusion query rewrites run through the bundled SQLGlot fork's named rewrites
+  (`translate_sql_query(..., rewrites=...)`); the BenchBox AST rewriters, `SparkTPCHavocQueryTransformer` and the
+  regex `DataFusionQueryTransformer` are removed. DataFusion TPC-H Q11, Q18 and Q20 use the fork's decorrelation and
+  Q16 now rewrites `NOT IN` to `NOT EXISTS`. The earlier regex never matched the shipped Q16 text, so published
+  DataFusion Q16 runs executed the unrewritten `NOT IN` form that the registry marks as silent corruption on
+  DataFusion; those Q16 rows and timings, and the plans and timings for Q11, Q18 and Q20, can differ from earlier
+  results. The new rewrites are validated against DuckDB and the TPC row counts. The
+  TPC-Havoc 17_v4 PostgreSQL text no longer contains `FROM (VALUES (1))`. The 1_v7 array aggregation rewrite stays
+  in BenchBox until the fork provides list-aggregate rewrites. The TPC-DI EQ7 base query is the derived-table form
+  (no `FROM (VALUES (0))` row source), so EQ7 results on engines that rejected the VALUES form change; published EQ7
+  results should be treated as superseded.
 - A pull request title or body edit no longer holds five runners while it waits for the full CI run. The
   `CI (text edit)` check makes one decision and fails at once when the full run on the commit is missing or still
   running; the new `ci-text-edit-refresh` workflow re-runs the failed jobs of the newest `CI (text edit)` run on
