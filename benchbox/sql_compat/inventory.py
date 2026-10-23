@@ -49,11 +49,6 @@ _DIALECT_PLATFORMS = {
 
 _SKIP_FUNC_NAMES = {"get_platform_skip_queries", "get_df_platform_skip_queries"}
 _DDL_FUNC_NAMES = {"_supports_primary_keys"}
-_REWRITE_FUNC_NAMES = {
-    "_inject_missing_subquery_aliases",
-    "add_subquery_aliases",
-    "add_query_settings",
-}
 _DDL_OPTIMIZE_FUNC_NAMES = {
     "_optimize_table_definition",
     "_transform_create_statement",
@@ -357,16 +352,6 @@ def _detect_named_functions(tree: ast.Module, filepath: Path, root: Path) -> Ite
                 platforms=platforms,
                 suggested_phase="schema_emit",
                 description=f"PK support predicate: {name}()",
-            )
-
-        elif name in _REWRITE_FUNC_NAMES:
-            yield InventoryEntry(
-                file=rel,
-                line=node.lineno,
-                kind="session_setting" if name == "add_query_settings" else "rewrite",
-                platforms=[],
-                suggested_phase="query_adapter",
-                description=f"Query rewrite / session policy function: {name}()",
             )
 
         elif name in _DDL_OPTIMIZE_FUNC_NAMES:

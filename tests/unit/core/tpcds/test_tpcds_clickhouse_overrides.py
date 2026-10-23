@@ -56,10 +56,8 @@ def test_clickhouse_q35_rewrites_correlated_exists_to_semijoins_across_seeds():
 
 
 def test_clickhouse_q35_rewrite_fails_closed_on_unexpected_shape():
-    with pytest.raises(ValueError, match="expected 3 semi-join predicates"):
-        from benchbox.core.tpcds.benchmark.clickhouse_overrides import rewrite_q35_for_clickhouse
-
-        rewrite_q35_for_clickhouse("SELECT * FROM store_sales")
+    with pytest.raises(ValueError, match="expected 3 correlated EXISTS rewrites"):
+        _bench()._apply_target_dialect_overrides(35, "SELECT * FROM store_sales", "clickhouse")
 
 
 def test_clickhouse_q10_rewrites_correlated_exists_to_semijoins_across_seeds():
@@ -76,10 +74,8 @@ def test_clickhouse_q10_rewrites_correlated_exists_to_semijoins_across_seeds():
 
 
 def test_clickhouse_q10_rewrite_fails_closed_on_unexpected_shape():
-    with pytest.raises(ValueError, match="expected 3 semi-join predicates"):
-        from benchbox.core.tpcds.benchmark.clickhouse_overrides import rewrite_q10_for_clickhouse
-
-        rewrite_q10_for_clickhouse("SELECT * FROM store_sales")
+    with pytest.raises(ValueError, match="expected 3 correlated EXISTS rewrites"):
+        _bench()._apply_target_dialect_overrides(10, "SELECT * FROM store_sales", "clickhouse")
 
 
 def test_non_clickhouse_q10_keeps_original_exists_shape():

@@ -35260,30 +35260,6 @@
       "count": 2
     },
     {
-      "path": "benchbox/platforms/starrocks/workload.py",
-      "symbol": "",
-      "text": "# ruff: noqa: SIM905",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff SIM905 suggests replacing a split literal; the split form is kept for readability of the listed values. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-distributed-engines",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "benchbox/platforms/starrocks/workload.py",
-      "symbol": "StarRocksWorkloadMixin._inject_missing_subquery_aliases",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-distributed-engines",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
       "path": "benchbox/utils/database_naming.py",
       "symbol": "",
       "text": "# fmt: skip",
