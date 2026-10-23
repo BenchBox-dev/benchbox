@@ -965,7 +965,7 @@ queries:
         FROM tpcds_sales_returns_obt
         WHERE item_i_item_sk IS NOT NULL
       ) AS i
-      WHERE (item_i_brand_id, item_i_class_id, item_i_category_id) IN (
+      JOIN (
         SELECT item_i_brand_id, item_i_class_id, item_i_category_id
         FROM tpcds_sales_returns_obt
         WHERE channel = 'store' AND sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
@@ -977,7 +977,10 @@ queries:
         SELECT item_i_brand_id, item_i_class_id, item_i_category_id
         FROM tpcds_sales_returns_obt
         WHERE channel = 'web' AND sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
-      )
+      ) AS x
+        ON i.item_i_brand_id = x.item_i_brand_id
+        AND i.item_i_class_id = x.item_i_class_id
+        AND i.item_i_category_id = x.item_i_category_id
     ),
     avg_sales AS (
       SELECT AVG(quantity * list_price) AS average_sales
@@ -1021,7 +1024,7 @@ queries:
         FROM tpcds_sales_returns_obt
         WHERE item_i_item_sk IS NOT NULL
       ) AS i
-      WHERE (item_i_brand_id, item_i_class_id, item_i_category_id) IN (
+      JOIN (
         SELECT item_i_brand_id, item_i_class_id, item_i_category_id
         FROM tpcds_sales_returns_obt
         WHERE channel = 'store' AND sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
@@ -1033,7 +1036,10 @@ queries:
         SELECT item_i_brand_id, item_i_class_id, item_i_category_id
         FROM tpcds_sales_returns_obt
         WHERE channel = 'web' AND sold_date_d_year BETWEEN [YEAR] AND [YEAR] + 2
-      )
+      ) AS x
+        ON i.item_i_brand_id = x.item_i_brand_id
+        AND i.item_i_class_id = x.item_i_class_id
+        AND i.item_i_category_id = x.item_i_category_id
     ),
     avg_sales AS (
       SELECT AVG(quantity * list_price) AS average_sales
