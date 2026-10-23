@@ -70,9 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `dialect` entry in a rewrite's arguments to run that rewrite under the target dialect. Presto, Trino and Athena now
   reduce the arrays with `REDUCE`/`ZIP_WITH` instead of `UNNEST`; BigQuery reduces them with `GENERATE_ARRAY`
   subqueries; Databricks uses the fork's `SORT_ARRAY` collect and `AGGREGATE`; Spark, which previously received
-  untranslated `LIST` calls, now gets the same text as Databricks. Identifiers are no longer quoted. On Trino 476
-  and PySpark 4.2.0 at TPC-H tiny scale the new text returns the DuckDB rows (relative tolerance 1e-9). BigQuery has
-  no emulator and stays skipped. No published bundle holds a `1_v7` row for these engines; the DuckDB bundles are
+  untranslated `LIST` calls, now gets the same text as Databricks. Identifiers are no longer quoted. On Trino 476,
+  PrestoDB 0.298.1 and PySpark 4.2.0 at TPC-H tiny scale the new text returns the DuckDB rows (relative tolerance
+  1e-9); Athena runs the same text and was not available. BigQuery has no emulator and stays skipped. No published bundle holds a `1_v7` row for these engines; the DuckDB bundles are
   unchanged. Read Primitives output is unchanged on all 21 dialects.
 - A pull request title or body edit no longer holds five runners while it waits for the full CI run. The
   `CI (text edit)` check makes one decision and fails at once when the full run on the commit is missing or still
