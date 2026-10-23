@@ -930,39 +930,35 @@ class TestTrinoAdapter:
         assert adapter.schema is not None
         assert "tpch" in adapter.schema.lower() or "sf10" in adapter.schema.lower()
 
-    def test_normalize_table_name_in_sql(self):
+    def test_schema_ddl_lowercases_table_names(self):
         try:
             adapter = TrinoAdapter()
         except ImportError:
             pytest.skip("Trino drivers not installed")
 
-        sql = 'CREATE TABLE "CUSTOMER" (id INTEGER, name VARCHAR(100))'
-        normalized = adapter._normalize_table_name_in_sql(sql)
+        [translated] = adapter._schema_ddl('CREATE TABLE "CUSTOMER" (id INTEGER, name VARCHAR(100))')
 
-        assert "CREATE TABLE customer" in normalized
+        assert translated.startswith('CREATE TABLE "customer"')
 
-    def test_optimize_table_definition_memory(self):
+    def test_schema_ddl_memory_has_no_with_clause(self):
         try:
             adapter = TrinoAdapter(table_format="memory")
         except ImportError:
             pytest.skip("Trino drivers not installed")
 
-        sql = "CREATE TABLE test (id INTEGER) WITH (format='PARQUET')"
-        optimized = adapter._optimize_table_definition(sql)
+        [translated] = adapter._schema_ddl("CREATE TABLE test (id INTEGER)")
 
-        assert "WITH" not in optimized
+        assert "WITH" not in translated
 
-    def test_optimize_table_definition_iceberg(self):
+    def test_schema_ddl_iceberg_adds_parquet_format(self):
         try:
             adapter = TrinoAdapter(table_format="iceberg")
         except ImportError:
             pytest.skip("Trino drivers not installed")
 
-        sql = "CREATE TABLE test (id INTEGER, name VARCHAR(100))"
-        optimized = adapter._optimize_table_definition(sql)
+        [translated] = adapter._schema_ddl("CREATE TABLE test (id INTEGER, name VARCHAR(100))")
 
-        assert "WITH" in optimized
-        assert "PARQUET" in optimized
+        assert translated.endswith("WITH (format='PARQUET')")
 
     def test_get_existing_tables(self):
         try:
@@ -1267,108 +1263,69 @@ class TestTrinoValueFormatting:
 
 
 class TestTrinoTableDefinitionOptimization:
-    def _adapter(self, table_format="memory"):
+    def _adapter(self, table_format="memory", **kwargs):
         try:
-            return TrinoAdapter(table_format=table_format)
+            return TrinoAdapter(table_format=table_format, **kwargs)
         except ImportError:
             pytest.skip("Trino drivers not installed")
 
-    def test_non_create_table_statement_unchanged(self):
+    def test_non_create_table_statement_passes_through(self):
         adapter = self._adapter()
-        sql = "INSERT INTO foo VALUES (1)"
-        assert adapter._optimize_table_definition(sql) == sql
+        assert adapter._schema_ddl("INSERT INTO foo VALUES (1)") == ['INSERT INTO "foo" VALUES (1)']
 
-    def test_memory_format_removes_with_clause(self):
-        adapter = self._adapter(table_format="memory")
-        sql = "CREATE TABLE orders (id BIGINT) WITH (format = 'ORC')"
-        result = adapter._optimize_table_definition(sql)
-        assert "WITH" not in result
-        assert "CREATE TABLE orders" in result
+    def test_empty_schema_yields_no_statements(self):
+        assert self._adapter()._schema_ddl(" ; ;") == []
 
-    def test_iceberg_format_adds_parquet_when_no_with(self):
-        adapter = self._adapter(table_format="iceberg")
-        sql = "CREATE TABLE orders (id BIGINT)"
-        result = adapter._optimize_table_definition(sql)
-        assert "WITH (format = 'PARQUET')" in result
+    def test_multiple_statements_split_on_semicolon(self):
+        adapter = self._adapter(table_format="delta")
+        result = adapter._schema_ddl("CREATE TABLE a (x INT); CREATE TABLE b (y INT);")
+        assert [statement.split()[2] for statement in result] == ['"a"', '"b"']
 
-    def test_iceberg_format_preserves_existing_with(self):
-        adapter = self._adapter(table_format="iceberg")
-        sql = "CREATE TABLE orders (id BIGINT) WITH (format = 'ORC')"
-        result = adapter._optimize_table_definition(sql)
-        assert result.count("WITH") == 1
-
-    def test_hive_format_adds_parquet_when_no_with(self):
-        adapter = self._adapter(table_format="hive")
-        sql = "CREATE TABLE orders (id BIGINT)"
-        result = adapter._optimize_table_definition(sql)
-        assert "WITH (format = 'PARQUET')" in result
+    def test_foreign_keys_are_kept(self):
+        adapter = self._adapter(table_format="delta")
+        [result] = adapter._schema_ddl("CREATE TABLE o (id INT, c INT, FOREIGN KEY (c) REFERENCES cu (id))")
+        assert "FOREIGN KEY" in result
 
     def test_catalog_name_alone_does_not_trigger_memory_stripping(self):
-        try:
-            adapter = TrinoAdapter(catalog="memory", table_format="hive")
-        except ImportError:
-            pytest.skip("Trino drivers not installed")
-        sql = "CREATE TABLE orders (id BIGINT)"
-        result = adapter._optimize_table_definition(sql)
-        assert "WITH (format = 'PARQUET')" in result
+        adapter = self._adapter(table_format="iceberg", catalog="memory")
+        [result] = adapter._schema_ddl("CREATE TABLE orders (id BIGINT NOT NULL)")
+        assert "WITH (format='PARQUET')" in result
+        assert "NOT NULL" in result
 
     @pytest.mark.parametrize(
         ("table_format", "adds_format"),
         [("memory", False), ("hive", True), ("iceberg", True), ("delta", False)],
     )
-    def test_strips_inline_primary_key_metadata(self, table_format, adds_format):
+    def test_ddl_options_follow_table_format(self, table_format, adds_format):
         adapter = self._adapter(table_format=table_format)
-        sql = "CREATE TABLE kind_type (id INTEGER PRIMARY KEY, kind VARCHAR(15) NOT NULL)"
-        result = adapter._optimize_table_definition(sql)
-        result_upper = result.upper()
-
-        assert "PRIMARY KEY" not in result_upper
-        assert "id INTEGER" in result
-        if table_format == "memory":
-            assert "NOT NULL" not in result_upper
-        else:
-            assert "NOT NULL" in result_upper
-        if adds_format:
-            assert "WITH (format = 'PARQUET')" in result
-        else:
-            assert "WITH" not in result_upper
+        options = adapter._ddl_options()
+        assert options["strip_primary_keys"] is True
+        assert options["table_case"] == "lower"
+        assert options["strip_not_null"] is (table_format in ("memory", "hive"))
+        assert (options["default_layout"] == {"format": "PARQUET"}) is adds_format
 
     @pytest.mark.parametrize(
         ("table_format", "adds_format"),
         [("memory", False), ("hive", True), ("iceberg", True), ("delta", False)],
     )
-    def test_strips_table_level_primary_key_metadata_with_nested_expression(self, table_format, adds_format):
-        adapter = self._adapter(table_format=table_format)
-        sql = "CREATE TABLE edge_case (id BIGINT, other_id BIGINT, PRIMARY KEY (id, coalesce(other_id, 0)))"
-        result = adapter._optimize_table_definition(sql)
-        result_upper = result.upper()
-
-        assert "PRIMARY KEY" not in result_upper
-        assert "coalesce" not in result
-        assert "id BIGINT" in result
-        assert "other_id BIGINT" in result
-        if adds_format:
-            assert "WITH (format = 'PARQUET')" in result
-        else:
-            assert "WITH" not in result_upper
-
     @pytest.mark.parametrize(
-        ("table_format", "adds_format"),
-        [("memory", False), ("hive", True), ("iceberg", True), ("delta", False)],
+        "sql",
+        [
+            "CREATE TABLE kind_type (id INTEGER PRIMARY KEY, kind VARCHAR(15) NOT NULL)",
+            "CREATE TABLE kind_type (id INTEGER, kind VARCHAR(15) NOT NULL, PRIMARY KEY (id, kind))",
+            "CREATE TABLE kind_type (id INTEGER, kind VARCHAR(15) NOT NULL, CONSTRAINT pk_kind PRIMARY KEY (id))",
+        ],
     )
-    def test_strips_named_table_level_primary_key_metadata(self, table_format, adds_format):
+    def test_strips_primary_key_metadata(self, table_format, adds_format, sql):
         adapter = self._adapter(table_format=table_format)
-        sql = "CREATE TABLE customer (id BIGINT, CONSTRAINT pk_customer PRIMARY KEY (id))"
-        result = adapter._optimize_table_definition(sql)
+        [result] = adapter._schema_ddl(sql)
         result_upper = result.upper()
 
         assert "PRIMARY KEY" not in result_upper
         assert "CONSTRAINT" not in result_upper
-        assert "id BIGINT" in result
-        if adds_format:
-            assert "WITH (format = 'PARQUET')" in result
-        else:
-            assert "WITH" not in result_upper
+        assert ("NOT NULL" in result_upper) is (table_format not in ("memory", "hive"))
+        assert result.endswith("WITH (format='PARQUET')") is adds_format
+        assert ("WITH" in result_upper) is adds_format
 
 
 class TestTrinoConfigureForBenchmark:

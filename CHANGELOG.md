@@ -55,6 +55,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Trino, Presto and Athena build their `CREATE TABLE` DDL with `translate_ddl` instead of
+  adapter-side text rewrites. Table names are written quoted (`"orders"` on Trino and Presto,
+  `` `orders` `` on Athena) instead of bare, and Athena columns are backtick-quoted; the
+  statements are otherwise equivalent. `ddl_helpers.strip_with_properties` is removed.
+  `translate_ddl` records one schema-DDL translation outcome per call, so schema statements still
+  appear in the result's SQL translation summary.
 - SingleStore `CREATE TABLE` statements are written by the SQLGlot fork's `translate_ddl` (foreign keys
   stripped, lower-case table names, `FLOAT` as `REAL`, `TIMESTAMP` as `DATETIME`, and the TPC-H
   `SHARD KEY`, `SORT KEY` and `REFERENCE TABLE` clauses) instead of adapter text rewrites. The
@@ -124,6 +130,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `PRIMARY KEY` model, and statements other than `CREATE TABLE` on Doris are sent unchanged. A Doris
   `unique` or `aggregate` table model on a table whose key columns do not lead the table now raises
   instead of silently writing a narrower key. A test runs both adapters over every shipped schema.
+- **ClickHouse, StarRocks and TPC-DS runner rewrites now run through the bundled SQLGlot runtime.**
+  `ClickHouseQueryTransformer`, the StarRocks execute-time regexes and scanner, the ClickHouse
+  Q10/Q35 overrides and the TPC-DS interval and Q58 regexes are deleted. ClickHouse execution calls
+  `apply_rewrite` (`benchbox.platforms.clickhouse.query_rewrites`), StarRocks execution calls
+  `add_derived_table_aliases`, and TPC-DS uses `correlated_exists_to_in` and
+  `qualify_order_by_columns`. String literals are no longer edited, `(x + 0.0)` is cast to
+  `Decimal(15, 2)`, an existing `SETTINGS` clause is replaced, JOIN-derived and nested StarRocks
+  subqueries receive aliases, and a double-quoted StarRocks token keeps its string-literal reading.
+  Unparseable SQL still fails before reaching the engine. Q58 on BigQuery, Spark, Databricks and
+  SingleStore now qualifies `item_id` in `ORDER BY`; published Q58 results on those targets ran
+  the ambiguous form. ClickHouse query text is unchanged for 745 of 749 benchmark queries (the
+  rest gain the session setting) and published ClickHouse results do not change.
 - TPC-DS query generation no longer copies the whole query-template tree into a temporary directory
   for every `dsqgen` call. It stages only the support files and the one requested template, so a
   call takes about 6 ms instead of about 25 ms locally with byte-identical SQL. The installed
@@ -347,6 +365,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   return NULL. The golden corpus records the remaining text differences.
 
 ### Fixed
+
+- Trino and Presto `create_schema` on the Hive connector no longer writes `NOT NULL`, which Trino 476 rejects with
+  `Catalog 'hive' does not support non-null column`; TPC-H (8 tables) and TPC-DS (25 tables) now create on a Trino
+  Hive catalog. No published result can use this path, because schema creation failed on it.
 
 - A pull request title or body edit no longer leaves an armed pull request blocked
   with every required check green. The CI run such an edit starts now reports each

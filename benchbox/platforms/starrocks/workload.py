@@ -1,5 +1,3 @@
-# ruff: noqa: SIM905
-
 from __future__ import annotations
 
 import csv
@@ -18,7 +16,7 @@ from benchbox.platforms.base.data_loading import (
 )
 from benchbox.platforms.base.sql_execution import execute_sql_query
 from benchbox.utils.clock import elapsed_seconds, mono_time
-from benchbox.utils.dialect_utils import create_table_shape, is_create_table, translate_ddl
+from benchbox.utils.dialect_utils import apply_rewrite, create_table_shape, is_create_table, translate_ddl
 
 logger = logging.getLogger(__name__)
 
@@ -27,41 +25,8 @@ def _stream_load_treats_empty_as_null(delimiter: str) -> bool:
     return delimiter == ","
 
 
-def _split_sql_literals(query: str) -> list[tuple[str, bool]]:
-    segments: list[tuple[str, bool]] = []
-    n = len(query)
-    i = 0
-    start = 0
-    while i < n:
-        if query[i] == "'":
-            if start < i:
-                segments.append((query[start:i], False))
-            lit_start = i
-            i += 1
-            while i < n:
-                c = query[i]
-                if c == "\\" and i + 1 < n:
-                    i += 2
-                    continue
-                if c == "'":
-                    if i + 1 < n and query[i + 1] == "'":
-                        i += 2
-                        continue
-                    i += 1
-                    break
-                i += 1
-            segments.append((query[lit_start:i], True))
-            start = i
-        else:
-            i += 1
-    if start < n:
-        segments.append((query[start:], False))
-    return segments
-
-
-def _apply_outside_literals(pattern: re.Pattern[str], repl: str, query: str) -> str:
-    parts = _split_sql_literals(query)
-    return "".join(text if is_lit else pattern.sub(repl, text) for text, is_lit in parts)
+def _alias_derived_tables(query: str) -> str:
+    return apply_rewrite("add_derived_table_aliases", query, "starrocks", prefix="_sq", quoted=True)
 
 
 class StarRocksWorkloadMixin:
@@ -263,154 +228,6 @@ class StarRocksWorkloadMixin:
             self.logger.debug(f"Failed to get existing tables: {e}")
             return []
 
-    _RESERVED_ALIAS_WORDS: frozenset[str] = frozenset(
-        "character rank order group key value values partition range rows select table column columns index database "
-        "schema status type default primary unique current_date current_time current_timestamp interval match natural "
-        "dense_rank row_number percent_rank cume_dist ntile lead lag".split()
-    )
-
-    _ALIAS_RE = re.compile(r"\bAS\s+(\w+)\b", re.IGNORECASE)
-
-    _ANSI_SUBSTRING_RE = re.compile(
-        r"\bSUBSTRING\s*\(\s*([^()]+?)\s+FROM\s+([^()]+?)\s+FOR\s+([^()]+?)\s*\)",
-        re.IGNORECASE,
-    )
-    _ANSI_SUBSTRING_DETECT_RE = re.compile(r"\bSUBSTRING\b[^;]*?\bFROM\b[^;]*?\bFOR\b", re.IGNORECASE)
-
-    def _quote_reserved_aliases(self, query: str) -> str:
-
-        def replacer(m: re.Match) -> str:
-            alias = m.group(1)
-            if alias.lower() in self._RESERVED_ALIAS_WORDS:
-                return f"AS `{alias}`"
-            return m.group(0)
-
-        parts = _split_sql_literals(query)
-        return "".join(text if is_lit else self._ALIAS_RE.sub(replacer, text) for text, is_lit in parts)
-
-    def _translate_ansi_substring(self, query: str) -> str:
-        result = _apply_outside_literals(self._ANSI_SUBSTRING_RE, r"SUBSTRING(\1, \2, \3)", query)
-        code_only = "".join(text for text, is_lit in _split_sql_literals(result) if not is_lit)
-        if self._ANSI_SUBSTRING_DETECT_RE.search(code_only):
-            logger.warning(
-                "StarRocks SUBSTRING translator left an ANSI 'FROM … FOR' form in the "
-                "query; StarRocks will reject it. Query fragment: %s...",
-                result[:200].replace("\n", " "),
-            )
-        return result
-
-    _SQL_KEYWORDS = frozenset(
-        "WHERE HAVING GROUP ORDER LIMIT UNION EXCEPT INTERSECT JOIN INNER LEFT RIGHT FULL CROSS ON AND OR NOT THEN "
-        "ELSE END CASE WHEN SELECT FROM AS IS IN NULL TRUE FALSE BETWEEN LIKE ILIKE SIMILAR".split()
-    )
-
-    def _inject_missing_subquery_aliases(self, query: str) -> str:  # noqa: C901
-        out: list[str] = []
-        i = 0
-        n = len(query)
-        counter = 0
-
-        def skip_quoted(pos: int) -> int:
-            q = query[pos]
-            pos += 1
-            while pos < n:
-                if query[pos] == "\\" and q != "`":
-                    pos += 2
-                    continue
-                if query[pos] == q:
-                    return pos + 1
-                pos += 1
-            return pos
-
-        def consume_subquery_and_alias(open_paren_pos: int) -> int:
-            nonlocal counter
-            out.append("(")
-            pos = open_paren_pos + 1
-            depth = 1
-            while pos < n and depth > 0:
-                c = query[pos]
-                if c in ("'", '"', "`"):
-                    j = skip_quoted(pos)
-                    out.append(query[pos:j])
-                    pos = j
-                    continue
-                if c == "(":
-                    depth += 1
-                elif c == ")":
-                    depth -= 1
-                    if depth == 0:
-                        out.append(")")
-                        pos += 1
-                        break
-                out.append(c)
-                pos += 1
-
-            j = pos
-            while j < n and query[j] in " \t\n\r":
-                j += 1
-            after_sub = query[j:]
-
-            if re.match(r"^AS\s+", after_sub, re.IGNORECASE):
-                return pos
-
-            m_id = re.match(r"^([A-Za-z_`]\w*)", after_sub)
-            if m_id:
-                word = m_id.group(1).strip("`").upper()
-                if word not in self._SQL_KEYWORDS:
-                    return pos
-
-            inner_start = open_paren_pos + 1
-            inner_stripped = query[inner_start:].lstrip()
-            first_kw = re.match(r"^(SELECT|WITH)\b", inner_stripped, re.IGNORECASE)
-            if first_kw:
-                out.append(f" AS `_sq{counter}`")
-                counter += 1
-
-            return pos
-
-        while i < n:
-            ch = query[i]
-
-            if ch in ("'", '"', "`"):
-                j = skip_quoted(i)
-                out.append(query[i:j])
-                i = j
-                continue
-
-            if ch in ("F", "f") and query[i : i + 4].upper() == "FROM":
-                before_ok = i == 0 or not (query[i - 1].isalnum() or query[i - 1] == "_")
-                j = i + 4
-                after_ok = j >= n or not (query[j].isalnum() or query[j] == "_")
-                if before_ok and after_ok:
-                    ws_end = j
-                    while ws_end < n and query[ws_end] in " \t\n\r":
-                        ws_end += 1
-                    if ws_end < n and query[ws_end] == "(":
-                        out.append(query[i:ws_end])
-                        i = consume_subquery_and_alias(ws_end)
-                        continue
-
-            if ch == ",":
-                out.append(",")
-                i += 1
-                ws_end = i
-                while ws_end < n and query[ws_end] in " \t\n\r":
-                    ws_end += 1
-                if ws_end < n and query[ws_end] == "(":
-                    out.append(query[i:ws_end])
-                    i = consume_subquery_and_alias(ws_end)
-                continue
-
-            out.append(ch)
-            i += 1
-
-        return "".join(out)
-
-    _ANSI_IDENTIFIER_RE = re.compile(r'"([a-zA-Z_][a-zA-Z0-9_]*)"')
-
-    def _translate_ansi_identifiers(self, query: str) -> str:
-        return _apply_outside_literals(self._ANSI_IDENTIFIER_RE, r"`\1`", query)
-
     def execute_query(
         self,
         connection: Any,
@@ -421,10 +238,7 @@ class StarRocksWorkloadMixin:
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
-        query = self._quote_reserved_aliases(query)
-        query = self._translate_ansi_substring(query)
-        query = self._translate_ansi_identifiers(query)
-        query = self._inject_missing_subquery_aliases(query)
+        query = _alias_derived_tables(query)
         result = execute_sql_query(
             connection,
             query,

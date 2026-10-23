@@ -715,7 +715,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "WITH-property clause from tuned columns for dry-run preview (get_ddl_generator('trino')), "
             "but benchbox/platforms/trino.py's TrinoAdapter never consumes it at execution time: "
             "create_schema builds DDL via _create_schema_with_tuning (primary/foreign-key toggle only) "
-            "then _optimize_table_definition (trino.py:190-218, file-format/WITH-clause string tweaks "
+            "then translate_ddl (strip_primary_keys, table_case and a PARQUET format layout for hive/iceberg "
             "only, no tuning). TrinoAdapter.generate_tuning_clause (trino.py:220-266) re-implements "
             "similar WITH-properties logic but has no call site anywhere in the codebase (a repo-wide "
             "search for '.generate_tuning_clause(' finds only its own definition and unit tests that "
@@ -742,8 +742,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         _T.PRIMARY_KEYS: _none(
             "trino_strips_primary_keys",
-            "PrestoTrinoAdapterBase._optimize_table_definition strips PRIMARY KEY clauses from every "
-            "CREATE TABLE via ddl_helpers strip_primary_keys (presto_trino_adapter_base.py).",
+            "PrestoTrinoAdapterBase._schema_ddl strips PRIMARY KEY clauses from every CREATE TABLE via "
+            "translate_ddl(strip_primary_keys=True) (presto_trino_adapter_base.py).",
         ),
         _T.FOREIGN_KEYS: _ddl(_INLINE_CONSTRAINT, _CONSTRAINT_NOTE),
         **_no_unique_check_entries(
@@ -757,8 +757,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "get_ddl_generator('presto') resolves to the same core.tuning.generators.trino."
             "TrinoDDLGenerator as trino (real partitioned_by/partitioning WITH-property clause computed "
             "from tuned columns for dry-run preview). benchbox/platforms/presto.py's PrestoAdapter never "
-            "consumes it at execution time: _optimize_table_definition (presto.py:214-242) only does "
-            "type/format string tweaks, PrestoAdapter.generate_tuning_clause (presto.py:244-272) has no "
+            "consumes it at execution time: its translate_ddl call (PrestoTrinoAdapterBase._ddl_options) only "
+            "sets key stripping, table case and format options, PrestoAdapter.generate_tuning_clause (presto.py:244-272) has no "
             "call site anywhere in the codebase, and apply_table_tunings (presto.py:274-282) only logs "
             "via log_partition_tunings(...). See trino's PARTITIONING entry for the shared-generator "
             "note.",
@@ -780,8 +780,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         _T.PRIMARY_KEYS: _none(
             "presto_strips_primary_keys",
-            "PrestoTrinoAdapterBase._optimize_table_definition strips PRIMARY KEY clauses from every "
-            "CREATE TABLE via ddl_helpers strip_primary_keys (presto_trino_adapter_base.py).",
+            "PrestoTrinoAdapterBase._schema_ddl strips PRIMARY KEY clauses from every CREATE TABLE via "
+            "translate_ddl(strip_primary_keys=True) (presto_trino_adapter_base.py).",
         ),
         _T.FOREIGN_KEYS: _ddl(_INLINE_CONSTRAINT, _CONSTRAINT_NOTE),
         **_no_unique_check_entries(
@@ -797,13 +797,12 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "placeholder ('-- Note: PARTITIONED BY clause should be added with column types', "
             "trino.py:409-413) when partitioned_by is present. Real execution "
             "(benchbox/platforms/athena.py's AthenaAdapter) never calls AthenaDDLGenerator at all: "
-            "create_schema (athena.py:627-695) rewrites the statement via _convert_to_external_table "
-            "(athena.py:697-801), an independent regex-based CREATE EXTERNAL TABLE builder that never "
-            "adds PARTITIONED BY and strips any WITH clause. AthenaAdapter.generate_tuning_clause "
+            "create_schema rewrites the statement via _external_table_ddl, a translate_ddl call that "
+            "builds CREATE EXTERNAL TABLE from a TableLayout and never adds PARTITIONED BY. AthenaAdapter.generate_tuning_clause "
             "(athena.py:1380-1399) has no call site anywhere in the codebase. apply_table_tunings "
             "(athena.py:1401-1415) logs 'applied at table creation time', which is not accurate -- "
             "nothing is applied. Renderer-migration follow-up: fix the dry-run generator's placeholder "
-            "comment and wire real rendering into _convert_to_external_table.",
+            "comment and wire real rendering into _external_table_layout.",
         ),
         _T.DISTRIBUTION: _none(
             "athena_ddl_generator:preview_incomplete_and_unconsumed",
@@ -826,17 +825,16 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.PRIMARY_KEYS: _none(
             "athena_strips_primary_keys",
             "Athena tables are Hive CREATE EXTERNAL TABLE statements, which have no constraint syntax, so "
-            "AthenaAdapter._convert_to_external_table removes PRIMARY KEY clauses before execution.",
+            "AthenaAdapter._external_table_ddl removes PRIMARY KEY clauses before execution.",
         ),
         _T.FOREIGN_KEYS: _none(
             "athena_strips_foreign_keys",
             "Athena CREATE EXTERNAL TABLE has no constraint syntax, so "
-            "AthenaAdapter._convert_to_external_table removes FOREIGN KEY and REFERENCES clauses.",
+            "AthenaAdapter._external_table_ddl removes FOREIGN KEY and REFERENCES clauses.",
         ),
         **_no_unique_check_entries(
             "athena_no_unique_check_rendering",
-            "AthenaAdapter._convert_to_external_table builds CREATE EXTERNAL TABLE without UNIQUE/CHECK "
-            "clauses (athena.py).",
+            "AthenaAdapter._external_table_ddl builds CREATE EXTERNAL TABLE without UNIQUE/CHECK clauses (athena.py).",
         ),
     },
     "firebolt": {

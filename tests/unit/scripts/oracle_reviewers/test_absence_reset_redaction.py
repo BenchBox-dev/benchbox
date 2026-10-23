@@ -71,12 +71,12 @@ def test_auth_detail_redacts_long_token() -> None:
     assert "[redacted]" in redacted
 
 
-def test_redact_detail_redacts_typesafe_and_broker_values(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_redact_detail_redacts_typesafe_and_gateway_values(monkeypatch: pytest.MonkeyPatch) -> None:
     typesafe = "ts_Q7x9Lk2Pz8Rw4Tn6Yb1Vc3Hd5Jf0Gs7Ma2Ne"
-    broker = "omp-broker-Zx8Cv7Bn6Mq5Wr4Ty3Ui2Op1As0Df9Gh8Jk7"
+    gateway = "omp-gateway-Zx8Cv7Bn6Mq5Wr4Ty3Ui2Op1As0Df9Gh8Jk7"
     monkeypatch.setenv("TYPESAFE_API_KEY", typesafe)
-    monkeypatch.setenv("OMP_AUTH_BROKER_TOKEN", broker)
-    for secret in (typesafe, broker):
+    monkeypatch.setenv("OMP_GATEWAY_TOKEN", gateway)
+    for secret in (typesafe, gateway):
         redacted = redact_detail(f"request failed with 401 for key {secret}")
         assert secret not in redacted
         assert "[redacted]" in redacted

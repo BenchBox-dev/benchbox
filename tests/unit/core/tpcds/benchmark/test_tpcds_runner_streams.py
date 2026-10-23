@@ -217,15 +217,13 @@ class TestThroughputTestValidation:
 
 
 class TestQueryNormalization:
-    def test_normalize_interval_syntax(self, tpcds):
-        input_sql = "date + 30 days"
-        result = tpcds._normalize_interval_syntax(input_sql)
-        assert "INTERVAL" in result or "days" in result.lower()
+    def test_interval_syntax_translates_to_interval_literals(self, tpcds):
+        result = tpcds.translate_query_text("SELECT d + 30 days FROM t", "netezza", "duckdb")
+        assert "INTERVAL '30' DAY" in result
 
-    def test_fix_query58_ambiguity(self, tpcds):
-
-        result = tpcds._fix_query58_ambiguity("SELECT * FROM t ORDER BY 1")
-        assert isinstance(result, str)
+    def test_query_without_q58_ctes_keeps_its_order_by(self, tpcds):
+        result = tpcds.translate_query_text("SELECT * FROM t ORDER BY 1", "netezza", "duckdb")
+        assert result.endswith("ORDER BY 1")
 
 
 class TestBenchmarkInfo:

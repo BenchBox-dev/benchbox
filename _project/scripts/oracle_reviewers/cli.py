@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -29,6 +30,11 @@ CLASSIFICATION_FILE = "classification.json"
 DIFF_FILE = "diff.patch"
 WORKFLOW_FILE = "oracle-verdict.yml"
 WORKFLOW_SOURCE = Path(".github/workflows") / WORKFLOW_FILE
+OMP_CONFIG_SOURCE = Path(__file__).resolve().parents[3] / ".github" / "oracle-omp-config.yml"
+GATEWAY_TOKEN_ENV = "OMP_GATEWAY_TOKEN"
+GATEWAY_PROVIDERS = ("anthropic", "openai-codex", "muse-code", "google-antigravity")
+GATEWAY_CLIENT = "oracle-ci"
+GATEWAY_TOKEN_MIN_LENGTH = 32
 DEVELOP_REF = "refs/heads/develop"
 NEW_DIFF_ACTIONS = ("opened", "synchronize")
 REVIEW = "review"
@@ -356,6 +362,7 @@ def _protocol_round(
         "patch_map": current,
         "patch_digest": digest,
         "strikes": strike_count,
+        "struck_digests": sorted(protocol.struck_digests(found.records)),
         "max_do_not_ship": policy.protocol.max_do_not_ship,
         "prior": list(latest.get("open_defects", [])) if follow_up else [],
         "next_id": int(latest.get("next_id", 1)) if follow_up else 1,
@@ -755,6 +762,76 @@ def command_sweep(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_reviewer_home(args: argparse.Namespace) -> int:
+    url = args.gateway_url.strip()
+    if not url:
+        raise SystemExit("oracle-verdict: error: the gateway URL is empty; set the ORACLE_GATEWAY_URL secret")
+    if not url.startswith("https://") or len(url) == len("https://"):
+        raise SystemExit("oracle-verdict: error: the gateway URL must be an https:// URL")
+    agent_dir = Path(args.home) / ".omp" / "agent"
+    agent_dir.mkdir(parents=True, exist_ok=True)
+    (agent_dir / "config.yml").write_text(OMP_CONFIG_SOURCE.read_text(encoding="utf-8"), encoding="utf-8")
+    providers = "".join(
+        f"  {provider}:\n    transport: pi-native\n    baseUrl: {json.dumps(url)}\n    apiKey: {GATEWAY_TOKEN_ENV}\n"
+        for provider in GATEWAY_PROVIDERS
+    )
+    (agent_dir / "models.yml").write_text(f"providers:\n{providers}", encoding="utf-8")
+    return 0
+
+
+def _gateway_model(target: str) -> str:
+    provider, _, model = target.partition("/")
+    return f"{provider}/{model.split(':', 1)[0]}"
+
+
+def gateway_models(config: Mapping[str, Any]) -> list[str]:
+    chains = config["retry"]["fallbackChains"]
+    targets = [*config["modelRoles"].values(), *chains, *(target for chain in chains.values() for target in chain)]
+    return list(dict.fromkeys(_gateway_model(target) for target in targets))
+
+
+def _gateway_accounts(path: Path, providers: list[str]) -> dict[str, list[str]]:
+    listed = _read_json(path).get("accounts", [])
+    accounts = {
+        provider: [
+            entry["identityKey"] for entry in listed if entry.get("provider") == provider and entry.get("identityKey")
+        ]
+        for provider in providers
+    }
+    missing = [provider for provider, keys in accounts.items() if not keys]
+    if missing:
+        raise SystemExit(f"oracle-verdict: error: no logged-in broker account for {', '.join(missing)}")
+    return accounts
+
+
+def command_gateway_clients(args: argparse.Namespace) -> int:
+    import yaml
+
+    token = Path(args.token_file).read_text(encoding="utf-8")
+    if len(token) < GATEWAY_TOKEN_MIN_LENGTH or token != token.strip():
+        raise SystemExit(
+            f"oracle-verdict: error: the client token must be at least {GATEWAY_TOKEN_MIN_LENGTH} characters "
+            "with no surrounding whitespace"
+        )
+    models = gateway_models(yaml.safe_load(OMP_CONFIG_SOURCE.read_text(encoding="utf-8")))
+    providers = list(dict.fromkeys(model.split("/", 1)[0] for model in models))
+    unknown = [provider for provider in providers if provider not in GATEWAY_PROVIDERS]
+    if unknown:
+        raise SystemExit(
+            f"oracle-verdict: error: the reviewer config names providers the gateway does not serve: {unknown}"
+        )
+    client: dict[str, Any] = {"tokenSha256": hashlib.sha256(token.encode("utf-8")).hexdigest(), "models": models}
+    if args.accounts:
+        client["accounts"] = _gateway_accounts(Path(args.accounts), providers)
+    out = Path(args.out)
+    staged = out.with_name(f".{out.name}.{os.getpid()}.tmp")
+    write_private(staged, json.dumps({GATEWAY_CLIENT: client}, indent=2) + "\n")
+    os.replace(staged, out)
+    pinned = ", ".join(f"{provider}={len(keys)}" for provider, keys in client.get("accounts", {}).items())
+    print(f"{GATEWAY_CLIENT}: {len(models)} models; pinned accounts: {pinned or 'none'}")
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="oracle-verdict")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -797,6 +874,15 @@ def _parser() -> argparse.ArgumentParser:
     sweep = commands.add_parser("sweep")
     sweep.add_argument("--policy", required=True)
     sweep.set_defaults(handler=command_sweep)
+    home = commands.add_parser("reviewer-home")
+    home.add_argument("--home", required=True)
+    home.add_argument("--gateway-url", required=True)
+    home.set_defaults(handler=command_reviewer_home)
+    clients = commands.add_parser("gateway-clients")
+    clients.add_argument("--token-file", required=True)
+    clients.add_argument("--accounts")
+    clients.add_argument("--out", required=True)
+    clients.set_defaults(handler=command_gateway_clients)
     return parser
 
 

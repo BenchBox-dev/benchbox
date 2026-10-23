@@ -353,10 +353,7 @@ def _tpcds_current(sql: str, src: str, tgt: str):
     def produce() -> str:
         from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
 
-        runner = SimpleNamespace()
-        runner._normalize_interval_syntax = lambda query: TPCDSBenchmark._normalize_interval_syntax(runner, query)
-        runner._fix_query58_ambiguity = lambda query: TPCDSBenchmark._fix_query58_ambiguity(runner, query)
-        return TPCDSBenchmark.translate_query_text(runner, sql, src, tgt)
+        return TPCDSBenchmark.translate_query_text(SimpleNamespace(), sql, src, tgt)
 
     return produce
 

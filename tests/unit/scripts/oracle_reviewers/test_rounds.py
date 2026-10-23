@@ -357,6 +357,55 @@ def test_the_post_guard_skips_a_head_that_already_has_a_decision(
     assert (unconfirmed in capsys.readouterr().out) is (failures >= cli.GUARD_ATTEMPTS)
 
 
+def test_a_restart_on_an_unchanged_patch_does_not_add_a_strike(policy: Policy, tmp_path: Path) -> None:
+    verdict = _v("Rework the comparator.", decision="DO_NOT_SHIP")
+    first = _final(policy, tmp_path / "p1", _protocol_plan(policy, patch_digest="1" * 32), verdict)
+    assert first.strikes == 1
+    restart = _final(
+        policy,
+        tmp_path / "restart",
+        _protocol_plan(policy, patch_digest="1" * 32, strikes=first.strikes, struck_digests=["1" * 32]),
+        verdict,
+    )
+    assert restart.strikes == 1 and _record(restart)["strikes_after"] == 1
+    second = _final(
+        policy,
+        tmp_path / "p2",
+        _protocol_plan(policy, patch_digest="2" * 32, strikes=restart.strikes, struck_digests=["1" * 32]),
+        verdict,
+    )
+    assert second.strikes == 2 and _record(second)["strikes_after"] == 2
+
+
+def test_a_returning_patch_after_a_ship_is_not_a_new_strike(policy: Policy, tmp_path: Path) -> None:
+    verdict = _v("Rework the comparator.", decision="DO_NOT_SHIP")
+    again = _final(
+        policy,
+        tmp_path / "p",
+        _protocol_plan(policy, patch_digest="1" * 32, strikes=1, struck_digests=["1" * 32]),
+        verdict,
+    )
+    other = _final(
+        policy,
+        tmp_path / "q",
+        _protocol_plan(policy, patch_digest="2" * 32, strikes=again.strikes, struck_digests=["1" * 32]),
+        verdict,
+    )
+    assert (again.strikes, other.strikes) == (1, 2)
+
+
+def test_an_unreadable_diff_digest_is_never_a_counted_patch(policy: Policy, tmp_path: Path) -> None:
+    verdict = _v("Rework the comparator.", decision="DO_NOT_SHIP")
+    unread = f"unread-{HEAD}"
+    final = _final(
+        policy,
+        tmp_path,
+        _protocol_plan(policy, patch_digest=unread, strikes=1, struck_digests=["1" * 32]),
+        verdict,
+    )
+    assert final.strikes == 2
+
+
 def test_finalize_writes_the_strike_count_into_the_state_artifact(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

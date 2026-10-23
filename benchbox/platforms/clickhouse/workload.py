@@ -13,7 +13,7 @@ from benchbox.utils.printing import emit
 from benchbox.utils.sql_parsing import find_matching_parenthesis
 
 from .merge_settle import wait_for_merges_to_settle
-from .query_transformer import ClickHouseQueryTransformer
+from .query_rewrites import rewrite_query_for_clickhouse
 
 if TYPE_CHECKING:
     from .delta_lake import DeltaReader
@@ -608,31 +608,21 @@ class ClickHouseWorkloadMixin:
         start_time = mono_time()
 
         try:
-            transformer = ClickHouseQueryTransformer(verbose=self.very_verbose)
-            transformed_query = transformer.transform(query)
-            additional_settings: tuple[tuple[str, str | int], ...] = ()
+            additional_settings: dict[str, str | int] = {}
             if (
                 self.deployment_mode == "local"
                 and (benchmark_type or "").lower() == "tpchavoc"
                 and str(query_id).lower() in {"5_v7", "5_v8"}
             ):
-                additional_settings = (
-                    ("join_algorithm", "grace_hash"),
-                    ("grace_hash_join_initial_buckets", 8),
-                )
+                additional_settings = {"join_algorithm": "grace_hash", "grace_hash_join_initial_buckets": 8}
             elif (
                 self.deployment_mode == "server"
                 and getattr(self, "tuning_enabled", False)
                 and (benchmark_type or "").lower() == "tpch"
                 and str(query_id).lower().removeprefix("q") == "21"
             ):
-                additional_settings = (("join_algorithm", "hash"),)
-            transformed_query = transformer.add_query_settings(transformed_query, additional_settings)
-
-            if transformer.get_transformations_applied() and self.verbose_enabled:
-                self.log_verbose(
-                    f"Query {query_id}: Applied transformations: {', '.join(transformer.get_transformations_applied())}"
-                )
+                additional_settings = {"join_algorithm": "hash"}
+            transformed_query = rewrite_query_for_clickhouse(query, additional_settings)
 
             start_time = mono_time()
             result = connection.execute(transformed_query)

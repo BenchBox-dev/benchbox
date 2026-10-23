@@ -71,19 +71,17 @@ def test_clickhouse_q66_bulk_query_uses_stable_channel_sales_relation():
     assert "enable_analyzer = 0" not in clickhouse, "ClickHouse Q66 must not opt out"
 
 
-def test_clickhouse_overrides_compose_cleanly_with_generic_transformer():
-    from benchbox.platforms.clickhouse.query_transformer import ClickHouseQueryTransformer
+def test_clickhouse_overrides_compose_cleanly_with_execution_rewrites():
+    from benchbox.platforms.clickhouse.query_rewrites import rewrite_query_for_clickhouse
 
     bench = _bench()
-    transformer = ClickHouseQueryTransformer()
 
     for query_id in TARGET_QUERY_IDS:
         ch_query = bench.get_queries(dialect="clickhouse")[query_id]
-        transformed = transformer.transform(ch_query)
-        final = transformer.add_query_settings(transformed)
+        final = rewrite_query_for_clickhouse(ch_query)
 
         assert "SETTINGS joined_subquery_requires_alias = 0" in final, (
-            f"Q{query_id}: generic transformer must append session settings"
+            f"Q{query_id}: execution rewrites must append session settings"
         )
         assert "enable_analyzer" not in final, f"Q{query_id}: pipeline must not re-introduce analyzer opt-out"
         assert "AVG(SUM(" not in final, f"Q{query_id}: pipeline must not re-introduce nested aggregate-over-window"
