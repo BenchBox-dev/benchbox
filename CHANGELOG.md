@@ -122,6 +122,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   divergent at either scale. Q2 builds its calendar from the TPC-DS date table's fixed week and year boundaries
   instead of the sales rows, so it matches at every scale factor.
 
+- The 17 TPC-DS OBT DataFrame queries use their `obt_*` names as query IDs (`obt_row_count`, `obt_channel_revenue`
+  and so on) instead of `Q1` to `Q17`, which read as TPC-DS query numbers although the DataFrame queries are OBT-native
+  and match no TPC-DS query. `--queries` selects them by the new names, and DataFrame OBT results are labelled with them.
+
 - The PostgreSQL, DuckLake, pg_mooncake and QuestDB adapters build `CREATE TABLE` text through
   `translate_ddl` instead of their own rewrites. QuestDB writes `VARCHAR` for `CHAR(n)` and
   `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake quotes identifiers, and the pg_mooncake

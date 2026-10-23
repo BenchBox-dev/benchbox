@@ -28,7 +28,6 @@ _FILTER_OPS: dict[str, Callable[[Any, Any], Any]] = {
 
 @dataclass(frozen=True)
 class _ObtQuerySpec:
-    query_id: str
     query_name: str
     description: str
     categories: tuple[QueryCategory, ...]
@@ -43,14 +42,14 @@ class _ObtQuerySpec:
     def __post_init__(self) -> None:
         for _, _, func in self.aggregations:
             if func not in _AGG_FUNCS:
-                raise ValueError(f"Unknown aggregation func {func!r} in {self.query_id}")
+                raise ValueError(f"Unknown aggregation func {func!r} in {self.query_name}")
         for _, op, _ in self.filters:
             if op not in _FILTER_OPS:
-                raise ValueError(f"Unknown filter op {op!r} in {self.query_id}")
+                raise ValueError(f"Unknown filter op {op!r} in {self.query_name}")
         if self.descending and len(self.descending) != len(self.sort_keys):
-            raise ValueError(f"descending flags must match sort_keys in {self.query_id}")
+            raise ValueError(f"descending flags must match sort_keys in {self.query_name}")
         if self.limit < 0:
-            raise ValueError(f"limit must be >= 0 in {self.query_id}")
+            raise ValueError(f"limit must be >= 0 in {self.query_name}")
 
 
 def _make_expression_impl(spec: _ObtQuerySpec) -> Callable[[DataFrameContext], Any]:
@@ -121,7 +120,7 @@ def _pandas_scalar(table: Any, column: str, func: str) -> Any:
 def _register_spec(spec: _ObtQuerySpec) -> None:
     REGISTRY.register(
         DataFrameQuery(
-            query_id=spec.query_id,
+            query_id=spec.query_name,
             query_name=spec.query_name,
             description=spec.description,
             categories=list(spec.categories),
@@ -134,7 +133,6 @@ def _register_spec(spec: _ObtQuerySpec) -> None:
 
 _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
     _ObtQuerySpec(
-        query_id="Q1",
         query_name="obt_row_count",
         description="Total row count for OBT table",
         categories=(QueryCategory.AGGREGATE,),
@@ -142,7 +140,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         sql_equivalent="SELECT COUNT(*) AS row_count FROM tpcds_sales_returns_obt",
     ),
     _ObtQuerySpec(
-        query_id="Q2",
         query_name="obt_channel_distribution",
         description="Count sales rows by channel",
         categories=(QueryCategory.AGGREGATE, QueryCategory.GROUP_BY),
@@ -155,7 +152,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q3",
         query_name="obt_returns_summary",
         description="Summarize returned sales and amount",
         categories=(QueryCategory.AGGREGATE, QueryCategory.FILTER),
@@ -170,7 +166,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q4",
         query_name="obt_channel_revenue",
         description="Total net revenue by channel",
         categories=(QueryCategory.AGGREGATE, QueryCategory.GROUP_BY),
@@ -182,7 +177,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q5",
         query_name="obt_top_items_by_quantity",
         description="Top items by units sold",
         categories=(QueryCategory.AGGREGATE, QueryCategory.GROUP_BY, QueryCategory.SORT),
@@ -198,7 +192,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q6",
         query_name="obt_avg_ticket_by_channel",
         description="Average ticket and sales count by channel",
         categories=(QueryCategory.AGGREGATE, QueryCategory.GROUP_BY),
@@ -214,7 +207,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q7",
         query_name="obt_discounted_sales",
         description="Revenue and discount totals for discounted sales",
         categories=(QueryCategory.AGGREGATE, QueryCategory.FILTER),
@@ -231,7 +223,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q8",
         query_name="obt_profit_by_channel",
         description="Total net profit by channel",
         categories=(QueryCategory.AGGREGATE, QueryCategory.GROUP_BY),
@@ -244,7 +235,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q9",
         query_name="obt_sales_by_channel_return_flag",
         description="Sales counts by channel and return flag",
         categories=(QueryCategory.AGGREGATE, QueryCategory.GROUP_BY),
@@ -258,7 +248,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q10",
         query_name="obt_high_value_sales",
         description="Count and revenue of high-value sales",
         categories=(QueryCategory.AGGREGATE, QueryCategory.FILTER),
@@ -273,7 +262,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q11",
         query_name="obt_item_channel_quantity",
         description="Units sold by channel and item",
         categories=(QueryCategory.AGGREGATE, QueryCategory.GROUP_BY),
@@ -287,7 +275,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q12",
         query_name="obt_ticket_extremes",
         description="Minimum, maximum, and average ticket",
         categories=(QueryCategory.AGGREGATE,),
@@ -302,7 +289,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q13",
         query_name="obt_distinct_items",
         description="Count of distinct items sold",
         categories=(QueryCategory.AGGREGATE,),
@@ -310,7 +296,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         sql_equivalent="SELECT COUNT(DISTINCT item_sk) AS distinct_items FROM tpcds_sales_returns_obt",
     ),
     _ObtQuerySpec(
-        query_id="Q14",
         query_name="obt_bulk_sales",
         description="Multi-unit sales volume and revenue by channel",
         categories=(QueryCategory.AGGREGATE, QueryCategory.GROUP_BY, QueryCategory.FILTER),
@@ -328,7 +313,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q15",
         query_name="obt_coupon_sales",
         description="Coupon usage count, value, and revenue",
         categories=(QueryCategory.AGGREGATE, QueryCategory.FILTER),
@@ -345,7 +329,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q16",
         query_name="obt_store_summary",
         description="Store-channel sales, revenue, and profit",
         categories=(QueryCategory.AGGREGATE, QueryCategory.FILTER),
@@ -362,7 +345,6 @@ _QUERY_SPECS: tuple[_ObtQuerySpec, ...] = (
         ),
     ),
     _ObtQuerySpec(
-        query_id="Q17",
         query_name="obt_overall_totals",
         description="Overall sales, revenue, and profit totals",
         categories=(QueryCategory.AGGREGATE,),

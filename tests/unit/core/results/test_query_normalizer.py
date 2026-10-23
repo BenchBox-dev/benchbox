@@ -151,7 +151,10 @@ class TestFormatQueryId:
         assert format_query_id("qualify_cume_dist") == "Qqualify_cume_dist"
         assert format_query_id("qualify_cume_dist", with_prefix=False) == "qualify_cume_dist"
 
-    @pytest.mark.parametrize("query_id", ["qualify_cume_dist", "filter_decimal_selective", "14a", "1"])
+    @pytest.mark.parametrize(
+        "query_id",
+        ["qualify_cume_dist", "filter_decimal_selective", "obt_row_count", "obt_top_items_by_quantity", "14a", "1"],
+    )
     def test_format_then_normalize_round_trips(self, query_id: str) -> None:
         assert normalize_query_id(format_query_id(query_id)) == normalize_query_id(query_id)
 
