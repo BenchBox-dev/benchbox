@@ -58,7 +58,7 @@ Decision rules:
            support_level=SupportLevel.REWRITTEN,
            failure_mode=FailureMode.SYNTAX_ERROR,
            payload=RewriteDDLPayload(
-               transformer_id="myplatform_strip_foreign_keys",
+               transformer_id="translate_ddl:strip_foreign_keys",
                description="Remove FK clauses unsupported by MyPlatform.",
            ),
            reason="MyPlatform raises error XYZ on FOREIGN KEY clauses.",
@@ -107,18 +107,6 @@ SingleStore has four DDL_OPTIMIZE governance rules, all performed by
 
 Rule file: `benchbox/sql_compat/rules/ddl_optimize/singlestore_ddl_rewrites.py`
 Adapter:   `benchbox/platforms/singlestore.py` — `SingleStoreAdapter._schema_statements` supplies the shard, sort and reference-table data
-
-## DDL helper input constraint
-
-`strip_primary_keys` and `strip_foreign_keys` are text transformations for
-benchmark `CREATE TABLE` statements. Primary-key removal handles inline,
-table-level, named, and composite constraints, including nested expressions
-in the column list. Both helpers clean trailing commas and return the original
-statement when no matching constraint is present. They are not SQL string-literal parsers:
-an occurrence of a constraint phrase inside a quoted literal can be mistaken
-for a clause and removed. Callers must apply them only to schema statements
-whose literals do not contain the relevant constraint phrase. The benchmark
-schema emitters satisfy that constraint.
 
 ## Multi-rule platforms and resolve() vs resolve_all()
 

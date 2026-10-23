@@ -83,6 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   their column types. A guard test rejects bare `FLOAT` in benchmark schema specs, the Snowflake
   FlightData type map writes `DOUBLE` instead of `FLOAT` (the same 64-bit type), and the StarRocks and
   SingleStore adapters no longer pass `float_as_real` because no benchmark schema declares a bare `FLOAT`.
+- DuckDB and SQLite build their schema script with one `translate_ddl` call that also removes the TPC-DS foreign keys, instead of `translate_sql` followed by a regex strip; the generated statements are unchanged. The `ddl_helpers` regex helpers `strip_foreign_keys`, `strip_primary_keys` and `strip_tpcds_foreign_keys` are removed; the inventory keeps the `_optimize_table_definition` / `_transform_create_statement` signature detection so a reintroduced per-adapter DDL hook still fails the drift check; the `sql_compat` README, the SQLGlot and phase-aware-pipeline ADRs and the new-platform guide describe `translate_ddl` instead of per-adapter hooks.
 - The PostgreSQL, DuckLake, pg_mooncake and QuestDB adapters build `CREATE TABLE` text through
   `translate_ddl` instead of their own rewrites. QuestDB writes `VARCHAR` for `CHAR(n)` and
   `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake quotes identifiers, and the pg_mooncake

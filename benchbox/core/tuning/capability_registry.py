@@ -628,8 +628,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "core.tuning.generators.starrocks.StarRocksDDLGenerator renders PARTITION BY from tuned "
             "partitioning columns at CREATE TABLE time. Consumed by both dry-run preview "
             "(get_ddl_generator('starrocks')) and real execution -- benchbox/platforms/starrocks/"
-            "workload.py's _optimize_table_definition resolves the same generator via "
-            "_resolve_tuned_ddl_clauses and injects the tuned PARTITION BY clause. No drift between "
+            "workload.py resolves the same generator via "
+            "get_ddl_generator('starrocks') and passes the tuned PARTITION BY clause to translate_ddl. No drift between "
             "preview and execution.",
         ),
         _T.SORTING: _ddl(

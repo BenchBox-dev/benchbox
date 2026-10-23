@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.connection_wrappers import _make_stream_cursor
-from .base.ddl_helpers import strip_tpcds_foreign_keys
+from .base.ddl_helpers import translate_schema_with_tpcds_fk_strip
 
 try:
     import sqlite3
@@ -423,9 +423,7 @@ class SQLiteAdapter(PlatformAdapter):
         start_time = mono_time()
         self.log_operation_start("Schema creation", f"benchmark: {benchmark.__class__.__name__}")
 
-        schema_sql = strip_tpcds_foreign_keys(
-            self, benchmark, self._create_schema_with_tuning(benchmark, source_dialect="standard")
-        )
+        schema_sql = translate_schema_with_tpcds_fk_strip(self, benchmark, "sqlite")
 
         self.log_very_verbose(f"Executing schema creation script ({len(schema_sql)} characters)")
 
