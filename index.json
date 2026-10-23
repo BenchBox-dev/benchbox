@@ -17026,10 +17026,15 @@
       "title": "Decide whether to move the Polars lock to 2.0 and raise the supported floor"
     },
     "polars-df-compat-check-assert-polars-2-20261022": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-24T20:53:39Z",
+        "generation": "98aeb62d1cf84f1c9955ba74552ca727",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Make the polars-df compatibility target assert that Polars 2.x is installed"
     },
     "polars-engine-selection-compat-20261014": {
