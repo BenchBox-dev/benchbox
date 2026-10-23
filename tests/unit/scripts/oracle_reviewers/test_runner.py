@@ -441,6 +441,41 @@ def test_a_file_list_review_stages_the_whole_diff(
 
 
 @skip_on_windows
+def test_a_file_list_review_records_the_reviewer_unavailable_when_the_diff_cannot_be_staged(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    (workspace / runner.STAGED_DIFF_NAME).write_text("from the pull request\n", encoding="utf-8")
+    plan_path = _plan_dir(policy, tmp_path, head, "full", "file-list", "diff --git a/a.txt b/a.txt\n+whole\n", None)
+    _fake_omp(tmp_path, monkeypatch, _capture_prompt_body(tmp_path))
+    artifact = _run_review(plan_path, workspace, tmp_path, monkeypatch)
+    assert artifact["outcome"] != "verdict"
+    assert artifact["verdict"] is None
+    assert "could not be staged" in json.dumps(artifact)
+    assert not (tmp_path / "prompt.txt").exists()
+    assert (workspace / runner.STAGED_DIFF_NAME).read_text(encoding="utf-8") == "from the pull request\n"
+
+
+@skip_on_windows
+def test_a_file_created_between_the_check_and_the_write_is_neither_followed_nor_overwritten(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, _ = _workspace(tmp_path)
+    outside = tmp_path / "outside.txt"
+    source = tmp_path / "diff.patch"
+    source.write_text("+x\n", encoding="utf-8")
+
+    def racing_lexists(path: object) -> bool:
+        (workspace / runner.STAGED_DIFF_NAME).symlink_to(outside)
+        return False
+
+    monkeypatch.setattr(runner.os.path, "lexists", racing_lexists)
+    assert runner.stage_pull_request_diff(source, workspace) is None
+    assert not outside.exists()
+    assert (workspace / runner.STAGED_DIFF_NAME).is_symlink()
+
+
+@skip_on_windows
 def test_an_inline_review_embeds_the_diff_and_stages_nothing(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
