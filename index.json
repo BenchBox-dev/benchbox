@@ -29203,10 +29203,15 @@
       "title": "Add make worktree-reap to remove merged, clean worktrees in bulk"
     },
     "worktree-reap-ambiguous-triage-20261023": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-24T21:23:32Z",
+        "generation": "42e166b15b384297af2d726deaa619eb",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Triage the worktrees the reaper could not classify"
     },
     "worktree-release-force-does-not-force-past-dirty-tree-20260806": {
