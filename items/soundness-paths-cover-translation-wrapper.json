@@ -4,7 +4,7 @@
     "A PR touching any of them runs the medium tier and the oracle review (shown by a test or a dry-run of the path classifier).",
     "The list change is merged with a current-head oracle success review."
   ],
-  "context": "2026-10-21: superseded. #3192 makes oracle review fail closed (every non-inert PR is reviewed, the soundness list only sets strictness) and #3200/#3224 select or escalate PR tests by coverage, so adding these paths no longer changes whether the medium tier or review runs. Owner decides whether to drop.",
+  "context": "Closed as superseded on owner decision (2026-10-23). Oracle review now fails closed, so every non-inert PR is reviewed and the soundness list only sets strictness (PR 3192). Tests are selected or escalated by coverage (PRs 3200 and 3224). Adding the translation-wrapper paths would no longer change whether the medium tier or the review runs. No code changed.",
   "description": "PR 3185 changed benchbox/base.py and benchbox/utils/dialect_utils.py and its description said ClickBench results change, but .github/soundness-paths.txt lists neither file, so the PR's CI skipped the medium tier and oracle-review skipped its review. The break (tests/test_benchbox.py::test_translate_query, shard 1 of the medium tier) first appeared in the post-merge Trunk run 14 minutes later. Files whose output feeds published results must count as soundness paths: at least benchbox/utils/dialect_utils.py, benchbox/base.py, benchbox/platforms/base/dialect_translation.py and the vendored runtime consumers that translate SQL. Changing the list is itself a soundness-path change and needs oracle review.",
   "links": [
     ".github/soundness-paths.txt",
@@ -35,6 +35,14 @@
       "generation": "03dad8a598b8458a97761438e7ada9e4",
       "op": "take",
       "op_id": "0c43ca045661428ab3be3fda06ca4af7",
+      "session_id": "7d2f94f74b1c49ec9ffc810e3c0bad68"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:dce62a827220422fd68b23fc",
+      "at": "2026-10-23T13:16:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "996092a28f6540c0a45a4c9e9cd5a6ce",
       "session_id": "7d2f94f74b1c49ec9ffc810e3c0bad68"
     }
   ]
