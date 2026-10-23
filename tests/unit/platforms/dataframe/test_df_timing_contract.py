@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from benchbox.core.dataframe import profiling as profiling_module
 from benchbox.core.dataframe.profiling import (
     QueryExecutionProfile,
     QueryPlan,
@@ -24,6 +24,33 @@ pytestmark = [
 
 
 _CAPTURE_SLEEP_MS = 40.0
+
+
+class _FakeClock:
+    def __init__(self) -> None:
+        self.now = 1000.0
+
+    def perf_counter(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+    def elapsed_seconds(self, start: float, end: float | None = None) -> float:
+        return (self.now if end is None else end) - start
+
+
+_clock = _FakeClock()
+
+
+@pytest.fixture(autouse=True)
+def _fake_clock(monkeypatch: pytest.MonkeyPatch) -> _FakeClock:
+    clock = _clock
+    clock.now = 1000.0
+    monkeypatch.setattr(profiling_module, "time", clock)
+    monkeypatch.setattr(expression_family, "mono_time", clock.perf_counter)
+    monkeypatch.setattr(expression_family, "elapsed_seconds", clock.elapsed_seconds)
+    return clock
 
 
 class _TimingAdapter(ExpressionFamilyAdapter[dict, dict, str]):
@@ -111,17 +138,17 @@ class _TimingAdapter(ExpressionFamilyAdapter[dict, dict, str]):
 
 def _slow_capture(_lazy: Any, _platform: str) -> QueryPlan:
 
-    time.sleep(_CAPTURE_SLEEP_MS / 1000.0)
+    _clock.sleep(_CAPTURE_SLEEP_MS / 1000.0)
     return QueryPlan(platform="polars", plan_type="optimized", plan_text="PLAN")
 
 
 class TestQueryProfileContextTiming:
     def test_execution_time_excludes_measured_plan_capture(self) -> None:
         ctx = QueryProfileContext("Q1", "polars")
-        ctx._start_time = time.perf_counter()
+        ctx._start_time = _clock.perf_counter()
 
         ctx.start_plan_capture()
-        time.sleep(_CAPTURE_SLEEP_MS / 1000.0)
+        _clock.sleep(_CAPTURE_SLEEP_MS / 1000.0)
         ctx.end_plan_capture()
 
         profile = ctx.get_profile()
@@ -133,8 +160,8 @@ class TestQueryProfileContextTiming:
 
     def test_no_capture_leaves_zero_capture_time(self) -> None:
         ctx = QueryProfileContext("Q2", "polars")
-        ctx._start_time = time.perf_counter()
-        time.sleep(0.005)
+        ctx._start_time = _clock.perf_counter()
+        _clock.sleep(0.005)
         profile = ctx.get_profile()
 
         assert profile.plan_capture_time_ms == 0.0

@@ -130,11 +130,11 @@ def test_a_review_quoting_the_error_text_in_its_body_is_not_a_quota_absence() ->
 
 
 TYPESAFE_KEY = "ts_" + "Q7x9Lk2Pz8Rw4Tn6Yb1Vc3Hd5Jf0Gs7Ma2Ne"
-BROKER_TOKEN = "omp-broker-" + "Zx8Cv7Bn6Mq5Wr4Ty3Ui2Op1As0Df9Gh8Jk7"
+GATEWAY_TOKEN = "omp-gateway-" + "Zx8Cv7Bn6Mq5Wr4Ty3Ui2Op1As0Df9Gh8Jk7"
 LONG_TOKEN = "Kj7Hg6Fd5Sa4Lp3Oi2Uy1Tr0Ew9Qz8Xc7Vb6"
 
 
-@pytest.mark.parametrize("secret", [TYPESAFE_KEY, BROKER_TOKEN, LONG_TOKEN])
+@pytest.mark.parametrize("secret", [TYPESAFE_KEY, GATEWAY_TOKEN, LONG_TOKEN])
 def test_excerpt_redacts_credentials(secret: str) -> None:
     text = absence.excerpt("", f"error: request with {secret} was rejected\n")
     assert secret not in text
@@ -143,11 +143,11 @@ def test_excerpt_redacts_credentials(secret: str) -> None:
 
 def test_excerpt_redacts_credential_env_values(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TYPESAFE_API_KEY", TYPESAFE_KEY)
-    monkeypatch.setenv("OMP_AUTH_BROKER_TOKEN", BROKER_TOKEN)
+    monkeypatch.setenv("OMP_GATEWAY_TOKEN", GATEWAY_TOKEN)
     redacted_typesafe = absence.redact_detail(f"401 bad key {TYPESAFE_KEY}")
-    redacted_broker = absence.redact_detail(f"401 bad key {BROKER_TOKEN}")
+    redacted_gateway = absence.redact_detail(f"401 bad key {GATEWAY_TOKEN}")
     assert TYPESAFE_KEY not in redacted_typesafe
-    assert BROKER_TOKEN not in redacted_broker
+    assert GATEWAY_TOKEN not in redacted_gateway
     assert os.environ["TYPESAFE_API_KEY"] not in redacted_typesafe
 
 

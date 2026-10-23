@@ -5,12 +5,10 @@
 from __future__ import annotations
 
 import os
-import re
 from pathlib import Path
 from typing import Any, ClassVar
 
-from benchbox.platforms.base.ddl_helpers import strip_foreign_keys
-from benchbox.platforms.base.ddl_optimizer import BaseDdlOptimizer
+from benchbox.utils.dialect_utils import translate_ddl
 
 from ..utils.dependencies import (
     check_platform_dependencies,
@@ -56,28 +54,10 @@ _REFERENCE_TABLES = {"nation", "region"}
 _PARQUET_EXTENSIONS = {".parquet"}
 
 
-def _col_in_stmt(col_name: str, stmt: str) -> bool:
-    pattern = rf"(?<![a-zA-Z0-9_]){re.escape(col_name)}(?![a-zA-Z0-9_])"
-    return bool(re.search(pattern, stmt, re.IGNORECASE))
-
-
-_CREATE_TABLE_RE = re.compile(
-    r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:`?\w+`?\.)?`?(\w+)`?",
-    re.IGNORECASE,
-)
-
-
-def _extract_create_table_name(stmt: str) -> str | None:
-    m = _CREATE_TABLE_RE.match(stmt.strip())
-    return m.group(1).lower() if m else None
-
-
-class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, BaseDdlOptimizer, PlatformAdapter):
+class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
     default_service_port = _DEFAULT_PORT
-
-    _platform_key: ClassVar[str] = "singlestore"
 
     driver_isolation_capability = DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
     connection_operation_name = "SingleStore connection"
@@ -207,8 +187,9 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, BaseDdlO
             local_infile=True,
         )
 
-    def _transform_schema_statement(self, stmt: str, benchmark: Any) -> str:
-        return self._transform_create_statement(stmt)
+    def _schema_statements(self, benchmark: Any) -> list[str]:
+        schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
+        return translate_ddl(schema_sql, "singlestore", "singlestore", **self._ddl_options())
 
     def _load_table_name(self, table_name: str) -> str:
         return table_name.lower()
@@ -352,102 +333,18 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, BaseDdlO
 
         return platform_info
 
-    def _transform_create_statement(self, stmt: str) -> str:
-        stripped = stmt.strip()
-        upper = stripped.upper()
-
-        if not upper.startswith("CREATE TABLE"):
-            return stmt
-
-        table_match = _CREATE_TABLE_RE.match(stripped)
-        if not table_match:
-            return stmt
-
-        table_name = table_match.group(1).lower()
-
-        orig_name = table_match.group(1)
-        if orig_name != table_name:
-            name_start = table_match.start(1)
-            name_end = table_match.end(1)
-            if name_start > 0 and stripped[name_start - 1] == "`":
-                name_start -= 1
-            if name_end < len(stripped) and stripped[name_end] == "`":
-                name_end += 1
-            stripped = stripped[:name_start] + f"`{table_name}`" + stripped[name_end:]
-
-        return self.optimize_table_definition(stripped, table_name)
-
-    def singlestore_strip_foreign_keys(self, stmt: str) -> str:
-        return strip_foreign_keys(stmt)
-
-    def singlestore_reference_table(self, stmt: str) -> str:
-        table_name = _extract_create_table_name(stmt)
-        if table_name is None:
-            return stmt
-        if self.is_reference_table(table_name):
-            return re.sub(r"CREATE\s+TABLE", "CREATE REFERENCE TABLE", stmt, count=1, flags=re.IGNORECASE)
-        return stmt
-
-    def singlestore_inject_shard_key(self, stmt: str) -> str:
-        if re.search(r"\bCREATE\s+REFERENCE\s+TABLE\b", stmt, re.IGNORECASE):
-            return stmt
-        table_name = _extract_create_table_name(stmt)
-        if table_name is None:
-            return stmt
-        has_primary_key = bool(re.search(r"\bPRIMARY\s+KEY\b", stmt, re.IGNORECASE))
-        shard_col = _TPCH_SHARD_KEYS.get(table_name)
-        if shard_col and _col_in_stmt(shard_col, stmt):
-            clause = f"SHARD KEY ({shard_col})"
-        elif not has_primary_key:
-            clause = "SHARD KEY ()"
-        else:
-            return stmt
-        last_paren = stmt.rfind(")")
-        if last_paren == -1:
-            return stmt
-        before = stmt[:last_paren].rstrip()
-        after = stmt[last_paren + 1 :].strip()
-        result = f"{before},\n{clause}\n)"
-        if after:
-            result += f"\n{after}"
-        return result
-
-    def singlestore_inject_sort_key(self, stmt: str) -> str:
-        if re.search(r"\bCREATE\s+REFERENCE\s+TABLE\b", stmt, re.IGNORECASE):
-            return stmt
-        table_name = _extract_create_table_name(stmt)
-        if table_name is None:
-            return stmt
-        sort_cols = _TPCH_SORT_KEYS.get(table_name, [])
-        present_sort_cols = [c for c in sort_cols if _col_in_stmt(c, stmt)]
-        if not present_sort_cols:
-            return stmt
-        clause = f"SORT KEY ({', '.join(present_sort_cols)})"
-        last_paren = stmt.rfind(")")
-        if last_paren == -1:
-            return stmt
-        before = stmt[:last_paren].rstrip()
-        after = stmt[last_paren + 1 :].strip()
-        result = f"{before},\n{clause}\n)"
-        if after:
-            result += f"\n{after}"
-        return result
-
-    def get_shard_key_clause(self, table_name: str) -> str:
-        shard_col = _TPCH_SHARD_KEYS.get(table_name)
-        if shard_col:
-            return f"SHARD KEY ({shard_col})"
-        return "SHARD KEY ()"
-
-    def get_sort_key_clause(self, table_name: str) -> str:
-        sort_cols = _TPCH_SORT_KEYS.get(table_name)
-        if sort_cols:
-            cols_str = ", ".join(sort_cols)
-            return f"SORT KEY ({cols_str})"
-        return ""
-
-    def is_reference_table(self, table_name: str) -> bool:
-        return table_name in _REFERENCE_TABLES
+    def _ddl_options(self) -> dict[str, Any]:
+        return {
+            "strip_foreign_keys": True,
+            "table_case": "lower",
+            "float_as_real": True,
+            "type_map": "singlestore",
+            "singlestore": {
+                "shard_keys": _TPCH_SHARD_KEYS,
+                "sort_keys": _TPCH_SORT_KEYS,
+                "reference_tables": _REFERENCE_TABLES,
+            },
+        }
 
     def validate_platform_capabilities(self, benchmark_type: str):
         errors = []

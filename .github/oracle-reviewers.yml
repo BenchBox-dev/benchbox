@@ -90,6 +90,7 @@ buckets:
 classifier:
   gate_paths:
     - .github/oracle-reviewers.yml
+    - .github/oracle-omp-config.yml
     - .github/soundness-paths.txt
     - .github/workflows/oracle-review.yml
     - .github/workflows/oracle-verdict.yml
