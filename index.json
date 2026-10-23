@@ -16103,6 +16103,15 @@
       "status": "open",
       "title": "Measure oracle absence and retry reliability after remediation rollout"
     },
+    "oracle-retarget-return-waits-forever-20261023": {
+      "claim": null,
+      "needs": [
+        "oracle-patch-hash-splitlines-control-chars-20261023"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Do not leave the oracle gate waiting forever after a PR is retargeted away and back"
+    },
     "oracle-review-automatic-reevaluation-20261021": {
       "claim": null,
       "needs": [],

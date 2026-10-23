@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Reproduction test of retarget away and back: planner SKIP and gate WAITING on develop (or documented evidence the sequence cannot occur)",
+    "After the fix the same sequence yields a fresh review round or a carried decision that the gate accepts; a review predating the latest retarget is still not accepted by the gate (test)",
+    "Existing planner and check tests pass unchanged",
+    "PR merged with an oracle verdict on its final head, or no-change evidence recorded"
+  ],
+  "context": "Created 2026-10-23 from the codex review of gap issue 2808 (commit 5ca12e6ca plus merged fix PR 3316): reviewer output /Users/joe/Developer/soundness-reviews/2808/raw-run1.txt sha256 252d352256c6b45a8214c719bc554e4b9520b24cfe96ed8585bd856f38d42ec8. Finding verified by the controller where stated; line numbers are leads, re-verify on current develop.",
+  "description": "Medium finding from the 2808 review (NOT yet verified by anyone; reproduce first): review a head on develop, retarget the PR elsewhere, then retarget back to develop without changing the head. plan_round (_project/scripts/oracle_reviewers/protocol.py about lines 316-327) skips because that SHA already has a decision, while oracle_review_check.decide (_project/scripts/oracle_review_check.py about line 133) excludes reviews that predate the latest base-change event, so the check reports WAITING; manual retries also skip; recovery needs another head change or a stand-in. Related to the dropped item oracle-pull-request-target-retarget-race-20261008 (accepted risk because only one write collaborator exists) but this is a liveness bug, not a forgery risk.\n\nDECISION GATE: reproduce with a replay of the event sequence first (unit test through plan_round and decide). If the sequence cannot occur (retargeting back re-triggers a pull_request event that carries a fresh review), record that evidence and finish with no change. Otherwise make plan_round re-review (or carry with a fresh review record) when the latest base-change event is newer than the stored decision, without weakening the check's exclusion of pre-retarget reviews.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR (soundness path _project/scripts/oracle_reviewers); no pre-registered digests; never weaken a gate; no skip/xfail; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; never close/label/edit gap issues; done = merged PR plus evidence.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:68e036e23cb627417630d601",
+      "at": "2026-10-23T11:56:12Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "20ca167639474fe3a343e8c118a6a3c2",
+      "session_id": "db427a9694db441d88b0b3b12151b3f1"
+    }
+  ]
+}
