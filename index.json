@@ -28453,10 +28453,15 @@
       "title": "An older local uv silently downgrades uv.lock revision 3 to 2"
     },
     "uv-minimum-version-unenforced-20261023": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-24T22:50:14Z",
+        "generation": "2379b480b34443d7bd3d829e2b7ba002",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "The documented uv 0.13.4 minimum is not enforced"
     },
     "v-tag-ruleset-allows-tag-moves-20261009": {
