@@ -3125,6 +3125,13 @@
       "status": "done",
       "title": "CI: superseded runs leave red aggregate jobs, and oracle-review runs the PR's own script version"
     },
+    "ci-text-edit-fail-fast-live-check-20261023": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Confirm the text-edit verdict exits at once on a live PR edit while the full CI run is still running"
+    },
     "ci-visual-baseline-queue-follower-gap": {
       "claim": null,
       "needs": [],
