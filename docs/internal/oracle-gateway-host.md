@@ -111,8 +111,9 @@ Then:
    must be refused with a 403.
 9. Run one review through it:
    `gh workflow run oracle-verdict.yml --ref develop -f pr=<open soundness PR>`.
-   The attempt jobs' requests appear in `~/.omp/logs/auth-gateway.log`, and
-   the pull request gets an `oracle-verdict` status.
+   It works when the pull request's `oracle-verdict` status becomes a
+   decision (success or failure) instead of `pending: … absent`. The gateway
+   log records only start-ups, not requests.
 
 ## Routine changes
 
@@ -155,6 +156,7 @@ rm ~/Library/LaunchAgents/dev.omp.auth-broker.plist
 | Symptom | Cause and fix |
 | --- | --- |
 | Attempts end absent with connection errors | The Mac is asleep, offline or logged out, or an agent is down. Run `check`. |
+| Attempts end absent with `exit code 1` after about two minutes while `check` passes | The tailnet policy does not let `tag:oracle-ci` reach the host on port 4000. Add the port to that rule. On the host, `tailscale debug netmap \| jq -r '.PacketFilterRules[].DstPorts[] \| select(.Ports.Last < 65535) \| "\(.IP):\(.Ports.First)"'` lists the ports opened to anything narrower than the member rule. |
 | Gateway answers 401 | `ORACLE_GATEWAY_TOKEN` does not match `client.token`. Run `secrets`. |
 | Gateway answers 403 for a model | The model is not in `clients.json`. Pull `develop` and run `gateway`. |
 | `check` reports fewer models than `clients.json` | The gateway has not loaded the file. Run `gateway`. |
