@@ -697,7 +697,7 @@ def command_finalize(args: argparse.Namespace) -> int:
         loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"])
         step, errors = attempt_files.decide(selection_input, loaded)
         diff_path = Path(args.plan).parent / DIFF_FILE
-        commentable = commentable_lines(diff_path.read_text(encoding="utf-8")) if diff_path.is_file() else {}
+        commentable = commentable_lines(diff_path.read_bytes().decode("utf-8")) if diff_path.is_file() else {}
         final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable)
         previous = plan.get("previous_state")
         state = retry.next_state(

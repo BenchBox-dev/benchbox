@@ -54,8 +54,8 @@ def stage_pull_request_diff(source: Path, workspace: Path) -> Path | None:
     exclude = _git(workspace, "rev-parse", "--git-path", "info/exclude")
     if not source.is_file() or not exclude or os.path.lexists(target):
         return None
-    text = source.read_text(encoding="utf-8")
-    if not text.strip():
+    data = source.read_bytes()
+    if not data.decode("utf-8").strip():
         return None
     exclude_path = workspace / exclude
     try:
@@ -63,8 +63,8 @@ def stage_pull_request_diff(source: Path, workspace: Path) -> Path | None:
         with exclude_path.open("a", encoding="utf-8") as handle:
             handle.write(f"/{STAGED_DIFF_NAME}\n")
         descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(text)
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(data)
     except OSError:
         return None
     return target

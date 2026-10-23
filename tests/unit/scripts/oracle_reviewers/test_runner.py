@@ -290,6 +290,16 @@ def test_staged_diff_is_readable_in_the_workspace_and_leaves_it_clean(tmp_path: 
     assert _status(workspace) == ""
 
 
+def test_staged_diff_keeps_carriage_returns_byte_for_byte(tmp_path: Path) -> None:
+    workspace, _ = _workspace(tmp_path)
+    source = tmp_path / "diff.patch"
+    data = b"diff --git a/a.txt b/a.txt\n+one\r+two\r\n+three\n"
+    source.write_bytes(data)
+    staged = runner.stage_pull_request_diff(source, workspace)
+    assert staged is not None
+    assert staged.read_bytes() == data
+
+
 @pytest.mark.parametrize("content", [None, "", "  \n"])
 def test_nothing_is_staged_without_a_diff(tmp_path: Path, content: str | None) -> None:
     workspace, _ = _workspace(tmp_path)
