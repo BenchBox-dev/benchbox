@@ -180,6 +180,19 @@ def test_check_rejects_a_committed_lock_revision_downgrade(tree: Path) -> None:
     assert any("DOWNGRADE" in problem for problem in problems), problems
 
 
+def test_run_checks_can_skip_the_network_dependent_freshness_check(tree: Path) -> None:
+    seen: list[str] = []
+
+    def runner(argv, cwd):
+        seen.append(" ".join(str(a) for a in argv))
+        return 0, ""
+
+    release_flow.run_checks(tree, VERSION, runner, skip_upstream_freshness=True)
+    assert not any("check_sqlglot_upstream_freshness" in call for call in seen)
+    release_flow.run_checks(tree, VERSION, runner)
+    assert any("check_sqlglot_upstream_freshness" in call for call in seen)
+
+
 def test_check_pins_an_explicit_lock_baseline(tree: Path) -> None:
     expected = subprocess.check_output(["git", "rev-parse", "refs/tags/v1.2.2"], cwd=tree, text=True).strip()
     seen = []
@@ -432,8 +445,9 @@ def test_candidate_selection_catches_each_split_version_bump(candidate_tree: tup
     root, base = candidate_tree
     file = root / path
     file.write_text(file.read_text().replace(VERSION, "1.2.4"))
-    selected, _version = release_flow.select_candidate(root, base)
+    selected, _version, identity_changed = release_flow.select_candidate(root, base)
     assert selected
+    assert identity_changed
     assert release_flow.run_checks(root, _version, ok_runner, baseline_ref=base)
 
 
@@ -468,7 +482,7 @@ def test_candidate_selection_preserves_ordinary_prose_dependency_and_source_edit
     (root / "benchbox/new_module.py").write_text('"""Ordinary module."""\n')
     changelog = root / "CHANGELOG.md"
     changelog.write_text(changelog.read_text().replace("Earlier entry.", "Clarified older entry."))
-    assert release_flow.select_candidate(root, base) == (False, VERSION)
+    assert release_flow.select_candidate(root, base) == (False, VERSION, False)
 
 
 @pytest.mark.parametrize(
@@ -491,7 +505,7 @@ def test_candidate_selection_includes_committed_enforcement_changes(
     file.write_text(file.read_text() + "\n# Updated enforcement.\n" if file.exists() else "# Updated enforcement.\n")
     git(root, "add", "--", path)
     git(root, "commit", "-q", "-m", "Update release enforcement")
-    assert release_flow.select_candidate(root, base) == (True, VERSION)
+    assert release_flow.select_candidate(root, base) == (True, VERSION, False)
 
 
 @pytest.mark.parametrize("base", ["HEAD", "", "0" * 40])
@@ -533,7 +547,9 @@ def test_candidate_selection_cli_is_stdlib_only_and_preserves_lock(
         text=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert output.read_text() == f"release-check-needed=false\nrelease-version={VERSION}\n"
+    assert (
+        output.read_text() == f"release-check-needed=false\nrelease-version={VERSION}\nrelease-identity-changed=false\n"
+    )
     assert (root / "uv.lock").read_bytes() == original
 
 
@@ -549,7 +565,9 @@ def test_candidate_check_is_required_on_pull_requests_without_changing_legacy_pu
     assert 'git fetch --no-tags origin "$EVENT_BASE_SHA"' in selection["run"]
     check = next(step for step in steps if step.get("name") == "Check release content")
     assert check["if"] == "steps.release.outputs.release-check-needed == 'true'"
-    assert check["run"] == 'make release-check VERSION="$RELEASE_VERSION" BASE_REF="$EVENT_BASE_SHA"'
+    assert check["env"]["RELEASE_IDENTITY_CHANGED"] == "${{ steps.release.outputs.release-identity-changed }}"
+    assert 'SKIP_UPSTREAM_FRESHNESS="$skip"' in check["run"]
+    assert 'if [ "$RELEASE_IDENTITY_CHANGED" != "true" ]; then skip=1; fi' in check["run"]
     core = workflow["jobs"]["core"]
     assert "ci-paths" in core["needs"]
     aggregate = next(step for step in core["steps"] if step.get("id") == "aggregate")
@@ -568,6 +586,15 @@ def test_make_targets_exist_and_legacy_release_targets_are_kept() -> None:
         ).stdout
 
     assert "release_flow.py check --version" in dry_run("release-check")
+    assert "--skip-upstream-freshness" not in dry_run("release-check")
+    skipped = subprocess.run(
+        ["make", "-n", "release-check", f"VERSION={VERSION}", "SKIP_UPSTREAM_FRESHNESS=1"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    assert "--skip-upstream-freshness" in skipped
     assert "release_flow.py prep --version" in dry_run("release-prep")
     assert "release_finalize.py" in dry_run("release-finalize")
     assert "release_cut_start.sh" in dry_run("release-cut")

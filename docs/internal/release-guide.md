@@ -501,7 +501,13 @@ problem it finds. It verifies that:
   `scripts/sqlglot_refresh_waiver.json` with `tag`, `reason`, `approved` and
   `expires` (at most 31 days after approval); the owner reviews it like any
   release-enforcement change. The check needs network access to the upstream
-  repository and fails when it is unreachable.
+  repository and fails when it is unreachable. The pull request check runs it
+  only when the pull request changes the release identity (version markers or
+  the `[X.Y.Z]` changelog section); a pull request that only edits release
+  enforcement files (`Makefile`, `ci.yml`, the check scripts) passes
+  `SKIP_UPSTREAM_FRESHNESS=1` so an upstream SQLGlot release cannot block
+  unrelated merges. The release workflows and `release-readiness` still run
+  the check unconditionally.
 
 Both targets need the full development tree, because the lock-revision check
 lives under `_project/`.

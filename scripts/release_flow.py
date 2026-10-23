@@ -192,7 +192,14 @@ def check_sqlglot_upstream_freshness(root: Path, runner: Runner) -> list[str]:
     return _delegated("sqlglot upstream freshness", [sys.executable, str(script), "--root", str(root)], root, runner)
 
 
-def run_checks(root: Path, version: str, runner: Runner = run_command, *, baseline_ref: str | None = None) -> list[str]:
+def run_checks(
+    root: Path,
+    version: str,
+    runner: Runner = run_command,
+    *,
+    baseline_ref: str | None = None,
+    skip_upstream_freshness: bool = False,
+) -> list[str]:
     problems: list[str] = []
     if normalize_version(version) is None:
         return [f"version {version!r} is not a valid version"]
@@ -201,7 +208,8 @@ def run_checks(root: Path, version: str, runner: Runner = run_command, *, baseli
     problems += check_uv_lock_revision(root, runner, baseline_ref or latest_release_tag(root, before_version=version))
     problems += check_release_curation(root, runner)
     problems += check_dependency_bounds(root, runner)
-    problems += check_sqlglot_upstream_freshness(root, runner)
+    if not skip_upstream_freshness:
+        problems += check_sqlglot_upstream_freshness(root, runner)
     return problems
 
 
@@ -276,7 +284,7 @@ def prep(root: Path, version: str, since_ref: str | None, release_date: str | No
     return 0
 
 
-def select_candidate(root: Path, base_sha: str) -> tuple[bool, str]:
+def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool]:
     if re.fullmatch(r"[0-9a-f]{40}", base_sha) is None:
         raise ValueError("release selection requires the full immutable event base SHA")
     code, resolved = run_command(
@@ -349,7 +357,8 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str]:
         "Makefile",
         ".github/workflows/ci.yml",
     }
-    return before != after or bool(enforcement.intersection(changed.splitlines())), after[0]
+    identity_changed = before != after
+    return identity_changed or bool(enforcement.intersection(changed.splitlines())), after[0], identity_changed
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -363,6 +372,11 @@ def main(argv: list[str] | None = None) -> int:
     sub.choices["prep"].add_argument("--since-ref", help="Changelog lower bound (default: newest final v* tag)")
     sub.choices["prep"].add_argument("--release-date", help="YYYY-MM-DD (default: today)")
     sub.choices["check"].add_argument(
+        "--skip-upstream-freshness",
+        action="store_true",
+        help="Skip the network-dependent upstream SQLGlot freshness check",
+    )
+    sub.choices["check"].add_argument(
         "--baseline-ref", help="Lock revision baseline (default: prior final release tag)"
     )
     select = sub.add_parser("select", help="Select release candidates using the immutable CI event base")
@@ -373,12 +387,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "select":
         try:
-            selected, version = select_candidate(args.root, args.base_sha)
+            selected, version, identity_changed = select_candidate(args.root, args.base_sha)
         except (OSError, ValueError, KeyError, TypeError) as exc:
             print(f"release selection FAILED: {exc}", file=sys.stderr)
             return 1
         with args.github_output.open("a", encoding="utf-8") as output:
-            output.write(f"release-check-needed={str(selected).lower()}\nrelease-version={version}\n")
+            output.write(
+                f"release-check-needed={str(selected).lower()}\n"
+                f"release-version={version}\n"
+                f"release-identity-changed={str(identity_changed).lower()}\n"
+            )
         print(f"release selection: {'check required' if selected else 'unchanged release identity'}")
         return 0
     version = args.version.removeprefix("v")
@@ -386,7 +404,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "prep":
         return prep(args.root, version, args.since_ref, args.release_date, run_command)
 
-    problems = run_checks(args.root, version, baseline_ref=args.baseline_ref)
+    problems = run_checks(
+        args.root, version, baseline_ref=args.baseline_ref, skip_upstream_freshness=args.skip_upstream_freshness
+    )
     if problems:
         print(f"release-check FAILED for {version}:", file=sys.stderr)
         for problem in problems:
