@@ -346,6 +346,19 @@ def test_dml_uses_bound_parameters(dim_customer) -> None:
     assert 20 in batch_params
 
 
+def test_failed_later_step_reports_no_applied_counts(dim_customer) -> None:
+    before = _rows(dim_customer)
+    conn = _RecordingConn(dim_customer, fail_on="UPDATE")
+    stats = _apply(conn, pd.DataFrame({"CustomerID": [2, 3], "Status": ["A", "A"], "Attr": [8, 9]}), 3)
+
+    assert stats["success"] is False
+    assert any(sql.lstrip().upper().startswith("INSERT") for sql, _ in conn.calls)
+    assert stats["new_records"] == 0
+    assert stats["scd_type2_changes"] == 0
+    assert stats["updated_records"] == 0
+    assert _rows(dim_customer) == before
+
+
 def test_failed_insert_rolls_back_expiration(dim_customer) -> None:
     before = _rows(dim_customer)
     conn = _RecordingConn(dim_customer, fail_on="INSERT")

@@ -439,7 +439,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   before any write instead of treating the table as empty. Table and column names are checked
   against an allow-list before any SQL is built, a caller-owned transaction is protected with
   a SAVEPOINT (the run fails closed on connections without SAVEPOINT support, such as DuckDB),
-  and non-SCD attributes that are NULL on both sides no longer count as changed. The processor
+  and non-SCD attributes that are NULL on both sides no longer count as changed. A run that fails
+  and rolls back reports zero for the new, SCD and updated counts. The processor
   is not called by the TPC-DI ETL pipeline, so published TPC-DI results are unchanged.
 - A pull request title or body edit no longer leaves an armed pull request blocked
   with every required check green. The CI run such an edit starts now reports each

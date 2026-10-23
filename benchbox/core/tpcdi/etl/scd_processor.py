@@ -187,28 +187,30 @@ class EnhancedSCDType2Processor:
                 non_scd_columns or [],
             )
 
+            applied = {"new_records": 0, "scd_type2_changes": 0, "updated_records": 0}
             with self._transaction():
                 new_records = change_analysis["new_records"]
                 if len(new_records) > 0:
                     insert_result = self._insert_new_dimension_records(
                         new_records, table_name, business_keys, batch_id, effective_date, table_columns
                     )
-                    change_stats["new_records"] = insert_result["records_inserted"]
+                    applied["new_records"] = insert_result["records_inserted"]
 
                 scd_changes = change_analysis["scd_changes"]
                 if len(scd_changes) > 0:
                     scd_result = self._process_scd_type2_changes(
                         scd_changes, table_name, business_keys, batch_id, effective_date, table_columns
                     )
-                    change_stats["scd_type2_changes"] = scd_result["records_updated"]
+                    applied["scd_type2_changes"] = scd_result["records_updated"]
 
                 non_scd_updates = change_analysis["non_scd_updates"]
                 if len(non_scd_updates) > 0:
                     update_result = self._process_non_scd_updates(
                         non_scd_updates, table_name, batch_id, non_scd_columns, table_columns
                     )
-                    change_stats["updated_records"] = update_result["records_updated"]
+                    applied["updated_records"] = update_result["records_updated"]
 
+            change_stats.update(applied)
             unchanged_records = change_analysis["unchanged_records"]
             change_stats["unchanged_records"] = len(unchanged_records)
 
