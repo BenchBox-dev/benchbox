@@ -23,7 +23,7 @@ from benchbox.core.validation import (
     DataValidationEngine,
     ValidationResult,
 )
-from benchbox.utils.dialect_utils import apply_rewrite, apply_rewrites, resolve_sql_dialect
+from benchbox.utils.dialect_utils import UnknownSqlDialectError, apply_rewrite, apply_rewrites, resolve_sql_dialect
 from benchbox.utils.file_format import get_delimiter_for_file
 from benchbox.utils.printing import emit
 
@@ -205,9 +205,13 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         variant: str | None = None,
     ) -> str:
         target = target_dialect.lower()
+        try:
+            resolved = resolve_sql_dialect(target)
+        except UnknownSqlDialectError:
+            return query
         rewrites: list[tuple[str, dict[str, Any]]] = []
 
-        if query_id in _POSTGRES_ROLLUP_ORDER_QUERY_IDS and resolve_sql_dialect(target) == "postgres":
+        if query_id in _POSTGRES_ROLLUP_ORDER_QUERY_IDS and resolved == "postgres":
             rewrites.append(("inline_order_by_aliases", {}))
         if query_id == 90:
             rewrites.append(("nullif_zero_divisors", {"columns": _Q90_ZERO_DIVISOR_COLUMNS}))
