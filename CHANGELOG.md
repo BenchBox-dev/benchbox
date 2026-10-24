@@ -429,6 +429,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   marker-less `.csv` nulls only nullable non-text columns and keeps empty text. Columns
   declared `NOT NULL` keep their empty string. SQLite results produced before this fix
   on data with empty fields (TPC-DS, AMPLab) should be rerun.
+- `EnhancedSCDType2Processor.process_scd_changes` now writes its changes to the database. It
+  expires the current version of a changed history-tracking dimension row (`IsCurrent` 0 and
+  `EndDate` set to the new `EffectiveDate`, TPC-DI clause 4.4.1.3), inserts the new version
+  and new natural keys, and overwrites the non-SCD attribute columns and `BatchID` in place on
+  rows whose only changes are non-SCD. Before this it only counted them. Statements use bound
+  parameters and run in one transaction; the returned counts are the rows the database reports
+  as affected, and `scd_type2_changes` counts one per superseded key so that the new, SCD,
+  updated and unchanged counts add up to `records_processed`. A failed read of the current dimension or a failed `BEGIN` now aborts the run
+  before any write instead of treating the table as empty. Table and column names are checked
+  against an allow-list before any SQL is built, a caller-owned transaction is protected with
+  a SAVEPOINT (the run fails closed on connections without SAVEPOINT support, such as DuckDB),
+  and non-SCD attributes that are NULL on both sides no longer count as changed. A run that fails
+  and rolls back reports zero for the new, SCD and updated counts, and a failed `COMMIT` is
+  rolled back so the transaction is never left open. The processor
+  is not called by the TPC-DI ETL pipeline, so published TPC-DI results are unchanged.
 - A pull request title or body edit no longer leaves an armed pull request blocked
   with every required check green. The CI run such an edit starts now reports each
   required check (`core`, `explorer`, `results-data`, `docs`, `tooling`) by copying
