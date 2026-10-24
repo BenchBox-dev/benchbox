@@ -108,8 +108,8 @@ class TestQueries:
         queries = self.bm.get_queries(dialect="postgres")
 
         assert len(queries) == 20
-        assert 'ROUND(CAST(AVG("f"."dep_delay") AS DECIMAL), 2)' in queries["delay-by-airport"]
-        assert 'ROUND(AVG("f"."dep_delay"), 2)' not in queries["delay-by-airport"]
+        assert "ROUND(CAST(AVG(f.dep_delay) AS DECIMAL), 2)" in queries["delay-by-airport"]
+        assert "ROUND(AVG(f.dep_delay), 2)" not in queries["delay-by-airport"]
 
     def test_query_categories(self):
         categories = self.bm.query_manager.get_categories()

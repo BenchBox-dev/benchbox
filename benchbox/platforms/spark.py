@@ -21,8 +21,9 @@ from ._spark_helpers import (
     analyze_spark_table,
     get_spark_query_plan,
     list_spark_tables,
-    optimize_spark_table_definition,
     run_spark_schema_creation_loop,
+    spark_format_strips_constraints,
+    spark_schema_statements,
     spark_session_tuning_conf_entries,
     validate_spark_identifier,
 )
@@ -495,19 +496,14 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         spark = connection
 
         try:
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
-            statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="spark")
             fmt = self.table_format
-            v1_table = (fmt or "parquet").lower() in {"parquet", "orc"}
+            statements = spark_schema_statements(
+                schema_sql, table_format=fmt, strip_constraints=spark_format_strips_constraints(fmt)
+            )
             run_spark_schema_creation_loop(
                 spark,
                 statements,
-                lambda stmt: optimize_spark_table_definition(
-                    stmt,
-                    table_format=fmt,
-                    strip_v1_constraints=v1_table,
-                    upcast_smallint=v1_table,
-                ),
                 logger=self.logger,
                 on_location_collision=self._remove_orphaned_table_location,
             )

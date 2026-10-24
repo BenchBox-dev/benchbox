@@ -462,12 +462,24 @@ def _plan_review(
     )
 
 
+def _same_model(left: Reviewer, right: Reviewer) -> bool:
+    return (left.harness, left.model, left.effort) == (right.harness, right.model, right.effort)
+
+
 def _selection(plan: Mapping[str, Any], classification: Classification | None) -> SelectionInput:
-    candidate = None
-    if classification is not None:
-        candidate = plan.get("follow_up_reviewer") or plan["buckets"].get(classification.size_bucket)
     full = SelectionInput.from_plan(plan, _now())
-    return replace(full, chain=[reviewer for reviewer in full.chain if reviewer.name == candidate])
+    names = [reviewer.name for reviewer in full.chain]
+    starts: list[int] = []
+    if classification is not None:
+        bucket_reviewer = plan["buckets"].get(classification.size_bucket)
+        starts = [names.index(name) for name in (plan.get("follow_up_reviewer"), bucket_reviewer) if name in names]
+    if not starts:
+        return replace(full, chain=[])
+    escalation: list[Reviewer] = []
+    for reviewer in full.chain[max(starts) :]:
+        if not any(_same_model(reviewer, kept) for kept in escalation):
+            escalation.append(reviewer)
+    return replace(full, chain=escalation)
 
 
 def _read_classification(path: Path) -> Classification | None:
@@ -697,7 +709,7 @@ def command_finalize(args: argparse.Namespace) -> int:
         loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"])
         step, errors = attempt_files.decide(selection_input, loaded)
         diff_path = Path(args.plan).parent / DIFF_FILE
-        commentable = commentable_lines(diff_path.read_text(encoding="utf-8")) if diff_path.is_file() else {}
+        commentable = commentable_lines(diff_path.read_bytes().decode("utf-8")) if diff_path.is_file() else {}
         final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable)
         previous = plan.get("previous_state")
         state = retry.next_state(

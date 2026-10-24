@@ -18,7 +18,7 @@ from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.printing import emit
 
 from .base import DriverIsolationCapability, PlatformAdapter
-from .base.ddl_helpers import strip_tpcds_foreign_keys
+from .base.ddl_helpers import translate_schema_with_tpcds_fk_strip
 
 if TYPE_CHECKING:
     from benchbox.core.tuning.interface import TuningColumn
@@ -838,9 +838,7 @@ class DuckDBAdapter(PlatformAdapter):
             f"Schema constraints - Primary keys: {enable_primary_keys}, Foreign keys: {enable_foreign_keys}"
         )
 
-        schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
-
-        schema_sql = strip_tpcds_foreign_keys(self, benchmark, schema_sql)
+        schema_sql = translate_schema_with_tpcds_fk_strip(self, benchmark, "duckdb")
 
         statements = []
         current_statement = []

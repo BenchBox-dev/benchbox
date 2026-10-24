@@ -450,10 +450,15 @@ lint:
 .PHONY: uv-lock-revision-check
 uv-lock-revision-check:
 	uv run -- python _project/scripts/check_uv_lock_revision.py $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",)
+	for project in _project/sql-translation-ml _project/scripts; do uv lock --check --project "$$project" || exit 1; done
 
 .PHONY: sqlglot-upstream-freshness-check
 sqlglot-upstream-freshness-check:
 	uv run -- python scripts/check_sqlglot_upstream_freshness.py
+
+.PHONY: sqlglot-fork-diff
+sqlglot-fork-diff:
+	uv run -- python -m scripts.sqlglot_fork_diff $(if $(OLD),--old "$(OLD)",) $(if $(NEW),--new "$(NEW)",) $(if $(BASE_REF),--base-ref "$(BASE_REF)",) $(if $(OUT),--output "$(OUT)",)
 
 .PHONY: sql-execution-gate
 sql-execution-gate:

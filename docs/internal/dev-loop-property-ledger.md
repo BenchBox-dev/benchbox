@@ -67,6 +67,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | File | Classification | Property or reason |
 | --- | --- | --- |
 | `ci-text-edit-refresh.yml` | product-safety | When a full CI run completes on a pull request head, re-runs the failed jobs of the newest `CI (text edit)` run on that head so a title or body edit does not hold runners while it waits |
+| `comment-policy-nightly.yml` | tooling | Nightly and on-demand whole-tree comment-policy scan of develop; the backstop for files a pull request leaves unchanged |
 | `corpus-drift-check.yml` | product-safety | Corpus drift detection |
 | `corpus-event-bridge.yml` | product-safety | Corpus event integrity |
 | `corpus-reconciler.yml` | product-safety | Corpus reconciliation |
@@ -119,6 +120,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_oracle_review_workflow.py` | product-safety | The required check name, triggers, read-only token and script invocation of the oracle-review check |
 | `test_oracle_verdict_workflow.py` | product-safety | Oracle review triggers, guards, per-job secret scoping, sequential reviewer slots and App-only posting |
 | `test_t2_partition_workflow.py` | product-safety | Complete medium selection, correctness gate conservation, and binary framing placement |
+| `test_comment_policy_nightly_workflow.py` | tooling | Nightly comment-policy workflow triggers, develop checkout, read-only permissions, whole-tree launcher call and shared action pins |
 | `test_trunk_coverage_workflow.py` | product-safety | Coverage workflow triggers, instrumented shards, map combine with self-fetch, schedule-only staleness issue |
 | `test_trunk_workflow.py` | product-safety | Develop-push triggers, uninstrumented medium tier, retained pending runs and read-only test permissions |
 | `test_published_results_base_ci.py` | product-safety | Published corpus CI |
@@ -229,6 +231,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_results_explorer_corpus_migrate.py` | product-safety |
 | `test_results_explorer_cpu_attestation_backfill.py` | product-safety |
 | `test_results_explorer_snapshot_invariants.py` | product-safety |
+| `test_comment_policy_changed_files.py` | tooling | Changed-file selection, global-change triggers and unconditional policy checks in base comparisons |
 | `test_scheduled_workflow_liveness.py` | tooling |
 | `test_shrink_rollup.py` | pure-process |
 | `test_site_inputs.py` | product-safety | Site-inputs bundle manifest, digests and verify |

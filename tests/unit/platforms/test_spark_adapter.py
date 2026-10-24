@@ -402,36 +402,6 @@ class TestSparkAdapter:
 
         assert "customer" in normalized.lower()
 
-    def test_optimize_table_definition_parquet(self, mock_pyspark):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        sql = "CREATE TABLE orders (id INT, amount DECIMAL)"
-        optimized = optimize_spark_table_definition(
-            sql, table_format="parquet", strip_v1_constraints=True, upcast_smallint=True
-        )
-
-        assert "USING PARQUET" in optimized.upper()
-
-    def test_optimize_table_definition_delta(self, mock_pyspark):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        sql = "CREATE TABLE orders (id INT, amount DECIMAL)"
-        optimized = optimize_spark_table_definition(
-            sql, table_format="delta", strip_v1_constraints=False, upcast_smallint=False
-        )
-
-        assert "USING DELTA" in optimized.upper()
-
-    def test_optimize_table_definition_orc(self, mock_pyspark):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        sql = "CREATE TABLE orders (id INT, amount DECIMAL)"
-        optimized = optimize_spark_table_definition(
-            sql, table_format="orc", strip_v1_constraints=True, upcast_smallint=True
-        )
-
-        assert "USING ORC" in optimized.upper()
-
     def test_validate_identifier(self, mock_pyspark):
         from benchbox.platforms._spark_helpers import validate_spark_identifier
 
@@ -786,17 +756,14 @@ class TestSparkAdapterExecution:
             f"Expected query not found in spark.sql calls: {called_queries}"
         )
 
-    def test_optimize_table_definition_has_exactly_one_using_clause(self, mock_pyspark):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
+    def test_schema_statements_have_exactly_one_using_clause(self, mock_pyspark):
+        from benchbox.platforms._spark_helpers import spark_format_strips_constraints, spark_schema_statements
 
         for fmt in ("parquet", "delta", "iceberg", "orc"):
-            v1_table = fmt in {"parquet", "orc"}
-            sql = "CREATE TABLE orders (id INT, amount DECIMAL)"
-            result = optimize_spark_table_definition(
-                sql,
+            (result,) = spark_schema_statements(
+                "CREATE TABLE orders (id INT, amount DECIMAL)",
                 table_format=fmt,
-                strip_v1_constraints=v1_table,
-                upcast_smallint=v1_table,
+                strip_constraints=spark_format_strips_constraints(fmt),
             )
             using_count = result.upper().count("USING")
             assert using_count == 1, f"Expected exactly 1 USING for format={fmt!r}, got {using_count}: {result}"
@@ -823,6 +790,17 @@ class TestSparkAdapterImportError:
 
 
 class TestSparkAdapterRegistration:
+    @pytest.fixture(autouse=True)
+    def fresh_registry(self):
+        from benchbox.core.platform_registry import PlatformRegistry
+
+        saved = (PlatformRegistry._adapters, PlatformRegistry._auto_registered, PlatformRegistry._availability_cache)
+        PlatformRegistry._adapters = {}
+        PlatformRegistry._auto_registered = False
+        PlatformRegistry._availability_cache = None
+        yield
+        PlatformRegistry._adapters, PlatformRegistry._auto_registered, PlatformRegistry._availability_cache = saved
+
     def test_spark_in_platform_list(self):
         from benchbox.platforms import list_available_platforms
 

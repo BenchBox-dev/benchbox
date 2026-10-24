@@ -269,6 +269,21 @@ def test_commentable_lines_follow_the_right_side_of_hunks() -> None:
     assert lines["new.txt"] == {1}
 
 
+@pytest.mark.parametrize("separator", ["\x0b", "\x0c", "\x85", "\u2028", "\u2029", "\x1c", "\x1d", "\x1e"])
+def test_commentable_lines_ignore_unicode_line_separators_inside_diff_lines(separator: str) -> None:
+    diff = (
+        "diff --git a/a.py b/a.py\n"
+        "--- a/a.py\n"
+        "+++ b/a.py\n"
+        "@@ -1,3 +1,3 @@\n"
+        f"+first{separator}x\n"
+        f"-gone{separator}@@ -50 +50 @@\n"
+        f" kept{separator}+phantom\n"
+        "+last\n"
+    )
+    assert commentable_lines(diff) == {"a.py": {1, 2, 3}}
+
+
 def test_findings_split_into_inline_and_summary() -> None:
     verdict = validate(
         _verdict(

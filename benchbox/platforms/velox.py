@@ -19,10 +19,11 @@ from ._spark_helpers import (
     analyze_spark_table,
     is_spark_connect_reachable,
     list_spark_tables,
-    optimize_spark_table_definition,
     parse_spark_connect_endpoint,
     purge_orphaned_warehouse_directory,
     run_spark_schema_creation_loop,
+    spark_format_strips_constraints,
+    spark_schema_statements,
     spark_session_tuning_conf_entries,
     validate_spark_identifier,
 )
@@ -464,19 +465,14 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         spark = connection
 
         try:
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
-            statements = [s.strip() for s in schema_sql.split(";") if s.strip()]
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="spark")
             fmt = self.table_format
-            v1_table = (fmt or "parquet").lower() in {"parquet", "orc"}
+            statements = spark_schema_statements(
+                schema_sql, table_format=fmt, strip_constraints=spark_format_strips_constraints(fmt)
+            )
             run_spark_schema_creation_loop(
                 spark,
                 statements,
-                lambda stmt: optimize_spark_table_definition(
-                    stmt,
-                    table_format=fmt,
-                    strip_v1_constraints=v1_table,
-                    upcast_smallint=v1_table,
-                ),
                 logger=self.logger,
                 on_pre_loop=lambda s: purge_orphaned_warehouse_directory(s, logger=self.logger),
             )

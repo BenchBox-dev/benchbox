@@ -39,6 +39,7 @@ except	_sources/tpc-h/PATCHES.md
 except	docs/CLI_REFERENCE.md
 except	docs/benchmarks/sf1-calibrated-sizes.md
 except	docs/benchmarks/support-status.md
+except	docs/benchmarks/tpc-ds-obt-lineage.md
 except	docs/benchmarks/write-primitives-sketch-functions.md
 except	docs/compat/capability-matrix.md
 except	docs/compat/skip-reference.md

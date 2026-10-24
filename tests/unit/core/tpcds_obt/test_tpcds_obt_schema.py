@@ -19,7 +19,7 @@ def test_table_name_and_defaults() -> None:
 def test_full_mode_width_and_uniqueness() -> None:
     columns = schema.get_obt_columns()
     names = [col.name for col in columns]
-    assert 450 <= len(columns) <= 550
+    assert len(columns) == 715
     assert len(names) == len(set(names))
     assert {"channel", "sale_id", "has_return", "return_amount"}.issubset(set(names))
 

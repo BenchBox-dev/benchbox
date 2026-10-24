@@ -61,7 +61,7 @@ def test_transform_runs_end_to_end_with_duckdb(tmp_path: Path, monkeypatch: pyte
 
     transformer = TPCDSOBTTransformer()
 
-    def loader(conn: Any, _: Path, channels: list[str]) -> None:
+    def loader(conn: Any, _: Path, channels: list[str], mode: str) -> None:
 
         for table in [
             DATE_DIM,
@@ -716,7 +716,7 @@ def test_all_queries_execute_against_obt_data(tmp_path: Path, monkeypatch: pytes
                 25.00 AS cr_net_loss
         """)
 
-    def loader(conn_arg: Any, _: Path, channels: list[str]) -> None:
+    def loader(conn_arg: Any, _: Path, channels: list[str], mode: str) -> None:
         create_dimensions(conn_arg)
         create_fact_tables(conn_arg)
 
@@ -727,6 +727,7 @@ def test_all_queries_execute_against_obt_data(tmp_path: Path, monkeypatch: pytes
         mode="full",
         channels=["store", "web", "catalog"],
         output_format="parquet",
+        scale_factor=0.01,
     )
 
     conn.execute(f"CREATE TABLE {OBT_TABLE_NAME} AS SELECT * FROM '{result['table']}'")

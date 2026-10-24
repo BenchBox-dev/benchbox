@@ -9,7 +9,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
-    from benchbox.core.tuning.ddl_generator import ColumnDefinition, TuningClauses
+    from benchbox.core.tuning.ddl_generator import ColumnDefinition
     from benchbox.core.tuning.interface import (
         ForeignKeyConfiguration,
         PlatformOptimizationConfiguration,
@@ -128,6 +128,12 @@ class CloudSparkConfigMixin:
                 )
 
 
+_DELTA_AUTO_OPTIMIZE_PROPERTIES = {
+    "delta.autoOptimize.optimizeWrite": "true",
+    "delta.autoOptimize.autoCompact": "true",
+}
+
+
 class SparkTableFormat(str, Enum):
     DELTA = "delta"
     ICEBERG = "iceberg"
@@ -159,142 +165,120 @@ class SparkDDLGeneratorMixin:
 
         return self.table_format
 
-    def generate_tuning_clauses(
+    def generate_table_layout(
         self,
         table_tuning: TableTuning | None,
         platform_opts: PlatformOptimizationConfiguration | None = None,
-    ) -> TuningClauses:
+    ) -> dict[str, Any]:
         table_format = self.get_table_format(platform_opts)
 
         if table_format == SparkTableFormat.DELTA:
-            return self._generate_delta_tuning(table_tuning, platform_opts)
+            return self._delta_layout(table_tuning, platform_opts)
         elif table_format == SparkTableFormat.ICEBERG:
-            return self._generate_iceberg_tuning(table_tuning, platform_opts)
+            return self._iceberg_layout(table_tuning, platform_opts)
         elif table_format == SparkTableFormat.HUDI:
-            return self._generate_hudi_tuning(table_tuning, platform_opts)
+            return self._hudi_layout(table_tuning, platform_opts)
         elif table_format == SparkTableFormat.PARQUET:
-            return self._generate_parquet_tuning(table_tuning, platform_opts)
+            return self._parquet_layout(table_tuning, platform_opts)
         elif table_format == SparkTableFormat.HIVE:
-            return self._generate_hive_tuning(table_tuning, platform_opts)
+            return self._hive_layout(table_tuning, platform_opts)
 
-        from benchbox.core.tuning.ddl_generator import TuningClauses
+        return {}
 
-        return TuningClauses()
+    @staticmethod
+    def _ordered_names(columns: list[Any]) -> list[str]:
+        return [col.name for col in sorted(columns, key=lambda c: c.order)]
 
-    def _generate_delta_tuning(
+    @staticmethod
+    def _auto_optimize_enabled(platform_opts: PlatformOptimizationConfiguration | None) -> bool:
+        return getattr(platform_opts, "enable_auto_optimize", True) if platform_opts else True
+
+    @staticmethod
+    def _sort_and_cluster_columns(first: Any, second: Any) -> list[Any]:
+        return list(first) + [c for c in second if c not in first]
+
+    def _delta_zorder_columns(
         self,
         table_tuning: TableTuning | None,
         platform_opts: PlatformOptimizationConfiguration | None = None,
-    ) -> TuningClauses:
-        from benchbox.core.tuning.ddl_generator import TuningClauses
-        from benchbox.core.tuning.interface import TuningType
-
-        clauses = TuningClauses()
-
-        clauses.additional_clauses.append("USING DELTA")
-
+    ) -> list[str]:
         if not table_tuning:
-            enable_auto_optimize = True
-            if platform_opts:
-                enable_auto_optimize = getattr(platform_opts, "enable_auto_optimize", True)
-            if enable_auto_optimize:
-                clauses.table_properties["delta.autoOptimize.optimizeWrite"] = "true"
-                clauses.table_properties["delta.autoOptimize.autoCompact"] = "true"
-            return clauses
-
-        partition_columns = table_tuning.get_columns_by_type(TuningType.PARTITIONING)
-        if partition_columns:
-            sorted_cols = sorted(partition_columns, key=lambda c: c.order)
-            col_names = [c.name for c in sorted_cols]
-            clauses.partition_by = f"PARTITIONED BY ({', '.join(col_names)})"
+            return []
+        from benchbox.core.tuning.interface import TuningType
 
         cluster_columns = table_tuning.get_columns_by_type(TuningType.CLUSTERING)
         sort_columns = table_tuning.get_columns_by_type(TuningType.SORTING)
+        all_cluster_cols = self._sort_and_cluster_columns(cluster_columns, sort_columns)
+        use_liquid_clustering = getattr(platform_opts, "use_liquid_clustering", True) if platform_opts else True
 
-        all_cluster_cols = list(cluster_columns) + [c for c in sort_columns if c not in cluster_columns]
-
-        use_liquid_clustering = True
-        if platform_opts:
-            use_liquid_clustering = getattr(platform_opts, "use_liquid_clustering", True)
-
-        if all_cluster_cols and use_liquid_clustering:
-            sorted_cols = sorted(all_cluster_cols, key=lambda c: c.order)
-            col_names = [c.name for c in sorted_cols]
-            clauses.cluster_by = f"CLUSTER BY ({', '.join(col_names)})"
-        elif all_cluster_cols:
-            sorted_cols = sorted(all_cluster_cols, key=lambda c: c.order)
-            col_names = [c.name for c in sorted_cols]
-            clauses.post_create_statements.append(f"OPTIMIZE {{table_name}} ZORDER BY ({', '.join(col_names)})")
-
+        if all_cluster_cols and not use_liquid_clustering:
+            return self._ordered_names(all_cluster_cols)
         distribution_columns = table_tuning.get_columns_by_type(TuningType.DISTRIBUTION)
         if distribution_columns and not all_cluster_cols:
-            sorted_cols = sorted(distribution_columns, key=lambda c: c.order)
-            col_names = [c.name for c in sorted_cols]
-            clauses.post_create_statements.append(f"OPTIMIZE {{table_name}} ZORDER BY ({', '.join(col_names)})")
+            return self._ordered_names(distribution_columns)
+        return []
 
-        enable_auto_optimize = True
-        if platform_opts:
-            enable_auto_optimize = getattr(platform_opts, "enable_auto_optimize", True)
-
-        if enable_auto_optimize:
-            clauses.table_properties["delta.autoOptimize.optimizeWrite"] = "true"
-            clauses.table_properties["delta.autoOptimize.autoCompact"] = "true"
-
-        return clauses
-
-    def _generate_iceberg_tuning(
+    def _delta_layout(
         self,
         table_tuning: TableTuning | None,
         platform_opts: PlatformOptimizationConfiguration | None = None,
-    ) -> TuningClauses:
-        from benchbox.core.tuning.ddl_generator import TuningClauses
+    ) -> dict[str, Any]:
         from benchbox.core.tuning.interface import TuningType
 
-        clauses = TuningClauses()
-
-        clauses.additional_clauses.append("USING ICEBERG")
-
+        layout: dict[str, Any] = {"format": "delta"}
+        if self._auto_optimize_enabled(platform_opts):
+            layout["properties"] = dict(_DELTA_AUTO_OPTIMIZE_PROPERTIES)
         if not table_tuning:
-            return clauses
+            return layout
 
         partition_columns = table_tuning.get_columns_by_type(TuningType.PARTITIONING)
         if partition_columns:
-            transforms = []
+            layout["partition_by"] = self._ordered_names(partition_columns)
+
+        cluster_columns = table_tuning.get_columns_by_type(TuningType.CLUSTERING)
+        sort_columns = table_tuning.get_columns_by_type(TuningType.SORTING)
+        all_cluster_cols = self._sort_and_cluster_columns(cluster_columns, sort_columns)
+        use_liquid_clustering = getattr(platform_opts, "use_liquid_clustering", True) if platform_opts else True
+        if all_cluster_cols and use_liquid_clustering:
+            layout["cluster_by"] = self._ordered_names(all_cluster_cols)
+
+        return layout
+
+    def _iceberg_layout(
+        self,
+        table_tuning: TableTuning | None,
+        platform_opts: PlatformOptimizationConfiguration | None = None,
+    ) -> dict[str, Any]:
+        from benchbox.core.tuning.interface import TuningType
+
+        layout: dict[str, Any] = {"format": "iceberg"}
+        if not table_tuning:
+            return layout
+
+        partition_columns = table_tuning.get_columns_by_type(TuningType.PARTITIONING)
+        if partition_columns:
             sorted_cols = sorted(partition_columns, key=lambda c: c.order)
-
-            for col in sorted_cols:
-                transform = self._get_iceberg_transform(col, platform_opts)
-                transforms.append(transform)
-
-            clauses.partition_by = f"PARTITIONED BY ({', '.join(transforms)})"
+            layout["partition_by"] = [self._get_iceberg_transform(col, platform_opts) for col in sorted_cols]
 
         distribution_columns = table_tuning.get_columns_by_type(TuningType.DISTRIBUTION)
         if distribution_columns and not partition_columns:
-            sorted_cols = sorted(distribution_columns, key=lambda c: c.order)
-            transforms = []
-
             bucket_count = self.default_bucket_count
             if platform_opts:
                 bucket_count = getattr(platform_opts, "bucket_count", bucket_count)
-
-            for col in sorted_cols:
-                transforms.append(f"bucket({bucket_count}, {col.name})")
-
-            clauses.partition_by = f"PARTITIONED BY ({', '.join(transforms)})"
+            layout["partition_by"] = [
+                f"bucket({bucket_count}, {name})" for name in self._ordered_names(distribution_columns)
+            ]
 
         sort_columns = table_tuning.get_columns_by_type(TuningType.SORTING)
         cluster_columns = table_tuning.get_columns_by_type(TuningType.CLUSTERING)
-
-        all_sort_cols = list(sort_columns) + [c for c in cluster_columns if c not in sort_columns]
+        all_sort_cols = self._sort_and_cluster_columns(sort_columns, cluster_columns)
         if all_sort_cols:
             sorted_cols = sorted(all_sort_cols, key=lambda c: c.order)
-            sort_parts = []
-            for col in sorted_cols:
-                direction = getattr(col, "sort_order", "ASC")
-                sort_parts.append(f"{col.name} {direction}")
-            clauses.table_properties["write.sort-order"] = ", ".join(sort_parts)
+            layout["properties"] = {
+                "write.sort-order": ", ".join(f"{col.name} {getattr(col, 'sort_order', 'ASC')}" for col in sorted_cols)
+            }
 
-        return clauses
+        return layout
 
     def _get_iceberg_transform(
         self,
@@ -318,17 +302,12 @@ class SparkDDLGeneratorMixin:
         else:
             return col_name
 
-    def _generate_hudi_tuning(
+    def _hudi_layout(
         self,
         table_tuning: TableTuning | None,
         platform_opts: PlatformOptimizationConfiguration | None = None,
-    ) -> TuningClauses:
-        from benchbox.core.tuning.ddl_generator import TuningClauses
+    ) -> dict[str, Any]:
         from benchbox.core.tuning.interface import TuningType
-
-        clauses = TuningClauses()
-
-        clauses.additional_clauses.append("USING HUDI")
 
         record_key = None
         precombine_field = None
@@ -341,86 +320,66 @@ class SparkDDLGeneratorMixin:
             table_type = getattr(platform_opts, "hudi_table_type", table_type)
             write_operation = getattr(platform_opts, "hudi_write_operation", write_operation)
 
+        properties: dict[str, str] = {}
         if record_key:
-            clauses.table_properties["hoodie.datasource.write.recordkey.field"] = record_key
-
+            properties["hoodie.datasource.write.recordkey.field"] = record_key
         if precombine_field:
-            clauses.table_properties["hoodie.datasource.write.precombine.field"] = precombine_field
-
-        clauses.table_properties["hoodie.table.type"] = table_type
-
-        clauses.table_properties["hoodie.datasource.write.operation"] = write_operation
+            properties["hoodie.datasource.write.precombine.field"] = precombine_field
+        properties["hoodie.table.type"] = table_type
+        properties["hoodie.datasource.write.operation"] = write_operation
+        layout: dict[str, Any] = {"format": "hudi", "properties": properties}
 
         if not table_tuning:
-            return clauses
+            return layout
 
         partition_columns = table_tuning.get_columns_by_type(TuningType.PARTITIONING)
         if partition_columns:
-            sorted_cols = sorted(partition_columns, key=lambda c: c.order)
-            col_names = [c.name for c in sorted_cols]
-            clauses.partition_by = f"PARTITIONED BY ({', '.join(col_names)})"
-
-            clauses.table_properties["hoodie.datasource.write.hive_style_partitioning"] = "true"
+            layout["partition_by"] = self._ordered_names(partition_columns)
+            properties["hoodie.datasource.write.hive_style_partitioning"] = "true"
 
         distribution_columns = table_tuning.get_columns_by_type(TuningType.DISTRIBUTION)
         if distribution_columns and not record_key:
-            sorted_cols = sorted(distribution_columns, key=lambda c: c.order)
-            clauses.table_properties["hoodie.datasource.write.recordkey.field"] = sorted_cols[0].name
+            properties["hoodie.datasource.write.recordkey.field"] = self._ordered_names(distribution_columns)[0]
 
         sort_columns = table_tuning.get_columns_by_type(TuningType.SORTING)
         cluster_columns = table_tuning.get_columns_by_type(TuningType.CLUSTERING)
-
-        all_sort_cols = list(sort_columns) + [c for c in cluster_columns if c not in sort_columns]
+        all_sort_cols = self._sort_and_cluster_columns(sort_columns, cluster_columns)
         if all_sort_cols:
-            sorted_cols = sorted(all_sort_cols, key=lambda c: c.order)
-            col_names = [c.name for c in sorted_cols]
+            properties["hoodie.clustering.inline"] = "true"
+            properties["hoodie.clustering.inline.max.commits"] = "4"
+            properties["hoodie.clustering.plan.strategy.sort.columns"] = ",".join(self._ordered_names(all_sort_cols))
 
-            clauses.table_properties["hoodie.clustering.inline"] = "true"
-            clauses.table_properties["hoodie.clustering.inline.max.commits"] = "4"
-            clauses.table_properties["hoodie.clustering.plan.strategy.sort.columns"] = ",".join(col_names)
+        return layout
 
-        return clauses
-
-    def _generate_parquet_tuning(
+    def _parquet_layout(
         self,
         table_tuning: TableTuning | None,
         platform_opts: PlatformOptimizationConfiguration | None = None,
-    ) -> TuningClauses:
-        from benchbox.core.tuning.ddl_generator import TuningClauses
+    ) -> dict[str, Any]:
         from benchbox.core.tuning.interface import TuningType
 
-        clauses = TuningClauses()
-
-        clauses.additional_clauses.append("USING PARQUET")
-
+        layout: dict[str, Any] = {"format": "parquet"}
         if not table_tuning:
-            return clauses
+            return layout
 
         partition_columns = table_tuning.get_columns_by_type(TuningType.PARTITIONING)
         if partition_columns:
-            sorted_cols = sorted(partition_columns, key=lambda c: c.order)
-            col_names = [c.name for c in sorted_cols]
-            clauses.partition_by = f"PARTITIONED BY ({', '.join(col_names)})"
+            layout["partition_by"] = self._ordered_names(partition_columns)
 
         distribution_columns = table_tuning.get_columns_by_type(TuningType.DISTRIBUTION)
         if distribution_columns:
-            sorted_cols = sorted(distribution_columns, key=lambda c: c.order)
-            col_names = [c.name for c in sorted_cols]
-
             bucket_count = self.default_bucket_count
             if platform_opts:
                 bucket_count = getattr(platform_opts, "bucket_count", bucket_count)
-
-            clauses.distribute_by = f"CLUSTERED BY ({', '.join(col_names)}) INTO {bucket_count} BUCKETS"
+            layout["distribute_by"] = self._ordered_names(distribution_columns)
+            layout["buckets"] = bucket_count
 
         sort_columns = table_tuning.get_columns_by_type(TuningType.SORTING)
         cluster_columns = table_tuning.get_columns_by_type(TuningType.CLUSTERING)
-
-        all_sort_cols = list(sort_columns) + [c for c in cluster_columns if c not in sort_columns]
+        all_sort_cols = self._sort_and_cluster_columns(sort_columns, cluster_columns)
         if all_sort_cols:
-            sorted_cols = sorted(all_sort_cols, key=lambda c: c.order)
             sort_parts = []
-            for col in sorted_cols:
+            for col in sorted(all_sort_cols, key=lambda c: c.order):
                 direction = getattr(col, "sort_order", "ASC")
                 nulls = getattr(col, "nulls_position", "DEFAULT")
                 part = col.name
@@ -429,125 +388,85 @@ class SparkDDLGeneratorMixin:
                 if nulls != "DEFAULT":
                     part = f"{part} NULLS {nulls}"
                 sort_parts.append(part)
-            clauses.sort_by = f"SORTED BY ({', '.join(sort_parts)})"
+            layout["sort_by"] = sort_parts
 
-        return clauses
+        return layout
 
-    def _generate_hive_tuning(
+    def _hive_layout(
         self,
         table_tuning: TableTuning | None,
         platform_opts: PlatformOptimizationConfiguration | None = None,
-    ) -> TuningClauses:
-        from benchbox.core.tuning.ddl_generator import TuningClauses
+    ) -> dict[str, Any]:
         from benchbox.core.tuning.interface import TuningType
-
-        clauses = TuningClauses()
 
         storage_format = "PARQUET"
         if platform_opts:
             storage_format = getattr(platform_opts, "storage_format", storage_format)
-        clauses.additional_clauses.append(f"STORED AS {storage_format}")
-
+        layout: dict[str, Any] = {"stored_as": storage_format}
         if not table_tuning:
-            return clauses
+            return layout
 
         partition_columns = table_tuning.get_columns_by_type(TuningType.PARTITIONING)
         if partition_columns:
-            sorted_cols = sorted(partition_columns, key=lambda c: c.order)
-            parts = []
-            for col in sorted_cols:
-                col_type = col.type if col.type else "STRING"
-                parts.append(f"{col.name} {col_type}")
-            clauses.partition_by = f"PARTITIONED BY ({', '.join(parts)})"
+            layout["partition_by"] = self._ordered_names(partition_columns)
 
         distribution_columns = table_tuning.get_columns_by_type(TuningType.DISTRIBUTION)
-        sort_columns = table_tuning.get_columns_by_type(TuningType.SORTING)
-        cluster_columns = table_tuning.get_columns_by_type(TuningType.CLUSTERING)
-
-        all_sort_cols = list(sort_columns) + [c for c in cluster_columns if c not in sort_columns]
-
         if distribution_columns:
-            sorted_dist = sorted(distribution_columns, key=lambda c: c.order)
-            dist_names = [c.name for c in sorted_dist]
-
             bucket_count = self.default_bucket_count
             if platform_opts:
                 bucket_count = getattr(platform_opts, "bucket_count", bucket_count)
-
-            bucket_clause = f"CLUSTERED BY ({', '.join(dist_names)})"
-
+            layout["distribute_by"] = self._ordered_names(distribution_columns)
+            layout["buckets"] = bucket_count
+            sort_columns = table_tuning.get_columns_by_type(TuningType.SORTING)
+            cluster_columns = table_tuning.get_columns_by_type(TuningType.CLUSTERING)
+            all_sort_cols = self._sort_and_cluster_columns(sort_columns, cluster_columns)
             if all_sort_cols:
-                sorted_sort = sorted(all_sort_cols, key=lambda c: c.order)
-                sort_names = [c.name for c in sorted_sort]
-                bucket_clause += f" SORTED BY ({', '.join(sort_names)})"
+                layout["sort_by"] = self._ordered_names(all_sort_cols)
 
-            bucket_clause += f" INTO {bucket_count} BUCKETS"
-            clauses.distribute_by = bucket_clause
-
-        return clauses
+        return layout
 
     def generate_create_table_ddl(
         self,
         table_name: str,
         columns: list[ColumnDefinition],
-        tuning: TuningClauses | None = None,
+        layout: dict[str, Any] | None = None,
         if_not_exists: bool = False,
         schema: str | None = None,
     ) -> str:
-        parts = ["CREATE TABLE"]
+        from benchbox.utils.dialect_utils import translate_ddl
 
-        if if_not_exists:
-            parts.append("IF NOT EXISTS")
-
-        if schema:
-            parts.append(f"{schema}.{table_name}")
+        layout = layout or {}
+        column_list = ", ".join(f"{col.name} {col.data_type}" for col in columns)
+        if layout.get("stored_as"):
+            dialect = "hive"
+        elif layout.get("cluster_by"):
+            dialect = "databricks"
         else:
-            parts.append(table_name)
-
-        statement = " ".join(parts)
-
-        col_defs = []
-        for col in columns:
-            col_def = f"{col.name} {col.data_type}"
-            col_defs.append(col_def)
-
-        col_list = ",\n    ".join(col_defs)
-        statement = f"{statement} (\n    {col_list}\n)"
-
-        if tuning and not tuning.is_empty():
-            for clause in tuning.additional_clauses:
-                statement = f"{statement}\n{clause}"
-
-            if tuning.partition_by:
-                statement = f"{statement}\n{tuning.partition_by}"
-
-            if tuning.cluster_by:
-                statement = f"{statement}\n{tuning.cluster_by}"
-            if tuning.distribute_by:
-                statement = f"{statement}\n{tuning.distribute_by}"
-
-            if tuning.sort_by:
-                statement = f"{statement}\n{tuning.sort_by}"
-
-            if tuning.table_properties:
-                props = ", ".join(f"'{k}' = '{v}'" for k, v in sorted(tuning.table_properties.items()))
-                statement = f"{statement}\nTBLPROPERTIES ({props})"
-
-        statement = f"{statement};"
-
-        return statement
+            dialect = "spark"
+        statements = translate_ddl(
+            f"CREATE TABLE {table_name} ({column_list})",
+            dialect,
+            identify=False,
+            if_not_exists=if_not_exists,
+            schema=schema,
+            default_layout=layout,
+        )
+        return " ".join(statements)
 
     def get_post_load_statements(
         self,
         table_name: str,
-        tuning: TuningClauses,
+        table_tuning: TableTuning | None,
+        platform_opts: PlatformOptimizationConfiguration | None = None,
         schema: str | None = None,
     ) -> list[str]:
-        if not tuning or not tuning.post_create_statements:
+        if self.get_table_format(platform_opts) != SparkTableFormat.DELTA:
             return []
-
+        zorder = self._delta_zorder_columns(table_tuning, platform_opts)
+        if not zorder:
+            return []
         qualified_name = f"{schema}.{table_name}" if schema else table_name
-        return [stmt.format(table_name=qualified_name) for stmt in tuning.post_create_statements]
+        return [f"OPTIMIZE {qualified_name} ZORDER BY ({', '.join(zorder)})"]
 
     def supports_tuning_type(self, tuning_type: str) -> bool:
         return tuning_type.lower() in self.SUPPORTED_TUNING_TYPES

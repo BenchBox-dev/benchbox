@@ -96,6 +96,7 @@ Experimental benchmarks may graduate to standard categories when they meet these
 tpc-havoc
 tpch-skew
 tpc-ds-obt
+tpc-ds-obt-lineage
 datavault
 ```
 

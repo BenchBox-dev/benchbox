@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from benchbox.core.tuning.ddl_generator import ColumnDefinition, TuningClauses
+from benchbox.core.tuning.ddl_generator import ColumnDefinition
 from benchbox.core.tuning.interface import (
     ForeignKeyConfiguration,
     PrimaryKeyConfiguration,
@@ -284,68 +284,50 @@ class TestGetTableFormat:
         assert result == SparkTableFormat.PARQUET
 
 
-class TestGenerateTuningClausesRouting:
+class TestGenerateTableLayoutRouting:
     def test_routes_to_delta(self):
-        mixin = StubDeltaDDL()
-        clauses = mixin.generate_tuning_clauses(None)
-        assert "USING DELTA" in clauses.additional_clauses
+        assert StubDeltaDDL().generate_table_layout(None)["format"] == "delta"
 
     def test_routes_to_iceberg(self):
-        mixin = StubIcebergDDL()
-        clauses = mixin.generate_tuning_clauses(None)
-        assert "USING ICEBERG" in clauses.additional_clauses
+        assert StubIcebergDDL().generate_table_layout(None) == {"format": "iceberg"}
 
     def test_routes_to_hudi(self):
-        mixin = StubHudiDDL()
-        clauses = mixin.generate_tuning_clauses(None)
-        assert "USING HUDI" in clauses.additional_clauses
+        assert StubHudiDDL().generate_table_layout(None)["format"] == "hudi"
 
     def test_routes_to_parquet(self):
-        mixin = StubSparkDDL()
-        clauses = mixin.generate_tuning_clauses(None)
-        assert "USING PARQUET" in clauses.additional_clauses
+        assert StubSparkDDL().generate_table_layout(None) == {"format": "parquet"}
 
     def test_routes_to_hive(self):
-        mixin = StubHiveDDL()
-        clauses = mixin.generate_tuning_clauses(None)
-        assert "STORED AS PARQUET" in clauses.additional_clauses
+        assert StubHiveDDL().generate_table_layout(None) == {"stored_as": "PARQUET"}
 
-    def test_unknown_format_returns_empty_tuning_clauses(self):
+    def test_unknown_format_returns_empty_layout(self):
         mixin = StubSparkDDL()
 
         def _fake_get_table_format(platform_opts=None):
             return object()
 
         mixin.get_table_format = _fake_get_table_format
-        clauses = mixin.generate_tuning_clauses(None)
-        assert clauses.is_empty()
+        assert mixin.generate_table_layout(None) == {}
 
 
-class TestDeltaTuning:
+class TestDeltaLayout:
     def test_no_tuning_adds_auto_optimize_props(self):
-        mixin = StubDeltaDDL()
-        clauses = mixin._generate_delta_tuning(None)
-        assert clauses.table_properties["delta.autoOptimize.optimizeWrite"] == "true"
-        assert clauses.table_properties["delta.autoOptimize.autoCompact"] == "true"
+        layout = StubDeltaDDL()._delta_layout(None)
+        assert layout["properties"]["delta.autoOptimize.optimizeWrite"] == "true"
+        assert layout["properties"]["delta.autoOptimize.autoCompact"] == "true"
 
     def test_no_tuning_auto_optimize_disabled(self):
-        mixin = StubDeltaDDL()
         opts = MagicMock()
         opts.enable_auto_optimize = False
-        clauses = mixin._generate_delta_tuning(None, opts)
-        assert "delta.autoOptimize.optimizeWrite" not in clauses.table_properties
+        assert "properties" not in StubDeltaDDL()._delta_layout(None, opts)
 
     def test_partition_columns(self):
-        mixin = StubDeltaDDL()
         tt = _table_tuning(partitioning=[_col("l_shipdate", "DATE", order=1)])
-        clauses = mixin._generate_delta_tuning(tt)
-        assert clauses.partition_by == "PARTITIONED BY (l_shipdate)"
+        assert StubDeltaDDL()._delta_layout(tt)["partition_by"] == ["l_shipdate"]
 
     def test_cluster_by_liquid_clustering(self):
-        mixin = StubDeltaDDL()
         tt = _table_tuning(clustering=[_col("l_orderkey", "BIGINT", order=1)])
-        clauses = mixin._generate_delta_tuning(tt)
-        assert clauses.cluster_by == "CLUSTER BY (l_orderkey)"
+        assert StubDeltaDDL()._delta_layout(tt)["cluster_by"] == ["l_orderkey"]
 
     def test_cluster_by_zorder_when_liquid_disabled(self):
         mixin = StubDeltaDDL()
@@ -353,266 +335,192 @@ class TestDeltaTuning:
         opts.use_liquid_clustering = False
         opts.enable_auto_optimize = True
         tt = _table_tuning(clustering=[_col("l_orderkey", "BIGINT", order=1)])
-        clauses = mixin._generate_delta_tuning(tt, opts)
-        assert clauses.cluster_by is None
-        assert any("ZORDER" in s for s in clauses.post_create_statements)
+        assert "cluster_by" not in mixin._delta_layout(tt, opts)
+        assert mixin.get_post_load_statements("lineitem", tt, opts) == ["OPTIMIZE lineitem ZORDER BY (l_orderkey)"]
 
     def test_distribution_zorder_when_no_cluster_cols(self):
         mixin = StubDeltaDDL()
         tt = _table_tuning(distribution=[_col("l_orderkey", "BIGINT", order=1)])
-        clauses = mixin._generate_delta_tuning(tt)
-        assert any("ZORDER" in s for s in clauses.post_create_statements)
+        assert "cluster_by" not in mixin._delta_layout(tt)
+        assert mixin.get_post_load_statements("lineitem", tt) == ["OPTIMIZE lineitem ZORDER BY (l_orderkey)"]
 
     def test_sort_columns_added_to_cluster(self):
-        mixin = StubDeltaDDL()
         tt = _table_tuning(sorting=[_col("l_shipdate", "DATE", order=1)])
-        clauses = mixin._generate_delta_tuning(tt)
-        assert clauses.cluster_by == "CLUSTER BY (l_shipdate)"
+        assert StubDeltaDDL()._delta_layout(tt)["cluster_by"] == ["l_shipdate"]
 
     def test_auto_optimize_false_via_platform_opts(self):
-        mixin = StubDeltaDDL()
         opts = MagicMock()
         opts.enable_auto_optimize = False
         opts.use_liquid_clustering = True
         tt = _table_tuning(partitioning=[_col("l_shipdate", "DATE", order=1)])
-        clauses = mixin._generate_delta_tuning(tt, opts)
-        assert "delta.autoOptimize.optimizeWrite" not in clauses.table_properties
+        assert "properties" not in StubDeltaDDL()._delta_layout(tt, opts)
 
 
-class TestIcebergTuning:
-    def test_no_tuning_returns_iceberg_clause_only(self):
-        mixin = StubIcebergDDL()
-        clauses = mixin._generate_iceberg_tuning(None)
-        assert "USING ICEBERG" in clauses.additional_clauses
-        assert clauses.partition_by is None
+class TestIcebergLayout:
+    def test_no_tuning_returns_format_only(self):
+        assert StubIcebergDDL()._iceberg_layout(None) == {"format": "iceberg"}
 
     def test_date_column_gets_months_transform(self):
-        mixin = StubIcebergDDL()
         tt = _table_tuning(partitioning=[_col("o_orderdate", "DATE", order=1)])
-        clauses = mixin._generate_iceberg_tuning(tt)
-        assert "months(o_orderdate)" in clauses.partition_by
+        assert StubIcebergDDL()._iceberg_layout(tt)["partition_by"] == ["months(o_orderdate)"]
 
     def test_timestamp_column_gets_days_transform(self):
-        mixin = StubIcebergDDL()
         tt = _table_tuning(partitioning=[_col("ts_col", "TIMESTAMP", order=1)])
-        clauses = mixin._generate_iceberg_tuning(tt)
-        assert "days(ts_col)" in clauses.partition_by
+        assert StubIcebergDDL()._iceberg_layout(tt)["partition_by"] == ["days(ts_col)"]
 
     def test_int_column_gets_bucket_transform(self):
         mixin = StubIcebergDDL()
         tt = _table_tuning(partitioning=[_col("o_orderkey", "INTEGER", order=1)])
-        clauses = mixin._generate_iceberg_tuning(tt)
-        assert f"bucket({mixin.default_bucket_count}, o_orderkey)" in clauses.partition_by
+        assert mixin._iceberg_layout(tt)["partition_by"] == [f"bucket({mixin.default_bucket_count}, o_orderkey)"]
 
     def test_string_column_gets_identity_transform(self):
-        mixin = StubIcebergDDL()
         tt = _table_tuning(partitioning=[_col("nation_name", "VARCHAR", order=1)])
-        clauses = mixin._generate_iceberg_tuning(tt)
-        assert "nation_name" in clauses.partition_by
+        assert StubIcebergDDL()._iceberg_layout(tt)["partition_by"] == ["nation_name"]
 
     def test_explicit_partition_transform_via_platform_opts(self):
-        mixin = StubIcebergDDL()
         opts = MagicMock()
         opts.partition_transforms = {"o_orderdate": "years(o_orderdate)"}
         tt = _table_tuning(partitioning=[_col("o_orderdate", "DATE", order=1)])
-        clauses = mixin._generate_iceberg_tuning(tt, opts)
-        assert "years(o_orderdate)" in clauses.partition_by
+        assert StubIcebergDDL()._iceberg_layout(tt, opts)["partition_by"] == ["years(o_orderdate)"]
 
     def test_distribution_bucket_when_no_partition(self):
         mixin = StubIcebergDDL()
         tt = _table_tuning(distribution=[_col("o_orderkey", "INTEGER", order=1)])
-        clauses = mixin._generate_iceberg_tuning(tt)
-        assert "bucket(" in clauses.partition_by
-        assert "o_orderkey" in clauses.partition_by
+        assert mixin._iceberg_layout(tt)["partition_by"] == [f"bucket({mixin.default_bucket_count}, o_orderkey)"]
 
     def test_distribution_bucket_count_from_opts(self):
-        mixin = StubIcebergDDL()
         opts = MagicMock()
         opts.bucket_count = 16
         opts.partition_transforms = {}
         tt = _table_tuning(distribution=[_col("o_orderkey", "INTEGER", order=1)])
-        clauses = mixin._generate_iceberg_tuning(tt, opts)
-        assert "bucket(16, o_orderkey)" in clauses.partition_by
+        assert StubIcebergDDL()._iceberg_layout(tt, opts)["partition_by"] == ["bucket(16, o_orderkey)"]
 
     def test_sort_columns_added_to_write_sort_order(self):
-        mixin = StubIcebergDDL()
         tt = _table_tuning(sorting=[_col("l_shipdate", "DATE", order=1)])
-        clauses = mixin._generate_iceberg_tuning(tt)
-        assert "write.sort-order" in clauses.table_properties
-        assert "l_shipdate" in clauses.table_properties["write.sort-order"]
+        assert StubIcebergDDL()._iceberg_layout(tt)["properties"] == {"write.sort-order": "l_shipdate ASC"}
 
     def test_clustering_columns_added_to_sort_order(self):
-        mixin = StubIcebergDDL()
         tt = _table_tuning(clustering=[_col("l_orderkey", "BIGINT", order=1)])
-        clauses = mixin._generate_iceberg_tuning(tt)
-        assert "write.sort-order" in clauses.table_properties
+        assert "write.sort-order" in StubIcebergDDL()._iceberg_layout(tt)["properties"]
 
     def test_partition_transforms_dict_missing_key_falls_to_auto_detect(self):
-        mixin = StubIcebergDDL()
         opts = MagicMock()
         opts.partition_transforms = {"other_col": "years(other_col)"}
         tt = _table_tuning(partitioning=[_col("o_orderdate", "DATE", order=1)])
-        clauses = mixin._generate_iceberg_tuning(tt, opts)
-        assert "months(o_orderdate)" in clauses.partition_by
+        assert StubIcebergDDL()._iceberg_layout(tt, opts)["partition_by"] == ["months(o_orderdate)"]
 
 
-class TestHudiTuning:
+class TestHudiLayout:
     def test_no_tuning_sets_required_properties(self):
-        mixin = StubHudiDDL()
-        clauses = mixin._generate_hudi_tuning(None)
-        assert "USING HUDI" in clauses.additional_clauses
-        assert clauses.table_properties["hoodie.table.type"] == "COPY_ON_WRITE"
-        assert clauses.table_properties["hoodie.datasource.write.operation"] == "upsert"
+        layout = StubHudiDDL()._hudi_layout(None)
+        assert layout["format"] == "hudi"
+        assert layout["properties"]["hoodie.table.type"] == "COPY_ON_WRITE"
+        assert layout["properties"]["hoodie.datasource.write.operation"] == "upsert"
 
     def test_record_key_from_platform_opts(self):
-        mixin = StubHudiDDL()
         opts = MagicMock()
         opts.record_key = "id"
         opts.precombine_field = "ts"
         opts.hudi_table_type = "MERGE_ON_READ"
         opts.hudi_write_operation = "insert"
-        clauses = mixin._generate_hudi_tuning(None, opts)
-        assert clauses.table_properties["hoodie.datasource.write.recordkey.field"] == "id"
-        assert clauses.table_properties["hoodie.datasource.write.precombine.field"] == "ts"
-        assert clauses.table_properties["hoodie.table.type"] == "MERGE_ON_READ"
+        properties = StubHudiDDL()._hudi_layout(None, opts)["properties"]
+        assert properties["hoodie.datasource.write.recordkey.field"] == "id"
+        assert properties["hoodie.datasource.write.precombine.field"] == "ts"
+        assert properties["hoodie.table.type"] == "MERGE_ON_READ"
 
     def test_partition_columns_enable_hive_style(self):
-        mixin = StubHudiDDL()
         tt = _table_tuning(partitioning=[_col("o_orderdate", "DATE", order=1)])
-        clauses = mixin._generate_hudi_tuning(tt)
-        assert clauses.partition_by == "PARTITIONED BY (o_orderdate)"
-        assert clauses.table_properties["hoodie.datasource.write.hive_style_partitioning"] == "true"
+        layout = StubHudiDDL()._hudi_layout(tt)
+        assert layout["partition_by"] == ["o_orderdate"]
+        assert layout["properties"]["hoodie.datasource.write.hive_style_partitioning"] == "true"
 
     def test_distribution_col_becomes_record_key_when_no_explicit_key(self):
-        mixin = StubHudiDDL()
         tt = _table_tuning(distribution=[_col("o_orderkey", "INTEGER", order=1)])
-        clauses = mixin._generate_hudi_tuning(tt)
-        assert clauses.table_properties.get("hoodie.datasource.write.recordkey.field") == "o_orderkey"
+        properties = StubHudiDDL()._hudi_layout(tt)["properties"]
+        assert properties.get("hoodie.datasource.write.recordkey.field") == "o_orderkey"
 
     def test_sorting_enables_inline_clustering(self):
-        mixin = StubHudiDDL()
         tt = _table_tuning(sorting=[_col("l_shipdate", "DATE", order=1)])
-        clauses = mixin._generate_hudi_tuning(tt)
-        assert clauses.table_properties["hoodie.clustering.inline"] == "true"
-        assert "l_shipdate" in clauses.table_properties["hoodie.clustering.plan.strategy.sort.columns"]
+        properties = StubHudiDDL()._hudi_layout(tt)["properties"]
+        assert properties["hoodie.clustering.inline"] == "true"
+        assert "l_shipdate" in properties["hoodie.clustering.plan.strategy.sort.columns"]
 
     def test_clustering_columns_enable_inline_clustering(self):
-        mixin = StubHudiDDL()
         tt = _table_tuning(clustering=[_col("l_orderkey", "BIGINT", order=1)])
-        clauses = mixin._generate_hudi_tuning(tt)
-        assert clauses.table_properties["hoodie.clustering.inline"] == "true"
+        assert StubHudiDDL()._hudi_layout(tt)["properties"]["hoodie.clustering.inline"] == "true"
 
 
-class TestParquetTuning:
-    def test_no_tuning_returns_parquet_clause_only(self):
-        mixin = StubSparkDDL()
-        clauses = mixin._generate_parquet_tuning(None)
-        assert "USING PARQUET" in clauses.additional_clauses
-        assert clauses.partition_by is None
-        assert clauses.distribute_by is None
+class TestParquetLayout:
+    def test_no_tuning_returns_format_only(self):
+        assert StubSparkDDL()._parquet_layout(None) == {"format": "parquet"}
 
     def test_partition_columns(self):
-        mixin = StubSparkDDL()
         tt = _table_tuning(partitioning=[_col("l_shipdate", "DATE", order=1)])
-        clauses = mixin._generate_parquet_tuning(tt)
-        assert clauses.partition_by == "PARTITIONED BY (l_shipdate)"
+        assert StubSparkDDL()._parquet_layout(tt)["partition_by"] == ["l_shipdate"]
 
-    def test_distribution_columns_clustered_by(self):
+    def test_distribution_columns_bucketed(self):
         mixin = StubSparkDDL()
         tt = _table_tuning(distribution=[_col("o_orderkey", "INTEGER", order=1)])
-        clauses = mixin._generate_parquet_tuning(tt)
-        assert "CLUSTERED BY (o_orderkey)" in clauses.distribute_by
-        assert f"INTO {mixin.default_bucket_count} BUCKETS" in clauses.distribute_by
+        layout = mixin._parquet_layout(tt)
+        assert layout["distribute_by"] == ["o_orderkey"]
+        assert layout["buckets"] == mixin.default_bucket_count
 
     def test_distribution_bucket_count_override(self):
-        mixin = StubSparkDDL()
         opts = MagicMock()
         opts.bucket_count = 64
         tt = _table_tuning(distribution=[_col("o_orderkey", "INTEGER", order=1)])
-        clauses = mixin._generate_parquet_tuning(tt, opts)
-        assert "INTO 64 BUCKETS" in clauses.distribute_by
+        assert StubSparkDDL()._parquet_layout(tt, opts)["buckets"] == 64
 
     def test_sort_columns_basic(self):
-        mixin = StubSparkDDL()
         tt = _table_tuning(sorting=[_col("l_shipdate", "DATE", order=1)])
-        clauses = mixin._generate_parquet_tuning(tt)
-        assert clauses.sort_by == "SORTED BY (l_shipdate)"
+        assert StubSparkDDL()._parquet_layout(tt)["sort_by"] == ["l_shipdate"]
 
     def test_sort_column_with_desc(self):
-        mixin = StubSparkDDL()
         col = TuningColumn(name="l_shipdate", type="DATE", order=1, sort_order="DESC")
-        tt = _table_tuning(sorting=[col])
-        clauses = mixin._generate_parquet_tuning(tt)
-        assert "l_shipdate DESC" in clauses.sort_by
+        assert StubSparkDDL()._parquet_layout(_table_tuning(sorting=[col]))["sort_by"] == ["l_shipdate DESC"]
 
     def test_sort_column_with_nulls_position(self):
-        mixin = StubSparkDDL()
         col = TuningColumn(name="l_shipdate", type="DATE", order=1, nulls_position="FIRST")
-        tt = _table_tuning(sorting=[col])
-        clauses = mixin._generate_parquet_tuning(tt)
-        assert "NULLS FIRST" in clauses.sort_by
+        assert StubSparkDDL()._parquet_layout(_table_tuning(sorting=[col]))["sort_by"] == ["l_shipdate NULLS FIRST"]
 
     def test_clustering_columns_merged_into_sort(self):
-        mixin = StubSparkDDL()
         tt = _table_tuning(clustering=[_col("l_orderkey", "BIGINT", order=1)])
-        clauses = mixin._generate_parquet_tuning(tt)
-        assert clauses.sort_by == "SORTED BY (l_orderkey)"
+        assert StubSparkDDL()._parquet_layout(tt)["sort_by"] == ["l_orderkey"]
 
 
-class TestHiveTuning:
+class TestHiveLayout:
     def test_no_tuning_defaults_stored_as_parquet(self):
-        mixin = StubHiveDDL()
-        clauses = mixin._generate_hive_tuning(None)
-        assert "STORED AS PARQUET" in clauses.additional_clauses
+        assert StubHiveDDL()._hive_layout(None) == {"stored_as": "PARQUET"}
 
     def test_storage_format_override(self):
-        mixin = StubHiveDDL()
         opts = MagicMock()
         opts.storage_format = "ORC"
-        clauses = mixin._generate_hive_tuning(None, opts)
-        assert "STORED AS ORC" in clauses.additional_clauses
+        assert StubHiveDDL()._hive_layout(None, opts) == {"stored_as": "ORC"}
 
-    def test_partition_columns_include_type(self):
-        mixin = StubHiveDDL()
+    def test_partition_columns(self):
         tt = _table_tuning(partitioning=[_col("l_shipdate", "DATE", order=1)])
-        clauses = mixin._generate_hive_tuning(tt)
-        assert clauses.partition_by == "PARTITIONED BY (l_shipdate DATE)"
+        assert StubHiveDDL()._hive_layout(tt)["partition_by"] == ["l_shipdate"]
 
-    def test_partition_column_no_type_defaults_to_string(self):
-        mixin = StubHiveDDL()
-        col_mock = MagicMock()
-        col_mock.type = ""
-        col_mock.name = "region"
-        col_mock.order = 1
-        tt = MagicMock()
-        tt.get_columns_by_type.side_effect = lambda t: [col_mock] if t == TuningType.PARTITIONING else []
-        clauses = mixin._generate_hive_tuning(tt)
-        assert "region STRING" in clauses.partition_by
-
-    def test_distribution_columns_clustered_by_into_buckets(self):
+    def test_distribution_columns_bucketed(self):
         mixin = StubHiveDDL()
         tt = _table_tuning(distribution=[_col("o_orderkey", "INTEGER", order=1)])
-        clauses = mixin._generate_hive_tuning(tt)
-        assert "CLUSTERED BY (o_orderkey)" in clauses.distribute_by
-        assert f"INTO {mixin.default_bucket_count} BUCKETS" in clauses.distribute_by
+        layout = mixin._hive_layout(tt)
+        assert layout["distribute_by"] == ["o_orderkey"]
+        assert layout["buckets"] == mixin.default_bucket_count
 
-    def test_distribution_with_sorting_adds_sorted_by(self):
-        mixin = StubHiveDDL()
+    def test_distribution_with_sorting_adds_sort_by(self):
         tt = _table_tuning(
             distribution=[_col("o_orderkey", "INTEGER", order=1)],
             sorting=[_col("l_shipdate", "DATE", order=2)],
         )
-        clauses = mixin._generate_hive_tuning(tt)
-        assert "SORTED BY (l_shipdate)" in clauses.distribute_by
+        assert StubHiveDDL()._hive_layout(tt)["sort_by"] == ["l_shipdate"]
 
     def test_bucket_count_override(self):
-        mixin = StubHiveDDL()
         opts = MagicMock()
         opts.bucket_count = 8
         opts.storage_format = "PARQUET"
         tt = _table_tuning(distribution=[_col("o_orderkey", "INTEGER", order=1)])
-        clauses = mixin._generate_hive_tuning(tt, opts)
-        assert "INTO 8 BUCKETS" in clauses.distribute_by
+        assert StubHiveDDL()._hive_layout(tt, opts)["buckets"] == 8
 
 
 class TestGenerateCreateTableDDL:
@@ -622,107 +530,69 @@ class TestGenerateCreateTableDDL:
             ColumnDefinition(name="name", data_type="VARCHAR(255)"),
         ]
 
-    def test_basic_ddl_no_tuning(self):
-        mixin = StubSparkDDL()
-        ddl = mixin.generate_create_table_ddl("my_table", self._columns())
-        assert "CREATE TABLE my_table" in ddl
-        assert "id BIGINT" in ddl
-        assert "name VARCHAR(255)" in ddl
-        assert ddl.endswith(";")
+    def test_basic_ddl_no_layout(self):
+        ddl = StubSparkDDL().generate_create_table_ddl("my_table", self._columns())
+        assert ddl == "CREATE TABLE my_table (id BIGINT, name VARCHAR(255))"
 
     def test_if_not_exists(self):
-        mixin = StubSparkDDL()
-        ddl = mixin.generate_create_table_ddl("my_table", self._columns(), if_not_exists=True)
+        ddl = StubSparkDDL().generate_create_table_ddl("my_table", self._columns(), if_not_exists=True)
         assert "IF NOT EXISTS" in ddl
 
     def test_schema_prefix(self):
-        mixin = StubSparkDDL()
-        ddl = mixin.generate_create_table_ddl("my_table", self._columns(), schema="my_schema")
+        ddl = StubSparkDDL().generate_create_table_ddl("my_table", self._columns(), schema="my_schema")
         assert "my_schema.my_table" in ddl
 
-    def test_with_tuning_clauses(self):
+    def test_delta_layout_with_partitioning(self):
         mixin = StubDeltaDDL()
         tt = _table_tuning(partitioning=[_col("l_shipdate", "DATE", order=1)])
-        tuning = mixin.generate_tuning_clauses(tt)
-        ddl = mixin.generate_create_table_ddl("lineitem", self._columns(), tuning=tuning)
+        ddl = mixin.generate_create_table_ddl("lineitem", self._columns(), layout=mixin.generate_table_layout(tt))
         assert "USING DELTA" in ddl
         assert "PARTITIONED BY (l_shipdate)" in ddl
 
     def test_tblproperties_rendered(self):
         mixin = StubDeltaDDL()
-        tuning = mixin.generate_tuning_clauses(None)
-        ddl = mixin.generate_create_table_ddl("lineitem", self._columns(), tuning=tuning)
+        ddl = mixin.generate_create_table_ddl("lineitem", self._columns(), layout=mixin.generate_table_layout(None))
         assert "TBLPROPERTIES" in ddl
 
-    def test_empty_tuning_skipped(self):
+    def test_parquet_distribution_renders_clustered_by(self):
         mixin = StubSparkDDL()
-        empty_tuning = TuningClauses()
-        ddl = mixin.generate_create_table_ddl("my_table", self._columns(), tuning=empty_tuning)
-        assert "TBLPROPERTIES" not in ddl
-        assert "USING" not in ddl
-
-    def test_distribute_by_rendered(self):
-        mixin = StubSparkDDL()
-        tt = _table_tuning(distribution=[_col("o_orderkey", "INTEGER", order=1)])
-        tuning = mixin.generate_tuning_clauses(tt)
-        ddl = mixin.generate_create_table_ddl("orders", self._columns(), tuning=tuning)
-        assert "CLUSTERED BY" in ddl
-
-    def test_sort_by_rendered(self):
-        mixin = StubSparkDDL()
-        tt = _table_tuning(sorting=[_col("l_shipdate", "DATE", order=1)])
-        tuning = mixin.generate_tuning_clauses(tt)
-        ddl = mixin.generate_create_table_ddl("lineitem", self._columns(), tuning=tuning)
-        assert "SORTED BY" in ddl
+        tt = _table_tuning(distribution=[_col("id", "INTEGER", order=1)], sorting=[_col("name", "VARCHAR", order=1)])
+        ddl = mixin.generate_create_table_ddl("orders", self._columns(), layout=mixin.generate_table_layout(tt))
+        assert "USING PARQUET" in ddl
+        assert "CLUSTERED BY (id)" in ddl
+        assert "SORTED BY (name)" in ddl
 
     def test_cluster_by_rendered(self):
         mixin = StubDeltaDDL()
-        tt = _table_tuning(clustering=[_col("l_orderkey", "BIGINT", order=1)])
-        tuning = mixin.generate_tuning_clauses(tt)
-        assert tuning.cluster_by is not None
-        ddl = mixin.generate_create_table_ddl("lineitem", self._columns(), tuning=tuning)
-        assert "CLUSTER BY" in ddl
+        tt = _table_tuning(clustering=[_col("id", "BIGINT", order=1)])
+        ddl = mixin.generate_create_table_ddl("lineitem", self._columns(), layout=mixin.generate_table_layout(tt))
+        assert "CLUSTER BY (id)" in ddl
+
+    def test_hive_layout_renders_stored_as(self):
+        mixin = StubHiveDDL()
+        ddl = mixin.generate_create_table_ddl("orders", self._columns(), layout=mixin.generate_table_layout(None))
+        assert ddl.endswith("STORED AS PARQUET")
 
 
 class TestGetPostLoadStatements:
-    def test_no_post_create_statements_returns_empty(self):
-        mixin = StubDeltaDDL()
-        tuning = TuningClauses()
-        result = mixin.get_post_load_statements("lineitem", tuning)
-        assert result == []
+    def test_no_zorder_returns_empty(self):
+        assert StubDeltaDDL().get_post_load_statements("lineitem", _table_tuning()) == []
 
     def test_none_tuning_returns_empty(self):
-        mixin = StubDeltaDDL()
-        result = mixin.get_post_load_statements("lineitem", None)
-        assert result == []
+        assert StubDeltaDDL().get_post_load_statements("lineitem", None) == []
 
-    def test_post_create_statements_formatted_with_table_name(self):
-        mixin = StubDeltaDDL()
-        tuning = TuningClauses()
-        tuning.post_create_statements.append("OPTIMIZE {table_name} ZORDER BY (id)")
-        result = mixin.get_post_load_statements("lineitem", tuning)
-        assert result == ["OPTIMIZE lineitem ZORDER BY (id)"]
+    def test_non_delta_format_returns_empty(self):
+        tt = _table_tuning(distribution=[_col("id", "INTEGER", order=1)])
+        assert StubSparkDDL().get_post_load_statements("lineitem", tt) == []
+
+    def test_zorder_statement_uses_table_name(self):
+        tt = _table_tuning(distribution=[_col("id", "INTEGER", order=1)])
+        assert StubDeltaDDL().get_post_load_statements("lineitem", tt) == ["OPTIMIZE lineitem ZORDER BY (id)"]
 
     def test_schema_prefix_in_post_load(self):
-        mixin = StubDeltaDDL()
-        tuning = TuningClauses()
-        tuning.post_create_statements.append("OPTIMIZE {table_name} ZORDER BY (id)")
-        result = mixin.get_post_load_statements("lineitem", tuning, schema="tpch")
+        tt = _table_tuning(distribution=[_col("id", "INTEGER", order=1)])
+        result = StubDeltaDDL().get_post_load_statements("lineitem", tt, schema="tpch")
         assert result == ["OPTIMIZE tpch.lineitem ZORDER BY (id)"]
-
-    def test_multiple_post_load_statements(self):
-        mixin = StubDeltaDDL()
-        tuning = TuningClauses()
-        tuning.post_create_statements.extend(
-            [
-                "OPTIMIZE {table_name}",
-                "ANALYZE TABLE {table_name}",
-            ]
-        )
-        result = mixin.get_post_load_statements("orders", tuning)
-        assert len(result) == 2
-        assert "OPTIMIZE orders" in result[0]
-        assert "ANALYZE TABLE orders" in result[1]
 
 
 class TestSupportsTuningType:

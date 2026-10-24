@@ -574,31 +574,6 @@ class TestLakeSailConfigureForBenchmark:
         adapter.configure_for_benchmark(mock_session, "tpch")
 
 
-class TestLakeSailOptimizeTableDefinition:
-    def test_optimize_strips_existing_using_clause(self, mock_pyspark):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        result = optimize_spark_table_definition(
-            "CREATE TABLE t (id INT) USING DELTA",
-            table_format="parquet",
-        )
-        assert "USING PARQUET" in result.upper()
-        assert "DELTA" not in result.upper()
-
-    def test_optimize_non_create_table_returned_unchanged(self, mock_pyspark):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        sql = "INSERT INTO t VALUES (1)"
-        assert optimize_spark_table_definition(sql, table_format="parquet") == sql
-
-    def test_optimize_no_paren_returns_unchanged(self, mock_pyspark):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        sql = "CREATE TABLE t"
-        result = optimize_spark_table_definition(sql, table_format="orc")
-        assert "USING ORC" not in result.upper()
-
-
 class TestLakeSailCloseConnection:
     def test_close_connection_stop_error_logged(self, mock_pyspark):
         from benchbox.platforms.lakesail import LakeSailAdapter

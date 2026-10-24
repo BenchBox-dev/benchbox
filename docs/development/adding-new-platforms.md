@@ -356,14 +356,10 @@ def create_schema(
             enable_foreign_keys=enable_foreign_keys
         )
 
-        if hasattr(self, 'translate_sql'):
-            schema_sql = self.translate_sql(schema_sql, "duckdb")
-
-        statements = [stmt.strip() for stmt in schema_sql.split(';') if stmt.strip()]
+        statements = translate_ddl(schema_sql, "myplatform", "standard", strip_foreign_keys=not enable_foreign_keys)
 
         cursor = connection.cursor()
         for statement in statements:
-            statement = self._optimize_table_definition(statement)
             cursor.execute(statement)
             logger.debug(f"Executed schema statement: {statement[:100]}...")
 
@@ -377,18 +373,9 @@ def create_schema(
         raise
 
     return time.time() - start_time
-
-def _optimize_table_definition(self, statement: str) -> str:
-    if not statement.upper().startswith('CREATE TABLE'):
-        return statement
-
-    if 'ENGINE' not in statement.upper():
-        statement += " ENGINE=InnoDB"
-
-    return statement
 ```
 
-The `translate_sql(schema_sql, "duckdb")` call translates from the DuckDB dialect. `_optimize_table_definition` is an example hook for adding a storage engine or other platform-specific options. The `ENGINE=InnoDB` option shown is an example for MySQL-like databases.
+`translate_ddl` (from `benchbox.utils.dialect_utils`) translates the generated script and applies platform-specific DDL options such as `strip_primary_keys`, `strip_foreign_keys`, `type_map`, `schema` and `default_layout`. Register a `ddl_optimize` governance rule whose `transformer_id` is `translate_ddl:<options>` for every option set the adapter passes.
 
 ### Step 4: Implement Data Loading
 

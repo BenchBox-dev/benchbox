@@ -53,6 +53,7 @@
     "docs/benchmarks/support-status.md": "site-owned",
     "docs/benchmarks/time-series-benchmarks.md": "site-owned",
     "docs/benchmarks/tpc-di.md": "site-owned",
+    "docs/benchmarks/tpc-ds-obt-lineage.md": "site-owned",
     "docs/benchmarks/tpc-ds-obt.md": "site-owned",
     "docs/benchmarks/tpc-ds.md": "site-owned",
     "docs/benchmarks/tpc-h.md": "site-owned",
