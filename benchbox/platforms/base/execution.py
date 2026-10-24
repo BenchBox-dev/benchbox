@@ -39,7 +39,7 @@ from benchbox.platforms.base.connection_wrappers import (
     require_throughput_stream_capability,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
-from benchbox.utils.dialect_utils import SQLTranslationError
+from benchbox.utils.dialect_utils import SQLTranslationError, UnknownSqlDialectError
 from benchbox.utils.printing import quiet_console
 
 __all__ = ["TestDriversMixin", "_power_query_result", "_power_test_error_result"]
@@ -872,7 +872,7 @@ class TestDriversMixin:
                     return benchmark.get_queries(**query_kwargs)
                 else:
                     return benchmark.get_queries()
-            except SQLTranslationError:
+            except (SQLTranslationError, UnknownSqlDialectError):
                 raise
             except Exception as exc:
                 if strict_translation:

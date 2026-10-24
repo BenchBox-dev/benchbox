@@ -402,14 +402,29 @@ jobs:
         run: |
           uv run -- python -m pytest -q tests/integration/core/data_organization/test_presorted_generation.py -m "requires_table_formats" --tb=short
 
+  mirror-postgres17:
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["postgres17"]'
+
   postgres-integration:
+    needs: mirror-postgres17
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
     env:
       BENCHBOX_TEST_TIER: t3
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        image: ghcr.io/benchbox-dev/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
         env:
           POSTGRES_USER: benchbox
           POSTGRES_PASSWORD: benchbox

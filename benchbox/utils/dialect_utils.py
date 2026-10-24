@@ -246,16 +246,9 @@ def resolve_sql_dialect(platform_or_dialect: str) -> str:
     return resolved
 
 
-def _resolve_or_none(platform_or_dialect: str) -> str | None:
-    try:
-        return resolve_sql_dialect(platform_or_dialect)
-    except UnknownSqlDialectError:
-        return None
-
-
 def split_sql_statements(sql: str, source_dialect: str) -> list[str]:
+    resolved = resolve_sql_dialect(source_dialect)
     try:
-        resolved = resolve_sql_dialect(source_dialect)
         from benchbox._vendor import sqlglot
 
         tokens = sqlglot.Dialect.get_or_raise(resolved).tokenize(sql)
@@ -273,13 +266,14 @@ def split_sql_statements(sql: str, source_dialect: str) -> list[str]:
     return non_empty or [sql]
 
 
+STATEMENT_SEPARATOR = ";\n"
+
+
 def translate_sql_query(
     query: str,
     target_dialect: str,
     source_dialect: str = "netezza",
     identify: bool = True,
-    pre_processors: list[Callable[[str], str]] | None = None,
-    post_processors: list[Callable[[str], str]] | None = None,
     strict: bool | None = None,
     scope: str | None = None,
     date_columns: Iterable[str] | None = None,
@@ -288,6 +282,8 @@ def translate_sql_query(
     import logging
 
     logger = logging.getLogger(__name__)
+    src = resolve_sql_dialect(source_dialect)
+    tgt = resolve_sql_dialect(target_dialect)
     strict_mode = current_sql_translation_strict_mode() if strict is None else strict
     fingerprint = _fingerprint_sql(query) if translation_collection_active() else None
 
@@ -313,19 +309,11 @@ def translate_sql_query(
         return query
 
     try:
-        src = resolve_sql_dialect(source_dialect)
-        tgt = resolve_sql_dialect(target_dialect)
-        processed_query = query
-        if pre_processors:
-            for pre_proc in pre_processors:
-                processed_query = pre_proc(processed_query)
-
         should_identify = identify and (tgt not in NO_IDENTIFY_DIALECTS)
-        parsed = sqlglot.parse(processed_query, read=src)
-        expression = parsed[0] if parsed else None
-        if expression is None:
-            translated = ""
-        else:
+        translated_statements: list[str] = []
+        for expression in sqlglot.parse(query, read=src):
+            if expression is None:
+                continue
             for rewrite_name, rewrite_args in rewrites or ():
                 rewrite_args = dict(rewrite_args)
                 expression = apply_rewrite(rewrite_name, expression, rewrite_args.pop("dialect", src), **rewrite_args)
@@ -333,11 +321,8 @@ def translate_sql_query(
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt, **SQLITE_DISCOUNT_BOUNDS)
                 if date_columns:
                     expression = apply_rewrite("mark_date_columns", expression, tgt, date_columns=date_columns)
-            translated = expression.sql(dialect=tgt, identify=should_identify)
-
-        if post_processors:
-            for post_proc in post_processors:
-                translated = post_proc(translated)
+            translated_statements.append(expression.sql(dialect=tgt, identify=should_identify))
+        translated = STATEMENT_SEPARATOR.join(translated_statements)
 
         record_sql_translation_outcome(
             SqlTranslationOutcome(
@@ -358,8 +343,8 @@ def translate_sql_query(
         outcome = SqlTranslationOutcome(
             source_dialect=source_dialect,
             target_dialect=target_dialect,
-            normalized_source_dialect=_resolve_or_none(source_dialect),
-            normalized_target_dialect=_resolve_or_none(target_dialect),
+            normalized_source_dialect=src,
+            normalized_target_dialect=tgt,
             translator="sqlglot",
             status="failed" if strict_mode else "fallback",
             strict_mode=strict_mode,
@@ -401,30 +386,65 @@ def _fork_rewrite(name: str) -> Callable[..., object]:
     raise ValueError(f"Unknown fork rewrite: {name!r}")
 
 
-def apply_rewrite(name: str, sql_or_expression, dialect: str, **args):
+def _rewrite_tree(name: str, expression, resolved: str, **args):
     import inspect
 
     function = _fork_rewrite(name)
-    resolved = resolve_sql_dialect(dialect)
     if "dialect" in inspect.signature(function).parameters:
         args.setdefault("dialect", resolved)
+    return function(expression, **args)
+
+
+def apply_rewrite(name: str, sql_or_expression, dialect: str, **args):
     if isinstance(sql_or_expression, str):
-        from benchbox._vendor import sqlglot
-
-        expression = sqlglot.parse_one(sql_or_expression, read=resolved)
-        return function(expression, **args).sql(dialect=resolved)
-    return function(sql_or_expression, **args)
+        return apply_rewrites(sql_or_expression, dialect, [(name, args)], keep_unchanged=False)
+    return _rewrite_tree(name, sql_or_expression, resolve_sql_dialect(dialect), **args)
 
 
-def apply_rewrites(sql: str, dialect: str, rewrites: Sequence[tuple[str, dict]]) -> str:
+def apply_rewrites(sql: str, dialect: str, rewrites: Sequence[tuple[str, dict]], *, keep_unchanged: bool = True) -> str:
     from benchbox._vendor import sqlglot
 
     resolved = resolve_sql_dialect(dialect)
-    original = sqlglot.parse_one(sql, read=resolved)
-    rewritten = original
-    for name, args in rewrites:
-        rewritten = apply_rewrite(name, rewritten, resolved, **args)
-    return sql if rewritten == original else rewritten.sql(dialect=resolved)
+    strict_mode = current_sql_translation_strict_mode()
+
+    def record(status: str, error: Exception | None = None) -> None:
+        record_sql_translation_outcome(
+            SqlTranslationOutcome(
+                source_dialect=dialect,
+                target_dialect=dialect,
+                normalized_source_dialect=resolved,
+                normalized_target_dialect=resolved,
+                translator="sqlglot_rewrite",
+                status=status,
+                strict_mode=strict_mode,
+                warning_category=None if error is None or strict_mode else "rewrite_failed",
+                error_category="rewrite_failed" if error is not None and strict_mode else None,
+                message=None if error is None else str(error),
+                scope=WORKLOAD_QUERY_SCOPE,
+            )
+        )
+
+    try:
+        originals = [statement for statement in sqlglot.parse(sql, read=resolved) if statement is not None]
+        if not originals:
+            raise ValueError("No SQL statement to rewrite")
+        rewritten_statements = []
+        for original in originals:
+            rewritten = original
+            for name, args in rewrites:
+                rewritten = _rewrite_tree(name, rewritten, resolved, **args)
+            rewritten_statements.append(rewritten)
+        if keep_unchanged and rewritten_statements == originals:
+            result = sql
+        else:
+            result = STATEMENT_SEPARATOR.join(
+                statement.sql(dialect=resolved, identify=False) for statement in rewritten_statements
+            )
+    except Exception as error:
+        record("failed" if strict_mode else "fallback", error)
+        raise
+    record("success")
+    return result
 
 
 def unqualified_table_names(sql: str, dialect: str) -> list[str] | None:

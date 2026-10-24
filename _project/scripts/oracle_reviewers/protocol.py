@@ -8,6 +8,7 @@ import re
 import zlib
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from .evidence import withdrawal_cited
@@ -26,8 +27,10 @@ SKIP = "skip"
 REFUSAL = "refused"
 KINDS = (FIRST, FOLLOW_UP, CARRY, REFUSAL)
 
+UNREAD_DIGEST = "unread-"
 MARKER_VERSION = 1
 MARKER_LIMIT = 4096
+MARKER_TRIMS = ((120, 120), (80, 80), (50, 60), (32, 40), (24, 24))
 MARKER_OPEN = "<!-- oracle-protocol:"
 _MARKER = re.compile(r"<!-- oracle-protocol: v1 (?P<data>[A-Za-z0-9_-]+) -->\s*\Z")
 _HUNK = re.compile(
@@ -97,10 +100,15 @@ class Round:
 class History:
     records: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
+    submitted: list[datetime | None] = field(default_factory=list)
 
     @property
     def latest(self) -> dict[str, Any] | None:
         return self.records[-1] if self.records else None
+
+    @property
+    def latest_at(self) -> datetime | None:
+        return self.submitted[-1] if len(self.submitted) == len(self.records) and self.records else None
 
 
 def _clip(text: str, limit: int) -> str:
@@ -191,12 +199,32 @@ def encode_marker(record: Mapping[str, Any], patches: Mapping[str, str] | None =
     full = render({**record, "patch_map": dict(patches)}) if patches is not None else ""
     if full and len(full) <= MARKER_LIMIT:
         return full
-    trimmed = render(record)
-    if len(trimmed) > MARKER_LIMIT:
-        trimmed = render({**record, "summary": ""})
-    if len(trimmed) > MARKER_LIMIT:
-        raise MarkerError("the protocol record does not fit in a review marker")
-    return trimmed
+    for stripped in ({**record}, {**record, "summary": ""}):
+        trimmed = render(stripped)
+        if len(trimmed) <= MARKER_LIMIT:
+            return trimmed
+    for title_limit, file_limit in MARKER_TRIMS:
+        trimmed = render(
+            {**record, "summary": "", "open_defects": _trim_defects(record["open_defects"], title_limit, file_limit)}
+        )
+        if len(trimmed) <= MARKER_LIMIT:
+            return trimmed
+    raise MarkerError("the protocol record does not fit in a review marker")
+
+
+def _clip_head(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[: max(limit - 1, 0)] + "…"[:limit]
+
+
+def _clip_tail(text: str, limit: int) -> str:
+    return text if len(text) <= limit else ("…" + text[len(text) - limit + 1 :])[:limit]
+
+
+def _trim_defects(defects: Iterable[Mapping[str, Any]], title_limit: int, file_limit: int) -> list[dict[str, Any]]:
+    return [
+        {**item, "title": _clip_head(item["title"], title_limit), "file": _clip_tail(item["file"], file_limit)}
+        for item in defects
+    ]
 
 
 def _valid_defect(item: Any) -> bool:
@@ -254,6 +282,13 @@ def decode_marker(body: str) -> dict[str, Any] | None:
     return record
 
 
+def _review_time(value: Any) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
     own = [
         review
@@ -270,6 +305,7 @@ def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
             return History([], str(exc))
         if record is not None:
             found.records.append(record)
+            found.submitted.append(_review_time(review.get("submitted_at")))
     return found
 
 
@@ -332,6 +368,8 @@ def plan_round(
     strike_count: int,
     max_do_not_ship: int,
     force: bool = False,
+    base_changed_at: datetime | None = None,
+    base_change_unreadable: bool = False,
 ) -> Round:
     latest = found.latest
     if strike_count >= max_do_not_ship:
@@ -352,13 +390,27 @@ def plan_round(
                     f"forced re-review after {LABELS[latest['decision']]}: an author rebuttal disputes an open finding"
                 ),
             )
-        return Round(SKIP, f"head {head_sha} already has a {LABELS[latest['decision']]} decision")
+        decided_at = found.latest_at
+        stale = latest["decision"] != REFUSED and (
+            base_change_unreadable
+            or (base_changed_at is not None and (decided_at is None or decided_at <= base_changed_at))
+        )
+        if not stale:
+            return Round(SKIP, f"head {head_sha} already has a {LABELS[latest['decision']]} decision")
+        if latest["patch_digest"] == digest and not digest.startswith(UNREAD_DIGEST):
+            return Round(
+                CARRY,
+                f"the base changed after the {LABELS[latest['decision']]} decision on head {head_sha}",
+                latest["cycle"],
+                latest["round"],
+                latest,
+            )
     restart = latest["cycle"] + 1
     if latest["base_ref"] != base_ref:
         return Round(FIRST, f"the base changed from {latest['base_ref']} to {base_ref}", restart, 1, latest)
     if latest["decision"] == REFUSED:
         return Round(FIRST, "the strike limit no longer applies", restart, 1, latest)
-    if latest["patch_digest"] == digest:
+    if latest["patch_digest"] == digest and not digest.startswith(UNREAD_DIGEST):
         if force and latest["decision"] in (SHIP, SHIP_WITH_FIXES):
             return _forced_round(
                 found.records,

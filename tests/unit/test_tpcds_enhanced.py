@@ -11,6 +11,7 @@ from unittest.mock import patch
 import pytest
 
 from benchbox.core.tpcds.benchmark import TPCDSBenchmark
+from benchbox.utils.dialect_utils import UnknownSqlDialectError
 
 pytestmark = [
     pytest.mark.unit,
@@ -157,11 +158,8 @@ class TestTPCDSBenchmarkEnhanced:
                 assert pattern not in translated, f"Did not expect '{pattern}' in translated query for {case['name']}"
 
     def test_get_queries_dialect_error_handling(self, tpcds_benchmark):
-        try:
-            queries = tpcds_benchmark.get_queries(dialect="unsupported_dialect")
-            assert len(queries) >= 0
-        except Exception as e:
-            pytest.fail(f"get_queries should handle unsupported dialects gracefully: {e}")
+        with pytest.raises(UnknownSqlDialectError):
+            tpcds_benchmark.get_queries(dialect="unsupported_dialect")
 
         queries_none = tpcds_benchmark.get_queries(dialect=None)
         assert len(queries_none) >= 0

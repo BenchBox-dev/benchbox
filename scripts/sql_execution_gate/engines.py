@@ -65,11 +65,14 @@ class SqliteEngine:
         deadline = time.monotonic() + self.timeout
         self.connection.set_progress_handler(lambda: 1 if time.monotonic() > deadline else 0, 10000)
         rows: list[tuple] = []
+        produced = False
         try:
             for statement in _split(sql, self.dialect):
                 cursor = self.connection.execute(statement)
                 if cursor.description is not None:
-                    rows = cursor.fetchall()
+                    fetched = cursor.fetchall()
+                    if not produced:
+                        rows, produced = fetched, True
         except sqlite3.OperationalError as error:
             if "interrupted" in str(error):
                 raise QueryTimeout(f"exceeded {self.timeout:g}s") from error
@@ -120,11 +123,14 @@ class DuckdbEngine:
         timer = threading.Timer(self.timeout, self.connection.interrupt)
         timer.start()
         rows: list[tuple] = []
+        produced = False
         try:
             for statement in _split(sql, self.dialect):
                 cursor = self.connection.execute(statement)
                 if cursor.description is not None:
-                    rows = cursor.fetchall()
+                    fetched = cursor.fetchall()
+                    if not produced:
+                        rows, produced = fetched, True
         except Exception as error:
             if type(error).__name__ == "InterruptException":
                 raise QueryTimeout(f"exceeded {self.timeout:g}s") from error
@@ -166,13 +172,16 @@ class DatafusionEngine:
     def execute(self, sql: str) -> list[tuple]:
         assert self.context is not None
         rows: list[tuple] = []
+        produced = False
         for statement in _split(sql, self.dialect):
             batches = self.context.sql(statement).collect()
-            rows = [
+            fetched = [
                 tuple(column[index].as_py() for column in batch.columns)
                 for batch in batches
                 for index in range(batch.num_rows)
             ]
+            if not produced:
+                rows, produced = fetched, True
         return rows
 
     def close(self) -> None:
@@ -220,10 +229,13 @@ class PostgresEngine:
     def execute(self, sql: str) -> list[tuple]:
         assert self.connection is not None
         rows: list[tuple] = []
+        produced = False
         for statement in _split(sql, self.dialect):
             cursor = self.connection.execute(statement)
             if cursor.description is not None:
-                rows = cursor.fetchall()
+                fetched = cursor.fetchall()
+                if not produced:
+                    rows, produced = fetched, True
         return rows
 
     def close(self) -> None:
