@@ -578,13 +578,6 @@ class TestMakefileCommands:
         )
         assert "correctness-gate" in aggregate["needs"]
 
-    def test_lint_markers_runs_marker_strategy_policy_explicitly(self):
-        makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text()
-        lint_body = _makefile_target_body(makefile_content, "lint-markers")
-
-        assert "--collect-only" in lint_body
-        assert "tests/unit/test_marker_strategy.py -q" in lint_body
-
     def test_makefile_test_slow_runs_serially(self):
         makefile_content = (Path(__file__).resolve().parent.parent.parent / "Makefile").read_text()
 

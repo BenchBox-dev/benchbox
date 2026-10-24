@@ -358,7 +358,7 @@
       "WA003": 7
     },
     "tests/unit/test_standardized_test_commands.py": {
-      "WA003": 25
+      "WA003": 24
     },
     "tests/unit/test_tpcds_streams.py": {
       "WA003": 2

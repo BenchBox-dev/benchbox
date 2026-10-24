@@ -64,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The lint job collects the test suite once. `make lint-markers` collects with `--assert=plain` and records every test's markers to `$MARKER_MANIFEST`; the fast-lane guard (`fast_lane_ceiling_check.py --manifest-from-env`, or `--manifest <path>`) evaluates each forbidden marker expression and path substring against that record with pytest's own marker-expression evaluation, instead of running one full collection per expression. Without either option the guard collects for itself, so a leftover `MARKER_MANIFEST` in a shell is never read by accident. Collection errors, unregistered markers, a collection timeout and a record with no tests fail; violations and counts are unchanged.
 - The Spark, Velox, LakeSail and Databricks adapters build `CREATE TABLE` statements with
   `translate_ddl` instead of rewriting the translated text: the `USING` format, Delta auto-optimize
   and Hudi table properties, `CREATE OR REPLACE`, and the Parquet and ORC constraint and `SMALLINT`
