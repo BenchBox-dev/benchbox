@@ -2825,6 +2825,9 @@ class DatabricksAdapter(PlatformAdapter):
             self._delta_optimized_after_load().add(physical_table.lower())
             if not self._apply_delta_optimize(cursor, physical_table, phase="post_load", zorder_columns=zorder_columns):
                 self.note_post_load_maintenance_failure()
+                if zorder_columns and self.enable_delta_optimization:
+                    if not self._apply_delta_optimize(cursor, physical_table, phase="post_load"):
+                        self.note_post_load_maintenance_failure()
             return True
         finally:
             cursor.close()
@@ -2837,12 +2840,14 @@ class DatabricksAdapter(PlatformAdapter):
     def _table_zorder_columns(self, physical_table: str, table_tuning: Any) -> list[str]:
         from benchbox.core.tuning.interface import TuningType
 
+        partition_names = {col.name.lower() for col in table_tuning.get_columns_by_type(TuningType.PARTITIONING) or []}
         return [
             self.resolve_physical_column(physical_table, column)
             for column in self._build_zorder_columns(
                 table_tuning.get_columns_by_type(TuningType.CLUSTERING),
                 table_tuning.get_columns_by_type(TuningType.DISTRIBUTION),
             )
+            if column.lower() not in partition_names
         ]
 
     def apply_table_tunings(self, table_tuning, connection: Any) -> None:

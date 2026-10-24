@@ -501,7 +501,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   loads. The statement used to run before the load, on an empty table, so tuned
   results measured plain compaction while the ledger recorded `z_order` as
   applied. The statement is now recorded in the `post_load` phase and replaces
-  the plain `OPTIMIZE` for that table. The strategy resolves to `z_order` as
+  the plain `OPTIMIZE` for that table. When the `ZORDER` statement fails it is
+  recorded as skipped, the post-load maintenance phase reports `FAILED`, and the
+  plain `OPTIMIZE` and `ANALYZE` still run for that table. Partition columns are
+  never used as `ZORDER BY` columns, since Delta rejects them. The strategy resolves to `z_order` as
   before: an explicit `z_order` setting, or any tuning with clustering or
   distribution columns whose strategy is `none`, whether left unset or set
   explicitly. No published result is affected:
