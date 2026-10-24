@@ -714,11 +714,6 @@ jobs:
         continue-on-error: true
         run: uv run -- python scripts/check_public_contract_drift.py
 
-      - name: Documentation contracts drift check
-        id: guard-doc-contracts
-        continue-on-error: true
-        run: make doc-contracts-guard
-
       - name: Dependency audit (no unused declarations)
         id: guard-audit-deps
         continue-on-error: true

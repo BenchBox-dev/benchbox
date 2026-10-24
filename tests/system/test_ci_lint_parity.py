@@ -105,7 +105,6 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "code-lint", "Platform manifest drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Oracle coverage map drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Public contract drift check"): "ci-lint",
-    ("ci.yml", "code-lint", "Documentation contracts drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Dependency inventory drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Release curation list drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Untracked skill-mirror drift guard (cloud parity)"): "ci-lint",

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import json
 import re
 from pathlib import Path
 from typing import Any
@@ -74,9 +73,21 @@ EXPECTED_RUN_PARAMS = {
     "platform_options": {"type": "object or null", "required": False, "default": None},
 }
 
-RUN_SURFACE = json.loads((REPO_ROOT / "quality/mcp-run-surface.json").read_text(encoding="utf-8"))
-MCP_TO_CLI_OPTIONS = RUN_SURFACE["run_parameter_cli_options"]
-PARTIAL_CLI_SURFACES = set(RUN_SURFACE["partial_cli_surfaces"])
+MCP_TO_CLI_OPTIONS = {
+    "platform": "--platform",
+    "benchmark": "--benchmark",
+    "scale_factor": "--scale",
+    "queries": "--queries",
+    "phases": "--phases",
+    "mode": "--mode",
+    "execution_engine": "--execution-engine",
+    "capture_plans": "--capture-plans",
+    "dry_run": "--dry-run",
+    "validate_only": None,
+    "link_probe": "--no-link-probe",
+    "platform_options": "--platform-option",
+}
+PARTIAL_CLI_SURFACES = {"--platform-option"}
 
 
 def _actual_cli_options() -> set[str]:
@@ -100,11 +111,55 @@ def _omitted_cli_surfaces() -> set[str]:
     return omitted
 
 
-RATIFIED_OMISSION_TIERS = set(RUN_SURFACE["ratified_tiers"])
+RATIFIED_OMISSION_TIERS = {
+    "security-scoped",
+    "interaction-scoped",
+    "not-yet-demanded",
+}
 
 LEDGERED_CLI_SURFACES = _omitted_cli_surfaces()
 
-EXPECTED_OMISSION_TIERS = RUN_SURFACE["omission_tiers"]
+EXPECTED_OMISSION_TIERS = {
+    "--benchmark-option": "security-scoped",
+    "--force": "security-scoped",
+    "--global-cache": "security-scoped",
+    "--output": "security-scoped",
+    "--platform-option": "security-scoped",
+    "--publish": "security-scoped",
+    "--publish-label": "security-scoped",
+    "--publish-target": "security-scoped",
+    "--non-interactive": "interaction-scoped",
+    "--no-progress": "interaction-scoped",
+    "--quiet": "interaction-scoped",
+    "--verbose": "interaction-scoped",
+    "--compression": "not-yet-demanded",
+    "--iterations": "not-yet-demanded",
+    "--no-monitoring": "not-yet-demanded",
+    "--show-plans": "interaction-scoped",
+    "--normalize-plan-literals": "not-yet-demanded",
+    "--official": "not-yet-demanded",
+    "--plan-config": "not-yet-demanded",
+    "--presort": "not-yet-demanded",
+    "--seed": "not-yet-demanded",
+    "--sorted-ingestion-*": "not-yet-demanded",
+    "--table-format": "not-yet-demanded",
+    "--table-mode": "not-yet-demanded",
+    "--stats-per-table-timing": "not-yet-demanded",
+    "--analyze-plans": "not-yet-demanded",
+    "--stats-reset": "not-yet-demanded",
+    "--concurrency": "security-scoped",
+    "--streams": "security-scoped",
+    "--strict-translation": "not-yet-demanded",
+    "--ignore-memory-warnings": "security-scoped",
+    "--funding": "not-yet-demanded",
+    "--result-source": "not-yet-demanded",
+    "--client-region": "not-yet-demanded",
+    "--client-cloud": "not-yet-demanded",
+    "--tuning": "not-yet-demanded",
+    "--validation": "not-yet-demanded",
+    "--polars-streaming": "not-yet-demanded",
+    "--gateway": "security-scoped",
+}
 
 _TABLE_SEPARATOR_CELL = re.compile(r"^:?-{3,}:?$")
 _FENCE_LINE = re.compile(r"^ {0,3}(?P<marker>`{3,}|~{3,})(?P<info>.*)$")
@@ -245,9 +300,34 @@ def _omission_ledger(text: str) -> dict[str, dict[str, str]]:
     return ledger
 
 
-_EXPECTED_TOOL_CLI_MAP: dict[str, str] = RUN_SURFACE["tool_cli_counterparts"]
+_EXPECTED_TOOL_CLI_MAP: dict[str, str] = {
+    "list_available": "benchbox platforms list",
+    "get_benchmark_info": "benchbox benchmarks list",
+    "system_profile": "benchbox profile",
+    "check_dependencies": "benchbox check-deps",
+    "run_benchmark": "benchbox run",
+    "get_query_details": "none",
+    "get_results": "benchbox results",
+    "analyze_results": "benchbox compare",
+    "get_query_plan": "benchbox show-plan",
+    "validate_results": "validate_results",
+    "suggest_charts": "benchbox visualize",
+    "generate_chart": "benchbox visualize",
+}
 
-_EXPECTED_OMITTED_CLI_FAMILIES: dict[str, str] = RUN_SURFACE["omitted_cli_families"]
+_EXPECTED_OMITTED_CLI_FAMILIES: dict[str, str] = {
+    "benchbox auth": "security-scoped",
+    "benchbox publish": "security-scoped",
+    "benchbox submit": "security-scoped",
+    "benchbox setup": "security-scoped",
+    "benchbox shell": "interaction-scoped",
+    "benchbox datagen": "not-yet-demanded",
+    "benchbox convert": "not-yet-demanded",
+    "benchbox tuning": "not-yet-demanded",
+    "benchbox plan-history": "not-yet-demanded",
+    "benchbox download-answers": "security-scoped",
+    "benchbox metrics": "not-yet-demanded",
+}
 
 
 def _tool_mapping_ledger(text: str) -> dict[str, dict[str, str]]:
@@ -531,7 +611,19 @@ class TestMCPDocsContract:
         ledger = _omission_ledger(_doc_text())
         security_scoped = {surface for surface, entry in ledger.items() if entry["tier"] == "security-scoped"}
 
-        assert set(RUN_SURFACE["security_scoped_required"]) <= security_scoped
+        assert {
+            "--output",
+            "--platform-option",
+            "--benchmark-option",
+            "--force",
+            "--global-cache",
+            "--publish",
+            "--publish-target",
+            "--publish-label",
+            "--concurrency",
+            "--streams",
+            "--ignore-memory-warnings",
+        } <= security_scoped
 
     def test_docs_do_not_keep_stale_standalone_tool_sections(self):
         text = _doc_text()

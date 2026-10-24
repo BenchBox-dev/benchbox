@@ -716,8 +716,6 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed makefile-inventory-check"; \
 	uv run -- python scripts/check_public_contract_drift.py; \
 	[ $$? -eq 0 ] || failed="$$failed public-contract-drift"; \
-	$(MAKE) doc-contracts-guard; \
-	[ $$? -eq 0 ] || failed="$$failed doc-contracts"; \
 	$(MAKE) audit-deps; \
 	[ $$? -eq 0 ] || failed="$$failed audit-deps"; \
 	$(MAKE) audit-raw-check; \

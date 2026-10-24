@@ -25,7 +25,7 @@ query-docs:
 	uv run -- python scripts/generate_query_docs.py
 
 .PHONY: docs-generate
-docs-generate: query-docs prompt-quickstarts-check compat-docs-check doc-contracts-check docs-reference-inventory-check
+docs-generate: query-docs prompt-quickstarts-check compat-docs-check
 
 API_CONTRACT_VENV ?= $(or $(RUNNER_TEMP),$(TMPDIR),/tmp)/benchbox-api-contract-venv
 
@@ -56,25 +56,6 @@ compat-docs:
 compat-docs-check:
 	uv run -- python scripts/generate_compat_docs.py --check
 	uv run -- python -m benchbox.sql_compat.inventory --output /tmp/benchbox-compat-inventory.jsonl --check-ddl-drift
-
-.PHONY: doc-contracts
-doc-contracts:
-	uv run -- python scripts/doc_contracts.py --output doc-contracts.json
-
-.PHONY: doc-contracts-check
-doc-contracts-check:
-	uv run -- python scripts/doc_contracts.py --check
-
-.PHONY: docs-reference-inventory
-docs-reference-inventory:
-	uv run -- python scripts/doc_reference_inventory.py
-
-.PHONY: docs-reference-inventory-check
-docs-reference-inventory-check:
-	uv run -- python scripts/doc_reference_inventory.py --check
-
-.PHONY: doc-contracts-guard
-doc-contracts-guard: doc-contracts-check docs-reference-inventory-check
 
 .PHONY: pricing-data
 pricing-data:

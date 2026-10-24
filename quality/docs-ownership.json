@@ -192,7 +192,6 @@
     "docs/internal/dev-loop-worktrees.md": "core-only",
     "docs/internal/develop-post-merge-gaps.md": "core-only",
     "docs/internal/develop-push-drop-inventory.md": "core-only",
-    "docs/internal/doc-contracts.md": "core-only",
     "docs/internal/duplication-residuals.md": "core-only",
     "docs/internal/github-org-transfer.md": "core-only",
     "docs/internal/hosted-credentials.md": "core-only",
