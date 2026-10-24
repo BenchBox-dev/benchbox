@@ -12005,12 +12005,17 @@
       "title": "Gateway cache discipline + honest unverified reporting"
     },
     "gw-databricks": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-25T18:46:46Z",
+        "generation": "1d39fc0b3a76422ba2a351b6d016f6f5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "core-exec-gateway-capability"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Databricks adapter gateway label + PAT-only guardrail"
     },
     "gw-docs-uat-closeout": {
