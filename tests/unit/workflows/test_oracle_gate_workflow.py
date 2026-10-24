@@ -172,7 +172,7 @@ def test_dispatch_is_refused_outside_develop() -> None:
 
 def test_workflow_run_head_resolves_to_an_open_develop_pull_request() -> None:
     resolve = next(step for step in _steps("gate") if step["name"] == "Resolve the pull request")
-    assert "github.event.workflow_run.pull_requests" in str(resolve["env"])
+    assert "pull_requests" not in str(resolve["env"])
     assert "github.event.workflow_run.head_sha" in str(resolve["env"])
     assert 'select(.base.ref == "develop"' in resolve["run"]
     assert 'echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"' in resolve["run"]

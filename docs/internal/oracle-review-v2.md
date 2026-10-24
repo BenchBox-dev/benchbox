@@ -701,7 +701,9 @@ on created issue comments that open with the stand-in marker, on completion of
 `oracle-verdict` and `oracle-review` (the bridge for review and thread events,
 which have no trusted trigger of their own), on `workflow_dispatch` with a `pr`
 input, and on an hourly `schedule` sweep over open pull requests targeting
-`develop`. Every job checks out `develop`, never the pull request, with a sparse
+`develop`. A completion run gates the open `develop` pull request that contains
+the completed run's head commit, not the first pull request in the event
+payload, which can target another branch. Every job checks out `develop`, never the pull request, with a sparse
 checkout of the gate, its predicate and the reviewers policy, and runs the
 script with pinned `pyyaml` the same way `oracle-verdict` does; the App token
 is minted the same way `oracle-verdict` mints it, from the same `oracle`
