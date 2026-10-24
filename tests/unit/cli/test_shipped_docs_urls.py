@@ -68,7 +68,6 @@ def test_top_level_help_uses_live_docs_url_and_long_run_flags() -> None:
 
 _OWNERSHIP_MANIFEST = REPO_ROOT / "quality" / "docs-ownership.json"
 _DOC_URL_RE = re.compile(r"https://benchbox\.dev/(docs/[A-Za-z0-9_./-]*?)\.html(?=[#)>\s\"'\]\\,;:]|$)")
-_DOC_PATH_RE = re.compile(r"(?<![\w/.\-])(docs/[A-Za-z0-9_./-]+?\.md)\b")
 _OUTPUT_PATH_ALLOWED = frozenset({("benchbox/core/tpcds_obt/lineage.py", "docs/benchmarks/tpc-ds-obt-lineage.md")})
 _LINK_SURFACES = (
     "README.md",
@@ -88,6 +87,15 @@ def _site_owned_pages() -> frozenset[str]:
     return frozenset(path for path, owner in files.items() if owner == "site-owned")
 
 
+def _repo_path_matcher(site_owned: frozenset[str]) -> re.Pattern[str]:
+    alternatives = "|".join(re.escape(page) for page in sorted(site_owned, key=len, reverse=True))
+    return re.compile(rf"(?<![\w\-/.])(?:\.{{1,2}}/)*(?:\./)?({alternatives})(?![\w\-]|\.\w)")
+
+
+def _repo_path_citations(text: str, site_owned: frozenset[str]) -> list[str]:
+    return [match.group(1) for match in _repo_path_matcher(site_owned).finditer(text)]
+
+
 def _link_surface_files() -> list[Path]:
     paths: list[Path] = []
     for entry in _LINK_SURFACES:
@@ -105,10 +113,10 @@ def test_link_surfaces_do_not_cite_site_owned_pages_by_repo_path() -> None:
     hits: list[str] = []
     for path in _link_surface_files():
         text = path.read_text(encoding="utf-8", errors="replace")
-        for match in _DOC_PATH_RE.finditer(text):
-            rel = path.relative_to(REPO_ROOT).as_posix()
-            if match.group(1) in site_owned and (rel, match.group(1)) not in _OUTPUT_PATH_ALLOWED:
-                hits.append(f"{path.relative_to(REPO_ROOT)}: {match.group(1)}")
+        rel = path.relative_to(REPO_ROOT).as_posix()
+        for cited in _repo_path_citations(text, site_owned):
+            if (rel, cited) not in _OUTPUT_PATH_ALLOWED:
+                hits.append(f"{rel}: {cited}")
     assert hits == [], f"cite the published https://benchbox.dev/docs/...html URL instead of a repo path: {hits}"
 
 
@@ -122,3 +130,52 @@ def test_link_surfaces_doc_urls_map_to_site_owned_pages() -> None:
             if source not in site_owned and f"{match.group(1)}/README.md" not in site_owned:
                 unmapped.append(f"{path.relative_to(REPO_ROOT)}: {match.group(0)}")
     assert unmapped == [], f"benchbox.dev doc URLs without a site-owned source page: {unmapped}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "see docs/usage/getting-started.md for setup",
+        "see ./docs/usage/getting-started.md for setup",
+        "[guide](docs/usage/getting-started.md)",
+        "[guide](./docs/usage/getting-started.md)",
+        "[guide](../docs/usage/getting-started.md)",
+        "[guide](../../docs/usage/getting-started.md)",
+        "[guide](docs/usage/getting-started.md#installing)",
+        "[guide](../docs/usage/getting-started.md#installing)",
+        "[guide](<docs/usage/getting-started.md>)",
+        "[guide](<../docs/usage/getting-started.md#installing>)",
+        "<docs/usage/getting-started.md>",
+        "`docs/usage/getting-started.md`",
+        "`../docs/usage/getting-started.md#installing`",
+        "[docs/usage/getting-started.md](../docs/usage/getting-started.md)",
+        '"See docs/usage/getting-started.md."',
+        "docs/usage/getting-started.md",
+    ],
+)
+def test_repo_path_matcher_flags_every_relative_form(text: str) -> None:
+    site_owned = frozenset({"docs/usage/getting-started.md", "docs/usage/index.md"})
+    assert _repo_path_citations(text, site_owned)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "https://benchbox.dev/docs/usage/getting-started.html",
+        "docs/internal/release-guide.md",
+        "../docs/agent/review-protocol.md",
+        "docs/usage/getting-started.md.bak",
+        "mydocs/usage/getting-started.md",
+        "docs/usage/other-page.md",
+    ],
+)
+def test_repo_path_matcher_ignores_other_text(text: str) -> None:
+    site_owned = frozenset({"docs/usage/getting-started.md", "docs/usage/index.md"})
+    assert _repo_path_citations(text, site_owned) == []
+
+
+def test_repo_path_matcher_covers_every_site_owned_page() -> None:
+    site_owned = _site_owned_pages()
+    assert site_owned
+    for page in sorted(site_owned):
+        assert _repo_path_citations(f"[x](../{page}#a)", site_owned) == [page]

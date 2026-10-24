@@ -23,6 +23,7 @@
         "tests/unit/core/test_execution_vocabulary_parity.py",
         "tests/unit/core/test_platform_registry.py",
         "tests/unit/core/test_platform_support_status_contract.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
         "tests/unit/core/write_primitives/test_doc_yaml_consistency.py",
         "tests/unit/generators/test_sf1_measurement.py",
         "tests/unit/mcp/test_run_surface_contract.py",
