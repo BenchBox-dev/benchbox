@@ -662,9 +662,9 @@ DDL centralization.
 | Snowflake | `platforms/snowflake.py` | `translate_ddl` | Snowflake DDL dialect (clustering/tuning) |
 | Presto | `platforms/presto_trino_adapter_base.py` | `_schema_ddl` (`translate_ddl`) | Presto DDL dialect |
 | Trino | `platforms/presto_trino_adapter_base.py` | `_schema_ddl` (`translate_ddl`) | Trino DDL dialect |
-| Spark | `platforms/spark.py` | `_optimize_table_definition` | USING DELTA/ICEBERG/ORC/PARQUET (format from `self.table_format`) |
-| Lakesail | `platforms/lakesail.py` | `_optimize_table_definition` | Lakesail DDL dialect |
-| Velox | `platforms/velox.py` | `_optimize_table_definition` | USING ORC/PARQUET (format from `self.table_format`) |
+| Spark | `platforms/spark.py` | `translate_ddl` | USING DELTA/ICEBERG/ORC/PARQUET (format from `self.table_format`) |
+| Lakesail | `platforms/lakesail.py` | `translate_ddl` | Lakesail DDL dialect |
+| Velox | `platforms/velox.py` | `translate_ddl` | USING ORC/PARQUET (format from `self.table_format`) |
 | StarRocks | `platforms/starrocks/workload.py` | `translate_ddl` (`_translate_schema_statement`) | Strip AUTO_INCREMENT/FK, reconstitute PK as DUPLICATE KEY or PRIMARY KEY model, add DISTRIBUTED BY HASH |
 
 Fabric Warehouse is **not** in this list - see resolution below.
