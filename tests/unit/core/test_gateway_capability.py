@@ -138,12 +138,15 @@ def test_resolve_requested_gateway_unsupported_value_lists_allowed() -> None:
         resolve_requested_gateway("snowflake", "unknown_gw")
 
 
-@pytest.mark.parametrize(
-    ("platform", "gateway"), [("snowflake", "espresso"), ("snowflake", "custom"), ("databricks", "espresso")]
-)
+@pytest.mark.parametrize(("platform", "gateway"), [("databricks", "espresso")])
 def test_resolve_requested_gateway_fails_closed_for_declared_gateways(platform: str, gateway: str) -> None:
     with pytest.raises(GatewayNotImplementedError, match=f"gateway routing is not implemented for {platform} yet"):
         resolve_requested_gateway(platform, gateway)
+
+
+@pytest.mark.parametrize("gateway", ["espresso", "greybeam", "custom"])
+def test_resolve_requested_gateway_accepts_declared_gateways_for_routed_platform(gateway: str) -> None:
+    assert resolve_requested_gateway("snowflake", gateway) == gateway
 
 
 def test_register_gateway_connection_specs() -> None:
