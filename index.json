@@ -23196,19 +23196,9 @@
     "soundness-gaps-closeout-20261022": {
       "claim": null,
       "needs": [
-        "oracle-patch-hash-hunk-positions-20261008",
-        "soundness-gap-2807-external-review-20261022",
-        "soundness-gap-3125-external-review-20261022",
-        "soundness-gap-2806-external-review-20261022",
-        "soundness-gap-3126-external-review-20261022",
-        "soundness-gap-2808-external-review-20261022",
-        "soundness-dead-exception-report-20261022",
-        "soundness-prereg-same-commit-entries-20261022",
-        "soundness-dead-exceptions-cleanup-20261022",
-        "soundness-oracle-branch-name-quote-20261022",
-        "soundness-deferred-findings-inventory-20261022",
-        "soundness-gap-2808-external-rereview-20261023",
-        "soundness-3125-fixture-entry-text-20261022"
+        "soundness-gap-2808-external-rereview-round3-20261024",
+        "soundness-3125-fixture-entry-text-20261022",
+        "soundness-prereg-same-commit-entries-20261022"
       ],
       "priority": "medium",
       "status": "open",
