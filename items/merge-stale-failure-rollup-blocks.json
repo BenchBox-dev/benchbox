@@ -1,8 +1,8 @@
 {
   "acceptance": [
-    "Merges no longer stall on superseded failures (sweep, docs, or rollup fix)"
+    "For each required check name, read latest check runs per suite (`check-runs?filter=latest`), preserving suite identity and Actions run URL; evaluate per suite, never via the deduplicated `gh pr checks` list. For a failed stale suite, locate its run and `gh run rerun <id> --failed`. Wire this into `pr_arm`/`pr_landing`/`green_unmerged_sweep`/`required_lane` (or one shared helper). Regression coverage: multiple suites sharing one check name including a stale failed suite hidden by a newer success; show it is identified and rerunnable. Document the #2829-style phantom-rollup close/reopen fallback."
   ],
-  "context": "UPDATE 2026-10-23: recurred on PR #3319 (head 826e7e44c): auto-merge armed and every required check shown green by `gh pr checks --required`, yet BLOCKED for over an hour. That command shows one result per check name; the per-suite view (`gh api repos/BenchBox-dev/benchbox/commits/<sha>/check-runs?check_name=oracle-review&filter=latest`) showed three oracle-review suites (runs 39869415680, 39869421814, 39872378410) whose latest run was still failure. `gh run rerun` on those three merged the PR within a minute. Tooling gap: pr-arm and agent checks should read per-suite latest check runs, not the deduplicated list.\n\n2026-10-22 recurrence on PR #3264 (head 68de1e483): every required context had a SUCCESS instance, but two superseded failed `oracle-review` check runs (Actions runs 39706240336, synchronize; 39711741625, pull_request_review) kept the required rollup at FAILURE and mergeStateStatus BLOCKED. Cancelled `gate` instances from the oracle-gate workflow's cancel-in-progress concurrency also show as failing in `gh pr checks`, though `gate` is not required. `make oracle-review-recover` could not help: it never finds failed runs (oracle-review-recover-finds-no-failed-runs-20261022). A manual `gh run rerun --failed` of both runs unblocked the merge.",
+  "context": "AMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Merged in the 2026-10-23 finding that `gh pr checks --required` shows one result per check name and hides stale failed suites (#3319, #3339, #3362-#3370 all needed per-suite `check-runs?filter=latest` + `gh run rerun`). No repo tooling reads per-suite latest results: _project/scripts/green_unmerged_sweep.py:452,475-483, _project/scripts/required_lane.py:31-56, scripts/pr_landing.py:544,559-563; scripts/pr_rerun.py:91-101,144-167 reruns the newest full CI run, not a stale failed suite.\n\nUPDATE 2026-10-23: recurred on PR #3319 (head 826e7e44c): auto-merge armed and every required check shown green by `gh pr checks --required`, yet BLOCKED for over an hour. That command shows one result per check name; the per-suite view (`gh api repos/BenchBox-dev/benchbox/commits/<sha>/check-runs?check_name=oracle-review&filter=latest`) showed three oracle-review suites (runs 39869415680, 39869421814, 39872378410) whose latest run was still failure. `gh run rerun` on those three merged the PR within a minute. Tooling gap: pr-arm and agent checks should read per-suite latest check runs, not the deduplicated list.\n\n2026-10-22 recurrence on PR #3264 (head 68de1e483): every required context had a SUCCESS instance, but two superseded failed `oracle-review` check runs (Actions runs 39706240336, synchronize; 39711741625, pull_request_review) kept the required rollup at FAILURE and mergeStateStatus BLOCKED. Cancelled `gate` instances from the oracle-gate workflow's cancel-in-progress concurrency also show as failing in `gh pr checks`, though `gate` is not required. `make oracle-review-recover` could not help: it never finds failed runs (oracle-review-recover-finds-no-failed-runs-20261022). A manual `gh run rerun --failed` of both runs unblocked the merge.",
   "description": "On 2026-10-12, PRs #2822, #2829, #2830, #2875, #2876, #2878, #2905, #2908 each sat green-but-unmergable behind superseded FAILED instances in the commit rollup. Manual gh run rerun on each stale instance unblocked merge (#2829 additionally needed close+reopen for a phantom FAILURE rollup with zero failing checks). Workarounds in /tmp/benchbox-open-prs-handoff-2026-10-12.md.",
   "sessions": [
     {
@@ -28,6 +28,14 @@
       "op": "update",
       "op_id": "55ce151b8641466cbe2f9d6aa57061c9",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T14:30:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d469d7b4847b48f5bddb960c0190ee3b",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
