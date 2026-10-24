@@ -28,6 +28,7 @@ def _load(name: str) -> Any:
 
 doc_contracts = _load("doc_contracts")
 inventory = _load("doc_reference_inventory")
+ci_units = _load("ci_units")
 
 
 @pytest.fixture(scope="module")
@@ -218,3 +219,69 @@ def test_run_surface_data_file_matches_the_retained_test_constants() -> None:
     data = json.loads((ROOT / "quality/mcp-run-surface.json").read_text(encoding="utf-8"))
     assert data["schema"] == 1
     assert set(data["omission_tiers"].values()) <= set(data["ratified_tiers"])
+
+
+def _exporter_inputs(contracts: dict[str, Any]) -> set[str]:
+    data_files = {
+        doc_contracts.HELP_CATALOG,
+        doc_contracts.API_SYMBOLS,
+        doc_contracts.SF1_BASELINE,
+        doc_contracts.RUN_SURFACE,
+        doc_contracts.OWNERSHIP,
+        doc_contracts.PUBLISH_ALLOWLIST,
+        doc_contracts.PUBLISH_EXCLUSIONS,
+        doc_contracts.LINKCHECK_IGNORE,
+        doc_contracts.SCHEMA_PATH,
+        ROOT / "pyproject.toml",
+        ROOT / "scripts/doc_contracts.py",
+        ROOT / "scripts/update_version.py",
+        ROOT / "scripts/measure_sf1_sizes.py",
+        ROOT / "scripts/generate_tuning_support_matrix.py",
+    }
+    modules = {
+        Path(module.__file__).resolve()
+        for module in list(sys.modules.values())
+        if getattr(module, "__file__", None) and str(module.__file__).startswith(str(ROOT / "benchbox"))
+    }
+    assert contracts
+    return {path.relative_to(ROOT).as_posix() for path in data_files | modules}
+
+
+def test_every_file_the_exporter_reads_triggers_a_ci_check(contracts: dict[str, Any]) -> None:
+    rules = ci_units.load_unit_rules(ROOT / ".github/ci-units.yml")
+    uncovered = []
+    for path in sorted(_exporter_inputs(contracts)):
+        decision = ci_units.classify_units([path], rules)
+        if not (decision["code_tests_needed"] or decision["units"]["docs"]):
+            uncovered.append(path)
+    assert uncovered == []
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "scripts/doc_contracts.py",
+        "scripts/doc_reference_inventory.py",
+        "quality/doc-contracts.schema.json",
+        "quality/doc-lock-tests.json",
+        "quality/docs-reference-inventory.json",
+        "quality/docs-reference-rules.json",
+        "quality/mcp-run-surface.json",
+        "_project/design/api-public-symbols.json",
+        "benchbox/core/platform_manifest.py",
+        "benchbox/core/tuning/capability_registry.py",
+        "benchbox/core/hooks/platform_hooks.py",
+        "benchbox/mcp/server.py",
+        "docs/publish-allowlist.txt",
+    ],
+)
+def test_exporter_inputs_run_the_docs_unit(path: str) -> None:
+    rules = ci_units.load_unit_rules(ROOT / ".github/ci-units.yml")
+    assert ci_units.classify_units([path], rules)["units"]["docs"] is True
+
+
+def test_the_contract_guard_runs_in_the_lint_job_and_the_local_mirror() -> None:
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "run: make doc-contracts-guard" in workflow
+    assert "$(MAKE) doc-contracts-guard" in makefile

@@ -171,15 +171,19 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "extra": 4,
+    "extra": 6,
     "pattern": 9,
     "unresolved": 1
    },
-   "occurrences": 14,
+   "occurrences": 16,
    "path": ".github/ci-units.yml",
    "rule": "ci-path-classification",
-   "target_count": 14,
+   "target_count": 16,
    "targets": [
+    {
+     "kind": "extra",
+     "target": "_project/design/api-public-symbols.json"
+    },
     {
      "kind": "pattern",
      "target": "docs/**"
@@ -235,19 +239,23 @@
     {
      "kind": "extra",
      "target": "scripts/generate_query_docs.py"
+    },
+    {
+     "kind": "extra",
+     "target": "scripts/generate_tuning_support_matrix.py"
     }
    ]
   },
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "file": 26,
+    "file": 27,
     "pattern": 2
    },
-   "occurrences": 28,
+   "occurrences": 29,
    "path": ".github/inert-paths.txt",
    "rule": "ci-path-classification",
-   "target_count": 28,
+   "target_count": 29,
    "targets": [
     {
      "kind": "pattern",
@@ -272,6 +280,10 @@
     {
      "kind": "file",
      "target": "docs/benchmarks/support-status.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
     },
     {
      "kind": "file",
@@ -367,14 +379,14 @@
    "disposition": "wiring-updated",
    "kinds": {
     "extra": 1,
-    "file": 26,
+    "file": 27,
     "pattern": 12,
     "unresolved": 1
    },
-   "occurrences": 40,
+   "occurrences": 41,
    "path": ".github/path-filters.yml",
    "rule": "ci-path-classification",
-   "target_count": 40,
+   "target_count": 41,
    "targets": [
     {
      "kind": "pattern",
@@ -431,6 +443,10 @@
     {
      "kind": "file",
      "target": "docs/benchmarks/support-status.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
     },
     {
      "kind": "file",
@@ -651,7 +667,7 @@
     "file": 1,
     "root": 1
    },
-   "occurrences": 2,
+   "occurrences": 3,
    "path": "CHANGELOG.md",
    "rule": "agent-and-contributor-prose",
    "target_count": 2,
@@ -1799,12 +1815,12 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "file": 18
+    "file": 19
    },
-   "occurrences": 18,
+   "occurrences": 19,
    "path": "_project/inert-doc-readers.json",
    "rule": "inert-doc-readers",
-   "target_count": 18,
+   "target_count": 19,
    "targets": [
     {
      "kind": "file",
@@ -1817,6 +1833,10 @@
     {
      "kind": "file",
      "target": "docs/benchmarks/support-status.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
     },
     {
      "kind": "file",
@@ -2512,6 +2532,22 @@
     {
      "kind": "file",
      "target": "docs/development/adr/adr-published-identifier-field-set.md"
+    }
+   ]
+  },
+  {
+   "disposition": "runtime-link-updated",
+   "kinds": {
+    "file": 1
+   },
+   "occurrences": 1,
+   "path": "benchbox/core/tpcds_obt/lineage.py",
+   "rule": "runtime-and-example-links",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
     }
    ]
   },
@@ -4067,6 +4103,22 @@
     "file": 1
    },
    "occurrences": 1,
+   "path": "tests/unit/core/tpcds_obt/test_tpcds_obt_model.py",
+   "rule": "lock-tests-core",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
+    }
+   ]
+  },
+  {
+   "disposition": "lock-test",
+   "kinds": {
+    "file": 1
+   },
+   "occurrences": 1,
    "path": "tests/unit/core/write_primitives/test_doc_yaml_consistency.py",
    "rule": "lock-tests-core",
    "target_count": 1,
@@ -4702,20 +4754,34 @@
   {
    "disposition": "contract-tooling",
    "kinds": {
-    "extra": 2
+    "extra": 3,
+    "file": 1,
+    "root": 1
    },
-   "occurrences": 2,
+   "occurrences": 7,
    "path": "tests/unit/scripts/test_doc_contracts.py",
    "rule": "contract-export-tooling",
-   "target_count": 2,
+   "target_count": 5,
    "targets": [
     {
      "kind": "extra",
      "target": "_project/design/api-public-symbols.json"
     },
     {
+     "kind": "root",
+     "target": "docs/"
+    },
+    {
+     "kind": "file",
+     "target": "docs/publish-allowlist.txt"
+    },
+    {
      "kind": "extra",
      "target": "quality/docs-ownership.json"
+    },
+    {
+     "kind": "extra",
+     "target": "scripts/generate_tuning_support_matrix.py"
     }
    ]
   },
@@ -4730,7 +4796,7 @@
     "root": 1,
     "unresolved": 6
    },
-   "occurrences": 36,
+   "occurrences": 37,
    "path": "tests/unit/scripts/test_doc_reference_inventory.py",
    "rule": "contract-export-tooling",
    "target_count": 13,
@@ -5569,24 +5635,24 @@
    "generator-deleted": 5,
    "governance-stays": 7,
    "historical-record": 111,
-   "lock-test": 24,
+   "lock-test": 25,
    "prose-link-pinned": 28,
-   "runtime-link-updated": 12,
+   "runtime-link-updated": 13,
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 271,
+  "files": 273,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
-   "extra": 64,
-   "file": 1594,
+   "extra": 68,
+   "file": 1600,
    "generated": 15,
    "pattern": 314,
-   "root": 206,
-   "unresolved": 1981
+   "root": 209,
+   "unresolved": 1982
   },
-  "references": 33390,
+  "references": 33404,
   "unclassified": 0
  }
 }

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import hashlib
 import json
 import re
@@ -132,9 +131,31 @@ def scan(files: list[str], targets: Targets) -> dict[str, Counter[tuple[str, str
     return rows
 
 
+def glob_matches(path: str, pattern: str) -> bool:
+    regex = ""
+    index = 0
+    while index < len(pattern):
+        if pattern.startswith("**/", index):
+            regex += "(?:.*/)?"
+            index += 3
+        elif pattern.startswith("**", index):
+            regex += ".*"
+            index += 2
+        elif pattern[index] == "*":
+            regex += "[^/]*"
+            index += 1
+        elif pattern[index] == "?":
+            regex += "[^/]"
+            index += 1
+        else:
+            regex += re.escape(pattern[index])
+            index += 1
+    return re.fullmatch(regex, path) is not None
+
+
 def match_rule(path: str, rules: list[dict[str, Any]]) -> dict[str, Any] | None:
     for rule in rules:
-        if any(fnmatch.fnmatchcase(path, pattern) for pattern in rule["match"]):
+        if any(glob_matches(path, pattern) for pattern in rule["match"]):
             return rule
     return None
 
@@ -206,7 +227,14 @@ def pointer_exists(document: Any, pointer: str) -> bool:
     return True
 
 
-LOCK_CLASSIFICATIONS = ("contract-field", "governance-stays", "wiring-deleted", "incidental-deleted", "runtime-stays")
+LOCK_CLASSIFICATIONS = (
+    "contract-field",
+    "governance-stays",
+    "wiring-deleted",
+    "incidental-deleted",
+    "runtime-stays",
+    "generated-page-cutover",
+)
 
 
 def check_lock_tests(contracts: dict[str, Any], inventory: dict[str, Any]) -> list[str]:

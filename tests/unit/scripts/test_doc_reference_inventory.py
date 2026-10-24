@@ -94,7 +94,7 @@ def test_path_segment_forms_are_joined(targets: Any) -> None:
 def test_rule_matching_is_first_match_wins() -> None:
     rules = [
         {"id": "specific", "match": ["tests/unit/docs/*.py"]},
-        {"id": "generic", "match": ["tests/*"]},
+        {"id": "generic", "match": ["tests/**"]},
     ]
     assert inventory.match_rule("tests/unit/docs/test_x.py", rules)["id"] == "specific"
     assert inventory.match_rule("tests/unit/other.py", rules)["id"] == "generic"
@@ -157,3 +157,48 @@ def test_lock_test_rows_use_known_classifications_and_name_existing_tests() -> N
         text = (ROOT / row["file"]).read_text(encoding="utf-8")
         for name in row["tests"]:
             assert name in text, f"{row['id']}: {name}"
+
+
+@pytest.mark.parametrize(
+    ("path", "pattern", "expected"),
+    [
+        ("tests/a.py", "tests/*", True),
+        ("tests/unit/a.py", "tests/*", False),
+        ("tests/unit/a.py", "tests/**", True),
+        ("tests/unit/deep/a.py", "tests/**/a.py", True),
+        ("tests/a.py", "tests/**/a.py", True),
+        ("tests/unit/a.py", "tests/unit/?.py", True),
+        ("tests/unit/ab.py", "tests/unit/?.py", False),
+        ("make/a.mk", "make/**", True),
+        ("Makefile", "make/**", False),
+    ],
+)
+def test_glob_star_stays_within_one_path_segment(path: str, pattern: str, expected: bool) -> None:
+    assert inventory.glob_matches(path, pattern) is expected
+
+
+def test_a_new_file_that_references_a_site_owned_page_fails_generation(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, targets: Any
+) -> None:
+    (tmp_path / "tests/unit").mkdir(parents=True)
+    (tmp_path / "tests/unit/test_new.py").write_text('PAGE = "docs/guide/page.md"\n', encoding="utf-8")
+    rules = {
+        "schema": 1,
+        "extra_targets": [],
+        "rules": [
+            {"id": "samples", "match": ["tests/*"], "disposition": "fixture-data", "reason": "narrow"},
+        ],
+    }
+    rules_path = tmp_path / "rules.json"
+    rules_path.write_text(json.dumps(rules), encoding="utf-8")
+    monkeypatch.setattr(inventory, "RULES_PATH", rules_path)
+    monkeypatch.setattr(inventory, "ROOT", tmp_path)
+    monkeypatch.setattr(inventory, "tracked_files", lambda: ["tests/unit/test_new.py"])
+    with pytest.raises(ValueError, match=r"unclassified references.*tests/unit/test_new.py"):
+        inventory.build_inventory()
+
+
+def test_no_rule_pattern_is_a_bare_single_star_over_a_whole_directory_tree() -> None:
+    rules = inventory.read_json(inventory.RULES_PATH)["rules"]
+    broad = [pattern for rule in rules for pattern in rule["match"] if pattern in {"tests/*", "scripts/*", "*"}]
+    assert broad == []

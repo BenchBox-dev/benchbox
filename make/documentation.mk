@@ -73,6 +73,9 @@ docs-reference-inventory:
 docs-reference-inventory-check:
 	uv run -- python scripts/doc_reference_inventory.py --check
 
+.PHONY: doc-contracts-guard
+doc-contracts-guard: doc-contracts-check docs-reference-inventory-check
+
 .PHONY: pricing-data
 pricing-data:
 	uv run -- python scripts/generate_pricing_data.py

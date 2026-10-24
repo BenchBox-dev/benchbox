@@ -15,7 +15,9 @@ make doc-contracts-check
 
 `doc-contracts` writes `./doc-contracts.json`, which git ignores. `doc-contracts-check` builds the export twice, validates the schema and requires identical output.
 
-`make docs-generate` runs the check, so the `docs` required context covers it.
+`make docs-generate` runs the check, and the `lint` job and `make ci-lint` run `make doc-contracts-guard`
+(the export check and the reference-inventory check) whenever core or tooling files change, because the
+inventory scans every tracked file outside `docs/`.
 
 The export is deterministic: keys are sorted, no timestamps or absolute paths are
 written, and lists that carry registry order are kept in that order. The schema is
@@ -55,6 +57,7 @@ one of these classifications:
 - `runtime-stays`: asserts runtime behavior and reads no page; it stays in core.
 - `incidental-deleted`: asserts the wording of one page; it is deleted at cutover, not ported.
 - `wiring-deleted`: asserts that a page exists or is well-formed; the site build owns that.
+- `generated-page-cutover`: compares a generated site-owned page with its core renderer and has no contract field yet; the page and test stay in core until the data is exported.
 
 `tests/unit/scripts/test_doc_contracts.py` checks that each row names an existing file
 and tests, that each named field exists in the built export, and that every
@@ -70,6 +73,9 @@ tokens and `"docs" / "a" / "b"` or `Path("docs", "a")` segment chains. Public UR
 nested directories such as `other/docs/` are not references.
 
 Each file is classified by the first matching rule in `quality/docs-reference-rules.json`.
+In rule patterns `*` matches within one path segment and `**` crosses directories, so a
+new test or script that reads a site-owned page is unclassified until a rule or an
+explicit file entry names it.
 A referencing file that matches no rule, or a rule that matches no referencing file,
 fails generation, so the inventory has no unclassified rows. Rules marked `aggregate`
 (historical records under `_project`) store a count and a digest of the targets instead

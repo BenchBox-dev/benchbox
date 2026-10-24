@@ -538,6 +538,16 @@
       "cutover_action": "None."
     },
     {
+      "id": "tpcds-obt-lineage-page",
+      "file": "tests/unit/core/tpcds_obt/test_tpcds_obt_model.py",
+      "tests": ["test_lineage_page_is_generated_from_the_model"],
+      "classification": "generated-page-cutover",
+      "contract_fields": [],
+      "site_reads": ["docs/benchmarks/tpc-ds-obt-lineage.md"],
+      "reason": "Compares a committed site-owned page with benchbox.core.tpcds_obt.lineage.render_lineage_markdown. The export has no field for the OBT model, so the page cannot yet be rendered or checked by the site from exported facts.",
+      "cutover_action": "Open item: export the OBT lineage model with the docs data so the site renders the page, then delete this test and the markdown renderer; until then the page and the test stay together in core."
+    },
+    {
       "id": "public-contract-drift-script",
       "file": "scripts/check_public_contract_drift.py",
       "tests": [],
