@@ -1569,6 +1569,33 @@ class TestSubmissionDeterministicGates:
         _validate_bundle(data, vr, allow_partial_validation=True)
         assert vr.ok, vr.errors
 
+    @pytest.mark.parametrize("claimed", ["official", None])
+    def test_gateway_routed_bundle_is_refused_even_when_it_claims_official(self, claimed):
+        data = _minimal_bundle()
+        if claimed is not None:
+            data["benchmark"]["compliance_class"] = claimed
+        data["platform"]["gateway"] = {"name": "espresso", "routed": True}
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert not vr.ok
+        assert any("unofficial_nonstandard" in e for e in vr.errors)
+
+    def test_gateway_routed_bundle_is_allowed_on_mirror_lane(self):
+        data = _minimal_bundle()
+        data["benchmark"]["compliance_class"] = "official"
+        data["platform"]["gateway"] = {"name": "espresso", "routed": True}
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr, allow_partial_validation=True)
+        assert vr.ok, vr.errors
+
+    def test_unrouted_gateway_block_does_not_change_official_bundle(self):
+        data = _minimal_bundle()
+        data["benchmark"]["compliance_class"] = "official"
+        data["platform"]["gateway"] = {"name": "espresso", "routed": False}
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert vr.ok, vr.errors
+
     def test_short_query_coverage_refused_in_community_mode(self):
         data = _minimal_bundle()
         data["queries"] = [{"id": f"Q{i}", "ms": 100, "status": "SUCCESS"} for i in range(1, 6)]

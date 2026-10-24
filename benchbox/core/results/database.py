@@ -22,6 +22,7 @@ from benchbox.core.results.execution_variant import ExecutionVariant, platform_i
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.regression_policy import is_regression
+from benchbox.core.results.subscale_policy import result_compliance_class
 
 logger = logging.getLogger(__name__)
 
@@ -383,9 +384,7 @@ class ResultDatabase:
             if result.geometric_mean_execution_time is not None:
                 geometric_mean_ms = result.geometric_mean_execution_time * 1000.0
 
-            compliance_class = getattr(result, "compliance_class", None)
-            if compliance_class is not None:
-                compliance_class = str(compliance_class)
+            compliance_class = result_compliance_class(result)
 
             cursor.execute(
                 """
@@ -953,7 +952,7 @@ class ResultDatabase:
         for file_path in directory.glob(pattern):
             try:
                 result, _ = load_result_file(file_path)
-                compliance_class = getattr(result, "compliance_class", None)
+                compliance_class = result_compliance_class(result)
                 if not include_unofficial:
                     if compliance_class in _unofficial_classes:
                         excluded += 1

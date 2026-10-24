@@ -38,6 +38,32 @@ def effective_compliance_class(benchmark_id: Any, scale_factor: Any, recorded: A
     return None
 
 
+def gateway_routed(gateway: Any) -> bool:
+    return isinstance(gateway, Mapping) and bool(gateway.get("name")) and gateway.get("routed") is True
+
+
+def routed_compliance_class(compliance_class: Any, gateway: Any) -> str | None:
+    if gateway_routed(gateway):
+        return NONSTANDARD_COMPLIANCE_CLASS
+    if compliance_class is None:
+        return None
+    return str(getattr(compliance_class, "value", compliance_class))
+
+
+def result_compliance_class(result: Any) -> str | None:
+    platform_info = getattr(result, "platform_info", None)
+    gateway = platform_info.get("gateway") if isinstance(platform_info, Mapping) else None
+    return routed_compliance_class(getattr(result, "compliance_class", None), gateway)
+
+
+def bundle_compliance_class(data: Mapping[str, Any]) -> str | None:
+    benchmark = data.get("benchmark")
+    recorded = benchmark.get("compliance_class") if isinstance(benchmark, Mapping) else None
+    platform = data.get("platform")
+    gateway = platform.get("gateway") if isinstance(platform, Mapping) else None
+    return routed_compliance_class(recorded, gateway)
+
+
 def unofficial_metric_marker(compliance_class: str) -> dict[str, Any]:
     return {"unofficial": True, "reason": f"compliance_class={compliance_class}"}
 
