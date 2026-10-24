@@ -18153,15 +18153,10 @@
       "title": "Draft the blog post on Polars 2.0 performance across versions"
     },
     "pypi-environment-protection-20261023": {
-      "claim": {
-        "expires_at": "2026-10-25T04:26:11Z",
-        "generation": "c9d4637f4c5e44b6bf26d30aa326ab74",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Restrict the pypi deployment environment to release tags and protect test-pypi"
     },
     "pypi-environment-protection-drift-canary-20260805": {
