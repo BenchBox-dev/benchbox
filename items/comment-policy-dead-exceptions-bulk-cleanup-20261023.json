@@ -5,7 +5,7 @@
     "make comment-policy-check and the strict scan report 0 violations",
     "PR merged with an oracle verdict on its final head; merge SHA recorded"
   ],
-  "context": "Created 2026-10-23 from the report of the named-entry cleanup PR (PR 3352): 189 dead entries before, 158 after. Classification counts come from that worker report; re-verify on current develop.\n\n### Owner decision 2026-10-24 (recorded by the controller from the owner's answer in the session)\nApproved scope: delete the stale notice entries (about 115, from PR 2614) and the orphaned fixture entries (about 30, no scoped sibling or missing path) that make comment-policy-dead-exceptions lists as dead on current develop. NOT approved: the 5 directive entries, the 4 pre-registered PR 3028 entries, the 5 pre-registered PR 3081 entries (digests 7eed9fa3/e21a464c family) and 219a8858; keep them and list each with its reason in the closeout. The earlier acceptance bullet 'zero dead entries' is replaced by: zero dead entries except those named above.",
+  "context": "Created 2026-10-23 from the report of the named-entry cleanup PR (PR 3352): 189 dead entries before, 158 after. Classification counts come from that worker report; re-verify on current develop.\n\n### Owner decision 2026-10-24 (recorded by the controller from the owner's answer in the session)\nApproved scope: delete the stale notice entries (about 115, from PR 2614) and the orphaned fixture entries (about 30, no scoped sibling or missing path) that make comment-policy-dead-exceptions lists as dead on current develop. NOT approved: the 5 directive entries, the 4 pre-registered PR 3028 entries, the 5 pre-registered PR 3081 entries (digests 7eed9fa3/e21a464c family) and 219a8858; keep them and list each with its reason in the closeout. The earlier acceptance bullet 'zero dead entries' is replaced by: zero dead entries except those named above.\n\n### Completion Evidence (2026-10-24)\nPR 3401 merged as 72ca28acedd3b10dcf2ab4e9aa7b93d49c0d44a2 with oracle verdict SUCCESS on its final head 9bb2a481d36e26ffb5db5ceecc5ee3a952665834. Deleted 133 entries (all 115 old-scheme notice entries: 101 no current finding, 14 path missing; 18 orphaned fixture entries with no live sibling at the same path). Dead count 155 -> 22; strict scan 0 violations. Kept as dead with reasons: 5 directive entries (not approved); 4 PR 3081 pre-registered entries digest 7eed9fa4 (html-output: doc, leaked, mixed, real) and 1 digest e21a464c (not approved); 219a8858 (owner excluded); 2 fixture entries (PR 2469, PR 2882) and 9 PR 2614 fixture entries that still share a path with live exceptions (not orphaned). No dead entry first registered by PR 3028 was found, so the 'four PR 3028 entries' in the earlier plan did not match anything.",
   "description": "After the named-entry cleanup PR, `make comment-policy-dead-exceptions` still lists 158 dead entries in quality/comment-policy.json: about 115 stale notice entries from PR 2614, about 30 PR 2614 fixture entries with no scoped sibling or a missing path, 5 directive entries, 4 pre-registered entries from PR 3028 with scoped siblings, 5 pre-registered PR 3081 entries (digests 7eed9fa3 x4, e21a464c x1, described as pre-registered for the publication-plane retirement), and single entries from PRs 2469, 2748, 2784, 2882, 2928 and 3068. Entry 219a8858 matches no current finding but was kept because the earlier scope excluded it.\n\nDECISION GATE (owner): bulk deletion of exceptions was out of the approved scope (owner decision 2026-10-22 limited cleanup to the named entries). Do not start without the owner approving this item in a later message. Before deleting each entry, re-run the report on current develop and delete only entries it lists as dead; keep the pre-registered entries unless the owner says they are retired.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required (comment policy file is a policy path); never weaken a gate; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; PR text for a reader who never saw the session.",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "generation": "36590afe325348b3a84cb9e0dea759e7",
       "op": "take",
       "op_id": "d807a62ee2de4b5aae9b6a9769ca15cf",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-24T18:46:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3c03ebaeec7940d5ac07859cbbbb68ea",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
