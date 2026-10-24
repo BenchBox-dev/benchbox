@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import tomllib
 import zipfile
 from collections.abc import Callable
@@ -29,6 +30,8 @@ JOB_NAME = "dist-artifact"
 PRODUCER_RECEIPT = "producer-receipt.json"
 MAX_PAYLOAD_BYTES = 256 * 1024 * 1024
 DOWNLOAD_TIMEOUT_SECONDS = 60.0
+PRODUCER_WAIT_SECONDS = 60.0
+PRODUCER_POLL_SECONDS = 3.0
 Api = Callable[[str], dict[str, Any]]
 
 _CHILD_ENVIRONMENT_KEYS = frozenset({"PATH", "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR", "TEMP", "TMP", "SYSTEMROOT"})
@@ -262,6 +265,38 @@ def _files(directory: Path) -> dict[str, dict[str, Any]]:
         _require(path.stat().st_size <= MAX_PAYLOAD_BYTES, "distribution exceeds size limit")
         result[path.name] = {"size": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
     return result
+
+
+def _describe_jobs(jobs: list[dict[str, Any]]) -> str:
+    return (
+        ", ".join(f"id={job.get('id')} run_attempt={job.get('run_attempt')} status={job.get('status')}" for job in jobs)
+        or "none"
+    )
+
+
+def running_producer_job(
+    run_id: int,
+    attempt: int,
+    api: Api = github_json,
+    sleep: Callable[[float], None] = time.sleep,
+    clock: Callable[[], float] = time.monotonic,
+    wait_seconds: float = PRODUCER_WAIT_SECONDS,
+    poll_seconds: float = PRODUCER_POLL_SECONDS,
+) -> dict[str, Any]:
+    deadline = clock() + wait_seconds
+    while True:
+        jobs = _pages(api, f"actions/runs/{run_id}/attempts/{attempt}/jobs", "jobs")
+        matches = [job for job in jobs if job.get("name") == JOB_NAME]
+        detail = f"{len(matches)} job(s) named {JOB_NAME}: {_describe_jobs(matches)}"
+        _require(len(matches) <= 1, f"producer job is not unique: {detail}")
+        if matches and matches[0].get("status") == "in_progress":
+            return matches[0]
+        _require(
+            not matches or matches[0].get("status") in {"queued", "waiting", "pending", "requested"},
+            f"producer job is not running: {detail}",
+        )
+        _require(clock() < deadline, f"producer job did not become running within {wait_seconds:g}s: {detail}")
+        sleep(poll_seconds)
 
 
 def producer_receipt(directory: Path, run: dict[str, Any], job: dict[str, Any]) -> dict[str, Any]:
@@ -687,13 +722,8 @@ def main(argv: list[str] | None = None) -> int:
                 "workflow context differs from API producer",
             )
             _require(run["repository"]["id"] == int(os.environ["GITHUB_REPOSITORY_ID"]), "repository context differs")
-            jobs = _pages(github_json, f"actions/runs/{run_id}/attempts/{attempt}/jobs", "jobs")
-            matches = [job for job in jobs if job.get("name") == JOB_NAME]
-            _require(
-                len(matches) == 1 and matches[0].get("status") == "in_progress",
-                "producer job is not unique and running",
-            )
-            receipt = producer_receipt(args.dist, run, matches[0])
+            job = running_producer_job(run_id, attempt)
+            receipt = producer_receipt(args.dist, run, job)
             (args.dist / PRODUCER_RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n")
         else:
             fetch_hosted_refs(args.source, args.tag)
