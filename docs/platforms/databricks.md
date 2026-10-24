@@ -194,6 +194,11 @@ Gateways accept personal access tokens only. If `DATABRICKS_CLIENT_ID`, `DATABRI
 `ConfigurationError` before connecting. Unset those variables and provide `access_token` (or
 `DATABRICKS_TOKEN`) instead. Native runs are unaffected.
 
+With a gateway, `from_config` needs `server_hostname` (the gateway hostname) and `access_token` set
+explicitly. It never falls back to the auto-detected workspace hostname, token or profile, because that
+would send the queries straight to the workspace and bypass the gateway. A missing value raises a
+`ConfigurationError`.
+
 ## Usage Examples
 
 ### Basic Benchmark

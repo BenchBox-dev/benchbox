@@ -124,3 +124,53 @@ def test_native_run_emits_no_gateway():
     payload = _payload(adapter)
     assert "gateway" not in payload["platform"]
     assert "@" not in payload["platform"]["variant"]
+
+
+@pytest.mark.parametrize("gateway", ["espresso", "custom"])
+@pytest.mark.parametrize("missing", ["server_hostname", "access_token"])
+def test_from_config_with_gateway_requires_explicit_credentials(gateway, missing):
+    config = _config(gateway=gateway)
+    del config[missing]
+
+    with (
+        patch.object(DatabricksAdapter, "_auto_detect_databricks_config") as auto_detect,
+        pytest.raises(ConfigurationError, match=f"explicit {missing}"),
+    ):
+        DatabricksAdapter.from_config(config)
+
+    auto_detect.assert_not_called()
+
+
+def test_from_config_with_gateway_rejects_placeholder_hostname():
+    config = _config(gateway="espresso", server_hostname="your-workspace.cloud.databricks.com")
+
+    with (
+        patch.object(DatabricksAdapter, "_auto_detect_databricks_config") as auto_detect,
+        pytest.raises(ConfigurationError, match="explicit server_hostname"),
+    ):
+        DatabricksAdapter.from_config(config)
+
+    auto_detect.assert_not_called()
+
+
+def test_from_config_with_gateway_uses_explicit_credentials_without_auto_detect():
+    with patch.object(DatabricksAdapter, "_auto_detect_databricks_config") as auto_detect:
+        adapter = DatabricksAdapter.from_config(_config(gateway="espresso"))
+
+    auto_detect.assert_not_called()
+    assert adapter.server_hostname == GATEWAY_HOSTNAME
+    assert adapter.access_token == "mock-token"
+
+
+def test_from_config_native_still_auto_detects_missing_credentials():
+    detected = {
+        "server_hostname": "native.cloud.databricks.com",
+        "http_path": "/sql/1.0/warehouses/native",
+        "access_token": "mock-native-token",
+    }
+    with patch.object(DatabricksAdapter, "_auto_detect_databricks_config", return_value=detected) as auto_detect:
+        adapter = DatabricksAdapter.from_config({"catalog": "main"})
+
+    auto_detect.assert_called_once()
+    assert adapter.gateway == "native"
+    assert adapter.server_hostname == "native.cloud.databricks.com"

@@ -492,13 +492,29 @@ class DatabricksAdapter(PlatformAdapter):
             )
 
         compute_resource = config.get("compute_resource")
-        if not all(
+        gateway = str(config.get("gateway") or "native")
+        explicit_credentials_complete = all(
             [
                 config.get("server_hostname") and not is_placeholder(config.get("server_hostname")),
                 compute_resource or (config.get("http_path") and not is_placeholder(config.get("http_path"))),
                 config.get("access_token") and not is_placeholder(config.get("access_token")),
             ]
-        ):
+        )
+        if gateway != "native":
+            missing = [
+                name
+                for name in ("server_hostname", "access_token")
+                if not config.get(name) or is_placeholder(config.get(name))
+            ]
+            if missing:
+                from benchbox.core.exceptions import ConfigurationError
+
+                raise ConfigurationError(
+                    f"Databricks gateway '{gateway}' needs explicit {', '.join(missing)}. Set server_hostname to the "
+                    "gateway hostname and access_token to a personal access token; BenchBox does not fall back to "
+                    "the auto-detected workspace, which would bypass the gateway."
+                )
+        elif not explicit_credentials_complete:
             auto_config = cls._auto_detect_databricks_config(very_verbose=very_verbose)
             if auto_config:
                 adapter_config.update(auto_config)
