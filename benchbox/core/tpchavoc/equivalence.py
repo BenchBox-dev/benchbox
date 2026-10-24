@@ -27,7 +27,13 @@ KNOWN_DIVERGENCES: dict[str, str] = {}
 
 POSTGRES_KNOWN_DIVERGENCES: dict[str, str] = {}
 
-DATAFUSION_KNOWN_DIVERGENCES: dict[str, str] = {}
+DATAFUSION_KNOWN_DIVERGENCES: dict[str, str] = {
+    "1_v4": "decimal-avg-scale-rounding",
+}
+
+DATAFUSION_KNOWN_DIVERGENCES_REVIEW_BY: dict[str, date] = {
+    "1_v4": date(2027, 1, 24),
+}
 
 _TRAILING_LIMIT = re.compile(r"(?is)\s+limit\s+\d+\s*;?\s*$")
 
@@ -538,6 +544,7 @@ def run_datafusion_sample() -> int:
         DATAFUSION_KNOWN_DIVERGENCES,
         engine_label="DataFusion",
         baseline_name="DATAFUSION_KNOWN_DIVERGENCES",
+        review_by=DATAFUSION_KNOWN_DIVERGENCES_REVIEW_BY,
     )
 
 

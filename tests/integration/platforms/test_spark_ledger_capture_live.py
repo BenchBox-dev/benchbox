@@ -63,8 +63,8 @@ def test_partitioned_and_clustered_ddl_is_recorded_and_status_is_not_noop(spark)
 
     recorded = [(s.phase, s.status, s.statement) for s in ledger.statements]
     assert [(phase, status) for phase, status, _ in recorded] == [(PHASE_DDL, EXECUTED)] * 2
-    assert "PARTITIONED BY (o_date)" in recorded[0][2]
-    assert "CLUSTER BY (l_key)" in recorded[1][2]
+    assert "USING DELTA PARTITIONED BY (`o_date`)" in recorded[0][2]
+    assert "USING DELTA CLUSTER BY (`l_key`)" in recorded[1][2]
     assert ledger.overall_status(tuning_enabled=True, has_config=True) != NOOP
     assert spark.sql("SELECT COUNT(*) FROM plain").collect()[0][0] == 0
     assert {table.name for table in spark.catalog.listTables()} >= {"orders", "lineitem", "plain"}

@@ -26,7 +26,8 @@ def _extract_v2_suffix(query: str) -> str:
 
 def _normalize_v2_suffix_for_comparison(query: str) -> str:
     suffix = _extract_v2_suffix(query)
-    return re.sub(r"\bv1\.([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s+\1\b", r"v1.\1", suffix)
+    suffix = re.sub(r"\bv1\.([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s+\1\b", r"v1.\1", suffix)
+    return re.sub(r"(?<=FROM v1),\s+|,\s+(?=v1 AS v1_)", " CROSS JOIN ", suffix)
 
 
 def _extract_order_limit(query: str) -> tuple[str, str]:
