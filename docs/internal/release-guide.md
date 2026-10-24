@@ -540,9 +540,11 @@ problem it finds. It verifies that:
   from enforcement-file changes), which is the check that stops a release
   preparation pull request from merging to `develop` with fragments left
   uncompiled. `release-cut` removes `changelog.d` from the release branch and
-  `--require-prepared` refuses to cut while fragments are pending, so
-  `release-v2.yml` passes the flag at its tag-time `release-check` only to
-  confirm the tagged tree carries none. A default `release-check` passes while
+  `--require-prepared` refuses to cut while fragments are pending, but both run
+  only on the maintainer's machine. `release-v2.yml` therefore passes the flag
+  at its tag-time `release-check`, which runs in CI and fails when a release
+  branch assembled without those local guards (a manual merge or an edited
+  recipe) still carries a fragment. A default `release-check` passes while
   fragments are pending.
 
 Both targets need the full development tree, because the lock-revision check
