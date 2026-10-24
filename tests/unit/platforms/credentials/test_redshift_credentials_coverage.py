@@ -306,7 +306,7 @@ class TestGetPublicIp:
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_response.read.return_value = b"5.6.7.8"
 
-        def urlopen_side_effect(url, timeout=None):
+        def urlopen_side_effect(url, timeout=None, context=None):
             if "ipify" in url:
                 raise OSError("service down")
             return mock_response

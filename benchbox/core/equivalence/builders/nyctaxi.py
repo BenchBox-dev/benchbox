@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import urllib.request
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -8,6 +10,8 @@ from typing import TYPE_CHECKING, Any
 from benchbox.core.equivalence.builders.base import CrossSurfaceData, _load_duckdb_cell
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from benchbox.core.nyctaxi.downloader import NYCTaxiDataDownloader
 
 NYCTAXI_SQL_TO_DF_IDS: dict[str, str] = {
@@ -69,9 +73,20 @@ def _extract_sql_windows(sql_queries: dict[str, str]) -> dict[str, dict[str, Any
     return overrides
 
 
-def build_nyctaxi_duckdb(scale_factor: float, output_dir: Path) -> CrossSurfaceData:
-    import urllib.request
+@contextmanager
+def _network_forbidden() -> Iterator[None]:
+    def _forbidden_urlopen(*args: object, **kwargs: object) -> object:
+        raise AssertionError("nyctaxi gate must not touch the network")
 
+    original = urllib.request.urlopen
+    urllib.request.urlopen = _forbidden_urlopen
+    try:
+        yield
+    finally:
+        urllib.request.urlopen = original
+
+
+def build_nyctaxi_duckdb(scale_factor: float, output_dir: Path) -> CrossSurfaceData:
     from benchbox.core.nyctaxi.benchmark import NYCTaxiBenchmark
     from benchbox.core.nyctaxi.dataframe_queries import NYCTAXI_DATAFRAME_QUERIES
     from benchbox.core.nyctaxi.dataframe_queries.parameters import set_parameter_overrides
@@ -80,16 +95,8 @@ def build_nyctaxi_duckdb(scale_factor: float, output_dir: Path) -> CrossSurfaceD
     benchmark = NYCTaxiBenchmark(scale_factor=scale_factor, output_dir=output_dir, seed=NYCTAXI_GATE_SEED)
     _force_offline_synthesis(benchmark.downloader)
 
-    def _forbidden_urlretrieve(*args: object, **kwargs: object) -> object:
-        raise AssertionError("nyctaxi gate must not touch the network")
-
-    urllib.request.urlretrieve = _forbidden_urlretrieve
-    try:
+    with _network_forbidden():
         benchmark.generate_data()
-    finally:
-        import importlib
-
-        importlib.reload(urllib.request)
 
     connection = _load_duckdb_cell(benchmark, output_dir, ["taxi_zones", "trips"], label="NYC Taxi")
     sql_queries = benchmark.get_queries()

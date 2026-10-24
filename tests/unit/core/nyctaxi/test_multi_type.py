@@ -41,7 +41,7 @@ def no_network_downloads(monkeypatch):
     def _raise(*args, **kwargs):
         raise OSError("Network calls blocked in unit tests - using synthetic data")
 
-    monkeypatch.setattr(urllib.request, "urlretrieve", _raise)
+    monkeypatch.setattr(urllib.request, "urlopen", _raise)
 
 
 class TestTaxiTypeEnum:

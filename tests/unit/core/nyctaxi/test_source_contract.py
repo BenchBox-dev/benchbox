@@ -80,7 +80,7 @@ def test_pinned_checksum_mismatch_is_not_synthetic_fallback(tmp_path, monkeypatc
     downloader = NYCTaxiDataDownloader(months=[1], output_dir=tmp_path)
     url = downloader.source_contract()["urls"][0]
     monkeypatch.setitem(module.PINNED_SOURCE_SHA256, url, "0" * 64)
-    monkeypatch.setattr(module.urllib.request, "urlretrieve", lambda _url, path: Path(path).write_bytes(b"drift"))
+    monkeypatch.setattr(module, "download_to_file", lambda _url, path, **_kw: Path(path).write_bytes(b"drift"))
 
     with pytest.raises(ChecksumMismatchError):
         downloader._process_parquet_file(url, csv.writer(io.StringIO()), 0)
@@ -120,7 +120,7 @@ def test_unparseable_download_is_not_recorded_as_ingested(tmp_path, monkeypatch)
     downloader = NYCTaxiDataDownloader(months=[1], output_dir=tmp_path)
     monkeypatch.setattr(downloader, "_generate_synthetic_month", lambda *args, **kwargs: 1)
     url = downloader.source_contract()["urls"][0]
-    monkeypatch.setattr(module.urllib.request, "urlretrieve", lambda _url, path: Path(path).write_bytes(b"bad"))
+    monkeypatch.setattr(module, "download_to_file", lambda _url, path, **_kw: Path(path).write_bytes(b"bad"))
     monkeypatch.setattr(pq, "read_table", lambda _path: (_ for _ in ()).throw(ValueError("invalid parquet")))
 
     downloader._process_parquet_file(url, csv.writer(io.StringIO()), 0)

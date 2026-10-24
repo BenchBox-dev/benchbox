@@ -170,6 +170,19 @@ benchbox run --platform databricks --benchmark tpch --scale 1.0
 
 BenchBox has no setting for OAuth machine-to-machine or Azure AD sign-in.
 
+### TLS trust
+
+BenchBox verifies the SQL warehouse's certificate against the `certifi` CA bundle, not the Python interpreter's system
+store. To trust a corporate or proxy CA instead, point `REQUESTS_CA_BUNDLE` (or `SSL_CERT_FILE`) at a PEM file that
+contains every CA you want to trust:
+
+```bash
+export REQUESTS_CA_BUNDLE=/path/to/corporate-ca.pem
+```
+
+`REQUESTS_CA_BUNDLE` takes precedence when both variables are set. The same setting applies to BenchBox's own
+downloads and hosted result submission.
+
 ## Gateways
 
 A gateway sits between BenchBox and the workspace and may reroute or rewrite queries. Select one with the
