@@ -226,8 +226,6 @@ class UnknownSqlDialectError(ValueError):
     pass
 
 
-SQLITE_DISCOUNT_BOUNDS = {"columns": ("l_discount",), "tables": ("lineitem",)}
-
 GENERIC_DIALECT_ALIASES: dict[str, str] = {"ansi": "postgres", "standard": "postgres"}
 
 
@@ -330,7 +328,7 @@ def translate_sql_query(
                 rewrite_args = dict(rewrite_args)
                 expression = apply_rewrite(rewrite_name, expression, rewrite_args.pop("dialect", src), **rewrite_args)
             if tgt == "sqlite":
-                expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt, **SQLITE_DISCOUNT_BOUNDS)
+                expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)
                 if date_columns:
                     expression = apply_rewrite("mark_date_columns", expression, tgt, date_columns=date_columns)
             translated = expression.sql(dialect=tgt, identify=should_identify)

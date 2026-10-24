@@ -247,16 +247,14 @@ from benchbox.utils.dialect_utils import apply_rewrite
 print(
     apply_rewrite(
         "fold_between_literal_arithmetic",
-        "SELECT 1 FROM lineitem WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
+        "SELECT 1 FROM sat_lineitem WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
         "sqlite",
-        columns=["l_discount"],
-        tables=["lineitem"],
     )
 )
 ```
 
 ```text
-SELECT 1 FROM lineitem WHERE l_discount BETWEEN 0.05 AND 0.07
+SELECT 1 FROM sat_lineitem WHERE l_discount BETWEEN 0.05 AND 0.07
 ```
 
 ### DDL Translation
