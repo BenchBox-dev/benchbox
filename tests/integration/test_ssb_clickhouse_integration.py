@@ -17,6 +17,25 @@ pytestmark = [
 chdb = require_chdb()
 
 
+def _drop_default_tables(client) -> None:
+    rows = client.execute("SELECT name FROM system.tables WHERE database = 'default'")
+    for (name,) in rows:
+        client.execute(f"DROP TABLE `{name}`")
+
+
+@pytest.fixture
+def chdb_client():
+    from benchbox.platforms.clickhouse import ClickHouseLocalClient
+
+    client = ClickHouseLocalClient()
+    _drop_default_tables(client)
+    try:
+        yield client
+    finally:
+        _drop_default_tables(client)
+        client.close()
+
+
 class TestSSBClickHouseIntegration:
     def test_ssb_csv_loading_configuration(self):
 
@@ -52,38 +71,30 @@ class TestSSBClickHouseIntegration:
         assert enable_primary_keys is True
         assert enable_foreign_keys is False
 
-    def test_ssb_schema_creation_without_engine(self):
+    def test_ssb_schema_creation_without_engine(self, chdb_client):
+        client = chdb_client
 
-        from benchbox.platforms.clickhouse import ClickHouseLocalClient
+        adapter = ClickHouseAdapter(deployment_mode="local")
+        benchmark = SSBBenchmark(scale_factor=0.01, compress_data=False, compression_type="none")
 
-        client = ClickHouseLocalClient()
+        duration = adapter.create_schema(benchmark, client)
+        assert duration > 0
 
-        try:
-            adapter = ClickHouseAdapter(deployment_mode="local")
-            benchmark = SSBBenchmark(scale_factor=0.01, compress_data=False, compression_type="none")
+        tables = client.execute("SHOW TABLES")
+        table_names = {t[0] for t in tables}
+        expected_tables = {"date", "customer", "supplier", "part", "lineorder"}
+        assert table_names == expected_tables
 
-            duration = adapter.create_schema(benchmark, client)
-            assert duration > 0
+        engine_query = "SELECT name, engine FROM system.tables WHERE database = 'default' ORDER BY name"
+        engine_result = client.execute(engine_query)
 
-            tables = client.execute("SHOW TABLES")
-            table_names = {t[0] for t in tables}
-            expected_tables = {"date", "customer", "supplier", "part", "lineorder"}
-            assert table_names == expected_tables
+        for name, engine in engine_result:
+            assert engine == "MergeTree", f"Table {name} should use MergeTree engine, got {engine}"
 
-            engine_query = "SELECT name, engine FROM system.tables WHERE database = 'default' ORDER BY name"
-            engine_result = client.execute(engine_query)
-
-            for name, engine in engine_result:
-                assert engine == "MergeTree", f"Table {name} should use MergeTree engine, got {engine}"
-        finally:
-            client.close()
-
-    def test_ssb_data_loading_with_clickhouse(self):
-
-        from benchbox.platforms.clickhouse import ClickHouseLocalClient
+    def test_ssb_data_loading_with_clickhouse(self, chdb_client):
 
         data_dir = Path(tempfile.mkdtemp(prefix="ssb-data-"))
-        client = ClickHouseLocalClient()
+        client = chdb_client
 
         try:
             adapter = ClickHouseAdapter(deployment_mode="local")
@@ -114,15 +125,12 @@ class TestSSBClickHouseIntegration:
                 row_count = count_result[0][0]
                 assert row_count > 0, f"Table {table_name} should have data"
         finally:
-            client.close()
             if data_dir.exists():
                 shutil.rmtree(data_dir)
 
-    def test_ssb_query_execution_clickhouse(self):
-        from benchbox.platforms.clickhouse import ClickHouseLocalClient
-
+    def test_ssb_query_execution_clickhouse(self, chdb_client):
         data_dir = Path(tempfile.mkdtemp(prefix="ssb-data-"))
-        client = ClickHouseLocalClient()
+        client = chdb_client
 
         try:
             adapter = ClickHouseAdapter(deployment_mode="local")
@@ -150,7 +158,6 @@ class TestSSBClickHouseIntegration:
             result = client.execute(simple_query)
             assert len(result) > 0
         finally:
-            client.close()
             if data_dir.exists():
                 shutil.rmtree(data_dir)
 
