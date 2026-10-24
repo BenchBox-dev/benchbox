@@ -539,13 +539,13 @@ problem it finds. It verifies that:
   (`release-identity-changed`, reported by `release_flow.py select` separately
   from enforcement-file changes), which is the check that stops a release
   preparation pull request from merging to `develop` with fragments left
-  uncompiled. `release-cut` removes `changelog.d` from the release branch and
-  `--require-prepared` refuses to cut while fragments are pending, but both run
-  only on the maintainer's machine. `release-v2.yml` therefore passes the flag
-  at its tag-time `release-check`, which runs in CI and fails when a release
-  branch assembled without those local guards (a manual merge or an edited
-  recipe) still carries a fragment. A default `release-check` passes while
-  fragments are pending.
+  uncompiled. `release-v2.yml` tags merged `develop` commits, so its tag-time
+  `release-check` passes the flag and refuses to publish a tag whose tree still
+  carries a fragment, for example one merged after the preparation pull
+  request. The legacy `release-cut` path is covered separately: its recipe
+  removes `changelog.d` from the release branch and `--require-prepared`
+  refuses to cut while fragments are pending. A default `release-check` passes
+  while fragments are pending.
 
 Both targets need the full development tree, because the lock-revision check
 lives under `_project/`.
