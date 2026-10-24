@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "Develop-push runner-minutes per merge fall below 40 (from about 72 including Trunk coverage)",
+    "Trunk workflow runner-minutes per merge fall from about 49 to below 40, measured with the CI usage report over 7 days before and after (Trunk coverage counted separately)",
+    "PR CI job queue time median and p90 do not rise over the same windows",
     "Release admission and arm-gate culprit naming behave unchanged, shown by a release-admission check and an arm-gate run after the change",
     "Any coverage dropped from Trunk (for example Python 3.12 fast) is named with where it is still covered"
   ],
-  "context": "Source: independent review of the PR-checks versus Trunk split on 2026-10-24 (develop a56738db4; run history 2026-10-10 to 2026-10-24: 465 merges, 466 Trunk push runs, 126 Trunk coverage runs). Rejected for now: reinstating the GitHub merge queue (retired 2026-10-03 after it saturated the runners and caught about zero cross-PR failures), and batching Trunk runs with cancel-in-progress or a commit stride (breaks exact-commit culprit naming and release admission unless dist-artifact stays per push).",
-  "description": "About 86% of Trunk's ~49 runner-minutes per merge repeats suites the PR head just passed (fast 9.4, medium collect plus shards 25.9, correctness gate 7.0). Trunk must stay per push: it is the only test of the merged tree, release admission needs the exact-commit Trunk push run and its dist-artifact, and the arm gate names the culprit from the newest Trunk run. After selection is live and the Trunk failure rate is low, evaluate trimming Trunk: drop or thin the Python 3.12 fast lane (nightly still covers 3.12), or skip the medium tier when the squash tree equals a fully tested PR head.",
+  "context": "Source: independent review of the PR-checks versus Trunk split on 2026-10-24 (develop a56738db4; run history 2026-10-10 to 2026-10-24: 465 merges, 466 Trunk push runs; Trunk coverage push runs only exist from 2026-10-21). Rejected for now: reinstating the GitHub merge queue (retired 2026-10-03 after it saturated the runners and caught about zero cross-PR failures), and batching Trunk runs with cancel-in-progress or a commit stride (breaks exact-commit culprit naming and release admission unless dist-artifact stays per push).",
+  "description": "About 86% of Trunk's ~49 runner-minutes per merge repeats suites the PR head just passed (fast 9.4, medium collect plus shards 25.9, correctness gate 7.0). Trunk must stay per push: it is the only test of the merged tree, release admission needs the exact-commit Trunk push run and its dist-artifact, and the arm gate names the culprit from the newest Trunk run. After selection is live and the Trunk failure baseline is classified, evaluate trimming Trunk: drop or thin the Python 3.12 fast lane (nightly.yml:31 still runs 3.12), or skip the medium tier only when the merged tree equals the PR head's tree and that PR head ran the full medium tier (selection escalated). The repository is public, so GitHub-hosted runner minutes are free; the binding limit is the concurrency cap. Queue time and PR time-to-green are the primary success metrics, runner-minutes secondary.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
@@ -13,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f1da2d7639cf426186f029acaee5a5dd",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T18:40:13Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8843b02b3a7c489792231c53463fd80f",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]

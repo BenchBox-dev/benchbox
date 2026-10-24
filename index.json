@@ -26685,7 +26685,8 @@
       "claim": null,
       "needs": [
         "cov-select-exit-shadow-20261021",
-        "trunk-red-run-triage-20261024"
+        "trunk-red-run-triage-20261024",
+        "ci-usage-metrics-report-20261024"
       ],
       "priority": "low",
       "status": "open",
