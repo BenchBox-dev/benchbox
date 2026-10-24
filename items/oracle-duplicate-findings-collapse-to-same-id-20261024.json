@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Reproduction on develop: duplicate stored ids then render.response_template failure",
+    "Failing-before tests (new finalize path and an existing duplicate-id record) pass after; existing tests unchanged",
+    "PR merged with an oracle verdict on its final head; merge SHA recorded"
+  ],
+  "context": "Created 2026-10-24 from the round-2 codex review of gap issue 2808 (packet /Users/joe/Developer/soundness-reviews/2808-round2/, develop 85fb89967aee37d54a6ea605d92893f59ffe63ab, raw output sha256 b34d14bc5cf5054ebbc6a3e733589661bb6170bee883f93a05f562d51b518286, final message sha256 c3791ed9839899f8a451c3ae7c9723852ca4e44d2ebcfc80ab4c92b0f2140178). Reviewer claims are UNVERIFIED: reproduce on current origin/develop first; line numbers are leads.",
+  "description": "Round-2 codex finding 4 (Medium): report.finalize (_project/scripts/oracle_reviewers/report.py ~242) keys findings in a dict during id assignment so two identical findings collapse and the stored ids are ['D2','D2']; the next follow-up then fails in render.response_template (render.py ~86, requires unique prior ids) and later heads keep the bad priors.\n\nDECISION GATE: reproduce first (two identical findings in one review, then plan a follow-up). Choose between de-duplicating identical findings before id assignment (then say so in the body) and assigning distinct ids; the stored record must always hold unique ids that parse back, and an already-stored duplicate-id record (existing PR state) must not crash planning (handle it defensively).\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun or dispatch the oracle; oracle verdict required on the PR (soundness path); no pre-registered digests; never weaken a gate; no skip/xfail; never bypass a hook by any route (no SKIP=, --no-verify, commit-tree); primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; always encoding utf-8; PR text for a reader who never saw the session; done = merged PR plus evidence.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-24T21:11:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "02a2f2eb5e7b444cb9c80e7518dd6dda",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}
