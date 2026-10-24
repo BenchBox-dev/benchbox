@@ -4,6 +4,7 @@
     "docs/internal/comment-policy.md describes the ratchet and wheel-bump verification: pyproject binding, declared dependency, one lock entry with filename and hash, and the METADATA name and version",
     "Optional: verify_bound_wheel tolerates extra keys in lock wheel records, or a test pins the current exact-match behaviour"
   ],
+  "context": "CLOSED 2026-10-24 (acceptance met, owner-approved): a main() test requires exit 2 on a mismatched wheel bump (tests/unit/scripts/test_comment_policy_strict_ownership.py:269-280), so dropping the verify_wheel_bumps call (check_comment_policy.py:430 -> :91-112) fails tests; docs/internal/comment-policy.md:226-244 documents the ratchet and wheel binding.",
   "description": "An independent post-merge review of the comment-policy strict-mode change (f2c874c44, #2915) found that no test fails if main() in scripts/check_comment_policy.py stops calling verify_wheel_bumps, and that docs/internal/comment-policy.md does not describe the ratchet or the wheel-bump verification. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Independent post-merge review\". The checker's test file is a soundness path and needs oracle review.",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "op": "create",
       "op_id": "031dcb32e9414ab3857ce5adf02c6ff1",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T14:31:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3037c9d960f541e686926866e2dc5df4",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
