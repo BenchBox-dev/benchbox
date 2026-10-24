@@ -24136,10 +24136,15 @@
       "title": "SQLite: Havoc 1_v7 (LIST aggregate) and 1_v9 (GROUPING SETS) fail; tpcds_obt Q16/Q94/Q95 use an unpadded date literal"
     },
     "sqlite-integer-division-truncates-ratios": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-25T14:32:38Z",
+        "generation": "9ecf7ec6a7ed4737ba29bc6ce6629fc7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "SQLite lowering must not truncate integer division in ratio queries (TPC-DS Q21)"
     },
     "sqlite-loader-empty-text-nulls": {
