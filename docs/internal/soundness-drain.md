@@ -27,8 +27,10 @@ is unresolved. It is not compared with the push time, but a later oracle
 review of the head supersedes it. An edited comment
 does not count, and neither does one with any other text, because Markdown
 around the line can hide or quote it.
-Posting the stand-in comment does not rerun the check. After the Oracle or
-stand-in review is complete for the current head, run
+Posting the stand-in comment does not rerun the check by itself; the hourly
+`oracle-review-reevaluate` workflow re-runs it once the decision passes. To
+recover sooner, after the Oracle or stand-in review is complete for the
+current head, run
 `make oracle-review-recover PR=<number>` if an unsuccessful `oracle-review`
 run is blocking the PR. The target verifies each run belongs to the current
 PR head and workflow, waits for each rerun serially, then closes and reopens

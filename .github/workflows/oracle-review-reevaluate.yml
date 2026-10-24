@@ -1,0 +1,50 @@
+name: oracle-review-reevaluate
+
+run-name: oracle-review-reevaluate (${{ github.event_name }})
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+
+permissions: {}
+
+concurrency:
+  group: oracle-review-reevaluate
+  cancel-in-progress: false
+
+jobs:
+  reevaluate:
+    name: reevaluate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    env:
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: develop
+          persist-credentials: false
+          sparse-checkout: |
+            .github/inert-paths.txt
+            .github/oracle-reviewers.yml
+            .github/soundness-paths.txt
+            .github/workflows/oracle-review-reevaluate.yml
+            _project/scripts/oracle_gate.py
+            _project/scripts/oracle_review_check.py
+            _project/scripts/oracle_review_reevaluate.py
+            _project/scripts/oracle_reviewers
+            _project/scripts/inert_paths.py
+            _project/scripts/soundness_paths.py
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Re-run unsuccessful oracle-review runs for heads that now pass
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_review_reevaluate.py --repo "$REPO"
