@@ -4,7 +4,7 @@
     "RUBRIC 2 Fix the context encoding/parsing so a named trunk-coverage run's map contains every collected medium id whose test records project-source coverage, compared same-SHA against the collection artifact; ids containing `|`, quotes, backslashes, and newlines included.",
     "RUBRIC 3 Guard: a same-SHA check in the map build fails (or reports) when a collected medium id is absent without a recorded no-coverage reason; truncated/mangled nodes are rejected."
   ],
-  "context": "AMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Root cause found: same-SHA reconciliation of trunk-coverage run 40071524742 (develop c962e3e) shows 85 of 942 collected test_comment_policy.py ids missing from map.json plus 51 ghost nodes truncated at the first `|` or newline; context parsing in scripts/coverage_test_selection.py:72-75 (split_phase splits on `|`; build_map :158-187) mangles any parametrized id with `|`, quotes, backslashes or newlines, in any module, so changed-source impact selection silently skips them. Priority raised to high: this is a test-selection correctness bug.",
+  "context": "DONE 2026-10-24: PR #3391 merged as dacd77d40ed785fd65185d30d56ca1895449b88b (oracle SHIP; both oracle threads verified fixed and resolved). Cause: split_phase split each coverage context at the first '|'. Now only a trailing |setup, |run or |teardown is split; normalize_context delegates to it. Guard: build-map requires --execution (one shard-N-execution.json per coverage data file); the build fails on evidence for another SHA or with complete != true, on a map node that is not an assigned id, or on an assigned id missing from the map without a skipped report or a passed/failed call report; skipped and no-project-coverage ids go to uncovered_nodes; trunk-coverage.yml asserts at least one execution file. Round-trip on run 40071524742's real shard data: old map 85 missing ids and 51 ghost nodes; new map 15,867 nodes for 15,867 collected ids, test_comment_policy.py 942/942. Tests cover |, quotes, backslashes, newlines, trailing | per phase and each guard case; mutation back to first-| split failed 19 tests. Post-merge: trunk-coverage run 40141158992 at dacd77d40 succeeded with the guard on (medium-collect, 4 shards, medium-coverage-map all success).\n\nAMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Root cause found: same-SHA reconciliation of trunk-coverage run 40071524742 (develop c962e3e) shows 85 of 942 collected test_comment_policy.py ids missing from map.json plus 51 ghost nodes truncated at the first `|` or newline; context parsing in scripts/coverage_test_selection.py:72-75 (split_phase splits on `|`; build_map :158-187) mangles any parametrized id with `|`, quotes, backslashes or newlines, in any module, so changed-source impact selection silently skips them. Priority raised to high: this is a test-selection correctness bug.",
   "description": "PROBLEM: trunk-coverage run 39869359327 (develop 853f7a024) built a green medium coverage map (15,246 nodes, failed_nodes empty), but 81 medium ids in tests/unit/scripts/test_comment_policy.py are absent from it while 858 other ids from the same module are present. PR test selection uses the map, so these ids may never be selected by changed-file impact. Cause not investigated.\n\nCHANGE: find why these ids have no map entry (parametrization ids, collection differences between the coverage run and the medium list, or recording failures) and fix the cause so the map covers every collected medium id, or record why the gap is harmless.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/39869359327"
@@ -24,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "704a99a66c4b498fb40e2fbe9bd4d08e",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T23:25:19Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4f8cb3376ea74c5ea5346586ef4e6e39",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
