@@ -91,6 +91,8 @@ def manifest_snippet(*, key: str, display_name: str, mode: str) -> dict:
             },
         }
     )
+    if mode == "sql":
+        snippet["capabilities"]["sql_dialect"] = key.replace("-", "_")
     return snippet
 
 
