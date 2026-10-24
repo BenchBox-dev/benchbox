@@ -232,8 +232,21 @@ def test_an_empty_final_message_keeps_the_stderr_excerpt(
     body = f"print({json.dumps(_reads('a.txt'))})\nsys.stderr.write('error: stream ended after a tool call\\n')"
     _fake_omp(tmp_path, monkeypatch, body)
     outcome = _review(policy, tmp_path, workspace, head)
-    assert outcome.missing is not None and outcome.missing.kind == absence.INVALID
+    assert outcome.missing == absence.Absence(absence.EMPTY, "the reviewer ended without a final answer")
     assert outcome.diagnostic.startswith("error: stream ended after a tool call | trace: reads=1 greps=0")
+
+
+@skip_on_windows
+def test_a_final_message_of_prose_is_invalid_not_empty(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    _fake_omp(
+        tmp_path, monkeypatch, f"print({json.dumps(_reads('a.txt'))})\nprint({json.dumps(_envelope('All done.'))})"
+    )
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.missing is not None and outcome.missing.kind == absence.INVALID
+    assert outcome.missing.detail.startswith("the reviewer output is not JSON")
 
 
 @skip_on_windows
