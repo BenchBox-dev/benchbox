@@ -50,9 +50,17 @@ def routed_compliance_class(compliance_class: Any, gateway: Any) -> str | None:
     return str(getattr(compliance_class, "value", compliance_class))
 
 
+def platform_info_gateway(platform_info: Any) -> Any:
+    if not isinstance(platform_info, Mapping):
+        return None
+    if "gateway" in platform_info:
+        return platform_info["gateway"]
+    configuration = platform_info.get("configuration")
+    return configuration.get("gateway") if isinstance(configuration, Mapping) else None
+
+
 def result_compliance_class(result: Any) -> str | None:
-    platform_info = getattr(result, "platform_info", None)
-    gateway = platform_info.get("gateway") if isinstance(platform_info, Mapping) else None
+    gateway = platform_info_gateway(getattr(result, "platform_info", None))
     return routed_compliance_class(getattr(result, "compliance_class", None), gateway)
 
 

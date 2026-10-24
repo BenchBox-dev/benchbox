@@ -38,6 +38,7 @@ from benchbox.core.results.schema_policy import (
 )
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
+    platform_info_gateway,
     result_compliance_class,
     unofficial_metric_marker,
 )
@@ -666,7 +667,7 @@ def _add_execution_variant_fields(platform: dict[str, Any], result: BenchmarkRes
     )
     if engine_block:
         platform["execution_engine"] = order_dict(engine_block, PLATFORM_EXECUTION_ENGINE_KEY_ORDER)
-    gateway_block = gateway_payload(_platform_info_entry(platform_info, "gateway"))
+    gateway_block = gateway_payload(platform_info_gateway(platform_info))
     if gateway_block:
         platform["gateway"] = order_dict(gateway_block, PLATFORM_GATEWAY_KEY_ORDER)
     for key, lead in (("compute", PLATFORM_COMPUTE_LEAD_KEYS), ("deployment", PLATFORM_DEPLOYMENT_LEAD_KEYS)):
