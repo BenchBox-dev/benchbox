@@ -197,7 +197,7 @@ def test_scd_change_expires_current_row_and_inserts_new_version(dim_customer) ->
     stats = _apply(dim_customer, pd.DataFrame({"CustomerID": [1, 2], "Status": ["B", "A"], "Attr": [5, 7]}))
 
     assert stats["success"] is True, stats["error_message"]
-    assert stats["scd_type2_changes"] == 2
+    assert stats["scd_type2_changes"] == 1
     assert stats["unchanged_records"] == 1
 
     rows = _rows(dim_customer)
@@ -218,6 +218,32 @@ def test_scd_change_expires_current_row_and_inserts_new_version(dim_customer) ->
     assert current[0][5] == 2
     assert current[0][6] == EFFECTIVE.date()
     assert current[0][7].isoformat() == "9999-12-31"
+
+
+def test_counts_partition_the_input_rows(dim_customer) -> None:
+    dim_customer.execute(
+        "INSERT INTO DimCustomer VALUES "
+        "(30, 3, 'A', 9, TRUE, 1, DATE '2024-01-01', DATE '9999-12-31'),"
+        "(50, 5, 'A', 11, TRUE, 1, DATE '2024-01-01', DATE '9999-12-31')"
+    )
+    data = pd.DataFrame(
+        {
+            "CustomerID": [1, 2, 3, 4, 5],
+            "Status": ["B", "A", "C", "A", "A"],
+            "Attr": [5, 7, 9, 1, 12],
+        }
+    )
+    stats = _apply(dim_customer, data)
+
+    assert stats["success"] is True, stats["error_message"]
+    assert stats["new_records"] == 1
+    assert stats["scd_type2_changes"] == 2
+    assert stats["updated_records"] == 1
+    assert stats["unchanged_records"] == 1
+    assert (
+        stats["new_records"] + stats["scd_type2_changes"] + stats["updated_records"] + stats["unchanged_records"]
+        == stats["records_processed"]
+    )
 
 
 def test_unchanged_rows_are_untouched(dim_customer) -> None:

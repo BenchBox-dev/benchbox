@@ -566,7 +566,7 @@ class EnhancedSCDType2Processor:
         logger.debug(f"Expired {records_expired} and inserted {records_inserted} versions for {table_name}")
 
         return {
-            "records_updated": records_expired + records_inserted,
+            "records_updated": records_expired,
             "records_expired": records_expired,
             "records_inserted": records_inserted,
         }

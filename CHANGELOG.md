@@ -435,7 +435,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and new natural keys, and overwrites the non-SCD attribute columns and `BatchID` in place on
   rows whose only changes are non-SCD. Before this it only counted them. Statements use bound
   parameters and run in one transaction; the returned counts are the rows the database reports
-  as affected. A failed read of the current dimension or a failed `BEGIN` now aborts the run
+  as affected, and `scd_type2_changes` counts one per superseded key so that the new, SCD,
+  updated and unchanged counts add up to `records_processed`. A failed read of the current dimension or a failed `BEGIN` now aborts the run
   before any write instead of treating the table as empty. Table and column names are checked
   against an allow-list before any SQL is built, a caller-owned transaction is protected with
   a SAVEPOINT (the run fails closed on connections without SAVEPOINT support, such as DuckDB),
