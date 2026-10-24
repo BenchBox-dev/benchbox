@@ -23797,12 +23797,17 @@
       "title": "BenchBox: move DDL creation for ClickHouse, StarRocks, Doris, Databend and Firebolt adapters to translate_ddl"
     },
     "sqlglot-fork-d3c-delete-ddl-remaining-adapters": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-25T00:50:55Z",
+        "generation": "f72e7f56effc4c2882416dc15d8b846c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
+      },
       "needs": [
         "sqlglot-fork-d3-delete-ddl-rule-bodies"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "BenchBox: move DDL creation for the remaining adapters (Athena, Redshift, Synapse, Fabric, Spark family, Presto/Trino, QuestDB, others) to translate_ddl"
     },
     "sqlglot-fork-d4-delete-havoc-datafusion-transformers": {
