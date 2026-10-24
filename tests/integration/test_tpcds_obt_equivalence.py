@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 
 import pytest
@@ -105,3 +106,24 @@ def test_an_obt_query_returns_the_tpcds_result_unless_listed(engines, query_id: 
         f"Q{query_id}: the expected-divergence lists record it as {listed} but it is {outcome.status} "
         f"on SF{SCALE_FACTOR:g} ({outcome.detail}); update the lists only when the change is understood"
     )
+
+
+@pytest.mark.skipif(SCALE_FACTOR < 1, reason="Q24 returns rows only from scale factor 1")
+def test_q24_matches_tpcds_with_parameters_that_return_rows(engines) -> None:
+    obt, base, benchmark, manager = engines
+    market, colors = 8, ("yellow", "snow")
+    obt_sql = manager.get_query(24, scale_factor=SCALE_FACTOR)
+    obt_sql = re.sub(r"store_s_market_id = \d+", f"store_s_market_id = {market}", obt_sql)
+    obt_statements = [statement for statement in obt_sql.split(";") if statement.strip()]
+    obt_parts = []
+    base_parts = []
+    for statement, variant, color in zip(obt_statements, ("a", "b"), colors, strict=True):
+        statement = re.sub(r"item_i_color = '[^']*'", f"item_i_color = '{color}'", statement)
+        base_sql = benchmark.get_query(24, scale_factor=SCALE_FACTOR, variant=variant, dialect="duckdb")
+        base_sql = re.sub(r'"s_market_id" = \d+', f'"s_market_id" = {market}', base_sql)
+        base_sql = re.sub(r'"i_color" = \'[^\']*\'', f"\"i_color\" = '{color}'", base_sql)
+        obt_parts.extend(run_statements(obt, statement, QUERY_TIMEOUT_SECONDS))
+        base_parts.extend(run_statements(base, base_sql, QUERY_TIMEOUT_SECONDS))
+    assert base_parts and all(base_parts), "the pinned Q24 parameters no longer return rows on the base query"
+    comparison = compare_parts(obt_parts, base_parts)
+    assert comparison.equal, comparison.detail

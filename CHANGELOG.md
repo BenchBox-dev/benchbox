@@ -113,8 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fails when a calendar day from 1998 to 2002 has no sale or an item never appears, and the manifest records the
   coverage. The OBT benchmark version is 0.2, so published SQL OBT results need a rerun.
 
-- TPC-DS OBT queries return the TPC-DS result. 36 queries were rewritten as one-table SQL (grain, correlated
-  subqueries, customer-current attributes, return-side joins and the Q14 second part), Q46, Q64 and Q68 are served,
+- TPC-DS OBT queries return the TPC-DS result. 37 queries were rewritten as one-table SQL (grain, correlated
+  subqueries, customer-current attributes, return-side joins, the Q14 second part and Q24), Q46, Q64 and Q68 are served,
   and Q8, Q54 and Q84 join the inventory queries as recorded exclusions, so the catalog serves 90 of 99 queries.
   `make tpcds-obt-equivalence` compares every served query with TPC-DS at SF0.01 and SF1; no query is recorded as
   divergent at either scale. Q2 builds its calendar from the TPC-DS date table's fixed week and year boundaries
