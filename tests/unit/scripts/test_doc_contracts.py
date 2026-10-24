@@ -143,6 +143,37 @@ def test_mcp_tools_cover_the_run_surface_data(contracts: dict[str, Any]) -> None
     assert not set(mcp["remote_only_tools"]) & set(mcp["tools"])
 
 
+def test_collecting_mcp_facts_leaves_logging_quiet_mode_and_tracing_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+    import logging
+
+    from opentelemetry import trace
+
+    from benchbox.utils.printing import is_quiet, set_quiet
+
+    benchbox_logger = logging.getLogger("benchbox")
+    transport_logger = logging.getLogger("mcp.server.transport_security")
+    benchbox_logger.setLevel(logging.WARNING)
+    benchbox_logger.handlers[:] = []
+    monkeypatch.setattr(transport_logger, "filters", [])
+    set_quiet(False)
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:9")
+
+    def state() -> tuple[Any, ...]:
+        return (
+            benchbox_logger.level,
+            list(benchbox_logger.handlers),
+            benchbox_logger.propagate,
+            benchbox_logger.disabled,
+            list(transport_logger.filters),
+            is_quiet(),
+            trace.get_tracer_provider(),
+        )
+
+    before = state()
+    doc_contracts._mcp()
+    assert state() == before
+
+
 def test_public_symbols_match_the_inventory_file(contracts: dict[str, Any]) -> None:
     source = json.loads((ROOT / "_project/design/api-public-symbols.json").read_text(encoding="utf-8"))
     assert [item["symbol"] for item in contracts["public_symbols"]["symbols"]] == sorted(
