@@ -985,6 +985,10 @@ class TestPlatformDeploymentSelectorAvailability:
                 "benchbox.core.platform_registry.PlatformRegistry.get_platform_availability",
                 return_value=available,
             ),
+            patch(
+                "benchbox.core.platform_registry.PlatformRegistry.is_platform_available",
+                side_effect=lambda name: available.get(name, False),
+            ),
         ):
             try:
                 _run_module._resolve_platform_mode(s)
