@@ -4,8 +4,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from . import dedup, protocol, selection
-from .retry import ALL_ABSENT, FAILURE, INTEGRITY, OVERSIZE, PENDING, SUCCESS, UNREPORTED
+from . import absence, credentials, dedup, protocol, selection
+from .retry import ALL_ABSENT, FAILURE, INTEGRITY, MARKER_LIMIT, OVERSIZE, PENDING, SUCCESS, UNREPORTED
 from .selection import Attempt, Step
 from .verdict import Finding, Placement, Verdict, comment_span, place
 
@@ -15,6 +15,13 @@ OVERSIZE_NOTE = (
     "This pull request is too large for the oracle: its brief exceeds the size cap even without the diff, "
     "so no reviewer can run and this head is not retried. Split it into smaller pull requests, or ask the "
     "owner for a stand-in review of this head."
+)
+MARKER_LIMIT_DESCRIPTION = "pending: the protocol record does not fit in a review marker"
+MARKER_LIMIT_NOTE = (
+    "The decision and its defects are listed in full in this review, but the protocol record they must be saved in "
+    "exceeds the size limit of a review marker even after shortening titles and paths. This head has no recorded "
+    "decision and is not retried; push a new head with fewer or shorter findings. The defects below carry no "
+    "identifiers and open no tracked threads, so they are not carried into the next review."
 )
 STATES = {selection.PASS: SUCCESS, selection.FAIL: FAILURE, selection.PENDING: PENDING}
 
@@ -111,7 +118,16 @@ def _reviewer_line(plan: Mapping[str, Any], name: str | None) -> list[str]:
 
 
 def _absences(attempts: list[Attempt], step: Step) -> list[str]:
-    lines = [f"- {attempt.reviewer}: absent ({attempt.absence})" for attempt in attempts if attempt.outcome == "absent"]
+    known = credentials.known()
+    lines = []
+    for attempt in attempts:
+        if attempt.outcome != "absent":
+            continue
+        detail = absence.published_detail(attempt.detail, known)
+        lines.append(
+            f"- {attempt.reviewer} (attempt {attempt.slot}): absent ({attempt.absence})"
+            + (f": {detail}" if detail else "")
+        )
     attempted = {attempt.reviewer for attempt in attempts}
     lines += [f"- {reason}" for reason in step.reasons if reason.split(":", 1)[0] not in attempted]
     return lines
@@ -159,6 +175,40 @@ def _settled(plan: Mapping[str, Any], step: Step) -> tuple[Step, str]:
     return step, ALL_ABSENT
 
 
+def _marked(
+    plan: Mapping[str, Any],
+    judgement: protocol.Judgement,
+    reviewer: str,
+    ids: Mapping[Finding, str],
+    next_id: int,
+    strikes: int,
+) -> str | None:
+    open_defects = [*judgement.carried, *(protocol.defect_entry(ids[item], item) for item in judgement.defects)]
+    try:
+        return _record(
+            plan,
+            kind=plan["protocol"]["kind"],
+            decision=judgement.decision,
+            reviewer=reviewer,
+            open_defects=open_defects,
+            next_id=next_id + len(judgement.defects),
+            strikes_after=strikes,
+            summary=judgement.summary,
+        )
+    except protocol.MarkerError:
+        return None
+
+
+def _description(step: Step, judgement: protocol.Judgement | None, reviewer: str | None, cause: str) -> str:
+    if cause == OVERSIZE:
+        return OVERSIZE_DESCRIPTION
+    if judgement is None:
+        return "pending: " + "; ".join(step.reasons or ("no reviewer available",))
+    if judgement.decision == protocol.SHIP_WITH_FIXES:
+        return f"{reviewer}: {judgement.label}, {judgement.open_count} defect(s) to fix"
+    return f"{reviewer}: {judgement.label}"
+
+
 def finalize(
     plan: Mapping[str, Any],
     step: Step,
@@ -201,18 +251,18 @@ def finalize(
         and rules.get("patch_digest") not in rules.get("struck_digests", ())
     ):
         strikes += 1
-    if pending_cause == OVERSIZE:
-        description = OVERSIZE_DESCRIPTION
-    elif judgement is None:
-        description = "pending: " + "; ".join(step.reasons or ("no reviewer available",))
-    elif judgement.decision == protocol.SHIP_WITH_FIXES:
-        description = f"{reviewer}: {judgement.label}, {judgement.open_count} defect(s) to fix"
-    else:
-        description = f"{reviewer}: {judgement.label}"
+    marker = _marked(plan, judgement, reviewer or "", ids, next_id, strikes) if judgement and rules else None
+    unrecorded = bool(judgement and rules and marker is None)
+    if unrecorded:
+        ids, markers = {}, {}
+        state, pending_cause = PENDING, MARKER_LIMIT
+    description = MARKER_LIMIT_DESCRIPTION if unrecorded else _description(step, judgement, reviewer, pending_cause)
     delivery = plan.get("findings_delivery", "comment")
-    findings_lines = [_finding_line(finding, ids[finding]) for finding in placement.inline]
-    other_lines = [_finding_line(finding, ids[finding]) for finding in placement.summary]
+    findings_lines = [_finding_line(finding, ids.get(finding)) for finding in placement.inline]
+    other_lines = [_finding_line(finding, ids.get(finding)) for finding in placement.summary]
     lines = [*_header(plan, state)]
+    if unrecorded:
+        lines += [MARKER_LIMIT_NOTE, ""]
     if pending_cause == OVERSIZE:
         lines += [OVERSIZE_NOTE, ""]
     if judgement is not None:
@@ -237,7 +287,10 @@ def finalize(
         lines += ["Defects outside the diff count like the others: fix them before merge.", ""]
     lines += _section(
         "Defects already open as review threads, not posted again",
-        [f"- **{finding.severity}** `{finding.file}`: {ids[finding]}: {finding.title}" for finding in repeated],
+        [
+            f"- **{finding.severity}** `{finding.file}`: {ids.get(finding, '')}{': ' if finding in ids else ''}{finding.title}"
+            for finding in repeated
+        ],
     )
     if judgement is not None and judgement.not_counted:
         hidden = "\n".join(_finding_line(finding) for finding in judgement.not_counted)
@@ -251,25 +304,15 @@ def finalize(
         ]
     if plan.get("scope") == "changed":
         lines += [f"Scope: files changed since head `{plan['reviewed_head']}` was reviewed.", ""]
-    lines += _strike_line(plan, strikes if judgement is not None else int(rules.get("strikes", 0)))
+    lines += _strike_line(plan, strikes if judgement is not None and not unrecorded else int(rules.get("strikes", 0)))
     lines += _section("Reviewers not available", _absences(attempts, step))
     body = "\n".join(lines).rstrip() + "\n"
-    if judgement is not None and rules:
-        open_defects = [*judgement.carried, *(protocol.defect_entry(ids[item], item) for item in defects)]
-        body += "\n" + _record(
-            plan,
-            kind=rules["kind"],
-            decision=judgement.decision,
-            reviewer=reviewer or "",
-            open_defects=open_defects,
-            next_id=next_id + len(defects),
-            strikes_after=strikes,
-            summary=judgement.summary,
-        )
+    if marker is not None:
+        body += "\n" + marker
     has_content = bool(defects or judgement is None or judgement.decision != protocol.SHIP or state != SUCCESS)
     review = _review_payload(plan, body, placement, commentable, markers) if delivery == "review" else None
     cause = pending_cause if state == PENDING else None
-    final_strikes = strikes if judgement is not None else None
+    final_strikes = strikes if judgement is not None and not unrecorded else None
     return Final(state, _clip(description), body if has_content else "", review, reviewer, cause, final_strikes)
 
 

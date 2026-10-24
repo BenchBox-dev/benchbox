@@ -928,3 +928,54 @@ def test_t3_docker_postgres_pulls_from_the_ghcr_mirror() -> None:
     assert image.startswith("ghcr.io/benchbox-dev/postgres:")
     assert image.rsplit("@", 1)[1] == compose_image.rsplit("@", 1)[1]
     assert "POSTGRES_IMAGE" in (REPO_ROOT / "docker/postgresql/docker-compose.yml").read_text(encoding="utf-8")
+
+
+POSTGRES17_DIGEST = "sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3"
+
+
+def test_mirror_copies_the_pinned_postgres17_digest_into_the_shared_postgres_repository(tmp_path: Path) -> None:
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image="postgres17",
+        source_image="unused",
+        source_manifest="{}",
+        mirror_error="Error reading manifest: manifest unknown",
+        pin_source=False,
+    )
+    copy = next(call for call in calls if call[0] == "copy")
+    assert copy[-2] == f"docker://public.ecr.aws/docker/library/postgres@{POSTGRES17_DIGEST}"
+    assert copy[-1] == f"docker://ghcr.io/benchbox-dev/postgres:digest-{POSTGRES17_DIGEST.removeprefix('sha256:')}"
+    assert "digest mismatch" in result.stdout + result.stderr
+
+
+def test_mirror_skips_the_copy_when_postgres17_is_already_mirrored(tmp_path: Path) -> None:
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image="postgres17",
+        source_image="unused",
+        source_manifest="{}",
+        mirror_manifest="{}",
+        pin_source=False,
+    )
+    assert not any(call[0] == "copy" for call in calls)
+    assert [call[-1] for call in calls] == [f"docker://ghcr.io/benchbox-dev/postgres@{POSTGRES17_DIGEST}"]
+    assert "digest mismatch" in result.stdout + result.stderr
+
+
+def test_nightly_postgres_integration_pulls_the_authenticated_ghcr_mirror_after_it_is_published() -> None:
+    document = _load(WORKFLOWS_DIR / "nightly.yml")
+    consumer = document["jobs"]["postgres-integration"]
+    service = consumer["services"]["postgres"]
+    assert service["image"] == f"ghcr.io/benchbox-dev/postgres:17@{POSTGRES17_DIGEST}"
+    assert service["credentials"] == {
+        "username": "${{ github.actor }}",
+        "password": "${{ github.token }}",
+    }
+    assert consumer["permissions"]["packages"] == "read"
+    needs = consumer["needs"]
+    mirror = document["jobs"]["mirror-postgres17"]
+    assert "mirror-postgres17" in ([needs] if isinstance(needs, str) else needs)
+    assert mirror["uses"] == "./.github/workflows/mirror-ci-images.yml"
+    assert mirror["permissions"]["packages"] == "write"
+    assert _mirrored_images(mirror) == ["postgres17"]
+    assert "public.ecr.aws/docker/library/postgres" not in (WORKFLOWS_DIR / "nightly.yml").read_text(encoding="utf-8")

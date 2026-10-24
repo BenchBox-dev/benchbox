@@ -20,6 +20,7 @@ from .verdict import (
     VerdictError,
     extract_omp_text,
     normalize_reviewer,
+    omp_stream_without_answer,
     parse_output,
     shape_fingerprint,
     validate,
@@ -160,6 +161,9 @@ def review(
         return ReviewOutcome(None, absence.Absence(absence.INVALID, reason), diagnostic)
     if missing.absent:
         return ReviewOutcome(None, missing, diagnostic)
+    if reviewer.harness == "omp" and omp_stream_without_answer(output):
+        missing = absence.Absence(absence.EMPTY, "the reviewer ended without a final answer")
+        return ReviewOutcome(None, missing, _with_trace(diagnostic, reviewer.harness, result.stdout, plan, workspace))
     payload: Any = None
     parsed = False
     rewrites: tuple[str, ...] = ()

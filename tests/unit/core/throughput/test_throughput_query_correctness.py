@@ -5,6 +5,7 @@ import logging
 import sqlite3
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -24,7 +25,7 @@ from benchbox.core.validation.query_validation import (
 )
 from benchbox.platforms.base.connection_wrappers import PlatformAdapterConnection, require_throughput_stream_capability
 from benchbox.platforms.sqlite import SQLiteAdapter
-from benchbox.utils.dialect_utils import SQLTranslationError, sql_translation_context
+from benchbox.utils.dialect_utils import SQLTranslationError, UnknownSqlDialectError, sql_translation_context
 
 pytestmark = [
     pytest.mark.unit,
@@ -125,15 +126,29 @@ class TestTPCHPregenerationTranslationContext:
         assert len(outcomes) == 3 * 22
         assert {outcome.status for outcome in outcomes} == {"success"}
 
-    def test_strict_translation_fails_the_query_when_pregeneration_falls_back(self) -> None:
+    def test_unknown_dialect_is_never_translated_or_recorded(self) -> None:
         benchmark = TPCHBenchmark(scale_factor=0.01)
         test = TPCHThroughputTest(
             benchmark=benchmark, connection_factory=lambda: None, num_streams=2, dialect="no_such_dialect"
         )
         config = TPCHThroughputTestConfig(scale_factor=0.01, num_streams=2, base_seed=_SEED)
 
-        with sql_translation_context(strict=True) as outcomes:
-            streams = test._pregenerate_stream_queries(config)
+        for strict in (True, False):
+            with sql_translation_context(strict=strict) as outcomes:
+                streams = test._pregenerate_stream_queries(config)
+            assert outcomes == []
+            assert all(isinstance(entry, UnknownSqlDialectError) for sql_list in streams.values() for entry in sql_list)
+            with pytest.raises(UnknownSqlDialectError):
+                test._resolve_query_text(streams[1], 0, 1, _SEED, 1, config)
+
+    def test_strict_translation_fails_the_query_when_pregeneration_falls_back(self) -> None:
+        benchmark = TPCHBenchmark(scale_factor=0.01)
+        test = TPCHThroughputTest(benchmark=benchmark, connection_factory=lambda: None, num_streams=2, dialect="duckdb")
+        config = TPCHThroughputTestConfig(scale_factor=0.01, num_streams=2, base_seed=_SEED)
+
+        with patch("benchbox._vendor.sqlglot.parse", side_effect=ValueError("synthetic parse failure")):
+            with sql_translation_context(strict=True) as outcomes:
+                streams = test._pregenerate_stream_queries(config)
 
         assert len(outcomes) == 2 * 22
         assert {outcome.status for outcome in outcomes} == {"failed"}
@@ -143,13 +158,12 @@ class TestTPCHPregenerationTranslationContext:
 
     def test_non_strict_translation_falls_back_and_records_the_fallback(self) -> None:
         benchmark = TPCHBenchmark(scale_factor=0.01)
-        test = TPCHThroughputTest(
-            benchmark=benchmark, connection_factory=lambda: None, num_streams=1, dialect="no_such_dialect"
-        )
+        test = TPCHThroughputTest(benchmark=benchmark, connection_factory=lambda: None, num_streams=1, dialect="duckdb")
         config = TPCHThroughputTestConfig(scale_factor=0.01, num_streams=1, base_seed=_SEED)
 
-        with sql_translation_context(strict=False) as outcomes:
-            streams = test._pregenerate_stream_queries(config)
+        with patch("benchbox._vendor.sqlglot.parse", side_effect=ValueError("synthetic parse failure")):
+            with sql_translation_context(strict=False) as outcomes:
+                streams = test._pregenerate_stream_queries(config)
 
         assert {outcome.status for outcome in outcomes} == {"fallback"}
         assert all(isinstance(entry, str) for entry in streams[1])

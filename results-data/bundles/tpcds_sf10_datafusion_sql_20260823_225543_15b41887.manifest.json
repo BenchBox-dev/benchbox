@@ -1,0 +1,11 @@
+{
+  "bundle_file": "tpcds_sf10_datafusion_sql_20260823_225543_15b41887.json",
+  "bundle_hash": "cc8c667977efdea05b713c2a120b44cb5b5713055c85efb853f3b2ae0211de29",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer",
+  "known_defects": [
+    "defective-superseded-sql-translation"
+  ]
+}
