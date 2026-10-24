@@ -43,30 +43,29 @@ def test_clickhouse_target_queries_are_present_and_non_empty():
         assert clickhouse[query_id].strip(), f"Q{query_id} is empty in ClickHouse query set"
 
 
-def test_clickhouse_q47_q57_bulk_queries_drop_nested_avg_sum_but_keep_v2_shape():
+def test_clickhouse_q47_q57_bulk_queries_alias_qualified_projections_and_keep_dsqgen_shape():
     bench = _bench()
     base = bench.get_queries()
     clickhouse = bench.get_queries(dialect="clickhouse")
 
     for query_id in ("47", "57"):
         assert "AVG(SUM(" in base[query_id], f"Base Q{query_id} must retain dsqgen nested aggregate shape"
-        assert "AVG(SUM(" not in clickhouse[query_id], f"ClickHouse Q{query_id} must not retain nested aggregate"
-        assert "AVG(sum_sales) OVER" in clickhouse[query_id], f"ClickHouse Q{query_id} must average materialized sums"
+        assert "AVG(SUM(" in clickhouse[query_id], f"ClickHouse Q{query_id} must retain nested aggregate"
         assert _normalize_v2_suffix_for_comparison(base[query_id]) == _normalize_v2_suffix_for_comparison(
             clickhouse[query_id]
         ), f"ClickHouse Q{query_id} must preserve dsqgen-selected projection/order tail"
+        assert "v1.d_year AS d_year" in _extract_v2_suffix(clickhouse[query_id])
         assert "enable_analyzer = 0" not in clickhouse[query_id], f"ClickHouse Q{query_id} must not opt out"
 
 
-def test_clickhouse_q66_bulk_query_uses_stable_channel_sales_relation():
+def test_clickhouse_q66_bulk_query_qualifies_alias_shadowed_columns():
     bench = _bench()
     base = bench.get_queries()["66"]
     clickhouse = bench.get_queries(dialect="clickhouse")["66"]
 
     assert "SUM(jan_sales)" in base, "Base Q66 must retain the original aggregate-alias shape"
     assert "SUM(jan_sales)" not in clickhouse, "ClickHouse Q66 must not aggregate over jan_sales alias"
-    assert "SUM(jan_net)" not in clickhouse, "ClickHouse Q66 must not aggregate over jan_net alias"
-    assert "WITH channel_sales AS (" in clickhouse, "ClickHouse Q66 must aggregate from channel_sales"
+    assert "SUM(x.jan_sales)" in clickhouse
     assert _extract_order_limit(base) == _extract_order_limit(clickhouse), "ClickHouse Q66 must preserve ORDER/LIMIT"
     assert "enable_analyzer = 0" not in clickhouse, "ClickHouse Q66 must not opt out"
 
@@ -84,4 +83,6 @@ def test_clickhouse_overrides_compose_cleanly_with_execution_rewrites():
             f"Q{query_id}: execution rewrites must append session settings"
         )
         assert "enable_analyzer" not in final, f"Q{query_id}: pipeline must not re-introduce analyzer opt-out"
-        assert "AVG(SUM(" not in final, f"Q{query_id}: pipeline must not re-introduce nested aggregate-over-window"
+        assert ("AVG(SUM(" in final) == ("AVG(SUM(" in ch_query), (
+            f"Q{query_id}: execution rewrites keep nested aggregates"
+        )

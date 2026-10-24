@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 
 _DERIVED_TABLE_ALIAS_DIALECTS = frozenset({"doris", "starrocks"})
 
+_CLICKHOUSE_OBT_REWRITES = {
+    47: "alias_qualified_projections",
+    57: "alias_qualified_projections",
+    66: "qualify_alias_shadowed_columns",
+}
+
 
 _ALTERNATE_FORMAT: dict[str, str] = {"parquet": "dat", "dat": "parquet"}
 
@@ -215,77 +221,13 @@ class TPCDSOBTBenchmark(BaseBenchmark):
 
     @staticmethod
     def _rewrite_clickhouse_query(query_id: int, query_text: str) -> str:
-        if query_id not in {47, 57, 66}:
+        rewrite_name = _CLICKHOUSE_OBT_REWRITES.get(query_id)
+        if rewrite_name is None:
             return query_text
 
-        from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
+        from benchbox.utils.dialect_utils import apply_rewrite
 
-        normalized = " ".join(query_text.split()).replace("( ", "(").replace(" )", ")")
-        if query_id in {47, 57}:
-            rewritten = TPCDSBenchmark._rewrite_clickhouse_monthly_avg_query(query_id, normalized)
-            first_select = re.search(r"WITH v1_monthly AS \(SELECT (?P<select>.+?) FROM ", rewritten, re.IGNORECASE)
-            v1_marker = rewritten.find(", v1 AS (")
-            v1_open = v1_marker + len(", v1 AS ")
-            if first_select is None or v1_marker == -1:
-                raise ValueError(f"Unsupported ClickHouse OBT Q{query_id} rewrite shape")
-
-            v1_close = TPCDSBenchmark._find_matching_parenthesis(rewritten, v1_open)
-            alias_map = dict(
-                re.findall(
-                    r"\b(obt\.[a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s+([a-zA-Z_][a-zA-Z0-9_]*)", first_select.group("select")
-                )
-            )
-            v1_body = rewritten[v1_open + 1 : v1_close]
-            for source_column, alias in alias_map.items():
-                v1_body = re.sub(rf"\b{re.escape(source_column)}\b", alias, v1_body)
-            rewritten = f"{rewritten[: v1_open + 1]}{v1_body}{rewritten[v1_close:]}"
-
-            marker = ") SELECT * FROM v2 WHERE "
-            if marker in rewritten:
-                prefix, outer = rewritten.split(marker, 1)
-                outer = re.sub(
-                    r"\b(d_year|avg_monthly_sales|sum_sales)\b",
-                    r"v2.\1",
-                    outer,
-                    flags=re.IGNORECASE,
-                )
-                rewritten = f"{prefix}) SELECT v2.* FROM v2 AS v2 WHERE {outer}"
-            return rewritten
-
-        normalized = normalized.replace("obt.sold_date_d_year", "d_year").replace("obt.sold_date_d_moy", "d_moy")
-        rewritten = TPCDSBenchmark._rewrite_clickhouse_q66(normalized)
-        channel_body_end = rewritten.find(") SELECT ")
-        if channel_body_end == -1:
-            raise ValueError("Unsupported ClickHouse OBT Q66 rewrite shape")
-        channel_body = rewritten[len("WITH channel_sales AS (") : channel_body_end]
-        branches = re.split(r"\s+UNION ALL\s+", channel_body, maxsplit=1, flags=re.IGNORECASE)
-        if len(branches) != 2:
-            raise ValueError("Unsupported ClickHouse OBT Q66 channel shape")
-
-        rewritten_branches = []
-        for branch in branches:
-            select_part, from_part = re.split(r"\s+FROM\s+", branch, maxsplit=1, flags=re.IGNORECASE)
-            select_part = re.sub(
-                r"(?<!\.)\bd_year\s+AS\s+year\b",
-                "obt.sold_date_d_year AS year",
-                select_part,
-                flags=re.IGNORECASE,
-            )
-            select_part = re.sub(
-                r"(?<!\.)\bd_moy\b",
-                "obt.sold_date_d_moy AS d_moy",
-                select_part,
-                count=1,
-                flags=re.IGNORECASE,
-            )
-            from_part = re.sub(r"(?<!\.)\bd_year\b", "obt.sold_date_d_year", from_part, flags=re.IGNORECASE)
-            from_part = re.sub(r"(?<!\.)\bd_moy\b", "obt.sold_date_d_moy", from_part, flags=re.IGNORECASE)
-            rewritten_branches.append(f"{select_part} FROM {from_part}")
-
-        rewritten = (
-            f"WITH channel_sales AS ({' UNION ALL '.join(rewritten_branches)}){rewritten[channel_body_end + 1 :]}"
-        )
-        return re.sub(r"\bw_warehouse_sq_ft\b", "warehouse_w_warehouse_sq_ft", rewritten)
+        return apply_rewrite(rewrite_name, query_text, "clickhouse")
 
     def translate_query_text(self, query_text: str, target_dialect: str, *, query_id: int | None = None) -> str:
         target = target_dialect.lower()

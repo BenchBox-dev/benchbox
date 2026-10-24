@@ -78,44 +78,23 @@ def test_translate_query_text_converts_day_suffixes_to_intervals(tpcds_benchmark
     assert "- INTERVAL '30' DAY" in translated
 
 
-def test_spark_q90_rewrite_guards_zero_denominator(tpcds_benchmark):
-    query = "SELECT CAST(`amc` AS DECIMAL(15, 4)) / CAST(`pmc` AS DECIMAL(15, 4)) AS `am_pm_ratio` FROM counts"
+@pytest.mark.parametrize(
+    "dialect,identifier,type_name",
+    [
+        ("spark", "`pmc`", "DECIMAL"),
+        ("postgres", "pmc", "DECIMAL"),
+        ("datafusion", "pmc", "DECIMAL"),
+        ("duckdb", "pmc", "DECIMAL"),
+        ("tsql", "[pmc]", "NUMERIC"),
+    ],
+)
+def test_q90_guards_zero_denominator_in_every_dialect(tpcds_benchmark, dialect, identifier, type_name):
+    query = f"SELECT amc / CAST({identifier} AS {type_name}(15, 4)) AS am_pm_ratio FROM counts"
 
-    rewritten = tpcds_benchmark._apply_target_dialect_overrides(90, query, "spark")
+    rewritten = tpcds_benchmark._apply_target_dialect_overrides(90, query, dialect)
 
-    assert "/ NULLIF(CAST(`pmc` AS DECIMAL(15, 4)), 0)" in rewritten
-
-
-def test_postgres_q90_rewrite_guards_zero_denominator(tpcds_benchmark):
-    query = "SELECT CAST(amc AS DECIMAL(15, 4)) / CAST(pmc AS DECIMAL(15, 4)) AS am_pm_ratio FROM counts"
-
-    rewritten = tpcds_benchmark._apply_target_dialect_overrides(90, query, "postgres")
-
-    assert "/ NULLIF(CAST(pmc AS DECIMAL(15, 4)), 0)" in rewritten
-
-
-def test_datafusion_q90_rewrite_guards_zero_denominator(tpcds_benchmark):
-    query = "SELECT CAST(amc AS DECIMAL(15, 4)) / CAST(pmc AS DECIMAL(15, 4)) AS am_pm_ratio FROM counts"
-
-    rewritten = tpcds_benchmark._apply_target_dialect_overrides(90, query, "datafusion")
-
-    assert "/ NULLIF(CAST(pmc AS DECIMAL(15, 4)), 0)" in rewritten
-
-
-def test_duckdb_q90_rewrite_defaults_to_nullif_zero_denominator(tpcds_benchmark):
-    query = "SELECT CAST(amc AS DECIMAL(15, 4))/CAST(pmc AS DECIMAL(15, 4)) am_pm_ratio FROM counts"
-
-    rewritten = tpcds_benchmark._apply_target_dialect_overrides(90, query, "duckdb")
-
-    assert "/CAST(NULLIF(pmc, 0) AS DECIMAL(15, 4))" in rewritten
-
-
-def test_quoted_duckdb_q90_rewrite_defaults_to_nullif_zero_denominator(tpcds_benchmark):
-    query = 'SELECT CAST("amc" AS DECIMAL(15, 4))/CAST("pmc" AS DECIMAL(15, 4)) AS "am_pm_ratio" FROM counts'
-
-    rewritten = tpcds_benchmark._apply_target_dialect_overrides(90, query, "duckdb")
-
-    assert '/CAST(NULLIF("pmc", 0) AS DECIMAL(15, 4))' in rewritten
+    assert f"NULLIF(CAST({identifier} AS {type_name}(15, 4)), 0)" in rewritten
+    assert tpcds_benchmark._apply_target_dialect_overrides(90, rewritten, dialect) == rewritten
 
 
 @pytest.mark.parametrize("pmc,expected", [(0, None), (2, 0.5)])
@@ -129,7 +108,7 @@ def test_translated_tsql_q90_guards_zero_without_changing_nonzero_ratio(tpcds_be
     assert "CAST([pmc] AS NUMERIC(15, 4))" in translated
 
     rewritten = tpcds_benchmark._apply_target_dialect_overrides(90, translated, "tsql")
-    assert "CAST(NULLIF([pmc], 0) AS NUMERIC(15, 4))" in rewritten
+    assert "NULLIF(CAST([pmc] AS NUMERIC(15, 4)), 0)" in rewritten
     executable = sqlglot.transpile(rewritten, read="tsql", write="duckdb")[0]
     with duckdb.connect() as connection:
         connection.execute("CREATE TABLE counts (amc INTEGER, pmc INTEGER)")
@@ -137,34 +116,33 @@ def test_translated_tsql_q90_guards_zero_without_changing_nonzero_ratio(tpcds_be
         assert connection.execute(executable).fetchone()[0] == expected
 
 
-@pytest.mark.parametrize("identifier", ["pmc", "`pmc`", '"pmc"', "[pmc]"])
-@pytest.mark.parametrize("type_name", ["DECIMAL", "NUMERIC"])
-def test_default_q90_guard_preserves_identifier_and_cast(tpcds_benchmark, identifier, type_name):
-    query = f"SELECT amc / CAST({identifier} AS {type_name}(15, 4)) FROM counts"
-    rewritten = tpcds_benchmark._apply_target_dialect_overrides(90, query, "tsql")
-    assert f"CAST(NULLIF({identifier}, 0) AS {type_name}(15, 4))" in rewritten
-    assert tpcds_benchmark._apply_target_dialect_overrides(90, rewritten, "tsql") == rewritten
-
-
-def test_default_q90_guard_leaves_other_denominators_unchanged(tpcds_benchmark):
+def test_q90_guard_leaves_other_denominators_unchanged(tpcds_benchmark):
     query = "SELECT amc / CAST([other_pmc] AS NUMERIC(15, 4)) FROM counts"
     assert tpcds_benchmark._apply_target_dialect_overrides(90, query, "tsql") == query
 
 
-def test_postgres_rollup_order_alias_rewrite_repeats_grouping_expression(tpcds_benchmark):
+@pytest.mark.parametrize("dialect", ["postgres", "cedardb"])
+def test_postgres_rollup_order_alias_rewrite_repeats_grouping_expression(tpcds_benchmark, dialect):
     query = (
         "SELECT GROUPING(i_category) + GROUPING(i_class) AS lochierarchy "
         "FROM store_sales GROUP BY ROLLUP (i_category, i_class) "
         "ORDER BY lochierarchy DESC, CASE WHEN lochierarchy = 0 THEN i_category END, rank_within_parent"
     )
 
-    rewritten = tpcds_benchmark._apply_target_dialect_overrides(36, query, "postgres")
+    rewritten = tpcds_benchmark._apply_target_dialect_overrides(36, query, dialect)
 
     assert "CASE WHEN lochierarchy = 0" not in rewritten
-    assert (
-        "ORDER BY GROUPING(i_category) + GROUPING(i_class) DESC, "
-        "CASE WHEN GROUPING(i_category) + GROUPING(i_class) = 0 THEN i_category END"
-    ) in rewritten
+    assert "ORDER BY lochierarchy DESC" in rewritten
+    assert "CASE WHEN (GROUPING(i_category) + GROUPING(i_class)) = 0 THEN i_category END" in rewritten
+
+
+def test_rollup_order_alias_rewrite_only_applies_to_postgres_family(tpcds_benchmark):
+    query = (
+        "SELECT GROUPING(i_category) AS lochierarchy FROM store_sales GROUP BY ROLLUP (i_category) "
+        "ORDER BY lochierarchy DESC, CASE WHEN lochierarchy = 0 THEN i_category END"
+    )
+
+    assert tpcds_benchmark._apply_target_dialect_overrides(36, query, "duckdb") == query
 
 
 def test_translate_query_text_qualifies_query58_order_by(tpcds_benchmark):
