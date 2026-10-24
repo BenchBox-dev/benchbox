@@ -203,8 +203,11 @@ two-hour figure.
 
 Arming is stricter than opening: `make pr-arm`, `make pr-arm-remote`,
 `make pr-landing-remote-ready` and `make pr-landing-ready ARM=1` run `scripts/trunk_revert.py arm-gate`, which
-refuses at once, naming the culprit PR and run, while the newest completed
-trunk run is red and no revert of the culprit commit is on `develop`. PRs
+refuses at once, naming the culprit PR and run, while trunk is red and no
+revert of the culprit commit is on `develop`. The culprit is the head of the
+first red completed run after the last green one, so a failure that persists
+across later merges still blames the commit that broke it, and only a revert
+of that commit is exempt. PRs
 armed before the run failed still merge, and arming outside these targets
 bypasses the gate; see [develop push gaps](develop-post-merge-gaps.md).
 
