@@ -6692,10 +6692,10 @@
     },
     "databricks-zorder-applied-to-empty-tables-20261013": {
       "claim": {
-        "expires_at": "2026-10-22T19:28:06Z",
-        "generation": "05a3520fd45040f9beb43b834d1fba09",
+        "expires_at": "2026-10-25T06:15:18Z",
+        "generation": "76b9fff9d4b44554a0c628b8f90d880a",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a00a661093086d4fdaf97c3f"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e465f897e6bf2b6184696cd7"
       },
       "needs": [],
       "priority": "critical",
