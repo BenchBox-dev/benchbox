@@ -355,6 +355,36 @@ def test_cli_select_finalize_and_ensure_attempt(
     assert "Defects on diff lines" in comment["body"]
 
 
+def test_cli_finalize_keeps_carriage_returns_inside_diff_lines(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_dir = tmp_path / "plan"
+    plan_dir.mkdir()
+    (plan_dir / "plan.json").write_text(json.dumps(_plan(policy, ("small",))), encoding="utf-8")
+    with (plan_dir / "diff.patch").open("w", encoding="utf-8", newline="") as handle:
+        handle.write(DIFF.replace("@@ -1,1 +1,2 @@", "@@ -1,1 +1,3 @@").replace("+b = 2\n", "+b = 2\r+c = 3\n"))
+    (plan_dir / "classification.json").write_text(json.dumps(_classification("small").to_json()), encoding="utf-8")
+    attempts_dir = tmp_path / "attempts"
+    attempts_dir.mkdir()
+    _write(attempts_dir, 1, "small", verdict=_v("", [_finding("Critical", line=3)]))
+    final_dir = tmp_path / "final"
+    _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_dir / "plan.json"),
+        "--attempts-dir",
+        str(attempts_dir),
+        "--out-dir",
+        str(final_dir),
+        "--classification",
+        str(plan_dir / "classification.json"),
+    )
+    comment = json.loads((final_dir / "comment.json").read_text(encoding="utf-8"))
+    assert "Defects on diff lines" not in comment["body"]
+
+
 def test_cli_finalize_refuses_a_plan_from_another_run(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -664,15 +694,58 @@ def test_selection_maps_the_bucket_through_the_policy(policy: Policy) -> None:
     assert [reviewer.name for reviewer in chain] == ["medium"]
 
 
-def test_a_follow_up_keeps_the_previous_reviewer_and_ignores_the_bucket(policy: Policy) -> None:
+def test_a_follow_up_keeps_a_stronger_previous_reviewer_over_a_smaller_bucket(policy: Policy) -> None:
     plan = {**_plan(policy, ("small", "large")), "follow_up_reviewer": "large"}
     assert [reviewer.name for reviewer in cli._selection(plan, _classification("small")).chain] == ["large"]
+
+
+def test_a_follow_up_into_a_larger_bucket_starts_at_that_bucket(policy: Policy) -> None:
+    plan = {**_plan(policy, ("trivial", "small", "medium", "large")), "follow_up_reviewer": "small"}
+    plan["protocol"] = {**plan["protocol"], "kind": "follow-up"}
+    gated = Classification(
+        size_bucket="large",
+        capability="routine",
+        template="gate",
+        confidence=0.9,
+        gate_flags=("_project/scripts/oracle_reviewers/*",),
+        files=(),
+    )
+    assert [reviewer.name for reviewer in cli._selection(plan, gated).chain] == ["large"]
 
 
 def test_a_follow_up_from_a_retired_reviewer_falls_back_to_the_bucket(policy: Policy) -> None:
     plan = {**_plan(policy, ("small", "large")), "follow_up_reviewer": None}
     plan["protocol"] = {**plan["protocol"], "kind": "follow-up"}
-    assert [reviewer.name for reviewer in cli._selection(plan, _classification("small")).chain] == ["small"]
+    assert [reviewer.name for reviewer in cli._selection(plan, _classification("small")).chain] == ["small", "large"]
+
+
+@pytest.mark.parametrize(
+    "bucket, follow_up, expected",
+    [
+        ("small", None, ["small", "medium", "large"]),
+        ("trivial", None, ["trivial", "medium", "large"]),
+        ("small", "medium", ["medium", "large"]),
+    ],
+)
+def test_selection_starts_at_the_chosen_reviewer_and_escalates_to_other_models(
+    policy: Policy, bucket: str, follow_up: str | None, expected: list[str]
+) -> None:
+    plan = {**_plan(policy, ("trivial", "small", "medium", "large")), "follow_up_reviewer": follow_up}
+    assert [reviewer.name for reviewer in cli._selection(plan, _classification(bucket)).chain] == expected
+
+
+def test_two_invalid_answers_hand_the_run_to_the_next_reviewer(policy: Policy, tmp_path: Path) -> None:
+    plan = _plan(policy, ("trivial", "small", "medium", "large"))
+    chosen = cli._selection(plan, _classification("small"))
+    _write(tmp_path, 1, "small", missing=Absence("invalid", "each finding must have the keys"))
+    _write(tmp_path, 2, "small", missing=Absence("invalid", "the reviewer output is not JSON"))
+    step, errors = attempts.decide(chosen, attempts.load(tmp_path, plan, RUN_ID))
+    assert errors == []
+    assert step.kind == selection.REVIEW and step.reviewer is not None and step.reviewer.name == "medium"
+    _write(tmp_path, 3, "medium", verdict=_v("Reviewed."))
+    step, errors = attempts.decide(chosen, attempts.load(tmp_path, plan, RUN_ID))
+    assert errors == []
+    assert step.kind == selection.PASS and step.reviewer is not None and step.reviewer.name == "medium"
 
 
 @pytest.mark.parametrize("error", [KeyError("size"), ValueError("unknown size bucket 'xl'"), TypeError("bad")])

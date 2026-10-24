@@ -53,12 +53,12 @@ def comment_policy_matches(path: str, scope: str) -> bool:
 
 def load_comment_policy(raw: bytes) -> dict:
     policy = json.loads(raw)
-    if set(policy) - {"enforcement"} != {"version", "external", "completed", "exceptions"} or policy["version"] != 1:
+    if set(policy) - {"enforcement"} != {"version", "external", "exceptions"} or policy["version"] != 1:
         raise ValueError("invalid comment-policy schema")
     enforcement = policy.get("enforcement", "blocking")
     if not isinstance(enforcement, str) or enforcement not in COMMENT_POLICY_ENFORCEMENT_MODES:
         raise ValueError("enforcement must be advisory or blocking")
-    for key in ("external", "completed", "exceptions"):
+    for key in ("external", "exceptions"):
         if not isinstance(policy[key], list):
             raise ValueError(f"{key} must be a list")
     for entry in policy["external"]:
@@ -67,13 +67,6 @@ def load_comment_policy(raw: bytes) -> dict:
         ):
             raise ValueError("external scope requires path, owner and provenance")
         validate_comment_policy_path(entry["path"])
-    for path in policy["completed"]:
-        validate_comment_policy_path(path)
-        if any(
-            comment_policy_matches(path, entry["path"]) or comment_policy_matches(entry["path"], path)
-            for entry in policy["external"]
-        ):
-            raise ValueError("completed and external scopes cannot overlap")
     identities = set()
     for entry in policy["exceptions"]:
         required = {"path", "symbol", "text", "kind", "consumer", "necessity", "alternative", "owner", "removal"}
@@ -1432,8 +1425,6 @@ def is_wheel_bump(candidate_entry: dict, baseline_entry: dict) -> bool:
 def check_ratchet(policy: dict, baseline: dict) -> None:
     if baseline.get("enforcement", "blocking") == "blocking" and policy.get("enforcement", "blocking") == "advisory":
         raise ValueError("enforcement cannot be relaxed from blocking to advisory")
-    if not set(baseline["completed"]).issubset(policy["completed"]):
-        raise ValueError("completed scopes cannot be removed")
     for entry in policy["external"]:
         if entry in baseline["external"]:
             continue

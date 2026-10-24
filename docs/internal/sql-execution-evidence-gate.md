@@ -73,6 +73,43 @@ versions, per-engine cell counts, verified improvements and expected
 differences) into its description. Verified improvements are published-result
 impacts and are listed as such.
 
+## Fork diff
+
+The gate shows what the new wheel does to the shipped queries; it does not show
+what changed inside the fork. Each wheel adoption PR therefore also carries the
+fork diff from the previous pinned `fork_sha` to the new one, so the oracle and
+human reviewers read the translation semantics they are admitting:
+
+```
+make sqlglot-fork-diff OUT=/tmp/fork-diff.md
+make sqlglot-fork-diff OLD=<old fork_sha> NEW=<new fork_sha> OUT=/tmp/fork-diff.md
+```
+
+`OLD` defaults to the `fork_sha` in `benchbox/_vendor/sqlglot.json` at
+`BASE_REF` (default `origin/develop`); `NEW` defaults to the pin in the working
+tree. The tool fetches both commits from the fork into a throwaway bare
+repository and writes Markdown with the commit list, the diffstat and the
+per-file diff, `downstream/` and `sqlglot/benchbox/` first. Files that do not
+fit the size budget (50 KB by default) are listed by name, not dropped; read
+them with `git diff <old> <new> -- <path>` in a fork clone. Paste the output
+into the PR description next to the gate output. A rollback adoption prints
+`Direction: not-descendant`.
+
+The evidence and the code that judges it are soundness paths
+(`.github/soundness-paths.txt`): the runtime pin and bundled wheel
+(`benchbox/_vendor/`), the wrapper (`benchbox/utils/dialect_utils.py`), the
+runtime baseline, everything under `scripts/sql_execution_gate/` (the gate
+logic and `expected_differences.json`), everything under
+`tests/unit/sql_compat/` (the corpus harness, its `recorded/` and `frozen/`
+data and the corpus, wrapper and bypass assertion tests), the
+`Makefile` and the `make/` fragments (CI runs the gate through
+`make sql-execution-gate`), the pin, retirement and fork-diff scripts, and
+their tests (`test_sql_execution_gate.py`, which holds the regression proofs
+below, `test_sync_sqlglot_runtime.py`, `test_check_sqlglot_repro_retirement.py`,
+`test_sqlglot_fork_diff.py` and the wrapper tests
+under `tests/unit/utils/`). A change to any of them needs an oracle success
+review on the current head.
+
 ## Regression proofs
 
 The gate is built to catch the two regressions that the text corpus accepted:

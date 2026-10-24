@@ -10,6 +10,8 @@ import re
 import time
 from typing import Any
 
+from benchbox.utils.dialect_utils import mooncake_mirror_statements
+
 from .base.config_utils import (
     POSTGRES_FAMILY_BASE_OPTIONS,
     POSTGRES_FAMILY_PLATFORM_FIELDS,
@@ -171,23 +173,6 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
         finally:
             cursor.close()
 
-    def _transform_create_statement(self, stmt: str) -> str:
-        return stmt
-
-    def _add_columnstore_access_method(self, ddl_statement: str) -> str:
-        stripped = ddl_statement.strip()
-        upper = stripped.upper()
-
-        if not upper.startswith("CREATE TABLE"):
-            return ddl_statement
-
-        if "USING MOONCAKE" in upper:
-            return ddl_statement
-
-        if stripped.endswith(";"):
-            return stripped[:-1] + " USING mooncake;"
-        return stripped + " USING mooncake"
-
     def load_data(
         self,
         benchmark,
@@ -322,13 +307,14 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
                 staging_table = self._mooncake_staging_table_name(table_name_lower)
                 qualified_table = self._qualified_identifier(table_name_lower)
                 qualified_staging = self._qualified_identifier(staging_table)
-                source_name = self._mooncake_table_reference(staging_table)
-                target_name = self._mooncake_table_reference(table_name_lower)
+                rename, create = mooncake_mirror_statements(
+                    table_name_lower, staging_table, None if self.schema == "public" else self.schema
+                )
 
-                cursor.execute(f'ALTER TABLE {qualified_table} RENAME TO "{staging_table}"')
+                cursor.execute(rename)
                 connection.commit()
                 try:
-                    cursor.execute("CALL mooncake.create_table(%s, %s)", (target_name, source_name))
+                    cursor.execute(create)
                     connection.commit()
                 except Exception:
                     connection.rollback()
@@ -362,11 +348,6 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
         if self.schema != "public":
             return f'"{self.schema}"."{table_name}"'
         return f'"{table_name}"'
-
-    def _mooncake_table_reference(self, table_name: str) -> str:
-        if self.schema != "public":
-            return f"{self.schema}.{table_name}"
-        return table_name
 
     def execute_query(
         self,

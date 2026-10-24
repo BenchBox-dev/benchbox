@@ -203,8 +203,8 @@ class TestDuckLakeSchemaRewrite:
         )
         rewritten = adapter._rewrite_schema_statement(statement)
         assert "PRIMARY KEY" not in rewritten.upper()
-        assert "log_id INTEGER" in rewritten
-        assert "operation_id VARCHAR(100) NOT NULL" in rewritten
+        assert '"log_id" INT' in rewritten
+        assert '"operation_id" TEXT(100) NOT NULL' in rewritten
 
     def test_rewrite_matches_write_primitives_staging_ddl(self, tmp_path):
         from benchbox.core.write_primitives.schema import get_all_staging_tables_sql

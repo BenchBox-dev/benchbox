@@ -27,6 +27,8 @@ the wrapper, or the TPC-H and TPC-DS query code.
       expected differences), or this PR does not touch SQL translation.
 - [ ] Every verified improvement is listed as a published-result impact, and
       every new `expected_differences.json` entry names its justification.
+- [ ] A runtime adoption PR pastes the `make sqlglot-fork-diff` output (old
+      fork_sha to new fork_sha) below, or this PR does not change the runtime pin.
 
 ## Public Contract Check
 

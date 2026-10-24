@@ -337,7 +337,6 @@ class SingleStoreAdapter(NoOpTableTuningMixin, MySqlWireLifecycleMixin, Platform
         return {
             "strip_foreign_keys": True,
             "table_case": "lower",
-            "float_as_real": True,
             "type_map": "singlestore",
             "singlestore": {
                 "shard_keys": _TPCH_SHARD_KEYS,

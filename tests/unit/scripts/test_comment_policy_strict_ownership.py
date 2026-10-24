@@ -9,7 +9,7 @@ from check_comment_policy import main, ownership_base, validate_consumers
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-EMPTY_POLICY = {"version": 1, "external": [], "completed": [], "exceptions": []}
+EMPTY_POLICY = {"version": 1, "external": [], "exceptions": []}
 WHEEL = "vendor/tool-1.0-py3-none-any.whl"
 
 
@@ -263,7 +263,7 @@ def _bump_against_base(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **overri
 def test_main_accepts_a_bound_wheel_bump_against_the_base(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root, base = _bump_against_base(tmp_path, monkeypatch)
 
-    assert main(["--root", str(root), "--mode", "transition", "--base", base]) == 0
+    assert main(["--root", str(root), "--mode", "strict", "--base", base]) == 0
 
 
 def test_main_rejects_an_unbound_wheel_bump_against_the_base(
@@ -271,7 +271,7 @@ def test_main_rejects_an_unbound_wheel_bump_against_the_base(
 ) -> None:
     root, base = _bump_against_base(tmp_path, monkeypatch, digest="sha256:" + "0" * 64)
 
-    assert main(["--root", str(root), "--mode", "transition", "--base", base]) == 2
+    assert main(["--root", str(root), "--mode", "strict", "--base", base]) == 2
     assert "uv.lock does not record this file and hash" in capsys.readouterr().err
 
 
@@ -289,6 +289,56 @@ def test_main_bootstrap_skips_wheel_bump_verification(
     root, base = _bump_against_base(tmp_path, monkeypatch, digest="sha256:" + "0" * 64)
     monkeypatch.setattr(check_comment_policy, "bootstrap_base_allowed", lambda _root, _base: True)
 
-    assert main(["--root", str(root), "--mode", "transition", "--base", base]) == 2
+    assert main(["--root", str(root), "--mode", "strict", "--base", base]) == 2
     assert "wheel bump is not verified" in capsys.readouterr().err
-    assert main(["--root", str(root), "--mode", "transition", "--base", base, "--bootstrap"]) == 0
+    assert main(["--root", str(root), "--mode", "strict", "--base", base, "--bootstrap"]) == 0
+
+
+def _external_repo(tmp_path: Path) -> tuple[Path, str]:
+    external = [{"path": "vendor/", "owner": "upstream", "provenance": "README.md"}]
+    _git(tmp_path, "init", "-q")
+    (tmp_path / "quality").mkdir()
+    (tmp_path / "vendor").mkdir()
+    (tmp_path / "quality/comment-policy.json").write_text(
+        json.dumps({"version": 1, "external": external, "exceptions": []}), encoding="utf-8"
+    )
+    (tmp_path / "README.md").write_text("upstream\n", encoding="utf-8")
+    (tmp_path / "vendor/old.py").write_text("# upstream\nx = 1\n", encoding="utf-8")
+    _git(tmp_path, "add", "quality/comment-policy.json", "README.md", "vendor/old.py")
+    return tmp_path, _commit(tmp_path, "base.txt")
+
+
+def test_base_comparison_checks_new_files_under_an_external_exclusion(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root, base = _external_repo(tmp_path)
+    args = ["--root", str(root), "--mode", "strict", "--base", base]
+    assert main(args) == 0
+    (root / "vendor/new.py").write_text("# explanation\nx = 1\n", encoding="utf-8")
+    _git(root, "add", "vendor/new.py")
+    capsys.readouterr()
+    assert main(args) == 1
+    output = capsys.readouterr().out
+    assert "vendor/new.py:1: CP comment" in output
+    assert "vendor/old.py" not in output
+
+
+def test_base_comparison_rejects_a_policy_with_a_missing_exception_consumer(tmp_path: Path) -> None:
+    root, base = _repo(tmp_path)
+    entry = {
+        "path": "a.py",
+        "symbol": "",
+        "text": "# noqa: F401",
+        "kind": "directive",
+        "consumer": "missing.toml",
+        "necessity": "The import is an exported compatibility name.",
+        "alternative": "Removing the export breaks callers.",
+        "owner": "maintainers",
+        "removal": "Remove when the export is retired.",
+        "expires": "2999-01-01",
+    }
+    (root / "quality/comment-policy.json").write_text(
+        json.dumps({**EMPTY_POLICY, "exceptions": [entry]}), encoding="utf-8"
+    )
+    (root / "a.py").write_text("import os  # noqa: F401\n", encoding="utf-8")
+    assert main(["--root", str(root), "--mode", "strict", "--base", base]) == 2

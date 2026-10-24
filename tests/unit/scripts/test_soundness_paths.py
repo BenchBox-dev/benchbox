@@ -235,3 +235,86 @@ def test_selection_logic_paths_are_pinned_in_manifest() -> None:
         assert f"file\t{path}" in manifest
         assert (ROOT / path).is_file(), f"{path} no longer exists; update the soundness manifest"
         assert soundness.is_soundness_path(path) is True
+
+
+TRANSLATION_FILES = (
+    "benchbox/utils/dialect_utils.py",
+    "scripts/sqlglot_runtime_baseline.json",
+    "scripts/sync_sqlglot_runtime.py",
+    "scripts/check_sqlglot_repro_retirement.py",
+    "Makefile",
+    "scripts/sqlglot_fork_diff.py",
+    "tests/unit/scripts/test_sql_execution_gate.py",
+    "tests/unit/scripts/test_sync_sqlglot_runtime.py",
+    "tests/unit/scripts/test_check_sqlglot_repro_retirement.py",
+    "tests/unit/scripts/test_sqlglot_fork_diff.py",
+    "tests/unit/utils/test_dialect_utils.py",
+    "tests/unit/utils/test_apply_rewrite.py",
+    "tests/unit/utils/test_apply_rewrite_engines.py",
+    "tests/unit/utils/test_translate_ddl.py",
+)
+TRANSLATION_PREFIXES = (
+    "benchbox/_vendor/",
+    "make/",
+    "scripts/sql_execution_gate/",
+    "tests/unit/sql_compat/",
+)
+TRANSLATION_DATA_FILES = (
+    "scripts/sql_execution_gate/expected_differences.json",
+    "tests/unit/sql_compat/golden_corpus/recorded/area_ddl.json",
+    "tests/unit/sql_compat/golden_corpus/frozen/area_ddl.json",
+    "tests/unit/sql_compat/test_fork_golden_corpus.py",
+    "tests/unit/sql_compat/test_wrapper_matches_fork.py",
+    "tests/unit/sql_compat/test_vendored_sqlglot_bypass.py",
+    "tests/unit/sql_compat/test_translate_sql_delegation.py",
+    "tests/unit/sql_compat/test_datafusion_fork_rewrites_reference.py",
+    "benchbox/_vendor/sqlglot.json",
+)
+
+
+def test_translation_paths_are_pinned_in_manifest() -> None:
+    manifest = (ROOT / ".github" / "soundness-paths.txt").read_text(encoding="utf-8").splitlines()
+    for path in TRANSLATION_FILES:
+        assert f"file\t{path}" in manifest
+        assert (ROOT / path).is_file(), f"{path} no longer exists; update the soundness manifest"
+        assert soundness.is_soundness_path(path) is True
+    for prefix in TRANSLATION_PREFIXES:
+        assert f"prefix\t{prefix}" in manifest
+        assert (ROOT / prefix).is_dir(), f"{prefix} no longer exists; update the soundness manifest"
+    for path in TRANSLATION_DATA_FILES:
+        assert (ROOT / path).is_file(), f"{path} no longer exists; update the soundness manifest"
+        assert soundness.is_soundness_path(path) is True
+
+
+def test_translation_prefixes_cover_every_file_beneath_them() -> None:
+    covered: list[str] = []
+    for prefix in TRANSLATION_PREFIXES:
+        covered += [
+            path.relative_to(ROOT).as_posix()
+            for path in sorted((ROOT / prefix).rglob("*"))
+            if path.is_file() and "__pycache__" not in path.parts
+        ]
+    assert any(path.endswith(".whl.zip") for path in covered), "no bundled runtime wheel archive"
+    assert any(path.startswith("scripts/sql_execution_gate/") and path.endswith("gate.py") for path in covered)
+    assert any("golden_corpus/area_" in path and path.endswith(".py") for path in covered)
+    assert any("/recorded/" in path for path in covered)
+    assert any("/frozen/" in path for path in covered)
+    for path in covered:
+        assert soundness.is_soundness_path(path) is True, path
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "benchbox/_vendorx/sqlglot.json",
+        "benchbox/utils/dialect_utils.py.bak",
+        "benchbox/utils/dialect_helpers.py",
+        "scripts/sqlglot_runtime_baseline.json.bak",
+        "scripts/sql_execution_gatex/gate.py",
+        "scripts/sync_sqlglot_runtime.py.bak",
+        "tests/unit/sql_compatx/golden_corpus/area_ddl.py",
+        "tests/unit/sql_compat.py",
+    ],
+)
+def test_translation_paths_do_not_overmatch_neighbours(path: str) -> None:
+    assert soundness.is_soundness_path(path) is False

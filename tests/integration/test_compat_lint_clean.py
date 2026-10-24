@@ -85,10 +85,6 @@ def test_ddl_governance_statuses_distinguish_runtime_governance_and_no_rewrite_p
     from benchbox.sql_compat.inventory import collect_ddl_governance_statuses
 
     statuses = collect_ddl_governance_statuses(_BENCHBOX_ROOT)
-    by_key = {(entry.inferred_platform_key, entry.func_name): entry for entry in statuses}
-
-    assert by_key[("databricks", "_convert_to_delta_table")].status == "registered_governance_only_intent"
-    assert by_key[("spark", "optimize_spark_table_definition")].status == "registered_governance_only_intent"
     assert all(entry.inferred_platform_key != "duckdb" for entry in statuses)
 
 

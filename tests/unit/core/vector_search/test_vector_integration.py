@@ -57,20 +57,18 @@ def vector_db(tmp_path_factory):
         gmod.BASE_VECTORS = orig_base
 
     conn = duckdb.connect()
-    conn.execute(
-        f"CREATE TABLE vectors (id BIGINT, embedding FLOAT[{_DIM}], category VARCHAR(50), doc_id VARCHAR(100))"
-    )
-    conn.execute(f"CREATE TABLE vector_queries (query_id INTEGER, query_vector FLOAT[{_DIM}])")
+    conn.execute(f"CREATE TABLE vectors (id BIGINT, embedding REAL[{_DIM}], category VARCHAR(50), doc_id VARCHAR(100))")
+    conn.execute(f"CREATE TABLE vector_queries (query_id INTEGER, query_vector REAL[{_DIM}])")
 
     conn.execute(
         f"INSERT INTO vectors "
-        f"SELECT id, embedding::FLOAT[{_DIM}], category, doc_id "
+        f"SELECT id, embedding::REAL[{_DIM}], category, doc_id "
         f"FROM read_csv_auto('{paths['vectors']}', delim='|', header=true, "
         f"columns={{'id':'BIGINT','embedding':'VARCHAR','category':'VARCHAR','doc_id':'VARCHAR'}})"
     )
     conn.execute(
         f"INSERT INTO vector_queries "
-        f"SELECT query_id, query_vector::FLOAT[{_DIM}] "
+        f"SELECT query_id, query_vector::REAL[{_DIM}] "
         f"FROM read_csv_auto('{paths['vector_queries']}', delim='|', header=true, "
         f"columns={{'query_id':'INTEGER','query_vector':'VARCHAR'}})"
     )
@@ -111,20 +109,18 @@ def vector_db_with_hnsw(tmp_path_factory):
 
     conn = duckdb.connect()
     conn.execute("INSTALL vss; LOAD vss;")
-    conn.execute(
-        f"CREATE TABLE vectors (id BIGINT, embedding FLOAT[{_DIM}], category VARCHAR(50), doc_id VARCHAR(100))"
-    )
-    conn.execute(f"CREATE TABLE vector_queries (query_id INTEGER, query_vector FLOAT[{_DIM}])")
+    conn.execute(f"CREATE TABLE vectors (id BIGINT, embedding REAL[{_DIM}], category VARCHAR(50), doc_id VARCHAR(100))")
+    conn.execute(f"CREATE TABLE vector_queries (query_id INTEGER, query_vector REAL[{_DIM}])")
 
     conn.execute(
         f"INSERT INTO vectors "
-        f"SELECT id, embedding::FLOAT[{_DIM}], category, doc_id "
+        f"SELECT id, embedding::REAL[{_DIM}], category, doc_id "
         f"FROM read_csv_auto('{paths['vectors']}', delim='|', header=true, "
         f"columns={{'id':'BIGINT','embedding':'VARCHAR','category':'VARCHAR','doc_id':'VARCHAR'}})"
     )
     conn.execute(
         f"INSERT INTO vector_queries "
-        f"SELECT query_id, query_vector::FLOAT[{_DIM}] "
+        f"SELECT query_id, query_vector::REAL[{_DIM}] "
         f"FROM read_csv_auto('{paths['vector_queries']}', delim='|', header=true, "
         f"columns={{'query_id':'INTEGER','query_vector':'VARCHAR'}})"
     )

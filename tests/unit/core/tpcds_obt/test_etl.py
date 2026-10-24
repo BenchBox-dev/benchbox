@@ -50,15 +50,18 @@ class FakeDuckDB:
         return self.last_connection
 
 
-def test_union_query_contains_channel_literal() -> None:
+def test_the_first_channel_creates_the_table_and_the_others_insert() -> None:
     transformer = TPCDSOBTTransformer()
     columns = schema.get_obt_columns("minimal")
 
-    sql = transformer._build_union_query(columns, ["store"])
+    statements = transformer._build_statements(columns, ["store", "web"], "minimal")
 
-    assert "CREATE OR REPLACE TABLE tpcds_sales_returns_obt AS" in sql
-    assert "CAST('store' AS VARCHAR(10)) AS channel" in sql
-    assert "FROM store_sales ss" in sql
+    assert len(statements) == 2
+    assert statements[0].startswith("CREATE OR REPLACE TABLE tpcds_sales_returns_obt AS")
+    assert "CAST('store' AS VARCHAR(10)) AS channel" in statements[0]
+    assert "FROM store_sales ss" in statements[0]
+    assert statements[1].startswith("INSERT INTO tpcds_sales_returns_obt")
+    assert "CAST('web' AS VARCHAR(10)) AS channel" in statements[1]
 
 
 def _make_fake_transform(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TPCDSOBTTransformer:
@@ -145,3 +148,65 @@ def test_parquet_output_materially_smaller_than_dat(tmp_path: Path) -> None:
         f"Expected parquet ({parquet_size} bytes) to be < 80% of dat ({dat_size} bytes), "
         f"but ratio was {parquet_size / dat_size:.2%}"
     )
+
+
+def test_full_width_build_at_scale_one_fails_when_coverage_breaks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from benchbox.core.tpcds_obt.etl.transformer import OBTCoverageError
+
+    transformer = _make_fake_transform(tmp_path, monkeypatch)
+
+    with pytest.raises(OBTCoverageError, match="15 calendar days"):
+        transformer.transform(
+            tpcds_dir=tmp_path,
+            output_dir=tmp_path / "out",
+            channels=SUPPORTED_CHANNELS,
+            scale_factor=1.0,
+        )
+
+
+def test_small_scale_build_records_broken_coverage_without_failing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    transformer = _make_fake_transform(tmp_path, monkeypatch)
+
+    result = transformer.transform(
+        tpcds_dir=tmp_path,
+        output_dir=tmp_path / "out",
+        channels=SUPPORTED_CHANNELS,
+        scale_factor=0.01,
+    )
+
+    coverage = json.loads(Path(result["manifest"]).read_text(encoding="utf-8"))["coverage"]
+    assert coverage == {
+        "sold_date_range": ["1998-01-01", "2002-12-31"],
+        "missing_sold_dates": 15,
+        "missing_items": 15,
+        "enforced": False,
+    }
+
+
+def test_a_mixed_case_full_mode_still_enforces_coverage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from benchbox.core.tpcds_obt.etl.transformer import OBTCoverageError
+
+    transformer = _make_fake_transform(tmp_path, monkeypatch)
+
+    with pytest.raises(OBTCoverageError, match="15 calendar days"):
+        transformer.transform(
+            tpcds_dir=tmp_path,
+            output_dir=tmp_path / "out",
+            mode="Full",
+            channels=SUPPORTED_CHANNELS,
+            scale_factor=1.0,
+        )
+
+
+def test_wide_tables_get_fewer_threads(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("os.cpu_count", lambda: 16)
+
+    assert TPCDSOBTTransformer._thread_limit(715) == 4
+    assert TPCDSOBTTransformer._thread_limit(424) == 7
+    assert TPCDSOBTTransformer._thread_limit(100_000) == 1
+    monkeypatch.setattr("os.cpu_count", lambda: 2)
+    assert TPCDSOBTTransformer._thread_limit(715) == 2

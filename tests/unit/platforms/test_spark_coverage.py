@@ -549,35 +549,6 @@ class TestCreateSchema:
         assert any("USING ICEBERG" in s.upper() for s in all_sqls)
 
 
-class TestOptimizeTableDefinition:
-    def test_non_create_returns_unchanged(self, mock_pyspark):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        stmt = "INSERT INTO orders VALUES (1, 2)"
-        assert optimize_spark_table_definition(stmt, table_format="parquet") == stmt
-
-    def test_removes_existing_using_clause(self, mock_pyspark):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        stmt = "CREATE TABLE t (id INT) USING ORC"
-        result = optimize_spark_table_definition(stmt, table_format="parquet")
-        assert "USING PARQUET" in result.upper()
-
-    def test_orc_format(self, mock_pyspark):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        stmt = "CREATE TABLE t (id INT)"
-        result = optimize_spark_table_definition(stmt, table_format="orc")
-        assert "USING ORC" in result.upper()
-
-    def test_no_closing_paren_no_using(self, mock_pyspark):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        stmt = "CREATE TABLE t AS SELECT 1"
-        result = optimize_spark_table_definition(stmt, table_format="parquet")
-        assert "USING" not in result.upper()
-
-
 class TestGetQueryPlan:
     def test_plan_returned(self, mock_pyspark):
         _, mock_session = mock_pyspark

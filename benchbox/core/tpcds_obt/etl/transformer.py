@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import shutil
 import tempfile
@@ -10,30 +11,29 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.tpcds.schema.registry import TABLES_BY_NAME
-from benchbox.core.tpcds.schema.tables import (
-    CALL_CENTER,
-    CATALOG_PAGE,
-    CUSTOMER,
-    CUSTOMER_ADDRESS,
-    CUSTOMER_DEMOGRAPHICS,
-    DATE_DIM,
-    HOUSEHOLD_DEMOGRAPHICS,
-    INCOME_BAND,
-    ITEM,
-    PROMOTION,
-    REASON,
-    SHIP_MODE,
-    STORE,
-    TIME_DIM,
-    WAREHOUSE,
-    WEB_PAGE,
-    WEB_SITE,
+from benchbox.core.tpcds_obt.schema import (
+    CHANNELS,
+    DEFAULT_MODE,
+    INCOME_BAND_KEY,
+    INCOME_BAND_PRIMARY_KEY,
+    INCOME_BAND_TABLE,
+    OBT_TABLE_NAME,
+    get_channels,
+    get_coverage,
+    get_dimension_roles,
+    get_fact_specs,
+    get_obt_columns,
+    source_tables,
 )
-from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME, get_obt_columns
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_CHANNELS = ("store", "web", "catalog")
+SUPPORTED_CHANNELS = CHANNELS
+COLUMN_THREAD_BUDGET = 3000
+
+
+class OBTCoverageError(RuntimeError):
+    pass
 
 
 class TPCDSOBTTransformer:
@@ -50,6 +50,7 @@ class TPCDSOBTTransformer:
         output_format: str = "parquet",
         scale_factor: float | None = None,
     ) -> dict[str, Path]:
+        mode = mode.lower()
         channel_list = [c.lower() for c in (channels or SUPPORTED_CHANNELS)]
         self._validate_channels(channel_list)
 
@@ -62,11 +63,12 @@ class TPCDSOBTTransformer:
         tmp_dir = tempfile.mkdtemp(prefix="benchbox_obt_")
         tmp_db_path = Path(tmp_dir) / "obt.duckdb"
 
-        conn = self._connect(tmp_db_path)
+        conn = self._connect(tmp_db_path, len(columns))
         try:
-            self._load_source_tables(conn, tpcds_dir, channel_list)
-            union_sql = self._build_union_query(columns, channel_list)
-            conn.execute(union_sql)
+            self._load_source_tables(conn, tpcds_dir, channel_list, mode)
+            for statement in self._build_statements(columns, channel_list, mode):
+                conn.execute(statement)
+            coverage = self._check_coverage(conn, channel_list, mode, scale_factor)
 
             self._export_table(conn, output_path, output_format)
             manifest = self._build_manifest(
@@ -77,6 +79,7 @@ class TPCDSOBTTransformer:
                 scale_factor=scale_factor,
                 column_count=len(columns),
                 output_format=output_format,
+                coverage=coverage,
             )
             manifest_path.write_text(json.dumps(manifest, indent=2))
 
@@ -92,7 +95,7 @@ class TPCDSOBTTransformer:
             conn.close()
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    def _connect(self, db_path: Path | None = None) -> Any:
+    def _connect(self, db_path: Path | None = None, column_count: int = 1) -> Any:
         target = str(db_path) if db_path else ":memory:"
         if self._duckdb is None:
             import duckdb
@@ -102,40 +105,61 @@ class TPCDSOBTTransformer:
             conn = self._duckdb.connect(target)
 
         conn.execute("SET preserve_insertion_order = false")
+        conn.execute(f"SET threads = {self._thread_limit(column_count)}")
         return conn
+
+    @staticmethod
+    def _thread_limit(column_count: int) -> int:
+        return max(1, min(os.cpu_count() or 1, COLUMN_THREAD_BUDGET // max(column_count, 1)))
 
     def _validate_channels(self, channels: Sequence[str]) -> None:
         invalid = [c for c in channels if c not in SUPPORTED_CHANNELS]
         if invalid:
             raise ValueError(f"Unsupported channels: {invalid}. Supported: {SUPPORTED_CHANNELS}")
 
-    def _load_source_tables(self, conn: Any, tpcds_dir: Path, channels: Sequence[str]) -> None:
-        base_tables = {
-            DATE_DIM.name,
-            TIME_DIM.name,
-            ITEM.name,
-            PROMOTION.name,
-            REASON.name,
-            CUSTOMER.name,
-            CUSTOMER_DEMOGRAPHICS.name,
-            HOUSEHOLD_DEMOGRAPHICS.name,
-            INCOME_BAND.name,
-            CUSTOMER_ADDRESS.name,
-            SHIP_MODE.name,
-            WAREHOUSE.name,
-        }
-
-        if "store" in channels:
-            base_tables.update({STORE.name, "store_sales", "store_returns"})
-        if "web" in channels:
-            base_tables.update({"web_sales", "web_returns", WEB_SITE.name, WEB_PAGE.name})
-        if "catalog" in channels:
-            base_tables.update({"catalog_sales", "catalog_returns", CALL_CENTER.name, CATALOG_PAGE.name})
-
-        for table_name in sorted(base_tables):
+    def _load_source_tables(
+        self, conn: Any, tpcds_dir: Path, channels: Sequence[str], mode: str = DEFAULT_MODE
+    ) -> None:
+        for table_name in sorted(source_tables(channels, mode)):
             path = self._resolve_source_path(tpcds_dir, table_name)
             columns = [col.name for col in TABLES_BY_NAME[table_name].columns]
             conn.execute(self._read_csv_sql(path, table_name, columns))
+
+    def _check_coverage(
+        self, conn: Any, channels: Sequence[str], mode: str, scale_factor: float | None
+    ) -> dict[str, Any]:
+        coverage = get_coverage()
+        missing_dates = int(
+            conn.execute(
+                f"SELECT COUNT(*) FROM date_dim d WHERE d.d_date BETWEEN DATE '{coverage.sold_date_from}' "
+                f"AND DATE '{coverage.sold_date_to}' "
+                f"AND NOT EXISTS (SELECT 1 FROM {OBT_TABLE_NAME} o WHERE o.sold_date_sk = d.d_date_sk)"
+            ).fetchone()[0]
+        )
+        missing_items = int(
+            conn.execute(
+                f"SELECT COUNT(*) FROM item i "
+                f"WHERE NOT EXISTS (SELECT 1 FROM {OBT_TABLE_NAME} o WHERE o.item_sk = i.i_item_sk)"
+            ).fetchone()[0]
+        )
+        enforced = (
+            set(channels) == set(SUPPORTED_CHANNELS)
+            and mode == DEFAULT_MODE
+            and (scale_factor is None or scale_factor >= 1.0)
+        )
+        report = {
+            "sold_date_range": [str(coverage.sold_date_from), str(coverage.sold_date_to)],
+            "missing_sold_dates": missing_dates,
+            "missing_items": missing_items if coverage.every_item_sold else 0,
+            "enforced": enforced,
+        }
+        if enforced and (report["missing_sold_dates"] or report["missing_items"]):
+            raise OBTCoverageError(
+                f"{OBT_TABLE_NAME} breaks the coverage the TPC-DS OBT queries rely on: "
+                f"{report['missing_sold_dates']} calendar days between {coverage.sold_date_from} and "
+                f"{coverage.sold_date_to} have no sale and {report['missing_items']} items never appear"
+            )
+        return report
 
     def _resolve_source_path(self, base_dir: Path, table_name: str) -> Path | list[str]:
         candidates = [
@@ -189,445 +213,65 @@ class TPCDSOBTTransformer:
             );
         """
 
-    def _build_union_query(self, columns: Sequence[Any], channels: Sequence[str]) -> str:
-        select_statements = [self._channel_select(channel, columns) for channel in channels]
-        union_body = "\nUNION ALL\n".join(select_statements)
-        return f"CREATE OR REPLACE TABLE {OBT_TABLE_NAME} AS\n{union_body}"
+    def _build_statements(self, columns: Sequence[Any], channels: Sequence[str], mode: str = DEFAULT_MODE) -> list[str]:
+        selects = [self._channel_select(channel, columns, mode) for channel in channels]
+        return [
+            f"CREATE OR REPLACE TABLE {OBT_TABLE_NAME} AS\n{selects[0]}",
+            *(f"INSERT INTO {OBT_TABLE_NAME}\n{select}" for select in selects[1:]),
+        ]
 
-    def _channel_select(self, channel: str, columns: Sequence[Any]) -> str:
-        fact_map = self._fact_map(channel)
-        role_aliases = self._role_aliases(channel)
-        income_band_aliases = self._income_band_aliases(channel)
-        joins = self._joins(channel)
+    def _channel_select(self, channel: str, columns: Sequence[Any], mode: str = DEFAULT_MODE) -> str:
+        spec = get_channels()[channel]
+        fact_sources = {fact.column.name: fact.sources for fact in get_fact_specs()}
+        aliases, income_band_aliases, joins = self._channel_plan(channel, mode)
 
         select_parts: list[str] = []
         for col in columns:
             if col.role == "fact":
-                expr = fact_map.get(col.name)
-                if expr is None:
-                    select_parts.append(f"{self._null_expr(col)} AS {col.name}")
-                else:
-                    select_parts.append(f"{self._cast_expr(expr, col)} AS {col.name}")
-            elif col.source_table == "income_band":
-                ib_alias = income_band_aliases.get(col.role or "")
-                if ib_alias is None:
-                    select_parts.append(f"{self._null_expr(col)} AS {col.name}")
-                else:
-                    source_col = (col.source_column or "").lower()
-                    select_parts.append(f"{self._cast_expr(f'{ib_alias}.{source_col}', col)} AS {col.name}")
+                expr = fact_sources[col.name].get(channel)
+            elif col.source_table == INCOME_BAND_TABLE:
+                alias = income_band_aliases.get(col.role or "")
+                expr = f"{alias}.{(col.source_column or '').lower()}" if alias else None
             else:
-                alias = role_aliases.get(col.role or "")
-                if alias is None:
-                    select_parts.append(f"{self._null_expr(col)} AS {col.name}")
-                    continue
-                source_col = (col.source_column or "").lower()
-                select_parts.append(f"{self._cast_expr(f'{alias}.{source_col}', col)} AS {col.name}")
+                alias = aliases.get(col.role or "")
+                expr = f"{alias}.{(col.source_column or '').lower()}" if alias else None
+            select_parts.append(f"{self._cast_expr(expr, col) if expr else self._null_expr(col)} AS {col.name}")
 
         select_sql = ",\n    ".join(select_parts)
-        if channel == "store":
-            from_clause = "FROM store_sales ss"
-        elif channel == "web":
-            from_clause = "FROM web_sales ws"
-        else:
-            from_clause = "FROM catalog_sales cs"
+        return f"SELECT\n    {select_sql}\nFROM {spec.sales_table} {spec.sales_alias}\n    " + "\n    ".join(joins)
 
-        return f"SELECT\n    {select_sql}\n{from_clause}\n    " + "\n    ".join(joins)
+    def _channel_plan(self, channel: str, mode: str) -> tuple[dict[str, str], dict[str, str], list[str]]:
+        spec = get_channels()[channel]
+        joins = [f"LEFT JOIN {spec.returns_table} {spec.returns_alias} ON {spec.returns_join}"]
+        aliases: dict[str, str] = {}
+        income_band_aliases: dict[str, str] = {}
+        joined: dict[tuple[str, str], str] = {}
 
-    def _fact_map(self, channel: str) -> dict[str, str | None]:
-        if channel == "store":
-            return {
-                "channel": "'store'",
-                "sale_id": "ss.ss_ticket_number",
-                "item_sk": "ss.ss_item_sk",
-                "sold_date_sk": "ss.ss_sold_date_sk",
-                "sold_time_sk": "ss.ss_sold_time_sk",
-                "ship_date_sk": None,
-                "returned_date_sk": "sr.sr_returned_date_sk",
-                "returned_time_sk": "sr.sr_return_time_sk",
-                "bill_customer_sk": "ss.ss_customer_sk",
-                "bill_cdemo_sk": "ss.ss_cdemo_sk",
-                "bill_hdemo_sk": "ss.ss_hdemo_sk",
-                "bill_addr_sk": "ss.ss_addr_sk",
-                "ship_customer_sk": "ss.ss_customer_sk",
-                "ship_cdemo_sk": "ss.ss_cdemo_sk",
-                "ship_hdemo_sk": "ss.ss_hdemo_sk",
-                "ship_addr_sk": "ss.ss_addr_sk",
-                "store_sk": "ss.ss_store_sk",
-                "web_site_sk": None,
-                "web_page_sk": None,
-                "call_center_sk": None,
-                "catalog_page_sk": None,
-                "ship_mode_sk": None,
-                "warehouse_sk": None,
-                "promo_sk": "ss.ss_promo_sk",
-                "reason_sk": "sr.sr_reason_sk",
-                "quantity": "ss.ss_quantity",
-                "wholesale_cost": "ss.ss_wholesale_cost",
-                "list_price": "ss.ss_list_price",
-                "sales_price": "ss.ss_sales_price",
-                "ext_discount_amt": "ss.ss_ext_discount_amt",
-                "ext_sales_price": "ss.ss_ext_sales_price",
-                "ext_wholesale_cost": "ss.ss_ext_wholesale_cost",
-                "ext_list_price": "ss.ss_ext_list_price",
-                "ext_tax": "ss.ss_ext_tax",
-                "coupon_amt": "ss.ss_coupon_amt",
-                "ext_ship_cost": None,
-                "net_paid": "ss.ss_net_paid",
-                "net_paid_inc_tax": "ss.ss_net_paid_inc_tax",
-                "net_paid_inc_ship": None,
-                "net_paid_inc_ship_tax": None,
-                "net_profit": "ss.ss_net_profit",
-                "return_quantity": "sr.sr_return_quantity",
-                "return_amount": "sr.sr_return_amt",
-                "return_tax": "sr.sr_return_tax",
-                "return_amount_inc_tax": "sr.sr_return_amt_inc_tax",
-                "return_fee": "sr.sr_fee",
-                "return_ship_cost": "sr.sr_return_ship_cost",
-                "refunded_cash": "sr.sr_refunded_cash",
-                "reversed_charge": "sr.sr_reversed_charge",
-                "account_credit": None,
-                "store_credit": "sr.sr_store_credit",
-                "return_net_loss": "sr.sr_net_loss",
-                "has_return": "CASE WHEN sr.sr_ticket_number IS NULL THEN 'N' ELSE 'Y' END",
-            }
+        def join(table: str, key: str, primary_key: str, preferred_alias: str) -> str:
+            alias = joined.get((table, key))
+            if alias is None:
+                alias = preferred_alias
+                joined[(table, key)] = alias
+                joins.append(f"LEFT JOIN {table} {alias} ON {key} = {alias}.{primary_key}")
+            return alias
 
-        if channel == "web":
-            return {
-                "channel": "'web'",
-                "sale_id": "ws.ws_order_number",
-                "item_sk": "ws.ws_item_sk",
-                "sold_date_sk": "ws.ws_sold_date_sk",
-                "sold_time_sk": "ws.ws_sold_time_sk",
-                "ship_date_sk": "ws.ws_ship_date_sk",
-                "returned_date_sk": "wr.wr_returned_date_sk",
-                "returned_time_sk": "wr.wr_returned_time_sk",
-                "bill_customer_sk": "ws.ws_bill_customer_sk",
-                "bill_cdemo_sk": "ws.ws_bill_cdemo_sk",
-                "bill_hdemo_sk": "ws.ws_bill_hdemo_sk",
-                "bill_addr_sk": "ws.ws_bill_addr_sk",
-                "ship_customer_sk": "ws.ws_ship_customer_sk",
-                "ship_cdemo_sk": "ws.ws_ship_cdemo_sk",
-                "ship_hdemo_sk": "ws.ws_ship_hdemo_sk",
-                "ship_addr_sk": "ws.ws_ship_addr_sk",
-                "store_sk": None,
-                "web_site_sk": "ws.ws_web_site_sk",
-                "web_page_sk": "ws.ws_web_page_sk",
-                "call_center_sk": None,
-                "catalog_page_sk": None,
-                "ship_mode_sk": "ws.ws_ship_mode_sk",
-                "warehouse_sk": "ws.ws_warehouse_sk",
-                "promo_sk": "ws.ws_promo_sk",
-                "reason_sk": "wr.wr_reason_sk",
-                "quantity": "ws.ws_quantity",
-                "wholesale_cost": "ws.ws_wholesale_cost",
-                "list_price": "ws.ws_list_price",
-                "sales_price": "ws.ws_sales_price",
-                "ext_discount_amt": "ws.ws_ext_discount_amt",
-                "ext_sales_price": "ws.ws_ext_sales_price",
-                "ext_wholesale_cost": "ws.ws_ext_wholesale_cost",
-                "ext_list_price": "ws.ws_ext_list_price",
-                "ext_tax": "ws.ws_ext_tax",
-                "coupon_amt": "ws.ws_coupon_amt",
-                "ext_ship_cost": "ws.ws_ext_ship_cost",
-                "net_paid": "ws.ws_net_paid",
-                "net_paid_inc_tax": "ws.ws_net_paid_inc_tax",
-                "net_paid_inc_ship": "ws.ws_net_paid_inc_ship",
-                "net_paid_inc_ship_tax": "ws.ws_net_paid_inc_ship_tax",
-                "net_profit": "ws.ws_net_profit",
-                "return_quantity": "wr.wr_return_quantity",
-                "return_amount": "wr.wr_return_amt",
-                "return_tax": "wr.wr_return_tax",
-                "return_amount_inc_tax": "wr.wr_return_amt_inc_tax",
-                "return_fee": "wr.wr_fee",
-                "return_ship_cost": "wr.wr_return_ship_cost",
-                "refunded_cash": "wr.wr_refunded_cash",
-                "reversed_charge": "wr.wr_reversed_charge",
-                "account_credit": "wr.wr_account_credit",
-                "store_credit": None,
-                "return_net_loss": "wr.wr_net_loss",
-                "has_return": "CASE WHEN wr.wr_order_number IS NULL THEN 'N' ELSE 'Y' END",
-            }
-
-        return {
-            "channel": "'catalog'",
-            "sale_id": "cs.cs_order_number",
-            "item_sk": "cs.cs_item_sk",
-            "sold_date_sk": "cs.cs_sold_date_sk",
-            "sold_time_sk": "cs.cs_sold_time_sk",
-            "ship_date_sk": "cs.cs_ship_date_sk",
-            "returned_date_sk": "cr.cr_returned_date_sk",
-            "returned_time_sk": "cr.cr_returned_time_sk",
-            "bill_customer_sk": "cs.cs_bill_customer_sk",
-            "bill_cdemo_sk": "cs.cs_bill_cdemo_sk",
-            "bill_hdemo_sk": "cs.cs_bill_hdemo_sk",
-            "bill_addr_sk": "cs.cs_bill_addr_sk",
-            "ship_customer_sk": "cs.cs_ship_customer_sk",
-            "ship_cdemo_sk": "cs.cs_ship_cdemo_sk",
-            "ship_hdemo_sk": "cs.cs_ship_hdemo_sk",
-            "ship_addr_sk": "cs.cs_ship_addr_sk",
-            "store_sk": None,
-            "web_site_sk": None,
-            "web_page_sk": None,
-            "call_center_sk": "cs.cs_call_center_sk",
-            "catalog_page_sk": "cs.cs_catalog_page_sk",
-            "ship_mode_sk": "cs.cs_ship_mode_sk",
-            "warehouse_sk": "cs.cs_warehouse_sk",
-            "promo_sk": "cs.cs_promo_sk",
-            "reason_sk": "cr.cr_reason_sk",
-            "quantity": "cs.cs_quantity",
-            "wholesale_cost": "cs.cs_wholesale_cost",
-            "list_price": "cs.cs_list_price",
-            "sales_price": "cs.cs_sales_price",
-            "ext_discount_amt": "cs.cs_ext_discount_amt",
-            "ext_sales_price": "cs.cs_ext_sales_price",
-            "ext_wholesale_cost": "cs.cs_ext_wholesale_cost",
-            "ext_list_price": "cs.cs_ext_list_price",
-            "ext_tax": "cs.cs_ext_tax",
-            "coupon_amt": "cs.cs_coupon_amt",
-            "ext_ship_cost": "cs.cs_ext_ship_cost",
-            "net_paid": "cs.cs_net_paid",
-            "net_paid_inc_tax": "cs.cs_net_paid_inc_tax",
-            "net_paid_inc_ship": "cs.cs_net_paid_inc_ship",
-            "net_paid_inc_ship_tax": "cs.cs_net_paid_inc_ship_tax",
-            "net_profit": "cs.cs_net_profit",
-            "return_quantity": "cr.cr_return_quantity",
-            "return_amount": "cr.cr_return_amount",
-            "return_tax": "cr.cr_return_tax",
-            "return_amount_inc_tax": "cr.cr_return_amt_inc_tax",
-            "return_fee": "cr.cr_fee",
-            "return_ship_cost": "cr.cr_return_ship_cost",
-            "refunded_cash": "cr.cr_refunded_cash",
-            "reversed_charge": "cr.cr_reversed_charge",
-            "account_credit": None,
-            "store_credit": "cr.cr_store_credit",
-            "return_net_loss": "cr.cr_net_loss",
-            "has_return": "CASE WHEN cr.cr_order_number IS NULL THEN 'N' ELSE 'Y' END",
-        }
-
-    def _role_aliases(self, channel: str) -> dict[str, str | None]:
-        if channel == "store":
-            return {
-                "sold_date": "ssd",
-                "sold_time": "sst",
-                "ship_date": None,
-                "return_date": "srd",
-                "return_time": "srt",
-                "item": "i",
-                "promotion": "p",
-                "reason": "r",
-                "store": "st",
-                "web_site": None,
-                "web_page": None,
-                "call_center": None,
-                "catalog_page": None,
-                "ship_mode": None,
-                "warehouse": None,
-                "bill_customer": "c_bill",
-                "ship_customer": "c_bill",
-                "returning_customer": "c_ret",
-                "refunded_customer": "c_ret",
-                "bill_cdemo": "cd_bill",
-                "ship_cdemo": "cd_bill",
-                "returning_cdemo": "cd_ret",
-                "refunded_cdemo": "cd_ret",
-                "bill_hdemo": "hd_bill",
-                "ship_hdemo": "hd_bill",
-                "returning_hdemo": "hd_ret",
-                "refunded_hdemo": "hd_ret",
-                "bill_address": "ca_bill",
-                "ship_address": "ca_bill",
-                "returning_address": "ca_ret",
-                "refunded_address": "ca_ret",
-            }
-
-        if channel == "web":
-            return {
-                "sold_date": "wsd",
-                "sold_time": "wst",
-                "ship_date": "wshipd",
-                "return_date": "wrd",
-                "return_time": "wrt",
-                "item": "i",
-                "promotion": "p",
-                "reason": "r",
-                "store": None,
-                "web_site": "wsit",
-                "web_page": "wp",
-                "call_center": None,
-                "catalog_page": None,
-                "ship_mode": "sm",
-                "warehouse": "w",
-                "bill_customer": "c_bill",
-                "ship_customer": "c_ship",
-                "returning_customer": "c_ret",
-                "refunded_customer": "c_ref",
-                "bill_cdemo": "cd_bill",
-                "ship_cdemo": "cd_ship",
-                "returning_cdemo": "cd_ret",
-                "refunded_cdemo": "cd_ref",
-                "bill_hdemo": "hd_bill",
-                "ship_hdemo": "hd_ship",
-                "returning_hdemo": "hd_ret",
-                "refunded_hdemo": "hd_ref",
-                "bill_address": "ca_bill",
-                "ship_address": "ca_ship",
-                "returning_address": "ca_ret",
-                "refunded_address": "ca_ref",
-            }
-
-        return {
-            "sold_date": "csd",
-            "sold_time": "cst",
-            "ship_date": "cshipd",
-            "return_date": "crd",
-            "return_time": "crt",
-            "item": "i",
-            "promotion": "p",
-            "reason": "r",
-            "store": None,
-            "web_site": None,
-            "web_page": None,
-            "call_center": "cc",
-            "catalog_page": "cp",
-            "ship_mode": "sm",
-            "warehouse": "w",
-            "bill_customer": "c_bill",
-            "ship_customer": "c_ship",
-            "returning_customer": "c_ret",
-            "refunded_customer": "c_ref",
-            "bill_cdemo": "cd_bill",
-            "ship_cdemo": "cd_ship",
-            "returning_cdemo": "cd_ret",
-            "refunded_cdemo": "cd_ref",
-            "bill_hdemo": "hd_bill",
-            "ship_hdemo": "hd_ship",
-            "returning_hdemo": "hd_ret",
-            "refunded_hdemo": "hd_ref",
-            "bill_address": "ca_bill",
-            "ship_address": "ca_ship",
-            "returning_address": "ca_ret",
-            "refunded_address": "ca_ref",
-        }
-
-    def _income_band_aliases(self, channel: str) -> dict[str, str | None]:
-        if channel == "store":
-            return {
-                "bill_hdemo": "ib_bill",
-                "ship_hdemo": "ib_bill",
-                "returning_hdemo": "ib_ret",
-                "refunded_hdemo": "ib_ret",
-            }
-        if channel == "web":
-            return {
-                "bill_hdemo": "ib_bill",
-                "ship_hdemo": "ib_ship",
-                "returning_hdemo": "ib_ret",
-                "refunded_hdemo": "ib_ref",
-            }
-        return {
-            "bill_hdemo": "ib_bill",
-            "ship_hdemo": "ib_ship",
-            "returning_hdemo": "ib_ret",
-            "refunded_hdemo": "ib_ref",
-        }
-
-    def _joins(self, channel: str) -> list[str]:
-        if channel == "store":
-            return [
-                "LEFT JOIN store_returns sr ON ss.ss_ticket_number = sr.sr_ticket_number "
-                "AND ss.ss_item_sk = sr.sr_item_sk",
-                "LEFT JOIN date_dim ssd ON ss.ss_sold_date_sk = ssd.d_date_sk",
-                "LEFT JOIN time_dim sst ON ss.ss_sold_time_sk = sst.t_time_sk",
-                "LEFT JOIN date_dim srd ON sr.sr_returned_date_sk = srd.d_date_sk",
-                "LEFT JOIN time_dim srt ON sr.sr_return_time_sk = srt.t_time_sk",
-                "LEFT JOIN item i ON ss.ss_item_sk = i.i_item_sk",
-                "LEFT JOIN promotion p ON ss.ss_promo_sk = p.p_promo_sk",
-                "LEFT JOIN reason r ON sr.sr_reason_sk = r.r_reason_sk",
-                "LEFT JOIN store st ON ss.ss_store_sk = st.s_store_sk",
-                "LEFT JOIN customer c_bill ON ss.ss_customer_sk = c_bill.c_customer_sk",
-                "LEFT JOIN customer_demographics cd_bill ON ss.ss_cdemo_sk = cd_bill.cd_demo_sk",
-                "LEFT JOIN household_demographics hd_bill ON ss.ss_hdemo_sk = hd_bill.hd_demo_sk",
-                "LEFT JOIN income_band ib_bill ON hd_bill.hd_income_band_sk = ib_bill.ib_income_band_sk",
-                "LEFT JOIN customer_address ca_bill ON ss.ss_addr_sk = ca_bill.ca_address_sk",
-                "LEFT JOIN customer c_ret ON sr.sr_customer_sk = c_ret.c_customer_sk",
-                "LEFT JOIN customer_demographics cd_ret ON sr.sr_cdemo_sk = cd_ret.cd_demo_sk",
-                "LEFT JOIN household_demographics hd_ret ON sr.sr_hdemo_sk = hd_ret.hd_demo_sk",
-                "LEFT JOIN income_band ib_ret ON hd_ret.hd_income_band_sk = ib_ret.ib_income_band_sk",
-                "LEFT JOIN customer_address ca_ret ON sr.sr_addr_sk = ca_ret.ca_address_sk",
-            ]
-
-        if channel == "web":
-            return [
-                "LEFT JOIN web_returns wr ON ws.ws_order_number = wr.wr_order_number AND ws.ws_item_sk = wr.wr_item_sk",
-                "LEFT JOIN date_dim wsd ON ws.ws_sold_date_sk = wsd.d_date_sk",
-                "LEFT JOIN time_dim wst ON ws.ws_sold_time_sk = wst.t_time_sk",
-                "LEFT JOIN date_dim wshipd ON ws.ws_ship_date_sk = wshipd.d_date_sk",
-                "LEFT JOIN date_dim wrd ON wr.wr_returned_date_sk = wrd.d_date_sk",
-                "LEFT JOIN time_dim wrt ON wr.wr_returned_time_sk = wrt.t_time_sk",
-                "LEFT JOIN item i ON ws.ws_item_sk = i.i_item_sk",
-                "LEFT JOIN promotion p ON ws.ws_promo_sk = p.p_promo_sk",
-                "LEFT JOIN reason r ON wr.wr_reason_sk = r.r_reason_sk",
-                "LEFT JOIN web_site wsit ON ws.ws_web_site_sk = wsit.web_site_sk",
-                "LEFT JOIN web_page wp ON ws.ws_web_page_sk = wp.wp_web_page_sk",
-                "LEFT JOIN ship_mode sm ON ws.ws_ship_mode_sk = sm.sm_ship_mode_sk",
-                "LEFT JOIN warehouse w ON ws.ws_warehouse_sk = w.w_warehouse_sk",
-                "LEFT JOIN customer c_bill ON ws.ws_bill_customer_sk = c_bill.c_customer_sk",
-                "LEFT JOIN customer_demographics cd_bill ON ws.ws_bill_cdemo_sk = cd_bill.cd_demo_sk",
-                "LEFT JOIN household_demographics hd_bill ON ws.ws_bill_hdemo_sk = hd_bill.hd_demo_sk",
-                "LEFT JOIN income_band ib_bill ON hd_bill.hd_income_band_sk = ib_bill.ib_income_band_sk",
-                "LEFT JOIN customer_address ca_bill ON ws.ws_bill_addr_sk = ca_bill.ca_address_sk",
-                "LEFT JOIN customer c_ship ON ws.ws_ship_customer_sk = c_ship.c_customer_sk",
-                "LEFT JOIN customer_demographics cd_ship ON ws.ws_ship_cdemo_sk = cd_ship.cd_demo_sk",
-                "LEFT JOIN household_demographics hd_ship ON ws.ws_ship_hdemo_sk = hd_ship.hd_demo_sk",
-                "LEFT JOIN income_band ib_ship ON hd_ship.hd_income_band_sk = ib_ship.ib_income_band_sk",
-                "LEFT JOIN customer_address ca_ship ON ws.ws_ship_addr_sk = ca_ship.ca_address_sk",
-                "LEFT JOIN customer c_ret ON wr.wr_returning_customer_sk = c_ret.c_customer_sk",
-                "LEFT JOIN customer_demographics cd_ret ON wr.wr_returning_cdemo_sk = cd_ret.cd_demo_sk",
-                "LEFT JOIN household_demographics hd_ret ON wr.wr_returning_hdemo_sk = hd_ret.hd_demo_sk",
-                "LEFT JOIN income_band ib_ret ON hd_ret.hd_income_band_sk = ib_ret.ib_income_band_sk",
-                "LEFT JOIN customer_address ca_ret ON wr.wr_returning_addr_sk = ca_ret.ca_address_sk",
-                "LEFT JOIN customer c_ref ON wr.wr_refunded_customer_sk = c_ref.c_customer_sk",
-                "LEFT JOIN customer_demographics cd_ref ON wr.wr_refunded_cdemo_sk = cd_ref.cd_demo_sk",
-                "LEFT JOIN household_demographics hd_ref ON wr.wr_refunded_hdemo_sk = hd_ref.hd_demo_sk",
-                "LEFT JOIN income_band ib_ref ON hd_ref.hd_income_band_sk = ib_ref.ib_income_band_sk",
-                "LEFT JOIN customer_address ca_ref ON wr.wr_refunded_addr_sk = ca_ref.ca_address_sk",
-            ]
-
-        return [
-            "LEFT JOIN catalog_returns cr ON cs.cs_order_number = cr.cr_order_number AND cs.cs_item_sk = cr.cr_item_sk",
-            "LEFT JOIN date_dim csd ON cs.cs_sold_date_sk = csd.d_date_sk",
-            "LEFT JOIN time_dim cst ON cs.cs_sold_time_sk = cst.t_time_sk",
-            "LEFT JOIN date_dim cshipd ON cs.cs_ship_date_sk = cshipd.d_date_sk",
-            "LEFT JOIN date_dim crd ON cr.cr_returned_date_sk = crd.d_date_sk",
-            "LEFT JOIN time_dim crt ON cr.cr_returned_time_sk = crt.t_time_sk",
-            "LEFT JOIN item i ON cs.cs_item_sk = i.i_item_sk",
-            "LEFT JOIN promotion p ON cs.cs_promo_sk = p.p_promo_sk",
-            "LEFT JOIN reason r ON cr.cr_reason_sk = r.r_reason_sk",
-            "LEFT JOIN call_center cc ON cs.cs_call_center_sk = cc.cc_call_center_sk",
-            "LEFT JOIN catalog_page cp ON cs.cs_catalog_page_sk = cp.cp_catalog_page_sk",
-            "LEFT JOIN ship_mode sm ON cs.cs_ship_mode_sk = sm.sm_ship_mode_sk",
-            "LEFT JOIN warehouse w ON cs.cs_warehouse_sk = w.w_warehouse_sk",
-            "LEFT JOIN customer c_bill ON cs.cs_bill_customer_sk = c_bill.c_customer_sk",
-            "LEFT JOIN customer_demographics cd_bill ON cs.cs_bill_cdemo_sk = cd_bill.cd_demo_sk",
-            "LEFT JOIN household_demographics hd_bill ON cs.cs_bill_hdemo_sk = hd_bill.hd_demo_sk",
-            "LEFT JOIN income_band ib_bill ON hd_bill.hd_income_band_sk = ib_bill.ib_income_band_sk",
-            "LEFT JOIN customer_address ca_bill ON cs.cs_bill_addr_sk = ca_bill.ca_address_sk",
-            "LEFT JOIN customer c_ship ON cs.cs_ship_customer_sk = c_ship.c_customer_sk",
-            "LEFT JOIN customer_demographics cd_ship ON cs.cs_ship_cdemo_sk = cd_ship.cd_demo_sk",
-            "LEFT JOIN household_demographics hd_ship ON cs.cs_ship_hdemo_sk = hd_ship.hd_demo_sk",
-            "LEFT JOIN income_band ib_ship ON hd_ship.hd_income_band_sk = ib_ship.ib_income_band_sk",
-            "LEFT JOIN customer_address ca_ship ON cs.cs_ship_addr_sk = ca_ship.ca_address_sk",
-            "LEFT JOIN customer c_ret ON cr.cr_returning_customer_sk = c_ret.c_customer_sk",
-            "LEFT JOIN customer_demographics cd_ret ON cr.cr_returning_cdemo_sk = cd_ret.cd_demo_sk",
-            "LEFT JOIN household_demographics hd_ret ON cr.cr_returning_hdemo_sk = hd_ret.hd_demo_sk",
-            "LEFT JOIN income_band ib_ret ON hd_ret.hd_income_band_sk = ib_ret.ib_income_band_sk",
-            "LEFT JOIN customer_address ca_ret ON cr.cr_returning_addr_sk = ca_ret.ca_address_sk",
-            "LEFT JOIN customer c_ref ON cr.cr_refunded_customer_sk = c_ref.c_customer_sk",
-            "LEFT JOIN customer_demographics cd_ref ON cr.cr_refunded_cdemo_sk = cd_ref.cd_demo_sk",
-            "LEFT JOIN household_demographics hd_ref ON cr.cr_refunded_hdemo_sk = hd_ref.hd_demo_sk",
-            "LEFT JOIN income_band ib_ref ON hd_ref.hd_income_band_sk = ib_ref.ib_income_band_sk",
-            "LEFT JOIN customer_address ca_ref ON cr.cr_refunded_addr_sk = ca_ref.ca_address_sk",
-        ]
+        for role in get_dimension_roles(mode):
+            if role.via_role is not None:
+                parent = aliases.get(role.via_role)
+                key = f"{parent}.{role.via_column}" if parent else None
+            else:
+                key = (role.keys or {}).get(channel)
+            if key is None:
+                continue
+            aliases[role.name] = join(role.table.name, key, role.primary_key, f"j_{role.name}")
+            if role.income_band:
+                income_band_aliases[role.name] = join(
+                    INCOME_BAND_TABLE,
+                    f"{aliases[role.name]}.{INCOME_BAND_KEY}",
+                    INCOME_BAND_PRIMARY_KEY,
+                    f"ib_{role.name}",
+                )
+        return aliases, income_band_aliases, joins
 
     def _cast_expr(self, expr: str, column: Any) -> str:
         return f"CAST({expr} AS {column.sql_type()})"
@@ -653,6 +297,7 @@ class TPCDSOBTTransformer:
         scale_factor: float | None,
         column_count: int,
         output_format: str,
+        coverage: dict[str, Any],
     ) -> dict[str, Any]:
         rows_total = int(conn.execute(f"SELECT COUNT(*) FROM {OBT_TABLE_NAME}").fetchone()[0])
         rows_by_channel = dict(
@@ -674,4 +319,5 @@ class TPCDSOBTTransformer:
             "output_format": output_format,
             "file_size_bytes": file_size,
             "scale_factor": scale_factor,
+            "coverage": coverage,
         }

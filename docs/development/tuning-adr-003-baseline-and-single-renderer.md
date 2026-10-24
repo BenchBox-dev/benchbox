@@ -47,18 +47,16 @@ logic and can drift silently:
   reachable through `benchbox/core/tuning/ddl_generator.py:get_ddl_generator`).
   This path is exercised by exactly one caller today: the dry-run preview
   (`benchbox/core/dryrun.py:1066-1091`).
-- `SparkDDLGeneratorMixin.generate_tuning_clauses`
-  (`benchbox/platforms/base/cloud_spark/mixins.py:290-322`), used by the
-  cloud Spark/Onehouse execution path (`benchbox/platforms/onehouse/quanton_adapter.py`).
-  It returns the same `TuningClauses` dataclass as `core/tuning/generators/*`
-  (imported for the type only, at the fallback branch on line 320) but builds
-  it independently through its own `_generate_delta_tuning` /
-  `_generate_iceberg_tuning` / `_generate_hudi_tuning` /
-  `_generate_parquet_tuning` / `_generate_hive_tuning` methods rather than
-  consuming the generators module's per-format logic — it is a third
-  renderer, not an existing generators caller, and needs its own
-  migration/equivalence pass during consolidation, not just deletion of the
-  dead `generate_tuning_clause` methods below.
+- `SparkDDLGeneratorMixin.generate_table_layout`
+  (`benchbox/platforms/base/cloud_spark/mixins.py`), mixed into the cloud
+  Spark/Onehouse adapter (`benchbox/platforms/onehouse/quanton_adapter.py`).
+  It maps a table's tuning to a `TableLayout` mapping through its own
+  `_delta_layout` / `_iceberg_layout` / `_hudi_layout` / `_parquet_layout` /
+  `_hive_layout` methods, and `generate_create_table_ddl` renders that layout
+  with `translate_ddl`. It does not consume the generators module's
+  per-format logic, so it is a third mapping, not an existing generators
+  caller, and needs its own migration/equivalence pass during consolidation,
+  not just deletion of the dead `generate_tuning_clause` methods below.
 - Runtime execution calls `apply_standard_unified_tuning()` and then the
   adapter's `apply_table_tunings()` hook in
   `benchbox/platforms/base/tuning_config.py`. That is the production path that

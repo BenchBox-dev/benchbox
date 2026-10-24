@@ -816,24 +816,6 @@ class TestVeloxTuning:
 
 
 class TestVeloxTableOptimization:
-    def test_parquet_format(self):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        result = optimize_spark_table_definition("CREATE TABLE orders (id INT)", table_format="parquet")
-        assert "USING PARQUET" in result.upper()
-
-    def test_orc_format(self):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        result = optimize_spark_table_definition("CREATE TABLE orders (id INT)", table_format="orc")
-        assert "USING ORC" in result.upper()
-
-    def test_non_create_table_unchanged(self):
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        sql = "SELECT * FROM orders"
-        assert optimize_spark_table_definition(sql, table_format="parquet") == sql
-
     def test_delta_preserves_v2_schema(self):
 
         from unittest.mock import MagicMock, patch
@@ -849,11 +831,11 @@ class TestVeloxTableOptimization:
         captured = {}
         with patch(
             "benchbox.platforms.velox.run_spark_schema_creation_loop",
-            side_effect=lambda spark, statements, optimize, **kwargs: captured.update(optimize=optimize),
+            side_effect=lambda spark, statements, **kwargs: captured.update(statements=statements),
         ):
             adapter.create_schema(MagicMock(), MagicMock())
 
-        result = captured["optimize"](ddl)
+        (result,) = captured["statements"]
         assert "PRIMARY KEY" in result
         assert "SMALLINT" in result
 
@@ -869,11 +851,11 @@ class TestVeloxTableOptimization:
         captured = {}
         with patch(
             "benchbox.platforms.velox.run_spark_schema_creation_loop",
-            side_effect=lambda spark, statements, optimize, **kwargs: captured.update(optimize=optimize),
+            side_effect=lambda spark, statements, **kwargs: captured.update(statements=statements),
         ):
             adapter.create_schema(MagicMock(), MagicMock())
 
-        result = captured["optimize"](ddl)
+        (result,) = captured["statements"]
         assert "PRIMARY KEY" not in result
         assert "SMALLINT" not in result
 

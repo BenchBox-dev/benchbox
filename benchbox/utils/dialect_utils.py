@@ -551,6 +551,37 @@ def translate_ddl(
     return statements
 
 
+def mooncake_mirror_statements(table: str, staging_table: str, schema: str | None = None) -> list[str]:
+    import importlib
+
+    engines = importlib.import_module("benchbox._vendor.sqlglot.benchbox.ddl_engines")
+    return engines.mooncake_mirror_statements(table, staging_table, schema)
+
+
+def schema_ddl_read_dialect(ddl: str, target_dialect: str) -> str:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    trees = sqlglot.parse(ddl, read=resolve_sql_dialect("standard"))
+    if any(isinstance(tree, exp.Command) for tree in trees):
+        return target_dialect
+    return "standard"
+
+
+def ddl_column_names(ddl: str, source_dialect: str = "standard") -> dict[str, list[str]]:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    columns: dict[str, list[str]] = {}
+    for tree in sqlglot.parse(ddl, read=resolve_sql_dialect(source_dialect)):
+        if not isinstance(tree, exp.Create) or not isinstance(tree.this, exp.Schema):
+            continue
+        table = tree.this.this
+        if isinstance(table, exp.Table):
+            columns[table.name.lower()] = [column.name for column in tree.this.find_all(exp.ColumnDef)]
+    return columns
+
+
 def contains_division(sql: str, dialect: str) -> bool:
     from benchbox._vendor import sqlglot
     from benchbox._vendor.sqlglot import exp

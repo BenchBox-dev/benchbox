@@ -12,6 +12,7 @@ pytestmark = [
     pytest.mark.unit,
     pytest.mark.slow,
     pytest.mark.resource_heavy,
+    pytest.mark.skipif(shutil.which("uv") is None, reason="uv is required to exercise no-project validator execution"),
 ]
 
 
@@ -41,13 +42,6 @@ def _minimal_bundle() -> dict:
     }
 
 
-def _uv_executable() -> str:
-    uv = shutil.which("uv")
-    if uv is None:
-        pytest.skip("uv is required to exercise no-project validator execution")
-    return uv
-
-
 def _standalone_env() -> dict[str, str]:
     env = os.environ.copy()
     env.pop("PYTHONPATH", None)
@@ -69,6 +63,10 @@ def _copy_slim_validator(repo_root: Path, slim_root: Path) -> None:
         slim_root / "benchbox" / "core" / "results" / "query_status.py",
     )
     shutil.copy2(
+        repo_root / "benchbox" / "core" / "results" / "timing_fields.py",
+        slim_root / "benchbox" / "core" / "results" / "timing_fields.py",
+    )
+    shutil.copy2(
         repo_root / "benchbox" / "core" / "results" / "schema_policy.py",
         slim_root / "benchbox" / "core" / "results" / "schema_policy.py",
     )
@@ -85,7 +83,7 @@ def test_cli_runs_from_develop_checkout_without_project_install(valid_bundle_fil
     repo_root = Path(__file__).resolve().parents[3]
     result = subprocess.run(
         [
-            _uv_executable(),
+            "uv",
             "run",
             "--no-project",
             "--",
@@ -116,7 +114,7 @@ def test_cli_runs_in_slim_no_project_checkout(tmp_path: Path) -> None:
 
     result = subprocess.run(
         [
-            _uv_executable(),
+            "uv",
             "run",
             "--no-project",
             "--",
@@ -148,7 +146,7 @@ def test_slim_no_project_checkout_rejects_empty_public_result(tmp_path: Path) ->
 
     result = subprocess.run(
         [
-            _uv_executable(),
+            "uv",
             "run",
             "--no-project",
             "--",
@@ -179,7 +177,7 @@ def test_slim_no_project_checkout_rejects_false_clean_measurement(tmp_path: Path
 
     result = subprocess.run(
         [
-            _uv_executable(),
+            "uv",
             "run",
             "--no-project",
             "--",

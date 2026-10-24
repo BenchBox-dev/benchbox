@@ -165,7 +165,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.PRIMARY_KEYS: _ddl(
             _INLINE_CONSTRAINT,
             "Delta tables keep the inline PRIMARY KEY clause. Parquet and ORC tables, the default formats, cannot "
-            "carry constraints, so optimize_spark_table_definition removes the clause; Spark never enforces "
+            "carry constraints, so the translate_ddl strip_primary_keys and strip_foreign_keys options remove the clause; Spark never enforces "
             "declared keys either way. Kept as DDL so tuning files that leave keys at their default still load.",
         ),
         _T.FOREIGN_KEYS: _ddl(
@@ -174,7 +174,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         **_no_unique_check_entries(
             "spark_no_unique_check_rendering",
-            "optimize_spark_table_definition removes UNIQUE clauses from Parquet and ORC tables.",
+            "The translate_ddl strip_unique option removes UNIQUE clauses from Parquet and ORC tables.",
         ),
     },
     "databricks": {
@@ -182,8 +182,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "databricks_partitioning_preview_only",
             "DatabricksAdapter.generate_tuning_clause builds PARTITIONED BY from tuned columns "
             "(databricks/adapter.py:3005-3048) but has no production call site tree-wide, so no "
-            "PARTITIONED BY is rendered at preview or execution. Real execution builds Delta DDL in "
-            "_convert_to_delta_table (databricks/adapter.py:2672-2729), which never adds partitioning "
+            "PARTITIONED BY is rendered at preview or execution. Real execution builds Delta DDL through "
+            "translate_ddl with a Delta default layout (DatabricksAdapter._schema_ddl_options), which never adds partitioning "
             "columns, and apply_table_tunings only logs them via _log_partitioning_and_sorting.",
         ),
         _T.CLUSTERING: _post_load(
@@ -628,8 +628,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "core.tuning.generators.starrocks.StarRocksDDLGenerator renders PARTITION BY from tuned "
             "partitioning columns at CREATE TABLE time. Consumed by both dry-run preview "
             "(get_ddl_generator('starrocks')) and real execution -- benchbox/platforms/starrocks/"
-            "workload.py's _optimize_table_definition resolves the same generator via "
-            "_resolve_tuned_ddl_clauses and injects the tuned PARTITION BY clause. No drift between "
+            "workload.py resolves the same generator via "
+            "get_ddl_generator('starrocks') and passes the tuned PARTITION BY clause to translate_ddl. No drift between "
             "preview and execution.",
         ),
         _T.SORTING: _ddl(
@@ -955,8 +955,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "PARTITION BY suffix from the first tuned PARTITIONING column (questdb.py:154-170) for "
             "dry-run preview, falling back to its own module-level TPCH_DESIGNATED_TIMESTAMP/"
             "TPCH_PARTITION_BY dicts (questdb.py:49-64, 171-182) when no tuning is configured. Real "
-            "execution (benchbox/platforms/questdb.py's QuestDBAdapter._apply_questdb_schema_"
-            "enhancements, questdb.py:521-558) never reads TableTuning at all -- it applies timestamp/"
+            "execution (benchbox/platforms/questdb.py's QuestDBAdapter._questdb_table_layout feeding "
+            "translate_ddl default_layout in create_schema) never reads TableTuning at all -- it applies timestamp/"
             "PARTITION BY using its own separate, adapter-local hardcoded TPCH_TIMESTAMP_COLUMNS/"
             "TPCH_PARTITION_DEFAULTS dicts (questdb.py:67-103), keyed by table name. For BenchBox's "
             "TPC-H defaults the two hardcoded maps happen to agree (lineitem/orders, MONTH), but any "
@@ -975,11 +975,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         _T.PRIMARY_KEYS: _none(
             "questdb_strips_primary_keys",
-            "QuestDBAdapter.create_schema strips PRIMARY KEY clauses via _strip_pk_constraints (questdb.py).",
+            "QuestDBAdapter.create_schema strips PRIMARY KEY clauses via translate_ddl strip_primary_keys (questdb.py).",
         ),
         _T.FOREIGN_KEYS: _none(
             "questdb_strips_foreign_keys",
-            "QuestDBAdapter.create_schema strips FOREIGN KEY clauses via ddl_helpers strip_foreign_keys (questdb.py).",
+            "QuestDBAdapter.create_schema strips FOREIGN KEY clauses via translate_ddl strip_foreign_keys (questdb.py).",
         ),
         **_no_unique_check_entries(
             "questdb_no_unique_check_rendering",

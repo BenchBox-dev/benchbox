@@ -1,5 +1,5 @@
 modelRoles:
-  smol: anthropic/claude-haiku-5-5:xhigh
+  smol: openai-codex/gpt-6-luna:xhigh
   default: anthropic/claude-sonnet-5-5:high
   review: anthropic/claude-opus-5-5:medium
   plan: anthropic/claude-opus-5-5:xhigh
@@ -7,8 +7,8 @@ modelRoles:
 retry:
   fallbackOn: usage-limit
   fallbackChains:
-    anthropic/claude-haiku-5-5:
-      - openai-codex/gpt-6-luna:medium
+    openai-codex/gpt-6-luna:
+      - anthropic/claude-sonnet-5-5:medium
       - muse-code/muse-spark-1.3-contributor:medium
       - google-antigravity/gemini-3.8-flash:medium
     anthropic/claude-sonnet-5-5:

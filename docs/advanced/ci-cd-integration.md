@@ -57,7 +57,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install UV
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
       - name: Install BenchBox
         run: uv pip install benchbox[all]
@@ -105,7 +105,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install UV
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
       - name: Install BenchBox
         run: uv pip install benchbox[all]
@@ -248,8 +248,8 @@ benchmark:
   stage: benchmark
   image: python:3.11
   before_script:
-    - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.cargo/bin:$PATH"
+    - curl -LsSf https://astral.sh/uv/0.13.5/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
     - uv pip install benchbox[all]
   script:
     - |
@@ -319,8 +319,8 @@ pipeline {
         stage('Setup') {
             steps {
                 sh '''
-                    curl -LsSf https://astral.sh/uv/install.sh | sh
-                    export PATH="$HOME/.cargo/bin:$PATH"
+                    curl -LsSf https://astral.sh/uv/0.13.5/install.sh | sh
+                    export PATH="$HOME/.local/bin:$PATH"
                     uv pip install benchbox[all]
                 '''
             }
@@ -398,12 +398,12 @@ jobs:
 
       - run:
           name: Install UV
-          command: curl -LsSf https://astral.sh/uv/install.sh | sh
+          command: curl -LsSf https://astral.sh/uv/0.13.5/install.sh | sh
 
       - run:
           name: Install BenchBox
           command: |
-            export PATH="$HOME/.cargo/bin:$PATH"
+            export PATH="$HOME/.local/bin:$PATH"
             uv pip install benchbox[all]
 
       - run:
@@ -491,8 +491,8 @@ stages:
               versionSpec: '3.11'
 
           - script: |
-              curl -LsSf https://astral.sh/uv/install.sh | sh
-              export PATH="$HOME/.cargo/bin:$PATH"
+              curl -LsSf https://astral.sh/uv/0.13.5/install.sh | sh
+              export PATH="$HOME/.local/bin:$PATH"
               uv pip install benchbox[all]
             displayName: 'Install Dependencies'
 

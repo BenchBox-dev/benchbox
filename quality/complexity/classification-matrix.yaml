@@ -221,18 +221,6 @@ functions:
   refactor_strategy: "N/A - platform-specific branches already delegated to helper methods."
   re_review_trigger: "Addition of 4th DataFrame platform or new join type."
 
-- key: "benchbox/core/tpcds_obt/query_conversion.py:_post_process"
-  file: "benchbox/core/tpcds_obt/query_conversion.py"
-  line: 1034
-  function: "_post_process"
-  score: 32
-  band: failure
-  module_family: "benchbox/core/tpcds_obt"
-  classification: ignore_with_rationale
-  rationale: "Each if-block fixes a specific TPC-DS query OBT conversion edge case. Genuinely distinct, query-specific string transformations driven by SQL semantics."
-  refactor_strategy: "Extraction into per-query fix functions adds indirection without reducing complexity -- each fix is unique and isolated by query_id guard."
-  re_review_trigger: "When OBT schema changes fundamentally or AST rewriter replaces string-based post-processing."
-
 - key: "benchbox/cli/commands/compare.py:_format_text_comparison"
   file: "benchbox/cli/commands/compare.py"
   line: 1348
@@ -376,18 +364,6 @@ functions:
   rationale: "Three nearly identical blocks (power_test, throughput_test, maintenance_test) each iterating query_executions and building phase_cost. Classic copy-paste repetition."
   refactor_strategy: "Extract _collect_query_costs(phase, calculator, platform, platform_config) that handles the query iteration loop. Three blocks collapse to three one-line calls."
   re_review_trigger: "When a new benchmark phase type is added."
-
-- key: "benchbox/core/tpcds_obt/query_conversion.py:_map_unqualified_column"
-  file: "benchbox/core/tpcds_obt/query_conversion.py"
-  line: 682
-  function: "_map_unqualified_column"
-  score: 28
-  band: failure
-  module_family: "benchbox/core/tpcds_obt"
-  classification: simplify_now
-  rationale: "Repetitive if-startswith chains mapping column prefixes to dimension table lookups. Each block follows same pattern."
-  refactor_strategy: "Build a prefix-to-dimension lookup table and loop over it. Fact-table prefix map at top already demonstrates this approach."
-  re_review_trigger: "When new dimension tables are added to OBT schema."
 
 - key: "benchbox/cli/commands/compare_plans.py:compare_plans"
   file: "benchbox/cli/commands/compare_plans.py"
@@ -1085,18 +1061,6 @@ functions:
   refactor_strategy: ""
   re_review_trigger: ""
 
-- key: "benchbox/core/tpcds_obt/query_conversion.py:_update_role_map"
-  file: "benchbox/core/tpcds_obt/query_conversion.py"
-  line: 906
-  function: "_update_role_map"
-  score: 19
-  band: warning
-  module_family: "benchbox/core/tpcds_obt"
-  classification: pending
-  rationale: ""
-  refactor_strategy: ""
-  re_review_trigger: ""
-
 - key: "benchbox/core/tpch_skew/benchmark.py:compare_with_uniform"
   file: "benchbox/core/tpch_skew/benchmark.py"
   line: 194
@@ -1224,30 +1188,6 @@ functions:
   score: 18
   band: warning
   module_family: "benchbox/core/tpcds"
-  classification: pending
-  rationale: ""
-  refactor_strategy: ""
-  re_review_trigger: ""
-
-- key: "benchbox/core/tpcds_obt/query_conversion.py:_rewrite_select"
-  file: "benchbox/core/tpcds_obt/query_conversion.py"
-  line: 538
-  function: "_rewrite_select"
-  score: 18
-  band: warning
-  module_family: "benchbox/core/tpcds_obt"
-  classification: pending
-  rationale: ""
-  refactor_strategy: ""
-  re_review_trigger: ""
-
-- key: "benchbox/core/tpcds_obt/query_conversion.py:_table_from_prefix"
-  file: "benchbox/core/tpcds_obt/query_conversion.py"
-  line: 840
-  function: "_table_from_prefix"
-  score: 18
-  band: warning
-  module_family: "benchbox/core/tpcds_obt"
   classification: pending
   rationale: ""
   refactor_strategy: ""
@@ -2931,16 +2871,6 @@ functions:
   classification: ignore_with_rationale
   rationale: "Streaming generation of parent/child tables coordinates subprocess execution, per-table compression, manifest bookkeeping, missing-table cleanup, and verbose reporting. The branching follows the required data-generation workflow."
 
-- key: "benchbox/core/tpcds_obt/query_conversion.py:_rewrite_columns"
-  file: "benchbox/core/tpcds_obt/query_conversion.py"
-  line: 693
-  function: "_rewrite_columns"
-  score: 12
-  band: ceiling
-  module_family: "benchbox/core"
-  classification: ignore_with_rationale
-  rationale: "OBT column rewriting must distinguish unqualified identifiers, dimension-role prefixes, fact-column mapping, and final alias placement on the OBT table. The branches encode SQL semantic differences, not boilerplate control flow."
-
 - key: "benchbox/core/tpch/generator.py:_generate_local"
   file: "benchbox/core/tpch/generator.py"
   line: 794
@@ -3184,17 +3114,6 @@ functions:
   classification: simplify_now
   rationale: "Recursive traversal and metric accumulation were fused in one closure. Separating node-metric updates from traversal removes incidental branching while keeping a single walk."
   refactor_strategy: "Keep the recursive walker but extract _update_plan_summary(summary, node) for the per-node accounting rules."
-
-- key: "benchbox/core/tpcds_obt/query_conversion.py:_map_identifier_default"
-  file: "benchbox/core/tpcds_obt/query_conversion.py"
-  line: 1020
-  function: "_map_identifier_default"
-  score: 12
-  band: ceiling
-  module_family: "benchbox/core"
-  classification: simplify_now
-  rationale: "The function was a straight prefix-dispatch chain plus a small channel fallback table. Converting the fixed prefixes to dictionaries removes accidental branching."
-  refactor_strategy: "Replace the repeated startswith() chain with _IDENTIFIER_DEFAULT_FACT_TABLES and _CHANNEL_FACT_TABLES lookups."
 
 - key: "benchbox/platforms/databricks/adapter.py:_get_remote_file_uris_from_manifest"
   file: "benchbox/platforms/databricks/adapter.py"

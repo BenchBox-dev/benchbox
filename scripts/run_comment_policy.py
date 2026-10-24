@@ -61,8 +61,14 @@ def parser_environment(trusted: Path) -> tuple[Path, dict[str, str]]:
     return python, env
 
 
-def resolve_base(root: Path, requested: str | None) -> str:
-    if os.environ.get("GITHUB_ACTIONS") == "true":
+def resolve_base(root: Path, requested: str | None, full: bool = False) -> str:
+    if full:
+        if requested:
+            raise ValueError("a full scan compares against the checked-out commit and takes no base")
+        base = subprocess.check_output(
+            ["git", "-C", str(root), "rev-parse", "--verify", "HEAD^{commit}"], text=True
+        ).strip()
+    elif os.environ.get("GITHUB_ACTIONS") == "true":
         event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
         if os.environ.get("GITHUB_EVENT_NAME") == "pull_request":
             base = event["pull_request"]["base"]["sha"]
@@ -113,7 +119,7 @@ def comparison_base(root: Path, base: str) -> str:
 
 
 def checker_command(
-    python: Path, trusted: Path, root: Path, compare_base: str, *, bootstrap: bool, staged: bool
+    python: Path, trusted: Path, root: Path, compare_base: str, *, bootstrap: bool, staged: bool, full: bool = False
 ) -> list[str]:
     command = [
         str(python),
@@ -122,7 +128,7 @@ def checker_command(
         "--root",
         str(root),
         "--mode",
-        "transition",
+        "strict",
         "--base",
         compare_base,
     ]
@@ -130,6 +136,8 @@ def checker_command(
         command.append("--bootstrap")
     if staged:
         command.append("--staged")
+    if full:
+        command.append("--full")
     return command
 
 
@@ -143,10 +151,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the comment policy with immutable base parsers.")
     parser.add_argument("--base", default=os.environ.get("BASE_REF"))
     parser.add_argument("--staged", action="store_true")
+    parser.add_argument("--full", action="store_true")
     args = parser.parse_args(argv)
     root = Path.cwd().resolve()
     try:
-        base = resolve_base(root, args.base)
+        base = resolve_base(root, args.base, args.full)
         with tempfile.TemporaryDirectory(prefix="benchbox-comment-policy-") as directory:
             trusted = Path(directory)
             missing = []
@@ -166,7 +175,13 @@ def main(argv: list[str] | None = None) -> int:
                     (trusted / Path(name).name).write_bytes((root / name).read_bytes())
             python, env = parser_environment(trusted)
             command = checker_command(
-                python, trusted, root, comparison_base(root, base), bootstrap=bootstrap, staged=args.staged
+                python,
+                trusted,
+                root,
+                comparison_base(root, base),
+                bootstrap=bootstrap,
+                staged=args.staged,
+                full=args.full,
             )
             result = subprocess.run(command, cwd=trusted, env=env, check=False).returncode
             return result

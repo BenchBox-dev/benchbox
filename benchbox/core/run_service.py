@@ -82,6 +82,7 @@ from benchbox.core.runner.runner import (
     run_benchmark_lifecycle,
 )
 from benchbox.core.schemas import reject_single_stream_throughput
+from benchbox.utils.disk_guard import ensure_run_output_space
 from benchbox.utils.toggles import is_probe_requested
 
 if TYPE_CHECKING:
@@ -263,6 +264,7 @@ def execute_run(
     validation = resolve_validation_options(getattr(config, "options", None))
     execution_mode = resolve_execution_mode(database_config)
     reject_unsupported_dataframe_phases(execution_mode, phases_to_run)
+    ensure_run_output_space(output_root)
 
     adapter = adapter_factory(execution_mode=execution_mode, output_root=output_root, phases=phases)
     if execution_mode == "dataframe" and adapter is not None:

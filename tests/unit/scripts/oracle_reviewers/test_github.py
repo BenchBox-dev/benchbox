@@ -537,3 +537,19 @@ def test_gh_reports_decodable_stderr_on_failure(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(github.subprocess, "run", fake_run)
     with pytest.raises(github.GitHubError, match="ailure"):
         github._gh("repos/x")
+
+
+def test_gh_reads_a_file_at_a_ref_and_reports_none_when_unreadable(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        calls.append(argv)
+        if "missing.py" in argv[-1]:
+            return subprocess.CompletedProcess(argv, 1, b"", b"not found")
+        return subprocess.CompletedProcess(argv, 0, b"def f():\n", b"")
+
+    monkeypatch.setattr(github.subprocess, "run", fake_run)
+    assert github.get_file(REPO, "src/a b.py", "abc") == "def f():\n"
+    assert calls[0][-1] == f"repos/{REPO}/contents/src/a%20b.py?ref=abc"
+    assert "Accept: application/vnd.github.raw+json" in calls[0]
+    assert github.get_file(REPO, "missing.py", "abc") is None
