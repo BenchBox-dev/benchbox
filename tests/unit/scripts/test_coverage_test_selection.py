@@ -378,6 +378,9 @@ def test_build_map_cli_requires_one_execution_file_per_data_file(tmp_path: Path,
     argv = ["build-map", "--data", str(data), "--sha", _head(repo), "--out", str(out), "--repo-root", str(repo)]
     evidence = _execution(tmp_path / "exec.json", _head(repo), [node], {node: ["passed"]})
     assert sel.main([*argv, "--execution", str(tmp_path / "missing.json")]) == 1
+    with pytest.raises(SystemExit):
+        sel.main(argv)
+    assert not out.is_file()
     assert sel.main([*argv, "--execution", str(evidence)]) == 0
     assert json.loads(out.read_text(encoding="utf-8"))["uncovered_nodes"] == {}
 
@@ -443,6 +446,8 @@ def test_build_map_rejects_a_junit_shortfall_against_the_data_files(tmp_path: Pa
                 "build-map",
                 "--data",
                 str(data),
+                "--execution",
+                str(tmp_path / "exec.json"),
                 "--junit",
                 str(tmp_path / "missing-*.xml"),
                 "--expected-shards",
@@ -938,7 +943,10 @@ def test_file_changed_on_develop_since_the_map_escalates(repo: Path) -> None:
 def test_build_map_rejects_unexpected_shard_count(repo: Path, tmp_path: Path) -> None:
     data = _coverage_data(tmp_path, {str(repo / "benchbox/base.py"): {4: ["tests/test_benchbox.py::test_translate"]}})
     out = tmp_path / "map.json"
-    base = ["build-map", "--data", str(data), "--sha", _head(repo), "--out", str(out), "--repo-root", str(repo)]
+    node = "tests/test_benchbox.py::test_translate"
+    evidence = _execution(tmp_path / "exec.json", _head(repo), [node], {node: ["passed"]})
+    base = ["build-map", "--data", str(data), "--execution", str(evidence)]
+    base += ["--sha", _head(repo), "--out", str(out), "--repo-root", str(repo)]
     assert sel.main([*base, "--expected-shards", "2"]) == 1
     assert not out.is_file()
     assert sel.main([*base, "--expected-shards", "1"]) == 0

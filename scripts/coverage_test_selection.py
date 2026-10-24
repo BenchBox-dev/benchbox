@@ -1082,17 +1082,15 @@ def _cmd_build_map(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-    execution_files = None
-    if args.execution is not None:
-        execution_files = [path for pattern in args.execution for path in sorted(pattern.parent.glob(pattern.name))]
-        execution_files = [path for path in execution_files if path.is_file()]
-        if len(execution_files) != len(data_files):
-            print(
-                f"expected one execution evidence file per coverage data file, found {len(execution_files)} "
-                f"for {len(data_files)} data file(s)",
-                file=sys.stderr,
-            )
-            return 1
+    execution_files = [path for pattern in args.execution for path in sorted(pattern.parent.glob(pattern.name))]
+    execution_files = [path for path in execution_files if path.is_file()]
+    if len(execution_files) != len(data_files):
+        print(
+            f"expected one execution evidence file per coverage data file, found {len(execution_files)} "
+            f"for {len(data_files)} data file(s)",
+            file=sys.stderr,
+        )
+        return 1
     try:
         mapping = build_map(
             data_files, args.repo_root, args.sha, junit_files=junit_files, execution_files=execution_files
@@ -1366,7 +1364,7 @@ def build_parser() -> argparse.ArgumentParser:
     build_map_parser = sub.add_parser("build-map")
     build_map_parser.add_argument("--data", type=Path, action="append", required=True)
     build_map_parser.add_argument("--junit", type=Path, action="append", default=None)
-    build_map_parser.add_argument("--execution", type=Path, action="append", default=None)
+    build_map_parser.add_argument("--execution", type=Path, action="append", required=True)
     build_map_parser.add_argument("--sha", required=True)
     build_map_parser.add_argument("--expected-shards", type=int, default=None)
     build_map_parser.add_argument("--out", type=Path, required=True)
