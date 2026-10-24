@@ -741,6 +741,9 @@ class DatabricksAdapter(PlatformAdapter):
             platform_info["engine_version"] = None
             platform_info["engine_version_source"] = None
 
+        if self.gateway != "native":
+            platform_info["gateway"] = {"name": self.gateway, "routed": True}
+
         warehouse_id = self._warehouse_id_from_http_path(self.http_path)
         try:
             from databricks.sdk import WorkspaceClient

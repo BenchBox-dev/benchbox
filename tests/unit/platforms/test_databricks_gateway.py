@@ -85,3 +85,42 @@ def test_oauth_environment_with_native_is_allowed(monkeypatch, env_var):
 
     assert DatabricksAdapter(**_config(gateway="native")).gateway == "native"
     assert DatabricksAdapter(**_config()).gateway == "native"
+
+
+def _platform_info(adapter):
+    with patch.object(DatabricksAdapter, "_warehouse_id_from_http_path", return_value=None):
+        return adapter.get_platform_info()
+
+
+def _payload(adapter):
+    from benchbox.core.results.models import QueryExecution
+    from benchbox.core.results.schema import build_result_payload
+    from tests.fixtures.result_dict_fixtures import make_benchmark_results
+
+    result = make_benchmark_results(
+        platform="databricks",
+        platform_info=_platform_info(adapter),
+        query_results=[QueryExecution(query_id="1", execution_time_ms=10, rows_returned=1)],
+    )
+    result.tpc_compliant = True
+    return build_result_payload(result)
+
+
+@pytest.mark.parametrize("gateway", ["espresso", "custom"])
+def test_routed_run_is_recorded_with_gateway_name_and_variant(gateway):
+    adapter = DatabricksAdapter(**_config(gateway=gateway))
+
+    assert _platform_info(adapter)["gateway"] == {"name": gateway, "routed": True}
+    payload = _payload(adapter)
+    assert payload["platform"]["gateway"] == {"name": gateway, "routed": True}
+    assert payload["platform"]["variant"].endswith(f"@{gateway}")
+    assert payload["tpc_compliant"] is False
+
+
+def test_native_run_emits_no_gateway():
+    adapter = DatabricksAdapter(**_config())
+
+    assert "gateway" not in _platform_info(adapter)
+    payload = _payload(adapter)
+    assert "gateway" not in payload["platform"]
+    assert "@" not in payload["platform"]["variant"]
