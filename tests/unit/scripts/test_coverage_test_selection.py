@@ -317,13 +317,28 @@ def test_build_map_keeps_awkward_node_ids_unchanged(tmp_path: Path, repo: Path) 
     assert mapping["nodes"] == sorted(AWKWARD_IDS)
 
 
-def _execution(path: Path, sha: str, assigned: list[str], outcomes: dict[str, list[str]]) -> Path:
+def _execution(
+    path: Path,
+    sha: str,
+    assigned: list[str],
+    outcomes: dict[str, list[str]],
+    *,
+    complete: bool = True,
+    phase: str = "call",
+) -> Path:
     records = [
-        {"node_id": node, "reports": [{"phase": "call", "outcome": outcome} for outcome in reports]}
+        {"node_id": node, "reports": [{"phase": phase, "outcome": outcome} for outcome in reports]}
         for node, reports in sorted(outcomes.items())
     ]
     path.write_text(
-        json.dumps({"commit_sha": sha, "assigned_node_ids": sorted(assigned), "node_outcomes": records}),
+        json.dumps(
+            {
+                "commit_sha": sha,
+                "complete": complete,
+                "assigned_node_ids": sorted(assigned),
+                "node_outcomes": records,
+            }
+        ),
         encoding="utf-8",
     )
     return path
@@ -358,6 +373,28 @@ def test_build_map_rejects_an_unexplained_missing_id(tmp_path: Path, repo: Path)
     covered, lost = AWKWARD_IDS[0], AWKWARD_IDS[1]
     data = _coverage_data(tmp_path, {base: {4: [f"{covered}|run"]}})
     evidence = _execution(tmp_path / "exec.json", _head(repo), [covered, lost], {covered: ["passed"]})
+    with pytest.raises(sel.SelectionError, match="no recorded outcome"):
+        sel.build_map([data], repo, _head(repo), execution_files=[evidence])
+
+
+def test_build_map_rejects_incomplete_shard_evidence(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    node = AWKWARD_IDS[0]
+    data = _coverage_data(tmp_path, {base: {4: [f"{node}|run"]}})
+    evidence = _execution(tmp_path / "exec.json", _head(repo), [node], {node: ["passed"]}, complete=False)
+    with pytest.raises(sel.SelectionError, match="incomplete"):
+        sel.build_map([data], repo, _head(repo), execution_files=[evidence])
+
+
+def test_build_map_does_not_explain_a_missing_id_by_a_setup_only_report(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    covered, crashed = AWKWARD_IDS[0], AWKWARD_IDS[1]
+    data = _coverage_data(tmp_path, {base: {4: [f"{covered}|run"]}})
+    evidence = _execution(tmp_path / "exec.json", _head(repo), [covered], {covered: ["passed"]})
+    payload = json.loads(evidence.read_text(encoding="utf-8"))
+    payload["assigned_node_ids"] = sorted([covered, crashed])
+    payload["node_outcomes"].append({"node_id": crashed, "reports": [{"phase": "setup", "outcome": "passed"}]})
+    evidence.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(sel.SelectionError, match="no recorded outcome"):
         sel.build_map([data], repo, _head(repo), execution_files=[evidence])
 

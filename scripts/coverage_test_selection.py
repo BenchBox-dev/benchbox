@@ -165,6 +165,8 @@ def _read_execution_evidence(execution_files: list[Path], sha: str) -> tuple[set
             raise SelectionError(f"shard execution evidence {path} is unreadable: {exc}") from exc
         if not isinstance(payload, dict) or payload.get("commit_sha") != sha:
             raise SelectionError(f"shard execution evidence {path} is not for {sha}")
+        if payload.get("complete") is not True:
+            raise SelectionError(f"shard execution evidence {path} is incomplete")
         ids = payload.get("assigned_node_ids")
         records = payload.get("node_outcomes")
         if not isinstance(ids, list) or not isinstance(records, list):
@@ -198,8 +200,10 @@ def reconcile_with_execution(nodes: list[str], execution_files: list[Path], sha:
             unexplained.append(node)
         elif any(report.get("outcome") == "skipped" for report in reports):
             uncovered[node] = "skipped"
-        else:
+        elif any(report.get("phase") == "call" and report.get("outcome") in ("passed", "failed") for report in reports):
             uncovered[node] = "no-project-coverage"
+        else:
+            unexplained.append(node)
     if unexplained:
         raise SelectionError(
             f"{len(unexplained)} collected medium id(s) are absent from the map with no recorded outcome: "
