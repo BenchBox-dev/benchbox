@@ -8841,17 +8841,12 @@
       "title": "Replace core references to relocated pages with canonical URLs"
     },
     "docs-mig-core-docs-data-export": {
-      "claim": {
-        "expires_at": "2026-10-25T18:47:07Z",
-        "generation": "db936c1818864a409383bf6a066d6aae",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
-      },
+      "claim": null,
       "needs": [
         "docs-mig-adr-ownership"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Export generated documentation data without rendering Markdown"
     },
     "docs-mig-core-freeze": {
