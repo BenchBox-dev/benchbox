@@ -1,11 +1,11 @@
 {
   "acceptance": [
-    "Decide whether process_scd_changes must persist expirations to the database; record the TPC-DI spec basis",
-    "If yes, execute the expire and batch-id UPDATEs on the benchmark connection with bound parameters, with tests proving rows are expired",
-    "If no, rename or document the helpers so counts are not presented as applied updates",
-    "TPC-DI unit and integration tests pass"
+    "Decide whether process_scd_changes must persist expirations; record the TPC-DI spec basis: met (yes; clause 4.4.1.3, see context)",
+    "Execute the expire and batch-id UPDATEs with bound parameters, with tests proving rows are expired: met (PR 3333)",
+    "If no, document the helpers: not applicable",
+    "TPC-DI unit and integration tests pass: met (see context for the integration run's head)"
   ],
-  "context": "Discovered during the comment cleanup (feat/comment-cleanup-program, 2026-10-03). Benchmark-behavior change: needs its own review and correctness evidence.",
+  "context": "Merged as PR 3333 (2026-10-24). Owner decision: persist the expirations. Spec basis: TPC-DI v1.1.0 clause 4.4.1.3 (expiring a record sets IsCurrent = FALSE and EndDate to the new record's EffectiveDate, then inserts the new record as in clause 4.4.1.2); history-tracking tables are in 4.4.1.1. The repo docs did not cite a clause number; this was read from the specification on tpc.org.\n\nprocess_scd_changes now executes the expire UPDATE, the INSERT of new versions and new keys, and the non-SCD column and BatchID UPDATE, with bound parameters, allow-listed tables (DimAccount, DimBroker, DimCompany, DimCustomer, DimSecurity) and validated identifiers, in one transaction (SAVEPOINT when the caller owns it; fails closed on drivers without SAVEPOINT such as DuckDB; ROLLBACK on a failed COMMIT). Counts come from rows the driver reports (DuckDB count row, since rowcount is -1); an expire touching an unexpected number of rows raises and rolls back; failed runs report zero counts; scd_type2_changes counts one per superseded key and new + scd + updated + unchanged equals records_processed. Two further defects fixed on the way: the code looked for SK_<Dim>ID_current, which exists only when incoming data carries the SK column, so the expire never ran; new versions and keys were never inserted, and new surrogate keys now come from MAX(sk)+1 instead of old_sk + 1000000.\n\nPublished results are unchanged: process_scd_changes has no caller outside tests (benchmark.py only constructs the processor and calls process_dimension, a stub). Tests: tests/unit/core/tpcdi 435 passed, medium 50 passed, end-to-end and full-benchmark integration files 35 passed at an earlier head (not re-run on the final head). Only DuckDB and, for the SAVEPOINT path, SQLite were exercised; other drivers assume a ?-placeholder DB-API connection.",
   "description": "benchbox/core/tpcdi/etl/scd_processor.py: the SCD Type 2 helper and the non-SCD update helper used to build UPDATE SQL as standalone f-strings and discard them, so the 'expire current version' UPDATE (set is_current = 0, end_date) and the batch-id UPDATE never executed; the helpers only update counters and in-memory records. The comment cleanup removed the dead f-strings (behavior unchanged for valid config); the missing database write remains. Earlier evidence: ~/.agents/handoffs/benchbox-comment-cleanup-scd-inert-sql-decision.md and -proof.json.",
   "links": [
     "benchbox/core/tpcdi/etl/scd_processor.py"
@@ -26,6 +26,14 @@
       "generation": "7f5ad44355e6425fb55a87cf882ec5ec",
       "op": "take",
       "op_id": "1b642e4e722d449e9bcadd8154a2f7c4",
+      "session_id": "8c28c3ba26704290a1e499b1b197791d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e465f897e6bf2b6184696cd7",
+      "at": "2026-10-24T01:04:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c2b89660595d40e0b2153ffa13e9c9fd",
       "session_id": "8c28c3ba26704290a1e499b1b197791d"
     }
   ]
