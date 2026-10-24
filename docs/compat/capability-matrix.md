@@ -4,7 +4,7 @@
 
 Every rule registered in `benchbox.sql_compat` is listed below. The registry is the authoritative source of compatibility policy; this document is regenerated from it. See [adr-sql-compat-phase-aware-pipeline.md](../development/adr/adr-sql-compat-phase-aware-pipeline.md) for the design.
 
-**Total registered rules:** 575
+**Total registered rules:** 576
 
 **Platforms covered:** 35
 
@@ -14,7 +14,7 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 |---|---|---|---|---|---|---|---|---|
 | athena | - | - | - | - | - | 1 | - | 1 |
 | bigquery | - | 2 | - | 25 | 2 | 1 | 8 | 38 |
-| clickhouse | - | 19 | - | 3 | 4 | 1 | - | 27 |
+| clickhouse | - | 19 | 1 | 3 | 4 | 1 | - | 28 |
 | clickhouse-cloud | - | - | - | 2 | - | - | 21 | 23 |
 | clickhouse-local | 1 | - | - | 2 | - | - | 21 | 24 |
 | clickhouse-server | - | - | - | 2 | - | - | 21 | 23 |
@@ -122,6 +122,7 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 | query_source | benchmark=vector_search, query=Q4 | select_variant | REWRITTEN | UNSUPPORTED_FEATURE | `query_source.clickhouse.vector_search.q4_variant` |
 | query_source | benchmark=vector_search, query=Q5 | select_variant | REWRITTEN | UNSUPPORTED_FEATURE | `query_source.clickhouse.vector_search.q5_variant` |
 | query_source | benchmark=vector_search, query=Q6 | select_variant | REWRITTEN | UNSUPPORTED_FEATURE | `query_source.clickhouse.vector_search.q6_variant` |
+| query_compile | platform-wide | rewrite_query | REWRITTEN | SILENT_CORRUPTION | `query_compile.clickhouse.all.exact_literal_bounds` |
 | query_adapter | benchmark=tpcds, query=23a | set_session_policy | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.clickhouse.tpcds.q23a_joined_subquery_alias_policy` |
 | query_adapter | benchmark=tpcds, query=23b | set_session_policy | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.clickhouse.tpcds.q23b_joined_subquery_alias_policy` |
 | query_adapter | benchmark=tpcds, query=87 | set_session_policy | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.clickhouse.tpcds.q87_joined_subquery_alias_policy` |
@@ -692,7 +693,7 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 | phase | scope | action | support | failure mode | rule_id |
 |---|---|---|---|---|---|
 | query_source | benchmark=h2odb, query=Q9 | select_variant | REWRITTEN | SYNTAX_ERROR | `query_source.sqlite.h2odb.q9_percentile_cont_variant` |
-| query_compile | benchmark=tpch, query=6 | rewrite_query | REWRITTEN | SILENT_CORRUPTION | `query_compile.sqlite.tpch.q6_exact_discount_bounds` |
+| query_compile | platform-wide | rewrite_query | REWRITTEN | SILENT_CORRUPTION | `query_compile.sqlite.all.exact_literal_bounds` |
 
 ### starrocks
 

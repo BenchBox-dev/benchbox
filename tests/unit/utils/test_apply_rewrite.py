@@ -5,26 +5,17 @@ from benchbox.utils.dialect_utils import FORK_REWRITE_MODULES, _fork_rewrite, ap
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-DISCOUNT_BOUNDS = "SELECT 1 FROM {table} WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
+
+def test_bound_fold_applies_to_any_table_and_column():
+    for table, column in (("lineitem", "l_discount"), ("sat_lineitem", "l_discount"), ("orders", "o_totalprice")):
+        sql = f"SELECT 1 FROM {table} WHERE {column} BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
+        result = apply_rewrite("fold_between_literal_arithmetic", sql, "sqlite")
+        assert result == f"SELECT 1 FROM {table} WHERE {column} BETWEEN 0.05 AND 0.07"
 
 
-def test_discount_bound_fold_applies_to_the_lineitem_gate():
-    result = apply_rewrite(
-        "fold_between_literal_arithmetic",
-        DISCOUNT_BOUNDS.format(table="lineitem"),
-        "sqlite",
-        columns=["l_discount"],
-        tables=["lineitem"],
-    )
-    assert result == "SELECT 1 FROM lineitem WHERE l_discount BETWEEN 0.05 AND 0.07"
-
-
-def test_discount_bound_fold_leaves_other_tables_alone():
-    sql = DISCOUNT_BOUNDS.format(table="orders")
-    result = apply_rewrite(
-        "fold_between_literal_arithmetic", sql, "sqlite", columns=["l_discount"], tables=["lineitem"]
-    )
-    assert result == sql
+def test_bound_fold_leaves_exact_literals_alone():
+    sql = "SELECT 1 FROM orders WHERE o_totalprice BETWEEN 0.05 AND 0.07"
+    assert apply_rewrite("fold_between_literal_arithmetic", sql, "sqlite") == sql
 
 
 def test_string_input_returns_sql_and_expression_input_returns_expression():
