@@ -1,9 +1,8 @@
 {
   "acceptance": [
-    "sql-execution-evidence uses a digest-pinned Postgres 17 image from the ghcr.io mirror or another authenticated registry.",
-    "Workflow tests that pin the image are updated, and a CI run shows the job pulling from the mirror."
+    "Mirror the pinned Postgres 17 digest to GHCR via `mirror-ci-images.yml`; `ci.yml` sql-execution-evidence AND `nightly.yml` postgres-integration pull the mirror; workflow pin tests updated; one CI run named per workflow showing the mirror pull; no `public.ecr.aws` Postgres reference remains in either workflow."
   ],
-  "context": "UPDATE 2026-10-23: the same rate limit fails the Nightly Validation postgres-integration job: runs 39586739797 (2026-10-21) and 39765452451 (2026-10-22) failed with 'Error response from daemon: toomanyrequests: Data limit exceeded' / 'Docker pull failed'. Any fix should cover nightly.yml's Postgres pull too.",
+  "context": "AMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Still real: ci.yml:1296 and nightly.yml:412 pull Postgres 17 anonymously from public.ecr.aws. The GHCR mirror pattern exists for PG18 (docker-integration.yml:109, mirror-ci-images.yml:23-31,67-69). Acceptance now covers both workflows.\n\nUPDATE 2026-10-23: the same rate limit fails the Nightly Validation postgres-integration job: runs 39586739797 (2026-10-21) and 39765452451 (2026-10-22) failed with 'Error response from daemon: toomanyrequests: Data limit exceeded' / 'Docker pull failed'. Any fix should cover nightly.yml's Postgres pull too.",
   "description": "The `sql-execution-evidence` job in `.github/workflows/ci.yml` uses the service image `public.ecr.aws/docker/library/postgres:17@sha256:2d2b8998...` (`:1283`), pulled anonymously from ECR Public. On PR #3264 (run 39778950173, 2026-10-22) the pull failed with `toomanyrequests: Data limit exceeded`; the job failed, and the required `core` aggregate failed with it. A rerun passed. `docker-integration.yml` already avoids this: its `mirror-postgres` job copies Postgres to `ghcr.io/benchbox-dev/postgres` through `mirror-ci-images.yml`, and its jobs pin the mirrored digest (today Postgres 18).",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/39778950173"
@@ -24,6 +23,14 @@
       "op": "update",
       "op_id": "abdd189f76c94246978691721cece613",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T14:30:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b01976533ac148109dcd3b068f91a270",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
