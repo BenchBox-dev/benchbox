@@ -2,7 +2,7 @@
   "acceptance": [
     "Record RUBRIC 1 as satisfied by run 39896044695 attempt 1 vs full run 39896044485 and RUBRIC 2 by the bot rerun at 03:52:38 (wording source+test-verified; live logs inaccessible). Remaining: HTTP 4xx fails without retry (regression test distinguishing `HTTPError` from transient `URLError`), and the unreachable assertion in `_with_retries` is removed."
   ],
-  "context": "AMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Live behaviour verified: text-edit run 39896044695 attempt 1 finished its five verdict jobs by 03:38:16 while full run 39896044485 ran to 03:52:26; the bot rerun (attempt 2) came at 03:52:38. Remaining work is the two nits: HTTPError subclasses URLError so 4xx is retried, and the unreachable assertion in _with_retries (scripts/ci_text_edit_verdict.py:95-104).",
+  "context": "DONE 2026-10-24: PR #3392 merged as c72b2e05309c937dcadd5a7fa8dafb4d40f7fa6a (final head 51e88a36e after a develop merge for a CHANGELOG conflict; oracle SHIP on a4cf8c759 and 9503cae40). scripts/ci_text_edit_verdict.py: new _is_transient treats HTTPError as transient only for status >= 500 (URLError and TimeoutError stay transient); _with_retries re-raises non-transient errors at once and its last attempt is a plain call, removing the unreachable AssertionError. 4xx (including 403/429 rate limits) now fails without retry, as the acceptance states. Tests: 400/401/403/404/422 fail after one attempt with no sleep in the verdict command, 403 in the refresh command; 500/502/503 and TimeoutError retry then succeed; mutation (always transient) failed 6 tests. Rubrics 1-2 were already recorded as satisfied (run 39896044695). Not exercised: a live GitHub 4xx.\n\nAMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Live behaviour verified: text-edit run 39896044695 attempt 1 finished its five verdict jobs by 03:38:16 while full run 39896044485 ran to 03:52:26; the bot rerun (attempt 2) came at 03:52:38. Remaining work is the two nits: HTTPError subclasses URLError so 4xx is retried, and the unreachable assertion in _with_retries (scripts/ci_text_edit_verdict.py:95-104).",
   "description": "PR #3319 (merged 0e86fbbe8) changed CI (text edit) runs to decide once instead of polling for up to 110 minutes, and added ci-text-edit-refresh.yml to re-run the failed text-edit run when the full CI run completes. The refresh path was seen live on 2026-10-23 (refresh run 39889391545 re-ran text-edit run 39887697502 as github-actions[bot]; the rerun copied the full run's verdict in 5 s; text-edit completions were skipped, no loop). The immediate-exit path was not seen live: that run's first attempt used the pre-merge ci.yml and polled for about 19 minutes. Unit tests cover it.\n\nAlso from review: HTTP 4xx responses are retried like transient errors, and _with_retries has an unreachable assertion (nits).",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3319",
@@ -23,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "86e8d1ef02d44073a36a772716c691cc",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T22:22:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1691ec7a2f6f4ec7a2c83f8566bb435e",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
