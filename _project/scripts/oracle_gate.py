@@ -28,7 +28,12 @@ from oracle_review_check import (
 )
 
 GATE_CONTEXT = "oracle-gate"
+GATED_BASE = "develop"
 DESCRIPTION_LIMIT = 140
+
+
+class UngatedBase(Exception):
+    pass
 
 
 def gate_state(status: int) -> str:
@@ -91,6 +96,9 @@ def load_policy_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
 
 def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
     pull = fetch_pull(token, repo, pr)
+    base = pull["base"]["ref"]
+    if base != GATED_BASE:
+        raise UngatedBase(f"#{pr} targets {base}, not {GATED_BASE}; {GATE_CONTEXT} is posted only for {GATED_BASE}")
     head_sha = pull["head"]["sha"]
     items = fetch_files(token, repo, pr)
     files = changed_paths(items)
@@ -127,6 +135,9 @@ def main(argv: list[str] | None = None) -> int:
         return ERROR
     try:
         head_sha, status, message = evaluate(args.repo, args.pr, token)
+    except UngatedBase as exc:
+        print(f"oracle-gate: {exc}")
+        return PASS
     except (CheckError, KeyError, ValueError) as exc:
         print(f"oracle-gate: error: {exc}", file=sys.stderr)
         return ERROR
@@ -135,6 +146,9 @@ def main(argv: list[str] | None = None) -> int:
         return PASS if status == PASS else WAITING
     try:
         latest_sha, latest_status, latest_message = evaluate(args.repo, args.pr, token)
+    except UngatedBase as exc:
+        print(f"oracle-gate: {exc}")
+        return PASS
     except (CheckError, KeyError, ValueError) as exc:
         print(f"oracle-gate: error: {exc}", file=sys.stderr)
         return ERROR

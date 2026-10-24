@@ -5722,7 +5722,7 @@
    "targets": [
     {
      "kind": "unresolved",
-     "target": "docs/tooling/oracle-review/hold/oracle-gate"
+     "target": "docs/tooling/hold/oracle-gate"
     }
    ]
   },
