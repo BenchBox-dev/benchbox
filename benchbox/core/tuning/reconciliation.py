@@ -411,21 +411,6 @@ def applied_tuning_counts(
         capability = get_capability(platform, tuning_type) if platform else None
         return _footprints(tuning_type, capability)
 
-    tables: set[str] = set()
-    for statement in physical:
-        target = _statement_target(statement)
-        if target is None and statement.table:
-            target = _bare_table(statement.table)
-        if target is not None and any(
-            _shows(RequestedIntent(tuning_type), statement, footprints_for(tuning_type), match_columns=False)
-            for tuning_type in TuningType
-        ):
-            tables.add(target)
-    for entry in satisfied:
-        parsed = _entry_target(entry)
-        if parsed is not None and parsed[1] is not None:
-            tables.add(parsed[1])
-
     def evidenced(intent: RequestedIntent, match_columns: bool) -> bool:
         footprints = footprints_for(intent.tuning_type)
         return any(
@@ -433,6 +418,12 @@ def applied_tuning_counts(
         ) or _covered(intent, footprints, satisfied)
 
     layout_types = {tuning_type for _attribute, tuning_type in LAYOUT_SLOTS}
+    tables: set[str] = set()
+    for entry in satisfied:
+        parsed = _entry_target(entry)
+        if parsed is not None and parsed[1] is not None and parsed[0] in layout_types:
+            tables.add(parsed[1])
+
     types: set[str] = set()
     for name in requested_types:
         if name == "session_config":

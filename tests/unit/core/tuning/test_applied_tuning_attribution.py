@@ -212,6 +212,27 @@ class TestCountsDeriveFromAppliedStatements:
         assert with_platform == {"tables_tuned": 1, "tuning_types": ["partitioning"]}
         assert without_platform["tuning_types"] == []
 
+    def test_constraints_only_table_is_not_a_tuned_table(self):
+        payload = _payload(_stmt("CREATE TABLE t (a INT, PRIMARY KEY (a))"))
+
+        counts = applied_tuning_counts(["primary_keys"], {}, payload)
+
+        assert counts == {"tables_tuned": 0, "tuning_types": ["primary_keys"]}
+
+    def test_unrequested_layout_statement_is_not_counted(self):
+        payload = _payload(_stmt("ALTER TABLE ORDERS CLUSTER BY (o_orderdate)"))
+
+        counts = applied_tuning_counts([], {}, payload)
+
+        assert counts == {"tables_tuned": 0, "tuning_types": []}
+
+    def test_layout_statement_with_other_columns_is_not_counted(self):
+        payload = _payload(_stmt("ALTER TABLE LINEITEM CLUSTER BY (l_partkey)"))
+
+        counts = applied_tuning_counts(["clustering"], _TABLE_TUNINGS, payload)
+
+        assert counts == {"tables_tuned": 0, "tuning_types": []}
+
 
 class TestResultSummaryCounts:
     def _result(self, ledger: dict | None, requested: dict) -> object:
