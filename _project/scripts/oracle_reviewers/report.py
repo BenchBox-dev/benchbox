@@ -7,7 +7,7 @@ from typing import Any
 from . import absence, credentials, dedup, protocol, selection
 from .retry import ALL_ABSENT, FAILURE, INTEGRITY, MARKER_LIMIT, OVERSIZE, PENDING, SUCCESS, UNREPORTED
 from .selection import Attempt, Step
-from .verdict import Finding, Placement, Verdict, comment_span, place
+from .verdict import Finding, Placement, Verdict, comment_span, display_path, place
 
 DESCRIPTION_LIMIT = 140
 OVERSIZE_DESCRIPTION = "pending: too large for the oracle; split the pull request or ask the owner for a stand-in"
@@ -45,12 +45,12 @@ def _finding_line(finding: Finding, defect_id: str | None = None) -> str:
     detail = f"\n  {finding.detail}" if finding.detail else ""
     span = f"{finding.line}-{finding.end_line}" if finding.end_line else str(finding.line)
     named = f"{defect_id}: " if defect_id else ""
-    return f"- **{finding.severity}** `{finding.file}:{span}`: {named}{finding.title}{detail}"
+    return f"- **{finding.severity}** `{display_path(finding.file)}:{span}`: {named}{finding.title}{detail}"
 
 
 def _entry_line(entry: Mapping[str, Any]) -> str:
     span = f"{entry['line']}-{entry['end_line']}" if entry.get("end_line") else str(entry["line"])
-    return f"- **{entry['severity']}** `{entry['file']}:{span}`: {entry['id']}: {entry['title']}"
+    return f"- **{entry['severity']}** `{display_path(entry['file'])}:{span}`: {entry['id']}: {entry['title']}"
 
 
 def _record(
@@ -290,7 +290,7 @@ def finalize(
     lines += _section(
         "Defects already open as review threads, not posted again",
         [
-            f"- **{finding.severity}** `{finding.file}`: {ids.get(finding, '')}{': ' if finding in ids else ''}{finding.title}"
+            f"- **{finding.severity}** `{display_path(finding.file)}`: {ids.get(finding, '')}{': ' if finding in ids else ''}{finding.title}"
             for finding in repeated
         ],
     )

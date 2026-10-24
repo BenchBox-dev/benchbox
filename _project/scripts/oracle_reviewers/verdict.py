@@ -141,6 +141,10 @@ class Verdict:
         }
 
 
+def display_path(path: str) -> str:
+    return _COMMENT_CLOSE.sub("--&gt;", _COMMENT_OPEN.sub("&lt;!--", path))
+
+
 def sanitize(text: str, limit: int, extra: Iterable[str] = ()) -> str:
     known = tuple(extra)
     cleaned = _CONTROL.sub("", credentials.redact(text, known))
@@ -333,8 +337,7 @@ def _finding(data: Any) -> Finding:
     _require(isinstance(title, str) and title.strip() != "", "title must be a non-empty string")
     _require(isinstance(detail, str), "detail must be a string")
     span_end = end_line if end_line is not None and end_line > line else None
-    safe_path = _COMMENT_CLOSE.sub("--&gt;", _COMMENT_OPEN.sub("&lt;!--", path))
-    return Finding(severity, safe_path, line, sanitize(title, MAX_TITLE), sanitize(detail, MAX_DETAIL), span_end)
+    return Finding(severity, path, line, sanitize(title, MAX_TITLE), sanitize(detail, MAX_DETAIL), span_end)
 
 
 def _prior(data: Any) -> PriorDefect:
