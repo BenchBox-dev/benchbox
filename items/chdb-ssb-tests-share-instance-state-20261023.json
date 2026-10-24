@@ -1,9 +1,10 @@
 {
   "acceptance": [
-    "RUBRIC 1 repro: a run of the module on one worker in both test orders (e.g. -p no:randomly with explicit ordering, or pytest -n 1) fails before the fix; command and output recorded",
-    "RUBRIC 2 fix: the same command passes in both orders after the fix, locally or on CI, with the run named",
-    "RUBRIC 3 no masking: no retry, xfail, skip or broad exception handling added; assertions unchanged"
+    "RUBRIC 1 In a chdb-enabled environment, run the three schema-creating SSB tests (`test_ssb_schema_creation_without_engine`, `test_ssb_data_loading_with_clickhouse`, `test_ssb_query_execution_clickhouse`) on one worker in at least two explicit orders; before the fix, record the duplicate-table failure and failing node id per order.",
+    "RUBRIC 2 Same commands/orders pass after the fix, module green; name the CI run or local command+output.",
+    "RUBRIC 3 The fix isolates chdb state per test (distinct `db_path` session or deterministic drop); no retries, skips, xfails, broad exception handling, or `CREATE TABLE IF NOT EXISTS` masking; assertions unchanged."
   ],
+  "context": "AMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Default ClickHouseLocalClient() (no db_path) shares in-process chdb state and close() never drops tables (benchbox/platforms/clickhouse/client.py:73-83,110-119). Acceptance now covers all three schema-creating SSB tests and forbids IF NOT EXISTS masking. Local repro is impossible on the macOS dev host (chdb 4.1.6 dylib fails to import), so repro needs Linux/CI.",
   "description": "PROBLEM: tests/integration/test_ssb_clickhouse_integration.py::test_ssb_query_execution_clickhouse and ::test_ssb_schema_creation_without_engine failed with 'Table default.date already exists' when pytest-xdist ran the whole module on one worker (--dist loadscope) in CI run 39825163467 attempt 1 and its failed-job rerun; a full rerun with the same assignment passed (attempt 3). Under the default load distribution the two tests usually land on different workers, which hides the leak. Likely cause: in-process chDB (ClickHouseLocalClient) state persists across tests in one process, so a later test sees tables created by an earlier one. Not reproduced locally (the module skips without chdb).\n\nCHANGE: make each test use an isolated chDB session/path (or drop what it creates) so the module passes in any order on one worker. Do not add retries or skips.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3314",
@@ -17,6 +18,14 @@
       "op": "create",
       "op_id": "d159e4b8dd4d4a3b9bc34c4ffa0fe5d9",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T14:29:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9f0df12a0ac044e4acb663a19aff5217",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
