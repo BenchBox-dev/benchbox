@@ -1,9 +1,10 @@
 {
   "acceptance": [
-    "Reproduction and the affected published SQLite bundles listed.",
-    "Loader fix (owner approval for touching engine execution/loader code) with a regression test comparing SUM/COUNT results with DuckDB on nullable data.",
-    "Published SQLite results affected are flagged for rerun (local reruns approved only for SQLite)."
+    "Reproduction and the affected published SQLite bundles listed: met (see context)",
+    "Loader fix with a regression test comparing SUM/COUNT results with DuckDB on nullable data: met (PR 3335)",
+    "Published SQLite results affected are flagged for rerun: met by the list in context; the reruns themselves are not done"
   ],
+  "context": "Merged as PR 3335 (2026-10-24), with owner approval to change the loader.\n\nCause: DelimitedFileHandler (benchbox/platforms/base/data_loading.py) split each line and inserted every field as a string, so an empty field in a nullable numeric column was stored as empty text. SQLite is the only adapter that reaches this handler by default (DuckDB, ClickHouse and StarRocks pass their own handler factories). Before the fix, TPC-DS SF0.1 had 405,815 empty-text cells, 341,563 of them in numeric, date or time columns, none in NOT NULL columns.\n\nFix: SQLiteAdapter.load_data passes a handler factory that resolves the table's CSV dialect with resolve_csv_dialect (the function the DuckDB loader uses). For .tbl/.dat data (marker empty string) an empty field in a nullable column loads as NULL, text columns included, matching DuckDB; for marker-less .csv only nullable non-text columns get NULL; NOT NULL columns and primary keys with no explicit flag keep the empty string. Judgement call recorded in the PR: AMPLab uservisits.searchWord (generator writes empty for a missing value, declared null marker is empty) now loads as NULL, as in DuckDB.\n\nResult at TPC-DS SF0.1 against DuckDB (rows differing): Q12 0 of 100 before and after; Q20 1 of 100 before (0.0 vs NULL), 0 after; Q98 1 of 269 before, 0 after. Tests: 13 new tests; 906 passed across tests/unit/platforms/base and the SQLite adapter tests; 41 medium.\n\nPublished SQLite bundles (no bundle records the BenchBox version; the handler is unchanged since the initial release, so every SQLite bundle used the affected path). Data differs after the fix, measured by loading SF0.01 data with the fixed loader and counting NULL cells: tpcds_sf1_sqlite_sql_20260824_083944_c6745a86 (85,605 NULL cells at SF0.01); amplab_sf001_..._2eff93c9, amplab_sf01_..._fc7e8195, amplab_sf1_..._42b777c2 (12,571 NULL cells in uservisits.searchWord). Unverified, rerun to be safe: joinorder_sf1_sqlite_sql_20260826_182543_788c3eb2 (canonical IMDb data not available locally). No data change expected: tpch, tpch_skew, ssb, read_primitives, coffeeshop, h2odb (zero empty fields at SF0.01), clickbench_sf1 (all 105 hits columns NOT NULL). These bundles are flagged here for rerun; no bundle was rerun or edited, and no SF1 data was inspected.",
   "description": "The SQLite rerun found the SQLite data loader stores NULLs as empty text in numeric columns (405,815 such cells in TPC-DS SF0.1). A SUM over all-empty values returns 0.0 where DuckDB returns NULL, which breaks TPC-DS Q12/Q20/Q98 versus DuckDB; nulling the empty strings in a copy makes all three match. This likely affects every SQLite run on nullable data (tpcds, ssb, clickbench, h2odb, amplab, coffeeshop, read_primitives). This is loader/execution behavior, outside the transpilation move, so it needs owner scoping before any change. Determine which loader produced the published SQLite bundles in results-data/bundles and whether they carry empty-text NULLs, then fix the loader so NULLs load as NULL, with a regression test on a nullable column.",
   "sessions": [
     {
@@ -21,6 +22,14 @@
       "generation": "06364ee766cc4d3fba76991ded45498c",
       "op": "take",
       "op_id": "c4d1257cf3924a2596fd8c216f0e3c68",
+      "session_id": "8c28c3ba26704290a1e499b1b197791d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e465f897e6bf2b6184696cd7",
+      "at": "2026-10-24T01:04:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fc93c705bbe84bb081245fd4a2ac4662",
       "session_id": "8c28c3ba26704290a1e499b1b197791d"
     }
   ]
