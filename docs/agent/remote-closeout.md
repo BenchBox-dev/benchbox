@@ -103,7 +103,7 @@ who wrote it.
 The record is the closer's own attestation. Any session with the owner's
 filesystem could write one, so it is enforced by audit, like the rules in
 `docs/agent/merge-authority.md`. Arming never replaces the required checks:
-`hold`, `oracle-review`, and CI still decide whether the PR merges.
+`hold`, `oracle-gate`, and CI still decide whether the PR merges.
 
 ## Binding and storing records
 

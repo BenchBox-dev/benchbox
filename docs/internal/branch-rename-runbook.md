@@ -8,7 +8,7 @@ rename lands via PR; these admin steps are maintainer-only (the CI
 ## Preconditions
 
 - The in-repo rename PR is reviewed (it touches `release.yml`, a soundness
-  path, so it needs the `oracle-review` check to pass) and ready to merge.
+  path, so it needs the `oracle-gate` check to pass) and ready to merge.
 - **No release in flight** — no open `Release vX.Y.Z` PR, and not mid
   `release-cut`/`release-finalize`:
   ```bash

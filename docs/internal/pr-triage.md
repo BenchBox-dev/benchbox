@@ -62,7 +62,7 @@ a PR's mergeability — both only alert.
   workflow) — for PRs that touch a soundness-critical path (or have the
   owner as a requested reviewer): flags ones parked more than 24h since
   their required lane went green, so they don't sit forgotten accumulating
-  conflicts while waiting on the review that `oracle-review` requires.
+  conflicts while waiting on the review that `oracle-gate` requires.
 - **Green-unmerged nightly sweep**
   (`_project/scripts/green_unmerged_sweep.py`,
   `.github/workflows/nightly.yml`) — alerts only on **true stranding**:
@@ -100,37 +100,23 @@ a PR's mergeability — both only alert.
   (`gh pr merge <n> --disable-auto`) or withdraw it with
   `make pr-landing-withdraw PR=<n> HEAD=<sha>`, then add the label. The
   evidence transaction also refuses for soundness paths.
-  Soundness-path PRs require `oracle-review` on the current head and resolved
+  Soundness-path PRs require `oracle-gate` on the current head and resolved
   threads. After any push or refresh, rerun CI and wait for the oracle's
   result on that head (or the stand-in approval) before arming.
   Withdraw readiness before editing an armed PR.
 
-  To rerun `oracle-review`, first read the current PR:
+  `oracle-gate` re-evaluates on its own when the oracle posts a verdict, when
+  a stand-in comment lands, and on an hourly sweep. Resolving a review thread
+  starts no run, so after resolving oracle threads, re-evaluate the PR from
+  `develop`:
 
   ```bash
-  gh pr view <pr> --repo BenchBox-dev/BenchBox \
-    --json state,baseRefName,headRefName,headRefOid,isCrossRepository
+  gh workflow run oracle-gate.yml --repo BenchBox-dev/BenchBox --ref develop -f pr=<pr>
   ```
 
-  Confirm the PR is open, targets `develop`, and still has the reviewed head.
-  For a same-repository PR, select its current feature branch:
-
-  ```bash
-  gh workflow run oracle-review.yml --repo BenchBox-dev/BenchBox \
-    --ref <current-feature-branch> -f pr=<pr>
-  ```
-
-  Both `develop` and the selected feature branch must contain the dispatch
-  workflow. Review changes to that workflow before dispatch; checking out the
-  trusted base protects the checker and manifest, but does not authenticate
-  the candidate workflow.
-
-  Verify the resulting run's `headSha` and its `oracle-review` check against
-  the PR's still-current head before assessing readiness. For a fork PR,
-  rerun an existing `oracle-review` job from a PR run on that exact head;
-  parent-repository dispatch cannot select the fork's branch. If no eligible
-  current-head run exists, obtain one first. A successful rerun does not arm
-  the PR.
+  The workflow reads the PR's current head itself, so this also works for a
+  fork PR. Confirm the `oracle-gate` status on the still-current head before
+  assessing readiness. A passing `oracle-gate` does not arm the PR.
 
   **Classifier (arm intent):** a PR is stranded only when auto-merge is off
   *and* the issue/PR timeline includes at least one of
