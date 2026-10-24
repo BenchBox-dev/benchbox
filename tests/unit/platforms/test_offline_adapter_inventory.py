@@ -199,11 +199,12 @@ def test_real_translation_of_ddl_and_query(key: str, statement: str) -> None:
 
 @pytest.mark.parametrize("key", sorted(k for k, d in ADAPTER_DIALECTS.items() if d in NON_SQL_DIALECTS))
 def test_non_sql_platforms_reject_strict_sql_translation(key: str) -> None:
-    from benchbox.utils.dialect_utils import SQLTranslationError
+    from benchbox.utils.dialect_utils import UnknownSqlDialectError
 
     adapter = _bare_adapter(key)
-    with pytest.raises(SQLTranslationError, match="No fork SQL dialect"):
-        adapter.translate_sql(DDL_INPUT, strict=True)
+    for strict in (True, False):
+        with pytest.raises(UnknownSqlDialectError, match="No fork SQL dialect"):
+            adapter.translate_sql(DDL_INPUT, strict=strict)
 
 
 def test_polars_structured_schema_without_sql_or_sdk() -> None:

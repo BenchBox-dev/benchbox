@@ -139,7 +139,7 @@ q21 = benchmark.get_query("Q21")
 
 `get_queries(dialect=None) -> dict[str, str]` returns all 43 queries keyed `"Q1"` to `"Q43"`.
 
-With a `dialect`, each query is translated with SQLGlot, reading ClickHouse SQL. Identifiers are not quoted (`SELECT COUNT(*) FROM hits` for DuckDB, with the trailing semicolon dropped). If translation fails, including for an unknown dialect name, the original query is returned without an error. Use `translate_query()` when you want failures to raise.
+With a `dialect`, each query is translated with SQLGlot, reading ClickHouse SQL. Identifiers are not quoted (`SELECT COUNT(*) FROM hits` for DuckDB, with the trailing semicolon dropped). An unknown dialect name raises `UnknownSqlDialectError`. If translation of a known dialect fails, the original query is returned without an error; use `translate_query()` when you want failures to raise.
 
 ```python
 queries = benchmark.get_queries()

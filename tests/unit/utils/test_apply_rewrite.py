@@ -260,6 +260,71 @@ def test_apply_rewrites_parses_once_and_renders_the_combined_result():
     assert result == "SELECT a.k, b.k AS k_2, TRY_DIVIDE(x, y) FROM a CROSS JOIN b"
 
 
+def test_string_rewrite_preserves_the_identifier_quoting_of_its_input():
+    from benchbox.utils.dialect_utils import apply_rewrites
+
+    quoted = apply_rewrites("SELECT `a` / `b` FROM `t`", "databricks", [("safe_division", {})])
+    assert quoted == "SELECT TRY_DIVIDE(`a`, `b`) FROM `t`"
+    mixed = apply_rewrites("SELECT `a` / b FROM t", "databricks", [("safe_division", {})])
+    assert mixed == "SELECT TRY_DIVIDE(`a`, b) FROM t"
+
+
+def test_string_rewrite_applies_to_every_statement():
+    from benchbox.utils.dialect_utils import apply_rewrites, split_sql_statements
+
+    result = apply_rewrites("SELECT a / b FROM t; SELECT c / d FROM u", "databricks", [("safe_division", {})])
+    assert split_sql_statements(result, "databricks") == [
+        "SELECT TRY_DIVIDE(a, b) FROM t",
+        "SELECT TRY_DIVIDE(c, d) FROM u",
+    ]
+
+
+def test_string_rewrite_records_a_success_outcome():
+    from benchbox.utils.dialect_utils import sql_translation_context, summarize_sql_translation_outcomes
+
+    with sql_translation_context() as outcomes:
+        apply_rewrite("safe_division", "SELECT a / b FROM t", "databricks")
+        apply_rewrite("safe_division", "SELECT 1 FROM t", "databricks")
+    assert [(o.translator, o.status, o.normalized_target_dialect) for o in outcomes] == [
+        ("sqlglot_rewrite", "success", "databricks")
+    ] * 2
+    summary = summarize_sql_translation_outcomes(outcomes)
+    assert summary is not None
+    assert summary["translators"] == ["sqlglot_rewrite"]
+    assert "unique_queries_translated" not in summary
+
+
+@pytest.mark.parametrize(("strict", "status"), [(False, "fallback"), (True, "failed")])
+def test_string_rewrite_failure_records_an_outcome_and_raises(strict: bool, status: str):
+    from benchbox.utils.dialect_utils import sql_translation_context
+
+    with sql_translation_context(strict=strict) as outcomes:
+        with pytest.raises(sqlglot.errors.ParseError):
+            apply_rewrite("safe_division", "SELECT FROM WHERE (", "databricks")
+    assert [(o.translator, o.status) for o in outcomes] == [("sqlglot_rewrite", status)]
+    assert outcomes[0].message
+
+
+def test_expression_rewrite_records_no_outcome():
+    from benchbox.utils.dialect_utils import sql_translation_context
+
+    expression = sqlglot.parse_one("SELECT a / b FROM t", read="snowflake")
+    with sql_translation_context() as outcomes:
+        apply_rewrite("safe_division", expression, "snowflake")
+    assert outcomes == []
+
+
+def test_unknown_dialect_raises_for_string_and_expression_rewrites():
+    from benchbox.utils.dialect_utils import UnknownSqlDialectError, apply_rewrites
+
+    with pytest.raises(UnknownSqlDialectError):
+        apply_rewrite("safe_division", "SELECT a / b FROM t", "not_a_dialect")
+    with pytest.raises(UnknownSqlDialectError):
+        apply_rewrite("safe_division", sqlglot.parse_one("SELECT a / b FROM t"), "not_a_dialect")
+    with pytest.raises(UnknownSqlDialectError):
+        apply_rewrites("SELECT 1", "not_a_dialect", [])
+
+
 def test_translate_sql_query_applies_rewrites_to_the_source_tree_before_generation():
     from benchbox.utils.dialect_utils import translate_sql_query
 

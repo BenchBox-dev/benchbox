@@ -185,7 +185,7 @@ analytics_query = benchmark.get_query("3", params={"search_term": "google", "min
 
 `get_queries(dialect=None) -> dict[str, str]` returns all eight queries, keyed by id and rendered with the default parameters.
 
-With a `dialect`, each query is translated with SQLGlot from the `netezza` dialect. DuckDB output for query `1` is `SELECT "pageURL", "pageRank" FROM "rankings" WHERE "pageRank" > 1000` (translation normalises whitespace and drops the trailing semicolon). An unknown dialect name logs a warning for each query and returns the original SQL.
+With a `dialect`, each query is translated with SQLGlot from the `netezza` dialect. DuckDB output for query `1` is `SELECT "pageURL", "pageRank" FROM "rankings" WHERE "pageRank" > 1000` (translation normalises whitespace and drops the trailing semicolon). An unknown dialect name raises `UnknownSqlDialectError`.
 
 ```python
 queries = benchmark.get_queries()

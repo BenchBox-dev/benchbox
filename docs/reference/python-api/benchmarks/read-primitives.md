@@ -149,7 +149,7 @@ q3 = benchmark.get_query("broadcast_join_two_tables")
 
 `get_queries(dialect=None) -> dict[str, str]` returns all queries keyed by name.
 
-With a `dialect`, each query is translated with SQLGlot, or replaced by a hand-written variant for that dialect where one exists (45 queries have variants). Queries that cannot run on the dialect are left out, so the result can be smaller than 157: 153 for `duckdb`, 157 for `postgres`, 147 for `clickhouse`, 154 for `snowflake` and 144 for `bigquery`. An unknown dialect name returns all 157 queries unchanged. Translation problems are logged as warnings.
+With a `dialect`, each query is translated with SQLGlot, or replaced by a hand-written variant for that dialect where one exists (45 queries have variants). Queries that cannot run on the dialect are left out, so the result can be smaller than 157: 153 for `duckdb`, 157 for `postgres`, 147 for `clickhouse`, 154 for `snowflake` and 144 for `bigquery`. An unknown dialect name raises `UnknownSqlDialectError`. Translation problems are logged as warnings.
 
 ```python
 queries = benchmark.get_queries()
