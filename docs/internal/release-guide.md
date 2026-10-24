@@ -216,8 +216,10 @@ Fragments render under `Before you upgrade`, `Added`, `Changed`, `Fixed` and
    archive.
 7. A worksheet (file, pull request, category, tags), the bullet and line counts
    against the 45/160 ceilings, and a coverage report are printed. The coverage
-   report lists `feat`, `fix` and `perf` squash commits since the previous final
-   tag that added no fragment, so a missing entry is a visible decision.
+   report lists `feat`, `fix` and `perf` squash commits on `develop` since the
+   commit that added the previous final release's changelog section (release
+   tags sit on the unrelated `release` history, so the tag is not a usable
+   lower bound) that added no fragment, so a missing entry is a visible decision.
 
 Re-running prep appends fragments added since the last run to the existing
 `[X.Y.Z]` section and keeps its date; with no fragment pending the file is left
@@ -532,12 +534,16 @@ problem it finds. It verifies that:
   unrelated merges. The release workflows and `release-readiness` still run
   the check unconditionally.
 - with `RELEASE_PRE_TAG=1` (`release_flow.py check --pre-tag`), no
-  `changelog.d/*.json` fragment is pending. `release-v2.yml` passes it at its
-  tag-time `release-check`, so a tag is never cut with unreleased fragments. The
-  pull request check passes it only when the pull request changes the release
-  identity (`release-identity-changed`, reported by `release_flow.py select`
-  separately from enforcement-file changes). A default `release-check` passes
-  while fragments are pending.
+  `changelog.d/*.json` fragment is pending. The pull request check passes it
+  only when the pull request changes the release identity
+  (`release-identity-changed`, reported by `release_flow.py select` separately
+  from enforcement-file changes), which is the check that stops a release
+  preparation pull request from merging to `develop` with fragments left
+  uncompiled. `release-cut` removes `changelog.d` from the release branch and
+  `--require-prepared` refuses to cut while fragments are pending, so
+  `release-v2.yml` passes the flag at its tag-time `release-check` only to
+  confirm the tagged tree carries none. A default `release-check` passes while
+  fragments are pending.
 
 Both targets need the full development tree, because the lock-revision check
 lives under `_project/`.

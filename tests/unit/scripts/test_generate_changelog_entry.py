@@ -689,10 +689,22 @@ def test_dry_run_validates_and_writes_nothing(tmp_path: Path, monkeypatch: pytes
     assert fragment.exists()
 
 
-def test_coverage_report_lists_user_facing_commits_without_a_fragment_from_the_previous_final_tag(
+def test_coverage_report_starts_at_the_commit_that_added_the_previous_final_section_across_unrelated_histories(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    repo = _repo(tmp_path)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test User")
+    _commit(repo, "feat: shipped in an earlier release (#60)", "old.txt", "old\n")
+    _commit(repo, "chore: prepare 0.4.2", "CHANGELOG.md", BASE_CHANGELOG)
+    boundary = _git(repo, "rev-parse", "HEAD")
+    develop = _git(repo, "branch", "--show-current")
+    _git(repo, "checkout", "-q", "--orphan", "release")
+    _commit(repo, "chore: release 0.4.2", "CHANGELOG.md", BASE_CHANGELOG)
+    _git(repo, "tag", "v0.4.2")
+    _git(repo, "checkout", "-q", "-f", develop)
     _commit(repo, "feat: shipped without a fragment (#71)", "a.txt", "a\n")
     _commit(repo, "perf: faster scan without a fragment (#72)", "b.txt", "b\n")
     _commit(repo, "chore: housekeeping (#73)", "c.txt", "c\n")
@@ -708,11 +720,12 @@ def test_coverage_report_lists_user_facing_commits_without_a_fragment_from_the_p
 
     assert _compile(repo, monkeypatch, "0.4.3") == 0
 
-    assert seen == ["refs/tags/v0.4.2"]
+    assert seen == [boundary]
     output = capsys.readouterr().out
     report = output[output.index("Coverage:") :]
     assert "- feat: shipped without a fragment (#71)" in report
     assert "- perf: faster scan without a fragment (#72)" in report
+    assert "earlier release" not in report
     assert "housekeeping" not in report
     assert "covered by a fragment" not in report
 

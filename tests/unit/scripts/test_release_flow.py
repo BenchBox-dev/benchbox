@@ -754,7 +754,7 @@ def test_make_targets_exist_and_legacy_release_targets_are_kept() -> None:
     assert "--since-ref" not in dry_run("release-prep")
 
 
-def test_release_v2_tag_time_release_check_requires_no_pending_fragments() -> None:
+def test_release_v2_tag_time_release_check_confirms_the_tagged_tree_has_no_fragments() -> None:
     import yaml
 
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/release-v2.yml").read_text(encoding="utf-8"))

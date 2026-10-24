@@ -587,12 +587,25 @@ def _print_worksheet(source: Path, fragments: list) -> None:
             print(f"    {relative} -> {pr} -> {entry.category} -> {', '.join(tags) or '-'}")
 
 
+def _previous_release_boundary(source: Path, previous_final: str) -> str | None:
+    heading = f"## [{previous_final.removeprefix('v')}] - "
+    result = _run_git(source, "log", "--format=%H", f"-S{heading}", "--", "CHANGELOG.md")
+    if result.returncode != 0:
+        return None
+    hashes = result.stdout.split()
+    return hashes[-1] if hashes else None
+
+
 def _print_coverage_report(source: Path, previous_final: str | None) -> None:
-    print("  Coverage: feat/fix/perf commits since the previous final tag that added no fragment:")
+    print("  Coverage: feat/fix/perf commits since the previous final release that added no fragment:")
     if previous_final is None:
         print("    skipped: no previous final release tag")
         return
-    commits = _commits_since_ref(source, f"refs/tags/{previous_final}")
+    boundary = _previous_release_boundary(source, previous_final)
+    if boundary is None:
+        print(f"    skipped: no commit on this branch added the {previous_final} changelog section")
+        return
+    commits = _commits_since_ref(source, boundary)
     if commits is None:
         print("    skipped: commit history unavailable")
         return
