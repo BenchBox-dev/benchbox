@@ -50,7 +50,13 @@ def _collect_manifest(repo_root: Path, manifest: Path) -> None:
         _MANIFEST_PLUGIN,
         f"--marker-manifest={manifest}",
     ]
-    result = subprocess.run(cmd, cwd=repo_root, env=env, capture_output=True, text=True, timeout=300, check=False)
+    try:
+        result = subprocess.run(cmd, cwd=repo_root, env=env, capture_output=True, text=True, timeout=300, check=False)
+    except subprocess.TimeoutExpired as exc:
+        output = "\n".join(
+            part.decode() if isinstance(part, bytes) else part for part in (exc.stdout, exc.stderr) if part
+        )
+        raise _collect_environment_error("timed out after 300 s", output) from exc
     if result.returncode not in (0, 5) or not manifest.is_file():
         output = "\n".join(part for part in (result.stdout, result.stderr) if part)
         raise _collect_environment_error(f"exit {result.returncode}", output)
@@ -76,9 +82,12 @@ def _read_manifest(path: Path) -> list[tuple[str, frozenset[str]]]:
         data = json.loads(path.read_text(encoding="utf-8"))
         if data["version"] != 1:
             raise ValueError(f"unsupported manifest version {data['version']!r}")
-        return [(str(item["id"]), frozenset(item["markers"])) for item in data["items"]]
+        items = [(str(item["id"]), frozenset(item["markers"])) for item in data["items"]]
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise FastLaneCollectError(f"marker manifest {path} is missing or unreadable: {exc}") from exc
+    if not items:
+        raise FastLaneCollectError(f"marker manifest {path} records no collected tests")
+    return items
 
 
 def _compile_marker_expression(expr: str) -> Expression:

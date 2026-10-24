@@ -215,6 +215,27 @@ def test_collection_error_fails_the_check(tmp_path: Path) -> None:
         mod._check_fast_lane_policy(project, _policy(forbidden_marker_expressions=["stress"]))
 
 
+def test_manifest_with_no_collected_tests_is_an_environment_error(tmp_path: Path) -> None:
+    manifest = _write_manifest(tmp_path / "m.json", [])
+    with pytest.raises(mod.FastLaneCollectError, match="records no collected tests"):
+        mod._check_fast_lane_policy(Path("/nonexistent"), _policy(forbidden_marker_expressions=["stress"]), manifest)
+
+
+def test_collection_that_finds_no_tests_fails_the_check(tmp_path: Path) -> None:
+    project = _planted_project(tmp_path, {"helper.py": "VALUE = 1\n"})
+    with pytest.raises(mod.FastLaneCollectError, match="records no collected tests"):
+        mod._check_fast_lane_policy(project, _policy(forbidden_marker_expressions=["stress"]))
+
+
+def test_collection_timeout_is_an_environment_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _timeout(cmd, **kwargs):
+        raise mod.subprocess.TimeoutExpired(cmd, 300, output=b"partial", stderr=None)
+
+    monkeypatch.setattr(mod.subprocess, "run", _timeout)
+    with pytest.raises(mod.FastLaneCollectError, match="timed out after 300 s"):
+        mod._collect_manifest(tmp_path, tmp_path / "manifest.json")
+
+
 def test_policy_file_carries_only_the_guard_fields() -> None:
     import json
 

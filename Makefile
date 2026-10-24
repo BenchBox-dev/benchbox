@@ -507,7 +507,7 @@ comment-policy-dead-exceptions:
 
 .PHONY: lint-markers
 lint-markers:
-	uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $(if $(MARKER_MANIFEST),--marker-manifest=$(MARKER_MANIFEST))
+	uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $(if $(MARKER_MANIFEST),"--marker-manifest=$(MARKER_MANIFEST)")
 	uv run -- python -m pytest tests/unit/test_marker_strategy.py -q
 
 .PHONY: lint-imports
