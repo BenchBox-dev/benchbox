@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_GATEWAY = "native"
-GATEWAY_ROUTED_PLATFORMS = frozenset({"snowflake", "databricks"})
+GATEWAY_ROUTED_PLATFORMS = frozenset({"snowflake"})
 INSECURE_GATEWAY_ENV = "BENCHBOX_ALLOW_INSECURE_GATEWAY"
 GATEWAY_CONNECTION_OPTIONS = (
     "gateway_host",
