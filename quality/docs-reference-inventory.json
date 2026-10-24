@@ -4758,7 +4758,7 @@
     "file": 1,
     "root": 1
    },
-   "occurrences": 7,
+   "occurrences": 8,
    "path": "tests/unit/scripts/test_doc_contracts.py",
    "rule": "contract-export-tooling",
    "target_count": 5,
@@ -4789,18 +4789,22 @@
    "disposition": "contract-tooling",
    "kinds": {
     "built-url": 1,
-    "extra": 1,
+    "extra": 2,
     "file": 1,
     "generated": 2,
     "pattern": 1,
     "root": 1,
     "unresolved": 6
    },
-   "occurrences": 37,
+   "occurrences": 38,
    "path": "tests/unit/scripts/test_doc_reference_inventory.py",
    "rule": "contract-export-tooling",
-   "target_count": 13,
+   "target_count": 14,
    "targets": [
+    {
+     "kind": "extra",
+     "target": "_project/design/api-public-symbols.json"
+    },
     {
      "kind": "root",
      "target": "docs/"
@@ -5645,14 +5649,14 @@
   "kinds": {
    "built-url": 29043,
    "dir": 173,
-   "extra": 68,
+   "extra": 70,
    "file": 1600,
    "generated": 15,
    "pattern": 314,
    "root": 209,
    "unresolved": 1982
   },
-  "references": 33404,
+  "references": 33406,
   "unclassified": 0
  }
 }
