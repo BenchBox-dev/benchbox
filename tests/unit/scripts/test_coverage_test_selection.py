@@ -286,6 +286,142 @@ def test_build_map_setup_phase_expands_selection_to_module(
     assert result["escalate"] is False
 
 
+AWKWARD_IDS = [
+    'tests/unit/scripts/test_comment_policy.py::test_gate["$branch"|"$original") ;;]',
+    "tests/unit/scripts/test_comment_policy.py::test_pipe[a|b|c]",
+    "tests/unit/scripts/test_comment_policy.py::test_pipe[x|run]",
+    "tests/unit/scripts/test_comment_policy.py::test_quote[\\'\"\\\\]",
+    "tests/unit/scripts/test_comment_policy.py::test_newline[a\nb|c]",
+    "tests/unit/scripts/test_comment_policy.py::test_trailing[a|]",
+]
+
+
+@pytest.mark.parametrize("node", AWKWARD_IDS)
+@pytest.mark.parametrize("phase", sel.CONTEXT_PHASES)
+def test_split_phase_round_trips_awkward_node_ids(node: str, phase: str) -> None:
+    assert sel.split_phase(f"{node}|{phase}") == (node, phase)
+    assert sel.normalize_context(f"{node}|{phase}") == node
+
+
+def test_split_phase_treats_an_unsuffixed_context_as_the_whole_node() -> None:
+    assert sel.split_phase("tests/test_a.py::test_x[a|b]") == ("tests/test_a.py::test_x[a|b]", "run")
+    assert sel.split_phase("   ") == (None, "run")
+    assert sel.split_phase("|setup") == (None, "setup")
+
+
+def test_build_map_keeps_awkward_node_ids_unchanged(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    contexts = [f"{node}|{phase}" for node in AWKWARD_IDS for phase in ("setup", "run", "teardown")]
+    data = _coverage_data(tmp_path, {base: {4: contexts}})
+    mapping = sel.build_map([data], repo, _head(repo))
+    assert mapping["nodes"] == sorted(AWKWARD_IDS)
+
+
+def _execution(
+    path: Path,
+    sha: str,
+    assigned: list[str],
+    outcomes: dict[str, list[str]],
+    *,
+    complete: bool = True,
+    phase: str = "call",
+) -> Path:
+    records = [
+        {"node_id": node, "reports": [{"phase": phase, "outcome": outcome} for outcome in reports]}
+        for node, reports in sorted(outcomes.items())
+    ]
+    path.write_text(
+        json.dumps(
+            {
+                "commit_sha": sha,
+                "complete": complete,
+                "assigned_node_ids": sorted(assigned),
+                "node_outcomes": records,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_build_map_reconciles_collected_ids_and_records_no_coverage_reasons(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    covered, skipped, bare = AWKWARD_IDS[0], AWKWARD_IDS[1], AWKWARD_IDS[2]
+    data = _coverage_data(tmp_path, {base: {4: [f"{covered}|run"]}})
+    evidence = _execution(
+        tmp_path / "exec.json",
+        _head(repo),
+        [covered, skipped, bare],
+        {covered: ["passed"], skipped: ["skipped"], bare: ["passed"]},
+    )
+    mapping = sel.build_map([data], repo, _head(repo), execution_files=[evidence])
+    assert mapping["uncovered_nodes"] == {skipped: "skipped", bare: "no-project-coverage"}
+
+
+def test_build_map_rejects_a_truncated_ghost_node(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    full = AWKWARD_IDS[0]
+    truncated = full.split("|", 1)[0]
+    data = _coverage_data(tmp_path, {base: {4: [f"{truncated}|run"]}})
+    evidence = _execution(tmp_path / "exec.json", _head(repo), [full], {full: ["passed"]})
+    with pytest.raises(sel.SelectionError, match="not collected medium ids"):
+        sel.build_map([data], repo, _head(repo), execution_files=[evidence])
+
+
+def test_build_map_rejects_an_unexplained_missing_id(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    covered, lost = AWKWARD_IDS[0], AWKWARD_IDS[1]
+    data = _coverage_data(tmp_path, {base: {4: [f"{covered}|run"]}})
+    evidence = _execution(tmp_path / "exec.json", _head(repo), [covered, lost], {covered: ["passed"]})
+    with pytest.raises(sel.SelectionError, match="no recorded outcome"):
+        sel.build_map([data], repo, _head(repo), execution_files=[evidence])
+
+
+def test_build_map_rejects_incomplete_shard_evidence(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    node = AWKWARD_IDS[0]
+    data = _coverage_data(tmp_path, {base: {4: [f"{node}|run"]}})
+    evidence = _execution(tmp_path / "exec.json", _head(repo), [node], {node: ["passed"]}, complete=False)
+    with pytest.raises(sel.SelectionError, match="incomplete"):
+        sel.build_map([data], repo, _head(repo), execution_files=[evidence])
+
+
+def test_build_map_does_not_explain_a_missing_id_by_a_setup_only_report(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    covered, crashed = AWKWARD_IDS[0], AWKWARD_IDS[1]
+    data = _coverage_data(tmp_path, {base: {4: [f"{covered}|run"]}})
+    evidence = _execution(tmp_path / "exec.json", _head(repo), [covered], {covered: ["passed"]})
+    payload = json.loads(evidence.read_text(encoding="utf-8"))
+    payload["assigned_node_ids"] = sorted([covered, crashed])
+    payload["node_outcomes"].append({"node_id": crashed, "reports": [{"phase": "setup", "outcome": "passed"}]})
+    evidence.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(sel.SelectionError, match="no recorded outcome"):
+        sel.build_map([data], repo, _head(repo), execution_files=[evidence])
+
+
+def test_build_map_rejects_execution_evidence_for_another_sha(tmp_path: Path, repo: Path) -> None:
+    base = str(repo / "benchbox/base.py")
+    node = AWKWARD_IDS[0]
+    data = _coverage_data(tmp_path, {base: {4: [f"{node}|run"]}})
+    evidence = _execution(tmp_path / "exec.json", "b" * 40, [node], {node: ["passed"]})
+    with pytest.raises(sel.SelectionError, match="is not for"):
+        sel.build_map([data], repo, _head(repo), execution_files=[evidence])
+
+
+def test_build_map_cli_requires_one_execution_file_per_data_file(tmp_path: Path, repo: Path) -> None:
+    node = AWKWARD_IDS[0]
+    data = _coverage_data(tmp_path, {str(repo / "benchbox/base.py"): {4: [f"{node}|run"]}})
+    out = tmp_path / "map.json"
+    argv = ["build-map", "--data", str(data), "--sha", _head(repo), "--out", str(out), "--repo-root", str(repo)]
+    evidence = _execution(tmp_path / "exec.json", _head(repo), [node], {node: ["passed"]})
+    assert sel.main([*argv, "--execution", str(tmp_path / "missing.json")]) == 1
+    with pytest.raises(SystemExit):
+        sel.main(argv)
+    assert not out.is_file()
+    assert sel.main([*argv, "--execution", str(evidence)]) == 0
+    assert json.loads(out.read_text(encoding="utf-8"))["uncovered_nodes"] == {}
+
+
 def test_build_map_skips_files_outside_the_repo(tmp_path: Path, repo: Path) -> None:
     outside = _coverage_data(tmp_path, {"/elsewhere/other.py": {1: ["tests/test_x.py::test_y|run"]}})
     assert sel.build_map([outside], repo, _head(repo))["files"] == {}
@@ -347,6 +483,8 @@ def test_build_map_rejects_a_junit_shortfall_against_the_data_files(tmp_path: Pa
                 "build-map",
                 "--data",
                 str(data),
+                "--execution",
+                str(tmp_path / "exec.json"),
                 "--junit",
                 str(tmp_path / "missing-*.xml"),
                 "--expected-shards",
@@ -842,7 +980,10 @@ def test_file_changed_on_develop_since_the_map_escalates(repo: Path) -> None:
 def test_build_map_rejects_unexpected_shard_count(repo: Path, tmp_path: Path) -> None:
     data = _coverage_data(tmp_path, {str(repo / "benchbox/base.py"): {4: ["tests/test_benchbox.py::test_translate"]}})
     out = tmp_path / "map.json"
-    base = ["build-map", "--data", str(data), "--sha", _head(repo), "--out", str(out), "--repo-root", str(repo)]
+    node = "tests/test_benchbox.py::test_translate"
+    evidence = _execution(tmp_path / "exec.json", _head(repo), [node], {node: ["passed"]})
+    base = ["build-map", "--data", str(data), "--execution", str(evidence)]
+    base += ["--sha", _head(repo), "--out", str(out), "--repo-root", str(repo)]
     assert sel.main([*base, "--expected-shards", "2"]) == 1
     assert not out.is_file()
     assert sel.main([*base, "--expected-shards", "1"]) == 0
