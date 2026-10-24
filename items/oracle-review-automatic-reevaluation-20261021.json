@@ -1,11 +1,11 @@
 {
   "acceptance": [
-    "A design note compares at least the scheduled sweep, an existing-event trigger and re-requesting the check run, with the permissions each needs",
-    "The chosen mechanism turns oracle-review green for a head with a success verdict and all threads resolved without a manual command (shown on a real or replayed PR)",
-    "Auto-merge stays set across the re-evaluation",
-    "A test fails if the mechanism re-evaluates a head with no success verdict or with an unresolved oracle thread"
+    "RUBRIC 1 Design note comparing the existing `pull_request_review` trigger (already covers posted verdicts — run 40098622498), a scheduled re-evaluation, and check re-request, with permissions; state that thread resolution has no event.",
+    "RUBRIC 2 `oracle-review` re-evaluates the current open head after oracle threads are resolved, green only when the latest same-head verdict is success and no oracle thread is unresolved; no close/reopen, no stand-in.",
+    "RUBRIC 3 Demonstrated on a real/replayed PR without a manual command, auto-merge preserved.",
+    "RUBRIC 4 Tests: stale head, non-success verdict, or unresolved thread cannot go green. Also fold in the two 2026-10-22 recurrences (cancelled-run red status; `oracle-gate.yml` `cancel-in-progress: true` posts no replacement status — recovery is only the hourly sweep)."
   ],
-  "context": "UPDATE 2026-10-23: two more cases on 2026-10-22. PR #3287: oracle-verdict posted SHIP but the required oracle-gate check stayed red on a cancelled earlier run until `gh run rerun` (make pr-rerun reported nothing to re-run). PR #3277: after an owner-authorised stand-in, the comment-triggered oracle-gate run was cancelled by a later run in the same concurrency group and the check stayed red on a pre-stand-in result until a workflow_dispatch gate run (pr=3277) was queued and eventually passed.\n\nFound 2026-10-21 during the follow-up batch (finished item oracle-review-stale-failure-recurrence-20261020). Owner asked for this follow-up. Evidence is from that session; re-verify before editing. Unclaimed.",
+  "context": "AMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Re-scoped: the late-verdict half is already handled by the pull_request_review:submitted trigger (run 40098622498 re-evaluated #3298 after verdict run 40098494643). Thread resolution still starts no run (oracle-review.yml:5-18; no schedule). Also covers oracle-gate cancel-in-progress stranding a red status until the hourly sweep (oracle-gate.yml:24-26, _project/scripts/oracle_gate.py:129-145; seen on #3277 and #3287).\n\nUPDATE 2026-10-23: two more cases on 2026-10-22. PR #3287: oracle-verdict posted SHIP but the required oracle-gate check stayed red on a cancelled earlier run until `gh run rerun` (make pr-rerun reported nothing to re-run). PR #3277: after an owner-authorised stand-in, the comment-triggered oracle-gate run was cancelled by a later run in the same concurrency group and the check stayed red on a pre-stand-in result until a workflow_dispatch gate run (pr=3277) was queued and eventually passed.\n\nFound 2026-10-21 during the follow-up batch (finished item oracle-review-stale-failure-recurrence-20261020). Owner asked for this follow-up. Evidence is from that session; re-verify before editing. Unclaimed.",
   "description": "Resolving a review thread, or an oracle verdict posting after a failed oracle-review run, starts no GitHub Actions run, so the required oracle-review check stays red until someone runs make oracle-review-recover PR=<n> (which also closes and reopens the PR and clears auto-merge). PRs 3149, 3156, 3158 stayed blocked for hours or more than a day this way. GitHub Actions has no pull_request_review_thread trigger (PR 3193 attempted one; the workflow failed to parse). Work: design the smallest sound mechanism that re-evaluates the check for open PRs whose head has a success verdict, for example a scheduled workflow (cron) that runs the existing recover logic for open soundness PRs, or reacting to an event that does exist (pull_request_review, workflow_run of oracle-verdict, issue_comment); weigh each. Guardrails: no stand-in verdict, no weaker decision logic, no new secrets, and any cron or permission change needs owner approval; the recovery must not clear auto-merge (re-arm it or avoid close/reopen, for example by re-requesting the check run instead).",
   "links": [
     "item:oracle-review-stale-failure-recurrence-20261020"
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "90b06682f49747189c21056f68a4e5c2",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T14:30:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4c35fda78b654c7f9600d378fd3566b5",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
