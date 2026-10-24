@@ -226,6 +226,39 @@ def test_cli_records_actual_lookup_mechanism(
         assert client.patched_issues == []
 
 
+def _pr_with_hidden_failure() -> dict[str, Any]:
+    def run(suite: int, started: str, conclusion: str) -> dict[str, Any]:
+        return {
+            "name": "core",
+            "status": "completed",
+            "conclusion": conclusion,
+            "started_at": started,
+            "id": suite,
+            "check_suite": {"id": suite},
+            "details_url": f"https://github.com/owner/repo/actions/runs/{suite}/job/1",
+        }
+
+    return {
+        "number": 9,
+        "title": "t",
+        "html_url": "https://github.com/owner/repo/pull/9",
+        "draft": False,
+        "head_pushed_at": "2026-10-20T00:00:00Z",
+        "updated_at": "2026-10-20T00:00:00Z",
+        "check_runs": [run(1, "2026-10-24T09:00:00Z", "failure"), run(2, "2026-10-24T10:00:00Z", "success")],
+    }
+
+
+def test_apply_publishes_the_digest_when_only_a_hidden_failure_exists(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = FakeGitHubClient(paginated_issues=[_make_pinned_issue(1508, state="open")])
+    monkeypatch.setattr(sweep, "resolve_token", lambda: "test-token")
+    monkeypatch.setattr(sweep, "GitHubClient", lambda token: client)
+    monkeypatch.setattr(sweep, "fetch_open_prs", lambda *args: [_pr_with_hidden_failure()])
+    assert sweep.main(["--repo", "owner/repo", "--apply"]) == 0
+    bodies = [payload.get("body", "") for _path, payload in client.patched_issues]
+    assert any("actions/runs/1" in body and "make pr-rerun" in body for body in bodies)
+
+
 def test_http_404_scan_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     import urllib.error
 

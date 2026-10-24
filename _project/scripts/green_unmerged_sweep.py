@@ -745,7 +745,7 @@ def main(argv: list[str] | None = None) -> int:
         outcome = f"would update issue #{existing['number']}" if existing else "would create issue"
         print(f"digest issue: {outcome} (read-only)", file=sys.stderr)
     else:
-        should_have_issue = bool(hits)
+        should_have_issue = bool(hits) or any(c.hidden_failures for c in classified)
         if should_have_issue:
             body = build_digest(classified, now=now, repo=args.repo)
             outcome = upsert_pinned_issue(client, owner, repo, body, record_mechanism=record_mechanism)
