@@ -82,13 +82,14 @@ the judge as a reviewer-panel member: it classifies, it does not review.
 
 ## Effort Translation
 
-Use the effort named by the selected role. Do not put every role on `auto`:
-simple work uses `medium`, common work uses `medium`, and planning or review
-uses `high` unless the assignment is routine. Maximum effort is only for an
-explicit final adversarial review. External harnesses without `auto` use the
-same concrete effort; that is a fixed approximation, not adaptive reasoning.
-External `omp` also uses the role's concrete `--thinking` value unless the
-user explicitly requests adaptive effort.
+Use the effort the routing table names for the selected role. The table is
+generated from the OMP configuration, so it is the only source for each role's
+effort; do not substitute a general rule for it, and do not put every role on
+`auto`. Maximum effort is only for an explicit final adversarial review.
+External harnesses without `auto` use the same concrete effort; that is a fixed
+approximation, not adaptive reasoning. External `omp` also uses the role's
+concrete `--thinking` value unless the user explicitly requests adaptive
+effort.
 
 ## Dispatch Rules
 

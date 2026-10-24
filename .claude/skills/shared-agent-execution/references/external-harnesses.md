@@ -54,11 +54,10 @@ judgments are experimental: prefer text-only state.
 ### Effort translation
 
 Do not assume a non-OMP external CLI implements adaptive effort. Use the
-concrete effort named by the selected role: `medium` for simple and common
-work, and `high` for planning, review, research, or vision. This is a fixed
-approximation, not adaptive reasoning. Explicit user effort
-overrides win. External `omp` uses the same concrete `--thinking` value
-unless the user explicitly requests adaptive effort.
+concrete effort the routing table in `SKILL.md` names for the selected role.
+This is a fixed approximation, not adaptive reasoning. Explicit user effort
+overrides win. External `omp` uses the same concrete `--thinking` value unless
+the user explicitly requests adaptive effort.
 
 | Harness | Effort argument | Supported values |
 |---|---|---|
