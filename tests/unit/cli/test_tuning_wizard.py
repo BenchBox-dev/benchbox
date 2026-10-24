@@ -71,24 +71,22 @@ def test_apply_defaults_to_config() -> None:
     out = t._apply_defaults_to_config(cfg, defaults={}, platform="redshift", benchmark="tpch")
     assert out.primary_keys.enabled is True
     assert TuningType.DISTRIBUTION not in _enabled(out)
-    assert TuningType.SORTING in _enabled(out)
-    slots = _table_slots(out)
-    assert slots, "redshift defaults must persist sort table entries"
-    assert all("sorting" in present for present in slots.values())
+    assert TuningType.SORTING not in _enabled(out)
+    assert not _table_slots(out), "redshift has no packaged template so no layout may be recorded"
 
 
 def test_apply_defaults_to_config_all_platforms() -> None:
     expected = {
-        "snowflake": set(),
+        "snowflake": {TuningType.CLUSTERING},
         "bigquery": {TuningType.PARTITIONING},
-        "redshift": {TuningType.SORTING},
+        "redshift": set(),
     }
     for platform, types in expected.items():
         cfg = UnifiedTuningConfiguration()
         out = t._apply_defaults_to_config(cfg, defaults={}, platform=platform, benchmark="tpch")
         enabled = _enabled(out)
-        for tuning_type in types:
-            assert tuning_type in enabled, f"{platform} default lost {tuning_type}"
+        layout_types = {TuningType.PARTITIONING, TuningType.CLUSTERING, TuningType.DISTRIBUTION, TuningType.SORTING}
+        assert enabled & layout_types == types, f"{platform} enabled {enabled & layout_types}"
         slots = _table_slots(out)
         if types:
             assert slots, f"{platform} defaults must persist table entries"
@@ -107,6 +105,22 @@ def test_enable_layout_applies_every_matching_template_table() -> None:
     slots = _table_slots(cfg)
     assert len(slots) > 1, f"sorting must persist on every tuned table, got {sorted(slots)}"
     assert all("sorting" in present for present in slots.values())
+
+
+@pytest.mark.parametrize("platform", ["snowflake", "databricks"])
+def test_enable_clustering_uses_platform_template(platform: str) -> None:
+    cfg = UnifiedTuningConfiguration()
+    assert cfg.enable_platform_optimization(TuningType.CLUSTERING, benchmark="tpch", platform=platform) is True
+    slots = _table_slots(cfg)
+    assert TuningType.CLUSTERING in _enabled(cfg)
+    assert any("clustering" in present for present in slots.values())
+    assert "sorting" not in set().union(*slots.values())
+
+
+def test_enable_layout_reports_missing_platform_template() -> None:
+    cfg = UnifiedTuningConfiguration()
+    assert cfg.enable_platform_optimization(TuningType.DISTRIBUTION, benchmark="tpch", platform="redshift") is False
+    assert cfg.table_tunings == {}
 
 
 def test_enable_layout_declines_benchmark_without_template() -> None:
@@ -185,8 +199,10 @@ def test_simple_wizard_persists_table_layout_choices(monkeypatch: pytest.MonkeyP
     snowflake_out = t._run_simple_wizard(
         UnifiedTuningConfiguration(), {"enable_clustering": True}, "snowflake", "tpch", SimpleNamespace()
     )
-    assert TuningType.CLUSTERING not in _enabled(snowflake_out)
-    assert not _table_slots(snowflake_out)
+    assert TuningType.CLUSTERING in _enabled(snowflake_out)
+    snowflake_slots = _table_slots(snowflake_out)
+    assert snowflake_slots
+    assert all("clustering" in present for present in snowflake_slots.values())
 
     monkeypatch.setattr(t.Prompt, "ask", _seq(["3"]))
     monkeypatch.setattr(t.Confirm, "ask", _seq([True]))
@@ -202,10 +218,27 @@ def test_simple_wizard_persists_table_layout_choices(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(t.Confirm, "ask", _seq([True]))
     redshift_out = t._run_simple_wizard(UnifiedTuningConfiguration(), {}, "redshift", "tpch", SimpleNamespace())
     assert TuningType.DISTRIBUTION not in _enabled(redshift_out)
-    assert TuningType.SORTING in _enabled(redshift_out)
-    redshift_slots = _table_slots(redshift_out)
-    assert len(redshift_slots) == 6, f"sorting must reach all tuned tables, got {sorted(redshift_slots)}"
-    assert all("sorting" in present for present in redshift_slots.values())
+    assert TuningType.SORTING not in _enabled(redshift_out)
+    assert not _table_slots(redshift_out)
+
+
+def test_wizard_messages_match_what_was_written(monkeypatch: pytest.MonkeyPatch) -> None:
+    printed: list[str] = []
+    monkeypatch.setattr(t.console, "print", lambda *a, **k: printed.append(str(a[0]) if a else ""))
+
+    monkeypatch.setattr(t.Confirm, "ask", _seq([True]))
+    snowflake_cfg = UnifiedTuningConfiguration()
+    t._configure_snowflake_optimizations(snowflake_cfg)
+    assert TuningType.CLUSTERING in _enabled(snowflake_cfg)
+    assert any("Clustering keys enabled" in line for line in printed)
+
+    printed.clear()
+    monkeypatch.setattr(t.Confirm, "ask", _seq([True, True]))
+    redshift_cfg = UnifiedTuningConfiguration()
+    t._configure_redshift_optimizations(redshift_cfg)
+    assert not redshift_cfg.table_tunings
+    assert not any(" enabled" in line and "not enabled" not in line for line in printed)
+    assert sum("not enabled" in line for line in printed) == 2
 
 
 def test_advanced_wizard_and_platform_specific_configurators(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -226,11 +259,11 @@ def test_advanced_wizard_and_platform_specific_configurators(monkeypatch: pytest
     monkeypatch.setattr(
         t,
         "_configure_snowflake_optimizations",
-        lambda c, b="tpch": c.enable_platform_optimization(TuningType.CLUSTERING),
+        lambda c, b="tpch": c.enable_platform_optimization(TuningType.CLUSTERING, platform="snowflake"),
     )
     out2 = t._run_advanced_wizard(cfg2, {}, "snowflake", "tpch", SimpleNamespace())
-    assert TuningType.CLUSTERING not in _enabled(out2)
-    assert not _table_slots(out2)
+    assert TuningType.CLUSTERING in _enabled(out2)
+    assert any("clustering" in present for present in _table_slots(out2).values())
 
 
 def test_platform_config_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -251,13 +284,14 @@ def test_platform_config_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
     assert TuningType.Z_ORDERING in enabled
     assert TuningType.PARTITIONING in enabled
     assert TuningType.SORTING in enabled
-    assert TuningType.CLUSTERING not in enabled
+    assert TuningType.CLUSTERING in enabled
     assert TuningType.DISTRIBUTION not in enabled
     slots = _table_slots(cfg)
     assert slots, "platform configurators must persist table entries"
     for tuning_type in (
         TuningType.PARTITIONING,
         TuningType.SORTING,
+        TuningType.CLUSTERING,
     ):
         assert any(tuning_type.value in present for present in slots.values()), (
             f"{tuning_type} choice was not persisted to table_tunings"
