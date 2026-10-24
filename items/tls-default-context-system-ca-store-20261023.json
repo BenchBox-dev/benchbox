@@ -5,6 +5,7 @@
     "A test pins which trust source each path uses",
     "CHANGELOG Security entry describes the change"
   ],
+  "context": "Done in PR #3367 (merge ba0cab21e). New benchbox/utils/tls.py: ca_bundle_path() resolves REQUESTS_CA_BUNDLE, then SSL_CERT_FILE, then certifi.where(); ssl_context(), urlopen() and download_to_file() build a default (verifying) context from it. Databricks (adapter connect and the credential check) passes _tls_trusted_ca_file to databricks-sql-connector (supported across the allowed 2.0.0 to 4.x range, locked 4.5.0). The stdlib download paths (expected results, flight data, NYC taxi, Redshift public-IP lookup, hosted submission) use the helper. Tests: a private-CA TLS server proves a certificate from a CA outside the bundle is rejected and accepted when the override env var supplies that CA (7 tests, passed on Python 3.12 and 3.14). Oracle review found one defect, fixed before merge: the NYC Taxi equivalence gate blocked network by patching urlretrieve, which the downloader no longer calls; the guard now patches urlopen and has a regression test. A strict-verification failure of the test CA on Python 3.13+ (missing key identifiers and key usage) was also fixed. Docs: docs/platforms/databricks.md has a TLS trust section; changelog entry added. Scope note: requests-based clients (the PyPI JSON calls etc.) already honour REQUESTS_CA_BUNDLE and certifi, and were not changed. Merge needed two CI reruns for public.ecr.aws Docker pull rate limits (unrelated) and a rebase onto develop for a docs conflict.",
   "description": "BenchBox relies on certifi for `requests`-based clients, but several connections use Python's default `ssl` context, whose trust comes from the interpreter's OpenSSL default paths. On python-build-standalone (uv-managed) CPython on macOS that is `/etc/ssl/cert.pem`, which Apple does not update and which still trusted the compromised eMudhra emSign intermediates (via emSign ECC Root CA - G3 and AAA Certificate Services) until it was edited by hand on the maintainer's Mac. Linux users get whatever their distribution's ca-certificates package holds.\n\nAffected paths:\n- `benchbox/platforms/databricks/adapter.py` and `benchbox/platforms/databricks/credentials.py` call `databricks_sql.connect(...)` without `_tls_trusted_ca_file`; databricks-sql-connector then builds `ssl.create_default_context(cafile=None)`. The connection carries the Databricks PAT.\n- `benchbox/core/expected_results/download.py` (`_fetch_url`) and `benchbox/platforms/credentials/redshift.py` (public-IP lookup) call `urllib.request.urlopen` with the default context. `benchbox/core/flightdata/downloader.py` does too, but its payloads are sha256-pinned.\n\nOptions to decide between: pass certifi's bundle (`certifi.where()`), which tracks Mozilla but ignores enterprise roots; use `truststore` (OS verifier, honours OS revocation and enterprise roots; on macOS Apple already blocks the compromised intermediates); or keep the default but document it. Whatever is chosen should be overridable (for example an existing CA-bundle option) and covered by a test that the context is built from the chosen source.",
   "links": [
     "https://emudhra.we-have-a-problem.com/"
@@ -16,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f41044becb914043828fb1f693cde25f",
+      "session_id": "ba4384e41c574086bef30465f20b7231"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:57821a79f990361af3171e3f",
+      "at": "2026-10-24T04:26:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fd0bfd1da9f147639ef2aaa96d3d8050",
       "session_id": "ba4384e41c574086bef30465f20b7231"
     }
   ]
