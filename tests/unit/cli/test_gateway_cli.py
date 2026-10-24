@@ -46,8 +46,6 @@ def _run_cli(args: list[str], database_manager: MagicMock) -> Result:
 @pytest.mark.parametrize(
     ("platform", "gateway", "extra"),
     [
-        ("snowflake", "espresso", []),
-        ("snowflake", "greybeam", ["--platform-option", "gateway_host=gw.example.com"]),
         ("databricks", "espresso", ["--platform-option", "gateway_host=gw.example.com"]),
     ],
 )
@@ -76,6 +74,37 @@ def test_declared_gateway_fails_closed_before_database_work(platform: str, gatew
     assert result.exit_code == 1
     assert f"gateway routing is not implemented for {platform} yet" in result.output
     database_manager.create_config.assert_not_called()
+
+
+@pytest.mark.parametrize("gateway", ["espresso", "greybeam", "custom"])
+def test_snowflake_gateway_is_forwarded_to_config(gateway: str) -> None:
+    database_manager = MagicMock()
+    database_manager.create_config.return_value = DatabaseConfig(type="snowflake", name="Snowflake")
+
+    result = _run_cli(
+        [
+            "run",
+            "--platform",
+            "snowflake",
+            "--benchmark",
+            "tpch",
+            "--scale",
+            "0.01",
+            "--phases",
+            "power",
+            "--non-interactive",
+            "--gateway",
+            gateway,
+            "--platform-option",
+            "gateway_host=gw.example.com",
+        ],
+        database_manager,
+    )
+
+    assert result.exit_code == 0, result.output
+    kwargs = database_manager.create_config.call_args.kwargs
+    assert kwargs["gateway_selector"] == gateway
+    assert database_manager.create_config.call_args.args[1]["gateway_host"] == "gw.example.com"
 
 
 def test_native_gateway_runs_without_routing() -> None:

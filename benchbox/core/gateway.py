@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import ipaddress
+import logging
+import os
 from collections.abc import Mapping
+from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from benchbox.core.platform_manifest import get_all_platform_aliases
@@ -8,7 +13,11 @@ from benchbox.core.platform_manifest import get_all_platform_aliases
 if TYPE_CHECKING:
     from benchbox.core.platform_registry import GatewayCapability
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_GATEWAY = "native"
+GATEWAY_ROUTED_PLATFORMS = frozenset({"snowflake"})
+INSECURE_GATEWAY_ENV = "BENCHBOX_ALLOW_INSECURE_GATEWAY"
 GATEWAY_CONNECTION_OPTIONS = (
     "gateway_host",
     "gateway_port",
@@ -52,7 +61,103 @@ def resolve_requested_gateway(platform: str, gateway: str | None) -> str:
         allowed = ", ".join([DEFAULT_GATEWAY, *sorted(gateways.keys())])
         raise UnsupportedGatewayError(f"Platform {platform!r} does not support gateway {gateway!r}. Allowed: {allowed}")
 
-    raise GatewayNotImplementedError(f"gateway routing is not implemented for {platform} yet")
+    if _manifest_platform_key(platform) not in GATEWAY_ROUTED_PLATFORMS:
+        raise GatewayNotImplementedError(f"gateway routing is not implemented for {platform} yet")
+    return gateway
+
+
+@dataclass(frozen=True)
+class GatewayEndpoint:
+    name: str
+    host: str
+    port: int | None
+    protocol: str
+    ca_bundle: str | None
+    ocsp_fail_open: bool | None
+    insecure: bool
+
+
+def strip_host_userinfo(host: str) -> str:
+    value = host.strip()
+    if "://" in value:
+        value = value.split("://", 1)[1]
+    value = value.split("/", 1)[0]
+    return value.rsplit("@", 1)[-1].strip()
+
+
+def is_loopback_host(host: str) -> bool:
+    name = host.strip().strip("[]").lower()
+    if name == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(name).is_loopback
+    except ValueError:
+        return False
+
+
+def resolve_gateway_endpoint(
+    platform: str,
+    gateway: str | None,
+    *,
+    host: str | None = None,
+    port: int | None = None,
+    protocol: str | None = None,
+    ca_bundle: str | None = None,
+    ocsp_fail_open: bool | None = None,
+    allow_insecure: bool = False,
+) -> GatewayEndpoint | None:
+    selected = resolve_requested_gateway(platform, gateway)
+    chosen_protocol = (protocol or "https").strip().lower()
+    if selected == DEFAULT_GATEWAY:
+        stray = [
+            name
+            for name, value in (
+                ("gateway_host", host),
+                ("gateway_port", port),
+                ("gateway_ca_bundle", ca_bundle),
+                ("gateway_ocsp_fail_open", ocsp_fail_open),
+                ("allow_insecure_gateway", allow_insecure or None),
+            )
+            if value not in (None, "")
+        ]
+        if chosen_protocol != "https":
+            stray.append("gateway_protocol")
+        if stray:
+            raise GatewayConfigurationError(f"{', '.join(stray)} require a gateway other than {DEFAULT_GATEWAY}")
+        return None
+
+    clean_host = strip_host_userinfo(host) if host else ""
+    if supported_gateways(platform)[selected].requires_host and not clean_host:
+        raise GatewayConfigurationError(f"gateway {selected!r} requires gateway_host")
+    if chosen_protocol not in ("https", "http"):
+        raise GatewayConfigurationError(f"Invalid gateway_protocol {protocol!r}. Allowed: https, http")
+    if port is not None and not 1 <= int(port) <= 65535:
+        raise GatewayConfigurationError(f"Invalid gateway_port {port!r}. Allowed range: 1-65535")
+    if ca_bundle and not Path(ca_bundle).expanduser().is_file():
+        raise GatewayConfigurationError("gateway_ca_bundle does not name an existing file")
+
+    plaintext_remote = chosen_protocol == "http" and not is_loopback_host(clean_host)
+    if allow_insecure or plaintext_remote:
+        if os.environ.get(INSECURE_GATEWAY_ENV) != "1":
+            raise GatewayConfigurationError(
+                f"Insecure gateway settings (allow_insecure_gateway or http to a non-loopback host) "
+                f"require {INSECURE_GATEWAY_ENV}=1"
+            )
+        logger.warning(
+            "Gateway %s is configured without TLS verification or over plain HTTP; credentials and results "
+            "can be intercepted. Use only on a trusted network.",
+            selected,
+        )
+
+    return GatewayEndpoint(
+        name=selected,
+        host=clean_host,
+        port=None if port is None else int(port),
+        protocol=chosen_protocol,
+        ca_bundle=str(Path(ca_bundle).expanduser()) if ca_bundle else None,
+        ocsp_fail_open=ocsp_fail_open,
+        insecure=bool(allow_insecure),
+    )
 
 
 def _parse_port(value: str) -> int:
@@ -114,10 +219,16 @@ def register_gateway_connection_specs() -> None:
 __all__ = [
     "DEFAULT_GATEWAY",
     "GATEWAY_CONNECTION_OPTIONS",
+    "GATEWAY_ROUTED_PLATFORMS",
+    "INSECURE_GATEWAY_ENV",
     "GatewayConfigurationError",
+    "GatewayEndpoint",
     "GatewayNotImplementedError",
     "UnsupportedGatewayError",
+    "is_loopback_host",
     "register_gateway_connection_specs",
+    "resolve_gateway_endpoint",
     "resolve_requested_gateway",
+    "strip_host_userinfo",
     "supported_gateways",
 ]

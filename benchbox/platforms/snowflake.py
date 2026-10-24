@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
     )
 
 from ..core.exceptions import ConfigurationError
+from ..core.gateway import GatewayEndpoint, resolve_gateway_endpoint
 from ..utils.cloud_storage import get_cloud_path_info, snowflake_stage_mode_error
 from ..utils.dependencies import check_platform_dependencies, get_dependency_error_message
 from ..utils.sql_identifier import is_valid_sql_identifier
@@ -45,6 +47,7 @@ def _compact_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 class SnowflakeAdapter(PlatformAdapter):
+    gateway_endpoint: GatewayEndpoint | None = None
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
 
@@ -131,6 +134,17 @@ class SnowflakeAdapter(PlatformAdapter):
                 "  1. CLI: benchbox setup --platform snowflake\n"
                 "  2. Environment variables: SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD, etc."
             )
+
+        self.gateway_endpoint = resolve_gateway_endpoint(
+            "snowflake",
+            config.get("gateway"),
+            host=config.get("gateway_host"),
+            port=config.get("gateway_port"),
+            protocol=config.get("gateway_protocol"),
+            ca_bundle=config.get("gateway_ca_bundle"),
+            ocsp_fail_open=config.get("gateway_ocsp_fail_open"),
+            allow_insecure=bool(config.get("allow_insecure_gateway")),
+        )
 
     @property
     def platform_name(self) -> str:
@@ -220,6 +234,13 @@ class SnowflakeAdapter(PlatformAdapter):
                 "strict_validation",
                 "suppress_nondeterministic_errors",
                 "modify_warehouse_settings",
+                "gateway",
+                "gateway_host",
+                "gateway_port",
+                "gateway_protocol",
+                "gateway_ca_bundle",
+                "gateway_ocsp_fail_open",
+                "allow_insecure_gateway",
                 "force_recreate",
             ],
         )
@@ -249,6 +270,8 @@ class SnowflakeAdapter(PlatformAdapter):
                 "staging_root": self.staging_root,
             },
         }
+        if self.gateway_endpoint is not None:
+            platform_info["gateway"] = {"name": self.gateway_endpoint.name, "routed": True}
 
         try:
             import snowflake.connector
@@ -497,10 +520,34 @@ class SnowflakeAdapter(PlatformAdapter):
         if include_database:
             conn_params["database"] = connection_config.get("database", self.database)
             conn_params["schema"] = connection_config.get("schema", self.schema)
+        endpoint = self.gateway_endpoint
+        if endpoint is not None:
+            conn_params["host"] = endpoint.host
+            conn_params["protocol"] = endpoint.protocol
+            if endpoint.port is not None:
+                conn_params["port"] = endpoint.port
+            if endpoint.ocsp_fail_open is not None:
+                conn_params["ocsp_fail_open"] = endpoint.ocsp_fail_open
+            if endpoint.insecure:
+                conn_params["insecure_mode"] = True
         return conn_params
 
+    def _connect(self, **conn_params: Any) -> Any:
+        endpoint = self.gateway_endpoint
+        if endpoint is None or endpoint.ca_bundle is None:
+            return snowflake.connector.connect(**conn_params)
+        previous = os.environ.get("REQUESTS_CA_BUNDLE")
+        os.environ["REQUESTS_CA_BUNDLE"] = endpoint.ca_bundle
+        try:
+            return snowflake.connector.connect(**conn_params)
+        finally:
+            if previous is None:
+                os.environ.pop("REQUESTS_CA_BUNDLE", None)
+            else:
+                os.environ["REQUESTS_CA_BUNDLE"] = previous
+
     def _create_admin_connection(self, **connection_config) -> Any:
-        return snowflake.connector.connect(
+        return self._connect(
             **self._connect_params(connection_config, include_database=False),
             client_session_keep_alive=True,
             login_timeout=30,
@@ -632,7 +679,7 @@ class SnowflakeAdapter(PlatformAdapter):
             if self.private_key_path:
                 self.log_verbose("Using key pair authentication")
 
-            connection = snowflake.connector.connect(**conn_params)
+            connection = self._connect(**conn_params)
 
             self.log_verbose("Testing Snowflake connection")
             cursor = connection.cursor()
