@@ -4,7 +4,7 @@
     "Every other splitlines() call listed is classified diff-derived or not, with the evidence",
     "If a change is needed: failing-before test, fix, existing diff tests unchanged, PR merged with an oracle verdict on its final head; merge SHA recorded"
   ],
-  "context": "Created 2026-10-23 as a follow-up of the 2808 review finding 2 (splitlines on diff text).",
+  "context": "Created 2026-10-23 as a follow-up of the 2808 review finding 2 (splitlines on diff text).\n\n### Completion Evidence (2026-10-24)\nPR 3351 merged as dfad49de0 with oracle verdict SUCCESS on its final head 3cefe6908399f726ff7b1db005c918874ecd7164. Reproduction: a form feed, vertical tab, U+0085, U+2028, U+2029, or 0x1c-0x1e inside a diff line made commentable_lines (diff.py) see phantom lines so inline-comment line numbers drifted (8 parametrized failing-before cases; example frozenset({1, 50}) vs {1, 2, 3}). Fix: diff.py splits on newline only. The oracle's first verdict then found that cli.py finalize read diff.patch with read_text (universal newlines translate a lone CR/CRLF); fixed by reading bytes and decoding as UTF-8 in cli.finalize, staging bytes unchanged through the exclusive descriptor in runner.stage_pull_request_diff, and newline='' in brief.write_private (failing-before tests: carriage returns kept in finalize placement and staged bytes byte-for-byte). Other splitlines() calls classified not diff-derived: absence.py 168-169 (reviewer output), cli.py 153 and 173 (dispute reply, thread title), evidence.py 49, verdict.py 409 and 421 (JSONL reviewer output), oracle_review_check.py 107 (PR body).",
   "description": "PR 3331 fixes protocol.file_patches, which used str.splitlines() and so treated form feed, vertical tab, U+2028 and U+0085 inside diff lines as line breaks. The controller's grep of origin/develop found the same call in _project/scripts/oracle_reviewers/diff.py line 20 (for line in diff_text.splitlines()), which parses the pull-request diff, probably to compute commentable lines and positions for inline review comments (re-verify what it feeds). If a control character inside an added line makes the parser see extra lines, its line numbers drift and comments or the 'defects on diff lines' placement can anchor to the wrong line or be dropped. Other splitlines() calls found (absence.py 168-169, cli.py 147 and 167, evidence.py 49, verdict.py 409 and 421, oracle_review_check.py 107) parse comment, stderr or reviewer text, not diffs: confirm each is not diff-derived and record that.\n\nDECISION GATE: first reproduce (a diff with a form feed inside an added line through diff.py and its callers: do the commentable line numbers shift?). If there is no effect on any consumer, record the evidence and finish with no change. If there is, fix diff.py to split on newline only, with a failing-before test.\n\nGUARDRAILS: never post a stand-in or oracle comment; never rerun the oracle; oracle verdict required on the PR (soundness path); no pre-registered digests; never weaken a gate; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; done = merged PR plus evidence, or no-change evidence.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "generation": "91612fcb69b74b049535ee8d3d1aee88",
       "op": "take",
       "op_id": "b1ac8cd1186446fdb163c2d82713eeb4",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-24T16:09:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5f589a79290043139704915bff5181a8",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
