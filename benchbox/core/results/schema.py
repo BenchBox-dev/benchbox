@@ -36,7 +36,11 @@ from benchbox.core.results.schema_policy import (
     supports_round_trip_timing_fields,
     supports_row_count_validation,
 )
-from benchbox.core.results.subscale_policy import NONSTANDARD_COMPLIANCE_CLASS, unofficial_metric_marker
+from benchbox.core.results.subscale_policy import (
+    NONSTANDARD_COMPLIANCE_CLASS,
+    result_compliance_class,
+    unofficial_metric_marker,
+)
 from benchbox.core.results.timing_fields import (
     bundle_timing_field_paths,
     net_estimate_problems,
@@ -485,7 +489,7 @@ def _build_benchmark_section(result: BenchmarkResults) -> dict[str, Any]:
         "scale_factor": result.scale_factor,
         "test_type": result.test_execution_type,
     }
-    compliance_class = getattr(result, "compliance_class", None)
+    compliance_class = result_compliance_class(result)
     if compliance_class is not None:
         section["compliance_class"] = compliance_class
     if getattr(result, "data_generation_version", None) is not None:
@@ -1546,7 +1550,7 @@ def _compute_timing_stats(times_ms: list[float]) -> dict[str, Any]:
 
 
 def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
-    compliance_class = getattr(result, "compliance_class", None)
+    compliance_class = result_compliance_class(result)
     if compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
         metrics: dict[str, Any] = {"suppressed": True, "reason": f"compliance_class={compliance_class}"}
     else:

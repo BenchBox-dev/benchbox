@@ -127,7 +127,10 @@ benchbox run --platform snowflake --benchmark tpch --gateway custom \
 
 `allow_insecure_gateway` and `http` to a non-loopback host both require `BENCHBOX_ALLOW_INSECURE_GATEWAY=1` and
 log a warning. Gateway options are not available through MCP. A gateway-routed run records
-`platform.gateway`, is marked `tpc_compliant: false`, and never compares with native runs.
+`platform.gateway`, is marked `tpc_compliant: false`, and never compares with native runs. Its
+`benchmark.compliance_class` is always `unofficial_nonstandard`, whatever the benchmark reports, so TPC metrics are
+suppressed and publish, submit, bundle validation, the results database and metrics readiness all refuse it as
+non-official. A stored result that claims `official` while `platform.gateway.routed` is true is treated the same way.
 
 ## Authentication Methods
 
