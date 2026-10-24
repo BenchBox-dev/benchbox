@@ -40,6 +40,7 @@ _VERSION_PATTERN = re.compile(r"v?(\d+)\.(\d+)(?:\.(\d+))?")
 _SETTING_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _SETTING_LITERAL_PATTERN = re.compile(r"^(?:-?\d+(?:\.\d+)?|true|false)$", re.IGNORECASE)
 _LEADING_KEYWORD_PATTERN = re.compile(r"^(?:\s+|--[^\n]*(?:\n|$)|/\*.*?\*/)*([A-Za-z]+)", re.DOTALL)
+_LEADING_SCOPE_PATTERN = re.compile(r"^(?:\s+|--[^\n]*(?:\n|$)|/\*.*?\*/)*([A-Za-z]+)(?:\s+([A-Za-z]+))?", re.DOTALL)
 _CREATE_TABLE_PATTERN = re.compile(r"^\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\"[^\"]+\"|[^\s(]+)", re.IGNORECASE)
 _CREATE_TABLE_PREFIX_PATTERN = re.compile(r"^(\s*CREATE\s+TABLE\s+)(?!IF\s+NOT\s+EXISTS\b)", re.IGNORECASE)
 _MUTATING_KEYWORDS = frozenset(
@@ -120,6 +121,10 @@ class GizmoSQLLoadError(GizmoSQLError):
     pass
 
 
+class GizmoSQLExistingDataError(GizmoSQLLoadError):
+    pass
+
+
 class GizmoSQLQueryTimeout(GizmoSQLError):
     pass
 
@@ -194,6 +199,14 @@ def _leading_keyword(sql: str) -> str | None:
     return match.group(1).upper() if match else None
 
 
+def _scope_changes_server(sql: str) -> bool:
+    match = _LEADING_SCOPE_PATTERN.match(sql)
+    if match is None or match.group(1).upper() not in {"SET", "RESET"}:
+        return False
+    scope = (match.group(2) or "").upper()
+    return scope not in {"SESSION", "LOCAL", "VARIABLE"}
+
+
 class GizmoSQLCursor:
     def __init__(self, raw: Any, connection: GizmoSQLConnection) -> None:
         self._raw = raw
@@ -222,16 +235,23 @@ class GizmoSQLCursor:
         except Exception as exc:
             logger.debug("GizmoSQL cancel after timeout failed: %s", type(exc).__name__)
 
+    def _timeout_error(self) -> GizmoSQLQueryTimeout:
+        return GizmoSQLQueryTimeout(
+            f"Query exceeded the {self._connection.query_timeout}s query_timeout and was cancelled"
+        )
+
     def _guarded(self, call: Any, *args: Any) -> Any:
         try:
-            return call(*args)
+            result = call(*args)
         except Exception:
             self._disarm()
             if self._timed_out.is_set():
-                raise GizmoSQLQueryTimeout(
-                    f"Query exceeded the {self._connection.query_timeout}s query_timeout and was cancelled"
-                ) from None
+                raise self._timeout_error() from None
             raise
+        if self._timed_out.is_set():
+            self._disarm()
+            raise self._timeout_error()
+        return result
 
     def execute(self, operation: str, parameters: Any = None) -> GizmoSQLCursor:
         self._connection.guard(operation)
@@ -286,7 +306,7 @@ class GizmoSQLConnection:
         self._last_result: GizmoSQLCursor | None = None
 
     def guard(self, sql: str) -> None:
-        if self.read_only and _leading_keyword(sql) in _MUTATING_KEYWORDS:
+        if self.read_only and (_leading_keyword(sql) in _MUTATING_KEYWORDS or _scope_changes_server(sql)):
             raise GizmoSQLReadOnlyError(
                 "The GizmoSQL server is read-only; this statement would modify it. "
                 "Run a query-only phase against preloaded data, or point BenchBox at a writable server."
@@ -654,7 +674,7 @@ class GizmoSQLAdapter(PlatformAdapter):
                     "GizmoSQL server for every session. Only session-scoped settings are allowed in session_settings."
                 )
         for name, value in self.session_settings.items():
-            self._run_statement(connection, f"SET {name} = {setting_literal(value)}")
+            self._run_statement(connection, f"SET SESSION {name} = {setting_literal(value)}")
         self.effective_session_settings = {
             str(name): str(value)
             for name, value in self._all_rows(
@@ -829,21 +849,28 @@ class GizmoSQLAdapter(PlatformAdapter):
 
     def load_table_files(self, loader: Any, table: str, files: list[Path], benchmark: Any, data_source: Any) -> int:
         from benchbox.platforms.base.data_loading import resolve_csv_dialect
-        from benchbox.platforms.gizmosql_loading import file_batches, stream_reader
+        from benchbox.platforms.gizmosql_loading import count_source_rows, file_batches, stream_reader
         from benchbox.utils.file_format import is_parquet_format
 
         quoted = quote_identifier(table)
         cursor = loader.cursor()
         try:
-            existing = int(self._first_row(loader, f"SELECT count(*) FROM {quoted}")[0])
-            if existing:
-                self.log_verbose(f"Table {table} already holds {existing} rows on the GizmoSQL server; keeping them")
-                loader.rollback()
-                return existing
-            schema = self._table_arrow_schema(loader, table)
             dialect = (
                 None if is_parquet_format(files[0]) else resolve_csv_dialect(data_source, table, files[0], benchmark)
             )
+            existing = int(self._first_row(loader, f"SELECT count(*) FROM {quoted}")[0])
+            if existing:
+                expected = count_source_rows(files, dialect)
+                if existing != expected:
+                    raise GizmoSQLExistingDataError(
+                        f"Table {table} already holds {existing} rows but the source files hold {expected}; it is "
+                        "partial or stale and BenchBox will not delete it. Re-run with force_recreate=true to "
+                        "rebuild the benchmark tables, or point the schema option at a fresh schema."
+                    )
+                self.log_verbose(f"Table {table} already holds the expected {existing} rows; keeping them")
+                loader.rollback()
+                return existing
+            schema = self._table_arrow_schema(loader, table)
             reader = stream_reader(
                 schema,
                 chain.from_iterable(file_batches(path, schema, dialect, self.ingest_batch_bytes) for path in files),
@@ -855,8 +882,12 @@ class GizmoSQLAdapter(PlatformAdapter):
                 raise GizmoSQLLoadError(f"ingested {ingested} rows but the table holds {loaded}")
             loader.commit()
             return loaded
+        except GizmoSQLExistingDataError:
+            loader.rollback()
+            raise
         except Exception as exc:
             try:
+                cursor.close()
                 loader.rollback()
             except Exception as rollback_exc:
                 self.logger.debug("GizmoSQL load rollback failed: %s", type(rollback_exc).__name__)

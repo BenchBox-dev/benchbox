@@ -222,6 +222,18 @@ class TestTpchLive:
         assert stats == TPCH_COUNTS
         connection.close()
 
+    def test_populated_table_that_differs_from_the_source_fails(self, server, tpch):
+        benchmark, data_dir = tpch
+        adapter = make_adapter(server, schema="live_tpch_stale")
+        connection, _ = setup_schema(adapter, benchmark, data_dir)
+        connection.execute("INSERT INTO \"region\" VALUES (99, 'EXTRA', 'x')")
+
+        with pytest.raises(Exception, match="region.*6.*5"):
+            adapter.load_data(benchmark, connection, data_dir)
+
+        assert count_rows(connection, "region") == 6
+        connection.close()
+
     def test_failed_load_leaves_the_table_unchanged(self, server, tpch, tmp_path):
         benchmark, data_dir = tpch
         adapter = make_adapter(server, schema="live_tpch_failure")
@@ -451,7 +463,7 @@ class TestCliLive:
         assert status.returncode == 0 and "Unknown platform" not in status.stdout
         assert "gizmosql dependencies are installed" in deps.stdout
         assert dry.returncode == 0, dry.stdout + dry.stderr
-        payload = json.loads(next((tmp_path / "dry").glob("tpch_gizmosql_2*.json")).read_text())
+        payload = json.loads(next((tmp_path / "dry").glob("tpch_gizmosql_2*.json")).read_text(encoding="utf-8"))
         assert payload["warnings"] == []
 
     def test_real_non_interactive_run(self, server, tmp_path):
@@ -489,7 +501,7 @@ class TestCliLive:
         assert completed.returncode == 0, completed.stdout + completed.stderr
         assert PASSWORD not in completed.stdout + completed.stderr
         result_file = next((tmp_path / "results").glob("tpch_sf001_gizmosql_sql_*.json"))
-        raw = result_file.read_text()
+        raw = result_file.read_text(encoding="utf-8")
         assert PASSWORD not in raw
         payload = json.loads(raw)
         assert payload["summary"]["queries"]["failed"] == 0

@@ -548,7 +548,33 @@ class TestReadOnlyServer:
         connection = adapter.create_connection()
 
         connection.execute("SELECT 1")
-        connection.execute("SET enable_profiling = 'query_tree'")
+        connection.execute("SET SESSION enable_profiling = 'query_tree'")
+        connection.execute("SET LOCAL enable_profiling = 'query_tree'")
+        connection.execute("SET VARIABLE answer = 42")
+        connection.execute("RESET SESSION enable_profiling")
+
+    @pytest.mark.parametrize(
+        "statement",
+        [
+            "SET GLOBAL threads = 1",
+            "set global threads = 1",
+            "SET threads = 1",
+            "SET threads TO 1",
+            "SET PERSIST threads = 1",
+            "-- c\nSET GLOBAL memory_limit = '1GB'",
+            "RESET threads",
+            "RESET GLOBAL threads",
+        ],
+    )
+    def test_server_wide_settings_are_blocked_client_side(self, read_only, statement):
+        adapter = make_adapter()
+        connection = adapter.create_connection()
+        before = len(read_only.statements)
+
+        with pytest.raises(GizmoSQLReadOnlyError):
+            connection.execute(statement)
+
+        assert len(read_only.statements) == before
 
     def test_force_recreate_is_rejected(self, read_only):
         with pytest.raises(GizmoSQLReadOnlyError, match="force_recreate"):
@@ -606,7 +632,7 @@ class TestSessionSettings:
         stream = adapter.new_stream_connection(main, benchmark_type="olap")
 
         for connection in server.connections:
-            assert "SET enable_profiling = 'query_tree'" in server.sql_log(connection.connection_id)
+            assert "SET SESSION enable_profiling = 'query_tree'" in server.sql_log(connection.connection_id)
         assert adapter.effective_session_settings == {"enable_profiling": "query_tree"}
         assert adapter._get_platform_metadata(main)["session_settings_effective"] == {"enable_profiling": "query_tree"}
         assert adapter._get_platform_metadata(main)["session_settings_requested"] == {"enable_profiling": "query_tree"}
@@ -764,6 +790,18 @@ class TestQueryExecution:
         assert "query_timeout" in result["error"]
         assert result["error_type"] == GizmoSQLQueryTimeout.__name__
         assert any(cursor.cancelled for cursor in server.connections[0].cursors)
+
+    def test_timeout_that_races_with_a_successful_return_is_still_a_timeout(self, server, driver):
+        adapter = make_adapter(query_timeout=1)
+        connection = adapter.create_connection()
+        connection.query_timeout = 0.05
+        server.delay_until_cancel = "slow_query"
+        server.return_after_cancel = True
+
+        result = adapter.execute_query(connection, "SELECT slow_query", "Q9")
+
+        assert result["status"] == "FAILED"
+        assert result["error_type"] == GizmoSQLQueryTimeout.__name__
 
     def test_timeout_does_not_leak_into_the_next_query(self, server, driver):
         adapter = make_adapter(query_timeout=1)
@@ -1022,8 +1060,23 @@ class TestLoading:
         assert server.sql_log().count("INGEST append alpha") == 1
         assert not any(sql.upper().startswith(("DELETE", "TRUNCATE", "DROP")) for sql in server.sql_log())
 
-    def test_populated_tables_are_kept_and_empty_ones_are_loaded(self, server, driver, tmp_path):
+    def test_populated_table_that_differs_from_the_source_fails_without_deleting(self, server, driver, tmp_path):
         server.tables = {"alpha": 7}
+        adapter = make_adapter()
+        connection = adapter.create_connection()
+        benchmark = StubBenchmark(tables={"alpha": [self.write_tbl(tmp_path, "alpha", 4)]})
+
+        with pytest.raises(gizmosql_module.GizmoSQLExistingDataError) as raised:
+            adapter.load_data(benchmark, connection, tmp_path)
+
+        message = str(raised.value)
+        assert "alpha" in message and "7" in message and "4" in message and "force_recreate" in message
+        assert "alpha" not in server.ingested
+        assert not any(sql.upper().startswith(("DELETE", "TRUNCATE", "DROP")) for sql in server.sql_log())
+        assert server.connections[1].commits == 0
+
+    def test_populated_table_matching_the_source_is_reused_and_empty_ones_are_loaded(self, server, driver, tmp_path):
+        server.tables = {"alpha": 4}
         adapter = make_adapter()
         connection = adapter.create_connection()
         benchmark = StubBenchmark(
@@ -1032,7 +1085,7 @@ class TestLoading:
 
         stats, _, _ = adapter.load_data(benchmark, connection, tmp_path)
 
-        assert stats == {"alpha": 7, "beta": 3}
+        assert stats == {"alpha": 4, "beta": 3}
         assert "alpha" not in server.ingested
 
     def test_failure_rolls_back_names_the_table_and_redacts(self, server, driver, tmp_path):

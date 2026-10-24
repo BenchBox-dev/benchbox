@@ -13,6 +13,7 @@ from benchbox.platforms.base.data_loading import CsvDialect
 from benchbox.platforms.gizmosql_loading import (
     MAX_INGEST_BATCH_BYTES,
     bounded_batches,
+    count_source_rows,
     delimited_batches,
     file_batches,
     parquet_batches,
@@ -198,6 +199,22 @@ class TestParquetLoading:
         pq.write_table(source, path)
 
         assert collect(file_batches(path, TPCH_LIKE, None)).num_rows == 1
+
+
+class TestCountSourceRows:
+    def test_counts_data_rows_across_formats(self, tmp_path: Path):
+        plain = tmp_path / "a.tbl"
+        plain.write_text("1|1.00|2020-01-01|a|\n\n2|2.00|2020-01-02|b|\n")
+        packed = tmp_path / "b.tbl.gz"
+        packed.write_bytes(gzip.compress(b"3|3.00|2020-01-03|c|\n"))
+        header = tmp_path / "c.csv"
+        header.write_text("id,amount,day,note\n4,4.00,2020-01-04,d\n")
+        parquet = tmp_path / "d.parquet"
+        pq.write_table(pa.table({"id": [1, 2, 3]}), parquet)
+
+        assert count_source_rows([plain, packed], PIPE_DIALECT) == 3
+        assert count_source_rows([header], CSV_DIALECT) == 1
+        assert count_source_rows([parquet], None) == 3
 
 
 def test_stream_reader_yields_plain_schema():

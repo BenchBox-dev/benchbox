@@ -56,13 +56,14 @@ def test_dry_run_identifies_the_sql_adapter_without_fallback(tmp_path: Path):
 
     assert result.exit_code == 0, result.output
     assert "initialization failed" not in result.output
-    payload = json.loads(next(tmp_path.glob("tpch_gizmosql_2*.json")).read_text())
+    payload = json.loads(next(tmp_path.glob("tpch_gizmosql_2*.json")).read_text(encoding="utf-8"))
     assert payload["warnings"] == []
     assert payload["execution_mode"] == "sql"
     assert payload["deployment"] == "self-hosted"
     assert payload["database_config"]["type"] == "gizmosql"
     assert len(payload["queries"]) == 22
-    assert "create table" in next(tmp_path.glob("tpch_gizmosql_schema_*.sql")).read_text().lower()
+    schema_file = next(tmp_path.glob("tpch_gizmosql_schema_*.sql"))
+    assert "create table" in schema_file.read_text(encoding="utf-8").lower()
 
 
 def test_dry_run_redacts_credentials(tmp_path: Path):
@@ -87,7 +88,7 @@ def test_dry_run_redacts_credentials(tmp_path: Path):
     assert secret not in result.output
     for artifact in tmp_path.iterdir():
         if artifact.is_file():
-            assert secret not in artifact.read_text()
+            assert secret not in artifact.read_text(encoding="utf-8")
 
 
 def test_insecure_options_require_the_explicit_development_flag(tmp_path: Path):
@@ -106,5 +107,5 @@ def test_insecure_options_require_the_explicit_development_flag(tmp_path: Path):
         ]
     )
 
-    payload = json.loads(next(tmp_path.glob("tpch_gizmosql_2*.json")).read_text())
+    payload = json.loads(next(tmp_path.glob("tpch_gizmosql_2*.json")).read_text(encoding="utf-8"))
     assert any("allow_insecure_connection" in warning for warning in payload["warnings"]) or result.exit_code != 0
