@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 import yaml
 
+from _project.scripts.oracle_gate import GATE_CONTEXT
 from scripts.ci_text_edit_verdict import TEXT_EDIT_RUN_NAME
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -176,7 +177,7 @@ def _required_names() -> set[str]:
         for path in WORKFLOW.parent.glob("*.yml")
         if path != WORKFLOW
         for job_id, job in (yaml.safe_load(path.read_text(encoding="utf-8")).get("jobs") or {}).items()
-    }
+    } | {GATE_CONTEXT}
     return required - elsewhere
 
 
