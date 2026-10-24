@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-ORACLE_REVIEW_CONTEXT = "oracle-review"
 ORACLE_GATE_CONTEXT = "oracle-gate"
 ORACLE_GATE_INTEGRATION_ID = 5201041
 
@@ -30,8 +29,6 @@ def _pull_request_parameters(rules: list[dict[str, Any]]) -> dict[str, Any] | No
 
 
 def _is_oracle_check(check: dict[str, Any]) -> bool:
-    if check["context"] == ORACLE_REVIEW_CONTEXT:
-        return True
     return check["context"] == ORACLE_GATE_CONTEXT and check.get("integration_id") == ORACLE_GATE_INTEGRATION_ID
 
 
@@ -46,9 +43,7 @@ def review_enforcement_findings(rules: list[dict[str, Any]]) -> list[str]:
         )
     status_rule = next((rule for rule in rules if rule.get("type") == "required_status_checks"), None)
     if status_rule is None:
-        findings.append(
-            "develop ruleset has no required_status_checks rule: oracle-review or oracle-gate must be required"
-        )
+        findings.append("develop ruleset has no required_status_checks rule: oracle-gate must be required")
         return findings
     status_params = status_rule.get("parameters")
     if not isinstance(status_params, dict):
@@ -61,7 +56,7 @@ def review_enforcement_findings(rules: list[dict[str, Any]]) -> list[str]:
     ):
         findings.append("required_status_checks are malformed: oracle enforcement is unverified")
     elif not any(_is_oracle_check(check) for check in checks):
-        findings.append("required_status_checks must include oracle-review or oracle-gate scoped to the oracle App")
+        findings.append("required_status_checks must include oracle-gate scoped to the oracle App")
     return findings
 
 

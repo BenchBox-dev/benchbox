@@ -8,7 +8,7 @@
 ## The signal, and what it is not
 
 Soundness-path PRs (paths in `.github/soundness-paths.txt`) merge only after
-the required `oracle-review` check passes, which needs a success review of the
+the required `oracle-gate` check passes, which needs a success review of the
 current head from the `benchbox-oracle` App. CI cannot catch a change that
 redefines the oracle it validates against, so such a PR can sit green but
 unmergeable while it waits for that review. The oracle reviews each push on its own; to rerun it,
@@ -27,28 +27,21 @@ is unresolved. It is not compared with the push time, but a later oracle
 review of the head supersedes it. An edited comment
 does not count, and neither does one with any other text, because Markdown
 around the line can hide or quote it.
-Posting the stand-in comment does not rerun the check. After the Oracle or
-stand-in review is complete for the current head, run
-`make oracle-review-recover PR=<number>` if an unsuccessful `oracle-review`
-run is blocking the PR. The target verifies each run belongs to the current
-PR head and workflow, waits for each rerun serially, then closes and reopens
-the PR to fire a fresh `pull_request` event. The `reopened` action reruns CI
-and any other workflows subscribed to that action. A PR with auto-merge armed
-is left open, because closing a PR turns auto-merge off; the target reports
-that it skipped the close and reopen.
+Posting the stand-in comment makes `oracle-gate` re-evaluate the head at once.
+Resolving an oracle review thread starts no workflow run; after resolving the
+oracle's threads, run
+`gh workflow run oracle-gate.yml --ref develop -f pr=<number>`, or wait for the
+hourly sweep.
 
-The `pull_request_review` submitted and dismissed triggers stay enabled so the
-required Actions check `oracle-review` is reevaluated after the Oracle App
-submits or dismisses a review. A stand-in uses the recovery command above.
-Keeping this trigger means each submitted thread reply can enqueue an
-`oracle-review` run; per-PR concurrency cancels superseded runs but still
-consumes runner slots.
-
-The develop ruleset requires the Actions check `oracle-review` without binding
-it to a producer, and the separate `oracle-verdict` status cannot satisfy that
-requirement. Do not remove the review trigger until a source-bound,
-one-result-per-head replacement passes the early-failure / later-success
-canary without a skipped passing check.
+The develop ruleset requires `oracle-gate` bound to the `benchbox-oracle`
+App's integration ID, so only a status that App posts satisfies it, and the
+`oracle-gate` workflow runs only `develop` code. The `oracle-review` workflow
+still runs on every pull request but is not required; its
+`pull_request_review` submitted and dismissed triggers stay enabled because a
+completed `oracle-review` run is how `oracle-gate` learns that a review was
+submitted or dismissed. Keeping that trigger means each submitted thread
+reply can enqueue an `oracle-review` run; per-PR concurrency cancels
+superseded runs but still consumes runner slots.
 
 The attester account is also the one local automation uses, so the
 attestation records who vouched for the review, not that a human read it.

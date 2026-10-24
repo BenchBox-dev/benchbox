@@ -42,7 +42,7 @@ branch is incomplete.
 ## Stand-in approvals
 
 A stand-in is the `Stand-in oracle review: APPROVE <head SHA>` comment that the
-required `oracle-review` check accepts from an attester account. Post one only
+required `oracle-gate` check accepts from an attester account. Post one only
 when the owner names the PR and its head in the current request. Otherwise wait
 for the oracle verdict, re-run it when a reviewer errors, and report a stalled
 verdict to the owner.
@@ -56,11 +56,10 @@ Quote the owner's instruction in a separate comment posted before the stand-in,
 naming the PR, the head, and the oracle findings the stand-in covers. The merge
 digest links each stand-in to the nearest preceding `Owner instruction` comment.
 
-Posting a comment starts no new `oracle-review` workflow run, so after the
-stand-in lands — and likewise after resolving oracle review threads — rerun the
-`oracle-review` workflow runs for that head (a head normally has one run from
-the push event and one from the review-submitted event) and merge only after a
-rerun passes.
+A stand-in comment makes `oracle-gate` re-evaluate the head at once. Resolving
+an oracle review thread starts no workflow run, so after resolving threads run
+`gh workflow run oracle-gate.yml --ref develop -f pr=<number>` (or wait for the
+hourly sweep) and merge only after `oracle-gate` passes on the current head.
 
 ## Bypassing a required check
 
