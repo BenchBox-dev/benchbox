@@ -566,3 +566,50 @@ def test_the_check_reads_the_current_and_the_legacy_first_line(context: str) -> 
 def test_new_reviews_open_with_the_current_first_line() -> None:
     assert oracle_review_check.ORACLE_CONTEXT == "oracle-verdict"
     assert _refusal_body().startswith(f"### {oracle_review_check.ORACLE_CONTEXT}: failure for `{HEAD}`\n")
+
+
+def test_a_review_carried_after_a_retarget_satisfies_the_gate_that_the_old_review_did_not() -> None:
+    from _project.scripts.oracle_reviewers import protocol, report
+
+    previous = {
+        "v": 1,
+        "cycle": 1,
+        "round": 1,
+        "kind": protocol.FIRST,
+        "decision": protocol.SHIP,
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "small",
+        "tier": "small",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 1,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+    }
+    plan = {
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewed_head": HEAD,
+        "status_context": "oracle-verdict",
+        "pr": 1,
+        "repo": "o/r",
+        "run_id": "1",
+        "protocol": {
+            "cycle": 1,
+            "round": 1,
+            "base_ref": "develop",
+            "patch_map": {},
+            "patch_digest": "d" * 32,
+            "strikes": 0,
+            "max_do_not_ship": 3,
+            "previous": previous,
+        },
+    }
+    assert _oracle(reviews=[_oracle_review()], base_date=RETARGETED)[0] == oracle_review_check.WAITING
+    carried = report.carried(plan)
+    assert protocol.decode_marker(carried.body) is not None
+    fresh = _oracle_review(submitted_at=AFTER_RETARGET, body=carried.body)
+    assert oracle_review_check.verdict_state(carried.body, HEAD) == "success"
+    assert _oracle(reviews=[_oracle_review(), fresh], base_date=RETARGETED)[0] == 0

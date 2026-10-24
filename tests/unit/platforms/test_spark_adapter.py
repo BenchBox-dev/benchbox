@@ -92,6 +92,12 @@ class TestSparkAdapter:
                 del platforms_package.spark
         for key in spark_modules_before:
             sys.modules.pop(key, None)
+        from benchbox.core.platform_registry import PlatformRegistry
+
+        registry_adapters = dict(PlatformRegistry._adapters)
+        registry_availability = PlatformRegistry._availability_cache
+        registry_metadata = dict(PlatformRegistry._platform_metadata)
+        registry_auto_registered = PlatformRegistry._auto_registered
         try:
             with _mock_sys_modules(
                 {
@@ -121,6 +127,10 @@ class TestSparkAdapter:
                         del platforms_package.spark
                 else:
                     platforms_package.spark = package_spark_before
+            PlatformRegistry._adapters = registry_adapters
+            PlatformRegistry._availability_cache = registry_availability
+            PlatformRegistry._platform_metadata = registry_metadata
+            PlatformRegistry._auto_registered = registry_auto_registered
 
     def test_initialization_success(self, mock_pyspark):
         from benchbox.platforms.spark import SparkAdapter
