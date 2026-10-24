@@ -67,7 +67,8 @@ def test_top_level_help_uses_live_docs_url_and_long_run_flags() -> None:
 
 
 _OWNERSHIP_MANIFEST = REPO_ROOT / "quality" / "docs-ownership.json"
-_DOC_URL_RE = re.compile(r"https://benchbox\.dev/(docs/[A-Za-z0-9_./-]*?)\.html(?=[#)>\s\"'\]\\,;:]|$)")
+_DOC_URL_RE = re.compile(r"https://benchbox\.dev/(docs(?:/[^\s<>\"'`\[\]()#?\\|]*)?)")
+_URL_TRAILING_PUNCTUATION = ".,;:!*_"
 _OUTPUT_PATH_ALLOWED = frozenset({("benchbox/core/tpcds_obt/lineage.py", "docs/benchmarks/tpc-ds-obt-lineage.md")})
 _LINK_SURFACES = (
     "README.md",
@@ -120,16 +121,81 @@ def test_link_surfaces_do_not_cite_site_owned_pages_by_repo_path() -> None:
     assert hits == [], f"cite the published https://benchbox.dev/docs/...html URL instead of a repo path: {hits}"
 
 
+def _unmapped_doc_urls(text: str, site_owned: frozenset[str]) -> list[str]:
+    unmapped: list[str] = []
+    for match in _DOC_URL_RE.finditer(text):
+        target = match.group(1).rstrip(_URL_TRAILING_PUNCTUATION)
+        if target in {"docs", "docs/"}:
+            continue
+        if target.endswith("/"):
+            mapped = f"{target}index.md" in site_owned or f"{target}README.md" in site_owned
+        elif target.endswith(".html"):
+            stem = target[: -len(".html")]
+            mapped = f"{stem}.md" in site_owned or f"{stem}/README.md" in site_owned
+        else:
+            mapped = False
+        if not mapped:
+            unmapped.append(f"https://benchbox.dev/{target}")
+    return unmapped
+
+
 def test_link_surfaces_doc_urls_map_to_site_owned_pages() -> None:
     site_owned = _site_owned_pages()
     unmapped: list[str] = []
     for path in _link_surface_files():
         text = path.read_text(encoding="utf-8", errors="replace")
-        for match in _DOC_URL_RE.finditer(text):
-            source = f"{match.group(1)}.md"
-            if source not in site_owned and f"{match.group(1)}/README.md" not in site_owned:
-                unmapped.append(f"{path.relative_to(REPO_ROOT)}: {match.group(0)}")
+        unmapped.extend(f"{path.relative_to(REPO_ROOT)}: {url}" for url in _unmapped_doc_urls(text, site_owned))
     assert unmapped == [], f"benchbox.dev doc URLs without a site-owned source page: {unmapped}"
+
+
+_URL_SITE_OWNED = frozenset({"docs/usage/getting-started.md", "docs/usage/index.md"})
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "see https://benchbox.dev/docs/usage/getting-started.html",
+        "see https://benchbox.dev/docs/usage/getting-started.html.",
+        "see https://benchbox.dev/docs/usage/getting-started.html, then",
+        "see https://benchbox.dev/docs/usage/getting-started.html; then",
+        "see https://benchbox.dev/docs/usage/getting-started.html: then",
+        "(see https://benchbox.dev/docs/usage/getting-started.html)",
+        "(see https://benchbox.dev/docs/usage/getting-started.html).",
+        "[guide](https://benchbox.dev/docs/usage/getting-started.html)",
+        "<https://benchbox.dev/docs/usage/getting-started.html>",
+        "`https://benchbox.dev/docs/usage/getting-started.html`",
+        "https://benchbox.dev/docs/usage/getting-started.html#installing.",
+        "https://benchbox.dev/docs/usage/getting-started.html?x=1",
+        '"https://benchbox.dev/docs/usage/getting-started.html".',
+        "**https://benchbox.dev/docs/usage/getting-started.html**",
+        "https://benchbox.dev/docs/usage/",
+        "https://benchbox.dev/docs/",
+    ],
+)
+def test_doc_url_extraction_accepts_mapped_urls_in_any_punctuation(text: str) -> None:
+    assert _unmapped_doc_urls(text, _URL_SITE_OWNED) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "see https://benchbox.dev/docs/missing/page.html",
+        "see https://benchbox.dev/docs/missing/page.html.",
+        "see https://benchbox.dev/docs/missing/page.html,",
+        "see https://benchbox.dev/docs/missing/page.html;",
+        "see https://benchbox.dev/docs/missing/page.html:",
+        "(see https://benchbox.dev/docs/missing/page.html)",
+        "(see https://benchbox.dev/docs/missing/page.html).",
+        "[guide](https://benchbox.dev/docs/missing/page.html)",
+        "<https://benchbox.dev/docs/missing/page.html>",
+        "https://benchbox.dev/docs/missing/page.html#frag.",
+        "https://benchbox.dev/docs/usage/getting-started.md",
+        "https://benchbox.dev/docs/usage/getting-started",
+        "https://benchbox.dev/docs/missing/",
+    ],
+)
+def test_doc_url_extraction_flags_unmapped_urls_in_any_punctuation(text: str) -> None:
+    assert len(_unmapped_doc_urls(text, _URL_SITE_OWNED)) == 1
 
 
 @pytest.mark.parametrize(

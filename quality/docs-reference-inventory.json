@@ -3520,21 +3520,26 @@
    "disposition": "lock-test",
    "kinds": {
     "file": 3,
-    "pattern": 2,
-    "unresolved": 2
+    "pattern": 1,
+    "root": 1,
+    "unresolved": 3
    },
-   "occurrences": 25,
+   "occurrences": 28,
    "path": "tests/unit/cli/test_shipped_docs_urls.py",
    "rule": "lock-tests-core",
-   "target_count": 7,
+   "target_count": 8,
    "targets": [
     {
-     "kind": "pattern",
-     "target": "docs/[A-Za-z0-9_./-]*"
+     "kind": "root",
+     "target": "docs/"
     },
     {
      "kind": "file",
      "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/docs/"
     },
     {
      "kind": "file",
@@ -5241,13 +5246,13 @@
    "built-url": 29043,
    "dir": 173,
    "extra": 71,
-   "file": 1560,
+   "file": 1562,
    "generated": 15,
-   "pattern": 288,
-   "root": 211,
-   "unresolved": 1995
+   "pattern": 287,
+   "root": 212,
+   "unresolved": 1996
   },
-  "references": 33356,
+  "references": 33359,
   "unclassified": 0
  }
 }
