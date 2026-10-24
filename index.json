@@ -23968,12 +23968,17 @@
       "title": "Move the flightdata ROUND handling and decide the tpcds_obt converter's place in the fork-only boundary"
     },
     "sqlglot-fork-leftover-runner-overrides": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-25T05:17:18Z",
+        "generation": "176c9cab2d4e412590efbddba488a4fe",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
+      },
       "needs": [
         "sqlglot-fork-f10-clickhouse-starrocks-tpcds-rewrites"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Decide and move the TPC-DS runner overrides and TPC-DI value-changing rewrites left in BenchBox after F10"
     },
     "sqlglot-fork-refresh-v30-24-0": {
