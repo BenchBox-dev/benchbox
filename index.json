@@ -16013,17 +16013,12 @@
       "title": "oracle map renders a staged gate's scale from the shared default and passes unknown provenance labels through"
     },
     "oracle-marker-overflow-crash-20261023": {
-      "claim": {
-        "expires_at": "2026-10-25T18:45:59Z",
-        "generation": "a12cdeeaad31486bab0fecdc50b5dde2",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [
         "oracle-patch-hash-splitlines-control-chars-20261023"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Make the protocol marker fail soft when valid findings exceed its size limit"
     },
     "oracle-marker-patch-map-file-limit-20261009": {
