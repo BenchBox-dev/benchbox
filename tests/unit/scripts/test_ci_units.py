@@ -7,11 +7,15 @@ from pathlib import Path
 
 import pytest
 from ci_units import UNITS, classify_units, load_unit_rules, write_github_output
+from path_filter_decision import classify_paths, load_rules
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RULES_PATH = REPO_ROOT / ".github" / "ci-units.yml"
+FILTER_RULES_PATH = REPO_ROOT / ".github" / "path-filters.yml"
+READERS_PATH = REPO_ROOT / "_project" / "inert-doc-readers.json"
+SAFE_PROJECT_FOLDERS = ("notes", "blind-spots", "handoffs", "research", "planning", "decisions")
 
 
 @pytest.fixture(scope="module")
@@ -39,8 +43,8 @@ def needed(paths: list[str], rules: dict[str, list[str]]) -> set[str]:
         (["scripts/check_windows_antipatterns.py"], {"tooling"}),
         (["scripts/site_inputs.py"], {"docs", "tooling"}),
         (["Makefile"], {"tooling"}),
-        (["AGENTS.md"], {"tooling"}),
-        (["_project/decisions/foo.md"], {"tooling"}),
+        (["AGENTS.md"], {"docs", "tooling"}),
+        (["_project/decisions/foo.md"], {"docs"}),
     ],
 )
 def test_single_unit_ownership(paths: list[str], expected: set[str], rules: dict[str, list[str]]) -> None:
@@ -154,3 +158,92 @@ def test_cli_diff_failure_runs_every_unit(tmp_path: Path) -> None:
     )
     lines = dict(line.split("=", 1) for line in out.read_text(encoding="utf-8").splitlines())
     assert all(lines[f"unit-{unit}"] == "true" for unit in UNITS)
+
+
+DOCS_ONLY_MARKDOWN = [
+    "DISCLAIMER.md",
+    "docs/internal/comment-policy.md",
+    "docs/guides/intro.md",
+    "_project/todo-db-export/index.md",
+    *(f"_project/{folder}/unread.md" for folder in SAFE_PROJECT_FOLDERS),
+]
+
+TEST_READ_MARKDOWN = [
+    "README.md",
+    "CHANGELOG.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs/agent/review-protocol.md",
+    "docs/agent/identity-instruction-boundary.md",
+    "docs/agent/attribution-surfaces.md",
+    "docs/internal/release-guide.md",
+    "docs/publish-exclusions.txt",
+    "_project/decisions/single-repo-migration.md",
+    "_project/notes/phase-2-requests.md",
+]
+
+
+@pytest.mark.parametrize("path", DOCS_ONLY_MARKDOWN)
+def test_unread_markdown_routes_to_the_docs_unit_only(path: str, rules: dict[str, list[str]]) -> None:
+    decision = classify_units([path], rules)
+    assert needed([path], rules) == {"docs"}
+    assert decision["code_tests_needed"] is False
+    assert decision["unowned_paths"] == []
+
+
+@pytest.mark.parametrize("path", TEST_READ_MARKDOWN)
+def test_markdown_read_by_tests_still_needs_code_tests(path: str, rules: dict[str, list[str]]) -> None:
+    assert classify_units([path], rules)["code_tests_needed"] is True
+
+
+def test_markdown_only_change_set_skips_code_tests(rules: dict[str, list[str]]) -> None:
+    decision = classify_units(["DISCLAIMER.md", "_project/todo-db-export/index.md", "docs/guides/intro.md"], rules)
+    assert decision["code_tests_needed"] is False
+    assert decision["run_all"] is False
+
+
+def test_markdown_mixed_with_code_still_needs_code_tests(rules: dict[str, list[str]]) -> None:
+    assert classify_units(["DISCLAIMER.md", "scripts/x.py"], rules)["code_tests_needed"] is True
+
+
+def _tracked_documents() -> list[str]:
+    if not FILTER_RULES_PATH.is_file():
+        pytest.skip("path filters are absent from this tree")
+    proc = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "ls-files", "-z"],
+        text=True,
+        capture_output=True,
+        timeout=120,
+    )
+    if proc.returncode != 0:
+        pytest.skip("not a git checkout")
+    return sorted(
+        path
+        for path in proc.stdout.split("\0")
+        if path.endswith((".md", ".txt")) and not path.startswith(("results-data/", "tests/", "benchbox/"))
+    )
+
+
+def test_every_test_read_document_needs_code_tests(rules: dict[str, list[str]]) -> None:
+    if not READERS_PATH.is_file():
+        pytest.skip("the reader index is absent from this tree")
+    readers = json.loads(READERS_PATH.read_text(encoding="utf-8"))
+    assert readers
+    unrouted = sorted(
+        path
+        for path in readers
+        if not path.startswith("results-data/") and not classify_units([path], rules)["code_tests_needed"]
+    )
+    assert not unrouted, f"documents read by tests but routed away from code tests: {unrouted}"
+
+
+def test_ci_units_and_path_filters_agree_on_which_documents_are_code(rules: dict[str, list[str]]) -> None:
+    filter_rules = load_rules(FILTER_RULES_PATH)
+    disagreements = []
+    for path in _tracked_documents():
+        by_units = classify_units([path], rules)["code_tests_needed"]
+        decision = classify_paths([path], filter_rules)
+        by_filters = bool(decision["needs_code_ci"] or decision["skill_integrity_needed"])
+        if by_units != by_filters:
+            disagreements.append((path, by_units, by_filters))
+    assert not disagreements, f"(path, ci-units code, path-filters code): {disagreements[:10]}"
