@@ -72,10 +72,12 @@ supersedes. Without that record, the policy stands.
 
 After any owner action:
 
-- The fix PR for the broken gate lands through the normal path, and the
-  tracker entry links it. The action is not finished until that PR merges.
-- Check that the ruleset still has no bypass actors and enforcement is active.
-  This command only reads:
+- Any ruleset change the owner makes to unblock merges is reverted by the
+  owner. An agent never reverts it, and never treats it as permission to merge.
+- The fix PR for the broken gate merges through `make pr-arm`, and only after
+  the ruleset shows no bypass actors and enforcement active again. The tracker
+  entry links the PR, and the action is not finished until it merges.
+- Check the ruleset before arming or merging anything. This command only reads:
 
   ```bash
   gh api repos/BenchBox-dev/BenchBox/rulesets/15611785 \
@@ -84,7 +86,8 @@ After any owner action:
   ```
 
   The first must show `enforcement: active` and an empty `bypass_actors` list,
-  and the drift check must exit 0. If either differs, report it to the owner;
-  do not change the ruleset.
+  and the drift check must exit 0. If either differs, the agent stops, reports
+  the command output to the owner, and does not merge or arm anything until the
+  owner confirms the ruleset is restored. It does not change the ruleset.
 - The owner decides whether a follow-up issue prevents a repeat, for example a
   gate that rejects stale ledger entries when they are stranded.
