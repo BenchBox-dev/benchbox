@@ -196,6 +196,7 @@ def _dispute_step(
     manual: bool,
     event_name: str,
     base_changed_at: datetime | None = None,
+    base_change_unreadable: bool = False,
 ) -> tuple[list[dict[str, Any]] | None, protocol.Round]:
     if step.kind not in (protocol.SKIP, protocol.CARRY):
         return None, step
@@ -216,16 +217,17 @@ def _dispute_step(
             strike_count,
             force=True,
             base_changed_at=base_changed_at,
+            base_change_unreadable=base_change_unreadable,
         )
     return threads, step
 
 
-def _base_changed_at(repo: str, pr: int) -> datetime | None:
+def _base_changed_at(repo: str, pr: int) -> tuple[datetime | None, bool]:
     try:
-        return github.base_changed_at(repo, pr)
+        return github.base_changed_at(repo, pr), False
     except (github.GitHubError, KeyError, ValueError) as exc:
         _summary(f"oracle-verdict: the base-change history could not be read: {exc}")
-        return None
+        return None, True
 
 
 def command_plan(args: argparse.Namespace) -> int:
@@ -318,9 +320,16 @@ def command_plan(args: argparse.Namespace) -> int:
     full_diff = github.get_diff(repo, pr)
     complete = full_diff is not None and len(files) >= int(pull.get("changed_files") or 0)
     strike_count = max(protocol.strikes(found.records), previous.strikes if previous else 0)
-    base_changed_at = _base_changed_at(repo, pr)
+    base_changed_at, base_change_unreadable = _base_changed_at(repo, pr)
     step = _protocol_round(
-        plan, policy, found, scoped, full_diff if complete else None, strike_count, base_changed_at=base_changed_at
+        plan,
+        policy,
+        found,
+        scoped,
+        full_diff if complete else None,
+        strike_count,
+        base_changed_at=base_changed_at,
+        base_change_unreadable=base_change_unreadable,
     )
     threads, step = _dispute_step(
         plan,
@@ -334,6 +343,7 @@ def command_plan(args: argparse.Namespace) -> int:
         manual,
         event_name,
         base_changed_at,
+        base_change_unreadable,
     )
     if step.kind == protocol.SKIP:
         plan["decision_reason"] = step.reason
@@ -364,6 +374,7 @@ def _protocol_round(
     strike_count: int,
     force: bool = False,
     base_changed_at: datetime | None = None,
+    base_change_unreadable: bool = False,
 ) -> protocol.Round:
     paths = sorted(item.path for item in scoped)
     scope = frozenset(paths)
@@ -388,6 +399,7 @@ def _protocol_round(
         max_do_not_ship=policy.protocol.max_do_not_ship,
         force=force,
         base_changed_at=base_changed_at,
+        base_change_unreadable=base_change_unreadable,
     )
     latest = step.previous or {}
     follow_up = step.kind == protocol.FOLLOW_UP

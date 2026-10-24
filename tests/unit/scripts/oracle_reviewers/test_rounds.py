@@ -895,3 +895,21 @@ def test_a_stale_decision_is_not_carried_when_the_diff_was_unread() -> None:
     )
     step = _plan_same_head(history, digest=unread, base_changed_at=datetime(2026, 10, 23, 11, 0, tzinfo=UTC))
     assert step.kind in (protocol.FOLLOW_UP, protocol.FIRST)
+
+
+def test_an_unreadable_base_change_history_never_skips_a_decided_head() -> None:
+    history = protocol.history([_review_at(_decided(HEAD), "2026-10-23T10:00:00Z")], "benchbox-oracle")
+    assert _plan_same_head(history).kind == protocol.SKIP
+    assert _plan_same_head(history, base_change_unreadable=True).kind == protocol.CARRY
+    assert _plan_same_head(history, digest="e" * 32, base_change_unreadable=True).kind == protocol.FOLLOW_UP
+    unread = f"{protocol.UNREAD_DIGEST}{HEAD}"
+    kept = protocol.history(
+        [_review_at({**_decided(HEAD), "patch_digest": unread}, "2026-10-23T10:00:00Z")], "benchbox-oracle"
+    )
+    assert _plan_same_head(kept, digest=unread, base_change_unreadable=True).kind != protocol.SKIP
+
+
+def test_an_unreadable_base_change_history_does_not_carry_a_refusal() -> None:
+    refused = {**_decided(HEAD, protocol.REFUSED), "kind": protocol.REFUSAL}
+    history = protocol.history([_review_at(refused, "2026-10-23T10:00:00Z")], "benchbox-oracle")
+    assert _plan_same_head(history, base_change_unreadable=True).kind == protocol.SKIP
