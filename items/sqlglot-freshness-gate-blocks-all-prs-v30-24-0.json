@@ -1,10 +1,10 @@
 {
   "acceptance": [
-    "Fork refreshed and wheel adopted, or a reviewed waiver for v30.24.0 recorded by the owner",
-    "ci-paths passes again on a new PR",
-    "Decide whether the freshness gate should block every PR or run on a schedule or only at release, so an upstream release cannot stop all merging"
+    "Fork refreshed and wheel adopted, or a reviewed waiver recorded: met (wheel 30.24.0.1 adopted in PR 3189)",
+    "ci-paths passes again on a new PR: met (develop-based PRs pass; see context)",
+    "Decide whether the freshness gate should block every PR or run on a schedule or only at release: met (PR 3338: release time and release-identity or gate-file changes only)"
   ],
-  "context": "Found while verifying PR #3184. Not caused by it. Update 2026-10-20: develop adopted benchbox-sqlglot 30.24.0.1 in #3189 (15:30 EDT), and ci.yml runs on develop-based PRs are passing again (19:38Z success), so the immediate block is cleared without a waiver. Still open: the design question in the third acceptance point, since the next upstream release will block every PR the same way. Priority lowered from critical because the block is cleared.",
+  "context": "Found while verifying PR #3184. Not caused by it. 2026-10-20: develop adopted benchbox-sqlglot 30.24.0.1 in #3189 and ci.yml runs on develop-based PRs passed again, so the immediate block cleared without a waiver.\n\n2026-10-24: PR 3338 merged and settles the design question. The failing run on #3184 (39465643741) was not a release PR: it touched .github/workflows/ci.yml, which select_candidate treats as a release-enforcement file, so it selected make release-check, whose network freshness check failed once upstream released. So the block hit PRs that edit the Makefile, ci.yml or the release check scripts, or that change the release identity, not literally every PR. Decision (the item's third point): the freshness check is skipped when only enforcement files change; it still runs unconditionally in the release workflows (release-readiness, release-v2), and in CI when the release identity changed or when a PR edits scripts/check_sqlglot_upstream_freshness.py or scripts/sqlglot_refresh_waiver.json. The gate and the waiver rules are unchanged. release_flow.py select reports upstream-freshness-required; release_flow.py check takes --skip-upstream-freshness; make release-check forwards SKIP_UPSTREAM_FRESHNESS=1. Tests: tests/unit/scripts/test_release_flow.py plus the freshness test file, 90 passed; tests/unit/scripts -m medium 3836 passed; the changed ci.yml step is exercised by a test with a stub make, not on a real upstream release.",
   "description": "From 2026-10-20 about 17:20Z, ci-paths 'Check release content' fails on every PR with: 'sqlglot upstream freshness FAILED: bundled SQLGlot is based on upstream v30.23.0 but v30.24.0 is released; refresh the fork (see downstream/MAINTAINING.md in https://github.com/BenchBox-dev/benchbox-sqlglot) and adopt the new wheel, or record a reviewed waiver for v30.24.0 in scripts/sqlglot_refresh_waiver.json'. Seen on PR #3184 (run 39465643741): ci-paths failed, so core, docs, explorer, results-data and tooling all fail. Runs at 16:44Z and 17:03Z passed, so the gate began failing when upstream released. scripts/sqlglot_refresh_waiver.json currently has no waivers. The gate came in with #3148 and runs inside release-check on every PR, so any upstream SQLGlot release blocks all merging until a human refreshes the fork or waives it. No PR or issue addressing it was found when checked.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3184"
@@ -33,6 +33,14 @@
       "generation": "b9aa2f85eb704cbca5543d4046ad7881",
       "op": "take",
       "op_id": "ad0a19621cc04d6fa3e8db571c3c61c1",
+      "session_id": "8c28c3ba26704290a1e499b1b197791d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e465f897e6bf2b6184696cd7",
+      "at": "2026-10-24T01:04:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "578ccfdbd4a84669be0ff9ca6fc06a25",
       "session_id": "8c28c3ba26704290a1e499b1b197791d"
     }
   ]
