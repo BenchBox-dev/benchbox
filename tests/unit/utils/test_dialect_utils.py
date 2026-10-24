@@ -855,15 +855,60 @@ class TestPostgresIdentifierQuoting:
 
 
 class TestMultiStatementInput:
-    def test_only_the_first_statement_is_translated(self):
-        result = translate_sql_query("SELECT 1 AS a; SELECT 2 AS b", "duckdb", source_dialect="netezza", identify=False)
-        assert result == "SELECT 1 AS a"
+    def test_every_statement_is_translated(self):
+        result = translate_sql_query(
+            "SELECT a FROM t1 LIMIT 1; SELECT b FROM t2 LIMIT 2;", "mysql", "postgres", identify=False
+        )
+        assert result == "SELECT a FROM t1 LIMIT 1;\nSELECT b FROM t2 LIMIT 2"
+        assert split_sql_statements(result, "mysql") == ["SELECT a FROM t1 LIMIT 1", "SELECT b FROM t2 LIMIT 2"]
 
-    def test_dsqgen_style_two_part_query_keeps_the_first_part(self):
+    def test_dsqgen_style_two_part_query_keeps_both_parts(self):
         result = translate_sql_query(
             "SELECT * FROM t WHERE a = 1; SELECT * FROM t WHERE a = 2", "postgres", source_dialect="netezza"
         )
-        assert "a = 2" not in result
+        assert split_sql_statements(result, "postgres") == [
+            "SELECT * FROM t WHERE a = 1",
+            "SELECT * FROM t WHERE a = 2",
+        ]
+
+    def test_rewrites_apply_to_every_statement(self):
+        result = translate_sql_query(
+            "SELECT a / b FROM t1; SELECT c / d FROM t2",
+            "databricks",
+            "databricks",
+            identify=False,
+            rewrites=[("safe_division", {})],
+        )
+        assert split_sql_statements(result, "databricks") == [
+            "SELECT TRY_DIVIDE(a, b) FROM t1",
+            "SELECT TRY_DIVIDE(c, d) FROM t2",
+        ]
+
+    def test_single_statement_output_is_unchanged(self):
+        assert translate_sql_query("SELECT 1 AS a;", "duckdb", "netezza", identify=False) == "SELECT 1 AS a"
+
+    def test_empty_input_translates_to_empty_string(self):
+        assert translate_sql_query("", "duckdb", "postgres") == ""
+        assert translate_sql_query(";", "duckdb", "postgres") == ""
+
+    def test_one_unparseable_statement_falls_back_to_the_whole_input(self):
+        query = "SELECT 1; SELEC FROM FROM ((("
+        with sql_translation_context(strict=False) as outcomes:
+            assert translate_sql_query(query, "duckdb", "postgres") == query
+        assert outcomes[0].status == "fallback"
+
+    def test_unparseable_statement_raises_in_strict_mode(self):
+        with pytest.raises(SQLTranslationError):
+            translate_sql_query("SELECT 1; SELEC FROM FROM (((", "duckdb", "postgres", strict=True)
+
+    def test_tpcds_two_part_queries_keep_both_parts(self):
+        from types import SimpleNamespace
+
+        from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
+
+        query = "with a as (select 1 x) select x from a; with b as (select 2 y) select y from b"
+        translated = TPCDSBenchmark.translate_query_text(SimpleNamespace(), query, "netezza", "duckdb")
+        assert len(split_sql_statements(translated, "duckdb")) == 2
 
 
 class TestTpcdsQuestDbDateArithmetic:
