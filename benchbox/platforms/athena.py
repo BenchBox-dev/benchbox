@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.platform_manifest import get_platform_query_dialect
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -418,7 +419,7 @@ class AthenaAdapter(PlatformAdapter):
         )
 
     def get_target_dialect(self) -> str:
-        return "athena"
+        return get_platform_query_dialect("athena")
 
     def check_server_database_exists(self, **connection_config) -> bool:
         try:

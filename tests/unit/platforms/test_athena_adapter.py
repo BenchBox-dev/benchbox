@@ -242,7 +242,7 @@ class TestAthenaAdapter:
         from benchbox.platforms.athena import AthenaAdapter
 
         adapter = AthenaAdapter(s3_bucket="test-bucket")
-        assert adapter.get_target_dialect() == "athena"
+        assert adapter.get_target_dialect() == "trino"
 
     def test_platform_info(self, mock_boto3, mock_pyathena, mock_aws_credentials):
 

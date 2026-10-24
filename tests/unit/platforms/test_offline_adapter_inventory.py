@@ -39,10 +39,10 @@ ADAPTER_DIALECTS: dict[str, str] = {
     "firebolt": "postgres",
     "databend": "snowflake",
     "doris": "doris",
-    "singlestore": "singlestore",
+    "singlestore": "mysql",
     "influxdb": "influxdb",
     "fabric_dw": "tsql",
-    "athena": "athena",
+    "athena": "trino",
     "glue": "spark",
     "emr-serverless": "spark",
     "athena-spark": "spark",
@@ -146,15 +146,10 @@ EXPECTED_SQL: dict[str, tuple[str, str]] = {
         "SELECT `name`, SUM(`amt`) AS `s` FROM `t` WHERE `d` >= CAST('2020-01-01' AS DATE) GROUP BY `name` "
         "ORDER BY CASE WHEN SUM(`amt`) IS NULL THEN 1 ELSE 0 END DESC, SUM(`amt`) DESC LIMIT 5;",
     ),
-    "athena": (
+    "mysql": (
         "CREATE TABLE `t` (`id` INT NOT NULL, `name` VARCHAR(20), `amt` DECIMAL(10, 2), `d` DATE, PRIMARY KEY (`id`));",
-        'SELECT "name", SUM("amt") AS "s" FROM "t" WHERE "d" >= CAST(\'2020-01-01\' AS DATE) '
-        'GROUP BY "name" ORDER BY "s" DESC NULLS FIRST LIMIT 5;',
-    ),
-    "singlestore": (
-        "CREATE TABLE `t` (`id` INT NOT NULL, `name` VARCHAR(20), `amt` DECIMAL(10, 2), `d` DATE, PRIMARY KEY (`id`));",
-        "SELECT `name`, SUM(`amt`) AS `s` FROM `t` WHERE `d` >= '2020-01-01' :> DATE GROUP BY `name` "
-        "ORDER BY `s` DESC NULLS FIRST LIMIT 5;",
+        "SELECT `name`, SUM(`amt`) AS `s` FROM `t` WHERE `d` >= CAST('2020-01-01' AS DATE) GROUP BY `name` "
+        "ORDER BY CASE WHEN SUM(`amt`) IS NULL THEN 1 ELSE 0 END DESC, SUM(`amt`) DESC LIMIT 5;",
     ),
     "questdb": (
         "CREATE TABLE t (id INT NOT NULL, name VARCHAR(20), amt DECIMAL(10, 2), d DATE, PRIMARY KEY (id));",
