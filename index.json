@@ -23141,12 +23141,7 @@
       "title": "External review of soundness-gap commit 9c005a17a (issue 2807) and attestation if clean"
     },
     "soundness-gap-2808-external-rereview-20261023": {
-      "claim": {
-        "expires_at": "2026-10-25T21:11:38Z",
-        "generation": "3aed4fc188fb40a8af292a29184b8eaf",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [
         "oracle-patch-hash-splitlines-control-chars-20261023",
         "oracle-patch-hash-first-hunk-relocation-20261023",
@@ -23155,7 +23150,7 @@
         "oracle-retarget-return-waits-forever-20261023"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Re-run the external review of gap issue 2808 on the fixed state and attest if clean"
     },
     "soundness-gap-2808-external-rereview-round3-20261024": {
