@@ -1,8 +1,10 @@
 {
   "acceptance": [
     "PR states the 20-PR window, zero misses, would-select rate, escalation rate and estimated runner-minutes saved",
-    "Selection live: a covered Python-only PR runs only selected tests (observed)"
+    "Selection live: a covered Python-only PR runs only selected tests (observed)",
+    "After going live, median PR CI runner-minutes drop at least 40% over 14 days while the Trunk push failure rate stays at or below the triaged baseline and at most one revert a week is attributed to a selection miss"
   ],
+  "context": "AMENDED 2026-10-24 from an independent review of the PR-checks versus Trunk split: this is the largest CI saving available. SELECTION_SHADOW forces escalate=True (scripts/coverage_test_selection.py:814-829), so every PR runs the full medium tier and correctness gate (31 of 40 sampled CI runs), and the medium tier runs up to three times per merge (PR, Trunk, Trunk coverage). Estimated saving up to about 50 runner-hours a day on the PR side. Now also waits on trunk-red-run-triage-20261024, because selection misses surface as Trunk failures and the current 12.7% red rate would hide them. Priority raised to high.",
   "description": "Set SELECTION_SHADOW=False in scripts/coverage_test_selection.py only when the heavy-tier routing fix, the inert-path manifest and map v2 are merged and at least 20 code-routed PRs show zero shadow misses. Record the measured would-select rate, escalation rate and runner-minutes saved in the PR; if savings are negligible, propose retiring selection instead.",
   "sessions": [
     {
@@ -12,6 +14,14 @@
       "op": "create",
       "op_id": "9404e4431a804f1c8832b4a406877ae3",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T17:35:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "06e4f26ee1b54e6394df8e984eb71273",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
