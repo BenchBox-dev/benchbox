@@ -51,7 +51,6 @@ def test_parse_expected_rulesets_from_admin_runbook() -> None:
         "results-data",
         "docs",
         "tooling",
-        "oracle-review",
         "hold",
         "oracle-gate",
     )
@@ -326,10 +325,13 @@ def test_merge_queue_present_is_blocking() -> None:
 def _verified_develop_ruleset() -> dict:
     live = _live_ruleset(
         "refs/heads/develop",
-        ["core", "explorer", "results-data", "docs", "tooling", "oracle-review", "hold", "oracle-gate"],
+        ["core", "explorer", "results-data", "docs", "tooling", "hold", "oracle-gate"],
         strict=False,
     )
     live["name"] = "develop-squash-only"
+    for check in live["rules"][0]["parameters"]["required_status_checks"]:
+        if check["context"] == "oracle-gate":
+            check["integration_id"] = 5201041
     live["rules"].append(
         {
             "type": "pull_request",

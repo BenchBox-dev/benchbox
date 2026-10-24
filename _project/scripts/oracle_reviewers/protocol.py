@@ -75,6 +75,7 @@ class Judgement:
     fixed: tuple[str, ...] = ()
     not_counted: tuple[Finding, ...] = ()
     withdrawn: tuple[str, ...] = ()
+    merged: int = 0
 
     @property
     def label(self) -> str:
@@ -460,7 +461,9 @@ def judge(
     fixed = tuple(item["id"] for item in prior if statuses.get(item["id"], NOT_FIXED) == FIXED)
     withdrawn = tuple(item["id"] for item in prior if statuses.get(item["id"]) == WITHDRAWN)
     scope = None if changed is None else frozenset(changed)
-    counted = tuple(item for item in verdict.defects if scope is None or item.file in scope)
+    in_scope = tuple(item for item in verdict.defects if scope is None or item.file in scope)
+    counted = tuple(dict.fromkeys(in_scope))
+    merged = len(in_scope) - len(counted)
     outside = tuple(item for item in verdict.defects if item not in counted)[:NOT_COUNTED_LIMIT]
     uncounted = verdict.listed - len(verdict.defects)
     total = len(carried) + len(counted) + uncounted
@@ -471,7 +474,7 @@ def judge(
         summary = _clip(verdict.summary, DO_NOT_SHIP_SUMMARY - len(note)) + note
         return Judgement(DO_NOT_SHIP, (), summary, fixed=fixed, withdrawn=withdrawn)
     if carried or counted:
-        return Judgement(SHIP_WITH_FIXES, counted, verdict.summary, carried, fixed, outside, withdrawn)
+        return Judgement(SHIP_WITH_FIXES, counted, verdict.summary, carried, fixed, outside, withdrawn, merged)
     return Judgement(SHIP, (), verdict.summary, (), fixed, outside, withdrawn)
 
 
@@ -499,6 +502,13 @@ def contradiction(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
     if verdict.decision == SHIP_WITH_FIXES and not verdict.defects and verdict.listed == 0:
         return "SHIP_WITH_FIXES names no current or open prior defects"
     return None
+
+
+def unique_defects(entries: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    seen: dict[str, dict[str, Any]] = {}
+    for entry in entries:
+        seen.setdefault(entry["id"], dict(entry))
+    return list(seen.values())
 
 
 def defect_entry(defect_id: str, finding: Finding) -> dict[str, Any]:

@@ -162,8 +162,8 @@ def decide(
     )
     if open_threads:
         return WAITING, (
-            f"oracle-review: {open_threads} unresolved oracle review thread(s) on {head_sha}; "
-            "resolve them, then run `make oracle-review-recover PR=<number>` (resolving a thread starts no run)"
+            f"oracle-review: {open_threads} unresolved oracle review thread(s); resolve them, then run "
+            "`gh workflow run oracle-gate.yml --ref develop -f pr=<number>`"
         )
 
     if head_reviews and verdict == "success":

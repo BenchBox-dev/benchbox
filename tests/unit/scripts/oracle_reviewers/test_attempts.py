@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import attempts, cli, report, retry, selection
+from _project.scripts.oracle_reviewers import attempts, cli, protocol, render, report, retry, selection
 from _project.scripts.oracle_reviewers.absence import Absence
 from _project.scripts.oracle_reviewers.classify import Classification
 from _project.scripts.oracle_reviewers.dedup import fingerprint, marker
@@ -798,3 +798,14 @@ def test_a_published_absence_detail_is_redacted_and_bounded(policy: Policy, tmp_
     assert secret not in final.body and "[redacted]" in line
     assert "\n" not in line and line.endswith("\u2026")
     assert len(line.partition("absent (invalid): ")[2]) <= 160
+
+
+def test_identical_findings_are_listed_once_and_stored_with_unique_ids(policy: Policy, tmp_path: Path) -> None:
+    final = _review_final(policy, tmp_path, [_finding("High", 2), _finding("High", 2), _finding("Low", 1)])
+    record = protocol.decode_marker(final.body)
+    assert record is not None
+    ids = [item["id"] for item in record["open_defects"]]
+    assert ids == ["D1", "D2"] and record["next_id"] == 3
+    assert render.response_template(ids)
+    assert "1 identical finding(s) were reported more than once and are listed once." in final.body
+    assert final.review is not None and len(final.review["comments"]) == 2

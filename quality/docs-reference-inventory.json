@@ -172,13 +172,14 @@
    "disposition": "wiring-updated",
    "kinds": {
     "extra": 6,
+    "file": 27,
     "pattern": 9,
     "unresolved": 1
    },
-   "occurrences": 16,
+   "occurrences": 43,
    "path": ".github/ci-units.yml",
    "rule": "ci-path-classification",
-   "target_count": 16,
+   "target_count": 43,
    "targets": [
     {
      "kind": "extra",
@@ -209,20 +210,128 @@
      "target": "docs/**.py"
     },
     {
+     "kind": "file",
+     "target": "docs/CLI_REFERENCE.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/README.md"
+    },
+    {
      "kind": "pattern",
      "target": "docs/agent/**"
+    },
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/sf1-calibrated-sizes.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/support-status.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/write-primitives-sketch-functions.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/compat/capability-matrix.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/compat/skip-reference.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/development/adding-new-platforms.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/development/adr/adr-one-engine-scoped-surfaces.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/development/adr/adr-public-result-id-permanence.md"
     },
     {
      "kind": "unresolved",
      "target": "docs/development/dependency-audit-raw.md"
     },
     {
+     "kind": "file",
+     "target": "docs/development/index.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/development/tpcds-dataframe-parity.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/guides/tpc/tpc-di-deployment-guide.md"
+    },
+    {
      "kind": "pattern",
      "target": "docs/internal/agent-instruction*.md"
     },
     {
+     "kind": "file",
+     "target": "docs/linkcheck_ignore.txt"
+    },
+    {
      "kind": "pattern",
      "target": "docs/operations/agent-instruction*.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/operations/ci-local-parity.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/platforms/comparison-matrix.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/platforms/databend.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/platforms/singlestore.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/platforms/support-status.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/publish-allowlist.txt"
+    },
+    {
+     "kind": "file",
+     "target": "docs/publish-exclusions.txt"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/hosted-results-contract.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/mcp.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/public-contracts.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/tuning-platform-support.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/usage/getting-started.md"
     },
     {
      "kind": "extra",
@@ -4671,13 +4780,14 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
+    "file": 1,
     "root": 1,
     "unresolved": 4
    },
-   "occurrences": 11,
+   "occurrences": 17,
    "path": "tests/unit/scripts/test_ci_units.py",
    "rule": "ci-path-classification",
-   "target_count": 5,
+   "target_count": 6,
    "targets": [
     {
      "kind": "root",
@@ -4694,6 +4804,10 @@
     {
      "kind": "unresolved",
      "target": "docs/index.rst"
+    },
+    {
+     "kind": "file",
+     "target": "docs/publish-exclusions.txt"
     },
     {
      "kind": "unresolved",
@@ -5608,7 +5722,7 @@
    "targets": [
     {
      "kind": "unresolved",
-     "target": "docs/tooling/oracle-review/hold/oracle-gate"
+     "target": "docs/tooling/hold/oracle-gate"
     }
    ]
   },
@@ -5697,13 +5811,13 @@
    "built-url": 29043,
    "dir": 173,
    "extra": 70,
-   "file": 1600,
+   "file": 1628,
    "generated": 15,
    "pattern": 314,
-   "root": 209,
-   "unresolved": 1990
+   "root": 211,
+   "unresolved": 1993
   },
-  "references": 33414,
+  "references": 33447,
   "unclassified": 0
  }
 }

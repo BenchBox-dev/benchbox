@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 import urllib.error
+from email.message import Message
 from typing import Any
 
 import pytest
@@ -162,6 +164,70 @@ def test_api_errors_retry_then_fail(
     assert len(attempts) == verdict.API_TRIES
     assert len(sleeps) == verdict.API_TRIES - 1
     assert "boom" in capsys.readouterr().err
+
+
+def http_error(code: int) -> urllib.error.HTTPError:
+    return urllib.error.HTTPError("https://api.github.com/x", code, f"status {code}", Message(), io.BytesIO(b""))
+
+
+@pytest.mark.parametrize("code", [400, 401, 403, 404, 422])
+def test_http_client_errors_fail_without_retry(
+    monkeypatch: pytest.MonkeyPatch, sleeps: list[float], capsys: pytest.CaptureFixture[str], code: int
+) -> None:
+    attempts: list[int] = []
+
+    def fetch(*_: Any) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        attempts.append(1)
+        raise http_error(code)
+
+    monkeypatch.setattr(verdict, "_fetch", fetch)
+    assert main(VERDICT_ARGS) == 1
+    assert len(attempts) == 1
+    assert sleeps == []
+    assert f"status {code}" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("code", [500, 502, 503])
+def test_http_server_errors_retry_then_succeed(monkeypatch: pytest.MonkeyPatch, sleeps: list[float], code: int) -> None:
+    attempts: list[int] = []
+
+    def fetch(*_: Any) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        attempts.append(1)
+        if len(attempts) < 2:
+            raise http_error(code)
+        return [run(100)], [check(100, "success")]
+
+    monkeypatch.setattr(verdict, "_fetch", fetch)
+    assert main(VERDICT_ARGS) == 0
+    assert len(attempts) == 2
+    assert sleeps == [verdict.API_RETRY_SECONDS]
+
+
+def test_timeouts_retry_then_succeed(monkeypatch: pytest.MonkeyPatch, sleeps: list[float]) -> None:
+    attempts: list[int] = []
+
+    def fetch(*_: Any) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        attempts.append(1)
+        if len(attempts) < 2:
+            raise TimeoutError("slow")
+        return [run(100)], [check(100, "success")]
+
+    monkeypatch.setattr(verdict, "_fetch", fetch)
+    assert main(VERDICT_ARGS) == 0
+    assert sleeps == [verdict.API_RETRY_SECONDS]
+
+
+def test_refresh_http_client_error_fails_without_retry(monkeypatch: pytest.MonkeyPatch, sleeps: list[float]) -> None:
+    attempts: list[int] = []
+
+    def fetch_runs(*_: Any) -> list[dict[str, Any]]:
+        attempts.append(1)
+        raise http_error(403)
+
+    monkeypatch.setattr(verdict, "_fetch_runs", fetch_runs)
+    assert main(REFRESH_ARGS) == 1
+    assert len(attempts) == 1
+    assert sleeps == []
 
 
 def test_refresh_selects_the_newest_failed_text_edit_run() -> None:

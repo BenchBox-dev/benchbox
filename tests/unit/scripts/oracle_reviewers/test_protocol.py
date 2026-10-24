@@ -125,3 +125,8 @@ def test_judge_keeps_a_cited_withdrawal_on_a_forced_round() -> None:
     )
     judgement = judge(verdict, 10, prior, rejudge_fixed=True)
     assert judgement.decision == "SHIP" and judgement.withdrawn == ("D1",)
+
+
+def test_judge_merges_identical_defects_and_counts_them_once() -> None:
+    judgement = judge(_verdict("SHIP_WITH_FIXES", [_defect(1), _defect(1), _defect(2)]), 10)
+    assert len(judgement.defects) == 2 and judgement.merged == 1

@@ -1,5 +1,5 @@
 <!-- PROVENANCE
-generated: 2026-10-18
+generated: 2026-10-24
 content-revision: sha256:e1dc9ab5d39a3934
 This header is drift-IGNORED by `--check` (see _strip_provenance). content-revision
 is a hash of the generated body (markdown + json), NOT a git SHA: a PR-branch SHA is

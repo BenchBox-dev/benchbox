@@ -8,15 +8,16 @@
 `.github/workflows/oracle-verdict.yml` uses agent CLIs to review every pull
 request except changes confined to inert paths (see Inert-path manifest),
 and posts a non-required `oracle-verdict` status and a review
-through the owner's GitHub App. The required `oracle-review` check reads that
-App's pull request reviews (see Cut-over). The policy lives in
+through the owner's GitHub App. The required `oracle-gate` check reads that
+App's pull request reviews from `develop` code (see Required gate from trusted
+code). The policy lives in
 `.github/oracle-reviewers.yml`. The decision records are
 `_project/decisions/oracle-review-v2-shadow-2026-10-05.md` and, for verdicts,
 evidence and review rounds, `_project/decisions/oracle-review-protocol-2026-10-08.md`.
 
 The soundness manifest explicitly lists `.github/workflows/oracle-verdict.yml`,
 in addition to covering all workflows by directory prefix. A pull request changing
-only this workflow is subject to the same required `oracle-review` gate as other
+only this workflow is subject to the same required `oracle-gate` gate as other
 soundness changes; an absent, pending or failed oracle decision does not pass on
 its own.
 
@@ -597,8 +598,10 @@ policy or the attempt jobs must also:
 
 The cut-over is done: `.github/oracle-reviewers.yml` sets `mode: enforce` and
 `.github/workflows/oracle-review.yml` passes `--signal oracle`, the only
-signal the checker accepts. The required `oracle-review` check requires, from
-the `benchbox-oracle` App's Bot account:
+signal the checker accepts. The checker
+(`_project/scripts/oracle_review_check.py`), whose decision the required
+`oracle-gate` check and the non-required `oracle-review` check both report,
+requires, from the `benchbox-oracle` App's Bot account:
 
 - a review of the head, not pending or dismissed, submitted after any retarget,
   whose latest one opens with `### oracle-verdict: success for` (or, before
@@ -613,8 +616,7 @@ oracle signal needs `findings_delivery: review`, under which every run that
 reaches a result, including a pending one, posts a review, so the latest
 review is the latest result.
 
-Each `oracle-review` run is its own check suite on the head, and a failed or
-cancelled suite keeps the required check red until it is re-run. After the
+Each `oracle-review` run is its own check suite on the head. After the
 `post` job of `oracle-verdict` posts its review, it re-runs the failed
 `pull_request` runs for the head, at the same moment the review starts a
 `pull_request_review` run. The workflow has no concurrency group, because
@@ -622,15 +624,17 @@ under `cancel-in-progress` one of those runs cancelled the other. Instead, a
 run for a pull request event checks, before and after the checker, that the
 head it was triggered for is still the pull request's head; a run for a
 superseded head fails rather than report on a head it was not created for.
+`oracle-review` is not a required check, so a stale failed run does not block
+a merge.
 
 GitHub Actions has no event for resolving a review thread, so resolving the
-oracle's last thread starts no `oracle-review` run. When the oracle posts a
-success verdict together with threads, the run its review starts fails on
-those open threads and stays red after they are resolved. After resolving the
-threads, run `make oracle-review-recover PR=<number>` (add
-`REPO=<owner/repo>` outside the default repository); the failing check's
-message names this command. The checker's decision is unchanged: it passes
-only with a success verdict on the head and no unresolved oracle thread.
+oracle's last thread starts no run of either workflow. After resolving the
+threads, run `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`,
+or wait for the hourly sweep; `make oracle-review-recover PR=<number>` (add
+`REPO=<owner/repo>` outside the default repository) refreshes the
+non-required `oracle-review` check the same way. The checker's decision is
+unchanged: it passes only with a success verdict on the head and no
+unresolved oracle thread.
 
 The stand-in attestation must be posted after the oracle's latest decisive
 verdict (`success` or `failure`) on the head, so overriding a failing verdict
@@ -664,7 +668,8 @@ App reinstalled.
 `oracle-review` runs its workflow file from the pull request, so a pull request
 that edits `.github/workflows/` can change the check that judges it, and the
 commit status it reads can be set by any pull request sharing the head commit.
-The `oracle-gate` context answers the first half: `_project/scripts/oracle_gate.py`
+That is why `oracle-gate`, not `oracle-review`, is the required check:
+`_project/scripts/oracle_gate.py`
 imports the decision and its helpers from `_project/scripts/oracle_review_check.py`
 instead of reimplementing them, and posts `oracle-gate` for the pull request
 head through the oracle App token. The pass rule is the checker's rule
@@ -672,7 +677,12 @@ unchanged: only exempt paths changed, the App's latest review of the head
 reports success with no unresolved oracle thread, or a valid stand-in covers
 the exact head; anything else posts failure. The script re-reads the review
 state immediately before posting, so a run that evaluated stale data posts the
-fresh decision instead of overwriting a newer one.
+fresh decision instead of overwriting a newer one. It posts only for a pull
+request whose base is `develop`, the one branch whose ruleset requires the
+gate. The status belongs to the head commit, not the pull request, so a pull
+request from the same head into another branch, where the diff might be
+exempt-only, must not be able to replace a `develop` pull request's failure
+with a success.
 
 A same-repo pull request can still add a workflow with `statuses: write` that
 posts the `oracle-gate` context to its own head with a forged success, so the
@@ -680,10 +690,10 @@ workflow alone does not make the context unforgeable. The unit test scans every
 workflow for steps that could post the context and fails on any outside
 `oracle-gate.yml`, but a status posted through a generated file or a new
 workflow would land the same way. The binding that closes this is in the
-ruleset: when the owner adds `oracle-gate` to the required checks, the check
-must be scoped to the `benchbox-oracle` App's integration ID, so only statuses
-posted with that App's identity satisfy it. Without that binding a forged
-success counts and the gate property does not hold.
+ruleset: the required `oracle-gate` check is scoped to the `benchbox-oracle`
+App's integration ID (5201041), so only statuses posted with that App's
+identity satisfy it. Without that binding a forged success would count and
+the gate property would not hold.
 
 `.github/workflows/oracle-gate.yml` runs `develop` code only. It triggers on
 `pull_request_target` (opened, synchronize, reopened, ready_for_review, edited),
@@ -691,21 +701,27 @@ on created issue comments that open with the stand-in marker, on completion of
 `oracle-verdict` and `oracle-review` (the bridge for review and thread events,
 which have no trusted trigger of their own), on `workflow_dispatch` with a `pr`
 input, and on an hourly `schedule` sweep over open pull requests targeting
-`develop`. Every job checks out `develop`, never the pull request, with a sparse
-checkout of the gate, its predicate and the reviewers policy, and runs the
+`develop`. A completion run evaluates nothing itself: its `bridge` job finds the
+open `develop` pull request whose head is the completed run's head commit, not
+the first pull request in the event payload, which can target another branch or
+be stacked on that head, and dispatches the gate for it from `develop`. The
+gate and sweep jobs check out `develop`, never the pull request, with a sparse
+checkout of the gate, its predicate and the reviewers policy, and run the
 script with pinned `pyyaml` the same way `oracle-verdict` does; the App token
 is minted the same way `oracle-verdict` mints it, from the same `oracle`
 environment and secrets. When the reviewers policy cannot load, the script
 errors instead of deciding with empty rules, and the sweep records every
-per-PR error and fails the run when any pull request errored. Concurrency is a
-single group keyed by pull request number for every trigger, with
+per-PR error and fails the run when any pull request errored. Every run that
+evaluates a pull request is in one concurrency group keyed by its number, with
 cancel-in-progress, so a newer run for a pull request cancels the earlier one
 instead of racing it.
 
-The cutover keeps `oracle-review` required while `oracle-gate` runs
-alongside it. The intended order is that production runs show the two contexts
-agreeing before the owner adds `oracle-gate` to the required checks, scoped to
-the `benchbox-oracle` App's integration ID, and only then the
-`pull_request`-triggered check is retired. The live ruleset requires
-`oracle-gate` as of 2026-10-21T19:37-04:00; that the agreement precondition was
-met is not verified (see `repo-admin-settings.md`).
+`oracle-gate` became required on 2026-10-21, scoped to the `benchbox-oracle`
+App's integration ID, while `oracle-review` stayed required beside it. Across
+the 198 pull request heads reviewed from 2026-10-22 the two agreed on 195; the
+one disagreement was an `oracle-review` run that went stale while
+`oracle-gate` correctly passed, and two heads were replaced before the gate ran.
+On 2026-10-24 `oracle-review` stopped being required
+(`_project/decisions/oracle-review-check-retired-2026-10-24.md`). Its
+workflow still runs, because its completion after a review event is how
+`oracle-gate` re-evaluates without a trusted trigger of its own.

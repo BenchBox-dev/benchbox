@@ -158,9 +158,11 @@ def test_resolving_the_last_oracle_thread_turns_a_success_verdict_into_a_pass() 
     assert _oracle(threads=[_thread(True), _thread(False)])[0] == 1
 
 
-def test_the_open_thread_message_names_the_recovery_command() -> None:
+def test_the_open_thread_message_names_the_required_gate_dispatch() -> None:
     message = _oracle(threads=[_thread(False)])[1]
-    assert "make oracle-review-recover PR=<number>" in message
+    assert "gh workflow run oracle-gate.yml --ref develop -f pr=<number>" in message
+    assert "oracle-review-recover" not in message
+    assert len(message) <= 140
 
 
 def test_resolved_threads_without_a_verdict_still_wait() -> None:
