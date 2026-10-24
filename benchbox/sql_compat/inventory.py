@@ -96,17 +96,9 @@ _FILE_STEM_TO_PLATFORM_KEY: dict[str, str] = {
     "fabric_warehouse": "fabric_dw",
 }
 
-_DDL_HELPER_PLATFORM_KEYS: dict[tuple[str, str], tuple[str, ...]] = {
-    ("_spark_helpers.py", "optimize_spark_table_definition"): ("lakesail", "spark", "velox"),
-}
+_DDL_HELPER_PLATFORM_KEYS: dict[tuple[str, str], tuple[str, ...]] = {}
 _DDL_GOVERNANCE_TRANSFORMER_ALIASES: dict[tuple[str, str], tuple[str, ...]] = {
     ("clickhouse", "_resolve_tuned_ddl_clauses"): ("translate_ddl:clickhouse_layout",),
-    ("databricks", "_convert_to_delta_table"): ("databricks_delta_ddl_optimizer",),
-    ("databricks", "_convert_to_hudi_table"): ("databricks_delta_ddl_optimizer",),
-    ("databricks", "_hudi_table_properties"): ("databricks_delta_ddl_optimizer",),
-    ("lakesail", "optimize_spark_table_definition"): ("lakesail_ddl_optimizer",),
-    ("spark", "optimize_spark_table_definition"): ("spark_ddl_optimizer",),
-    ("velox", "optimize_spark_table_definition"): ("velox_ddl_optimizer",),
 }
 
 _SESSION_SETTING_RES = [

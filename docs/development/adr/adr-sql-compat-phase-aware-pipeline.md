@@ -638,7 +638,7 @@ and records the adapter migration inventory.
   `transformer_id` names the `translate_ddl` option set.
 - `schema_emit` rules cover nyctaxi and tsbs_devops.
 - `platform_transform_fn` callback removed from `base/data_loading.py`; Databricks now
-  applies `_convert_to_delta_table` in a pre-pass loop before calling `_execute_schema_statements`.
+  builds its `CREATE TABLE` statements with `translate_ddl` before calling `_execute_schema_statements`.
 - `transaction_primitives` StarRocks PK rule added (`schema_emit.starrocks.transaction_primitives.pk_lock_table_unsupported`); StarRocks and Doris were absent from the legacy tuple - now documented as registry rules.
 - `write_primitives/_supports_primary_keys()` legacy hardcoded platform set removed; fallback is
   now `return True` (no rule → supported), consistent with `transaction_primitives`.
@@ -654,7 +654,7 @@ DDL centralization.
 | Adapter | File(s) | Hook | DDL concern |
 |---------|---------|------|-------------|
 | ClickHouse | `platforms/clickhouse/workload.py` | `translate_ddl` layout (`_translate_schema_statement`) | Nullable only for listed columns, ENGINE=MergeTree(), PARTITION BY / ORDER BY / PRIMARY KEY from the tuned layout |
-| Databricks | `platforms/databricks/adapter.py` | `_convert_to_delta_table` (pre-pass loop) | CREATE OR REPLACE, USING DELTA, TBLPROPERTIES (config-dependent) |
+| Databricks | `platforms/databricks/adapter.py` | `translate_ddl` (`_schema_ddl_options`) | CREATE OR REPLACE, USING DELTA, TBLPROPERTIES (config-dependent) |
 | Databend | `platforms/databend/adapter.py` | `translate_ddl` | Databend-specific DDL dialect |
 | Firebolt | `platforms/firebolt.py` | `translate_ddl` | Firebolt DDL dialect |
 | Redshift | `platforms/redshift.py` | `translate_ddl` | Redshift DDL dialect |
@@ -689,9 +689,9 @@ It stays adapter state passed to `translate_ddl`. No `RewriteDDLPayload` extensi
 ### Config-Dependent Transforms (Databricks, Spark, Velox)
 
 Some DDL hooks depend on adapter config:
-- **Databricks** `_convert_to_delta_table`: `TBLPROPERTIES` block conditional on `self.delta_auto_optimize`
-- **Spark** `_optimize_table_definition`: `USING DELTA|ICEBERG|ORC|PARQUET` selected by `self.table_format`
-- **Velox** `_optimize_table_definition`: `USING ORC|PARQUET` selected by `self.table_format`
+- **Databricks** `translate_ddl` options: `TBLPROPERTIES` block conditional on `self.delta_auto_optimize`
+- **Spark** `translate_ddl` default layout: `USING DELTA|ICEBERG|ORC|PARQUET` selected by `self.table_format`
+- **Velox** `translate_ddl` default layout: `USING ORC|PARQUET` selected by `self.table_format`
 
 For shadow-harness purposes this is acceptable: the `harness_resolve()` call verifies that the
 registry knows a DDL rewrite is required for this platform, not that the transformer output matches.
@@ -703,7 +703,7 @@ was deferred to the cutover to `on` mode.
 
 - All adapters except Fabric Warehouse have `ddl_optimize` registry rules (see above).
 - `platform_transform_fn` is removed from `benchbox/platforms/base/data_loading.py`. Databricks
-  applies `_convert_to_delta_table` in a statements pre-pass before calling
+  builds its statements with `translate_ddl` before calling
   `_execute_schema_statements`.
 
 ---

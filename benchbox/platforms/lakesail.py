@@ -23,10 +23,10 @@ from ._spark_helpers import (
     get_spark_query_plan,
     is_spark_connect_reachable,
     list_spark_tables,
-    optimize_spark_table_definition,
     parse_spark_connect_endpoint,
     purge_orphaned_warehouse_directory,
     run_spark_schema_creation_loop,
+    spark_schema_statements,
     spark_session_tuning_conf_entries,
     validate_spark_identifier,
 )
@@ -429,13 +429,11 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
         spark = connection
 
         try:
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
-            statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
-            fmt = self.table_format
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="spark")
+            statements = spark_schema_statements(schema_sql, table_format=self.table_format, strip_constraints=True)
             run_spark_schema_creation_loop(
                 spark,
                 statements,
-                lambda stmt: optimize_spark_table_definition(stmt, table_format=fmt),
                 logger=self.logger,
                 on_pre_loop=lambda s: purge_orphaned_warehouse_directory(s, logger=self.logger),
             )

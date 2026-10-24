@@ -102,12 +102,18 @@ def test_handle_existing_database_preserves_known_absent_schema(adapter):
 
 
 def test_if_not_exists_tables_are_replaced_only_after_reset(adapter):
+    from benchbox.utils.dialect_utils import translate_ddl
+
     ddl = "CREATE TABLE IF NOT EXISTS flights (id INT)"
-    assert "IF NOT EXISTS" in adapter._convert_to_delta_table(ddl)
+
+    def convert():
+        return translate_ddl(ddl, "databricks", "standard", **adapter._schema_ddl_options(ddl))[0]
+
+    assert "IF NOT EXISTS" in convert()
 
     adapter._schema_reset_in_place = True
-    converted = adapter._convert_to_delta_table(ddl)
-    assert converted.startswith("CREATE OR REPLACE TABLE flights")
+    converted = convert()
+    assert converted.startswith("CREATE OR REPLACE TABLE `flights`")
     assert "IF NOT EXISTS" not in converted
 
 

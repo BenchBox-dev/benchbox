@@ -62,6 +62,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The Spark, Velox, LakeSail and Databricks adapters build `CREATE TABLE` statements with
+  `translate_ddl` instead of rewriting the translated text: the `USING` format, Delta auto-optimize
+  and Hudi table properties, `CREATE OR REPLACE`, and the Parquet and ORC constraint and `SMALLINT`
+  stripping are `translate_ddl` options built from the adapter configuration. The cloud Spark DDL
+  mixin returns table layouts (`generate_table_layout`) and renders them through `translate_ddl`.
+  `optimize_spark_table_definition`, `_convert_to_delta_table`, `_convert_to_hudi_table` and
+  `SparkDDLGeneratorMixin.generate_tuning_clauses` are removed. Differences from the old text
+  output: a leading `/* comment */` is kept, a named `CONSTRAINT` is removed together with its
+  key, a Hive partition column is moved out of the column list, a Parquet `SORTED BY` without
+  `CLUSTERED BY` is no longer written, and the two Delta auto-optimize properties are listed in
+  a different order.
 - The comment-policy check in CI and `make comment-policy-check` scans only the files that differ from the base, as the hook already did, and the whole repository after a global change: the policy, the cleanup scope policy, the launcher, a trusted checker file (or an unreadable trusted-file list), or a removed exception or exclusion. Files holding an exception are also scanned when the exception's consumer changes. The ratchet, review gating, new files under exclusions, consumer validation and expired-exception findings still run on every pull request. A new `Comment Policy Nightly` workflow scans the whole of develop every night and on demand (`scripts/run_comment_policy.py --full`); when any file has a violation it fails and opens or updates an issue, and a clean run closes it.
 - `pyproject.toml` now requires uv 0.13.4 or newer (`required-version`); older uv releases fail with a clear error instead of running with root certificates that trust the compromised eMudhra emSign CAs.
 - `quality/comment-policy.json` no longer has a `completed` list, and a policy that still has one fails schema validation. Every first-party path is in scope, so there is no list of dead completed prefixes left to prune.
