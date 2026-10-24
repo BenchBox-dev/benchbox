@@ -162,9 +162,9 @@ platform-agnostic; the per-platform catalog *reads* live in the
 | `SET ...`, `PRAGMA ...`                       | any            | `transient`   | session/config, no persistent catalog footprint -- noted, **non-blocking**         | no                   |
 | `OPTIMIZE TABLE ...` / maintenance           | ddl/post_load  | `maintenance` | merge/compaction op, no distinct catalog footprint -- noted, **non-blocking**      | no                   |
 | `ALTER TABLE T [RESUME/SUSPEND] RECLUSTER`   | ddl/post_load  | `maintenance` | reorganizes existing data; the clustering KEY is the catalog footprint -- **non-blocking** | no          |
-| session-phase statement (any)                | session        | `transient`   | transient SET -- noted, **non-blocking** (documented default below)                | no                   |
+| session-phase statement (any)                | session        | `transient`   | transient SET -- noted, **non-blocking** (documented default below); statements recorded as `harness_default` are left out of the receipt | no                   |
 | failed statement                             | ddl/post_load  | `unverifiable`| the requested physical change did not execute; failure reason is recorded -- **blocks** | n/a (blocks)     |
-| failed statement                             | session        | `transient`   | transient session failure is noted but has no persistent catalog footprint -- **non-blocking** | no          |
+| failed statement                             | session        | `transient` / `unverifiable` | without a tuning mechanism the failure is transient and **non-blocking**; with one (`session_config`, `spark_session_config`) the requested setting did not apply, so the entry is `unverifiable` and **blocks** | n/a (blocks) |
 | anything else                                | ddl/post_load  | `unverifiable`| no corroboration rule -- **blocks** the upgrade (conservative: stay unverified)    | n/a (blocks)         |
 
 The generic classifier's non-blocking prefix sets are intentionally narrow and
@@ -245,17 +245,26 @@ tuple is treated as a fail-closed mismatch, not trivial equality.
 Session `SET`/`PRAGMA` statements are transient: they configure the
 connection, leave no catalog trace, and vanish when the session closes.
 They are **noted** in the receipt (so the reader sees they ran) but do
-**not** block verification and cannot, on their own, earn it. A run whose
-only tuning is session SETs stays `applied_unverified` -- there is nothing
-physical to corroborate. The applied-ledger hash still includes those executed
-session records in their true chronology; exclusion here is specific to the
-catalog-corroboration gate, not to ledger identity.
+**not** block verification and cannot, on their own, earn it. Session
+statements the harness issues on baseline runs too (for example Snowflake
+`ALTER SESSION SET TIMEZONE` or `USE WAREHOUSE`) are recorded with status
+`harness_default`: they are not tuning, never appear in the receipt, and are
+excluded from the applied-ledger hash. A ledger whose only statements are
+such harness or unattributed session statements reads `noop`, not
+`applied_unverified`. Session settings that come from the tuning
+configuration carry a mechanism (`session_config`, `spark_session_config`);
+they count as applied, are hashed in their true chronology, and stay
+excluded from the catalog-corroboration gate, so a run whose only tuning is
+such session settings stays `applied_unverified` -- there is nothing
+physical to corroborate.
 
-A failed session statement follows the same transient gate rule: it is
-visible in the receipt but does not block a sibling physical statement that
-the catalog corroborates. Conversely, session success cannot mask a run in
-which every attempted ddl/post_load statement failed; that ledger derives
-`failed`, not `applied_unverified`.
+A failed session statement without a mechanism follows the same transient
+gate rule: it is visible in the receipt but does not block a sibling physical
+statement that the catalog corroborates. A failed session setting that
+carries a tuning mechanism is a requested setting that did not apply: its
+entry is `unverifiable` and blocks verification. Session success cannot mask
+a run in which every attempted ddl/post_load statement failed; that ledger
+derives `failed`, not `applied_unverified`.
 
 ## Per-platform catalog reads (Introspector)
 

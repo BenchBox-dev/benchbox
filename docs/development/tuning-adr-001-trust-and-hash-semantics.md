@@ -137,14 +137,16 @@ carries the *requested* config + `requested_config_hash`).
 ```
 
 - **`applied_ledger_hash`** — `sha256` over the ordered list of
-  *executed* statement records, serialized as canonical JSON
+  *tuning* statement records (executed statements that are not
+  `harness_default` and, in the `session` phase, carry a tuning
+  mechanism), serialized as canonical JSON
   (`sort_keys=True`, compact separators). List order is preserved (only
   each record's keys are sorted), so statement chronology is part of the
-  identity. `null` when nothing executed (no physical layout to
+  identity. `null` when no tuning statement executed (no physical layout to
   identify). Mirrored onto the bundle's `platform.tuning` summary and the
   `.tuning.json` companion next to `requested_config_hash`.
 - **`phase`** ∈ {`ddl`, `post_load`, `session`}; statement `status` ∈
-  {`executed`, `failed`}. `dropped` records requested intents that never
+  {`executed`, `failed`, `harness_default`}. `dropped` records requested intents that never
   rendered to a statement (capability-filtered / load-time-only).
 
 `tuning_validation_status` vocabulary (execution-derived, all-lowercase),
@@ -154,10 +156,10 @@ metadata INSERT succeeded":
 | status | meaning |
 | --- | --- |
 | `not_applicable` | tuning disabled, or no effective configuration |
-| `noop` | tuning requested but the execution path ran no statement |
-| `applied_unverified` | ≥1 statement executed; self-attested, not yet introspection-corroborated. A session-only ledger retains this status. |
+| `noop` | tuning requested but no tuning statement executed and none failed; a ledger of only harness or unattributed session statements reads `noop` |
+| `applied_unverified` | ≥1 tuning statement executed (a ddl/post_load statement, or a session statement that carries a tuning mechanism); self-attested, not yet introspection-corroborated. Harness and unattributed session statements do not count. |
 | `applied_verified` | executed **and** corroborated by a post-load introspection receipt; every physical statement must corroborate, with no failed ddl/post_load statement or dropped intent. Only the receipt path emits it; never the ledger alone. |
-| `failed` | ≥1 ddl/post_load statement was attempted and all such statements failed, even if a session statement executed; or the apply path raised |
+| `failed` | ≥1 ddl/post_load statement was attempted and all such statements failed, even if a session statement executed; or no tuning statement executed and a statement failed; or the apply path raised |
 | `not_validated` | dataclass default, pre-run (before any derivation) |
 
 Metadata-persistence outcome is **no longer** a tuning status: the old
