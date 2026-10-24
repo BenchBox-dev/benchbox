@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from benchbox.core.dataframe.tuning.interface import DataFrameTuningConfiguration
 from benchbox.core.dataframe.tuning.profiles import DATAFRAME_PLATFORMS
 from benchbox.core.tuning import modes as tuning_modes
 from benchbox.core.tuning.capability_registry import DEFAULT_FALLBACK_DESCRIPTION, get_fallback_description
@@ -41,16 +42,7 @@ UNIFIED_TUNING_KEYS = frozenset(
     }
 )
 
-DATAFRAME_TUNING_KEYS = frozenset(
-    {
-        "execution",
-        "memory",
-        "data_types",
-        "parallelism",
-        "io",
-        "gpu",
-    }
-)
+DATAFRAME_TUNING_KEYS = frozenset(f.name for f in fields(DataFrameTuningConfiguration) if f.name != "metadata")
 
 
 def is_dataframe_tuning_file(path_or_data: Path | str | dict) -> bool:

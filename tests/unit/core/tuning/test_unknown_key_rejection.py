@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import subprocess
 from pathlib import Path
 
@@ -7,6 +8,8 @@ import pytest
 import yaml
 
 from benchbox.cli.config import ConfigManager
+from benchbox.cli.tuning_resolver import DATAFRAME_TUNING_KEYS
+from benchbox.core.dataframe.tuning.interface import DataFrameTuningConfiguration
 from benchbox.core.tuning.interface import UnifiedTuningConfiguration
 
 pytestmark = [
@@ -99,3 +102,25 @@ def test_config_manager_load_accepts_dataframe_tuning_file(tmp_path):
     )
     config = ConfigManager().load_unified_tuning_config(path)
     assert config.table_tunings == {}
+
+
+@pytest.mark.parametrize(
+    "section",
+    sorted(f.name for f in dataclasses.fields(DataFrameTuningConfiguration) if f.name != "metadata"),
+)
+def test_config_manager_load_accepts_any_single_dataframe_section_file(tmp_path, section):
+    path = tmp_path / f"{section}.yaml"
+    path.write_text(yaml.safe_dump({section: {}}), encoding="utf-8")
+    config = ConfigManager().load_unified_tuning_config(path)
+    assert config.table_tunings == {}
+
+
+def test_dataframe_section_keys_cover_write():
+    assert "write" in DATAFRAME_TUNING_KEYS
+
+
+def test_sql_file_typo_still_fails_next_to_valid_sections(tmp_path):
+    path = tmp_path / "sql.yaml"
+    path.write_text(yaml.safe_dump({"primary_keys": {"enabled": True}, "writes": {}}), encoding="utf-8")
+    with pytest.raises(ValueError, match="writes"):
+        ConfigManager().load_unified_tuning_config(path)
