@@ -26659,6 +26659,16 @@
       "status": "done",
       "title": "develop is red: test_translate_query sees normalize_dialect_for_sqlglot called twice after #3185"
     },
+    "trunk-trim-after-selection-live-20261024": {
+      "claim": null,
+      "needs": [
+        "cov-select-exit-shadow-20261021",
+        "trunk-red-run-triage-20261024"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Reduce post-merge Trunk work once coverage selection is live"
+    },
     "tsbs-devops-dataframe-sql-id-mapping": {
       "claim": null,
       "needs": [],
