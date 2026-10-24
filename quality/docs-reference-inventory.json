@@ -1625,6 +1625,17 @@
    "kinds": {
     "unresolved": 1
    },
+   "occurrences": 2,
+   "path": "_project/decisions/oracle-gate-required-check-2026-10-21.md",
+   "rule": "project-records",
+   "target_count": 1,
+   "targets_sha256": "188f0acfae3b01f0a45138d494ff3b382031a800246d5326b6c1760fc5802362"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
+    "unresolved": 1
+   },
    "occurrences": 1,
    "path": "_project/decisions/oracle-review-protocol-2026-10-08.md",
    "rule": "project-records",
@@ -5561,7 +5572,7 @@
    "targets": [
     {
      "kind": "unresolved",
-     "target": "docs/tooling/oracle-review/hold"
+     "target": "docs/tooling/oracle-review/hold/oracle-gate"
     }
    ]
   },
@@ -5638,14 +5649,14 @@
    "fixture-data": 31,
    "generator-deleted": 5,
    "governance-stays": 7,
-   "historical-record": 111,
+   "historical-record": 112,
    "lock-test": 25,
    "prose-link-pinned": 28,
    "runtime-link-updated": 13,
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 273,
+  "files": 274,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
@@ -5654,9 +5665,9 @@
    "generated": 15,
    "pattern": 314,
    "root": 209,
-   "unresolved": 1982
+   "unresolved": 1984
   },
-  "references": 33406,
+  "references": 33408,
   "unclassified": 0
  }
 }
