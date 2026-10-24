@@ -26648,6 +26648,16 @@
       "status": "open",
       "title": "Trunk's dist-artifact producer check fails intermittently with 'producer job is not unique and running'"
     },
+    "trunk-red-rate-target-20261024": {
+      "claim": null,
+      "needs": [
+        "trunk-red-run-triage-20261024",
+        "ci-usage-metrics-report-20261024"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Bring the post-merge Trunk failure rate below 2% after the classified causes are fixed"
+    },
     "trunk-red-run-triage-20261024": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Trunk push first-attempt failure rate over a stated 14-day window that starts after the top-cause fixes merged is below 2%, measured with the CI usage report",
+    "If not met, each remaining recurring cause is named with its item and this item stays open"
+  ],
+  "context": "Source: independent review of the PR-checks versus Trunk split on 2026-10-24 (develop a56738db4; run history 2026-10-10 to 2026-10-24: 465 merges, 466 Trunk push runs; Trunk coverage push runs only exist from 2026-10-21). Split from the classification item so that coverage selection waits only on the baseline classification, not on this outcome window.",
+  "description": "Follow-up to the Trunk failure classification. Once the top recurring causes from that classification are fixed or quarantined through their own items, measure the Trunk push failure rate over 14 days with the CI usage report and confirm it is below 2%, counting a run red when its first attempt failed.",
+  "not_before": "2026-11-07T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T18:39:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0a9faeece2714e8bb95c356db9922199",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
