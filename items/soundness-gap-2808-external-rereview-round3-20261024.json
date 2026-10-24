@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Packet and raw reviewer output exist outside the repo with command, version, path and sha256 recorded",
+    "Outcome (a): attestation comment URL on issue 2808 in the required format (verified by reading it); outcome (b)/(c): nothing posted (verified by listing comments), findings recorded, owner report stated",
+    "Issue 2808 is not closed, labeled or edited by the agent"
+  ],
+  "context": "Created 2026-10-24 from the round-2 codex review of gap issue 2808 (packet /Users/joe/Developer/soundness-reviews/2808-round2/, develop 85fb89967aee37d54a6ea605d92893f59ffe63ab, raw output sha256 b34d14bc5cf5054ebbc6a3e733589661bb6170bee883f93a05f562d51b518286, final message sha256 c3791ed9839899f8a451c3ae7c9723852ca4e44d2ebcfc80ab4c92b0f2140178). Reviewer claims are UNVERIFIED: reproduce on current origin/develop first; line numbers are leads.",
+  "description": "Round 2 (codex 0.162.1, packet /Users/joe/Developer/soundness-reviews/2808-round2/, raw output sha256 b34d14bc...) returned five findings: relocation hash collisions (High), HTML-escaped path drops a finding (High), retarget carry suppressed by the publish guard (Medium), duplicate finding ids (Medium), strike state before the POST (Medium). After the four fix items merge, repeat the review (same procedure as the earlier re-review item: packet from current develop, codex as a separate process, adversarial prompt, raw output saved with sha256).\n\nDECISION GATE: (a) ZERO findings of any severity and each earlier finding confirmed fixed with file:line => attest on issue 2808 per the owner rule (comment starts 'External review: codex', has a 'Verified clean' line, full reviewed SHAs, reviewer output path and sha256, no bolded severity marker); (b) any finding => post nothing and STOP: this is the last permitted round, so report the pattern to the owner (rounds keep finding new defects, so the design needs an owner decision, not more patches); (c) reviewer unavailable or unverifiable => blocked.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun or dispatch the oracle; oracle verdict required on the PR (soundness path); no pre-registered digests; never weaken a gate; no skip/xfail; never bypass a hook by any route (no SKIP=, --no-verify, commit-tree); primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; always encoding utf-8; PR text for a reader who never saw the session; done = merged PR plus evidence.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-24T21:11:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0cf9864b8a98424b89fa1330f2707f90",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}

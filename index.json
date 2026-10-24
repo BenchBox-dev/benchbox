@@ -23153,6 +23153,18 @@
       "status": "open",
       "title": "Re-run the external review of gap issue 2808 on the fixed state and attest if clean"
     },
+    "soundness-gap-2808-external-rereview-round3-20261024": {
+      "claim": null,
+      "needs": [
+        "oracle-hunk-headingless-and-repeated-heading-collisions-20261024",
+        "oracle-finding-path-html-escape-drops-finding-20261024",
+        "oracle-duplicate-findings-collapse-to-same-id-20261024",
+        "oracle-carry-publication-and-failed-post-strike-state-20261024"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Repeat the external review of gap 2808 after the round-2 fixes (final round)"
+    },
     "soundness-gap-2808-external-review-20261022": {
       "claim": null,
       "needs": [
