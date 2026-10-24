@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The decisions are recorded verbatim in this item before it is finished"
+  ],
+  "context": "Created 2026-10-24 from the owner answers to the ask dialog in the controller session. Applies to items soundness-gaps-closeout-20261022, comment-policy-dead-exceptions-bulk-cleanup-20261023, soundness-gap-2808-external-rereview-20261023 and the open PRs 3350, 3354, 3355, 3356.",
+  "description": "Decision record only. Owner answers on 2026-10-24: (1) the 2026-10-21 oracle-gate addition to the develop-squash-only ruleset (required check bound to App 5201041, the benchbox-oracle App) was the owner's and is intended; (2) bulk dead-exception cleanup approved for the stale notice entries and orphaned fixture entries only, keeping directive entries, the pre-registered entries and 219a8858; (3) agents may dispatch oracle-verdict.yml (or equivalent) only for a head whose latest oracle verdict is pending with every reviewer absent, at most once per head per 3 hours, never after a success or failure verdict and never to shop for a verdict, reporting each dispatch; (4) gap issues: fix, re-review (codex/agy, max two more rounds), attest with External review only on zero findings of any severity; the owner decides the High on 3125 or attests on own judgement; (5) oracle-review-automatic-reevaluation: the owner's session is already working on it (PR 3390); agents do not touch that item; the dropped retarget-race item stays dropped; (6) polars-df-compat-check guard (PR 3347): close it and accept the Low; the item was dropped with the caller audit.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-24T17:37:28Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "42dd006ac85744b58a964fd44b14d846",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}
