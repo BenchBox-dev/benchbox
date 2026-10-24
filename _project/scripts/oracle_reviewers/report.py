@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from . import dedup, protocol, selection
+from . import absence, credentials, dedup, protocol, selection
 from .retry import ALL_ABSENT, FAILURE, INTEGRITY, OVERSIZE, PENDING, SUCCESS, UNREPORTED
 from .selection import Attempt, Step
 from .verdict import Finding, Placement, Verdict, comment_span, place
@@ -111,7 +111,16 @@ def _reviewer_line(plan: Mapping[str, Any], name: str | None) -> list[str]:
 
 
 def _absences(attempts: list[Attempt], step: Step) -> list[str]:
-    lines = [f"- {attempt.reviewer}: absent ({attempt.absence})" for attempt in attempts if attempt.outcome == "absent"]
+    known = credentials.known()
+    lines = []
+    for attempt in attempts:
+        if attempt.outcome != "absent":
+            continue
+        detail = absence.published_detail(attempt.detail, known)
+        lines.append(
+            f"- {attempt.reviewer} (attempt {attempt.slot}): absent ({attempt.absence})"
+            + (f": {detail}" if detail else "")
+        )
     attempted = {attempt.reviewer for attempt in attempts}
     lines += [f"- {reason}" for reason in step.reasons if reason.split(":", 1)[0] not in attempted]
     return lines

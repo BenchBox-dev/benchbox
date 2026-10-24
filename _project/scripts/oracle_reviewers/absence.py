@@ -76,6 +76,7 @@ _MONTHS = {
 }
 _LONG_TOKEN = re.compile(r"[A-Za-z0-9_\-]{32,}")
 EXCERPT_LIMIT = 300
+PUBLISHED_DETAIL_LIMIT = 160
 UNPARSED_LIMIT = 2000
 
 
@@ -121,9 +122,13 @@ def parse_reset(text: str, now: datetime) -> datetime | None:
     return None
 
 
-def redact_detail(detail: str, extra: Iterable[str] = ()) -> str:
+def redact_detail(detail: str, extra: Iterable[str] = (), limit: int = EXCERPT_LIMIT) -> str:
     text = _LONG_TOKEN.sub(credentials.REDACTED, sanitize(detail, EXCERPT_LIMIT * 4, extra))
-    return text if len(text) <= EXCERPT_LIMIT else text[: EXCERPT_LIMIT - 1] + "\u2026"
+    return text if len(text) <= limit else text[: limit - 1] + "\u2026"
+
+
+def published_detail(detail: str, extra: Iterable[str] = ()) -> str:
+    return redact_detail(" ".join(detail.split()), extra, PUBLISHED_DETAIL_LIMIT)
 
 
 def _first(patterns: tuple[re.Pattern[str], ...], text: str) -> re.Match[str] | None:

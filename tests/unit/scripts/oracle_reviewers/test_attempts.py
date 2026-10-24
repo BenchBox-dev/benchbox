@@ -161,7 +161,7 @@ def test_absence_then_clean_verdict_passes(policy: Policy, tmp_path: Path) -> No
     assert final.description.endswith(": SHIP")
     assert final.review is not None and final.review["comments"] == []
     assert "Decision: **SHIP**." in final.review["body"]
-    assert "small: absent (timeout)" in final.review["body"]
+    assert "small (attempt 1): absent (timeout)" in final.review["body"]
 
 
 def test_ship_with_fixes_fails_and_splits_defects(policy: Policy, tmp_path: Path) -> None:
@@ -250,7 +250,8 @@ def test_all_absent_is_pending_and_names_every_reviewer(policy: Policy, tmp_path
     assert final.state == "pending"
     assert final.description.startswith("pending: small: absent (timeout")
     assert len(final.description) <= 140
-    assert "small: absent (timeout)" in final.body and "medium: absent (quota)" in final.body
+    assert "small (attempt 1): absent (timeout): slow" in final.body
+    assert "medium (attempt 2): absent (quota): limit" in final.body
     assert final.pending_cause == ALL_ABSENT
 
 
@@ -589,7 +590,7 @@ def test_a_pending_run_posts_its_diagnostics_as_a_review(
     assert out["state"] == "pending" and out["review"] == "true" and out["comment"] == "false"
     review = json.loads((tmp_path / "o" / "review.json").read_text(encoding="utf-8"))
     assert review["body"].startswith(f"### oracle-verdict: pending for `{HEAD}`")
-    assert review["comments"] == [] and "small: absent (auth)" in review["body"]
+    assert review["comments"] == [] and "small (attempt 1): absent (auth)" in review["body"]
 
 
 def test_withheld_result_is_posted_as_a_pending_review(policy: Policy, tmp_path: Path) -> None:
@@ -773,3 +774,27 @@ def test_a_malformed_jev_answer_leaves_the_slot_pending(
         str(tmp_path / "classification.json"),
     )
     assert out == {"reviewer": "", "harness": ""}
+
+
+def test_the_review_body_gives_each_absent_attempt_its_slot_and_reason(policy: Policy, tmp_path: Path) -> None:
+    plan = _plan(policy)
+    _write(tmp_path, 1, "small", missing=Absence("invalid", "the reviewer output is not JSON: Expecting value"))
+    _write(tmp_path, 2, "small", missing=Absence("empty", "the reviewer ended without a final answer"))
+    loaded, step, errors = _decide(policy, plan, tmp_path)
+    final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
+    assert "- small (attempt 1): absent (invalid): the reviewer output is not JSON: Expecting value" in final.body
+    assert "- small (attempt 2): absent (empty): the reviewer ended without a final answer" in final.body
+
+
+def test_a_published_absence_detail_is_redacted_and_bounded(policy: Policy, tmp_path: Path) -> None:
+    plan = _plan(policy)
+    secret = "sk-" + "a1B2c3D4" * 6
+    detail = f"bad token {secret}\nand more " + "x " * 200
+    _write(tmp_path, 1, "small", missing=Absence("invalid", detail))
+    _write(tmp_path, 2, "small", missing=Absence("empty", "no answer"))
+    loaded, step, errors = _decide(policy, plan, tmp_path)
+    final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, {})
+    line = next(row for row in final.body.splitlines() if row.startswith("- small (attempt 1)"))
+    assert secret not in final.body and "[redacted]" in line
+    assert "\n" not in line and line.endswith("\u2026")
+    assert len(line.partition("absent (invalid): ")[2]) <= 160
