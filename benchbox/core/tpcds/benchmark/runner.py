@@ -23,7 +23,7 @@ from benchbox.core.validation import (
     DataValidationEngine,
     ValidationResult,
 )
-from benchbox.utils.dialect_utils import UnknownSqlDialectError, apply_rewrite, apply_rewrites, resolve_sql_dialect
+from benchbox.utils.dialect_utils import UnknownSqlDialectError, apply_rewrites, resolve_sql_dialect
 from benchbox.utils.file_format import get_delimiter_for_file
 from benchbox.utils.printing import emit
 
