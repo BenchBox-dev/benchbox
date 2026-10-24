@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "RUBRIC 1 Before 2027-01-05, every current dated directive (322 at c962e3e) is renewed or removed through the required oracle-reviewed policy change",
+    "RUBRIC 2 A non-blocking warning surfaces in local checks and CI/nightly at least 30 days before any directive expiry",
+    "RUBRIC 3 Expiries are staggered so no single date holds more than 10% of dated directives",
+    "RUBRIC 4 Tests cover the warning boundary, validity through the expiry date, hard failure the following day, and that a date-only renewal still requires oracle review",
+    "RUBRIC 5 The renewal owner and process are documented"
+  ],
+  "context": "Found 2026-10-23 while reviewing PR #3362; confirmed by the Advisor review 2026-10-24 (headline 3).",
+  "description": "All 322 dated exceptions in quality/comment-policy.json (at develop c962e3e) are directives with `expires: 2027-01-04`. An exception is expired when `expires < date.today()` (scripts/check_comment_policy.py:61-67) and, since #3362, expired-exception findings are always in the failure set (:481). So from 2027-01-05 every strict commit hook run, PR CI comment-policy job and the nightly whole-tree scan fails until the policy is updated. There is no advance warning and no staggering; renewals are new policy entries that require oracle review (docs/internal/comment-policy.md:120-130).",
+  "links": [
+    "/Users/joe/.cache/remaining-tasks-advice.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T14:31:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b1836f49d1af4234950590ad23502899",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}

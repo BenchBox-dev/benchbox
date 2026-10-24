@@ -5061,6 +5061,13 @@
       "status": "done",
       "title": "Comment-policy exceptions, digest-keyed fixtures and pinned external notices are read only from the base, so any edit needs a second PR"
     },
+    "comment-policy-exception-expiry-cliff-20270104": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Prevent the synchronized 2027-01-04 comment-policy exception expiry cliff"
+    },
     "comment-policy-fixture-exception-wording-cleanup": {
       "claim": {
         "expires_at": "2026-10-10T16:26:51Z",
