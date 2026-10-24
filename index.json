@@ -26664,7 +26664,7 @@
       "needs": [],
       "priority": "high",
       "status": "open",
-      "title": "Classify why 13% of post-merge Trunk runs fail and cut the flaky share"
+      "title": "Classify every failed post-merge Trunk run from 2026-10-10 to 2026-10-24"
     },
     "trunk-red-stops-further-merges": {
       "claim": null,

@@ -1,12 +1,19 @@
 {
   "acceptance": [
-    "Every failed Trunk push run in a stated 14-day window is classified with run id, failing job and cause, and the table is recorded on this item",
-    "Stale-base composition failures are counted and compared with the about-once-a-week threshold; if exceeded, an owner decision on reinstating the up-to-date requirement is requested",
-    "Top recurring flake causes each have an item (existing or new) linked here",
-    "Trunk push failure rate over the following 14 days is below 2%, or the remaining causes are recorded with owners"
+    "Every Trunk push run on develop created 2026-10-10 to 2026-10-24 whose first or latest attempt failed is listed with run id, attempts and outcomes, failing job, and one cause from the stated set; the table is recorded on this item",
+    "Stale-base composition failures are counted per week and compared with the about-once-a-week threshold; if exceeded, an owner decision on reinstating the up-to-date requirement is requested",
+    "Each recurring cause (two or more runs) has an item, existing or new, linked here",
+    "The classification states how the red-trunk gate and arm gate (trunk-red-stops-further-merges, trunk-arm-gate-blames-newest-red-run-20261022) treated these runs, and whether that explains reds clearing without a revert"
   ],
-  "context": "Source: independent review of the PR-checks versus Trunk split on 2026-10-24 (develop a56738db4; run history 2026-10-10 to 2026-10-24: 465 merges, 466 Trunk push runs, 126 Trunk coverage runs). This sets the baseline that coverage selection needs before going live, since selection misses would surface as Trunk failures.",
-  "description": "59 of 466 Trunk push runs on develop (12.7%) failed between 2026-10-10 and 2026-10-24, on 13 of 15 days, each on a different merged PR, but only 2 reverts merged. The documented policy is revert-first with a red-trunk gate on make pr-open, so most reds cleared without action: the signal is diluted by flakes. Classify every red run as flaky, Python 3.12 only (PR fast runs on 3.14, Trunk fast on 3.12), stale-base composition between concurrent squash merges, or real regression. Fix or quarantine the top flakes through their own items (known: trunk-dist-artifact-producer-check-flake-20261022, ci-amplab-generate-data-timeout-flake). Compare the stale-base count with the governance threshold (more than about one a week means reinstating the up-to-date requirement; develop rulesets currently have strict_required_status_checks_policy false and no merge queue).",
+  "context": "Source: independent review of the PR-checks versus Trunk split on 2026-10-24 (develop a56738db4; run history 2026-10-10 to 2026-10-24: 465 merges, 466 Trunk push runs; Trunk coverage push runs only exist from 2026-10-21). Run logs expire after about 90 days, so the classification must be done before 2027-01-08.",
+  "description": "59 of 466 Trunk push runs on develop (12.7%) failed between 2026-10-10 and 2026-10-24, on 13 of 15 days, each on a different merged PR, but only 2 PRs titled Revert merged. The documented policy is revert-first with a red-trunk gate on make pr-open, so most reds cleared some other way. Run lists show only the latest attempt, so first inspect every attempt of each run. Classify each red run as: flaky (passed on rerun or failed without a code cause), Python 3.12 only (PR fast runs on 3.14 at ci.yml:867, Trunk fast on 3.12 at trunk.yml:33), stale-base composition between concurrent squash merges, real regression reverted, or real regression fixed forward. Count stale-base composition failures against the governance threshold (more than about one a week means reinstating the up-to-date requirement; develop rulesets currently have strict_required_status_checks_policy false and no merge queue). This classification is the baseline that coverage selection needs before going live; the rate target lives in trunk-red-rate-target-20261024.",
+  "links": [
+    "trunk-red-stops-further-merges",
+    "trunk-arm-gate-blames-newest-red-run-20261022",
+    "trunk-dist-artifact-producer-check-flake-20261022",
+    "ci-amplab-generate-data-timeout-flake",
+    "trunk-red-rate-target-20261024"
+  ],
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
@@ -14,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "39b9a9ae464a4da2bd38bf80a8e5af2b",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T18:39:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6fb54074fd9b44d799728a552154b78d",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
