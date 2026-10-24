@@ -60,7 +60,7 @@ def test_empty_or_disabled_policy_reads_nothing(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("marker", _FORBIDDEN)
-def test_fast_test_with_each_forbidden_marker_is_a_violation_even_when_deselected(tmp_path: Path, marker: str) -> None:
+def test_fast_test_with_each_forbidden_marker_is_a_violation(tmp_path: Path, marker: str) -> None:
     manifest = _write_manifest(
         tmp_path / "m.json",
         [
@@ -234,6 +234,37 @@ def test_collection_timeout_is_an_environment_error(tmp_path: Path, monkeypatch:
     monkeypatch.setattr(mod.subprocess, "run", _timeout)
     with pytest.raises(mod.FastLaneCollectError, match="timed out after 300 s"):
         mod._collect_manifest(tmp_path, tmp_path / "manifest.json")
+
+
+def _main_manifest(monkeypatch: pytest.MonkeyPatch, argv: list[str], env: str | None) -> object:
+    seen: dict[str, object] = {}
+
+    def _capture(repo_root, policy, manifest=None):
+        seen["manifest"] = manifest
+        return []
+
+    if env is None:
+        monkeypatch.delenv("MARKER_MANIFEST", raising=False)
+    else:
+        monkeypatch.setenv("MARKER_MANIFEST", env)
+    monkeypatch.setattr(mod, "_check_fast_lane_policy", _capture)
+    monkeypatch.setattr(sys, "argv", ["fast_lane_ceiling_check.py", "--strict", *argv])
+    assert mod.main() == 0
+    return seen["manifest"]
+
+
+def test_marker_manifest_variable_is_ignored_without_the_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _main_manifest(monkeypatch, [], "/stale/manifest.json") is None
+
+
+def test_manifest_from_env_reads_the_variable(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _main_manifest(monkeypatch, ["--manifest-from-env"], "/run/manifest.json") == Path("/run/manifest.json")
+
+
+def test_manifest_from_env_without_the_variable_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    with pytest.raises(SystemExit) as exc:
+        _main_manifest(monkeypatch, ["--manifest-from-env"], None)
+    assert exc.value.code == 2
 
 
 def test_policy_file_carries_only_the_guard_fields() -> None:

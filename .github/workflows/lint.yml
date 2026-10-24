@@ -52,7 +52,7 @@ jobs:
         if: hashFiles('_project/scripts/fast_lane_ceiling_check.py') != ''
         env:
           MARKER_MANIFEST: ${{ runner.temp }}/marker-manifest.json
-        run: uv run -- python _project/scripts/fast_lane_ceiling_check.py --strict
+        run: uv run -- python _project/scripts/fast_lane_ceiling_check.py --strict --manifest-from-env
 
       - name: UAT spec LOC table drift check
         if: hashFiles('_project/scripts/uat_loc_table.py') != ''

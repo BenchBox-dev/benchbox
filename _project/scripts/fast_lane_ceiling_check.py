@@ -153,13 +153,20 @@ def main() -> int:
         default="_project/config/fast_test_lane_policy.json",
         help="Fast-lane guardrail JSON file path",
     )
-    parser.add_argument(
-        "--manifest",
-        default=os.environ.get("MARKER_MANIFEST") or None,
-        help="Marker manifest written by `make lint-markers` (default: $MARKER_MANIFEST); collected here when unset",
+    manifest_source = parser.add_mutually_exclusive_group()
+    manifest_source.add_argument("--manifest", help="Marker manifest written by `make lint-markers`")
+    manifest_source.add_argument(
+        "--manifest-from-env",
+        action="store_true",
+        help="Read the marker manifest path from $MARKER_MANIFEST; fails when it is unset",
     )
     parser.add_argument("--strict", action="store_true", help="Fail on any fast-lane policy violation")
     args = parser.parse_args()
+    manifest_path = args.manifest
+    if args.manifest_from_env:
+        manifest_path = os.environ.get("MARKER_MANIFEST")
+        if not manifest_path:
+            parser.error("--manifest-from-env requires MARKER_MANIFEST to be set")
 
     repo_root = Path(__file__).resolve().parents[2]
 
@@ -168,7 +175,7 @@ def main() -> int:
     fast_lane_environment_error = False
     try:
         fast_lane_violations = _check_fast_lane_policy(
-            repo_root, fast_lane_policy, Path(args.manifest) if args.manifest else None
+            repo_root, fast_lane_policy, Path(manifest_path) if manifest_path else None
         )
     except FastLaneCollectError as exc:
         fast_lane_violations = []
