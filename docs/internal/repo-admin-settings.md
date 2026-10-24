@@ -77,6 +77,8 @@ broken `if:` never reads as a pass (`scripts/ci_unit_result.py` holds the
 rule). All five contexts report on every `pull_request` event, so no required
 check stays pending forever on a change that does not touch it.
 
+Markdown routes to the `docs` unit alone unless a test or audit reads it. `.github/ci-units.yml` lists the markdown that counts as code (root agent and release documents, `docs/agent/`, and every document recorded in `_project/inert-doc-readers.json`), `.github/path-filters.yml` lists the same set for `code-ci`, and `tests/unit/scripts/test_ci_units.py` fails when the two disagree or when a document a test reads is routed away from the code tests.
+
 | Context | Runs for | Jobs it requires |
 | --- | --- | --- |
 | `core` | `benchbox/`, `tests/`, packaging, executable docs code; framing also on test infrastructure or bundled binary changes | lint, unit tests, the coverage-impact medium selection on every PR (changes to paths listed as inert by `.github/inert-paths.txt` are inert; any other fail-closed escalation runs the heavy tier instead), and when heavy inputs change the medium tests, correctness gate, required local-engine cases, plan-capture gate and DataFusion integration; macOS/Windows TPC-H binary framing on heavy or framing inputs; package smoke and dependency audit on packaging changes |
