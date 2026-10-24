@@ -6,7 +6,6 @@ from typing import Any, cast
 import pytest
 
 from benchbox.utils.dialect_utils import (
-    SQLITE_DISCOUNT_BOUNDS,
     SQLTranslationError,
     UnknownSqlDialectError,
     apply_rewrite,
@@ -23,7 +22,7 @@ pytestmark = [
 
 
 def _fold_sqlite(query: str) -> str:
-    return apply_rewrite("fold_between_literal_arithmetic", query, "sqlite", **SQLITE_DISCOUNT_BOUNDS)
+    return apply_rewrite("fold_between_literal_arithmetic", query, "sqlite")
 
 
 def _roundtrip_sqlite(query: str) -> str:
@@ -53,7 +52,7 @@ class TestSQLiteDiscountBoundaries:
         assert outcomes[0].query_fingerprint
 
     @pytest.mark.parametrize("center, low, high", [("0.06", "0.05", "0.07"), ("0.07", "0.06", "0.08")])
-    def test_only_discount_bounds_are_folded(self, center, low, high):
+    def test_only_literal_bounds_are_folded(self, center, low, high):
         from benchbox._vendor import sqlglot
         from benchbox._vendor.sqlglot import exp
 
@@ -75,25 +74,22 @@ class TestSQLiteDiscountBoundaries:
     @pytest.mark.parametrize(
         "predicate",
         [
-            "l_discount BETWEEN center - 0.01 AND 0.06 + 0.01",
-            "l_discount BETWEEN 0.06 - 0.01 AND center + 0.01",
-            "other_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
-            "l_discount > 0.06 + 0.01",
             "l_discount BETWEEN '0.06' - 0.01 AND '0.06' + 0.01",
-            "l_discount BETWEEN 0.06 * 0.01 AND 0.06 + 0.01",
-            "l_discount BETWEEN 0.05 AND 0.06 + 0.01",
-            "l_discount BETWEEN 0.06 - 0.01 AND 0.07",
+            "l_discount BETWEEN 0.06 * 0.01 AND 0.06 / 0.01",
+            "l_discount BETWEEN 0.05 AND 0.07",
             "l_discount BETWEEN 1 - 1 AND 1 + 1",
+            "l_discount BETWEEN 0.5 + 0.25 AND 0.5 - 0.25",
             "l_discount BETWEEN 0.06 - 1 AND 0.06 + 1",
             "l_discount BETWEEN (9223372036854775807 + 1 - 9223372036854775807) AND (1 + 1)",
-            "l_discount BETWEEN 0.01 - 0.06 AND 0.06 + 0.01",
             "l_discount BETWEEN 6e-2 - 1e-2 AND 6e-2 + 1e-2",
             "l_discount BETWEEN (10000000000000000000000000000.0 + 9.0 - 10000000000000000000000000000.0) AND (20.0 + 0.0)",
-            "l_discount BETWEEN (100000000.0 + 0.0000000001 - 100000000.0) AND (0.06 + 0.01)",
-            f"l_discount BETWEEN (1{'0' * 400}.0 - 1{'0' * 400}.0) AND (0.06 + 0.01)",
-            "l_discount BETWEEN 0.01 + 0.01 + 0.01 + 0.01 + 0.01 AND 0.06 + 0.01",
-            "l_discount BETWEEN 0.0000001 + 0.0000001 AND 0.06 + 0.01",
-            "l_discount BETWEEN 100.0 - 99.0 AND 0.06 + 0.01",
+            "l_discount BETWEEN (100000000.0 + 0.0000000001 - 100000000.0) AND (20.0 + 0.0)",
+            f"l_discount BETWEEN (1{'0' * 400}.0 - 1{'0' * 400}.0) AND (20.0 + 0.0)",
+            "l_discount BETWEEN 0.01 + 0.01 + 0.01 + 0.01 + 0.01 AND 20.0 + 0.0",
+            "l_discount BETWEEN 0.0000001 + 0.0000001 AND 20.0 + 0.0",
+            "l_discount BETWEEN 100.0 - 99.0 AND 20.0 + 0.0",
+            "l_discount + 0.06 > 0.07 AND price * (0.06 + 0.01) > 1",
+            "l_discount IN (0.06 + 0.01, 0.1 + 0.2)",
         ],
     )
     def test_unrelated_or_nonliteral_expressions_are_unchanged(self, predicate):
@@ -166,23 +162,31 @@ class TestSQLiteDiscountBoundaries:
     @pytest.mark.parametrize(
         "query",
         [
-            "SELECT * FROM orders WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
-            "SELECT * FROM t WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
-            "SELECT 'lineitem' AS note FROM t WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
-            "SELECT * FROM t /* lineitem */ WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
+            "SELECT * FROM orders WHERE o_totalprice BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
+            "SELECT * FROM sat_lineitem WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
+            "SELECT 'lineitem' AS note FROM t WHERE x BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
+            "SELECT * FROM t /* lineitem */ WHERE x BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
+            "SELECT * FROM t WHERE x >= 0.06 - 0.01 AND x <= 0.06 + 0.01",
         ],
     )
-    def test_queries_that_do_not_read_lineitem_are_not_folded(self, query):
-        assert _fold_sqlite(query) == _roundtrip_sqlite(query)
+    def test_every_table_and_column_is_folded(self, query):
+        assert _fold_sqlite(query) != _roundtrip_sqlite(query)
+        assert "0.06 - 0.01" not in _fold_sqlite(query)
+        assert "0.06 + 0.01" not in _fold_sqlite(query)
 
-    def test_a_query_that_reads_lineitem_is_folded_in_a_join_and_a_subquery(self):
+    def test_bounds_are_folded_in_a_join_and_a_subquery(self):
         joined = (
-            "SELECT 1 FROM orders o JOIN lineitem l ON l.l_orderkey = o.o_orderkey "
+            "SELECT 1 FROM orders o JOIN sat_lineitem l ON l.l_orderkey = o.o_orderkey "
             "WHERE l.l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
         )
         assert "BETWEEN 0.05 AND 0.07" in _fold_sqlite(joined)
         nested = "SELECT * FROM (SELECT l_discount FROM lineitem) WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
         assert "BETWEEN 0.05 AND 0.07" in _fold_sqlite(nested)
+
+    def test_comparison_operands_are_folded(self):
+        assert _fold_sqlite("SELECT 1 FROM t WHERE x > 0.06 + 0.01") == _roundtrip_sqlite(
+            "SELECT 1 FROM t WHERE x > 0.07"
+        )
 
     def test_value_inside_the_double_noise_band_follows_exact_decimal_semantics(self):
         import sqlite3
@@ -207,8 +211,8 @@ class TestSQLiteDiscountBoundaries:
                 "(20.0 + 0.0)",
                 [8.0, 9.0],
             ),
-            ((0.0, 0.05), "(100000000.0 + 0.0000000001 - 100000000.0)", "(0.06 + 0.01)", [0.0, 0.05]),
-            ((0.05,), f"(1{'0' * 400}.0 - 1{'0' * 400}.0)", "(0.06 + 0.01)", []),
+            ((0.0, 0.05), "(100000000.0 + 0.0000000001 - 100000000.0)", "(20.0 + 0.0)", [0.0, 0.05]),
+            ((0.05,), f"(1{'0' * 400}.0 - 1{'0' * 400}.0)", "(20.0 + 0.0)", []),
         ],
     )
     def test_cancellation_and_overflow_bounds_keep_sqlite_semantics(self, rows, low, high, expected):
@@ -860,3 +864,37 @@ class TestTpcdsQuestDbDateArithmetic:
             "SELECT * FROM a, b d1, b d3 WHERE d3.d_date > d1.d_date + 5", "questdb"
         )
         assert "DATEADD('d', 5, d1.d_date)" in result
+
+
+class TestSQLiteBoundsOnAnyTable:
+    @pytest.mark.parametrize("table, column", [("sat_lineitem", "l_discount"), ("orders", "o_totalprice")])
+    @pytest.mark.parametrize(
+        "predicate",
+        [
+            "{c} BETWEEN 0.06 - 0.01 AND 0.06 + 0.01",
+            "{c} BETWEEN 0.07 - 0.01 AND 0.07 + 0.01",
+            "{c} >= 0.06 - 0.01 AND {c} <= 0.06 + 0.01",
+            "{c} = 0.1 + 0.2 OR {c} = 0.06 - 0.01",
+        ],
+    )
+    def test_rows_on_the_bounds_match_duckdb(self, table, column, predicate):
+        import sqlite3
+
+        import duckdb
+
+        query = f"SELECT SUM(CAST({column} * 100 AS INTEGER)) FROM {table} WHERE {predicate.format(c=column)}"
+        values = [f"{cents / 100:.2f}" for cents in range(41)]
+        duck = duckdb.connect()
+        lite = sqlite3.connect(":memory:")
+        try:
+            duck.execute(f"CREATE TABLE {table} ({column} DECIMAL(15,2))")
+            lite.execute(f"CREATE TABLE {table} ({column} DECIMAL(15,2))")
+            for value in values:
+                duck.execute(f"INSERT INTO {table} VALUES ({value})")
+                lite.execute(f"INSERT INTO {table} VALUES ('{value}')")
+            expected = duck.execute(query).fetchall()
+            translated = translate_sql_query(query, target_dialect="sqlite", source_dialect="duckdb", identify=False)
+            assert lite.execute(translated).fetchall() == [(int(expected[0][0]),)]
+        finally:
+            duck.close()
+            lite.close()
