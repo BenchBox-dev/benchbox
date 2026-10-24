@@ -5141,10 +5141,15 @@
       "title": "Support adding legitimate comment exceptions in PRs without base branch circular dependency"
     },
     "comment-policy-wheel-binding-blocks-stale-branches": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-25T14:30:55Z",
+        "generation": "6f3e7d9f7c3647e9a9940ef6fd37ba40",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Comment policy fails on branches behind develop after a vendored wheel bump"
     },
     "comment-policy-wheel-bump-verification-gaps-20261017": {
