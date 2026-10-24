@@ -985,7 +985,7 @@ class UnifiedTuningConfiguration:
         benchmark: str = "tpch",
         columns: Optional[list[Any]] = None,
         table_name: Optional[str] = None,
-        platform: str = "duckdb",
+        platform: Optional[str] = None,
         **kwargs,
     ) -> bool:
         if optimization_type in self._TABLE_LAYOUT_TYPES:
@@ -1021,8 +1021,11 @@ class UnifiedTuningConfiguration:
         benchmark: str = "tpch",
         columns: Optional[list[Any]] = None,
         table_name: Optional[str] = None,
-        platform: str = "duckdb",
+        platform: Optional[str] = None,
     ) -> bool:
+        if platform is not None and self.layout_unapplied_reason(platform, layout_type) is not None:
+            return False
+        platform = platform or "duckdb"
         slot = layout_type.value
         resolved_columns = self._resolve_layout_columns(columns)
         if resolved_columns:
@@ -1035,6 +1038,19 @@ class UnifiedTuningConfiguration:
         for target_table, entry_columns in targets.items():
             self._record_layout_slot(target_table, slot, list(entry_columns))
         return True
+
+    @staticmethod
+    def layout_unapplied_reason(platform: str, layout_type: TuningType) -> Optional[str]:
+        from benchbox.core.tuning.capability_registry import (
+            get_capability,
+            is_not_rendered_at_execution,
+            not_rendered_reason,
+        )
+
+        capability = get_capability(platform, layout_type)
+        if is_not_rendered_at_execution(capability):
+            return not_rendered_reason(capability)
+        return None
 
     @staticmethod
     def _resolve_layout_columns(columns: Optional[list[Any]]) -> list[TuningColumn]:

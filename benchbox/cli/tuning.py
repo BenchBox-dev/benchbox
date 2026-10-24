@@ -315,7 +315,10 @@ def _apply_table_layout(
     if config.enable_platform_optimization(tuning_type, benchmark=benchmark, platform=platform):
         console.print(f"[green]✓ {label} enabled[/green]")
         return True
-    if tuning_type == TuningType.PARTITIONING:
+    unapplied = UnifiedTuningConfiguration.layout_unapplied_reason(platform, tuning_type)
+    if unapplied is not None:
+        reason = f"{platform} does not apply {tuning_type.value} at execution: {unapplied}"
+    elif tuning_type == TuningType.PARTITIONING:
         reason = f"no default partitioning profile exists for {benchmark}"
     else:
         reason = f"no {platform} {benchmark} template defines {tuning_type.value} for any table"

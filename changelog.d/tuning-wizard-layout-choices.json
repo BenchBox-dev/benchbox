@@ -5,7 +5,7 @@
       "category": "fixed",
       "breaking": false,
       "lead": "Tuning wizard records layout choices from the selected platform",
-      "text": "The tuning wizard reads the selected platform's packaged template when it records clustering, distribution and sort choices, instead of always reading the DuckDB template, so Snowflake clustering choices reach table_tunings. When no template for that platform and benchmark defines the layout (Redshift distribution and sort keys, BigQuery clustering), it prints a not-enabled warning and records nothing instead of printing a success line. Partitioning still comes from the platform-independent default partitioning profile.",
+      "text": "The tuning wizard reads the selected platform's packaged template when it records clustering, distribution and sort choices, instead of always reading the DuckDB template, so Snowflake clustering choices reach table_tunings. Partitioning still comes from the default partitioning profile. A layout choice is recorded only when the platform's tuning capabilities apply it at execution; otherwise (BigQuery partitioning, Redshift distribution and sort keys, BigQuery clustering) the wizard prints a not-enabled warning with the reason and records nothing instead of printing a success line.",
       "platforms": [
         "snowflake",
         "redshift",

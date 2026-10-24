@@ -78,7 +78,7 @@ def test_apply_defaults_to_config() -> None:
 def test_apply_defaults_to_config_all_platforms() -> None:
     expected = {
         "snowflake": {TuningType.CLUSTERING},
-        "bigquery": {TuningType.PARTITIONING},
+        "bigquery": set(),
         "redshift": set(),
     }
     for platform, types in expected.items():
@@ -123,18 +123,37 @@ def test_enable_layout_reports_missing_platform_template() -> None:
     assert cfg.table_tunings == {}
 
 
-@pytest.mark.parametrize("platform", ["bigquery", "clickhouse", "snowflake"])
-def test_partitioning_comes_from_default_profile_for_any_platform(platform: str) -> None:
+@pytest.mark.parametrize("platform", ["clickhouse", "snowflake"])
+def test_partitioning_recorded_from_default_profile_where_platform_applies_it(platform: str) -> None:
     cfg = UnifiedTuningConfiguration()
     assert cfg.enable_platform_optimization(TuningType.PARTITIONING, benchmark="tpch", platform=platform) is True
     assert {name for name, present in _table_slots(cfg).items() if "partitioning" in present} == {"LINEITEM", "ORDERS"}
+
+
+@pytest.mark.parametrize("platform", ["bigquery", "redshift", "databricks", "duckdb"])
+def test_partitioning_not_recorded_where_platform_does_not_apply_it(platform: str) -> None:
+    cfg = UnifiedTuningConfiguration()
+    assert cfg.enable_platform_optimization(TuningType.PARTITIONING, benchmark="tpch", platform=platform) is False
+    assert cfg.table_tunings == {}
+
+
+def test_partitioning_warning_states_the_capability_reason(monkeypatch: pytest.MonkeyPatch) -> None:
+    printed: list[str] = []
+    monkeypatch.setattr(t.console, "print", lambda *a, **k: printed.append(str(a[0])))
+    cfg = UnifiedTuningConfiguration()
+    assert t._apply_table_layout(cfg, TuningType.PARTITIONING, "Partitioning", "tpch", "bigquery") is False
+    assert cfg.table_tunings == {}
+    assert len(printed) == 1
+    assert printed[0].startswith(
+        "[yellow]⚠ Partitioning not enabled: bigquery does not apply partitioning at execution"
+    )
 
 
 def test_partitioning_warning_names_the_default_profile(monkeypatch: pytest.MonkeyPatch) -> None:
     printed: list[str] = []
     monkeypatch.setattr(t.console, "print", lambda *a, **k: printed.append(str(a[0])))
     cfg = UnifiedTuningConfiguration()
-    assert t._apply_table_layout(cfg, TuningType.PARTITIONING, "Partitioning", "nyctaxi", "bigquery") is False
+    assert t._apply_table_layout(cfg, TuningType.PARTITIONING, "Partitioning", "nyctaxi", "clickhouse") is False
     assert cfg.table_tunings == {}
     assert printed == [
         "[yellow]⚠ Partitioning not enabled: no default partitioning profile exists for nyctaxi[/yellow]"
@@ -227,10 +246,9 @@ def test_simple_wizard_persists_table_layout_choices(monkeypatch: pytest.MonkeyP
     bigquery_out = t._run_simple_wizard(
         UnifiedTuningConfiguration(), {"enable_clustering": True}, "bigquery", "tpch", SimpleNamespace()
     )
-    assert TuningType.PARTITIONING in _enabled(bigquery_out)
+    assert TuningType.PARTITIONING not in _enabled(bigquery_out)
     assert TuningType.CLUSTERING not in _enabled(bigquery_out)
-    bigquery_slots = _table_slots(bigquery_out)
-    assert any("partitioning" in present for present in bigquery_slots.values())
+    assert not _table_slots(bigquery_out)
 
     monkeypatch.setattr(t.Prompt, "ask", _seq(["3"]))
     monkeypatch.setattr(t.Confirm, "ask", _seq([True]))
