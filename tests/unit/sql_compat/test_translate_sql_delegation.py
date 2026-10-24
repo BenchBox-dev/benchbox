@@ -9,7 +9,7 @@ import pytest
 
 from benchbox.platforms.base.dialect_translation import DialectTranslationMixin
 from benchbox.utils.dialect_utils import (
-    SQLTranslationError,
+    UnknownSqlDialectError,
     sql_translation_context,
     summarize_sql_translation_outcomes,
 )
@@ -68,10 +68,11 @@ class TestTranslateSqlDialectResolution:
             a.translate_sql("SELECT col FROM t", source_dialect="duckdb")
         assert outcomes[0].normalized_source_dialect == "duckdb"
 
-    def test_unknown_target_dialect_fails_in_strict_mode(self):
+    @pytest.mark.parametrize("strict", [True, False, None])
+    def test_unknown_target_dialect_raises_in_every_mode(self, strict):
         a = _Adapter(dialect="not_a_platform")
-        with pytest.raises(SQLTranslationError):
-            a.translate_sql("SELECT col FROM t", source_dialect="duckdb", strict=True)
+        with pytest.raises(UnknownSqlDialectError):
+            a.translate_sql("SELECT col FROM t", source_dialect="duckdb", strict=strict)
 
 
 class TestTranslateSqlDuckDBPostfix:

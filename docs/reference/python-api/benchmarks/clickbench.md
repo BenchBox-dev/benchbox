@@ -139,7 +139,7 @@ q21 = benchmark.get_query("Q21")
 
 `get_queries(dialect=None) -> dict[str, str]` returns all 43 queries keyed `"Q1"` to `"Q43"`.
 
-With a `dialect`, each query is translated with SQLGlot, reading ClickHouse SQL. Identifiers are not quoted (`SELECT COUNT(*) FROM hits` for DuckDB, with the trailing semicolon dropped). If translation fails, including for an unknown dialect name, the original query is returned without an error. Use `translate_query()` when you want failures to raise.
+With a `dialect`, each query is translated with SQLGlot, reading ClickHouse SQL. Identifiers are not quoted (`SELECT COUNT(*) FROM hits` for DuckDB, with the trailing semicolon dropped). An unknown dialect name raises `UnknownSqlDialectError`, and a query that cannot be translated raises `SQLTranslationError`; translation is always strict here.
 
 ```python
 queries = benchmark.get_queries()
@@ -214,7 +214,7 @@ The example prints `False True`.
 
 `translate_query(query_id, dialect) -> str` returns one query translated to `dialect` with SQLGlot. Unlike `get_queries(dialect=...)`, it reads the query as PostgreSQL SQL and quotes every identifier: `SELECT COUNT(*) FROM "hits"` for DuckDB, PostgreSQL and Snowflake, and ``SELECT COUNT(*) FROM `hits` `` for BigQuery.
 
-Raises `ValueError` for an unknown query id and for an unknown dialect (`Error translating to dialect 'bogus': Unknown dialect 'bogus'.`). Raises `ImportError` if the bundled `benchbox._vendor.sqlglot` runtime is unavailable; reinstall BenchBox rather than installing public SQLGlot.
+Raises `ValueError` for an unknown query id and `UnknownSqlDialectError` (a `ValueError`) for an unknown dialect (`No fork SQL dialect for 'bogus'; ...`). Raises `ImportError` if the bundled `benchbox._vendor.sqlglot` runtime is unavailable; reinstall BenchBox rather than installing public SQLGlot.
 
 ```python
 q1_bq = benchmark.translate_query("Q1", "bigquery")

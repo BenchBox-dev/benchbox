@@ -294,6 +294,17 @@ reviewer, or any attempt after a decision, is rejected. If every reviewer in
 the chain is absent or skipped, the run stays pending. A SHIP from the first
 reviewer that answers ends the run like any other decision.
 
+An OMP run whose event stream ends with no final assistant text, for example
+after a tool call, is absent as `empty` with the detail "the reviewer ended
+without a final answer". Final text that is prose or malformed JSON, and OMP
+output that is not an event stream, stays `invalid`. Both are retried alike.
+
+The review body lists every absent attempt under "Reviewers not available" as
+`- <reviewer> (attempt <slot>): absent (<kind>): <detail>`. The detail is the
+one recorded in the attempt artifact, with credentials redacted, whitespace
+collapsed and at most 160 characters; it is left out when the attempt has none.
+Raw reviewer responses are never published there.
+
 ## Decisions
 
 The canonical schema-2 response has seven reviewer-supplied properties:
