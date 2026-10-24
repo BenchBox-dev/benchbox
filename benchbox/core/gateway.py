@@ -77,14 +77,6 @@ class GatewayEndpoint:
     insecure: bool
 
 
-def strip_host_userinfo(host: str) -> str:
-    value = host.strip()
-    if "://" in value:
-        value = value.split("://", 1)[1]
-    value = value.split("/", 1)[0]
-    return value.rsplit("@", 1)[-1].strip()
-
-
 def is_loopback_host(host: str) -> bool:
     name = host.strip().strip("[]").lower()
     if name == "localhost":
@@ -126,7 +118,9 @@ def resolve_gateway_endpoint(
             raise GatewayConfigurationError(f"{', '.join(stray)} require a gateway other than {DEFAULT_GATEWAY}")
         return None
 
-    clean_host = strip_host_userinfo(host) if host else ""
+    clean_host = host.strip() if host else ""
+    if _has_host_markup(clean_host):
+        raise GatewayConfigurationError(HOST_REJECTED_MESSAGE)
     if supported_gateways(platform)[selected].requires_host and not clean_host:
         raise GatewayConfigurationError(f"gateway {selected!r} requires gateway_host")
     if chosen_protocol not in ("https", "http"):
@@ -160,6 +154,21 @@ def resolve_gateway_endpoint(
     )
 
 
+HOST_REJECTED_MESSAGE = "gateway_host must be a bare host name without credentials, scheme or path"
+
+
+def _has_host_markup(host: str) -> bool:
+    return "@" in host or "/" in host
+
+
+def _parse_host(value: str) -> str:
+    from benchbox.core.hooks.platform_hooks import PlatformOptionError
+
+    if _has_host_markup(value):
+        raise PlatformOptionError(HOST_REJECTED_MESSAGE)
+    return value.strip()
+
+
 def _parse_port(value: str) -> int:
     from benchbox.core.hooks.platform_hooks import PlatformOptionError
 
@@ -179,7 +188,8 @@ def register_gateway_connection_specs() -> None:
     specs = [
         PlatformOptionSpec(
             name="gateway_host",
-            help="Gateway endpoint host or IP address.",
+            parser=_parse_host,
+            help="Gateway endpoint host name or IP address, without credentials, scheme or path.",
         ),
         PlatformOptionSpec(
             name="gateway_port",
@@ -229,6 +239,5 @@ __all__ = [
     "register_gateway_connection_specs",
     "resolve_gateway_endpoint",
     "resolve_requested_gateway",
-    "strip_host_userinfo",
     "supported_gateways",
 ]

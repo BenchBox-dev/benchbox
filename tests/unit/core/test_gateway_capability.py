@@ -347,3 +347,15 @@ def test_mcp_run_benchmark_rejects_gateway_connection_options(tmp_path: Path) ->
     assert response["status"] == "failed"
     assert "Platform option 'gateway_host' is not authorized for MCP" in response["message"]
     get_adapter.assert_not_called()
+
+
+@pytest.mark.parametrize("host", ["alice:secret@gw.example.com", "https://gw.example.com", "gw.example.com/x"])
+def test_gateway_host_with_credentials_scheme_or_path_is_rejected_at_parse_time(host: str) -> None:
+    register_gateway_connection_specs()
+    with pytest.raises(PlatformOptionError, match="bare host name") as excinfo:
+        PlatformHookRegistry.parse_options("snowflake", [("gateway_host", host)])
+    assert "secret" not in str(excinfo.value)
+    assert (
+        PlatformHookRegistry.parse_options("snowflake", [("gateway_host", " gw.example.com ")])["gateway_host"]
+        == "gw.example.com"
+    )

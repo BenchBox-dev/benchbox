@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from benchbox.core.exceptions import ConfigurationError
 from benchbox.core.gateway import INSECURE_GATEWAY_ENV, GatewayConfigurationError, UnsupportedGatewayError
 from benchbox.platforms.snowflake import SnowflakeAdapter
 
@@ -107,13 +108,18 @@ def test_ocsp_fail_open_forwarded_only_when_set(value: bool) -> None:
 
 
 @pytest.mark.parametrize(
-    "host", ["alice:secret@gw.example.com", "https://alice:secret@gw.example.com/path", " gw.example.com "]
+    "host", ["alice:secret@gw.example.com", "https://alice:secret@gw.example.com/path", "gw.example.com/path"]
 )
-def test_host_userinfo_is_stripped(host: str) -> None:
-    adapter = _adapter(gateway="custom", gateway_host=host)
+def test_host_with_credentials_or_scheme_is_rejected_without_echoing_it(host: str) -> None:
+    with pytest.raises(GatewayConfigurationError, match="bare host name") as excinfo:
+        _adapter(gateway="custom", gateway_host=host)
+    assert "secret" not in str(excinfo.value)
+
+
+def test_host_whitespace_is_trimmed() -> None:
+    adapter = _adapter(gateway="custom", gateway_host=" gw.example.com ")
     assert adapter.gateway_endpoint is not None
     assert adapter.gateway_endpoint.host == "gw.example.com"
-    assert "secret" not in repr(adapter.gateway_endpoint)
 
 
 def test_missing_ca_bundle_file_raises(tmp_path: Path) -> None:
@@ -121,32 +127,35 @@ def test_missing_ca_bundle_file_raises(tmp_path: Path) -> None:
         _adapter(gateway="custom", gateway_host="gw.example.com", gateway_ca_bundle=str(tmp_path / "absent.pem"))
 
 
-def test_ca_bundle_is_scoped_to_the_connection(tmp_path: Path, snowflake_dependencies, monkeypatch) -> None:
+def test_ca_bundle_requires_matching_process_environment(tmp_path: Path, monkeypatch) -> None:
     bundle = tmp_path / "ca.pem"
     bundle.write_text("mock-ca", encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="REQUESTS_CA_BUNDLE"):
+        _adapter(gateway="custom", gateway_host="gw.example.com", gateway_ca_bundle=str(bundle))
+
+    other = tmp_path / "other.pem"
+    other.write_text("mock-ca", encoding="utf-8")
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(other))
+    with pytest.raises(ConfigurationError, match="REQUESTS_CA_BUNDLE"):
+        _adapter(gateway="custom", gateway_host="gw.example.com", gateway_ca_bundle=str(bundle))
+
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(bundle))
+    adapter = _adapter(gateway="custom", gateway_host="gw.example.com", gateway_ca_bundle=str(bundle))
+    assert adapter.gateway_endpoint is not None
+    assert adapter.gateway_endpoint.ca_bundle == str(bundle)
+
+
+def test_connect_never_modifies_the_process_environment(tmp_path: Path, snowflake_dependencies, monkeypatch) -> None:
+    bundle = tmp_path / "ca.pem"
+    bundle.write_text("mock-ca", encoding="utf-8")
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(bundle))
     seen: list[str | None] = []
     snowflake_dependencies.connector.connect.side_effect = lambda **_: seen.append(os.environ.get("REQUESTS_CA_BUNDLE"))
     adapter = _adapter(gateway="custom", gateway_host="gw.example.com", gateway_ca_bundle=str(bundle))
 
     adapter._create_admin_connection()
     assert seen == [str(bundle)]
-    assert "REQUESTS_CA_BUNDLE" not in os.environ
-
-    monkeypatch.setenv("REQUESTS_CA_BUNDLE", "/preexisting.pem")
-    adapter._create_admin_connection()
-    assert seen[-1] == str(bundle)
-    assert os.environ["REQUESTS_CA_BUNDLE"] == "/preexisting.pem"
-
-
-def test_ca_bundle_restored_when_connect_fails(tmp_path: Path, snowflake_dependencies) -> None:
-    bundle = tmp_path / "ca.pem"
-    bundle.write_text("mock-ca", encoding="utf-8")
-    snowflake_dependencies.connector.connect.side_effect = RuntimeError("boom")
-    adapter = _adapter(gateway="custom", gateway_host="gw.example.com", gateway_ca_bundle=str(bundle))
-
-    with pytest.raises(RuntimeError):
-        adapter._create_admin_connection()
-    assert "REQUESTS_CA_BUNDLE" not in os.environ
+    assert os.environ["REQUESTS_CA_BUNDLE"] == str(bundle)
 
 
 def test_insecure_gateway_requires_environment_opt_in() -> None:

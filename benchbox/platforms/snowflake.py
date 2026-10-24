@@ -145,6 +145,18 @@ class SnowflakeAdapter(PlatformAdapter):
             ocsp_fail_open=config.get("gateway_ocsp_fail_open"),
             allow_insecure=bool(config.get("allow_insecure_gateway")),
         )
+        self._require_environment_ca_bundle()
+
+    def _require_environment_ca_bundle(self) -> None:
+        endpoint = self.gateway_endpoint
+        if endpoint is None or endpoint.ca_bundle is None:
+            return
+        active = os.environ.get("REQUESTS_CA_BUNDLE")
+        if not active or Path(active).expanduser().resolve() != Path(endpoint.ca_bundle).resolve():
+            raise ConfigurationError(
+                "gateway_ca_bundle is only honoured by the Snowflake connector through the process environment: "
+                f"set REQUESTS_CA_BUNDLE to the same file before starting BenchBox ({endpoint.ca_bundle})"
+            )
 
     @property
     def platform_name(self) -> str:
@@ -532,22 +544,8 @@ class SnowflakeAdapter(PlatformAdapter):
                 conn_params["insecure_mode"] = True
         return conn_params
 
-    def _connect(self, **conn_params: Any) -> Any:
-        endpoint = self.gateway_endpoint
-        if endpoint is None or endpoint.ca_bundle is None:
-            return snowflake.connector.connect(**conn_params)
-        previous = os.environ.get("REQUESTS_CA_BUNDLE")
-        os.environ["REQUESTS_CA_BUNDLE"] = endpoint.ca_bundle
-        try:
-            return snowflake.connector.connect(**conn_params)
-        finally:
-            if previous is None:
-                os.environ.pop("REQUESTS_CA_BUNDLE", None)
-            else:
-                os.environ["REQUESTS_CA_BUNDLE"] = previous
-
     def _create_admin_connection(self, **connection_config) -> Any:
-        return self._connect(
+        return snowflake.connector.connect(
             **self._connect_params(connection_config, include_database=False),
             client_session_keep_alive=True,
             login_timeout=30,
@@ -679,7 +677,7 @@ class SnowflakeAdapter(PlatformAdapter):
             if self.private_key_path:
                 self.log_verbose("Using key pair authentication")
 
-            connection = self._connect(**conn_params)
+            connection = snowflake.connector.connect(**conn_params)
 
             self.log_verbose("Testing Snowflake connection")
             cursor = connection.cursor()
