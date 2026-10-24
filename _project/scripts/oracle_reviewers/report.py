@@ -272,6 +272,8 @@ def finalize(
         lines += [judgement.summary, ""]
     if judgement is not None and judgement.decision == protocol.DO_NOT_SHIP:
         lines += ["No defects are listed for this decision. Rework the change and push a new head.", ""]
+    if judgement is not None and judgement.merged:
+        lines += [f"{judgement.merged} identical finding(s) were reported more than once and are listed once.", ""]
     if judgement is not None and judgement.fixed:
         lines += [f"Verified fixed: {', '.join(judgement.fixed)}. Resolve their review threads.", ""]
     if judgement is not None and judgement.withdrawn:
@@ -331,7 +333,7 @@ def carried(plan: Mapping[str, Any]) -> Final:
         f"The patch is unchanged since head `{reviewed_head}` was reviewed, so its decision is carried to this head"
         " without running a reviewer. Its open review threads still apply.",
         "",
-        *_section("Still open", [_entry_line(entry) for entry in previous["open_defects"]]),
+        *_section("Still open", [_entry_line(entry) for entry in protocol.unique_defects(previous["open_defects"])]),
         *_strike_line(plan, int(previous["strikes_after"])),
     ]
     body = (
@@ -342,7 +344,7 @@ def carried(plan: Mapping[str, Any]) -> Final:
             kind=protocol.CARRY,
             decision=decision,
             reviewer=previous["reviewer"],
-            open_defects=list(previous["open_defects"]),
+            open_defects=protocol.unique_defects(previous["open_defects"]),
             next_id=int(previous["next_id"]),
             strikes_after=int(previous["strikes_after"]),
             summary=previous["summary"],

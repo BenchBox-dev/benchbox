@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import cli, github, protocol
+from _project.scripts.oracle_reviewers import cli, github, protocol, render
 from _project.scripts.oracle_reviewers.dedup import fingerprint
 from _project.scripts.oracle_reviewers.retry import State
 
@@ -518,6 +518,16 @@ def test_a_follow_up_after_ship_with_fixes_reviews_only_the_changed_file(
     assert plan["diff_inline"] is not None and "capture fixed" in plan["diff_inline"]
     assert "checker change" not in plan["diff_inline"]
     assert (tmp_path / "plan" / "diff.patch").read_text(encoding="utf-8") == CAPTURE_CHANGED
+
+
+def test_a_stored_record_with_duplicate_defect_ids_still_plans_a_follow_up(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT, dict(DEFECT)], next_id=2)
+    _, values, plan = _plan(monkeypatch, tmp_path, _fake(_review(record), diff=CAPTURE_CHANGED))
+    assert values["decision"] == "review" and plan["protocol"]["kind"] == "follow-up"
+    assert plan["protocol"]["prior"] == [DEFECT]
+    assert render.response_template([item["id"] for item in plan["protocol"]["prior"]])
 
 
 def test_a_follow_up_after_ship_scopes_to_the_changed_file_without_tiers(
