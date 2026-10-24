@@ -5039,10 +5039,15 @@
       "title": "The required comment-policy CI job hits its 10-minute timeout on ordinary PRs"
     },
     "comment-policy-completed-dead-prefixes-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-25T14:30:47Z",
+        "generation": "52dd4b345f384e36bea15d7c79f986c1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Let the comment policy drop completed-scope entries for paths that no longer exist"
     },
     "comment-policy-dead-exceptions-bulk-cleanup-20261023": {
