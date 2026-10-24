@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[3]
 SCHEMA = ROOT / "quality" / "docs-data.schema.json"
 FAST_BENCHMARKS = frozenset({"clickbench", "datavault"})
 
-pytestmark = [pytest.mark.unit]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 
 def _load(name: str):
@@ -50,7 +50,6 @@ def pages() -> dict[str, str]:
     return gqd.render_all(set(FAST_BENCHMARKS))
 
 
-@pytest.mark.fast
 class TestSchema:
     def test_export_validates(self, data):
         assert _errors(data) == []
@@ -62,7 +61,6 @@ class TestSchema:
         assert len(_errors(broken)) == 2
 
 
-@pytest.mark.fast
 class TestDeterminism:
     def test_two_exports_are_byte_identical(self, data):
         again = exporter.build_docs_data(set(FAST_BENCHMARKS))
@@ -82,7 +80,6 @@ class TestDeterminism:
             exporter.main(["--check"])
 
 
-@pytest.mark.fast
 class TestQueriesMatchGeneratorInputs:
     def test_benchmark_set_and_counts_match_catalog(self, data):
         from benchbox.core.query_catalog import list_query_ids
@@ -162,7 +159,6 @@ class TestQueriesMatchGeneratorInputs:
         assert queries["bucket_size"] == gqd._BUCKET_SIZE
 
 
-@pytest.mark.fast
 class TestTpcdsNotes:
     def test_notes_export_for_flagged_queries(self):
         from benchbox.core.tpcds.c_tools import SUBSCALE_TEMPLATE_OVERRIDES
@@ -182,7 +178,6 @@ class TestTpcdsNotes:
         assert record["subscale_note"] == subscale[0]
 
 
-@pytest.mark.fast
 class TestCompatMatchesGeneratorInputs:
     def test_rules_match_registry_rows_and_generated_tables(self, data):
         gcd._load_all_rules()
@@ -226,7 +221,6 @@ class TestCompatMatchesGeneratorInputs:
         assert data["compat"]["phase_order"] == gcd._PHASE_ORDER
 
 
-@pytest.mark.fast
 class TestTuningMatchesGeneratorInputs:
     def test_platform_rows_match_generated_matrix(self, data):
         text = gts.render()
@@ -258,7 +252,6 @@ class TestTuningMatchesGeneratorInputs:
         )
 
 
-@pytest.mark.medium
 class TestFullCatalog:
     def test_full_export_validates_and_covers_every_generated_page(self):
         full = exporter.build_docs_data()
