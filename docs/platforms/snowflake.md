@@ -118,10 +118,10 @@ benchbox run --platform snowflake --benchmark tpch --gateway custom \
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `gateway_host` | (required) | Gateway host; any `user:password@` prefix or scheme is dropped |
+| `gateway_host` | (required) | Bare gateway host name or address; a value with credentials (`user:password@`), a scheme or a path is rejected |
 | `gateway_port` | connector default | Gateway port (1-65535) |
 | `gateway_protocol` | `https` | `https` or `http` |
-| `gateway_ca_bundle` | (none) | CA bundle file used for the connection handshake through `REQUESTS_CA_BUNDLE`, restored afterwards; the file must exist |
+| `gateway_ca_bundle` | (none) | CA bundle file for a private-CA gateway. The connector reads it from the process environment, so `REQUESTS_CA_BUNDLE` must name the same file before BenchBox starts; otherwise construction fails. BenchBox never changes the environment |
 | `gateway_ocsp_fail_open` | (connector default) | Passed to the connector only when set |
 | `allow_insecure_gateway` | false | Disables certificate verification (`insecure_mode`) |
 
