@@ -5053,12 +5053,17 @@
       "title": "Let the comment policy drop completed-scope entries for paths that no longer exist"
     },
     "comment-policy-dead-exceptions-bulk-cleanup-20261023": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-25T18:46:08Z",
+        "generation": "36590afe325348b3a84cb9e0dea759e7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [
         "soundness-dead-exceptions-cleanup-20261022"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Remove the 158 remaining dead comment-policy exceptions after owner approval"
     },
     "comment-policy-digest-and-base-exception-catch22-20261008": {
