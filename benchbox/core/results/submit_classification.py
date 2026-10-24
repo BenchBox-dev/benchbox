@@ -15,6 +15,7 @@ from benchbox.core.results.status import (
     result_non_clean_reason,
     result_unvalidated_reason,
 )
+from benchbox.core.results.subscale_policy import result_compliance_class
 from benchbox.validation.bundle import CLI_REFUSED_COMPLIANCE_CLASSES
 
 
@@ -29,7 +30,7 @@ class SubmitTerminalState(str, Enum):
 
 
 def classify_loaded_result(result: Any) -> SubmitTerminalState:
-    if getattr(result, "compliance_class", None) in CLI_REFUSED_COMPLIANCE_CLASSES:
+    if result_compliance_class(result) in CLI_REFUSED_COMPLIANCE_CLASSES:
         return SubmitTerminalState.unofficial
 
     non_clean_reason = result_non_clean_reason(result)

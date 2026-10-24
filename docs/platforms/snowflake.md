@@ -104,6 +104,34 @@ The driver package for Snowflake is `snowflake-connector-python`.
 See {ref}`driver-version-management` for the full guide, including why `uv run` may
 revert a manually-installed version and how to work around it.
 
+### Gateway Endpoint
+
+`--gateway espresso|greybeam|custom` routes the Snowflake connection through a gateway endpoint. Every gateway
+needs `gateway_host`; the Snowflake `account` is still sent so login succeeds. Gateway options are accepted only
+with a non-native gateway.
+
+```bash
+benchbox run --platform snowflake --benchmark tpch --gateway custom \
+  --platform-option gateway_host=gateway.example.com \
+  --platform-option gateway_port=8443
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `gateway_host` | (required) | Bare gateway host name or address; a value with credentials (`user:password@`), a scheme or a path is rejected |
+| `gateway_port` | connector default | Gateway port (1-65535) |
+| `gateway_protocol` | `https` | `https` or `http` |
+| `gateway_ca_bundle` | (none) | CA bundle file for a private-CA gateway. The connector reads it from the process environment, so `REQUESTS_CA_BUNDLE` must name the same file before BenchBox starts; otherwise construction fails. BenchBox never changes the environment |
+| `gateway_ocsp_fail_open` | (connector default) | Passed to the connector only when set |
+| `allow_insecure_gateway` | false | Disables certificate verification (`insecure_mode`) |
+
+`allow_insecure_gateway` and `http` to a non-loopback host both require `BENCHBOX_ALLOW_INSECURE_GATEWAY=1` and
+log a warning. Gateway options are not available through MCP. A gateway-routed run records
+`platform.gateway`, is marked `tpc_compliant: false`, and never compares with native runs. Its
+`benchmark.compliance_class` is always `unofficial_nonstandard`, whatever the benchmark reports, so TPC metrics are
+suppressed and publish, submit, bundle validation, the results database and metrics readiness all refuse it as
+non-official. A stored result that claims `official` while `platform.gateway.routed` is true is treated the same way.
+
 ## Authentication Methods
 
 ### Password Authentication

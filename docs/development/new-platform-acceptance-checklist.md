@@ -39,7 +39,8 @@ Use this checklist before opening a platform-support PR. It is deliberately conc
   The core registers the `--gateway` CLI flag and typed connection options (`gateway_host`, `gateway_port`
   as an integer port, `gateway_protocol`, `gateway_ca_bundle`, and the booleans `gateway_ocsp_fail_open` and
   `allow_insecure_gateway`) with the other platform options. Every non-native gateway must require a host;
-  `native` is accepted and recorded as no gateway. Until the adapter routes queries through the gateway, any
+  `native` is accepted and recorded as no gateway. Until the platform key is listed in
+  `GATEWAY_ROUTED_PLATFORMS` in `benchbox/core/gateway.py`, any
   other `--gateway` value fails before work starts with "gateway routing is not implemented for <platform>
   yet". A routed result records `platform.gateway` with `name` and `routed: true`, sets the top-level
   `tpc_compliant: false`, restricts per-query `execution_engine` to `routes_to` targets plus `unknown`, and

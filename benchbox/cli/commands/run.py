@@ -2716,7 +2716,10 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
 @advanced_option(
     "--gateway",
     default=None,
-    help="Gateway for query routing. Only 'native' (no gateway) runs today; declared gateways fail closed.",
+    help=(
+        "Gateway for query routing. 'native' (no gateway) is the default; other gateways route queries on "
+        "platforms that support them (Snowflake) and fail before work starts elsewhere."
+    ),
 )
 @advanced_option("--seed", type=int, help="RNG seed for query parameter generation")
 @advanced_option(
