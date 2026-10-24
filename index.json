@@ -21403,7 +21403,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "The ruleset drift check fails because the runbook does not list oracle-gate as a required check on develop"
     },
     "run-lifecycle-and-export-unification-refactor": {
