@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import copy
 import re
 from pathlib import Path
@@ -8,13 +9,13 @@ from typing import Any
 import pytest
 import yaml
 
-from _project.scripts.oracle_gate import GATE_CONTEXT
 from scripts.ci_text_edit_verdict import TEXT_EDIT_RUN_NAME
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
+GATE_SCRIPT = ROOT / "_project/scripts/oracle_gate.py"
 ADMIN_SETTINGS = ROOT / "docs/internal/repo-admin-settings.md"
 TEXT_EDIT = "github.event.action == 'edited' && !github.event.changes.base"
 ROOT_JOBS = ("comment-policy", "ci-paths")
@@ -168,6 +169,17 @@ def _workflow() -> dict[str, Any]:
     return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
 
 
+def _gate_context() -> str:
+    tree = ast.parse(GATE_SCRIPT.read_text(encoding="utf-8"))
+    return next(
+        node.value.value
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "GATE_CONTEXT" for target in node.targets)
+        and isinstance(node.value, ast.Constant)
+    )
+
+
 def _required_names() -> set[str]:
     text = ADMIN_SETTINGS.read_text(encoding="utf-8")
     block = text.split("Required status checks:", 1)[1].split("```text", 1)[1].split("```", 1)[0]
@@ -177,7 +189,7 @@ def _required_names() -> set[str]:
         for path in WORKFLOW.parent.glob("*.yml")
         if path != WORKFLOW
         for job_id, job in (yaml.safe_load(path.read_text(encoding="utf-8")).get("jobs") or {}).items()
-    } | {GATE_CONTEXT}
+    } | {_gate_context()}
     return required - elsewhere
 
 
