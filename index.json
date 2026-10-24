@@ -2710,15 +2710,10 @@
       "title": "Keep release notes user-focused and in line with earlier entries"
     },
     "changelog-fragments-01-library": {
-      "claim": {
-        "expires_at": "2026-10-25T18:47:10Z",
-        "generation": "a3443ca5b14a40148a90572041e9d79d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Add the changelog fragment library and make targets (inert, no CI gate, no release-path change)"
     },
     "changelog-fragments-02-release-prep": {
