@@ -4,7 +4,7 @@
     "The procedure requires confirming the failure on current develop before a bypass",
     "The develop ruleset shows zero bypass actors again with enforcement active"
   ],
-  "context": "Incident 2026-10-14: a stale scope-ledger entry failed every PR's comment gate. Repair PR #2953 could not merge normally (gate pins the base copy) and the develop-squash-only ruleset listed zero bypass actors, so even admin API merge was refused. Resolved with owner approval via temporary org-admin pull_request bypass, immediate merge, and verified restore. Later finding: PR #2954 had already removed the stranded ledger entries about 11 hours before #2953 merged, so #2953's bypass fixed nothing that was still broken; its squash adds only a 14-line test. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Agents may bypass with approval\" — an agent may bypass required checks only after the owner approves that specific PR in the current request, records the reason, and opens a follow-up issue (now [MERGE-AUTHORITY-001] and docs/agent/merge-authority.md). The written procedure must confirm the gate is still broken on current develop before any bypass.",
+  "context": "Delivered in merged PR #3337 as docs/agent/emergency-merge.md. Owner decision applied: owner-only runbook; agents never bypass or relax the ruleset or raw-merge. Agent detects and reproduces the base-pinned breakage, prepares the repair PR, reports the failing command and base sha, and stops; the owner relaxes the ruleset, merges, and restores immediately after the attempt (success or failure); the agent then runs the read-only ruleset check. Open conflict for the owner: docs/agent/merge-authority.md 'Bypassing a required check' (~lines 65-79) still tells agents to relax the ruleset, merge and restore; it contradicts emergency-merge.md and MERGE-AUTHORITY-001 and needs an owner decision (replace with a pointer, or keep).",
   "description": "There is no standing break-glass path for base-pinned gate breakage: with zero bypass actors, the next all-PR-blocking outage requires improvising repo security changes under pressure again. Record the emergency procedure (temporary org-admin pull_request bypass, merge, immediate verified restore) or pre-approve a standing break-glass actor, with the exact commands and verification checks, and get it reviewed before the next incident.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/2953"
@@ -41,6 +41,14 @@
       "generation": "427ab6a366504f1ebb5a4fdfe38c4fe6",
       "op": "take",
       "op_id": "3da391af7c754e9b87d0090dd6060c80",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-24T20:50:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "206ce7eebe964065ab59a07f76ad5176",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
