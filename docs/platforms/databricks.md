@@ -95,6 +95,7 @@ or a `DatabricksAdapter` argument in the Python API.
 | `compute_resource` | `--platform-option` | (none) | SQL warehouse ID; sets `http_path` to `/sql/1.0/warehouses/<id>` |
 | `uc_catalog`, `uc_schema`, `uc_volume` | `--platform-option` | (none) | Unity Catalog volume for staging uploads |
 | `staging_root` | `--platform-option` | (none) | Staging path (`dbfs:/Volumes/...`, `s3://...`, `abfss://...`) |
+| `gateway` | Python API | `native` | Query gateway: `native` (none), `espresso` or `custom`. A gateway needs personal access token authentication |
 | `driver_version` | `--platform-option` | (latest) | Pin the Databricks SQL connector version (e.g. `3.3.0`) |
 | `driver_auto_install` | `--platform-option` | false | Auto-install the requested driver version via uv if missing |
 | `table_format` | Python API | `delta` | Table format: `delta` or `hudi` (Hudi emits `USING HUDI` DDL) |
@@ -168,6 +169,35 @@ benchbox run --platform databricks --benchmark tpch --scale 1.0
 ```
 
 BenchBox has no setting for OAuth machine-to-machine or Azure AD sign-in.
+
+## Gateways
+
+A gateway sits between BenchBox and the workspace and may reroute or rewrite queries. Select one with the
+core `gateway` setting (`native`, `espresso` or `custom`). `native` means no gateway.
+
+BenchBox sends the connection through the gateway by using the gateway's hostname as `server_hostname`.
+For Espresso, set `server_hostname` to the hostname Espresso Computing gives you and keep `http_path`
+unchanged, so it is still the SQL warehouse path of the workspace. BenchBox passes both values to the
+connector without rewriting them.
+
+```python
+DatabricksAdapter(
+    server_hostname="<your-workspace>.espressocomputing.com",
+    http_path="/sql/1.0/warehouses/<warehouse-id>",
+    access_token="dapi...",
+    gateway="espresso",
+)
+```
+
+Gateways accept personal access tokens only. If `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` or
+`DATABRICKS_CONFIG_PROFILE` is set in the environment and `gateway` is not `native`, BenchBox raises a
+`ConfigurationError` before connecting. Unset those variables and provide `access_token` (or
+`DATABRICKS_TOKEN`) instead. Native runs are unaffected.
+
+With a gateway, `from_config` needs `server_hostname` (the gateway hostname) and `access_token` set
+explicitly. It never falls back to the auto-detected workspace hostname, token or profile, because that
+would send the queries straight to the workspace and bypass the gateway. A missing value raises a
+`ConfigurationError`.
 
 ## Usage Examples
 

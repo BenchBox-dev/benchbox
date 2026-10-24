@@ -61,6 +61,28 @@ def _select_databricks_warehouse(warehouses: list, very_verbose: bool, logger: l
     return available_wh
 
 
+DATABRICKS_OAUTH_ENV_VARS = ("DATABRICKS_CLIENT_ID", "DATABRICKS_CLIENT_SECRET", "DATABRICKS_CONFIG_PROFILE")
+
+
+def _validate_gateway(gateway: str) -> None:
+    from benchbox.core.exceptions import ConfigurationError
+    from benchbox.core.gateway import DEFAULT_GATEWAY, supported_gateways
+
+    if gateway == DEFAULT_GATEWAY:
+        return
+    allowed = supported_gateways("databricks")
+    if gateway not in allowed:
+        raise ConfigurationError(
+            f"Databricks does not support gateway '{gateway}'. Allowed: {', '.join([DEFAULT_GATEWAY, *sorted(allowed)])}"
+        )
+    oauth_vars = [name for name in DATABRICKS_OAUTH_ENV_VARS if os.environ.get(name)]
+    if oauth_vars:
+        raise ConfigurationError(
+            f"Databricks gateway '{gateway}' supports personal access token authentication only, but "
+            f"{', '.join(oauth_vars)} is set. Unset it and provide access_token (DATABRICKS_TOKEN) instead."
+        )
+
+
 def _compact_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {str(key): value for key, value in payload.items() if value not in (None, "", {}, [], ())}
 
@@ -261,6 +283,8 @@ class DatabricksAdapter(PlatformAdapter):
         self.uc_schema = config.get("uc_schema")
         self.uc_volume = config.get("uc_volume")
         self.staging_root = config.get("staging_root")
+        self.gateway = str(config.get("gateway") or "native")
+        _validate_gateway(self.gateway)
         self.region = config.get("region") or config.get("cloud_region") or config.get("workspace_region")
 
         self.enable_delta_optimization = (
@@ -468,13 +492,29 @@ class DatabricksAdapter(PlatformAdapter):
             )
 
         compute_resource = config.get("compute_resource")
-        if not all(
+        gateway = str(config.get("gateway") or "native")
+        explicit_credentials_complete = all(
             [
                 config.get("server_hostname") and not is_placeholder(config.get("server_hostname")),
                 compute_resource or (config.get("http_path") and not is_placeholder(config.get("http_path"))),
                 config.get("access_token") and not is_placeholder(config.get("access_token")),
             ]
-        ):
+        )
+        if gateway != "native":
+            missing = [
+                name
+                for name in ("server_hostname", "access_token")
+                if not config.get(name) or is_placeholder(config.get(name))
+            ]
+            if missing:
+                from benchbox.core.exceptions import ConfigurationError
+
+                raise ConfigurationError(
+                    f"Databricks gateway '{gateway}' needs explicit {', '.join(missing)}. Set server_hostname to the "
+                    "gateway hostname and access_token to a personal access token; BenchBox does not fall back to "
+                    "the auto-detected workspace, which would bypass the gateway."
+                )
+        elif not explicit_credentials_complete:
             auto_config = cls._auto_detect_databricks_config(very_verbose=very_verbose)
             if auto_config:
                 adapter_config.update(auto_config)
@@ -534,6 +574,7 @@ class DatabricksAdapter(PlatformAdapter):
             "hudi_table_type",
             "create_catalog",
             "disable_result_cache",
+            "gateway",
         ]:
             if key in config:
                 adapter_config[key] = config[key]
@@ -715,6 +756,9 @@ class DatabricksAdapter(PlatformAdapter):
             platform_info["platform_version"] = None
             platform_info["engine_version"] = None
             platform_info["engine_version_source"] = None
+
+        if self.gateway != "native":
+            platform_info["gateway"] = {"name": self.gateway, "routed": True}
 
         warehouse_id = self._warehouse_id_from_http_path(self.http_path)
         try:
