@@ -2711,10 +2711,10 @@
     },
     "changelog-fragments-01-library": {
       "claim": {
-        "expires_at": "2026-10-23T16:42:40Z",
-        "generation": "ca2e696acd4d42ceb8a14db0a74e0bb4",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:af2ba468331f7d9dcc65a0d3"
+        "expires_at": "2026-10-25T18:47:10Z",
+        "generation": "a3443ca5b14a40148a90572041e9d79d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
       },
       "needs": [],
       "priority": "medium-high",
