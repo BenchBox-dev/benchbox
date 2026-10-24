@@ -43,15 +43,12 @@ def _run_cli(args: list[str], database_manager: MagicMock) -> Result:
         return runner.invoke(cli, [*args, "--dry-run", "/tmp/benchbox-gateway-cli-test"])
 
 
-@pytest.mark.parametrize(
-    ("platform", "gateway", "extra"),
-    [
-        ("databricks", "espresso", ["--platform-option", "gateway_host=gw.example.com"]),
-    ],
-)
-def test_declared_gateway_fails_closed_before_database_work(platform: str, gateway: str, extra: list[str]) -> None:
+def test_declared_gateway_fails_closed_before_database_work_for_unrouted_platform(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("benchbox.core.gateway.GATEWAY_ROUTED_PLATFORMS", frozenset())
+    platform, gateway, extra = "databricks", "espresso", ["--platform-option", "gateway_host=gw.example.com"]
     database_manager = MagicMock()
-
     result = _run_cli(
         [
             "run",
@@ -76,16 +73,25 @@ def test_declared_gateway_fails_closed_before_database_work(platform: str, gatew
     database_manager.create_config.assert_not_called()
 
 
-@pytest.mark.parametrize("gateway", ["espresso", "greybeam", "custom"])
-def test_snowflake_gateway_is_forwarded_to_config(gateway: str) -> None:
+@pytest.mark.parametrize(
+    ("platform", "gateway"),
+    [
+        ("snowflake", "espresso"),
+        ("snowflake", "greybeam"),
+        ("snowflake", "custom"),
+        ("databricks", "espresso"),
+        ("databricks", "custom"),
+    ],
+)
+def test_routed_platform_gateway_is_forwarded_to_config(platform: str, gateway: str) -> None:
     database_manager = MagicMock()
-    database_manager.create_config.return_value = DatabaseConfig(type="snowflake", name="Snowflake")
+    database_manager.create_config.return_value = DatabaseConfig(type=platform, name=platform.title())
 
     result = _run_cli(
         [
             "run",
             "--platform",
-            "snowflake",
+            platform,
             "--benchmark",
             "tpch",
             "--scale",
