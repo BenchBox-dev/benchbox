@@ -1291,20 +1291,6 @@ jobs:
     if: ${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
-        env:
-          POSTGRES_USER: benchbox
-          POSTGRES_PASSWORD: benchbox
-          POSTGRES_DB: benchbox_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -1325,10 +1311,19 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Start pinned embedded PostgreSQL
+        run: |
+          uv run --no-project --with pgserver==0.1.4 python - <<'PY' >> "$GITHUB_ENV"
+          import os
+          import pgserver
+
+          server = pgserver.get_server(os.path.join(os.environ["RUNNER_TEMP"], "pgdata"), cleanup_mode=None)
+          print(f"BENCHBOX_POSTGRES_DSN={server.get_uri()}")
+          PY
+
       - name: Run the executed SQL comparison gate
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha }}
-          BENCHBOX_POSTGRES_DSN: postgresql://benchbox:benchbox@127.0.0.1:5432/benchbox_test
         run: make sql-execution-gate
 
   package-smoke:
