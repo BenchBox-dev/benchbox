@@ -165,6 +165,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_check_sqlglot_repro_retirement.py` | tooling |
 | `test_check_submission_validator_sync.py` | product-safety |
 | `test_check_uv_lock_revision.py` | tooling |
+| `test_changelog_fragments.py` | tooling | Changelog fragment validation, rendering, required-entry decision and conflict-free merge property |
 | `test_check_windows_antipatterns.py` | tooling |
 | `test_comment_policy.py` | tooling |
 | `test_comment_policy_strict_ownership.py` | tooling |
@@ -305,6 +306,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `ruleset_drift_check.py` | product-safety | Ruleset drift (KEEP trap) |
 | `check_dependency_bounds.py` | product-safety | Dependency bounds |
 | `check_release_curation.py` | product-safety | Release curation |
+| `changelog_fragments.py` | tooling | Changelog fragment validation, rendering, required-entry decision and Unreleased guard |
 | `check_sqlglot_upstream_freshness.py` | product-safety | Bundled SQLGlot freshness release gate |
 | `generate_landing_quickstarts.py` | product-safety | Landing quickstart generation |
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |
