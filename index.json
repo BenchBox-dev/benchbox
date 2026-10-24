@@ -9536,15 +9536,10 @@
       "title": "Embed Full Tuning Config in Result Output"
     },
     "emergency-merge-break-glass": {
-      "claim": {
-        "expires_at": "2026-10-25T20:50:16Z",
-        "generation": "427ab6a366504f1ebb5a4fdfe38c4fe6",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Record an emergency merge procedure for base-pinned gate breakage"
     },
     "emit-datagen-metrics-in-results-json": {
