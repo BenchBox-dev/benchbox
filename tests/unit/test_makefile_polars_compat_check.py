@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import polars
@@ -23,6 +25,7 @@ def _run_target(required_major: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+@pytest.mark.skipif(shutil.which("make") is None or sys.platform == "win32", reason="POSIX make is required")
 def test_target_fails_fast_when_installed_major_differs_from_required() -> None:
     mismatched = str(int(polars.__version__.split(".")[0]) + 1)
 
