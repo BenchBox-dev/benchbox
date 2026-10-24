@@ -698,6 +698,7 @@ velox = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "adbc-driver-gizmosql" },
     { name = "bashlex" },
     { name = "chdb", marker = "sys_platform != 'win32'" },
     { name = "clickhouse-connect" },
@@ -711,6 +712,7 @@ dev = [
     { name = "deltalake" },
     { name = "duckdb" },
     { name = "firebolt-sdk" },
+    { name = "gizmosql" },
     { name = "import-linter" },
     { name = "influxdb3-python" },
     { name = "lxml" },
@@ -926,6 +928,7 @@ provides-extras = ["dev", "viz", "explorer", "all", "cloud", "cloudstorage", "du
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "adbc-driver-gizmosql", specifier = ">=2.0.13,<3" },
     { name = "bashlex", specifier = "==0.18" },
     { name = "chdb", marker = "sys_platform != 'win32'", specifier = ">=0.10.0" },
     { name = "clickhouse-connect", specifier = ">=0.10.0" },
@@ -939,6 +942,7 @@ dev = [
     { name = "deltalake", specifier = ">=1.2.1" },
     { name = "duckdb", specifier = ">=1.5.0,<2.0.0" },
     { name = "firebolt-sdk", specifier = ">=1.18.0" },
+    { name = "gizmosql", specifier = "==1.39.0" },
     { name = "import-linter", specifier = ">=2.13" },
     { name = "influxdb3-python", specifier = ">=0.10.0" },
     { name = "lxml", specifier = ">=6.0.0" },

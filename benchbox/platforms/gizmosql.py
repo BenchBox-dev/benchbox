@@ -768,6 +768,13 @@ class GizmoSQLAdapter(PlatformAdapter):
         if mismatched:
             self.logger.warning(self._mismatch_message(mismatched, "writable"))
             return False
+        verified = source_counts is not None and all(name in source_counts for name in expected)
+        if populated and not verified:
+            self.logger.warning(
+                "Source row counts are unavailable, so the populated GizmoSQL tables cannot be verified as complete; "
+                "they are not reused and the load will check each table against its source files."
+            )
+            return False
         reuse = populated and not self.force_recreate
         if reuse:
             self.log_verbose("All benchmark tables are populated and match the source files; reusing them")

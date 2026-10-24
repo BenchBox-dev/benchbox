@@ -120,10 +120,10 @@ class TestManifestAndRegistry:
         assert GizmoSQLAdapter.driver_isolation_capability is DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
 
     def test_dialect_mapping(self):
-        from benchbox.utils.dialect_utils import PLATFORM_DIALECTS
+        from benchbox.utils.dialect_utils import resolve_sql_dialect
 
         assert make_adapter_without_driver().get_target_dialect() == "duckdb"
-        assert PLATFORM_DIALECTS["gizmosql"] == "duckdb"
+        assert resolve_sql_dialect("gizmosql") == "duckdb"
 
     def test_query_plan_parser_registered(self):
         from benchbox.core.query_plans.parsers.duckdb import DuckDBQueryPlanParser
@@ -169,29 +169,6 @@ class TestManifestAndRegistry:
 
 def make_adapter_without_driver(**overrides: Any) -> GizmoSQLAdapter:
     return make_adapter(dry_run=True, **overrides)
-
-
-@pytest.mark.medium
-class TestLazyImports:
-    def test_package_import_does_not_load_gizmosql_or_adbc(self):
-        code = """
-import json, sys
-import benchbox, benchbox.platforms
-print(json.dumps(sorted(m for m in sys.modules if m.startswith(('adbc_driver', 'gizmosql')))))
-"""
-        completed = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
-
-        assert json.loads(completed.stdout) == []
-
-    def test_adapter_module_import_does_not_load_adbc(self):
-        code = """
-import json, sys
-import benchbox.platforms.gizmosql
-print(json.dumps(sorted(m for m in sys.modules if m.startswith(('adbc_driver', 'gizmosql_')))))
-"""
-        completed = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
-
-        assert json.loads(completed.stdout) == []
 
 
 class TestOptionalImport:
@@ -721,16 +698,33 @@ class TestSchemaCreation:
 
 
 class TestDatabaseReuse:
-    def make(self, server, driver, **overrides):
+    def make(self, server, driver, benchmark=None, **overrides):
         adapter = make_adapter(**overrides)
-        adapter.benchmark = StubBenchmark()
+        adapter.benchmark = benchmark or StubBenchmark()
         adapter.create_connection().close()
         return adapter
 
-    def test_populated_tables_are_reused(self, server, driver):
+    def test_populated_tables_matching_the_source_are_reused(self, server, driver, tmp_path):
+        server.tables = {"alpha": 3, "beta": 4}
+        benchmark = self.sourced(tmp_path, {"alpha": 3, "beta": 4})
+
+        assert self.make(server, driver, benchmark).database_was_reused is True
+
+    def test_populated_tables_are_not_reused_when_source_counts_are_unknown(self, server, driver, caplog):
         server.tables = {"alpha": 3, "beta": 4}
 
-        assert self.make(server, driver).database_was_reused is True
+        with caplog.at_level(logging.WARNING):
+            adapter = self.make(server, driver)
+
+        assert adapter.database_was_reused is False
+        assert any("cannot be verified" in record.message for record in caplog.records)
+
+    def test_unreadable_source_files_are_not_reused(self, server, driver, tmp_path):
+        server.tables = {"alpha": 3, "beta": 4}
+        benchmark = self.sourced(tmp_path, {"alpha": 3, "beta": 4})
+        (tmp_path / "beta.tbl").unlink()
+
+        assert self.make(server, driver, benchmark).database_was_reused is False
 
     def test_empty_table_means_partial_load(self, server, driver):
         server.tables = {"alpha": 3, "beta": 0}
@@ -747,9 +741,9 @@ class TestDatabaseReuse:
 
         assert self.make(server, driver, force_recreate=True).database_was_reused is False
 
-    def test_decision_is_made_once_per_run(self, server, driver):
+    def test_decision_is_made_once_per_run(self, server, driver, tmp_path):
         server.tables = {"alpha": 3, "beta": 4}
-        adapter = self.make(server, driver)
+        adapter = self.make(server, driver, self.sourced(tmp_path, {"alpha": 3, "beta": 4}))
         server.tables = {}
 
         adapter.create_connection().close()

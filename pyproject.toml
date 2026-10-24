@@ -342,6 +342,8 @@ dev = [
     "polars>=1.35.2",
     "clickhouse-connect>=0.10.0",
     "psycopg[binary]>=3.1",
+    "adbc-driver-gizmosql>=2.0.13,<3",
+    "gizmosql==1.39.0",
     "pytest>=8.0.0",
     "pytest-cov>=6.2.1",
     "pytest-benchmark>=5.1.0",
