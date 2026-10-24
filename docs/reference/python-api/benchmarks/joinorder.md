@@ -178,7 +178,7 @@ Returns a static JOB query by ID, such as `"1a"` or `"33c"`.
 | --- | --- | --- | --- |
 | `query_id` | `str` | required | One of the 113 ids, `"1a"` to `"33c"`. Integers such as `1` are rejected. |
 | `params` | `None` | `None` | JOB queries are fixed. Any non-`None` value, even `{}`, raises `ValueError`. |
-| `dialect` | `str` or `None` | `None` | Target dialect for SQLGlot translation from PostgreSQL SQL. Without it the canonical text is returned unchanged. An unknown dialect logs a warning and returns the original text. |
+| `dialect` | `str` or `None` | `None` | Target dialect for SQLGlot translation from PostgreSQL SQL. Without it the canonical text is returned unchanged. An unknown dialect raises `UnknownSqlDialectError`. |
 
 Raises `ValueError` for an unknown id (`Invalid query ID: 34a. Available: 10a, 10b, ...`) and for non-`None` `params` (`JoinOrder queries are static and don't accept parameters`).
 

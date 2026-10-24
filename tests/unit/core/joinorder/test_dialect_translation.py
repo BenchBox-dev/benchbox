@@ -4,7 +4,7 @@ import pytest
 
 from benchbox.core.joinorder.benchmark import JoinOrderBenchmark
 from benchbox.core.joinorder.queries import JoinOrderQueryManager
-from benchbox.utils.dialect_utils import sql_translation_context
+from benchbox.utils.dialect_utils import UnknownSqlDialectError, sql_translation_context
 
 pytestmark = [
     pytest.mark.unit,
@@ -94,11 +94,15 @@ def test_translation_preserves_portable_alias_for_query_15(job_benchmark: JoinOr
     assert '"at"' not in translated
 
 
-@pytest.mark.parametrize("dialect", ["bogus-engine", ""])
-def test_unknown_dialect_falls_back_to_canonical_text(job_benchmark: JoinOrderBenchmark, dialect: str) -> None:
+def test_empty_dialect_returns_canonical_text(job_benchmark: JoinOrderBenchmark) -> None:
     canonical = JoinOrderQueryManager().get_all_queries()
 
-    assert job_benchmark.get_queries(dialect=dialect) == canonical
+    assert job_benchmark.get_queries(dialect="") == canonical
+
+
+def test_unknown_dialect_raises(job_benchmark: JoinOrderBenchmark) -> None:
+    with pytest.raises(UnknownSqlDialectError):
+        job_benchmark.get_queries(dialect="bogus-engine")
 
 
 def test_adapter_runtime_receives_translated_queries(job_benchmark: JoinOrderBenchmark) -> None:

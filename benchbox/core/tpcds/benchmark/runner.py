@@ -23,7 +23,7 @@ from benchbox.core.validation import (
     DataValidationEngine,
     ValidationResult,
 )
-from benchbox.utils.dialect_utils import UnknownSqlDialectError, apply_rewrite, apply_rewrites, resolve_sql_dialect
+from benchbox.utils.dialect_utils import UnknownSqlDialectError, apply_rewrites, resolve_sql_dialect
 from benchbox.utils.file_format import get_delimiter_for_file
 from benchbox.utils.printing import emit
 
@@ -288,28 +288,23 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         )
 
     def translate_query_text(self, query: str, source_dialect: str, target_dialect: str) -> str:
-        from benchbox.utils.dialect_utils import translate_sql_query
+        from benchbox.utils.dialect_utils import resolve_sql_dialect, translate_sql_query
 
         src = (source_dialect or "netezza").lower()
         tgt = (target_dialect or src).lower()
 
-        pre_procs = []
-        lowered = query.lower()
-        if all(cte in lowered for cte in _Q58_CTES):
-            pre_procs.append(
-                lambda sql: apply_rewrite("qualify_order_by_columns", sql, src, qualifiers=_Q58_ORDER_QUALIFIERS)
-            )
-        if tgt in {"postgres", "questdb"}:
-            pre_procs.append(
-                lambda sql: apply_rewrite("date_integer_arithmetic_to_interval", sql, src, date_columns=_DATE_COLUMNS)
-            )
+        rewrites: list[tuple[str, dict]] = []
+        if all(cte in query.lower() for cte in _Q58_CTES):
+            rewrites.append(("qualify_order_by_columns", {"qualifiers": _Q58_ORDER_QUALIFIERS}))
+        if resolve_sql_dialect(tgt) in {"postgres", "questdb"}:
+            rewrites.append(("date_integer_arithmetic_to_interval", {"date_columns": _DATE_COLUMNS}))
 
         return translate_sql_query(
             query=query,
             target_dialect=tgt,
             source_dialect=src,
             identify=True,
-            pre_processors=pre_procs,
+            rewrites=rewrites,
             date_columns=_DATE_COLUMNS if tgt == "sqlite" else None,
         )
 
