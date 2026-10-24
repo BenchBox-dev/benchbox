@@ -115,6 +115,18 @@ owner, and when to remove it. A suppression also needs an unexpired `expires`
 date. Entries do not use line numbers. Each entry allows one occurrence unless
 it has an approved positive `count`.
 
+### Expiry renewal
+
+A directive is valid through its `expires` date and fails the next day. Every
+local check, the PR check and the nightly scan print a non-blocking warning
+(a `::warning::` annotation in CI) for each date within 30 days of today.
+The maintainers named as `owner` in the entry renew or remove
+the entries that a warning names: delete an entry whose suppression is gone, or
+move its `expires` date forward in a pull request that gets the same successful
+oracle verdict as a new exception. A date-only change is a new policy entry, so
+it does not count until that verdict covers the registry head. Keep the renewed
+dates spread across at least ten dates.
+
 A first-line shebang needs no entry. An encoding declaration is allowed only in
 the first two lines of a Python file, and only for a non-UTF-8 encoding.
 

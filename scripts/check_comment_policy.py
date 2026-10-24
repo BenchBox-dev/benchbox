@@ -14,7 +14,7 @@ import sys
 import tokenize
 from collections import Counter
 from dataclasses import asdict
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +41,7 @@ ENFORCEMENT_MODES = COMMENT_POLICY_ENFORCEMENT_MODES
 
 POLICY_PATH = "quality/comment-policy.json"
 LAUNCHER_PATH = "scripts/run_comment_policy.py"
+EXPIRY_WARNING_DAYS = 30
 BOOTSTRAP_BASE = "ed5c263c513ba65499f4918d3a7de607f280c65b"
 
 
@@ -65,6 +66,22 @@ def expired_exception_identities(policy: dict) -> set[tuple[str, str, str, str, 
         for entry in policy["exceptions"]
         if entry["kind"] == "directive" and "expires" in entry and date.fromisoformat(entry["expires"]) < date.today()
     }
+
+
+def expiring_policy_warnings(policy: dict, today: date | None = None) -> list[str]:
+    today = today or date.today()
+    horizon = today + timedelta(days=EXPIRY_WARNING_DAYS)
+    by_date: Counter = Counter(
+        entry["expires"]
+        for entry in policy["exceptions"]
+        if entry["kind"] == "directive"
+        and "expires" in entry
+        and today <= date.fromisoformat(entry["expires"]) <= horizon
+    )
+    return [
+        f"{count} directive exception(s) expire on {expires}; renew or remove them through an oracle-reviewed policy change"
+        for expires, count in sorted(by_date.items())
+    ]
 
 
 def expired_policy_findings(policy: dict) -> list[Finding]:
@@ -508,6 +525,7 @@ def main(argv: list[str] | None = None) -> int:
             base_paths = git(root, "ls-tree", "-r", "--name-only", "-z", args.base).decode().split("\0")
             effective_policy["external_members"] = set(base_paths) | bumped_wheels
         failed = expired_policy_findings(policy) + scan_sources(root, sources, effective_policy)
+        warnings = expiring_policy_warnings(policy)
         if args.json_out:
             args.json_out.write_text(
                 json.dumps(
@@ -516,6 +534,7 @@ def main(argv: list[str] | None = None) -> int:
                         "base": args.base,
                         "findings": [asdict(f) for f in failed],
                         "failed": [asdict(f) for f in failed],
+                        "warnings": warnings,
                     },
                     indent=2,
                 )
@@ -525,6 +544,12 @@ def main(argv: list[str] | None = None) -> int:
         for finding in failed[:100]:
             excerpt = finding.text.splitlines()[0][:160] if finding.text else ""
             print(plain_text(f"{finding.path}:{finding.line}: CP {finding.kind}: {excerpt}"))
+        for warning in warnings:
+            print(
+                f"::warning::{warning}"
+                if os.environ.get("GITHUB_ACTIONS") == "true"
+                else f"comment-policy: warning: {warning}"
+            )
         print(
             f"comment-policy: {len(sources)} source files, {len(failed)} violations, {len(failed)} enforced failures ({args.mode})"
         )
