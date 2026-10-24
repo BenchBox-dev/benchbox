@@ -140,3 +140,15 @@ def file_batches(
 
 def stream_reader(schema: pa.Schema, batches: Iterable[pa.RecordBatch]) -> pa.RecordBatchReader:
     return pa.RecordBatchReader.from_batches(plain_schema(schema), batches)
+
+
+def count_source_rows(files: Iterable[Path], dialect: CsvDialect | None) -> int:
+    total = 0
+    for path in files:
+        if is_parquet_format(path):
+            total += pq.ParquetFile(path).metadata.num_rows
+            continue
+        with open_binary(path) as stream:
+            lines = sum(1 for line in stream if line.strip())
+        total += max(lines - (1 if dialect is not None and dialect.has_header else 0), 0)
+    return total

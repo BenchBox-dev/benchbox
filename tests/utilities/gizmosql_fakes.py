@@ -39,6 +39,7 @@ class FakeGizmoSQLServer:
         self.ingest_reports: int | None = None
         self.failures: dict[str, Exception] = {}
         self.delay_until_cancel: str | None = None
+        self.return_after_cancel = False
         self.connections: list[FakeRawConnection] = []
 
     def sql_log(self, connection_id: int | None = None) -> list[str]:
@@ -93,7 +94,8 @@ class FakeCursor:
         marker = self.server.delay_until_cancel
         if marker and marker in sql:
             self.cancel_event.wait(5)
-            raise RuntimeError("CANCELLED: context canceled")
+            if not self.server.return_after_cancel:
+                raise RuntimeError("CANCELLED: context canceled")
         rows = self.server.respond(sql, parameters)
         self.rows = rows or []
         self.description = [("c",)] if rows is not None else None
