@@ -80,13 +80,14 @@ class FakeGh:
         return [call for call in self.calls if call[:3] == ["gh", "pr", "merge"]]
 
 
-def _arm(gh: FakeGh, pr: str | None = "7", head: str | None = None, *, unpublished=(), threads=False) -> int:
+def _arm(gh: FakeGh, pr: str | None = "7", head: str | None = None, *, unpublished=(), threads=False, hidden=()) -> int:
     return pr_arm.arm(
         pr,
         head,
         run=gh,
         unpublished=lambda _checkout: list(unpublished),
         threads=lambda _run, _repo, _number: threads,
+        suites=lambda _run, _repo, _base, _head: list(hidden),
     )
 
 
@@ -131,6 +132,7 @@ def test_default_refuses_when_the_branch_does_not_name_exactly_one_pr(
         (_view(baseRefName="release"), {}, "arms only PRs into 'develop'"),
         (_view(headRefOid="b" * 40), {}, "push first"),
         (_view(), {"threads": True}, "unresolved, non-outdated review thread"),
+        (_view(), {"hidden": ["required check 'oracle-review' suite 9 failure is hidden"]}, "is hidden"),
         (_view(), {"unpublished": ["uncommitted working-tree changes"]}, "unpublished work"),
         (_view(), {"unpublished": ["2 local commit(s) not pushed to upstream"]}, "not pushed"),
     ],
@@ -192,7 +194,7 @@ def test_fails_closed_when_the_review_thread_check_cannot_run(capsys: pytest.Cap
     def broken(*_args) -> bool:
         raise LandingError("live review-thread verification failed for PR #7")
 
-    code = pr_arm.arm("7", None, run=gh, unpublished=lambda _c: [], threads=broken)
+    code = pr_arm.arm("7", None, run=gh, unpublished=lambda _c: [], threads=broken, suites=lambda *_args: [])
     assert code == 1
     assert gh.merged() == []
     assert "live state could not be verified" in capsys.readouterr().err
@@ -396,3 +398,26 @@ def test_a_head_that_is_not_a_full_lowercase_sha_is_refused_before_any_command(
     assert pr_arm.arm("7", head, run=run) == 2
     assert calls == []
     assert "full lowercase commit SHA" in capsys.readouterr().err
+
+
+def test_fails_closed_when_the_suite_check_cannot_run(capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh()
+
+    def broken(*_args) -> list[str]:
+        raise LandingError("live check verification failed")
+
+    code = pr_arm.arm("7", None, run=gh, unpublished=lambda _c: [], threads=lambda *_a: False, suites=broken)
+    assert code == 1
+    assert gh.merged() == []
+    assert "live state could not be verified" in capsys.readouterr().err
+
+
+def test_the_live_suite_check_receives_the_base_branch_and_local_head() -> None:
+    seen: list[tuple[str, str]] = []
+
+    def record(_run, _repo, base: str, head: str) -> list[str]:
+        seen.append((base, head))
+        return []
+
+    pr_arm.arm("7", None, run=FakeGh(), unpublished=lambda _c: [], threads=lambda *_a: False, suites=record)
+    assert seen == [("develop", HEAD)]

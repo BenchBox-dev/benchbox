@@ -62,6 +62,34 @@ stand-in lands — and likewise after resolving oracle review threads — rerun 
 the push event and one from the review-submitted event) and merge only after a
 rerun passes.
 
+## Stale failed check suites
+
+`gh pr checks --required` shows one result per check name, so a superseded
+failed run hides behind a newer success. GitHub's merge rollup still counts the
+failed suite, and the PR stays `BLOCKED` with every listed check green. This
+happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
+`pull_request_review` events), and to eight PRs on 2026-10-12.
+
+- Read per-suite state, never the deduplicated list: for each required check
+  name, `gh api "repos/<owner>/<repo>/commits/<sha>/check-runs?filter=latest&per_page=100" --paginate`
+  returns the latest run of every check suite, each with its `check_suite.id`
+  and the Actions run in `details_url`. The required names come from
+  `gh api repos/<owner>/<repo>/rules/branches/develop`.
+- `make pr-arm` refuses a PR whose required check has a failed suite behind a
+  newer success and prints the suite and run URL. `scripts/pr_landing.py`
+  live verification and `make pr-landing-remote-*` report the failed suite
+  instead of the newest result for that name. The green-but-unmerged sweep
+  lists these PRs in its digest and never counts them as green.
+- `make pr-rerun` re-runs the failed jobs of the newest CI run and of every
+  Actions run behind a failed required suite (a cancelled suite re-runs the
+  whole run). Pending suites are left alone. It refuses a conclusion it cannot
+  re-run, such as `startup_failure`.
+- Phantom rollup: if the rollup shows FAILURE with no failed suite in the
+  `filter=latest` listing (as on #2829), re-running changes nothing. Close and
+  reopen the PR to make GitHub recompute the rollup, then check the listing
+  again. Do this only for a PR you own the task for, and never to release a
+  hold.
+
 ## Bypassing a required check
 
 The `develop` ruleset has no bypass actors, so a bypass means relaxing the
