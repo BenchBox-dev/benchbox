@@ -639,7 +639,7 @@
           "path": "_sources/tpc-ds/query_templates/EULA.txt"
         },
         {
-          "path": "_binaries/tpc-ds/templates/query_templates/EULA.txt"
+          "path": "benchbox/_binaries/tpc-ds/templates/query_templates/EULA.txt"
         },
         {
           "path": "_binaries/tpc-ds/darwin-arm64/NOTICE.txt"
@@ -4126,7 +4126,7 @@
       "blocking_disposition": "Preserve these exact bytes, which differ from the platform EULA representation; do not claim line-ending or encoding conversion."
     },
     {
-      "path": "_binaries/tpc-ds/templates/query_templates/EULA.txt",
+      "path": "benchbox/_binaries/tpc-ds/templates/query_templates/EULA.txt",
       "blob_sha256": "1171fea59c4472ebd04cdb87d77d6652949fe8bc77d2601248e3c3e68bcdb6b9",
       "byte_start": 0,
       "byte_end": 17809,
