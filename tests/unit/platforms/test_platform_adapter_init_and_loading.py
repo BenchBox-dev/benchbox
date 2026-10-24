@@ -1145,7 +1145,6 @@ class TestFabricAdditionalCoverage:
         adapter.schema = "custom_schema"
         adapter._create_schema_with_tuning = MagicMock(return_value="CREATE TABLE t1 (id INT);")
         adapter._extract_table_name = MagicMock(return_value="t1")
-        adapter._optimize_table_definition = MagicMock(side_effect=lambda s: s)
         adapter.drop_table = MagicMock()
 
         conn = MagicMock()
