@@ -6,7 +6,7 @@ repos:
     hooks:
       - id: comment-policy
         name: comment and docstring policy
-        entry: uv run -- python scripts/run_comment_policy.py --staged
+        entry: uv run -- python scripts/run_comment_policy.py --staged --accept-same-commit-fixtures
         language: system
         pass_filenames: false
         always_run: true

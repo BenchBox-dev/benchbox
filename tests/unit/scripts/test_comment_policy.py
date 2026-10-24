@@ -4693,3 +4693,190 @@ def test_python_bindings_scope_and_calls_match_ancestor_walk() -> None:
                 expected.setdefault((scope, name), []).append(actor)
     assert dict(bindings.bindings) == expected
     assert all(bindings.scope(node) is reference_scope(node) for node in ast.walk(tree))
+
+
+FIXTURE_SOURCE = 'import subprocess\n\n\ndef run(x):\n    subprocess.run(f"{x} echo hi", shell=True)\n'
+FIXTURE_TEXT = "unresolved executable source: f'{x} echo hi'"
+
+
+@pytest.fixture(autouse=True)
+def local_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+
+def fixture_finding(source: str = FIXTURE_SOURCE, path: str = "a.py") -> Finding:
+    (finding,) = scan(path, source, "python")
+    return finding
+
+
+def fixture_entry(path: str = "a.py", **changes: object) -> dict:
+    finding = fixture_finding()
+    entry = {
+        **exception(
+            FIXTURE_TEXT,
+            path=path,
+            symbol=finding.symbol,
+            kind="fixture",
+            payload=finding.payload,
+            finding_kind="payload-error",
+            consumer=path,
+        ),
+        **changes,
+    }
+    del entry["expires"]
+    return entry
+
+
+def stage_fixture_commit(tmp_path: Path, entries: list[dict], files: dict[str, str]) -> str:
+    base = git_repo(tmp_path, "x = 1\n")
+    (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy(exceptions=entries)), encoding="utf-8")
+    for name, source in files.items():
+        (tmp_path / name).write_text(source, encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "quality/comment-policy.json", *files], check=True)
+    return base
+
+
+def staged_args(tmp_path: Path, base: str, *extra: str) -> list[str]:
+    return ["--root", str(tmp_path), "--mode", "strict", "--base", base, "--staged", *extra]
+
+
+ACCEPT = "--accept-same-commit-fixtures"
+
+
+def test_same_commit_fixture_is_rejected_by_default_and_accepted_with_the_flag(tmp_path: Path) -> None:
+    base = stage_fixture_commit(tmp_path, [fixture_entry()], {"a.py": FIXTURE_SOURCE})
+    assert main(staged_args(tmp_path, base)) == 1
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 0
+
+
+def test_same_commit_fixture_is_not_accepted_for_an_unchanged_file(tmp_path: Path) -> None:
+    git_repo(tmp_path, "x = 1\n")
+    (tmp_path / "b.py").write_text(FIXTURE_SOURCE, encoding="utf-8")
+    (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy()), encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "b.py", "quality/comment-policy.json"], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "-c", "user.name=F", "-c", "user.email=f@example.invalid", "commit", "-qm", "b"],
+        check=True,
+    )
+    base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+    args = staged_args(tmp_path, base, ACCEPT)
+    assert main(args) == 1
+    registered = policy(exceptions=[fixture_entry("b.py")])
+    (tmp_path / "quality/comment-policy.json").write_text(json.dumps(registered), encoding="utf-8")
+    (tmp_path / "a.py").write_text("y = 2\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py", "quality/comment-policy.json"], check=True)
+    assert main(args) == 1
+    (tmp_path / "b.py").write_text(FIXTURE_SOURCE + "\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "b.py"], check=True)
+    assert main(args) == 0
+
+
+def test_same_commit_fixture_for_an_unchanged_file_is_rejected_whatever_its_consumer(tmp_path: Path) -> None:
+    git_repo(tmp_path, "x = 1\n")
+    (tmp_path / "b.py").write_text(FIXTURE_SOURCE, encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "b.py"], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "-c", "user.name=F", "-c", "user.email=f@example.invalid", "commit", "-qm", "b"],
+        check=True,
+    )
+    base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+    args = staged_args(tmp_path, base, ACCEPT)
+    entry = fixture_entry("b.py", consumer="a.py")
+    (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy(exceptions=[entry])), encoding="utf-8")
+    (tmp_path / "a.py").write_text("y = 2\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py", "quality/comment-policy.json"], check=True)
+    assert main(args) == 1
+    (tmp_path / "b.py").write_text(FIXTURE_SOURCE + "\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "b.py"], check=True)
+    assert main(args) == 0
+
+
+def test_same_commit_fixture_rejects_wrong_or_foreign_digest(tmp_path: Path) -> None:
+    wrong = fixture_entry(payload="sha256:" + "0" * 64)
+    base = stage_fixture_commit(tmp_path, [wrong], {"a.py": FIXTURE_SOURCE})
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 1
+    foreign = 'import subprocess\n\n\ndef run(x):\n    subprocess.run(f"{x} echo other", shell=True)\n'
+    entry = fixture_entry()
+    (tmp_path / "a.py").write_text(foreign, encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 1
+    assert entry["payload"] != fixture_finding(foreign).payload
+
+
+def test_same_commit_fixture_is_not_reusable_for_another_path_or_finding(tmp_path: Path) -> None:
+    entry = fixture_entry()
+    base = stage_fixture_commit(tmp_path, [entry], {"a.py": FIXTURE_SOURCE, "b.py": FIXTURE_SOURCE})
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 1
+    twice = FIXTURE_SOURCE + '\n\ndef again(x):\n    subprocess.run(f"{x} echo hi", shell=True)\n'
+    (tmp_path / "a.py").write_text(twice, encoding="utf-8")
+    (tmp_path / "b.py").write_text("x = 1\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py", "b.py"], check=True)
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 1
+
+
+def test_same_commit_fixture_rejects_inflated_count(tmp_path: Path) -> None:
+    base = stage_fixture_commit(tmp_path, [fixture_entry(count=2)], {"a.py": FIXTURE_SOURCE})
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 1
+
+
+def test_same_commit_acceptance_does_not_cover_directives(tmp_path: Path) -> None:
+    directive = exception()
+    base = stage_fixture_commit(tmp_path, [directive], {"a.py": "x = 1 # noqa: F401\n", "pyproject.toml": ""})
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 1
+
+
+def test_same_commit_fixture_acceptance_is_refused_outside_a_staged_comparison(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = stage_fixture_commit(tmp_path, [fixture_entry()], {"a.py": FIXTURE_SOURCE})
+    ci_args = ["--root", str(tmp_path), "--mode", "strict", "--base", base]
+    assert main([*ci_args, ACCEPT]) == 2
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 2
+
+
+def test_ci_invocation_still_rejects_a_new_fixture_without_oracle_cover(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = stage_fixture_commit(tmp_path, [fixture_entry()], {"a.py": FIXTURE_SOURCE})
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "-c", "user.name=F", "-c", "user.email=f@example.invalid", "commit", "-qm", "c"],
+        check=True,
+    )
+    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda root: False)
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 1
+    monkeypatch.setattr(check_comment_policy, "oracle_review_covers", lambda root: True)
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 0
+
+
+def test_only_the_commit_hook_requests_same_commit_fixture_acceptance() -> None:
+    workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["comment-policy"]["steps"]
+    runs = "\n".join(step.get("run", "") for step in steps)
+    assert "comment-policy-runner.py" in runs
+    assert "accept-same-commit" not in runs
+    assert "--staged" not in runs
+    parser_default = policy_runner.checker_command(
+        Path("p"), Path("t"), Path("r"), "b" * 40, bootstrap=False, staged=True
+    )
+    assert ACCEPT not in parser_default
+    assert ACCEPT in policy_runner.checker_command(
+        Path("p"), Path("t"), Path("r"), "b" * 40, bootstrap=False, staged=True, accept_same_commit=True
+    )
+
+
+@pytest.mark.skipif(not (ROOT / ".pre-commit-config.yaml").exists(), reason=RELEASE_TREE_SKIP)
+def test_commit_hook_requests_same_commit_fixture_acceptance() -> None:
+    hooks = yaml.safe_load((ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8"))
+    entries = [h["entry"] for repo in hooks["repos"] for h in repo["hooks"] if h["id"] == "comment-policy"]
+    assert len(entries) == 1
+    assert "--staged" in entries[0] and ACCEPT in entries[0]
+
+
+def test_runner_forwards_same_commit_acceptance_only_to_a_checker_that_defines_it(tmp_path: Path) -> None:
+    (tmp_path / "check_comment_policy.py").write_text("print('no option')\n", encoding="utf-8")
+    assert not policy_runner.trusted_checker_supports_same_commit(tmp_path)
+    (tmp_path / "check_comment_policy.py").write_text(
+        "parser.add_argument('--accept-same-commit-fixtures')\n", encoding="utf-8"
+    )
+    assert policy_runner.trusted_checker_supports_same_commit(tmp_path)

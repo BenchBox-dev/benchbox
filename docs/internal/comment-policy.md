@@ -125,9 +125,21 @@ oracle verdict review covers the registry head. A merely successful
 oracle-review check is not enough, since that check also passes for changes
 that need no review. Without that verdict the base policy still applies and
 the new entries do not count, so a change never authorizes its own exception
-without that review. The local check and CI fail on the new entries until the
+without that review. CI and `make comment-policy-check` fail on the new entries until the
 verdict succeeds; push, obtain the success verdict, rerun the comment-policy
-check, then merge. Remove unused exceptions when you review a module. A
+check, then merge. The commit hook alone also accepts a new `fixture` entry
+without that verdict when all of these hold: the entry's path is a file the staged commit changes
+against the base, its digest equals the digest the checker computes from the
+staged content of that file, and the entry has no `count` above one, so it
+cannot excuse a second finding or another path. The hook passes
+`--accept-same-commit-fixtures` for this; the option is off by default, the
+checker refuses it outside a staged comparison with a base or when `GITHUB_ACTIONS`
+is set, and the CI job never passes it. CI behavior is unchanged: it still
+ignores every new entry until the verdict covers the registry head, so a commit
+that registers a fixture for a file it changes to hide a new finding passes the
+hook and fails CI. Do not register a digest in an earlier pull request to get
+around the hook; register the entry in the pull request that changes the code.
+Remove unused exceptions when you review a module. A
 candidate scope notice must stay inside the byte range already pinned at the
 base, must keep the bytes of that range identical to the base, and must not
 escalate a partial pin into a whole-file exclusion. The verdict counts only
