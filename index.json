@@ -26626,7 +26626,8 @@
     "trunk-coverage-scheduled-not-per-push-20261024": {
       "claim": null,
       "needs": [
-        "coverage-map-missing-comment-policy-ids-20261023"
+        "coverage-map-missing-comment-policy-ids-20261023",
+        "ci-usage-metrics-report-20261024"
       ],
       "priority": "high",
       "status": "open",

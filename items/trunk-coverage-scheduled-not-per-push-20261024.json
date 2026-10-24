@@ -1,12 +1,14 @@
 {
   "acceptance": [
-    "Trunk coverage no longer starts on every develop push; it runs on a schedule (4-6 a day) or only past a stated commit distance, and still supports dispatch",
-    "Map staleness stays within the existing monitor limits for 7 days after the change: no coverage-map staleness issue opened",
-    "PR selection map fetch success in ci-paths is unchanged over the same 7 days",
-    "Trunk coverage runner-minutes drop at least 60% week over week, with the before/after numbers recorded on this item"
+    "Owner approval of the new schedule is recorded in the PR",
+    "Map-building jobs run on the scheduled event, and TRUSTED_MAP_EVENTS plus the run-head trust check accept scheduled develop runs; a test fails if a scheduled run's map is rejected",
+    "An observed PR after merge fetches a map published by a scheduled run (fetch-map reports the run id), not missing or lookup-failed",
+    "No coverage-map staleness issue opens in the 7 days after merge",
+    "Using the CI usage report, a 7-day baseline before merge and the 7 days after are recorded: Trunk coverage runner-minutes drop at least 60%, and PR CI job queue time median and p90 do not rise",
+    "The PR notes that the 20-PR shadow-miss window for cov-select-exit-shadow-20261021 restarts from this merge, since map freshness changed"
   ],
-  "context": "Source: independent review of the PR-checks versus Trunk split on 2026-10-24 (develop a56738db4; run history 2026-10-10 to 2026-10-24: 465 merges, 466 Trunk push runs, 126 Trunk coverage runs). Waits on the coverage-map id fix because both change the coverage-map path.",
-  "description": "trunk-coverage.yml runs on every push to develop (trunk-coverage.yml:3-12) with cancel-in-progress, so 71 of 123 push runs (58%) were cancelled, yet it still costs about 23 runner-minutes per merge (about 16 runner-hours a day) and runs the medium tier a third time per merge, instrumented. Its only product is the coverage map that PR selection reads, and selection is fail-closed with a staleness monitor (20 commits / 3 failed runs). Replace the push trigger with 4-6 scheduled runs a day (or a commit-distance guard on push), keeping dispatch and the staleness job.",
+  "context": "Source: independent review of the PR-checks versus Trunk split on 2026-10-24 (develop a56738db4; run history 2026-10-10 to 2026-10-24: 465 merges, 466 Trunk push runs; Trunk coverage push runs only exist from 2026-10-21). Waits on the coverage-map id fix because both change scripts/coverage_test_selection.py, and on the CI usage report for the baseline. The Trunk coverage cost figures come from only 3 days of runs; the baseline must be re-measured before claiming savings.",
+  "description": "trunk-coverage.yml runs on every push to develop with cancel-in-progress (trunk-coverage.yml:3-12); between 2026-10-21 and 2026-10-24 that was about 42 push runs a day, of which about 17 completed and the rest were cancelled after about 14 minutes each. It runs the medium tier a third time per merge, instrumented, and occupies concurrency slots that PR CI waits for. Its only product is the coverage map that PR selection reads. Replace the push trigger with 4-6 scheduled runs a day (or a commit-distance guard on push), keeping dispatch and the daily staleness job. Scheduled maps are ignored today: PR selection trusts maps only from push and workflow_dispatch runs (scripts/coverage_test_selection.py:33, checked at :868 and :911), and every map-building job is skipped on schedule events (trunk-coverage.yml:21,73,168). Both must change, and the lookup window (MAX_MAP_BEHIND_COMMITS = 50 runs) must still reach a map. A new cron trigger needs owner approval before merge. The repository is public, so GitHub-hosted runner minutes are free; the binding limit is the concurrency cap. Queue time and PR time-to-green are the primary success metrics, runner-minutes secondary.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
@@ -14,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f6d2e727f8e646e6837dc28e08fa53a6",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T18:39:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d9cf02286b024ee7a661b71dc483d7ed",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
