@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - A pull request that edits only release enforcement files (`Makefile`, `ci.yml`, the release check scripts) no longer fails `ci-paths` when upstream SQLGlot publishes a new release before the fork is refreshed. The freshness check still runs for pull requests that change the release version or edit the freshness check or its waiver file, and in the release workflows.
+- The locked `filelock` moves from 3.25.2 to 4.2.4 to clear CVE-2026-112940, CVE-2026-112913 and CVE-2026-112907, which are fixed only in 4.2.1 and later. `[tool.uv] override-dependencies = ["filelock>=4.2.1,<5"]` is required because every resolvable `snowflake-connector-python` declares `filelock<4` and every `snowflake-snowpark-python` caps the connector below 5. The other locked consumers already accept 4.x (`huggingface-hub>=3.10.0`, `torch` unbounded, `tox>=3.20.3`, `virtualenv<5,>=3.24.2`, `python-discovery>=3.15.4`). The only 4.0.0 breaking change in the filelock changelog is the `SoftReadWriteLock` on-disk protocol, which none of them use; the connector imports only `FileLock`, `Timeout` and `BaseFileLock`. The `uv.lock` hashes for 4.2.4 match PyPI. Remove the override once the connector and snowpark allow `filelock>=4`.
 
 ### Added
 
