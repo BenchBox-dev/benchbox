@@ -191,6 +191,27 @@ class TestCountsDeriveFromAppliedStatements:
     def test_empty_ledger_reports_zero_counts(self):
         assert applied_tuning_counts(["primary_keys"], _TABLE_TUNINGS, {}) == {"tables_tuned": 0, "tuning_types": []}
 
+    def test_satisfied_intents_count_their_tables_and_types(self):
+        payload = _payload(
+            _stmt("SELECT create_distributed_table('lineitem', 'l_orderkey')", "post_load"),
+            satisfied=[{"intent": "distribution:LINEITEM (l_orderkey)", "reason": "catalog readback"}],
+        )
+        table_tunings = {"LINEITEM": {"distribution": [{"name": "l_orderkey", "order": 1}]}}
+
+        counts = applied_tuning_counts(["distribution"], table_tunings, payload, "citus")
+
+        assert counts == {"tables_tuned": 1, "tuning_types": ["distribution"]}
+
+    def test_capability_mapped_footprints_agree_with_reconciliation(self):
+        payload = _payload(_stmt("ALTER TABLE ORDERS CLUSTER BY (o_orderdate)", "post_load"))
+        table_tunings = {"ORDERS": {"partitioning": [{"name": "o_orderdate", "order": 1}]}}
+
+        with_platform = applied_tuning_counts(["partitioning"], table_tunings, payload, "snowflake")
+        without_platform = applied_tuning_counts(["partitioning"], table_tunings, payload)
+
+        assert with_platform == {"tables_tuned": 1, "tuning_types": ["partitioning"]}
+        assert without_platform["tuning_types"] == []
+
 
 class TestResultSummaryCounts:
     def _result(self, ledger: dict | None, requested: dict) -> object:

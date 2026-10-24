@@ -385,7 +385,10 @@ def _bare_table(name: str) -> str:
 
 
 def applied_tuning_counts(
-    requested_types: Iterable[str], table_tunings: dict[str, Any], ledger_payload: dict[str, Any]
+    requested_types: Iterable[str],
+    table_tunings: dict[str, Any],
+    ledger_payload: dict[str, Any],
+    platform: str | None = None,
 ) -> dict[str, Any]:
     statements = [
         AppliedStatement(
@@ -404,19 +407,27 @@ def applied_tuning_counts(
         str(item.get("intent") or "") for item in ledger_payload.get("satisfied") or [] if isinstance(item, dict)
     ]
 
+    def footprints_for(tuning_type: TuningType) -> tuple[str, ...]:
+        capability = get_capability(platform, tuning_type) if platform else None
+        return _footprints(tuning_type, capability)
+
     tables: set[str] = set()
     for statement in physical:
         target = _statement_target(statement)
         if target is None and statement.table:
             target = _bare_table(statement.table)
         if target is not None and any(
-            _shows(RequestedIntent(tuning_type), statement, _footprints(tuning_type, None), match_columns=False)
+            _shows(RequestedIntent(tuning_type), statement, footprints_for(tuning_type), match_columns=False)
             for tuning_type in TuningType
         ):
             tables.add(target)
+    for entry in satisfied:
+        parsed = _entry_target(entry)
+        if parsed is not None and parsed[1] is not None:
+            tables.add(parsed[1])
 
     def evidenced(intent: RequestedIntent, match_columns: bool) -> bool:
-        footprints = _footprints(intent.tuning_type, None)
+        footprints = footprints_for(intent.tuning_type)
         return any(
             _shows(intent, statement, footprints, match_columns=match_columns) for statement in physical
         ) or _covered(intent, footprints, satisfied)
@@ -447,6 +458,7 @@ def applied_tuning_counts(
             names = tuple(str(column.get("name")) for column in columns)
             if names and evidenced(RequestedIntent(tuning_type, str(table_name), names), True):
                 types.add(tuning_type.value)
+                tables.add(_bare_table(str(table_name)))
     return {"tables_tuned": len(tables), "tuning_types": sorted(types)}
 
 

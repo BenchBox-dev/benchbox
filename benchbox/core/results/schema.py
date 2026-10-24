@@ -1660,7 +1660,10 @@ def _build_tuning_summary(result: BenchmarkResults) -> dict[str, Any]:
             from benchbox.core.tuning.reconciliation import applied_tuning_counts
 
             summary["counts"] = applied_tuning_counts(
-                tuning_types, table_tunings, ledger_payload if isinstance(ledger_payload, dict) else {}
+                tuning_types,
+                table_tunings,
+                ledger_payload if isinstance(ledger_payload, dict) else {},
+                getattr(result, "platform", None),
             )
         else:
             summary["counts"] = {
