@@ -121,7 +121,7 @@ def test_a_pending_suite_blocks_green_without_being_a_failure() -> None:
 
 
 def test_a_missing_required_name_is_not_green() -> None:
-    assert not check_suites.all_green([check("core", 1, "t", "success")], ["core", "docs"])
+    assert not check_suites.all_green([check("core", 1, "t", "success")], ["core", "tooling"])
     assert not check_suites.all_green([], [])
 
 
@@ -159,7 +159,7 @@ def test_verdicts_surface_the_failed_suite_over_a_newer_success() -> None:
 
 
 def test_required_contexts_are_deduplicated_and_must_exist() -> None:
-    assert check_suites.parse_required_contexts("core\ndocs\ncore\n") == ("core", "docs")
+    assert check_suites.parse_required_contexts("core\ntooling\ncore\n") == ("core", "tooling")
     with pytest.raises(ValueError):
         check_suites.parse_required_contexts("\n")
 
