@@ -107,7 +107,7 @@ def test_medium_selection_and_receipts_gate_core() -> None:
     medium_text = "\n".join(step.get("run", "") for step in medium["steps"])
     assert selector in collect_text and selector in medium_text
     assert "--collect-only -q -n 0" in collect_text
-    assert "--tb=short --timeout=60 -n 5" in medium_text
+    assert "--tb=short --timeout=60 -n 5 --dist loadscope" in medium_text
     assert "-p scripts.pytest_shard_evidence" in medium_text
     assert "--collection-summary" in medium_text and "--checked-sha" in medium_text
     assert "test -s" in medium_text

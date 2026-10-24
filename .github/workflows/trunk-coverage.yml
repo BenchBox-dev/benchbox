@@ -136,7 +136,7 @@ jobs:
           trap 'pkill -P "${sampler}" 2>/dev/null || true; kill "${sampler}" 2>/dev/null || true' EXIT
           BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest \
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \
-            --tb=short --timeout=60 -n 5 --durations=25 \
+            --tb=short --timeout=60 -n 5 --dist loadscope --durations=25 \
             --junitxml "t2-artifacts/shard-${SHARD_INDEX}-junit.xml" -o junit_family=xunit1 \
             -p pytest_cov --cov --cov-config=scripts/coverage_map.ini --cov-context=test --cov-report= \
             -p scripts.pytest_coverage_timeout \
