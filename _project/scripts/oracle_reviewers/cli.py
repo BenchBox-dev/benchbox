@@ -462,12 +462,24 @@ def _plan_review(
     )
 
 
+def _same_model(left: Reviewer, right: Reviewer) -> bool:
+    return (left.harness, left.model, left.effort) == (right.harness, right.model, right.effort)
+
+
 def _selection(plan: Mapping[str, Any], classification: Classification | None) -> SelectionInput:
-    candidate = None
-    if classification is not None:
-        candidate = plan.get("follow_up_reviewer") or plan["buckets"].get(classification.size_bucket)
     full = SelectionInput.from_plan(plan, _now())
-    return replace(full, chain=[reviewer for reviewer in full.chain if reviewer.name == candidate])
+    names = [reviewer.name for reviewer in full.chain]
+    starts: list[int] = []
+    if classification is not None:
+        bucket_reviewer = plan["buckets"].get(classification.size_bucket)
+        starts = [names.index(name) for name in (plan.get("follow_up_reviewer"), bucket_reviewer) if name in names]
+    if not starts:
+        return replace(full, chain=[])
+    escalation: list[Reviewer] = []
+    for reviewer in full.chain[max(starts) :]:
+        if not any(_same_model(reviewer, kept) for kept in escalation):
+            escalation.append(reviewer)
+    return replace(full, chain=escalation)
 
 
 def _read_classification(path: Path) -> Classification | None:
