@@ -949,6 +949,7 @@ def test_an_unrecorded_result_posts_no_defect_ids_that_a_later_round_could_reuse
     assert "oracle-defect:" not in posted
     assert not re.search(r"\bD\d+\b", posted)
 
+
 def _review_at(record: dict[str, Any], submitted_at: str) -> dict[str, Any]:
     return {
         "id": 1,
