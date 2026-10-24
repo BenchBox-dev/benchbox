@@ -418,7 +418,7 @@ class AthenaAdapter(PlatformAdapter):
         )
 
     def get_target_dialect(self) -> str:
-        return "trino"
+        return "athena"
 
     def check_server_database_exists(self, **connection_config) -> bool:
         try:

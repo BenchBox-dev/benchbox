@@ -65,7 +65,7 @@ class TestSingleStoreAdapterInitialization:
         assert adapter.username == "root"
         assert adapter.database == "benchbox"
         assert adapter.platform_name == "SingleStore"
-        assert adapter.get_target_dialect() == "mysql"
+        assert adapter.get_target_dialect() == "singlestore"
 
     def test_initialization_custom_config(self):
         adapter = SingleStoreAdapter(
@@ -121,11 +121,11 @@ class TestSingleStoreAdapterInitialization:
         assert config.username == "env-user"
         assert config.password == "env-pass"
 
-    def test_dialect_is_mysql(self):
+    def test_dialect_is_singlestore(self):
         adapter = SingleStoreAdapter()
 
-        assert adapter.get_target_dialect() == "mysql"
-        assert adapter._dialect == "mysql"
+        assert adapter.get_target_dialect() == "singlestore"
+        assert adapter._dialect == "singlestore"
 
     def test_helios_endpoint_accepted(self):
         adapter = SingleStoreAdapter(
@@ -643,7 +643,7 @@ class TestSingleStorePlatformInfo:
         assert info["platform_name"] == "SingleStore"
         assert info["host"] == "test-host"
         assert info["port"] == 3306
-        assert info["dialect"] == "mysql"
+        assert info["dialect"] == "singlestore"
 
     def test_get_platform_info_with_connection(self):
         adapter = SingleStoreAdapter()

@@ -724,11 +724,14 @@ Add one typed entry to the manifest source of truth, `benchbox/core/platform_man
     "support_status": "experimental",
     "capabilities": {
         "supports_sql": True,
+        "sql_dialect": "newdatabase",
         "supports_dataframe": False,
         "default_mode": "sql",
     },
 }
 ```
+
+`sql_dialect` names the dialect the bundled SQLGlot runtime provides for the platform. It is required for every SQL platform and forbidden for DataFrame-only platforms. `resolve_sql_dialect` reads it, and the adapter's `get_target_dialect()` must resolve to the same dialect.
 
 Do not add parallel entries to `PlatformRegistry` or the CLI. They derive their
 metadata, scoped aliases, and runtime import rows from the manifest. Use

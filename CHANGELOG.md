@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Each SQL platform declares its SQL dialect once, as `capabilities.sql_dialect` in the platform manifest; `resolve_sql_dialect` and `resolve_dialect_for_query_translation` read it, and the `PLATFORM_DIALECTS` table is removed. A test pins the intended dialect of every platform and checks that each adapter's `get_target_dialect()` agrees with the manifest. The Athena adapter now reports `athena` instead of `trino` (identical query output on every shipped benchmark) and the SingleStore adapter reports `singlestore` instead of `mysql`, so SingleStore queries use the native `:>` cast and `NULLS FIRST` ordering instead of the MySQL emulation.
 - A pull request that edits only release enforcement files (`Makefile`, `ci.yml`, the release check scripts) no longer fails `ci-paths` when upstream SQLGlot publishes a new release before the fork is refreshed. The freshness check still runs for pull requests that change the release version or edit the freshness check or its waiver file, and in the release workflows.
 
 ### Added

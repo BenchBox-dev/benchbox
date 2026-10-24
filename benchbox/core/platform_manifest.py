@@ -38,6 +38,7 @@ _EXECUTION_ENGINE_FIELDS = frozenset({"class", "display_name", "description", "d
 _EXECUTION_ENGINE_FIELD_LIST = ", ".join(sorted(_EXECUTION_ENGINE_FIELDS))
 
 _PLATFORM_KEY_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+_SQL_DIALECT_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 _REQUIRED_METADATA_FIELDS = frozenset(
     {
         "display_name",
@@ -129,6 +130,12 @@ def _validate_capabilities(key: str, capabilities: object) -> None:
         raise ValueError(f"Platform {key!r} defaults to unsupported SQL mode")
     if default_mode == "dataframe" and not supports_dataframe:
         raise ValueError(f"Platform {key!r} defaults to unsupported DataFrame mode")
+    sql_dialect = capabilities.get("sql_dialect")
+    if supports_sql:
+        if not isinstance(sql_dialect, str) or not _SQL_DIALECT_PATTERN.fullmatch(sql_dialect):
+            raise ValueError(f"Platform {key!r} supports SQL and must declare a lowercase sql_dialect")
+    elif sql_dialect is not None:
+        raise ValueError(f"Platform {key!r} does not support SQL and must not declare sql_dialect")
 
     deployment_modes = capabilities.get("deployment_modes", {})
     if not isinstance(deployment_modes, dict):
@@ -440,6 +447,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "duckdb",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "duckdb",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "duckdb",
@@ -504,6 +512,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "datafusion",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "datafusion",
       "supports_dataframe": true,
       "default_mode": "sql"
     },
@@ -544,6 +553,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": null,
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "sqlite",
       "supports_dataframe": false,
       "default_mode": "sql"
     },
@@ -645,6 +655,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "duckdb",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "duckdb",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "duckdb",
@@ -708,6 +719,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Two independent axes, not a fixed set of deployments: catalog metadata backend (DuckDB-file default, SQLite, or self-hosted PostgreSQL) x Parquet DATA_PATH location (local or S3). Any combination is valid. Requires a live DuckDB runtime >= 1.3 for the ducklake extension; install via the ducklake extra, which pins that floor.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "duckdb",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "duckdb",
@@ -815,6 +827,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "clickhouse-driver",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "clickhouse",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "clickhouse",
@@ -889,6 +902,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "chdb",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "clickhouse",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "clickhouse",
@@ -928,6 +942,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "clickhouse-driver",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "clickhouse",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "clickhouse",
@@ -986,6 +1001,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "clickhouse-connect",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "clickhouse",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "clickhouse",
@@ -1064,6 +1080,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "google-cloud-bigquery",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "bigquery",
       "supports_dataframe": false,
       "default_mode": "sql",
       "cost_class": "paid_credits"
@@ -1110,6 +1127,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "databricks-sql-connector",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "databricks",
       "supports_dataframe": true,
       "default_mode": "sql",
       "cost_class": "paid_credits",
@@ -1198,6 +1216,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "databricks-connect",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "databricks",
       "supports_dataframe": true,
       "default_mode": "dataframe",
       "cost_class": "paid_credits",
@@ -1245,6 +1264,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "snowflake-connector-python",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "snowflake",
       "supports_dataframe": false,
       "default_mode": "sql",
       "cost_class": "paid_credits",
@@ -1331,6 +1351,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "redshift-connector",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "redshift",
       "supports_dataframe": false,
       "default_mode": "sql",
       "cost_class": "paid_compute",
@@ -1385,6 +1406,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Supports Trino and Starburst Enterprise. For PrestoDB use presto-python-client. For AWS Athena use the athena adapter.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "trino",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "trino",
@@ -1443,6 +1465,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Starburst Galaxy managed Trino service. Uses trino Python driver with HTTPS. For self-hosted Trino use the trino adapter.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "trino",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "trino",
@@ -1507,6 +1530,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Supports PrestoDB (Meta's fork) with X-Presto-* headers. For Trino/Starburst use the trino adapter. For AWS Athena use the athena adapter.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "presto",
       "supports_dataframe": false,
       "default_mode": "sql",
       "default_deployment": "self-hosted",
@@ -1575,6 +1599,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Supports PostgreSQL 12+. COPY-based bulk loading. For time-series workloads use timescaledb.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "postgres",
       "supports_dataframe": false,
       "default_mode": "sql",
       "default_deployment": "self-hosted",
@@ -1630,6 +1655,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "PostgreSQL extension for time-series. Automatic hypertables, compression policies. Requires TimescaleDB 2.x on server.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "postgres",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "timescaledb",
@@ -1701,6 +1727,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "PostgreSQL extension adding native columnstore tables (Parquet/Iceberg) with DuckDB execution. Requires pg_mooncake on server. Conflicts with standalone pg_duckdb (shared libduckdb.so).",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "postgres",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "pg_mooncake",
@@ -1760,6 +1787,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "CedarDB (formerly Umbra) is a standalone RDBMS with PostgreSQL wire protocol compatibility. Not a PostgreSQL extension - connects via standard psycopg3 (psycopg) drivers.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "postgres",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "cedardb",
@@ -1820,6 +1848,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "PostgreSQL extension embedding DuckDB vectorized execution. Requires pg_duckdb 1.0+ on server. Conflicts with pg_mooncake (shared libduckdb.so).",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "postgres",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "pg_duckdb",
@@ -1910,6 +1939,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "PostgreSQL distribution adding Elasticsearch-compatible BM25 search over heap tables via pg_search. Requires pg_search on server (supported image paradedb/paradedb:0.26.2-pg18). No known extension conflicts.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "postgres",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "paradedb",
@@ -1965,6 +1995,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "PostgreSQL extension distributing tables across coordinator and workers. Requires citus on server. Tables stay coordinator-local unless distribution_column is set. No known extension conflicts.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "postgres",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "citus",
@@ -2044,6 +2075,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Supports Azure Synapse Dedicated SQL Pools. COPY INTO for bulk loading. T-SQL dialect.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "tsql",
       "supports_dataframe": false,
       "default_mode": "sql",
       "cost_class": "paid_compute"
@@ -2099,6 +2131,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Supports Fabric Warehouse only (not Lakehouse). Entra ID auth only. OneLake + COPY INTO for bulk loading. T-SQL dialect (subset).",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "tsql",
       "supports_dataframe": false,
       "default_mode": "sql",
       "cost_class": "paid_compute"
@@ -2139,6 +2172,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Supports Firebolt Core (free, local Docker) and Firebolt Cloud. PostgreSQL-compatible SQL dialect. Vectorized query execution optimized for analytics.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "postgres",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "firebolt",
@@ -2215,6 +2249,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "driver_package": "pymysql",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "starrocks",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "starrocks",
@@ -2273,6 +2308,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Cloud-native Rust-based data warehouse with Snowflake-compatible SQL. Compute/storage separation on object storage (S3, GCS, Azure Blob). Uses Snowflake dialect as sqlglot translation proxy.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "snowflake",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "databend",
@@ -2352,6 +2388,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Apache Doris 2.0+ with vectorized execution. MySQL protocol on port 9030, Stream Load on port 8030. SQLGlot 'doris' dialect.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "doris",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "doris",
@@ -2409,9 +2446,10 @@ _PLATFORM_MANIFEST_JSON = """[
       "mysql-compatible"
     ],
     "driver_package": "singlestoredb",
-    "notes": "SingleStore 8.0+ with columnstore analytics. MySQL wire protocol on port 3306. SQLGlot 'mysql' dialect. Connects to self-managed clusters and to Helios endpoints by host; the deployment is not selected or recorded.",
+    "notes": "SingleStore 8.0+ with columnstore analytics. MySQL wire protocol on port 3306. SQLGlot 'singlestore' dialect. Connects to self-managed clusters and to Helios endpoints by host; the deployment is not selected or recorded.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "singlestore",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "singlestore",
@@ -2483,6 +2521,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "InfluxDB 3.x time series database with native SQL support via FlightSQL. Built on Apache Arrow, DataFusion, and Parquet. Optimized for TSBS DevOps workloads.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "datafusion",
       "supports_dataframe": false,
       "default_mode": "sql",
       "default_deployment": "cloud",
@@ -2559,6 +2598,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "QuestDB 7.0+ time-series database. PostgreSQL wire protocol for queries, REST API for data import. Optimized for fast ingestion and time-series analytics.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "questdb",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "questdb",
@@ -2620,6 +2660,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "AWS serverless query service using Trino under the hood. Pay-per-query pricing ($5/TB scanned). Native S3 and Glue Data Catalog integration.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "athena",
       "supports_dataframe": false,
       "default_mode": "sql",
       "cost_class": "paid_credits",
@@ -2668,6 +2709,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "AWS managed Spark ETL service. Pay-per-DPU pricing (~$0.44/DPU-hour). Uses Glue Data Catalog for metadata. Supports both SQL and DataFrame execution modes.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
       "cost_class": "paid_compute"
@@ -2706,6 +2748,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "AWS serverless Spark with automatic scaling and sub-second startup. Pay per vCPU-hour and memory-GB-hour. Uses Glue Data Catalog for metadata.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
       "cost_class": "paid_compute",
@@ -2750,6 +2793,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "AWS interactive Spark with notebook-style sessions. Sub-second startup with pre-provisioned capacity. Uses Glue Data Catalog for metadata. Pay per DPU-hour.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
       "cost_class": "paid_compute",
@@ -2799,6 +2843,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Google Cloud managed Spark service. Per-second billing with preemptible VM support. Supports persistent and ephemeral clusters. Uses Hive Metastore for table metadata.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
       "cost_class": "paid_compute",
@@ -2848,6 +2893,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Google Cloud Dataproc Serverless for fully managed Spark. No cluster management required. Sub-minute startup, auto-scaling, per-second billing. Uses Batch Controller API.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
       "cost_class": "paid_compute"
@@ -2897,6 +2943,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Microsoft Fabric SaaS Spark with OneLake storage. Uses Livy API for session management. Entra ID (Azure AD) authentication. Capacity Units billing model.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
       "cost_class": "paid_compute",
@@ -2951,6 +2998,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Fabric Lakehouse SQL Analytics Endpoint is read-only. Use fabric-spark for generate/load phases and fabric-lakehouse for query phases.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "tsql",
       "supports_dataframe": false,
       "default_mode": "sql",
       "cost_class": "paid_compute"
@@ -3000,6 +3048,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Azure Synapse Analytics Spark with ADLS Gen2 storage. Uses Livy API for session management. vCore-hour billing. Supports external Hive Metastore.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
       "cost_class": "paid_compute",
@@ -3044,6 +3093,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Apache Spark distributed SQL engine. Supports local, standalone, YARN, and Kubernetes modes. Use 'pyspark' for DataFrame API benchmarking.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": false,
       "default_mode": "sql"
     },
@@ -3083,6 +3133,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Apache Gluten + Velox accelerates Spark SQL by offloading physical operators to a vectorized C++ engine. Requires the Gluten bundle jar on the execution host. Linux only for local mode; Docker is the primary path on macOS/Windows. See docs/platforms/velox.md and docker/velox/.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "spark",
@@ -3173,6 +3224,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "LakeSail Sail is a Rust-based drop-in Spark replacement built on DataFusion. Connects via Spark Connect protocol using standard PySpark client. 4x faster than Apache Spark on TPC-H SF100.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
       "platform_family": "spark",
@@ -3241,6 +3293,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "PySpark DataFrame API compatibility layer on Snowflake. NOT Apache Spark - translates DataFrame operations to Snowflake SQL. No Spark cluster required.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "snowflake",
       "supports_dataframe": true,
       "default_mode": "dataframe",
       "cost_class": "paid_credits",
@@ -3293,6 +3346,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Onehouse Quanton serverless Spark. Multi-table-format support (Hudi, Iceberg, Delta). XTable cross-format metadata translation. 2-3x better price-performance than EMR/Databricks.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
       "platform_family": "spark",
@@ -3489,6 +3543,7 @@ _PLATFORM_MANIFEST_JSON = """[
     "notes": "Requires Java 17 or 21. Java 23+ not supported by PySpark 4.x.",
     "capabilities": {
       "supports_sql": true,
+      "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "dataframe",
       "platform_family": "spark",
@@ -3521,6 +3576,15 @@ PLATFORM_MANIFEST_BY_KEY: Mapping[str, PlatformManifestEntry] = MappingProxyType
 
 def get_platform_manifest_entry(key: str) -> PlatformManifestEntry | None:
     return PLATFORM_MANIFEST_BY_KEY.get(key.lower())
+
+
+def get_platform_sql_dialect(name: str) -> str | None:
+    normalized = name.strip().lower()
+    for candidate in (normalized, normalized.replace("_", "-"), normalized.replace("-", "_")):
+        entry = PLATFORM_MANIFEST_BY_KEY.get(candidate)
+        if entry is not None:
+            return cast(str | None, entry.capabilities.get("sql_dialect"))
+    return None
 
 
 def is_valid_platform_key(key: str) -> bool:

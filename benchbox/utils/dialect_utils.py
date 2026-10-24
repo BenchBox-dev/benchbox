@@ -228,53 +228,20 @@ class UnknownSqlDialectError(ValueError):
 
 SQLITE_DISCOUNT_BOUNDS = {"columns": ("l_discount",), "tables": ("lineitem",)}
 
-PLATFORM_DIALECTS: dict[str, str] = {
-    "ansi": "postgres",
-    "standard": "postgres",
-    "postgresql": "postgres",
-    "timescaledb": "postgres",
-    "pg_mooncake": "postgres",
-    "pg_duckdb": "postgres",
-    "cedardb": "postgres",
-    "paradedb": "postgres",
-    "citus": "postgres",
-    "firebolt": "postgres",
-    "influxdb": "datafusion",
-    "motherduck": "duckdb",
-    "ducklake": "duckdb",
-    "clickhouse_local": "clickhouse",
-    "clickhouse_server": "clickhouse",
-    "clickhouse_cloud": "clickhouse",
-    "starburst": "trino",
-    "databricks_df": "databricks",
-    "databend": "snowflake",
-    "snowpark_connect": "snowflake",
-    "synapse": "tsql",
-    "fabric_dw": "tsql",
-    "fabric_lakehouse": "tsql",
-    "glue": "spark",
-    "emr_serverless": "spark",
-    "athena_spark": "spark",
-    "dataproc": "spark",
-    "dataproc_serverless": "spark",
-    "fabric_spark": "spark",
-    "synapse_spark": "spark",
-    "velox": "spark",
-    "lakesail": "spark",
-    "quanton": "spark",
-    "pyspark": "spark",
-}
+GENERIC_DIALECT_ALIASES: dict[str, str] = {"ansi": "postgres", "standard": "postgres"}
 
 
 def resolve_sql_dialect(platform_or_dialect: str) -> str:
     from benchbox._vendor.sqlglot.dialects import DIALECT_MODULE_NAMES
     from benchbox._vendor.sqlglot.dialects.dialect import Dialect
+    from benchbox.core.platform_manifest import get_platform_sql_dialect
 
     key = (platform_or_dialect or "").strip().lower().replace("-", "_")
-    resolved = PLATFORM_DIALECTS.get(key, key)
+    resolved = GENERIC_DIALECT_ALIASES.get(key) or get_platform_sql_dialect(key) or key
     if resolved not in DIALECT_MODULE_NAMES or Dialect.get(resolved) is None:
         raise UnknownSqlDialectError(
-            f"No fork SQL dialect for {platform_or_dialect!r}; register the platform in PLATFORM_DIALECTS"
+            f"No fork SQL dialect for {platform_or_dialect!r}; declare capabilities.sql_dialect for the platform in "
+            "the platform manifest"
         )
     return resolved
 

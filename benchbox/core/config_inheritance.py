@@ -78,14 +78,6 @@ def get_benchmark_compatibility(platform_name: str) -> dict[str, bool]:
 
 
 def resolve_dialect_for_query_translation(platform_name: str) -> str:
-    canonical = PlatformRegistry.resolve_platform_name(platform_name)
+    from benchbox.utils.dialect_utils import resolve_sql_dialect
 
-    caps = PlatformRegistry.get_platform_capabilities(canonical)
-    if caps and caps.platform_family:
-        return caps.platform_family
-
-    parent = PlatformRegistry.get_inherited_platform(canonical)
-    if parent:
-        return resolve_dialect_for_query_translation(parent)
-
-    return canonical
+    return resolve_sql_dialect(PlatformRegistry.resolve_platform_name(platform_name))

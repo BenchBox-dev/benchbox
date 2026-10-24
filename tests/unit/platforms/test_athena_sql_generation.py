@@ -153,7 +153,7 @@ class TestAthenaConfigureForBenchmark:
 
 
 class TestAthenaGetTargetDialect:
-    def test_returns_trino(self):
+    def test_returns_athena(self):
         adapter = _make_adapter()
 
         dialect = adapter.get_target_dialect()
