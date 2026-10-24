@@ -1,9 +1,10 @@
 {
   "acceptance": [
-    "RUBRIC 1 cause: the reason for each class of missing id is stated with evidence from the coverage run's artifacts or a local reproduction",
-    "RUBRIC 2 result: after the fix, a named trunk-coverage run's map contains every medium id from test_comment_policy.py (count compared), or the item records why selection is unaffected",
-    "RUBRIC 3 guard: if the cause can recur for other modules, a check reports collected medium ids absent from the map"
+    "RUBRIC 1 Cause recorded: coverage-context parsing truncates node ids at `|`/newline (`coverage_test_selection.py:72-75`; evidence: run 40071524742 map at `c962e3e` missing 85 of 942 collected `test_comment_policy.py` ids with 51 truncated ghost nodes).",
+    "RUBRIC 2 Fix the context encoding/parsing so a named trunk-coverage run's map contains every collected medium id whose test records project-source coverage, compared same-SHA against the collection artifact; ids containing `|`, quotes, backslashes, and newlines included.",
+    "RUBRIC 3 Guard: a same-SHA check in the map build fails (or reports) when a collected medium id is absent without a recorded no-coverage reason; truncated/mangled nodes are rejected."
   ],
+  "context": "AMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Root cause found: same-SHA reconciliation of trunk-coverage run 40071524742 (develop c962e3e) shows 85 of 942 collected test_comment_policy.py ids missing from map.json plus 51 ghost nodes truncated at the first `|` or newline; context parsing in scripts/coverage_test_selection.py:72-75 (split_phase splits on `|`; build_map :158-187) mangles any parametrized id with `|`, quotes, backslashes or newlines, in any module, so changed-source impact selection silently skips them. Priority raised to high: this is a test-selection correctness bug.",
   "description": "PROBLEM: trunk-coverage run 39869359327 (develop 853f7a024) built a green medium coverage map (15,246 nodes, failed_nodes empty), but 81 medium ids in tests/unit/scripts/test_comment_policy.py are absent from it while 858 other ids from the same module are present. PR test selection uses the map, so these ids may never be selected by changed-file impact. Cause not investigated.\n\nCHANGE: find why these ids have no map entry (parametrization ids, collection differences between the coverage run and the medium list, or recording failures) and fix the cause so the map covers every collected medium id, or record why the gap is harmless.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/39869359327"
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "7be3fd051ab44cd5bc47813d9bb9e262",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T14:29:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "704a99a66c4b498fb40e2fbe9bd4d08e",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
