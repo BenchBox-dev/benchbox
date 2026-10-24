@@ -1105,7 +1105,7 @@ jobs:
           trap 'pkill -P "${sampler}" 2>/dev/null || true; kill "${sampler}" 2>/dev/null || true' EXIT
           BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest \
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \
-            --tb=short --timeout=60 -n 5 --dist loadscope --durations=25 \
+            --tb=short --timeout=60 -n 5 --durations=25 \
             -p scripts.pytest_shard_evidence \
             --assigned-nodeids "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt" \
             --shard-evidence "t2-artifacts/shard-${SHARD_INDEX}-execution.json" \

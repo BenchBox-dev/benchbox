@@ -274,8 +274,7 @@ jobs:
             --expected-count "$count" --shard-count 4 \
             --workflow test.yml --job medium-collect \
             --marker-expression "medium and not (slow or stress or resource_heavy or live_integration)" \
-            --checked-ref "${{ github.ref }}" --checked-sha "${{ github.sha }}" \
-            --durations tests/fixtures/medium_shard_durations.json
+            --checked-ref "${{ github.ref }}" --checked-sha "${{ github.sha }}"
 
       - name: Upload medium collection evidence
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
@@ -329,8 +328,7 @@ jobs:
             --shard-index "$SHARD_INDEX" --shard-count 4 \
             --workflow test.yml --job medium \
             --marker-expression "medium and not (slow or stress or resource_heavy or live_integration)" \
-            --collection-summary t2-artifacts/medium-collection.json --checked-sha "${{ github.sha }}" \
-            --durations tests/fixtures/medium_shard_durations.json
+            --collection-summary t2-artifacts/medium-collection.json --checked-sha "${{ github.sha }}"
 
       - name: Run medium tests
         shell: bash
@@ -342,7 +340,7 @@ jobs:
           mapfile -t node_ids < "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt"
           BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest \
             -m "medium and not (slow or stress or resource_heavy or live_integration)" \
-            --tb=short --timeout=60 -n 5 --dist loadscope \
+            --tb=short --timeout=60 -n 5 \
             -p scripts.pytest_shard_evidence \
             --assigned-nodeids "t2-artifacts/shard-${SHARD_INDEX}-nodeids.txt" \
             --shard-evidence "t2-artifacts/shard-${SHARD_INDEX}-execution.json" \
@@ -372,7 +370,6 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             scripts/release_canary_sharding.py
-            tests/fixtures/medium_shard_durations.json
           sparse-checkout-cone-mode: false
 
       - name: Download complete medium shard evidence
@@ -386,7 +383,6 @@ jobs:
         run: >-
           python scripts/release_canary_sharding.py verify-medium --artifacts release-medium-evidence
           --checked-sha "${{ github.sha }}" --workflow test.yml --artifact-prefix release-medium
-          --durations tests/fixtures/medium_shard_durations.json
 
   correctness-gate:
     name: correctness-gate
