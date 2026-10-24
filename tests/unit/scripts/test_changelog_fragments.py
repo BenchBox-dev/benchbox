@@ -640,3 +640,16 @@ def test_required_with_missing_manifest_fails_closed_and_names_the_flag(tmp_path
     assert result.returncode == 2
     assert missing.as_posix() in result.stderr
     assert "--manifest" in result.stderr
+
+
+@requires_project_parser
+def test_shipped_manifest_loads_and_classifies_paths_through_the_real_loader() -> None:
+    shipped = cf.load_rules()
+    assert cf.matches_manifest("benchbox/core/runner.py", shipped)
+    assert cf.matches_manifest("_sources/tpch/dbgen.c", shipped)
+    assert cf.matches_manifest("pyproject.toml", shipped)
+    assert not cf.matches_manifest("benchbox/utils/VERSION_MANAGEMENT.md", shipped)
+    assert not cf.matches_manifest("tests/unit/test_x.py", shipped)
+    assert not cf.matches_manifest(".github/workflows/ci.yml", shipped)
+    assert cf.decide_required("fix: repair", ["benchbox/core/runner.py"], shipped).required
+    assert not cf.decide_required("fix: repair", ["docs/a.md"], shipped).required

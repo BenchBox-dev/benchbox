@@ -1,0 +1,6 @@
+prefix	benchbox/
+prefix	_sources/
+prefix	_binaries/
+file	pyproject.toml
+file	MANIFEST.in
+except	benchbox/utils/VERSION_MANAGEMENT.md
