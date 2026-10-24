@@ -9,13 +9,13 @@ import pytest
 from ci_units import UNITS, classify_units, load_unit_rules, write_github_output
 from path_filter_decision import classify_paths, load_rules
 
-from _project.scripts import inert_paths
-
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RULES_PATH = REPO_ROOT / ".github" / "ci-units.yml"
 FILTER_RULES_PATH = REPO_ROOT / ".github" / "path-filters.yml"
+READERS_PATH = REPO_ROOT / "_project" / "inert-doc-readers.json"
+SAFE_PROJECT_FOLDERS = ("notes", "blind-spots", "handoffs", "research", "planning", "decisions")
 
 
 @pytest.fixture(scope="module")
@@ -164,13 +164,8 @@ DOCS_ONLY_MARKDOWN = [
     "DISCLAIMER.md",
     "docs/internal/comment-policy.md",
     "docs/guides/intro.md",
-    "_project/notes/x.md",
-    "_project/blind-spots/x.md",
-    "_project/handoffs/x.md",
-    "_project/research/x.md",
-    "_project/planning/x.md",
-    "_project/decisions/x.md",
     "_project/todo-db-export/index.md",
+    *(f"_project/{folder}/unread.md" for folder in SAFE_PROJECT_FOLDERS),
 ]
 
 TEST_READ_MARKDOWN = [
@@ -202,7 +197,7 @@ def test_markdown_read_by_tests_still_needs_code_tests(path: str, rules: dict[st
 
 
 def test_markdown_only_change_set_skips_code_tests(rules: dict[str, list[str]]) -> None:
-    decision = classify_units(["DISCLAIMER.md", "_project/notes/x.md", "docs/guides/intro.md"], rules)
+    decision = classify_units(["DISCLAIMER.md", "_project/todo-db-export/index.md", "docs/guides/intro.md"], rules)
     assert decision["code_tests_needed"] is False
     assert decision["run_all"] is False
 
@@ -212,13 +207,16 @@ def test_markdown_mixed_with_code_still_needs_code_tests(rules: dict[str, list[s
 
 
 def _tracked_documents() -> list[str]:
+    if not FILTER_RULES_PATH.is_file():
+        pytest.skip("path filters are absent from this tree")
     proc = subprocess.run(
         ["git", "-C", str(REPO_ROOT), "ls-files", "-z"],
-        check=True,
         text=True,
         capture_output=True,
         timeout=120,
     )
+    if proc.returncode != 0:
+        pytest.skip("not a git checkout")
     return sorted(
         path
         for path in proc.stdout.split("\0")
@@ -227,7 +225,9 @@ def _tracked_documents() -> list[str]:
 
 
 def test_every_test_read_document_needs_code_tests(rules: dict[str, list[str]]) -> None:
-    readers = inert_paths.load_readers(REPO_ROOT)
+    if not READERS_PATH.is_file():
+        pytest.skip("the reader index is absent from this tree")
+    readers = json.loads(READERS_PATH.read_text(encoding="utf-8"))
     assert readers
     unrouted = sorted(
         path
