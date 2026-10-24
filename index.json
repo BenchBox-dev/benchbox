@@ -16039,7 +16039,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "muse often returns output the oracle cannot parse as a verdict, so it is recorded absent (invalid)"
     },
     "oracle-oversize-pr-pending-loop-20261009": {
