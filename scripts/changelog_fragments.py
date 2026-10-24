@@ -41,7 +41,6 @@ PR_SUFFIX_RE = re.compile(r"\(#\d+\)\s*$")
 SQUASH_PR_RE = re.compile(r"\(#(\d+)\)\s*$")
 UNRELEASED_HEADER = "## [Unreleased]"
 TITLE_RE = re.compile(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^()\r\n]*)\))?(?P<bang>!)?: \S.*")
-FRAGMENT_PATH_RE = re.compile(r"^changelog\.d/[^/]+\.json$")
 
 EXEMPT_TYPES = frozenset({"build", "chore", "ci", "docs", "refactor", "style", "test"})
 REQUIRED_TYPES = frozenset({"feat", "fix", "perf"})
@@ -224,7 +223,11 @@ def collect_fragments(paths: Iterable[Path]) -> tuple[list[Fragment], list[str]]
 def fragment_files(directory: Path) -> list[Path]:
     if not directory.is_dir():
         return []
-    return sorted(path for path in directory.iterdir() if path.is_file() and not path.name.startswith("."))
+    return sorted(path for path in directory.iterdir() if path.is_file() and is_fragment_name(path.name))
+
+
+def is_fragment_name(name: str) -> bool:
+    return name.endswith(".json") and not name.startswith(".")
 
 
 def _sort_key(entry: Entry) -> tuple[str, str, str]:
@@ -298,6 +301,8 @@ def normalize_path(path: str) -> str:
 
 
 def load_rules(path: Path = DEFAULT_MANIFEST) -> tuple[Any, ...]:
+    if not path.is_file():
+        raise FileNotFoundError(f"path manifest {path.as_posix()} does not exist; pass --manifest <file>")
     root = str(REPO_ROOT)
     if root not in sys.path:
         sys.path.insert(0, root)
@@ -320,7 +325,8 @@ def matches_manifest(path: str, rules: Sequence[Any]) -> bool:
 
 
 def is_fragment_path(path: str) -> bool:
-    return FRAGMENT_PATH_RE.fullmatch(normalize_path(path)) is not None
+    directory, _, name = normalize_path(path).partition("/")
+    return directory == FRAGMENT_DIR and "/" not in name and is_fragment_name(name)
 
 
 def decide_required(
@@ -416,6 +422,9 @@ def command_add(args: argparse.Namespace) -> int:
         name = args.name or fragment_name(current_branch(root))
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
+        return EXIT_USAGE
+    if not FILE_NAME_RE.fullmatch(name):
+        print(f"error: fragment name {name!r} must match {FILE_NAME_RE.pattern}", file=sys.stderr)
         return EXIT_USAGE
     path = root / FRAGMENT_DIR / name
     if args.internal:

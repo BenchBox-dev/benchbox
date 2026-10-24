@@ -610,3 +610,33 @@ def test_required_fails_closed_when_the_manifest_parser_is_unavailable(tmp_path:
     )
     assert result.returncode == 2
     assert "parser unavailable" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "name", ["../../x.json", "Upper.json", "sub/x.json", "/tmp/x.json", ".hidden.json", "x.txt", ""]
+)
+def test_add_rejects_unsafe_fragment_names_and_writes_nothing(tmp_path: Path, name: str) -> None:
+    result = _run_cli(
+        tmp_path, "add", "--name", name, "--category", "added", "--text", TEXT, env={"CHANGELOG_FRAGMENT": name}
+    )
+    assert result.returncode == 2
+    assert "fragment name" in result.stderr or "fragment-name" in result.stderr or "branch" in result.stderr
+    assert not (tmp_path / "changelog.d").exists()
+    assert not (tmp_path.parent / "x.json").exists()
+
+
+def test_dot_files_never_satisfy_the_gate_and_listing_agrees(tmp_path: Path, rules: tuple[object, ...]) -> None:
+    _write(tmp_path / "changelog.d", ".x.json", _doc())
+    _write(tmp_path / "changelog.d", "real.json", _doc())
+    assert [path.name for path in cf.fragment_files(tmp_path / "changelog.d")] == ["real.json"]
+    assert not cf.is_fragment_path("changelog.d/.x.json")
+    assert not cf.decide_required("fix: repair", [*SHIPPED, "changelog.d/.x.json"], rules).satisfied
+    assert cf.decide_required("fix: repair", [*SHIPPED, "changelog.d/real.json"], rules).satisfied
+
+
+def test_required_with_missing_manifest_fails_closed_and_names_the_flag(tmp_path: Path) -> None:
+    missing = tmp_path / "absent.txt"
+    result = _run_cli(tmp_path, "required", "--manifest", str(missing), "--title", "feat: add a thing")
+    assert result.returncode == 2
+    assert missing.as_posix() in result.stderr
+    assert "--manifest" in result.stderr
