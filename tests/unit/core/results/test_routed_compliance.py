@@ -205,3 +205,20 @@ def test_native_result_built_by_result_builder_stays_official() -> None:
     result = _built_like_a_real_run(None)
     assert result_compliance_class(result) == "official"
     assert build_result_payload(result)["benchmark"]["compliance_class"] == "official"
+
+
+def test_routed_result_built_by_result_builder_carries_no_tpc_metrics() -> None:
+    routed = _built_like_a_real_run(ROUTED)
+    assert routed.power_at_size is None
+    assert routed.throughput_at_size is None
+    assert routed.qph_at_size is None
+    assert routed.compliance_class == NONSTANDARD_COMPLIANCE_CLASS
+    payload = build_result_payload(routed)
+    assert "power_at_size" not in payload["summary"]["tpc_metrics"]
+    assert "qphh_at_size" not in payload["summary"]["tpc_metrics"]
+
+
+def test_native_result_built_by_result_builder_keeps_tpc_metrics() -> None:
+    native = _built_like_a_real_run(None)
+    assert native.power_at_size is not None
+    assert native.compliance_class == "official"
