@@ -11,6 +11,7 @@ from benchbox.core.config_inheritance import (
     get_platform_family_dialect,
     resolve_dialect_for_query_translation,
 )
+from benchbox.utils.dialect_utils import UnknownSqlDialectError
 
 pytestmark = [
     pytest.mark.unit,
@@ -81,9 +82,13 @@ class TestResolveDialectForQueryTranslation:
         dialect = resolve_dialect_for_query_translation("trino")
         assert dialect == "trino"
 
-    def test_firebolt_returns_firebolt(self):
+    def test_firebolt_resolves_to_its_postgres_dialect(self):
         dialect = resolve_dialect_for_query_translation("firebolt")
-        assert dialect == "firebolt"
+        assert dialect == "postgres"
+
+    def test_unknown_platform_raises(self):
+        with pytest.raises(UnknownSqlDialectError):
+            resolve_dialect_for_query_translation("polars")
 
     def test_case_insensitive(self):
         assert resolve_dialect_for_query_translation("DuckDB") == "duckdb"

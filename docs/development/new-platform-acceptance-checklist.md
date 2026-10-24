@@ -24,7 +24,7 @@ Use this checklist before opening a platform-support PR. It is deliberately conc
 - Add the platform's canonical entry to `benchbox/core/platform_manifest.py`, including one explicit `support_status`.
   The registry's `_OPTIONAL_ADAPTERS` and `_build_platform_metadata()` paths are live pass-throughs and should not
   be treated as independent registration authorities.
-- Fill `capabilities`: `supports_sql`, `supports_dataframe`, `default_mode`, `platform_family`, `inherits_from`, `cost_class`, and deployment modes when relevant.
+- Fill `capabilities`: `supports_sql`, `sql_dialect` (required for SQL platforms), `supports_dataframe`, `default_mode`, `platform_family`, `inherits_from`, `cost_class`, and deployment modes when relevant.
 - Declare every deployment mode in the manifest with its class (`local`, `self-hosted`, or `managed`) and exactly one platform default; the `--platform name:mode` selector is the only canonical spelling.
 - Name no canonical option `engine`, `mode`, `backend`, `runtime`, `executor`, or `warehouse`; list any reserved-word alias in the core deprecated-alias table with its removal release.
 - Record the factory-resolved deployment in result metadata as `platform.deployment.selected` with `selected_class`, and cover each mode with an adapter test.

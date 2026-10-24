@@ -724,11 +724,14 @@ Add one typed entry to the manifest source of truth, `benchbox/core/platform_man
     "support_status": "experimental",
     "capabilities": {
         "supports_sql": True,
+        "sql_dialect": "newdatabase",
         "supports_dataframe": False,
         "default_mode": "sql",
     },
 }
 ```
+
+`sql_dialect` names the dialect the bundled SQLGlot runtime provides for the platform. It is required for every SQL platform and forbidden for DataFrame-only platforms. `resolve_sql_dialect` reads it, and the adapter's `get_target_dialect()` must resolve to the same dialect. A platform whose workload queries are generated in a different dialect than its native SQL (Athena queries as `trino`, SingleStore as `mysql`) also declares `query_dialect`, and its adapter reads it from the manifest with `get_platform_query_dialect`.
 
 Do not add parallel entries to `PlatformRegistry` or the CLI. They derive their
 metadata, scoped aliases, and runtime import rows from the manifest. Use

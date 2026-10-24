@@ -14,6 +14,7 @@ ignore_imports =
     benchbox.utils.tpc_compilation -> benchbox
     benchbox.utils.verbosity -> benchbox
     benchbox.utils.path_utils -> benchbox.core.runtime_paths
+    benchbox.utils.dialect_utils -> benchbox.core.platform_manifest
     benchbox.utils.format_selection -> benchbox.platforms.base.format_capabilities
     benchbox.core.benchmark_registry -> benchbox
     benchbox.core.dryrun -> benchbox
