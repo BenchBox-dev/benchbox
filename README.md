@@ -25,7 +25,7 @@ inspect and reproduce.
 
 BenchBox focuses on online analytical processing (OLAP). If you need an
 online transaction processing (OLTP) benchmark, see the
-[comparison of database benchmarking tools](docs/concepts/benchmarking-tools-compared.md).
+[comparison of database benchmarking tools](https://benchbox.dev/docs/concepts/benchmarking-tools-compared.html).
 
 ## Why BenchBox?
 
@@ -100,8 +100,8 @@ benchbox run \
   --scale 0.01
 ```
 
-Continue with the [five-minute guide](docs/usage/getting-started.md), or see
-the [installation guide](docs/usage/installation.md) for other platforms and
+Continue with the [five-minute guide](https://benchbox.dev/docs/usage/getting-started.html), or see
+the [installation guide](https://benchbox.dev/docs/usage/installation.html) for other platforms and
 package extras.
 
 ## What can you benchmark?
@@ -119,7 +119,7 @@ BenchBox includes several kinds of analytical workloads:
 - **Experimental variants:** TPC-DS One Big Table, TPC-Havoc, TPC-H Skew, and
   TPC-H Data Vault
 
-See the [benchmark catalog](docs/benchmarks/index.md) for workload details,
+See the [benchmark catalog](https://benchbox.dev/docs/benchmarks/index.html) for workload details,
 resource guidance, and selection help.
 
 ### Platforms
@@ -134,9 +134,9 @@ BenchBox uses adapters to run workloads across three broad groups:
 
 Support status and published evidence answer different questions. A supported
 adapter can be available before the public results corpus contains a run for
-that platform. Check the [platform guides](docs/platforms/index.md),
-[platform comparison matrix](docs/platforms/comparison-matrix.md), and
-[public support contract](docs/reference/public-contracts.md) before planning
+that platform. Check the [platform guides](https://benchbox.dev/docs/platforms/index.html),
+[platform comparison matrix](https://benchbox.dev/docs/platforms/comparison-matrix.html), and
+[public support contract](https://benchbox.dev/docs/reference/public-contracts.html) before planning
 a comparison.
 
 <!-- benchbox-registry-counts:start -->
@@ -171,7 +171,7 @@ when the workload, scale, phase, configuration, tuning, hardware, and evidence
 are compatible; a shared benchmark name alone is not enough.
 
 To contribute a complete run, follow the
-[result contribution guide](docs/contributing-results.md). It explains local
+[result contribution guide](https://benchbox.dev/docs/contributing-results.html). It explains local
 validation, privacy safeguards, trust labels, and the `published-results`
 submission process.
 
@@ -179,18 +179,18 @@ submission process.
 
 | Goal | Start here |
 | --- | --- |
-| Install BenchBox | [Installation and environment setup](docs/usage/installation.md) |
-| Run your first benchmark | [Getting started in five minutes](docs/usage/getting-started.md) |
-| Learn the CLI | [CLI quick reference](docs/usage/cli-quick-start.md) |
-| Choose a benchmark | [Benchmark catalog](docs/benchmarks/index.md) |
-| Choose a platform | [Platform selection guide](docs/platforms/platform-selection-guide.md) |
-| Use a DataFrame runtime | [DataFrame platforms](docs/platforms/dataframe.md) |
-| Use the Python API | [Python API reference](docs/reference/python-api/index.md) |
-| Find examples | [Examples guide](docs/usage/examples.md) |
-| Troubleshoot a run | [Troubleshooting guide](docs/usage/troubleshooting.md) |
-| Understand the design | [Architecture overview](docs/concepts/architecture.md) |
-| Add a platform | [Adding new platforms](docs/development/adding-new-platforms.md) |
-| Create a custom benchmark | [Custom benchmark guide](docs/advanced/custom-benchmarks.md) |
+| Install BenchBox | [Installation and environment setup](https://benchbox.dev/docs/usage/installation.html) |
+| Run your first benchmark | [Getting started in five minutes](https://benchbox.dev/docs/usage/getting-started.html) |
+| Learn the CLI | [CLI quick reference](https://benchbox.dev/docs/usage/cli-quick-start.html) |
+| Choose a benchmark | [Benchmark catalog](https://benchbox.dev/docs/benchmarks/index.html) |
+| Choose a platform | [Platform selection guide](https://benchbox.dev/docs/platforms/platform-selection-guide.html) |
+| Use a DataFrame runtime | [DataFrame platforms](https://benchbox.dev/docs/platforms/dataframe.html) |
+| Use the Python API | [Python API reference](https://benchbox.dev/docs/reference/python-api/index.html) |
+| Find examples | [Examples guide](https://benchbox.dev/docs/usage/examples.html) |
+| Troubleshoot a run | [Troubleshooting guide](https://benchbox.dev/docs/usage/troubleshooting.html) |
+| Understand the design | [Architecture overview](https://benchbox.dev/docs/concepts/architecture.html) |
+| Add a platform | [Adding new platforms](https://benchbox.dev/docs/development/adding-new-platforms.html) |
+| Create a custom benchmark | [Custom benchmark guide](https://benchbox.dev/docs/advanced/custom-benchmarks.html) |
 
 The [documentation index](docs/README.md) links to the complete user,
 reference, design, and contributor documentation.
@@ -201,7 +201,7 @@ The quick start intentionally installs only the DuckDB extra. BenchBox offers
 separate extras for cloud services, database drivers, DataFrame libraries, and
 development tools so that you install only what you need.
 
-See the [installation guide](docs/usage/installation.md) for the supported
+See the [installation guide](https://benchbox.dev/docs/usage/installation.html) for the supported
 package managers and extras. Then use the dependency checker for your target
 platform:
 
@@ -222,13 +222,13 @@ Current release: v0.5.0rc1.
 Support labels describe the stability of each public surface. The
 `benchbox.experimental` namespace has no compatibility guarantee and can change
 or be removed without notice. Read the
-[public contracts and support taxonomy](docs/reference/public-contracts.md)
+[public contracts and support taxonomy](https://benchbox.dev/docs/reference/public-contracts.html)
 before depending on an experimental or beta interface.
 
 See [PyPI](https://pypi.org/project/benchbox/) for published releases and
 [DISCLAIMER.md](DISCLAIMER.md) for project limitations. Release and versioning
 details live in the
-[backward-compatibility policy](docs/reference/backward-compatibility.md) and
+[backward-compatibility policy](https://benchbox.dev/docs/reference/backward-compatibility.html) and
 [release guide](docs/internal/release-guide.md).
 
 ## Contributing
@@ -241,7 +241,7 @@ and result contributions are welcome.
   and feature requests.
 - Use [GitHub Discussions](https://github.com/BenchBox-dev/benchbox/discussions)
   for questions and ideas.
-- Follow the [result contribution guide](docs/contributing-results.md) to add a
+- Follow the [result contribution guide](https://benchbox.dev/docs/contributing-results.html) to add a
   benchmark run to the public corpus.
 
 ## Disclaimer

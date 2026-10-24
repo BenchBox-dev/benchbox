@@ -241,7 +241,7 @@ BenchBox uses a family-based architecture for DataFrame platforms. To add a new 
 4. **Register the platform**: Add to `DATAFRAME_ADAPTERS` registry
 5. **Add tests**: Unit tests and integration tests
 
-See [Adding a DataFrame Platform](docs/development/adding-dataframe-platform.md) for detailed instructions.
+See [Adding a DataFrame Platform](https://benchbox.dev/docs/development/adding-dataframe-platform.html) for detailed instructions.
 
 ### DataFrame Query Guidelines
 

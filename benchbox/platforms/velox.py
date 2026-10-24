@@ -170,7 +170,7 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
                     f"table_format '{self.table_format}' requires connector jars in local mode: the Gluten "
                     "bundle does not ship Delta/Iceberg/Hudi SQL extensions. Supply them via "
                     "--platform-option lakehouse_jars=<jar1,jar2> (local paths, remote URIs, or Maven "
-                    "coordinates). See docs/platforms/velox.md."
+                    "coordinates). See https://benchbox.dev/docs/platforms/velox.html."
                 )
             self.logger.warning(
                 f"table_format '{self.table_format}' needs connector jars on the Spark-Connect server; "
@@ -340,14 +340,14 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
                     "--platform-option gluten_jar_path=<absolute-path> "
                     "(alias: --platform-option jar=<absolute-path>) or via the "
                     "gluten_jar_path config key. "
-                    "See docs/platforms/velox_jar_setup.md for obtaining the jar. "
+                    "See https://benchbox.dev/docs/platforms/velox_jar_setup.html for obtaining the jar. "
                     "On macOS/Windows use the Docker workflow in docker/velox/ instead."
                 )
             if not Path(self.gluten_jar_path).exists():
                 raise ValueError(
                     f"Gluten jar not found: {self.gluten_jar_path}\n"
                     "Download the correct bundle for your Spark version and host arch. "
-                    "See docs/platforms/velox_jar_setup.md."
+                    "See https://benchbox.dev/docs/platforms/velox_jar_setup.html."
                 )
             builder = SparkSession.builder.master("local[*]")
         else:

@@ -135,6 +135,6 @@ The commands run, in order: a basic dry run, a dry run for multiple benchmarks, 
 
 ## See Also
 
-- **CLI Dry-Run Guide:** [docs/usage/dry-run.md](../../docs/usage/dry-run.md)
+- **CLI Dry-Run Guide:** <https://benchbox.dev/docs/usage/dry-run.html>
 - **Dry-Run Samples:** [../dry_run_samples/](../dry_run_samples/) - Example output artifacts
-- **CI/CD Integration:** [docs/advanced/ci-cd-integration.md](../../docs/advanced/ci-cd-integration.md)
+- **CI/CD Integration:** <https://benchbox.dev/docs/advanced/ci-cd-integration.html>

@@ -241,7 +241,7 @@ KEY TAKEAWAY:
     print("(Database contains modified data from Maintenance Test)")
     print()
     print("Next steps:")
-    print("  • See docs/guides/tpc/maintenance-phase-guide.md for complete reference")
+    print("  • See https://benchbox.dev/docs/guides/tpc/maintenance-phase-guide.html for complete reference")
     print("  • Try running with larger scale factors to see realistic data volumes")
     print("  • Explore test_types.py for individual test type demonstrations")
     print()

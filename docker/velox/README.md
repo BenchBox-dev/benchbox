@@ -19,7 +19,7 @@ docker buildx build \
   --push .
 ```
 
-The Dockerfile downloads the official Apache Gluten 1.6.0 release tarball, verifies the published SHA-512, and extracts the bundle jar. See [docs/platforms/velox_jar_setup.md](../../docs/platforms/velox_jar_setup.md) for tarball URLs and the version table.
+The Dockerfile downloads the official Apache Gluten 1.6.0 release tarball, verifies the published SHA-512, and extracts the bundle jar. See <https://benchbox.dev/docs/platforms/velox_jar_setup.html> for tarball URLs and the version table.
 
 ## Services
 
@@ -51,7 +51,7 @@ export BENCHBOX_DATA_DIR=/mnt/benchbox-data
 docker compose up -d velox-connect
 ```
 
-A nested default (`${VAR:-${OTHER}}`) and the `${VAR:?message}` required-variable form are both unsupported by [mocker](../../docs/operations/uat-framework.md), the Apple-silicon local Docker-compatible engine — mocker leaves either form unresolved instead of erroring or substituting — which is why the mount uses the bare `${BENCHBOX_DATA_DIR}` form with no modifier at all.
+A nested default (`${VAR:-${OTHER}}`) and the `${VAR:?message}` required-variable form are both unsupported by [mocker](https://benchbox.dev/docs/operations/uat-framework.html), the Apple-silicon local Docker-compatible engine — mocker leaves either form unresolved instead of erroring or substituting — which is why the mount uses the bare `${BENCHBOX_DATA_DIR}` form with no modifier at all.
 
 ## Workflow B — All-in-one Runner
 

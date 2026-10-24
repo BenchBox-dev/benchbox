@@ -166,7 +166,7 @@ This index helps you discover examples organized by your goal, experience level,
 2. **TPC-DS**: [`getting_started/local/duckdb_tpcds_power.py`](getting_started/local/duckdb_tpcds_power.py)
    - More complex queries
    - Larger schema
-3. **Documentation**: See [Benchmarks catalog](../docs/benchmarks/index.md)
+3. **Documentation**: See [Benchmarks catalog](https://benchbox.dev/docs/benchmarks/index.html)
 
 ---
 
@@ -259,7 +259,7 @@ The following platforms are supported via [`unified_runner.py`](unified_runner.p
 | **Polars** | `--platform polars` | `polars` package |
 | **CUDF (GPU)** | `--platform cudf` | NVIDIA GPU, `cudf` package |
 
-See [Platform Documentation](../docs/platforms/index.md) for detailed setup guides.
+See [Platform Documentation](https://benchbox.dev/docs/platforms/index.html) for detailed setup guides.
 
 ---
 
@@ -413,12 +413,12 @@ See [Platform Documentation](../docs/platforms/index.md) for detailed setup guid
 ## 📖 Additional Resources
 
 ### Documentation
-- **Getting Started**: [../docs/usage/getting-started.md](../docs/usage/getting-started.md)
-- **Examples Guide**: [../docs/usage/examples.md](../docs/usage/examples.md)
-- **CLI Reference**: [../docs/usage/cli-quick-start.md](../docs/usage/cli-quick-start.md)
-- **Benchmarks**: [../docs/benchmarks/index.md](../docs/benchmarks/index.md)
-- **Platform Selection**: [../docs/platforms/platform-selection-guide.md](../docs/platforms/platform-selection-guide.md)
-- **Configuration**: [../docs/usage/configuration.md](../docs/usage/configuration.md)
+- **Getting Started**: <https://benchbox.dev/docs/usage/getting-started.html>
+- **Examples Guide**: <https://benchbox.dev/docs/usage/examples.html>
+- **CLI Reference**: <https://benchbox.dev/docs/usage/cli-quick-start.html>
+- **Benchmarks**: <https://benchbox.dev/docs/benchmarks/index.html>
+- **Platform Selection**: <https://benchbox.dev/docs/platforms/platform-selection-guide.html>
+- **Configuration**: <https://benchbox.dev/docs/usage/configuration.html>
 
 ### Example Guides
 - **Main README**: [README.md](README.md) - Overview and quick navigation
@@ -429,7 +429,7 @@ See [Platform Documentation](../docs/platforms/index.md) for detailed setup guid
 - **Dry-Run Samples**: [dry_run_samples/README.md](dry_run_samples/README.md) - Example outputs
 
 ### Support
-- **Troubleshooting**: [../docs/usage/troubleshooting.md](../docs/usage/troubleshooting.md)
+- **Troubleshooting**: <https://benchbox.dev/docs/usage/troubleshooting.html>
 - **GitHub Issues**: [github.com/joeharris76/benchbox/issues](https://github.com/joeharris76/benchbox/issues)
 
 ---
