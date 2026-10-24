@@ -5,7 +5,7 @@
     "Existing planner and check tests pass unchanged",
     "PR merged with an oracle verdict on its final head, or no-change evidence recorded"
   ],
-  "context": "Created 2026-10-23 from the codex review of gap issue 2808 (commit 5ca12e6ca plus merged fix PR 3316): reviewer output /Users/joe/Developer/soundness-reviews/2808/raw-run1.txt sha256 252d352256c6b45a8214c719bc554e4b9520b24cfe96ed8585bd856f38d42ec8. Finding verified by the controller where stated; line numbers are leads, re-verify on current develop.",
+  "context": "Created 2026-10-23 from the codex review of gap issue 2808 (commit 5ca12e6ca plus merged fix PR 3316): reviewer output /Users/joe/Developer/soundness-reviews/2808/raw-run1.txt sha256 252d352256c6b45a8214c719bc554e4b9520b24cfe96ed8585bd856f38d42ec8. Finding verified by the controller where stated; line numbers are leads, re-verify on current develop.\n\n### Completion Evidence (2026-10-24)\nPR 3354 merged as bdf1f8ba2a8e812faadeccd8c1b154530c0ffa02 with oracle verdict SUCCESS on its final head da15db972077f078487fb7a60b47e2e2a22c4c9b. Reproduction (planner and check replay, not a live retarget): same head with a stored decision, plan_round returned SKIP while the check ignored reviews at or before the latest base change and reported WAITING. Fix: plan_round takes base_changed_at and base_change_unreadable; a stale same-head non-refusal decision is carried only when its patch digest equals the current real digest (not unread-<head>), otherwise normal planning (follow-up/first review), never SKIP; an unreadable base-change history is treated as stale (fail closed); refusals are never carried; a forced re-review keeps priority; github.base_changed_at reads the PR timeline and raises on an unreadable time; History records each review's submission time. Oracle findings fixed over three rounds: carry without comparing the patch digest (High), fail-open on unreadable timeline (Medium). Failing-before tests: restart-style tests failed with TypeError on the new parameters; command-level tests through main([\"plan\",...]) failed with 'skip' == 'carry' and 'skip' == 'review'. Residual risk: CI never exercised the retarget replay on real GitHub timeline events; a carry on the same head labels itself carried from the current head.",
   "description": "Medium finding from the 2808 review (NOT yet verified by anyone; reproduce first): review a head on develop, retarget the PR elsewhere, then retarget back to develop without changing the head. plan_round (_project/scripts/oracle_reviewers/protocol.py about lines 316-327) skips because that SHA already has a decision, while oracle_review_check.decide (_project/scripts/oracle_review_check.py about line 133) excludes reviews that predate the latest base-change event, so the check reports WAITING; manual retries also skip; recovery needs another head change or a stand-in. Related to the dropped item oracle-pull-request-target-retarget-race-20261008 (accepted risk because only one write collaborator exists) but this is a liveness bug, not a forgery risk.\n\nDECISION GATE: reproduce with a replay of the event sequence first (unit test through plan_round and decide). If the sequence cannot occur (retargeting back re-triggers a pull_request event that carries a fresh review), record that evidence and finish with no change. Otherwise make plan_round re-review (or carry with a fresh review record) when the latest base-change event is newer than the stored decision, without weakening the check's exclusion of pre-retarget reviews.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR (soundness path _project/scripts/oracle_reviewers); no pre-registered digests; never weaken a gate; no skip/xfail; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; never close/label/edit gap issues; done = merged PR plus evidence.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "generation": "f38e040604554562aa4c3090d5f4fb43",
       "op": "take",
       "op_id": "5b2eb73565de4c24ae1e6e158cfdd437",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-24T21:01:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3f30490cc93d4227a3fe210db70c2dc8",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
