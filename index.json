@@ -24047,10 +24047,15 @@
       "title": "Fork: drop_literal_row_source must only fire for a provably single-row source"
     },
     "sqlglot-freshness-gate-blocks-all-prs-v30-24-0": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-25T01:04:38Z",
+        "generation": "b9aa2f85eb704cbca5543d4046ad7881",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e465f897e6bf2b6184696cd7"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "SQLGlot v30.24.0 release makes the freshness gate fail ci-paths for every PR"
     },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
