@@ -23,6 +23,7 @@ from _project.scripts import preflight_targets
 
 MAP_VERSION = 2
 UNIDENTIFIED_TESTCASE = "<unidentified testcase>"
+CONTEXT_PHASES = ("setup", "run", "teardown")
 MAP_ARTIFACT_PREFIX = "t2-coverage-map-"
 MAX_MAP_BEHIND_COMMITS = 50
 MAX_SELECTION_RUNTIME_SECONDS = 900.0
@@ -64,16 +65,15 @@ def _git(repo: Path, *args: str) -> str:
     return proc.stdout
 
 
-def normalize_context(context: str) -> str | None:
-    node = context.split("|", 1)[0].strip()
-    return node or None
-
-
 def split_phase(context: str) -> tuple[str | None, str]:
-    node, _, phase = context.partition("|")
-    node = node.strip()
-    phase = phase.strip() or "run"
-    return (node or None, phase)
+    node, separator, phase = context.rpartition("|")
+    if separator and phase in CONTEXT_PHASES:
+        return (node if node.strip() else None, phase)
+    return (context if context.strip() else None, "run")
+
+
+def normalize_context(context: str) -> str | None:
+    return split_phase(context)[0]
 
 
 def _relative_name(repo: Path, filename: str) -> str | None:
@@ -155,7 +155,66 @@ def _statement_lines(repo: Path, data_file: str, filenames: list[str]) -> dict[s
     return statements
 
 
-def build_map(data_files: list[Path], repo: Path, sha: str, junit_files: list[Path] | None = None) -> dict:
+def _read_execution_evidence(execution_files: list[Path], sha: str) -> tuple[set[str], dict[str, list[dict]]]:
+    assigned: set[str] = set()
+    outcomes: dict[str, list[dict]] = {}
+    for path in execution_files:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise SelectionError(f"shard execution evidence {path} is unreadable: {exc}") from exc
+        if not isinstance(payload, dict) or payload.get("commit_sha") != sha:
+            raise SelectionError(f"shard execution evidence {path} is not for {sha}")
+        ids = payload.get("assigned_node_ids")
+        records = payload.get("node_outcomes")
+        if not isinstance(ids, list) or not isinstance(records, list):
+            raise SelectionError(f"shard execution evidence {path} is malformed")
+        if any(not isinstance(node, str) or not node for node in ids):
+            raise SelectionError(f"shard execution evidence {path} has an invalid node id")
+        duplicated = assigned.intersection(ids)
+        if duplicated:
+            raise SelectionError(f"node ids assigned to more than one shard: {sorted(duplicated)[:3]}")
+        assigned.update(ids)
+        for record in records:
+            if isinstance(record, dict) and isinstance(record.get("node_id"), str):
+                outcomes[record["node_id"]] = [r for r in record.get("reports") or [] if isinstance(r, dict)]
+    return assigned, outcomes
+
+
+def reconcile_with_execution(nodes: list[str], execution_files: list[Path], sha: str) -> dict[str, str]:
+    assigned, outcomes = _read_execution_evidence(execution_files, sha)
+    ghosts = sorted(set(nodes) - assigned)
+    if ghosts:
+        raise SelectionError(
+            f"{len(ghosts)} map node(s) are not collected medium ids (mangled coverage contexts?): "
+            + ", ".join(repr(node) for node in ghosts[:5])
+        )
+    uncovered: dict[str, str] = {}
+    unexplained: list[str] = []
+    recorded = set(nodes)
+    for node in sorted(assigned - recorded):
+        reports = outcomes.get(node)
+        if not reports:
+            unexplained.append(node)
+        elif any(report.get("outcome") == "skipped" for report in reports):
+            uncovered[node] = "skipped"
+        else:
+            uncovered[node] = "no-project-coverage"
+    if unexplained:
+        raise SelectionError(
+            f"{len(unexplained)} collected medium id(s) are absent from the map with no recorded outcome: "
+            + ", ".join(repr(node) for node in unexplained[:5])
+        )
+    return uncovered
+
+
+def build_map(
+    data_files: list[Path],
+    repo: Path,
+    sha: str,
+    junit_files: list[Path] | None = None,
+    execution_files: list[Path] | None = None,
+) -> dict:
     from coverage import CoverageData
 
     merged = CoverageData()
@@ -198,13 +257,16 @@ def build_map(data_files: list[Path], repo: Path, sha: str, junit_files: list[Pa
                 str(lineno): sorted(positions[node] for node in hit) for lineno, hit in sorted(setup.items())
             }
         files[rel] = entry
-    return {
+    mapping: dict = {
         "version": MAP_VERSION,
         "sha": sha,
         "nodes": nodes,
         "files": files,
         "failed_nodes": _junit_failed_nodeids(list(junit_files or []), repo),
     }
+    if execution_files is not None:
+        mapping["uncovered_nodes"] = reconcile_with_execution(nodes, execution_files, sha)
+    return mapping
 
 
 def write_map(mapping: dict, path: Path) -> None:
@@ -235,6 +297,11 @@ def read_map(path: Path) -> dict:
         raise SelectionError(f"coverage map {path} has an invalid node table")
     if not isinstance(failed_nodes, list) or any(not isinstance(node, str) for node in failed_nodes):
         raise SelectionError(f"coverage map {path} has an invalid failed-node list")
+    uncovered = payload.get("uncovered_nodes", {})
+    if not isinstance(uncovered, dict) or any(
+        not isinstance(node, str) or not isinstance(reason, str) for node, reason in uncovered.items()
+    ):
+        raise SelectionError(f"coverage map {path} has an invalid uncovered-node table")
     for rel, entry in files.items():
         if not isinstance(entry, dict):
             raise SelectionError(f"coverage map {path} has an invalid entry for {rel}")
@@ -1015,8 +1082,21 @@ def _cmd_build_map(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
+    execution_files = None
+    if args.execution is not None:
+        execution_files = [path for pattern in args.execution for path in sorted(pattern.parent.glob(pattern.name))]
+        execution_files = [path for path in execution_files if path.is_file()]
+        if len(execution_files) != len(data_files):
+            print(
+                f"expected one execution evidence file per coverage data file, found {len(execution_files)} "
+                f"for {len(data_files)} data file(s)",
+                file=sys.stderr,
+            )
+            return 1
     try:
-        mapping = build_map(data_files, args.repo_root, args.sha, junit_files=junit_files)
+        mapping = build_map(
+            data_files, args.repo_root, args.sha, junit_files=junit_files, execution_files=execution_files
+        )
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"cannot build coverage map: {exc}", file=sys.stderr)
         return 1
@@ -1024,7 +1104,7 @@ def _cmd_build_map(args: argparse.Namespace) -> int:
     print(
         f"coverage map for {args.sha}: {len(mapping['files'])} files, "
         f"{len(mapping['nodes'])} tests from {len(data_files)} shard(s), "
-        f"{len(mapping['failed_nodes'])} failed"
+        f"{len(mapping['failed_nodes'])} failed, {len(mapping.get('uncovered_nodes', {}))} without coverage"
     )
     return 0
 
@@ -1286,6 +1366,7 @@ def build_parser() -> argparse.ArgumentParser:
     build_map_parser = sub.add_parser("build-map")
     build_map_parser.add_argument("--data", type=Path, action="append", required=True)
     build_map_parser.add_argument("--junit", type=Path, action="append", default=None)
+    build_map_parser.add_argument("--execution", type=Path, action="append", default=None)
     build_map_parser.add_argument("--sha", required=True)
     build_map_parser.add_argument("--expected-shards", type=int, default=None)
     build_map_parser.add_argument("--out", type=Path, required=True)

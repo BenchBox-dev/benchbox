@@ -205,10 +205,15 @@ jobs:
           for report in t2-shards/**/shard-*-junit.xml; do
             junit_args+=(--junit "$report")
           done
+          execution_args=()
+          for report in t2-shards/**/shard-*-execution.json; do
+            execution_args+=(--execution "$report")
+          done
           test "${#data_args[@]}" -gt 0
           uv run -- python scripts/coverage_test_selection.py build-map \
             "${data_args[@]}" \
             "${junit_args[@]}" \
+            "${execution_args[@]}" \
             --sha "${{ github.sha }}" \
             --expected-shards 4 \
             --out t2-coverage-map/map.json
