@@ -532,3 +532,66 @@ def test_dos_directory_attribute_refused(tmp_path, distributions):
     artifact = {"digest": "sha256:" + hashlib.sha256(data).hexdigest()}
     with pytest.raises(ValueError, match="nonregular"):
         consumer.verify_archive(archive, artifact)
+
+
+def _producer_wait(metadata, listings, **options):
+    pending = list(listings)
+    sleeps = []
+    now = [0.0]
+
+    def api(path):
+        metadata["jobs"] = pending.pop(0) if len(pending) > 1 else pending[0]
+        return metadata["api"](path)
+
+    def sleep(seconds):
+        sleeps.append(seconds)
+        now[0] += seconds
+
+    def job():
+        return consumer.running_producer_job(7, 2, api, sleep, lambda: now[0], **options)
+
+    return job, sleeps
+
+
+def _running(metadata, **changes):
+    return {**metadata["job"], "status": "in_progress", "conclusion": None, **changes}
+
+
+def test_producer_job_running_is_returned_without_waiting(metadata):
+    job, sleeps = _producer_wait(metadata, [[_running(metadata)]])
+    assert job()["id"] == 9 and sleeps == []
+
+
+@pytest.mark.parametrize("lagging", [[], "queued"])
+def test_producer_job_listing_lag_is_waited_out(metadata, lagging):
+    first = [] if lagging == [] else [_running(metadata, status="queued")]
+    job, sleeps = _producer_wait(metadata, [first, first, [_running(metadata)]])
+    assert job()["id"] == 9 and len(sleeps) == 2
+
+
+def test_producer_job_that_never_runs_fails_with_diagnostics(metadata):
+    job, sleeps = _producer_wait(metadata, [[_running(metadata, status="queued")]], wait_seconds=10, poll_seconds=3)
+    with pytest.raises(ValueError, match=r"did not become running within 10s.*id=9 run_attempt=2 status=queued"):
+        job()
+    assert sleeps == [3, 3, 3, 3]
+
+
+def test_missing_producer_job_fails_after_bounded_wait(metadata):
+    job, _sleeps = _producer_wait(metadata, [[]], wait_seconds=5, poll_seconds=2)
+    with pytest.raises(ValueError, match=r"0 job\(s\) named dist-artifact: none"):
+        job()
+
+
+def test_duplicate_producer_jobs_fail_immediately_with_diagnostics(metadata):
+    jobs = [_running(metadata), _running(metadata, id=10)]
+    job, sleeps = _producer_wait(metadata, [jobs])
+    with pytest.raises(ValueError, match=r"not unique: 2 job\(s\).*id=9 .*id=10 "):
+        job()
+    assert sleeps == []
+
+
+def test_completed_producer_job_fails_immediately(metadata):
+    job, sleeps = _producer_wait(metadata, [[metadata["job"]]])
+    with pytest.raises(ValueError, match=r"not running: 1 job\(s\).*status=completed"):
+        job()
+    assert sleeps == []
