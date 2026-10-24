@@ -46,9 +46,13 @@ and the owner naming each PR. A broken gate changes neither.
    as needing the owner.
 4. Announce it: comment the evidence summary on the affected PR and report it to
    the owner in the session.
-5. Stop acting on the blockage. Keep working only on a normal PR that repairs
-   the gate: it changes the gate or the data it reads, and it merges through
-   `make pr-arm` like any other PR once the gates can pass.
+5. Stop acting on the blockage. Prepare the repair PR: it changes the gate or
+   the data it reads, and it goes through oracle review where one is required.
+   Report to the owner the exact failing command, the failing run, and the
+   `develop` SHA the failure was reproduced on. The repair PR cannot pass the
+   broken gate, so it will not become mergeable by waiting or by re-running.
+6. Arm and merge nothing during this procedure: no `make pr-arm`, no raw
+   `gh pr merge`.
 
 ## What the owner does
 
@@ -68,26 +72,34 @@ Adopting any bypass or ruleset relaxation, even once, supersedes those
 accepted records. The new decision record cites them and says which it
 supersedes. Without that record, the policy stands.
 
+## Owner sequence
+
+Only the owner performs these, in this order:
+
+1. Temporarily relax the ruleset and merge the repair PR.
+2. Restore the ruleset immediately after the merge attempt, whether it
+   succeeded or failed. This step is unconditional and comes before any other
+   action, including retrying the merge, starting other work, or recording
+   notes.
+3. Record the action in the new decision record described above.
+
 ## Follow-up
 
-After any owner action:
+After the owner reports the ruleset restored, the agent runs this read-only
+check and reports the output to the owner:
 
-- Any ruleset change the owner makes to unblock merges is reverted by the
-  owner. An agent never reverts it, and never treats it as permission to merge.
-- The fix PR for the broken gate merges through `make pr-arm`, and only after
-  the ruleset shows no bypass actors and enforcement active again. The tracker
-  entry links the PR, and the action is not finished until it merges.
-- Check the ruleset before arming or merging anything. This command only reads:
+```bash
+gh api repos/BenchBox-dev/BenchBox/rulesets/15611785 \
+  --jq '{enforcement, bypass_actors: [.bypass_actors[]?.actor_type]}'
+gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin
+```
 
-  ```bash
-  gh api repos/BenchBox-dev/BenchBox/rulesets/15611785 \
-    --jq '{enforcement, bypass_actors: [.bypass_actors[]?.actor_type]}'
-  gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin
-  ```
+The first must show `enforcement: active` and an empty `bypass_actors` list,
+and the drift check must exit 0. If either differs, the agent reports the
+command output to the owner and arms or merges nothing; it does not change the
+ruleset.
 
-  The first must show `enforcement: active` and an empty `bypass_actors` list,
-  and the drift check must exit 0. If either differs, the agent stops, reports
-  the command output to the owner, and does not merge or arm anything until the
-  owner confirms the ruleset is restored. It does not change the ruleset.
+- The tracker entry links the repair PR and stays open until the repair has
+  merged and the check above passes.
 - The owner decides whether a follow-up issue prevents a repeat, for example a
   gate that rejects stale ledger entries when they are stranded.

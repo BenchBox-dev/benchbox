@@ -69,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `correlated_exists_to_in`, `add_derived_table_aliases`, `qualify_order_by_columns`), and the
   golden-corpus engines area records two more safe-division inputs from the ClickHouse
   transformer tests.
-- Agent governance docs say what an agent does when a required gate is broken by `develop`: reproduce on current `develop`, record the evidence in the tracker, announce it, and stop, while any GitHub-side unblocking stays with the owner under a new decision record (`docs/agent/emergency-merge.md`).
+- Agent governance docs say what an agent does when a required gate is broken by `develop`: reproduce on current `develop`, record the evidence, prepare the repair PR, report and stop, arming and merging nothing. The owner alone relaxes the ruleset, merges the repair PR and restores the ruleset right after the attempt, under a new decision record; the agent then runs a read-only check (`docs/agent/emergency-merge.md`).
 
 ### Changed
 
