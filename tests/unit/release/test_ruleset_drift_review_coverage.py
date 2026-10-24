@@ -54,7 +54,7 @@ def _develop_expected():
         "develop-squash-only"
     ]
     base = tuple(check for check in expected.required_checks if not check.startswith("oracle-"))
-    return replace(expected, required_checks=(*base, "oracle-review", "oracle-gate"))
+    return replace(expected, required_checks=(*base, "oracle-gate"))
 
 
 def _status_check(context: str) -> dict:
@@ -68,7 +68,7 @@ def _live_develop_ruleset(
     *,
     review_count: int = 0,
     thread_resolution: bool = True,
-    oracle_contexts: tuple[str, ...] = ("oracle-review", "oracle-gate"),
+    oracle_contexts: tuple[str, ...] = ("oracle-gate",),
 ) -> dict:
     return {
         "name": "develop-squash-only",
@@ -125,15 +125,22 @@ def _expected_with_oracle_contexts(*contexts: str):
     return replace(expected, required_checks=(*base, *contexts))
 
 
-@pytest.mark.parametrize(
-    "contexts",
-    [("oracle-review", "oracle-gate"), ("oracle-gate",), ("oracle-review",)],
-)
-def test_develop_drift_passes_with_any_supported_oracle_context_set(contexts):
+@pytest.mark.parametrize("contexts", [("oracle-gate",), ("oracle-review", "oracle-gate")])
+def test_develop_drift_passes_when_the_app_bound_gate_is_required(contexts):
     expected = _expected_with_oracle_contexts(*contexts)
     live = _live_develop_ruleset(oracle_contexts=contexts)
 
     assert compare_ruleset(expected, live) == []
+
+
+def test_oracle_review_alone_is_a_blocking_drift():
+    expected = _expected_with_oracle_contexts("oracle-review")
+    live = _live_develop_ruleset(oracle_contexts=("oracle-review",))
+
+    findings = compare_ruleset(expected, live)
+
+    message = "required_status_checks must include oracle-gate scoped to the oracle App"
+    assert message in blocking_findings(findings)
 
 
 def test_missing_oracle_contexts_are_blocking_despite_stale_expected_contexts():
@@ -142,7 +149,7 @@ def test_missing_oracle_contexts_are_blocking_despite_stale_expected_contexts():
 
     findings = compare_ruleset(expected, live)
 
-    message = "required_status_checks must include oracle-review or oracle-gate scoped to the oracle App"
+    message = "required_status_checks must include oracle-gate scoped to the oracle App"
     assert message in findings
     assert message in blocking_findings(findings)
 
@@ -418,6 +425,4 @@ def test_oracle_gate_without_the_oracle_app_binding_is_blocking():
 
     findings = compare_ruleset(expected, live)
 
-    assert "required_status_checks must include oracle-review or oracle-gate scoped to the oracle App" in (
-        blocking_findings(findings)
-    )
+    assert "required_status_checks must include oracle-gate scoped to the oracle App" in blocking_findings(findings)

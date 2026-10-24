@@ -2,8 +2,9 @@
 
 Date: 2026-10-21
 Status: Applied to the hosted `develop-squash-only` ruleset (id `15611785`) on
-2026-10-21 by the repository owner. `oracle-review` stays required until its
-consumers and the runbook drop it in one change.
+2026-10-21 by the repository owner. `oracle-review` stayed required until its
+consumers and the runbook dropped it in one change:
+`_project/decisions/oracle-review-check-retired-2026-10-24.md`.
 Related: `docs/internal/repo-admin-settings.md` (Branch ruleset — `develop`),
 `docs/internal/oracle-review-v2.md`, `.github/workflows/oracle-gate.yml`,
 `_project/scripts/oracle_gate.py`, `_project/scripts/ruleset_review_enforcement.py`.

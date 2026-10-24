@@ -156,6 +156,13 @@ still counts connector reviews for merges before the cut-over (2026-10-09 00:16 
 its history stays accurate. Wherever this section says "connector review", read "oracle
 review". See [`docs/internal/oracle-review-v2.md`](../oracle-review-v2.md).
 
+Amended 2026-10-24: the required review check is `oracle-gate`, a commit status the
+`benchbox-oracle` App posts from `develop` code and the ruleset binds to that App's
+integration ID. It applies the same rule as `oracle-review`, which no longer is required
+because it runs the workflow file from the pull request. See
+[`docs/internal/repo-admin-settings.md`](../repo-admin-settings.md) and
+`_project/decisions/oracle-review-check-retired-2026-10-24.md`.
+
 ### D5: Retain agent write tooling, retire PR-loop scripts
 
 Agent workspace safety tooling is retained:
