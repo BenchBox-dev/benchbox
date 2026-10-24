@@ -20,6 +20,7 @@ from benchbox.core.tuning.applied_ledger import (
     PHASE_SESSION,
     STATEMENT_FAILED,
     AppliedTuningLedger,
+    harness_connection,
     is_schema_tuning_statement,
     normalize_ledger_phase,
     recording_connection,
@@ -106,15 +107,28 @@ class TestStatusDerivation:
 
         assert ledger.overall_status(tuning_enabled=True, has_config=True) == FAILED
 
-    def test_session_only_success_is_applied_unverified(self) -> None:
+    def test_session_only_statements_are_not_applied(self) -> None:
         ledger = AppliedTuningLedger()
         ledger.record("SET use_cached_result=true", PHASE_SESSION)
 
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == NOOP
+
+    def test_session_statements_with_mechanism_are_applied(self) -> None:
+        ledger = AppliedTuningLedger()
+        ledger.record("SET spark.sql.shuffle.partitions=8", PHASE_SESSION, mechanism="spark_session_config")
+
         assert ledger.overall_status(tuning_enabled=True, has_config=True) == APPLIED_UNVERIFIED
+
+    def test_session_statements_do_not_mask_failed_physical_tuning(self) -> None:
+        ledger = AppliedTuningLedger()
+        ledger.record("ALTER SESSION SET TIMEZONE = 'UTC'", PHASE_SESSION)
+        ledger.record("CREATE INDEX bad ON t (a)", PHASE_DDL, status=STATEMENT_FAILED, error="nope")
+
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == FAILED
 
     def test_overall_status_never_returns_applied_verified(self) -> None:
         ledger = AppliedTuningLedger()
-        ledger.record("SET a=1", PHASE_SESSION)
+        ledger.record("SET a=1", PHASE_SESSION, mechanism="session_config")
         assert ledger.overall_status(tuning_enabled=True, has_config=True) != APPLIED_VERIFIED
 
     def test_noop_platform_never_reports_applied(self) -> None:
@@ -191,7 +205,7 @@ class TestAppliedLedgerHash:
     def test_harness_defaults_do_not_hide_tuned_statements(self) -> None:
         ledger = AppliedTuningLedger()
         ledger.record("SET spark.plugins=org.example.Plugin", PHASE_SESSION, status=HARNESS_DEFAULT)
-        ledger.record("SET spark.sql.adaptive.enabled=true", PHASE_SESSION)
+        ledger.record("SET spark.sql.adaptive.enabled=true", PHASE_SESSION, mechanism="spark_session_config")
 
         assert ledger.overall_status(tuning_enabled=True, has_config=True) == APPLIED_UNVERIFIED
         assert ledger.applied_ledger_hash() is not None
@@ -372,3 +386,49 @@ class TestRecordingConnectionHarness:
             ("baseline",),
             ("tuned",),
         ]
+
+
+class TestHarnessRecording:
+    def test_harness_connection_records_statements_as_harness_default(self) -> None:
+        ledger = AppliedTuningLedger()
+        conn = _FakeConnection()
+        wrapped = recording_connection(conn, ledger, PHASE_SESSION, harness=True)
+
+        wrapped.execute("ALTER SESSION SET TIMEZONE = 'UTC'")
+        wrapped.cursor().execute("USE WAREHOUSE W")
+
+        assert conn.executed == ["ALTER SESSION SET TIMEZONE = 'UTC'", "USE WAREHOUSE W"]
+        assert [s.status for s in ledger.statements] == [HARNESS_DEFAULT, HARNESS_DEFAULT]
+        assert ledger.tuning_statements == []
+        assert ledger.applied_ledger_hash() is None
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == NOOP
+
+    def test_harness_failure_is_not_a_tuning_failure(self) -> None:
+        ledger = AppliedTuningLedger()
+        wrapped = recording_connection(_FakeConnection(fail_on="TIMEZONE"), ledger, PHASE_SESSION, harness=True)
+
+        with pytest.raises(RuntimeError):
+            wrapped.execute("ALTER SESSION SET TIMEZONE = 'UTC'")
+
+        assert ledger.statements[0].status == HARNESS_DEFAULT
+        assert ledger.statements[0].error == "boom"
+        assert ledger.overall_status(tuning_enabled=True, has_config=True) == NOOP
+
+    def test_harness_and_tuned_views_share_one_connection(self) -> None:
+        ledger = AppliedTuningLedger()
+        conn = _FakeConnection()
+        tuned = recording_connection(conn, ledger, PHASE_SESSION, mechanism="session_config")
+
+        harness_connection(tuned).execute("SET max_threads = 4")
+        tuned.execute("SET max_bytes_in_join = 1")
+
+        assert [(s.statement, s.status, s.mechanism) for s in ledger.statements] == [
+            ("SET max_threads = 4", HARNESS_DEFAULT, None),
+            ("SET max_bytes_in_join = 1", EXECUTED, "session_config"),
+        ]
+        assert [s.statement for s in ledger.tuning_statements] == ["SET max_bytes_in_join = 1"]
+
+    def test_harness_connection_passes_plain_connections_through(self) -> None:
+        conn = _FakeConnection()
+
+        assert harness_connection(conn) is conn
