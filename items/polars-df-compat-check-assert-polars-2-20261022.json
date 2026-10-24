@@ -60,6 +60,15 @@
       "op": "take",
       "op_id": "30ca6bd8d7d0482ea8e464f0cb040d34",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-24T16:09:40Z",
+      "client": "omp-coding-agent",
+      "generation": "98aeb62d1cf84f1c9955ba74552ca727",
+      "op": "release",
+      "op_id": "83c8df8b905441cb94b7ac285ea2ed05",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
 }
