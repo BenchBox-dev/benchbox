@@ -4836,10 +4836,6 @@ def test_only_the_commit_hook_requests_same_commit_fixture_acceptance() -> None:
     assert "comment-policy-runner.py" in runs
     assert "accept-same-commit" not in runs
     assert "--staged" not in runs
-    hooks = yaml.safe_load((ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8"))
-    entries = [h["entry"] for repo in hooks["repos"] for h in repo["hooks"] if h["id"] == "comment-policy"]
-    assert len(entries) == 1
-    assert "--staged" in entries[0] and ACCEPT in entries[0]
     parser_default = policy_runner.checker_command(
         Path("p"), Path("t"), Path("r"), "b" * 40, bootstrap=False, staged=True
     )
@@ -4847,6 +4843,14 @@ def test_only_the_commit_hook_requests_same_commit_fixture_acceptance() -> None:
     assert ACCEPT in policy_runner.checker_command(
         Path("p"), Path("t"), Path("r"), "b" * 40, bootstrap=False, staged=True, accept_same_commit=True
     )
+
+
+@pytest.mark.skipif(not (ROOT / ".pre-commit-config.yaml").exists(), reason=RELEASE_TREE_SKIP)
+def test_commit_hook_requests_same_commit_fixture_acceptance() -> None:
+    hooks = yaml.safe_load((ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8"))
+    entries = [h["entry"] for repo in hooks["repos"] for h in repo["hooks"] if h["id"] == "comment-policy"]
+    assert len(entries) == 1
+    assert "--staged" in entries[0] and ACCEPT in entries[0]
 
 
 def test_runner_forwards_same_commit_acceptance_only_to_a_checker_that_defines_it(tmp_path: Path) -> None:
