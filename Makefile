@@ -1000,6 +1000,18 @@ release-check:
 	@test -n "$(VERSION)" || (echo "Usage: make release-check VERSION=X.Y.Z" && exit 1)
 	uv run --locked -- python scripts/release_flow.py check --version "$(VERSION)" $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",) $(if $(SKIP_UPSTREAM_FRESHNESS),--skip-upstream-freshness,)
 
+.PHONY: changelog-entry
+changelog-entry:
+	uv run -- python scripts/changelog_fragments.py add
+
+.PHONY: changelog-preview
+changelog-preview:
+	uv run -- python scripts/changelog_fragments.py preview
+
+.PHONY: changelog-check
+changelog-check:
+	uv run -- python scripts/changelog_fragments.py check
+
 
 MAKE_TIMING_SHELL := $(BENCHBOX_MAKEFILE_ROOT)scripts/make_timing_shell.sh
 MAKE_TIMED_TARGETS := \
