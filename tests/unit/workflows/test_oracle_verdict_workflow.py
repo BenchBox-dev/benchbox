@@ -353,6 +353,15 @@ def test_no_step_lists_or_reruns_oracle_review_runs() -> None:
         assert "Rerun the failed synchronize suite for this head" not in [step.get("name") for step in job["steps"]]
 
 
+def test_the_retry_state_is_stored_only_after_every_review_post_succeeds() -> None:
+    steps = _jobs()["post"]["steps"]
+    names = [step["name"] for step in steps]
+    upload = names.index("Upload the retry state")
+    for name in ("Post the commit status", "Post the findings comment", "Post the findings review"):
+        assert names.index(name) < upload, name
+    assert "if" not in steps[upload] or "always()" not in steps[upload]["if"]
+
+
 def test_only_sweep_and_post_hold_actions_write() -> None:
     assert _jobs()["post"]["permissions"] == {"actions": "write", "contents": "read"}
     holders = {name for name, job in _jobs().items() if job.get("permissions", {}).get("actions") == "write"}

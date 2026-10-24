@@ -102,6 +102,7 @@ class History:
     records: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
     submitted: list[datetime | None] = field(default_factory=list)
+    ids: list[int | None] = field(default_factory=list)
 
     @property
     def latest(self) -> dict[str, Any] | None:
@@ -307,6 +308,7 @@ def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
         if record is not None:
             found.records.append(record)
             found.submitted.append(_review_time(review.get("submitted_at")))
+            found.ids.append(review.get("id"))
     return found
 
 

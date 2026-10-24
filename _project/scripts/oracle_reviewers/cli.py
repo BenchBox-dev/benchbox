@@ -419,6 +419,7 @@ def _protocol_round(
         "changed": sorted(step.changed) if follow_up and step.changed is not None else None,
         "previous": dict(latest) if step.kind == protocol.CARRY else None,
         "forced": step.forced,
+        "seen": [item for item in found.ids if item is not None],
     }
     return step
 
@@ -804,7 +805,15 @@ def command_guard(args: argparse.Namespace) -> int:
     rules = plan.get("protocol") or {}
     planned = (int(rules.get("cycle", 0)), int(rules.get("round", 0)))
     posted = (int(latest.get("cycle", 0)), int(latest.get("round", 0))) if latest is not None else None
-    done = latest is not None and latest["head_sha"] == plan["head_sha"] and posted is not None and posted >= planned
+    seen = rules.get("seen")
+    published = seen is None or any(item is not None and item not in seen for item in found.ids)
+    done = (
+        latest is not None
+        and latest["head_sha"] == plan["head_sha"]
+        and posted is not None
+        and posted >= planned
+        and published
+    )
     _output({"skip": "true" if done else "false"})
     if done:
         _summary(f"oracle-verdict: head {plan['head_sha']} already has a decision; this run posts nothing")
