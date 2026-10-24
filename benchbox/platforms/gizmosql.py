@@ -20,7 +20,7 @@ from benchbox.utils.dialect_utils import split_sql_statements
 
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.config_utils import build_adapter_config, make_platform_config_builder
-from .base.ddl_helpers import strip_tpcds_foreign_keys
+from .base.ddl_helpers import translate_schema_with_tpcds_fk_strip
 from .base.sql_execution import execute_sql_query
 
 logger = logging.getLogger(__name__)
@@ -769,9 +769,7 @@ class GizmoSQLAdapter(PlatformAdapter):
             self.require_writable("create the benchmark schema")
         enable_primary_keys, enable_foreign_keys = self._get_constraint_configuration()
         self._log_constraint_configuration(enable_primary_keys, enable_foreign_keys)
-        schema_sql = strip_tpcds_foreign_keys(
-            self, benchmark, self._create_schema_with_tuning(benchmark, source_dialect="standard")
-        )
+        schema_sql = translate_schema_with_tpcds_fk_strip(self, benchmark, GIZMOSQL_DIALECT)
         created = 0
         for statement in split_sql_statements(schema_sql, GIZMOSQL_DIALECT):
             match = _CREATE_TABLE_PATTERN.match(statement)
