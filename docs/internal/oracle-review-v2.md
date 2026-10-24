@@ -615,11 +615,47 @@ superseded head fails rather than report on a head it was not created for.
 GitHub Actions has no event for resolving a review thread, so resolving the
 oracle's last thread starts no `oracle-review` run. When the oracle posts a
 success verdict together with threads, the run its review starts fails on
-those open threads and stays red after they are resolved. After resolving the
-threads, run `make oracle-review-recover PR=<number>` (add
-`REPO=<owner/repo>` outside the default repository); the failing check's
-message names this command. The checker's decision is unchanged: it passes
-only with a success verdict on the head and no unresolved oracle thread.
+those open threads and stays red after they are resolved. Three mechanisms
+could re-evaluate the check:
+
+- The `pull_request_review` trigger already in `oracle-review.yml` covers a
+  verdict that posts after a failed run (a review by the App on the same head
+  started a passing run in run 40098622498). It does not fire for a thread
+  resolution, which is not a review, so it cannot close this gap.
+- Re-requesting the check run (`POST /check-runs/{id}/rerequest`) needs a
+  `checks: write` grant, which the workflow token for this job does not have,
+  and for an Actions check it ends in the same Actions re-run. The Actions
+  re-run API needs only `actions: write` and is the call `oracle-verdict`
+  already makes after it posts a review, so it is the narrower grant.
+- A scheduled re-evaluation is the only option that needs no event: a cron
+  cannot be filtered to a thread, but it can poll the state a thread
+  resolution changes.
+
+`.github/workflows/oracle-review-reevaluate.yml` is the scheduled option, from
+`develop` code only. Each hour it runs
+`_project/scripts/oracle_review_reevaluate.py`, which evaluates every open
+pull request targeting `develop` with the checker's own `decide` (through
+`oracle_gate.evaluate`) and, only when that decision passes for the current
+head, re-runs the head's `oracle-review` runs that ended in `failure`,
+`cancelled` or `timed_out`. It re-checks that the head is unchanged right
+before the re-run, stops re-running a run after four attempts, and never
+touches a run for another head or repository. It does not post a verdict, a
+status or a stand-in, and it does not close or reopen the pull request, so
+armed auto-merge stays armed. The re-run executes the unchanged checker, which
+reads the live reviews and threads, so the check goes green only when the
+latest review of the same head is a success (or a valid stand-in covers it)
+and no oracle thread is unresolved; a stale head, a non-success verdict or an
+open thread leaves it red. A pass with a valid stand-in is re-run the same
+way, which removes the manual re-run after a stand-in comment. The latency is
+up to one hour after the last thread is resolved; `make oracle-review-recover
+PR=<number>` (add `REPO=<owner/repo>` outside the default repository) still
+re-runs at once, and the failing check's message names it.
+
+The workflow's permissions are `actions: write`, `contents: read` and
+`pull-requests: read` on a job with no `oracle` environment and no secrets; it
+uses the workflow token, so the Actions re-run is the only write it can make.
+The schedule and the `actions: write` grant are a change to the repository's
+automation surface that needs the owner's approval before it merges.
 
 The stand-in attestation must be posted after the oracle's latest decisive
 verdict (`success` or `failure`) on the head, so overriding a failing verdict
@@ -689,7 +725,11 @@ errors instead of deciding with empty rules, and the sweep records every
 per-PR error and fails the run when any pull request errored. Concurrency is a
 single group keyed by pull request number for every trigger, with
 cancel-in-progress, so a newer run for a pull request cancels the earlier one
-instead of racing it.
+instead of racing it. A comment that does not open with the stand-in marker
+gets its own group, because its run starts the workflow but skips the `gate`
+job: sharing the pull request's group would cancel a gate run that is about to
+post and replace it with a run that posts nothing, leaving the previous status
+(often a failure) on the head until the hourly sweep.
 
 The cutover keeps `oracle-review` required while `oracle-gate` runs
 alongside it. The intended order is that production runs show the two contexts

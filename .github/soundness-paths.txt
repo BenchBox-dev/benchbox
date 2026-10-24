@@ -89,6 +89,8 @@ file	_project/scripts/oracle_gate.py
 file	.github/workflows/oracle-review.yml
 file	.github/workflows/oracle-verdict.yml
 file	.github/workflows/oracle-gate.yml
+file	.github/workflows/oracle-review-reevaluate.yml
+file	_project/scripts/oracle_review_reevaluate.py
 file	_project/scripts/check_soundness_review.py
 file	.github/oracle-reviewers.yml
 file	.github/oracle-omp-config.yml

@@ -56,11 +56,14 @@ Quote the owner's instruction in a separate comment posted before the stand-in,
 naming the PR, the head, and the oracle findings the stand-in covers. The merge
 digest links each stand-in to the nearest preceding `Owner instruction` comment.
 
-Posting a comment starts no new `oracle-review` workflow run, so after the
-stand-in lands — and likewise after resolving oracle review threads — rerun the
+Posting a comment starts no new `oracle-review` workflow run, and neither does
+resolving an oracle review thread. The hourly `oracle-review-reevaluate`
+workflow re-runs the unsuccessful `oracle-review` runs of a head once the
+checker's decision passes for it, without closing or reopening the PR, so armed
+auto-merge stays armed; expect up to an hour. To act sooner, rerun the
 `oracle-review` workflow runs for that head (a head normally has one run from
-the push event and one from the review-submitted event) and merge only after a
-rerun passes.
+the push event and one from the review-submitted event) or run
+`make oracle-review-recover PR=<number>`, and merge only after a rerun passes.
 
 ## Bypassing a required check
 

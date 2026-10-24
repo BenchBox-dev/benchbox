@@ -233,7 +233,7 @@ def test_concurrency_keys_on_head_sha_only_for_pull_request_source_runs() -> Non
     events = set(re.findall(r"github\.event\.workflow_run\.event == '(\w+)'", guard.group(1)))
     assert events == {"pull_request", "pull_request_target"}
     assert group.index("github.event.workflow_run.pull_requests") < group.index("sha-")
-    assert group.index("sha-") < group.index("github.run_id")
+    assert group.index("sha-") < group.rindex("github.run_id")
 
 
 def test_workflow_permissions_are_empty_and_jobs_stay_minimal() -> None:
@@ -270,3 +270,11 @@ def test_no_other_workflow_can_post_the_gate_context() -> None:
 
 def test_workflow_has_no_comments() -> None:
     assert not any(line.lstrip().startswith("#") for line in _text().splitlines())
+
+
+def test_comments_that_skip_the_gate_job_never_cancel_a_running_gate() -> None:
+    group = _load()["concurrency"]["group"]
+    marker = "Stand-in oracle review: APPROVE"
+    assert f"github.event_name == 'issue_comment' && !startsWith(github.event.comment.body, '{marker}')" in group
+    assert group.index("ignored-") < group.index("github.event.pull_request.number")
+    assert marker in _jobs()["gate"]["if"]
