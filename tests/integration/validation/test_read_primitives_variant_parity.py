@@ -133,7 +133,7 @@ def datafusion_ctx(read_primitives_tpch_parquet_dir):
     return ctx
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def clickhouse_session(read_primitives_tpch_parquet_dir):
     reason = chdb_skip_reason()
     if reason is not None:
@@ -148,7 +148,10 @@ def clickhouse_session(read_primitives_tpch_parquet_dir):
         parquet_path = read_primitives_tpch_parquet_dir / f"{table}.parquet"
         sess.query(f"CREATE TABLE IF NOT EXISTS {table} ENGINE=File(Parquet, '{parquet_path}')", "CSV")
 
-    return sess
+    try:
+        yield sess
+    finally:
+        sess.close()
 
 
 def _duckdb_rows(conn: object, sql: str) -> list[tuple[Any, ...]]:

@@ -175,7 +175,7 @@ class TestDuckDBPolarsDF:
         assert report.matched, f"DuckDB × Polars-DF diverged for {query_id}:\n{report.summary()}"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def clickhouse_session(tpch_parquet_dir):
     reason = chdb_skip_reason()
     if reason is not None:
@@ -193,7 +193,10 @@ def clickhouse_session(tpch_parquet_dir):
             "CSV",
         )
 
-    yield sess
+    try:
+        yield sess
+    finally:
+        sess.close()
 
 
 def _clickhouse_rows(sess, sql: str) -> list[tuple]:

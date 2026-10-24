@@ -72,29 +72,31 @@ class TestClickHouseEmbeddedMode:
 
 
 class TestClickHouseLocalClient:
-    def test_client_initialization(self):
-        client = ClickHouseLocalClient()
+    @pytest.fixture
+    def client(self):
+        local_client = ClickHouseLocalClient()
+        yield local_client
+        local_client.close()
+
+    def test_client_initialization(self, client):
         assert client._initialized is True
 
-    def test_simple_query_execution(self):
-        client = ClickHouseLocalClient()
+    def test_simple_query_execution(self, client):
         result = client.execute("SELECT 1")
         assert len(result) == 1
         assert result[0] == (1,)
 
-    def test_empty_query_result(self):
-        client = ClickHouseLocalClient()
+    def test_empty_query_result(self, client):
         result = client.execute("SELECT * FROM (SELECT 1 WHERE 0)")
         assert result == []
 
-    def test_query_result_is_a_materialized_sequence(self):
-        result = ClickHouseLocalClient().execute("SELECT 1")
+    def test_query_result_is_a_materialized_sequence(self, client):
+        result = client.execute("SELECT 1")
 
         assert isinstance(result, Sequence)
         assert result[0] == (1,)
 
-    def test_multi_column_query_result(self):
-        client = ClickHouseLocalClient()
+    def test_multi_column_query_result(self, client):
         result = client.execute("SELECT 1, 'hello', 3.14")
 
         assert len(result) == 1
@@ -102,24 +104,21 @@ class TestClickHouseLocalClient:
         assert result[0][1] == "hello"
         assert abs(result[0][2] - 3.14) < 0.01
 
-    def test_csv_parsing_with_quotes(self):
-        client = ClickHouseLocalClient()
+    def test_csv_parsing_with_quotes(self, client):
 
         line = '"John Doe",30,"Software Engineer"'
         result = client._parse_csv_line(line)
 
         assert result == ("John Doe", 30, "Software Engineer")
 
-    def test_csv_parsing_with_nulls(self):
-        client = ClickHouseLocalClient()
+    def test_csv_parsing_with_nulls(self, client):
 
         line = "John,,Engineer"
         result = client._parse_csv_line(line)
 
         assert result == ("John", None, "Engineer")
 
-    def test_type_conversion(self):
-        client = ClickHouseLocalClient()
+    def test_type_conversion(self, client):
 
         assert client._is_float("123") is True
         assert client._is_float("123.45") is True
