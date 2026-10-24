@@ -16,7 +16,9 @@ Eighteen bundles with wrong values from superseded SQL were still ranked.
 Each now carries `known_defects: ["defective-superseded-sql-translation"]` in
 its `.manifest.json` sidecar, which the explorer pipeline turns into
 `ranking_exclusion_reason=known_defective_data`; the bundles stay available
-for comparison. Ten sidecars were created for bundles that had none, recording
+for comparison. Two ClickHouse Local Data Vault bundles (below) were already
+unranked under `defective-macdbgen-addresses`; they gained the same id without
+changing ranking. Ten sidecars were created for bundles that had none, recording
 `result_source: internal` so trust labels are unchanged; the other eight were
 extended. `corpus-inventory.json` is untouched because no bundle was added or
 removed. Replacing them means rerunning the cells with the current fork wheel,
@@ -47,8 +49,9 @@ Flagged (short hash is the final segment of the bundle name):
 - ClickHouse Local Data Vault SF0.01 and SF0.1 `c202ec05`, `b4fd5612` (fork
   30.24.0.12): Q6's `sat_lineitem` `BETWEEN 0.06 - 0.01 AND 0.06 + 0.01` bounds
   were evaluated as Float64 and dropped the `l_discount = 0.07` rows (SF0.01 sum
-  734493.7281 against 1193053.2253 on DuckDB). These two keep their existing
-  `defective-macdbgen-addresses` id and gain the new one.
+  734493.7281 against 1193053.2253 on DuckDB). These two were already unranked,
+  keep their existing `defective-macdbgen-addresses` id and gain the new one;
+  they are not among the eighteen ranked bundles counted above.
 
 Flagging the DataFusion and ClickHouse Local TPC-DI SF0.01 bundles and the
 DataFusion and SQLite CoffeeShop SF0.01 bundles leaves two ranked platforms in
