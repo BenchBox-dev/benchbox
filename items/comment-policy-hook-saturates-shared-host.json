@@ -2,7 +2,7 @@
   "acceptance": [
     "After the #3168 scope-policy path fix lands, measure one real pre-commit invocation (command, diff size, wall/user, RSS; separate venv setup from checker time, labeled local). Close if a one-commit diff is materially cheaper than the recorded 358 s; file a narrower item only if setup cost still breaks the quiet-machine threshold. Per-blob caching not required; keep the existing changed-source/exception-consumer/full-scan-fallback tests as sufficient."
   ],
-  "context": "AMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Structurally superseded by #3343/#3362/#3370: ordinary commits scan changed paths only (scripts/check_comment_policy.py:459-461). One measurement remains, blocked until the #3168 scope-policy path fix lands (develop's local check currently fails at config).\n\n2026-10-09 tracker review: Priority raised from low to medium because the cost is in the default pre-commit path and in make lint. Measurements above were taken on develop with a one-commit diff. Related: comment-scanner-unresolved-runner-commands must measure its broader gate regex cost against this item.",
+  "context": "DONE 2026-10-24 (measurement, labeled local): develop c72b2e053 in a scratch worktree on an Apple-silicon Mac, host load 2.9/2.1/1.9 during the runs. Command: `uv run -- python scripts/run_comment_policy.py --staged` (the pre-commit hook entry) with a one-line change staged in one file (benchbox/utils/clock.py), timed with /usr/bin/time -l, 3 runs: 6.41 / 6.17 / 5.94 s wall, 5.18 / 5.11 / 4.96 s user, 0.92 / 0.84 / 0.78 s sys, 140-143 MB peak RSS; output 'comment-policy: 1 source files, 0 violations, 0 enforced failures (strict)'. Venv setup alone (uv venv plus hashed install of quality/comment-policy-requirements.txt, warm uv cache): 0.04 s wall, so nearly all time is checker startup and the one-file scan. Against the recorded 358 s wall, 320 s CPU and 476 MB for a one-commit diff, this is about 60x faster and well inside the quiet-machine budget; closing per acceptance. No narrower item needed.\n\nAMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Structurally superseded by #3343/#3362/#3370: ordinary commits scan changed paths only (scripts/check_comment_policy.py:459-461). One measurement remains, blocked until the #3168 scope-policy path fix lands (develop's local check currently fails at config).\n\n2026-10-09 tracker review: Priority raised from low to medium because the cost is in the default pre-commit path and in make lint. Measurements above were taken on develop with a one-commit diff. Related: comment-scanner-unresolved-runner-commands must measure its broader gate regex cost against this item.",
   "description": "On 2026-10-08 the host load average reached 13 while four `benchbox-comment-policy-*` Python processes, each running from its own freshly created temp venv, held about 80% CPU apiece. A timed benchmark run needs a 1-minute load below 2.0 and no other process above 50% CPU, so these runs repeatedly made the machine non-quiet; load was still 4 to 6 hours later.\n\nMeasured on 2026-10-09 (acceptance 1 and 2 of the original item are met):\n- Launchers: the pre-commit hook (.pre-commit-config.yaml:9, `run_comment_policy.py --staged`) and `make comment-policy-check` (Makefile:446), which `make lint` (Makefile:410) and `ci-lint` (Makefile:613, 635) also call.\n- One transition-mode run for a one-commit diff: 358 s wall, 276 s user plus 44 s sys CPU, 476 MB peak RSS, 5,768 files scanned (host load 13-19 on 10 cores).\n- Cause: the run re-scans every completed scope at both head and base (scripts/check_comment_policy.py:395-398 and 418-423), not the venv.\n\nWhat remains is to reduce that per-run cost.",
   "sessions": [
     {
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "a03f947b54dc4cd785531138480769fc",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T22:23:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dd6d459d349c4b5a80d57c12799a0531",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
