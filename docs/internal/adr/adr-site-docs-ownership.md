@@ -27,6 +27,13 @@ exports and attests site inputs; `scripts/generate_query_docs.py`,
 reference material. Extend those data boundaries rather than copy Python into
 the site or establish a second source of runtime facts.
 
+`scripts/export_docs_data.py` is that data boundary for generated pages. It emits deterministic JSON, validated
+by `quality/docs-data.schema.json`, with per-query identity, descriptions, groups, reference and native SQL,
+DataFrame renderings, source links, notices and recipe inputs; per-benchmark metadata; the compatibility rule
+inventory; and the tuning platform support inputs. Run `uv run -- python scripts/export_docs_data.py --output
+PATH`, and add `--check` to fail when `PATH` differs from a fresh export. The Markdown generators keep rendering
+until the site generator replaces them.
+
 ## Ownership
 
 `quality/docs-ownership.json` is the explicit migration inventory. Its schema is
