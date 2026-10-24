@@ -6984,15 +6984,10 @@
       "title": "DataFusion DataFrame Adapter Implementation"
     },
     "datafusion-integer-division-truncates-ratios": {
-      "claim": {
-        "expires_at": "2026-10-25T14:32:49Z",
-        "generation": "3b267aacedaa417d9407256029841b7a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "DataFusion and PostgreSQL lowering truncate integer division in TPC-DS ratio queries (Q21, Q78, Q83) unlike DuckDB"
     },
     "datafusion-normalize-seed-corpus-table-paths": {
