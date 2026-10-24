@@ -270,7 +270,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"- {finding}")
         return 1
     print(f"# Ruleset review enforcement ({args.branch}) - OK")
-    print("- oracle-review or App-scoped oracle-gate required")
+    print("- App-bound oracle-gate required")
     print("- review thread resolution required")
     return 0
 

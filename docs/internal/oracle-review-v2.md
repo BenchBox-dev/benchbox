@@ -677,7 +677,12 @@ unchanged: only exempt paths changed, the App's latest review of the head
 reports success with no unresolved oracle thread, or a valid stand-in covers
 the exact head; anything else posts failure. The script re-reads the review
 state immediately before posting, so a run that evaluated stale data posts the
-fresh decision instead of overwriting a newer one.
+fresh decision instead of overwriting a newer one. It posts only for a pull
+request whose base is `develop`, the one branch whose ruleset requires the
+gate. The status belongs to the head commit, not the pull request, so a pull
+request from the same head into another branch, where the diff might be
+exempt-only, must not be able to replace a `develop` pull request's failure
+with a success.
 
 A same-repo pull request can still add a workflow with `statuses: write` that
 posts the `oracle-gate` context to its own head with a forged success, so the
