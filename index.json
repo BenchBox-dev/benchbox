@@ -5148,15 +5148,10 @@
       "title": "Comment policy fails on branches behind develop after a vendored wheel bump"
     },
     "comment-policy-wheel-bump-verification-gaps-20261017": {
-      "claim": {
-        "expires_at": "2026-10-25T14:31:05Z",
-        "generation": "a621db0b256044ccb193330269222a68",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Test that the comment-policy checker rejects a mismatched wheel bump, and document the ratchet"
     },
     "comment-scanner-mdx-jsx-support": {
