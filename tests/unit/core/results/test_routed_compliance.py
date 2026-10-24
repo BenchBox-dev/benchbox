@@ -146,3 +146,62 @@ def test_results_database_stores_routed_result_as_non_official(tmp_path: Path) -
     with sqlite3.connect(tmp_path / "results.db") as connection:
         rows = dict(connection.execute("SELECT execution_id, compliance_class FROM results"))
     assert rows == {"routed-run": NONSTANDARD_COMPLIANCE_CLASS, "native-run": "official"}
+
+
+def _built_like_a_real_run(gateway: dict | None):
+    from benchbox.core.results.builder import BenchmarkInfoInput, PlatformInfoInput, ResultBuilder
+    from benchbox.core.results.query_normalizer import normalize_query_result
+
+    adapter_info: dict = {"platform_type": "snowflake", "account": "acct"}
+    if gateway is not None:
+        adapter_info["gateway"] = gateway
+    builder = ResultBuilder(
+        benchmark=BenchmarkInfoInput(
+            name="tpch",
+            display_name="TPC-H",
+            scale_factor=1.0,
+            test_type="power",
+            benchmark_id="tpch",
+            compliance_class="official",
+        ),
+        platform=PlatformInfoInput(name="Snowflake", config=adapter_info),
+    )
+    builder.add_query_result(
+        normalize_query_result(
+            {
+                "query_id": "1",
+                "execution_time_seconds": 0.5,
+                "rows_returned": 1,
+                "status": "SUCCESS",
+                "iteration": 1,
+                "stream_id": 0,
+                "run_type": "measurement",
+            }
+        )
+    )
+    return builder.build()
+
+
+def test_routed_result_built_by_result_builder_is_non_official_everywhere(tmp_path: Path) -> None:
+    result = _built_like_a_real_run(ROUTED)
+    assert "gateway" not in result.platform_info
+    assert result.platform_info["configuration"]["gateway"] == ROUTED
+    assert result_compliance_class(result) == NONSTANDARD_COMPLIANCE_CLASS
+
+    payload = build_result_payload(result)
+    assert payload["benchmark"]["compliance_class"] == NONSTANDARD_COMPLIANCE_CLASS
+    assert payload["tpc_compliant"] is False
+    assert payload["summary"]["tpc_metrics"]["suppressed"] is True
+    assert payload["platform"]["gateway"] == ROUTED
+
+    assert publish_admission(result, "official").allowed is False
+    assert classify_loaded_result(result) is SubmitTerminalState.unofficial
+    written = tmp_path / "routed.json"
+    written.write_text(json.dumps(payload), encoding="utf-8")
+    assert classify_result_path(written) is SubmitTerminalState.unofficial
+
+
+def test_native_result_built_by_result_builder_stays_official() -> None:
+    result = _built_like_a_real_run(None)
+    assert result_compliance_class(result) == "official"
+    assert build_result_payload(result)["benchmark"]["compliance_class"] == "official"
