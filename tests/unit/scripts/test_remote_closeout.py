@@ -142,6 +142,7 @@ class FakeGitHub:
         self.reported_head = world.head
         self.threads: list[dict] = [{"id": "T1", "isResolved": True, "isOutdated": False}]
         self.conclusions = dict.fromkeys(pr_landing.REQUIRED_CONTEXTS, "success")
+        self.stale_suites: list[dict[str, Any]] = []
         self.children: list[int] = []
         self.index: dict = {"schema_version": 1, "items": {}}
         self.auto_merge: dict | None = None
@@ -197,13 +198,25 @@ class FakeGitHub:
                 if review["commit_id"] == commit[1] and marker[0] in review["body"]
             ]
             return 0, "".join(f"{match}\n" for match in matches)
-        if cmd[:2] == ["gh", "api"] and "/check-runs" in cmd[2]:
-            head = cmd[2].split("/commits/")[1].split("/")[0]
+        if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
+            return 0, "\n".join([*pr_landing.REQUIRED_CONTEXTS, "oracle-review"])
+        if cmd[:2] == ["gh", "api"] and "/check-runs" in cmd[-1]:
+            head = cmd[-1].split("/commits/")[1].split("/")[0]
             runs = [
-                {"name": name, "conclusion": conclusion, "head_sha": head, "status": "completed", "started_at": "t"}
-                for name, conclusion in self.conclusions.items()
+                {
+                    "id": index,
+                    "name": name,
+                    "conclusion": conclusion,
+                    "head_sha": head,
+                    "status": "completed" if conclusion else "in_progress",
+                    "started_at": "t",
+                    "details_url": f"https://github.com/o/r/actions/runs/{index}/job/{index}",
+                    "check_suite": {"id": index},
+                }
+                for index, (name, conclusion) in enumerate(self.conclusions.items(), 1)
             ]
-            return 0, json.dumps({"total": len(runs), "runs": runs})
+            runs += [{**stale, "head_sha": head} for stale in self.stale_suites]
+            return 0, "\n".join(json.dumps(run) for run in runs)
         if cmd[:2] == ["gh", "api"] and "contents/index.json?ref=todo-state" in cmd[-1]:
             return 0, json.dumps(self.index)
         if cmd[:2] == ["gh", "api"] and "contents/items/" in cmd[-1]:
@@ -1826,3 +1839,25 @@ def test_claude_publication_can_resume_without_rerunning_the_reviewer(
     assert remote_review.resume("7", run=bound) == 0
     assert stored(world)["records"][-1]["published"] is True
     assert len(claude.runs()) == 1
+
+
+def test_refuses_a_stale_failed_suite_hidden_behind_a_newer_success(
+    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
+) -> None:
+    template = {"name": "oracle-review", "status": "completed", "details_url": "", "check_suite": {"id": 0}}
+    ready_pr.stale_suites = [
+        {**template, "id": 98, "conclusion": "success", "started_at": "2", "check_suite": {"id": 8}},
+        {
+            **template,
+            "id": 99,
+            "conclusion": "failure",
+            "started_at": "1",
+            "details_url": "https://github.com/o/r/actions/runs/77/job/1",
+            "check_suite": {"id": 9},
+        },
+    ]
+    assert arm(world, ready_pr) == 2
+    err = capsys.readouterr().err
+    assert "condition 6: required check 'oracle-review' suite 9 failure" in err
+    assert "actions/runs/77" in err
+    assert ready_pr.arms() == []

@@ -452,7 +452,9 @@ def failing_required_checks(verdicts: Mapping[str, dict]) -> list[tuple[str, str
     return failing
 
 
-def _readiness_refusals(view: dict, observation: dict, verdicts: Mapping[str, dict]) -> list[str]:
+def _readiness_refusals(
+    view: dict, observation: dict, verdicts: Mapping[str, dict], hidden_failures: Sequence[str] = ()
+) -> list[str]:
     reasons: list[str] = []
     if view.get("state") != "OPEN":
         reasons.append(f"condition 6: the PR is {view.get('state')!r}, not OPEN")
@@ -471,6 +473,7 @@ def _readiness_refusals(view: dict, observation: dict, verdicts: Mapping[str, di
         "pending checks do not block arming"
         for name, conclusion in failing_required_checks(verdicts)
     )
+    reasons.extend(f"condition 6: {reason}" for reason in hidden_failures)
     return reasons
 
 
@@ -509,7 +512,12 @@ def evaluate(
         *_record_refusals(record, view, head),
         *_manifest_refusals(record, manifest, head),
         *_builder_refusals(record, view, head),
-        *_readiness_refusals(view, observation, pr_landing.live_check_verdicts(run, repo, head)),
+        *_readiness_refusals(
+            view,
+            observation,
+            pr_landing.live_check_verdicts(run, repo, head),
+            pr_landing.hidden_failed_suites(run, repo, BASE_BRANCH, head),
+        ),
     ]
     if changes and not explained:
         reasons.extend(f"condition 7: {change}; pass OWNER_EXPLAINED if the owner explained it" for change in changes)

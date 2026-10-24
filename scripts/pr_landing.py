@@ -20,6 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from _project.scripts import check_suites
 from _project.scripts.soundness_paths import any_soundness_path
 
 CLI_DESCRIPTION = (
@@ -536,31 +537,54 @@ class ReadyEvidence:
     pr_node_id: str | None = None
 
 
-def live_check_verdicts(run: Runner, repo_full: str, head: str) -> dict[str, dict]:
+def live_check_runs(run: Runner, repo_full: str, head: str) -> list[dict]:
     rc, out = run(
         [
             "gh",
             "api",
-            f"repos/{repo_full}/commits/{head}/check-runs?per_page=100",
+            "--paginate",
             "--jq",
-            "{total: .total_count, runs: [.check_runs[] | {name, conclusion, head_sha, status, started_at}]}",
+            check_suites.LATEST_JQ,
+            check_suites.latest_check_runs_endpoint(repo_full, head),
         ]
     )
     if rc != 0:
         raise LandingError(f"live check verification failed for {head[:12]}")
     try:
-        payload = json.loads(out or "{}")
+        return check_suites.parse_check_run_lines(out)
     except ValueError as exc:
         raise LandingError(f"unparseable live check payload: {exc}") from exc
-    runs = payload.get("runs") or []
-    if int(payload.get("total") or 0) > len(runs):
-        raise LandingError("live check runs exceed the single-page verification bound; refusing")
-    verdicts: dict[str, dict] = {}
-    for check in runs:
-        name = str(check.get("name") or "")
-        if name not in verdicts or str(check.get("started_at") or "") > str(verdicts[name].get("started_at") or ""):
-            verdicts[name] = check
-    return verdicts
+
+
+def live_check_verdicts(run: Runner, repo_full: str, head: str) -> dict[str, dict]:
+    return check_suites.verdicts(live_check_runs(run, repo_full, head))
+
+
+def ruleset_required_contexts(run: Runner, repo_full: str, branch: str) -> tuple[str, ...]:
+    rc, out = run(
+        [
+            "gh",
+            "api",
+            "--jq",
+            check_suites.REQUIRED_CONTEXTS_JQ,
+            check_suites.required_contexts_endpoint(repo_full, branch),
+        ]
+    )
+    if rc != 0:
+        raise LandingError(f"could not read the required checks of {branch!r}: {out.strip()[:200]}")
+    try:
+        return check_suites.parse_required_contexts(out)
+    except ValueError as exc:
+        raise LandingError(str(exc)) from exc
+
+
+def _hidden_failures(run: Runner, repo_full: str, branch: str, records: list[dict]) -> list[str]:
+    required = ruleset_required_contexts(run, repo_full, branch)
+    return check_suites.hidden_failure_reasons(check_suites.evaluate(records, required, check_suites.NON_BLOCKING))
+
+
+def hidden_failed_suites(run: Runner, repo_full: str, branch: str, head: str) -> list[str]:
+    return _hidden_failures(run, repo_full, branch, live_check_runs(run, repo_full, head))
 
 
 def verify_evidence_live(run: Runner, repo_full: str, pr: dict, evidence: ReadyEvidence) -> None:
@@ -572,7 +596,8 @@ def verify_evidence_live(run: Runner, repo_full: str, pr: dict, evidence: ReadyE
         node_id=evidence.pr_node_id,
         head=head,
     )
-    verdicts = live_check_verdicts(run, repo_full, head)
+    records = live_check_runs(run, repo_full, head)
+    verdicts = check_suites.verdicts(records)
     for name in evidence.required:
         live = verdicts.get(name)
         if live is None:
@@ -581,7 +606,10 @@ def verify_evidence_live(run: Runner, repo_full: str, pr: dict, evidence: ReadyE
             raise LandingError(
                 f"live verification: {name!r} is {live.get('conclusion')} "
                 f"at {str(live.get('head_sha') or '')[:12]}, not success at {head[:12]}"
+                f" (suite {live.get('suite_id')}, {live.get('url') or 'no run URL'})"
             )
+    for reason in _hidden_failures(run, repo_full, str(pr.get("baseRefName") or "develop"), records):
+        raise LandingError(f"live verification: {reason}")
     live_decision = str(pr.get("reviewDecision") or "")
     if live_decision != evidence.review_decision:
         raise LandingError(
