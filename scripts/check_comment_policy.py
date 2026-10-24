@@ -462,6 +462,7 @@ def main(argv: list[str] | None = None) -> int:
             if not any(matches(path, scope) for path in paths):
                 raise ValueError(f"scope matches no registered source: {scope}")
         changed: set[str] = set()
+        committed: set[str] = set()
         if compared:
             revoked = [e["path"] for e in baseline_policy["exceptions"] if e not in policy["exceptions"]]
             revoked.extend(e["path"] for e in baseline_policy["external"] if e not in policy["external"])
@@ -474,6 +475,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             if not args.staged:
                 changed.update(git(root, "ls-files", "--others", "--exclude-standard", "-z").decode().split("\0"))
+            committed = set(changed)
             trusted = launcher_trusted_files(root, args.base)
             global_change = (
                 args.full
@@ -498,7 +500,7 @@ def main(argv: list[str] | None = None) -> int:
         effective_policy = {
             **policy,
             "exceptions": counted_exceptions(
-                policy, baseline_policy, reviewed, args.accept_same_commit_fixtures, changed
+                policy, baseline_policy, reviewed, args.accept_same_commit_fixtures, committed
             ),
             "ownership_excluded_members": owned_exclusions,
         }

@@ -4771,6 +4771,26 @@ def test_same_commit_fixture_is_not_accepted_for_an_unchanged_file(tmp_path: Pat
     assert main(args) == 0
 
 
+def test_same_commit_fixture_for_an_unchanged_file_is_rejected_whatever_its_consumer(tmp_path: Path) -> None:
+    git_repo(tmp_path, "x = 1\n")
+    (tmp_path / "b.py").write_text(FIXTURE_SOURCE, encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "b.py"], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "-c", "user.name=F", "-c", "user.email=f@example.invalid", "commit", "-qm", "b"],
+        check=True,
+    )
+    base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+    args = staged_args(tmp_path, base, ACCEPT)
+    entry = fixture_entry("b.py", consumer="a.py")
+    (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy(exceptions=[entry])), encoding="utf-8")
+    (tmp_path / "a.py").write_text("y = 2\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py", "quality/comment-policy.json"], check=True)
+    assert main(args) == 1
+    (tmp_path / "b.py").write_text(FIXTURE_SOURCE + "\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "b.py"], check=True)
+    assert main(args) == 0
+
+
 def test_same_commit_fixture_rejects_wrong_or_foreign_digest(tmp_path: Path) -> None:
     wrong = fixture_entry(payload="sha256:" + "0" * 64)
     base = stage_fixture_commit(tmp_path, [wrong], {"a.py": FIXTURE_SOURCE})
