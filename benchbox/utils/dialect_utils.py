@@ -310,11 +310,10 @@ def translate_sql_query(
 
     try:
         should_identify = identify and (tgt not in NO_IDENTIFY_DIALECTS)
-        parsed = sqlglot.parse(query, read=src)
-        expression = parsed[0] if parsed else None
-        if expression is None:
-            translated = ""
-        else:
+        translated_statements: list[str] = []
+        for expression in sqlglot.parse(query, read=src):
+            if expression is None:
+                continue
             for rewrite_name, rewrite_args in rewrites or ():
                 rewrite_args = dict(rewrite_args)
                 expression = apply_rewrite(rewrite_name, expression, rewrite_args.pop("dialect", src), **rewrite_args)
@@ -322,7 +321,8 @@ def translate_sql_query(
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt, **SQLITE_DISCOUNT_BOUNDS)
                 if date_columns:
                     expression = apply_rewrite("mark_date_columns", expression, tgt, date_columns=date_columns)
-            translated = expression.sql(dialect=tgt, identify=should_identify)
+            translated_statements.append(expression.sql(dialect=tgt, identify=should_identify))
+        translated = STATEMENT_SEPARATOR.join(translated_statements)
 
         record_sql_translation_outcome(
             SqlTranslationOutcome(

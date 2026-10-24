@@ -56,6 +56,7 @@ tests/unit/scripts/test_check_rerun_shard_retention.py
 tests/unit/scripts/test_check_sqlglot_repro_retirement.py
 tests/unit/scripts/test_check_submission_validator_sync.py
 tests/unit/scripts/test_check_uv_lock_revision.py
+tests/unit/scripts/test_changelog_fragments.py
 tests/unit/scripts/test_check_windows_antipatterns.py
 tests/unit/scripts/test_ci_lint_environment_boundary.py
 tests/unit/scripts/test_ci_unit_result.py

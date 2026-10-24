@@ -5,6 +5,8 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+import check_suites
+
 REQUIRED_CHECK_NAMES: tuple[str, ...] = (
     "core",
     "explorer",
@@ -49,9 +51,4 @@ def is_check_run_success(run: dict[str, Any] | None) -> bool:
 
 
 def is_required_lane_green(check_runs: list[dict[str, Any]]) -> bool:
-    if not REQUIRED_CHECK_NAMES:
-        return False
-    for name in REQUIRED_CHECK_NAMES:
-        if not is_check_run_success(latest_check_run(check_runs, name)):
-            return False
-    return True
+    return check_suites.all_green(check_runs, REQUIRED_CHECK_NAMES)

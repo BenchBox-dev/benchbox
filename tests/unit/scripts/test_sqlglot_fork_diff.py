@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -112,13 +113,16 @@ def test_non_ascii_and_glob_like_names_get_their_own_literal_diff(fork: tuple[Pa
     repo, old, _ = fork
     (repo / "sqlglot" / "dialects").mkdir()
     (repo / "sqlglot" / "dialects" / "a.py").write_text("PLAIN = 1\n", encoding="utf-8")
-    (repo / "sqlglot" / "d*.py").write_text("GLOB = 1\n", encoding="utf-8")
+    glob_names_allowed = sys.platform != "win32"
+    if glob_names_allowed:
+        (repo / "sqlglot" / "d*.py").write_text("GLOB = 1\n", encoding="utf-8")
     (repo / "sqlglot" / "é.py").write_text("UNICODE = 1\n", encoding="utf-8")
     git(repo, "add", ".")
     git(repo, "commit", "-m", "odd names", "--quiet")
     text = sqlglot_fork_diff.fork_diff(old, git(repo, "rev-parse", "HEAD"), str(repo), 50_000)
-    assert "+GLOB = 1" in text
+    if glob_names_allowed:
+        assert "+GLOB = 1" in text
+        assert text.count("+GLOB = 1") == 1
     assert "+UNICODE = 1" in text
     assert "+PLAIN = 1" in text
-    assert text.count("+GLOB = 1") == 1
     assert "diff --git a/sqlglot/é.py b/sqlglot/é.py" in text
