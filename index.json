@@ -23174,10 +23174,15 @@
       "title": "Record the owner decisions for the soundness-gap remediation"
     },
     "soundness-gaps-decisions-20261024": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-25T17:37:31Z",
+        "generation": "c2d5df390529456d9eb31cedfb2c4c09",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Record the owner decisions of 2026-10-24 on the soundness gap batch"
     },
     "soundness-merge-digest-external-review-author-20261008": {
