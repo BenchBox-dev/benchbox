@@ -3,7 +3,7 @@
     "The ratchet accepts removal of a completed entry that matches no tracked file and still rejects removal of one that matches files; unit tests cover both",
     "The results-explorer/ and website/ entries are removed"
   ],
-  "context": "SUPERSEDED 2026-10-23: PR #3364 (ca810ea0e) removed the `completed` list from quality/comment-policy.json entirely and the checker now rejects the key, so no completed-scope entries (dead or live) remain to prune. Recommend dropping this item; dropping is the owner's call.\n\nFound 2026-10-17 while cleaning up site-removal leftovers (#3105): removing the website/ and results-explorer/ prefixes failed the ratchet, so they were left in place.",
+  "context": "CLOSED 2026-10-24 (superseded, owner-approved): #3364 (ca810ea0e) removed the `completed` list and the schema now rejects the key (scripts/check_comment_cleanup_scope.py:54-57), so no completed-scope entries remain to prune.\n\nSUPERSEDED 2026-10-23: PR #3364 (ca810ea0e) removed the `completed` list from quality/comment-policy.json entirely and the checker now rejects the key, so no completed-scope entries (dead or live) remain to prune. Recommend dropping this item; dropping is the owner's call.\n\nFound 2026-10-17 while cleaning up site-removal leftovers (#3105): removing the website/ and results-explorer/ prefixes failed the ratchet, so they were left in place.",
   "description": "The comment-policy ratchet refuses any change that removes a completed scope (scripts/check_comment_policy.py:97-98, \"completed scopes cannot be removed\"). That protects against relaxing the policy, but it also blocks removing entries for deleted paths. After the site removal, quality/comment-policy.json keeps completed entries for `results-explorer/` (line 252), `website/` (line 257) and `_project/scripts/browser_gate_aggregate.py` (line 132), and the dead entries will keep accumulating.\n\nAllow removing a completed entry when no tracked file matches it at the candidate commit, and keep refusing removal otherwise.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "da91992e1006473183a00d5f5fe90629",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T14:30:44Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "200399962a6e4436aacc33b968e9c9f4",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
