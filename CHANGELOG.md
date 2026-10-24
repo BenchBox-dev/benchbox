@@ -17,6 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Databricks adapter accepts the core `gateway` setting (`native`, `espresso` or `custom`) and forwards it through `from_config`. Gateways use personal access tokens only: a non-native gateway with `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` or `DATABRICKS_CONFIG_PROFILE` set raises a `ConfigurationError` that points to token authentication. With a gateway, `from_config` requires an explicit `server_hostname` and `access_token` and never falls back to the auto-detected workspace. Runs through a gateway record `gateway` in platform info, so they get the `@<gateway>` variant suffix and `tpc_compliant=false`. The Databricks guide documents using the Espresso hostname as `server_hostname` with an unchanged `http_path`.
 - `scripts/export_docs_data.py` exports the data behind the generated query, compatibility and tuning pages as deterministic JSON validated by `quality/docs-data.schema.json`, so a renderer needs no Python. `--output PATH --check` fails when `PATH` differs from a fresh export. The Markdown generators are unchanged.
 - Benchmark runs check free space on the output volume before any data is written and fail with the free and total bytes and the largest top-level entries when less than 5% is free. `BENCHBOX_MIN_FREE_DISK_PERCENT` changes the threshold (`0` disables it). `make disk-check` runs the same check by hand and never deletes anything.
+- Experimental `gizmosql` platform: runs TPC-H and TPC-DS on a GizmoSQL Core 1.37+ server (DuckDB
+  backend) through the official `adbc-driver-gizmosql` driver (`uv add benchbox --extra gizmosql`).
+  Tables load client-side as byte-bounded Arrow batches, one transaction per table, so reruns never
+  duplicate rows and a failed load leaves the table unchanged. TLS is verified by default; plaintext or
+  skipped verification needs `allow_insecure_connection=true`. BenchBox never changes server-wide DuckDB
+  settings (only session-scoped `session_settings`), reuses populated tables only when their row counts match the source
+  files, in the reuse decision and again at load (a mismatch is never reused and fails the load), blocks server-wide `SET` on read-only
+  servers,
+  supports read-only servers for query-only runs, cancels queries that exceed `query_timeout`, and opens an
+  independent ADBC session for each throughput stream. Results record client-observed timings. The server
+  is started and owned by the operator; `make test-live-gizmosql` starts a pinned local server for the
+  opt-in live tests (`live_gizmosql` marker). See `docs/platforms/gizmosql.md`.
 - `translate_ddl` accepts an engine type map by name (`type_map="starrocks"`, `"doris"`, `"singlestore"`) so adapters do not import fork modules.
 - Result readers accept schema 2.4: the loader, normalizer, explorer input
   and bundle validator read the new optional per-query `request_count`,

@@ -72,6 +72,7 @@ These platforms are included in the base BenchBox installation with no additiona
 
 - [PostgreSQL](postgresql.md) - Open-source relational database with TimescaleDB support
 - [CedarDB](cedardb.md) - High-performance HTAP engine over PostgreSQL wire protocol (formerly Umbra)
+- [GizmoSQL](gizmosql.md) - DuckDB over Arrow Flight SQL through the official ADBC driver (experimental)
 
 ### PostgreSQL Extensions
 
@@ -211,6 +212,7 @@ singlestore
 questdb
 databend
 cedardb
+gizmosql
 clickhouse-local-mode
 clickhouse-server
 clickhouse-cloud

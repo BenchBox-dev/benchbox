@@ -1990,6 +1990,66 @@ _PLATFORM_MANIFEST_JSON = """[
     "support_status": "experimental"
   },
   {
+    "key": "gizmosql",
+    "aliases": [],
+    "adapter": {
+      "module": "benchbox.platforms.gizmosql",
+      "class_name": "GizmoSQLAdapter",
+      "registration_order": 49,
+      "stream_connection_capability": "independent_connection"
+    },
+    "display_name": "GizmoSQL",
+    "description": "DuckDB over Arrow Flight SQL • Core server • ADBC client",
+    "category": "olap",
+    "libraries": [
+      {
+        "name": "adbc-driver-gizmosql",
+        "required": true,
+        "import_name": "adbc_driver_gizmosql"
+      }
+    ],
+    "requirements": [
+      "adbc-driver-gizmosql>=2.0.13,<3"
+    ],
+    "installation_command": "uv add 'benchbox[gizmosql]'",
+    "adoption": "emerging",
+    "supports": [
+      "olap",
+      "analytics",
+      "flight-sql",
+      "duckdb-compatible"
+    ],
+    "driver_package": "adbc-driver-gizmosql",
+    "notes": "GizmoSQL Core 1.37+ with the DuckDB backend, reached over Arrow Flight SQL through the official ADBC driver. Data loads client-side as bounded Arrow batches. Timings are client-observed and include Flight/gRPC overhead, so they are not directly comparable to embedded DuckDB. The SQLite backend and Enterprise-only controls are not supported. The operator starts and owns the server.",
+    "capabilities": {
+      "supports_sql": true,
+      "supports_dataframe": false,
+      "default_mode": "sql",
+      "platform_family": "duckdb",
+      "inherits_from": "duckdb",
+      "default_deployment": "self-hosted",
+      "deployment_modes": {
+        "self-hosted": {
+          "mode": "self-hosted",
+          "display_name": "GizmoSQL Server",
+          "description": "Operator-managed GizmoSQL Core server, local or remote, reached over Flight SQL",
+          "requires_credentials": true,
+          "requires_cloud_storage": false,
+          "requires_network": true,
+          "default_for_platform": true,
+          "dependencies": [
+            "adbc-driver-gizmosql"
+          ],
+          "auth_methods": [
+            "password",
+            "token"
+          ]
+        }
+      }
+    },
+    "support_status": "experimental"
+  },
+  {
     "key": "synapse",
     "aliases": [
       {
