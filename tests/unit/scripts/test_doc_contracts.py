@@ -12,12 +12,16 @@ import pytest
 
 pytest.importorskip("mcp", reason="MCP SDK not installed. Install with: uv add benchbox --extra mcp")
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
-
 ROOT = Path(__file__).resolve().parents[3]
 
-if not (ROOT / "_project/design/api-public-symbols.json").exists():
-    pytest.skip("the documentation contract tooling needs the development tree (release tree)", allow_module_level=True)
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.fast,
+    pytest.mark.skipif(
+        not (ROOT / "_project/design/api-public-symbols.json").exists(),
+        reason="the documentation contract tooling needs the development tree (release tree)",
+    ),
+]
 
 
 def _load(name: str) -> Any:
