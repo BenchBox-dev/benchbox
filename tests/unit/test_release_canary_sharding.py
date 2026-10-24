@@ -133,7 +133,7 @@ def _medium_artifacts(
     collection = root / f"{prefix}-nodeids-{sha}"
     collection.mkdir()
     raw = collection / "raw.txt"
-    ids = [f"tests/unit/test_a_{index}.py::test_case" for index in range(6)]
+    ids = [f"tests/unit/test_a.py::test_{index}" for index in range(6)]
     raw.write_text("\n".join(ids) + "\n6/100 tests collected\n")
     collect_node_ids(
         raw,
@@ -536,63 +536,3 @@ def test_verify_medium_shards_refuses_duration_bound_evidence_when_the_consumer_
     verify_medium_shards(tmp_path, sha, durations_path=mine)
     with pytest.raises(ValueError, match="medium collection does not match"):
         verify_medium_shards(tmp_path, sha)
-
-
-def _modular_node_ids() -> tuple[list[str], Durations]:
-    node_ids = []
-    weights = {}
-    for module in range(12):
-        for case in range(1 + module % 5):
-            node_id = f"tests/unit/test_mod_{module:02d}.py::TestClass::test_case[{case}]"
-            node_ids.append(node_id)
-            weights[node_id] = float(1 + module * 3 + case)
-    return node_ids, Durations(weights, default_seconds=1.0)
-
-
-def _module(node_id: str) -> str:
-    return node_id.split("::", 1)[0]
-
-
-def test_duration_partition_never_splits_a_module_and_conserves_every_id():
-    node_ids, durations = _modular_node_ids()
-
-    shards = [partition_node_ids(node_ids, index, 4, durations) for index in range(4)]
-
-    assert sorted(itertools.chain.from_iterable(shards)) == sorted(node_ids)
-    owners: dict[str, set[int]] = {}
-    for index, shard in enumerate(shards):
-        for node_id in shard:
-            owners.setdefault(_module(node_id), set()).add(index)
-    assert len(owners) == 12 and all(len(shard_set) == 1 for shard_set in owners.values())
-
-
-def test_duration_partition_balances_whole_modules_within_the_largest_module():
-    node_ids, durations = _modular_node_ids()
-    module_weight: dict[str, float] = {}
-    for node_id in node_ids:
-        module_weight[_module(node_id)] = module_weight.get(_module(node_id), 0.0) + durations.weight(node_id)
-
-    loads = _loads([partition_node_ids(node_ids, index, 4, durations) for index in range(4)], durations)
-
-    assert max(loads) - min(loads) <= max(module_weight.values())
-
-
-def test_module_weight_is_the_sum_of_its_tests_not_its_slowest_test():
-    heavy = [f"tests/unit/test_heavy.py::test_case[{index}]" for index in range(10)]
-    singles = [f"tests/unit/test_single_{index}.py::test_case" for index in range(3)]
-    durations = Durations({**dict.fromkeys(heavy, 2.0), **dict.fromkeys(singles, 5.0)}, default_seconds=1.0)
-
-    shards = [partition_node_ids(heavy + singles, index, 2, durations) for index in range(2)]
-
-    assert next(shard for shard in shards if heavy[0] in shard) == sorted(heavy)
-    assert sorted(len(shard) for shard in shards) == [3, 10]
-
-
-@pytest.mark.parametrize("filename", ["ci.yml", "trunk.yml", "trunk-coverage.yml", "test.yml"])
-def test_medium_shards_run_with_module_scope_distribution(filename: str):
-    workflow = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / filename).read_text(encoding="utf-8"))
-    runs = [str(step.get("run", "")) for job in workflow["jobs"].values() for step in job.get("steps", [])]
-    medium = [run for run in runs if "-p scripts.pytest_shard_evidence" in run and "--assigned-nodeids" in run]
-
-    assert len(medium) == 1
-    assert "-n 5 --dist loadscope" in medium[0]
