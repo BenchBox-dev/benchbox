@@ -26,9 +26,9 @@ def test_dataframe_side_is_obt_native() -> None:
 def test_sql_side_is_tpcds_numbered() -> None:
     from benchbox.core.tpcds_obt.queries import CONVERTIBLE_QUERY_IDS
 
-    assert len(CONVERTIBLE_QUERY_IDS) == 89
+    assert len(CONVERTIBLE_QUERY_IDS) == 90
     assert max(CONVERTIBLE_QUERY_IDS) > 17
-    assert set(range(1, 18)) <= set(CONVERTIBLE_QUERY_IDS)
+    assert set(range(1, 18)) - {8} <= set(CONVERTIBLE_QUERY_IDS)
 
 
 def test_no_clean_correspondence() -> None:

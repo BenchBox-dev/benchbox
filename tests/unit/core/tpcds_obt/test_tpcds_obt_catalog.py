@@ -5,7 +5,16 @@ from pathlib import Path
 import pytest
 
 import benchbox.core.tpcds_obt as tpcds_obt_package
-from benchbox.core.tpcds_obt.catalog.loader import PLACEHOLDER_PATTERN, OBTCatalogError, OBTQuery, load_catalog
+from benchbox.core.query_catalog_base import QuerySkippedError
+from benchbox.core.tpcds_obt.catalog.loader import (
+    PLACEHOLDER_PATTERN,
+    OBTCatalogError,
+    OBTExclusion,
+    OBTQuery,
+    load_catalog,
+    load_exclusions,
+)
+from benchbox.core.tpcds_obt.queries import TPCDSOBTQueryManager
 from benchbox.utils.tpc_compilation import get_tpc_templates_dir
 
 pytestmark = [
@@ -16,8 +25,7 @@ pytestmark = [
 TEMPLATE_DIR = get_tpc_templates_dir("tpc-ds") / "query_templates"
 DEFINE_PATTERN = re.compile(r"^define\s+(\w+)\s*=\s*(.*?);\s*$", re.IGNORECASE | re.DOTALL)
 FACT_COLUMN_PATTERN = re.compile(r"^(ss|sr|ws|wr|cs|cr)_\w+$")
-UNPORTED_DEFINES = {14: {"DAY"}}
-EXCLUDED_QUERY_IDS = {21, 22, 37, 39, 46, 64, 68, 72, 82, 84}
+EXCLUDED_QUERY_IDS = {8, 21, 22, 37, 39, 54, 72, 82, 84}
 
 
 def _template_text(query: OBTQuery) -> str:
@@ -60,10 +68,28 @@ def _queries() -> list[OBTQuery]:
     return sorted(load_catalog().values(), key=lambda query: query.id)
 
 
-def test_catalog_covers_the_published_query_ids() -> None:
+def test_catalog_covers_every_tpcds_query_or_names_the_exclusion() -> None:
     ids = {query.id for query in _queries()}
-    assert len(ids) == 89
-    assert not ids & EXCLUDED_QUERY_IDS
+    excluded = set(load_exclusions())
+    assert excluded == EXCLUDED_QUERY_IDS
+    assert not ids & excluded
+    assert ids | excluded == set(range(1, 100))
+
+
+@pytest.mark.parametrize(
+    "exclusion", sorted(load_exclusions().values(), key=lambda item: item.id), ids=lambda e: f"q{e.id}"
+)
+def test_exclusions_state_a_reason_and_pin_the_template(exclusion: OBTExclusion) -> None:
+    assert exclusion.reason.endswith(".")
+    digest = hashlib.sha256((TEMPLATE_DIR / exclusion.template).read_bytes()).hexdigest()
+    assert digest == exclusion.template_sha256
+
+
+@pytest.mark.parametrize("query_id", sorted(EXCLUDED_QUERY_IDS))
+def test_an_excluded_query_is_skipped_with_its_reason(query_id: int) -> None:
+    with pytest.raises(QuerySkippedError, match=load_exclusions()[query_id].reason):
+        TPCDSOBTQueryManager().get_query(query_id)
+    assert query_id not in TPCDSOBTQueryManager().list_query_ids()
 
 
 @pytest.mark.parametrize("query", _queries(), ids=lambda query: f"q{query.id}")
@@ -80,7 +106,7 @@ def test_placeholders_match_the_dsqgen_defines(query: OBTQuery) -> None:
     template_usage = _template_placeholders(text, set(query.parameters))
     for name, indices in query.parameters.items():
         assert set(indices) <= set(template_usage[name]) or not template_usage[name], (query.id, name)
-    unused_defines = defined - set(query.parameters) - UNPORTED_DEFINES.get(query.id, set())
+    unused_defines = defined - set(query.parameters)
     for name in unused_defines:
         assert not _template_placeholders(text, {name})[name], (query.id, name)
 
@@ -119,3 +145,11 @@ def test_obt_package_does_not_import_sqlglot() -> None:
         if "sqlglot" in path.read_text(encoding="utf-8")
     ]
     assert not offenders, offenders
+
+
+ROW_VALUE_IN_SUBQUERY = re.compile(r"(?<!\w)\(\s*[\w.]+\s*(?:,\s*[\w.]+\s*)+\)\s+(?:NOT\s+)?IN\s*\(", re.IGNORECASE)
+
+
+@pytest.mark.parametrize("query", _queries(), ids=lambda query: f"q{query.id}")
+def test_no_query_uses_a_row_value_in_subquery(query: OBTQuery) -> None:
+    assert not ROW_VALUE_IN_SUBQUERY.search(query.sql), f"Q{query.id} uses a row-value IN, which DataFusion rejects"

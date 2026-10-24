@@ -12,7 +12,6 @@ pytestmark = [
 
 SCALE_FACTOR = 0.01
 BASE_PARTS_AS_VARIANTS = {14, 23, 24}
-OBT_COVERS_FEWER_PARTS = {14: "the converted statement covers part 1 of the two-part query only"}
 
 
 def _select_row_counts(connection, sql: str) -> list[int]:
@@ -52,14 +51,11 @@ def test_an_obt_statement_is_empty_only_where_the_base_statement_is(engines, que
     assert obt_counts, f"Q{query_id} produced no SELECT statement"
 
     base_counts = _base_row_counts(base, benchmark, query_id)
-    if query_id in OBT_COVERS_FEWER_PARTS:
-        assert len(obt_counts) < len(base_counts), f"stale exemption for Q{query_id}: the part counts now agree"
-    else:
-        assert len(obt_counts) == len(base_counts), (
-            f"Q{query_id}: the OBT statement has {len(obt_counts)} part(s), the base statement {len(base_counts)}"
-        )
+    assert len(obt_counts) == len(base_counts), (
+        f"Q{query_id}: the OBT statement has {len(obt_counts)} part(s), the base statement {len(base_counts)}"
+    )
 
-    for part, (obt_rows, base_rows) in enumerate(zip(obt_counts, base_counts, strict=False), start=1):
+    for part, (obt_rows, base_rows) in enumerate(zip(obt_counts, base_counts, strict=True), start=1):
         assert not (obt_rows == 0 and base_rows > 0), (
             f"Q{query_id} part {part}: the OBT returns no rows where the base TPC-DS statement returns "
             f"{base_rows} on the same data and parameters"
