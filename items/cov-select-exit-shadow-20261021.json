@@ -2,10 +2,11 @@
   "acceptance": [
     "PR states the 20-PR window, zero misses, would-select rate, escalation rate and estimated runner-minutes saved",
     "Selection live: a covered Python-only PR runs only selected tests (observed)",
-    "After going live, median PR CI runner-minutes drop at least 40% over 14 days while the Trunk push failure rate stays at or below the triaged baseline and at most one revert a week is attributed to a selection miss"
+    "Over the 14 days after going live, measured with the CI usage report against a 14-day pre-live baseline: PR time-to-green median and PR CI job queue time median both fall, and PR CI runner-minutes per run fall at least 40%",
+    "Over the same 14 days, the Trunk push first-attempt failure rate stays at or below the classified baseline, and at most one Trunk failure a week is attributed to a selection miss by the shadow-miss report"
   ],
-  "context": "AMENDED 2026-10-24 from an independent review of the PR-checks versus Trunk split: this is the largest CI saving available. SELECTION_SHADOW forces escalate=True (scripts/coverage_test_selection.py:814-829), so every PR runs the full medium tier and correctness gate (31 of 40 sampled CI runs), and the medium tier runs up to three times per merge (PR, Trunk, Trunk coverage). Estimated saving up to about 50 runner-hours a day on the PR side. Now also waits on trunk-red-run-triage-20261024, because selection misses surface as Trunk failures and the current 12.7% red rate would hide them. Priority raised to high.",
-  "description": "Set SELECTION_SHADOW=False in scripts/coverage_test_selection.py only when the heavy-tier routing fix, the inert-path manifest and map v2 are merged and at least 20 code-routed PRs show zero shadow misses. Record the measured would-select rate, escalation rate and runner-minutes saved in the PR; if savings are negligible, propose retiring selection instead.",
+  "context": "AMENDED 2026-10-24 from an independent review of the PR-checks versus Trunk split: this is the largest CI saving available. SELECTION_SHADOW forces escalate=True (scripts/coverage_test_selection.py:814-829), so every PR runs the full medium tier and correctness gate (31 of 40 sampled CI runs), and the medium tier runs up to three times per merge (PR, Trunk, Trunk coverage). Estimated saving up to about 50 runner-hours a day on the PR side (estimate, about +/-30%). Waits on trunk-red-run-triage-20261024 for the baseline classification (selection misses surface as Trunk failures and the 12.7% red rate would hide them), not on the later rate target, and on the CI usage report for measurement. The repository is public, so GitHub-hosted runner minutes are free; the binding limit is the concurrency cap. Queue time and PR time-to-green are the primary success metrics, runner-minutes secondary. Priority raised to high.",
+  "description": "Set SELECTION_SHADOW=False in scripts/coverage_test_selection.py only when the heavy-tier routing fix, the inert-path manifest and map v2 are merged and at least 20 code-routed PRs show zero shadow misses. Record the measured would-select rate, escalation rate and runner-minutes saved in the PR; if savings are negligible, propose retiring selection instead. The 20-PR window restarts whenever map freshness changes (for example when Trunk coverage moves to a schedule). Closing needs a 14-day observation window after going live, so this item stays open after its PR merges.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e6249e163de8fcf56b4f01fc",
@@ -21,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "06e4f26ee1b54e6394df8e984eb71273",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T18:40:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "68a959f0bfe242a8be180f14084312c3",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
