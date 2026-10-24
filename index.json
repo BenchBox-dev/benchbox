@@ -16189,17 +16189,12 @@
       "title": "Measure oracle absence and retry reliability after remediation rollout"
     },
     "oracle-retarget-return-waits-forever-20261023": {
-      "claim": {
-        "expires_at": "2026-10-25T21:00:59Z",
-        "generation": "f38e040604554562aa4c3090d5f4fb43",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [
         "oracle-patch-hash-splitlines-control-chars-20261023"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Do not leave the oracle gate waiting forever after a PR is retargeted away and back"
     },
     "oracle-review-automatic-reevaluation-20261021": {
