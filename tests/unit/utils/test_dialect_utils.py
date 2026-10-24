@@ -11,6 +11,7 @@ from benchbox.utils.dialect_utils import (
     UnknownSqlDialectError,
     apply_rewrite,
     resolve_sql_dialect,
+    split_sql_statements,
     sql_translation_context,
     summarize_sql_translation_outcomes,
     translate_sql_query,
@@ -432,50 +433,85 @@ class TestSQLTranslation:
         result = translate_sql_query(query, target_dialect="duckdb", identify=False)
         assert "orders" in result.lower()
 
-    def test_translate_unknown_target_dialect_falls_back_without_postgres(self):
+    UNKNOWN_PLATFORM_KEYS = (
+        "nonexistent_invalid_dialect_12345",
+        "polars",
+        "pandas",
+        "dataframe",
+        "",
+        "   ",
+        "clickhouse-nonexistent",
+        "duckdb ; drop table x",
+    )
+
+    @pytest.mark.parametrize("strict", [True, False, None])
+    @pytest.mark.parametrize("key", UNKNOWN_PLATFORM_KEYS)
+    def test_unknown_target_always_raises(self, key, strict):
+        with sql_translation_context(strict=False) as outcomes:
+            with pytest.raises(UnknownSqlDialectError):
+                translate_sql_query("SELECT * FROM orders", target_dialect=key, strict=strict)
+        assert outcomes == []
+
+    @pytest.mark.parametrize("strict", [True, False, None])
+    @pytest.mark.parametrize("key", UNKNOWN_PLATFORM_KEYS)
+    def test_unknown_source_always_raises(self, key, strict):
+        with sql_translation_context(strict=False) as outcomes:
+            with pytest.raises(UnknownSqlDialectError):
+                translate_sql_query("SELECT * FROM orders", "duckdb", source_dialect=key, strict=strict)
+        assert outcomes == []
+
+    @pytest.mark.parametrize("strict_context", [True, False])
+    def test_unknown_dialect_raises_under_strict_and_lenient_contexts(self, strict_context):
+        with sql_translation_context(strict=strict_context):
+            with pytest.raises(UnknownSqlDialectError):
+                translate_sql_query("SELECT 1", "not_a_dialect")
+
+    def test_unknown_dialect_raises_for_none(self):
+        with pytest.raises(UnknownSqlDialectError):
+            translate_sql_query("SELECT 1", cast(Any, None))
+
+    @pytest.mark.parametrize("key", UNKNOWN_PLATFORM_KEYS)
+    def test_split_sql_statements_raises_for_unknown_dialect(self, key):
+        with pytest.raises(UnknownSqlDialectError):
+            split_sql_statements("SELECT 1; SELECT 2", key)
+
+    def test_text_processor_parameters_are_removed(self):
+        import inspect
+
+        parameters = inspect.signature(translate_sql_query).parameters
+        assert "pre_processors" not in parameters
+        assert "post_processors" not in parameters
+        with pytest.raises(TypeError):
+            translate_sql_query("SELECT 1", "duckdb", pre_processors=[str])
+
+    def test_rewrites_apply_to_the_tree_before_generation(self):
+        result = translate_sql_query(
+            "SELECT a / b FROM t",
+            target_dialect="databricks",
+            source_dialect="databricks",
+            identify=False,
+            rewrites=[("safe_division", {})],
+        )
+        assert result == "SELECT TRY_DIVIDE(a, b) FROM t"
+
+    def test_failing_rewrite_falls_back_and_records_outcome(self):
         query = "SELECT * FROM orders"
         with sql_translation_context(strict=False) as outcomes:
-            result = translate_sql_query(query, target_dialect="nonexistent_invalid_dialect_12345")
+            result = translate_sql_query(query, "duckdb", "netezza", rewrites=[("no_such_rewrite", {})])
         assert result == query
         assert outcomes[0].status == "fallback"
-        assert outcomes[0].normalized_target_dialect is None
+        assert outcomes[0].warning_category == "translation_failed"
 
-    def test_translate_unknown_dialect_fails_in_strict_mode(self):
-        with pytest.raises(SQLTranslationError) as raised:
-            translate_sql_query("SELECT * FROM orders", "duckdb", source_dialect="not_a_dialect", strict=True)
-        assert isinstance(raised.value.__cause__, UnknownSqlDialectError)
+    def test_failing_rewrite_raises_in_strict_mode(self):
+        with sql_translation_context(strict=True) as outcomes:
+            with pytest.raises(SQLTranslationError):
+                translate_sql_query("SELECT 1", "duckdb", "netezza", rewrites=[("no_such_rewrite", {})])
+        assert outcomes[0].status == "failed"
+        assert outcomes[0].error_category == "translation_failed"
 
-    def test_translate_with_preprocessor(self):
-
-        def uppercase_tables(q: str) -> str:
-            return q.replace("orders", "ORDERS")
-
-        query = "SELECT * FROM orders"
-        result = translate_sql_query(query, target_dialect="duckdb", pre_processors=[uppercase_tables])
-        assert "ORDERS" in result
-
-    def test_translate_with_multiple_preprocessors(self):
-
-        def replace_asterisk(q: str) -> str:
-            return q.replace("*", "col1, col2")
-
-        def add_where(q: str) -> str:
-            return q + " WHERE col1 > 0"
-
-        query = "SELECT * FROM orders"
-        result = translate_sql_query(query, target_dialect="duckdb", pre_processors=[replace_asterisk, add_where])
-        assert "col1" in result.lower()
-        assert "col2" in result.lower()
-        assert "where" in result.lower()
-
-    def test_translate_with_postprocessor(self):
-
-        def add_limit(q: str) -> str:
-            return q + " LIMIT 100"
-
-        query = "SELECT * FROM orders"
-        result = translate_sql_query(query, target_dialect="duckdb", post_processors=[add_limit])
-        assert "LIMIT 100" in result.upper() or "LIMIT" in result.upper()
+    def test_empty_input_translates_to_empty_string(self):
+        assert translate_sql_query("", "duckdb", "postgres") == ""
+        assert translate_sql_query(";", "duckdb", "postgres") == ""
 
     def test_translate_default_source_dialect_is_netezza(self):
         query = "SELECT 1 AS test_col"
@@ -576,10 +612,6 @@ class TestSQLTranslation:
         assert outcomes[0].translator == "sqlglot"
 
     def test_translation_context_records_graceful_fallback_metadata(self):
-
-        def fail_preprocessor(_query: str) -> str:
-            raise RuntimeError("synthetic translation failure")
-
         query = "SELECT * FROM orders"
 
         with sql_translation_context(strict=False) as outcomes:
@@ -587,7 +619,7 @@ class TestSQLTranslation:
                 query,
                 target_dialect="duckdb",
                 source_dialect="netezza",
-                pre_processors=[fail_preprocessor],
+                rewrites=[("no_such_rewrite", {})],
             )
 
         assert result == query
@@ -595,10 +627,6 @@ class TestSQLTranslation:
         assert outcomes[0].warning_category == "translation_failed"
 
     def test_strict_translation_raises_and_records_failure_metadata(self):
-
-        def fail_preprocessor(_query: str) -> str:
-            raise RuntimeError("synthetic translation failure")
-
         query = "SELECT * FROM orders"
 
         with sql_translation_context(strict=True) as outcomes:
@@ -607,7 +635,7 @@ class TestSQLTranslation:
                     query,
                     target_dialect="duckdb",
                     source_dialect="netezza",
-                    pre_processors=[fail_preprocessor],
+                    rewrites=[("no_such_rewrite", {})],
                 )
 
         assert outcomes[0].status == "failed"
@@ -732,22 +760,6 @@ class TestIntegrationScenarios:
         assert result
         assert "orders" in result.lower()
         assert "1995-03-15" in result
-
-    def test_tpcds_interval_syntax_scenario(self):
-
-        def normalize_interval(q: str) -> str:
-            import re
-
-            pattern = r"\+\s*(\d+)\s+(days?|months?|years?)"
-            replacement = r"+ INTERVAL '\1' \2"
-            return re.sub(pattern, replacement, q, flags=re.IGNORECASE)
-
-        query = "SELECT * FROM orders WHERE o_date >= '2024-01-01' + 30 days"
-        result = translate_sql_query(
-            query, target_dialect="duckdb", source_dialect="netezza", pre_processors=[normalize_interval]
-        )
-        assert result
-        assert "orders" in result.lower()
 
 
 class TestTpcdsDateIntegerArithmetic:

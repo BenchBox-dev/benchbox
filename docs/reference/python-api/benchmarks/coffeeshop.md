@@ -120,7 +120,7 @@ Query 'sa2' not found
 
 `get_queries(dialect=None) -> dict[str, str]` returns all 11 queries keyed `"SA1"`, `"SA2"`, `"SA3"`, `"SA4"`, `"SA5"`, `"PR1"`, `"PR2"`, `"TR1"`, `"TM1"`, `"QC1"`, `"QC2"`, rendered with the default parameters.
 
-With a `dialect`, each query is translated with SQLGlot. For `duckdb`, `TM1` becomes `SELECT CASE WHEN EXTRACT(HOUR FROM "ol"."order_time") BETWEEN 5 AND 10 ...`: identifiers are quoted. An unknown dialect name logs a warning for each query and returns the untranslated queries.
+With a `dialect`, each query is translated with SQLGlot. For `duckdb`, `TM1` becomes `SELECT CASE WHEN EXTRACT(HOUR FROM "ol"."order_time") BETWEEN 5 AND 10 ...`: identifiers are quoted. An unknown dialect name raises `UnknownSqlDialectError`.
 
 ### `get_schema()`
 

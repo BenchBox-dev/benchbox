@@ -5,7 +5,7 @@ import pytest
 from benchbox._vendor import sqlglot
 from benchbox.core.clickbench.benchmark import ClickBenchBenchmark
 from benchbox.core.clickbench.queries import ClickBenchQueryManager
-from benchbox.utils.dialect_utils import SQLTranslationError
+from benchbox.utils.dialect_utils import UnknownSqlDialectError
 
 pytestmark = [
     pytest.mark.unit,
@@ -95,14 +95,12 @@ def test_alias_dialects_translate_like_postgres(clickbench, clickbench_queries, 
 
 
 def test_unknown_dialect_raises_typed_error_instead_of_returning_original(clickbench):
-    with pytest.raises(SQLTranslationError) as raised:
+    with pytest.raises(UnknownSqlDialectError):
         clickbench.translate_query_text("SELECT COUNT(*) FROM hits", "no_such_dialect")
-    assert raised.value.outcome.status == "failed"
-    assert raised.value.outcome.target_dialect == "no_such_dialect"
 
 
-def test_get_queries_propagates_translation_error(clickbench):
-    with pytest.raises(SQLTranslationError):
+def test_get_queries_propagates_unknown_dialect_error(clickbench):
+    with pytest.raises(UnknownSqlDialectError):
         clickbench.get_queries(dialect="no_such_dialect")
 
 

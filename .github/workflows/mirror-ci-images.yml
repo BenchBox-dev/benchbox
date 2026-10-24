@@ -38,14 +38,24 @@ jobs:
           IMAGE: ${{ matrix.image }}
         run: |
           set -euo pipefail
+          pinned_source=
+          repository=$IMAGE
           case "$IMAGE" in
             clickhouse) compose=docker/clickhouse/docker-compose.yml; service=clickhouse ;;
             trino) compose=docker/trino/docker-compose.yml; service=trino ;;
             cedardb) compose=docker/cedardb/docker-compose.yml; service=cedardb ;;
             postgres) compose=docker/postgresql/docker-compose.yml; service=postgresql ;;
+            postgres17)
+              pinned_source=public.ecr.aws/docker/library/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+              repository=postgres
+              ;;
             *) echo "::error::Unsupported mirror image: $IMAGE"; exit 1 ;;
           esac
-          source=$(CLICKHOUSE_MEMORY_LIMIT=4g docker compose -f "$compose" config --format json | jq -r --arg service "$service" '.services[$service].image')
+          if [ -n "$pinned_source" ]; then
+            source=$pinned_source
+          else
+            source=$(CLICKHOUSE_MEMORY_LIMIT=4g docker compose -f "$compose" config --format json | jq -r --arg service "$service" '.services[$service].image')
+          fi
           if [[ ! "$source" =~ @sha256:[0-9a-f]{64}$ ]]; then
             echo "::error::Mirror source must be pinned to a SHA-256 digest in compose: $source"
             exit 1
@@ -65,8 +75,8 @@ jobs:
             source_repository=${source_leaf%%:*}
           fi
           source_ref="docker://$source_registry/$source_repository@${digest}"
-          destination="ghcr.io/benchbox-dev/$IMAGE@${digest}"
-          copy_destination="ghcr.io/benchbox-dev/$IMAGE:digest-${digest#sha256:}"
+          destination="ghcr.io/benchbox-dev/$repository@${digest}"
+          copy_destination="ghcr.io/benchbox-dev/$repository:digest-${digest#sha256:}"
           destination_ref="docker://$destination"
           mirror_manifest="$RUNNER_TEMP/${IMAGE}-mirror-manifest.json"
           inspect_error="$RUNNER_TEMP/${IMAGE}-mirror-inspect.err"

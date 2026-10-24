@@ -439,6 +439,19 @@ def extract_omp_text(stdout: str) -> str:
     return final
 
 
+def omp_stream_without_answer(stdout: str) -> bool:
+    if extract_omp_text(stdout).strip():
+        return False
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(event, dict):
+            return True
+    return False
+
+
 def parse_output(harness: str, text: str) -> Any:
     if harness == "omp":
         return parse_output("text", extract_omp_text(text))
