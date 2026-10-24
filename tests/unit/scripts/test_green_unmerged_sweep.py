@@ -250,7 +250,8 @@ def _pr_with_hidden_failure() -> dict[str, Any]:
 
 
 def test_apply_publishes_the_digest_when_only_a_hidden_failure_exists(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = FakeGitHubClient(paginated_issues=[_make_pinned_issue(1508, state="open")])
+    cleared = {**_make_pinned_issue(1508, state="open"), "body": f"{sweep.DIGEST_BODY_MARKER}\nNo stranded PRs"}
+    client = FakeGitHubClient(paginated_issues=[cleared])
     monkeypatch.setattr(sweep, "resolve_token", lambda: "test-token")
     monkeypatch.setattr(sweep, "GitHubClient", lambda token: client)
     monkeypatch.setattr(sweep, "fetch_open_prs", lambda *args: [_pr_with_hidden_failure()])
