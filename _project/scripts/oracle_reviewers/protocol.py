@@ -28,6 +28,7 @@ KINDS = (FIRST, FOLLOW_UP, CARRY, REFUSAL)
 
 MARKER_VERSION = 1
 MARKER_LIMIT = 4096
+MARKER_TRIMS = ((120, 120), (80, 80), (50, 60), (32, 40), (24, 24))
 MARKER_OPEN = "<!-- oracle-protocol:"
 _MARKER = re.compile(r"<!-- oracle-protocol: v1 (?P<data>[A-Za-z0-9_-]+) -->\s*\Z")
 _HUNK = re.compile(
@@ -191,12 +192,32 @@ def encode_marker(record: Mapping[str, Any], patches: Mapping[str, str] | None =
     full = render({**record, "patch_map": dict(patches)}) if patches is not None else ""
     if full and len(full) <= MARKER_LIMIT:
         return full
-    trimmed = render(record)
-    if len(trimmed) > MARKER_LIMIT:
-        trimmed = render({**record, "summary": ""})
-    if len(trimmed) > MARKER_LIMIT:
-        raise MarkerError("the protocol record does not fit in a review marker")
-    return trimmed
+    for stripped in ({**record}, {**record, "summary": ""}):
+        trimmed = render(stripped)
+        if len(trimmed) <= MARKER_LIMIT:
+            return trimmed
+    for title_limit, file_limit in MARKER_TRIMS:
+        trimmed = render(
+            {**record, "summary": "", "open_defects": _trim_defects(record["open_defects"], title_limit, file_limit)}
+        )
+        if len(trimmed) <= MARKER_LIMIT:
+            return trimmed
+    raise MarkerError("the protocol record does not fit in a review marker")
+
+
+def _clip_head(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[: max(limit - 1, 0)] + "…"[:limit]
+
+
+def _clip_tail(text: str, limit: int) -> str:
+    return text if len(text) <= limit else ("…" + text[len(text) - limit + 1 :])[:limit]
+
+
+def _trim_defects(defects: Iterable[Mapping[str, Any]], title_limit: int, file_limit: int) -> list[dict[str, Any]]:
+    return [
+        {**item, "title": _clip_head(item["title"], title_limit), "file": _clip_tail(item["file"], file_limit)}
+        for item in defects
+    ]
 
 
 def _valid_defect(item: Any) -> bool:
