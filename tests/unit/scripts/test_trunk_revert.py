@@ -432,7 +432,10 @@ class ArmRun:
         if cmd[:3] == ["gh", "pr", "view"]:
             return 0, json.dumps({"headRefName": self.branch, "commits": self.commits})
         if cmd[:3] == ["gh", "run", "list"]:
-            return self.runs_code, json.dumps(self.runs) if self.runs_code == 0 else "boom"
+            if self.runs_code != 0:
+                return self.runs_code, "boom"
+            ordered = sorted(self.runs, key=lambda item: (item["createdAt"], item["databaseId"]), reverse=True)
+            return 0, json.dumps(ordered[: int(cmd[cmd.index("--limit") + 1])])
         if cmd[:2] == ["gh", "api"] and "/pulls" in cmd[2]:
             if self.pulls_by_sha is not None:
                 sha = cmd[2].split("/commits/")[1].split("/")[0]
@@ -594,6 +597,50 @@ def test_arm_gate_streak_skips_cancelled_and_pending_runs() -> None:
     message = trunk_revert.arm_gate("fix/thing", run=run)
     assert message is not None
     assert "PR #3200" in message
+
+
+def _long_streak(red: int, *, green_first: bool) -> list[dict]:
+    conclusions = (["success"] if green_first else []) + ["failure"] * red
+    runs = _runs(*[("completed", c, timedelta(minutes=len(conclusions) - i + 10)) for i, c in enumerate(conclusions)])
+    for index, item in enumerate(runs):
+        item["headSha"] = f"{index:040x}"
+    return runs
+
+
+def test_arm_gate_finds_a_streak_start_beyond_the_first_page() -> None:
+    runs = _long_streak(40, green_first=True)
+    first_red = runs[1]["headSha"]
+    run = ArmRun(runs, pulls_by_sha={first_red: _merged_pulls(3200)})
+    message = trunk_revert.arm_gate("fix/thing", run=run)
+    assert message is not None
+    assert "PR #3200" in message
+    assert [cmd[cmd.index("--limit") + 1] for cmd in run.calls if cmd[:3] == ["gh", "run", "list"]] == ["30", "100"]
+
+
+def test_arm_gate_exempts_the_revert_of_a_streak_start_beyond_the_first_page() -> None:
+    runs = _long_streak(40, green_first=True)
+    first_red = runs[1]["headSha"]
+    commits = [{"messageHeadline": "Revert", "messageBody": f"This reverts commit {first_red}."}]
+    run = ArmRun(runs, branch="fix/revert-3200", commits=commits)
+    assert trunk_revert.arm_gate("fix/revert-3200", run=run) is None
+
+
+def test_arm_gate_treats_the_oldest_run_as_the_start_when_history_is_exhausted() -> None:
+    runs = _long_streak(40, green_first=False)
+    oldest = runs[0]["headSha"]
+    run = ArmRun(runs, pulls_by_sha={oldest: _merged_pulls(3200)})
+    message = trunk_revert.arm_gate("fix/thing", run=run)
+    assert message is not None
+    assert "PR #3200" in message
+
+
+def test_arm_gate_fails_closed_when_the_streak_outruns_the_bounded_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(trunk_revert, "RUN_WINDOWS", (30, 100))
+    runs = _long_streak(150, green_first=True)
+    commits = [{"messageHeadline": "Revert", "messageBody": f"This reverts commit {runs[120]['headSha']}."}]
+    run = ArmRun(runs, branch="fix/revert-x", commits=commits)
+    with pytest.raises(trunk_revert.TrunkError, match="cannot be established"):
+        trunk_revert.arm_gate("fix/revert-x", run=run)
 
 
 def test_arm_gate_fails_closed_when_runs_are_unreadable() -> None:

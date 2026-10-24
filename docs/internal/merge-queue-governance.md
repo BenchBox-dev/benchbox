@@ -207,7 +207,9 @@ refuses at once, naming the culprit PR and run, while trunk is red and no
 revert of the culprit commit is on `develop`. The culprit is the head of the
 first red completed run after the last green one, so a failure that persists
 across later merges still blames the commit that broke it, and only a revert
-of that commit is exempt. PRs
+of that commit is exempt. The gate widens its run fetch (30, 100, 300, then
+1000 runs) until it finds a green run or the run history ends, and refuses
+when the streak outruns that bound. PRs
 armed before the run failed still merge, and arming outside these targets
 bypasses the gate; see [develop push gaps](develop-post-merge-gaps.md).
 
