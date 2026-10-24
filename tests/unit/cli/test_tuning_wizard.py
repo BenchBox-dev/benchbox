@@ -123,6 +123,24 @@ def test_enable_layout_reports_missing_platform_template() -> None:
     assert cfg.table_tunings == {}
 
 
+@pytest.mark.parametrize("platform", ["bigquery", "clickhouse", "snowflake"])
+def test_partitioning_comes_from_default_profile_for_any_platform(platform: str) -> None:
+    cfg = UnifiedTuningConfiguration()
+    assert cfg.enable_platform_optimization(TuningType.PARTITIONING, benchmark="tpch", platform=platform) is True
+    assert {name for name, present in _table_slots(cfg).items() if "partitioning" in present} == {"LINEITEM", "ORDERS"}
+
+
+def test_partitioning_warning_names_the_default_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    printed: list[str] = []
+    monkeypatch.setattr(t.console, "print", lambda *a, **k: printed.append(str(a[0])))
+    cfg = UnifiedTuningConfiguration()
+    assert t._apply_table_layout(cfg, TuningType.PARTITIONING, "Partitioning", "nyctaxi", "bigquery") is False
+    assert cfg.table_tunings == {}
+    assert printed == [
+        "[yellow]⚠ Partitioning not enabled: no default partitioning profile exists for nyctaxi[/yellow]"
+    ]
+
+
 def test_enable_layout_declines_benchmark_without_template() -> None:
     cfg = UnifiedTuningConfiguration()
     cfg.enable_platform_optimization(TuningType.CLUSTERING, benchmark="nyctaxi")
