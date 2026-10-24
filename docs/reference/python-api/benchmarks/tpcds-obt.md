@@ -107,7 +107,7 @@ FileNotFoundError Template for query 1
 | Member | Meaning |
 | --- | --- |
 | `name` | `"tpcds_sales_returns_obt"`. |
-| `columns` | A list of 518 column objects. Each has `name`, `data_type`, `size`, `nullable`, `primary_key`, `source_table`, `source_column`, `role` and `description`. The first column is `channel`, a `VARCHAR` of size 10 that is not nullable. |
+| `columns` | A list of 715 column objects. Each has `name`, `data_type`, `size`, `nullable`, `primary_key`, `source_table`, `source_column`, `role` and `description`. The first column is `channel`, a `VARCHAR` of size 10 that is not nullable. |
 | `get_create_table_sql()` | The `CREATE TABLE` statement, identical to `get_create_tables_sql()`. |
 | `get_primary_key()` | The primary-key columns. It returns an empty list: the table has no primary key. |
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import re
 from collections.abc import Mapping
@@ -10,6 +11,7 @@ from benchbox.base import BaseBenchmark
 from benchbox.core.tpcds.generator import TPCDSDataGenerator
 from benchbox.core.tpcds_obt.etl.transformer import SUPPORTED_CHANNELS, TPCDSOBTTransformer
 from benchbox.core.tpcds_obt.queries import TPCDSOBTQueryManager
+from benchbox.core.tpcds_obt.schema import get_obt_columns
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
@@ -44,7 +46,7 @@ class TPCDSOBTBenchmark(BaseBenchmark):
             raise ValueError("TPC-DS-OBT requires scale_factor >= 1.0 to align with TPC-DS generation.")
 
         self._name = "TPC-DS One Big Table Benchmark"
-        self._version = "0.1"
+        self._version = "0.2"
         self._description = (
             "TPC-DS benchmark adapted to a single wide One Big Table with sales + returns merged across channels."
         )
@@ -144,10 +146,31 @@ class TPCDSOBTBenchmark(BaseBenchmark):
 
         return result
 
+    def _manifest_matches_model(self, manifest_path: Path) -> bool:
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return False
+        if not isinstance(manifest, dict):
+            return False
+        return (
+            manifest.get("column_count") == len(get_obt_columns(self.dimension_mode))
+            and str(manifest.get("mode", "")).lower() == self.dimension_mode.lower()
+            and sorted(manifest.get("channels") or []) == sorted(channel.lower() for channel in self.channels)
+            and "coverage" in manifest
+        )
+
     def _existing_obt(self, output_format: str) -> bool:
         existing_path = self.output_dir / f"tpcds_sales_returns_obt.{output_format}"
         manifest_path = self.output_dir / "tpcds_sales_returns_obt_manifest.json"
         if existing_path.exists() and manifest_path.exists():
+            if not self._manifest_matches_model(manifest_path):
+                logger.info(
+                    "Existing OBT output at %s does not match the current OBT model (columns, mode, channels or "
+                    "coverage record). Regenerating.",
+                    existing_path,
+                )
+                return False
             self.tables["tpcds_sales_returns_obt"] = existing_path
             self.manifest = manifest_path
             return True

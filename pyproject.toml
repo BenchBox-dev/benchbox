@@ -722,8 +722,6 @@ ignore_rules = [
         "benchbox/core/tpcds/generator/manager.py",
     ] },
 
-    { function_names = ["_fact_map", "_income_band_aliases", "_role_aliases"], path_contains = ["benchbox/core/tpcds_obt/etl/transformer.py"] },
-
     { function_names = ["_load_base_queries", "_load_etl_queries", "get_queries_by_complexity", "get_queries_by_frequency", "get_queries_by_severity", "_load_base_query_metadata", "_load_etl_metadata", "get_queries_by_category"], path_contains = [
         "benchbox/core/tpcdi/queries.py",
         "benchbox/core/tpcdi/query_etl.py",

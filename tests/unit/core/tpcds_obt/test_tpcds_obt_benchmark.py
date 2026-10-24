@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from pathlib import Path
@@ -6,7 +7,7 @@ from typing import Any
 import pytest
 
 from benchbox.core.tpcds_obt.benchmark import TPCDSOBTBenchmark
-from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME
+from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME, get_obt_columns
 
 pytestmark = [
     pytest.mark.unit,
@@ -130,6 +131,66 @@ def test_existing_obt_logs_when_dat_requested_but_parquet_exists(
 
     assert result is False
     assert any("Regenerating as dat" in m for m in caplog.messages)
+
+
+def _write_existing_output(out_dir: Path, manifest: dict[str, Any]) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "tpcds_sales_returns_obt.parquet").write_text("parquet data\n")
+    (out_dir / "tpcds_sales_returns_obt_manifest.json").write_text(json.dumps(manifest))
+
+
+def _current_manifest() -> dict[str, Any]:
+    return {
+        "mode": "full",
+        "channels": ["store", "web", "catalog"],
+        "column_count": len(get_obt_columns("full")),
+        "coverage": {"enforced": True},
+    }
+
+
+def test_existing_obt_is_reused_when_the_manifest_matches_the_model(tmp_path: Path) -> None:
+    out_dir = tmp_path / "out"
+    _write_existing_output(out_dir, _current_manifest())
+
+    benchmark = TPCDSOBTBenchmark(scale_factor=1.0, output_dir=out_dir)
+
+    assert benchmark._existing_obt("parquet") is True
+    assert benchmark.tables[OBT_TABLE_NAME] == out_dir / "tpcds_sales_returns_obt.parquet"
+
+
+@pytest.mark.parametrize(
+    "stale",
+    [
+        {"column_count": 518},
+        {"coverage": None},
+        {"mode": "minimal"},
+        {"channels": ["store"]},
+    ],
+    ids=["old-width", "no-coverage-record", "other-mode", "other-channels"],
+)
+def test_existing_obt_is_regenerated_when_the_manifest_does_not_match_the_model(
+    tmp_path: Path, stale: dict[str, Any], caplog: pytest.LogCaptureFixture
+) -> None:
+    out_dir = tmp_path / "out"
+    manifest = {**_current_manifest(), **stale}
+    manifest = {key: value for key, value in manifest.items() if value is not None}
+    _write_existing_output(out_dir, manifest)
+
+    benchmark = TPCDSOBTBenchmark(scale_factor=1.0, output_dir=out_dir)
+
+    with caplog.at_level(logging.INFO, logger="benchbox.core.tpcds_obt.benchmark"):
+        assert benchmark._existing_obt("parquet") is False
+    assert OBT_TABLE_NAME not in benchmark.tables
+    assert any("does not match the current OBT model" in message for message in caplog.messages)
+
+
+def test_existing_obt_is_regenerated_when_the_manifest_is_unreadable(tmp_path: Path) -> None:
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+    (out_dir / "tpcds_sales_returns_obt.parquet").write_text("parquet data\n")
+    (out_dir / "tpcds_sales_returns_obt_manifest.json").write_text("{not json")
+
+    assert TPCDSOBTBenchmark(scale_factor=1.0, output_dir=out_dir)._existing_obt("parquet") is False
 
 
 class TestDataFrameMode:

@@ -1,0 +1,430 @@
+version: 1
+table: tpcds_sales_returns_obt
+channels:
+  store:
+    sales: {table: store_sales, alias: ss}
+    returns: {table: store_returns, alias: sr, 'on': ss.ss_ticket_number = sr.sr_ticket_number AND ss.ss_item_sk = sr.sr_item_sk}
+  web:
+    sales: {table: web_sales, alias: ws}
+    returns: {table: web_returns, alias: wr, 'on': ws.ws_order_number = wr.wr_order_number AND ws.ws_item_sk = wr.wr_item_sk}
+  catalog:
+    sales: {table: catalog_sales, alias: cs}
+    returns: {table: catalog_returns, alias: cr, 'on': cs.cs_order_number = cr.cr_order_number AND cs.cs_item_sk = cr.cr_item_sk}
+facts:
+- name: channel
+  data_type: VARCHAR
+  size: 10
+  nullable: false
+  description: 'Channel discriminator: store|web|catalog'
+  sources: {store: '''store''', web: '''web''', catalog: '''catalog'''}
+- name: sale_id
+  data_type: INTEGER
+  nullable: false
+  description: Channel-specific sale identifier (ticket/order number)
+  sources: {store: ss.ss_ticket_number, web: ws.ws_order_number, catalog: cs.cs_order_number}
+- name: item_sk
+  data_type: INTEGER
+  nullable: false
+  sources: {store: ss.ss_item_sk, web: ws.ws_item_sk, catalog: cs.cs_item_sk}
+- name: sold_date_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_sold_date_sk, web: ws.ws_sold_date_sk, catalog: cs.cs_sold_date_sk}
+- name: sold_time_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_sold_time_sk, web: ws.ws_sold_time_sk, catalog: cs.cs_sold_time_sk}
+- name: ship_date_sk
+  data_type: INTEGER
+  sources: {web: ws.ws_ship_date_sk, catalog: cs.cs_ship_date_sk}
+- name: returned_date_sk
+  data_type: INTEGER
+  sources: {store: sr.sr_returned_date_sk, web: wr.wr_returned_date_sk, catalog: cr.cr_returned_date_sk}
+- name: returned_time_sk
+  data_type: INTEGER
+  sources: {store: sr.sr_return_time_sk, web: wr.wr_returned_time_sk, catalog: cr.cr_returned_time_sk}
+- name: bill_customer_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_customer_sk, web: ws.ws_bill_customer_sk, catalog: cs.cs_bill_customer_sk}
+- name: bill_cdemo_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_cdemo_sk, web: ws.ws_bill_cdemo_sk, catalog: cs.cs_bill_cdemo_sk}
+- name: bill_hdemo_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_hdemo_sk, web: ws.ws_bill_hdemo_sk, catalog: cs.cs_bill_hdemo_sk}
+- name: bill_addr_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_addr_sk, web: ws.ws_bill_addr_sk, catalog: cs.cs_bill_addr_sk}
+- name: ship_customer_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_customer_sk, web: ws.ws_ship_customer_sk, catalog: cs.cs_ship_customer_sk}
+- name: ship_cdemo_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_cdemo_sk, web: ws.ws_ship_cdemo_sk, catalog: cs.cs_ship_cdemo_sk}
+- name: ship_hdemo_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_hdemo_sk, web: ws.ws_ship_hdemo_sk, catalog: cs.cs_ship_hdemo_sk}
+- name: ship_addr_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_addr_sk, web: ws.ws_ship_addr_sk, catalog: cs.cs_ship_addr_sk}
+- name: store_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_store_sk}
+- name: web_site_sk
+  data_type: INTEGER
+  sources: {web: ws.ws_web_site_sk}
+- name: web_page_sk
+  data_type: INTEGER
+  sources: {web: ws.ws_web_page_sk}
+- name: call_center_sk
+  data_type: INTEGER
+  sources: {catalog: cs.cs_call_center_sk}
+- name: catalog_page_sk
+  data_type: INTEGER
+  sources: {catalog: cs.cs_catalog_page_sk}
+- name: ship_mode_sk
+  data_type: INTEGER
+  sources: {web: ws.ws_ship_mode_sk, catalog: cs.cs_ship_mode_sk}
+- name: warehouse_sk
+  data_type: INTEGER
+  sources: {web: ws.ws_warehouse_sk, catalog: cs.cs_warehouse_sk}
+- name: promo_sk
+  data_type: INTEGER
+  sources: {store: ss.ss_promo_sk, web: ws.ws_promo_sk, catalog: cs.cs_promo_sk}
+- name: reason_sk
+  data_type: INTEGER
+  sources: {store: sr.sr_reason_sk, web: wr.wr_reason_sk, catalog: cr.cr_reason_sk}
+- name: quantity
+  data_type: INTEGER
+  sources: {store: ss.ss_quantity, web: ws.ws_quantity, catalog: cs.cs_quantity}
+- name: wholesale_cost
+  data_type: DECIMAL
+  sources: {store: ss.ss_wholesale_cost, web: ws.ws_wholesale_cost, catalog: cs.cs_wholesale_cost}
+- name: list_price
+  data_type: DECIMAL
+  sources: {store: ss.ss_list_price, web: ws.ws_list_price, catalog: cs.cs_list_price}
+- name: sales_price
+  data_type: DECIMAL
+  sources: {store: ss.ss_sales_price, web: ws.ws_sales_price, catalog: cs.cs_sales_price}
+- name: ext_discount_amt
+  data_type: DECIMAL
+  sources: {store: ss.ss_ext_discount_amt, web: ws.ws_ext_discount_amt, catalog: cs.cs_ext_discount_amt}
+- name: ext_sales_price
+  data_type: DECIMAL
+  sources: {store: ss.ss_ext_sales_price, web: ws.ws_ext_sales_price, catalog: cs.cs_ext_sales_price}
+- name: ext_wholesale_cost
+  data_type: DECIMAL
+  sources: {store: ss.ss_ext_wholesale_cost, web: ws.ws_ext_wholesale_cost, catalog: cs.cs_ext_wholesale_cost}
+- name: ext_list_price
+  data_type: DECIMAL
+  sources: {store: ss.ss_ext_list_price, web: ws.ws_ext_list_price, catalog: cs.cs_ext_list_price}
+- name: ext_tax
+  data_type: DECIMAL
+  sources: {store: ss.ss_ext_tax, web: ws.ws_ext_tax, catalog: cs.cs_ext_tax}
+- name: coupon_amt
+  data_type: DECIMAL
+  sources: {store: ss.ss_coupon_amt, web: ws.ws_coupon_amt, catalog: cs.cs_coupon_amt}
+- name: ext_ship_cost
+  data_type: DECIMAL
+  sources: {web: ws.ws_ext_ship_cost, catalog: cs.cs_ext_ship_cost}
+- name: net_paid
+  data_type: DECIMAL
+  sources: {store: ss.ss_net_paid, web: ws.ws_net_paid, catalog: cs.cs_net_paid}
+- name: net_paid_inc_tax
+  data_type: DECIMAL
+  sources: {store: ss.ss_net_paid_inc_tax, web: ws.ws_net_paid_inc_tax, catalog: cs.cs_net_paid_inc_tax}
+- name: net_paid_inc_ship
+  data_type: DECIMAL
+  sources: {web: ws.ws_net_paid_inc_ship, catalog: cs.cs_net_paid_inc_ship}
+- name: net_paid_inc_ship_tax
+  data_type: DECIMAL
+  sources: {web: ws.ws_net_paid_inc_ship_tax, catalog: cs.cs_net_paid_inc_ship_tax}
+- name: net_profit
+  data_type: DECIMAL
+  sources: {store: ss.ss_net_profit, web: ws.ws_net_profit, catalog: cs.cs_net_profit}
+- name: return_quantity
+  data_type: INTEGER
+  sources: {store: sr.sr_return_quantity, web: wr.wr_return_quantity, catalog: cr.cr_return_quantity}
+- name: return_amount
+  data_type: DECIMAL
+  sources: {store: sr.sr_return_amt, web: wr.wr_return_amt, catalog: cr.cr_return_amount}
+- name: return_tax
+  data_type: DECIMAL
+  sources: {store: sr.sr_return_tax, web: wr.wr_return_tax, catalog: cr.cr_return_tax}
+- name: return_amount_inc_tax
+  data_type: DECIMAL
+  sources: {store: sr.sr_return_amt_inc_tax, web: wr.wr_return_amt_inc_tax, catalog: cr.cr_return_amt_inc_tax}
+- name: return_fee
+  data_type: DECIMAL
+  sources: {store: sr.sr_fee, web: wr.wr_fee, catalog: cr.cr_fee}
+- name: return_ship_cost
+  data_type: DECIMAL
+  sources: {store: sr.sr_return_ship_cost, web: wr.wr_return_ship_cost, catalog: cr.cr_return_ship_cost}
+- name: refunded_cash
+  data_type: DECIMAL
+  sources: {store: sr.sr_refunded_cash, web: wr.wr_refunded_cash, catalog: cr.cr_refunded_cash}
+- name: reversed_charge
+  data_type: DECIMAL
+  sources: {store: sr.sr_reversed_charge, web: wr.wr_reversed_charge, catalog: cr.cr_reversed_charge}
+- name: account_credit
+  data_type: DECIMAL
+  sources: {web: wr.wr_account_credit}
+- name: store_credit
+  data_type: DECIMAL
+  sources: {store: sr.sr_store_credit, catalog: cr.cr_store_credit}
+- name: return_net_loss
+  data_type: DECIMAL
+  sources: {store: sr.sr_net_loss, web: wr.wr_net_loss, catalog: cr.cr_net_loss}
+- name: has_return
+  data_type: CHAR
+  size: 1
+  nullable: false
+  description: Y/N flag set when a matching return exists for the sale
+  sources: {store: CASE WHEN sr.sr_ticket_number IS NULL THEN 'N' ELSE 'Y' END, web: CASE WHEN wr.wr_order_number IS NULL THEN 'N' ELSE 'Y' END, catalog: CASE WHEN cr.cr_order_number IS NULL THEN 'N' ELSE
+      'Y' END}
+roles:
+- name: sold_date
+  table: date_dim
+  prefix: sold_date_
+  description: Sold date attributes
+  minimal: true
+  keys: {store: ss.ss_sold_date_sk, web: ws.ws_sold_date_sk, catalog: cs.cs_sold_date_sk}
+- name: sold_time
+  table: time_dim
+  prefix: sold_time_
+  description: Sold time attributes
+  minimal: true
+  keys: {store: ss.ss_sold_time_sk, web: ws.ws_sold_time_sk, catalog: cs.cs_sold_time_sk}
+- name: ship_date
+  table: date_dim
+  prefix: ship_date_
+  description: Shipment date attributes
+  minimal: true
+  keys: {web: ws.ws_ship_date_sk, catalog: cs.cs_ship_date_sk}
+- name: return_date
+  table: date_dim
+  prefix: return_date_
+  description: Return date attributes
+  minimal: true
+  keys: {store: sr.sr_returned_date_sk, web: wr.wr_returned_date_sk, catalog: cr.cr_returned_date_sk}
+- name: return_time
+  table: time_dim
+  prefix: return_time_
+  description: Return time attributes
+  minimal: true
+  keys: {store: sr.sr_return_time_sk, web: wr.wr_returned_time_sk, catalog: cr.cr_returned_time_sk}
+- name: item
+  table: item
+  prefix: item_
+  description: Item attributes
+  minimal: true
+  keys: {store: ss.ss_item_sk, web: ws.ws_item_sk, catalog: cs.cs_item_sk}
+- name: promotion
+  table: promotion
+  prefix: promo_
+  description: Promotion attributes
+  minimal: true
+  keys: {store: ss.ss_promo_sk, web: ws.ws_promo_sk, catalog: cs.cs_promo_sk}
+- name: reason
+  table: reason
+  prefix: reason_
+  description: Return reason attributes
+  minimal: true
+  keys: {store: sr.sr_reason_sk, web: wr.wr_reason_sk, catalog: cr.cr_reason_sk}
+- name: store
+  table: store
+  prefix: store_
+  description: Store attributes
+  minimal: true
+  keys: {store: ss.ss_store_sk}
+- name: web_site
+  table: web_site
+  prefix: web_site_
+  description: Web site attributes
+  minimal: true
+  keys: {web: ws.ws_web_site_sk}
+- name: web_page
+  table: web_page
+  prefix: web_page_
+  description: Web page attributes
+  minimal: true
+  keys: {web: ws.ws_web_page_sk}
+- name: call_center
+  table: call_center
+  prefix: call_center_
+  description: Call center attributes
+  minimal: true
+  keys: {catalog: cs.cs_call_center_sk}
+- name: catalog_page
+  table: catalog_page
+  prefix: catalog_page_
+  description: Catalog page attributes
+  minimal: true
+  keys: {catalog: cs.cs_catalog_page_sk}
+- name: ship_mode
+  table: ship_mode
+  prefix: ship_mode_
+  description: Ship mode attributes
+  minimal: true
+  keys: {web: ws.ws_ship_mode_sk, catalog: cs.cs_ship_mode_sk}
+- name: warehouse
+  table: warehouse
+  prefix: warehouse_
+  description: Warehouse attributes
+  minimal: true
+  keys: {web: ws.ws_warehouse_sk, catalog: cs.cs_warehouse_sk}
+- name: bill_customer
+  table: customer
+  prefix: bill_customer_
+  description: Billing customer attributes
+  minimal: true
+  keys: {store: ss.ss_customer_sk, web: ws.ws_bill_customer_sk, catalog: cs.cs_bill_customer_sk}
+- name: ship_customer
+  table: customer
+  prefix: ship_customer_
+  description: Shipping customer attributes
+  minimal: true
+  keys: {store: ss.ss_customer_sk, web: ws.ws_ship_customer_sk, catalog: cs.cs_ship_customer_sk}
+- name: returning_customer
+  table: customer
+  prefix: returning_customer_
+  description: Returning customer attributes
+  keys: {store: sr.sr_customer_sk, web: wr.wr_returning_customer_sk, catalog: cr.cr_returning_customer_sk}
+- name: refunded_customer
+  table: customer
+  prefix: refunded_customer_
+  description: Refunded customer attributes
+  keys: {store: sr.sr_customer_sk, web: wr.wr_refunded_customer_sk, catalog: cr.cr_refunded_customer_sk}
+- name: bill_cdemo
+  table: customer_demographics
+  prefix: bill_cdemo_
+  description: Billing customer demographics attributes
+  minimal: true
+  keys: {store: ss.ss_cdemo_sk, web: ws.ws_bill_cdemo_sk, catalog: cs.cs_bill_cdemo_sk}
+- name: ship_cdemo
+  table: customer_demographics
+  prefix: ship_cdemo_
+  description: Shipping customer demographics attributes
+  minimal: true
+  keys: {store: ss.ss_cdemo_sk, web: ws.ws_ship_cdemo_sk, catalog: cs.cs_ship_cdemo_sk}
+- name: returning_cdemo
+  table: customer_demographics
+  prefix: returning_cdemo_
+  description: Returning customer demographics attributes
+  keys: {store: sr.sr_cdemo_sk, web: wr.wr_returning_cdemo_sk, catalog: cr.cr_returning_cdemo_sk}
+- name: refunded_cdemo
+  table: customer_demographics
+  prefix: refunded_cdemo_
+  description: Refunded customer demographics attributes
+  keys: {store: sr.sr_cdemo_sk, web: wr.wr_refunded_cdemo_sk, catalog: cr.cr_refunded_cdemo_sk}
+- name: bill_hdemo
+  table: household_demographics
+  prefix: bill_hdemo_
+  description: Billing household demographics attributes
+  minimal: true
+  income_band: true
+  keys: {store: ss.ss_hdemo_sk, web: ws.ws_bill_hdemo_sk, catalog: cs.cs_bill_hdemo_sk}
+- name: ship_hdemo
+  table: household_demographics
+  prefix: ship_hdemo_
+  description: Shipping household demographics attributes
+  minimal: true
+  income_band: true
+  keys: {store: ss.ss_hdemo_sk, web: ws.ws_ship_hdemo_sk, catalog: cs.cs_ship_hdemo_sk}
+- name: returning_hdemo
+  table: household_demographics
+  prefix: returning_hdemo_
+  description: Returning household demographics attributes
+  income_band: true
+  keys: {store: sr.sr_hdemo_sk, web: wr.wr_returning_hdemo_sk, catalog: cr.cr_returning_hdemo_sk}
+- name: refunded_hdemo
+  table: household_demographics
+  prefix: refunded_hdemo_
+  description: Refunded household demographics attributes
+  income_band: true
+  keys: {store: sr.sr_hdemo_sk, web: wr.wr_refunded_hdemo_sk, catalog: cr.cr_refunded_hdemo_sk}
+- name: bill_address
+  table: customer_address
+  prefix: bill_addr_
+  description: Billing address attributes
+  minimal: true
+  keys: {store: ss.ss_addr_sk, web: ws.ws_bill_addr_sk, catalog: cs.cs_bill_addr_sk}
+- name: ship_address
+  table: customer_address
+  prefix: ship_addr_
+  description: Shipping address attributes
+  minimal: true
+  keys: {store: ss.ss_addr_sk, web: ws.ws_ship_addr_sk, catalog: cs.cs_ship_addr_sk}
+- name: returning_address
+  table: customer_address
+  prefix: returning_addr_
+  description: Returning address attributes
+  keys: {store: sr.sr_addr_sk, web: wr.wr_returning_addr_sk, catalog: cr.cr_returning_addr_sk}
+- name: refunded_address
+  table: customer_address
+  prefix: refunded_addr_
+  description: Refunded address attributes
+  keys: {store: sr.sr_addr_sk, web: wr.wr_refunded_addr_sk, catalog: cr.cr_refunded_addr_sk}
+- name: bill_cur_addr
+  table: customer_address
+  prefix: bill_cur_addr_
+  description: Billing customer's current address attributes
+  via: {role: bill_customer, column: c_current_addr_sk}
+- name: bill_cur_cdemo
+  table: customer_demographics
+  prefix: bill_cur_cdemo_
+  description: Billing customer's current demographics attributes
+  via: {role: bill_customer, column: c_current_cdemo_sk}
+- name: bill_cur_hdemo
+  table: household_demographics
+  prefix: bill_cur_hdemo_
+  description: Billing customer's current household demographics attributes
+  income_band: true
+  via: {role: bill_customer, column: c_current_hdemo_sk}
+- name: bill_first_sales_date
+  table: date_dim
+  prefix: bill_first_sales_date_
+  description: Billing customer's first sales date attributes
+  via: {role: bill_customer, column: c_first_sales_date_sk}
+- name: bill_first_shipto_date
+  table: date_dim
+  prefix: bill_first_shipto_date_
+  description: Billing customer's first ship-to date attributes
+  via: {role: bill_customer, column: c_first_shipto_date_sk}
+- name: returning_cur_addr
+  table: customer_address
+  prefix: returning_cur_addr_
+  description: Returning customer's current address attributes
+  via: {role: returning_customer, column: c_current_addr_sk}
+- name: returning_cur_cdemo
+  table: customer_demographics
+  prefix: returning_cur_cdemo_
+  description: Returning customer's current demographics attributes
+  via: {role: returning_customer, column: c_current_cdemo_sk}
+- name: returning_cur_hdemo
+  table: household_demographics
+  prefix: returning_cur_hdemo_
+  description: Returning customer's current household demographics attributes
+  income_band: true
+  via: {role: returning_customer, column: c_current_hdemo_sk}
+- name: return_store
+  table: store
+  prefix: return_store_
+  description: Store that took the return
+  keys: {store: sr.sr_store_sk}
+- name: return_call_center
+  table: call_center
+  prefix: return_call_center_
+  description: Call center that took the return
+  keys: {catalog: cr.cr_call_center_sk}
+- name: return_catalog_page
+  table: catalog_page
+  prefix: return_catalog_page_
+  description: Catalog page the return refers to
+  keys: {catalog: cr.cr_catalog_page_sk}
+- name: return_web_page
+  table: web_page
+  prefix: return_web_page_
+  description: Web page the return was made from
+  keys: {web: wr.wr_web_page_sk}
+coverage:
+  sold_date_range: [1998-01-01, 2002-12-31]
+  every_item_sold: true
