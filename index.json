@@ -2998,15 +2998,10 @@
       "title": "Make `make ci-lint` mirror the pr.yml lint job 1:1 and pin the parity with a fast test"
     },
     "ci-lint-marker-collection-once-20261023": {
-      "claim": {
-        "expires_at": "2026-10-25T04:47:44Z",
-        "generation": "c4d31c9394264926acedebd541bf6cb5",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Collect the test suite once, without assertion rewriting, for the lint job's marker checks"
     },
     "ci-lint-parity-pin": {
