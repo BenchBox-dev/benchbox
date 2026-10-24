@@ -73,7 +73,7 @@ Databricks data-skipping documentation
 | BigQuery | joins, filters, group/order locality | clustering, with the four-column limit explicit; distribution keys are unsupported |
 | Redshift | distribution plus locality candidates | dist-key plus sort-key decisions; dist-key remains limited to a single key |
 | Redshift | locality candidates | sort-key decisions |
-| Snowflake | locality candidates | clustering keys on fact tables only, at most three per table ordered lowest to highest SF1 cardinality (date keys first, then foreign keys by referenced row count, then the table's own key) |
+| Snowflake | locality candidates | clustering keys on fact tables only (dimension candidates are waived with a reason), at most three per table ordered lowest to highest SF1 cardinality (date keys first, then foreign keys by referenced row count, then the table's own key) |
 | Snowflake | distribution candidates | unsupported; no user-managed distribution key |
 
 The checked-in ClickHouse templates (`examples/tunings/clickhouse/`) are not
@@ -113,11 +113,13 @@ When a TPC tuned template is applied, result execution metadata includes
 - `platform_physical_tuning_mechanisms`
 - `logical_profile_coverage`
 - `unmapped_logical_candidates`
+- `waived_logical_candidates`
 - `validation_status`
 
 The companion tuning payload also includes `logical_profile`, and the platform
-tuning summary includes the profile id, version, template hash, coverage, and
-physical mechanisms.
+tuning summary includes the profile id, version, template hash, coverage,
+physical mechanisms, `validation_status` (`passed` or `failed`), and the
+unmapped and waived candidates with their reasons.
 
 Databricks platform metadata also records requested and resolved clustering
 strategy plus `applied_layout_operations` and `skipped_layout_operations`.

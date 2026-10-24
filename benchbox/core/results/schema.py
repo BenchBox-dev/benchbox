@@ -1688,6 +1688,9 @@ def _build_tuning_summary(result: BenchmarkResults) -> dict[str, Any]:
         }
         if coverage:
             logical_profile["coverage"] = coverage
+        logical_profile["validation_status"] = tuning_profile.get("validation_status")
+        logical_profile["unmapped_candidates"] = tuning_profile.get("unmapped_logical_candidates")
+        logical_profile["waived_candidates"] = tuning_profile.get("waived_logical_candidates")
         summary["logical_profile"] = {key: value for key, value in logical_profile.items() if value}
 
     return summary

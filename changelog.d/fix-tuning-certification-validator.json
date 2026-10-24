@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "lead": "Tuned-template certification now fails when validation fails",
+      "text": "Tuned-template certification no longer passes templates its own validator fails. Snowflake clustering applies to the fact tables the tuning profile declares, so dimension candidates are waived with a reason, and the validator fails a template that clusters a waived table. Capped candidates are counted in rank order and rejects waivers the profile does not support. Result bundles carry the profile validation status and the unmapped and waived candidate reasons.",
+      "platforms": [
+        "snowflake"
+      ],
+      "benchmarks": [
+        "tpch",
+        "tpcds",
+        "ssb"
+      ]
+    }
+  ]
+}

@@ -22,7 +22,9 @@ from benchbox.core.tuning.platform_capabilities import (
     UNSUPPORTED,
     WAIVED,
     PlatformTuningMapping,
+    candidate_cap_rank,
     map_candidate_to_platform,
+    waiver_is_justified,
 )
 from benchbox.core.tuning.workload_profiles import (
     ACCEPTED,
@@ -68,6 +70,10 @@ class CandidateTemplateMapping:
     @property
     def mapped(self) -> bool:
         return self.platform_mapping.decision == MAPPED and not self.missing_tuning_types
+
+    @property
+    def waived(self) -> bool:
+        return self.platform_mapping.decision == WAIVED
 
     @property
     def capped(self) -> bool:
@@ -127,7 +133,7 @@ class TuningProfileValidationResult:
 
     @property
     def waived_count(self) -> int:
-        return sum(1 for mapping in self.mappings if mapping.platform_mapping.decision == WAIVED)
+        return sum(1 for mapping in self.mappings if mapping.waived)
 
     @property
     def physical_mechanisms(self) -> tuple[str, ...]:
@@ -143,7 +149,7 @@ class TuningProfileValidationResult:
     def unmapped_logical_candidates(self) -> tuple[dict[str, Any], ...]:
         unmapped: list[dict[str, Any]] = []
         for mapping in self.mappings:
-            if mapping.mapped or mapping.capped:
+            if mapping.mapped or mapping.capped or mapping.waived:
                 continue
             entry = {
                 "candidate": mapping.candidate_key,
@@ -158,6 +164,14 @@ class TuningProfileValidationResult:
                 ]
             unmapped.append(entry)
         return tuple(unmapped)
+
+    @property
+    def waived_logical_candidates(self) -> tuple[dict[str, str], ...]:
+        return tuple(
+            {"candidate": mapping.candidate_key, "reason": mapping.platform_mapping.reason}
+            for mapping in self.mappings
+            if mapping.waived
+        )
 
     def to_metadata(self, *, max_unmapped: int = 20) -> dict[str, Any]:
         return {
@@ -177,6 +191,7 @@ class TuningProfileValidationResult:
                 "dropped_low_evidence_count": self.dropped_low_evidence_count,
             },
             "unmapped_logical_candidates": list(self.unmapped_logical_candidates[:max_unmapped]),
+            "waived_logical_candidates": list(self.waived_logical_candidates[:max_unmapped]),
             "validation_status": "passed" if self.is_valid else "failed",
         }
 
@@ -202,7 +217,7 @@ def validate_tuning_template(
     mappings: list[CandidateTemplateMapping] = []
 
     capped_slots: dict[tuple[str, str], int] = {}
-    for candidate in candidates:
+    for candidate in sorted(candidates, key=lambda item: candidate_cap_rank(platform_key, item)):
         if candidate.is_dropped:
             if _candidate_present(template_columns, candidate):
                 issues.append(
@@ -246,6 +261,7 @@ def validate_tuning_template(
                     capped_types.append(tuning_type)
                 elif tuning_type in mapped_tuning_types:
                     capped_slots[slot] = used + 1
+        issues.extend(_unjustified_waiver_issues(platform_key, candidate, platform_mapping))
         mappings.append(
             CandidateTemplateMapping(
                 candidate=candidate,
@@ -305,6 +321,8 @@ def validate_tuning_template(
                 )
             )
 
+    issues.extend(_waived_table_issues(platform_key, mappings, template_columns))
+
     return TuningProfileValidationResult(
         profile_id=profile.id,
         profile_version=profile.version,
@@ -316,6 +334,61 @@ def validate_tuning_template(
         issues=tuple(issues),
         accepted_count=accepted_count,
         dropped_low_evidence_count=len(dropped_candidates),
+    )
+
+
+def _unjustified_waiver_issues(
+    platform_key: str,
+    candidate: WorkloadTuningCandidate,
+    platform_mapping: PlatformTuningMapping,
+) -> tuple[TuningProfileValidationIssue, ...]:
+    if platform_mapping.decision != WAIVED or waiver_is_justified(platform_key, candidate, platform_mapping):
+        return ()
+    return (
+        TuningProfileValidationIssue(
+            severity=ERROR,
+            candidate_key=candidate_key(candidate),
+            message=f"candidate is waived on {platform_key} without a justification the profile supports",
+            decision=platform_mapping.decision,
+            reason=platform_mapping.reason,
+        ),
+    )
+
+
+def _waived_table_issues(
+    platform_key: str,
+    mappings: list[CandidateTemplateMapping],
+    template_columns: dict[str, dict[str, set[str]]],
+) -> list[TuningProfileValidationIssue]:
+    first_waived: dict[tuple[str, str], CandidateTemplateMapping] = {}
+    for mapping in mappings:
+        if mapping.waived:
+            first_waived.setdefault((mapping.candidate.benchmark, mapping.candidate.table), mapping)
+    issues: list[TuningProfileValidationIssue] = []
+    for mapping in first_waived.values():
+        issues.extend(
+            _waiver_violation_issues(platform_key, mapping.candidate, mapping.platform_mapping, template_columns)
+        )
+    return issues
+
+
+def _waiver_violation_issues(
+    platform_key: str,
+    candidate: WorkloadTuningCandidate,
+    platform_mapping: PlatformTuningMapping,
+    template_columns: dict[str, dict[str, set[str]]],
+) -> tuple[TuningProfileValidationIssue, ...]:
+    configured = template_columns.get(candidate.table, {})
+    return tuple(
+        TuningProfileValidationIssue(
+            severity=ERROR,
+            candidate_key=f"{candidate.benchmark}.{candidate.table}.{column}",
+            message=f"template applies {tuning_type} to {candidate.table}.{column}, but {candidate.table} is waived on {platform_key}",
+            decision=platform_mapping.decision,
+            reason=platform_mapping.reason,
+        )
+        for tuning_type in platform_mapping.waived_tuning_types
+        for column in sorted(configured.get(tuning_type, set()))
     )
 
 

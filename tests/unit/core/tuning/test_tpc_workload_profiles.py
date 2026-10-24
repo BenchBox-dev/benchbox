@@ -53,6 +53,7 @@ profile:
   benchmarks:
     tpch:
       evidence_source: "tests"
+      fact_tables: [LINEITEM]
       candidates:
       - table: LINEITEM
         column: L_ORDERKEY
@@ -89,6 +90,7 @@ profile:
   benchmarks:
     tpcds:
       evidence_source: "tests"
+      fact_tables: [WEB_RETURNS]
       candidates:
       - table: WEB_RETURNS
         column: WR_WEB_PAGE_SK
