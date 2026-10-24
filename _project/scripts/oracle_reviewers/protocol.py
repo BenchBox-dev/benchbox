@@ -369,6 +369,7 @@ def plan_round(
     max_do_not_ship: int,
     force: bool = False,
     base_changed_at: datetime | None = None,
+    base_change_unreadable: bool = False,
 ) -> Round:
     latest = found.latest
     if strike_count >= max_do_not_ship:
@@ -390,10 +391,9 @@ def plan_round(
                 ),
             )
         decided_at = found.latest_at
-        stale = (
-            base_changed_at is not None
-            and latest["decision"] != REFUSED
-            and (decided_at is None or decided_at <= base_changed_at)
+        stale = latest["decision"] != REFUSED and (
+            base_change_unreadable
+            or (base_changed_at is not None and (decided_at is None or decided_at <= base_changed_at))
         )
         if not stale:
             return Round(SKIP, f"head {head_sha} already has a {LABELS[latest['decision']]} decision")
