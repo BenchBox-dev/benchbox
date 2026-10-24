@@ -17,7 +17,7 @@ resolution-markers = [
 ]
 
 [manifest]
-overrides = [{ name = "filelock", specifier = ">=4.2.1" }]
+overrides = [{ name = "filelock", specifier = ">=4.2.1,<5" }]
 
 [[package]]
 name = "aiorwlock"
