@@ -5,7 +5,7 @@
     "CORPUS_NOTES.md records the rerun and closes the defect note",
     "Paid-platform runs proceed only after owner approval of the spend"
   ],
-  "context": "Status 2026-10-18: local 3 platform reruns can proceed once tpcds-obt-empty-queries-conversion-20261017 is done (its code merged #3120 but live SF1 row verification is still outstanding). Paid BigQuery/Databricks/Snowflake reruns need owner spend approval; Snowflake trial account is closed, so a new account is required first. Work stopped 2026-10-18.",
+  "context": "Status 2026-10-18: local 3 platform reruns can proceed once tpcds-obt-empty-queries-conversion-20261017 is done (its code merged #3120 but live SF1 row verification is still outstanding). Paid BigQuery/Databricks/Snowflake reruns need owner spend approval; Snowflake trial account is closed, so a new account is required first. Work stopped 2026-10-18.\nUpdate 2026-10-24: the conversion was replaced, not patched. OBT version 0.2 on develop (3cba9cd2e and later): static query catalog (#3353), declarative 715-column model (#3361), 37 query rewrites with Q8/Q54/Q84 and inventory queries excluded (#3380), DataFrame ids obt_* (#3381). Equivalence vs TPC-DS on DuckDB: SF1 92 passed with empty divergence list; CLI SF1 DuckDB and DataFusion 270/270. Owner (2026-10-23) folded this rerun into the version bump: rerun all six bundles once on version 0.2. Local DuckDB, DataFusion, ClickHouse Local reruns may proceed now; BigQuery, Databricks, Snowflake still need owner spend approval. Publishing new bundles is a separate production step.",
   "description": "The six published TPC-DS OBT SF1 bundles ran with query parameters set to `0` instead of dsqgen's values. The platforms are BigQuery, ClickHouse Local, Databricks, DataFusion, DuckDB and Snowflake. Their manifest sidecars carry `known_defects: [\"defective-tpcds-obt-parameters\"]`, so the explorer marks them `known_defective_data` and leaves them out of the rankings.\n\nRerun each platform at SF1 with the corrected queries and publish the new bundles. Then retire the defective bundles, or keep them as comparison-only history, following `results-data/DEFECTIVE_DATAGEN_AUDIT.md`. `results-data/CORPUS_NOTES.md` records the defect.\n\nThe rerun waits for the conversion fix, because 17 statements still return no rows. Rerunning before that fix would publish results that are still wrong and would need a second rerun.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3062"
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "b7817c3359fb44a88056800e8d1e8405",
       "session_id": "d2c53a64af484bf0b44e45ae35143611"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-24T05:18:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e2398cf66a474273899595eafbb264aa",
+      "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
 }
