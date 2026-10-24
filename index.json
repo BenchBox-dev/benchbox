@@ -26613,6 +26613,15 @@
       "status": "open",
       "title": "The red-Trunk arm gate blames the newest failing run, so it refuses the revert of the real culprit"
     },
+    "trunk-coverage-scheduled-not-per-push-20261024": {
+      "claim": null,
+      "needs": [
+        "coverage-map-missing-comment-policy-ids-20261023"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Run Trunk coverage on a schedule instead of on every develop push"
+    },
     "trunk-coverage-workflow-map-v2-20261021": {
       "claim": null,
       "needs": [

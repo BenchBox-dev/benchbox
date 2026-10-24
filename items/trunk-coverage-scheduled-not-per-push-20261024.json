@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Trunk coverage no longer starts on every develop push; it runs on a schedule (4-6 a day) or only past a stated commit distance, and still supports dispatch",
+    "Map staleness stays within the existing monitor limits for 7 days after the change: no coverage-map staleness issue opened",
+    "PR selection map fetch success in ci-paths is unchanged over the same 7 days",
+    "Trunk coverage runner-minutes drop at least 60% week over week, with the before/after numbers recorded on this item"
+  ],
+  "context": "Source: independent review of the PR-checks versus Trunk split on 2026-10-24 (develop a56738db4; run history 2026-10-10 to 2026-10-24: 465 merges, 466 Trunk push runs, 126 Trunk coverage runs). Waits on the coverage-map id fix because both change the coverage-map path.",
+  "description": "trunk-coverage.yml runs on every push to develop (trunk-coverage.yml:3-12) with cancel-in-progress, so 71 of 123 push runs (58%) were cancelled, yet it still costs about 23 runner-minutes per merge (about 16 runner-hours a day) and runs the medium tier a third time per merge, instrumented. Its only product is the coverage map that PR selection reads, and selection is fail-closed with a staleness monitor (20 commits / 3 failed runs). Replace the push trigger with 4-6 scheduled runs a day (or a commit-distance guard on push), keeping dispatch and the staleness job.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T17:35:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f6d2e727f8e646e6837dc28e08fa53a6",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
