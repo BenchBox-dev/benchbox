@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A single make target produces the report for a given --since/--until window with no run-count cap and paging that is tested",
+    "The report includes per-workflow runner-minutes, job queue time median/p90, PR time-to-green median/p90, and rerun-attempt outcomes",
+    "A baseline report for 2026-10-10 to 2026-10-24 (or the longest window still within log and API retention) is recorded on this item"
+  ],
+  "context": "Source: independent review of the PR-checks versus Trunk split on 2026-10-24 (develop a56738db4; run history 2026-10-10 to 2026-10-24: 465 merges, 466 Trunk push runs; Trunk coverage push runs only exist from 2026-10-21). Every efficiency item from that review measures against this report.",
+  "description": "CI efficiency decisions currently rest on ad hoc gh run list samples capped at 1000 runs (about +/-30% error) and on job data from the 40 newest runs. Add one repository command (script plus make target) that, for a given date window, pages through all workflow runs and their attempts without a count cap and reports per workflow and event: run count and conclusions (including runs that passed only on a rerun attempt), summed job runner-minutes, job queue time (created to started) median and p90, and PR time-to-green (latest push to all required checks passing) median and p90. The repository is public, so GitHub-hosted runner minutes are free; the binding limit is the concurrency cap. Queue time and PR time-to-green are the primary success metrics, runner-minutes secondary.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T18:39:28Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6ee2b58d5147446ba52bfe2ae5af9590",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
