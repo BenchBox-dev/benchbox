@@ -24146,10 +24146,15 @@
       "title": "SQLite lowering must not truncate integer division in ratio queries (TPC-DS Q21)"
     },
     "sqlite-loader-empty-text-nulls": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-25T01:04:16Z",
+        "generation": "06364ee766cc4d3fba76991ded45498c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e465f897e6bf2b6184696cd7"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "SQLite loader stores NULLs as empty text in numeric columns, changing aggregate results"
     },
     "sqlite-throughput-dialect-and-stream-isolation": {
