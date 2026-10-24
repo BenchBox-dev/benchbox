@@ -25,8 +25,8 @@ ABANDONED = "abandoned"
 
 _ABANDONED_CORRESPONDENCE: dict[str, str] = {
     "tpcds_obt": (
-        "DataFrame Q1..Q17 denote OBT-native analytics while SQL ids denote "
-        "TPC-DS queries; no clean correspondence without renumbering one side "
+        "DataFrame obt_* queries are OBT-native analytics while SQL ids denote "
+        "TPC-DS queries; no correspondence exists between the two sides "
         "(see tests/unit/core/tpcds_obt/test_tpcds_obt_id_mapping_decision.py)"
     ),
 }
@@ -230,7 +230,7 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
         "which DataFrame query answers which SQL query, and the campaign's own TODO "
         'warns "do NOT guess". These need an independent, per-benchmark id mapping '
         "confirmed first. Correspondences investigated and ruled out are "
-        "`abandoned` instead (e.g. `tpcds_obt`: OBT-native Q1..Q17 vs TPC-DS "
+        "`abandoned` instead (e.g. `tpcds_obt`: OBT-native obt_* ids vs TPC-DS "
         "numbered SQL ids), so a later bounded-scale fix cannot re-invite "
         "investigation."
     )

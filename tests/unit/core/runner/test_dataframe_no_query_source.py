@@ -36,8 +36,9 @@ def test_resolution_reaches_every_shipped_registry(benchmark_id: str, expected_c
 def test_resolution_detects_a_nonstandard_registry_name() -> None:
     queries = registry_dataframe_queries("tpcds_obt")
 
-    ids = sorted((query.query_id for query in queries), key=lambda qid: int(qid[1:]))
-    assert ids == [f"Q{i}" for i in range(1, 18)]
+    ids = [query.query_id for query in queries]
+    assert len(ids) == 17
+    assert all(query_id.startswith("obt_") for query_id in ids)
 
 
 def test_the_registry_helper_is_quiet_about_a_benchmark_that_ships_none() -> None:

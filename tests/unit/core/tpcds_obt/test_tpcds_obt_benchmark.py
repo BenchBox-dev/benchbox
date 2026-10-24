@@ -211,11 +211,10 @@ class TestDataFrameMode:
 
     def test_dataframe_query_ids(self) -> None:
         benchmark = TPCDSOBTBenchmark(scale_factor=1.0)
-        ids = sorted(
-            (q.query_id for q in benchmark.get_dataframe_queries()),
-            key=lambda qid: int(qid[1:]),
-        )
-        assert ids == [f"Q{i}" for i in range(1, 18)]
+        ids = sorted(q.query_id for q in benchmark.get_dataframe_queries())
+        assert len(ids) == 17
+        assert all(query_id.startswith("obt_") for query_id in ids)
+        assert "obt_row_count" in ids
 
     def test_normalize_does_not_confuse_obt_with_tpcds(self) -> None:
         from benchbox.core.results.builder import normalize_benchmark_id

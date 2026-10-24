@@ -172,6 +172,16 @@ WHERE d_year = 2000
 
 Run it with `make tpcds-obt-equivalence` (SF0.01 by default) or `make tpcds-obt-equivalence TPCDS_OBT_EQUIVALENCE_SF=1`. The PR tier runs SF0.01 and the nightly `t3:tpcds-obt` domain runs SF1.
 
+### DataFrame Query IDs
+
+The SQL queries are numbered like TPC-DS and return the TPC-DS result. The 17 DataFrame queries are OBT-native
+aggregations that match no TPC-DS query, so their IDs are their names: `obt_row_count`,
+`obt_channel_distribution`, `obt_returns_summary`, `obt_channel_revenue`, `obt_top_items_by_quantity`,
+`obt_avg_ticket_by_channel`, `obt_discounted_sales`, `obt_profit_by_channel`,
+`obt_sales_by_channel_return_flag`, `obt_high_value_sales`, `obt_item_channel_quantity`, `obt_ticket_extremes`,
+`obt_distinct_items`, `obt_bulk_sales`, `obt_coupon_sales`, `obt_store_summary` and `obt_overall_totals`.
+Select them on a DataFrame platform with `--queries obt_row_count,obt_channel_revenue`.
+
 ## Performance Considerations
 
 ### Advantages of OBT

@@ -79,7 +79,7 @@ def test_abandoned_correspondences_stay_abandoned(rows):
     abandoned = {r["benchmark"] for r in rows if r["status"] == ABANDONED}
     assert abandoned == _ABANDONED_BENCHMARKS, f"abandoned set changed: {sorted(abandoned)}"
     assert by_id["tpcds_obt"]["status"] == ABANDONED
-    assert "renumbering" in by_id["tpcds_obt"].get("reason", "")
+    assert "no correspondence" in by_id["tpcds_obt"].get("reason", "")
     assert "id_mapping_decision" in by_id["tpcds_obt"].get("reason", "")
     gateable = {r["benchmark"] for r in rows if r["status"] == GATEABLE}
     assert _ABANDONED_BENCHMARKS.isdisjoint(gateable)

@@ -85,16 +85,16 @@ def _sample_pandas() -> pd.DataFrame:
 def test_registry_exposes_seventeen_queries() -> None:
     from benchbox.core.tpcds_obt.dataframe_queries import REGISTRY
 
-    for query_id in [f"Q{i}" for i in range(1, 18)]:
-        assert REGISTRY.get(query_id) is not None, f"{query_id} missing from registry"
-    assert len(REGISTRY.get_query_ids()) == 17
+    query_ids = REGISTRY.get_query_ids()
+    assert len(query_ids) == 17
+    assert all(query_id.startswith("obt_") for query_id in query_ids)
+    assert REGISTRY.get("obt_row_count") is not None
 
 
 def test_malformed_specs_fail_at_import() -> None:
     from benchbox.core.tpcds_obt.dataframe_queries import _ObtQuerySpec
 
     base = {
-        "query_id": "QX",
         "query_name": "bad",
         "description": "bad",
         "categories": (),
@@ -110,10 +110,10 @@ def test_malformed_specs_fail_at_import() -> None:
         _ObtQuerySpec(limit=-1, **base)
 
 
-def test_q5_carries_deterministic_tiebreaker() -> None:
+def test_top_items_carries_deterministic_tiebreaker() -> None:
     from benchbox.core.tpcds_obt.dataframe_queries import _QUERY_SPECS
 
-    q5 = next(spec for spec in _QUERY_SPECS if spec.query_id == "Q5")
+    q5 = next(spec for spec in _QUERY_SPECS if spec.query_name == "obt_top_items_by_quantity")
     assert q5.sort_keys == ("total_quantity", "item_sk")
     assert q5.descending == (True, False)
     assert "item_sk ASC" in q5.sql_equivalent
@@ -170,7 +170,7 @@ def test_empty_filter_reports_zero_not_null() -> None:
     pandas_ctx = PandasDataFrameAdapter().create_context()
     pandas_ctx.register_table("tpcds_sales_returns_obt", empty)
 
-    for query_id in ("Q10", "Q15", "Q16"):
+    for query_id in ("obt_high_value_sales", "obt_coupon_sales", "obt_store_summary"):
         query = REGISTRY.get(query_id)
         assert query is not None
         pandas_result = _to_pandas(query.pandas_impl(pandas_ctx)).reset_index(drop=True)
