@@ -11,6 +11,9 @@ import pytest
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
+
+if not (ROOT / "_project/design/api-public-symbols.json").exists():
+    pytest.skip("the documentation contract tooling needs the development tree (release tree)", allow_module_level=True)
 SPEC = importlib.util.spec_from_file_location(
     "doc_reference_inventory_under_test", ROOT / "scripts" / "doc_reference_inventory.py"
 )

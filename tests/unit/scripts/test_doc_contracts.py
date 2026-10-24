@@ -16,6 +16,9 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
 
+if not (ROOT / "_project/design/api-public-symbols.json").exists():
+    pytest.skip("the documentation contract tooling needs the development tree (release tree)", allow_module_level=True)
+
 
 def _load(name: str) -> Any:
     spec = importlib.util.spec_from_file_location(f"{name}_under_test", ROOT / "scripts" / f"{name}.py")
