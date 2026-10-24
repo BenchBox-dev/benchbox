@@ -12,13 +12,14 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
+import check_suites
 from required_lane import (
     REQUIRED_CHECK_NAMES,  # noqa: F401
     is_check_run_success,  # noqa: F401
@@ -154,6 +155,7 @@ class ClassifiedPR:
     head_age_hours: float
     stranded: bool
     explicit_hold: bool = False
+    hidden_failures: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -230,6 +232,7 @@ def classify_pr(
     labels = pr.get("labels") or []
 
     required_green = is_required_lane_green(check_runs)
+    hidden_failures = check_suites.hidden_failure_reasons(check_suites.evaluate(check_runs, REQUIRED_CHECK_NAMES))
     soundness_gated = is_soundness_gated(changed_files)
     auto_merge_enabled = bool(pr.get("auto_merge"))
     draft = bool(pr.get("draft"))
@@ -259,6 +262,7 @@ def classify_pr(
         head_age_hours=age_h,
         stranded=stranded,
         explicit_hold=explicit_hold,
+        hidden_failures=hidden_failures,
     )
 
 
@@ -296,6 +300,13 @@ def build_digest(
         f"Green-but-unmerged PR sweep -- nightly digest (last updated {stamp})",
         "",
     ]
+    hidden = [c for c in classified if c.hidden_failures]
+    if hidden:
+        lines.append("Stale failed check suites blocking the merge rollup (run `make pr-rerun` on each PR):")
+        for c in hidden:
+            lines.append(f"- #{c.number} {c.title} -- {c.html_url}")
+            lines.extend(f"  - {reason}" for reason in c.hidden_failures)
+        lines.append("")
 
     if not hits:
         lines.append(
@@ -449,7 +460,7 @@ def fetch_open_prs(client: GitHubClient, owner: str, repo: str) -> list[dict[str
         number = raw["number"]
         head_sha = raw["head"]["sha"]
         files = client.get_all(f"repos/{owner}/{repo}/pulls/{number}/files")
-        check_runs = client.get_all(f"repos/{owner}/{repo}/commits/{head_sha}/check-runs")
+        check_runs = client.get_all(f"repos/{owner}/{repo}/commits/{head_sha}/check-runs", {"filter": "latest"})
         commit = client.get_one(f"repos/{owner}/{repo}/commits/{head_sha}") or {}
         commit_info = commit.get("commit") or {}
         head_pushed_at = (commit_info.get("committer") or {}).get("date") or (commit_info.get("author") or {}).get(
@@ -478,6 +489,9 @@ def fetch_open_prs(client: GitHubClient, owner: str, repo: str) -> list[dict[str
                         "status": run.get("status"),
                         "conclusion": run.get("conclusion"),
                         "started_at": run.get("started_at"),
+                        "id": run.get("id"),
+                        "check_suite": {"id": (run.get("check_suite") or {}).get("id")},
+                        "details_url": run.get("details_url"),
                     }
                     for run in check_runs
                 ],
@@ -699,6 +713,7 @@ def main(argv: list[str] | None = None) -> int:
                     "repo": args.repo,
                     "evaluated_count": len(classified),
                     "stranded": [c.to_dict() for c in hits],
+                    "hidden_failures": {str(c.number): c.hidden_failures for c in classified if c.hidden_failures},
                 },
                 indent=2,
             )

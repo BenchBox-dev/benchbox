@@ -817,18 +817,28 @@ def test_consume_retry_persists_spent_budget(tmp_path: Path) -> None:
     assert second["allowed"] is False and "exhausted" in second["reason"]
 
 
-def _live_checks_payload(head: str, conclusion: str = "success") -> dict:
-    runs = [
+def _live_check_records(head: str, conclusion: str = "success") -> list[dict]:
+    return [
         {
+            "id": 1000 + index,
             "name": name,
             "conclusion": conclusion,
             "head_sha": head,
             "status": "completed",
             "started_at": "2026-09-08T19:00:00Z",
+            "details_url": f"https://github.com/o/r/actions/runs/{2000 + index}/job/{3000 + index}",
+            "check_suite": {"id": 4000 + index},
         }
-        for name in landing.REQUIRED_CONTEXTS
+        for index, name in enumerate(landing.REQUIRED_CONTEXTS)
     ]
-    return {"total": len(runs), "runs": runs}
+
+
+def _lines(records: list[dict]) -> str:
+    return "\n".join(json.dumps(record) for record in records)
+
+
+def _live_checks_payload(head: str, conclusion: str = "success") -> str:
+    return _lines(_live_check_records(head, conclusion))
 
 
 def _live_pr(head: str, decision: str = "APPROVED", labels: list[dict] | None = None) -> dict:
@@ -847,13 +857,9 @@ def test_verify_evidence_live_accepts_fresh_evidence() -> None:
 
 
 def test_verify_evidence_live_refuses_stale_check() -> None:
-    stale = _live_checks_payload(HEAD)
-    stale["runs"][0] = {
-        "name": landing.REQUIRED_CONTEXTS[0],
-        "conclusion": "failure",
-        "head_sha": HEAD,
-    }
-    run = FakeRun([(0, stale)])
+    records = _live_check_records(HEAD)
+    records[0] = {**records[0], "conclusion": "failure"}
+    run = FakeRun([(0, _lines(records))])
     with pytest.raises(landing.LandingError, match="live verification"):
         landing.verify_evidence_live(run, "o/r", _live_pr(HEAD), _evidence(HEAD))
 
@@ -969,31 +975,69 @@ def test_followup_new_head_clears_terminal_result_and_final_pr(tmp_path: Path) -
     assert landing.resume_followup(refreshed)["status"] == "review"
 
 
-def test_live_check_verdicts_uses_get_only_invocation() -> None:
-
+def test_live_check_verdicts_reads_every_latest_suite_through_pagination() -> None:
     run = FakeRun([(0, _live_checks_payload(HEAD))])
     landing.live_check_verdicts(run, "o/r", HEAD)
     (cmd,) = run.calls
-    assert cmd[:2] == ["gh", "api"]
-    assert not any(part in ("-F", "--field", "--raw-field", "--paginate") for part in cmd)
-    assert cmd[2].startswith("repos/o/r/commits/") and "per_page=100" in cmd[2]
+    assert cmd[:3] == ["gh", "api", "--paginate"]
+    assert not any(part in ("-F", "--field", "--raw-field") for part in cmd)
+    assert cmd[-1].startswith("repos/o/r/commits/") and "filter=latest" in cmd[-1]
+
+
+def test_a_failed_live_check_read_refuses() -> None:
+    with pytest.raises(landing.LandingError, match="live check verification failed"):
+        landing.live_check_verdicts(FakeRun([(1, "boom")]), "o/r", HEAD)
+
+
+def test_a_malformed_live_check_payload_refuses() -> None:
+    with pytest.raises(landing.LandingError, match="unparseable live check payload"):
+        landing.live_check_verdicts(FakeRun([(0, "not json")]), "o/r", HEAD)
 
 
 def test_verify_evidence_live_prefers_latest_run_over_stale_success() -> None:
-    payload = _live_checks_payload(HEAD)
-    payload["runs"].append(
-        {
-            "name": landing.REQUIRED_CONTEXTS[0],
-            "conclusion": "failure",
-            "head_sha": HEAD,
-            "status": "completed",
-            "started_at": "2026-09-08T20:00:00Z",
-        }
+    records = _live_check_records(HEAD)
+    records.append(
+        {**records[0], "id": 1, "conclusion": "failure", "started_at": "2026-09-08T20:00:00Z"},
     )
-    payload["total"] = len(payload["runs"])
-    run = FakeRun([(0, payload)])
+    run = FakeRun([(0, _lines(records))])
     with pytest.raises(landing.LandingError, match="live verification"):
         landing.verify_evidence_live(run, "o/r", _live_pr(HEAD), _evidence(HEAD))
+
+
+def _stale_suite_records() -> list[dict]:
+    records = _live_check_records(HEAD)
+    stale = {
+        **records[0],
+        "id": 1,
+        "conclusion": "failure",
+        "started_at": "2026-09-08T18:00:00Z",
+        "details_url": "https://github.com/o/r/actions/runs/77/job/1",
+        "check_suite": {"id": 99},
+    }
+    return [*records, stale]
+
+
+def test_verify_evidence_live_refuses_a_stale_failed_suite_hidden_by_a_newer_success() -> None:
+    run = FakeRun([(0, _lines(_stale_suite_records()))])
+    with pytest.raises(landing.LandingError, match=r"suite 99.*actions/runs/77"):
+        landing.verify_evidence_live(run, "o/r", _live_pr(HEAD), _evidence(HEAD))
+
+
+def test_hidden_failed_suites_reports_the_run_to_rerun() -> None:
+    run = FakeRun([(0, "\n".join(landing.REQUIRED_CONTEXTS)), (0, _lines(_stale_suite_records()))])
+    (reason,) = landing.hidden_failed_suites(run, "o/r", "develop", HEAD)
+    assert "actions/runs/77" in reason and "make pr-rerun" in reason
+    assert "rules/branches/develop" in run.calls[0][-1]
+
+
+def test_hidden_failed_suites_is_empty_when_every_suite_is_green() -> None:
+    run = FakeRun([(0, "\n".join(landing.REQUIRED_CONTEXTS)), (0, _live_checks_payload(HEAD))])
+    assert landing.hidden_failed_suites(run, "o/r", "develop", HEAD) == []
+
+
+def test_hidden_failed_suites_refuses_when_the_branch_lists_no_required_checks() -> None:
+    with pytest.raises(landing.LandingError, match="no required status checks"):
+        landing.hidden_failed_suites(FakeRun([(0, "")]), "o/r", "develop", HEAD)
 
 
 def test_bound_withdraw_requires_declared_node_and_head() -> None:

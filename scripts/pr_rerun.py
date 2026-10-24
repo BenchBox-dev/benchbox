@@ -10,12 +10,16 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import oracle_review_recover as recover
+
+from _project.scripts import check_suites
 
 CLI_DESCRIPTION = "Re-run the CI workflow for a pull request's current head after a failure not caused by the change."
 
 WORKFLOW_PATH = ".github/workflows/ci.yml"
 PATHS_JOB = "ci-paths"
+BASE_BRANCH = "develop"
 RUN_FILTER = (
     ".workflow_runs[] | {id, path, event, head_branch, head_sha,"
     " head_repository: .head_repository.full_name, status, conclusion, created_at}"
@@ -128,6 +132,41 @@ def rerun_arguments(run: Mapping[str, Any], jobs: Sequence[Mapping[str, Any]], r
     raise RecoveryError(f"CI run {run_id} ended {conclusion!r}; re-running it is not supported here")
 
 
+def _required_contexts(runner: Runner, repo: str, base: str) -> tuple[str, ...]:
+    result = recover._invoke(
+        runner,
+        [
+            "api",
+            "--jq",
+            check_suites.REQUIRED_CONTEXTS_JQ,
+            check_suites.required_contexts_endpoint(repo, base),
+        ],
+    )
+    try:
+        return check_suites.parse_required_contexts(result.stdout)
+    except ValueError as exc:
+        raise RecoveryError(str(exc)) from exc
+
+
+def _suite_reruns(runner: Runner, repo: str, head: str, base: str) -> list[check_suites.SuiteRerun]:
+    result = recover._invoke(
+        runner,
+        [
+            "api",
+            "--paginate",
+            "--jq",
+            check_suites.LATEST_JQ,
+            check_suites.latest_check_runs_endpoint(repo, head),
+        ],
+    )
+    try:
+        records = check_suites.parse_check_run_lines(result.stdout)
+        evaluations = check_suites.evaluate(records, _required_contexts(runner, repo, base), check_suites.NON_BLOCKING)
+        return check_suites.plan_reruns(evaluations)
+    except (ValueError, check_suites.Unrerunnable) as exc:
+        raise RecoveryError(str(exc)) from exc
+
+
 def _check_identity(runner: Runner, repo: str, pr: int, created: datetime, branch: str, head_repository: str) -> None:
     shared = _shared_head(runner, repo, pr, branch, head_repository)
     if shared:
@@ -141,30 +180,52 @@ def _check_identity(runner: Runner, repo: str, pr: int, created: datetime, branc
         )
 
 
+def _newest_ci_run(
+    runner: Runner, repo: str, head: str, branch: str, head_repository: str
+) -> tuple[dict[str, Any], list[dict[str, Any]]] | None:
+    for run in _runs(runner, repo, head, branch, head_repository):
+        jobs = _jobs(runner, repo, int(run["id"]))
+        if not is_text_edit_run(jobs):
+            return run, jobs
+    return None
+
+
 def rerun(repo: str, pr: int, runner: Runner = recover._subprocess_runner) -> str:
     if not recover.REPOSITORY_RE.fullmatch(repo):
         raise RecoveryError("repository must be a GitHub owner/name")
     head, branch, head_repository = recover._pull_request_snapshot(runner, repo, pr)
-    chosen: tuple[dict[str, Any], list[dict[str, Any]]] | None = None
-    for run in _runs(runner, repo, head, branch, head_repository):
-        jobs = _jobs(runner, repo, int(run["id"]))
-        if not is_text_edit_run(jobs):
-            chosen = (run, jobs)
-            break
-    if chosen is None:
-        raise RecoveryError(f"no CI run found for {head[:9]}; push a commit, or close and reopen the PR")
-    run, jobs = chosen
-    created = _time(run.get("created_at"))
-    _check_identity(runner, repo, pr, created, branch, head_repository)
-    arguments = rerun_arguments(run, jobs, repo)
-    if arguments is None:
-        return f"CI run {run['id']} on {head[:9]} succeeded; nothing to re-run."
+    chosen = _newest_ci_run(runner, repo, head, branch, head_repository)
+    suite_reruns = _suite_reruns(runner, repo, head, BASE_BRANCH)
+    commands: list[tuple[list[str], str]] = []
+    created: list[datetime] = []
+    if chosen is not None:
+        run, jobs = chosen
+        created.append(_time(run.get("created_at")))
+        arguments = rerun_arguments(run, jobs, repo)
+        if arguments is not None:
+            scope = "failed jobs of" if "--failed" in arguments else "all jobs of"
+            commands.append((arguments, f"{scope} CI run {run['id']}"))
+    covered = {arguments[2] for arguments, _ in commands}
+    for item in suite_reruns:
+        if str(item.run_id) in covered:
+            continue
+        created.extend(_time(suite.started_at) for suite in item.suites)
+        names = ", ".join(sorted({suite.name for suite in item.suites}))
+        scope = "all jobs of" if item.scope == "all" else "failed jobs of"
+        commands.append((item.arguments(repo), f"{scope} run {item.run_id} (stale suite: {names})"))
+    if created:
+        _check_identity(runner, repo, pr, max(created), branch, head_repository)
+    if not commands:
+        if chosen is None:
+            raise RecoveryError(f"no CI run found for {head[:9]}; push a commit, or close and reopen the PR")
+        return f"CI run {chosen[0]['id']} on {head[:9]} succeeded; nothing to re-run."
+    latest = max(created)
     current = recover._read_pull_request(runner, repo, pr)
     recover._validate_pull_request(current, repo, pr, expected_head=head, expected_branch=branch)
-    _check_identity(runner, repo, pr, created, branch, head_repository)
-    recover._invoke(runner, arguments)
-    scope = "failed jobs of" if "--failed" in arguments else "all jobs of"
-    return f"Re-running {scope} CI run {run['id']} on {head[:9]}."
+    _check_identity(runner, repo, pr, latest, branch, head_repository)
+    for arguments, _ in commands:
+        recover._invoke(runner, arguments)
+    return "; ".join(f"Re-running {label} on {head[:9]}" for _, label in commands) + "."
 
 
 def main(argv: Sequence[str] | None = None, environ: Mapping[str, str] = os.environ) -> int:
