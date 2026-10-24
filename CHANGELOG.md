@@ -532,6 +532,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   always 1. It now counts the `DimCustomer` rows of the batch, so `source_records`
   changes on every platform and `transformation_success_rate` is unchanged; previously
   only ClickHouse, StarRocks and Doris rewrote it at translation time.
+- Databricks `z_order` tuned runs now run `OPTIMIZE ... ZORDER BY` after each table
+  loads. The statement used to run before the load, on an empty table, so tuned
+  results measured plain compaction while the ledger recorded `z_order` as
+  applied. The statement is now recorded in the `post_load` phase and replaces
+  the plain `OPTIMIZE` for that table. When the `ZORDER` statement fails it is
+  recorded as skipped, the post-load maintenance phase reports `FAILED`, and the
+  plain `OPTIMIZE` and `ANALYZE` still run for that table. Partition columns are
+  never used as `ZORDER BY` columns, since Delta rejects them. The strategy resolves to `z_order` as
+  before: an explicit `z_order` setting, or any tuning with clustering or
+  distribution columns whose strategy is `none`, whether left unset or set
+  explicitly. No published result is affected:
+  all 51 Databricks bundles in `results-data/` and on `published-results` record
+  a resolved strategy of `none` and no requested tuning.
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
   `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
   clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`

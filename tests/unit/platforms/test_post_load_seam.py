@@ -294,7 +294,7 @@ class TestDatabricksPostLoad:
         assert "optimize" not in [op["mechanism"] for op in databricks_adapter._applied_layout_operations]
         assert "analyze" not in [op["mechanism"] for op in databricks_adapter._applied_layout_operations]
 
-    def test_post_load_runs_optimize_and_analyze_on_the_physical_table(self, databricks_adapter):
+    def test_post_load_runs_z_order_and_analyze_on_the_physical_table(self, databricks_adapter):
         connection, cursor = _databricks_connection()
         config = UnifiedTuningConfiguration()
         config.table_tunings["LINEITEM"] = _table_tuning()
@@ -302,11 +302,12 @@ class TestDatabricksPostLoad:
         databricks_adapter.run_post_load_tunings("LINEITEM", config, connection)
 
         executed = [str(call.args[0]) for call in cursor.execute.call_args_list]
-        assert "OPTIMIZE lineitem" in executed
+        assert "OPTIMIZE lineitem ZORDER BY (l_orderkey)" in executed
+        assert "OPTIMIZE lineitem" not in executed
         assert "ANALYZE TABLE lineitem COMPUTE STATISTICS" in executed
         operations = databricks_adapter._applied_layout_operations
         assert [(op["mechanism"], op["phase"]) for op in operations] == [
-            ("optimize", "post_load"),
+            ("z_order", "post_load"),
             ("analyze", "post_load"),
         ]
 
@@ -329,31 +330,40 @@ class TestDatabricksPostLoad:
 
 
 class TestDatabricksLoadPathOptimizesOnce:
-    def _load(self, adapter, *, tuned: bool):
+    def _load(self, adapter, *, tuned: bool, fail_zorder: bool = False, table: str = "lineitem"):
         from tests.unit.platforms.csv_dialect_test_helpers import resolver_data_source
 
         config = UnifiedTuningConfiguration()
         if tuned:
-            config.table_tunings["LINEITEM"] = _table_tuning()
+            tuning = _table_tuning()
+            tuning.table_name = table.upper()
+            config.table_tunings[table.upper()] = tuning
         adapter.catalog = "main"
         adapter.schema = "bench"
         adapter.get_effective_tuning_configuration = Mock(return_value=config)
         cursor = Mock()
         cursor.fetchone.return_value = (10,)
         cursor.fetchall.return_value = [("Provider", "delta")]
+        if fail_zorder:
+
+            def refuse_zorder(statement, *args, **kwargs):
+                if "ZORDER" in str(statement):
+                    raise RuntimeError("zorder refused")
+
+            cursor.execute.side_effect = refuse_zorder
         connection = Mock()
         connection.cursor.return_value = cursor
-        file_path = Path("lineitem.csv")
+        file_path = Path(f"{table}.csv")
         adapter._load_single_table(
             cursor=cursor,
             connection=connection,
             benchmark=None,
-            table_name="lineitem",
+            table_name=table,
             file_path=file_path,
             stage_root="dbfs:/Volumes/main/bench",
-            existing_tables={"lineitem"},
+            existing_tables={table},
             data_source=resolver_data_source(
-                "lineitem", file_path, {"csv_delimiter": ",", "csv_has_header": False, "csv_null_marker": ""}
+                table, file_path, {"csv_delimiter": ",", "csv_has_header": False, "csv_null_marker": ""}
             ),
         )
         return [str(call.args[0]) for call in cursor.execute.call_args_list]
@@ -361,8 +371,32 @@ class TestDatabricksLoadPathOptimizesOnce:
     def test_a_tuned_table_is_optimized_once_after_load(self, databricks_adapter):
         executed = self._load(databricks_adapter, tuned=True)
 
-        assert [sql for sql in executed if sql.upper().startswith("OPTIMIZE")] == ["OPTIMIZE lineitem"]
+        assert [sql for sql in executed if sql.upper().startswith("OPTIMIZE")] == [
+            "OPTIMIZE lineitem ZORDER BY (l_orderkey)"
+        ]
+        assert [op["mechanism"] for op in databricks_adapter._applied_layout_operations] == ["z_order", "analyze"]
+
+    def test_a_failed_z_order_falls_back_to_plain_optimize_and_analyze(self, databricks_adapter):
+        executed = self._load(databricks_adapter, tuned=True, fail_zorder=True)
+
+        assert [sql for sql in executed if sql.upper().startswith(("OPTIMIZE", "ANALYZE"))] == [
+            "OPTIMIZE lineitem ZORDER BY (l_orderkey)",
+            "OPTIMIZE lineitem",
+            "ANALYZE TABLE lineitem COMPUTE STATISTICS",
+        ]
+        assert [(op["mechanism"], op["phase"]) for op in databricks_adapter._skipped_layout_operations] == [
+            ("z_order", "post_load")
+        ]
         assert [op["mechanism"] for op in databricks_adapter._applied_layout_operations] == ["optimize", "analyze"]
+        assert databricks_adapter.build_post_load_maintenance_phase().status == "FAILED"
+
+    def test_a_failed_z_order_leaves_other_tables_unaffected(self, databricks_adapter):
+        self._load(databricks_adapter, tuned=True, fail_zorder=True)
+        executed = self._load(databricks_adapter, tuned=True, table="orders")
+
+        assert [sql for sql in executed if sql.upper().startswith("OPTIMIZE")] == [
+            "OPTIMIZE orders ZORDER BY (l_orderkey)"
+        ]
 
     def test_the_skip_marker_does_not_outlive_the_load(self, databricks_adapter):
         self._load(databricks_adapter, tuned=True)
@@ -374,6 +408,20 @@ class TestDatabricksLoadPathOptimizesOnce:
         executed = self._load(databricks_adapter, tuned=False)
 
         assert [sql for sql in executed if sql.upper().startswith("OPTIMIZE")] == ["OPTIMIZE LINEITEM"]
+
+
+class TestZOrderColumns:
+    def test_partition_columns_are_never_z_ordered(self, databricks_adapter):
+        tuning = TableTuning(
+            table_name="LINEITEM",
+            partitioning=[TuningColumn(name="L_SHIPDATE", type="DATE", order=1)],
+            clustering=[
+                TuningColumn(name="L_SHIPDATE", type="DATE", order=1),
+                TuningColumn(name="L_ORDERKEY", type="INTEGER", order=2),
+            ],
+        )
+
+        assert databricks_adapter._table_zorder_columns("LINEITEM", tuning) == ["l_orderkey"]
 
 
 class TestCaughtMaintenanceErrorsFailThePhase:

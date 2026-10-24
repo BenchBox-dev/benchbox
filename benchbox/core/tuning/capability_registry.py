@@ -188,9 +188,11 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         _T.CLUSTERING: _post_load(
             "databricks_z_order_or_liquid",
-            "Rendered post-load as OPTIMIZE ... ZORDER BY (z_order strategy) or ALTER TABLE ... CLUSTER "
-            "BY (Liquid Clustering strategies) by benchbox/platforms/databricks/adapter.py. Not migrated "
-            "this round; see PARTITIONING entry.",
+            "Z-order strategy: after each table loads, OPTIMIZE ... ZORDER BY runs in place of the plain "
+            "OPTIMIZE (benchbox/platforms/databricks/adapter.py apply_post_load_tunings). Liquid Clustering "
+            "strategies issue ALTER TABLE ... CLUSTER BY before the load; the post-load OPTIMIZE then "
+            "clusters the loaded data, but only while enable_delta_optimization is on. Not migrated this "
+            "round; see PARTITIONING entry.",
         ),
         _T.DISTRIBUTION: _none(
             "no_user_managed_distribution_key",

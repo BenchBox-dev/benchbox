@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, cast
@@ -2856,20 +2856,44 @@ class DatabricksAdapter(PlatformAdapter):
 
     def apply_post_load_tunings(self, table_name: str, effective_config: Any, connection: Any) -> bool:
         table_tuning = self.table_tuning_for(effective_config, table_name)
-        if table_tuning is None or not table_tuning.has_any_tuning() or not self.enable_delta_optimization:
+        if table_tuning is None or not table_tuning.has_any_tuning():
             return False
         physical_table = self.resolve_physical_table(table_name)
+        zorder_columns = self._post_load_zorder_columns(physical_table, table_tuning)
+        if not (self.enable_delta_optimization or zorder_columns):
+            return False
         cursor = connection.cursor()
         try:
             cursor.execute(f"DESCRIBE EXTENDED {physical_table}")
             if not any("DELTA" in str(row).upper() for row in cursor.fetchall()):
                 return False
             self._delta_optimized_after_load().add(physical_table.lower())
-            if not self._apply_delta_optimize(cursor, physical_table, phase="post_load"):
+            if not self._apply_delta_optimize(cursor, physical_table, phase="post_load", zorder_columns=zorder_columns):
                 self.note_post_load_maintenance_failure()
+                if zorder_columns and self.enable_delta_optimization:
+                    if not self._apply_delta_optimize(cursor, physical_table, phase="post_load"):
+                        self.note_post_load_maintenance_failure()
             return True
         finally:
             cursor.close()
+
+    def _post_load_zorder_columns(self, physical_table: str, table_tuning: Any) -> list[str]:
+        if self._resolve_databricks_clustering_strategy() in {"liquid_clustering", "liquid_clustering_auto"}:
+            return []
+        return self._table_zorder_columns(physical_table, table_tuning)
+
+    def _table_zorder_columns(self, physical_table: str, table_tuning: Any) -> list[str]:
+        from benchbox.core.tuning.interface import TuningType
+
+        partition_names = {col.name.lower() for col in table_tuning.get_columns_by_type(TuningType.PARTITIONING) or []}
+        return [
+            self.resolve_physical_column(physical_table, column)
+            for column in self._build_zorder_columns(
+                table_tuning.get_columns_by_type(TuningType.CLUSTERING),
+                table_tuning.get_columns_by_type(TuningType.DISTRIBUTION),
+            )
+            if column.lower() not in partition_names
+        ]
 
     def apply_table_tunings(self, table_tuning, connection: Any) -> None:
         if not table_tuning or not table_tuning.has_any_tuning():
@@ -2900,15 +2924,11 @@ class DatabricksAdapter(PlatformAdapter):
                 for column in getattr(platform_opts, "liquid_clustering_columns", [])
             ]
 
-            cluster_columns = table_tuning.get_columns_by_type(TuningType.CLUSTERING)
             distribution_columns = table_tuning.get_columns_by_type(TuningType.DISTRIBUTION)
             sort_columns = table_tuning.get_columns_by_type(TuningType.SORTING)
             partition_columns = table_tuning.get_columns_by_type(TuningType.PARTITIONING)
 
-            zorder_columns = [
-                self.resolve_physical_column(table_name, column)
-                for column in self._build_zorder_columns(cluster_columns, distribution_columns)
-            ]
+            zorder_columns = self._table_zorder_columns(table_name, table_tuning)
             use_liquid = clustering_strategy in {"liquid_clustering", "liquid_clustering_auto"} or liquid_enabled
             if self.table_format == "hudi":
                 self._record_hudi_tuning_skips(
@@ -3040,8 +3060,6 @@ class DatabricksAdapter(PlatformAdapter):
             self._apply_liquid_clustering(
                 cursor, table_name, is_delta_table, liquid_columns, zorder_columns, sort_columns
             )
-        elif zorder_columns and is_delta_table:
-            self._apply_zorder_optimization(cursor, table_name, zorder_columns)
 
     def _apply_liquid_auto_clustering(self, cursor: Any, table_name: str, is_delta_table: bool) -> None:
         clause = f"ALTER TABLE {table_name} CLUSTER BY AUTO"
@@ -3133,43 +3151,6 @@ class DatabricksAdapter(PlatformAdapter):
             )
             self.logger.info(f"Liquid Clustering selected for {table_name} but no clustering columns were available")
 
-    def _apply_zorder_optimization(self, cursor: Any, table_name: str, zorder_columns: list[str]) -> None:
-        if self.table_format == "hudi":
-            self._record_layout_operation(
-                mechanism="z_order",
-                table=table_name,
-                statement=f"OPTIMIZE {table_name} ZORDER BY ({', '.join(zorder_columns)})",
-                status="skipped",
-                phase="ddl",
-                columns=zorder_columns,
-            )
-            self.logger.info(f"Skipped Delta-only Z-ORDER for Hudi table {table_name}")
-            return
-        clause = f"OPTIMIZE {table_name} ZORDER BY ({', '.join(zorder_columns)})"
-        try:
-            cursor.execute(clause)
-            self._z_order_operations.append({"table": table_name, "columns": list(zorder_columns), "statement": clause})
-            self._record_layout_operation(
-                mechanism="z_order",
-                table=table_name,
-                statement=clause,
-                status="applied",
-                phase="ddl",
-                columns=zorder_columns,
-            )
-            self.logger.info(f"Applied Z-ORDER optimization to {table_name}: {', '.join(zorder_columns)}")
-        except Exception as e:
-            self._record_layout_operation(
-                mechanism="z_order",
-                table=table_name,
-                statement=clause,
-                status="skipped",
-                phase="ddl",
-                columns=zorder_columns,
-                error=e,
-            )
-            self.logger.warning(f"Failed to apply Z-ORDER optimization to {table_name}: {e}")
-
     def _log_partitioning_and_sorting(self, table_name: str, partition_columns, sort_columns, use_liquid: bool) -> None:
         if partition_columns:
             names = [col.name for col in sorted(partition_columns, key=lambda c: c.order)]
@@ -3189,14 +3170,22 @@ class DatabricksAdapter(PlatformAdapter):
                 f"Sorting in Databricks achieved via {mechanism} for table {table_name}: {', '.join(names)}"
             )
 
-    def _apply_delta_optimize(self, cursor: Any, table_name: str, *, phase: str) -> bool:
+    def _apply_delta_optimize(
+        self, cursor: Any, table_name: str, *, phase: str, zorder_columns: Sequence[str] = ()
+    ) -> bool:
+        mechanism = "z_order" if zorder_columns else "optimize"
+        optimize_statement = f"OPTIMIZE {table_name}"
+        if zorder_columns:
+            optimize_statement += f" ZORDER BY ({', '.join(zorder_columns)})"
+        columns = list(zorder_columns) or None
         if self.table_format == "hudi":
             self._record_layout_operation(
-                mechanism="optimize",
+                mechanism=mechanism,
                 table=table_name,
-                statement=f"OPTIMIZE {table_name}",
+                statement=optimize_statement,
                 status="skipped",
                 phase=phase,
+                columns=columns,
             )
             self.logger.info(f"Skipped Delta-only OPTIMIZE for Hudi table {table_name}")
             self._record_layout_operation(
@@ -3208,28 +3197,36 @@ class DatabricksAdapter(PlatformAdapter):
             )
             self.logger.info(f"Skipped ANALYZE for Hudi table {table_name}")
             return True
-        optimize_statement = f"OPTIMIZE {table_name}"
         try:
             cursor.execute(optimize_statement)
+            if zorder_columns:
+                self._z_order_operations.append(
+                    {"table": table_name, "columns": list(zorder_columns), "statement": optimize_statement}
+                )
             self._record_layout_operation(
-                mechanism="optimize",
+                mechanism=mechanism,
                 table=table_name,
                 statement=optimize_statement,
                 status="applied",
                 phase=phase,
+                columns=columns,
             )
             self.logger.info(f"Optimized Delta table {table_name}")
         except Exception as e:
             self._record_layout_operation(
-                mechanism="optimize",
+                mechanism=mechanism,
                 table=table_name,
                 statement=optimize_statement,
                 status="skipped",
                 phase=phase,
+                columns=columns,
                 error=e,
             )
             self.logger.warning(f"Failed to optimize Delta table {table_name}: {e}")
             return False
+
+        if not self.enable_delta_optimization:
+            return True
 
         analyze_statement = f"ANALYZE TABLE {table_name} COMPUTE STATISTICS"
         try:

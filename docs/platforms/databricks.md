@@ -285,13 +285,17 @@ OPTIMIZE lineitem ZORDER BY (l_shipdate);
 ALTER TABLE lineitem CLUSTER BY (l_shipdate, l_orderkey);
 ```
 
-Clustering is set before the data loads. After a tuned table loads, BenchBox
-also executes `OPTIMIZE <table>` and `ANALYZE TABLE <table> COMPUTE STATISTICS`
-on Delta tables, unless `enable_delta_optimization` is `false`. The time is
-reported as `phases.post_load_maintenance` and is not counted in data-loading
-time. Tables the tuning does not cover, and untuned runs, still get a plain
-`OPTIMIZE` after load while `enable_delta_optimization` is on, and that time
-counts as load time. BenchBox does not run `VACUUM` as part of tuning.
+The Liquid Clustering statement runs before the data loads. The `ZORDER` statement
+runs after each tuned table loads, in place of the plain `OPTIMIZE`, because it
+has nothing to reorder on an empty table. After a tuned table loads, BenchBox
+executes `OPTIMIZE <table>` (or `OPTIMIZE <table> ZORDER BY (...)` for Z-order)
+and `ANALYZE TABLE <table> COMPUTE STATISTICS` on Delta tables, unless
+`enable_delta_optimization` is `false`. With that flag off, a Z-order run still
+executes its `ZORDER` statement, without the `ANALYZE`. The time is reported as
+`phases.post_load_maintenance` and is not counted in data-loading time. Tables
+the tuning does not cover, and untuned runs, still get a plain `OPTIMIZE` after
+load while `enable_delta_optimization` is on, and that time counts as load time.
+BenchBox does not run `VACUUM` as part of tuning.
 
 The resolved strategy is recorded per run in the result bundle at
 `platform.config.databricks_clustering_strategy` (`"z_order"`,

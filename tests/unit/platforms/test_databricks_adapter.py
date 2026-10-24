@@ -882,7 +882,7 @@ class TestDatabricksAdapter:
             assert clause == ""
 
     @patch("benchbox.platforms.databricks.adapter.databricks_sql")
-    def test_apply_table_tunings_with_clustering(self, mock_databricks_sql):
+    def test_apply_table_tunings_with_clustering_leaves_z_order_for_after_the_load(self, mock_databricks_sql):
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
@@ -923,7 +923,7 @@ class TestDatabricksAdapter:
             adapter.apply_table_tunings(mock_tuning, mock_connection)
 
             execute_calls = [str(call) for call in mock_cursor.execute.call_args_list]
-            assert any("OPTIMIZE test_table ZORDER BY" in call for call in execute_calls)
+            assert not any("ZORDER BY" in call for call in execute_calls)
 
         mock_cursor.close.assert_called()
 

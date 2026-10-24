@@ -270,9 +270,9 @@ class TestDatabricksHudiSupport:
     def test_apply_zorder_skipped_for_hudi(self):
         adapter = _make_hudi_adapter()
         cursor = MagicMock()
-        adapter._apply_zorder_optimization(cursor, "LINEITEM", ["l_orderkey"])
+        adapter._apply_delta_optimize(cursor, "LINEITEM", phase="post_load", zorder_columns=["l_orderkey"])
         cursor.execute.assert_not_called()
-        assert adapter._skipped_layout_operations[-1]["mechanism"] == "z_order"
+        assert adapter._skipped_layout_operations[0]["mechanism"] == "z_order"
 
     def test_vacuum_table_skipped_for_hudi(self):
         adapter = _make_hudi_adapter()
@@ -351,12 +351,13 @@ class TestDatabricksHudiSupport:
         adapter = _make_hudi_adapter()
         cursor = MagicMock()
         adapter._apply_delta_optimize(cursor, "LINEITEM", phase="post_load")
-        adapter._apply_zorder_optimization(cursor, "LINEITEM", ["l_orderkey"])
-        statements = [op["statement"] for op in adapter._skipped_layout_operations[-3:]]
+        adapter._apply_delta_optimize(cursor, "LINEITEM", phase="post_load", zorder_columns=["l_orderkey"])
+        statements = [op["statement"] for op in adapter._skipped_layout_operations[-4:]]
         assert statements == [
             "OPTIMIZE LINEITEM",
             "ANALYZE TABLE LINEITEM COMPUTE STATISTICS",
             "OPTIMIZE LINEITEM ZORDER BY (l_orderkey)",
+            "ANALYZE TABLE LINEITEM COMPUTE STATISTICS",
         ]
 
     def test_apply_table_tunings_records_skips_for_hudi(self):
