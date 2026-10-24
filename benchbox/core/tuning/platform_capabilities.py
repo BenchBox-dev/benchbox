@@ -120,13 +120,13 @@ def _map_databricks(roles: set[str], physical_rendering_id: str) -> PlatformTuni
     if TEMPORAL_PARTITION in roles:
         return PlatformTuningMapping(
             platform="databricks",
-            tuning_types=(),
-            physical_mechanisms=(),
-            decision=UNSUPPORTED,
+            tuning_types=(CLUSTERING,),
+            physical_mechanisms=(Z_ORDER, OPTIMIZE),
             reason=(
                 "Databricks recommends Liquid Clustering over Delta partitioning for new tables, "
-                "so temporal locality has no PARTITIONED BY mapping in BenchBox tuned templates."
+                "so temporal locality maps to the leading ZORDER clustering key instead of PARTITIONED BY."
             ),
+            max_columns=4,
             physical_rendering_id=physical_rendering_id,
         )
     if DISTRIBUTION_CANDIDATE in roles:
@@ -138,6 +138,7 @@ def _map_databricks(roles: set[str], physical_rendering_id: str) -> PlatformTuni
                 "Legacy Databricks Z-ORDER templates fold logical distribution candidates into ZORDER locality; "
                 "Databricks has no user-managed distribution key."
             ),
+            max_columns=4,
             physical_rendering_id=physical_rendering_id,
         )
     if roles & LOCALITY_ROLES:
@@ -146,6 +147,7 @@ def _map_databricks(roles: set[str], physical_rendering_id: str) -> PlatformTuni
             tuning_types=(CLUSTERING,),
             physical_mechanisms=(Z_ORDER, OPTIMIZE),
             reason="Logical locality maps to Databricks clustering, consumed by the Z-ORDER path in current templates.",
+            max_columns=4,
             physical_rendering_id=physical_rendering_id,
         )
     return _unsupported("databricks", roles, physical_rendering_id=physical_rendering_id)

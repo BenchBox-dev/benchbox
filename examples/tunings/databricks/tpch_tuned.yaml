@@ -19,6 +19,7 @@ platform_optimizations:
   z_ordering_enabled: true
   z_ordering_columns:
   - L_ORDERKEY
+  - L_SHIPDATE
   - L_PARTKEY
   - O_ORDERDATE
   - C_CUSTKEY
@@ -29,25 +30,31 @@ table_tunings:
   LINEITEM:
     table_name: LINEITEM
     clustering:
+    - name: L_SHIPDATE
+      type: DATE
+      order: 1
     - name: L_ORDERKEY
       type: INTEGER
-      order: 1
+      order: 2
     - name: L_PARTKEY
       type: INTEGER
-      order: 2
+      order: 3
     - name: L_SUPPKEY
       type: INTEGER
-      order: 3
+      order: 4
 
   ORDERS:
     table_name: ORDERS
     clustering:
+    - name: O_ORDERDATE
+      type: DATE
+      order: 1
     - name: O_ORDERKEY
       type: INTEGER
-      order: 1
+      order: 2
     - name: O_CUSTKEY
       type: INTEGER
-      order: 2
+      order: 3
 
   PART:
     table_name: PART
