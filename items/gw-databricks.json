@@ -5,7 +5,7 @@
     "Databricks gateway docs: espressocomputing server_hostname + unchanged http_path, PAT-only caveat",
     "No live-vendor calls in tests; mock tokens only"
   ],
-  "context": "Plan: /Users/joe/.jcode/scratch/espresso-greybeam-plan-v2.md items B1-B3, now layered on the core gateway capability (core-exec-gateway-capability; ADR docs/development/adr/adr-core-execution-variants.md D9/D10). Sources: benchbox/platforms/databricks/adapter.py (__init__ ~L269, add_cli_arguments ~L483, from_config ~L497 key loop). server_hostname override channel already exists; this item is label plumbing + OAuth guardrail + docs. Guardrails: worktree policy, never git add -A, no credentials in git, userinfo sanitization before logging.",
+  "context": "Delivered in merged PR #3374: gateway setting validated against the manifest gateways declaration, forwarded through from_config, PAT-only guardrail (OAuth env detection and explicit server_hostname/access_token required), docs/platforms/databricks.md. Routed results classed unofficial_nonstandard. Not done: CLI --gateway for Databricks (GATEWAY_ROUTED_PLATFORMS is Snowflake-only); handled in the Snowflake gateway PR follow-up.",
   "description": "Add gateway support to DatabricksAdapter per plan v2 B1-B3, on top of the core gateway capability (core-exec-gateway-capability): forward the core gateway setting through the from_config key loop, enforce the PAT-only guardrail via OAuth env-var detection, and document Espresso server_hostname usage. The gateway choice and its allowed values come from the core setting and the manifest gateways declaration; no separate --gateway CLI arg or option-spec choice row in the adapter.",
   "sessions": [
     {
@@ -39,6 +39,14 @@
       "generation": "1d39fc0b3a76422ba2a351b6d016f6f5",
       "op": "take",
       "op_id": "5a1084645fdb4513b0d12c42c53382bf",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-24T18:46:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1e74d057590b44709fd6e3f03f112417",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
