@@ -44,6 +44,11 @@ Flagged (short hash is the final segment of the bundle name):
   SA4 and TR1 are equivalent.
 - SQLite CoffeeShop SF0.01, SF0.1, SF1 `16f67069`, `3aadc9a8`, `5bd85b97`
   (#3257, #3291): the same QC1 and SA3 integer-division truncation.
+- ClickHouse Local Data Vault SF0.01 and SF0.1 `c202ec05`, `b4fd5612` (fork
+  30.24.0.12): Q6's `sat_lineitem` `BETWEEN 0.06 - 0.01 AND 0.06 + 0.01` bounds
+  were evaluated as Float64 and dropped the `l_discount = 0.07` rows (SF0.01 sum
+  734493.7281 against 1193053.2253 on DuckDB). These two keep their existing
+  `defective-macdbgen-addresses` id and gain the new one.
 
 Flagging the DataFusion and ClickHouse Local TPC-DI SF0.01 bundles and the
 DataFusion and SQLite CoffeeShop SF0.01 bundles leaves two ranked platforms in
