@@ -578,10 +578,13 @@ def ruleset_required_contexts(run: Runner, repo_full: str, branch: str) -> tuple
         raise LandingError(str(exc)) from exc
 
 
-def hidden_failed_suites(run: Runner, repo_full: str, branch: str, head: str) -> list[str]:
+def _hidden_failures(run: Runner, repo_full: str, branch: str, records: list[dict]) -> list[str]:
     required = ruleset_required_contexts(run, repo_full, branch)
-    evaluations = check_suites.evaluate(live_check_runs(run, repo_full, head), required, check_suites.NON_BLOCKING)
-    return check_suites.hidden_failure_reasons(evaluations)
+    return check_suites.hidden_failure_reasons(check_suites.evaluate(records, required, check_suites.NON_BLOCKING))
+
+
+def hidden_failed_suites(run: Runner, repo_full: str, branch: str, head: str) -> list[str]:
+    return _hidden_failures(run, repo_full, branch, live_check_runs(run, repo_full, head))
 
 
 def verify_evidence_live(run: Runner, repo_full: str, pr: dict, evidence: ReadyEvidence) -> None:
@@ -593,7 +596,8 @@ def verify_evidence_live(run: Runner, repo_full: str, pr: dict, evidence: ReadyE
         node_id=evidence.pr_node_id,
         head=head,
     )
-    verdicts = live_check_verdicts(run, repo_full, head)
+    records = live_check_runs(run, repo_full, head)
+    verdicts = check_suites.verdicts(records)
     for name in evidence.required:
         live = verdicts.get(name)
         if live is None:
@@ -604,6 +608,8 @@ def verify_evidence_live(run: Runner, repo_full: str, pr: dict, evidence: ReadyE
                 f"at {str(live.get('head_sha') or '')[:12]}, not success at {head[:12]}"
                 f" (suite {live.get('suite_id')}, {live.get('url') or 'no run URL'})"
             )
+    for reason in _hidden_failures(run, repo_full, str(pr.get("baseRefName") or "develop"), records):
+        raise LandingError(f"live verification: {reason}")
     live_decision = str(pr.get("reviewDecision") or "")
     if live_decision != evidence.review_decision:
         raise LandingError(

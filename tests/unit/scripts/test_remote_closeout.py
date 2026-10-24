@@ -198,6 +198,8 @@ class FakeGitHub:
                 if review["commit_id"] == commit[1] and marker[0] in review["body"]
             ]
             return 0, "".join(f"{match}\n" for match in matches)
+        if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
+            return 0, "\n".join([*pr_landing.REQUIRED_CONTEXTS, "oracle-review"])
         if cmd[:2] == ["gh", "api"] and "/check-runs" in cmd[-1]:
             head = cmd[-1].split("/commits/")[1].split("/")[0]
             runs = [
@@ -1842,17 +1844,20 @@ def test_claude_publication_can_resume_without_rerunning_the_reviewer(
 def test_refuses_a_stale_failed_suite_hidden_behind_a_newer_success(
     world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    template = {"name": "oracle-review", "status": "completed", "details_url": "", "check_suite": {"id": 0}}
     ready_pr.stale_suites = [
+        {**template, "id": 98, "conclusion": "success", "started_at": "2", "check_suite": {"id": 8}},
         {
+            **template,
             "id": 99,
-            "name": "core",
             "conclusion": "failure",
-            "status": "completed",
-            "started_at": "0",
+            "started_at": "1",
             "details_url": "https://github.com/o/r/actions/runs/77/job/1",
             "check_suite": {"id": 9},
-        }
+        },
     ]
     assert arm(world, ready_pr) == 2
-    assert "required check 'core' failed with conclusion 'failure'" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "condition 6: required check 'oracle-review' suite 9 failure" in err
+    assert "actions/runs/77" in err
     assert ready_pr.arms() == []

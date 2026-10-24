@@ -35,6 +35,18 @@ def parse_required_contexts(text: str) -> tuple[str, ...]:
     return tuple(names)
 
 
+def required_contexts_from_rules(rules: Any) -> tuple[str, ...]:
+    if not isinstance(rules, list):
+        raise ValueError("the branch rules are not a list")
+    names = [
+        check["context"]
+        for rule in rules
+        if isinstance(rule, Mapping) and rule.get("type") == "required_status_checks"
+        for check in (rule.get("parameters") or {}).get("required_status_checks") or []
+    ]
+    return parse_required_contexts("\n".join(names))
+
+
 def parse_check_run_lines(text: str) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for line in text.splitlines():

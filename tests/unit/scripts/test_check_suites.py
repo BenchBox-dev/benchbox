@@ -221,6 +221,14 @@ class _Client:
         return []
 
     def get_one(self, path: str) -> Any:
+        if "/rules/branches/" in path:
+            return [
+                {"type": "deletion"},
+                {
+                    "type": "required_status_checks",
+                    "parameters": {"required_status_checks": [{"context": name} for name in (*GREEN, "oracle-review")]},
+                },
+            ]
         return {}
 
 
@@ -231,3 +239,29 @@ def test_the_sweep_fetch_requests_latest_runs_and_keeps_suite_identity() -> None
     stale = next(item for item in pr["check_runs"] if item["check_suite"]["id"] == 90)
     assert stale["details_url"].endswith("/actions/runs/77/job/770")
     assert not sweep.classify_pr(pr, NOW).required_green
+
+
+def test_the_sweep_fetch_carries_the_ruleset_required_names() -> None:
+    (pr,) = sweep.fetch_open_prs(_Client(), "o", "r")
+    assert pr["required_contexts"] == [*GREEN, "oracle-review"]
+
+
+def test_the_sweep_does_not_call_a_pr_green_when_only_a_ruleset_check_has_a_hidden_failure() -> None:
+    records = [
+        *lane(GREEN),
+        check("oracle-review", 20, "2026-10-24T10:30:00Z", "success"),
+        check("oracle-review", 21, "2026-10-24T09:00:00Z", "failure", run=88),
+    ]
+    pr = {**_pr(records), "required_contexts": [*GREEN, "oracle-review"]}
+    classified = sweep.classify_pr(pr, NOW)
+    assert not classified.required_green
+    assert not classified.stranded
+    (reason,) = classified.hidden_failures
+    assert "oracle-review" in reason and "actions/runs/88" in reason
+
+
+def test_rules_without_required_status_checks_are_rejected() -> None:
+    with pytest.raises(ValueError):
+        check_suites.required_contexts_from_rules([{"type": "deletion"}])
+    with pytest.raises(ValueError):
+        check_suites.required_contexts_from_rules({"message": "Not Found"})

@@ -231,8 +231,12 @@ def classify_pr(
     changed_files = pr.get("changed_files") or []
     labels = pr.get("labels") or []
 
-    required_green = is_required_lane_green(check_runs)
-    hidden_failures = check_suites.hidden_failure_reasons(check_suites.evaluate(check_runs, REQUIRED_CHECK_NAMES))
+    hidden_failures = check_suites.hidden_failure_reasons(
+        check_suites.evaluate(
+            check_runs, pr.get("required_contexts") or REQUIRED_CHECK_NAMES, check_suites.NON_BLOCKING
+        )
+    )
+    required_green = is_required_lane_green(check_runs) and not hidden_failures
     soundness_gated = is_soundness_gated(changed_files)
     auto_merge_enabled = bool(pr.get("auto_merge"))
     draft = bool(pr.get("draft"))
@@ -453,7 +457,14 @@ def fetch_pr_timeline_events(client: GitHubClient, owner: str, repo: str, number
     return compact
 
 
+def fetch_required_contexts(client: GitHubClient, owner: str, repo: str) -> tuple[str, ...]:
+    return check_suites.required_contexts_from_rules(
+        client.get_one(check_suites.required_contexts_endpoint(f"{owner}/{repo}", "develop"))
+    )
+
+
 def fetch_open_prs(client: GitHubClient, owner: str, repo: str) -> list[dict[str, Any]]:
+    required_contexts = fetch_required_contexts(client, owner, repo)
     raw_prs = client.get_all(f"repos/{owner}/{repo}/pulls", {"state": "open", "base": "develop"})
     normalized: list[dict[str, Any]] = []
     for raw in raw_prs:
@@ -481,6 +492,7 @@ def fetch_open_prs(client: GitHubClient, owner: str, repo: str) -> list[dict[str
                 "head_pushed_at": head_pushed_at,
                 "auto_merge": raw.get("auto_merge"),
                 "labels": [name for name in label_names if name],
+                "required_contexts": list(required_contexts),
                 "timeline_events": timeline_events,
                 "changed_files": [f.get("filename", "") for f in files],
                 "check_runs": [

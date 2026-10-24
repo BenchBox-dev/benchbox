@@ -837,6 +837,10 @@ def _lines(records: list[dict]) -> str:
     return "\n".join(json.dumps(record) for record in records)
 
 
+def _ruleset_contexts() -> str:
+    return "\n".join([*landing.REQUIRED_CONTEXTS, "oracle-review"])
+
+
 def _live_checks_payload(head: str, conclusion: str = "success") -> str:
     return _lines(_live_check_records(head, conclusion))
 
@@ -852,7 +856,7 @@ def _live_pr(head: str, decision: str = "APPROVED", labels: list[dict] | None = 
 
 
 def test_verify_evidence_live_accepts_fresh_evidence() -> None:
-    run = FakeRun([(0, _live_checks_payload(HEAD)), (0, _live_threads())])
+    run = FakeRun([(0, _live_checks_payload(HEAD)), (0, _ruleset_contexts()), (0, _live_threads())])
     landing.verify_evidence_live(run, "o/r", _live_pr(HEAD), _evidence(HEAD))
 
 
@@ -865,7 +869,7 @@ def test_verify_evidence_live_refuses_stale_check() -> None:
 
 
 def test_verify_evidence_live_refuses_decision_mismatch() -> None:
-    run = FakeRun([(0, _live_checks_payload(HEAD))])
+    run = FakeRun([(0, _live_checks_payload(HEAD)), (0, _ruleset_contexts())])
     with pytest.raises(landing.LandingError, match="review decision"):
         landing.verify_evidence_live(run, "o/r", _live_pr(HEAD, "CHANGES_REQUESTED"), _evidence(HEAD))
 
@@ -886,7 +890,7 @@ def _live_threads(nodes: list[dict] | None = None, *, has_next: bool = False, cu
 
 
 def test_verify_evidence_live_refuses_unclaimed_live_hold() -> None:
-    run = FakeRun([(0, _live_checks_payload(HEAD))])
+    run = FakeRun([(0, _live_checks_payload(HEAD)), (0, _ruleset_contexts())])
     with pytest.raises(landing.LandingError, match="durable hold"):
         landing.verify_evidence_live(
             run,
@@ -897,7 +901,13 @@ def test_verify_evidence_live_refuses_unclaimed_live_hold() -> None:
 
 
 def test_verify_evidence_live_refuses_unresolved_review_thread() -> None:
-    run = FakeRun([(0, _live_checks_payload(HEAD)), (0, _live_threads([{"isResolved": False, "isOutdated": False}]))])
+    run = FakeRun(
+        [
+            (0, _live_checks_payload(HEAD)),
+            (0, _ruleset_contexts()),
+            (0, _live_threads([{"isResolved": False, "isOutdated": False}])),
+        ]
+    )
     with pytest.raises(landing.LandingError, match="unresolved"):
         landing.verify_evidence_live(run, "o/r", _live_pr(HEAD), _evidence(HEAD))
 
@@ -1023,21 +1033,41 @@ def test_verify_evidence_live_refuses_a_stale_failed_suite_hidden_by_a_newer_suc
         landing.verify_evidence_live(run, "o/r", _live_pr(HEAD), _evidence(HEAD))
 
 
+def test_verify_evidence_live_refuses_a_hidden_failure_on_a_ruleset_check_outside_the_evidence() -> None:
+    records = _live_check_records(HEAD)
+    template = records[0]
+    records += [
+        {**template, "id": 5, "name": "oracle-review", "check_suite": {"id": 51}, "started_at": "2026-09-08T20:00:00Z"},
+        {
+            **template,
+            "id": 6,
+            "name": "oracle-review",
+            "conclusion": "failure",
+            "check_suite": {"id": 52},
+            "started_at": "2026-09-08T19:00:00Z",
+            "details_url": "https://github.com/o/r/actions/runs/88/job/6",
+        },
+    ]
+    run = FakeRun([(0, _lines(records)), (0, _ruleset_contexts())])
+    with pytest.raises(landing.LandingError, match=r"oracle-review.*actions/runs/88.*make pr-rerun"):
+        landing.verify_evidence_live(run, "o/r", _live_pr(HEAD), _evidence(HEAD))
+
+
 def test_hidden_failed_suites_reports_the_run_to_rerun() -> None:
-    run = FakeRun([(0, "\n".join(landing.REQUIRED_CONTEXTS)), (0, _lines(_stale_suite_records()))])
+    run = FakeRun([(0, _lines(_stale_suite_records())), (0, "\n".join(landing.REQUIRED_CONTEXTS))])
     (reason,) = landing.hidden_failed_suites(run, "o/r", "develop", HEAD)
     assert "actions/runs/77" in reason and "make pr-rerun" in reason
-    assert "rules/branches/develop" in run.calls[0][-1]
+    assert "rules/branches/develop" in run.calls[1][-1]
 
 
 def test_hidden_failed_suites_is_empty_when_every_suite_is_green() -> None:
-    run = FakeRun([(0, "\n".join(landing.REQUIRED_CONTEXTS)), (0, _live_checks_payload(HEAD))])
+    run = FakeRun([(0, _live_checks_payload(HEAD)), (0, "\n".join(landing.REQUIRED_CONTEXTS))])
     assert landing.hidden_failed_suites(run, "o/r", "develop", HEAD) == []
 
 
 def test_hidden_failed_suites_refuses_when_the_branch_lists_no_required_checks() -> None:
     with pytest.raises(landing.LandingError, match="no required status checks"):
-        landing.hidden_failed_suites(FakeRun([(0, "")]), "o/r", "develop", HEAD)
+        landing.hidden_failed_suites(FakeRun([(0, _live_checks_payload(HEAD)), (0, "")]), "o/r", "develop", HEAD)
 
 
 def test_bound_withdraw_requires_declared_node_and_head() -> None:
