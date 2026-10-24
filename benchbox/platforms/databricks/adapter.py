@@ -61,6 +61,28 @@ def _select_databricks_warehouse(warehouses: list, very_verbose: bool, logger: l
     return available_wh
 
 
+DATABRICKS_OAUTH_ENV_VARS = ("DATABRICKS_CLIENT_ID", "DATABRICKS_CLIENT_SECRET", "DATABRICKS_CONFIG_PROFILE")
+
+
+def _validate_gateway(gateway: str) -> None:
+    from benchbox.core.exceptions import ConfigurationError
+    from benchbox.core.gateway import DEFAULT_GATEWAY, supported_gateways
+
+    if gateway == DEFAULT_GATEWAY:
+        return
+    allowed = supported_gateways("databricks")
+    if gateway not in allowed:
+        raise ConfigurationError(
+            f"Databricks does not support gateway '{gateway}'. Allowed: {', '.join([DEFAULT_GATEWAY, *sorted(allowed)])}"
+        )
+    oauth_vars = [name for name in DATABRICKS_OAUTH_ENV_VARS if os.environ.get(name)]
+    if oauth_vars:
+        raise ConfigurationError(
+            f"Databricks gateway '{gateway}' supports personal access token authentication only, but "
+            f"{', '.join(oauth_vars)} is set. Unset it and provide access_token (DATABRICKS_TOKEN) instead."
+        )
+
+
 def _compact_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {str(key): value for key, value in payload.items() if value not in (None, "", {}, [], ())}
 
@@ -261,6 +283,8 @@ class DatabricksAdapter(PlatformAdapter):
         self.uc_schema = config.get("uc_schema")
         self.uc_volume = config.get("uc_volume")
         self.staging_root = config.get("staging_root")
+        self.gateway = str(config.get("gateway") or "native")
+        _validate_gateway(self.gateway)
         self.region = config.get("region") or config.get("cloud_region") or config.get("workspace_region")
 
         self.enable_delta_optimization = (
@@ -534,6 +558,7 @@ class DatabricksAdapter(PlatformAdapter):
             "hudi_table_type",
             "create_catalog",
             "disable_result_cache",
+            "gateway",
         ]:
             if key in config:
                 adapter_config[key] = config[key]
