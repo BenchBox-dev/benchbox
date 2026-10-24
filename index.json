@@ -15799,6 +15799,13 @@
       "status": "open",
       "title": "Remove the oracle's author-family label lookup and hard-code the claude author default"
     },
+    "oracle-carry-publication-and-failed-post-strike-state-20261024": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make a retarget carry actually publish a review and make strike state follow only successful review posts"
+    },
     "oracle-checker-drop-legacy-first-line-20261023": {
       "claim": null,
       "needs": [],
