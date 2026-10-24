@@ -834,6 +834,51 @@ def test_a_relocated_first_hunk_is_reviewed_again_and_a_rebase_is_carried(
     assert outcomes == ["review", "carry"]
 
 
+def _repeated_blocks(pad: int = 0) -> str:
+    block = ["a", "b", "requires_auth", "d"]
+    return "\n".join(["# pad"] * pad + block * 3 + ["tail"]) + "\n"
+
+
+def _headingless(block: int, pad: int = 0) -> str:
+    start = pad + 1 + block * 4
+    hunk = f"@@ -{start},4 +{start},3 @@\n a\n b\n-c\n requires_auth\n"
+    return _file_diff(hunk)
+
+
+def test_a_headingless_hunk_relocated_to_an_identical_block_is_a_different_patch() -> None:
+    first = _read_patches(_headingless(0), _repeated_blocks())
+    second = _read_patches(_headingless(1), _repeated_blocks())
+    assert first != second
+
+
+def test_a_rebase_that_shifts_a_headingless_hunk_keeps_its_patch() -> None:
+    assert _read_patches(_headingless(1), _repeated_blocks()) == _read_patches(
+        _headingless(1, pad=8), _repeated_blocks(pad=8)
+    )
+
+
+def _twin_functions(pad: int = 0) -> str:
+    function = ["def guarded(user):", "a", "b", "c", "", ""]
+    return "\n".join(["# pad"] * pad + function * 2) + "\n"
+
+
+def _twin_removal(function: int, pad: int = 0) -> str:
+    start = pad + 2 + function * 6
+    return _file_diff(f"@@ -{start},4 +{start},3 @@ def guarded(user):\n a\n-b\n c\n \n")
+
+
+def test_a_hunk_relocated_to_a_function_with_a_repeated_heading_is_a_different_patch() -> None:
+    first = _read_patches(_twin_removal(0), _twin_functions())
+    second = _read_patches(_twin_removal(1), _twin_functions())
+    assert first != second
+
+
+def test_a_rebase_that_shifts_a_repeated_heading_keeps_its_patch() -> None:
+    assert _read_patches(_twin_removal(1), _twin_functions()) == _read_patches(
+        _twin_removal(1, pad=8), _twin_functions(pad=8)
+    )
+
+
 def test_prose_is_untracked_apart_from_a_scoped_follow_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     notes = {"filename": "docs/notes.md", "additions": 1, "deletions": 0, "sha": "9" * 40}
     record = _record(TWO_FILE_DIFF, "SHIP")
