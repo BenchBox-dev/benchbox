@@ -165,7 +165,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         _T.PRIMARY_KEYS: _ddl(
             _INLINE_CONSTRAINT,
             "Delta tables keep the inline PRIMARY KEY clause. Parquet and ORC tables, the default formats, cannot "
-            "carry constraints, so optimize_spark_table_definition removes the clause; Spark never enforces "
+            "carry constraints, so the translate_ddl strip_primary_keys and strip_foreign_keys options remove the clause; Spark never enforces "
             "declared keys either way. Kept as DDL so tuning files that leave keys at their default still load.",
         ),
         _T.FOREIGN_KEYS: _ddl(
@@ -174,7 +174,7 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
         ),
         **_no_unique_check_entries(
             "spark_no_unique_check_rendering",
-            "optimize_spark_table_definition removes UNIQUE clauses from Parquet and ORC tables.",
+            "The translate_ddl strip_unique option removes UNIQUE clauses from Parquet and ORC tables.",
         ),
     },
     "databricks": {
@@ -182,15 +182,17 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "databricks_partitioning_preview_only",
             "DatabricksAdapter.generate_tuning_clause builds PARTITIONED BY from tuned columns "
             "(databricks/adapter.py:3005-3048) but has no production call site tree-wide, so no "
-            "PARTITIONED BY is rendered at preview or execution. Real execution builds Delta DDL in "
-            "_convert_to_delta_table (databricks/adapter.py:2672-2729), which never adds partitioning "
+            "PARTITIONED BY is rendered at preview or execution. Real execution builds Delta DDL through "
+            "translate_ddl with a Delta default layout (DatabricksAdapter._schema_ddl_options), which never adds partitioning "
             "columns, and apply_table_tunings only logs them via _log_partitioning_and_sorting.",
         ),
         _T.CLUSTERING: _post_load(
             "databricks_z_order_or_liquid",
-            "Rendered post-load as OPTIMIZE ... ZORDER BY (z_order strategy) or ALTER TABLE ... CLUSTER "
-            "BY (Liquid Clustering strategies) by benchbox/platforms/databricks/adapter.py. Not migrated "
-            "this round; see PARTITIONING entry.",
+            "Z-order strategy: after each table loads, OPTIMIZE ... ZORDER BY runs in place of the plain "
+            "OPTIMIZE (benchbox/platforms/databricks/adapter.py apply_post_load_tunings). Liquid Clustering "
+            "strategies issue ALTER TABLE ... CLUSTER BY before the load; the post-load OPTIMIZE then "
+            "clusters the loaded data, but only while enable_delta_optimization is on. Not migrated this "
+            "round; see PARTITIONING entry.",
         ),
         _T.DISTRIBUTION: _none(
             "no_user_managed_distribution_key",
@@ -628,8 +630,8 @@ PLATFORM_TUNING_CAPABILITIES: dict[str, dict[TuningType, TuningCapability]] = {
             "core.tuning.generators.starrocks.StarRocksDDLGenerator renders PARTITION BY from tuned "
             "partitioning columns at CREATE TABLE time. Consumed by both dry-run preview "
             "(get_ddl_generator('starrocks')) and real execution -- benchbox/platforms/starrocks/"
-            "workload.py's _optimize_table_definition resolves the same generator via "
-            "_resolve_tuned_ddl_clauses and injects the tuned PARTITION BY clause. No drift between "
+            "workload.py resolves the same generator via "
+            "get_ddl_generator('starrocks') and passes the tuned PARTITION BY clause to translate_ddl. No drift between "
             "preview and execution.",
         ),
         _T.SORTING: _ddl(

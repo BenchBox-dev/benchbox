@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Each SQL platform declares its SQL dialect once, as `capabilities.sql_dialect` in the platform manifest; `resolve_sql_dialect` and `resolve_dialect_for_query_translation` read it, and the `PLATFORM_DIALECTS` table is removed. Athena and SingleStore also declare `capabilities.query_dialect` (`trino` and `mysql`), the dialect their adapters generate workload queries in; their adapters read it from the manifest, so query output is unchanged. A test pins the intended dialect of every platform and checks that each adapter's `get_target_dialect()` agrees with the manifest.
+- A pull request that edits only release enforcement files (`Makefile`, `ci.yml`, the release check scripts) no longer fails `ci-paths` when upstream SQLGlot publishes a new release before the fork is refreshed. The freshness check still runs for pull requests that change the release version or edit the freshness check or its waiver file, and in the release workflows.
+- The locked `filelock` moves from 3.25.2 to 4.2.4 to clear CVE-2026-112940, CVE-2026-112913 and CVE-2026-112907, which are fixed only in 4.2.1 and later. `[tool.uv] override-dependencies = ["filelock>=4.2.1,<5"]` is required because every resolvable `snowflake-connector-python` declares `filelock<4` and every `snowflake-snowpark-python` caps the connector below 5. The other locked consumers already accept 4.x (`huggingface-hub>=3.10.0`, `torch` unbounded, `tox>=3.20.3`, `virtualenv<5,>=3.24.2`, `python-discovery>=3.15.4`). The only 4.0.0 breaking change in the filelock changelog is the `SoftReadWriteLock` on-disk protocol, which none of them use; the connector imports only `FileLock`, `Timeout` and `BaseFileLock`. The `uv.lock` hashes for 4.2.4 match PyPI (wheel 301241438c57, sdist c6d8663535e1). The wheel grows from 26,759 to 162,475 bytes and the sdist from 40,480 to 652,444 bytes because the package grew from 11 modules and 76,684 bytes of Python to 23 modules and 573,230 bytes (the soft and read-write lock implementations, `_api.py`, `asyncio.py`), and because the sdist has shipped `docs/` since 4.1.0. Remove the override once the connector and snowpark allow `filelock>=4`.
+
 ### Added
 
+- The Databricks adapter accepts the core `gateway` setting (`native`, `espresso` or `custom`) and forwards it through `from_config`. Gateways use personal access tokens only: a non-native gateway with `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` or `DATABRICKS_CONFIG_PROFILE` set raises a `ConfigurationError` that points to token authentication. With a gateway, `from_config` requires an explicit `server_hostname` and `access_token` and never falls back to the auto-detected workspace. Runs through a gateway record `gateway` in platform info, so they get the `@<gateway>` variant suffix and `tpc_compliant=false`. The Databricks guide documents using the Espresso hostname as `server_hostname` with an unchanged `http_path`.
+- `scripts/export_docs_data.py` exports the data behind the generated query, compatibility and tuning pages as deterministic JSON validated by `quality/docs-data.schema.json`, so a renderer needs no Python. `--output PATH --check` fails when `PATH` differs from a fresh export. The Markdown generators are unchanged.
+- `make doc-contracts` exports `doc-contracts.json`, the registry, CLI, MCP, platform-option, tuning, publication and ownership facts that site-owned documentation is validated against. It is checked against `quality/doc-contracts.schema.json` and must be byte-identical across two builds; `make docs-generate` runs `make doc-contracts-check`. `quality/doc-lock-tests.json` maps every test that reads a site-owned page to the contract field that replaces it, and `quality/docs-reference-inventory.json` lists every reference to a site-owned path outside `docs/` with its disposition (`make docs-reference-inventory-check` fails when it is stale). The MCP omission tiers now live in `quality/mcp-run-surface.json`, shared by the exporter and the MCP surface tests.
 - Benchmark runs check free space on the output volume before any data is written and fail with the free and total bytes and the largest top-level entries when less than 5% is free. `BENCHBOX_MIN_FREE_DISK_PERCENT` changes the threshold (`0` disables it). `make disk-check` runs the same check by hand and never deletes anything.
 - `translate_ddl` accepts an engine type map by name (`type_map="starrocks"`, `"doris"`, `"singlestore"`) so adapters do not import fork modules.
 - Result readers accept schema 2.4: the loader, normalizer, explorer input
@@ -58,7 +67,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The lint job collects the test suite once. `make lint-markers` collects with `--assert=plain` and records every test's markers to `$MARKER_MANIFEST`; the fast-lane guard (`fast_lane_ceiling_check.py --manifest-from-env`, or `--manifest <path>`) evaluates each forbidden marker expression and path substring against that record with pytest's own marker-expression evaluation, instead of running one full collection per expression. Without either option the guard collects for itself, so a leftover `MARKER_MANIFEST` in a shell is never read by accident. Collection errors, unregistered markers, a collection timeout and a record with no tests fail; violations and counts are unchanged.
+- The Spark, Velox, LakeSail and Databricks adapters build `CREATE TABLE` statements with
+  `translate_ddl` instead of rewriting the translated text: the `USING` format, Delta auto-optimize
+  and Hudi table properties, `CREATE OR REPLACE`, and the Parquet and ORC constraint and `SMALLINT`
+  stripping are `translate_ddl` options built from the adapter configuration. The cloud Spark DDL
+  mixin returns table layouts (`generate_table_layout`) and renders them through `translate_ddl`.
+  `optimize_spark_table_definition`, `_convert_to_delta_table`, `_convert_to_hudi_table` and
+  `SparkDDLGeneratorMixin.generate_tuning_clauses` are removed. Differences from the old text
+  output: a leading `/* comment */` is kept, a named `CONSTRAINT` is removed together with its
+  key, a Hive partition column is moved out of the column list, a Parquet `SORTED BY` without
+  `CLUSTERED BY` is no longer written, and the two Delta auto-optimize properties are listed in
+  a different order.
+- The comment-policy check in CI and `make comment-policy-check` scans only the files that differ from the base, as the hook already did, and the whole repository after a global change: the policy, the cleanup scope policy, the launcher, a trusted checker file (or an unreadable trusted-file list), or a removed exception or exclusion. Files holding an exception are also scanned when the exception's consumer changes. The ratchet, review gating, new files under exclusions, consumer validation and expired-exception findings still run on every pull request. A new `Comment Policy Nightly` workflow scans the whole of develop every night and on demand (`scripts/run_comment_policy.py --full`); when any file has a violation it fails and opens or updates an issue, and a clean run closes it.
+- `pyproject.toml` now requires uv 0.13.4 or newer (`required-version`); older uv releases fail with a clear error instead of running with root certificates that trust the compromised eMudhra emSign CAs.
 - `quality/comment-policy.json` no longer has a `completed` list, and a policy that still has one fails schema validation. Every first-party path is in scope, so there is no list of dead completed prefixes left to prune.
+- FlightData queries for PostgreSQL are rendered by `translate_sql_query` with the runtime's
+  `round_inputs_to_decimal` rewrite instead of local AST code; the `ast_rewrite` allowlist entry for
+  `benchbox/core/flightdata/queries.py` is gone. The ROUND casts are unchanged, but the PostgreSQL
+  text no longer quotes identifiers (`translate_sql_query` does not quote for `postgres`), so
+  `"f"."dep_delay"` is now `f.dep_delay`. All 20 queries execute on PostgreSQL 16.2 before and
+  after. No published FlightData bundle targets PostgreSQL, so no published result changes.
 - The comment-policy check compares a branch with its base using the strict rules over the whole repository. It no longer scans the base's sources or reports only newly introduced findings, so every violation fails, including old ones; none exist today. Staged runs check the staged files that differ from the base, and the whole repository when the commit changes the policy, the cleanup scope policy, the launcher or a trusted checker file. The policy ratchet, review gating for new exceptions, checks of new files under external exclusions, consumer validation, expired-exception findings and the base-copied launcher are unchanged. The `completed` list in `quality/comment-policy.json` is no longer read or ratcheted, and the policy may omit it.
 - The comment-policy scanner builds each Python file's name index once and parses YAML with the C loader when available, falling back to the pure-Python loader on any error. Findings are unchanged; a whole-tree strict scan is more than twice as fast.
 - TPC-DS OBT queries load from a hand-owned static catalog (`benchbox/core/tpcds_obt/catalog/queries.yaml`)
@@ -79,11 +108,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   their column types. A guard test rejects bare `FLOAT` in benchmark schema specs, the Snowflake
   FlightData type map writes `DOUBLE` instead of `FLOAT` (the same 64-bit type), and the StarRocks and
   SingleStore adapters no longer pass `float_as_real` because no benchmark schema declares a bare `FLOAT`.
+- DuckDB and SQLite build their schema script with one `translate_ddl` call that also removes the TPC-DS foreign keys, instead of `translate_sql` followed by a regex strip; the generated statements are unchanged. The `ddl_helpers` regex helpers `strip_foreign_keys`, `strip_primary_keys` and `strip_tpcds_foreign_keys` are removed; the inventory keeps the `_optimize_table_definition` / `_transform_create_statement` signature detection so a reintroduced per-adapter DDL hook still fails the drift check; the `sql_compat` README, the SQLGlot and phase-aware-pipeline ADRs and the new-platform guide describe `translate_ddl` instead of per-adapter hooks.
+- The TPC-DS OBT schema, ETL, `CREATE TABLE` statement and lineage page come from one declarative model,
+  `benchbox/core/tpcds_obt/model.yaml`. The table gains 12 roles and 197 columns (518 to 715 at
+  `dimension_mode=full`): the billing and returning customer's current address, demographics and household
+  demographics, the billing customer's first sales and first ship-to dates, and the return-side store, call center,
+  catalog page and web page. Column lineage is derived from the columns the ETL reads, which corrects `store_sk`
+  and other fact columns that named a returns column the ETL never used. A full-width build at scale factor 1 or above
+  fails when a calendar day from 1998 to 2002 has no sale or an item never appears, and the manifest records the
+  coverage. The OBT benchmark version is 0.2, so published SQL OBT results need a rerun.
+
+- TPC-DS OBT queries return the TPC-DS result. 37 queries were rewritten as one-table SQL (grain, correlated
+  subqueries, customer-current attributes, return-side joins, the Q14 second part and Q24), Q46, Q64 and Q68 are served,
+  and Q8, Q54 and Q84 join the inventory queries as recorded exclusions, so the catalog serves 90 of 99 queries.
+  `make tpcds-obt-equivalence` compares every served query with TPC-DS at SF0.01 and SF1; no query is recorded as
+  divergent at either scale. Q2 builds its calendar from the TPC-DS date table's fixed week and year boundaries
+  instead of the sales rows, so it matches at every scale factor.
+
+- The 17 TPC-DS OBT DataFrame queries use their `obt_*` names as query IDs (`obt_row_count`, `obt_channel_revenue`
+  and so on) instead of `Q1` to `Q17`, which read as TPC-DS query numbers although the DataFrame queries are OBT-native
+  and match no TPC-DS query. `--queries` selects them by the new names, and DataFrame OBT results are labelled with them.
+
 - The PostgreSQL, DuckLake, pg_mooncake and QuestDB adapters build `CREATE TABLE` text through
   `translate_ddl` instead of their own rewrites. QuestDB writes `VARCHAR` for `CHAR(n)` and
   `VARCHAR(n)` (QuestDB rejects the lengths), DuckLake quotes identifiers, and the pg_mooncake
   mirror statements come from the SQLGlot runtime. The key
   stripping, `SYMBOL` columns, designated timestamp and partitioning keep their results.
+- The TPC-DS runner no longer carries ClickHouse Q47, Q57, Q66, Q90 and PostgreSQL rollup `ORDER BY lochierarchy`
+  overrides; they run as the bundled SQLGlot runtime's `nullif_zero_divisors` (Q90, every dialect),
+  `inline_order_by_aliases` (Q36, Q70, Q86 on the PostgreSQL family), `alias_qualified_projections` (ClickHouse Q47, Q57)
+  and `qualify_alias_shadowed_columns` (ClickHouse Q66). ClickHouse Q47, Q57 and Q66 now keep the dsqgen shape instead
+  of being split into extra CTEs, and the TPC-DS OBT ClickHouse path uses the same rewrites. Every ClickHouse query
+  also goes through `decimal_division_to_double` (a quotient keeps its fractional digits instead of the dividend's scale),
+  `use_nulls_for_rollups` (rolled-up keys are NULL, as on every other engine) and, for TPC-H Q6, the exact-decimal
+  `BETWEEN` bounds. On ClickHouse, TPC-DS Q2, Q5, Q12, Q14, Q20, Q36, Q59, Q66, Q77, Q80, Q98 and TPC-H Q6 now return the DuckDB
+  rows at SF0.01, and TPC-H Q8 and the TPC-DS Q2, Q12, Q20, Q36, Q59, Q66 and Q98 quotients change at larger scale.
+  Published ClickHouse results for these queries, and other ClickHouse bundles with division or `ROLLUP`, were produced
+  before this change.
 - Trino, Presto and Athena build their `CREATE TABLE` DDL with `translate_ddl` instead of
   adapter-side text rewrites. Table names are written quoted (`"orders"` on Trino and Presto,
   `` `orders` `` on Athena) instead of bare, and Athena columns are backtick-quoted; the
@@ -364,10 +425,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The bundled SQLGlot runtime moves from 30.24.0.9 to 30.24.0.10 (fork commit
   `75016d8ff27e`). It adds the `round_inputs_to_decimal` rewrite to the `apply_rewrite`
   registry and writes a one-parameter wide `DECIMAL(p)` as `BIGNUMERIC` for BigQuery DDL.
-  BenchBox does not call the rewrite yet and ships no one-parameter `DECIMAL`: the 23,667
+  BenchBox ships no one-parameter `DECIMAL`, and its first use of the rewrite (FlightData on
+  PostgreSQL) is the next entry: the 23,667
   translations of the 1,127 frozen shipped queries across 21 target dialects, the 2,600
   golden-corpus runtime outputs and `make sql-execution-gate` are unchanged from 30.24.0.9, so
   no published result changes.
+- The bundled SQLGlot runtime moves from 30.24.0.10 to 30.24.0.11 (fork commit
+  `dec472e77a7a`). At the runtime level, `decimal_zero_literals` keeps a `0.0` that shares its
+  `CASE`/`IF` with a quotient already cast to `DOUBLE` or `FLOAT`, and `decimal_division_to_double`
+  writes a `DOUBLE` zero beside such a quotient, so ClickHouse needs no Variant type. BenchBox
+  calls `decimal_zero_literals` in `rewrite_query_for_clickhouse` but never
+  `decimal_division_to_double`, and the changed guard only applies to a `0.0` beside a quotient
+  whose dividend is already cast to `DOUBLE` or `FLOAT`: `rewrite_query_for_clickhouse` output for
+  all 1,127 frozen shipped queries, the 23,667 translations across 21 target dialects, the 2,600
+  golden-corpus runtime outputs and `make sql-execution-gate` are unchanged from 30.24.0.10, so no
+  published result changes.
 - SQLite TPC-DS translation marks the TPC-DS `DATE` columns through the runtime's
   `mark_date_columns` rewrite on the parsed tree (`translate_sql_query(date_columns=..)`),
   so Q72's `d3.d_date > d1.d_date + 5` adds five whole days to the date text instead of
@@ -402,10 +474,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Velox Docker image builds again. BenchBox now runs in a uv-managed Python 3.12 virtual environment with `pyspark` pinned to the Spark version in the base image, instead of the base image's Python 3.10.
 - Trino and Presto `create_schema` on the Hive connector no longer writes `NOT NULL`, which Trino 476 rejects with
   `Catalog 'hive' does not support non-null column`; TPC-H (8 tables) and TPC-DS (25 tables) now create on a Trino
   Hive catalog. No published result can use this path, because schema creation failed on it.
 
+- The SQLite loader stores a NULL for an empty field in a nullable column instead of
+  empty text. Before, `SUM` over an all-empty group returned `0.0` where DuckDB returns
+  `NULL`, which made TPC-DS Q20 and Q98 differ between SQLite and DuckDB (405,815 cells
+  at SF 0.1). The table's declared null marker decides: `.tbl` and `.dat` data (marker
+  `""`) nulls every nullable column, text included, as the DuckDB loader does; a
+  marker-less `.csv` nulls only nullable non-text columns and keeps empty text. Columns
+  declared `NOT NULL` keep their empty string. SQLite results produced before this fix
+  on data with empty fields (TPC-DS, AMPLab) should be rerun.
+- `EnhancedSCDType2Processor.process_scd_changes` now writes its changes to the database. It
+  expires the current version of a changed history-tracking dimension row (`IsCurrent` 0 and
+  `EndDate` set to the new `EffectiveDate`, TPC-DI clause 4.4.1.3), inserts the new version
+  and new natural keys, and overwrites the non-SCD attribute columns and `BatchID` in place on
+  rows whose only changes are non-SCD. Before this it only counted them. Statements use bound
+  parameters and run in one transaction; the returned counts are the rows the database reports
+  as affected, and `scd_type2_changes` counts one per superseded key so that the new, SCD,
+  updated and unchanged counts add up to `records_processed`. A failed read of the current dimension or a failed `BEGIN` now aborts the run
+  before any write instead of treating the table as empty. Table and column names are checked
+  against an allow-list before any SQL is built, a caller-owned transaction is protected with
+  a SAVEPOINT (the run fails closed on connections without SAVEPOINT support, such as DuckDB),
+  and non-SCD attributes that are NULL on both sides no longer count as changed. A run that fails
+  and rolls back reports zero for the new, SCD and updated counts, and a failed `COMMIT` is
+  rolled back so the transaction is never left open. The processor
+  is not called by the TPC-DI ETL pipeline, so published TPC-DI results are unchanged.
 - A pull request title or body edit no longer leaves an armed pull request blocked
   with every required check green. The CI run such an edit starts now reports each
   required check (`core`, `explorer`, `results-data`, `docs`, `tooling`) by copying
@@ -438,6 +534,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   always 1. It now counts the `DimCustomer` rows of the batch, so `source_records`
   changes on every platform and `transformation_success_rate` is unchanged; previously
   only ClickHouse, StarRocks and Doris rewrote it at translation time.
+- Databricks `z_order` tuned runs now run `OPTIMIZE ... ZORDER BY` after each table
+  loads. The statement used to run before the load, on an empty table, so tuned
+  results measured plain compaction while the ledger recorded `z_order` as
+  applied. The statement is now recorded in the `post_load` phase and replaces
+  the plain `OPTIMIZE` for that table. When the `ZORDER` statement fails it is
+  recorded as skipped, the post-load maintenance phase reports `FAILED`, and the
+  plain `OPTIMIZE` and `ANALYZE` still run for that table. Partition columns are
+  never used as `ZORDER BY` columns, since Delta rejects them. The strategy resolves to `z_order` as
+  before: an explicit `z_order` setting, or any tuning with clustering or
+  distribution columns whose strategy is `none`, whether left unset or set
+  explicitly. No published result is affected:
+  all 51 Databricks bundles in `results-data/` and on `published-results` record
+  a resolved strategy of `none` and no requested tuning.
 - Post-load clustering on PostgreSQL-family adapters no longer fails with
   `CLUSTER cannot run inside a transaction block`. Plain `postgresql` runs with a
   clustering or sorting tuning previously recorded the `CREATE INDEX` and `CLUSTER`
@@ -511,6 +620,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bundled root list, which still trusts the roots the compromised eMudhra emSign
   intermediates chain to, so BigQuery Storage, Dataproc, Databricks Connect and
   Spark Connect connections stayed exposed even after the `certifi` upgrade.
+- Databricks SQL connections (which carry a personal access token), hosted
+  result submission (which carries a bearer token), and the stdlib downloads for
+  expected results, flight data, NYC taxi data and the Redshift public-IP lookup
+  now verify TLS against the `certifi` bundle instead of the interpreter's
+  system store. On uv-managed Python for macOS that store is `/etc/ssl/cert.pem`,
+  which Apple does not update and which still trusted the compromised eMudhra
+  emSign roots. Set `REQUESTS_CA_BUNDLE` or `SSL_CERT_FILE` to a PEM file to
+  trust a corporate CA instead.
 
 ## [0.5.0rc1] - 2026-10-20
 

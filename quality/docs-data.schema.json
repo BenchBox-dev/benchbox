@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://benchbox.dev/schemas/docs-data.schema.json",
+  "title": "BenchBox generated documentation data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "queries", "compat", "tuning"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "queries": {"$ref": "#/$defs/queries"},
+    "compat": {"$ref": "#/$defs/compat"},
+    "tuning": {"$ref": "#/$defs/tuning"}
+  },
+  "$defs": {
+    "nullableString": {"type": ["string", "null"]},
+    "stringList": {"type": "array", "items": {"type": "string"}},
+    "queries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_dialect",
+        "tpc_notice",
+        "group_threshold",
+        "bucket_size",
+        "tpcds_parity_notes_url",
+        "tpcds_subscale_notes_url",
+        "benchmarks"
+      ],
+      "properties": {
+        "reference_dialect": {"type": "string", "minLength": 1},
+        "tpc_notice": {"type": "string", "minLength": 1},
+        "group_threshold": {"type": "integer", "minimum": 1},
+        "bucket_size": {"type": "integer", "minimum": 1},
+        "tpcds_parity_notes_url": {"type": "string", "format": "uri"},
+        "tpcds_subscale_notes_url": {"type": "string", "format": "uri"},
+        "benchmarks": {"type": "array", "items": {"$ref": "#/$defs/benchmark"}}
+      }
+    },
+    "benchmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "display_name",
+        "overview_slug",
+        "query_count",
+        "tpc_derived",
+        "seed_driven",
+        "supports_dialect_translation",
+        "default_scale",
+        "recipe",
+        "groups",
+        "queries"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "display_name": {"type": "string", "minLength": 1},
+        "overview_slug": {"type": "string", "minLength": 1},
+        "query_count": {"type": "integer", "minimum": 1},
+        "tpc_derived": {"type": "boolean"},
+        "seed_driven": {"type": "boolean"},
+        "supports_dialect_translation": {"type": "boolean"},
+        "default_scale": {"type": "number"},
+        "recipe": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["import_line", "class_name"],
+          "properties": {
+            "import_line": {"type": "string", "minLength": 1},
+            "class_name": {"type": "string", "minLength": 1}
+          }
+        },
+        "groups": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "slug", "query_ids"],
+                "properties": {
+                  "name": {"type": "string", "minLength": 1},
+                  "slug": {"type": "string", "minLength": 1},
+                  "query_ids": {"$ref": "#/$defs/stringList"}
+                }
+              }
+            }
+          ]
+        },
+        "queries": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/query"}}
+      }
+    },
+    "sqlRendering": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dialect", "is_template", "sql", "pretty_sql"],
+      "properties": {
+        "dialect": {"type": "string", "minLength": 1},
+        "is_template": {"type": "boolean"},
+        "sql": {"type": "string"},
+        "pretty_sql": {"type": "string"}
+      }
+    },
+    "dataframeRendering": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "source"],
+      "properties": {
+        "family": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1}
+      }
+    },
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "slug",
+        "label",
+        "display_name",
+        "heading",
+        "description",
+        "groups",
+        "native_key",
+        "native_key_repr",
+        "source_path",
+        "seed_driven",
+        "answer_set_note",
+        "subscale_note",
+        "sql",
+        "sql_native",
+        "reference_dialect_label",
+        "dataframe",
+        "dataframe_renderings"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "slug": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "display_name": {"$ref": "#/$defs/nullableString"},
+        "heading": {"type": "string", "minLength": 1},
+        "description": {"$ref": "#/$defs/nullableString"},
+        "groups": {"$ref": "#/$defs/stringList"},
+        "native_key": {"type": ["string", "integer"]},
+        "native_key_repr": {"type": "string", "minLength": 1},
+        "source_path": {"$ref": "#/$defs/nullableString"},
+        "seed_driven": {"type": "boolean"},
+        "answer_set_note": {"$ref": "#/$defs/nullableString"},
+        "subscale_note": {"$ref": "#/$defs/nullableString"},
+        "sql": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sqlRendering"}]},
+        "sql_native": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sqlRendering"}]},
+        "reference_dialect_label": {"enum": ["DataFusion", null]},
+        "dataframe": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/dataframeRendering"}]},
+        "dataframe_renderings": {"type": "array", "items": {"$ref": "#/$defs/dataframeRendering"}}
+      }
+    },
+    "compat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase_order", "will_not_run_levels", "runs_with_caveats_levels", "rules"],
+      "properties": {
+        "phase_order": {"$ref": "#/$defs/stringList"},
+        "will_not_run_levels": {"$ref": "#/$defs/stringList"},
+        "runs_with_caveats_levels": {"$ref": "#/$defs/stringList"},
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "platform",
+              "phase",
+              "benchmark",
+              "query_id",
+              "scope",
+              "action",
+              "support_level",
+              "failure_mode",
+              "rule_id",
+              "reason"
+            ],
+            "properties": {
+              "platform": {"type": "string", "minLength": 1},
+              "phase": {"type": "string", "minLength": 1},
+              "benchmark": {"$ref": "#/$defs/nullableString"},
+              "query_id": {"$ref": "#/$defs/nullableString"},
+              "scope": {"type": "string", "minLength": 1},
+              "action": {"type": "string", "minLength": 1},
+              "support_level": {"type": "string", "minLength": 1},
+              "failure_mode": {"type": "string", "minLength": 1},
+              "rule_id": {"type": "string", "minLength": 1},
+              "reason": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "tuning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aliases", "platforms"],
+      "properties": {
+        "aliases": {"type": "object", "additionalProperties": {"type": "string"}},
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "platform",
+              "shipped_templates",
+              "applied",
+              "not_applied",
+              "session_config",
+              "catalog_introspector",
+              "can_reach_applied_verified"
+            ],
+            "properties": {
+              "platform": {"type": "string", "minLength": 1},
+              "shipped_templates": {"$ref": "#/$defs/stringList"},
+              "applied": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["type", "requires_sorted_ingestion"],
+                  "properties": {
+                    "type": {"type": "string", "minLength": 1},
+                    "requires_sorted_ingestion": {"type": "boolean"}
+                  }
+                }
+              },
+              "not_applied": {"$ref": "#/$defs/stringList"},
+              "session_config": {"type": "boolean"},
+              "catalog_introspector": {"type": ["boolean", "null"]},
+              "can_reach_applied_verified": {"type": "boolean"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

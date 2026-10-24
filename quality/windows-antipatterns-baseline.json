@@ -327,9 +327,6 @@
       "WA002": 1,
       "WA003": 8
     },
-    "tests/unit/scripts/test_release_flow.py": {
-      "WA003": 10
-    },
     "tests/unit/scripts/test_todo_state_workflow.py": {
       "WA003": 1
     },
@@ -361,7 +358,7 @@
       "WA003": 7
     },
     "tests/unit/test_standardized_test_commands.py": {
-      "WA003": 25
+      "WA003": 24
     },
     "tests/unit/test_tpcds_streams.py": {
       "WA003": 2

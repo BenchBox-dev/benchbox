@@ -58,12 +58,14 @@ Required status checks:
 - tooling
 - oracle-review
 - hold
+- oracle-gate
 ```
 
 Five of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `oracle-review` comes from
 `.github/workflows/oracle-review.yml` and passes at once for a change confined
 to inert paths (see Inert-path manifest in `docs/internal/oracle-review-v2.md`).
+`oracle-gate` comes from `.github/workflows/oracle-gate.yml`.
 `hold` comes from `.github/workflows/pr-hold.yml`
 and fails while the PR carries the `no-auto-merge` label; it re-runs when a
 label is added or removed.
@@ -83,6 +85,7 @@ check stays pending forever on a change that does not touch it.
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
 | `oracle-review` | every PR; review required unless only inert paths change | `benchbox-oracle` success review of the current head, or the stand-in approval, with oracle threads resolved; inert-only changes report success |
+| `oracle-gate` | every PR, from `develop` code on trusted triggers | the same decision as `oracle-review`, posted by the `benchbox-oracle` App; requires `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` in the `oracle` environment, else nothing is posted and the head cannot merge |
 
 The public site is built, compared and deployed in `BenchBox-dev/benchbox-site`.
 
@@ -146,6 +149,12 @@ gh api repos/BenchBox-dev/BenchBox/rulesets/15611785 --jq '
       | select(.type == "required_status_checks")
       | .parameters.required_status_checks[]?.context
     ],
+    required_check_bindings: [
+      .rules[]
+      | select(.type == "required_status_checks")
+      | .parameters.required_status_checks[]?
+      | {context, integration_id}
+    ],
     strict_base: (
       .rules[]
       | select(.type == "required_status_checks")
@@ -169,6 +178,10 @@ History of the required contexts:
 - 2026-10-03 and 2026-10-04: the merge queue and the strict up-to-date rule
   were removed, and `oracle-review` became required. Recorded in
   `_project/decisions/merge-queue-retirement-2026-10-03.md`.
+- 2026-10-21: `oracle-gate` became required, bound to the `benchbox-oracle`
+  App (`integration_id` 5201041); `oracle-review` stays required. Recorded
+  with full before and after JSON in
+  `_project/decisions/oracle-gate-required-check-2026-10-21.md`.
 
 ### No merge queue
 
@@ -191,18 +204,33 @@ passes when any of these holds:
 
 A plain owner comment does not count. See [soundness drain](soundness-drain.md).
 
-The `oracle-gate` context is being introduced next to `oracle-review` and is not
-required yet. `.github/workflows/oracle-gate.yml` runs only `develop` code and
-posts `oracle-gate` for the pull request head through the same oracle App. The
-unit test fails when any other workflow could post that context, but a
-same-repo pull request with `statuses: write` could still forge it, so the
-workflow alone is not the enforcement. It applies the checker's rule unchanged:
-success when only exempt paths changed, when the App's latest review of the head
-reports success with no unresolved oracle thread, or when a valid stand-in
-covers the exact head, and failure otherwise. The owner adds it to the required
-list above once production runs show it tracking `oracle-review`, scoped to the
-`benchbox-oracle` App's integration ID; without that scoping a forged success
-counts and the gate property does not hold.
+The live `develop-squash-only` ruleset requires `oracle-gate` next to
+`oracle-review`, with `integration_id` 5201041 (read back 2026-10-23 with
+`gh api repos/BenchBox-dev/benchbox/rulesets/15611785`, `updated_at`
+2026-10-21T19:37:02-04:00). 5201041 is the `benchbox-oracle` App's ID
+(`gh api apps/benchbox-oracle --jq .id`, checked 2026-10-23) and matches
+`ORACLE_GATE_INTEGRATION_ID` in `_project/scripts/ruleset_review_enforcement.py`.
+The cutover precondition in `docs/internal/oracle-review-v2.md` (production
+runs showing `oracle-gate` agreeing with `oracle-review`) was not verified
+when the ruleset was updated.
+
+`.github/workflows/oracle-gate.yml` runs only `develop` code and posts
+`oracle-gate` for the pull request head as a commit status through the same
+oracle App. The unit test fails when any other workflow could post that
+context, but a same-repo pull request with `statuses: write` could still post
+a status with that name, so the workflow alone is not the enforcement; the
+integration-ID binding is (see the residual-risk note below). It applies the
+checker's rule unchanged: success when only exempt paths changed, when the
+App's latest review of the head reports success with no unresolved oracle
+thread, or when a valid stand-in covers the exact head, and failure otherwise.
+
+The workflow posts the context only when `ORACLE_APP_ID` and
+`ORACLE_APP_PRIVATE_KEY` are set as secrets in the `oracle` environment; when
+either is missing it only logs the decision with `--no-post`. With the check
+required, a head that never receives the context cannot merge. Check that both
+names exist with
+`gh api repos/BenchBox-dev/benchbox/environments/oracle/secrets --jq '.secrets[].name'`
+(names only; never read values).
 
 ### Soundness-path review enforcement
 
@@ -227,11 +255,29 @@ The soundness gate, as operated:
   soundness-path commit that merged without an oracle success review or another
   review signal; the `oracle-gate` workflow closes the first half of this gap by
   evaluating the same rule from `develop` code on trusted triggers. The second
-  half is the ruleset binding: the required `oracle-gate` check must be scoped
-  to the `benchbox-oracle` App's integration ID, since only that binding stops
-  a pull request workflow with `statuses: write` from posting a forged success
-  to its own head. Requiring the App-scoped `oracle-gate` in the
-  ruleset is the remaining step.
+  half is the ruleset binding of the required `oracle-gate` check to the
+  `benchbox-oracle` App's integration ID. GitHub documents that a required
+  check bound to an app is satisfied only by a check run or commit status
+  that app set ("If the status is set by any other person or integration,
+  merging won't be allowed", [available rules for
+  rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-status-checks-to-pass-before-merging)),
+  which is what stops a pull request workflow with `statuses: write` from
+  posting a forged success to its own head. This repository has observed only
+  the positive case: the App's own `oracle-gate` commit status satisfies the
+  check (pull request #3340, 2026-10-23). The forged case is untested here. To
+  test it, on a throwaway pull request whose App-posted `oracle-gate` is
+  `failure`, post `oracle-gate` `success` with a user token
+  (`gh api repos/BenchBox-dev/benchbox/statuses/<head> -f context=oracle-gate -f state=success`)
+  and confirm `gh pr view <n> --json mergeStateStatus` stays `BLOCKED` and the
+  merge box still lists `oracle-gate` as required; then close the pull
+  request. The drift check does not validate the binding in practice: its
+  context comparison ignores `integration_id`, and the develop review check
+  (`review_enforcement_findings`) passes when any oracle check is present,
+  which a bare `oracle-review` satisfies without an ID, and the live ruleset
+  requires both. Check the binding by hand with the `required_check_bindings`
+  field of the Verify command above, or
+  `gh api repos/BenchBox-dev/benchbox/rulesets/15611785 --jq '[.rules[] | select(.type == "required_status_checks") | .parameters.required_status_checks[]? | {context, integration_id}]'`,
+  and compare the `oracle-gate` entry with `gh api apps/benchbox-oracle --jq .id`.
 - `make pr-open` does not arm auto-merge when it creates a PR. `make pr-arm`
   (or `make pr-open READY=1`) arms it after a live check of the PR, so a PR
   cannot merge while a follow-up commit is still being written. Arm only when
@@ -503,9 +549,9 @@ does not prove that `pypi` has `required_reviewers` configured; only a live
 environments API read does. GitHub enforces a configured gate at deployment
 time. `scripts/ruleset_drift_check.py` reads that API in the release-canary
 drift job and fails closed when the environment, required-reviewers rule,
-reviewer identity, admin-bypass posture, or self-review posture differs from
-the pin below. It reuses `RULESET_DRIFT_TOKEN`, so that token needs
-environment-read visibility as well as full ruleset visibility.
+reviewer identity, admin-bypass posture, self-review posture, or deployment
+policy differs from the pins below. It reuses `RULESET_DRIFT_TOKEN`, so that
+token needs environment-read visibility as well as full ruleset visibility.
 
 Verify:
 
@@ -533,24 +579,66 @@ or replaced reviewer set, a deleted environment, or a changed bypass or
 self-review flag. When it reports drift, re-run the verify command above to
 diagnose.
 
-`test-pypi` intentionally has no protection rules, to keep dry-run publish
-paths low-friction. Observed on 2026-08-05:
+Deployment policies (applied 2026-10-23): both environments admit only
+selected refs, so a workflow run on an arbitrary branch cannot request them.
+`pypi` accepts deployments from tags matching `v*` only. `test-pypi` accepts
+tags matching `v*` and the `develop` and `release` branches, which keeps a
+`release.yml` TestPyPI dispatch from those branches working. A manual
+`release-v2.yml` dispatch deploys under the ref it was started from, so start
+it from the release tag
+(`gh workflow run release-v2.yml --ref vX.Y.Z -f tag=vX.Y.Z`); a dispatch from
+a branch is refused by the `pypi` policy. The drift check pins both policies
+and the `deployment_branch_policy` flags, and fails closed on an added,
+removed or retyped policy.
+
+Verify:
+
+```bash
+for e in pypi test-pypi; do
+  gh api repos/BenchBox-dev/BenchBox/environments/$e \
+    --jq '{name, deployment_branch_policy}'
+  gh api repos/BenchBox-dev/BenchBox/environments/$e/deployment-branch-policies \
+    --jq '[.branch_policies[] | {type, name}]'
+done
+```
+
+`test-pypi` intentionally has no required reviewers, to keep dry-run publish
+paths low-friction; its only protection is the deployment policy above. Observed
+on 2026-08-05, before the deployment policy existed:
 
 ```bash
 gh api repos/BenchBox-dev/BenchBox/environments/test-pypi --jq '{name, protection_rules}'
 ```
 
-The command returns `{"name":"test-pypi","protection_rules":[]}`, accepted by
-design. Do not copy the real-PyPI `required_reviewers` rule onto `test-pypi`
-unless a future policy explicitly wants that friction on the test path.
+The command returned `{"name":"test-pypi","protection_rules":[]}`; it now lists
+one `branch_policy` rule and still no `required_reviewers`. Do not copy the
+real-PyPI `required_reviewers` rule onto `test-pypi` unless a future policy
+explicitly wants that friction on the test path.
 
-Historical re-apply reference (admin only, if the live check ever shows the
-gate missing):
+Re-apply reference (admin only, if the live check shows a gate or policy
+missing). The environments `PUT` replaces the whole configuration, so always
+send the reviewers and flags together with the deployment policy, then create
+each policy:
 
 ```bash
 gh api -X PUT repos/BenchBox-dev/BenchBox/environments/pypi \
-  -f 'reviewers[][type]=User' \
-  -f 'reviewers[][id]=57046'
+  -F wait_timer=0 -F prevent_self_review=false -F can_admins_bypass=true \
+  -f 'reviewers[][type]=User' -F 'reviewers[][id]=57046' \
+  -F 'deployment_branch_policy[protected_branches]=false' \
+  -F 'deployment_branch_policy[custom_branch_policies]=true'
+gh api -X POST repos/BenchBox-dev/BenchBox/environments/pypi/deployment-branch-policies \
+  -f name='v*' -f type=tag
+
+gh api -X PUT repos/BenchBox-dev/BenchBox/environments/test-pypi \
+  -F wait_timer=0 -F can_admins_bypass=true \
+  -F 'deployment_branch_policy[protected_branches]=false' \
+  -F 'deployment_branch_policy[custom_branch_policies]=true'
+gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-branch-policies \
+  -f name='v*' -f type=tag
+gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-branch-policies \
+  -f name=develop -f type=branch
+gh api -X POST repos/BenchBox-dev/BenchBox/environments/test-pypi/deployment-branch-policies \
+  -f name=release -f type=branch
 ```
 
 ## Release canary and ruleset drift

@@ -50,28 +50,15 @@ Returns the dialect that the bundled SQLGlot runtime uses for a platform or dial
 
 | Name | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `platform_or_dialect` | `str` | required | A BenchBox platform key, an alias from the table below, or a dialect name the bundled runtime provides. Matching ignores case and surrounding spaces; `-` and `_` are interchangeable. |
+| `platform_or_dialect` | `str` | required | A BenchBox platform key, `ansi`, `standard`, or a dialect name the bundled runtime provides. Matching ignores case and surrounding spaces; `-` and `_` are interchangeable. |
 
 ##### Returns
 
-`str`: the dialect name the bundled runtime provides. Names the runtime provides, such as `duckdb`, `netezza`, `greenplum`, `vertica`, `datafusion` and `questdb`, resolve to themselves. `PLATFORM_DIALECTS` maps the other keys:
-
-| Key | Result |
-| --- | --- |
-| `ansi`, `standard` | `postgres` |
-| `postgresql`, `timescaledb`, `pg_mooncake`, `pg_duckdb`, `cedardb`, `paradedb`, `citus`, `firebolt` | `postgres` |
-| `influxdb` | `datafusion` (InfluxDB 3 runs the DataFusion SQL engine) |
-| `motherduck`, `ducklake` | `duckdb` |
-| `clickhouse_local`, `clickhouse_server`, `clickhouse_cloud` | `clickhouse` |
-| `starburst` | `trino` |
-| `databricks_df` | `databricks` |
-| `databend`, `snowpark_connect` | `snowflake` |
-| `synapse`, `fabric_dw`, `fabric_lakehouse` | `tsql` |
-| `glue`, `emr_serverless`, `athena_spark`, `dataproc`, `dataproc_serverless`, `fabric_spark`, `synapse_spark`, `velox`, `lakesail`, `quanton`, `pyspark` | `spark` |
+`str`: the dialect name the bundled runtime provides. Each SQL platform in the platform manifest (`benchbox/core/platform_manifest.py`) declares it as `capabilities.sql_dialect`; for example `timescaledb`, `cedardb` and `firebolt` resolve to `postgres`, `clickhouse-local` to `clickhouse`, `databend` and `snowpark-connect` to `snowflake`, `synapse` and `fabric_dw` to `tsql`, `influxdb` to `datafusion` (InfluxDB 3 runs the DataFusion SQL engine), and the Spark family (`glue`, `emr-serverless`, `dataproc`, `velox`, `lakesail`, `quanton`, `pyspark` and others) to `spark`. `ansi` and `standard` resolve to `postgres`. Names the runtime provides, such as `netezza`, `greenplum`, `vertica` and `exasol`, resolve to themselves.
 
 ##### Raises
 
-`UnknownSqlDialectError` (a `ValueError`) for an empty value, a DataFrame-only platform, or any name that is neither in `PLATFORM_DIALECTS` nor a dialect the runtime provides. There is no fallback to PostgreSQL.
+`UnknownSqlDialectError` (a `ValueError`) for an empty value, a DataFrame-only platform, or any name that is neither a SQL platform in the platform manifest nor a dialect the runtime provides. There is no fallback to PostgreSQL.
 
 ##### Example
 
@@ -92,7 +79,7 @@ except UnknownSqlDialectError as error:
 Registered platform keys and runtime dialect names resolve; an unknown name raises.
 
 ```text
-No fork SQL dialect for 'not_a_dialect'; register the platform in PLATFORM_DIALECTS
+No fork SQL dialect for 'not_a_dialect'; declare capabilities.sql_dialect for the platform in the platform manifest
 ```
 
 **Supported Dialects**:
@@ -674,9 +661,9 @@ TPC-DS query IDs are integers, so the example passes `1` and `2`; a string such 
 
 ### Unsupported Dialect
 
-**Problem**: `ValueError: Error translating to dialect 'xyz': ... No fork SQL dialect for 'xyz'; register the platform in PLATFORM_DIALECTS`. `translate_sql_query` raises `SQLTranslationError` in strict mode and records a fallback otherwise.
+**Problem**: `UnknownSqlDialectError: No fork SQL dialect for 'xyz'; declare capabilities.sql_dialect for the platform in the platform manifest`. `translate_sql_query`, `apply_rewrite` and `split_sql_statements` raise it in strict and non-strict runs; nothing falls back to the untranslated SQL.
 
-**Solutions**: (1) check that the name is a BenchBox platform key or a dialect the bundled runtime provides (`resolve_sql_dialect("netezza")` returns `"netezza"`, and `resolve_sql_dialect("standard")` returns `"postgres"`); (2) register the platform in `PLATFORM_DIALECTS`; (3) check the SQLGlot documentation for supported dialects at [sqlglot.com/sqlglot/dialects.html](https://sqlglot.com/sqlglot/dialects.html).
+**Solutions**: (1) check that the name is a BenchBox platform key or a dialect the bundled runtime provides (`resolve_sql_dialect("netezza")` returns `"netezza"`, and `resolve_sql_dialect("standard")` returns `"postgres"`); (2) declare `capabilities.sql_dialect` for the platform in the platform manifest; (3) check the SQLGlot documentation for supported dialects at [sqlglot.com/sqlglot/dialects.html](https://sqlglot.com/sqlglot/dialects.html).
 
 ```python
 from benchbox.utils.dialect_utils import resolve_sql_dialect

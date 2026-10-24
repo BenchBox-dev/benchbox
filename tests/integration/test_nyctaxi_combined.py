@@ -26,7 +26,7 @@ def no_network_downloads(monkeypatch):
     def _raise(*args, **kwargs):
         raise OSError("Network calls blocked in integration tests - using synthetic data")
 
-    monkeypatch.setattr(urllib.request, "urlretrieve", _raise)
+    monkeypatch.setattr(urllib.request, "urlopen", _raise)
 
 
 @pytest.fixture(scope="module")
@@ -34,7 +34,7 @@ def multi_type_db():
     with tempfile.TemporaryDirectory() as tmpdir:
         conn = duckdb.connect(":memory:")
 
-        with patch.object(urllib.request, "urlretrieve", side_effect=OSError("no network")):
+        with patch.object(urllib.request, "urlopen", side_effect=OSError("no network")):
             benchmark = NYCTaxiBenchmark(
                 scale_factor=0.01,
                 output_dir=tmpdir,
@@ -310,7 +310,7 @@ class TestCrossTypeQueries:
 @pytest.mark.nyctaxi
 class TestBenchmarkMultiTypeIntegration:
     def test_benchmark_default_is_yellow_only(self, tmp_path):
-        with patch.object(urllib.request, "urlretrieve", side_effect=OSError("no network")):
+        with patch.object(urllib.request, "urlopen", side_effect=OSError("no network")):
             bm = NYCTaxiBenchmark(
                 scale_factor=0.01,
                 output_dir=tmp_path,
@@ -327,7 +327,7 @@ class TestBenchmarkMultiTypeIntegration:
         assert "hvfhv_trips" not in table_names
 
     def test_benchmark_multi_type_generates_all_files(self, tmp_path):
-        with patch.object(urllib.request, "urlretrieve", side_effect=OSError("no network")):
+        with patch.object(urllib.request, "urlopen", side_effect=OSError("no network")):
             bm = NYCTaxiBenchmark(
                 scale_factor=0.01,
                 output_dir=tmp_path,
@@ -343,7 +343,7 @@ class TestBenchmarkMultiTypeIntegration:
         assert (tmp_path / "hvfhv_trips.csv").exists()
 
     def test_benchmark_multi_type_query_manager_has_all_queries(self, tmp_path):
-        with patch.object(urllib.request, "urlretrieve", side_effect=OSError("no network")):
+        with patch.object(urllib.request, "urlopen", side_effect=OSError("no network")):
             bm = NYCTaxiBenchmark(
                 scale_factor=0.01,
                 output_dir=tmp_path,
@@ -359,7 +359,7 @@ class TestBenchmarkMultiTypeIntegration:
         assert count == expected
 
     def test_yellow_only_benchmark_unchanged(self, tmp_path):
-        with patch.object(urllib.request, "urlretrieve", side_effect=OSError("no network")):
+        with patch.object(urllib.request, "urlopen", side_effect=OSError("no network")):
             bm = NYCTaxiBenchmark(
                 scale_factor=0.01,
                 output_dir=tmp_path,

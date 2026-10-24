@@ -79,6 +79,7 @@ code-ci:
   - "docs/CLI_REFERENCE.md"
   - "docs/benchmarks/sf1-calibrated-sizes.md"
   - "docs/benchmarks/support-status.md"
+  - "docs/benchmarks/tpc-ds-obt-lineage.md"
   - "docs/benchmarks/write-primitives-sketch-functions.md"
   - "docs/compat/capability-matrix.md"
   - "docs/compat/skip-reference.md"

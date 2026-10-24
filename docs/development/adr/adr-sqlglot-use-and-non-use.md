@@ -165,8 +165,8 @@ Examples we ship per platform:
 
 **Implementation**: 19 platform-specific modules under
 [`benchbox/sql_compat/rules/ddl_optimize/`](../../../benchbox/sql_compat/rules/ddl_optimize/),
-plus the per-adapter `_optimize_table_definition()` hook documented in the
-[phase-aware pipeline ADR](adr-sql-compat-phase-aware-pipeline.md).
+whose rewriting is performed by `translate_ddl` (see the
+[phase-aware pipeline ADR](adr-sql-compat-phase-aware-pipeline.md)).
 
 **Fabric Warehouse** occupies a third path between "in the registry" and
 "not in the registry":
@@ -304,7 +304,7 @@ compatibility governance.
      `SET_SESSION_POLICY` over `REWRITE_QUERY`. Canonical example:
      ClickHouse TPC-DS Q23/Q87 `joined_subquery_requires_alias=0`.
 5. **Issue in DDL?** Add a `ddl_optimize` rule and implement the
-   transformation in the platform's `_optimize_table_definition()` hook.
+   transformation as a `translate_ddl` option passed by the platform adapter.
 6. **Emitter produces SQL the engine refuses with no clean AST fix?**
    Hand-write a variant in `sql_compat/rules/query_source/`; register a
    `SELECT_VARIANT` action.

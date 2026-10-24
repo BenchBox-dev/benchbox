@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, cast
@@ -31,7 +31,9 @@ from benchbox.utils.dependencies import (
     get_dependency_error_message,
     get_package_install_message,
 )
+from benchbox.utils.dialect_utils import ddl_column_names, schema_ddl_read_dialect, translate_ddl
 from benchbox.utils.file_format import COMPRESSION_EXTENSIONS
+from benchbox.utils.tls import ca_bundle_path
 
 try:
     from databricks import sql as databricks_sql
@@ -60,40 +62,34 @@ def _select_databricks_warehouse(warehouses: list, very_verbose: bool, logger: l
     return available_wh
 
 
+DATABRICKS_OAUTH_ENV_VARS = ("DATABRICKS_CLIENT_ID", "DATABRICKS_CLIENT_SECRET", "DATABRICKS_CONFIG_PROFILE")
+
+
+def _validate_gateway(gateway: str) -> None:
+    from benchbox.core.exceptions import ConfigurationError
+    from benchbox.core.gateway import DEFAULT_GATEWAY, supported_gateways
+
+    if gateway == DEFAULT_GATEWAY:
+        return
+    allowed = supported_gateways("databricks")
+    if gateway not in allowed:
+        raise ConfigurationError(
+            f"Databricks does not support gateway '{gateway}'. Allowed: {', '.join([DEFAULT_GATEWAY, *sorted(allowed)])}"
+        )
+    oauth_vars = [name for name in DATABRICKS_OAUTH_ENV_VARS if os.environ.get(name)]
+    if oauth_vars:
+        raise ConfigurationError(
+            f"Databricks gateway '{gateway}' supports personal access token authentication only, but "
+            f"{', '.join(oauth_vars)} is set. Unset it and provide access_token (DATABRICKS_TOKEN) instead."
+        )
+
+
 def _compact_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {str(key): value for key, value in payload.items() if value not in (None, "", {}, [], ())}
 
 
 def _normalize_table_format(config: Mapping[str, Any]) -> str:
     return str(config.get("table_format") or "delta").strip().lower()
-
-
-def _table_name_paren_start(statement: str) -> int | None:
-    table_match = re.match(
-        r"(?i)CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\S+)\s*\(",
-        statement,
-    )
-    if not table_match:
-        return None
-    return table_match.end() - 1
-
-
-def _split_top_level_commas(body: str) -> list[str]:
-    parts: list[str] = []
-    depth = 0
-    current: list[str] = []
-    for char in body:
-        if char == "(":
-            depth += 1
-        elif char == ")":
-            depth -= 1
-        if char == "," and depth == 0:
-            parts.append("".join(current))
-            current = []
-        else:
-            current.append(char)
-    parts.append("".join(current))
-    return parts
 
 
 _COMMIT_HASH_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
@@ -288,6 +284,8 @@ class DatabricksAdapter(PlatformAdapter):
         self.uc_schema = config.get("uc_schema")
         self.uc_volume = config.get("uc_volume")
         self.staging_root = config.get("staging_root")
+        self.gateway = str(config.get("gateway") or "native")
+        _validate_gateway(self.gateway)
         self.region = config.get("region") or config.get("cloud_region") or config.get("workspace_region")
 
         self.enable_delta_optimization = (
@@ -495,13 +493,29 @@ class DatabricksAdapter(PlatformAdapter):
             )
 
         compute_resource = config.get("compute_resource")
-        if not all(
+        gateway = str(config.get("gateway") or "native")
+        explicit_credentials_complete = all(
             [
                 config.get("server_hostname") and not is_placeholder(config.get("server_hostname")),
                 compute_resource or (config.get("http_path") and not is_placeholder(config.get("http_path"))),
                 config.get("access_token") and not is_placeholder(config.get("access_token")),
             ]
-        ):
+        )
+        if gateway != "native":
+            missing = [
+                name
+                for name in ("server_hostname", "access_token")
+                if not config.get(name) or is_placeholder(config.get(name))
+            ]
+            if missing:
+                from benchbox.core.exceptions import ConfigurationError
+
+                raise ConfigurationError(
+                    f"Databricks gateway '{gateway}' needs explicit {', '.join(missing)}. Set server_hostname to the "
+                    "gateway hostname and access_token to a personal access token; BenchBox does not fall back to "
+                    "the auto-detected workspace, which would bypass the gateway."
+                )
+        elif not explicit_credentials_complete:
             auto_config = cls._auto_detect_databricks_config(very_verbose=very_verbose)
             if auto_config:
                 adapter_config.update(auto_config)
@@ -561,6 +575,7 @@ class DatabricksAdapter(PlatformAdapter):
             "hudi_table_type",
             "create_catalog",
             "disable_result_cache",
+            "gateway",
         ]:
             if key in config:
                 adapter_config[key] = config[key]
@@ -742,6 +757,9 @@ class DatabricksAdapter(PlatformAdapter):
             platform_info["platform_version"] = None
             platform_info["engine_version"] = None
             platform_info["engine_version_source"] = None
+
+        if self.gateway != "native":
+            platform_info["gateway"] = {"name": self.gateway, "routed": True}
 
         warehouse_id = self._warehouse_id_from_http_path(self.http_path)
         try:
@@ -1081,7 +1099,7 @@ class DatabricksAdapter(PlatformAdapter):
     def _create_admin_connection(self, **connection_config) -> Any:
         params = self._get_connection_params(**connection_config)
 
-        return databricks_sql.connect(**params, user_agent_entry="BenchBox/1.0")
+        return databricks_sql.connect(**params, user_agent_entry="BenchBox/1.0", _tls_trusted_ca_file=ca_bundle_path())
 
     def check_server_database_exists(self, **connection_config) -> bool:
         try:
@@ -1215,7 +1233,7 @@ class DatabricksAdapter(PlatformAdapter):
             cursor.execute(f"USE SCHEMA {self.schema}")
             self.log_very_verbose(f"Set schema context to: {self.catalog}.{self.schema}")
 
-            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect="standard")
+            schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
 
             self.log_verbose(f"Received schema SQL from _create_schema_with_tuning: {len(schema_sql)} characters")
             self.log_very_verbose(f"Schema SQL (first 300 chars): {schema_sql[:300]}")
@@ -1225,21 +1243,18 @@ class DatabricksAdapter(PlatformAdapter):
                 self.logger.error(f"Benchmark has get_schema_sql: {hasattr(benchmark, 'get_schema_sql')}")
                 raise RuntimeError(f"No schema SQL generated for {benchmark.__class__.__name__}")
 
-            from benchbox.platforms.cloud_shared import split_leading_sql_comments
-
-            statements = [
-                stmt.strip()
-                for stmt in schema_sql.split(";")
-                if stmt.strip() and split_leading_sql_comments(stmt)[1].strip()
-            ]
+            statements = translate_ddl(
+                schema_sql,
+                self.get_target_dialect(),
+                schema_ddl_read_dialect(schema_sql, self.get_target_dialect()),
+                **self._schema_ddl_options(schema_sql),
+            )
 
             self.log_verbose(f"Parsed {len(statements)} CREATE TABLE statements from schema SQL")
             if not statements:
                 self.logger.error("No CREATE TABLE statements found after parsing schema SQL")
                 self.logger.error(f"Raw schema SQL (first 500 chars): {schema_sql[:500]}")
                 raise RuntimeError("Schema SQL produced no executable statements")
-
-            statements = [self._convert_to_delta_table(s) for s in statements]
 
             tables_created, failed_tables = self._execute_schema_statements(statements, cursor)
 
@@ -2562,162 +2577,38 @@ class DatabricksAdapter(PlatformAdapter):
             self.log_very_verbose(f"Output alias and division rewrites skipped (unparseable Databricks SQL): {e}")
             return query
 
-    def _convert_to_delta_table(self, statement: str) -> str:
-        from benchbox.platforms.cloud_shared import split_leading_sql_comments
-
-        prefix, body = split_leading_sql_comments(statement)
-        if not re.match(r"(?i)CREATE\s+(OR\s+REPLACE\s+)?TABLE\b", body):
-            return statement
-
-        if "CREATE TABLE" in body.upper() and "OR REPLACE" not in body.upper():
-            if "IF NOT EXISTS" not in body.upper():
-                body = body.replace("CREATE TABLE", "CREATE OR REPLACE TABLE", 1)
-            elif getattr(self, "_schema_reset_in_place", False):
-                body = re.sub(
-                    r"CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS", "CREATE OR REPLACE TABLE", body, count=1, flags=re.IGNORECASE
-                )
-        statement = prefix + body
-
+    def _schema_ddl_options(self, schema_sql: str) -> dict[str, Any]:
+        options: dict[str, Any] = {
+            "or_replace": True,
+            "replace_if_not_exists": bool(getattr(self, "_schema_reset_in_place", False)),
+        }
         if self.table_format == "hudi":
-            return self._convert_to_hudi_table(prefix + body)
-
-        as_select = re.search(r"\bAS\s+(?:SELECT\b|WITH\b)", body, flags=re.IGNORECASE)
-        has_using_clause = re.search(
-            r"\bUSING\s+(?:DELTA|HUDI|PARQUET|CSV|JSON|TEXT|ORC|AVRO)\b", body, flags=re.IGNORECASE
-        )
-        if has_using_clause is None:
-            if as_select is not None:
-                body = body[: as_select.start()] + "USING DELTA " + body[as_select.start() :]
-            else:
-                paren_count = 0
-                using_pos = len(body)
-
-                for i, char in enumerate(body):
-                    if char == "(":
-                        paren_count += 1
-                    elif char == ")":
-                        paren_count -= 1
-                        if paren_count == 0:
-                            using_pos = i + 1
-                            break
-
-                body = body[:using_pos] + " USING DELTA" + body[using_pos:]
-
-        if "TBLPROPERTIES" not in body.upper():
-            properties = []
-
-            if self.delta_auto_optimize:
-                properties.append("'delta.autoOptimize.optimizeWrite' = 'true'")
-                properties.append("'delta.autoOptimize.autoCompact' = 'true'")
-
-            clause = "TBLPROPERTIES (" + ", ".join(properties) + ")"
-            if as_select is not None:
-                anchor_match = re.search(r"\bAS\s+(?:SELECT\b|WITH\b)", body, flags=re.IGNORECASE)
-                anchor = anchor_match.start() if anchor_match else len(body)
-                body = body[:anchor].rstrip() + " " + clause + " " + body[anchor:]
-            else:
-                body += " " + clause
-
-        return prefix + body
-
-    def _convert_to_hudi_table(self, statement: str) -> str:
-        paren_end = self._column_definitions_end(statement)
-        if "USING" not in statement.upper():
-            if paren_end is None:
-                as_match = re.search(r"(?i)\sAS\s+", statement)
-                if as_match:
-                    statement = statement[: as_match.start()] + " USING HUDI" + statement[as_match.start() :]
-                else:
-                    statement += " USING HUDI"
-            else:
-                statement = statement[:paren_end] + " USING HUDI" + statement[paren_end:]
-        elif paren_end is None:
-            statement = re.sub(r"(?i)\bUSING\s+\w+", "USING HUDI", statement, count=1)
+            options["default_layout"] = {"format": "hudi", "properties": {"type": self.hudi_table_type}}
+            options["layouts"] = {
+                table: {"format": "hudi", "properties": self._hudi_table_properties(columns)}
+                for table, columns in ddl_column_names(
+                    schema_sql, schema_ddl_read_dialect(schema_sql, "databricks")
+                ).items()
+            }
         else:
-            head, tail = statement[:paren_end], statement[paren_end:]
-            tail = re.sub(r"(?i)\bUSING\s+\w+", "USING HUDI", tail, count=1)
-            statement = head + tail
-        if "USING HUDI" not in statement.upper():
-            if paren_end is None:
-                as_match = re.search(r"(?i)\sAS\s+", statement)
-                if as_match:
-                    statement = statement[: as_match.start()] + " USING HUDI" + statement[as_match.start() :]
-                else:
-                    statement += " USING HUDI"
-            else:
-                statement = statement[:paren_end] + " USING HUDI" + statement[paren_end:]
+            properties = (
+                {"delta.autoOptimize.optimizeWrite": "true", "delta.autoOptimize.autoCompact": "true"}
+                if self.delta_auto_optimize
+                else {}
+            )
+            options["default_layout"] = {"format": "delta", "properties": properties}
+        return options
 
-        stripped, n_subs = re.subn(r"(?i)\s*CLUSTER\s+BY\s*\([^()]*\)", "", statement)
-        if n_subs:
-            self.logger.warning("Removed Delta-only CLUSTER BY from Hudi DDL")
-            statement = stripped
-
-        properties = self._hudi_table_properties(statement)
-        if "TBLPROPERTIES" not in statement.upper():
-            statement += " TBLPROPERTIES (" + ", ".join(properties) + ")"
-        else:
-            missing = [prop for prop in properties if prop.split("=")[0].strip().lower() not in statement.lower()]
-            pos = statement.rfind(")")
-            if missing and pos != -1:
-                statement = statement[:pos] + ", " + ", ".join(missing) + statement[pos:]
-
-        return statement
-
-    @staticmethod
-    def _column_definitions_end(statement: str) -> int | None:
-        paren_start = _table_name_paren_start(statement)
-        if paren_start is None:
-            return None
-        depth = 0
-        for i in range(paren_start, len(statement)):
-            char = statement[i]
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0:
-                    return i + 1
-        return None
-
-    @staticmethod
-    def _ddl_column_names(statement: str) -> list[str]:
-        paren_start = _table_name_paren_start(statement)
-        if paren_start is None:
-            return []
-        depth = 0
-        start = None
-        for i in range(paren_start, len(statement)):
-            char = statement[i]
-            if char == "(":
-                if depth == 0:
-                    start = i
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0 and start is not None:
-                    body = statement[start + 1 : i]
-                    break
-        else:
-            return []
-        names: list[str] = []
-        for part in _split_top_level_commas(body):
-            tokens = part.strip().split()
-            if tokens:
-                names.append(tokens[0].strip('"`[]'))
-        return names
-
-    def _hudi_table_properties(self, statement: str) -> list[str]:
-        properties = [f"'type' = '{self.hudi_table_type}'"]
-        columns = self._ddl_column_names(statement)
-        key_options = (
-            ("'primaryKey'", self.hudi_primary_key),
-            ("'preCombineField'", self.hudi_precombine_field),
-        )
-        for option, field in key_options:
+    def _hudi_table_properties(self, columns: list[str]) -> dict[str, str]:
+        properties = {"type": self.hudi_table_type}
+        for option, field in (
+            ("primaryKey", self.hudi_primary_key),
+            ("preCombineField", self.hudi_precombine_field),
+        ):
             if field:
                 match = next((name for name in columns if name.lower() == field.lower()), None)
                 if match is not None:
-                    properties.append(f"{option} = '{match}'")
+                    properties[option] = match
         return properties
 
     def _get_platform_metadata(self, connection: Any) -> dict[str, Any]:
@@ -2965,20 +2856,44 @@ class DatabricksAdapter(PlatformAdapter):
 
     def apply_post_load_tunings(self, table_name: str, effective_config: Any, connection: Any) -> bool:
         table_tuning = self.table_tuning_for(effective_config, table_name)
-        if table_tuning is None or not table_tuning.has_any_tuning() or not self.enable_delta_optimization:
+        if table_tuning is None or not table_tuning.has_any_tuning():
             return False
         physical_table = self.resolve_physical_table(table_name)
+        zorder_columns = self._post_load_zorder_columns(physical_table, table_tuning)
+        if not (self.enable_delta_optimization or zorder_columns):
+            return False
         cursor = connection.cursor()
         try:
             cursor.execute(f"DESCRIBE EXTENDED {physical_table}")
             if not any("DELTA" in str(row).upper() for row in cursor.fetchall()):
                 return False
             self._delta_optimized_after_load().add(physical_table.lower())
-            if not self._apply_delta_optimize(cursor, physical_table, phase="post_load"):
+            if not self._apply_delta_optimize(cursor, physical_table, phase="post_load", zorder_columns=zorder_columns):
                 self.note_post_load_maintenance_failure()
+                if zorder_columns and self.enable_delta_optimization:
+                    if not self._apply_delta_optimize(cursor, physical_table, phase="post_load"):
+                        self.note_post_load_maintenance_failure()
             return True
         finally:
             cursor.close()
+
+    def _post_load_zorder_columns(self, physical_table: str, table_tuning: Any) -> list[str]:
+        if self._resolve_databricks_clustering_strategy() in {"liquid_clustering", "liquid_clustering_auto"}:
+            return []
+        return self._table_zorder_columns(physical_table, table_tuning)
+
+    def _table_zorder_columns(self, physical_table: str, table_tuning: Any) -> list[str]:
+        from benchbox.core.tuning.interface import TuningType
+
+        partition_names = {col.name.lower() for col in table_tuning.get_columns_by_type(TuningType.PARTITIONING) or []}
+        return [
+            self.resolve_physical_column(physical_table, column)
+            for column in self._build_zorder_columns(
+                table_tuning.get_columns_by_type(TuningType.CLUSTERING),
+                table_tuning.get_columns_by_type(TuningType.DISTRIBUTION),
+            )
+            if column.lower() not in partition_names
+        ]
 
     def apply_table_tunings(self, table_tuning, connection: Any) -> None:
         if not table_tuning or not table_tuning.has_any_tuning():
@@ -3009,15 +2924,11 @@ class DatabricksAdapter(PlatformAdapter):
                 for column in getattr(platform_opts, "liquid_clustering_columns", [])
             ]
 
-            cluster_columns = table_tuning.get_columns_by_type(TuningType.CLUSTERING)
             distribution_columns = table_tuning.get_columns_by_type(TuningType.DISTRIBUTION)
             sort_columns = table_tuning.get_columns_by_type(TuningType.SORTING)
             partition_columns = table_tuning.get_columns_by_type(TuningType.PARTITIONING)
 
-            zorder_columns = [
-                self.resolve_physical_column(table_name, column)
-                for column in self._build_zorder_columns(cluster_columns, distribution_columns)
-            ]
+            zorder_columns = self._table_zorder_columns(table_name, table_tuning)
             use_liquid = clustering_strategy in {"liquid_clustering", "liquid_clustering_auto"} or liquid_enabled
             if self.table_format == "hudi":
                 self._record_hudi_tuning_skips(
@@ -3149,8 +3060,6 @@ class DatabricksAdapter(PlatformAdapter):
             self._apply_liquid_clustering(
                 cursor, table_name, is_delta_table, liquid_columns, zorder_columns, sort_columns
             )
-        elif zorder_columns and is_delta_table:
-            self._apply_zorder_optimization(cursor, table_name, zorder_columns)
 
     def _apply_liquid_auto_clustering(self, cursor: Any, table_name: str, is_delta_table: bool) -> None:
         clause = f"ALTER TABLE {table_name} CLUSTER BY AUTO"
@@ -3242,43 +3151,6 @@ class DatabricksAdapter(PlatformAdapter):
             )
             self.logger.info(f"Liquid Clustering selected for {table_name} but no clustering columns were available")
 
-    def _apply_zorder_optimization(self, cursor: Any, table_name: str, zorder_columns: list[str]) -> None:
-        if self.table_format == "hudi":
-            self._record_layout_operation(
-                mechanism="z_order",
-                table=table_name,
-                statement=f"OPTIMIZE {table_name} ZORDER BY ({', '.join(zorder_columns)})",
-                status="skipped",
-                phase="ddl",
-                columns=zorder_columns,
-            )
-            self.logger.info(f"Skipped Delta-only Z-ORDER for Hudi table {table_name}")
-            return
-        clause = f"OPTIMIZE {table_name} ZORDER BY ({', '.join(zorder_columns)})"
-        try:
-            cursor.execute(clause)
-            self._z_order_operations.append({"table": table_name, "columns": list(zorder_columns), "statement": clause})
-            self._record_layout_operation(
-                mechanism="z_order",
-                table=table_name,
-                statement=clause,
-                status="applied",
-                phase="ddl",
-                columns=zorder_columns,
-            )
-            self.logger.info(f"Applied Z-ORDER optimization to {table_name}: {', '.join(zorder_columns)}")
-        except Exception as e:
-            self._record_layout_operation(
-                mechanism="z_order",
-                table=table_name,
-                statement=clause,
-                status="skipped",
-                phase="ddl",
-                columns=zorder_columns,
-                error=e,
-            )
-            self.logger.warning(f"Failed to apply Z-ORDER optimization to {table_name}: {e}")
-
     def _log_partitioning_and_sorting(self, table_name: str, partition_columns, sort_columns, use_liquid: bool) -> None:
         if partition_columns:
             names = [col.name for col in sorted(partition_columns, key=lambda c: c.order)]
@@ -3298,14 +3170,22 @@ class DatabricksAdapter(PlatformAdapter):
                 f"Sorting in Databricks achieved via {mechanism} for table {table_name}: {', '.join(names)}"
             )
 
-    def _apply_delta_optimize(self, cursor: Any, table_name: str, *, phase: str) -> bool:
+    def _apply_delta_optimize(
+        self, cursor: Any, table_name: str, *, phase: str, zorder_columns: Sequence[str] = ()
+    ) -> bool:
+        mechanism = "z_order" if zorder_columns else "optimize"
+        optimize_statement = f"OPTIMIZE {table_name}"
+        if zorder_columns:
+            optimize_statement += f" ZORDER BY ({', '.join(zorder_columns)})"
+        columns = list(zorder_columns) or None
         if self.table_format == "hudi":
             self._record_layout_operation(
-                mechanism="optimize",
+                mechanism=mechanism,
                 table=table_name,
-                statement=f"OPTIMIZE {table_name}",
+                statement=optimize_statement,
                 status="skipped",
                 phase=phase,
+                columns=columns,
             )
             self.logger.info(f"Skipped Delta-only OPTIMIZE for Hudi table {table_name}")
             self._record_layout_operation(
@@ -3317,28 +3197,36 @@ class DatabricksAdapter(PlatformAdapter):
             )
             self.logger.info(f"Skipped ANALYZE for Hudi table {table_name}")
             return True
-        optimize_statement = f"OPTIMIZE {table_name}"
         try:
             cursor.execute(optimize_statement)
+            if zorder_columns:
+                self._z_order_operations.append(
+                    {"table": table_name, "columns": list(zorder_columns), "statement": optimize_statement}
+                )
             self._record_layout_operation(
-                mechanism="optimize",
+                mechanism=mechanism,
                 table=table_name,
                 statement=optimize_statement,
                 status="applied",
                 phase=phase,
+                columns=columns,
             )
             self.logger.info(f"Optimized Delta table {table_name}")
         except Exception as e:
             self._record_layout_operation(
-                mechanism="optimize",
+                mechanism=mechanism,
                 table=table_name,
                 statement=optimize_statement,
                 status="skipped",
                 phase=phase,
+                columns=columns,
                 error=e,
             )
             self.logger.warning(f"Failed to optimize Delta table {table_name}: {e}")
             return False
+
+        if not self.enable_delta_optimization:
+            return True
 
         analyze_statement = f"ANALYZE TABLE {table_name} COMPUTE STATISTICS"
         try:

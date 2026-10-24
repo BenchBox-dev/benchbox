@@ -77,6 +77,17 @@ class TestValidateDatabricksCredentials:
         assert ok is True
         assert err is None
 
+    def test_verifies_against_certifi_bundle_by_default(self, monkeypatch):
+        import certifi
+
+        monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+        monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
+        mgr = _cred_manager({"server_hostname": "host", "http_path": "/sql/1.0/w/x", "access_token": "tok"})
+        mock_db_pkg, mock_sql, _conn, _cursor = _mock_sql_modules()
+        with patch.dict("sys.modules", {"databricks": mock_db_pkg, "databricks.sql": mock_sql}):
+            validate_databricks_credentials(mgr)
+        assert mock_sql.connect.call_args.kwargs["_tls_trusted_ca_file"] == certifi.where()
+
     def test_successful_connection_with_catalog(self):
         mgr = _cred_manager(
             {

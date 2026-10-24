@@ -23,6 +23,7 @@ from typing import Any
 import yaml
 
 from benchbox.core.data_fetch.errors import ChecksumMismatchError
+from benchbox.utils import tls
 from benchbox.utils.compression_mixin import CompressionMixin
 from benchbox.utils.datagen_manifest import (
     MANIFEST_FILENAME,
@@ -711,7 +712,7 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
         req = urllib.request.Request(
             url, headers={"User-Agent": "BenchBox/1.0 (https://github.com/BenchBox-dev/BenchBox)"}
         )
-        with urllib.request.urlopen(req, timeout=120) as response:
+        with tls.urlopen(req, timeout=120) as response:
             zip_bytes = response.read()
         actual_sha256 = hashlib.sha256(zip_bytes).hexdigest()
         expected_sha256 = PINNED_SOURCE_SHA256.get(url)

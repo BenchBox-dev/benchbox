@@ -153,3 +153,12 @@ def test_round_inputs_to_decimal_casts_every_round_input_once():
 
 def test_round_inputs_to_decimal_leaves_a_query_without_round_unchanged():
     assert apply_rewrite("round_inputs_to_decimal", "SELECT a FROM t", "postgres") == "SELECT a FROM t"
+
+
+def test_decimal_division_to_double_writes_a_double_zero_beside_the_quotient_in_a_case():
+    sql = "SELECT CASE WHEN b > 0 THEN a / b ELSE CAST(0 AS DECIMAL(15, 2)) END FROM t"
+    result = apply_rewrite("decimal_division_to_double", sql, "clickhouse")
+    assert (
+        result
+        == "SELECT CASE WHEN b > 0 THEN CAST(a AS Nullable(Float64)) / b ELSE CAST(0 AS Nullable(Float64)) END FROM t"
+    )

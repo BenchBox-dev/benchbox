@@ -26,7 +26,25 @@ except ImportError:
 
 pytestmark.append(pytest.mark.skipif(not DEPS_AVAILABLE, reason="pandas/polars not installed"))
 
-ALL_QUERY_IDS = [f"Q{i}" for i in range(1, 18)]
+ALL_QUERY_IDS = [
+    "obt_row_count",
+    "obt_channel_distribution",
+    "obt_returns_summary",
+    "obt_channel_revenue",
+    "obt_top_items_by_quantity",
+    "obt_avg_ticket_by_channel",
+    "obt_discounted_sales",
+    "obt_profit_by_channel",
+    "obt_sales_by_channel_return_flag",
+    "obt_high_value_sales",
+    "obt_item_channel_quantity",
+    "obt_ticket_extremes",
+    "obt_distinct_items",
+    "obt_bulk_sales",
+    "obt_coupon_sales",
+    "obt_store_summary",
+    "obt_overall_totals",
+]
 
 TABLE_NAME = "tpcds_sales_returns_obt"
 
@@ -116,28 +134,28 @@ class TestObtQueryExecution:
         assert expr_result.columns.tolist() == pandas_result.columns.tolist()
         pd.testing.assert_frame_equal(expr_result, pandas_result, check_dtype=False)
 
-    def test_q1_counts_all_rows(self, expr_ctx, pandas_ctx):
+    def test_row_count_counts_all_rows(self, expr_ctx, pandas_ctx):
         from benchbox.core.tpcds_obt.dataframe_queries import REGISTRY
 
-        query = REGISTRY.get("Q1")
+        query = REGISTRY.get("obt_row_count")
         assert query is not None
         assert _to_pandas_result(query.expression_impl(expr_ctx))["row_count"].tolist() == [10]
         assert _to_pandas_result(query.pandas_impl(pandas_ctx))["row_count"].tolist() == [10]
 
-    def test_q4_channel_revenue(self, expr_ctx, pandas_ctx):
+    def test_channel_revenue(self, expr_ctx, pandas_ctx):
         from benchbox.core.tpcds_obt.dataframe_queries import REGISTRY
 
-        query = REGISTRY.get("Q4")
+        query = REGISTRY.get("obt_channel_revenue")
         assert query is not None
         expected = {"catalog": 108.0, "store": 109.5, "web": 66.5}
         for impl, ctx in ((query.expression_impl, expr_ctx), (query.pandas_impl, pandas_ctx)):
             result = _to_pandas_result(impl(ctx))
             assert dict(zip(result["channel"], result["revenue"])) == expected
 
-    def test_q13_distinct_items(self, expr_ctx, pandas_ctx):
+    def test_distinct_items(self, expr_ctx, pandas_ctx):
         from benchbox.core.tpcds_obt.dataframe_queries import REGISTRY
 
-        query = REGISTRY.get("Q13")
+        query = REGISTRY.get("obt_distinct_items")
         assert query is not None
         assert _to_pandas_result(query.expression_impl(expr_ctx))["distinct_items"].tolist() == [5]
         assert _to_pandas_result(query.pandas_impl(pandas_ctx))["distinct_items"].tolist() == [5]
@@ -145,5 +163,5 @@ class TestObtQueryExecution:
     def test_all_seventeen_registered(self):
         from benchbox.core.tpcds_obt.dataframe_queries import get_dataframe_queries
 
-        actual = sorted((query.query_id for query in get_dataframe_queries()), key=lambda qid: int(qid[1:]))
-        assert actual == ALL_QUERY_IDS
+        actual = [query.query_id for query in get_dataframe_queries()]
+        assert sorted(actual) == sorted(ALL_QUERY_IDS)

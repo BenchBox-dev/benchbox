@@ -105,10 +105,10 @@ Without the App secrets, the `post` job logs the result and succeeds.
    (see Inert-path manifest) gets `success`.
 2. `select-1` asks Jev, through a direct call to TypeSafe's
    `/v1/systemone` API, for the change's size bucket, review capability,
-   review template and per-file priority. The bucket names one reviewer in
-   `.github/oracle-reviewers.yml`. A change to review machinery always gets
-   the `gate` template and at least the `large` bucket. Later slots reuse
-   that classification.
+   review template and per-file priority. The bucket names the first reviewer
+   in `.github/oracle-reviewers.yml`; later slots can move up the chain (see
+   Rounds). A change to review machinery always gets the `gate` template and
+   at least the `large` bucket. Later slots reuse that classification.
    Selection skips disabled reviewers, quota-exhausted pools and, when the
    diff exceeds the brief cap, any reviewer that is not hard read-only with
    `reads_files: true`.
@@ -221,7 +221,8 @@ counts as not fixed. Unfixed earlier defects stay open, and a new
 defect counts only in a file changed since the last review; new defects in
 other files are listed, collapsed and capped at five, as not counted. More
 than 10 open defects in total give DO NOT SHIP. The previous reviewer is tried
-first. A follow-up runs for every size bucket.
+first unless the follow-up's own bucket names a larger reviewer, as it does for
+a push that touches review machinery. A follow-up runs for every size bucket.
 
 A forced follow-up rejudges rather than skips: its brief adds the disputed
 threads under "Disputed findings", with each reply quoted as data, and tells
@@ -276,16 +277,22 @@ defect cannot become a line comment, so it is listed in the review body with a
 note that it counts like the others. Ignoring it would let a reviewer's report
 of a real defect pass because it cited an unchanged line.
 
-Reviewers run one at a time, so a decision stops the run. A reviewer whose
-attempt was absent as `invalid`, `incomplete`, `empty` or `error` runs once
-more before the chain advances, so a reviewer gets at most two attempts and the
-run at most `max_attempts`. A decision is never retried, and neither are
-`quota`, `auth` or `timeout` absences, a reviewer job that did not finish
-(`ensure-attempt` records it with the fixed `JOB_FAILURE_DETAIL` detail) or a
-reviewer that selection would skip (disabled, out of quota, or unable to take
-the brief). Selection and artifact replay share this rule, so an artifact set
-with a third attempt of one reviewer, or any attempt after a decision, is
-rejected.
+Reviewers run one at a time, so a decision stops the run. The chain starts at
+the bucket's reviewer or, for a follow-up, at the previous reviewer if that one
+belongs to a larger bucket, and then takes the reviewers of the larger buckets
+in size order, leaving out any reviewer whose harness, model and effort match
+one already in the chain: `trivial` and `small` share `@smol`, so a run never
+spends slots on both. A reviewer whose attempt was absent as `invalid`,
+`incomplete`, `empty` or `error` runs once more before the chain advances, so
+a reviewer gets at most two attempts and the run at most `max_attempts`. A
+decision is never retried, and neither are `quota`, `auth` or `timeout`
+absences, a reviewer job that did not finish (`ensure-attempt` records it with
+the fixed `JOB_FAILURE_DETAIL` detail) or a reviewer that selection would skip
+(disabled, out of quota, or unable to take the brief). Selection and artifact
+replay share this rule, so an artifact set with a third attempt of one
+reviewer, or any attempt after a decision, is rejected. If every reviewer in
+the chain is absent or skipped, the run stays pending. A SHIP from the first
+reviewer that answers ends the run like any other decision.
 
 ## Decisions
 
@@ -301,8 +308,9 @@ Only reviewer ingress normalizes known harmless drift:
 - Missing `incomplete_reason` becomes empty. Missing `summary` becomes empty
   except for DO_NOT_SHIP, whose summary is the published rationale.
 - Finding metadata `line_note`, `end_line_note` and `detail_extra` is removed.
-- Prior metadata `severity`, `file`, `line`, `end_line`, `title` and `detail`
-  is removed; the prior's `id`, `status` and `evidence` are never inferred.
+- Prior metadata (`severity`, `file`, `line`, `end_line`, `title`, `detail`) is
+  not removed: a prior entry must hold exactly `id`, `status` and `evidence`,
+  so a current finding filed under the priors cannot be read as a judgment.
 - An object keyed by prior ID becomes a list. An omitted embedded ID comes
   from the key; an embedded ID must agree after the supported `#` prefix is
   removed. Duplicate normalized IDs remain invalid.
@@ -340,6 +348,8 @@ The code, not the model, decides, and the stricter outcome wins:
 |---|---|
 | SHIP, no counted or open prior defects | SHIP |
 | SHIP_WITH_FIXES, no listed or open prior defects | absent (`invalid`), never promoted to SHIP |
+| SHIP that still gives an `incomplete_reason` | absent (`invalid`); a reviewer that could not finish never ships |
+| SHIP that marks an earlier defect fixed or withdrawn with empty evidence | absent (`invalid`); clearing a blocker needs evidence |
 | SHIP_WITH_FIXES, only out-of-scope follow-up findings | SHIP; findings are disclosed as not counted |
 | SHIP or SHIP_WITH_FIXES, 1 to 10 defects | SHIP WITH FIXES |
 | more than 10 defects | DO NOT SHIP; the defects are dropped and the summary notes the count |
@@ -372,6 +382,13 @@ outage fails the attempt instead of silently swapping the model family.
 Changing a role or a chain is a pull request to that file, and a change to the
 file must keep one chain per primary model and no role-name keys (a test
 checks this). An empty `effort` takes the role's thinking level.
+
+`@smol` maps to `openai-codex/gpt-6-luna:xhigh`, whose first usage-limit
+fallback is `anthropic/claude-sonnet-5-5:medium`. `trivial` and `small` are in
+the `codex` pool and every other reviewer is in the `claude` pool, so a quota
+absence on one provider leaves the other provider's reviewers available. The
+comparison behind this choice, and why Claude Haiku was dropped, is in
+`_project/decisions/oracle-small-reviewer-model-2026-10-23.md`.
 
 The review records the reviewer name from the policy, not the model that
 answered. Reviews do not exclude the author's model family: the owner chose
@@ -675,7 +692,9 @@ cancel-in-progress, so a newer run for a pull request cancels the earlier one
 instead of racing it.
 
 The cutover keeps `oracle-review` required while `oracle-gate` runs
-alongside it. Once production runs show the two contexts agreeing, the owner
-adds `oracle-gate` to the required checks in `repo-admin-settings.md` and the
-live ruleset, scoped to the `benchbox-oracle` App's integration ID, and only
-then retires the `pull_request`-triggered check.
+alongside it. The intended order is that production runs show the two contexts
+agreeing before the owner adds `oracle-gate` to the required checks, scoped to
+the `benchbox-oracle` App's integration ID, and only then the
+`pull_request`-triggered check is retired. The live ruleset requires
+`oracle-gate` as of 2026-10-21T19:37-04:00; that the agreement precondition was
+met is not verified (see `repo-admin-settings.md`).

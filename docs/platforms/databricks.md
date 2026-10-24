@@ -95,6 +95,7 @@ or a `DatabricksAdapter` argument in the Python API.
 | `compute_resource` | `--platform-option` | (none) | SQL warehouse ID; sets `http_path` to `/sql/1.0/warehouses/<id>` |
 | `uc_catalog`, `uc_schema`, `uc_volume` | `--platform-option` | (none) | Unity Catalog volume for staging uploads |
 | `staging_root` | `--platform-option` | (none) | Staging path (`dbfs:/Volumes/...`, `s3://...`, `abfss://...`) |
+| `gateway` | Python API | `native` | Query gateway: `native` (none), `espresso` or `custom`. A gateway needs personal access token authentication |
 | `driver_version` | `--platform-option` | (latest) | Pin the Databricks SQL connector version (e.g. `3.3.0`) |
 | `driver_auto_install` | `--platform-option` | false | Auto-install the requested driver version via uv if missing |
 | `table_format` | Python API | `delta` | Table format: `delta` or `hudi` (Hudi emits `USING HUDI` DDL) |
@@ -169,6 +170,48 @@ benchbox run --platform databricks --benchmark tpch --scale 1.0
 
 BenchBox has no setting for OAuth machine-to-machine or Azure AD sign-in.
 
+### TLS trust
+
+BenchBox verifies the SQL warehouse's certificate against the `certifi` CA bundle, not the Python interpreter's system
+store. To trust a corporate or proxy CA instead, point `REQUESTS_CA_BUNDLE` (or `SSL_CERT_FILE`) at a PEM file that
+contains every CA you want to trust:
+
+```bash
+export REQUESTS_CA_BUNDLE=/path/to/corporate-ca.pem
+```
+
+`REQUESTS_CA_BUNDLE` takes precedence when both variables are set. The same setting applies to BenchBox's own
+downloads and hosted result submission.
+
+## Gateways
+
+A gateway sits between BenchBox and the workspace and may reroute or rewrite queries. Select one with the
+core `gateway` setting (`native`, `espresso` or `custom`). `native` means no gateway.
+
+BenchBox sends the connection through the gateway by using the gateway's hostname as `server_hostname`.
+For Espresso, set `server_hostname` to the hostname Espresso Computing gives you and keep `http_path`
+unchanged, so it is still the SQL warehouse path of the workspace. BenchBox passes both values to the
+connector without rewriting them.
+
+```python
+DatabricksAdapter(
+    server_hostname="<your-workspace>.espressocomputing.com",
+    http_path="/sql/1.0/warehouses/<warehouse-id>",
+    access_token="dapi...",
+    gateway="espresso",
+)
+```
+
+Gateways accept personal access tokens only. If `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` or
+`DATABRICKS_CONFIG_PROFILE` is set in the environment and `gateway` is not `native`, BenchBox raises a
+`ConfigurationError` before connecting. Unset those variables and provide `access_token` (or
+`DATABRICKS_TOKEN`) instead. Native runs are unaffected.
+
+With a gateway, `from_config` needs `server_hostname` (the gateway hostname) and `access_token` set
+explicitly. It never falls back to the auto-detected workspace hostname, token or profile, because that
+would send the queries straight to the workspace and bypass the gateway. A missing value raises a
+`ConfigurationError`.
+
 ## Usage Examples
 
 ### Basic Benchmark
@@ -242,13 +285,17 @@ OPTIMIZE lineitem ZORDER BY (l_shipdate);
 ALTER TABLE lineitem CLUSTER BY (l_shipdate, l_orderkey);
 ```
 
-Clustering is set before the data loads. After a tuned table loads, BenchBox
-also executes `OPTIMIZE <table>` and `ANALYZE TABLE <table> COMPUTE STATISTICS`
-on Delta tables, unless `enable_delta_optimization` is `false`. The time is
-reported as `phases.post_load_maintenance` and is not counted in data-loading
-time. Tables the tuning does not cover, and untuned runs, still get a plain
-`OPTIMIZE` after load while `enable_delta_optimization` is on, and that time
-counts as load time. BenchBox does not run `VACUUM` as part of tuning.
+The Liquid Clustering statement runs before the data loads. The `ZORDER` statement
+runs after each tuned table loads, in place of the plain `OPTIMIZE`, because it
+has nothing to reorder on an empty table. After a tuned table loads, BenchBox
+executes `OPTIMIZE <table>` (or `OPTIMIZE <table> ZORDER BY (...)` for Z-order)
+and `ANALYZE TABLE <table> COMPUTE STATISTICS` on Delta tables, unless
+`enable_delta_optimization` is `false`. With that flag off, a Z-order run still
+executes its `ZORDER` statement, without the `ANALYZE`. The time is reported as
+`phases.post_load_maintenance` and is not counted in data-loading time. Tables
+the tuning does not cover, and untuned runs, still get a plain `OPTIMIZE` after
+load while `enable_delta_optimization` is on, and that time counts as load time.
+BenchBox does not run `VACUUM` as part of tuning.
 
 The resolved strategy is recorded per run in the result bundle at
 `platform.config.databricks_clustering_strategy` (`"z_order"`,

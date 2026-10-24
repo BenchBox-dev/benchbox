@@ -432,11 +432,18 @@ def judge_planned(verdict: Verdict, plan: Mapping[str, Any]) -> Judgement:
 def contradiction(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
     if verdict.status != COMPLETE or judge_planned(verdict, plan).decision != SHIP:
         return None
+    if verdict.incomplete_reason.strip():
+        return "the verdict would ship but reports that the review could not be finished"
     priors = (plan.get("protocol") or {}).get("prior") or ()
     known = {item.get("id") for item in priors if isinstance(item, Mapping)}
     unknown = {item.id for item in verdict.prior_defects} - known
     if unknown:
         return f"the verdict would ship but cites {len(unknown)} prior defect ID(s) the plan does not list"
+    unsupported = sorted(
+        item.id for item in verdict.prior_defects if item.status in (FIXED, WITHDRAWN) and not item.evidence.strip()
+    )
+    if unsupported:
+        return f"the verdict would ship but clears prior defect(s) {', '.join(unsupported)} without evidence"
     if verdict.decision == SHIP_WITH_FIXES and not verdict.defects and verdict.listed == 0:
         return "SHIP_WITH_FIXES names no current or open prior defects"
     return None

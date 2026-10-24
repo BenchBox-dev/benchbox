@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 
 import pytest
@@ -22,92 +23,25 @@ pytestmark = [
 SCALE_FACTOR = float(os.environ.get("BENCHBOX_OBT_EQUIVALENCE_SF", "0.01"))
 QUERY_TIMEOUT_SECONDS = float(os.environ.get("BENCHBOX_OBT_EQUIVALENCE_TIMEOUT", "60"))
 
-GRAIN = "the flattened sale-line grain changes cardinality for a dimension-only scope or a per-entity aggregate"
-CORRELATION = "a correlated subquery, self-join or cross-join binds to different rows on the flattened grain"
-CURRENT_POINTER = "customer-current address, demographics or household role is not carried by the OBT"
-RETURN_KEY = "a return-side store, call-center, catalog-page or web-page key is not carried by the OBT"
-MISSING_PART = "the converted statement covers fewer parts than the base query"
-LABEL = "the OBT column name leaks into a result label"
-ZERO_DIVISOR = "a zero divisor yields NaN where the base query yields NULL"
 EMPTY = "the base query returns no rows for every candidate parameter seed at this scale, so equality is vacuous"
 
-DIVERGENT_AT_SF_0_01: dict[int, str] = {
-    1: GRAIN,
-    2: CORRELATION,
-    5: RETURN_KEY,
-    6: CURRENT_POINTER,
-    9: GRAIN,
-    14: MISSING_PART,
-    15: CURRENT_POINTER,
-    17: CORRELATION,
-    18: CURRENT_POINTER,
-    25: CORRELATION,
-    29: CORRELATION,
-    30: GRAIN,
-    34: CORRELATION,
-    35: CURRENT_POINTER,
-    45: CURRENT_POINTER,
-    59: CORRELATION,
-    69: CURRENT_POINTER,
-    73: CORRELATION,
-    76: LABEL,
-    77: RETURN_KEY,
-    79: CORRELATION,
-    81: GRAIN,
-    90: ZERO_DIVISOR,
-    91: CURRENT_POINTER,
-}
+DIVERGENT_AT_SF_0_01: dict[int, str] = {}
 UNVERIFIABLE_AT_SF_0_01: dict[int, str] = {
     4: EMPTY,
-    8: EMPTY,
     10: EMPTY,
     23: EMPTY,
     24: EMPTY,
     31: EMPTY,
     41: EMPTY,
-    54: EMPTY,
     58: EMPTY,
     65: EMPTY,
     85: EMPTY,
 }
 
-DIVERGENT_AT_SF_1: dict[int, str] = {
-    1: GRAIN,
-    2: CORRELATION,
-    5: RETURN_KEY,
-    6: CURRENT_POINTER,
-    9: GRAIN,
-    10: CURRENT_POINTER,
-    14: MISSING_PART,
-    15: CURRENT_POINTER,
-    17: CORRELATION,
-    18: CURRENT_POINTER,
-    19: CURRENT_POINTER,
-    25: CORRELATION,
-    29: CORRELATION,
-    30: GRAIN,
-    32: CORRELATION,
-    34: CORRELATION,
-    35: CURRENT_POINTER,
-    41: GRAIN,
-    45: CURRENT_POINTER,
-    59: CORRELATION,
-    65: GRAIN,
-    69: CURRENT_POINTER,
-    71: CORRELATION,
-    73: CORRELATION,
-    76: LABEL,
-    77: RETURN_KEY,
-    79: CORRELATION,
-    81: GRAIN,
-    91: CURRENT_POINTER,
-    92: CORRELATION,
-}
+DIVERGENT_AT_SF_1: dict[int, str] = {}
 UNVERIFIABLE_AT_SF_1: dict[int, str] = {
-    8: EMPTY,
     23: EMPTY,
     24: EMPTY,
-    54: EMPTY,
 }
 
 EXPECTED_DIVERGENT: dict[float, dict[int, str]] = {0.01: DIVERGENT_AT_SF_0_01, 1.0: DIVERGENT_AT_SF_1}
@@ -172,3 +106,24 @@ def test_an_obt_query_returns_the_tpcds_result_unless_listed(engines, query_id: 
         f"Q{query_id}: the expected-divergence lists record it as {listed} but it is {outcome.status} "
         f"on SF{SCALE_FACTOR:g} ({outcome.detail}); update the lists only when the change is understood"
     )
+
+
+@pytest.mark.skipif(SCALE_FACTOR < 1, reason="Q24 returns rows only from scale factor 1")
+def test_q24_matches_tpcds_with_parameters_that_return_rows(engines) -> None:
+    obt, base, benchmark, manager = engines
+    market, colors = 8, ("yellow", "snow")
+    obt_sql = manager.get_query(24, scale_factor=SCALE_FACTOR)
+    obt_sql = re.sub(r"store_s_market_id = \d+", f"store_s_market_id = {market}", obt_sql)
+    obt_statements = [statement for statement in obt_sql.split(";") if statement.strip()]
+    obt_parts = []
+    base_parts = []
+    for statement, variant, color in zip(obt_statements, ("a", "b"), colors, strict=True):
+        statement = re.sub(r"item_i_color = '[^']*'", f"item_i_color = '{color}'", statement)
+        base_sql = benchmark.get_query(24, scale_factor=SCALE_FACTOR, variant=variant, dialect="duckdb")
+        base_sql = re.sub(r'"s_market_id" = \d+', f'"s_market_id" = {market}', base_sql)
+        base_sql = re.sub(r'"i_color" = \'[^\']*\'', f"\"i_color\" = '{color}'", base_sql)
+        obt_parts.extend(run_statements(obt, statement, QUERY_TIMEOUT_SECONDS))
+        base_parts.extend(run_statements(base, base_sql, QUERY_TIMEOUT_SECONDS))
+    assert base_parts and all(base_parts), "the pinned Q24 parameters no longer return rows on the base query"
+    comparison = compare_parts(obt_parts, base_parts)
+    assert comparison.equal, comparison.detail

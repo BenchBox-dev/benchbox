@@ -24,5 +24,5 @@ def with_full_diff(text: str, path: Path | None) -> str:
 def write_private(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+    with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as handle:
         handle.write(text)

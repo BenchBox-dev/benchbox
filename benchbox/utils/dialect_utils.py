@@ -228,53 +228,20 @@ class UnknownSqlDialectError(ValueError):
 
 SQLITE_DISCOUNT_BOUNDS = {"columns": ("l_discount",), "tables": ("lineitem",)}
 
-PLATFORM_DIALECTS: dict[str, str] = {
-    "ansi": "postgres",
-    "standard": "postgres",
-    "postgresql": "postgres",
-    "timescaledb": "postgres",
-    "pg_mooncake": "postgres",
-    "pg_duckdb": "postgres",
-    "cedardb": "postgres",
-    "paradedb": "postgres",
-    "citus": "postgres",
-    "firebolt": "postgres",
-    "influxdb": "datafusion",
-    "motherduck": "duckdb",
-    "ducklake": "duckdb",
-    "clickhouse_local": "clickhouse",
-    "clickhouse_server": "clickhouse",
-    "clickhouse_cloud": "clickhouse",
-    "starburst": "trino",
-    "databricks_df": "databricks",
-    "databend": "snowflake",
-    "snowpark_connect": "snowflake",
-    "synapse": "tsql",
-    "fabric_dw": "tsql",
-    "fabric_lakehouse": "tsql",
-    "glue": "spark",
-    "emr_serverless": "spark",
-    "athena_spark": "spark",
-    "dataproc": "spark",
-    "dataproc_serverless": "spark",
-    "fabric_spark": "spark",
-    "synapse_spark": "spark",
-    "velox": "spark",
-    "lakesail": "spark",
-    "quanton": "spark",
-    "pyspark": "spark",
-}
+GENERIC_DIALECT_ALIASES: dict[str, str] = {"ansi": "postgres", "standard": "postgres"}
 
 
 def resolve_sql_dialect(platform_or_dialect: str) -> str:
     from benchbox._vendor.sqlglot.dialects import DIALECT_MODULE_NAMES
     from benchbox._vendor.sqlglot.dialects.dialect import Dialect
+    from benchbox.core.platform_manifest import get_platform_sql_dialect
 
     key = (platform_or_dialect or "").strip().lower().replace("-", "_")
-    resolved = PLATFORM_DIALECTS.get(key, key)
+    resolved = GENERIC_DIALECT_ALIASES.get(key) or get_platform_sql_dialect(key) or key
     if resolved not in DIALECT_MODULE_NAMES or Dialect.get(resolved) is None:
         raise UnknownSqlDialectError(
-            f"No fork SQL dialect for {platform_or_dialect!r}; register the platform in PLATFORM_DIALECTS"
+            f"No fork SQL dialect for {platform_or_dialect!r}; declare capabilities.sql_dialect for the platform in "
+            "the platform manifest"
         )
     return resolved
 
@@ -556,6 +523,30 @@ def mooncake_mirror_statements(table: str, staging_table: str, schema: str | Non
 
     engines = importlib.import_module("benchbox._vendor.sqlglot.benchbox.ddl_engines")
     return engines.mooncake_mirror_statements(table, staging_table, schema)
+
+
+def schema_ddl_read_dialect(ddl: str, target_dialect: str) -> str:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    trees = sqlglot.parse(ddl, read=resolve_sql_dialect("standard"))
+    if any(isinstance(tree, exp.Command) for tree in trees):
+        return target_dialect
+    return "standard"
+
+
+def ddl_column_names(ddl: str, source_dialect: str = "standard") -> dict[str, list[str]]:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    columns: dict[str, list[str]] = {}
+    for tree in sqlglot.parse(ddl, read=resolve_sql_dialect(source_dialect)):
+        if not isinstance(tree, exp.Create) or not isinstance(tree.this, exp.Schema):
+            continue
+        table = tree.this.this
+        if isinstance(table, exp.Table):
+            columns[table.name.lower()] = [column.name for column in tree.this.find_all(exp.ColumnDef)]
+    return columns
 
 
 def contains_division(sql: str, dialect: str) -> bool:

@@ -35,6 +35,11 @@ PYPI_ENVIRONMENT = "pypi"
 PYPI_REQUIRED_REVIEWERS = (("User", 57046, "joeharris76"),)
 PYPI_CAN_ADMINS_BYPASS = True
 PYPI_PREVENT_SELF_REVIEW = False
+TEST_PYPI_ENVIRONMENT = "test-pypi"
+ENVIRONMENT_DEPLOYMENT_POLICIES = {
+    PYPI_ENVIRONMENT: (("tag", "v*"),),
+    TEST_PYPI_ENVIRONMENT: (("branch", "develop"), ("branch", "release"), ("tag", "v*")),
+}
 
 
 @dataclass(frozen=True)
@@ -91,6 +96,29 @@ def environment_protection_findings(live: dict[str, Any]) -> list[str]:
         reviewers.append((reviewer.get("type"), principal.get("id"), principal.get("login")))
     if tuple(reviewers) != PYPI_REQUIRED_REVIEWERS:
         findings.append(f"pypi environment: required reviewers are {reviewers!r}, expected {PYPI_REQUIRED_REVIEWERS!r}")
+    return findings
+
+
+def deployment_policy_findings(name: str, live_environment: dict[str, Any], live_policies: Any) -> list[str]:
+    findings: list[str] = []
+    branch_policy = live_environment.get("deployment_branch_policy")
+    if branch_policy != {"protected_branches": False, "custom_branch_policies": True}:
+        findings.append(
+            f"{name} environment: deployment_branch_policy is {branch_policy!r}, expected custom policies only"
+        )
+    entries = live_policies.get("branch_policies") if isinstance(live_policies, dict) else None
+    if not isinstance(entries, list):
+        findings.append(f"{name} environment: deployment branch policies are missing or malformed")
+        return findings
+    live = {
+        (entry.get("type"), entry.get("name")) if isinstance(entry, dict) else ("invalid", repr(entry))
+        for entry in entries
+    }
+    expected = set(ENVIRONMENT_DEPLOYMENT_POLICIES[name])
+    if live != expected:
+        findings.append(
+            f"{name} environment: deployment policies are {sorted(live, key=repr)!r}, expected {sorted(expected)!r}"
+        )
     return findings
 
 
@@ -305,6 +333,10 @@ def _fetch_environment(repo: str, token: str, name: str = PYPI_ENVIRONMENT) -> d
     return _api_json(f"https://api.github.com/repos/{repo}/environments/{name}", token)
 
 
+def _fetch_environment_policies(repo: str, token: str, name: str) -> dict[str, Any]:
+    return _api_json(f"https://api.github.com/repos/{repo}/environments/{name}/deployment-branch-policies", token)
+
+
 def merge_queue_findings(live: dict[str, Any], name: str) -> list[str]:
     if _rule_by_type(live, "merge_queue") is None:
         return []
@@ -325,6 +357,8 @@ def render_summary(findings: list[str], expected: dict[str, ExpectedRuleset]) ->
         for ruleset in expected.values():
             lines.append(f"- {ruleset.name}: required checks {', '.join(ruleset.required_checks)}")
         lines.append("- pypi environment: required reviewer joeharris76 (User id 57046)")
+        lines.append("- pypi environment: deployments only from tag v*")
+        lines.append("- test-pypi environment: deployments only from tag v* and branches develop and release")
     if warnings:
         lines += ["", "## Non-blocking warnings", "", *[f"- {finding}" for finding in warnings]]
     return "\n".join(lines) + "\n"
@@ -373,7 +407,13 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         live_by_name = _fetch_live_rulesets(args.repo, token)
-        live_pypi_environment = _fetch_environment(args.repo, token)
+        live_environments = {
+            name: _fetch_environment(args.repo, token, name) for name in ENVIRONMENT_DEPLOYMENT_POLICIES
+        }
+        live_policies = {
+            name: _fetch_environment_policies(args.repo, token, name) for name in ENVIRONMENT_DEPLOYMENT_POLICIES
+        }
+        live_pypi_environment = live_environments[PYPI_ENVIRONMENT]
     except Exception as exc:
         if args.output:
             args.output.write_text(
@@ -406,6 +446,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     findings.extend(environment_protection_findings(live_pypi_environment))
+    for name, live_environment in live_environments.items():
+        findings.extend(deployment_policy_findings(name, live_environment, live_policies[name]))
 
     blocking = blocking_findings(findings)
     summary = render_summary(findings, expected)

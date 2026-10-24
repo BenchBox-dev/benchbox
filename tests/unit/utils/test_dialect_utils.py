@@ -6,7 +6,6 @@ from typing import Any, cast
 import pytest
 
 from benchbox.utils.dialect_utils import (
-    PLATFORM_DIALECTS,
     SQLITE_DISCOUNT_BOUNDS,
     SQLTranslationError,
     UnknownSqlDialectError,
@@ -387,10 +386,6 @@ class TestDialectResolution:
     def test_unknown_platform_raises(self, name):
         with pytest.raises(UnknownSqlDialectError):
             resolve_sql_dialect(cast(Any, name))
-
-    def test_every_registered_alias_targets_a_fork_dialect(self):
-        for platform, dialect in PLATFORM_DIALECTS.items():
-            assert resolve_sql_dialect(platform) == dialect
 
     def test_every_sql_platform_in_the_manifest_resolves_to_a_fork_dialect(self):
         from benchbox.core.config_inheritance import resolve_dialect_for_query_translation

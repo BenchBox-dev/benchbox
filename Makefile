@@ -450,10 +450,15 @@ lint:
 .PHONY: uv-lock-revision-check
 uv-lock-revision-check:
 	uv run -- python _project/scripts/check_uv_lock_revision.py $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",)
+	for project in _project/sql-translation-ml _project/scripts; do uv lock --check --project "$$project" || exit 1; done
 
 .PHONY: sqlglot-upstream-freshness-check
 sqlglot-upstream-freshness-check:
 	uv run -- python scripts/check_sqlglot_upstream_freshness.py
+
+.PHONY: sqlglot-fork-diff
+sqlglot-fork-diff:
+	uv run -- python -m scripts.sqlglot_fork_diff $(if $(OLD),--old "$(OLD)",) $(if $(NEW),--new "$(NEW)",) $(if $(BASE_REF),--base-ref "$(BASE_REF)",) $(if $(OUT),--output "$(OUT)",)
 
 .PHONY: sql-execution-gate
 sql-execution-gate:
@@ -507,7 +512,7 @@ comment-policy-dead-exceptions:
 
 .PHONY: lint-markers
 lint-markers:
-	uv run -- python -m pytest --collect-only -q -p no:warnings
+	uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $(if $(MARKER_MANIFEST),"--marker-manifest=$(MARKER_MANIFEST)")
 	uv run -- python -m pytest tests/unit/test_marker_strategy.py -q
 
 .PHONY: lint-imports
@@ -653,6 +658,8 @@ ci-lint:
 	@echo "Running CI lint checks..."
 	@case " $(MAKEFLAGS) " in *" n "*|*" -n "*|*" --just-print "*) echo "Dry-run: ci-lint guards suppressed"; exit 0;; esac; \
 	set +e; failed=""; \
+	MARKER_MANIFEST=$$(mktemp "$${TMPDIR:-/tmp}/benchbox-marker-manifest.XXXXXX"); export MARKER_MANIFEST; \
+	trap 'rm -f "$$MARKER_MANIFEST"' EXIT; \
 	uv run ruff check .; \
 	[ $$? -eq 0 ] || failed="$$failed ruff-check"; \
 	uv run ruff format --check .; \
@@ -693,7 +700,7 @@ ci-lint:
 	fi; \
 	uv run -- python _project/scripts/timing_policy_check.py --strict; \
 	[ $$? -eq 0 ] || failed="$$failed timing-policy"; \
-	uv run -- python _project/scripts/fast_lane_ceiling_check.py --strict; \
+	uv run -- python _project/scripts/fast_lane_ceiling_check.py --strict --manifest-from-env; \
 	[ $$? -eq 0 ] || failed="$$failed fast-lane-guards"; \
 	uv run --project _project/scripts --no-sync -- python _project/scripts/uat_loc_table.py --check; \
 	[ $$? -eq 0 ] || failed="$$failed uat-loc-table"; \
@@ -709,6 +716,8 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed makefile-inventory-check"; \
 	uv run -- python scripts/check_public_contract_drift.py; \
 	[ $$? -eq 0 ] || failed="$$failed public-contract-drift"; \
+	$(MAKE) doc-contracts-guard; \
+	[ $$? -eq 0 ] || failed="$$failed doc-contracts"; \
 	$(MAKE) audit-deps; \
 	[ $$? -eq 0 ] || failed="$$failed audit-deps"; \
 	$(MAKE) audit-raw-check; \
@@ -989,7 +998,7 @@ release-prep:
 .PHONY: release-check
 release-check:
 	@test -n "$(VERSION)" || (echo "Usage: make release-check VERSION=X.Y.Z" && exit 1)
-	uv run --locked -- python scripts/release_flow.py check --version "$(VERSION)" $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",)
+	uv run --locked -- python scripts/release_flow.py check --version "$(VERSION)" $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",) $(if $(SKIP_UPSTREAM_FRESHNESS),--skip-upstream-freshness,)
 
 
 MAKE_TIMING_SHELL := $(BENCHBOX_MAKEFILE_ROOT)scripts/make_timing_shell.sh

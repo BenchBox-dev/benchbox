@@ -12,12 +12,12 @@ retry:
   daily_budget: 6
   backoff_start_minutes: 60
   sweep_max_dispatches: 5
-pools: [claude]
+pools: [claude, codex]
 reviewers:
   trivial:
     harness: omp
-    family: claude
-    pool: claude
+    family: codex
+    pool: codex
     model: "@smol"
     effort: ""
     role: review
@@ -27,8 +27,8 @@ reviewers:
     enabled: true
   small:
     harness: omp
-    family: claude
-    pool: claude
+    family: codex
+    pool: codex
     model: "@smol"
     effort: ""
     role: review

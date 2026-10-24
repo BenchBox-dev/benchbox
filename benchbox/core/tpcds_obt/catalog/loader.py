@@ -28,6 +28,14 @@ class OBTQuery:
     sql: str
 
 
+@dataclass(frozen=True)
+class OBTExclusion:
+    id: int
+    template: str
+    template_sha256: str
+    reason: str
+
+
 def _load_payload() -> dict[str, Any]:
     try:
         with resources.files(__package__).joinpath(CATALOG_FILENAME).open("r", encoding="utf-8") as handle:
@@ -80,7 +88,28 @@ def load_catalog() -> dict[int, OBTQuery]:
         if query.id in queries:
             raise OBTCatalogError(f"Duplicate catalog entry for query {query.id}")
         queries[query.id] = query
+    overlap = queries.keys() & load_exclusions().keys()
+    if overlap:
+        raise OBTCatalogError(f"Queries are both catalogued and excluded: {sorted(overlap)}")
     return queries
 
 
-__all__ = ["OBTCatalogError", "OBTQuery", "PLACEHOLDER_PATTERN", "load_catalog"]
+@lru_cache(maxsize=1)
+def load_exclusions() -> dict[int, OBTExclusion]:
+    exclusions: dict[int, OBTExclusion] = {}
+    for entry in _load_payload().get("excluded") or []:
+        for key in ("id", "template", "template_sha256", "reason"):
+            if not entry.get(key):
+                raise OBTCatalogError(f"Excluded entry {entry!r} is missing '{key}'")
+        if entry["id"] in exclusions:
+            raise OBTCatalogError(f"Duplicate exclusion for query {entry['id']}")
+        exclusions[entry["id"]] = OBTExclusion(
+            id=entry["id"],
+            template=entry["template"],
+            template_sha256=entry["template_sha256"],
+            reason=entry["reason"],
+        )
+    return exclusions
+
+
+__all__ = ["OBTCatalogError", "OBTExclusion", "OBTQuery", "PLACEHOLDER_PATTERN", "load_catalog", "load_exclusions"]

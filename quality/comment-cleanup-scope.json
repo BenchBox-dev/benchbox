@@ -636,6 +636,12 @@
           "path": "_sources/tpc-ds/EULA.txt"
         },
         {
+          "path": "_sources/tpc-ds/query_templates/EULA.txt"
+        },
+        {
+          "path": "benchbox/_binaries/tpc-ds/templates/query_templates/EULA.txt"
+        },
+        {
           "path": "_binaries/tpc-ds/darwin-arm64/NOTICE.txt"
         },
         {
@@ -3967,14 +3973,6 @@
       "proof": "tests/unit/mcp/test_surface_defect_regressions.py: test_generate_chart_docstring_matches_the_renderer asserts that the source of register_visualization_tools contains \"ANSI-color-free\", which is docstring text at visualization.py line 386."
     },
     {
-      "producer": "benchbox/platforms/base/ddl_helpers.py",
-      "consumer": "tests/unit/platforms/base/test_ddl_helpers.py",
-      "owner": "comment-cleanup-platform-base",
-      "state": "blocked",
-      "blocking_disposition": "The test requires this docstring text to be present. Move the contract to an actual reference or change the assertion first, then delete the docstring.",
-      "proof": "tests/unit/platforms/base/test_ddl_helpers.py: test_comment_literal_primary_key_limitation_is_documented asserts that strip_primary_keys.__doc__ contains \"string-literal false positive\"."
-    },
-    {
       "producer": "benchbox/platforms/credentials/singlestore.py",
       "consumer": "tests/unit/platforms/credentials/test_singlestore_credentials.py",
       "owner": "comment-cleanup-security-credentials",
@@ -4107,6 +4105,28 @@
     },
     {
       "path": "_sources/tpc-ds/EULA.txt",
+      "blob_sha256": "1171fea59c4472ebd04cdb87d77d6652949fe8bc77d2601248e3c3e68bcdb6b9",
+      "byte_start": 0,
+      "byte_end": 17809,
+      "retained_sha256": "1171fea59c4472ebd04cdb87d77d6652949fe8bc77d2601248e3c3e68bcdb6b9",
+      "governing_requirement": "Distributed TPC EULA candidate in its source-tree representation with mixed CRLF and LF endings; governing authenticity and permitted transformation remain unresolved.",
+      "source_identity": "ed5c263c513ba65499f4918d3a7de607f280c65b:_sources/tpc-ds/EULA.txt",
+      "owner": "comment-cleanup-scope-policy",
+      "blocking_disposition": "Preserve these exact bytes, which differ from the platform EULA representation; do not claim line-ending or encoding conversion."
+    },
+    {
+      "path": "_sources/tpc-ds/query_templates/EULA.txt",
+      "blob_sha256": "1171fea59c4472ebd04cdb87d77d6652949fe8bc77d2601248e3c3e68bcdb6b9",
+      "byte_start": 0,
+      "byte_end": 17809,
+      "retained_sha256": "1171fea59c4472ebd04cdb87d77d6652949fe8bc77d2601248e3c3e68bcdb6b9",
+      "governing_requirement": "Distributed TPC EULA candidate in its source-tree representation with mixed CRLF and LF endings; governing authenticity and permitted transformation remain unresolved.",
+      "source_identity": "ed5c263c513ba65499f4918d3a7de607f280c65b:_sources/tpc-ds/EULA.txt",
+      "owner": "comment-cleanup-scope-policy",
+      "blocking_disposition": "Preserve these exact bytes, which differ from the platform EULA representation; do not claim line-ending or encoding conversion."
+    },
+    {
+      "path": "benchbox/_binaries/tpc-ds/templates/query_templates/EULA.txt",
       "blob_sha256": "1171fea59c4472ebd04cdb87d77d6652949fe8bc77d2601248e3c3e68bcdb6b9",
       "byte_start": 0,
       "byte_end": 17809,

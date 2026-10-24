@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from typing import Any, ClassVar
 
+from benchbox.core.platform_manifest import get_platform_query_dialect
 from benchbox.utils.dialect_utils import translate_ddl
 
 from ..utils.dependencies import (
@@ -25,7 +26,7 @@ from .base.data_loading import (
 from .base.mysql_wire import MySqlWireLifecycleMixin, NoOpTableTuningMixin, build_database_config
 from .base.sql_execution import execute_sql_query  # noqa: F401
 
-SINGLESTORE_DIALECT = "mysql"
+SINGLESTORE_DIALECT = get_platform_query_dialect("singlestore")
 
 try:
     import singlestoredb as _s2

@@ -264,22 +264,6 @@ class TestLakeSailAdapter:
 
         assert "customer" in normalized.lower()
 
-    def test_optimize_table_definition_parquet(self, mock_pyspark):
-
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        sql = "CREATE TABLE orders (id INT, amount DECIMAL)"
-        optimized = optimize_spark_table_definition(sql, table_format="parquet")
-        assert "USING PARQUET" in optimized.upper()
-
-    def test_optimize_table_definition_orc(self, mock_pyspark):
-
-        from benchbox.platforms._spark_helpers import optimize_spark_table_definition
-
-        sql = "CREATE TABLE orders (id INT, amount DECIMAL)"
-        optimized = optimize_spark_table_definition(sql, table_format="orc")
-        assert "USING ORC" in optimized.upper()
-
     def test_validate_identifier(self, mock_pyspark):
 
         from benchbox.platforms._spark_helpers import validate_spark_identifier
@@ -581,6 +565,17 @@ class TestLakeSailAdapterExecution:
 
 
 class TestLakeSailAdapterRegistration:
+    @pytest.fixture(autouse=True)
+    def fresh_registry(self):
+        from benchbox.core.platform_registry import PlatformRegistry
+
+        saved = (PlatformRegistry._adapters, PlatformRegistry._auto_registered, PlatformRegistry._availability_cache)
+        PlatformRegistry._adapters = {}
+        PlatformRegistry._auto_registered = False
+        PlatformRegistry._availability_cache = None
+        yield
+        PlatformRegistry._adapters, PlatformRegistry._auto_registered, PlatformRegistry._availability_cache = saved
+
     def test_lakesail_in_platform_list(self):
 
         from benchbox.platforms import list_available_platforms

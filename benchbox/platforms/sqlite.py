@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.connection_wrappers import _make_stream_cursor
-from .base.ddl_helpers import strip_tpcds_foreign_keys
+from .base.ddl_helpers import translate_schema_with_tpcds_fk_strip
 
 try:
     import sqlite3
@@ -423,9 +423,7 @@ class SQLiteAdapter(PlatformAdapter):
         start_time = mono_time()
         self.log_operation_start("Schema creation", f"benchmark: {benchmark.__class__.__name__}")
 
-        schema_sql = strip_tpcds_foreign_keys(
-            self, benchmark, self._create_schema_with_tuning(benchmark, source_dialect="standard")
-        )
+        schema_sql = translate_schema_with_tpcds_fk_strip(self, benchmark, "sqlite")
 
         self.log_very_verbose(f"Executing schema creation script ({len(schema_sql)} characters)")
 
@@ -463,13 +461,27 @@ class SQLiteAdapter(PlatformAdapter):
     def load_data(
         self, benchmark, connection: Any, data_dir: Path
     ) -> tuple[dict[str, int], float, dict[str, Any] | None]:
-        from benchbox.platforms.base.data_loading import DataLoader
+        from benchbox.platforms.base.data_loading import (
+            DataLoader,
+            DataSource,
+            DelimitedFileHandler,
+            FileFormatRegistry,
+            resolve_csv_dialect,
+        )
+
+        def sqlite_handler_factory(file_path, adapter, benchmark_instance, table_name=None, data_source=None):
+            if FileFormatRegistry.get_base_data_extension(file_path) not in (".tbl", ".dat", ".csv"):
+                return None
+            dialect_source = data_source or DataSource(source_type="sqlite_handler", tables={})
+            dialect = resolve_csv_dialect(dialect_source, table_name or file_path.stem, file_path, benchmark_instance)
+            return DelimitedFileHandler(dialect.delimiter, null_marker=dialect.null_marker)
 
         loader = DataLoader(
             adapter=self,
             benchmark=benchmark,
             connection=connection,
             data_dir=data_dir,
+            handler_factory=sqlite_handler_factory,
             tuning_config=self.unified_tuning_configuration if self.tuning_enabled else None,
         )
         table_stats, loading_time = loader.load()

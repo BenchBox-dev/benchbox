@@ -10,6 +10,7 @@ from rich.prompt import Confirm, IntPrompt, Prompt
 from benchbox.platforms.credentials.helpers import prompt_secure_field, prompt_with_default
 from benchbox.security.credentials import CredentialManager, CredentialStatus
 from benchbox.utils.printing import QuietConsoleProxy
+from benchbox.utils.tls import ca_bundle_path
 
 
 def setup_databricks_credentials(cred_manager: CredentialManager, console: Union[Console, QuietConsoleProxy]) -> None:
@@ -195,6 +196,7 @@ def validate_databricks_credentials(cred_manager: CredentialManager) -> tuple[bo
             http_path=creds["http_path"],
             access_token=creds["access_token"],
             user_agent_entry="BenchBox/1.0",
+            _tls_trusted_ca_file=ca_bundle_path(),
         )
 
         cursor = connection.cursor()

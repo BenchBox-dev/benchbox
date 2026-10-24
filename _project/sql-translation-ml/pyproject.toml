@@ -15,6 +15,9 @@ dependencies = [
     "transformers>=4.45,<5",
 ]
 
+[tool.uv]
+required-version = ">=0.13.4"
+
 [tool.uv.sources]
 benchbox = { path = "../../", editable = true }
 

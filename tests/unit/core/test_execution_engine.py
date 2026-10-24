@@ -45,6 +45,7 @@ def _entry(key: str, engines: object) -> dict[str, object]:
         "support_status": "stable",
         "capabilities": {
             "supports_sql": True,
+            "sql_dialect": "duckdb",
             "supports_dataframe": False,
             "default_mode": "sql",
             "execution_engines": engines,

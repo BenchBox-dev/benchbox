@@ -18,7 +18,7 @@ The benchmark is ideal for evaluating column pruning efficiency, wide table scan
 ## Key Features
 
 - **Single wide table** - All TPC-DS data flattened into one denormalized table
-- **89 of 99 queries** - TPC-DS queries rewritten for flat schema (10 queries are not OBT-convertible; see below)
+- **90 of 99 queries** - TPC-DS queries rewritten for flat schema (9 queries are not OBT-convertible; see below)
 - **No joins required** - Tests pure scan and aggregation performance
 - **Column pruning focus** - Evaluates optimizer column projection efficiency
 - **Modern lakehouse pattern** - Simulates real-world denormalized data models
@@ -30,7 +30,7 @@ The benchmark is ideal for evaluating column pruning efficiency, wide table scan
 
 - **Lakehouse performance testing** - Evaluate denormalized table performance
 - **Column pruning benchmarks** - Test how efficiently engines skip unused columns
-- **Wide table handling** - Stress test databases with 200+ column tables
+- **Wide table handling** - Stress test databases with a 715-column table
 - **Storage format comparison** - Compare Parquet, Delta Lake, Iceberg on wide tables
 - **Scan-heavy workloads** - Benchmark pure analytical scan performance without join overhead
 
@@ -49,13 +49,13 @@ The OBT schema denormalizes all 25 TPC-DS tables into a single wide table:
 | Aspect | Value |
 |--------|-------|
 | **Tables** | 1 (denormalized) |
-| **Columns** | ~200+ |
+| **Columns** | 715 at `dimension_mode=full` |
 | **Source Tables** | All 25 TPC-DS tables flattened |
 | **Primary Grain** | store_sales fact table |
 
 ### Column Groups
 
-The denormalized table contains columns from all TPC-DS dimensions:
+The denormalized table contains columns from all TPC-DS dimensions. The [column lineage](tpc-ds-obt-lineage.md) page lists every fact source and dimension role:
 
 | Source Table | Columns Added | Prefix |
 |--------------|---------------|--------|
@@ -120,7 +120,7 @@ The first command uses minimal dimensions and the store channel only. Parquet is
 
 ### Storage format
 
-Parquet is the default because the OBT is a very wide table (518 columns at `dimension_mode=full`)
+Parquet is the default because the OBT is a very wide table (715 columns at `dimension_mode=full`)
 with high null density - store rows carry NULL for all `web_site_*`, `web_page_*`, and
 `call_center_*` columns, and so on per channel. Columnar storage with null suppression
 reduces the SF1 artifact by an order of magnitude vs the 11 GB pipe-delimited `.dat`,
@@ -133,17 +133,17 @@ as parquet and log the path of the stale `.dat` so you can reclaim disk space ma
 
 ## Query Adaptations
 
-TPC-DS-OBT provides 89 of the standard 99 TPC-DS queries rewritten to work
-with the flat schema. 10 queries are excluded because they cannot be expressed
-against a single denormalized fact:
+TPC-DS-OBT provides 90 of the standard 99 TPC-DS queries rewritten to run against the flat table and return the
+TPC-DS result. 9 queries are excluded because they cannot be expressed against a single denormalized fact; the
+catalog records each one with its reason, and requesting one raises `QuerySkippedError`:
 
 | Category | Queries | Reason for exclusion |
 |----------|---------|----------------------|
 | Inventory fact | Q21, Q22, Q37, Q39, Q72, Q82 | Use the inventory fact table, a separate fact domain not included in the OBT denormalization |
-| External customer dimensions | Q46, Q64, Q68, Q84 | Require the customer's *current* address/demographics (independent of the sales fact), which the OBT cannot recover from the single-row grain. Q64 additionally uses a cross-channel self-join that defeats OBT's single-scan design |
+| Dimension rows with no sales | Q8, Q54, Q84 | Need customers, zip codes or stores that have no sales rows, and the OBT only carries dimension rows reachable from a sale line |
 
-Queries 14 and 49 are included but hand-written rather than produced by the
-automatic converter because their semantics require manual rewrites.
+The OBT queries are a hand-owned catalog, `benchbox/core/tpcds_obt/catalog/queries.yaml`. Each entry records the
+SHA-256 of the TPC-DS template it derives from, and tests fail when a template or its parameters change.
 
 ### Example: Query 1
 
@@ -171,6 +171,16 @@ WHERE d_year = 2000
 `tests/integration/test_tpcds_obt_equivalence.py` runs every served OBT query and its TPC-DS counterpart on DuckDB over the same generated data, with identical dsqgen parameters, and compares the result multisets (integers and decimals exactly, floating-point values within a relative tolerance of 1e-9, NULL-aware, row order ignored). Where the default parameter draw makes the TPC-DS query return no rows, the test searches seeds 1 to 12 for one that does. Queries whose results differ, and queries with no rows to compare at any seed, are recorded per scale factor with a cause class in the test module. A listed query that starts matching fails the test, as does an unlisted query that diverges, so the lists can only shrink on purpose.
 
 Run it with `make tpcds-obt-equivalence` (SF0.01 by default) or `make tpcds-obt-equivalence TPCDS_OBT_EQUIVALENCE_SF=1`. The PR tier runs SF0.01 and the nightly `t3:tpcds-obt` domain runs SF1.
+
+### DataFrame Query IDs
+
+The SQL queries are numbered like TPC-DS and return the TPC-DS result. The 17 DataFrame queries are OBT-native
+aggregations that match no TPC-DS query, so their IDs are their names: `obt_row_count`,
+`obt_channel_distribution`, `obt_returns_summary`, `obt_channel_revenue`, `obt_top_items_by_quantity`,
+`obt_avg_ticket_by_channel`, `obt_discounted_sales`, `obt_profit_by_channel`,
+`obt_sales_by_channel_return_flag`, `obt_high_value_sales`, `obt_item_channel_quantity`, `obt_ticket_extremes`,
+`obt_distinct_items`, `obt_bulk_sales`, `obt_coupon_sales`, `obt_store_summary` and `obt_overall_totals`.
+Select them on a DataFrame platform with `--queries obt_row_count,obt_channel_revenue`.
 
 ## Performance Considerations
 

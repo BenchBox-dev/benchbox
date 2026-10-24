@@ -105,6 +105,7 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "code-lint", "Platform manifest drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Oracle coverage map drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Public contract drift check"): "ci-lint",
+    ("ci.yml", "code-lint", "Documentation contracts drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Dependency inventory drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Release curation list drift check"): "ci-lint",
     ("ci.yml", "code-lint", "Untracked skill-mirror drift guard (cloud parity)"): "ci-lint",
@@ -406,7 +407,7 @@ def test_fast_lane_guard_command_is_mirrored_in_ci_lint() -> None:
     guard = next(step for step in _load_lint_job_steps() if step.get("id") == "guard-fast-lane-markers")
     workflow_run = str(guard["run"])
     recipe_lines = _normalize_recipe_lines(_ci_lint_recipe_text())
-    strict_command = "uv run -- python _project/scripts/fast_lane_ceiling_check.py --strict"
+    strict_command = "uv run -- python _project/scripts/fast_lane_ceiling_check.py --strict --manifest-from-env"
 
     assert strict_command in recipe_lines
     assert strict_command in workflow_run

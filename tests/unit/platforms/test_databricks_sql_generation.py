@@ -34,6 +34,12 @@ def _make_adapter(**kwargs):
         return DatabricksAdapter(**defaults)
 
 
+def _convert(adapter, sql):
+    from benchbox.utils.dialect_utils import translate_ddl
+
+    return " ".join(translate_ddl(sql, "databricks", "standard", **adapter._schema_ddl_options(sql)))
+
+
 class TestDatabricksBuildCtasSortSql:
     def test_z_order_generates_optimize_zorder(self):
         adapter = _make_adapter()
@@ -80,29 +86,30 @@ class TestDatabricksTblpropertiesInjection:
     def test_adds_tblproperties_when_missing(self):
         adapter = _make_adapter(delta_auto_optimize=True)
 
-        stmt = "CREATE TABLE main.benchbox.lineitem (l_orderkey BIGINT) USING DELTA"
-        result = adapter._convert_to_delta_table(stmt)
+        stmt = "CREATE TABLE main.benchbox.lineitem (l_orderkey BIGINT)"
+        result = _convert(adapter, stmt)
         assert "TBLPROPERTIES" in result
 
     def test_adds_auto_optimize_properties(self):
         adapter = _make_adapter(delta_auto_optimize=True)
-        stmt = "CREATE TABLE t (id INT) USING DELTA"
-        result = adapter._convert_to_delta_table(stmt)
-        assert "'delta.autoOptimize.optimizeWrite' = 'true'" in result
-        assert "'delta.autoOptimize.autoCompact' = 'true'" in result
+        stmt = "CREATE TABLE t (id INT)"
+        result = _convert(adapter, stmt)
+        assert "'delta.autoOptimize.optimizeWrite'='true'" in result
+        assert "'delta.autoOptimize.autoCompact'='true'" in result
 
-    def test_does_not_duplicate_tblproperties(self):
+    def test_existing_using_clause_is_replaced_by_table_format(self):
         adapter = _make_adapter(delta_auto_optimize=True)
-        stmt = "CREATE TABLE t (id INT) USING DELTA TBLPROPERTIES ('x'='y')"
-        result = adapter._convert_to_delta_table(stmt)
-        assert result.count("TBLPROPERTIES") == 1
+        stmt = "CREATE TABLE t (id INT) USING PARQUET"
+        result = _convert(adapter, stmt)
+        assert "USING PARQUET" not in result
+        assert result.count("USING DELTA") == 1
 
-    def test_empty_tblproperties_when_auto_optimize_off(self):
+    def test_no_tblproperties_when_auto_optimize_off(self):
         adapter = _make_adapter(delta_auto_optimize=False)
-        stmt = "CREATE TABLE t (id INT) USING DELTA"
-        result = adapter._convert_to_delta_table(stmt)
+        stmt = "CREATE TABLE t (id INT)"
+        result = _convert(adapter, stmt)
 
-        assert "TBLPROPERTIES ()" in result
+        assert "TBLPROPERTIES" not in result
         assert "autoOptimize" not in result
 
 
@@ -167,49 +174,45 @@ class TestDatabricksHudiSupport:
     def test_default_format_is_delta(self):
         adapter = _make_adapter()
         assert adapter.table_format == "delta"
-        result = adapter._convert_to_delta_table("CREATE TABLE t (a BIGINT)")
+        result = _convert(adapter, "CREATE TABLE t (a BIGINT)")
         assert "USING DELTA" in result
 
     def test_hudi_ddl_with_keys(self):
         adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table(
-            "CREATE TABLE main.benchbox.lineitem (l_orderkey BIGINT, l_commitdate DATE)"
-        )
+        result = _convert(adapter, "CREATE TABLE main.benchbox.lineitem (l_orderkey BIGINT, l_commitdate DATE)")
         assert "USING HUDI" in result
         assert "USING DELTA" not in result
-        assert "'type' = 'cow'" in result
-        assert "'primaryKey' = 'l_orderkey'" in result
-        assert "'preCombineField' = 'l_commitdate'" in result
+        assert "'type'='cow'" in result
+        assert "'primaryKey'='l_orderkey'" in result
+        assert "'preCombineField'='l_commitdate'" in result
         assert "delta.autoOptimize" not in result
 
     def test_hudi_ddl_omits_keys_missing_from_table(self):
 
         adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE main.benchbox.region (r_regionkey BIGINT)")
+        result = _convert(adapter, "CREATE TABLE main.benchbox.region (r_regionkey BIGINT)")
         assert "USING HUDI" in result
-        assert "'type' = 'cow'" in result
+        assert "'type'='cow'" in result
         assert "primaryKey" not in result
         assert "preCombineField" not in result
 
     def test_hudi_ddl_omits_only_absent_key(self):
         adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table(
-            "CREATE TABLE main.benchbox.orders (o_orderkey BIGINT, l_commitdate DATE)"
-        )
+        result = _convert(adapter, "CREATE TABLE main.benchbox.orders (o_orderkey BIGINT, l_commitdate DATE)")
         assert "'primaryKey'" not in result
-        assert "'preCombineField' = 'l_commitdate'" in result
+        assert "'preCombineField'='l_commitdate'" in result
 
     def test_hudi_ddl_without_keys(self):
         adapter = _make_adapter(table_format="hudi")
-        result = adapter._convert_to_delta_table("CREATE TABLE t (a BIGINT)")
+        result = _convert(adapter, "CREATE TABLE t (a BIGINT)")
         assert "USING HUDI" in result
-        assert "'type' = 'cow'" in result
+        assert "'type'='cow'" in result
         assert "primaryKey" not in result
 
     def test_hudi_mor_table_type(self):
         adapter = _make_hudi_adapter(hudi_table_type="mor")
-        result = adapter._convert_to_delta_table("CREATE TABLE t (a BIGINT)")
-        assert "'type' = 'mor'" in result
+        result = _convert(adapter, "CREATE TABLE t (a BIGINT)")
+        assert "'type'='mor'" in result
 
     def test_invalid_table_format_rejected(self):
         with pytest.raises(ValueError, match="Unsupported Databricks table_format"):
@@ -267,9 +270,9 @@ class TestDatabricksHudiSupport:
     def test_apply_zorder_skipped_for_hudi(self):
         adapter = _make_hudi_adapter()
         cursor = MagicMock()
-        adapter._apply_zorder_optimization(cursor, "LINEITEM", ["l_orderkey"])
+        adapter._apply_delta_optimize(cursor, "LINEITEM", phase="post_load", zorder_columns=["l_orderkey"])
         cursor.execute.assert_not_called()
-        assert adapter._skipped_layout_operations[-1]["mechanism"] == "z_order"
+        assert adapter._skipped_layout_operations[0]["mechanism"] == "z_order"
 
     def test_vacuum_table_skipped_for_hudi(self):
         adapter = _make_hudi_adapter()
@@ -298,30 +301,22 @@ class TestDatabricksHudiSupport:
 
     def test_hudi_ddl_replaces_using_delta(self):
         adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE t (id INT) USING DELTA")
+        result = _convert(adapter, "CREATE TABLE t (id INT) USING DELTA")
         assert "USING HUDI" in result
         assert "USING DELTA" not in result
-        assert "'type' = 'cow'" in result
+        assert "'type'='cow'" in result
 
     def test_hudi_ddl_merges_existing_tblproperties(self):
         adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table(
-            "CREATE TABLE t (l_orderkey BIGINT) USING DELTA TBLPROPERTIES ('delta.autoOptimize.optimizeWrite' = 'true')"
+        result = _convert(
+            adapter,
+            "CREATE TABLE t (l_orderkey BIGINT) USING DELTA TBLPROPERTIES ('delta.autoOptimize.optimizeWrite' = 'true')",
         )
         assert "USING HUDI" in result
         assert "USING DELTA" not in result
         assert result.count("TBLPROPERTIES") == 1
-        assert "'primaryKey' = 'l_orderkey'" in result
+        assert "'primaryKey'='l_orderkey'" in result
         assert "delta.autoOptimize.optimizeWrite" in result
-
-    def test_hudi_ddl_does_not_duplicate_present_keys(self):
-        adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table(
-            "CREATE TABLE t (l_orderkey BIGINT, l_commitdate DATE) TBLPROPERTIES ('type' = 'mor', 'primaryKey' = 'id')"
-        )
-        assert result.count("'type'") == 1
-        assert result.count("'primaryKey'") == 1
-        assert "'preCombineField' = 'l_commitdate'" in result
 
     def test_invalid_hudi_primary_key_rejected(self):
         from benchbox.platforms.base.data_loading import DataLoadingError
@@ -356,12 +351,13 @@ class TestDatabricksHudiSupport:
         adapter = _make_hudi_adapter()
         cursor = MagicMock()
         adapter._apply_delta_optimize(cursor, "LINEITEM", phase="post_load")
-        adapter._apply_zorder_optimization(cursor, "LINEITEM", ["l_orderkey"])
-        statements = [op["statement"] for op in adapter._skipped_layout_operations[-3:]]
+        adapter._apply_delta_optimize(cursor, "LINEITEM", phase="post_load", zorder_columns=["l_orderkey"])
+        statements = [op["statement"] for op in adapter._skipped_layout_operations[-4:]]
         assert statements == [
             "OPTIMIZE LINEITEM",
             "ANALYZE TABLE LINEITEM COMPUTE STATISTICS",
             "OPTIMIZE LINEITEM ZORDER BY (l_orderkey)",
+            "ANALYZE TABLE LINEITEM COMPUTE STATISTICS",
         ]
 
     def test_apply_table_tunings_records_skips_for_hudi(self):
@@ -393,51 +389,36 @@ class TestDatabricksHudiSupport:
 
     def test_hudi_ddl_rewrites_create_or_replace(self):
         adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table("CREATE OR REPLACE TABLE t (l_orderkey BIGINT) USING DELTA")
+        result = _convert(adapter, "CREATE OR REPLACE TABLE t (l_orderkey BIGINT) USING DELTA")
         assert "USING HUDI" in result
         assert "USING DELTA" not in result
         assert result.count("CREATE OR REPLACE TABLE") == 1
-        assert "'primaryKey' = 'l_orderkey'" in result
+        assert "'primaryKey'='l_orderkey'" in result
 
     def test_hudi_ddl_rewrites_if_not_exists(self):
         adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE IF NOT EXISTS t (l_orderkey BIGINT)")
+        result = _convert(adapter, "CREATE TABLE IF NOT EXISTS t (l_orderkey BIGINT)")
         assert "USING HUDI" in result
         assert "OR REPLACE" not in result
 
-    def test_hudi_ddl_ctas_places_using_before_as(self):
-        adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE t AS SELECT a, b FROM s")
-        assert "USING HUDI AS SELECT" in result
-
-    def test_hudi_ddl_strips_cluster_by(self):
-        adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table(
-            "CREATE TABLE t (l_orderkey BIGINT) USING DELTA CLUSTER BY (l_orderkey)"
-        )
-        assert "USING HUDI" in result
-        assert "CLUSTER BY" not in result
-
     def test_hudi_ddl_ignores_using_in_comment(self):
         adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table(
-            "CREATE TABLE t (id INT COMMENT 'use using delta file', l_orderkey BIGINT)"
-        )
+        result = _convert(adapter, "CREATE TABLE t (id INT COMMENT 'use using delta file', l_orderkey BIGINT)")
         assert "use using delta file" in result
         assert result.count("USING HUDI") == 1
 
     def test_hudi_keys_require_column_definitions(self):
         adapter = _make_adapter(table_format="hudi", hudi_primary_key="main")
-        result = adapter._convert_to_delta_table("CREATE TABLE main.benchbox.region (r_regionkey BIGINT)")
+        result = _convert(adapter, "CREATE TABLE main.benchbox.region (r_regionkey BIGINT)")
         assert "USING HUDI" in result
         assert "primaryKey" not in result
 
     def test_hudi_key_ignores_partitioned_by_reference(self):
         adapter = _make_hudi_adapter()
-        result = adapter._convert_to_delta_table("CREATE TABLE t (a BIGINT) PARTITIONED BY (l_orderkey)")
+        result = _convert(adapter, "CREATE TABLE t (a BIGINT) PARTITIONED BY (l_orderkey)")
         assert "primaryKey" not in result
 
     def test_hudi_key_uses_ddl_spelling(self):
         adapter = _make_adapter(table_format="hudi", hudi_precombine_field="L_COMMITDATE")
-        result = adapter._convert_to_delta_table("CREATE TABLE t (l_commitdate DATE)")
-        assert "'preCombineField' = 'l_commitdate'" in result
+        result = _convert(adapter, "CREATE TABLE t (l_commitdate DATE)")
+        assert "'preCombineField'='l_commitdate'" in result

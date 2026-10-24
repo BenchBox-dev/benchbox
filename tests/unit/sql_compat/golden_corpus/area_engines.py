@@ -529,6 +529,23 @@ def _double_quote_stays_literal(legacy: str, fork: str) -> bool:
     return "`col`" in legacy and "'col'" in fork
 
 
+def _dividend_cast_to_float(legacy: str, fork: str) -> bool:
+    return "AS Nullable(Float64))" in fork and "Float64" not in legacy
+
+
+def _between_bounds_folded(legacy: str, fork: str) -> bool:
+    bounds = r"BETWEEN [\d.]+ - [\d.]+ AND [\d.]+ \+ [\d.]+"
+    return re.search(bounds, legacy) is not None and re.search(bounds, fork) is None
+
+
+def _qualified_projections_aliased(legacy: str, fork: str) -> bool:
+    return "AVG(SUM(" in fork and "AVG(SUM(" not in legacy and "v1.d_year AS d_year" in fork
+
+
+def _shadowed_columns_qualified(legacy: str, fork: str) -> bool:
+    return "SUM(x.jan_sales)" in fork and "SUM(x.jan_sales)" not in legacy and "WITH channel_sales" in legacy
+
+
 _FORMAT_ONLY = "Only spacing, keyword case or the NULLIF spelling differs; ClickHouse accepts both spellings."
 
 CLASSIFICATIONS: list[tuple[str, str, str, Callable[[str, str], bool]]] = [
@@ -641,6 +658,37 @@ CLASSIFICATIONS: list[tuple[str, str, str, Callable[[str, str], bool]]] = [
         "The rewritten query is re-rendered by the runtime, which writes each comma join as CROSS JOIN; "
         "ClickHouse treats both the same way and the semi-join predicates are identical.",
         _same_with_cross_join,
+    ),
+    (
+        r"clickhouse\.pipeline\.(tpcds_q90|tpch_q(8|14|17)|unit\.(decimal_division|safe_division|type_casts)\..+)",
+        "legacy-bug",
+        "The legacy pipeline left ClickHouse's decimal division, which keeps the dividend's scale and truncates "
+        "the quotient (CAST(75 AS Decimal(9, 2)) / 7 is 10.71); the runtime divides as Nullable(Float64), as DuckDB "
+        "and SQLite do.",
+        _dividend_cast_to_float,
+    ),
+    (
+        r"clickhouse\.pipeline\.(tpch_q6|unit\.type_casts\.q6_(between|full))",
+        "legacy-bug",
+        "The legacy pipeline left the literal bounds 0.07 - 0.01 and 0.07 + 0.01 of the Q6 BETWEEN to Float64 "
+        "arithmetic, which drops rows equal to a bound; the runtime folds them to the exact decimals 0.06 and 0.08.",
+        _between_bounds_folded,
+    ),
+    (
+        r"clickhouse\.pipeline\.tpcds_q(47|57)",
+        "equivalent",
+        "The legacy regex split the nested AVG(SUM(...)) OVER into a second CTE; the runtime keeps the dsqgen shape "
+        "and names the qualified projections of the rank-neighbor CTE, which is the only part ClickHouse "
+        "mis-resolved. Both return the DuckDB rows on ClickHouse 26.11.",
+        _qualified_projections_aliased,
+    ),
+    (
+        r"clickhouse\.pipeline\.tpcds_q66",
+        "equivalent",
+        "The legacy regex moved the monthly sums into a channel_sales CTE; the runtime keeps the dsqgen shape and "
+        "qualifies the columns a projection alias of the same name hides. Both return the DuckDB row on "
+        "ClickHouse 26.11.",
+        _shadowed_columns_qualified,
     ),
 ]
 

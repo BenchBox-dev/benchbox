@@ -11,6 +11,7 @@ from urllib import error, request
 import benchbox
 from benchbox.cli.submit_auth import normalize_service_url
 from benchbox.core.results.canonical_json import canonical_json_text
+from benchbox.utils import tls
 
 PUBLIC_RESULTS_BASE_URL = "https://benchbox.dev/results/r"
 _TRANSIENT_STATUS_CODES = {500, 502, 503, 504}
@@ -67,7 +68,7 @@ def submit_hosted_bundle(
     visibility: str,
     idempotency_key: str | None,
     wait: bool,
-    opener: UrlOpen = request.urlopen,
+    opener: UrlOpen = tls.urlopen,
     sleep: Sleep = time.sleep,
     upload_attempts: int = 3,
     poll_attempts: int = 10,
@@ -140,7 +141,7 @@ def poll_submission_status(
     token: str,
     submission_id: str,
     idempotency_key: str,
-    opener: UrlOpen = request.urlopen,
+    opener: UrlOpen = tls.urlopen,
     sleep: Sleep = time.sleep,
     max_attempts: int = 10,
     timeout: float = 30.0,

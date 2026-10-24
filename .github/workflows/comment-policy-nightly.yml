@@ -1,0 +1,71 @@
+name: Comment Policy Nightly
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: comment-policy-nightly
+  cancel-in-progress: false
+
+env:
+  ISSUE_TITLE: Comment policy nightly scan failed on develop
+
+jobs:
+  whole-tree:
+    name: Whole-tree comment policy on develop
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
+          working-directory: ${{ runner.temp }}
+          ignore-empty-workdir: true
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: develop
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan the whole tree against the checked-out develop commit
+        id: scan
+        continue-on-error: true
+        run: python -I scripts/run_comment_policy.py --full
+      - name: Open or update the failure issue
+        if: steps.scan.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          body="The whole-tree comment-policy scan of develop at $(git rev-parse HEAD) failed. Run: ${RUN_URL}"
+          number="$(gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" --json number,title --jq "[.[] | select(.title == \"${ISSUE_TITLE}\")][0].number // empty")"
+          if [[ -n "${number}" ]]; then
+            gh issue comment "${number}" --body "${body}"
+          else
+            gh issue create --title "${ISSUE_TITLE}" --body "${body}"
+          fi
+      - name: Close the failure issue after a clean scan
+        if: steps.scan.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" --json number,title \
+            --jq ".[] | select(.title == \"${ISSUE_TITLE}\") | .number" |
+            while read -r number; do
+              gh issue close "${number}" --comment "The whole-tree scan of develop at $(git rev-parse HEAD) passed."
+            done
+      - name: Fail the run when the scan failed
+        if: steps.scan.outcome == 'failure'
+        run: exit 1

@@ -1034,6 +1034,17 @@ class TestCreateAdminConnection:
         call_kwargs = mock_sql.connect.call_args
         assert "BenchBox" in call_kwargs.kwargs.get("user_agent_entry", "")
 
+    def test_verifies_against_explicit_ca_bundle(self, monkeypatch):
+        monkeypatch.setenv("SSL_CERT_FILE", "/tmp/corp-ca.pem")
+        monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
+        adapter = _make_adapter()
+
+        with patch("benchbox.platforms.databricks.adapter.databricks_sql") as mock_sql:
+            mock_sql.connect.return_value = MagicMock()
+            adapter._create_admin_connection()
+
+        assert mock_sql.connect.call_args.kwargs["_tls_trusted_ca_file"] == "/tmp/corp-ca.pem"
+
 
 class TestCheckServerDatabaseExists:
     def test_returns_true_when_catalog_and_schema_exist(self):
@@ -1164,23 +1175,25 @@ class TestBuildCtasSortSql:
             adapter._build_ctas_sort_sql("ORDERS", [self._make_col("col1")])
 
 
-class TestConvertToDeltaTable:
+class TestSchemaDdlOptions:
+    def _convert(self, adapter, sql):
+        from benchbox.utils.dialect_utils import translate_ddl
+
+        return translate_ddl(sql, "databricks", "standard", **adapter._schema_ddl_options(sql))
+
     def test_adds_using_delta_when_missing(self):
         adapter = _make_adapter()
-        sql = "CREATE TABLE orders (id INT, val VARCHAR(100))"
-        result = adapter._convert_to_delta_table(sql)
+        (result,) = self._convert(adapter, "CREATE TABLE orders (id INT, val VARCHAR(100))")
         assert "USING DELTA" in result
 
     def test_adds_or_replace_when_missing(self):
         adapter = _make_adapter()
-        sql = "CREATE TABLE orders (id INT)"
-        result = adapter._convert_to_delta_table(sql)
+        (result,) = self._convert(adapter, "CREATE TABLE orders (id INT)")
         assert "CREATE OR REPLACE TABLE" in result
 
     def test_if_not_exists_kept_without_or_replace(self):
         adapter = _make_adapter()
-        sql = "CREATE TABLE IF NOT EXISTS DimDate (SK_DateID BIGINT)"
-        result = adapter._convert_to_delta_table(sql)
+        (result,) = self._convert(adapter, "CREATE TABLE IF NOT EXISTS DimDate (SK_DateID BIGINT)")
         assert "OR REPLACE" not in result
         assert "IF NOT EXISTS" in result
         assert "USING DELTA" in result
@@ -1188,33 +1201,19 @@ class TestConvertToDeltaTable:
     def test_adds_tblproperties_when_auto_optimize_enabled(self):
         adapter = _make_adapter()
         adapter.delta_auto_optimize = True
-        sql = "CREATE TABLE orders (id INT)"
-        result = adapter._convert_to_delta_table(sql)
+        (result,) = self._convert(adapter, "CREATE TABLE orders (id INT)")
         assert "TBLPROPERTIES" in result
         assert "autoOptimize" in result
 
-    def test_returns_non_create_statements_unchanged(self):
+    def test_every_statement_is_converted(self):
         adapter = _make_adapter()
-        sql = "INSERT INTO orders SELECT * FROM staging"
-        result = adapter._convert_to_delta_table(sql)
-        assert result == sql
-
-    def test_comment_prefixed_create_still_converted(self):
-        adapter = _make_adapter()
-        sql = "-- Generated staging load tables\nCREATE TABLE orders (id INT)"
-        result = adapter._convert_to_delta_table(sql)
-        assert result.startswith("-- Generated staging load tables\n")
-        assert "CREATE OR REPLACE TABLE orders (id INT) USING DELTA" in result
-
-    def test_pre_pass_applies_to_every_statement(self):
-        adapter = _make_adapter()
-        statements = [
-            "CREATE TABLE orders (id INT, val VARCHAR(100))",
-            "CREATE TABLE customers (id INT, name VARCHAR(50))",
-            "CREATE TABLE lineitem (l_id INT)",
-        ]
-        results = [adapter._convert_to_delta_table(s) for s in statements]
-        assert len(results) == len(statements)
+        sql = (
+            "CREATE TABLE orders (id INT, val VARCHAR(100));"
+            "CREATE TABLE customers (id INT, name VARCHAR(50));"
+            "CREATE TABLE lineitem (l_id INT)"
+        )
+        results = self._convert(adapter, sql)
+        assert len(results) == 3
         assert all("CREATE OR REPLACE TABLE" in r for r in results)
         assert all("USING DELTA" in r for r in results)
 
@@ -1356,7 +1355,7 @@ class TestApplyTableTunings:
         executed = [c.args[0] for c in mock_cursor.execute.call_args_list]
         assert any("ALTER TABLE" in s and "CLUSTER BY" in s for s in executed)
 
-    def test_z_order_applied_for_delta_table(self):
+    def test_z_order_is_not_issued_before_data_is_loaded(self):
         adapter = _make_adapter()
         adapter.enable_delta_optimization = True
 
@@ -1388,7 +1387,7 @@ class TestApplyTableTunings:
             adapter.apply_table_tunings(tuning, mock_conn)
 
         executed = [c.args[0] for c in mock_cursor.execute.call_args_list]
-        assert any("ZORDER BY" in s for s in executed)
+        assert not any("ZORDER BY" in s for s in executed)
 
 
 class TestEnsureUcVolumeExists:

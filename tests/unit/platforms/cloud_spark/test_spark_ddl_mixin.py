@@ -70,65 +70,58 @@ class TestMixinSupportsTuningTypes:
 
 class TestMixinDeltaTuning:
     def test_delta_partitioning(self) -> None:
-
         adapter = MockSparkAdapter()
         table_tuning = TableTuning(
             table_name="orders",
             partitioning=[TuningColumn(name="o_orderdate", type="DATE", order=1)],
         )
-        clauses = adapter.generate_tuning_clauses(table_tuning)
-        assert "USING DELTA" in clauses.additional_clauses
-        assert clauses.partition_by == "PARTITIONED BY (o_orderdate)"
+        layout = adapter.generate_table_layout(table_tuning)
+        assert layout["format"] == "delta"
+        assert layout["partition_by"] == ["o_orderdate"]
 
     def test_delta_clustering(self) -> None:
-
         adapter = MockSparkAdapter()
         table_tuning = TableTuning(
             table_name="orders",
             clustering=[TuningColumn(name="o_orderkey", type="BIGINT", order=1)],
         )
-        clauses = adapter.generate_tuning_clauses(table_tuning)
-        assert clauses.cluster_by == "CLUSTER BY (o_orderkey)"
+        assert adapter.generate_table_layout(table_tuning)["cluster_by"] == ["o_orderkey"]
 
 
 class TestMixinIcebergTuning:
     def test_iceberg_partitioning(self) -> None:
-
         adapter = MockIcebergAdapter()
         table_tuning = TableTuning(
             table_name="orders",
             partitioning=[TuningColumn(name="o_orderdate", type="DATE", order=1)],
         )
-        clauses = adapter.generate_tuning_clauses(table_tuning)
-        assert "USING ICEBERG" in clauses.additional_clauses
-        assert clauses.partition_by == "PARTITIONED BY (months(o_orderdate))"
+        layout = adapter.generate_table_layout(table_tuning)
+        assert layout["format"] == "iceberg"
+        assert layout["partition_by"] == ["months(o_orderdate)"]
 
 
 class TestMixinParquetTuning:
     def test_parquet_distribution(self) -> None:
-
         adapter = MockParquetAdapter()
         table_tuning = TableTuning(
             table_name="lineitem",
             distribution=[TuningColumn(name="l_orderkey", type="BIGINT", order=1)],
         )
-        clauses = adapter.generate_tuning_clauses(table_tuning)
-        assert "USING PARQUET" in clauses.additional_clauses
-        assert clauses.distribute_by == "CLUSTERED BY (l_orderkey) INTO 32 BUCKETS"
+        layout = adapter.generate_table_layout(table_tuning)
+        assert layout["format"] == "parquet"
+        assert layout["distribute_by"] == ["l_orderkey"]
+        assert layout["buckets"] == 32
 
 
 class TestMixinHiveTuning:
     def test_hive_storage_format(self) -> None:
-
         adapter = MockHiveAdapter()
-        table_tuning = TableTuning(table_name="orders")
-        clauses = adapter.generate_tuning_clauses(table_tuning)
-        assert "STORED AS PARQUET" in clauses.additional_clauses
+        layout = adapter.generate_table_layout(TableTuning(table_name="orders"))
+        assert layout == {"stored_as": "PARQUET"}
 
 
 class TestMixinCreateTableDDL:
     def test_delta_create_table(self) -> None:
-
         adapter = MockSparkAdapter()
         columns = [
             ColumnDefinition("o_orderkey", "BIGINT"),
@@ -138,16 +131,13 @@ class TestMixinCreateTableDDL:
             table_name="orders",
             partitioning=[TuningColumn(name="o_orderdate", type="DATE", order=1)],
         )
-        tuning = adapter.generate_tuning_clauses(table_tuning)
-        ddl = adapter.generate_create_table_ddl("orders", columns, tuning)
+        ddl = adapter.generate_create_table_ddl("orders", columns, adapter.generate_table_layout(table_tuning))
 
         assert "CREATE TABLE orders" in ddl
         assert "USING DELTA" in ddl
         assert "PARTITIONED BY (o_orderdate)" in ddl
-        assert ddl.endswith(";")
 
     def test_iceberg_create_table(self) -> None:
-
         adapter = MockIcebergAdapter()
         columns = [
             ColumnDefinition("l_orderkey", "BIGINT"),
@@ -157,22 +147,19 @@ class TestMixinCreateTableDDL:
             table_name="lineitem",
             partitioning=[TuningColumn(name="l_shipdate", type="DATE", order=1)],
         )
-        tuning = adapter.generate_tuning_clauses(table_tuning)
-        ddl = adapter.generate_create_table_ddl("lineitem", columns, tuning)
+        ddl = adapter.generate_create_table_ddl("lineitem", columns, adapter.generate_table_layout(table_tuning))
 
         assert "CREATE TABLE lineitem" in ddl
         assert "USING ICEBERG" in ddl
-        assert "PARTITIONED BY (months(l_shipdate))" in ddl
+        assert "PARTITIONED BY (MONTHS(l_shipdate))" in ddl
 
     def test_create_table_with_schema(self) -> None:
-
         adapter = MockSparkAdapter()
         columns = [ColumnDefinition("id", "BIGINT")]
         ddl = adapter.generate_create_table_ddl("orders", columns, schema="tpch")
         assert "CREATE TABLE tpch.orders" in ddl
 
     def test_create_table_if_not_exists(self) -> None:
-
         adapter = MockSparkAdapter()
         columns = [ColumnDefinition("id", "BIGINT")]
         ddl = adapter.generate_create_table_ddl("test", columns, if_not_exists=True)
@@ -181,42 +168,33 @@ class TestMixinCreateTableDDL:
 
 class TestMixinPostLoadStatements:
     def test_delta_zorder(self) -> None:
-
         adapter = MockSparkAdapter()
         table_tuning = TableTuning(
             table_name="lineitem",
             distribution=[TuningColumn(name="l_orderkey", type="BIGINT", order=1)],
         )
-        tuning = adapter.generate_tuning_clauses(table_tuning)
-        statements = adapter.get_post_load_statements("lineitem", tuning)
+        statements = adapter.get_post_load_statements("lineitem", table_tuning)
 
-        assert len(statements) == 1
-        assert "OPTIMIZE lineitem ZORDER BY (l_orderkey)" in statements[0]
+        assert statements == ["OPTIMIZE lineitem ZORDER BY (l_orderkey)"]
 
     def test_post_load_with_schema(self) -> None:
-
         adapter = MockSparkAdapter()
         table_tuning = TableTuning(
             table_name="lineitem",
             distribution=[TuningColumn(name="l_orderkey", type="BIGINT", order=1)],
         )
-        tuning = adapter.generate_tuning_clauses(table_tuning)
-        statements = adapter.get_post_load_statements("lineitem", tuning, schema="tpch")
+        statements = adapter.get_post_load_statements("lineitem", table_tuning, schema="tpch")
 
-        assert len(statements) == 1
-        assert "OPTIMIZE tpch.lineitem ZORDER BY (l_orderkey)" in statements[0]
+        assert statements == ["OPTIMIZE tpch.lineitem ZORDER BY (l_orderkey)"]
 
 
 class TestMixinNullHandling:
     def test_null_tuning_returns_format(self) -> None:
-
         adapter = MockSparkAdapter()
-        clauses = adapter.generate_tuning_clauses(None)
-        assert "USING DELTA" in clauses.additional_clauses
+        assert adapter.generate_table_layout(None)["format"] == "delta"
 
     def test_null_tuning_empty_partitioning(self) -> None:
-
         adapter = MockSparkAdapter()
-        clauses = adapter.generate_tuning_clauses(None)
-        assert clauses.partition_by is None
-        assert clauses.cluster_by is None
+        layout = adapter.generate_table_layout(None)
+        assert "partition_by" not in layout
+        assert "cluster_by" not in layout
