@@ -5,7 +5,7 @@
     "Existing marker tests pass unchanged",
     "PR merged with an oracle verdict on its final head; merge SHA recorded"
   ],
-  "context": "Created 2026-10-23 from the codex review of gap issue 2808 (commit 5ca12e6ca plus merged fix PR 3316): reviewer output /Users/joe/Developer/soundness-reviews/2808/raw-run1.txt sha256 252d352256c6b45a8214c719bc554e4b9520b24cfe96ed8585bd856f38d42ec8. Finding verified by the controller where stated; line numbers are leads, re-verify on current develop.",
+  "context": "Created 2026-10-23 from the codex review of gap issue 2808 (commit 5ca12e6ca plus merged fix PR 3316): reviewer output /Users/joe/Developer/soundness-reviews/2808/raw-run1.txt sha256 252d352256c6b45a8214c719bc554e4b9520b24cfe96ed8585bd856f38d42ec8. Finding verified by the controller where stated; line numbers are leads, re-verify on current develop.\n\n### Completion Evidence (2026-10-24)\nPR 3350 merged as 1edd74368e1003664af40939434643353a9b270d with oracle verdict SUCCESS on its final head 1f8ba890be52c5456140484a88b28acbd9ffa34d. Decision: both gate options. encode_marker shortens defect titles and paths in the marker deterministically (MARKER_TRIMS ends at a 24-character floor so a follow-up can still identify each defect; ids, severities, lines, decision and strikes are never touched; the posted body keeps full text); if even the floor does not fit, finalize returns a pending result with cause marker-limit, posts findings without defect ids or thread markers, records no decision and no strike, and the head is not retried. Failing-before: three valid findings with varied 199-character CJK paths and 200-character titles raised MarkerError on develop; floor test failed with an empty title; unrecorded-result test failed with a posted id D5. Second oracle thread (ids lost when the record cannot be saved) is covered by report.finalize computing unrecorded before the body is built (report.py:255). Residual risk: a marker-limit pending result is not retried until a new head is pushed; no end-to-end test plans a follow-up round after a pending marker-limit result. ensure_ascii was deliberately not changed.",
   "description": "Low finding from the 2808 review (re-verify): _project/scripts/oracle_reviewers/protocol.py encode_marker drops patch_map and then summary but can still exceed MARKER_LIMIT (4,096 characters), then raises MarkerError, so report.finalize aborts and no status, review or retry state is written. The reviewer built it from three valid findings with 199-character CJK paths and 200-character titles.\n\nDECISION GATE: do not silently drop findings. Choose a fail-soft that keeps the verdict and decision: trim long titles/paths inside the marker record deterministically (the visible review body keeps the full text), or store only finding ids and digests in the marker; the marker must still parse back to the decision, strikes and carried defects needed by later rounds. If a later round needs fields that cannot fit, record that as a limit and fail closed with an explicit pending state rather than an exception that loses the review.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR (soundness path _project/scripts/oracle_reviewers); no pre-registered digests; never weaken a gate; no skip/xfail; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; never close/label/edit gap issues; done = merged PR plus evidence.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "generation": "a12cdeeaad31486bab0fecdc50b5dde2",
       "op": "take",
       "op_id": "aa1227ba178d411f8c3454a5342ad9a2",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-24T18:46:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6a733d9f27e7499a97472b84b1f9e78f",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
