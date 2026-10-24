@@ -169,7 +169,9 @@ two publishers.
 ## Publishing workflow
 
 `.github/workflows/release-v2.yml` starts on a `v*` tag push, or by hand with a
-`tag` input to re-run a tag whose first run failed before publishing. Tags are
+`tag` input to re-run a tag whose first run failed before publishing; start the
+manual run from the tag itself (`--ref vX.Y.Z`), because the `pypi` environment
+accepts deployments only from `v*` tags. Tags are
 PEP 440 with a `v` prefix. Pre-release tags (`v0.5.0rc1`) publish to TestPyPI
 only; final tags (`v0.5.0`) publish to PyPI. Tags must be annotated
 (`git tag -a`); the admission consumer refuses lightweight tags. The workflow
