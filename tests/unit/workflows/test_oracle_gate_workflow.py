@@ -270,3 +270,88 @@ def test_no_other_workflow_can_post_the_gate_context() -> None:
 
 def test_workflow_has_no_comments() -> None:
     assert not any(line.lstrip().startswith("#") for line in _text().splitlines())
+
+
+def _run_name(event_name: str, event: dict[str, Any], inputs: dict[str, Any] | None = None) -> str:
+    context = {"github": {"event_name": event_name, "event": event}, "inputs": inputs or {}}
+
+    def value(expression: str) -> Any:
+        expression = expression.strip()
+        if expression.startswith("(") and _closing_paren(expression) == len(expression) - 1:
+            return value(expression[1:-1])
+        for operator in ("||", "&&"):
+            parts = _split_top_level(expression, operator)
+            if len(parts) > 1:
+                result = value(parts[0])
+                for part in parts[1:]:
+                    if operator == "||":
+                        result = result or value(part)
+                    else:
+                        result = value(part) if result else result
+                return result
+        if expression.startswith("'"):
+            return expression[1:-1]
+        if expression.startswith("format("):
+            template, *arguments = _split_top_level(expression[len("format(") : -1], ",")
+            return re.sub(r"\{(\d+)\}", lambda m: str(value(arguments[int(m.group(1))])), value(template))
+        found: Any = context
+        for key in expression.split("."):
+            found = found.get(key) if isinstance(found, dict) else None
+        return found
+
+    template = _load()["run-name"]
+    return re.sub(r"\$\{\{(.*?)\}\}(?=[ )]|$)", lambda m: str(value(m.group(1)) or ""), template)
+
+
+def _closing_paren(expression: str) -> int:
+    depth = 0
+    for index, char in enumerate(expression):
+        depth += char == "("
+        depth -= char == ")"
+        if depth == 0:
+            return index
+    return -1
+
+
+def _split_top_level(expression: str, separator: str) -> list[str]:
+    parts, depth, quoted, start = [], 0, False, 0
+    index = 0
+    while index < len(expression):
+        char = expression[index]
+        if char == "'":
+            quoted = not quoted
+        elif not quoted and char == "(":
+            depth += 1
+        elif not quoted and char == ")":
+            depth -= 1
+        elif not quoted and depth == 0 and expression.startswith(separator, index):
+            parts.append(expression[start:index])
+            start = index + len(separator)
+            index = start - 1
+        index += 1
+    parts.append(expression[start:])
+    return parts
+
+
+SHA = "0123456789abcdef0123456789abcdef01234567"
+
+
+def test_only_the_scheduled_run_is_titled_sweep() -> None:
+    assert _run_name("schedule", {}) == "oracle-gate (schedule sweep)"
+    titles = {
+        "workflow_run": _run_name("workflow_run", {"workflow_run": {"head_sha": SHA}}),
+        "pull_request_target": _run_name("pull_request_target", {"pull_request": {"number": 7}}),
+        "issue_comment": _run_name("issue_comment", {"issue": {"number": 8}}),
+        "workflow_dispatch": _run_name("workflow_dispatch", {}, {"pr": "9"}),
+    }
+    assert all("sweep" not in title for title in titles.values())
+
+
+def test_workflow_run_title_carries_the_source_head_sha() -> None:
+    assert _run_name("workflow_run", {"workflow_run": {"head_sha": SHA}}) == f"oracle-gate (workflow_run sha={SHA})"
+
+
+def test_pull_request_comment_and_dispatch_titles_keep_the_pr_number() -> None:
+    assert _run_name("pull_request_target", {"pull_request": {"number": 7}}) == "oracle-gate (pull_request_target pr=7)"
+    assert _run_name("issue_comment", {"issue": {"number": 8}}) == "oracle-gate (issue_comment pr=8)"
+    assert _run_name("workflow_dispatch", {}, {"pr": "9"}) == "oracle-gate (workflow_dispatch pr=9)"
