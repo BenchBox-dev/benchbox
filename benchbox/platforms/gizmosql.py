@@ -743,22 +743,76 @@ class GizmoSQLAdapter(PlatformAdapter):
                 "WHERE table_catalog = current_database() AND table_schema = current_schema()",
             )
         }
-        populated = all(
-            name in present
-            and (self._first_row(connection, f"SELECT count(*) FROM {quote_identifier(name)}") or [0])[0]
+        counts = {
+            name: int((self._first_row(connection, f"SELECT count(*) FROM {quote_identifier(name)}") or [0])[0])
+            if name in present
+            else 0
             for name in expected
-        )
+        }
+        populated = all(counts.values())
+        source_counts = self._source_row_counts() if populated else None
+        mismatched = {
+            name: (counts[name], source_counts[name])
+            for name in expected
+            if source_counts is not None and name in source_counts and counts[name] != source_counts[name]
+        }
         if self.server_read_only:
             if not populated:
                 raise GizmoSQLReadOnlyError(
                     "The read-only GizmoSQL server does not hold populated tables for this benchmark in the selected "
                     "catalog/schema. Preload the data, or set the schema option to where it lives."
                 )
+            if mismatched:
+                raise GizmoSQLExistingDataError(self._mismatch_message(mismatched, "read-only"))
             return True
-        reuse = bool(populated) and not self.force_recreate
+        if mismatched:
+            self.logger.warning(self._mismatch_message(mismatched, "writable"))
+            return False
+        reuse = populated and not self.force_recreate
         if reuse:
-            self.log_verbose("All benchmark tables are populated on the GizmoSQL server; reusing them")
+            self.log_verbose("All benchmark tables are populated and match the source files; reusing them")
         return reuse
+
+    @staticmethod
+    def _mismatch_message(mismatched: dict[str, tuple[int, int]], mode: str) -> str:
+        detail = ", ".join(
+            f"{name}: {found} rows on the server, {want} in the source files"
+            for name, (found, want) in sorted(mismatched.items())
+        )
+        if mode == "read-only":
+            return (
+                f"Tables on the read-only GizmoSQL server do not match the source files ({detail}). "
+                "Preload matching data or use another schema."
+            )
+        return (
+            f"Tables on the GizmoSQL server are partial or stale ({detail}); they are not reused and BenchBox will "
+            "not delete them. Re-run with force_recreate=true or point the schema option at a fresh schema."
+        )
+
+    def _source_row_counts(self) -> dict[str, int] | None:
+        from benchbox.platforms.base.data_loading import resolve_adapter_data_source, resolve_csv_dialect
+        from benchbox.platforms.gizmosql_loading import count_source_rows
+        from benchbox.utils.file_format import is_parquet_format
+
+        benchmark = getattr(self, "benchmark", None)
+        output_dir = getattr(benchmark, "output_dir", None)
+        if benchmark is None or output_dir is None:
+            return None
+        try:
+            data_source = resolve_adapter_data_source(self, benchmark, Path(output_dir))
+            counts: dict[str, int] = {}
+            for name, paths in data_source.tables.items():
+                files = self._table_files(paths)
+                if not files:
+                    return None
+                dialect = (
+                    None if is_parquet_format(files[0]) else resolve_csv_dialect(data_source, name, files[0], benchmark)
+                )
+                counts[name.lower()] = count_source_rows(files, dialect)
+            return counts
+        except Exception as exc:
+            self.logger.debug("GizmoSQL source row counts unavailable: %s", type(exc).__name__)
+            return None
 
     def new_stream_connection(self, connection: Any, *, benchmark_type: str | None = None) -> Any:
         del connection

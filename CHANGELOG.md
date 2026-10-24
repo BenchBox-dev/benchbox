@@ -22,8 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Tables load client-side as byte-bounded Arrow batches, one transaction per table, so reruns never
   duplicate rows and a failed load leaves the table unchanged. TLS is verified by default; plaintext or
   skipped verification needs `allow_insecure_connection=true`. BenchBox never changes server-wide DuckDB
-  settings (only session-scoped `session_settings`), reuses populated tables whose row counts match the source
-  files (a mismatch fails the load instead of running on partial data), blocks server-wide `SET` on read-only
+  settings (only session-scoped `session_settings`), reuses populated tables only when their row counts match the source
+  files, in the reuse decision and again at load (a mismatch is never reused and fails the load), blocks server-wide `SET` on read-only
   servers,
   supports read-only servers for query-only runs, cancels queries that exceed `query_timeout`, and opens an
   independent ADBC session for each throughput stream. Results record client-observed timings. The server

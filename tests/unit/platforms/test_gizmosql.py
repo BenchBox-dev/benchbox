@@ -756,6 +756,46 @@ class TestDatabaseReuse:
 
         assert adapter.database_was_reused is True
 
+    def sourced(self, tmp_path, rows):
+        tables = {}
+        for name, count in rows.items():
+            path = tmp_path / f"{name}.tbl"
+            path.write_text("".join(f"{i}|t{i}|\n" for i in range(count)))
+            tables[name] = [path]
+        benchmark = StubBenchmark(tables=tables)
+        benchmark.output_dir = tmp_path
+        return benchmark
+
+    def test_partial_table_is_not_reusable_and_load_is_not_skipped(self, server, driver, tmp_path):
+        server.tables = {"alpha": 7, "beta": 3}
+        adapter = make_adapter()
+        adapter.benchmark = self.sourced(tmp_path, {"alpha": 4, "beta": 3})
+
+        connection = adapter.create_connection()
+
+        assert adapter.database_was_reused is False
+        with pytest.raises(gizmosql_module.GizmoSQLExistingDataError, match="alpha"):
+            adapter.load_data(adapter.benchmark, connection, tmp_path)
+        assert not any(sql.upper().startswith(("DELETE", "TRUNCATE", "DROP")) for sql in server.sql_log())
+
+    def test_exact_match_is_reusable(self, server, driver, tmp_path):
+        server.tables = {"alpha": 4, "beta": 3}
+        adapter = make_adapter()
+        adapter.benchmark = self.sourced(tmp_path, {"alpha": 4, "beta": 3})
+
+        adapter.create_connection().close()
+
+        assert adapter.database_was_reused is True
+
+    def test_read_only_mismatch_fails(self, tmp_path, monkeypatch):
+        server = FakeGizmoSQLServer(access_mode="read_only", tables={"alpha": 7, "beta": 3})
+        monkeypatch.setattr(gizmosql_module, "load_gizmosql_driver", lambda: FakeDriver(server))
+        adapter = make_adapter()
+        adapter.benchmark = self.sourced(tmp_path, {"alpha": 4, "beta": 3})
+
+        with pytest.raises(gizmosql_module.GizmoSQLExistingDataError, match="alpha: 7 rows"):
+            adapter.create_connection()
+
 
 class TestQueryExecution:
     def test_success_returns_rows_and_counts(self, server, driver):

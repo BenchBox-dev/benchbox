@@ -222,6 +222,22 @@ class TestTpchLive:
         assert stats == TPCH_COUNTS
         connection.close()
 
+    def test_stale_table_is_not_reported_reusable(self, server, tpch):
+        benchmark, data_dir = tpch
+        adapter = make_adapter(server, schema="live_tpch_stale_reuse")
+        connection, _ = setup_schema(adapter, benchmark, data_dir)
+        connection.execute("INSERT INTO \"region\" VALUES (99, 'EXTRA', 'x')")
+        connection.close()
+
+        again = make_adapter(server, schema="live_tpch_stale_reuse")
+        again.benchmark = benchmark
+        connection = again.create_connection()
+
+        assert again.database_was_reused is False
+        with pytest.raises(Exception, match="region"):
+            again.load_data(benchmark, connection, data_dir)
+        connection.close()
+
     def test_populated_table_that_differs_from_the_source_fails(self, server, tpch):
         benchmark, data_dir = tpch
         adapter = make_adapter(server, schema="live_tpch_stale")

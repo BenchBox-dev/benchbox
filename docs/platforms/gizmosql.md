@@ -120,8 +120,9 @@ A GizmoSQL server is shared state. BenchBox keeps its footprint small:
 
 - Tables go into one schema per benchmark and scale factor (override with `schema`). BenchBox
   creates that schema if it does not exist, and never drops schemas or databases.
-- If every benchmark table already exists and holds rows, BenchBox reuses them and skips schema creation and
-  loading. If any table is missing or empty, BenchBox creates what is missing (`CREATE TABLE IF NOT EXISTS`)
+- If every benchmark table already exists, holds rows, and matches the row counts of the source files, BenchBox
+  reuses them and skips schema creation and loading. A non-empty table whose count differs is reported as not
+  reusable (on a read-only server it is an error), so the load runs and fails on it. If any table is missing or empty, BenchBox creates what is missing (`CREATE TABLE IF NOT EXISTS`)
   and loads the empty tables. A populated table is reused only when its row count equals the row count of the
   source files; otherwise the load fails with an error naming the table and both counts. BenchBox never deletes
   a partial or stale table: use `--force-recreate` or a fresh schema. Running the load twice cannot duplicate rows.
