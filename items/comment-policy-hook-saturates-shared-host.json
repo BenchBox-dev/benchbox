@@ -1,10 +1,8 @@
 {
   "acceptance": [
-    "The launcher of the benchbox-comment-policy-* processes is identified (met: pre-commit hook and make comment-policy-check, called by make lint and ci-lint).",
-    "Peak CPU and wall time of one comment-policy run are measured and recorded (met: 358 s wall, 276 s user + 44 s sys, 476 MB RSS, 5,768 files for a one-commit diff).",
-    "Per-run CPU for a one-commit diff is cut, measured with the same method and reported before and after. Either transition mode scans only the changed files when the policy and the trusted checker are unchanged, or per-blob results are cached keyed on the checker and policy digests. Findings are unchanged: a test shows that a change to a file that another file's payload depends on (cross-file payload dependency) is still detected, and that a changed policy or checker falls back to a full scan."
+    "After the #3168 scope-policy path fix lands, measure one real pre-commit invocation (command, diff size, wall/user, RSS; separate venv setup from checker time, labeled local). Close if a one-commit diff is materially cheaper than the recorded 358 s; file a narrower item only if setup cost still breaks the quiet-machine threshold. Per-blob caching not required; keep the existing changed-source/exception-consumer/full-scan-fallback tests as sufficient."
   ],
-  "context": "2026-10-09 tracker review: Priority raised from low to medium because the cost is in the default pre-commit path and in make lint. Measurements above were taken on develop with a one-commit diff. Related: comment-scanner-unresolved-runner-commands must measure its broader gate regex cost against this item.",
+  "context": "AMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Structurally superseded by #3343/#3362/#3370: ordinary commits scan changed paths only (scripts/check_comment_policy.py:459-461). One measurement remains, blocked until the #3168 scope-policy path fix lands (develop's local check currently fails at config).\n\n2026-10-09 tracker review: Priority raised from low to medium because the cost is in the default pre-commit path and in make lint. Measurements above were taken on develop with a one-commit diff. Related: comment-scanner-unresolved-runner-commands must measure its broader gate regex cost against this item.",
   "description": "On 2026-10-08 the host load average reached 13 while four `benchbox-comment-policy-*` Python processes, each running from its own freshly created temp venv, held about 80% CPU apiece. A timed benchmark run needs a 1-minute load below 2.0 and no other process above 50% CPU, so these runs repeatedly made the machine non-quiet; load was still 4 to 6 hours later.\n\nMeasured on 2026-10-09 (acceptance 1 and 2 of the original item are met):\n- Launchers: the pre-commit hook (.pre-commit-config.yaml:9, `run_comment_policy.py --staged`) and `make comment-policy-check` (Makefile:446), which `make lint` (Makefile:410) and `ci-lint` (Makefile:613, 635) also call.\n- One transition-mode run for a one-commit diff: 358 s wall, 276 s user plus 44 s sys CPU, 476 MB peak RSS, 5,768 files scanned (host load 13-19 on 10 cores).\n- Cause: the run re-scans every completed scope at both head and base (scripts/check_comment_policy.py:395-398 and 418-423), not the venv.\n\nWhat remains is to reduce that per-run cost.",
   "sessions": [
     {
@@ -22,6 +20,14 @@
       "op": "update",
       "op_id": "1f49dbe4e29743cd83cccea2255b1bf1",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T14:30:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a03f947b54dc4cd785531138480769fc",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
