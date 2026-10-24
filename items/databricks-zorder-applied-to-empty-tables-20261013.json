@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "Databricks z_order runs issue OPTIMIZE ... ZORDER BY after data load, recorded in the ledger as post_load.",
-    "A unit test pins the order (load then ZORDER).",
-    "Affected published Databricks tuned bundles are listed in the item context."
+    "Z-order runs after the load and is recorded as a post_load ledger statement: met (PR 3248)",
+    "The pre-load OPTIMIZE is dropped: met",
+    "A unit test with a fake driver asserts ZORDER is issued after the load: met (test_post_load_seam.py)",
+    "Affected published Databricks Z-order bundles listed: met (none; see context)"
   ],
-  "context": "Found 2026-10-13 by an adversarial review of Databricks tuning changes at origin/develop 77048bfb9. Predates the reviewed commits but undermines every Z-order template.",
+  "context": "Merged as PR 3248 (2026-10-24). Z-order now runs once after each table loads: apply_post_load_tunings runs OPTIMIZE <t> ZORDER BY (clustering columns, then distribution columns) on the physical table, recorded in the post_load ledger phase, replacing the plain OPTIMIZE for that table. The pre-load OPTIMIZE and ZORDER are gone from apply_table_tunings. Partition columns are dropped from the Z-order list. If the ZORDER statement fails it is recorded as z_order skipped, the post_load maintenance phase reports FAILED, and plain OPTIMIZE and ANALYZE still run for that table when enable_delta_optimization is on. Tests: tests/unit/platforms/test_post_load_seam.py (ZORDER follows the load with a fake driver, failure fallback, isolation between tables, partition-column exclusion, one OPTIMIZE per table on success); 38 passed there and 6307 passed on tests/unit/platforms + tests/unit/core with -m medium. Not run against a live Databricks workspace.\n\nAffected published bundles: none. All 51 Databricks bundles in results-data/ and on the published-results branch record a resolved clustering strategy of none and no requested tuning, so no published result used z_order.\n\nStrategy resolution is unchanged and tracked separately: _resolve_databricks_clustering_strategy (adapter.py ~407-413) promotes strategy none plus clustering or distribution columns to z_order, also for an explicit none; see databricks-explicit-none-strategy-promoted-to-zorder. The reviewer withdrew its objection to that on the final head. The CHANGELOG and docs/reference/python-api/platforms/databricks.md describe the rule.",
   "description": "## Problem\nTuning is applied before the load (`benchbox/platforms/base/adapter.py:948`; the load runs at `:971`). For Z-order strategies, the tuning step runs `OPTIMIZE … ZORDER BY` (`benchbox/platforms/databricks/adapter.py:3260,3364`), which acts on empty tables. After the load, `apply_post_load_tunings` runs a plain `OPTIMIZE` (`:3427`), and there is no other ZORDER call site.\n\nEvery Databricks Z-order tuned result therefore measured compaction only, while the ledger records `z_order` as applied. No test runs Z-order after a load.\n\n## Change\n- When the strategy is `z_order`, run `OPTIMIZE <t> ZORDER BY (<cols>)` in the post-load step and record it as a post_load ledger statement.\n- Drop the pre-load `OPTIMIZE`.\n- Add a unit test with a fake driver asserting the ZORDER statement is issued after the load.\n- List published Databricks Z-order tuned bundles that are affected.",
   "links": [
     "benchbox/platforms/databricks/adapter.py",
@@ -35,6 +36,14 @@
       "generation": "76b9fff9d4b44554a0c628b8f90d880a",
       "op": "take",
       "op_id": "f98a4d7c97634d3e96473ee76a15b1dd",
+      "session_id": "8c28c3ba26704290a1e499b1b197791d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e465f897e6bf2b6184696cd7",
+      "at": "2026-10-24T06:16:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3e75c2f2d1f240f5a2baf44db04a7b17",
       "session_id": "8c28c3ba26704290a1e499b1b197791d"
     }
   ]
