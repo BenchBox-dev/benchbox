@@ -1036,3 +1036,29 @@ def test_guard_posts_a_forced_follow_up_once_and_skips_the_duplicate(
     fake.reviews = [_review(_decided_head()), _review(posted, id=2, submitted_at="2026-10-08T11:00:00Z")]
     assert cli.main(["guard", "--plan", str(plan_path)]) == 0
     assert dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())["skip"] == "true"
+
+
+def _unreadable_base_change(monkeypatch: pytest.MonkeyPatch) -> None:
+    def unreadable(repo: str, pr: int) -> None:
+        raise github.GitHubError("timeline unavailable")
+
+    monkeypatch.setattr(github, "base_changed_at", unreadable)
+
+
+def test_unreadable_base_change_history_reviews_a_decided_head_whose_patch_changed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _unreadable_base_change(monkeypatch)
+    fake = _fake(_review(_decided_head()), diff=CAPTURE_CHANGED)
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event={"action": "edited", "changes": {"base": {}}})
+    assert values["decision"] == "review"
+    assert plan["protocol"]["kind"] == "follow-up"
+
+
+def test_unreadable_base_change_history_carries_a_decided_head_whose_patch_is_unchanged(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _unreadable_base_change(monkeypatch)
+    fake = _fake(_review(_decided_head()))
+    _, values, _ = _plan(monkeypatch, tmp_path, fake, event={"action": "edited", "changes": {"base": {}}})
+    assert values["decision"] == "carry"

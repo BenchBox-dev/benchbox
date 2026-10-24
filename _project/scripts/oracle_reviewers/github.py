@@ -159,6 +159,17 @@ def _parse_time(value: Any) -> datetime | None:
         return None
 
 
+def base_changed_at(repo: str, pr: int) -> datetime | None:
+    changes = [
+        _parse_time(event.get("created_at"))
+        for event in get_paginated(f"repos/{repo}/issues/{pr}/timeline?per_page=100")
+        if event.get("event") == "base_ref_changed"
+    ]
+    if any(moment is None for moment in changes):
+        raise GitHubError(f"a base change on #{pr} has no readable time")
+    return max(filter(None, changes), default=None)
+
+
 @dataclass(frozen=True)
 class HeadPull:
     number: int
