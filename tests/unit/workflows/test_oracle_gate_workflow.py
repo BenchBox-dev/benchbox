@@ -126,8 +126,13 @@ def test_sparse_checkout_is_enough_to_import_the_gate(tmp_path: Path) -> None:
             assert result.returncode == 0, f"{name}: {result.stderr}"
 
 
+def _script_jobs() -> list[str]:
+    return [name for name in _jobs() if any(SCRIPT in step.get("run", "") for step in _steps(name))]
+
+
 def test_each_job_installs_uv_before_running_the_script() -> None:
-    for name in _jobs():
+    assert set(_script_jobs()) == {"gate", "sweep"}
+    for name in _script_jobs():
         names = [step.get("name", "") for step in _steps(name)]
         script_at = next(index for index, step in enumerate(_steps(name)) if SCRIPT in step.get("run", ""))
         assert "Install uv" in names, name
@@ -170,19 +175,27 @@ def test_dispatch_is_refused_outside_develop() -> None:
     assert "exit 2" in guard["run"]
 
 
-def test_workflow_run_head_resolves_to_an_open_develop_pull_request() -> None:
+def test_completion_runs_dispatch_the_gate_for_the_develop_pull_request_at_that_head() -> None:
+    bridge = _jobs()["bridge"]
+    assert bridge["if"] == "github.event_name == 'workflow_run'"
+    assert bridge["permissions"] == {"actions": "write", "contents": "read", "pull-requests": "read"}
+    (step,) = bridge["steps"]
+    assert "pull_requests" not in str(step["env"])
+    assert step["env"]["HEAD_SHA"] == "${{ github.event.workflow_run.head_sha }}"
+    assert "*[!0-9a-f]*" in step["run"]
+    assert '.base.ref == "develop"' in step["run"]
+    assert ".head.sha == $sha" in step["run"]
+    assert 'gh workflow run oracle-gate.yml --repo "$REPO" --ref develop -f pr="$PR_NUMBER"' in step["run"]
+    assert SCRIPT not in step["run"]
+    assert "github.event_name != 'workflow_run'" in _jobs()["gate"]["if"]
     resolve = next(step for step in _steps("gate") if step["name"] == "Resolve the pull request")
-    assert "pull_requests" not in str(resolve["env"])
-    assert "github.event.workflow_run.head_sha" in str(resolve["env"])
-    assert 'select(.base.ref == "develop"' in resolve["run"]
-    assert 'echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"' in resolve["run"]
-    assert "exit 2" in resolve["run"]
+    assert "workflow_run" not in str(resolve)
 
 
 def test_app_token_mint_matches_the_verdict_post_job() -> None:
     verdict_text = VERDICT.read_text(encoding="utf-8")
     assert "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1" in verdict_text
-    for name in _jobs():
+    for name in _script_jobs():
         mint = [step for step in _steps(name) if "create-github-app-token" in step.get("uses", "")]
         assert len(mint) == 1, name
         assert mint[0]["with"] == {
@@ -220,20 +233,17 @@ def test_concurrency_is_one_group_per_pull_request() -> None:
     assert "github.event.pull_request.number" in group
     assert "github.event.issue.number" in group
     assert "inputs.pr" in group
-    assert "github.event.workflow_run.pull_requests" in group
+    assert "pull_requests" not in group
     assert "github.run_id" in group
     assert _load()["concurrency"]["cancel-in-progress"] is True
 
 
-def test_concurrency_keys_on_head_sha_only_for_pull_request_source_runs() -> None:
+def test_completion_runs_group_by_head_sha_apart_from_pull_request_gates() -> None:
     group = _load()["concurrency"]["group"]
+    assert "(github.event_name == 'workflow_run' && format('bridge-{0}', github.event.workflow_run.head_sha))" in group
     assert group.count("github.event.workflow_run.head_sha") == 1
-    guard = re.search(r"\(([^()]*)\)\s*&&\s*format\('sha-\{0\}', github\.event\.workflow_run\.head_sha\)", group)
-    assert guard, "the sha key must be guarded by a condition on the source event"
-    events = set(re.findall(r"github\.event\.workflow_run\.event == '(\w+)'", guard.group(1)))
-    assert events == {"pull_request", "pull_request_target"}
-    assert group.index("github.event.workflow_run.pull_requests") < group.index("sha-")
-    assert group.index("sha-") < group.rindex("github.run_id")
+    assert group.index("bridge-") < group.index("github.event.pull_request.number")
+    assert group.index("bridge-") < group.rindex("github.run_id")
 
 
 def test_workflow_permissions_are_empty_and_jobs_stay_minimal() -> None:

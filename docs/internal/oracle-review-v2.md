@@ -701,16 +701,18 @@ on created issue comments that open with the stand-in marker, on completion of
 `oracle-verdict` and `oracle-review` (the bridge for review and thread events,
 which have no trusted trigger of their own), on `workflow_dispatch` with a `pr`
 input, and on an hourly `schedule` sweep over open pull requests targeting
-`develop`. A completion run gates the open `develop` pull request that contains
-the completed run's head commit, not the first pull request in the event
-payload, which can target another branch. Every job checks out `develop`, never the pull request, with a sparse
-checkout of the gate, its predicate and the reviewers policy, and runs the
+`develop`. A completion run evaluates nothing itself: its `bridge` job finds the
+open `develop` pull request whose head is the completed run's head commit, not
+the first pull request in the event payload, which can target another branch or
+be stacked on that head, and dispatches the gate for it from `develop`. The
+gate and sweep jobs check out `develop`, never the pull request, with a sparse
+checkout of the gate, its predicate and the reviewers policy, and run the
 script with pinned `pyyaml` the same way `oracle-verdict` does; the App token
 is minted the same way `oracle-verdict` mints it, from the same `oracle`
 environment and secrets. When the reviewers policy cannot load, the script
 errors instead of deciding with empty rules, and the sweep records every
-per-PR error and fails the run when any pull request errored. Concurrency is a
-single group keyed by pull request number for every trigger, with
+per-PR error and fails the run when any pull request errored. Every run that
+evaluates a pull request is in one concurrency group keyed by its number, with
 cancel-in-progress, so a newer run for a pull request cancels the earlier one
 instead of racing it.
 
