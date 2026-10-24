@@ -1,10 +1,8 @@
 {
   "acceptance": [
-    "Two PRs that each add a CHANGELOG entry can both merge without a manual conflict resolution.",
-    "The released CHANGELOG keeps its current format and ordering.",
-    "The PR-time check that requires a CHANGELOG entry still works."
+    "User-facing PRs add a validated fragment (path/schema from the #3298 series) instead of editing `[Unreleased]`; CI enforces the required entry with tested exemptions; release prep assembles fragments into the current dated format; two concurrent PRs with distinct fragments merge without conflict; the `merge=union` rule (`.gitattributes:13`) is removed with docs/tests updated in the cutover."
   ],
-  "context": "UPDATE 2026-10-23: PR #3285 sat armed but DIRTY/CONFLICTING on GitHub after #3284 merged, although `git merge origin/develop` was clean locally: CHANGELOG.md has `merge=union` in .gitattributes, and GitHub does not apply local merge drivers. Merging develop into the branch and pushing (new head, full CI and oracle again) was the only fix. The fragment cutover (changelog-fragments-03) retires the union rule.\n\nBoth batch agents reported this; it happened on most of #2965 to #2985. Options:\n- per-PR changelog fragments assembled at release time;\n- a git `merge=union` attribute for CHANGELOG.md;\n- keeping the single file but letting a bot apply CHANGELOG-only rebases.\n\nCheck the release tooling and the CHANGELOG checks in `make pr-preflight` before choosing.",
+  "context": "AMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Coordinate with the in-flight fragment series (PR #3298, feat/changelog-fragment-library, library step only; cutover not started). `.gitattributes:13` merge=union is ignored by GitHub's server-side merge.\n\nUPDATE 2026-10-23: PR #3285 sat armed but DIRTY/CONFLICTING on GitHub after #3284 merged, although `git merge origin/develop` was clean locally: CHANGELOG.md has `merge=union` in .gitattributes, and GitHub does not apply local merge drivers. Merging develop into the branch and pushing (new head, full CI and oracle again) was the only fix. The fragment cutover (changelog-fragments-03) retires the union rule.\n\nBoth batch agents reported this; it happened on most of #2965 to #2985. Options:\n- per-PR changelog fragments assembled at release time;\n- a git `merge=union` attribute for CHANGELOG.md;\n- keeping the single file but letting a bot apply CHANGELOG-only rebases.\n\nCheck the release tooling and the CHANGELOG checks in `make pr-preflight` before choosing.",
   "description": "During the two concurrent execution-variant batches on 2026-10-14, every PR conflicted on `CHANGELOG.md` more than once. Each one added an entry to the same Unreleased Fixed list, so whenever another PR merged first, the rest needed a rebase and a manual resolution. Each rebase restarted CI, at about 90 minutes per PR, so the conflicts added hours to the batch.",
   "sessions": [
     {
@@ -22,6 +20,14 @@
       "op": "update",
       "op_id": "7fc4e166819647f0a7d0478cdeb10ae9",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T14:30:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "777df24b4fca45d0b4450db22f49fbca",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
