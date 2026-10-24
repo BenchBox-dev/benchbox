@@ -8823,12 +8823,17 @@
       "title": "Produce the additive documentation-data bundle safely"
     },
     "docs-mig-core-doc-contracts-export": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-25T18:47:22Z",
+        "generation": "2c9f313fce9545d28c0137e993268ede",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "docs-mig-adr-ownership"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Export the contracts needed to validate site-owned documentation"
     },
     "docs-mig-core-doc-paths-to-urls": {
