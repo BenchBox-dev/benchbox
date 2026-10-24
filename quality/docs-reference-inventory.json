@@ -3519,22 +3519,6 @@
    ]
   },
   {
-   "disposition": "fixture-data",
-   "kinds": {
-    "unresolved": 1
-   },
-   "occurrences": 1,
-   "path": "scripts/generate_changelog_entry.py",
-   "rule": "test-sample-data",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "unresolved",
-     "target": "docs/chore/ci/build/refactor/style"
-    }
-   ]
-  },
-  {
    "disposition": "generator-deleted",
    "kinds": {
     "dir": 1,
@@ -5682,7 +5666,7 @@
   "dispositions": {
    "contract-replaced": 3,
    "contract-tooling": 5,
-   "fixture-data": 33,
+   "fixture-data": 32,
    "generator-deleted": 5,
    "governance-stays": 7,
    "historical-record": 112,
@@ -5692,7 +5676,7 @@
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 276,
+  "files": 275,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
@@ -5701,9 +5685,9 @@
    "generated": 15,
    "pattern": 314,
    "root": 209,
-   "unresolved": 1990
+   "unresolved": 1989
   },
-  "references": 33414,
+  "references": 33413,
   "unclassified": 0
  }
 }

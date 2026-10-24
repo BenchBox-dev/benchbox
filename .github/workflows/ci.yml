@@ -161,11 +161,14 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.release-version }}
           UPSTREAM_FRESHNESS_REQUIRED: ${{ steps.release.outputs.upstream-freshness-required }}
+          RELEASE_IDENTITY_CHANGED: ${{ steps.release.outputs.release-identity-changed }}
           EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           skip=
           if [ "$UPSTREAM_FRESHNESS_REQUIRED" != "true" ]; then skip=1; fi
-          make release-check VERSION="$RELEASE_VERSION" BASE_REF="$EVENT_BASE_SHA" SKIP_UPSTREAM_FRESHNESS="$skip"
+          pre_tag=
+          if [ "$RELEASE_IDENTITY_CHANGED" = "true" ]; then pre_tag=1; fi
+          make release-check VERSION="$RELEASE_VERSION" BASE_REF="$EVENT_BASE_SHA" SKIP_UPSTREAM_FRESHNESS="$skip" RELEASE_PRE_TAG="$pre_tag"
 
       - name: Fetch base branch
         run: git fetch --no-tags origin "${{ github.base_ref || 'develop' }}:refs/remotes/origin/${{ github.base_ref || 'develop' }}"

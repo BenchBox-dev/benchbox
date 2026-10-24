@@ -21,10 +21,10 @@ CLI_DESCRIPTION = (
     "    Bumps every version marker (``benchbox/__init__.py``, ``pyproject.toml``\n"
     "    and the documentation release markers) with\n"
     "    ``scripts/update_version.py``, refreshes ``uv.lock`` with ``uv lock``, and\n"
-    "    drafts the ``CHANGELOG.md`` section with\n"
-    "    ``scripts/generate_changelog_entry.py``. The result is one normal PR diff.\n"
-    "    The drafted changelog section still needs hand-curation; ``check`` fails\n"
-    "    until it is curated.\n"
+    "    compiles the ``changelog.d`` fragments into the dated ``CHANGELOG.md``\n"
+    "    section with ``scripts/generate_changelog_entry.py --compile-fragments``.\n"
+    "    Fragments are validated before anything is written. The result is one\n"
+    "    normal PR diff.\n"
     "\n"
     "``check --version X.Y.Z``\n"
     "    Verifies the complete pre-tag state and exits non-zero with every problem\n"
@@ -33,10 +33,13 @@ CLI_DESCRIPTION = (
     "    * ``pyproject.toml``, ``benchbox/__init__.py``, the documentation release\n"
     "      markers and the ``uv.lock`` package entry all\n"
     "      carry the requested version;\n"
-    "    * ``CHANGELOG.md`` has a dated, hand-curated section for the version;\n"
+    "    * ``CHANGELOG.md`` has a dated, curated section for the version;\n"
     "    * the ``uv.lock`` schema revision has not been downgraded;\n"
     "    * every top-level path is accounted for in the release curation lists;\n"
     "    * no capped dependency has reached its upper bound.\n"
+    "\n"
+    "    ``check --pre-tag`` additionally fails while any ``changelog.d/*.json``\n"
+    "    fragment is still pending, so a tag is never cut with unreleased fragments.\n"
     "\n"
     "    ``check`` is meant to run on a clean checkout, locally and in CI, so a tag\n"
     "    is only cut from a tree that already passed it.\n"
@@ -157,6 +160,15 @@ def check_changelog(root: Path, version: str) -> list[str]:
     return [f"CHANGELOG.md [{version}]: {problem}" for problem in problems]
 
 
+def check_no_pending_fragments(root: Path) -> list[str]:
+    directory = root / "changelog.d"
+    pending = sorted(directory.glob("*.json")) if directory.is_dir() else []
+    if not pending:
+        return []
+    names = ", ".join(path.name for path in pending)
+    return [f"changelog.d: {len(pending)} fragment(s) still pending ({names}); run `make release-prep` to compile them"]
+
+
 def _delegated(label: str, argv: Sequence[str], root: Path, runner: Runner) -> list[str]:
     returncode, output = runner(argv, root)
     if returncode == 0:
@@ -199,12 +211,15 @@ def run_checks(
     *,
     baseline_ref: str | None = None,
     skip_upstream_freshness: bool = False,
+    pre_tag: bool = False,
 ) -> list[str]:
     problems: list[str] = []
     if normalize_version(version) is None:
         return [f"version {version!r} is not a valid version"]
     problems += check_version_markers(root, version)
     problems += check_changelog(root, version)
+    if pre_tag:
+        problems += check_no_pending_fragments(root)
     problems += check_uv_lock_revision(root, runner, baseline_ref or latest_release_tag(root, before_version=version))
     problems += check_release_curation(root, runner)
     problems += check_dependency_bounds(root, runner)
@@ -227,7 +242,7 @@ def latest_release_tag(root: Path, *, before_version: str | None = None) -> str 
     return None
 
 
-def prep(root: Path, version: str, since_ref: str | None, release_date: str | None, runner: Runner) -> int:
+def prep(root: Path, version: str, release_date: str | None, runner: Runner) -> int:
     update_version = root / "scripts" / "update_version.py"
     changelog = root / "scripts" / "generate_changelog_entry.py"
     if normalize_version(version) is None:
@@ -241,14 +256,12 @@ def prep(root: Path, version: str, since_ref: str | None, release_date: str | No
         except ValueError:
             print("release-prep: release date must be a valid YYYY-MM-DD date", file=sys.stderr)
             return 1
-    ref = since_ref or latest_release_tag(root)
-    if ref:
-        code, output = runner(["git", "rev-parse", "--verify", f"{ref}^{{commit}}"], root)
-        if code != 0:
-            print(f"release-prep: changelog lower bound {ref!r} cannot be resolved: {output}", file=sys.stderr)
-            return code
 
+    compile_cmd = [sys.executable, str(changelog), "--compile-fragments", "--version", version, "--source", str(root)]
+    if release_date:
+        compile_cmd += ["--release-date", release_date]
     steps: list[tuple[str, list[str]]] = [
+        ("changelog fragment validation", [*compile_cmd, "--dry-run"]),
         (
             "version marker validation",
             [sys.executable, str(update_version), "--version", version, "--update-pyproject", "--dry-run"],
@@ -258,13 +271,8 @@ def prep(root: Path, version: str, since_ref: str | None, release_date: str | No
             [sys.executable, str(update_version), "--version", version, "--update-pyproject"],
         ),
         ("uv.lock", ["uv", "lock"]),
+        ("CHANGELOG.md", compile_cmd),
     ]
-    changelog_cmd = [sys.executable, str(changelog), "--version", version, "--source", str(root)]
-    if release_date:
-        changelog_cmd += ["--release-date", release_date]
-    if ref:
-        changelog_cmd += ["--since-ref", ref]
-    steps.append(("CHANGELOG.md", changelog_cmd))
 
     for label, argv in steps:
         print(f"==> {label}")
@@ -278,13 +286,12 @@ def prep(root: Path, version: str, since_ref: str | None, release_date: str | No
 
     print()
     print(f"Release {version} prepared. Next:")
-    print(f"  1. Hand-curate the [{version}] section in CHANGELOG.md.")
-    print(f"  2. make release-check VERSION={version}")
-    print("  3. Commit the changed files and open a normal PR against develop.")
+    print(f"  1. make release-check VERSION={version}")
+    print("  2. Commit the changed files and open a normal PR against develop.")
     return 0
 
 
-def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool]:
+def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool, bool]:
     if re.fullmatch(r"[0-9a-f]{40}", base_sha) is None:
         raise ValueError("release selection requires the full immutable event base SHA")
     code, resolved = run_command(
@@ -349,6 +356,7 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool]:
         "scripts/release_flow.py",
         "scripts/update_version.py",
         "scripts/generate_changelog_entry.py",
+        "scripts/changelog_fragments.py",
         "scripts/check_release_curation.py",
         "scripts/check_dependency_bounds.py",
         "scripts/check_sqlglot_upstream_freshness.py",
@@ -359,8 +367,10 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool]:
         ".github/workflows/ci.yml",
     }
     changed_paths = set(changed.splitlines())
-    freshness_required = before != after or bool(freshness_inputs.intersection(changed_paths))
-    return freshness_required or bool(enforcement.intersection(changed_paths)), after[0], freshness_required
+    identity_changed = before != after
+    freshness_required = identity_changed or bool(freshness_inputs.intersection(changed_paths))
+    selected = freshness_required or bool(enforcement.intersection(changed_paths))
+    return selected, after[0], freshness_required, identity_changed
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -371,7 +381,6 @@ def main(argv: list[str] | None = None) -> int:
         command = sub.add_parser(name)
         command.add_argument("--version", required=True, help="Release version without the leading 'v'")
         command.add_argument("--root", type=Path, default=REPO_ROOT, help=argparse.SUPPRESS)
-    sub.choices["prep"].add_argument("--since-ref", help="Changelog lower bound (default: newest final v* tag)")
     sub.choices["prep"].add_argument("--release-date", help="YYYY-MM-DD (default: today)")
     sub.choices["check"].add_argument(
         "--skip-upstream-freshness",
@@ -381,6 +390,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.choices["check"].add_argument(
         "--baseline-ref", help="Lock revision baseline (default: prior final release tag)"
     )
+    sub.choices["check"].add_argument(
+        "--pre-tag", action="store_true", help="Also fail while any changelog.d/*.json fragment is pending"
+    )
     select = sub.add_parser("select", help="Select release candidates using the immutable CI event base")
     select.add_argument("--base-sha", required=True)
     select.add_argument("--github-output", type=Path, required=True)
@@ -389,7 +401,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "select":
         try:
-            selected, version, freshness_required = select_candidate(args.root, args.base_sha)
+            selected, version, freshness_required, identity_changed = select_candidate(args.root, args.base_sha)
         except (OSError, ValueError, KeyError, TypeError) as exc:
             print(f"release selection FAILED: {exc}", file=sys.stderr)
             return 1
@@ -398,16 +410,21 @@ def main(argv: list[str] | None = None) -> int:
                 f"release-check-needed={str(selected).lower()}\n"
                 f"release-version={version}\n"
                 f"upstream-freshness-required={str(freshness_required).lower()}\n"
+                f"release-identity-changed={str(identity_changed).lower()}\n"
             )
         print(f"release selection: {'check required' if selected else 'unchanged release identity'}")
         return 0
     version = args.version.removeprefix("v")
 
     if args.command == "prep":
-        return prep(args.root, version, args.since_ref, args.release_date, run_command)
+        return prep(args.root, version, args.release_date, run_command)
 
     problems = run_checks(
-        args.root, version, baseline_ref=args.baseline_ref, skip_upstream_freshness=args.skip_upstream_freshness
+        args.root,
+        version,
+        baseline_ref=args.baseline_ref,
+        skip_upstream_freshness=args.skip_upstream_freshness,
+        pre_tag=args.pre_tag,
     )
     if problems:
         print(f"release-check FAILED for {version}:", file=sys.stderr)
