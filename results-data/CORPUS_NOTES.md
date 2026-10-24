@@ -112,10 +112,10 @@ Other issues found while checking, outside these PRs:
 - Since v0.4.1, Snowflake and Databricks translate `DESC` ordering to
   `DESC NULLS LAST` (TSBS DevOps and DataVault Q11), which can reorder rows
   containing NULLs.
-- ClickHouse DataVault Q6 is still wrong on develop: the Q6 bound fold applies
-  only to the `lineitem` table, so `sat_lineitem` keeps
-  `BETWEEN 0.06 - 0.01 AND 0.06 + 0.01`. Rerunning DataVault will not fix it
-  until the rewrite is fixed.
+- ClickHouse DataVault Q6 was wrong because the Q6 bound fold applied only to
+  the `lineitem` table, so `sat_lineitem` kept `BETWEEN 0.06 - 0.01 AND
+  0.06 + 0.01`. Fork 30.24.0.12 folds every table and column, so rerunning
+  DataVault on the current wheel fixes it; the two bundles are flagged above.
 
 ## TPC-Havoc cross-variant row-count divergence audit (2026-10-17)
 
