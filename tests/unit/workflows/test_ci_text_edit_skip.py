@@ -170,6 +170,8 @@ def _workflow() -> dict[str, Any]:
 
 
 def _gate_context() -> str:
+    if not GATE_SCRIPT.exists():
+        pytest.skip("_project scripts are not in this checkout (release tree)")
     tree = ast.parse(GATE_SCRIPT.read_text(encoding="utf-8"))
     return next(
         node.value.value
