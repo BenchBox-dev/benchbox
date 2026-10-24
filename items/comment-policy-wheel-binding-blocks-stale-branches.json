@@ -3,7 +3,7 @@
     "Failure message names the stale base and the fix",
     "Or the check tolerates a wheel bump that exists on origin/develop"
   ],
-  "context": "Seen in the takeover worktree BenchBox.wt-pr-text. Low urgency; workaround is a fresh worktree from origin/develop.",
+  "context": "CLOSED 2026-10-24 (no longer reproduces, owner-approved): since #3362 local comparisons use the merge-base with origin/develop (scripts/run_comment_policy.py:68-90; scripts/check_comment_cleanup_scope.py:1895-1906), so a develop-side wheel bump is no longer the baseline for a stale branch; the error strings remain only for genuine candidate/base mismatches (check_comment_policy.py:360-361, check_comment_cleanup_scope.py:1549-1550).\n\nSeen in the takeover worktree BenchBox.wt-pr-text. Low urgency; workaround is a fresh worktree from origin/develop.",
   "description": "Observed in worktree BenchBox.wt-pr-text, whose branch was behind develop after develop replaced _project/scripts/vendor/todo_db-0.9.1-py3-none-any.whl with 0.10.1. make comment-policy-check failed first with a missing-file error for the 0.9.1 wheel and, after I restored that file from the branch, with 'immutable dependency binding changed: _project/scripts/vendor/todo_db-0.9.1-py3-none-any.whl'. Neither message says the branch is behind develop. Building on a current develop base made the check pass. The root cause (why the ownership binding compares against a wheel the base no longer has) was not investigated.",
   "sessions": [
     {
@@ -21,6 +21,14 @@
       "op": "update",
       "op_id": "2570cdab439643938d82cce767f336d3",
       "session_id": "8202d1c5316f41c897a0af067e2c8e9e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-24T14:30:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d326dca08b95455d9d6c8b24eb78f67a",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
