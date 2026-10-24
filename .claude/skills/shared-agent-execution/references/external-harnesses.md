@@ -43,6 +43,14 @@ Only contributor-variant Muse models are selected. Argon's OMP support does
 not prove external CLI completion support. Other harnesses have separate
 catalogs; do not infer that stripping a provider prefix makes a valid ID.
 
+### Judgment runners
+
+The `judge` role uses Jev over a judgment API, not any CLI below. Primary
+`typesafe/jev-1.14.0` (direct TypeSafe route); fallback is the OpenRouter
+Jev ID on the same version. No effort flag or suffix applies, and chat
+fallback, quota, and reviewer-panel rules do not transfer. Image-carrying
+judgments are experimental: prefer text-only state.
+
 ### Effort translation
 
 Do not assume a non-OMP external CLI implements adaptive effort. Use the
