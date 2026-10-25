@@ -17552,6 +17552,15 @@
       "status": "open",
       "title": "#2761 merged while its head carried a hollow oracle success; review it after merge"
     },
+    "pr-arm-dispatch-missing-verdict-20261025": {
+      "claim": null,
+      "needs": [
+        "oracle-verdict-single-job-20261025"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Have make pr-arm dispatch an oracle verdict when the exact head has none"
+    },
     "pr-arm-stale-remote-race": {
       "claim": null,
       "needs": [],

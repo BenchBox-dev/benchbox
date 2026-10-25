@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The 7-day missing-verdict count is recorded before any edit.",
+    "If built: a test shows pr-arm dispatches once for a head with no verdict run and never for a head with one; a live dispatch is observed on a real PR."
+  ],
+  "context": "Re-homed from the deferred 'verdict dispatch at pr-arm' step of the 2026-10-25 proposal.",
+  "description": "Deferred from the 2026-10-25 oracle proposal (second Advisor review, option d). make pr-arm already refreshes oracle-gate before arming (#3485). When no oracle-verdict run exists for the exact head (none queued, in progress or completed), pr-arm could dispatch `gh workflow run oracle-verdict.yml --ref develop -f pr=<n>` and report it, instead of leaving the author to wait for the hourly sweep.\n\nDecision gate: build only if 7 days of data after oracle-verdict-single-job-20261025 lands show heads with no verdict run within 30 minutes of the push. Record the count first.\n\nGuardrails: dispatch only from develop's ref; never more than one dispatch per head; no change to verdict trust, carry or the gate.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T20:58:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "42fbb931a6bf41f19436fb305699741d",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
