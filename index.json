@@ -23749,10 +23749,15 @@
       "title": "Extend the SQL execution gate to TPC-Havoc (220 variants) and TPC-DS OBT (90 queries) on every gate engine"
     },
     "sql-execution-gate-vacuous-empty-results-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T20:38:13Z",
+        "generation": "c7e46c60c14349f5a04169971c8a5ab4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "SQL execution gate and OBT equivalence accept vacuous results (empty or all-zero/NULL aggregate rows) as proof of correct translation"
     },
     "sql-query-generation-consistency-tpc-h-tpc-ds": {
