@@ -1484,8 +1484,34 @@ def test_shadow_misses_flags_failure_outside_selection() -> None:
         "selected_count": 1,
         "failed": failed,
         "missed": ["tests/unit/z/test_nine.py::test_broke"],
+        "selection_escalates": False,
+        "caught_by_escalation": [],
         "would_escalate": True,
     }
+
+
+def test_miss_report_counts_nothing_missed_when_the_selection_escalates() -> None:
+    selected = ["tests/unit/a/test_one.py::test_keep"]
+    failed = ["tests/unit/z/test_nine.py::test_broke"]
+    report = sel.miss_report(selected, failed, escalated=True)
+    assert report["missed"] == []
+    assert report["caught_by_escalation"] == failed
+    assert report["selection_escalates"] is True
+    assert report["would_escalate"] is False
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        ({"shadow": True, "escalate": True, "would_escalate": False}, False),
+        ({"shadow": True, "escalate": True, "would_escalate": True}, True),
+        ({"escalate": True}, True),
+        ({"escalate": False}, False),
+        ({"selected": []}, False),
+    ],
+)
+def test_selection_escalates_reads_the_verdict_the_full_tier_would_follow(payload: dict, expected: bool) -> None:
+    assert sel.selection_escalates(payload) is expected
 
 
 def test_shadow_misses_covers_failure_by_node_or_file() -> None:

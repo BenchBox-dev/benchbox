@@ -1291,12 +1291,20 @@ def shadow_misses(selected: list[str], failed: list[str]) -> list[str]:
     return sorted({node for node in failed if node not in have and node.split("::")[0] not in files})
 
 
-def miss_report(selected: list[str], failed: list[str]) -> dict:
-    missed = shadow_misses(selected, failed)
+def selection_escalates(payload: dict) -> bool:
+    key = "would_escalate" if payload.get("shadow") is True else "escalate"
+    return payload.get(key) is True
+
+
+def miss_report(selected: list[str], failed: list[str], escalated: bool = False) -> dict:
+    outside = shadow_misses(selected, failed)
+    missed = [] if escalated else outside
     return {
         "selected_count": len(selected),
         "failed": sorted(set(failed)),
         "missed": missed,
+        "selection_escalates": escalated,
+        "caught_by_escalation": outside if escalated else [],
         "would_escalate": bool(missed),
     }
 
@@ -1314,12 +1322,14 @@ def _miss_junit_paths(raw: list[Path]) -> list[Path]:
 def _cmd_misses(args: argparse.Namespace) -> int:
     notes: list[str] = []
     selected: list[str] = []
+    escalated = False
     if args.selection_in is None:
         notes.append("no selection input")
     else:
         try:
             payload = json.loads(args.selection_in.read_text(encoding="utf-8"))
             selected = [str(node) for node in payload["selected"]]
+            escalated = selection_escalates(payload)
         except (OSError, ValueError, KeyError, TypeError) as exc:
             notes.append(f"cannot read selection {args.selection_in}: {exc}")
     junit_paths = _miss_junit_paths(args.junit)
@@ -1331,7 +1341,7 @@ def _cmd_misses(args: argparse.Namespace) -> int:
     elif args.expected_shards is not None and parsed < args.expected_shards:
         notes.append(f"only {parsed} of {args.expected_shards} shard junit reports parsed")
     notes.extend(f"cannot parse junit report {name}" for name in unparsed)
-    report = miss_report(selected, failed)
+    report = miss_report(selected, failed, escalated)
     if notes:
         report.update({"missed": [], "would_escalate": None, "available": False, "reason": "; ".join(notes)})
     else:
@@ -1345,7 +1355,13 @@ def _cmd_misses(args: argparse.Namespace) -> int:
         lines.append(f"No failures in the medium-test shards; shadow selection of {picked} has nothing to miss.")
         lines.append(f"Would escalate on misses: {'yes' if report['would_escalate'] else 'no'}.")
     elif not report["missed"]:
-        lines.append(f"No misses: all {broken} were covered by the shadow selection of {picked}.")
+        if report["caught_by_escalation"]:
+            lines.append(
+                f"No misses: the selection of {picked} would escalate to the full tier, "
+                f"which runs all {broken}, including {len(report['caught_by_escalation'])} outside the selection."
+            )
+        else:
+            lines.append(f"No misses: all {broken} were covered by the shadow selection of {picked}.")
         lines.append(f"Would escalate on misses: {'yes' if report['would_escalate'] else 'no'}.")
     else:
         lines.append(f"Shadow selection of {picked} missed {len(report['missed'])} of {broken}.")

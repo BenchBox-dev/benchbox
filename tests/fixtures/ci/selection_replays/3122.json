@@ -1,0 +1,110 @@
+{
+ "base": "428307af423df499fa58201deb286bf5f89cf0d8",
+ "diff": [
+  "diff --git a/benchbox/core/dryrun.py b/benchbox/core/dryrun.py",
+  "index eec90c345..fe829c747 100644",
+  "--- a/benchbox/core/dryrun.py",
+  "+++ b/benchbox/core/dryrun.py",
+  "@@ -24 +24 @@ from benchbox.core.schemas import (",
+  "@@ -137,2 +137,6 @@ class DryRunExecutor:",
+  "@@ -140,2 +144,2 @@ class DryRunExecutor:",
+  "@@ -199,4 +203,65 @@ class DryRunExecutor:",
+  "diff --git a/tests/unit/test_cli_dryrun_test_modes.py b/tests/unit/test_cli_dryrun_test_modes.py",
+  "index 261e9fde3..4576e5e42 100644",
+  "--- a/tests/unit/test_cli_dryrun_test_modes.py",
+  "+++ b/tests/unit/test_cli_dryrun_test_modes.py",
+  "@@ -457,0 +458,82 @@ class TestDataFrameMaintenanceDryRun:"
+ ],
+ "failed": [
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[pyspark]",
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[snowpark-connect]",
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-driver_memory]",
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-shuffle_partitions]",
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_resource]",
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_size]"
+ ],
+ "failed_in_base_map": [
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[pyspark]",
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[snowpark-connect]",
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-driver_memory]",
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-shuffle_partitions]",
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_resource]",
+  "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_size]"
+ ],
+ "head": "5febb96c0942ddd39ad7ba059e23a977d9e3d1ce",
+ "hits": {
+  "benchbox/core/dryrun.py": {
+   "lines": {
+    "137": [
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[pyspark]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[snowpark-connect]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-driver_memory]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-shuffle_partitions]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_resource]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_size]"
+    ],
+    "138": [
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[pyspark]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[snowpark-connect]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-driver_memory]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-shuffle_partitions]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_resource]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_size]"
+    ],
+    "140": [
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[pyspark]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[snowpark-connect]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-driver_memory]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-shuffle_partitions]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_resource]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_size]"
+    ],
+    "141": [
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[pyspark]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[snowpark-connect]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-driver_memory]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-shuffle_partitions]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_resource]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_size]"
+    ],
+    "199": [
+     "tests/unit/other/test_other_coverage.py::test_covers_the_remaining_lines"
+    ],
+    "200": [
+     "tests/unit/other/test_other_coverage.py::test_covers_the_remaining_lines"
+    ],
+    "201": [
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[pyspark]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[snowpark-connect]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-driver_memory]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-shuffle_partitions]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_resource]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_size]"
+    ],
+    "202": [
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[pyspark]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[snowpark-connect]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-driver_memory]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[pyspark-shuffle_partitions]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_resource]",
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_size]"
+    ],
+    "24": [
+     "tests/unit/other/test_other_coverage.py::test_covers_the_remaining_lines"
+    ]
+   },
+   "statements": [
+    24,
+    137,
+    138,
+    140,
+    141,
+    199,
+    200,
+    201,
+    202
+   ]
+  }
+ },
+ "pr": 3122
+}
