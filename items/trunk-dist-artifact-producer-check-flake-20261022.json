@@ -4,7 +4,7 @@
     "The cause is identified from at least one logged failure and fixed without weakening the uniqueness or attempt-identity checks; a unit test covers the failing listing.",
     "No producer-check failures across 50 consecutive develop Trunk runs after the fix."
   ],
-  "context": "NOTE 2026-10-25 from the Trunk failure classification (trunk-red-run-triage-20261024): INC-12 was this race, 6 red runs from 2026-10-19 to 10-22 (two cleared on rerun). #3413 merged 2026-10-24 22:59Z; Trunk runs created after it (40143062585, 40146703051, 40147173978, 40149187362, 40149957572, 40153635967) were all green.\n\nPR #3413 merged: producer check now polls up to 60s (3s interval) for exactly one in_progress dist-artifact job, retrying only on absent/queued; duplicates or other states fail immediately; failures log job id/attempt/status. Cause is inferred (job listing lag), not confirmed from a captured failure. Also fixed release-cut to drop changelog.d so fragment PRs pass guard-release-curation. Acceptance 'no failures across 50 consecutive develop Trunk runs' needs observation after merge; item stays open for that check.",
+  "context": "PROGRESS 2026-10-25: review of #3413 found it correct (acceptance 1 met), but acceptance 2 could never be met because a successful wait logged nothing. PR #3489, merged as 8248fe536af5b5325f155605f61d12f3452884dd (oracle SHIP on 18e9458f), makes running_producer_job in scripts/release_artifact_consumer.py print a ::notice:: when the wait succeeds after at least one non-running listing. The notice gives the first listing (job ids, run_attempt, statuses), the run id and attempt, and the seconds waited; tests cover a delayed-then-running listing and an immediate one (no output). Acceptance 3: 41 of 50 consecutive green Trunk runs at review time (all completed since #3413). Remaining: 9 more completed green runs, and Trunk logs checked for the notice to confirm or refute the inferred race cause; Trunk run 40229383185 is the first that can show it.\n\nNOTE 2026-10-25 from the Trunk failure classification (trunk-red-run-triage-20261024): INC-12 was this race, 6 red runs from 2026-10-19 to 10-22 (two cleared on rerun). #3413 merged 2026-10-24 22:59Z; Trunk runs created after it (40143062585, 40146703051, 40147173978, 40149187362, 40149957572, 40153635967) were all green.\n\nPR #3413 merged: producer check now polls up to 60s (3s interval) for exactly one in_progress dist-artifact job, retrying only on absent/queued; duplicates or other states fail immediately; failures log job id/attempt/status. Cause is inferred (job listing lag), not confirmed from a captured failure. Also fixed release-cut to drop changelog.d so fragment PRs pass guard-release-curation. Acceptance 'no failures across 50 consecutive develop Trunk runs' needs observation after merge; item stays open for that check.",
   "description": "`scripts/release_artifact_consumer.py` `producer` (`:683-695`) lists the jobs of the current run attempt and requires exactly one job named `dist-artifact` with status `in_progress`. It fails intermittently with `Release artifact admission failed: producer job is not unique and running`, and a rerun passes. Each failure turns develop red, and the red-Trunk arm gate then blocks `make pr-arm` for every PR until a later Trunk run passes.\n\nFailures: run 39614627213 (2026-10-21, head 4f5458c16); run 39615662898 attempt 1 (2026-10-21, head 7dcebb28c; attempt 2 passed); run 39794975920 (2026-10-22, head 93524639b; failed jobs rerun). That is 3 of the 60 most recent develop Trunk runs. The message does not say which condition failed, so the cause is unknown: no match, several matches, or a match whose listed status is not yet `in_progress`. Jobs-API lag is a guess, not verified.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/39794975920"
@@ -32,6 +32,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "fc33063ad0374c01954e247588b4eb94",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T20:09:23Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9bc10029f4704ac6b274b599308a9323",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
