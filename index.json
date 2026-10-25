@@ -26968,10 +26968,12 @@
     },
     "trunk-red-stops-further-merges": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "trunk-fix-forward-admission-20261025"
+      ],
       "priority": "high",
       "status": "open",
-      "title": "A red post-merge Trunk run must stop further merges and surface the culprit"
+      "title": "Disarm auto-merge on armed PRs when a Trunk run on develop goes red"
     },
     "trunk-red-translate-query-called-twice-after-3185": {
       "claim": null,

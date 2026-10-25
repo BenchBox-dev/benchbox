@@ -1,15 +1,20 @@
 {
   "acceptance": [
-    "A red Trunk run on develop names the culprit PR and blocks arming or merging of other PRs until develop is green or a revert is merged (workflow or check, with a test of the decision logic).",
-    "make trunk-revert PR=<n> succeeds from a linked worktree (reproduce the lifecycle ID error, fix it, add a regression test in tests/unit/scripts/test_trunk_revert.py).",
-    "docs/internal/develop-post-merge-gaps.md states the final behavior and its remaining bound."
+    "Tests of the decision logic that fail on current develop: with a red streak, an armed ordinary PR is selected for disarming. Not selected: an unarmed PR; the armed genuine revert of the streak's first red commit; a PR the arm gate admits. On green, nothing is selected. When the arm gate errors for an armed PR, that PR is selected.",
+    "Replay against a captured fixture of 2026-10-24 (Trunk runs 40069594552 green, 40071232825 red at 24bfcf8a0, 40071524792 red at c962e3e87, plus a fixture list of armed PRs): the decision disarms the ordinary armed PRs and names #3378 as the culprit.",
+    "Live: the first Trunk completion after merge (green) triggers the workflow, which completes successfully, changes nothing, and logs its decision. The red path is not exercised live until a real red run occurs; report it when it does.",
+    "docs/internal/develop-post-merge-gaps.md replaces the 'Already armed PRs still merge' bound with the new behavior and its remaining bound (UI and raw merges, and arming after the run), and updates the 'deliberately did not do' section. docs/internal/repo-admin-settings.md no longer says no workflow disarms auto-merge.",
+    "make pr-preflight passes; the PR passes the oracle on its merged head and merges through make pr-arm.",
+    "The owner's answer on the required 'Trunk green' context is recorded in context. If yes, a separate item exists for it."
   ],
-  "context": "Partly delivered in merged PR #3433: `make trunk-status` prints the first red run of the streak, its culprit PR and the revert command and exits non-zero while develop is red and the culprit is unreverted (fails closed on read errors); `make pr-open` refusal names that culprit. The arm gate (scripts/trunk_revert.py, #3415) already refuses arming while the streak is unreverted. Still open and owner/workflow-owned: (1) disabling auto-merge on PRs already armed when a Trunk run goes red needs a workflow under .github/workflows (soundness path, oracle review); (2) blocking merges made through the GitHub UI or `gh pr merge --auto` needs a required status check or ruleset on develop that fails while Trunk is red (owner-only repository setting).",
-  "description": "After PR 3185 merged, the Trunk run failed 14 minutes later. Nothing reverted the change or stopped further merges; pr-open only refuses new PRs after develop has been red for 30 minutes, and develop was red for about 39 minutes before anyone acted. The documented recovery (make trunk-revert PR=<n>) failed when run from a linked worktree: make worktree-create raised 'Worktree already carries immutable lifecycle ID' for the new revert worktree, so the revert had to be done by hand.",
+  "context": "Delivered elsewhere: the arm gate blames the first red run of the streak (#3415); make trunk-status and the pr-open refusal name the culprit (#3433); make trunk-revert works from a linked worktree (#3220, regression test tests/unit/scripts/test_worktree_create_linked.py, proven live by revert PR #3223 opened 2026-10-21T11:39:53Z). Remaining here: the disarm workflow only.\n\nEarlier context, kept for history:\nPartly delivered in merged PR #3433: `make trunk-status` prints the first red run of the streak, its culprit PR and the revert command and exits non-zero while develop is red and the culprit is unreverted (fails closed on read errors); `make pr-open` refusal names that culprit. The arm gate (scripts/trunk_revert.py, #3415) already refuses arming while the streak is unreverted. Still open and owner/workflow-owned: (1) disabling auto-merge on PRs already armed when a Trunk run goes red needs a workflow under .github/workflows (soundness path, oracle review); (2) blocking merges made through the GitHub UI or `gh pr merge --auto` needs a required status check or ruleset on develop that fails while Trunk is red (owner-only repository setting).",
+  "description": "Problem: when a Trunk run on develop goes red, make trunk-status and make pr-open name the culprit (#3433). The arm gate refuses new arming from the first red run of the streak (#3415). But PRs armed before the red run completed still merge (docs/internal/develop-post-merge-gaps.md:75-78). After PR 3185 merged on 2026-10-20, develop stayed red about 39 minutes before anyone acted. The linked-worktree revert failure seen then was fixed by #3220.\n\nOutcome: a workflow triggered on completion of a Trunk run on develop. For each open PR against develop with auto-merge enabled, it evaluates the same decision as scripts/trunk_revert.py arm-gate and disables auto-merge exactly when arm-gate would refuse that PR, treating an arm-gate error as a refusal. It never arms or re-arms; after develop is green or the revert merges, authors re-arm with make pr-arm. It logs each disarmed PR with the culprit and run URL.\n\nNot in scope (owner setting): blocking merges made through the GitHub UI or raw gh pr merge needs a required status check on develop that fails while Trunk is red. That is an owner decision; if the owner wants it, file a separate item for the status producer, and the owner adds the context.\n\nDecision gates:\n1. Predicate reuse. The disarm decision calls the arm-gate logic in scripts/trunk_revert.py; it does not reimplement it. The culprit's genuine revert PR, and any PR the arm gate admits, stay armed. Stop if reuse needs a second definition of the red streak.\n2. Trigger and trust. workflow_run on the Trunk workflow, branch develop, running the default-branch workflow file. Permissions: pull-requests write, actions read, contents read; nothing else. Stop and ask the owner if it needs any other write permission or a secret.\n3. Idempotence. Repeated red runs and re-runs disarm nothing twice and touch no unarmed PR. A green completion does nothing.\n\nItem guardrails: the workflow never enables auto-merge, never adds or removes labels, never closes, comments on, rebases or re-runs PRs, and never edits rulesets. It is a soundness path, so it needs the oracle's review.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no stand-in approvals, no ruleset edits or bypasses, no raw gh pr merge. Do not change oracle-gate's App binding (integration 5201041), the oracle decision rule, or the native review-thread-resolution requirement. Do not close and reopen, mass-rerun or rebase other pull requests. No explanatory comments or docstrings in code; commits, PR bodies and docs carry no tracker item IDs or session labels; timing uses benchbox.utils.clock.mono_time().",
   "links": [
     "scripts/trunk_revert.py",
-    "docs/internal/pr-triage.md",
-    "docs/internal/develop-post-merge-gaps.md"
+    "tests/unit/scripts/test_trunk_revert.py",
+    "docs/internal/develop-post-merge-gaps.md",
+    "docs/internal/repo-admin-settings.md",
+    ".github/workflows/trunk.yml"
   ],
   "sessions": [
     {
@@ -43,6 +48,14 @@
       "op": "update",
       "op_id": "2ff1e7441d4d488c9d57acefe22ce548",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T13:17:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ed48b53f789741929bdfcf645785f848",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
 }
