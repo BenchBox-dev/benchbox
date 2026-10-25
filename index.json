@@ -16472,6 +16472,15 @@
       "status": "open",
       "title": "The oracle's review header lists every changed logic file in its tier reason, so a large PR gets a review body of over 128,000 characters"
     },
+    "oracle-verdict-dispatch-gate-after-review-20261025": {
+      "claim": null,
+      "needs": [
+        "oracle-gate-cutover-live-verification-20261025"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Dispatch oracle-gate for the reviewed pull request right after oracle-verdict posts its review"
+    },
     "oracle-verdict-labels-unreviewed-bytes": {
       "claim": null,
       "needs": [

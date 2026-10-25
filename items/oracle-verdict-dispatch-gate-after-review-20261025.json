@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "oracle-verdict.yml's post job ends with a step that runs gh workflow run oracle-gate.yml --repo \"$REPO\" --ref develop -f pr=\"$PR_NUMBER\". The step is conditioned on the review having been posted and the pull request base being develop. tests/unit/workflows/test_oracle_verdict_workflow.py asserts its position after review posting and its condition, and fails on the previous workflow.",
+    "The no-other-workflow-posts-the-gate test still passes and explicitly allows dispatch while forbidding status posts of the oracle-gate context.",
+    "actionlint is clean, uv run -- pytest -q tests/unit/workflows passes, and make pr-preflight passes. docs/internal/oracle-review-v2.md describes the explicit dispatch.",
+    "Live check after merge: an /oracle-review rejudge on a batch PR is followed by an oracle-gate (workflow_dispatch pr=N) run started by the verdict run, which posts oracle-gate on the PR head. Run IDs are recorded in context."
+  ],
+  "context": "Source: Advisor review ~/Developer/benchmark_runs/oracle-review-workflow-advisor-20261025/report.md, finding F3 and option (e).\n\nBatch order (serial): 1 oracle-review-notify-only, 2 oracle-review-recover-retire, 3 comment-policy-oracle-gate-evidence-only, 4 oracle-gate-standin-edit-delete, 5 oracle-gate-fail-closed-evaluation-errors, 6 oracle-gate-policy-change-refresh, 7 oracle-gate-cutover-live-verification, 8 oracle-verdict-dispatch-gate-after-review.",
+  "description": "Problem (Advisor finding F3): an oracle-verdict run started by an /oracle-review comment, a workflow_dispatch or the schedule completes against develop's head SHA. oracle-gate's bridge, which maps a completed run to the open develop pull request with that head, cannot map it. The gate then depends on the review-submitted notification, a workflow file the pull request controls, or on the hourly sweep. The verdict job already knows the pull request number.\n\nOutcome: after oracle-verdict posts its review and status, its post job dispatches oracle-gate.yml on develop for that pull request number.\n\nDecision gates (stop and report if one fails):\n1. Proceed only if oracle-gate-cutover-live-verification-20261025 recorded that the comment, dispatch or schedule verdict completion did not map to the pull request. If it did map, drop this item with that evidence.\n2. Confirm the post job's GITHUB_TOKEN permissions allow workflow dispatch (actions: write). If a new permission is needed, add only that one and record why.\n3. The test asserting that no workflow other than oracle-gate.yml posts the oracle-gate context must keep passing. Dispatching is not posting; extend the test to tell them apart instead of weakening it.\n\nItem guardrails: dispatch only after the review is persisted, and only for pull requests whose base is develop. oracle-verdict never posts the oracle-gate status. Verdict logic, reviewer selection and the bridge job are unchanged.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no stand-in approvals, no ruleset edits or bypasses, no raw gh pr merge. Close out with make pr-preflight, make pr-open, oracle SHIP on the exact head, then make pr-arm. Do not change oracle-gate's App binding (integration 5201041), the oracle decision rule, or the native review-thread-resolution requirement. Do not close and reopen, mass-rerun or rebase other pull requests. No explanatory comments or docstrings (COMMENT-POLICY-001). Every behavior change gets a test that fails on the previous code.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T03:11:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "de3eddc8a2484a4e8ed726d6356729f4",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
