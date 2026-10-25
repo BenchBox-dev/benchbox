@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Per PR and per merge, for a stated UTC window with complete collection (no 1,000-result truncation), the report lists every workflow that ran for the same head, with run counts, attempts, conclusions, cancellations, summed job runner-minutes and job queue time median and p90, for oracle-review, oracle-verdict, oracle-gate, ci-text-edit-refresh, pr-hold, ci.yml and the path-dependent siblings",
+    "The report separates cancelled work from completed work and identifies redundant same-head or same-event runs, with counts and runner-minutes",
+    "The report shows, per workflow, whether it lies on the critical path to all required checks ready (core, docs, explorer, results-data, tooling, hold, oracle-gate), using the time-to-green measure from the CI usage report",
+    "A ranked recommendation compares oracle and text-edit fan-out reduction with medium shard balancing and further test trimming by measured runner-minutes and time-to-green effect, and states what each reduction would preserve (current-head binding, invalidation, required status delivery) or give up",
+    "Owner decision recorded: which candidate reductions, if any, are approved for implementation; each approved one gets its own item",
+    "The result and the window and sample counts it rests on are recorded on this item"
+  ],
+  "context": "Created 2026-10-25 from an independent second review of the CI-efficiency plans, which found that oracle and text-edit workflows are a material fan-out omitted from the earlier items. Needs only the metrics report (ci-usage-metrics-report-20261024); it may start once that report can collect oracle workflow jobs. Counts above come from a captured, capped sample and are estimates of mix, not rates.",
+  "description": "Several workflows run for the same pull-request head, not only CI. Unconditional develop-PR siblings: ci.yml, pr-hold.yml, oracle-review.yml, oracle-verdict.yml, oracle-gate.yml. Path-dependent siblings: extension-smoke.yml, gitignore-lint.yml, tpcds-platform-identity.yml, tpch-dbgen-intel-macos.yml. Completion-driven work: ci-text-edit-refresh.yml (runs after CI completes) and further oracle-gate runs after oracle workflow completion. Post-merge sibling: site-inputs.yml, triggered by Trunk completion. test.yml, lint.yml, perf-smoke.yml and validate-release-pr.yml target the release branch, not ordinary develop PRs. In a capped all-workflow sample of 1,000 runs spanning about 14 hours on 2026-10-24 (not a full day, and not a daily rate), oracle-gate had 414 runs (193 cancelled), oracle-review 130, oracle-verdict 105, ci-text-edit-refresh 147, CI 64 and Trunk 17; the first four are 796 of 1,000 workflow invocations. Invocations are not occupied runner jobs, and no oracle job data exists yet to say how much runner time is wasted. Using the output of ci-usage-metrics-report-20261024, measure real job occupancy, cancellations, redundant same-head or same-event work, and each workflow's contribution to the final all-required-checks-ready time, then rank oracle and text-edit fan-out against shard balancing and further test trimming. Do not remove oracle checks or combine trust domains here: oracle-review and the App-bound oracle-gate have different enforcement roles, and any reduction must preserve current-head binding, invalidation and required status delivery. oracle-gate is the required oracle check on develop since PR #3395; oracle-review is no longer required. Also account for the prospective load and workflow-completion latency of canary-impact-04-shadow-job, which stays a separate item. This is an investigation; its output is a ranked recommendation and, if warranted, new items.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T03:10:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b19c164e00114f0fabcf1691cc7b7e08",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
