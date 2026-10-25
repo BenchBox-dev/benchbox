@@ -4358,7 +4358,7 @@
    "kinds": {
     "root": 1
    },
-   "occurrences": 1,
+   "occurrences": 2,
    "path": "tests/unit/scripts/test_dev_loop_pr_metrics.py",
    "rule": "test-sample-data",
    "target_count": 1,
@@ -5271,10 +5271,10 @@
    "file": 1562,
    "generated": 15,
    "pattern": 287,
-   "root": 212,
+   "root": 213,
    "unresolved": 1997
   },
-  "references": 33360,
+  "references": 33361,
   "unclassified": 0
  }
 }

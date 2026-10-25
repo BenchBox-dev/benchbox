@@ -109,6 +109,12 @@
       "symbol": "time.time",
       "line_regex": "time\\.time\\(\\)\\s*-\\s*lock_file\\.stat\\(\\)\\.st_mtime",
       "reason": "Working-dir lock stale detection compares wall-clock filesystem metadata."
+    },
+    {
+      "path_glob": "_project/scripts/dev_loop_pr_metrics.py",
+      "symbol": "time.time",
+      "line_regex": "reset - time\\.time\\(\\)",
+      "reason": "The GitHub rate-limit reset header is an epoch timestamp, so the wait until it compares wall clocks."
     }
   ]
 }
