@@ -1341,7 +1341,16 @@ def _cmd_misses(args: argparse.Namespace) -> int:
     notes.extend(f"cannot parse junit report {name}" for name in unparsed)
     report = miss_report(selected, failed, escalated)
     if notes:
-        report.update({"missed": [], "would_escalate": None, "available": False, "reason": "; ".join(notes)})
+        report.update(
+            {
+                "missed": [],
+                "selection_escalates": None,
+                "caught_by_escalation": [],
+                "would_escalate": None,
+                "available": False,
+                "reason": "; ".join(notes),
+            }
+        )
     else:
         report.update({"available": True, "reason": ""})
     lines = ["## Shadow selection misses"]

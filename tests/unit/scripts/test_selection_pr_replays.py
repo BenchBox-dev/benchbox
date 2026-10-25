@@ -98,6 +98,20 @@ def test_replayed_pull_request_runs_the_fast_tier_and_the_code_lane(case: int) -
 
 
 @pytest.mark.parametrize("case", COVERED_BY_MAP)
+def test_replay_fixture_names_the_coverage_run_it_came_from(case: int) -> None:
+    meta, _ = _load(case)
+    provenance = meta["provenance"]
+    assert len(provenance["full_map_sha256"]) == 64
+    assert provenance["test_file"] == meta["failed"][0].split("::", 1)[0]
+    assert provenance["merge_sha"] in {
+        "b7e364ad8f6cfd7e0147c1783422f92bba763351",
+        "dc5a628847c41ddc7289796f76139c21de71e2f3",
+        "ef67c6c118894659748ab425ad4e9ce0453cb882",
+    }
+    assert "--cov-context=test" in provenance["command"]
+
+
+@pytest.mark.parametrize("case", COVERED_BY_MAP)
 def test_replayed_pull_request_selects_the_test_that_failed_on_trunk(
     case: int, repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -226,7 +226,7 @@
      "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[snowpark-connect-compute_size]"
     ],
     "14": [
-     "tests/unit/other/test_other_coverage.py::test_covers_the_remaining_lines"
+     "tests/unit/cli/test_platform_options_reach_adapters.py::test_platform_option_reaches_the_adapter_constructor[emr-serverless-compute_resource]"
     ],
     "330": [
      "tests/unit/cli/test_platform_options_reach_adapters.py::test_adapter_is_constructed_without_platform_options[pyspark]",
@@ -248,5 +248,14 @@
    ]
   }
  },
- "pr": 3066
+ "pr": 3066,
+ "provenance": {
+  "base_sha": "bee91f53cf0b97b378d8e53a18663c1201c99ed6",
+  "command": "BENCHBOX_TEST_TIER=t2 COVERAGE_CORE=ctrace pytest tests/unit/cli/test_platform_options_reach_adapters.py -n 0 -m medium -p pytest_cov --cov --cov-config=scripts/coverage_map.ini --cov-context=test, then coverage_test_selection.py build-map at the base tree",
+  "full_map_sha256": "9481478aca9165201ede84bd82accffc5ccc23221a907c4e56f2f3938733c6c9",
+  "map_files": 331,
+  "map_nodes": 83,
+  "merge_sha": "b7e364ad8f6cfd7e0147c1783422f92bba763351",
+  "test_file": "tests/unit/cli/test_platform_options_reach_adapters.py"
+ }
 }

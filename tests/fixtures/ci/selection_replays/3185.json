@@ -94,5 +94,14 @@
    ]
   }
  },
- "pr": 3185
+ "pr": 3185,
+ "provenance": {
+  "base_sha": "93f01fbe61701ecad90b5cccb6e83ade01c6a316",
+  "command": "BENCHBOX_TEST_TIER=t2 COVERAGE_CORE=ctrace pytest tests/test_benchbox.py -n 0 -m medium -p pytest_cov --cov --cov-config=scripts/coverage_map.ini --cov-context=test, then coverage_test_selection.py build-map at the base tree",
+  "full_map_sha256": "f556fa308dc3f6adeb17db373f14c58789d58efbfcbaf284a0d16308a85699ff",
+  "map_files": 58,
+  "map_nodes": 4,
+  "merge_sha": "ef67c6c118894659748ab425ad4e9ce0453cb882",
+  "test_file": "tests/test_benchbox.py"
+ }
 }
