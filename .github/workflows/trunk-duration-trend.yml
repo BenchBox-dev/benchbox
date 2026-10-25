@@ -1,0 +1,32 @@
+name: Trunk duration trend
+
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  issues: write
+
+concurrency:
+  group: trunk-duration-trend
+  cancel-in-progress: false
+
+jobs:
+  trend:
+    name: Compare Trunk job durations with the prior week
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the trend script
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          sparse-checkout: scripts/trunk_duration_trend.py
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Alarm on Trunk duration creep
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/trunk_duration_trend.py
