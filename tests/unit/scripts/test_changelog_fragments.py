@@ -87,7 +87,7 @@ def test_valid_internal_file_parses(tmp_path: Path) -> None:
         (_doc(entries=[_entry(text="- Starts with a bullet marker")]), "'- '"),
         (_doc(entries=[_entry(text="First line of text\nsecond line of text")]), "single line"),
         (_doc(entries=[_entry(text="too short")]), "length 9"),
-        (_doc(entries=[_entry(text="x" * 801)]), "length 801"),
+        (_doc(entries=[_entry(text="x" * 2001)]), "length 2001"),
         (_doc(entries=[_entry(category="fixed", breaking=True, lead="Lead")]), "before-you-upgrade"),
         (_doc(entries=[_entry(category="before-you-upgrade", breaking=True)]), "requires a lead"),
         (_doc(entries=[_entry(breaking="yes")]), "breaking"),
@@ -125,8 +125,13 @@ def test_name_boundary_of_one_hundred_characters_is_accepted() -> None:
 
 def test_text_length_boundaries(tmp_path: Path) -> None:
     assert _errors(tmp_path, _doc(entries=[_entry(text="x" * 20)])) == []
-    assert _errors(tmp_path, _doc(entries=[_entry(text="x" * 800)])) == []
+    assert _errors(tmp_path, _doc(entries=[_entry(text="x" * 2000)])) == []
     assert _errors(tmp_path, _doc(entries=[_entry(text="x" * 19)]))
+
+
+def test_detail_length_boundaries(tmp_path: Path) -> None:
+    assert _errors(tmp_path, _doc(entries=[_entry(details=["x" * 600])])) == []
+    assert _errors(tmp_path, _doc(entries=[_entry(details=["x" * 601])]))
 
 
 def test_breaking_entry_requires_category_and_lead_together(tmp_path: Path) -> None:
@@ -150,6 +155,7 @@ def test_render_orders_headings_canonically_and_nests_details() -> None:
         [
             _entry(category="documentation", text="Documented the fragment workflow for contributors."),
             _entry(category="fixed", text="Fixed a crash when a result bundle is empty."),
+            _entry(category="security", text="BenchBox now requires a certifi release that drops a distrusted CA."),
             _entry(category="changed", text="Changed the default scale factor handling rules."),
         ],
         [
@@ -169,6 +175,7 @@ def test_render_orders_headings_canonically_and_nests_details() -> None:
         "### Added",
         "### Changed",
         "### Fixed",
+        "### Security",
         "### Documentation",
     ]
     assert "- **BREAKING: Config key renamed.** The old key is no longer read and must be renamed." in rendered
