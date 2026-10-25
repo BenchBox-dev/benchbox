@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -236,6 +237,7 @@ def test_build_refuses_foreign_core_sha(tmp_path: Path) -> None:
             parent_core_sha=None,
             parent_source="local",
             certified_by=None,
+            profile="exact3",
             cmd="build",
         )
         with pytest.raises(RuntimeError, match="not the bundle core_sha"):
@@ -600,3 +602,112 @@ def test_snapshot_build_refuses_a_build_without_per_result_bundles(
     out = _fake_explorer_publish(tmp_path, monkeypatch, bundles=False)
     with pytest.raises(RuntimeError, match="no per-result bundles"):
         site_inputs.build_explorer_snapshot(out)
+
+
+def _candidate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, schema: int, certified_by: str = "candidate") -> Path:
+    out = _bundle(tmp_path)
+    tiny = _write(tmp_path / "tiny.schema.json", '{"type": "object", "required": ["schema_version"]}\n')
+    monkeypatch.setattr(site_inputs, "DOCS_DATA_SCHEMA", tiny)
+    monkeypatch.setattr(site_inputs, "DOC_CONTRACTS_SCHEMA", tiny)
+    _write(out / "docs-data" / site_inputs.DOCS_DATA_FILE, '{"schema_version": 1}\n')
+    _write(out / "doc-contracts.json", '{"schema_version": 1}\n')
+    if schema == 5:
+        shutil.rmtree(out / "docs")
+        shutil.rmtree(out / "downloads")
+    names = site_inputs.MEMBERS_BY_SCHEMA[schema]
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest["schema"] = schema
+    manifest["certified_by"] = certified_by
+    manifest["members"] = {name: site_inputs.member_digest(out / name) for name in names}
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    return out
+
+
+def test_member_sets_per_schema_are_exact() -> None:
+    base = set(site_inputs.REQUIRED_MEMBERS)
+    assert set(site_inputs.MEMBERS_BY_SCHEMA[3]) == base
+    assert set(site_inputs.MEMBERS_BY_SCHEMA[4]) == base | {"docs-data", "doc-contracts.json"}
+    assert set(site_inputs.MEMBERS_BY_SCHEMA[5]) == (base - {"docs", "downloads"}) | {"docs-data", "doc-contracts.json"}
+    assert site_inputs.SCHEMA == 3
+    assert site_inputs.PROFILE_SCHEMAS["exact3"] == 3
+
+
+def test_default_profile_is_exact3() -> None:
+    parser_args = []
+
+    def capture(args: argparse.Namespace) -> int:
+        parser_args.append(args)
+        return 0
+
+    original = site_inputs.cmd_build
+    site_inputs.cmd_build = capture
+    try:
+        site_inputs.main(["build", "--out", "x"])
+    finally:
+        site_inputs.cmd_build = original
+    assert parser_args[0].profile == "exact3"
+
+
+@pytest.mark.parametrize("schema", [4, 5])
+def test_verify_accepts_candidate_bundles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], schema: int
+) -> None:
+    assert site_inputs.cmd_verify(_candidate(tmp_path, monkeypatch, schema)) == 0
+    assert f"schema {schema}" in capsys.readouterr().out
+
+
+def test_exact3_verify_rejects_added_contract_members(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _candidate(tmp_path, monkeypatch, 4)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest["schema"] = 3
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    assert site_inputs.cmd_verify(out) == 1
+
+
+def test_schema5_rejects_docs_member(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _candidate(tmp_path, monkeypatch, 5)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    _write(out / "docs" / "member.txt", "docs")
+    manifest["members"]["docs"] = site_inputs.member_digest(out / "docs")
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    assert site_inputs.cmd_verify(out) == 1
+
+
+def test_schema4_rejects_missing_member(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _candidate(tmp_path, monkeypatch, 4)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    del manifest["members"]["doc-contracts.json"]
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    assert site_inputs.cmd_verify(out) == 1
+
+
+def test_candidate_rejects_publication_certifier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = _candidate(tmp_path, monkeypatch, 4, certified_by="123456")
+    assert site_inputs.cmd_verify(out) == 1
+    assert "certified_by" in capsys.readouterr().out
+
+
+def test_candidate_rejects_schema_invalid_docs_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _candidate(tmp_path, monkeypatch, 4)
+    _write(out / "docs-data" / site_inputs.DOCS_DATA_FILE, "{}\n")
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest["members"]["docs-data"] = site_inputs.member_digest(out / "docs-data")
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    assert site_inputs.cmd_verify(out) == 1
+
+
+def test_candidate_rejects_extra_docs_data_entry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _candidate(tmp_path, monkeypatch, 4)
+    _write(out / "docs-data" / "extra.json", "{}\n")
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest["members"]["docs-data"] = site_inputs.member_digest(out / "docs-data")
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    assert site_inputs.cmd_verify(out) == 1
+
+
+def test_candidate_build_refuses_a_certifier() -> None:
+    args = argparse.Namespace(profile="candidate4", certified_by="123", out="unused")
+    with pytest.raises(RuntimeError, match="cannot carry a certifier"):
+        site_inputs.cmd_build(args)
