@@ -4,7 +4,7 @@
     "A design that keeps head binding, invalidation and the App-bound oracle-gate status, reviewed by the oracle-path owner before implementation",
     "If implemented: p90 verdict-to-gate latency falls versus the baseline over 7 days, with no gate posted for a stale head (tests and live evidence)"
   ],
-  "context": "Source: CI fan-out study on ci-workflow-fanout-oracle-text-edit-20261025. The CI-efficiency effort that produced it does not change oracle workflows by owner direction (2026-10-25); this item is left open for an agent that owns oracle work. Other study findings: oracle family plus pr-hold plus text-edit refresh is 5.8% of runner-minutes; oracle-gate's ~877 cancellations mostly never start a runner; oracle-verdict duplicate runs at most ~350 min over the window with a verdict-freshness risk.",
+  "context": "NOTE 2026-10-25: oracle-verdict-single-job-20261025 keeps the oracle-gate dispatch as a separate run, so this item's bridge latency is unchanged by it and stays open.\n\nSource: CI fan-out study on ci-workflow-fanout-oracle-text-edit-20261025. The CI-efficiency effort that produced it does not change oracle workflows by owner direction (2026-10-25); this item is left open for an agent that owns oracle work. Other study findings: oracle family plus pr-hold plus text-edit refresh is 5.8% of runner-minutes; oracle-gate's ~877 cancellations mostly never start a runner; oracle-verdict duplicate runs at most ~350 min over the window with a verdict-freshness risk.",
   "description": "Measured 2026-10-24T00:00Z to 2026-10-25T15:02Z (90 PR heads that reached all-required-green): oracle-gate was the last required context on 58 heads, landing a median 1,235 s after the last CI-side context. Most of that is waiting for the verdict itself, but the bridge from verdict to gate status is median 54 s, p90 779 s, and is queue time for the oracle-gate run. Find a way to post the gate status sooner after a verdict while preserving current-head binding, invalidation on new pushes, and the App-bound required status. This is an oracle soundness path: it needs maintainer review and an oracle-path owner.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "3425b57ed66444eb915d811e5bd023f8",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T20:59:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a690adf4253f4a059000d6b929d7fffa",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
 }
