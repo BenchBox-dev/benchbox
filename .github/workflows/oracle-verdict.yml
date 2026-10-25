@@ -949,15 +949,6 @@ jobs:
           python3 -m _project.scripts.oracle_reviewers.cli finalize --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
           --out-dir "$RUNNER_TEMP/oracle-final" --classification "$RUNNER_TEMP/oracle-classification/classification.json"
 
-      - name: Upload the retry state
-        if: steps.finalize.outputs.has_state == 'true'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-        with:
-          name: oracle-verdict-state-${{ needs.plan.outputs.pr }}
-          path: ${{ runner.temp }}/oracle-final/state/state.json
-          if-no-files-found: error
-          retention-days: 7
-
       - name: Log the result when the App is not configured
         if: env.HAS_APP != 'true'
         env:
@@ -998,6 +989,15 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$RUNNER_TEMP/oracle-final/review.json"
+
+      - name: Upload the retry state
+        if: steps.finalize.outputs.has_state == 'true'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: oracle-verdict-state-${{ needs.plan.outputs.pr }}
+          path: ${{ runner.temp }}/oracle-final/state/state.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Dispatch the gate for the reviewed head
         if: env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'

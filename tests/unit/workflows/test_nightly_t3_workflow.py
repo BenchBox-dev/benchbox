@@ -1098,3 +1098,40 @@ def test_nightly_postgres_integration_pulls_the_authenticated_ghcr_mirror_after_
     assert mirror["permissions"]["packages"] == "write"
     assert _mirrored_images(mirror) == ["postgres17"]
     assert "public.ecr.aws/docker/library/postgres" not in (WORKFLOWS_DIR / "nightly.yml").read_text(encoding="utf-8")
+
+
+_POSTGRES_17_GHCR_IMAGE = (
+    "ghcr.io/benchbox-dev/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3"
+)
+
+
+def _service_images(workflow: dict[str, Any]) -> list[str]:
+    return [
+        service["image"]
+        for job in workflow["jobs"].values()
+        for service in (job.get("services") or {}).values()
+        if isinstance(service, dict) and "image" in service
+    ]
+
+
+def test_no_workflow_service_uses_a_public_ecr_postgres_image() -> None:
+    offenders = [
+        f"{path.name}: {image}"
+        for path in sorted(WORKFLOWS_DIR.glob("*.yml"))
+        for image in _service_images(_load(path))
+        if "public.ecr.aws" in image and "postgres" in image
+    ]
+    assert offenders == []
+
+
+def test_pr_sql_evidence_and_nightly_postgres_share_one_ghcr_digest() -> None:
+    ci_job = _load(WORKFLOWS_DIR / "ci.yml")["jobs"]["sql-execution-evidence"]
+    nightly_job = _load(WORKFLOWS_DIR / "nightly.yml")["jobs"]["postgres-integration"]
+    for job in (ci_job, nightly_job):
+        service = job["services"]["postgres"]
+        assert service["image"] == _POSTGRES_17_GHCR_IMAGE
+        assert service["credentials"] == {
+            "username": "${{ github.actor }}",
+            "password": "${{ github.token }}",
+        }
+        assert job["permissions"]["packages"] == "read"
