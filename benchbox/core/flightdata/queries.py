@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from benchbox.core.static_query_catalog import load_static_query_catalog
+from benchbox.sql_compat.local_exemptions import compat_local
 from benchbox.utils.dialect_utils import translate_sql_query
 
 QUERIES: dict[str, dict[str, Any]] = load_static_query_catalog(__package__)["QUERIES"]
@@ -17,6 +18,14 @@ class FlightDataQueryManager:
         self.start_date = start_date
         self.end_date = end_date
 
+    @compat_local(
+        kind="rendering",
+        platform_specific=True,
+        reason=(
+            "Renders FlightData SQL for PostgreSQL-family engines by casting ROUND inputs "
+            "to DECIMAL where PostgreSQL does not accept ROUND(double precision, integer)."
+        ),
+    )
     def get_query(
         self,
         query_key: str,
