@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "A test that fails on current develop: constructing the server in process leaves logger levels, logger filters, quiet mode and the global tracer provider unchanged.",
+    "The existing subprocess stdio test still shows a quiet startup, and the redaction tests pass.",
+    "The exporter's state containment in scripts/doc_contracts.py is removed, and test_doc_contracts.py still passes.",
+    "The changelog records the migration for in-process callers; make pr-preflight passes; the PR passes the oracle on its merged head and merges through make pr-arm."
+  ],
+  "context": "Found 2026-10-24 during the develop recovery (#3385). Source: Advisor review ~/Developer/benchmark_runs/ci-wedge-review-20261024/report.md, section 'Should create_server() stop mutating globals?' (yes as an API-design objective, not as an emergency default change) and prevention plan row 'Separate server construction from process startup'. The fixture-boundary leak detector is tracked separately in test-module-state-leak-guard-20261025.",
+  "description": "Problem: constructing the MCP server changes process-wide state. It sets the benchbox logger level (benchbox/mcp/server.py:93), turns on quiet mode, and its telemetry can install a global tracer provider (benchbox/mcp/telemetry.py:124). In-process callers such as scripts/doc_contracts.py:452 and :478 inherit the changes. On 2026-10-24 this contaminated later tests and contributed to the red trunk. #3385 contained it in the exporter only (tests/unit/scripts/test_doc_contracts.py:150). Saving and restoring globals is not a concurrency boundary.\n\nOutcome: process-wide configuration moves to explicit startup at the existing run_server() boundary, with a migration for in-process callers. Stdio quietness and remote-log redaction are preserved.\n\nDecision gates:\n1. Public API. List every caller and the documented MCP API contract before editing. Existing tests expect construction to turn on quiet mode (tests/unit/mcp/test_mcp_stdout_isolation.py:15-28 and 101-120); changing that is a behaviour change and needs a changelog migration note. If an external consumer relies on construction side effects, stop and ask the owner.\n2. Telemetry. A host application's tracer provider must not be replaced silently. Decide whether telemetry start becomes explicit or is skipped when a provider already exists, and record the choice.\n\nItem guardrails: stdio startup stays quiet; remote rejection logs stay redacted; telemetry exports only intended spans; MCP tool contracts are unchanged.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no raw gh pr merge.",
+  "links": [
+    "benchbox/mcp/server.py",
+    "benchbox/mcp/telemetry.py",
+    "scripts/doc_contracts.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T12:52:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1949e4b242684fb58bd865283fc0a9fb",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
