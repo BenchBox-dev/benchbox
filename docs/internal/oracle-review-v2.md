@@ -723,20 +723,26 @@ evaluates a pull request is in one concurrency group keyed by its number, with
 cancel-in-progress, so a newer run for a pull request cancels the earlier one
 instead of racing it.
 
-When evaluation fails after the head SHA is known (an API, fetch or policy
-error), the script posts `failure` for that head with a short error
-description and exits with the error code, so an earlier `success` on the head
-cannot outlive a gate that can no longer evaluate it. This is deliberately
-fail-closed: an API outage turns every pull request the gate touches to
-`failure` until its next successful evaluation. When the pull request itself
-cannot be read there is no head SHA to post to, so nothing is posted; that is
-the limit of the behavior, and a prior status on the head stands until a later
-run can read it. A pull request whose base is not `develop`, and any
-`--no-post` run, never posts, errors included. The hourly sweep lists open
-`develop` pull requests with `gh api --paginate`, so every one is covered, and
-its 45-minute timeout is sized from a measured sweep of 16 pull requests in
-about 75 seconds (about 5 seconds each), which leaves room for several
-hundred.
+When evaluation fails after the head SHA is known, whatever the cause (an API,
+network, malformed-payload or policy error), the script posts `failure` for
+that head with a short error description and exits with the error code, so an
+earlier `success` on the head cannot outlive a gate that can no longer
+evaluate it. This is deliberately fail-closed: an API outage turns every pull
+request the gate touches to `failure` until its next successful evaluation.
+The pull request read is retried three times, waiting 2 seconds and then 4
+seconds. If it still fails there is no live head to post to, so the script
+posts `failure` to the optional `--head-sha` when one was given and otherwise
+posts nothing; a live read always wins over `--head-sha`. The hourly sweep
+passes each pull request's head from its listing, and the bridge dispatches
+with the head of the run it bridges, so those runs fail closed even when the
+read is down. A `pull_request_target` or `issue_comment` run does not pass a
+head, which leaves one limit: a persistent read failure there posts nothing,
+and the prior status on the head stands until the next sweep carries the head.
+A pull request whose base is not `develop`, and any `--no-post` run, never
+posts, errors included. The hourly sweep lists open `develop` pull requests
+with `gh api --paginate`, so every one is covered, and its 45-minute timeout is
+sized from a measured sweep of 16 pull requests in about 75 seconds (about 5
+seconds each), which leaves room for several hundred.
 
 `oracle-gate` became required on 2026-10-21, scoped to the `benchbox-oracle`
 App's integration ID, while `oracle-review` stayed required beside it. Across

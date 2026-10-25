@@ -4,7 +4,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -30,9 +32,16 @@ from oracle_review_check import (
 GATE_CONTEXT = "oracle-gate"
 GATED_BASE = "develop"
 DESCRIPTION_LIMIT = 140
+PULL_READ_ATTEMPTS = 3
+PULL_READ_BACKOFF_SECONDS = 2
+HEAD_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 
 
 class UngatedBase(Exception):
+    pass
+
+
+class PullReadFailed(Exception):
     pass
 
 
@@ -100,12 +109,23 @@ def load_policy_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
         raise CheckError(f"cannot load the review policy: {exc}") from exc
 
 
+def read_pull(repo: str, pr: int, token: str) -> tuple[dict[str, Any], str, str]:
+    last: Exception | None = None
+    for attempt in range(PULL_READ_ATTEMPTS):
+        if attempt:
+            time.sleep(PULL_READ_BACKOFF_SECONDS * attempt)
+        try:
+            pull = fetch_pull(token, repo, pr)
+            return pull, pull["base"]["ref"], pull["head"]["sha"]
+        except Exception as exc:
+            last = exc
+    raise PullReadFailed(f"cannot read #{pr} after {PULL_READ_ATTEMPTS} attempts: {last}") from last
+
+
 def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
-    pull = fetch_pull(token, repo, pr)
-    base = pull["base"]["ref"]
+    pull, base, head_sha = read_pull(repo, pr, token)
     if base != GATED_BASE:
         raise UngatedBase(f"#{pr} targets {base}, not {GATED_BASE}; {GATE_CONTEXT} is posted only for {GATED_BASE}")
-    head_sha = pull["head"]["sha"]
     try:
         items = fetch_files(token, repo, pr)
         files = changed_paths(items)
@@ -115,9 +135,15 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
         base_date = fetch_base_change_date(token, repo, pr)
         comments = fetch_comments(token, repo, pr)
         status, message = decide(head_sha, files, reviews, threads, matcher, base_date, comments)
-    except (CheckError, KeyError, ValueError) as exc:
+    except Exception as exc:
         raise EvaluationFailed(head_sha, exc) from exc
     return head_sha, status, message
+
+
+def _head_sha(value: str) -> str:
+    if not HEAD_SHA_PATTERN.fullmatch(value):
+        raise argparse.ArgumentTypeError("must be 40 lowercase hex characters")
+    return value
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
@@ -130,6 +156,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--repo", required=True)
     parser.add_argument("--pr", required=True, type=int)
     parser.add_argument("--no-post", action="store_true")
+    parser.add_argument("--head-sha", type=_head_sha)
     return parser.parse_args(argv)
 
 
@@ -142,6 +169,14 @@ def _fail_closed(args: argparse.Namespace, token: str, exc: EvaluationFailed) ->
     except CheckError as post_exc:
         print(f"oracle-gate: error: {post_exc}", file=sys.stderr)
     return ERROR
+
+
+def _read_failed(args: argparse.Namespace, token: str, exc: PullReadFailed, known_head: str | None) -> int:
+    head_sha = known_head or args.head_sha
+    if head_sha is None:
+        print(f"oracle-gate: error: {exc}", file=sys.stderr)
+        return ERROR
+    return _fail_closed(args, token, EvaluationFailed(head_sha, exc))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -158,6 +193,8 @@ def main(argv: list[str] | None = None) -> int:
     except UngatedBase as exc:
         print(f"oracle-gate: {exc}")
         return PASS
+    except PullReadFailed as exc:
+        return _read_failed(args, token, exc, None)
     except EvaluationFailed as exc:
         return _fail_closed(args, token, exc)
     except (CheckError, KeyError, ValueError) as exc:
@@ -171,6 +208,8 @@ def main(argv: list[str] | None = None) -> int:
     except UngatedBase as exc:
         print(f"oracle-gate: {exc}")
         return PASS
+    except PullReadFailed as exc:
+        return _read_failed(args, token, exc, head_sha)
     except EvaluationFailed as exc:
         return _fail_closed(args, token, exc)
     except (CheckError, KeyError, ValueError) as exc:

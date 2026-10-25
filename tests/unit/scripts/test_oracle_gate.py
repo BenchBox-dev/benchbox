@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,13 @@ HEAD = "a" * 40
 AFTER_HEAD = "2026-10-01T13:00:00Z"
 SOUNDNESS_FILES = ["benchbox/core/equivalence/checker.py", "docs/index.md"]
 OTHER_FILES = ["docs/index.md", "notes.md"]
+
+
+@pytest.fixture(autouse=True)
+def sleeps(monkeypatch: pytest.MonkeyPatch) -> list[float]:
+    recorded: list[float] = []
+    monkeypatch.setattr(time, "sleep", recorded.append)
+    return recorded
 
 
 def _review(body: str, **over: Any) -> dict[str, Any]:
@@ -425,3 +433,149 @@ def test_target_url_points_at_the_run(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GITHUB_RUN_ID", "123")
     monkeypatch.delenv("GITHUB_SERVER_URL", raising=False)
     assert oracle_gate.target_url("o/r") == "https://github.com/o/r/actions/runs/123"
+
+
+OTHER_HEAD = "b" * 40
+
+
+def _test_pull(base: str = "develop", head: str = HEAD) -> dict[str, Any]:
+    return {"base": {"ref": base}, "head": {"sha": head}, "changed_files": 1}
+
+
+def _stub_unreadable_pull(monkeypatch: pytest.MonkeyPatch, failures: int) -> list[int]:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.setattr(oracle_gate, "load_policy_rules", lambda: ((), ()))
+    calls: list[int] = []
+
+    def flaky(repo: str, pr: int, token: str) -> dict[str, Any]:
+        calls.append(1)
+        if len(calls) <= failures:
+            raise oracle_gate.CheckError("read down")
+        return _test_pull()
+
+    monkeypatch.setattr(oracle_gate, "fetch_pull", flaky)
+    monkeypatch.setattr(oracle_gate, "fetch_files", lambda repo, pr, token: [{"filename": "x"}])
+    monkeypatch.setattr(oracle_gate, "fetch_reviews", lambda repo, pr, token: [])
+    monkeypatch.setattr(oracle_gate, "fetch_threads", lambda repo, pr, token: [])
+    monkeypatch.setattr(oracle_gate, "fetch_base_change_date", lambda repo, pr, token: None)
+    monkeypatch.setattr(oracle_gate, "fetch_comments", lambda repo, pr, token: [])
+    return calls
+
+
+@pytest.mark.parametrize(
+    "error", [TypeError("pullRequest is null"), ConnectionResetError("reset"), AttributeError("x")]
+)
+def test_main_posts_failure_for_any_exception_after_the_head_is_known(
+    monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    _stub_pull(monkeypatch)
+    monkeypatch.setattr(oracle_gate, "load_policy_rules", lambda: ((), ()))
+    monkeypatch.setattr(oracle_gate, "fetch_reviews", lambda repo, pr, token: [])
+
+    def broken(repo: str, pr: int, token: str) -> Any:
+        raise error
+
+    monkeypatch.setattr(oracle_gate, "fetch_threads", broken)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+    assert [(head, oracle_gate.gate_state(status)) for head, status, _ in posts] == [(HEAD, "failure")]
+
+
+def test_main_posts_failure_when_the_fresh_reevaluation_raises_an_arbitrary_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _stub_pull(monkeypatch)
+    monkeypatch.setattr(oracle_gate, "load_policy_rules", lambda: ((), ()))
+    monkeypatch.setattr(oracle_gate, "fetch_reviews", lambda repo, pr, token: [])
+    monkeypatch.setattr(oracle_gate, "fetch_base_change_date", lambda repo, pr, token: None)
+    monkeypatch.setattr(oracle_gate, "fetch_comments", lambda repo, pr, token: [])
+    calls: list[int] = []
+
+    def threads(repo: str, pr: int, token: str) -> list[Any]:
+        calls.append(1)
+        if len(calls) > 1:
+            raise ConnectionResetError("reset")
+        return []
+
+    monkeypatch.setattr(oracle_gate, "fetch_threads", threads)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+    assert [(head, oracle_gate.gate_state(status)) for head, status, _ in posts] == [(HEAD, "failure")]
+
+
+def test_pull_read_that_fails_twice_then_succeeds_evaluates_normally(
+    monkeypatch: pytest.MonkeyPatch, sleeps: list[float]
+) -> None:
+    calls = _stub_unreadable_pull(monkeypatch, failures=2)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) in (oracle_gate.PASS, oracle_gate.WAITING)
+    assert len(calls) == 4
+    assert sleeps == [2, 4]
+    assert [head for head, _, _ in posts] == [HEAD]
+
+
+def test_pull_read_failing_three_times_posts_failure_to_the_given_head(
+    monkeypatch: pytest.MonkeyPatch, sleeps: list[float]
+) -> None:
+    calls = _stub_unreadable_pull(monkeypatch, failures=99)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7", "--head-sha", OTHER_HEAD]) == oracle_gate.ERROR
+    assert len(calls) == 3
+    assert sleeps == [2, 4]
+    assert [(head, oracle_gate.gate_state(status)) for head, status, _ in posts] == [(OTHER_HEAD, "failure")]
+
+
+def test_pull_read_failing_three_times_without_a_head_posts_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_unreadable_pull(monkeypatch, failures=99)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+    assert posts == []
+
+
+def test_pull_read_failure_with_a_head_never_posts_under_no_post(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_unreadable_pull(monkeypatch, failures=99)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7", "--head-sha", OTHER_HEAD, "--no-post"]) == oracle_gate.ERROR
+    assert posts == []
+
+
+def test_a_readable_pull_request_ignores_the_given_head(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_unreadable_pull(monkeypatch, failures=0)
+    posts = _record_posts(monkeypatch)
+    oracle_gate.main(["--repo", "o/r", "--pr", "7", "--head-sha", OTHER_HEAD])
+    assert [head for head, _, _ in posts] == [HEAD]
+
+
+def test_the_given_head_does_not_post_for_an_ungated_base(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_pull(monkeypatch, base="feature")
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7", "--head-sha", OTHER_HEAD]) == oracle_gate.PASS
+    assert posts == []
+
+
+def test_pull_read_failing_on_the_fresh_reevaluation_posts_failure_to_the_known_head(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    calls: list[int] = []
+
+    def flaky(repo: str, pr: int, token: str) -> tuple[str, int, str]:
+        calls.append(1)
+        if len(calls) == 1:
+            return HEAD, oracle_gate.PASS, "ok"
+        raise oracle_gate.PullReadFailed("down")
+
+    monkeypatch.setattr(oracle_gate, "evaluate", flaky)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+    assert [(head, oracle_gate.gate_state(status)) for head, status, _ in posts] == [(HEAD, "failure")]
+
+
+@pytest.mark.parametrize("value", ["", "abc", "A" * 40, "g" * 40, "a" * 39, "a" * 41])
+def test_an_invalid_head_sha_is_rejected(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    posts = _record_posts(monkeypatch)
+    with pytest.raises(SystemExit) as raised:
+        oracle_gate.main(["--repo", "o/r", "--pr", "7", "--head-sha", value])
+    assert raised.value.code == 2
+    assert posts == []

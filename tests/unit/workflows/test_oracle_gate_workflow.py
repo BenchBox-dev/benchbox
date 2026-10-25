@@ -120,6 +120,24 @@ def test_dispatch_takes_a_pr_number_and_schedule_sweeps_hourly() -> None:
     assert len(_triggers()["schedule"]) == 1
 
 
+def test_dispatch_head_sha_is_optional() -> None:
+    head = _triggers()["workflow_dispatch"]["inputs"]["head_sha"]
+    assert head["required"] is False
+    assert head["type"] == "string"
+
+
+def test_gate_passes_the_head_only_when_the_dispatch_input_is_valid() -> None:
+    resolve = next(step for step in _steps("gate") if step["name"] == "Resolve the pull request")
+    assert resolve["env"]["INPUT_HEAD"] == "${{ inputs.head_sha }}"
+    assert "grep -Eq '^[0-9a-f]{40}$'" in resolve["run"]
+    assert "head_sha=$INPUT_HEAD" in resolve["run"]
+    for name in ("Post the gate for the head", "Log the gate without posting when the App is not configured"):
+        step = next(step for step in _steps("gate") if step["name"] == name)
+        assert step["env"]["KNOWN_HEAD"] == "${{ steps.resolve.outputs.head_sha }}"
+        assert 'if [ -n "$KNOWN_HEAD" ]; then HEAD_ARGS=(--head-sha "$KNOWN_HEAD"); fi' in step["run"]
+        assert '"${HEAD_ARGS[@]}"' in step["run"]
+
+
 def test_no_step_checks_out_pull_request_code() -> None:
     text = _text()
     assert "github.head_ref" not in text
@@ -229,6 +247,7 @@ def test_completion_runs_dispatch_the_gate_for_the_develop_pull_request_at_that_
     assert '.base.ref == "develop"' in step["run"]
     assert ".head.sha == $sha" in step["run"]
     assert 'gh workflow run oracle-gate.yml --repo "$REPO" --ref develop -f pr="$PR_NUMBER"' in step["run"]
+    assert '-f head_sha="$HEAD_SHA"' in step["run"]
     assert SCRIPT not in step["run"]
     assert "github.event_name != 'workflow_run'" in _jobs()["gate"]["if"]
     resolve = next(step for step in _steps("gate") if step["name"] == "Resolve the pull request")
@@ -264,6 +283,10 @@ def test_sweep_covers_every_open_develop_pull_request() -> None:
     assert "gh pr list" not in sweep["run"]
     assert "--limit" not in sweep["run"]
     assert SCRIPT in sweep["run"]
+    assert "--jq '.[] | \"\\(.number) \\(.head.sha)\"'" in sweep["run"]
+    assert "while read -r PR_NUMBER HEAD_SHA" in sweep["run"]
+    assert '--head-sha "$HEAD_SHA"' in sweep["run"]
+    assert "< /dev/null" in sweep["run"]
 
 
 def test_sweep_timeout_covers_the_measured_per_pull_request_time() -> None:
