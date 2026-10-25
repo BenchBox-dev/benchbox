@@ -27766,10 +27766,15 @@
       "title": "Execute the D-9 verification-reach decision per admitted platform (facts-only reader or introspector)"
     },
     "tuning-wizard-layout-choices-discarded-20261013": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T04:32:42Z",
+        "generation": "3d4580c8312b4094b9a0c4836183fd3a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Tuning wizard discards clustering and distribution choices while printing that they are enabled"
     },
     "tuning-yaml-unknown-keys-ignored-20261013": {
