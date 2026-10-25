@@ -40,6 +40,7 @@ from benchbox.core.results.submit_classification import (
     SubmitTerminalState,
     classify_loaded_result,
 )
+from benchbox.core.results.subscale_policy import result_compliance_class
 from benchbox.validation.bundle import (
     COMPANION_SUFFIXES,
     SUBMISSION_NOTES_MAX_LEN,
@@ -647,7 +648,7 @@ def submit(
     submit_state = classify_loaded_result(result)
 
     if submit_state is SubmitTerminalState.unofficial:
-        _compliance_class = getattr(result, "compliance_class", None)
+        _compliance_class = result_compliance_class(result)
         console.print(
             f"\n[red]❌ Submission refused: compliance_class={_compliance_class}[/red]\n"
             "   This result was produced with an unofficial TPC-DS configuration and\n"
