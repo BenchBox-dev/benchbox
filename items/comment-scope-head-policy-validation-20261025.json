@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Tests that fail on current develop: a candidate policy adding a notice path that does not exist fails; adding a valid tracked notice passes; an untracked notice file fails; a staged-versus-worktree mismatch fails; a head rule that would exempt forbidden source cannot exempt it in its own PR. Each runs for both a soundness-reviewed and an unreviewed path.",
+    "Replay: the new check fails on the tree that introduced the bad EULA notice entry and passes on #3385's merged tree. Record both SHAs.",
+    "make comment-policy-check and make pr-preflight pass; the PR passes the oracle on its merged head and merges through make pr-arm.",
+    "The PR body links issue #3386 so the merge closes it.",
+    "docs/internal/comment-cleanup-scope.md states that the PR's own policy is validated but carries no authority."
+  ],
+  "context": "Found 2026-10-24 during the develop recovery (#3385). Source: Advisor review ~/Developer/benchmark_runs/ci-wedge-review-20261024/report.md, prevention plan row 1 and finding F04. Issue #3386 is open with no tracker item until now.",
+  "description": "Problem: on 2026-10-24 a comment-cleanup scope entry naming a file that does not exist (the TPC-DS EULA notice path) merged to develop. The trusted comment-policy check takes policy from the base, so the PR's own new entry was never checked for validity. Once it merged, every PR's tooling check failed against the broken base, and develop stayed wedged until #3385 merged with tooling briefly removed from the required checks by the owner. GitHub issue #3386 records the gap.\n\nOutcome: before merge, the PR's candidate policy (its committed tree) is validated for structure: listed notices exist and are tracked, selectors match files, and schema and ownership are valid. The head policy gains no authority.\n\nDecision gates:\n1. Validity, not authority. Base-derived exclusions and authorization stay base-only. The head policy is checked for validity but never used to exempt source in its own PR. Stop if a design would let the head policy change what is exempt in its own PR.\n2. Reuse, don't fork. Reuse the existing notice, schema and ownership validators, reading the candidate's committed tree or index rather than the working tree. Do not reuse the full historical ledger command wholesale: it would raise obsolete coverage findings (docs/internal/comment-cleanup-scope.md:39-43). Entry points named by the Advisor (scripts/check_comment_cleanup_scope.py :412-446, :1711-1743, :1784-1809) may have moved; re-locate them before editing. head_policy() at :351 and validate_head_token_evidence() at :356 already exist on develop 9a184b619; extend them rather than adding a parallel path.\n3. Placement. Run it inside the existing required tooling check and the local hook. If that would add or rename a required context, stop and ask the owner.\n\nItem guardrails: comment-policy enforcement stays blocking; no new exemptions or fixture entries to get green; no ruleset edits.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no stand-in approvals, no ruleset edits or bypasses, no raw gh pr merge. Do not close and reopen, mass-rerun or rebase other pull requests.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/issues/3386",
+    "scripts/check_comment_cleanup_scope.py",
+    "docs/internal/comment-cleanup-scope.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T12:52:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f729ff88762343ae95e90d5928978a93",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}

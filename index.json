@@ -5228,6 +5228,13 @@
       "status": "done",
       "title": "Comment-scope evidence is checked only at the base, so one stale entry breaks every later PR and blocks its own repair"
     },
+    "comment-scope-head-policy-validation-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Validate a pull request's own comment-scope policy before merge so an invalid entry cannot reach develop"
+    },
     "comment-scope-unowned-modules-20261015": {
       "claim": null,
       "needs": [],
