@@ -7,6 +7,14 @@ on:
   push:
     branches: [develop]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      medium-only:
+        type: boolean
+        default: false
+      artifact-prefix:
+        type: string
+        default: ""
 
 concurrency:
   group: trunk-${{ github.ref }}
@@ -19,6 +27,7 @@ permissions:
 jobs:
   fast:
     name: fast (ubuntu-latest, 3.12)
+    if: ${{ !inputs.medium-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -90,7 +99,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: t2-medium-nodeids-${{ github.sha }}
+          name: ${{ inputs.artifact-prefix }}t2-medium-nodeids-${{ github.sha }}
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
@@ -125,7 +134,7 @@ jobs:
       - name: Download medium collection evidence
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: t2-medium-nodeids-${{ github.sha }}
+          name: ${{ inputs.artifact-prefix }}t2-medium-nodeids-${{ github.sha }}
           path: t2-artifacts
 
       - name: Partition the complete medium tier
@@ -179,7 +188,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: t2-medium-shard-${{ matrix.shard_index }}-${{ github.sha }}
+          name: ${{ inputs.artifact-prefix }}t2-medium-shard-${{ matrix.shard_index }}-${{ github.sha }}
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
@@ -187,6 +196,7 @@ jobs:
 
   correctness-gate:
     name: correctness-gate (${{ matrix.partition }})
+    if: ${{ !inputs.medium-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -287,6 +297,7 @@ jobs:
 
   tpcds-parity-draws:
     name: tpcds-parity-draws
+    if: ${{ !inputs.medium-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -314,6 +325,7 @@ jobs:
 
   required-local-cases:
     name: required-local-cases
+    if: ${{ !inputs.medium-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

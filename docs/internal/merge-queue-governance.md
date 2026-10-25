@@ -160,6 +160,28 @@ hold a shard past 20 minutes. The PR medium tests and the gating trunk
 `medium-test` shards, which run without coverage, still enforce the unscaled
 bounds before merge.
 
+A change to the Trunk lane itself cannot be exercised by an ordinary PR run, so
+the PR `ci.yml` calls the Trunk workflows directly. A PR that changes
+`.github/workflows/trunk.yml`, `scripts/release_canary_sharding.py` or
+`tests/fixtures/medium_shard_durations.json` runs the `trunk-lane-plain` job,
+and one that changes `.github/workflows/trunk-coverage.yml` or either of the
+other two paths runs `trunk-lane-coverage`. Each is a `workflow_call` of the
+real file with `medium-only: true`, so the PR head runs the same collection,
+shard scheduling, environment and coverage setting as the post-merge run, with
+the fast lane, correctness gate, distribution build and coverage map jobs
+skipped. Their evidence artifacts carry a `trunk-lane-plain-` or
+`trunk-lane-coverage-` prefix so they never mix with the PR medium tier's
+`t2-medium-*` evidence that `core` verifies. `core` needs both jobs and expects
+them to run exactly when their paths changed, so a red or missing run blocks the
+merge and unaffected PRs skip both. Replaying the precedents: #3200 changed
+`trunk.yml` (coverage core, the 33-minute budget) and would have run the
+coverage-timeout failures on its own head; #3400 changed both Trunk workflows
+and `release_canary_sharding.py`, so both jobs would have run the module
+grouping and exposed the process-global chDB server. #2821 changed only the
+`ci.yml` `code-test` job and its tests, so no Trunk-lane path matched and this
+run cannot replay it; that incident was a missing TypeScript install in the
+`fast` job of `trunk.yml`, which the run does not execute.
+
 The v2 map stores a node table with per-line integer indices, per-file
 executable-statement line sets from coverage's own analysis (changed blank,
 comment, and docstring lines are ignored rather than counted uncovered), the

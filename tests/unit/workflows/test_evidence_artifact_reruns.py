@@ -19,7 +19,7 @@ def _evidence_uploads() -> list[tuple[str, str, dict]]:
         for job_name, job in (workflow.get("jobs") or {}).items():
             for step in job.get("steps") or []:
                 with_block = step.get("with") or {}
-                name = str(with_block.get("name", ""))
+                name = str(with_block.get("name", "")).removeprefix("${{ inputs.artifact-prefix }}")
                 if str(step.get("uses", "")).startswith(UPLOAD_ACTION) and name.startswith(EVIDENCE_PREFIXES):
                     uploads.append((path.name, f"{job_name}: {name}", with_block))
     return uploads

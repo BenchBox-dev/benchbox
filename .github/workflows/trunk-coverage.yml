@@ -4,11 +4,19 @@ on:
   push:
     branches: [develop]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      medium-only:
+        type: boolean
+        default: false
+      artifact-prefix:
+        type: string
+        default: ""
   schedule:
     - cron: "17 7 * * *"
 
 concurrency:
-  group: trunk-coverage-${{ github.event_name }}
+  group: trunk-coverage-${{ github.event_name }}${{ inputs.medium-only && format('-{0}', github.ref) || '' }}
   cancel-in-progress: true
 
 permissions:
@@ -62,7 +70,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: t2-medium-nodeids-${{ github.sha }}
+          name: ${{ inputs.artifact-prefix }}t2-medium-nodeids-${{ github.sha }}
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
@@ -98,7 +106,7 @@ jobs:
       - name: Download medium collection evidence
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: t2-medium-nodeids-${{ github.sha }}
+          name: ${{ inputs.artifact-prefix }}t2-medium-nodeids-${{ github.sha }}
           path: t2-artifacts
 
       - name: Partition the complete medium tier
@@ -156,7 +164,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: t2-medium-shard-${{ matrix.shard_index }}-${{ github.sha }}
+          name: ${{ inputs.artifact-prefix }}t2-medium-shard-${{ matrix.shard_index }}-${{ github.sha }}
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
@@ -165,7 +173,7 @@ jobs:
   medium-coverage-map:
     name: medium-coverage-map
     needs: medium-test
-    if: ${{ always() && github.event_name != 'schedule' }}
+    if: ${{ always() && github.event_name != 'schedule' && !inputs.medium-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
