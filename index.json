@@ -25305,7 +25305,9 @@
     },
     "test-module-state-leak-guard-20261025": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "mcp-create-server-process-globals-20261025"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Fail any test module that leaves benchbox logger, quiet flag or tracer state changed"
