@@ -2678,6 +2678,37 @@ def _head_row(sha: str, final: bool, head_update: datetime | None, data: dict | 
     return row
 
 
+def _censor_first_observed_head(rows: list[dict]) -> None:
+    for row in rows:
+        if row["_head_update"] is not None:
+            row["status"] = "opened_before_window"
+            row.pop("seconds_to_all_required_ready", None)
+            row.pop("seconds_to_ci_compute_ready", None)
+            return
+
+
+def _pr_time_to_green(rows: list[dict], pre_window: bool) -> dict:
+    observed = [row["_head_update"] for row in rows if row["_head_update"] is not None]
+    final_row = next((row for row in rows if row["final"]), None)
+    out: dict = {"heads": len(rows), "first_head_update_at": _iso_or_none(min(observed)) if observed else None}
+    if pre_window:
+        out["status"] = "opened_before_window"
+    elif final_row is None or not observed:
+        out["status"] = "missing_head_observation"
+    elif final_row["status"] == "no_check_data":
+        out["status"] = "no_check_data"
+    elif final_row["_all_ready"] is None:
+        out["status"] = "unresolved"
+    elif final_row["_all_ready"] < min(observed):
+        out["status"] = "green_before_observed_update"
+    else:
+        out["status"] = "green"
+        out["seconds_to_all_required_ready"] = (final_row["_all_ready"] - min(observed)).total_seconds()
+        if final_row["_ci_ready"] is not None and final_row["_ci_ready"] >= min(observed):
+            out["seconds_to_ci_compute_ready"] = (final_row["_ci_ready"] - min(observed)).total_seconds()
+    return out
+
+
 def build_pr_section(collection: UsageCollection, facts: list[dict]) -> dict:
     policy = context_policy(collection)
     if not policy["available"]:
@@ -2694,30 +2725,17 @@ def build_pr_section(collection: UsageCollection, facts: list[dict]) -> dict:
             _head_row(sha, sha == final_sha, updated, collection.head_data.get(sha), policy)
             for sha, updated in pr_heads(pr, collection.runs)
         ]
+        pre_window = (_parse_ts(pr.get("created_at")) or collection.since) < collection.since
+        if pre_window:
+            _censor_first_observed_head(rows)
         shas = [row["sha"] for row in rows]
         for row in rows:
             head_rows.append({"pr": pr["number"], **{k: v for k, v in row.items() if not k.startswith("_")}})
-        observed = [row["_head_update"] for row in rows if row["_head_update"] is not None]
-        final_row = next((row for row in rows if row["final"]), None)
         pr_row: dict = {
             "number": pr["number"],
             "merged_at": pr.get("merged_at"),
-            "heads": len(rows),
-            "first_head_update_at": _iso_or_none(min(observed)) if observed else None,
+            **_pr_time_to_green(rows, pre_window),
         }
-        if final_row is None or not observed:
-            pr_row["status"] = "missing_head_observation"
-        elif final_row["status"] == "no_check_data":
-            pr_row["status"] = "no_check_data"
-        elif final_row["_all_ready"] is None:
-            pr_row["status"] = "unresolved"
-        elif final_row["_all_ready"] < min(observed):
-            pr_row["status"] = "green_before_observed_update"
-        else:
-            pr_row["status"] = "green"
-            pr_row["seconds_to_all_required_ready"] = (final_row["_all_ready"] - min(observed)).total_seconds()
-            if final_row["_ci_ready"] is not None and final_row["_ci_ready"] >= min(observed):
-                pr_row["seconds_to_ci_compute_ready"] = (final_row["_ci_ready"] - min(observed)).total_seconds()
         pr_facts = [item for sha in shas for item in minutes_by_sha.get(sha, [])]
         attributed_shas.update(shas)
         pr_row["lifecycle_runs"] = len(pr_facts)
@@ -2960,8 +2978,9 @@ def build_usage_report(collection: UsageCollection) -> dict:
         "queue time counts only jobs executed in their attempt; jobs reused from an earlier attempt and skipped jobs are excluded"
     )
     qualifications.append(
-        "PR lifecycle figures cover PRs merged inside the window; their runs created before the window start are not collected, "
-        "and runs on unmerged PRs, pushes and schedules fall under not_on_merged_pr_heads"
+        "PR lifecycle figures cover PRs merged inside the window; runs created before the window start are not collected, "
+        "so PRs opened before the window are reported as opened_before_window and kept out of the time-to-green "
+        "distributions, and runs on unmerged PRs, pushes and schedules fall under not_on_merged_pr_heads"
     )
     return {
         "schema": USAGE_REPORT_SCHEMA,

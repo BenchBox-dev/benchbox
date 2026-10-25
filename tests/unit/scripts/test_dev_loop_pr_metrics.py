@@ -1964,3 +1964,22 @@ def test_urllib_api_retries_truncated_bodies_and_reports_exhaustion(monkeypatch:
 
     outcomes[:] = [http.client.IncompleteRead(b"", 10)] * 2
     assert metrics._urllib_api("/x", "t", attempts=2) is None
+
+
+def test_prs_opened_before_the_window_stay_out_of_the_time_to_green_distributions() -> None:
+    api = _two_pr_api()
+    api.runs.append(_usage_run(7, _at(10, 45), head_sha="A", head_branch="pr1"))
+    collection = _collect(api, USAGE_DAY + timedelta(hours=10, minutes=30), USAGE_DAY + timedelta(hours=14))
+    section = metrics.build_usage_report(collection)["pull_requests"]
+    rows = {row["number"]: row for row in section["pr_rows"]}
+    assert rows[1]["status"] == "opened_before_window"
+    assert "seconds_to_all_required_ready" not in rows[1]
+    assert rows[2]["status"] == "green"
+    heads = {row["sha"]: row for row in section["head_rows"]}
+    assert heads["A"]["status"] == "opened_before_window"
+    assert "seconds_to_all_required_ready" not in heads["A"]
+    assert section["pr_status_counts"] == {"green": 1, "opened_before_window": 1}
+    assert section["per_pr"]["seconds_to_all_required_ready"]["n"] == 1
+    assert section["per_head"]["seconds_to_all_required_ready"]["n"] == 1
+    report = metrics.build_usage_report(collection)
+    assert any("opened_before_window" in note for note in report["completeness"]["qualifications"])
