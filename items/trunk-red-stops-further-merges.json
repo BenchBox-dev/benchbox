@@ -4,7 +4,7 @@
     "make trunk-revert PR=<n> succeeds from a linked worktree (reproduce the lifecycle ID error, fix it, add a regression test in tests/unit/scripts/test_trunk_revert.py).",
     "docs/internal/develop-post-merge-gaps.md states the final behavior and its remaining bound."
   ],
-  "context": "2026-10-21: the arm gate in scripts/trunk_revert.py exists, but it names the newest red run's PR as the culprit; when a failure persists across merges it blames an innocent later PR and refuses the real revert (trunk-arm-gate-blames-newest-red-run-20261022). On the same day `make trunk-revert PR=3200`, run from the linked worktree BenchBox.wt-trunk-coverage-timeouts, created revert PR #3223 and its worktree without the lifecycle-ID error, which bears on the second acceptance criterion.",
+  "context": "NOTE 2026-10-25 baseline from the Trunk failure classification (trunk-red-run-triage-20261024): 33 of 65 red runs only carried a defect an earlier run had already shown. 48 merges landed while the newest completed Trunk run was red, 19 of them more than 30 minutes into the red; 13 of those 19 were unrelated non-fix PRs (armed earlier, opened earlier, or bypassed; no gate logs exist to tell). Any later green run, including a flake, lifts both gates because they read only the newest run. Reverts took 1.2-3.0 h; fix-forwards 2.3-12.1 h (median 8.8 h). The arm gate's culprit naming was fixed in #3415.\n\n2026-10-21: the arm gate in scripts/trunk_revert.py exists, but it names the newest red run's PR as the culprit; when a failure persists across merges it blames an innocent later PR and refuses the real revert (trunk-arm-gate-blames-newest-red-run-20261022). On the same day `make trunk-revert PR=3200`, run from the linked worktree BenchBox.wt-trunk-coverage-timeouts, created revert PR #3223 and its worktree without the lifecycle-ID error, which bears on the second acceptance criterion.",
   "description": "After PR 3185 merged, the Trunk run failed 14 minutes later. Nothing reverted the change or stopped further merges; pr-open only refuses new PRs after develop has been red for 30 minutes, and develop was red for about 39 minutes before anyone acted. The documented recovery (make trunk-revert PR=<n>) failed when run from a linked worktree: make worktree-create raised 'Worktree already carries immutable lifecycle ID' for the new revert worktree, so the revert had to be done by hand.",
   "links": [
     "scripts/trunk_revert.py",
@@ -27,6 +27,14 @@
       "op": "update",
       "op_id": "c6f1c0d54a584c22af197e02b034c85a",
       "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T03:29:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "acbf652948e449468d9aa14cac5113fa",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
