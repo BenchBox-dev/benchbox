@@ -21453,7 +21453,8 @@
       "claim": null,
       "needs": [
         "owner-drop-oracle-review-required-20261021",
-        "oracle-verdict-dispatch-gate-after-review-20261025"
+        "oracle-verdict-dispatch-gate-after-review-20261025",
+        "oracle-gate-sweep-cadence-20261025"
       ],
       "priority": "medium",
       "status": "open",
