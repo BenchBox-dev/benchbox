@@ -283,3 +283,27 @@ def test_clickhouse_q66_qualifies_alias_shadowed_columns() -> None:
     assert "SUM(x.jan_sales)" in query
     assert "SUM(x.jan_net)" in query
     assert re.search(r"\bw_warehouse_sq_ft\b", query) is None
+
+
+@pytest.mark.parametrize("dialect", ["datafusion", "clickhouse", "spark"])
+def test_get_queries_name_multi_statement_queries_like_tpcds(dialect: str) -> None:
+    from benchbox.utils.dialect_utils import split_sql_statements
+
+    queries = TPCDSOBTBenchmark(scale_factor=1.0).get_queries(dialect=dialect)
+
+    assert {"14a", "14b", "23a", "23b", "24a", "24b"} <= set(queries)
+    assert not {"14", "23", "24"} & set(queries)
+    assert all(len(split_sql_statements(sql, dialect)) == 1 for sql in queries.values())
+
+
+def test_get_query_translates_a_statement_variant() -> None:
+    sql = TPCDSOBTBenchmark(scale_factor=1.0).get_query("14b", dialect="clickhouse")
+
+    assert sql.count(";") == 0
+    assert "tpcds_sales_returns_obt" in sql
+
+
+def test_clickhouse_q95_has_no_correlated_in_subquery() -> None:
+    query = TPCDSOBTBenchmark(scale_factor=1.0).get_queries(dialect="clickhouse")["95"]
+
+    assert "ret_obt.sale_id = obt.sale_id" not in query

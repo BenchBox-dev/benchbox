@@ -6,6 +6,9 @@ from typing import Any
 from benchbox.core.query_catalog_base import QuerySkippedError
 from benchbox.core.tpcds.c_tools import DSQGenBinary
 from benchbox.core.tpcds_obt.catalog.loader import PLACEHOLDER_PATTERN, OBTQuery, load_catalog, load_exclusions
+from benchbox.utils.dialect_utils import expand_multi_statement_queries, split_sql_statements
+
+_VARIANT_ID = re.compile(r"(\d+)([a-z])")
 
 
 def __getattr__(name: str) -> Any:
@@ -28,6 +31,8 @@ class TPCDSOBTQueryManager:
         scale_factor: float = 1.0,
         stream_id: int = 0,
     ) -> str:
+        original_id = query_id
+        query_id, variant = self.split_variant(query_id)
         query = self._get_query(query_id)
         values = {**self.drawn_parameters(query.id, seed=seed, scale_factor=scale_factor, stream_id=stream_id)}
         for name, value in (parameters or {}).items():
@@ -37,7 +42,8 @@ class TPCDSOBTQueryManager:
             else:
                 values.update({key: str(value) for key in values if key.split(".")[0] == base})
                 values[f"{base}.01"] = str(value)
-        return self._render(query, values)
+        sql = self._render(query, values)
+        return self._select_statement(original_id, sql, variant) if variant else sql
 
     @staticmethod
     def _render(query: OBTQuery, values: dict[str, str]) -> str:
@@ -80,6 +86,14 @@ class TPCDSOBTQueryManager:
             qid: self.get_query(qid, parameters, seed=seed, scale_factor=scale_factor) for qid in self.list_query_ids()
         }
 
+    def get_statement_queries(
+        self, parameters: dict[str, Any] | None = None, *, seed: int | None = None, scale_factor: float = 1.0
+    ) -> dict[str, str]:
+        queries = {
+            str(qid): sql for qid, sql in self.get_queries(parameters, seed=seed, scale_factor=scale_factor).items()
+        }
+        return expand_multi_statement_queries(queries, "duckdb")
+
     def list_query_ids(self) -> list[int]:
         return sorted(load_catalog())
 
@@ -100,6 +114,21 @@ class TPCDSOBTQueryManager:
             return int(query_id)
         except ValueError as exc:
             raise ValueError(f"Unknown query id: {query_id}") from exc
+
+    @staticmethod
+    def split_variant(query_id: int | str) -> tuple[int | str, str | None]:
+        match = _VARIANT_ID.fullmatch(query_id) if isinstance(query_id, str) else None
+        if match is None:
+            return query_id, None
+        return int(match.group(1)), match.group(2)
+
+    @staticmethod
+    def _select_statement(query_id: int | str, sql: str, variant: str) -> str:
+        statements = split_sql_statements(sql, "duckdb")
+        index = ord(variant) - ord("a")
+        if len(statements) < 2 or index >= len(statements):
+            raise ValueError(f"Unknown query id: {query_id}")
+        return statements[index]
 
 
 __all__ = ["TPCDSOBTQueryManager"]

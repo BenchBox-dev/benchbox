@@ -21,7 +21,37 @@ REPOSITORY = "BenchBox-dev/BenchBox"
 BASE_BRANCH = "develop"
 VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,baseRefName"
 
+GATE_CONTEXT = "oracle-gate"
+GATE_WORKFLOW = "oracle-gate.yml"
+GATE_OK_STATE = "success"
+
 Runner = Callable[[list[str]], tuple[int, str]]
+
+
+def refresh_oracle_gate(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> None:
+    code, out = run(
+        [
+            "gh",
+            "api",
+            "--jq",
+            f'[.statuses[] | select(.context == "{GATE_CONTEXT}")][0].state // ""',
+            f"repos/{repo}/commits/{head}/status",
+        ]
+    )
+    if code != 0:
+        print(f"{label}: could not read the {GATE_CONTEXT} status of {head[:9]}; not dispatching: {out.strip()[:200]}")
+        return
+    state = out.strip()
+    if state == GATE_OK_STATE:
+        return
+    code, out = run(
+        ["gh", "workflow", "run", GATE_WORKFLOW, "--repo", repo, "--ref", BASE_BRANCH]
+        + ["-f", f"pr={number}", "-f", f"head_sha={head}"]
+    )
+    if code != 0:
+        print(f"{label}: {GATE_CONTEXT} dispatch for PR #{number} failed; arming continues: {out.strip()[:200]}")
+        return
+    print(f"{label}: dispatched {GATE_CONTEXT} for PR #{number} at {head[:9]} (status was {state or 'missing'})")
 
 
 def refusals(
@@ -116,6 +146,7 @@ def arm(
             for reason in reasons:
                 print(f"pr-arm: refusing to arm PR #{view['number']}: {reason}", file=sys.stderr)
             return 2
+        refresh_oracle_gate(run, repo, int(view["number"]), local_head)
         code, out = run(
             [
                 "gh",

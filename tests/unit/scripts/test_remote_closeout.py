@@ -154,6 +154,8 @@ class FakeGitHub:
         self.post_failures: list[str] = []
         self.post_attempts: list[dict] = []
         self.deleted: set[str] = set()
+        self.gate_state = "success"
+        self.dispatch_code = 0
 
     def set_head(self, head: str) -> None:
         self.view["headRefOid"] = head
@@ -198,6 +200,9 @@ class FakeGitHub:
                 if review["commit_id"] == commit[1] and marker[0] in review["body"]
             ]
             return 0, "".join(f"{match}\n" for match in matches)
+        gate = self._gate(cmd)
+        if gate is not None:
+            return gate
         if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
             return 0, "\n".join([*pr_landing.REQUIRED_CONTEXTS, "oracle-review"])
         if cmd[:2] == ["gh", "api"] and "/check-runs" in cmd[-1]:
@@ -226,6 +231,16 @@ class FakeGitHub:
 
     def arms(self) -> list[list[str]]:
         return [call for call in self.calls if call[:3] == ["gh", "pr", "merge"] and "--auto" in call]
+
+    def _gate(self, cmd: list[str]) -> tuple[int, str] | None:
+        if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/status"):
+            return 0, self.gate_state + "\n"
+        if cmd[:3] == ["gh", "workflow", "run"]:
+            return self.dispatch_code, "" if self.dispatch_code == 0 else "gh: HTTP 403"
+        return None
+
+    def dispatches(self) -> list[list[str]]:
+        return [call for call in self.calls if call[:3] == ["gh", "workflow", "run"]]
 
     def _resolve(self, thread_id: str) -> tuple[int, str]:
         if thread_id in self.deleted:
@@ -550,6 +565,48 @@ def test_refuses_a_pr_that_is_held_draft_closed_or_has_requested_changes(
 ) -> None:
     ready_pr.view.update(change)
     assert expected in _refusal(world, ready_pr, capsys)
+
+
+def gate_dispatch(head: str) -> list[str]:
+    return ["gh", "workflow", "run", "oracle-gate.yml", "--repo", REPO, "--ref", "develop"] + [
+        "-f",
+        "pr=7",
+        "-f",
+        f"head_sha={head}",
+    ]
+
+
+@pytest.mark.parametrize("state", ["failure", "error", "pending", ""])
+def test_dispatches_the_gate_before_arming_when_its_status_is_not_success(
+    world: World, ready_pr: FakeGitHub, state: str
+) -> None:
+    ready_pr.gate_state = state
+    assert arm(world, ready_pr) == 0
+    assert ready_pr.dispatches() == [gate_dispatch(world.head)]
+    assert ready_pr.calls.index(gate_dispatch(world.head)) < ready_pr.calls.index(merge_command(world.head))
+
+
+def test_dispatches_nothing_when_the_gate_already_succeeded(world: World, ready_pr: FakeGitHub) -> None:
+    assert arm(world, ready_pr) == 0
+    assert ready_pr.dispatches() == []
+
+
+def test_an_open_thread_refuses_without_dispatching(world: World, ready_pr: FakeGitHub) -> None:
+    ready_pr.gate_state = "failure"
+    ready_pr.threads = [{"id": "T1", "isResolved": False, "isOutdated": False}]
+    assert arm(world, ready_pr) == 2
+    assert ready_pr.dispatches() == []
+    assert ready_pr.arms() == []
+
+
+def test_a_failed_gate_dispatch_is_reported_and_arming_proceeds(
+    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ready_pr.gate_state = "failure"
+    ready_pr.dispatch_code = 1
+    assert arm(world, ready_pr) == 0
+    assert ready_pr.arms() == [merge_command(world.head)]
+    assert "dispatch for PR #7 failed; arming continues" in capsys.readouterr().out
 
 
 def test_refuses_an_unresolved_review_thread(

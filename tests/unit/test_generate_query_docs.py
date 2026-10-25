@@ -58,6 +58,29 @@ class TestSlugsAndLabels:
         assert "\n" in pretty and "SELECT" in pretty
         assert gqd._prettify_sql("-- not sql at all", "default") == "-- not sql at all"
 
+    def test_prettify_sql_leaves_native_sql_untouched(self):
+        sql = "SELECT a/b, JSON_EXTRACT(x, '$.k') FROM t WHERE NOT y IS NULL"
+        assert gqd._prettify_sql(sql, "default") == sql
+
+    def test_prettify_sql_is_the_translate_sql_query_output(self):
+        from benchbox.utils.dialect_utils import translate_sql_query
+
+        sql = "SELECT a / b, SUM(x) FROM t GROUP BY a"
+        for dialect in ("sqlite", "postgres", "duckdb", "datafusion"):
+            expected = translate_sql_query(
+                sql, dialect, source_dialect=dialect, identify=False, strict=False, pretty=True
+            )
+            assert gqd._prettify_sql(sql, dialect) == expected
+
+    def test_prettify_sql_shows_sqlite_exact_division(self):
+        sql = "SELECT a / b FROM t"
+        assert "CAST(a AS REAL) / b" in gqd._prettify_sql(sql, "sqlite")
+        assert "CAST" not in gqd._prettify_sql(sql, "postgres")
+
+    def test_prettify_sql_keeps_every_statement(self):
+        pretty = gqd._prettify_sql("SELECT 1 AS a; SELECT 2 AS b", "duckdb")
+        assert "1 AS a" in pretty and "2 AS b" in pretty
+
     def test_overview_link_depth_reaches_docs_benchmarks(self):
         assert gqd._overview_link("clickbench") == "../../clickbench.md"
         assert gqd._overview_link("tpch") == "../../tpc-h.md"

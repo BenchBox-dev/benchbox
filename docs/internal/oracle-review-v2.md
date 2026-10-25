@@ -650,10 +650,12 @@ comment reviews, so the notification's `dismissed` trigger covers human reviews,
 which are not `oracle-gate` inputs.
 
 GitHub Actions has no event for resolving a review thread, so resolving the
-oracle's last thread starts no run of either workflow. After resolving the
-threads, run `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`,
-or wait for the next sweep (the next push to `develop`, or the schedule). `make pr-rerun` re-runs failed CI jobs and does
-not refresh `oracle-gate`. The checker's decision is
+oracle's last thread starts no run of either workflow. `make pr-arm` and
+`make pr-arm-remote` dispatch `oracle-gate` for the PR and head when the head's
+`oracle-gate` status is not `success`. For a PR that is already armed, run
+`gh workflow run oracle-gate.yml --ref develop -f pr=<number>`, or wait for the
+next sweep (the next push to `develop`, or the schedule). `make pr-rerun`
+re-runs failed CI jobs and does not refresh `oracle-gate`. The checker's decision is
 unchanged: it passes only with a success verdict on the head and no
 unresolved oracle thread.
 
