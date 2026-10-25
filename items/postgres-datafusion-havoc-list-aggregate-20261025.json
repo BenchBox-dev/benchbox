@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "1_v7 executes on PostgreSQL and DataFusion and matches DuckDB at SF0.01.",
+    "Every SQL platform either translates 1_v7 or carries a documented reason; corpus diff listed.",
+    "Fork tests in CI; gate allowlist entries removed; sql-execution-gate PASS."
+  ],
+  "description": "Found by extending sql-execution-gate to TPC-Havoc. Havoc 1_v7 uses DuckDB LIST(...); benchbox/core/tpchavoc/dialect_compat.py LIST_AGGREGATE_DIALECTS covers only sqlite and cloud dialects, so PostgreSQL fails (`function list(numeric) does not exist`) and DataFusion fails (`Invalid function 'list'`). Add the targets to the dispatch data and make the fork's reduce_list_aggregates/order_list_aggregates produce valid PostgreSQL (array_agg) and DataFusion (array_agg) forms. Check every other target platform for the same gap. GUARDRAILS: fix in the SQLGlot fork with real-engine tests (fork CI) and adopt via a wheel cut under the batch wheel mutex; benchmark text unchanged; when fixed, remove the matching sql-execution-gate allowlist entry (the gate fails on stale entries); list affected published bundles and flag only if recorded rows were wrong; no cloud spend.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T20:56:04Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1b9a0c1bf9bd445d9931ae7707fd886b",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}

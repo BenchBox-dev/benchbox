@@ -17431,6 +17431,13 @@
       "status": "done",
       "title": "PostgreSQL drops the sort request when one table asks for both clustering and sorting"
     },
+    "postgres-datafusion-havoc-list-aggregate-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "PostgreSQL and DataFusion: TPC-Havoc 1_v7 LIST aggregate is not translated"
+    },
     "postgres-extension-benchmarking-infrastructure": {
       "claim": null,
       "needs": [],
