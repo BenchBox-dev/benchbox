@@ -151,6 +151,9 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "tpch-binary-framing", "Verify bundled dbgen binaries emit clean framing"): (
         "Cross-platform macOS/Windows binary smoke; the local macOS checkout has no Windows runner equivalent."
     ),
+    ("ci.yml", "medium-collect", "Compile sources with source-hash bytecode"): (
+        "Hosted bytecode cache warm-up for the collection job; it asserts nothing and a local checkout keeps its own __pycache__."
+    ),
     ("ci.yml", "medium-collect", "Collect the complete medium tier"): (
         "Hosted exact-SHA medium collection is consumed by both shards; local test-medium runs the same selector unsplit."
     ),
