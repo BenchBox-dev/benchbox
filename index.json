@@ -18200,10 +18200,14 @@
     },
     "published-results-sqlglot-translation-rerun": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "sqlite-clickbench-sf1-row-count-mismatches-20261025",
+        "sql-execution-gate-vacuous-empty-results-20261025",
+        "questdb-unpadded-date-cast-null-20261025"
+      ],
       "priority": "high",
       "status": "open",
-      "title": "Flag or rerun published results computed with superseded SQL translations"
+      "title": "Complete the rerun phase for published results computed with superseded SQL translations (audit and flagging are done)"
     },
     "purge-plaintext-tokens-shell-history-20261023": {
       "claim": null,
