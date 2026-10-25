@@ -12110,12 +12110,17 @@
       "title": "Snowflake adapter gateway-endpoint override (conn, CLI, option specs)"
     },
     "gw-snowflake-querytag": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T12:50:01Z",
+        "generation": "639984406de64353a99efdf47c739110",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "gw-snowflake-conn"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Symmetric gateway query-tag helper (execute + stats lookup)"
     },
     "gw-tests-gates": {
