@@ -4,7 +4,7 @@
     "Existing template discovery/query generation succeeds without treating EULA files as SQL templates; guard rejects omitted or modified adjacent notice.",
     "Core PR verified merged; pinned GitHub notice/template URLs exist before docs-mig-tpc-eula-gate can pass."
   ],
-  "context": "## Blocker (2026-10-19)\n\nPR 3168 (branch docs/adjacent-tpc-eulas, head 4d99c869c492fc3c4b4010627e99dfab690a60e1) is implemented, tested and green on all required CI contexts (core, docs, tooling, explorer, results-data, hold). The required `oracle-review` check cannot pass: the oracle-verdict workflow crashes with `UnicodeDecodeError: utf-8 codec cant decode byte 0x93` in `_project/scripts/oracle_reviewers/github.py:get_diff`, because the PR diff contains the EULA.txt files, which are Windows-1252 (byte 0x93 smart quote at position 94), not valid UTF-8. The EULA bytes are canonical and must stay byte-identical, so the diff cannot be made UTF-8-clean. Per ADR D14 the owner must post the stand-in attestation comment on PR 3168, then the `oracle-review` check can be re-run. Exact comment body: `Stand-in oracle review: APPROVE 4d99c869c492fc3c4b4010627e99dfab690a60e1`. After merge, unblock this item and continue the batch with docs-mig-core-doc-paths-to-urls. Worktree retained: /Users/joe/Developer/BenchBox.wt-adjacent-tpc-eulas.",
+  "context": "Delivered in merged PR #3168 (develop 39a942435, 2026-10-24): canonical TPC EULA copies sit beside the query templates (_sources/tpc-ds/query_templates/EULA.txt, benchbox/_binaries/tpc-ds/templates/query_templates/EULA.txt, and the TPC-H template directory), byte-identical to the canonical _sources notices, with a drift test (tests/unit/core/test_tpc_notices.py) rejecting missing or modified adjacent copies; template discovery ignores notice files. The 2026-10-19 oracle blocker is resolved. Follow-up fixed on develop by another session: the comment-cleanup scope entries used a path without the benchbox/ prefix. Remaining for docs-mig-tpc-eula-gate (its own item): pinned GitHub notice/template URLs and the gate verification. Item had been left `blocked` after the PR merged; reopened and finished 2026-10-25.",
   "description": "Owner selected adjacent EULA copies in core after review identified existing non-adjacency. In a core linked worktree, copy the unmodified canonical _sources/tpc-h/EULA.txt beside benchbox/_binaries/tpc-h/templates/queries/ and _sources/tpc-ds/EULA.txt beside _sources/tpc-ds/query_templates/. Preserve notices and authorship, do not alter licence terms or assert legal compliance. Keep canonical files authoritative and add the smallest drift check wired into existing required validation to reject missing/different adjacent copies. Check packaging/source generators ignore notice files as SQL templates. This is the prerequisite explicitly re-homing remediation from the EULA decision gate, not a waiver of that gate.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox"
@@ -59,6 +59,14 @@
       "generation": "ceb9946bbc6e41f1acb1f867d6e17399",
       "op": "take",
       "op_id": "4a10787a339e4fb0be9d7ad25ae6daeb",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T19:27:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c19e9856bb2647a5b98f5527832c2bea",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
