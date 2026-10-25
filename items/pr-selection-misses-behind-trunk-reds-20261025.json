@@ -1,7 +1,7 @@
 {
   "acceptance": [
     "For each of #3018, #3066, #3122 and #3185, the current PR routing and coverage selection, replayed on that PR's diff and base, select the test that failed on Trunk (or a recorded dependency rule forces the tier that contains it); a test pins each case",
-    "The shadow-miss report, run over those four PRs, lists the failing tests as caught",
+    "The shadow-miss report, run over #3066, #3122 and #3185, lists the failing medium tests as caught (by selection or by escalation); for #3018, whose failing test was a fast test deleted in #3096 and which the medium-only miss report cannot see, a routing pin (non-Python change routes to code tests) is the evidence",
     "cov-select-exit-shadow-20261021 cites the result"
   ],
   "context": "Source: classification of every Trunk push run on develop from 2026-10-10 to 2026-10-24 (recorded on trunk-red-run-triage-20261024; incident ids refer to that table). ",
@@ -13,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "fd7297c567a44851b87f4ac753a9e998",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T17:32:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7c15b548521e4bd9bbec68285f8c4353",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
