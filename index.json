@@ -21548,6 +21548,13 @@
       "status": "blocked",
       "title": "Rotate credentials that passed through TLS clients trusting the compromised eMudhra CAs"
     },
+    "ruleset-break-glass-procedure-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Document and verify the one-context ruleset relaxation used to recover a wedged develop"
+    },
     "ruleset-drift-check-home-20261009": {
       "claim": null,
       "needs": [],

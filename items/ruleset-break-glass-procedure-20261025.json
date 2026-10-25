@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Gate 2's decision and reason are recorded in context.",
+    "A comparison command (for example ruleset_drift_check.py --compare <capture.json>) passes when live equals the capture, and fails when a context is missing, an integration_id differs, a bypass actor was added, or any other field changed. Tests use captured fixtures only.",
+    "docs/agent/merge-authority.md (agent rules) and docs/internal/repo-admin-settings.md (owner steps) describe the procedure and name the comparison command.",
+    "make pr-preflight passes; the PR passes the oracle on its merged head and merges through make pr-arm."
+  ],
+  "context": "Found 2026-10-24 during the develop recovery (#3385). The owner removed tooling from the required checks for one merge and restored it 4 seconds later. Source: Advisor review ~/Developer/benchmark_runs/ci-wedge-review-20261024/report.md, prevention plan rows 2 and 3 and finding F13. Checked 2026-10-25: no break-glass or context-removal procedure text under docs/ on develop 9a184b619, and no relax, restore or compare function in scripts/ruleset_drift_check.py.",
+  "description": "Problem: when develop's base itself is invalid, no PR can pass a required check. That happened on 2026-10-24, when a comment-policy scope entry named a missing file. The only recovery was the owner removing one required context from ruleset 15611785 for one merge and restoring it. No document describes this procedure: develop 9a184b619 has no break-glass text in docs/agent/merge-authority.md, docs/internal/merge-queue-governance.md or docs/internal/repo-admin-settings.md. Nothing checks that the restore was complete, including each context's integration_id binding.\n\nOutcome: a written owner procedure, and a read-back command that proves the ruleset matches its pre-relaxation capture.\n\nDecision gates:\n1. Owner-only execution. Agents never edit rulesets. This item writes the procedure and the verification command; running the relaxation stays an owner action.\n2. Automatic recovery. Advisor prevention row 2 proposes trusted checker logic that recovers from a paired notice/selector relocation by itself. Decide whether to build it and record the decision with its reason. Default: no. It is new trusted logic, it must be installed before the next incident to help at all, and the break-glass procedure covers today's frequency. If the owner wants it, file a separate item.\n3. Comparison source. Extend scripts/ruleset_drift_check.py rather than adding a parallel script, unless its structure makes a before/after comparison impossible; record why if so.\n\nThe procedure covers: one named PR and head SHA; holds on competing armed PRs; a full ruleset JSON capture before the change; removal of exactly one context; the merge; immediate restore on success or failure; a full read-back compared to the capture; and confirmation of oracle-gate integration 5201041 and every other context's binding, with timestamps.\n\nItem guardrails: no ruleset edits by agents, including in tests; tests use captured JSON fixtures only.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no stand-in approvals, no ruleset edits or bypasses, no raw gh pr merge. Do not close and reopen, mass-rerun or rebase other pull requests.",
+  "links": [
+    "scripts/ruleset_drift_check.py",
+    "docs/internal/repo-admin-settings.md",
+    "docs/agent/merge-authority.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T12:52:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d0581e7383b54a8289782c34b817eda8",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
