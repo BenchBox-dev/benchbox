@@ -4,6 +4,7 @@
     "A fresh local bundle produced by the documented command passes validate_submission.py --require-manifest (or the documented internal-ingestion validator) with zero errors, shown on SQLite ClickBench SF1 and one DuckDB bundle.",
     "Regression tests cover redaction of absolute paths and tuning diagnostics if code changed; make pr-preflight passes; PR merged."
   ],
+  "context": "DONE: #3483 merged, oracle SHIP. Causes: benchbox run exports anonymize=False (cli/commands/run.py); documented internal path is scripts/stage_seed_corpus_bundle.py (salt BENCHBOX_MACHINE_ID_SALT); internal manifests were hand-written; benchbox submit never anonymizes. Fix: stage_seed_corpus_bundle.py --internal-manifest writes the sidecar with hashes of staged bytes; no validator relaxed, no schema change. Evidence: SQLite ClickBench SF1 raw 4 errors -> staged 0; DuckDB TPC-H SF1 raw 2 -> staged 0; subscale still refused without --trust-internal-source as intended. 3 new tests (29 pass); pr-preflight pass. Follow-up: docs/contributing-results.md claims benchbox submit pseudonymizes, code does not (separate item).",
   "description": "Found while rerunning SQLite ClickBench SF1 (bundle clickbench_sf1_sqlite_sql_20261025_093703_01cd0210 in ~/Developer/benchmark_runs/results): validate_submission.py --require-manifest reports four errors: platform.tuning.applied carries unanonymized harness_default PRAGMA statements; platform.config.database_path and platform.raw_config.database_path hold absolute local paths; the sidecar manifest is missing; `benchbox submit` refuses without a pseudonym salt and, with a throwaway salt, still refuses over the tuning diagnostics. Every planned local rerun (published-results-sqlglot-translation-rerun, tpcds-obt-rerun-defective-sf1-bundles-20261017, corpus-tpch-shallow-cohort-replacements-20261018) will hit this before ingestion.\nDECISION GATES: (G1) if the fix needs a change to what the published bundle schema records (dropping or redacting fields), choose the option that matches how existing internal corpus bundles were produced and ingested (precedent in results-data and the ingestion tooling); stop and ask if no precedent exists. (G2) salt handling: use the documented internal-ingestion path; never commit a salt.\nGUARDRAILS: never weaken validate_submission checks to pass; fix the producer or use the documented internal ingestion path. No ingestion or publication without owner approval. Existing published bundles untouched.",
   "sessions": [
     {
@@ -21,6 +22,14 @@
       "generation": "30d542913f154e7fabfba9d4d4ed0d14",
       "op": "take",
       "op_id": "eb2eba8f2848496fa9334690ccf0c394",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T20:38:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "22912f1815ae40a188dc0f58e3551a87",
       "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
