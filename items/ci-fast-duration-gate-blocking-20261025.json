@@ -3,7 +3,8 @@
     "GATE: The report-only item's recorded data show a projected false-block rate under 1% of PR runs at the chosen thresholds; the chosen thresholds and the data are recorded here before the flip",
     "VERIFY: A throwaway draft PR adding a module-scoped autouse fixture that sleeps is blocked by core with the duration step named; a throwaway PR adding 50 ordinary fast tests is not blocked; both closed afterwards with run ids recorded",
     "VERIFY: For 7 days after the flip, every core failure caused by the step is reviewed and classified true or false positive; false-positive rate stays under 1% or the item reverts to report mode",
-    "GUARDRAIL: Rollback is setting mode=report in the policy file (tested); the required-context set does not change; baseline bumps in a PR are visible in its diff"
+    "GUARDRAIL: Rollback is setting mode=report in the policy file (tested); the required-context set does not change; baseline bumps in a PR are visible in its diff",
+    "GATE: The noise measurement used to set thresholds is on speed-normalized summed time across at least 50 PR runs spanning fast and slow runners; record the observed range of runner-speed factors"
   ],
   "context": "Source: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
   "description": "Enforcement. Set the policy file to mode=block so core fails when summed intersection time exceeds baseline by more than the threshold (provisionally +15% AND +60 s; final value max(2 x measured p99 spread, 10%) with a floor of 60 s), the same rule per medium shard, or when the new-test allowance is exceeded. The only escape hatch is updating the baseline in the PR with the refresh script and stating the reason in the PR body; no label or comment bypass.",
@@ -15,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "abab0a7383064cac9b86bcceb5f7412b",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T17:32:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "37cf4c2e1dfd4879a4e181891ba85aaf",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
