@@ -2,12 +2,20 @@ name: Trunk coverage
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      medium-only:
+        type: boolean
+        default: false
+      artifact-prefix:
+        type: string
+        default: ""
   schedule:
     - cron: "17 1,5,9,13,17,21 * * *"
     - cron: "47 7 * * *"
 
 concurrency:
-  group: trunk-coverage-${{ github.event_name }}-${{ github.event.schedule }}
+  group: trunk-coverage-${{ github.event_name }}-${{ github.event.schedule }}${{ inputs.medium-only && format('-{0}', github.ref) || '' }}
   cancel-in-progress: true
 
 permissions:
@@ -61,7 +69,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: t2-medium-nodeids-${{ github.sha }}
+          name: ${{ inputs.artifact-prefix }}t2-medium-nodeids-${{ github.sha }}
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
@@ -97,7 +105,7 @@ jobs:
       - name: Download medium collection evidence
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: t2-medium-nodeids-${{ github.sha }}
+          name: ${{ inputs.artifact-prefix }}t2-medium-nodeids-${{ github.sha }}
           path: t2-artifacts
 
       - name: Partition the complete medium tier
@@ -155,7 +163,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: t2-medium-shard-${{ matrix.shard_index }}-${{ github.sha }}
+          name: ${{ inputs.artifact-prefix }}t2-medium-shard-${{ matrix.shard_index }}-${{ github.sha }}
           path: t2-artifacts/
           if-no-files-found: error
           retention-days: 30
@@ -164,7 +172,7 @@ jobs:
   medium-coverage-map:
     name: medium-coverage-map
     needs: medium-test
-    if: ${{ always() && github.event.schedule != '47 7 * * *' }}
+    if: ${{ always() && github.event.schedule != '47 7 * * *' && !inputs.medium-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -250,7 +258,7 @@ jobs:
 
   coverage-map-staleness:
     name: coverage-map-staleness
-    if: ${{ github.event.schedule == '47 7 * * *' }}
+    if: ${{ github.event.schedule == '47 7 * * *' && !inputs.medium-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

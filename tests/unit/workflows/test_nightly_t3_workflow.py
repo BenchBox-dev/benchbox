@@ -1098,3 +1098,106 @@ def test_nightly_postgres_integration_pulls_the_authenticated_ghcr_mirror_after_
     assert mirror["permissions"]["packages"] == "write"
     assert _mirrored_images(mirror) == ["postgres17"]
     assert "public.ecr.aws/docker/library/postgres" not in (WORKFLOWS_DIR / "nightly.yml").read_text(encoding="utf-8")
+
+
+_POSTGRES_17_GHCR_IMAGE = (
+    "ghcr.io/benchbox-dev/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3"
+)
+
+
+def _service_images(workflow: dict[str, Any]) -> list[str]:
+    return [
+        service["image"]
+        for job in workflow["jobs"].values()
+        for service in (job.get("services") or {}).values()
+        if isinstance(service, dict) and "image" in service
+    ]
+
+
+def test_no_workflow_service_uses_a_public_ecr_postgres_image() -> None:
+    offenders = [
+        f"{path.name}: {image}"
+        for path in sorted(WORKFLOWS_DIR.glob("*.yml"))
+        for image in _service_images(_load(path))
+        if "public.ecr.aws" in image and "postgres" in image
+    ]
+    assert offenders == []
+
+
+def test_pr_sql_evidence_and_nightly_postgres_share_one_ghcr_digest() -> None:
+    ci_job = _load(WORKFLOWS_DIR / "ci.yml")["jobs"]["sql-execution-evidence"]
+    nightly_job = _load(WORKFLOWS_DIR / "nightly.yml")["jobs"]["postgres-integration"]
+    for job in (ci_job, nightly_job):
+        service = job["services"]["postgres"]
+        assert service["image"] == _POSTGRES_17_GHCR_IMAGE
+        assert service["credentials"] == {
+            "username": "${{ github.actor }}",
+            "password": "${{ github.token }}",
+        }
+        assert job["permissions"]["packages"] == "read"
+
+
+QUESTDB_DIGEST = "sha256:67eaed863ebb2383227919ea9a5499a4a39ceca3862c20b974c84a10e11cdf89"
+
+
+def _run_questdb_copy(
+    tmp_path: Path, copy_plan: dict[str, list[str | None]] | None = None
+) -> tuple[subprocess.CompletedProcess[str], list[list[str]]]:
+    return _run_mirror_step(
+        tmp_path,
+        image="questdb",
+        source_image="unused",
+        source_manifest="{}",
+        mirror_error="Error reading manifest: manifest unknown",
+        pin_source=False,
+        copy_plan=copy_plan,
+    )
+
+
+def test_mirror_copies_the_pinned_questdb_digest_into_the_questdb_repository(tmp_path: Path) -> None:
+    result, calls = _run_questdb_copy(tmp_path)
+    copy = next(call for call in calls if call[0] == "copy")
+    assert copy[-2] == f"docker://docker.io/questdb/questdb@{QUESTDB_DIGEST}"
+    assert copy[-1] == f"docker://ghcr.io/benchbox-dev/questdb:digest-{QUESTDB_DIGEST.removeprefix('sha256:')}"
+    assert calls[0][-1] == f"docker://ghcr.io/benchbox-dev/questdb@{QUESTDB_DIGEST}"
+    assert "digest mismatch" in result.stdout + result.stderr
+
+
+def test_mirror_falls_back_to_the_gcr_mirror_when_docker_hub_stays_rate_limited(tmp_path: Path) -> None:
+    primary = f"docker://docker.io/questdb/questdb@{QUESTDB_DIGEST}"
+    _, calls = _run_questdb_copy(tmp_path, {primary: [RATE_LIMITED] * 3})
+    assert _copy_sources(calls) == [primary] * 3 + [f"docker://mirror.gcr.io/questdb/questdb@{QUESTDB_DIGEST}"]
+
+
+def test_nightly_seeds_the_questdb_mirror_with_package_write_permission() -> None:
+    mirror = _load(WORKFLOWS_DIR / "nightly.yml")["jobs"]["mirror-questdb"]
+    assert mirror["uses"] == "./.github/workflows/mirror-ci-images.yml"
+    assert mirror["permissions"] == {"contents": "read", "packages": "write"}
+    assert _mirrored_images(mirror) == ["questdb"]
+
+
+_DIGEST_PINNED_GHCR = re.compile(r"^ghcr\.io/benchbox-dev/[a-z0-9._-]+(:[\w.-]+)?@sha256:[0-9a-f]{64}$")
+
+
+def test_ci_service_images_come_from_the_ghcr_mirror_pinned_by_digest() -> None:
+    services = [
+        (job_name, name, service)
+        for job_name, job in _load(WORKFLOWS_DIR / "ci.yml")["jobs"].items()
+        for name, service in (job.get("services") or {}).items()
+    ]
+    assert services
+    offenders = [
+        f"{job}.{name}: {svc['image']}" for job, name, svc in services if not _DIGEST_PINNED_GHCR.match(svc["image"])
+    ]
+    assert offenders == []
+
+
+def test_lint_job_pulls_the_questdb_mirror_with_job_token_credentials() -> None:
+    job = _load(WORKFLOWS_DIR / "ci.yml")["jobs"]["code-lint"]
+    service = job["services"]["questdb"]
+    assert service["image"] == f"ghcr.io/benchbox-dev/questdb@{QUESTDB_DIGEST}"
+    assert service["credentials"] == {
+        "username": "${{ github.actor }}",
+        "password": "${{ github.token }}",
+    }
+    assert job["permissions"] == {"contents": "read", "pull-requests": "read", "packages": "read"}

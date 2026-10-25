@@ -33,7 +33,7 @@ def needed(paths: list[str], rules: dict[str, list[str]]) -> set[str]:
     [
         (["benchbox/core/tpch/generator.py"], {"core"}),
         (["tests/unit/core/test_x.py"], {"core"}),
-        (["landing/prompts/catalog.yaml"], {"docs"}),
+        (["landing/prompts/catalog.yaml"], {"docs", "tooling"}),
         (["website/src/pages/index.astro"], {"core"}),
         (["results-explorer/src/App.tsx"], {"core"}),
         (["_project/scripts/explorer_pipeline/pipeline.py"], {"explorer", "tooling"}),
@@ -93,7 +93,7 @@ def test_self_protection_runs_every_unit(path: str, rules: dict[str, list[str]])
 def test_code_tests_needed_covers_core_and_tooling(rules: dict[str, list[str]]) -> None:
     assert classify_units(["scripts/x.py"], rules)["code_tests_needed"] is True
     assert classify_units(["benchbox/x.py"], rules)["code_tests_needed"] is True
-    assert classify_units(["landing/prompts/catalog.yaml"], rules)["code_tests_needed"] is False
+    assert classify_units(["docs/guides/intro.md"], rules)["code_tests_needed"] is False
 
 
 def test_rules_file_declares_every_unit_and_nothing_else(rules: dict[str, list[str]]) -> None:
@@ -113,7 +113,7 @@ def test_load_rejects_missing_or_unknown_keys(tmp_path: Path) -> None:
 
 def test_github_output_lines(tmp_path: Path, rules: dict[str, list[str]]) -> None:
     out = tmp_path / "out"
-    write_github_output(out, classify_units(["landing/prompts/catalog.yaml"], rules))
+    write_github_output(out, classify_units(["docs/guides/intro.md"], rules))
     lines = dict(line.split("=", 1) for line in out.read_text(encoding="utf-8").splitlines())
     assert lines["unit-docs"] == "true"
     assert lines["unit-core"] == "false"
@@ -247,3 +247,22 @@ def test_ci_units_and_path_filters_agree_on_which_documents_are_code(rules: dict
         if by_units != by_filters:
             disagreements.append((path, by_units, by_filters))
     assert not disagreements, f"(path, ci-units code, path-filters code): {disagreements[:10]}"
+
+
+def test_non_markdown_files_read_by_tests_are_not_docs_only(rules: dict[str, list[str]]) -> None:
+    if not (REPO_ROOT / "_project" / "scripts" / "inert_paths.py").is_file():
+        pytest.skip("the inert path scanner is absent from this tree")
+    from _project.scripts import inert_paths
+
+    readers = sorted(
+        {
+            hit
+            for source, hits in inert_paths.scan_tree(REPO_ROOT).items()
+            if inert_paths._is_test_file(source)
+            for hit in hits
+            if not hit.endswith(".md")
+        }
+    )
+    assert "_project/planning/visible_metrics.yaml" in readers
+    unrouted = [path for path in readers if needed([path], rules) == {"docs"}]
+    assert not unrouted, f"non-markdown files read by tests but routed to the docs unit only: {unrouted}"

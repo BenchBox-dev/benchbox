@@ -2,7 +2,7 @@ import importlib
 
 import pytest
 
-from benchbox.core.platform_manifest import PLATFORM_MANIFEST, get_platform_query_dialect
+from benchbox.core.platform_manifest import PLATFORM_MANIFEST
 from benchbox.utils.dialect_utils import GENERIC_DIALECT_ALIASES, UnknownSqlDialectError, resolve_sql_dialect
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -59,8 +59,6 @@ INTENDED_DIALECTS: dict[str, str] = {
     "pyspark": "spark",
 }
 
-INTENDED_QUERY_DIALECTS: dict[str, str] = {"singlestore": "mysql", "athena": "trino"}
-
 SQL_ENTRIES = [entry for entry in PLATFORM_MANIFEST if entry.capabilities["supports_sql"]]
 DATAFRAME_ONLY_ENTRIES = [entry for entry in PLATFORM_MANIFEST if not entry.capabilities["supports_sql"]]
 
@@ -97,9 +95,8 @@ def test_adapter_target_dialect_matches_the_registry(entry):
             raise
         pytest.skip(f"optional dependency {error.name} is not installed")
     adapter = object.__new__(adapter_class)
-    expected = INTENDED_QUERY_DIALECTS.get(entry.key, INTENDED_DIALECTS[entry.key])
+    expected = INTENDED_DIALECTS[entry.key]
     assert resolve_sql_dialect(adapter.get_target_dialect()) == resolve_sql_dialect(expected)
-    assert get_platform_query_dialect(entry.key) == expected
 
 
 def test_manifest_rejects_sql_platform_without_dialect():
@@ -116,33 +113,3 @@ def test_manifest_rejects_sql_platform_without_dialect():
             "x",
             {"supports_sql": False, "supports_dataframe": True, "default_mode": "dataframe", "sql_dialect": "duckdb"},
         )
-
-
-def test_query_dialect_overrides_are_exactly_the_intended_table():
-    declared = {
-        entry.key: entry.capabilities["query_dialect"]
-        for entry in PLATFORM_MANIFEST
-        if "query_dialect" in entry.capabilities
-    }
-    assert declared == INTENDED_QUERY_DIALECTS
-
-
-def test_manifest_rejects_a_query_dialect_equal_to_the_sql_dialect_or_on_a_dataframe_platform():
-    from benchbox.core.platform_manifest import _validate_capabilities
-
-    base = {"supports_sql": True, "supports_dataframe": False, "default_mode": "sql", "sql_dialect": "duckdb"}
-    _validate_capabilities("x", {**base, "query_dialect": "postgres"})
-    with pytest.raises(ValueError, match="must differ"):
-        _validate_capabilities("x", {**base, "query_dialect": "duckdb"})
-    with pytest.raises(ValueError, match="query_dialect"):
-        _validate_capabilities(
-            "x",
-            {"supports_sql": False, "supports_dataframe": True, "default_mode": "dataframe", "query_dialect": "duckdb"},
-        )
-
-
-def test_query_dialect_lookup_rejects_unknown_and_dataframe_platforms():
-    with pytest.raises(KeyError):
-        get_platform_query_dialect("polars")
-    with pytest.raises(KeyError):
-        get_platform_query_dialect("not_a_platform")

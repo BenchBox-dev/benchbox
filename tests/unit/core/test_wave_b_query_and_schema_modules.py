@@ -76,7 +76,7 @@ def test_joinorder_schema_helpers():
     sql = schema.get_create_table_sql("title", dialect="postgres")
     assert "CHARACTER VARYING" in sql
 
-    all_sql = schema.get_create_tables_sql(dialect="mysql")
+    all_sql = schema.get_create_tables_sql(dialect="singlestore")
     assert "TEXT CHARACTER SET utf8mb4" in all_sql
     assert "title" in schema.get_table_names()
     assert "movie_companies" in schema.get_relationship_tables()

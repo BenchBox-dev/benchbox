@@ -11,13 +11,14 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from scripts.sql_execution_gate import augmentation
 from scripts.sql_execution_gate.engines import Dataset, QueryTimeout, available_engines
-from scripts.sql_execution_gate.rows import first_difference
+from scripts.sql_execution_gate.rows import first_difference, is_vacuous, vacuity_detail
 
 ROOT = Path(__file__).resolve().parents[2]
 EMIT = Path(__file__).with_name("emit.py")
 EXPECTED = Path(__file__).with_name("expected_differences.json")
-CHECKS = ("error", "row-count", "reference", "baseline")
+CHECKS = ("error", "row-count", "reference", "vacuous", "baseline")
 TPCDS_MULTI_PART = {"14": "14a", "23": "23a", "24": "24a", "39": "39a"}
 REFERENCE_ENGINE = "duckdb"
 
@@ -49,6 +50,9 @@ class Report:
     explained: list[Finding] = field(default_factory=list)
     stale: list[dict] = field(default_factory=list)
     compared: dict[str, int] = field(default_factory=dict)
+    proven: list[Finding] = field(default_factory=list)
+    evidence: dict[str, str] = field(default_factory=dict)
+    reasons: dict[tuple[str, str, str, str], str] = field(default_factory=dict)
 
     @property
     def passed(self) -> bool:
@@ -67,12 +71,20 @@ def load_expected(path: Path = EXPECTED) -> list[dict]:
                 raise ValueError(f"{label}: every expected difference needs a non-empty {field_name}")
         if not entry.get("queries"):
             raise ValueError(f"{label}: list the queries the justification covers")
+        engines = entry["engine"] if isinstance(entry["engine"], list) else [entry["engine"]]
         for query in entry["queries"]:
-            key = (entry["benchmark"], str(query), entry["engine"], entry["check"])
-            if key in seen:
-                raise ValueError(f"{key}: duplicate expected difference")
-            seen.add(key)
-            expanded.append({**{k: v for k, v in entry.items() if k != "queries"}, "query": str(query)})
+            for engine in engines:
+                key = (entry["benchmark"], str(query), engine, entry["check"])
+                if key in seen:
+                    raise ValueError(f"{key}: duplicate expected difference")
+                seen.add(key)
+                expanded.append(
+                    {
+                        **{k: v for k, v in entry.items() if k not in ("queries", "engine")},
+                        "query": str(query),
+                        "engine": engine,
+                    }
+                )
     return expanded
 
 
@@ -104,6 +116,10 @@ def emit_queries(ref: str | None, scale: float, benchmarks: str, scratch: Path, 
                 str(scale),
                 "--benchmarks",
                 benchmarks,
+                "--augment-ids",
+                ",".join(augmentation.QUERY_IDS),
+                "--augment-seeds",
+                ",".join(augmentation.SEEDS),
             ],
             cwd=root,
             env=environment,
@@ -226,6 +242,11 @@ def evaluate(
             reference = results.get((REFERENCE_ENGINE, benchmark, query, "candidate"))
             for engine in engines:
                 _evaluate_cell(report, results, benchmark, query, engine, reference, counts)
+    _apply_augmented_proof(report, sides["candidate"]["queries"], engines)
+    for query in sides["candidate"]["queries"].get(augmentation.AUGMENTED, {}):
+        reference_result = results.get((REFERENCE_ENGINE, augmentation.AUGMENTED, query, "candidate"))
+        if reference_result is not None and reference_result.rows is not None:
+            report.evidence[f"tpcds q{query} {REFERENCE_ENGINE}"] = repr(reference_result.rows)
     matched: set[int] = set()
     for finding in report.findings:
         index = next((i for i, entry in enumerate(expected) if _explains(entry, finding)), None)
@@ -234,6 +255,7 @@ def evaluate(
         else:
             matched.add(index)
             report.explained.append(finding)
+            report.reasons[finding.key] = expected[index]["justification"]
     scope = sides["candidate"]["queries"]
     report.stale = [
         entry
@@ -247,6 +269,29 @@ def _explains(entry: dict, finding: Finding) -> bool:
     return (entry["benchmark"], entry["query"], entry["engine"], entry["check"]) == finding.key and entry[
         "match"
     ] in finding.detail
+
+
+def _apply_augmented_proof(report: Report, scope: dict, engines: list[str]) -> None:
+    covered = {
+        (engine, augmentation.base_query(query))
+        for query in scope.get(augmentation.AUGMENTED, {})
+        for engine in engines
+    }
+    failing = {
+        (f.engine, augmentation.base_query(f.query)) for f in report.findings if f.benchmark == augmentation.AUGMENTED
+    }
+    proven = covered - failing
+    kept = []
+    for finding in report.findings:
+        if (
+            finding.check == "vacuous"
+            and finding.benchmark == augmentation.BASE
+            and (finding.engine, finding.query) in proven
+        ):
+            report.proven.append(finding)
+        else:
+            kept.append(finding)
+    report.findings = kept
 
 
 def _evaluate_cell(report, results, benchmark, query, engine, reference, counts) -> None:
@@ -270,6 +315,11 @@ def _evaluate_cell(report, results, benchmark, query, engine, reference, counts)
         reference_difference = first_difference(candidate.rows, reference.rows)
         if reference_difference:
             add("reference", f"differs from DuckDB: {reference_difference}")
+    reference_rows = reference.rows if reference is not None else None
+    if is_vacuous(candidate.rows) and (
+        engine == REFERENCE_ENGINE or reference_rows is None or is_vacuous(reference_rows)
+    ):
+        add("vacuous", vacuity_detail(candidate.rows))
     if baseline is None:
         return
     if baseline.error is not None:
@@ -296,13 +346,38 @@ def render(report: Report, versions: dict[str, str], seconds: dict[str, float], 
         lines.append(f"  {side}: {payload['ref']} sqlglot runtime {pin.get('version', 'unknown')}")
     for engine, version in versions.items():
         lines.append(f"  {engine} {version}: {report.compared.get(engine, 0)} cells in {seconds.get(engine, 0.0):.1f}s")
+    unproven = [f for f in (*report.explained, *report.unexplained) if f.check == "vacuous"]
+    lines.append(f"vacuous comparisons proven by gate-only augmented data: {len(report.proven)}")
+    lines.extend(
+        f"  {benchmark} q{query} on {', '.join(engines)} [{detail}]"
+        for (benchmark, query, detail), engines in _group(report.proven, lambda f: (f.benchmark, f.query, f.detail))
+    )
+    lines.extend(f"  {query}: {rows}" for query, rows in sorted(report.evidence.items()))
+    lines.append(f"NOT PROVEN, vacuous comparisons: {len(unproven)}")
+    for (benchmark, engine), count in sorted(_unproven_counts(unproven).items()):
+        lines.append(f"  {benchmark} {engine}: {count} not proven")
+    lines.extend(
+        f"  {benchmark} q{query} on {', '.join(engines)} [{detail}] {reason}"
+        for (benchmark, query, detail, reason), engines in _group(
+            unproven,
+            lambda f: (
+                f.benchmark,
+                f.query,
+                f.detail,
+                report.reasons.get(f.key, "NO ALLOWLIST ENTRY: needs non-vacuous evidence or a reasoned entry"),
+            ),
+        )
+    )
     for title, items in (
         ("verified improvements over the baseline", report.improvements),
-        ("expected differences", report.explained),
-        ("UNEXPLAINED DIFFERENCES", report.unexplained),
+        ("expected differences", [f for f in report.explained if f.check != "vacuous"]),
+        ("UNEXPLAINED DIFFERENCES", [f for f in report.unexplained if f.check != "vacuous"]),
     ):
         lines.append(f"{title}: {len(items)}")
         lines.extend(f"  {f.engine} {f.benchmark} q{f.query} [{f.check}] {f.detail}" for f in items)
+    unexplained_vacuous = sum(1 for f in report.unexplained if f.check == "vacuous")
+    if unexplained_vacuous:
+        lines.append(f"UNEXPLAINED VACUOUS COMPARISONS (fail closed): {unexplained_vacuous}")
     if report.stale:
         lines.append(f"STALE expected differences (no longer occur): {len(report.stale)}")
         lines.extend(
@@ -310,6 +385,21 @@ def render(report: Report, versions: dict[str, str], seconds: dict[str, float], 
         )
     lines.append("RESULT: " + ("PASS" if report.passed else "FAIL"))
     return "\n".join(lines)
+
+
+def _group(findings: list[Finding], key) -> list[tuple[tuple, list[str]]]:
+    grouped: dict[tuple, list[str]] = {}
+    for finding in findings:
+        grouped.setdefault(key(finding), []).append(finding.engine)
+    return list(grouped.items())
+
+
+def _unproven_counts(findings: list[Finding]) -> dict[tuple[str, str], int]:
+    counts: dict[tuple[str, str], int] = {}
+    for finding in findings:
+        key = (finding.benchmark, finding.engine)
+        counts[key] = counts.get(key, 0) + 1
+    return counts
 
 
 def default_baseline_ref() -> str | None:
@@ -340,6 +430,11 @@ def run(args: argparse.Namespace) -> int:
         if baseline_ref:
             sides["baseline"] = emit_queries(baseline_ref, args.scale, args.benchmarks, scratch, "baseline")
         datasets = generate_datasets(args.scale, benchmarks, scratch)
+        augmented_queries = sides["candidate"]["queries"].get(augmentation.AUGMENTED)
+        if augmented_queries and augmentation.BASE in datasets:
+            datasets[augmentation.AUGMENTED] = augmentation.augment(
+                datasets[augmentation.BASE], augmented_queries, scratch
+            )
         results, versions, seconds = run_engines(engine_classes, datasets, sides, args.timeout, scratch)
         selected = [
             engine.name for engine in engine_classes if not args.engines or engine.name in args.engines.split(",")
@@ -357,6 +452,13 @@ def run(args: argparse.Namespace) -> int:
                         "explained": [vars(f) for f in report.explained],
                         "improvements": [vars(f) for f in report.improvements],
                         "stale": report.stale,
+                        "proven_by_augmentation": [vars(f) for f in report.proven],
+                        "augmented_reference_rows": report.evidence,
+                        "not_proven": [
+                            {**vars(f), "reason": report.reasons.get(f.key)}
+                            for f in (*report.explained, *report.unexplained)
+                            if f.check == "vacuous"
+                        ],
                     },
                     indent=1,
                 ),

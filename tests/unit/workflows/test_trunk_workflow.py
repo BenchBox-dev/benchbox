@@ -54,7 +54,8 @@ def test_required_local_cases_run_after_each_merge() -> None:
     job = _workflow()["jobs"]["required-local-cases"]
     assert job["runs-on"] == "ubuntu-latest"
     assert job["timeout-minutes"] == 20
-    assert "needs" not in job and "if" not in job and "strategy" not in job
+    assert "needs" not in job and "strategy" not in job
+    assert job["if"] == "${{ !inputs.medium-only }}"
     runs = [step["run"] for step in job["steps"] if "run" in step]
     assert runs.count("make test-required-local-cases") == 1
     assert not job.get("continue-on-error")

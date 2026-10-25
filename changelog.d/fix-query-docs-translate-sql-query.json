@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The generated per-query documentation and the site query data format dialect SQL through `translate_sql_query(..., pretty=True)` instead of calling the vendored SQLGlot directly, so the SQL shown is the SQL the translation path produces, including every statement of multi-statement queries (TPC-DS 14, 23, 24, 39 and their OBT variants) that the old formatter cut to the first statement. Native SQL with no dialect is now shown as authored instead of being reformatted. `translate_sql_query` gains a `pretty` option. The vendored-SQLGlot bypass scanner now covers `scripts/` and `_project/`, with reasoned allowlists for the developer tools there."
+    }
+  ]
+}

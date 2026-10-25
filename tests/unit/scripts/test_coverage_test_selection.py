@@ -255,6 +255,19 @@ def test_build_map_merges_shards_and_strips_contexts(tmp_path: Path, repo: Path)
     assert mapping["failed_nodes"] == []
 
 
+def test_build_map_does_not_touch_the_default_coverage_file(
+    tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.chdir(work)
+    base = str(repo / "benchbox/base.py")
+    first = _coverage_data(tmp_path, {base: {4: ["tests/test_benchbox.py::test_translate|run"]}})
+    mapping = sel.build_map([first], repo, _head(repo))
+    assert mapping["nodes"] == ["tests/test_benchbox.py::test_translate"]
+    assert sorted(path.name for path in work.iterdir()) == []
+
+
 def test_build_map_setup_phase_expands_selection_to_module(
     tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1573,8 +1586,34 @@ def test_shadow_misses_flags_failure_outside_selection() -> None:
         "selected_count": 1,
         "failed": failed,
         "missed": ["tests/unit/z/test_nine.py::test_broke"],
+        "selection_escalates": False,
+        "caught_by_escalation": [],
         "would_escalate": True,
     }
+
+
+def test_miss_report_counts_nothing_missed_when_the_selection_escalates() -> None:
+    selected = ["tests/unit/a/test_one.py::test_keep"]
+    failed = ["tests/unit/z/test_nine.py::test_broke"]
+    report = sel.miss_report(selected, failed, escalated=True)
+    assert report["missed"] == []
+    assert report["caught_by_escalation"] == failed
+    assert report["selection_escalates"] is True
+    assert report["would_escalate"] is False
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        ({"shadow": True, "escalate": True, "would_escalate": False}, False),
+        ({"shadow": True, "escalate": True, "would_escalate": True}, True),
+        ({"escalate": True}, True),
+        ({"escalate": False}, False),
+        ({"selected": []}, False),
+    ],
+)
+def test_selection_escalates_reads_the_verdict_the_full_tier_would_follow(payload: dict, expected: bool) -> None:
+    assert sel.selection_escalates(payload) is expected
 
 
 def test_shadow_misses_covers_failure_by_node_or_file() -> None:
@@ -1699,6 +1738,25 @@ def test_misses_cli_reports_not_available_when_shards_are_missing(tmp_path: Path
     assert "only 3 of 4 shard junit reports parsed" in loaded["reason"]
     assert sel.main([*base, "--expected-shards", "3"]) == 0
     assert json.loads(payload.read_text(encoding="utf-8"))["available"] is True
+
+
+def test_misses_cli_unavailable_report_claims_no_escalation_catches(tmp_path: Path) -> None:
+    selection = tmp_path / "coverage-selection.json"
+    selection.write_text(
+        json.dumps({"selected": ["tests/unit/a/test_one.py::test_keep"], "escalate": True}), encoding="utf-8"
+    )
+    reports = tmp_path / "junit"
+    reports.mkdir()
+    _write_junit(reports / "shard-0-junit.xml", [("tests.unit.z.test_nine", "test_broke", "failure")])
+    payload = tmp_path / "misses.json"
+    args = ["misses", "--selection-in", str(selection), "--junit", str(reports), "--expected-shards", "4"]
+    assert sel.main([*args, "--json-out", str(payload)]) == 0
+    loaded = json.loads(payload.read_text(encoding="utf-8"))
+    assert loaded["available"] is False
+    assert loaded["selection_escalates"] is None
+    assert loaded["caught_by_escalation"] == []
+    assert loaded["missed"] == []
+    assert loaded["would_escalate"] is None
 
 
 def test_shadow_misses_flags_unselected_sibling_node() -> None:

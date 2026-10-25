@@ -4,15 +4,15 @@
 
 Every rule registered in `benchbox.sql_compat` is listed below. The registry is the authoritative source of compatibility policy; this document is regenerated from it. See [adr-sql-compat-phase-aware-pipeline.md](../development/adr/adr-sql-compat-phase-aware-pipeline.md) for the design.
 
-**Total registered rules:** 576
+**Total registered rules:** 586
 
-**Platforms covered:** 35
+**Platforms covered:** 34
 
 ## Phase coverage by platform
 
 | platform | benchmark_gate | query_source | query_compile | query_adapter | schema_emit | ddl_optimize | execution_filter | total |
 |---|---|---|---|---|---|---|---|---|
-| athena | - | - | - | - | - | 1 | - | 1 |
+| athena | - | - | - | 9 | 2 | 1 | - | 12 |
 | bigquery | - | 2 | - | 25 | 2 | 1 | 8 | 38 |
 | clickhouse | - | 19 | 1 | 3 | 4 | 1 | - | 28 |
 | clickhouse-cloud | - | - | - | 2 | - | - | 21 | 23 |
@@ -27,7 +27,6 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 | fabric_dw | - | - | - | - | - | 1 | - | 1 |
 | firebolt | - | - | - | - | - | 1 | - | 1 |
 | lakesail | 5 | 6 | - | 11 | - | 1 | 69 | 92 |
-| mysql | - | 1 | - | - | - | - | - | 1 |
 | pg-duckdb | 3 | - | - | 10 | - | - | 11 | 24 |
 | pg-mooncake | 6 | - | - | 10 | - | - | 7 | 23 |
 | pg_mooncake | - | - | - | - | - | 1 | - | 1 |
@@ -54,6 +53,17 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 
 | phase | scope | action | support | failure mode | rule_id |
 |---|---|---|---|---|---|
+| query_adapter | benchmark=tpchavoc, query=10_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.athena.tpchavoc.10_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=11_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.athena.tpchavoc.11_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=1_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.athena.tpchavoc.1_v7.array_aggregation` |
+| query_adapter | benchmark=tpchavoc, query=2_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.athena.tpchavoc.2_v7.window_filter_to_if` |
+| query_adapter | benchmark=tpchavoc, query=3_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.athena.tpchavoc.3_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=4_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.athena.tpchavoc.4_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=5_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.athena.tpchavoc.5_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=7_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.athena.tpchavoc.7_v7.inline_select_alias` |
+| query_adapter | benchmark=tpchavoc, query=9_v7 | rewrite_query | REWRITTEN | UNSUPPORTED_FEATURE | `query_adapter.athena.tpchavoc.9_v7.inline_select_alias` |
+| schema_emit | benchmark=transaction_primitives | rewrite_ddl | INFORMATIONAL | SILENT_CORRUPTION | `schema_emit.athena.transaction_primitives.pk_not_enforced` |
+| schema_emit | benchmark=write_primitives | rewrite_ddl | INFORMATIONAL | SILENT_CORRUPTION | `schema_emit.athena.write_primitives.pk_not_enforced` |
 | ddl_optimize | platform-wide | rewrite_ddl | REWRITTEN | SYNTAX_ERROR | `ddl_optimize.athena.all.convert_to_external_table` |
 
 ### bigquery
@@ -442,12 +452,6 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 | execution_filter | benchmark=tpchavoc, query=7_v1 | skip_query | SKIPPED_QUERY | UNSUPPORTED_FEATURE | `execution_filter.lakesail.tpchavoc.7_v1` |
 | execution_filter | benchmark=tpchavoc, query=8_v1 | skip_query | SKIPPED_QUERY | UNSUPPORTED_FEATURE | `execution_filter.lakesail.tpchavoc.8_v1` |
 | execution_filter | benchmark=tpchavoc, query=9_v1 | skip_query | SKIPPED_QUERY | UNSUPPORTED_FEATURE | `execution_filter.lakesail.tpchavoc.9_v1` |
-
-### mysql
-
-| phase | scope | action | support | failure mode | rule_id |
-|---|---|---|---|---|---|
-| query_source | benchmark=h2odb, query=Q9 | select_variant | REWRITTEN | SYNTAX_ERROR | `query_source.mysql.h2odb.q9_within_group_verbatim` |
 
 ### pg-duckdb
 

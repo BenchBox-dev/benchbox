@@ -266,6 +266,21 @@ def test_rate_limit_error_is_quota_with_its_reset(
 
 
 @skip_on_windows
+def test_signal_text_echoed_in_reviewer_output_is_an_error_not_an_absence_to_retry(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    echoed = {"type": "message_end", "message": {"text": "+| 401 | token mismatch | rate_limit_error invalid_grant"}}
+    _fake_omp(
+        tmp_path,
+        monkeypatch,
+        f"print({json.dumps(json.dumps(echoed))})\nsys.stderr.write('connection reset\\n')\nraise SystemExit(1)",
+    )
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.missing == absence.Absence(absence.ERROR, "exit code 1")
+
+
+@skip_on_windows
 def test_unclassified_failure_names_its_exit_code(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

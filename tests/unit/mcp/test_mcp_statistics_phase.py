@@ -20,15 +20,10 @@ pytestmark = [
 
 
 def _get_tool_functions() -> dict[str, Any]:
-    import benchbox.utils.printing as printing
     from benchbox.mcp import create_server
     from tests.unit.mcp.public_api import get_tool_functions
 
-    quiet = printing._QUIET
-    try:
-        return get_tool_functions(create_server())
-    finally:
-        printing._QUIET = quiet
+    return get_tool_functions(create_server())
 
 
 @pytest.fixture(scope="module")

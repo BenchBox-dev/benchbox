@@ -297,7 +297,7 @@ def _registered_tools() -> dict[str, Any]:
     from benchbox.mcp import create_server
     from tests.unit.mcp.public_api import list_tools_by_name
 
-    server = create_server(log_level="ERROR")
+    server = create_server()
     return list_tools_by_name(server)
 
 
@@ -473,7 +473,7 @@ class TestMCPDocsContract:
             tmp_path,
             tokens={"token": ("tenant", ("benchbox:read", "benchbox:execute"))},
         )
-        server = create_server(log_level="ERROR", remote_security=RemoteSecurityRuntime.from_file(config))
+        server = create_server(remote_security=RemoteSecurityRuntime.from_file(config))
 
         assert set(list_tools_by_name(server)) == EXPECTED_TOOLS | EXPECTED_REMOTE_TOOLS
         assert _documented_remote_inventory_tools(_doc_text()) == EXPECTED_REMOTE_TOOLS

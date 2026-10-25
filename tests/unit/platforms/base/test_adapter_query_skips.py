@@ -189,3 +189,24 @@ def test_datafusion_df_does_not_skip_maps():
 
     skip_ids = adapter._collect_skip_query_ids(benchmark)
     assert "MAP_CONSTRUCTION" not in skip_ids, "DataFusion should support map_construction"
+
+
+def test_multi_statement_queries_run_as_lettered_statements():
+    adapter = MinimalAdapter("DataFusion")
+    queries = {"1": "SELECT 1;", "14": "SELECT 1; SELECT 2;", "15": "SELECT 3"}
+
+    filtered = adapter._filter_queries(queries, ReadPrimitivesBenchmark(), "tpcds", {})
+
+    assert filtered == {"1": "SELECT 1;", "14a": "SELECT 1", "14b": "SELECT 2", "15": "SELECT 3"}
+
+
+def test_query_subset_of_a_split_query_selects_every_statement():
+    adapter = MinimalAdapter("DataFusion")
+    queries = {"1": "SELECT 1", "14": "SELECT 1; SELECT 2", "15": "SELECT 3"}
+
+    filtered = adapter._filter_queries(queries, ReadPrimitivesBenchmark(), "tpcds", {"query_subset": ["Q14", "1"]})
+
+    assert list(filtered) == ["14a", "14b", "1"]
+    assert list(adapter._filter_queries(queries, ReadPrimitivesBenchmark(), "tpcds", {"query_subset": ["14b"]})) == [
+        "14b"
+    ]

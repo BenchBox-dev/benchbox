@@ -52,16 +52,6 @@ FROM trips
 ORDER BY passenger_count;
 """
 
-MYSQL_Q9_SQL = """
-SELECT
-    passenger_count,
-    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY fare_amount) as median_fare_amount,
-    PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY fare_amount) as p90_fare_amount
-FROM trips
-GROUP BY passenger_count
-ORDER BY passenger_count;
-"""
-
 REGISTRY.register(
     CompatibilityDecision(
         rule_id="query_source.clickhouse.h2odb.q9_quantile_variant",
@@ -128,27 +118,6 @@ REGISTRY.register(
     ),
     _P,
     "bigquery",
-    benchmark=_B,
-    query_id="Q9",
-)
-
-REGISTRY.register(
-    CompatibilityDecision(
-        rule_id="query_source.mysql.h2odb.q9_within_group_verbatim",
-        action=CompatAction.SELECT_VARIANT,
-        support_level=SupportLevel.REWRITTEN,
-        failure_mode=FailureMode.SYNTAX_ERROR,
-        payload=SelectVariantPayload(
-            variant_key="mysql",
-            variant_sql=MYSQL_Q9_SQL,
-        ),
-        reason=(
-            "SQLGlot adds a multi-expression WITHIN GROUP ORDER BY (NULL-sort CASE) that "
-            "SingleStore rejects; bypass translation with the verbatim ANSI query"
-        ),
-    ),
-    _P,
-    "mysql",
     benchmark=_B,
     query_id="Q9",
 )

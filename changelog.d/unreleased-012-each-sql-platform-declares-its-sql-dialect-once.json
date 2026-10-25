@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Each SQL platform declares its SQL dialect once, as `capabilities.sql_dialect` in the platform manifest; `resolve_sql_dialect` and `resolve_dialect_for_query_translation` read it, and the `PLATFORM_DIALECTS` table is removed. Athena and SingleStore also declare `capabilities.query_dialect` (`trino` and `mysql`), the dialect their adapters generate workload queries in; their adapters read it from the manifest, so query output is unchanged. A test pins the intended dialect of every platform and checks that each adapter's `get_target_dialect()` agrees with the manifest."
+      "text": "Each SQL platform declares its SQL dialect once, as `capabilities.sql_dialect` in the platform manifest; `resolve_sql_dialect` and `resolve_dialect_for_query_translation` read it, and the `PLATFORM_DIALECTS` table is removed. A test pins the intended dialect of every platform and checks that each adapter's `get_target_dialect()` agrees with the manifest."
     }
   ]
 }

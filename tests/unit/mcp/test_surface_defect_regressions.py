@@ -19,7 +19,7 @@ class TestValidateResultsNotFoundError:
         from benchbox.mcp import create_server
         from tests.unit.mcp.public_api import call_tool
 
-        server = create_server(results_dir=tmp_path, charts_dir=tmp_path, log_level="ERROR")
+        server = create_server(results_dir=tmp_path, charts_dir=tmp_path)
         response = call_tool(server, "validate_results", result_file="myrun.json")
 
         assert response["error"] is True
@@ -32,7 +32,7 @@ class TestValidateResultsNotFoundError:
         from benchbox.mcp import create_server
         from tests.unit.mcp.public_api import call_tool
 
-        server = create_server(results_dir=tmp_path, charts_dir=tmp_path, log_level="ERROR")
+        server = create_server(results_dir=tmp_path, charts_dir=tmp_path)
         response = call_tool(server, "validate_results", result_file="myrun.json")
 
         assert str(tmp_path) not in repr(response)
@@ -66,7 +66,7 @@ class TestQueryDetailsVisibilityMatrix:
         from tests.unit.mcp.public_api import call_tool
 
         internal = sorted(b for b in get_all_benchmarks() if get_benchmark_surface(b) != "public")
-        server = create_server(results_dir=tmp_path, charts_dir=tmp_path, log_level="ERROR")
+        server = create_server(results_dir=tmp_path, charts_dir=tmp_path)
 
         for benchmark in internal:
             response = call_tool(server, "get_query_details", benchmark=benchmark, query_id="1")
@@ -101,7 +101,7 @@ class TestRemoteModeAnonymization:
             patch.object(server_module, "register_benchmark_tools") as benchmark_tools,
             patch.object(server_module, "register_analytics_tools") as analytics_tools,
         ):
-            server_module.create_benchbox_server(results_dir=tmp_path, charts_dir=tmp_path, log_level="ERROR")
+            server_module.create_benchbox_server(results_dir=tmp_path, charts_dir=tmp_path)
 
         assert benchmark_tools.call_args.kwargs["anonymize_results"] is False
         assert analytics_tools.call_args.kwargs["anonymize_results"] is False
@@ -116,7 +116,6 @@ class TestRemoteModeAnonymization:
             server_module.create_benchbox_server(
                 results_dir=tmp_path,
                 charts_dir=tmp_path,
-                log_level="ERROR",
                 remote_security=self._security_runtime(tmp_path),
             )
 
@@ -202,7 +201,7 @@ class TestChartOutputContract:
         from benchbox.mcp import create_server
         from tests.unit.mcp.public_api import list_tools_by_name
 
-        server = create_server(results_dir=tmp_path, charts_dir=tmp_path, log_level="ERROR")
+        server = create_server(results_dir=tmp_path, charts_dir=tmp_path)
         description = list_tools_by_name(server)["generate_chart"].description
 
         assert description is not None

@@ -51,7 +51,7 @@ def test_six_producer_runs_a_day_and_a_monitor_after_a_finished_producer() -> No
 def test_scheduled_producers_and_monitor_do_not_cancel_each_other() -> None:
     concurrency = _workflow()["concurrency"]
     assert concurrency["cancel-in-progress"] is True
-    assert concurrency["group"] == "trunk-coverage-${{ github.event_name }}-${{ github.event.schedule }}"
+    assert concurrency["group"].startswith("trunk-coverage-${{ github.event_name }}-${{ github.event.schedule }}")
 
 
 def test_is_read_only_by_default() -> None:
@@ -80,7 +80,7 @@ def test_four_coverage_shards_use_ctrace_and_test_phase_contexts() -> None:
 
 def test_map_job_requires_all_four_shards_and_declares_it() -> None:
     job = _workflow()["jobs"]["medium-coverage-map"]
-    assert job["if"] == "${{ always() && github.event.schedule != '47 7 * * *' }}"
+    assert job["if"] == "${{ always() && github.event.schedule != '47 7 * * *' && !inputs.medium-only }}"
     assert "--expected-shards 4" in "\n".join(step.get("run", "") for step in job["steps"])
     upload = next(step for step in job["steps"] if step.get("uses", "").startswith("actions/upload-artifact@"))
     assert upload["with"]["retention-days"] == 7
@@ -103,7 +103,7 @@ def test_map_building_jobs_run_on_scheduled_producer_events() -> None:
 
 def test_staleness_job_runs_only_on_the_monitor_schedule() -> None:
     job = _workflow()["jobs"]["coverage-map-staleness"]
-    assert job["if"] == "${{ github.event.schedule == '47 7 * * *' }}"
+    assert job["if"] == "${{ github.event.schedule == '47 7 * * *' && !inputs.medium-only }}"
 
 
 def test_monitor_and_producer_conditions_are_mutually_exclusive_on_every_event() -> None:

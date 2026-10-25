@@ -355,6 +355,8 @@ def test_candidate_notice_in_range_byte_substitution_is_rejected(tmp_path: Path,
     changed = b"0123XXXXXXXXcdef"
     (tmp_path / "src/a.py").write_bytes(changed)
     candidate = _partial_notice_entry("src/a.py", changed, 4, 12)
+    policy["notices"] = [candidate]
+    _write_scope_policy(tmp_path, policy)
     assert scope.validate_candidate_notices([candidate], tmp_path, False)
     with pytest.raises(scope.PolicyError, match="differ from the pinned base bytes"):
         scope.immutable_external_ownership(tmp_path, base, [], False, [candidate])
@@ -367,6 +369,8 @@ def test_candidate_notice_subrange_substitution_is_rejected(tmp_path: Path, poli
     changed = b"01234567X9abcdef"
     (tmp_path / "src/a.py").write_bytes(changed)
     candidate = _partial_notice_entry("src/a.py", changed, 6, 10)
+    policy["notices"] = [candidate]
+    _write_scope_policy(tmp_path, policy)
     with pytest.raises(scope.PolicyError, match="differ from the pinned base bytes"):
         scope.immutable_external_ownership(tmp_path, base, [], False, [candidate])
 
@@ -1605,7 +1609,7 @@ def test_repair_that_also_adds_an_entry_keeps_failing_on_a_broken_base(tmp_path:
 def test_repair_that_also_changes_another_policy_section_keeps_failing(tmp_path: Path, policy: dict) -> None:
     root, broken = _stale_directive_repo(tmp_path, policy, _stale_directive())
     policy["directives"] = []
-    policy["external_entries"] = [_external()]
+    policy["external_entries"] = [_external(selector={"prefix": "src/"})]
     _write_scope_policy(root, policy)
 
     with pytest.raises(scope.PolicyError, match="token is not present"):

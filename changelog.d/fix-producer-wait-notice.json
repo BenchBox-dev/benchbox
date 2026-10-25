@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Release artifact producer wait now prints a workflow notice with the first non-running job listing when it had to wait."
+}

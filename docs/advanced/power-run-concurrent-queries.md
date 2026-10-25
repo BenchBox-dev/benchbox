@@ -487,7 +487,7 @@ assert result.query_results[0]['position'] == 1
 These assertions verify that the first query in a TPC-H power test follows the stream permutation. Stream 0 starts with query 14, the stream ID is recorded, and the position is the query's place in the permutation.
 
 For detailed compliance documentation, see:
-[TPC-H Official Guide → Specification Compliance](../guides/tpc/tpc-h-official-guide.md#tpc-h-specification-compliance),
+[TPC-H Official Guide → Specification Coverage](../guides/tpc/tpc-h-official-guide.md#tpc-h-specification-coverage),
 [TPC-DS Official Guide](../guides/tpc/tpc-ds-official-guide.md), and the shared
 [TPC Patterns Usage Guide](../guides/tpc/tpc-patterns-usage.md) (stream/permutation
 implementation used by both benchmarks).

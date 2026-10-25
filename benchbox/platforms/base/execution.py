@@ -39,10 +39,12 @@ from benchbox.platforms.base.connection_wrappers import (
     require_throughput_stream_capability,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
-from benchbox.utils.dialect_utils import SQLTranslationError, UnknownSqlDialectError
+from benchbox.utils.dialect_utils import SQLTranslationError, UnknownSqlDialectError, expand_multi_statement_queries
 from benchbox.utils.printing import quiet_console
 
 __all__ = ["TestDriversMixin", "_power_query_result", "_power_test_error_result"]
+
+_STATEMENT_SUFFIXES = frozenset("abcdefghijklmnopqrstuvwxyz")
 
 
 def _resolve_requested_stream_count(run_config: dict, default: int = MIN_THROUGHPUT_STREAMS) -> int:
@@ -886,6 +888,10 @@ class TestDriversMixin:
         query_subset = run_config.get("query_subset")
         categories = run_config.get("categories")
 
+        if not isinstance(benchmark, OperationExecutor):
+            split_dialect = self.get_target_dialect() if hasattr(self, "get_target_dialect") else "duckdb"
+            queries = expand_multi_statement_queries(queries, split_dialect)
+
         if query_subset and categories:
             raise ValueError(
                 "Cannot specify both 'query_subset' and 'categories'. "
@@ -914,26 +920,30 @@ class TestDriversMixin:
 
     def _apply_query_subset(self, queries: dict, query_subset: list, benchmark_name: str) -> dict:
 
-        def _resolve(qid: object) -> object | None:
+        def _resolve(qid: object) -> list[object]:
             if qid in queries:
-                return qid
+                return [qid]
             qid_str = str(qid)
             if qid_str in queries:
-                return qid_str
+                return [qid_str]
             if len(qid_str) > 1 and qid_str[0] in ("Q", "q") and qid_str[1:].isdigit():
-                stripped = qid_str[1:]
-                if stripped in queries:
-                    return stripped
-            return None
+                qid_str = qid_str[1:]
+                if qid_str in queries:
+                    return [qid_str]
+            return [
+                key
+                for key in queries
+                if isinstance(key, str) and key.startswith(qid_str) and key[len(qid_str) :] in _STATEMENT_SUFFIXES
+            ]
 
         invalid_queries: list[str] = []
         resolved: list[object] = []
         for i, query_id in enumerate(query_subset):
-            actual_key = _resolve(query_id)
-            if actual_key is None:
+            actual_keys = _resolve(query_id)
+            if not actual_keys:
                 invalid_queries.append(str(query_id))
             else:
-                resolved.append(actual_key)
+                resolved.extend(actual_keys)
             if len(invalid_queries) >= 10:
                 remaining = len(query_subset) - i - 1
                 if remaining > 0:

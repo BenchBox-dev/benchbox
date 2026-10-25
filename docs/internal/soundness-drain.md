@@ -28,10 +28,11 @@ review of the head supersedes it. An edited comment
 does not count, and neither does one with any other text, because Markdown
 around the line can hide or quote it.
 Posting the stand-in comment makes `oracle-gate` re-evaluate the head at once.
-Resolving an oracle review thread starts no workflow run; after resolving the
-oracle's threads, run
+Resolving an oracle review thread starts no workflow run; `make pr-arm` and
+`make pr-arm-remote` dispatch `oracle-gate` when the head's status is not
+`success`. For a PR that is already armed, run
 `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`, or wait for the
-hourly sweep.
+next sweep, which runs on every push to `develop` and on a schedule.
 
 The develop ruleset requires `oracle-gate` bound to the `benchbox-oracle`
 App's integration ID, so only a status that App posts satisfies it, and the

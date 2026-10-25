@@ -193,3 +193,33 @@ def test_unparsed_redacts_a_secret_split_by_the_tail_limit(secret: str, cut: int
     excerpt = absence.unparsed(text, [secret])
     assert fragment not in excerpt
     assert excerpt.startswith("\u2026") and len(excerpt) == absence.UNPARSED_LIMIT + 1
+
+
+QUOTED_DIFF = (
+    '{"type":"message_end","message":{"content":[{"type":"text","text":"+| 401 | `ORACLE_GATEWAY_TOKEN` does not '
+    'match `client.token`. Run `secrets`. | and rate_limit_error, invalid_grant, Unauthorized, 429 Too Many Requests"}]}}\n'
+)
+
+
+def test_signal_text_quoted_in_reviewer_stdout_is_not_classified() -> None:
+    result = _classify("omp", 1, stdout=QUOTED_DIFF, stderr="stream disconnected before completion")
+    assert result.kind == absence.ERROR
+    assert result.detail == "exit code 1"
+
+
+def test_a_real_stderr_failure_still_classifies_when_stdout_quotes_other_signals() -> None:
+    result = _classify("omp", 1, stdout=QUOTED_DIFF, stderr="request failed with status 401: bad credentials")
+    assert result.kind == absence.AUTH
+    quota = _classify("omp", 1, stdout=QUOTED_DIFF, stderr="rate_limit_error: slow down. Resets in 2h.")
+    assert quota.kind == absence.QUOTA
+    assert quota.reset_at == NOW + timedelta(hours=2)
+
+
+def test_reset_text_in_stdout_does_not_set_a_quota_reset() -> None:
+    result = _classify("omp", 1, stdout="Resets in 9h", stderr="rate_limit_error: slow down")
+    assert result.kind == absence.QUOTA
+    assert result.reset_at is None
+
+
+def test_four_hundred_one_inside_a_longer_number_is_not_auth() -> None:
+    assert _classify("omp", 1, stderr="processed 14015 files then crashed").kind == absence.ERROR

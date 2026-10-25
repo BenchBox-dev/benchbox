@@ -208,6 +208,7 @@
     "docs/internal/mcp-production-readiness.md": "core-only",
     "docs/internal/merge-queue-canary-runbook.md": "core-only",
     "docs/internal/merge-queue-governance.md": "core-only",
+    "docs/internal/nightly-perf-gate-review.md": "core-only",
     "docs/internal/nightly-t3.md": "core-only",
     "docs/internal/oracle-gateway-host.md": "core-only",
     "docs/internal/oracle-review-v2.md": "core-only",

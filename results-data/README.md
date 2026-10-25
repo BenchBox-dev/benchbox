@@ -149,6 +149,33 @@ hand-opened *maintainer* PRs against `published-results` are deletion-only;
 maintainer and seed additions go through the `auto/results-mirror-*` sync,
 not a hand-opened add PR.
 
+### Maintainer ingestion of local runs (internal)
+
+A raw `benchbox run` result is never valid for the corpus as written: the
+exporter keeps absolute `platform.config.database_path` and
+`platform.raw_config.database_path` values, applied tuning statements
+(for example SQLite `harness_default` PRAGMAs under
+`platform.tuning.applied.statements`) and no submission manifest.
+`validate_submission.py --require-manifest` rejects all three on purpose, and
+`benchbox submit` packages the raw bytes and refuses for the same reasons.
+
+Maintainers stage locally produced results with the same anonymiser the seed
+lane uses, and write the internal manifest in the same step:
+
+```bash
+export BENCHBOX_MACHINE_ID_SALT=<the maintainer pseudonym salt; never commit it>
+BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs uv run -- benchbox run ...
+uv run -- python scripts/stage_seed_corpus_bundle.py --internal-manifest \
+  ~/Developer/benchmark_runs/results/<run>.json <staging dir>
+uv run -- python scripts/validate_submission.py --require-manifest <staging dir>/<run>.json
+```
+
+The staged bundle carries `export.anonymized: true`, redacted paths and tuning
+statements, and a `<run>.manifest.json` with `result_source: internal`. A
+throwaway salt is enough to check validation, but bundles destined for the
+corpus must use the maintainer salt so pseudonyms stay stable across runs.
+Copying staged files into `results-data/bundles/` needs the owner's approval.
+
 ## Reproducibility
 
 Any bundle in this directory can be re-run locally using the parameters recorded in
