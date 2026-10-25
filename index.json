@@ -6634,6 +6634,13 @@
       "status": "open",
       "title": "Databricks promotes an explicit clustering strategy of none to z_order when tables have clustering columns"
     },
+    "databricks-gateway-cli-connection-options": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Forward Databricks gateway connection options and enable CLI --gateway for Databricks"
+    },
     "databricks-liquid-clustering-tuning-review-20260526": {
       "claim": null,
       "needs": [

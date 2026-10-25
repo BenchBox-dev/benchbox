@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Databricks gateway connection options reach the adapter and fail closed on bad host/TLS settings",
+    "run --platform databricks --gateway espresso|custom is accepted and labelled routed (unofficial_nonstandard), with tests",
+    "No live-vendor calls in tests"
+  ],
+  "description": "The Databricks adapter forwards only the `gateway` key (benchbox/platforms/databricks/adapter.py from_config key list), so gateway connection options registered for Databricks are silently dropped; for this reason GATEWAY_ROUTED_PLATFORMS in benchbox/core/gateway.py stays Snowflake-only and `run --platform databricks --gateway espresso|custom` fails closed. Forward the options, validate them as the Snowflake adapter does, then add databricks to GATEWAY_ROUTED_PLATFORMS.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T00:42:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8bc367c6c53f4fb294fe3f3e558eca8e",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
