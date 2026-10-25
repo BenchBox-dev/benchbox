@@ -2873,6 +2873,13 @@
       "status": "done",
       "title": "Measure complete PR lifecycles and repair missing-head CI accounting"
     },
+    "ci-chdb-guard-fast-tier-regression-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Restore fast-tier time after the chDB connection guard made it 3x slower"
+    },
     "ci-dedupe-01-post-merge-skip-queue-certified-shas": {
       "claim": null,
       "needs": [],

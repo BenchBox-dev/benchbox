@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The PR's own CI fast-tier pytest summary time is within 10% of 330 s (run id and summary line recorded) and medium shards pass",
+    "A module that leaves a chDB connection open still fails with the existing message (test); a chDB-free module triggers no probe (test)",
+    "Probe cost per call measured in Linux and recorded",
+    "Post-merge: the next 3 PR CI runs on develop-based heads show fast-job times back in the pre-incident range (run ids recorded)"
+  ],
+  "context": "Fix in progress on branch fix/chdb-guard-only-where-used. Source: CI time-regression incident 2026-10-25.",
+  "description": "PR #3423 added tests/conftest.py _chdb_connections_closed_after_module (autouse, module scope), which calls chdb_open_connection_error() and opens a chDB probe session after every test module. The fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347), making the fast job the PR critical path (about 12 to 20+ min). Fix: probe only modules that imported or used chDB, keeping the leak detection for modules that did.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T13:57:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5f360469c443401badacdf4f6ddef4f2",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
