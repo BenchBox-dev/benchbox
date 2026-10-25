@@ -955,3 +955,22 @@ class TestSQLiteBoundsOnAnyTable:
         finally:
             duck.close()
             lite.close()
+
+
+def test_expand_multi_statement_queries_splits_into_lettered_parts_and_keeps_single_statements():
+    from benchbox.utils.dialect_utils import expand_multi_statement_queries
+
+    queries = {"1": "SELECT 1;", "14": "SELECT 'a;b'; SELECT 2;", "ops": 7}
+
+    expanded = expand_multi_statement_queries(queries, "duckdb")
+
+    assert list(expanded) == ["1", "14a", "14b", "ops"]
+    assert expanded["1"] == "SELECT 1;"
+    assert expanded["14a"] == "SELECT 'a;b'"
+    assert expanded["14b"] == "SELECT 2"
+
+
+def test_expand_multi_statement_queries_falls_back_for_an_unknown_split_dialect():
+    from benchbox.utils.dialect_utils import expand_multi_statement_queries
+
+    assert list(expand_multi_statement_queries({"1": "SELECT 1; SELECT 2"}, "no-such-dialect")) == ["1a", "1b"]
