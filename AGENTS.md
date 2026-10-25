@@ -23,7 +23,7 @@ Personal defaults apply only where this guide is silent; where behavior conflict
 
 `[SESSION-STATE-001]` Session state lives in its tracker item, never in a handoff, scratchpad, `/tmp`, or commit; holds are enforced states (`docs/agent/handoffs.md`).
 
-`[MERGE-AUTHORITY-001]` A hold is the `no-auto-merge` label, applied in the turn the owner asks. Lift one, post a stand-in, or bypass a check only when the owner names that PR now (`docs/agent/merge-authority.md`).
+`[MERGE-AUTHORITY-001]` A hold is the `no-auto-merge` label, applied in the turn the owner asks. Lift one or post a stand-in only when the owner names that PR now; never bypass a check (`docs/agent/merge-authority.md`).
 
 ## Code Review Rules
 
