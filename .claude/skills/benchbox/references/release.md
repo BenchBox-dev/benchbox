@@ -1,7 +1,7 @@
 # Release
 
 Drive a BenchBox release with the version-branch flow. The authoritative
-runbook is `docs/operations/release-guide.md` in the BenchBox repo — read it
+runbook is `docs/internal/release-guide.md` in the BenchBox repo — read it
 before acting; this file adds only agent behavior. If this file and the
 guide disagree, the guide wins.
 
@@ -30,6 +30,21 @@ The three-stage UAT campaign is advisory under the current runbook. Missing,
 stale, red, or non-ancestor UAT evidence does not fail `validate-base` or stop
 `release-cut`. A future blocking UAT policy needs an explicit runbook change
 and rollout on the trusted release base.
+
+## Release notes
+
+Release notes come from `changelog.d/*.json` fragments, never from commit
+subjects and never from hand edits to `CHANGELOG.md`, whose `[Unreleased]`
+section stays empty. Each pull request adds its own fragment with
+`make changelog-entry` (or the internal form, `CHANGELOG_INTERNAL="reason"`,
+for a change with no user effect); `make changelog-check` validates it.
+
+Before the cut, `make release-prep VERSION=X.Y.Z` compiles every fragment into
+the `## [X.Y.Z]` section, deletes the consumed fragments, and prints a
+worksheet and a coverage report. Curate that section: the release gate allows
+at most 45 bullets and 160 lines, rejects trailing `(#NNNN)` references and
+duplicate `###` headings, and the cut stops while a fragment is pending. Read
+"Release notes from fragments" in the guide for the exact rules.
 
 ## Hard rules
 

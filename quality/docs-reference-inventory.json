@@ -43,22 +43,6 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "unresolved": 1
-   },
-   "occurrences": 1,
-   "path": ".claude/skills/benchbox/references/release.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "unresolved",
-     "target": "docs/operations/release-guide.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
     "unresolved": 7
    },
    "occurrences": 7,
@@ -5274,12 +5258,12 @@
    "governance-stays": 7,
    "historical-record": 112,
    "lock-test": 26,
-   "prose-link-pinned": 20,
+   "prose-link-pinned": 19,
    "runtime-link-updated": 7,
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 263,
+  "files": 262,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
@@ -5288,9 +5272,9 @@
    "generated": 15,
    "pattern": 287,
    "root": 213,
-   "unresolved": 1998
+   "unresolved": 1997
   },
-  "references": 33362,
+  "references": 33361,
   "unclassified": 0
  }
 }
