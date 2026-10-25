@@ -15981,6 +15981,16 @@
       "status": "open",
       "title": "Stop accepting the old `### oracle-review-shadow:` first line in the required oracle check"
     },
+    "oracle-classify-on-gateway-host-20261025": {
+      "claim": null,
+      "needs": [
+        "oracle-verdict-single-job-20261025",
+        "oracle-local-prepr-review-20261025"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Serve oracle size classification from the gateway host so runners and authors need no TypeSafe key"
+    },
     "oracle-codex-sandbox-bwrap-ci-20261009": {
       "claim": null,
       "needs": [],
