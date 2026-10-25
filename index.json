@@ -13673,6 +13673,13 @@
       "status": "open",
       "title": "Run the local platform benchmark matrix against 1..S throughput stream numbering"
     },
+    "local-rerun-bundles-fail-submission-validation-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Locally produced result bundles fail submission validation (raw tuning diagnostics, absolute paths, no manifest)"
+    },
     "local-tpcdi-bundles-regenerate-current-generator": {
       "claim": null,
       "needs": [],
