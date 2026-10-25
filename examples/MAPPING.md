@@ -114,19 +114,19 @@ flowchart TD
 | TPC-H tunings | Various `tpch_*.yaml` files | `tunings/benchmarks/` |
 | TPC-DS tunings | Various `tpcds_*.yaml` files | `tunings/benchmarks/` |
 | **Benchmark Documentation** | | |
-| TPC-H guide | `duckdb_tpch_power.py` | [docs/benchmarks/tpc-h.md](../docs/benchmarks/tpc-h.md) |
-| TPC-DS guide | `duckdb_tpcds_power.py` | [docs/benchmarks/tpc-ds.md](../docs/benchmarks/tpc-ds.md) |
-| NYC Taxi guide | `duckdb_nyctaxi.py` | [docs/benchmarks/nyctaxi.md](../docs/benchmarks/nyctaxi.md) |
-| TSBS DevOps guide | `duckdb_tsbs_devops.py` | [docs/benchmarks/tsbs-devops.md](../docs/benchmarks/tsbs-devops.md) |
-| TPC-H Data Vault guide | Via `unified_runner.py` | [docs/benchmarks/datavault.md](../docs/benchmarks/datavault.md) |
-| TPC-H Skew guide | Via `unified_runner.py` | [docs/benchmarks/tpch-skew.md](../docs/benchmarks/tpch-skew.md) |
+| TPC-H guide | `duckdb_tpch_power.py` | <https://benchbox.dev/docs/benchmarks/tpc-h.html> |
+| TPC-DS guide | `duckdb_tpcds_power.py` | <https://benchbox.dev/docs/benchmarks/tpc-ds.html> |
+| NYC Taxi guide | `duckdb_nyctaxi.py` | <https://benchbox.dev/docs/benchmarks/nyctaxi.html> |
+| TSBS DevOps guide | `duckdb_tsbs_devops.py` | <https://benchbox.dev/docs/benchmarks/tsbs-devops.html> |
+| TPC-H Data Vault guide | Via `unified_runner.py` | <https://benchbox.dev/docs/benchmarks/datavault.html> |
+| TPC-H Skew guide | Via `unified_runner.py` | <https://benchbox.dev/docs/benchmarks/tpch-skew.html> |
 | **Platform Documentation** | | |
-| PostgreSQL setup | Via `unified_runner.py` | [docs/platforms/postgresql.md](../docs/platforms/postgresql.md) |
-| Trino setup | Via `unified_runner.py` | [docs/platforms/trino.md](../docs/platforms/trino.md) |
-| Athena setup | Via `unified_runner.py` | [docs/platforms/athena.md](../docs/platforms/athena.md) |
-| Firebolt setup | Via `unified_runner.py` | [docs/platforms/firebolt.md](../docs/platforms/firebolt.md) |
-| Spark setup | Via `unified_runner.py` | [docs/platforms/spark.md](../docs/platforms/spark.md) |
-| Polars setup | Via `unified_runner.py` | [docs/platforms/polars.md](../docs/platforms/polars.md) |
+| PostgreSQL setup | Via `unified_runner.py` | <https://benchbox.dev/docs/platforms/postgresql.html> |
+| Trino setup | Via `unified_runner.py` | <https://benchbox.dev/docs/platforms/trino.html> |
+| Athena setup | Via `unified_runner.py` | <https://benchbox.dev/docs/platforms/athena.html> |
+| Firebolt setup | Via `unified_runner.py` | <https://benchbox.dev/docs/platforms/firebolt.html> |
+| Spark setup | Via `unified_runner.py` | <https://benchbox.dev/docs/platforms/spark.html> |
+| Polars setup | Via `unified_runner.py` | <https://benchbox.dev/docs/platforms/polars.html> |
 
 ---
 
@@ -134,7 +134,7 @@ flowchart TD
 
 ### Basic Benchmarking
 
-**Docs:** `docs/usage/getting-started.md` - "Running Your First Benchmark"
+**Docs:** <https://benchbox.dev/docs/usage/getting-started.html> - "Running Your First Benchmark"
 
 **Examples:**
 - `examples/getting_started/local/duckdb_tpch_power.py` - Complete local example
@@ -148,7 +148,7 @@ flowchart TD
 
 ### Test Types
 
-**Docs:** `docs/usage/examples.md` - "Test Types" section (lines ~50-150)
+**Docs:** <https://benchbox.dev/docs/usage/examples.html> - "Test Types" section (lines ~50-150)
 
 **Example:** `examples/features/test_types.py`
 
@@ -161,7 +161,7 @@ flowchart TD
 
 ### Query Subsetting
 
-**Docs:** `docs/usage/examples.md` - "Query Subset" section (lines ~200-250)
+**Docs:** <https://benchbox.dev/docs/usage/examples.html> - "Query Subset" section (lines ~200-250)
 
 **Examples:**
 - `examples/features/query_subset.py` - Feature demonstration
@@ -176,8 +176,8 @@ flowchart TD
 ### Dry-Run Mode
 
 **Docs:**
-- `docs/usage/dry-run.md` - Complete dry-run guide
-- `docs/usage/examples.md` - "Dry-Run Examples" section
+- <https://benchbox.dev/docs/usage/dry-run.html> - Complete dry-run guide
+- <https://benchbox.dev/docs/usage/examples.html> - "Dry-Run Examples" section
 
 **Examples:**
 - `examples/dry_run/basic_dry_run.py` - Simple dry-run execution
@@ -192,7 +192,7 @@ flowchart TD
 
 ### Platform Configuration
 
-**Docs:** `docs/platforms/index.md` - Platform-specific setup guides
+**Docs:** <https://benchbox.dev/docs/platforms/index.html> - Platform-specific setup guides
 
 **Examples:**
 - `examples/tunings/platforms/` - Complete configuration files
@@ -205,7 +205,7 @@ flowchart TD
 
 ### Result Analysis
 
-**Docs:** `docs/usage/examples.md` - "Result Analysis" section (lines ~400-500)
+**Docs:** <https://benchbox.dev/docs/usage/examples.html> - "Result Analysis" section (lines ~400-500)
 
 **Examples:**
 - `examples/features/result_analysis.py` - Programmatic analysis
@@ -215,7 +215,7 @@ flowchart TD
 
 ### Multi-Platform Execution
 
-**Docs:** `docs/usage/examples.md` - "Multi-Platform" section (lines ~550-650)
+**Docs:** <https://benchbox.dev/docs/usage/examples.html> - "Multi-Platform" section (lines ~550-650)
 
 **Examples:**
 - `examples/features/multi_platform.py` - Sequential execution
@@ -226,7 +226,7 @@ flowchart TD
 
 ### CI/CD Integration
 
-**Docs:** `docs/advanced/ci-cd-integration.md`
+**Docs:** <https://benchbox.dev/docs/advanced/ci-cd-integration.html>
 
 **Examples:**
 - `examples/dry_run/ci_validation.py` - Dry-run validation
@@ -283,5 +283,5 @@ flowchart TD
 
 - **[examples/README.md](README.md)** - Overview of all examples
 - **[examples/CONTRIBUTING.md](CONTRIBUTING.md)** - Guidelines for adding examples
-- **[docs/usage/examples-directory.md](../docs/usage/examples-directory.md)** - Documentation hub
-- **[docs/usage/examples.md](../docs/usage/examples.md)** - Inline documentation snippets
+- **<https://benchbox.dev/docs/usage/examples-directory.html>** - Documentation hub
+- **<https://benchbox.dev/docs/usage/examples.html>** - Inline documentation snippets

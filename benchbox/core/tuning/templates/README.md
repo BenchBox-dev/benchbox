@@ -34,5 +34,5 @@ This is the **last** discovery tier - it is only consulted after the
 `BENCHBOX_TUNING_PATH` environment variable and the cwd-relative
 `examples/tunings/` / `<platform>/<benchmark>_tuned.yaml` paths have all
 been checked and none of them exist. See
-`docs/reference/cli/tuning.md#how-tuning-is-resolved` for the full
+<https://benchbox.dev/docs/reference/cli/tuning.html#how-tuning-is-resolved> for the full
 precedence order.

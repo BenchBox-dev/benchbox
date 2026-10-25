@@ -963,7 +963,7 @@ The example runs TPC-H on Databricks at minimal cost: the smallest scale factor 
 
 - **INDEX.md**: Find examples by goal, platform, or experience level
 - **README.md**: Quick navigation and overview
-- **Documentation**: See [../docs/usage/examples.md](../docs/usage/examples.md) for detailed guides
+- **Documentation**: See <https://benchbox.dev/docs/usage/examples.html> for detailed guides
 
 ---
 

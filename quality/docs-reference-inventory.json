@@ -773,42 +773,47 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
+    "extra": 1,
     "file": 1,
-    "root": 1
+    "root": 1,
+    "unresolved": 1
    },
-   "occurrences": 3,
+   "occurrences": 5,
    "path": "CHANGELOG.md",
    "rule": "agent-and-contributor-prose",
-   "target_count": 2,
+   "target_count": 4,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
     },
     {
+     "kind": "unresolved",
+     "target": "docs/...md"
+    },
+    {
      "kind": "file",
      "target": "docs/advanced/power-run-concurrent-queries.md"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
     }
    ]
   },
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "file": 1,
     "root": 1
    },
-   "occurrences": 2,
+   "occurrences": 1,
    "path": "CONTRIBUTING.md",
    "rule": "agent-and-contributor-prose",
-   "target_count": 2,
+   "target_count": 1,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adding-dataframe-platform.md"
     }
    ]
   },
@@ -836,88 +841,16 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "file": 19
+    "file": 1
    },
-   "occurrences": 25,
+   "occurrences": 1,
    "path": "README.md",
    "rule": "agent-and-contributor-prose",
-   "target_count": 19,
+   "target_count": 1,
    "targets": [
     {
      "kind": "file",
      "target": "docs/README.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/advanced/custom-benchmarks.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/concepts/architecture.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/concepts/benchmarking-tools-compared.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/contributing-results.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/development/adding-new-platforms.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/comparison-matrix.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/dataframe.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/platform-selection-guide.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/backward-compatibility.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/public-contracts.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/reference/python-api/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/cli-quick-start.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/examples.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/installation.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/troubleshooting.md"
     }
    ]
   },
@@ -2590,74 +2523,6 @@
   {
    "disposition": "runtime-link-updated",
    "kinds": {
-    "file": 2
-   },
-   "occurrences": 2,
-   "path": "benchbox/cli/help.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/read-primitives-approximate-functions.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/write-primitives-sketch-functions.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "benchbox/core/cost/README.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-billing-unit-tb-tib-contract.md"
-    }
-   ]
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "benchbox/core/platform_manifest.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/platforms/velox.md"
-    }
-   ]
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "benchbox/core/results/anonymization.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-published-identifier-field-set.md"
-    }
-   ]
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
     "file": 1
    },
    "occurrences": 1,
@@ -2668,79 +2533,6 @@
     {
      "kind": "file",
      "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "benchbox/core/tuning/templates/README.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/reference/cli/tuning.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 1,
-    "pattern": 1
-   },
-   "occurrences": 2,
-   "path": "benchbox/core/write_primitives/README.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/write-primitives-sketch-functions.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/benchmarks/write-primitives-sketch-functions.md]"
-    }
-   ]
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "benchbox/platforms/clickhouse/deployment_mode.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/platforms/clickhouse-migration.md"
-    }
-   ]
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 2
-   },
-   "occurrences": 3,
-   "path": "benchbox/platforms/velox.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/platforms/velox.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/velox_jar_setup.md"
     }
    ]
   },
@@ -2779,31 +2571,6 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "file": 2,
-    "pattern": 1
-   },
-   "occurrences": 3,
-   "path": "docker/velox/README.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 3,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/operations/uat-framework.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/velox_jar_setup.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/platforms/velox_jar_setup.md]"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
     "root": 1
    },
    "occurrences": 3,
@@ -2820,374 +2587,16 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "file": 8,
-    "pattern": 7
-   },
-   "occurrences": 16,
-   "path": "examples/INDEX.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 15,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/index.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/benchmarks/index.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/platform-selection-guide.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/platforms/platform-selection-guide.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/cli-quick-start.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/cli-quick-start.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/configuration.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/configuration.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/examples.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/examples.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/getting-started.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/troubleshooting.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/troubleshooting.md]"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 18,
-    "pattern": 14,
     "root": 1
    },
-   "occurrences": 38,
+   "occurrences": 1,
    "path": "examples/MAPPING.md",
    "rule": "agent-and-contributor-prose",
-   "target_count": 33,
+   "target_count": 1,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
-    },
-    {
-     "kind": "file",
-     "target": "docs/advanced/ci-cd-integration.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/datavault.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/benchmarks/datavault.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/nyctaxi.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/benchmarks/nyctaxi.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tpc-ds.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/benchmarks/tpc-ds.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tpc-h.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/benchmarks/tpc-h.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tpch-skew.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/benchmarks/tpch-skew.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tsbs-devops.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/benchmarks/tsbs-devops.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/athena.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/platforms/athena.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/firebolt.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/platforms/firebolt.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/index.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/polars.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/platforms/polars.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/postgresql.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/platforms/postgresql.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/spark.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/platforms/spark.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/trino.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/platforms/trino.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/dry-run.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/examples-directory.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/examples-directory.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/examples.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/examples.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 1,
-    "pattern": 1
-   },
-   "occurrences": 2,
-   "path": "examples/PATTERNS.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/usage/examples.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/examples.md]"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 6
-   },
-   "occurrences": 7,
-   "path": "examples/README.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 6,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/platforms/platform-selection-guide.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/cli-quick-start.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/configuration.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/examples.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/troubleshooting.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 4
-   },
-   "occurrences": 4,
-   "path": "examples/dataframe/README.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 4,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/guides/tpc/tpc-ds-official-guide.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/guides/tpc/tpc-h-official-guide.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/dataframe.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/platforms/pandas-dataframe.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 2,
-    "pattern": 2
-   },
-   "occurrences": 4,
-   "path": "examples/dry_run/README.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 4,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/advanced/ci-cd-integration.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/advanced/ci-cd-integration.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/dry-run.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/dry-run.md]"
-    }
-   ]
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "examples/features/maintenance_workflow.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/guides/tpc/maintenance-phase-guide.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 2,
-    "pattern": 1
-   },
-   "occurrences": 5,
-   "path": "examples/tunings/README.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 3,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/reference/cli/tuning.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/reference/cli/tuning.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/tpc-tuning-profiles.md"
     }
    ]
   },
@@ -3340,27 +2749,6 @@
     {
      "kind": "extra",
      "target": "scripts/generate_compat_docs.py"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "file": 1,
-    "unresolved": 1
-   },
-   "occurrences": 2,
-   "path": "results-data/SEED_CORPUS_SPEC.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/development/adr/adr-subscale-tpc-ranking-policy.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/development/benchbox-results-platform-strategy.md"
     }
    ]
   },
@@ -4125,6 +3513,53 @@
     {
      "kind": "file",
      "target": "docs/operations/uat-local-provisioning.md"
+    }
+   ]
+  },
+  {
+   "disposition": "lock-test",
+   "kinds": {
+    "file": 3,
+    "pattern": 1,
+    "root": 1,
+    "unresolved": 3
+   },
+   "occurrences": 28,
+   "path": "tests/unit/cli/test_shipped_docs_urls.py",
+   "rule": "lock-tests-core",
+   "target_count": 8,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    },
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/docs/"
+    },
+    {
+     "kind": "file",
+     "target": "docs/usage/getting-started.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/usage/getting-started.md.bak"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/usage/getting-started.md]"
+    },
+    {
+     "kind": "file",
+     "target": "docs/usage/index.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/usage/other-page.md"
     }
    ]
   },
@@ -5800,24 +5235,24 @@
    "generator-deleted": 5,
    "governance-stays": 7,
    "historical-record": 112,
-   "lock-test": 25,
-   "prose-link-pinned": 28,
-   "runtime-link-updated": 13,
+   "lock-test": 26,
+   "prose-link-pinned": 17,
+   "runtime-link-updated": 7,
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 276,
+  "files": 260,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
-   "extra": 70,
-   "file": 1628,
+   "extra": 71,
+   "file": 1562,
    "generated": 15,
-   "pattern": 314,
-   "root": 211,
-   "unresolved": 1993
+   "pattern": 287,
+   "root": 212,
+   "unresolved": 1996
   },
-  "references": 33447,
+  "references": 33359,
   "unclassified": 0
  }
 }

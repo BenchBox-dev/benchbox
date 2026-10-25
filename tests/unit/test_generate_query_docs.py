@@ -138,7 +138,7 @@ class TestAnswerSetNote:
         for query_id in ("85", "93"):
             note = "\n".join(gqd._answer_set_note("tpcds", query_id))
             assert "differ from the official TPC-DS answer set" in note
-            assert "tpcds-dataframe-parity.md#q85-and-q93-reason-table-size" in note
+            assert "tpcds-dataframe-parity.html#q85-and-q93-reason-table-size" in note
 
     def test_other_statements_and_benchmarks_get_no_note(self):
         assert gqd._answer_set_note("tpcds", "9") == []
@@ -151,7 +151,7 @@ class TestSubscaleNote:
     def test_q93_explains_its_sub_sf1_reason_draw(self):
         note = "\n".join(gqd._subscale_note("tpcds", "93"))
         assert "Below SF 1 the reason is drawn from the generated rows" in note
-        assert "tpcds-dataframe-parity.md#q93-below-sf-1-reason-draw" in note
+        assert "tpcds-dataframe-parity.html#q93-below-sf-1-reason-draw" in note
 
     def test_other_queries_get_no_sub_sf1_note(self):
         assert gqd._subscale_note("tpcds", "85") == []
