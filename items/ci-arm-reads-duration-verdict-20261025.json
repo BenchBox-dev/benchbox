@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "VERIFY: Tests: a head with a would-block verdict and no baseline change is refused with a message naming the step and the baseline file; a head with the baseline updated arms; a clean head arms; a missing verdict is reported and does not block (report-only phase)",
+    "VERIFY: Dry run against a real PR head with a pass verdict arms normally (run recorded)",
+    "GUARDRAIL: Refusal never bypasses or substitutes for core; no new label, comment or environment-variable override; remote arming targets apply the same rule"
+  ],
+  "context": "Source: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
+  "description": "Last-line defense during report-only mode and for changes outside pytest. scripts/pr_arm.py (make pr-arm and remote arming) reads the PR head's verify-fast-duration verdict from core's output and refuses to arm when it reported a would-block verdict and the PR does not change the baseline file. It does not re-measure job durations (too noisy). Trigger regardless of paths; the verdict already reflects the change.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T13:57:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "30def81e78cc4b7a9edbee9300f71f61",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
