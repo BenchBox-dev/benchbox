@@ -1005,7 +1005,7 @@ changelog-preview:
 
 .PHONY: changelog-check
 changelog-check:
-	uv run -- python scripts/changelog_fragments.py check
+	uv run -- python scripts/changelog_fragments.py check --require-empty-unreleased
 
 
 MAKE_TIMING_SHELL := $(BENCHBOX_MAKEFILE_ROOT)scripts/make_timing_shell.sh
@@ -1038,6 +1038,7 @@ cloud-verify:
 pr-preflight:
 	@set -eu; \
 	sh scripts/check_primary_clone_clean.sh; \
+	$(MAKE) -s changelog-check; \
 	git fetch origin develop --quiet; \
 	PY_LIST=$$(mktemp); \
 	TEST_LIST=$$(mktemp); \
@@ -1200,6 +1201,15 @@ pr-open:
 			exit 1; \
 		fi; \
 	fi; \
+	CL_TITLE="$$PR_OPEN_TITLE"; \
+	if [ -z "$$CL_TITLE" ]; then CL_TITLE=$$(git log --reverse --format=%s origin/develop..HEAD | sed -n 1p); fi; \
+	CL_DIR=$$(mktemp -d); \
+	git diff --name-only --diff-filter=ACDMRT origin/develop...HEAD > "$$CL_DIR/changed.txt"; \
+	uv run -- python scripts/release_flow.py select --base-sha "$$(git rev-parse origin/develop)" --github-output "$$CL_DIR/select.txt" >/dev/null || { rm -rf "$$CL_DIR"; exit 1; }; \
+	CL_IDENTITY=; \
+	if grep -qx 'release-identity-changed=true' "$$CL_DIR/select.txt"; then CL_IDENTITY=--release-identity-changed; fi; \
+	uv run -- python scripts/changelog_fragments.py required --title "$$CL_TITLE" --changed-files-from "$$CL_DIR/changed.txt" $$CL_IDENTITY || { rm -rf "$$CL_DIR"; echo "Refusing to open PR: add a changelog fragment (make changelog-entry) or fix the title." >&2; exit 1; }; \
+	rm -rf "$$CL_DIR"; \
 	uv run -- python scripts/trunk_revert.py gate --branch "$$CURRENT" --repo "$$REPOSITORY"; \
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
 	git push -u origin "$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \

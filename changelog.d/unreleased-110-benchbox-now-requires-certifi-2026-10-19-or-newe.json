@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "BenchBox now requires `certifi` 2026.10.19 or newer. Older releases of the CA bundle that `requests` uses still trust the compromised eMudhra emSign certificate authorities, so an attacker on the network path could impersonate a cloud endpoint and capture the tokens that `requests`-based adapters send, such as the Fabric and Synapse Spark adapters. Upgrading BenchBox now upgrades `certifi` as well. See the [Python advisory](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576)."
+    }
+  ]
+}

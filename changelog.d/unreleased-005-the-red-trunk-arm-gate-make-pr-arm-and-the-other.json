@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The red-Trunk arm gate (`make pr-arm` and the other arming targets) names the head of the first red `trunk.yml` run after the last green one as the culprit, instead of the newest red run. When a failure persisted across later merges, the gate blamed an innocent later PR and refused the revert of the commit that broke Trunk. A `fix/revert-*` branch reverting the streak's first red commit is now exempt, a revert of any other commit is not, and the refusal names that first culprit PR and its `make trunk-revert` command. The gate widens its run fetch (30, 100, 300, then 1000 runs) until it finds a green run or the history ends, and refuses when the red streak outruns that bound."
+    }
+  ]
+}

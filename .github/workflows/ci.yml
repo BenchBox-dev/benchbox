@@ -184,6 +184,21 @@ jobs:
             --github-output "$GITHUB_OUTPUT" \
             --summary "$GITHUB_STEP_SUMMARY"
 
+      - name: Check changelog fragments
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          RELEASE_IDENTITY_CHANGED: ${{ steps.release.outputs.release-identity-changed }}
+        run: |
+          set -euo pipefail
+          test -f .ci-paths/changed.txt
+          identity=()
+          if [ "$RELEASE_IDENTITY_CHANGED" = "true" ]; then identity=(--release-identity-changed); fi
+          python scripts/changelog_fragments.py check \
+            --require-empty-unreleased \
+            --title "$PR_TITLE" \
+            --changed-files-from .ci-paths/changed.txt \
+            "${identity[@]}"
+
       - name: Flag changed paths read by later jobs
         id: path-flags
         run: |

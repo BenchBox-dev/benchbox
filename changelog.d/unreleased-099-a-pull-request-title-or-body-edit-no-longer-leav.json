@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "A pull request title or body edit no longer leaves an armed pull request blocked with every required check green. The CI run such an edit starts now reports each required check (`core`, `explorer`, `results-data`, `docs`, `tooling`) by copying the verdict of the newest full CI run on the same head commit, waiting while that run is in progress. Before, its required jobs were skipped under other names, and GitHub kept the pull request blocked until a push or a close and reopen started a full run."
+    }
+  ]
+}

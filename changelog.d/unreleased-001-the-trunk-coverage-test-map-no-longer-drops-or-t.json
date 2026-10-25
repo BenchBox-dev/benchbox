@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The trunk-coverage test map no longer drops or truncates medium test ids that contain `|`, quotes, backslashes or newlines. The map build split each coverage context at the first `|`, so on `c962e3e` 85 of the 942 `test_comment_policy.py` ids were missing and 51 truncated ghost nodes were present; it now splits only a trailing `setup`, `run` or `teardown` phase. `build-map --execution` also checks the map against each shard's execution evidence for the same SHA: it fails on map nodes that are not collected ids and on collected ids with no recorded outcome, and records skipped or no-coverage ids in `uncovered_nodes`. The trunk-coverage workflow passes the evidence files."
+    }
+  ]
+}

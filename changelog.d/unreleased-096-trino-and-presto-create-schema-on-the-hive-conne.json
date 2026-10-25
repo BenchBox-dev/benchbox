@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Trino and Presto `create_schema` on the Hive connector no longer writes `NOT NULL`, which Trino 476 rejects with `Catalog 'hive' does not support non-null column`; TPC-H (8 tables) and TPC-DS (25 tables) now create on a Trino Hive catalog. No published result can use this path, because schema creation failed on it."
+    }
+  ]
+}

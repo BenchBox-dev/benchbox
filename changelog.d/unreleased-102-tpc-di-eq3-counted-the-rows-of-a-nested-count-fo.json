@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-DI `EQ3` counted the rows of a nested `COUNT(*)` for `source_records`, which is always 1. It now counts the `DimCustomer` rows of the batch, so `source_records` changes on every platform and `transformation_success_rate` is unchanged; previously only ClickHouse, StarRocks and Doris rewrote it at translation time."
+    }
+  ]
+}

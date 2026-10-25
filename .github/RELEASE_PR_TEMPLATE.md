@@ -8,7 +8,7 @@ a squash-merge into `release`.
 
 ### Reviewer checklist
 
-- [ ] CHANGELOG.md has an accurate `## [X.Y.Z] - YYYY-MM-DD` entry
+- [ ] CHANGELOG.md has an accurate `## [X.Y.Z] - YYYY-MM-DD` entry compiled from the fragments, `[Unreleased]` is empty, and no `changelog.d/*.json` fragment remains
 - [ ] `pyproject.toml` and `benchbox/__init__.py` show the new version
 - [ ] Documentation release markers show the new version
 - [ ] `results-data/` and the three curated Explorer

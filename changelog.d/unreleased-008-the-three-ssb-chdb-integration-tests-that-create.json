@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The three SSB chDB integration tests that create the SSB schema (`test_ssb_schema_creation_without_engine`, `test_ssb_data_loading_with_clickhouse`, `test_ssb_query_execution_clickhouse`) pass in any order on one worker, even when another in-process chDB connection is still open. Every default `ClickHouseLocalClient()` in a process shares one in-memory chDB instance, and a closed connection does not clear it while another is alive, so tables left by an earlier test (or the chDB usability probe) caused `Table default.date already exists`. A fixture now drops every table in the `default` database before and after each of these tests. A per-test `db_path` is not an option because chDB refuses a path once the in-memory instance exists."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "StarRocks and Doris `CREATE TABLE` statements are now written by the SQLGlot fork's `translate_ddl` instead of regex rewrites in the adapters. Doris keeps the TPC-H key, distribution and partition tables and its `table_model`, bucket and replication options; StarRocks keeps the leading-primary-key rule (`PRIMARY KEY` model when the key columns lead the table, else `DUPLICATE KEY` on the first column). Output differences: identifiers are quoted, a leading primary key written on one line now selects the `PRIMARY KEY` model, and statements other than `CREATE TABLE` on Doris are sent unchanged. A Doris `unique` or `aggregate` table model on a table whose key columns do not lead the table now raises instead of silently writing a narrower key. A test runs both adapters over every shipped schema."
+    }
+  ]
+}

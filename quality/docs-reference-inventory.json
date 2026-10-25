@@ -773,31 +773,16 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "extra": 1,
-    "file": 1,
-    "root": 1,
-    "unresolved": 1
+    "file": 1
    },
-   "occurrences": 5,
+   "occurrences": 1,
    "path": "CHANGELOG.md",
    "rule": "agent-and-contributor-prose",
-   "target_count": 4,
+   "target_count": 1,
    "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/...md"
-    },
     {
      "kind": "file",
      "target": "docs/advanced/power-run-concurrent-queries.md"
-    },
-    {
-     "kind": "extra",
-     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -5229,14 +5214,14 @@
   "kinds": {
    "built-url": 29043,
    "dir": 173,
-   "extra": 71,
+   "extra": 70,
    "file": 1562,
    "generated": 15,
    "pattern": 287,
-   "root": 212,
-   "unresolved": 1995
+   "root": 210,
+   "unresolved": 1994
   },
-  "references": 33358,
+  "references": 33354,
   "unclassified": 0
  }
 }

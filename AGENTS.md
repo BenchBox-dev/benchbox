@@ -23,6 +23,8 @@ Personal defaults apply only where this guide is silent; where behavior conflict
 
 `[SESSION-STATE-001]` Session state lives in its tracker item, never in a handoff, scratchpad, `/tmp`, or commit; holds are enforced states (`docs/agent/handoffs.md`).
 
+`[CHANGELOG-001]` Never edit `CHANGELOG.md`; add a fragment with `make changelog-entry` (`changelog.d/README.md`).
+
 `[MERGE-AUTHORITY-001]` A hold is the `no-auto-merge` label, applied in the turn the owner asks. Lift one, post a stand-in, or bypass a check only when the owner names that PR now (`docs/agent/merge-authority.md`).
 
 ## Code Review Rules
@@ -90,7 +92,7 @@ For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stres
 
 `[EVIDENCE-FRESHNESS-001]` Assert tracker state, timings, and gate outcomes from a live read; a scheduled validation of the `todo-state` branch dates a past state, never a current one. A validator pass is not a `submit` pass.
 
-Before publication, self-review with the `code` review action and fix all Critical and Required findings; nits and considerations are optional. Run `make pr-preflight` once, then `make pr-open`. Low-effort subagents may handle boilerplate gates; you choose commands and interpret failures. Check CI on a schedule, never in a loop. Wait on pending checks.
+Before publication, self-review with the `code` review action and fix all Critical and Required findings; nits and considerations are optional. Run `make pr-preflight` once, then `make pr-open`. Check CI on a schedule, never in a loop. Wait on pending checks.
 
 Dev PRs target `develop` (or `release` / `published-results`); squash-merge, never direct-push protected branches. Force-push feature branches only with `--force-with-lease`. Soundness paths need oracle review: resolve `benchbox-oracle` threads; arm only on its success review of the current head (`/oracle-review` reruns). Land drift/pinning guards with required-CI wiring. Six `ci.yml` unit checks pass even when untouched. Stacks: one agent, one tracker item, 3 PRs max; no other agent's unmerged branch. Upper PRs are parent-based drafts. After parent squash-merge, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
 
@@ -125,7 +127,7 @@ and state the next operator step.
 - CLI dry runs must propagate explicit phases; deterministic runs use a seed.
 - Green focused/fast tests are not UAT or production certification.
 
-Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux` (`release-guide.md`). Mocker is local-only, never CI: databend's `minio` was observed to exit under it; doris/starrocks are single-service. `docs/operations/uat-framework.md` holds per-stack status. Never prune globally.
+Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux` (`release-guide.md`). Mocker is local-only, never CI. `docs/operations/uat-framework.md` holds per-stack status. Never prune globally.
 
 ## Skills and generated mirrors
 

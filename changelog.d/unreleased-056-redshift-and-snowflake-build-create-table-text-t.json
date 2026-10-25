@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Redshift and Snowflake build `CREATE TABLE` text through `translate_ddl` instead of the adapters' own DDL rewriters, which are deleted. Redshift still adds `DISTSTYLE AUTO SORTKEY AUTO` and Snowflake still writes `CREATE OR REPLACE TABLE`. Snowflake keeps the case of quoted identifiers instead of upper-casing them, and fixed-size arrays are written as plain arrays."
+    }
+  ]
+}

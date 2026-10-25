@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "On server-side platforms that drop the database on a validation mismatch, BenchBox now refuses when validation found tables that do not belong to the requesting benchmark (\"Extra tables found\"), and names them, instead of deleting them. `--force-recreate` still drops the whole database. File-based databases (DuckDB, SQLite, DataFusion, Polars) are still deleted and rebuilt on a mismatch."
+    }
+  ]
+}

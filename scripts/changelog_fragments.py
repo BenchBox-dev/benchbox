@@ -19,10 +19,10 @@ DEFAULT_MANIFEST = REPO_ROOT / ".github" / "changelog-paths.txt"
 SCHEMA_VERSION = 1
 MAX_ENTRIES = 5
 MAX_DETAILS = 8
-TEXT_BOUNDS = (20, 800)
+TEXT_BOUNDS = (20, 2000)
 INTERNAL_BOUNDS = (10, 300)
 LEAD_MAX = 120
-DETAIL_MAX = 400
+DETAIL_MAX = 600
 
 CATEGORIES = ("before-you-upgrade", "added", "changed", "fixed", "documentation")
 HEADINGS = {
@@ -478,6 +478,8 @@ def command_check(args: argparse.Namespace) -> int:
         print("\n".join(errors), file=sys.stderr)
         return EXIT_FAILED
     print(f"changelog fragments OK: {len(paths)} checked")
+    if args.title is not None:
+        return evaluate_required(args)
     return EXIT_OK
 
 
@@ -506,7 +508,7 @@ def _read_lines(source: str) -> list[str]:
     return [line for line in text.splitlines() if line.strip()]
 
 
-def command_required(args: argparse.Namespace) -> int:
+def evaluate_required(args: argparse.Namespace) -> int:
     try:
         rules = load_rules(Path(args.manifest))
         changed = list(args.changed_file)
@@ -549,6 +551,18 @@ def command_required(args: argparse.Namespace) -> int:
     return EXIT_FAILED
 
 
+def command_required(args: argparse.Namespace) -> int:
+    return evaluate_required(args)
+
+
+def _add_required_arguments(parser: argparse.ArgumentParser, title_required: bool) -> None:
+    parser.add_argument("--title", required=title_required, default=None)
+    parser.add_argument("--changed-file", action="append", default=[])
+    parser.add_argument("--changed-files-from", action="append", default=[], metavar="FILE", help="'-' for stdin.")
+    parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
+    parser.add_argument("--release-identity-changed", action="store_true")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Validate, create, render and gate changelog fragments.")
     parser.add_argument("--root", default=str(REPO_ROOT), help="Repository root.")
@@ -558,6 +572,7 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("paths", nargs="*", help="Fragment files (default: every file in changelog.d).")
     check.add_argument("--require-empty-unreleased", action="store_true")
     check.add_argument("--changelog", default=str(REPO_ROOT / "CHANGELOG.md"))
+    _add_required_arguments(check, False)
     check.set_defaults(handler=command_check)
 
     add = sub.add_parser("add", help="Create or extend this branch's fragment.")
@@ -579,11 +594,7 @@ def build_parser() -> argparse.ArgumentParser:
     preview.set_defaults(handler=command_preview)
 
     required = sub.add_parser("required", help="Decide whether a pull request needs a fragment.")
-    required.add_argument("--title", required=True)
-    required.add_argument("--changed-file", action="append", default=[])
-    required.add_argument("--changed-files-from", action="append", default=[], metavar="FILE", help="'-' for stdin.")
-    required.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
-    required.add_argument("--release-identity-changed", action="store_true")
+    _add_required_arguments(required, True)
     required.set_defaults(handler=command_required)
     return parser
 

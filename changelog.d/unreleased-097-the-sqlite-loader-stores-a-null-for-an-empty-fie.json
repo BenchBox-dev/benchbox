@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The SQLite loader stores a NULL for an empty field in a nullable column instead of empty text. Before, `SUM` over an all-empty group returned `0.0` where DuckDB returns `NULL`, which made TPC-DS Q20 and Q98 differ between SQLite and DuckDB (405,815 cells at SF 0.1). The table's declared null marker decides: `.tbl` and `.dat` data (marker `\"\"`) nulls every nullable column, text included, as the DuckDB loader does; a marker-less `.csv` nulls only nullable non-text columns and keeps empty text. Columns declared `NOT NULL` keep their empty string. SQLite results produced before this fix on data with empty fields (TPC-DS, AMPLab) should be rerun."
+    }
+  ]
+}

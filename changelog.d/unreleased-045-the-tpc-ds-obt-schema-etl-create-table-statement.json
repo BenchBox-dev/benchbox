@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The TPC-DS OBT schema, ETL, `CREATE TABLE` statement and lineage page come from one declarative model, `benchbox/core/tpcds_obt/model.yaml`. The table gains 12 roles and 197 columns (518 to 715 at `dimension_mode=full`): the billing and returning customer's current address, demographics and household demographics, the billing customer's first sales and first ship-to dates, and the return-side store, call center, catalog page and web page. Column lineage is derived from the columns the ETL reads, which corrects `store_sk` and other fact columns that named a returns column the ETL never used. A full-width build at scale factor 1 or above fails when a calendar day from 1998 to 2002 has no sale or an item never appears, and the manifest records the coverage. The OBT benchmark version is 0.2, so published SQL OBT results need a rerun."
+    }
+  ]
+}

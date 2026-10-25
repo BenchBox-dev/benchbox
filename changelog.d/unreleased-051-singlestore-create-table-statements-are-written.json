@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "SingleStore `CREATE TABLE` statements are written by the SQLGlot fork's `translate_ddl` (foreign keys stripped, lower-case table names, `FLOAT` as `REAL`, `TIMESTAMP` as `DATETIME`, and the TPC-H `SHARD KEY`, `SORT KEY` and `REFERENCE TABLE` clauses) instead of adapter text rewrites. The `BaseDdlOptimizer` mixin and the `singlestore_*` rewrite methods are removed; the four SingleStore DDL rules remain as governance rows naming the `translate_ddl` options. Array columns, which SingleStore cannot store, now become `VECTOR(n, F32|F64)` rather than invalid DDL."
+    }
+  ]
+}

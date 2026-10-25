@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "`translate_ddl` accepts an engine type map by name (`type_map=\"starrocks\"`, `\"doris\"`, `\"singlestore\"`) so adapters do not import fork modules."
+    }
+  ]
+}

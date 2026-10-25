@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "BigQuery builds `CREATE TABLE` text through `translate_ddl` instead of the adapter's own DDL rewriter, which is deleted. It still writes `CREATE OR REPLACE TABLE`, qualifies `project.dataset`, upper-cases table names and writes `PRIMARY KEY ... NOT ENFORCED`; configured partitioning and clustering become a table layout (at most four clustering columns are kept). Temporary tables keep their name. The output differs in spelling only: project, dataset and table are written as separate identifiers, `STRING(n)` keeps its length, and fixed-size arrays are written as plain arrays."
+    }
+  ]
+}

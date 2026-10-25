@@ -12,6 +12,7 @@ safe-content:
   - "*.md"
   - "CLAUDE.md"
   - "AGENTS.md"
+  - "changelog.d/**"
 
 content-guard:
   - "_project/blind-spots/**"
