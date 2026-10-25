@@ -3300,12 +3300,17 @@
       "title": "Pilot SQL dialect generator on the existing sqlglot-upstream harness"
     },
     "ci-workflow-fanout-oracle-text-edit-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T18:44:18Z",
+        "generation": "4cbb0cb3642944a59b4b7f0ff0a2b99f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [
         "ci-usage-metrics-report-20261024"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Measure oracle and text-edit workflow fan-out per PR before choosing the next CI optimization"
     },
     "circular-import-issues-completed": {
