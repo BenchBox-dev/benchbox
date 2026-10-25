@@ -189,9 +189,9 @@ A daily `coverage-map-staleness` job in the same workflow (cron
 jobs and the monitor never run in the same workflow run. The monitor fires about
 two and a half hours after the 05:17 producer was scheduled, so that run has
 normally finished, and well before the 09:17 one starts. It opens or updates a single
-`ci-coverage-map` labelled issue when the newest map is more than 50 develop
-commits behind (the same limit selection applies to the distance between the
-map and the PR base) or the last 3 map-producing runs failed, and closes it once
+`ci-coverage-map` labelled issue when the newest map is more than 20 develop
+commits behind (the staleness limit, separate from the 50-commit distance
+selection tolerates between the map and the PR base) or the last 3 map-producing runs failed, and closes it once
 healthy. A map-producing run is a completed `develop` run whose
 `medium-coverage-map` job concluded `success` or `failure`; monitor-only,
 cancelled and skipped runs are not counted and cannot reset the failure history.

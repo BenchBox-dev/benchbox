@@ -14,7 +14,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from scripts import coverage_test_selection as sel
 
-STALENESS_BEHIND_LIMIT = sel.MAX_MAP_BEHIND_COMMITS
+STALENESS_BEHIND_LIMIT = 20
 PRODUCER_JOB = "medium-coverage-map"
 RUN_SCAN_LIMIT = 30
 STALENESS_FAILED_RUNS = 3

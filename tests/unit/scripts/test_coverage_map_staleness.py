@@ -31,11 +31,11 @@ def test_decide_flags_a_missing_map_as_stale() -> None:
 
 
 def test_decide_flags_a_map_further_behind_than_the_selection_limit() -> None:
-    assert stale.STALENESS_BEHIND_LIMIT == 50
-    state, reason = stale.decide("found", 51, ["success", "success"])
+    assert stale.STALENESS_BEHIND_LIMIT == 20
+    state, reason = stale.decide("found", 21, ["success", "success"])
     assert state == "stale"
-    assert "51" in reason
-    assert stale.decide("found", 50, ["success"])[0] == "healthy"
+    assert "21" in reason
+    assert stale.decide("found", 20, ["success"])[0] == "healthy"
 
 
 def test_decide_flags_three_consecutive_failed_runs() -> None:
