@@ -1441,10 +1441,18 @@ class _UsageApi:
         self.failing: set[str] = set()
         self.fuzzy_boundary = False
         self.requests: list[str] = []
+        self.logs: dict[int, str] = {}
         self.workflows: dict[str, str] = {
             "trunk.yml": "2026-01-01T00:00:00Z",
             "trunk-coverage.yml": "2026-01-01T00:00:00Z",
         }
+
+    def get_text(self, path: str) -> str | None:
+        self.requests.append(path)
+        if any(marker in path for marker in self.failing):
+            return None
+        match = _re.fullmatch(r"/repos/o/r/actions/jobs/(\d+)/logs", path)
+        return self.logs.get(int(match.group(1))) if match else None
 
     def get(self, path: str) -> object | None:
         self.requests.append(path)
@@ -1894,7 +1902,7 @@ def test_workload_mix_separates_text_edits_heavy_tier_and_cancelled_work() -> No
     assert workload["by_class"]["ci_code"]["cancelled_runner_minutes"] == 5.0
     assert workload["cancelled_runner_minutes"] == 5.0
     assert workload["by_runner_os_minutes"] == {"linux": 20.0}
-    assert "heavy_tier_reasons" in workload["class_definitions"]
+    assert "heavy_tier_decision" in workload["class_definitions"]
 
 
 def test_disk_cache_lets_a_rerun_skip_immutable_requests(tmp_path: Path) -> None:
@@ -2034,3 +2042,102 @@ def test_ruleset_is_read_across_every_page() -> None:
     collection = _collect(api, USAGE_DAY, USAGE_DAY + timedelta(hours=1))
     assert collection.required["contexts"] == ["late-context"]
     assert collection.required["ruleset_ids"] == [2]
+
+
+HEAVY_LOG = """2026-10-24T19:08:40.7765737Z ##[group]Run set -euo pipefail
+2026-10-24T19:08:40.7767068Z python scripts/heavy_tier_needed.py \\
+2026-10-24T19:08:40.7812291Z ##[endgroup]
+2026-10-24T19:08:40.8561284Z heavy-needed={flag}
+2026-10-24T19:08:40.8571153Z {reason}
+2026-10-24T19:08:40.9585654Z Post job cleanup.
+"""
+
+
+def test_parse_heavy_decision_reads_the_flag_and_classifies_the_reason() -> None:
+    needed = HEAVY_LOG.format(
+        flag="true", reason="coverage selection escalated: shadow mode (coverage fail-closed carve-out)"
+    )
+    assert metrics.parse_heavy_decision(needed) == {
+        "heavy_needed": True,
+        "class": "coverage_fail_closed_carve_out",
+        "reason": "coverage selection escalated: shadow mode (coverage fail-closed carve-out)",
+    }
+    skipped = metrics.parse_heavy_decision(
+        HEAVY_LOG.format(flag="false", reason="docs only; pull_request runs skip the heavy tier")
+    )
+    assert skipped["heavy_needed"] is False and skipped["class"] == "pull_request_skips_heavy_tier"
+    assert metrics.parse_heavy_decision(HEAVY_LOG.format(flag="true", reason="something new"))["class"] == "other"
+    assert metrics.parse_heavy_decision("no decision here") is None
+    assert metrics.parse_heavy_decision(HEAVY_LOG.format(flag="maybe", reason="x")) is None
+
+
+def test_heavy_tier_reasons_are_collected_from_first_attempt_ci_paths_logs() -> None:
+    api = _UsageApi()
+    api.runs = [_usage_run(1, _at(1)), _usage_run(2, _at(2)), _usage_run(3, _at(3), display_title="CI (text edit)")]
+    api.jobs = {
+        1: [
+            _usage_job(11, "ci-paths", 1, _at(1), _at(1, 1), _at(1, 2)),
+            _usage_job(12, "medium-collect", 1, _at(1, 3), _at(1, 4), _at(1, 9)),
+        ],
+        2: [
+            _usage_job(21, "ci-paths", 1, _at(2), _at(2, 1), _at(2, 2)),
+            _usage_job(22, "lint", 1, _at(2, 3), _at(2, 4), _at(2, 7)),
+        ],
+        3: [_usage_job(31, "ci-paths", 1, _at(3), _at(3, 1), _at(3, 2))],
+    }
+    api.logs = {
+        11: HEAVY_LOG.format(flag="true", reason="packaging paths touched (packaging carve-out)"),
+        21: HEAVY_LOG.format(flag="false", reason="docs; pull_request runs skip the heavy tier"),
+    }
+    collection = _collect(api, USAGE_DAY, USAGE_DAY + timedelta(hours=5))
+    assert collection.gaps == []
+    assert sorted(collection.heavy_decisions) == [1, 2]
+    mix = metrics.build_usage_report(collection)["workload"]["by_heavy_tier_decision"]
+    assert set(mix) == {"heavy:packaging_carve_out", "light:pull_request_skips_heavy_tier"}
+    assert mix["heavy:packaging_carve_out"]["runner_minutes"] == 6.0
+    assert not any("/jobs/31/" in path for path in api.requests)
+
+
+def test_missing_ci_paths_log_is_a_gap_and_the_run_is_not_collected() -> None:
+    api = _UsageApi()
+    api.runs = [_usage_run(1, _at(1))]
+    api.jobs = {1: [_usage_job(11, "ci-paths", 1, _at(1), _at(1, 1), _at(1, 2))]}
+    collection = _collect(api, USAGE_DAY, USAGE_DAY + timedelta(hours=5))
+    assert [gap["scope"] for gap in collection.gaps] == ["heavy_decision"]
+    assert metrics.build_usage_report(collection)["workload"]["by_heavy_tier_decision"] == {
+        "not_collected": metrics._workload_table({"x": [metrics.run_facts(api.runs[0], api.jobs[1], {})]})["x"]
+    }
+
+
+def test_log_download_follows_the_redirect_without_sending_the_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    import email.message
+    import io
+    import urllib.error
+
+    location = "https://blob.example/logs/1"
+    headers = email.message.Message()
+    headers["Location"] = location
+    seen: list[tuple[str, dict]] = []
+
+    class _Opener:
+        def open(self, request, timeout):
+            seen.append((request.full_url, dict(request.header_items())))
+            raise urllib.error.HTTPError(request.full_url, 302, "Found", headers, io.BytesIO())
+
+    class _Blob(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+    def fake_urlopen(request, timeout):
+        seen.append((request.full_url, dict(request.header_items())))
+        return _Blob(b"log text")
+
+    monkeypatch.setattr(metrics.urllib.request, "build_opener", lambda *_handlers: _Opener())
+    monkeypatch.setattr(metrics.urllib.request, "urlopen", fake_urlopen)
+    assert metrics._urllib_text("/repos/o/r/actions/jobs/1/logs", "secret") == "log text"
+    assert seen[0][1]["Authorization"] == "Bearer secret"
+    assert seen[1][0] == location
+    assert "Authorization" not in seen[1][1]

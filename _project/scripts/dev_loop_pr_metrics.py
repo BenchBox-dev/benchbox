@@ -193,6 +193,74 @@ def _gh_api(path: str) -> object | None:
     return None
 
 
+def _gh_text(path: str) -> str | None:
+    for attempt in range(API_RETRY_ATTEMPTS):
+        try:
+            proc = subprocess.run(
+                ["gh", "api", "--allow-escape-sequences", path],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            proc = None
+        if proc is not None and proc.returncode == 0:
+            return proc.stdout
+        if attempt + 1 < API_RETRY_ATTEMPTS:
+            time.sleep(0.5 * (attempt + 1))
+    return None
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str) -> None:
+        return None
+
+
+def _text_once(req: urllib.request.Request, on_headers: Callable[[object], None] | None) -> tuple[str | None, bool]:
+    try:
+        with urllib.request.build_opener(_NoRedirect).open(req, timeout=60) as resp:
+            if on_headers is not None:
+                on_headers(resp.headers)
+            return resp.read().decode("utf-8", "replace"), True
+    except urllib.error.HTTPError as err:
+        if on_headers is not None:
+            on_headers(err.headers)
+        location = err.headers.get("Location")
+        if err.code in (301, 302, 303, 307, 308) and location:
+            blob = urllib.request.Request(location, headers={"User-Agent": "benchbox-dev-loop-pr-metrics"})
+            with urllib.request.urlopen(blob, timeout=120) as resp:
+                return resp.read().decode("utf-8", "replace"), True
+        return None, err.code in (404, 410)
+
+
+def _urllib_text(
+    path: str,
+    token: str,
+    *,
+    attempts: int = API_RETRY_ATTEMPTS,
+    on_headers: Callable[[object], None] | None = None,
+) -> str | None:
+    req = urllib.request.Request(
+        f"https://api.github.com{path}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "benchbox-dev-loop-pr-metrics",
+        },
+    )
+    for attempt in range(attempts):
+        try:
+            text, final = _text_once(req, on_headers)
+        except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError):
+            text, final = None, False
+        if text is not None or final:
+            return text
+        if attempt + 1 < attempts:
+            time.sleep(0.5 * (attempt + 1))
+    return None
+
+
 def _urllib_api(
     path: str,
     token: str,
@@ -293,6 +361,20 @@ class GitHubClient:
             data = self._request(path)
             if data is not None or self.rate_remaining != 0:
                 return data
+        return None
+
+    def get_text(self, path: str) -> str | None:
+        with self._lock:
+            self.calls += 1
+        for _ in range(3):
+            self._wait_for_budget()
+            if self.use_gh:
+                return _gh_text(path)
+            if not self.token:
+                return None
+            text = _urllib_text(path, self.token, attempts=self.attempts, on_headers=self._observe)
+            if text is not None or self.rate_remaining != 0:
+                return text
         return None
 
     def get_paginated(
@@ -1960,6 +2042,7 @@ class UsageCollection:
     head_data: dict[str, dict] = field(default_factory=dict)
     develop_commits: list[dict] | None = None
     workflow_created: dict[str, datetime] = field(default_factory=dict)
+    heavy_decisions: dict[int, dict] = field(default_factory=dict)
     required: dict | None = None
     effective_from_override: dict[str, datetime] = field(default_factory=dict)
     gaps: list[dict] = field(default_factory=list)
@@ -2250,6 +2333,81 @@ def collect_head_data(client: GitHubClient, collection: UsageCollection, cache: 
             collection.head_data[sha] = data
 
 
+HEAVY_REASON_CLASSES: tuple[tuple[str, str], ...] = (
+    ("(test-infrastructure carve-out)", "test_infrastructure_carve_out"),
+    ("(coverage fail-closed carve-out)", "coverage_fail_closed_carve_out"),
+    ("(packaging carve-out)", "packaging_carve_out"),
+    ("(soundness carve-out)", "soundness_carve_out"),
+    ("lookup failed closed", "lookup_failed_closed"),
+    ("not a code-routed tree", "not_code_routed"),
+    ("skip the heavy tier", "pull_request_skips_heavy_tier"),
+)
+_LOG_TIMESTAMP = re.compile(r"^\S+Z ?")
+
+
+def parse_heavy_decision(log: str) -> dict | None:
+    lines = [_LOG_TIMESTAMP.sub("", line) for line in log.splitlines()]
+    start = next((i for i, line in enumerate(lines) if "scripts/heavy_tier_needed.py" in line), None)
+    if start is None:
+        return None
+    end = next((i for i in range(start, len(lines)) if lines[i].startswith("##[endgroup]")), None)
+    if end is None:
+        return None
+    flag = lines[end + 1].strip() if end + 1 < len(lines) else ""
+    if flag not in ("heavy-needed=true", "heavy-needed=false"):
+        return None
+    reason = lines[end + 2].strip() if end + 2 < len(lines) else ""
+    reason_class = next((name for needle, name in HEAVY_REASON_CLASSES if needle in reason), "other")
+    return {"heavy_needed": flag.endswith("true"), "class": reason_class, "reason": reason[:300]}
+
+
+def _collect_heavy_decision(client: GitHubClient, cache: DiskCache, job_id: int) -> dict | str:
+    key = f"heavy-decision:{client.repo}:{job_id}"
+    cached = cache.get(key)
+    if isinstance(cached, dict):
+        return cached
+    log = client.get_text(f"/repos/{client.repo}/actions/jobs/{job_id}/logs")
+    if log is None:
+        return "log request failed"
+    decision = parse_heavy_decision(log)
+    if decision is None:
+        return "heavy-tier decision not found in the ci-paths log"
+    cache.put(key, decision)
+    return decision
+
+
+def _heavy_decision_job(run: dict, jobs: list[dict]) -> int | None:
+    if workflow_name(run) != CI_WORKFLOW or run.get("event") != "pull_request":
+        return None
+    if run.get("display_title") == TEXT_EDIT_DISPLAY_TITLE:
+        return None
+    for job in jobs:
+        if (
+            job.get("name") == "ci-paths"
+            and int(job.get("run_attempt") or 1) == 1
+            and classify_job(job, None) == "executed"
+        ):
+            return int(job["id"])
+    return None
+
+
+def collect_heavy_decisions(client: GitHubClient, collection: UsageCollection, cache: DiskCache, workers: int) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    targets = [
+        (int(run["id"]), job_id)
+        for run in collection.runs
+        if (job_id := _heavy_decision_job(run, collection.jobs_by_run.get(int(run["id"]), []))) is not None
+    ]
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        results = list(pool.map(lambda item: _collect_heavy_decision(client, cache, item[1]), targets))
+    for (run_id, job_id), result in zip(targets, results, strict=True):
+        if isinstance(result, dict):
+            collection.heavy_decisions[run_id] = result
+        else:
+            collection.gap("heavy_decision", result, run_id=run_id, job_id=job_id)
+
+
 def collect_usage(
     client: GitHubClient,
     *,
@@ -2284,6 +2442,7 @@ def collect_usage(
     collect_workflow_metadata(client, collection)
     collect_merged_prs(client, collection)
     collect_head_data(client, collection, cache, workers)
+    collect_heavy_decisions(client, collection, cache, workers)
     collection.stats["api_calls"] = getattr(client, "calls", 0)
     collection.stats["rate_limit_wait_seconds"] = int(getattr(client, "waited_seconds", 0))
     collection.stats["cache_hits"] = cache.hits
@@ -2507,32 +2666,42 @@ def build_workflow_tables(facts: list[dict]) -> dict:
     return {"per_workflow_event": rows, "overall": _summarize_facts(facts)}
 
 
-def build_workload_mix(facts: list[dict]) -> dict:
+def _workload_table(groups: dict[str, list[dict]]) -> dict[str, dict]:
+    return {
+        name: {
+            "runs": len(group),
+            "runner_minutes": round(sum(item["minutes_total"] for item in group), 2),
+            "cancelled_runner_minutes": round(sum(item["minutes"]["cancelled"] for item in group), 2),
+            "runner_minutes_per_run": _distribution([item["minutes_total"] for item in group]),
+        }
+        for name, group in sorted(groups.items())
+    }
+
+
+def build_workload_mix(facts: list[dict], heavy_decisions: dict[int, dict]) -> dict:
     by_class: dict[str, list[dict]] = {}
     by_event: dict[str, list[dict]] = {}
+    by_reason: dict[str, list[dict]] = {}
     os_minutes: dict[str, float] = {}
     for item in facts:
         by_class.setdefault(item["class"], []).append(item)
         by_event.setdefault(item["event"], []).append(item)
         for name, value in item["os_minutes"].items():
             os_minutes[name] = os_minutes.get(name, 0.0) + value
+        if item["class"] not in ("not_ci_workflow", "ci_text_edit") and item["event"] == "pull_request":
+            decision = heavy_decisions.get(int(item["id"]))
+            key = (
+                f"{'heavy' if decision['heavy_needed'] else 'light'}:{decision['class']}"
+                if decision
+                else "not_collected"
+            )
+            by_reason.setdefault(key, []).append(item)
     total = sum(item["minutes_total"] for item in facts)
     cancelled = sum(item["minutes"]["cancelled"] for item in facts)
-
-    def table(groups: dict[str, list[dict]]) -> dict[str, dict]:
-        return {
-            name: {
-                "runs": len(group),
-                "runner_minutes": round(sum(item["minutes_total"] for item in group), 2),
-                "cancelled_runner_minutes": round(sum(item["minutes"]["cancelled"] for item in group), 2),
-                "runner_minutes_per_run": _distribution([item["minutes_total"] for item in group]),
-            }
-            for name, group in sorted(groups.items())
-        }
-
     return {
-        "by_class": table(by_class),
-        "by_event": table(by_event),
+        "by_class": _workload_table(by_class),
+        "by_event": _workload_table(by_event),
+        "by_heavy_tier_decision": _workload_table(by_reason),
         "by_runner_os_minutes": {name: round(value, 2) for name, value in sorted(os_minutes.items())},
         "cancelled_runner_minutes": round(cancelled, 2),
         "cancelled_share": round(cancelled / total, 4) if total else None,
@@ -2543,7 +2712,10 @@ def build_workload_mix(facts: list[dict]) -> dict:
             "ci_code": "CI run with the lint job or a test job executed and no heavy tier",
             "ci_non_code": "other CI runs",
             "not_ci_workflow": "every workflow other than ci.yml",
-            "heavy_tier_reasons": "not collected: reason codes are job outputs visible only in logs",
+            "heavy_tier_decision": (
+                "heavy-needed flag and reason class parsed from the first attempt's ci-paths job log for pull_request "
+                "CI runs; not_collected means the run had no executed ci-paths job"
+            ),
         },
     }
 
@@ -3010,7 +3182,7 @@ def build_usage_report(collection: UsageCollection) -> dict:
             "stats": dict(sorted(collection.stats.items())),
         },
         "workflows": build_workflow_tables(facts),
-        "workload": build_workload_mix(facts),
+        "workload": build_workload_mix(facts, collection.heavy_decisions),
         "pull_requests": build_pr_section(collection, facts),
         "post_merge": build_post_merge_signal(collection, facts),
     }
@@ -3124,6 +3296,21 @@ def render_usage_report(report: dict) -> str:
     )
     lines.append(
         "Runner OS minutes: " + ", ".join(f"{name}={value}" for name, value in workload["by_runner_os_minutes"].items())
+    )
+    lines += ["", "Heavy-tier decision (pull_request CI runs, first-attempt ci-paths log)"]
+    lines += _render_table(
+        ["decision:reason", "runs", "minutes", "cancelled min", "min/run p50", "min/run p90"],
+        [
+            [
+                name,
+                value["runs"],
+                value["runner_minutes"],
+                value["cancelled_runner_minutes"],
+                value["runner_minutes_per_run"]["median"],
+                value["runner_minutes_per_run"]["p90"],
+            ]
+            for name, value in workload["by_heavy_tier_decision"].items()
+        ],
     )
     lines.append(
         f"Cancelled work: {workload['cancelled_runner_minutes']} runner minutes ({_rate_text(workload['cancelled_share'])} of total)"
