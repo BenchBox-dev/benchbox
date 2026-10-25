@@ -232,8 +232,18 @@ def test_gate_runs_the_script_with_the_resolved_pr() -> None:
 
 def test_sweep_covers_every_open_develop_pull_request() -> None:
     sweep = next(step for step in _steps("sweep") if step["name"].startswith("Gate every open"))
-    assert "--base develop" in sweep["run"]
+    assert "gh api --paginate" in sweep["run"]
+    assert "pulls?base=develop&state=open&per_page=100" in sweep["run"]
+    assert "gh pr list" not in sweep["run"]
+    assert "--limit" not in sweep["run"]
     assert SCRIPT in sweep["run"]
+
+
+def test_sweep_timeout_covers_the_measured_per_pull_request_time() -> None:
+    measured_seconds_per_pull_request = 5
+    open_develop_pull_requests = 16
+    timeout_seconds = _jobs()["sweep"]["timeout-minutes"] * 60
+    assert timeout_seconds >= 30 * measured_seconds_per_pull_request * open_develop_pull_requests
 
 
 def test_sweep_fails_visibly_when_a_pull_request_errors() -> None:

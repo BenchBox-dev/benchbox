@@ -259,20 +259,117 @@ def test_main_reports_a_fetch_error(monkeypatch: pytest.MonkeyPatch) -> None:
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
 
 
-def test_main_reports_a_policy_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def _stub_pull(monkeypatch: pytest.MonkeyPatch, base: str = "develop") -> None:
     monkeypatch.setenv("GITHUB_TOKEN", "token")
     monkeypatch.setattr(
         oracle_gate,
         "fetch_pull",
-        lambda repo, pr, token: {"base": {"ref": "develop"}, "head": {"sha": HEAD}, "changed_files": 1},
+        lambda repo, pr, token: {"base": {"ref": base}, "head": {"sha": HEAD}, "changed_files": 1},
     )
     monkeypatch.setattr(oracle_gate, "fetch_files", lambda repo, pr, token: [{"filename": "x"}])
 
-    def failing_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
-        raise oracle_gate.CheckError("no policy")
 
-    monkeypatch.setattr(oracle_gate, "load_policy_rules", failing_rules)
+def _record_posts(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, int, str]]:
+    posts: list[tuple[str, int, str]] = []
+
+    def fake_post(token: str, repo: str, head_sha: str, status: int, message: str) -> None:
+        posts.append((head_sha, status, message))
+
+    monkeypatch.setattr(oracle_gate, "post_status", fake_post)
+    return posts
+
+
+def _failing_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
+    raise oracle_gate.CheckError("no policy")
+
+
+def test_main_posts_failure_when_evaluation_errors_after_the_head_is_known(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_pull(monkeypatch)
+    monkeypatch.setattr(oracle_gate, "load_policy_rules", _failing_rules)
+    posts = _record_posts(monkeypatch)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+    assert len(posts) == 1
+    head, status, message = posts[0]
+    assert head == HEAD and oracle_gate.gate_state(status) == "failure"
+    assert "no policy" in message and len(oracle_gate.gate_description(message)) <= oracle_gate.DESCRIPTION_LIMIT
+
+
+def test_main_posts_failure_when_a_review_fetch_raises_a_key_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_pull(monkeypatch)
+    monkeypatch.setattr(oracle_gate, "load_policy_rules", lambda: ((), ()))
+
+    def broken(repo: str, pr: int, token: str) -> Any:
+        raise KeyError("data")
+
+    monkeypatch.setattr(oracle_gate, "fetch_reviews", broken)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+    assert [head for head, _, _ in posts] == [HEAD]
+
+
+def test_main_posts_failure_when_the_fresh_reevaluation_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    calls: list[int] = []
+
+    def flaky(repo: str, pr: int, token: str) -> tuple[str, int, str]:
+        calls.append(1)
+        if len(calls) == 1:
+            return HEAD, oracle_gate.PASS, "ok"
+        raise oracle_gate.EvaluationFailed(HEAD, oracle_gate.CheckError("down"))
+
+    monkeypatch.setattr(oracle_gate, "evaluate", flaky)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+    assert len(posts) == 1 and posts[0][0] == HEAD and oracle_gate.gate_state(posts[0][1]) == "failure"
+
+
+def test_main_returns_error_when_the_failure_post_also_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_pull(monkeypatch)
+    monkeypatch.setattr(oracle_gate, "load_policy_rules", _failing_rules)
+
+    def failing_post(token: str, repo: str, head_sha: str, status: int, message: str) -> None:
+        raise oracle_gate.CheckError("down")
+
+    monkeypatch.setattr(oracle_gate, "post_status", failing_post)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+
+
+def test_main_no_post_never_posts_an_evaluation_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_pull(monkeypatch)
+    monkeypatch.setattr(oracle_gate, "load_policy_rules", _failing_rules)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7", "--no-post"]) == oracle_gate.ERROR
+    assert posts == []
+
+
+def test_main_posts_nothing_when_the_pull_request_cannot_be_fetched(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+
+    def down(repo: str, pr: int, token: str) -> Any:
+        raise oracle_gate.CheckError("down")
+
+    monkeypatch.setattr(oracle_gate, "fetch_pull", down)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+    assert posts == []
+
+
+def test_main_posts_nothing_when_the_pull_request_has_no_head(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.setattr(oracle_gate, "fetch_pull", lambda repo, pr, token: {"base": {"ref": "develop"}})
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+    assert posts == []
+
+
+def test_main_posts_nothing_for_an_ungated_base_even_when_evaluation_would_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _stub_pull(monkeypatch, base="feature")
+    monkeypatch.setattr(oracle_gate, "load_policy_rules", _failing_rules)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.PASS
+    assert posts == []
 
 
 def test_main_posts_nothing_for_a_pull_request_that_does_not_target_develop(monkeypatch: pytest.MonkeyPatch) -> None:

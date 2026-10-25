@@ -717,6 +717,21 @@ evaluates a pull request is in one concurrency group keyed by its number, with
 cancel-in-progress, so a newer run for a pull request cancels the earlier one
 instead of racing it.
 
+When evaluation fails after the head SHA is known (an API, fetch or policy
+error), the script posts `failure` for that head with a short error
+description and exits with the error code, so an earlier `success` on the head
+cannot outlive a gate that can no longer evaluate it. This is deliberately
+fail-closed: an API outage turns every pull request the gate touches to
+`failure` until its next successful evaluation. When the pull request itself
+cannot be read there is no head SHA to post to, so nothing is posted; that is
+the limit of the behavior, and a prior status on the head stands until a later
+run can read it. A pull request whose base is not `develop`, and any
+`--no-post` run, never posts, errors included. The hourly sweep lists open
+`develop` pull requests with `gh api --paginate`, so every one is covered, and
+its 45-minute timeout is sized from a measured sweep of 16 pull requests in
+about 75 seconds (about 5 seconds each), which leaves room for several
+hundred.
+
 `oracle-gate` became required on 2026-10-21, scoped to the `benchbox-oracle`
 App's integration ID, while `oracle-review` stayed required beside it. Across
 the 198 pull request heads reviewed from 2026-10-22 the two agreed on 195; the

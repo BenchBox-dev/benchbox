@@ -36,6 +36,12 @@ class UngatedBase(Exception):
     pass
 
 
+class EvaluationFailed(Exception):
+    def __init__(self, head_sha: str, cause: Exception) -> None:
+        super().__init__(str(cause) or type(cause).__name__)
+        self.head_sha = head_sha
+
+
 def gate_state(status: int) -> str:
     return "success" if status == PASS else "failure"
 
@@ -100,14 +106,17 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
     if base != GATED_BASE:
         raise UngatedBase(f"#{pr} targets {base}, not {GATED_BASE}; {GATE_CONTEXT} is posted only for {GATED_BASE}")
     head_sha = pull["head"]["sha"]
-    items = fetch_files(token, repo, pr)
-    files = changed_paths(items)
-    matcher = path_matcher(len(items), pull["changed_files"], *load_policy_rules())
-    reviews = fetch_reviews(token, repo, pr)
-    threads = fetch_threads(token, repo, pr)
-    base_date = fetch_base_change_date(token, repo, pr)
-    comments = fetch_comments(token, repo, pr)
-    status, message = decide(head_sha, files, reviews, threads, matcher, base_date, comments)
+    try:
+        items = fetch_files(token, repo, pr)
+        files = changed_paths(items)
+        matcher = path_matcher(len(items), pull["changed_files"], *load_policy_rules())
+        reviews = fetch_reviews(token, repo, pr)
+        threads = fetch_threads(token, repo, pr)
+        base_date = fetch_base_change_date(token, repo, pr)
+        comments = fetch_comments(token, repo, pr)
+        status, message = decide(head_sha, files, reviews, threads, matcher, base_date, comments)
+    except (CheckError, KeyError, ValueError) as exc:
+        raise EvaluationFailed(head_sha, exc) from exc
     return head_sha, status, message
 
 
@@ -124,6 +133,17 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _fail_closed(args: argparse.Namespace, token: str, exc: EvaluationFailed) -> int:
+    print(f"oracle-gate: error: {exc}", file=sys.stderr)
+    if args.no_post:
+        return ERROR
+    try:
+        post_status(token, args.repo, exc.head_sha, ERROR, f"{GATE_CONTEXT}: evaluation error: {exc}")
+    except CheckError as post_exc:
+        print(f"oracle-gate: error: {post_exc}", file=sys.stderr)
+    return ERROR
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(sys.argv[1:] if argv is None else argv)
     token = os.environ.get("GITHUB_TOKEN", "")
@@ -138,6 +158,8 @@ def main(argv: list[str] | None = None) -> int:
     except UngatedBase as exc:
         print(f"oracle-gate: {exc}")
         return PASS
+    except EvaluationFailed as exc:
+        return _fail_closed(args, token, exc)
     except (CheckError, KeyError, ValueError) as exc:
         print(f"oracle-gate: error: {exc}", file=sys.stderr)
         return ERROR
@@ -149,6 +171,8 @@ def main(argv: list[str] | None = None) -> int:
     except UngatedBase as exc:
         print(f"oracle-gate: {exc}")
         return PASS
+    except EvaluationFailed as exc:
+        return _fail_closed(args, token, exc)
     except (CheckError, KeyError, ValueError) as exc:
         print(f"oracle-gate: error: {exc}", file=sys.stderr)
         return ERROR

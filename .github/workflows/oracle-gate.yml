@@ -148,7 +148,7 @@ jobs:
     name: sweep
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     environment: oracle
     permissions:
       contents: read
@@ -198,7 +198,7 @@ jobs:
           else
             echo "::notice::oracle-gate is not posted because the App secrets are not set"
           fi
-          PRS="$(gh pr list --repo "$REPO" --base develop --state open --limit 200 --json number --jq '.[].number')"
+          PRS="$(gh api --paginate "repos/$REPO/pulls?base=develop&state=open&per_page=100" --jq '.[].number')"
           FAILED=""
           for PR_NUMBER in $PRS; do
             uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" $POST || {
