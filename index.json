@@ -15951,15 +15951,10 @@
       "title": "Credit oracle evidence only for files actually read"
     },
     "oracle-finding-path-html-escape-drops-finding-20261024": {
-      "claim": {
-        "expires_at": "2026-10-26T12:53:48Z",
-        "generation": "64321e04f50b42e6824b03e1b0014a2d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Compare changed-file paths canonically so an escaped filename cannot exclude a finding from the verdict"
     },
     "oracle-followup-read-bypass-out-of-scope-defect-20261009": {
