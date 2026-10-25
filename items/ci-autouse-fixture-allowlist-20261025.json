@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "VERIFY: A fast-tier unit test fails on a branch that adds an unregistered module- or session-scoped autouse fixture, naming the fixture and the allowlist file; it passes on develop after the existing such fixtures are registered",
+    "VERIFY: The allowlist lists every current non-function-scoped autouse fixture with owner, rationale and expiry; expired entries fail the test with a message asking for re-justification",
+    "VERIFY: Mutation check recorded: removing an entry, or adding a synthetic module-scoped autouse fixture in a test conftest, makes the test fail",
+    "GUARDRAIL: Registration is data in the allowlist file, never source comments (comment policy); the test adds under 2 s to the fast tier (measured)",
+    "GUARDRAIL: No existing fixture behavior changes in this PR"
+  ],
+  "context": "Source: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
+  "description": "Catch the #3423 class at review time, before any timing exists: a fast-tier unit test introspects every tests/**/conftest.py (and pytest plugins registered there) for autouse fixtures whose scope is not 'function' and asserts the set equals a committed allowlist. Each allowlist entry records the fixture's qualified name, owner, rationale and an expiry date (mirroring the quarantine marker's metadata discipline). Adding such a fixture then becomes a visible, reviewed decision in the PR diff. Prior art: quarantine marker metadata; quality/comment-policy.json registry pattern. New pattern for fixtures.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T13:56:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c8ed2839b148464da6fc03f810316b6e",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}

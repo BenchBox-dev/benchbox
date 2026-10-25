@@ -2850,6 +2850,13 @@
       "status": "open",
       "title": "Fix chronic test_generate_data 60s timeout flake in medium shards"
     },
+    "ci-autouse-fixture-allowlist-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Require every non-function-scoped autouse pytest fixture to be on a reviewed allowlist"
+    },
     "ci-baseline-representative-remeasure-sample": {
       "claim": null,
       "needs": [],
