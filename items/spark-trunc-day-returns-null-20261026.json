@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "DATE_TRUNC with DAY (and any other unit TRUNC doesn't support) writes DATE_TRUNC on Spark/Databricks; pyspark test compares grouped keys against DuckDB.",
+    "Corpus diff lists every changed query; ENGINE-GAPS entry removed.",
+    "Published bundles affected are listed; sql-execution-gate and the adoption checks pass."
+  ],
+  "description": "Found while fixing Databricks ClickBench Q29/Q43 (fork #69). Spark's TRUNC accepts only year, quarter, month and week units and returns NULL for others; #69 fixed HOUR through MICROSECOND but left DAY writing TRUNC(x,'DAY'), recorded in the fork's downstream/ENGINE-GAPS.md. Any benchmark query truncating to day on Spark or Databricks returns NULL groups.\nGUARDRAILS: fix in the fork's spark2 generator with a pyspark engine test (in-process job); corpus diff of every changed Spark/Databricks query; affected published bundles listed and flagged only if recorded rows were wrong; wheel cut under the batch mutex; no cloud spend.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T22:40:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d0ee5e1c3df142449ffcf6f0e3ed9ab1",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}
