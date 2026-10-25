@@ -4,7 +4,7 @@
     "Failing-before tests (new finalize path and an existing duplicate-id record) pass after; existing tests unchanged",
     "PR merged with an oracle verdict on its final head; merge SHA recorded"
   ],
-  "context": "PR #3417 merged as 33290e412 (head 27d03171a, oracle verdict success on that head). Identical findings merged before id assignment; stored duplicate-id records de-duplicated at plan time and carry-forward.",
+  "context": "PR #3417 merged as 33290e412 (head 27d03171a, oracle verdict success on that head). Identical findings merged before id assignment; stored duplicate-id records de-duplicated at plan time and on carry-forward.",
   "description": "Round-2 codex finding 4 (Medium): report.finalize (_project/scripts/oracle_reviewers/report.py ~242) keys findings in a dict during id assignment so two identical findings collapse and the stored ids are ['D2','D2']; the next follow-up then fails in render.response_template (render.py ~86, requires unique prior ids) and later heads keep the bad priors.\n\nDECISION GATE: reproduce first (two identical findings in one review, then plan a follow-up). Choose between de-duplicating identical findings before id assignment (then say so in the body) and assigning distinct ids; the stored record must always hold unique ids that parse back, and an already-stored duplicate-id record (existing PR state) must not crash planning (handle it defensively).\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun or dispatch the oracle; oracle verdict required on the PR (soundness path); no pre-registered digests; never weaken a gate; no skip/xfail; never bypass a hook by any route (no SKIP=, --no-verify, commit-tree); primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; always encoding utf-8; PR text for a reader who never saw the session; done = merged PR plus evidence.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "9b869ff6b19d49c58c0b15de1d96f0e6",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-25T12:53:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "08a84c992450438aa05c4acfe17a8552",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
