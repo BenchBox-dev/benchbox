@@ -11766,15 +11766,10 @@
       "title": "Fix the flaky BigQuery credential-defaults tests that fail in full-suite CI but pass in isolation"
     },
     "flaky-parallel-unit-tests-generator-config-20261025": {
-      "claim": {
-        "expires_at": "2026-10-26T20:54:47Z",
-        "generation": "39fd8dc0d1e244f0ba008d8a1968058c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "test_tpch_generator::test_default_none and test_config_interface::test_default_provider_is_the_simple_one fail intermittently under parallel (-n) runs: find the leaking test"
     },
     "flight-data-benchmark": {
