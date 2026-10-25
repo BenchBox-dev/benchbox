@@ -2556,6 +2556,59 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
+    "extra": 1,
+    "unresolved": 1
+   },
+   "occurrences": 2,
+   "path": "changelog.d/unreleased-006-error-messages-benchbox-help-the-package-readmes.json",
+   "rule": "agent-and-contributor-prose",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/...md"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
+    }
+   ]
+  },
+  {
+   "disposition": "prose-link-pinned",
+   "kinds": {
+    "root": 1
+   },
+   "occurrences": 1,
+   "path": "changelog.d/unreleased-017-the-locked-filelock-moves-from-3-25-2-to-4-2-4-t.json",
+   "rule": "agent-and-contributor-prose",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    }
+   ]
+  },
+  {
+   "disposition": "prose-link-pinned",
+   "kinds": {
+    "root": 1
+   },
+   "occurrences": 1,
+   "path": "changelog.d/unreleased-020-make-doc-contracts-exports-doc-contracts-json-th.json",
+   "rule": "agent-and-contributor-prose",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    }
+   ]
+  },
+  {
+   "disposition": "prose-link-pinned",
+   "kinds": {
     "root": 1
    },
    "occurrences": 3,
@@ -4099,6 +4152,22 @@
    ]
   },
   {
+   "disposition": "fixture-data",
+   "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 3,
+   "path": "tests/unit/scripts/test_changelog_gate_cli.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/a.md"
+    }
+   ]
+  },
+  {
    "disposition": "site-pipeline-cutover",
    "kinds": {
     "file": 1,
@@ -5200,28 +5269,28 @@
   "dispositions": {
    "contract-replaced": 3,
    "contract-tooling": 5,
-   "fixture-data": 32,
+   "fixture-data": 33,
    "generator-deleted": 5,
    "governance-stays": 7,
    "historical-record": 112,
    "lock-test": 26,
-   "prose-link-pinned": 17,
+   "prose-link-pinned": 20,
    "runtime-link-updated": 7,
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 259,
+  "files": 263,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
-   "extra": 70,
+   "extra": 71,
    "file": 1562,
    "generated": 15,
    "pattern": 287,
-   "root": 210,
-   "unresolved": 1994
+   "root": 212,
+   "unresolved": 1998
   },
-  "references": 33354,
+  "references": 33361,
   "unclassified": 0
  }
 }
