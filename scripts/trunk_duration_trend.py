@@ -451,8 +451,29 @@ def evaluate(
                 MIN_ARTIFACT_SAMPLES if is_artifact else MIN_JOB_SAMPLES,
             )
         )
-    report.status = "alarm" if report.risen else "healthy"
+    report.status = decide_status(report)
     return report
+
+
+def unevaluated(report: Report) -> list[str]:
+    reasons = [f"{finding.metric}: {finding.skipped}" for finding in report.findings if finding.skipped]
+    evaluated = [finding.metric for finding in report.findings if not finding.skipped]
+    reasons.extend(
+        f"no evaluated metric matches {pattern.pattern}"
+        for pattern in TRACKED_JOBS
+        if not any(pattern.match(metric) for metric in evaluated)
+    )
+    return reasons
+
+
+def decide_status(report: Report) -> str:
+    if report.risen:
+        return "alarm"
+    reasons = unevaluated(report)
+    if reasons:
+        report.notes.append("not every tracked metric could be compared, so no healthy verdict: " + "; ".join(reasons))
+        return "insufficient"
+    return "healthy"
 
 
 def format_seconds(value: float | None) -> str:

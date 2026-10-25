@@ -64,6 +64,8 @@ class FakeGitHub:
         self.issues: list[dict] = []
         self.requests: list[tuple[str, str]] = []
         self.pin_status = 200
+        self.job_conclusion = "success"
+        self.fast_name = "fast (ubuntu-latest, 3.12)"
         self.next_issue = 100
         for index in range(recent_count + prior_count):
             started = ANCHOR - timedelta(hours=hours_between * index)
@@ -102,7 +104,7 @@ class FakeGitHub:
             return self._json(
                 {
                     "jobs": [
-                        _job("fast (ubuntu-latest, 3.12)", fast),
+                        _job(self.fast_name, fast, self.job_conclusion),
                         _job("medium-collect", 30),
                         _job("medium-test (shard 0)", 400),
                         _job("medium-test (shard 1)", 410),
@@ -389,6 +391,77 @@ def test_fast_junit_metrics_are_skipped_when_the_prior_window_lacks_artifacts() 
     assert f"| {trend.FAST_SUM_METRIC} |" not in out[0]
     assert "fast-junit metrics skipped" in out[0]
     assert not any("/zip" in path for _m, path in fake.requests)
+
+
+def _open_alarm_issue(fake: FakeGitHub) -> None:
+    fake.issues.append({"number": 7, "state": "open", "body": f"{trend.ISSUE_MARKER}\nold"})
+
+
+def test_failed_jobs_in_the_recent_window_do_not_close_an_open_issue() -> None:
+    fake = FakeGitHub()
+    fake.set_fast(recent=700, prior=690)
+    _open_alarm_issue(fake)
+    boundary = ANCHOR - trend.RECENT_WINDOW
+    original = fake.transport
+
+    def failing(method, url, headers, body):
+        response = original(method, url, headers, body)
+        if url.endswith("filter=latest"):
+            run_id = int(urlparse(url).path.split("/")[-2])
+            if trend.parse_timestamp(fake.run_by_id[run_id]["run_started_at"]) > boundary:
+                data = json.loads(response.body)
+                for job in data["jobs"]:
+                    job["conclusion"] = "failure"
+                return fake._json(data)
+        return response
+
+    api = trend.GitHubApi(REPO, "t", "https://api.example", 45, failing)
+    out: list[str] = []
+    assert trend.run(api, NOW, out.append) == 0
+    assert "Status: insufficient" in out[0]
+    assert "Issue: none" in out[0]
+    assert fake.issues[0]["state"] == "open"
+    assert not any(method == "PATCH" for method, _path in fake.requests)
+
+
+def test_renamed_jobs_do_not_close_an_open_issue() -> None:
+    fake = FakeGitHub()
+    fake.set_fast(recent=700, prior=690)
+    fake.fast_name = "fast-lane"
+    _open_alarm_issue(fake)
+    out: list[str] = []
+    assert trend.run(fake.api(), NOW, out.append) == 0
+    assert "Status: insufficient" in out[0]
+    assert "no evaluated metric matches" in out[0]
+    assert fake.issues[0]["state"] == "open"
+
+
+def test_a_tiny_budget_leaves_nothing_evaluated_and_keeps_the_issue_open() -> None:
+    fake = FakeGitHub()
+    fake.set_fast(recent=700, prior=690)
+    _open_alarm_issue(fake)
+    out: list[str] = []
+    assert trend.run(fake.api(budget=9), NOW, out.append) == 0
+    assert "Status: insufficient" in out[0]
+    assert fake.issues[0]["state"] == "open"
+
+
+def test_an_empty_prior_window_does_not_close_an_open_issue() -> None:
+    fake = FakeGitHub(recent_count=48, prior_count=0)
+    fake.set_fast(recent=700, prior=690)
+    _open_alarm_issue(fake)
+    out: list[str] = []
+    assert trend.run(fake.api(), NOW, out.append) == 0
+    assert "Status: insufficient" in out[0]
+    assert fake.issues[0]["state"] == "open"
+
+
+def test_a_risen_job_still_alarms_when_another_metric_is_unevaluated() -> None:
+    fake = FakeGitHub()
+    fake.set_fast(recent=1200, prior=690)
+    fake.fast_name = "fast (ubuntu-latest, 3.12)"
+    assert trend.run(fake.api(), NOW, lambda _text: None) == 0
+    assert fake.issues[0]["body"].count("RISEN") == 1
 
 
 def test_dry_run_never_writes_issues() -> None:
