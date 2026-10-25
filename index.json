@@ -2993,17 +2993,12 @@
       "title": "Stop CI jobs from failing on Docker Hub's unauthenticated pull rate limit"
     },
     "ci-dockerhub-anonymous-pulls-20261025": {
-      "claim": {
-        "expires_at": "2026-10-26T20:38:42Z",
-        "generation": "2da5df5bde8b4ce7981c4147068de274",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [
         "ci-sql-evidence-postgres-ecr-rate-limit-20261022"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Required CI jobs: remove the remaining anonymous Docker Hub pull (questdb service in the lint job); Postgres images are owned by ci-sql-evidence-postgres-ecr-rate-limit-20261022"
     },
     "ci-duplicate-dispatch-ghost-runs": {
