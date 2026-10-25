@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Probe b: proves two pull requests that each add a fragment merge without conflict"
+}
