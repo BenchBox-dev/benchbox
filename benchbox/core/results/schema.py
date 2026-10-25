@@ -1321,6 +1321,7 @@ def _payload_has_truncation_marker(node: Any) -> bool:
 
 
 _YAML_TUNING_SOURCES = frozenset({"explicit_file", "auto_discovered", "packaged_resource"})
+_LEDGER_ERA_STATUSES = frozenset({"noop", "applied_unverified", "applied_verified", "failed"})
 
 
 def _legacy_tuning_source_bridge(tuning_source: str | None, tuning_source_file: str | None) -> str:
@@ -1659,10 +1660,21 @@ def _build_tuning_summary(result: BenchmarkResults) -> dict[str, Any]:
     table_tunings = tuning_applied.get("table_tunings") or {}
     tuning_types = _tuning_types_present(tuning_applied)
     if table_tunings or tuning_types:
-        summary["counts"] = {
-            "tables_tuned": len(table_tunings),
-            "tuning_types": tuning_types,
-        }
+        ledger_payload = getattr(result, "applied_tuning_ledger", None)
+        if isinstance(ledger_payload, dict) or _derived_validation_status(result) in _LEDGER_ERA_STATUSES:
+            from benchbox.core.tuning.reconciliation import applied_tuning_counts
+
+            summary["counts"] = applied_tuning_counts(
+                tuning_types,
+                table_tunings,
+                ledger_payload if isinstance(ledger_payload, dict) else {},
+                getattr(result, "platform", None),
+            )
+        else:
+            summary["counts"] = {
+                "tables_tuned": len(table_tunings),
+                "tuning_types": tuning_types,
+            }
 
     tuning_profile = _extract_tuning_profile_metadata(result)
     if tuning_profile:

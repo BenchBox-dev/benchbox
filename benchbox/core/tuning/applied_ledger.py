@@ -43,6 +43,7 @@ HARNESS_DEFAULT = "harness_default"
 PHASE_DDL = "ddl"
 PHASE_POST_LOAD = "post_load"
 PHASE_SESSION = "session"
+SESSION_CONFIG_MECHANISM = "session_config"
 
 LEDGER_PHASES = frozenset({PHASE_DDL, PHASE_POST_LOAD, PHASE_SESSION})
 
@@ -165,6 +166,10 @@ class AppliedStatement:
     table: str | None = None
     error: str | None = None
 
+    @property
+    def is_tuning(self) -> bool:
+        return self.status == EXECUTED and (self.phase != PHASE_SESSION or bool(self.mechanism))
+
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "statement": self.statement,
@@ -254,22 +259,24 @@ class AppliedTuningLedger:
     def executed_statements(self) -> list[AppliedStatement]:
         return [s for s in self.statements if s.status == EXECUTED]
 
+    @property
+    def tuning_statements(self) -> list[AppliedStatement]:
+        return [s for s in self.statements if s.is_tuning]
+
     def overall_status(self, *, tuning_enabled: bool, has_config: bool) -> str:
         if not tuning_enabled or not has_config:
             return NOT_APPLICABLE
         physical_statements = [s for s in self.statements if s.phase in {PHASE_DDL, PHASE_POST_LOAD}]
         if physical_statements and all(s.status == STATEMENT_FAILED for s in physical_statements):
             return FAILED
-        if any(s.status == EXECUTED for s in self.statements):
+        if self.tuning_statements:
             return APPLIED_UNVERIFIED
-        if self.statements and all(s.status == HARNESS_DEFAULT for s in self.statements):
-            return NOOP
-        if self.statements:
+        if any(s.status == STATEMENT_FAILED for s in self.statements):
             return FAILED
         return NOOP
 
     def snapshot(self) -> tuple[int, int, int]:
-        return len(self.executed_statements), self._failed_count(), len(self.dropped)
+        return len(self.tuning_statements), self._failed_count(), len(self.dropped)
 
     def _failed_count(self) -> int:
         return sum(1 for s in self.statements if s.status == STATEMENT_FAILED)
@@ -288,12 +295,12 @@ class AppliedTuningLedger:
 
     def describe_outcome(self) -> str:
         return (
-            f"Tuning outcome after load: {len(self.executed_statements)} executed, "
+            f"Tuning outcome after load: {len(self.tuning_statements)} executed, "
             f"{self._failed_count()} failed, {len(self.dropped)} dropped"
         )
 
     def applied_ledger_hash(self) -> str | None:
-        executed = [s.to_dict() for s in self.executed_statements]
+        executed = [s.to_dict() for s in self.tuning_statements]
         if not executed:
             return None
         payload = json.dumps(executed, sort_keys=True, separators=(",", ":"))
@@ -326,18 +333,41 @@ class AppliedTuningLedger:
         return not self.statements and not self.dropped and not self.satisfied and not self.metadata_store_unsupported
 
 
+class _LedgerView:
+    __slots__ = ("_ledger", "_harness", "_mechanism")
+
+    def __init__(self, ledger: AppliedTuningLedger, harness: bool, mechanism: str | None) -> None:
+        self._ledger = ledger
+        self._harness = harness
+        self._mechanism = mechanism
+
+    def record(self, statement: str, phase: str, *, status: str = EXECUTED, error: Any | None = None) -> None:
+        self._ledger.record(
+            statement,
+            phase,
+            status=HARNESS_DEFAULT if self._harness else status,
+            mechanism=self._mechanism,
+            error=error,
+        )
+
+
 class _RecordingProxy:
-    __slots__ = ("_ledger", "_phase", "_statement_filter")
+    __slots__ = ("_base", "_ledger", "_phase", "_statement_filter", "_harness", "_mechanism")
 
     def __init__(
         self,
         ledger: AppliedTuningLedger,
         phase: str,
         statement_filter: Callable[[Any], bool] | None = None,
+        harness: bool = False,
+        mechanism: str | None = None,
     ) -> None:
-        object.__setattr__(self, "_ledger", ledger)
+        object.__setattr__(self, "_base", ledger)
+        object.__setattr__(self, "_ledger", _LedgerView(ledger, harness, mechanism) if harness or mechanism else ledger)
         object.__setattr__(self, "_phase", phase)
         object.__setattr__(self, "_statement_filter", statement_filter)
+        object.__setattr__(self, "_harness", harness)
+        object.__setattr__(self, "_mechanism", mechanism)
 
     def _should_record(self, statement: Any) -> bool:
         if not _is_recordable_statement(statement):
@@ -530,16 +560,30 @@ class RecordingConnection(_RecordingProxy):
         phase: str,
         statement_filter: Callable[[Any], bool] | None = None,
         execute_verbs: tuple[str, ...] = (),
+        harness: bool = False,
+        mechanism: str | None = None,
     ) -> None:
-        super().__init__(ledger, phase, statement_filter)
+        super().__init__(ledger, phase, statement_filter, harness, mechanism)
         object.__setattr__(self, "_conn", connection)
         object.__setattr__(self, "_verbs", frozenset(execute_verbs))
+
+    def as_harness(self) -> RecordingConnection:
+        return RecordingConnection(
+            self._conn, self._base, self._phase, self._statement_filter, tuple(self._verbs), harness=True
+        )
 
     def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
         return self._run(self._conn.execute, statement, args, kwargs)
 
     def cursor(self, *args: Any, **kwargs: Any) -> Any:
-        return _RecordingCursor(self._conn.cursor(*args, **kwargs), self._ledger, self._phase, self._statement_filter)
+        return _RecordingCursor(
+            self._conn.cursor(*args, **kwargs),
+            self._base,
+            self._phase,
+            self._statement_filter,
+            self._harness,
+            self._mechanism,
+        )
 
     def executescript(self, script: Any, *args: Any, **kwargs: Any) -> Any:
         try:
@@ -588,8 +632,10 @@ class _RecordingCursor(_RecordingProxy):
         ledger: AppliedTuningLedger,
         phase: str,
         statement_filter: Callable[[Any], bool] | None = None,
+        harness: bool = False,
+        mechanism: str | None = None,
     ) -> None:
-        super().__init__(ledger, phase, statement_filter)
+        super().__init__(ledger, phase, statement_filter, harness, mechanism)
         object.__setattr__(self, "_cur", cursor)
 
     def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
@@ -618,11 +664,19 @@ def recording_connection(
     phase: str,
     statement_filter: Callable[[Any], bool] | None = None,
     execute_verbs: tuple[str, ...] = (),
+    harness: bool = False,
+    mechanism: str | None = None,
 ) -> Any:
     if ledger is None:
         return connection
     try:
-        return RecordingConnection(connection, ledger, phase, statement_filter, execute_verbs)
+        return RecordingConnection(connection, ledger, phase, statement_filter, execute_verbs, harness, mechanism)
     except Exception as exc:  # pragma: no cover
         logger.debug("applied-ledger connection wrap degraded: %s", exc)
         return connection
+
+
+def harness_connection(connection: Any) -> Any:
+    if isinstance(connection, RecordingConnection):
+        return connection.as_harness()
+    return connection

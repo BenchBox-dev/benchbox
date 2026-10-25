@@ -664,7 +664,7 @@ class TestStatusVocabulary:
 
     def test_drops_never_produce_failed(self):
         ledger = AppliedTuningLedger()
-        ledger.record("SET x = 1", PHASE_SESSION)
+        ledger.record("SET x = 1", PHASE_SESSION, mechanism="session_config")
 
         _reconcile(_config(constraints=True, sorting=_columns("L_ORDERKEY")), ledger, "polars")
 

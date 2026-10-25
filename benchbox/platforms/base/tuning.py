@@ -63,6 +63,7 @@ class TuningHooksMixin:
     physical_identifier_case: str = "preserve"
     post_load_connection_recording: bool = True
     ledger_execute_verbs: tuple[str, ...] = ()
+    configure_session_is_tuning: bool = False
 
     @staticmethod
     def table_tuning_for(effective_config: Any, table_name: str) -> Any:
