@@ -99,6 +99,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `trunk-coverage.yml` | product-safety | Develop-push instrumented four-shard medium tier, v2 coverage map combine, published-map self-fetch, and daily map-staleness issue; never consulted by arming |
 | `trunk.yml` | product-safety | Develop-push fast lane, uninstrumented four-shard medium tier, correctness gate, required-local-cases and verified release artifact; retains pending runs with queue:max |
 | `upload-answers.yml` | product-safety | Answer file publication |
+| `trunk-duration-trend.yml` | tooling | Daily comparison of Trunk job p50 durations with the prior week; opens or closes one issue assigned to the repository owner; read-only actions access plus issue writes |
 | `validate-release-pr.yml` | product-safety | Release PR base validation |
 | `validate-submission.yml` | product-safety | Submission validation |
 | `validate-submission-comment.yml` | product-safety | Submission validation comment |
@@ -323,6 +324,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `post_merge_signature.py` | pure-process | Post-merge mechanics |
 | `local_validation.py` | pure-process | Shared test-lock mechanics |
 | `phase2_metrics.py` | pure-process | Legacy metrics mechanics |
+| `trunk_duration_trend.py` | tooling | Trunk job p50 comparison, run-timestamp windows, API-call budget and the single trend issue |
 | `bundled_binary_manifest.py` | product-safety | Deterministic hashes of the shipped generator tree |
 | `verify_distribution_binaries.py` | product-safety | Distribution membership, archive safety, and source-bound generator hashes |
 | Remaining scripts (ledger-catch-all: scripts/) | product-safety | Benchmark, corpus, and validation product code; reclassify individually before any deletion |
