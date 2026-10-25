@@ -22955,6 +22955,13 @@
       "status": "done",
       "title": "Support immutable Git sources whose skills live in a repository subdirectory"
     },
+    "skill-sync-global-pin-apply-or-revert-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Apply or revert the pending global skill-sync pin for shared-agent-execution"
+    },
     "skill-sync-item-scope-and-rung-path-form": {
       "claim": null,
       "needs": [],

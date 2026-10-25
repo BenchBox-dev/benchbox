@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Apply path: tools/skill-sync apply -C ~/.skill-sync-deployment succeeds, the receipt names cb442602fe1ed5d85dab3dab8896284d44c67d9a for shared-agent-execution, and a fresh preview shows no changes.",
+    "Revert path: line 48 matches the receipt's commit, and a fresh preview shows no changes.",
+    "Context records the owner's decision and its date."
+  ],
+  "context": "Left pending 2026-10-25 after the skill mirror refresh (#3394): the pin was bumped and previewed but not applied, awaiting the owner. Blocked on owner decision.",
+  "description": "Problem: line 48 of ~/.skill-sync-deployment/skill-sync.conf pins shared-agent-execution to catalog commit cb442602fe1ed5d85dab3dab8896284d44c67d9a, but the pin was never applied. A preview with the primary clone's tools/skill-sync showed 4 changes: the 2 shared-agent-execution files, the manifest and the receipt. The global install and the pinned configuration therefore disagree.\n\nOutcome: the deployment matches its configuration, either applied at the new pin or reverted to the previous one.\n\nDecision gates:\n1. Owner decision. Applying changes the skills every local agent loads, so it needs the owner's explicit 'apply'. If the owner declines, restore line 48 to the commit named in the deployment's current receipt.\n2. Before either action, re-run the preview. If it shows changes beyond the 4 listed, stop and report them.\n\nItem guardrails: no edits to the store or receipt by hand; use tools/skill-sync only. No changes to the repository's tracked .claude/skills mirror under this item.",
+  "links": [
+    "tools/skill-sync"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T12:52:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5a3b69c8c04d426799956375bb893dc6",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
