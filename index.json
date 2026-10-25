@@ -12305,10 +12305,15 @@
       "title": "Switch post-run histogram to horizontal bars when query names are long"
     },
     "host-disk-exhaustion-enospc-20261006": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T13:22:25Z",
+        "generation": "bce814de1b474ac8a46e87fd807913b2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Host disk hit 100% (ENOSPC): tracker and event log degraded"
     },
     "http-tls-certificate-validation": {
