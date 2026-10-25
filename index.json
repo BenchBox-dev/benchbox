@@ -17445,6 +17445,13 @@
       "status": "done",
       "title": "Build Shared Infrastructure for Benchmarking PostgreSQL Extensions"
     },
+    "postgres-obt-alias-and-round-double-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "PostgreSQL: OBT Q36/Q70/Q86 alias in ORDER BY expression and Q2/Q78 round(double, int) fail"
+    },
     "postgres-partitioning-date-domain-20261017": {
       "claim": null,
       "needs": [],

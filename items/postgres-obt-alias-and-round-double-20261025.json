@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "OBT Q2, Q36, Q70, Q78 and Q86 execute on PostgreSQL and match DuckDB (non-vacuous or augmentation).",
+    "OBT Q58 on PostgreSQL either completes within the gate timeout or carries a reasoned optional entry.",
+    "Fork tests in CI; gate allowlist entries removed; sql-execution-gate PASS."
+  ],
+  "description": "Found by extending sql-execution-gate to TPC-DS OBT. On PostgreSQL, OBT Q36, Q70 and Q86 fail with `column \"lochierarchy\" does not exist` (an output alias used inside an ORDER BY expression, which PostgreSQL does not resolve), and OBT Q2 and Q78 fail with `function round(double precision, integer) does not exist` because OBT columns are DOUBLE. Check how base TPC-DS Q36/Q70/Q86 and Q2/Q78 pass on PostgreSQL (the fork's postgres-round-inputs rewrite, alias handling) and make the OBT translation equivalent. OBT Q58 times out on PostgreSQL: diagnose (statistics, plan) and fix or record as an optional timeout with reason. GUARDRAILS: fix in the SQLGlot fork with real-engine tests (fork CI) and adopt via a wheel cut under the batch wheel mutex; benchmark text unchanged; when fixed, remove the matching sql-execution-gate allowlist entry (the gate fails on stale entries); list affected published bundles and flag only if recorded rows were wrong; no cloud spend.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T20:56:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2e49d2289c4a4172b686b7214ec95220",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}
