@@ -54,6 +54,10 @@ manifest. A missing mirror needs one successful upstream copy; a rate limit
 during that copy fails the mirror job rather than falling back in the consumer.
 No Docker Hub credentials are required.
 
+The nightly workflow also mirrors the QuestDB image used by the required lint
+job as `ghcr.io/benchbox-dev/questdb`, pinned to the same digest, with
+`mirror.gcr.io/questdb/questdb` as a same-digest fallback source.
+
 The mirror job uses `GITHUB_TOKEN` with `packages: write`. Consumers log into
 GHCR with `packages: read`, so newly created private packages can be pulled
 without making them public. The organization must permit package creation,
