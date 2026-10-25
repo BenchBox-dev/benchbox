@@ -12,6 +12,7 @@ from tests.integration._tpcds_obt_utils import (
     build_engines,
     choose_seed,
     compare_parts,
+    parts_are_vacuous,
     run_statements,
 )
 
@@ -24,24 +25,43 @@ SCALE_FACTOR = float(os.environ.get("BENCHBOX_OBT_EQUIVALENCE_SF", "0.01"))
 QUERY_TIMEOUT_SECONDS = float(os.environ.get("BENCHBOX_OBT_EQUIVALENCE_TIMEOUT", "60"))
 
 EMPTY = "the base query returns no rows for every candidate parameter seed at this scale, so equality is vacuous"
+ZERO_ROW = (
+    "the base query returns one row of only NULL or 0 aggregates for every candidate parameter seed at this scale, "
+    "so equality is vacuous"
+)
+ONE_WAREHOUSE = (
+    "the base query returns one row (0, NULL, NULL) for every candidate parameter seed because SF0.01 has one "
+    "warehouse and the query needs orders shipped from two, so equality is vacuous"
+)
 
 DIVERGENT_AT_SF_0_01: dict[int, str] = {}
 UNVERIFIABLE_AT_SF_0_01: dict[int, str] = {
     4: EMPTY,
     10: EMPTY,
+    13: ZERO_ROW,
+    16: ONE_WAREHOUSE,
     23: EMPTY,
     24: EMPTY,
     31: EMPTY,
+    32: ZERO_ROW,
+    38: ZERO_ROW,
     41: EMPTY,
     58: EMPTY,
+    61: ZERO_ROW,
     65: EMPTY,
     85: EMPTY,
+    88: ZERO_ROW,
+    90: ZERO_ROW,
+    94: ONE_WAREHOUSE,
+    95: ONE_WAREHOUSE,
+    96: ZERO_ROW,
 }
 
 DIVERGENT_AT_SF_1: dict[int, str] = {}
 UNVERIFIABLE_AT_SF_1: dict[int, str] = {
     23: EMPTY,
     24: EMPTY,
+    61: ZERO_ROW,
 }
 
 EXPECTED_DIVERGENT: dict[float, dict[int, str]] = {0.01: DIVERGENT_AT_SF_0_01, 1.0: DIVERGENT_AT_SF_1}
@@ -66,7 +86,7 @@ def _evaluate(engines, query_id: int) -> Outcome:
     comparison = compare_parts(obt_parts, base_parts)
     if not comparison.equal:
         return Outcome("divergent", f"seed {seed}: {comparison.detail}")
-    if not base_parts or not all(base_parts):
+    if parts_are_vacuous(base_parts):
         return Outcome("unverifiable", f"seed {seed}: base rows per part {comparison.base_rows}")
     return Outcome("equal", f"seed {seed}: {comparison.base_rows} rows per part")
 
@@ -124,6 +144,8 @@ def test_q24_matches_tpcds_with_parameters_that_return_rows(engines) -> None:
         base_sql = re.sub(r'"i_color" = \'[^\']*\'', f"\"i_color\" = '{color}'", base_sql)
         obt_parts.extend(run_statements(obt, statement, QUERY_TIMEOUT_SECONDS))
         base_parts.extend(run_statements(base, base_sql, QUERY_TIMEOUT_SECONDS))
-    assert base_parts and all(base_parts), "the pinned Q24 parameters no longer return rows on the base query"
+    assert not parts_are_vacuous(base_parts), (
+        "the pinned Q24 parameters no longer return informative rows on the base query"
+    )
     comparison = compare_parts(obt_parts, base_parts)
     assert comparison.equal, comparison.detail

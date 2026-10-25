@@ -224,6 +224,7 @@ class PostgresEngine:
                 writer = csv.writer(_Sink(copy), delimiter="|", quotechar="\x01", lineterminator="\n")
                 for row in _data_lines(path, columns):
                     writer.writerow(["" if cell is None else cell for cell in row])
+        self.connection.execute("ANALYZE")
         self.connection.execute(f"SET statement_timeout = {int(self.timeout * 1000)}")
 
     def execute(self, sql: str) -> list[tuple]:
