@@ -141,7 +141,7 @@ a comparison.
 
 <!-- benchbox-registry-counts:start -->
 
-- Platform registry: **52** metadata entries; **48** SQL-capable; **18** DataFrame-capable; **14** dual-mode; support status counts: stable=5, beta=28, experimental=18, deprecated=1.
+- Platform registry: **53** metadata entries; **49** SQL-capable; **18** DataFrame-capable; **14** dual-mode; support status counts: stable=5, beta=28, experimental=19, deprecated=1.
 - Benchmark registry: **23** metadata entries; **22** public discovery entries.
 
 <!-- benchbox-registry-counts:end -->

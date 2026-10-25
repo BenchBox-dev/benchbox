@@ -32,6 +32,7 @@ ParadeDBAdapter|.paradedb
 CitusAdapter|.citus
 CedarDBAdapter|.cedardb
 QuestDBAdapter|.questdb
+GizmoSQLAdapter|.gizmosql
 DatabricksAdapter|.databricks
 BigQueryAdapter|.bigquery
 SnowflakeAdapter|.snowflake
@@ -195,7 +196,8 @@ _EXPORT_NAMES = """\
 PlatformAdapter ConnectionConfig BenchmarkResults DuckDBAdapter MotherDuckAdapter DuckLakeAdapter DataFusionAdapter PolarsAdapter
 ClickHouseAdapter ClickHouseCloudAdapter DatabricksAdapter BigQueryAdapter RedshiftAdapter SnowflakeAdapter
 TrinoAdapter AthenaAdapter SparkAdapter PySparkSQLAdapter FireboltAdapter DatabendAdapter InfluxDBAdapter
-PrestoAdapter PostgreSQLAdapter PgDuckDBAdapter PgMooncakeAdapter CedarDBAdapter QuestDBAdapter AzureSynapseAdapter
+PrestoAdapter PostgreSQLAdapter PgDuckDBAdapter PgMooncakeAdapter CedarDBAdapter QuestDBAdapter GizmoSQLAdapter
+AzureSynapseAdapter
 FabricWarehouseAdapter FabricLakehouseAdapter FabricSparkAdapter StarRocksAdapter SingleStoreAdapter QuantonAdapter
 LakeSailAdapter DorisAdapter PolarsDataFrameAdapter PandasDataFrameAdapter CuDFDataFrameAdapter
 DaskDataFrameAdapter DataFusionDataFrameAdapter PySparkDataFrameAdapter LakeSailDataFrameAdapter POLARS_AVAILABLE
@@ -600,6 +602,22 @@ cedardb|database|CedarDB database name (auto-generated if not specified)|{}
 cedardb|username|CedarDB username|{'default': 'postgres'}
 cedardb|password|CedarDB password|{}
 cedardb|schema|CedarDB schema name|{'default': 'public'}
+gizmosql|host|GizmoSQL server hostname|{'default': 'localhost'}
+gizmosql|port|GizmoSQL Flight SQL port|{'parser': 'int', 'default': 31337}
+gizmosql|username|GizmoSQL username (or set GIZMOSQL_USERNAME)|{}
+gizmosql|password|GizmoSQL password (or set GIZMOSQL_PASSWORD)|{}
+gizmosql|auth_token|GizmoSQL bearer token used instead of a password (or set GIZMOSQL_AUTH_TOKEN)|{}
+gizmosql|catalog|Attached DuckDB catalog to use; it must already be attached on the server|{}
+gizmosql|schema|Schema holding the benchmark tables (default: one schema per benchmark and scale factor)|{}
+gizmosql|tls|Connect with TLS (disable only for local development with allow_insecure_connection)|{'parser': 'parse_bool', 'default': True}
+gizmosql|tls_skip_verify|Skip TLS certificate verification (development only; needs allow_insecure_connection)|{'parser': 'parse_bool', 'default': False}
+gizmosql|tls_ca_cert|Path to a PEM CA bundle used to verify the server certificate|{}
+gizmosql|allow_insecure_connection|Permit plaintext or unverified TLS connections for local development|{'parser': 'parse_bool', 'default': False}
+gizmosql|autocommit|Run the ADBC session in autocommit mode|{'parser': 'parse_bool', 'default': True}
+gizmosql|query_timeout|Per-query timeout in seconds; the query is cancelled on the server (0 disables)|{'parser': 'int', 'default': 0}
+gizmosql|ingest_batch_bytes|Target size in bytes of each Arrow ingest batch (below the 16 MiB Flight message limit)|{'parser': 'int', 'default': 8388608}
+gizmosql|session_settings|Session-scoped DuckDB settings as name=value pairs separated by commas; server-wide settings are rejected|{}
+gizmosql|allow_unverified_reuse|Query preloaded tables on a read-only server without comparing row counts to local source files|{'parser': 'parse_bool', 'default': False}
 synapse|server|Azure Synapse server endpoint (e.g., myworkspace.sql.azuresynapse.net)|{}
 synapse|database|Azure Synapse database name (auto-generated if not specified)|{}
 synapse|username|Azure Synapse username|{}
@@ -851,6 +869,9 @@ force_recreate|Drop and recreate the benchmark database before loading, reusing 
     )
     PlatformHookRegistry.register_config_builder(
         "cedardb", _make_lazy_config_builder(".cedardb", "_build_cedardb_config")
+    )
+    PlatformHookRegistry.register_config_builder(
+        "gizmosql", _make_lazy_config_builder(".gizmosql", "_build_gizmosql_config")
     )
 
     PlatformHookRegistry.register_config_builder(

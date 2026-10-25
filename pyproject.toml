@@ -63,6 +63,8 @@ dev = [
     "tox>=4.13.0",
     "pyspark>=3.5.0",
     "pytest-timeout>=2.4.0",
+    "adbc-driver-gizmosql>=2.0.13,<3",
+    "gizmosql==1.39.0",
 ]
 viz = []
 explorer = ["duckdb>=1.0.0,<2.0.0"]
@@ -98,6 +100,7 @@ all = [
     "influxdb3-python>=0.10.0",
     "pymysql>=1.1.0",
     "singlestoredb>=1.0.0",
+    "adbc-driver-gizmosql>=2.0.13,<3",
     "polars>=1.35.2",
     "dask[distributed]>=2025.1.0",
     "pyspark[connect]>=3.5.0",
@@ -171,6 +174,7 @@ influxdb = [
 ]
 starrocks = ["pymysql>=1.1.0"]
 singlestore = ["singlestoredb>=1.0.0"]
+gizmosql = ["adbc-driver-gizmosql>=2.0.13,<3"]
 
 tpcdi = ["pandas>=3.0.0"]
 clickhouse-local = ["chdb>=0.10.0; sys_platform != 'win32'"]
@@ -338,6 +342,8 @@ dev = [
     "polars>=1.35.2",
     "clickhouse-connect>=0.10.0",
     "psycopg[binary]>=3.1",
+    "adbc-driver-gizmosql>=2.0.13,<3",
+    "gizmosql==1.39.0",
     "pytest>=8.0.0",
     "pytest-cov>=6.2.1",
     "pytest-benchmark>=5.1.0",
