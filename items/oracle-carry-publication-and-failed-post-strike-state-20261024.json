@@ -4,7 +4,7 @@
     "Failing-before tests for both pass after; existing tests unchanged",
     "PR merged with an oracle verdict on its final head; merge SHA recorded"
   ],
-  "context": "Created 2026-10-24 from the round-2 codex review of gap issue 2808 (packet /Users/joe/Developer/soundness-reviews/2808-round2/, develop 85fb89967aee37d54a6ea605d92893f59ffe63ab, raw output sha256 b34d14bc5cf5054ebbc6a3e733589661bb6170bee883f93a05f562d51b518286, final message sha256 c3791ed9839899f8a451c3ae7c9723852ca4e44d2ebcfc80ab4c92b0f2140178). Reviewer claims are UNVERIFIED: reproduce on current origin/develop first; line numbers are leads.",
+  "context": "PR #3418 merged as c10155d8a (head 097cc937b, oracle verdict success on that head). Carry publishes via a review-id set recorded at plan time (stable under dismissed reviews); retry state uploaded only after the review POST.",
   "description": "Two round-2 codex findings on gap 2808 (Medium, both about publish ordering in oracle-verdict.yml, cli.py and report.finalize):\n(a) cli.py ~805 command_guard with oracle-verdict.yml ~985/991/997 and oracle_review_check.decide: after retargeting away and back, plan_round now CARRYs the old cycle and round (PR 3354); the guard reads that as already published and sets skip=true, so nothing is posted and the gate stays WAITING. Codex's reproduction: planner 'carry 1 1' -> guard skip=true -> gate WAITING; manual retries hit the same guard. So the earlier retarget fix does not unstick the gate end to end.\n(b) oracle-verdict.yml ~952 uploads the retry state before the review POST at ~1000; if the POST fails the strike stays without its digest in the review history, and retries on the same head and patch stored strikes 1 -> 2 -> 3 and a fourth run returned REFUSED.\n\nDECISION GATE: reproduce both first (replay the guard on a carry plan; simulate a failed POST and retry). Fix so a carry posts a fresh review (the guard must distinguish 'already published for this round' from 'carry after base change'), and the strike/retry state is written only after a successful post (or made idempotent per patch digest). A change in oracle-verdict.yml is a soundness-path change; keep the diff minimal and add workflow tests following tests/unit/workflows conventions.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun or dispatch the oracle; oracle verdict required on the PR (soundness path); no pre-registered digests; never weaken a gate; no skip/xfail; never bypass a hook by any route (no SKIP=, --no-verify, commit-tree); primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; always encoding utf-8; PR text for a reader who never saw the session; done = merged PR plus evidence.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "generation": "dc5cb9eda6964b21a55bb77e5c7692b2",
       "op": "take",
       "op_id": "0f336baed4bc4a46ace44e1d58af45be",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-25T17:15:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "359b593bcc864082b4274038924b4034",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
