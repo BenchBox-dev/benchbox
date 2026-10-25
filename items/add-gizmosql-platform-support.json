@@ -23,7 +23,7 @@
     "The SQL compatibility inventory includes GizmoSQL under the DuckDB dialect or records an explicit exemption. Do not add an empty rewrite rule when no GizmoSQL-specific DDL rewrite is needed.",
     "Generated platform and compatibility documentation is refreshed through repository generators. `make platform-manifest`, `make platform-manifest-check`, `make compat-docs`, `make compat-docs-check`, focused unit tests, the designated live GizmoSQL target, self-review, and `make pr-preflight` pass before publication."
   ],
-  "context": "Validated on 2026-09-26 with GizmoSQL Core 1.39.0, adbc-driver-gizmosql 2.0.13, PyArrow 24.0.0, and DuckDB 1.5.5 on macOS arm64. A real managed local server loaded BenchBox-generated TPC-H SF 0.01 data with canonical counts and executed all 22 DuckDB-dialect queries. A separate exploratory run executed all 99 TPC-DS queries against server-generated data, so the implementation must still prove BenchBox TPC-DS file loading and result parity. The current public CLI reports GizmoSQL as unknown and dry-run falls back after adapter initialization fails. The initial support boundary is GizmoSQL Core 1.37+ with the DuckDB backend through client-side ADBC loading. Persistent remote state, shared session settings, client-observed timing, binary provisioning, and credential redaction are part of the acceptance contract. SQLite, Enterprise-only controls, Docker/LTS certification, and server-visible file loading are intentionally outside the requested outcome.\n\nCore execution-variant guardrails (added 2026-10-09; ADR docs/development/adr/adr-core-execution-variants.md, plan item core-exec-execution-variants):\n- Do not register bare generic option keys (engine, mode, backend, runtime, executor, warehouse); the vocabulary parity test fails on them. In particular, do not add a `backend` option for DuckDB vs SQLite.\n- The DuckDB backend is the only supported one; record it in platform metadata. If SQLite support is added later, model it as a manifest-declared execution engine (ADR D3), not a platform option.\n- Deployment (local managed server vs remote) goes through manifest deployment_modes.\n- Follow the execution-variant section of docs/development/new-platform-acceptance-checklist.md.",
+  "context": "Delivered in merged PR #3358 (GizmoSQL Core platform: manifest registration, TLS-gated remote connections with credential redaction, read-only server guard incl. PRAGMA/CALL/INSTALL/LOAD, session-settings scope check, per-table transactional client-side loading with verification against local source files, tuned/notuning/constraint-separated default schemas, independent throughput streams, reused tables reported as REUSED and excluded from loaded-row totals and load time, docs/platforms/gizmosql.md, deterministic live lane). Verified locally: unit/medium tiers on platforms/core/cli (31859 passed, 38 skipped), live lane against a real GizmoSQL server (16 passed), repository guards. Behaviour notes: default schema names changed to include tuning mode and constraints; read-only servers refuse unverifiable reuse unless allow_unverified_reuse=true; adbc-driver-gizmosql and gizmosql added to the dev dependency group. Not verified: remote/TLS deployments, GizmoSQL beyond the pinned 1.39.0 server.",
   "description": "Add end-to-end BenchBox support for GizmoSQL Core using its DuckDB backend and official ADBC driver. Deliver one coherent platform addition covering manifest registration, secure remote connections, persistent and shared-server safety, idempotent client-side loading, independent throughput streams, result parity, deterministic local live testing, public CLI behavior, and documentation.",
   "sessions": [
     {
@@ -65,6 +65,14 @@
       "generation": "99c961b4b55543b7a6a87aec40012287",
       "op": "take",
       "op_id": "3c28979fb801459981f827648a9e1960",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T10:36:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1c5d59c74b7c481294e0ffbc89b120f1",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
