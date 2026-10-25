@@ -16360,10 +16360,12 @@
     },
     "oracle-review-automatic-reevaluation-20261021": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-gate-sweep-cadence-20261025"
+      ],
       "priority": "medium",
       "status": "open",
-      "title": "Re-evaluate the oracle-review check automatically after a verdict lands or threads are resolved"
+      "title": "Refresh oracle-gate when a pull request is armed, so resolving oracle threads before make pr-arm does not leave a stale gate failure until the sweep"
     },
     "oracle-review-body-length-cap-20261022": {
       "claim": null,
