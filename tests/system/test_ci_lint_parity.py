@@ -222,6 +222,9 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "lightweight Make target."
     ),
     ("ci.yml", "code-test", "Run fast tests"): "Covered by the local `test-fast` target.",
+    ("ci.yml", "code-test", "Check fast-tier junit parses"): (
+        "Non-blocking hosted parse of the fast-tier junit artifact; it cannot fail the job and has no local equivalent."
+    ),
     ("ci.yml", "code-test", "Run medium tests for changed paths"): (
         "Runs the medium tests that `pr-preflight` maps from the changed paths; covered locally by `pr-preflight`."
     ),
