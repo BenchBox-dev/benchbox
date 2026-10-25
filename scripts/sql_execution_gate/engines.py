@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import itertools
 import os
 import sqlite3
 import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
+
+_SCHEMA_IDS = itertools.count()
 
 
 @dataclass(frozen=True)
@@ -195,7 +198,7 @@ class PostgresEngine:
     def __init__(self, timeout: float):
         self.timeout = timeout
         self.connection = None
-        self.schema = f"sql_gate_{os.getpid()}"
+        self.schema = f"sql_gate_{os.getpid()}_{next(_SCHEMA_IDS)}"
 
     @property
     def version(self) -> str:

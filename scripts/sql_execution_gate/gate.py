@@ -213,40 +213,45 @@ def _execute(engine, sql: str) -> Outcome:
         return Outcome(error=f"{type(error).__name__}: {str(error).splitlines()[0][:200] if str(error) else ''}")
 
 
-def _run_engine(
-    engine_class, datasets: dict[str, Dataset], sides: dict[str, dict], timeout: float, scratch: Path
+def _run_unit(
+    engine_class, dataset_name: str, dataset: Dataset, sides: dict[str, dict], timeout: float, scratch: Path
 ) -> tuple[dict, str, float]:
     results: dict[tuple[str, str, str, str], Outcome] = {}
-    version = ""
     started = time.monotonic()
-    for dataset_name, dataset in datasets.items():
-        engine = engine_class(timeout)
-        parquet_dir = scratch / f"parquet-{dataset_name}"
-        parquet_dir.mkdir(exist_ok=True)
-        engine.open(dataset, parquet_dir)
-        version = engine.version
-        try:
-            cache: dict[tuple[str, str], Outcome] = {}
-            for side, emitted in sides.items():
-                for benchmark, queries in emitted["queries"].items():
-                    if DATASET_OF.get(benchmark, benchmark) != dataset_name:
-                        continue
-                    for query, per_dialect in queries.items():
-                        sql = per_dialect[engine.dialect]
-                        outcome = cache.get((query, sql))
-                        if outcome is None:
-                            outcome = cache[(query, sql)] = _execute(engine, sql)
-                        results[(engine.name, benchmark, query, side)] = outcome
-        finally:
-            engine.close()
+    engine = engine_class(timeout)
+    parquet_dir = scratch / f"parquet-{dataset_name}"
+    parquet_dir.mkdir(exist_ok=True)
+    engine.open(dataset, parquet_dir)
+    version = engine.version
+    try:
+        cache: dict[str, Outcome] = {}
+        for side, emitted in sides.items():
+            for benchmark, queries in emitted["queries"].items():
+                if DATASET_OF.get(benchmark, benchmark) != dataset_name:
+                    continue
+                for query, per_dialect in queries.items():
+                    sql = per_dialect[engine.dialect]
+                    outcome = cache.get(sql)
+                    if outcome is None:
+                        outcome = cache[sql] = _execute(engine, sql)
+                    results[(engine.name, benchmark, query, side)] = outcome
+    finally:
+        engine.close()
     return results, version, time.monotonic() - started
+
+
+def _query_count(sides: dict[str, dict], dataset_name: str) -> int:
+    return sum(
+        len(queries)
+        for emitted in sides.values()
+        for benchmark, queries in emitted["queries"].items()
+        if DATASET_OF.get(benchmark, benchmark) == dataset_name
+    )
 
 
 def run_engines(
     engine_classes, datasets: dict[str, Dataset], sides: dict[str, dict], timeout: float, scratch: Path
 ) -> tuple[dict, dict[str, str], dict[str, float]]:
-    reference = [engine for engine in engine_classes if engine.name == REFERENCE_ENGINE]
-    others = [engine for engine in engine_classes if engine.name != REFERENCE_ENGINE]
     results: dict[tuple[str, str, str, str], Outcome] = {}
     versions: dict[str, str] = {}
     seconds: dict[str, float] = {}
@@ -254,17 +259,25 @@ def run_engines(
     def collect(engine_class, outcome: tuple[dict, str, float]) -> None:
         results.update(outcome[0])
         versions[engine_class.name] = outcome[1]
-        seconds[engine_class.name] = outcome[2]
+        seconds[engine_class.name] = seconds.get(engine_class.name, 0.0) + outcome[2]
 
-    for engine_class in reference:
-        collect(engine_class, _run_engine(engine_class, datasets, sides, timeout, scratch))
-    if others:
-        with ThreadPoolExecutor(max_workers=len(others)) as pool:
-            futures = {
-                engine_class: pool.submit(_run_engine, engine_class, datasets, sides, timeout, scratch)
-                for engine_class in others
-            }
-            for engine_class, future in futures.items():
+    for engine_class in engine_classes:
+        if engine_class.name == REFERENCE_ENGINE:
+            for name, dataset in datasets.items():
+                collect(engine_class, _run_unit(engine_class, name, dataset, sides, timeout, scratch))
+    ordered = sorted(datasets.items(), key=lambda item: -_query_count(sides, item[0]))
+    units = [
+        (engine_class, name, dataset)
+        for name, dataset in ordered
+        for engine_class in engine_classes
+        if engine_class.name != REFERENCE_ENGINE
+    ]
+    if units:
+        with ThreadPoolExecutor(max_workers=min(len(units), os.cpu_count() or 2)) as pool:
+            futures = [
+                (unit[0], pool.submit(_run_unit, unit[0], unit[1], unit[2], sides, timeout, scratch)) for unit in units
+            ]
+            for engine_class, future in futures:
                 collect(engine_class, future.result())
     return results, {name: versions[name] for name in sorted(versions, key=_engine_order(engine_classes))}, seconds
 

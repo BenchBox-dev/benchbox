@@ -1395,6 +1395,40 @@
       ],
       "match": "every cell NULL or 0",
       "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
+    },
+    {
+      "engine": "postgres",
+      "benchmark": "tpchavoc",
+      "check": "error",
+      "queries": [
+        "8_v10",
+        "9_v1"
+      ],
+      "match": "statement timeout",
+      "optional": true,
+      "justification": "PostgreSQL without indexes runs these TPC-H Havoc variants in 7.6 to 8.2 seconds on the maintainer host and exceeded the 15 second per-query budget on the slower CI runner (8_v10 timed out there). The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on unindexed TPC-H, not a translation difference."
+    },
+    {
+      "engine": "postgres",
+      "benchmark": "tpcds_obt",
+      "check": "error",
+      "queries": [
+        56
+      ],
+      "match": "statement timeout",
+      "optional": true,
+      "justification": "PostgreSQL without indexes runs OBT Q56 in 5 seconds on the maintainer host, so it can exceed the 15 second per-query budget on a slower or busier runner. The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on the unindexed 715-column OBT, not a translation difference."
+    },
+    {
+      "engine": "sqlite",
+      "benchmark": "tpcds_obt",
+      "check": "error",
+      "queries": [
+        35
+      ],
+      "match": "timeout",
+      "optional": true,
+      "justification": "SQLite without indexes runs OBT Q35 in 5.7 seconds on the maintainer host, so it can exceed the 15 second per-query budget on a slower or busier runner. The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on the unindexed 715-column OBT, not a translation difference."
     }
   ]
 }
