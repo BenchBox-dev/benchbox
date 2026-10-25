@@ -86,11 +86,15 @@ def chdb_open_count() -> int:
     return _chdb_open_count
 
 
-def install_chdb_open_counter() -> None:
+def install_chdb_open_counter() -> bool:
+    complete = True
     for module_name, class_name in _CHDB_OPEN_HOOK_TARGETS:
         module = _real_chdb_module(module_name)
         cls = getattr(module, class_name, None)
-        if not isinstance(cls, type) or cls in _chdb_hooked:
+        if not isinstance(cls, type):
+            complete = False
+            continue
+        if cls in _chdb_hooked:
             continue
         original = cls.__init__
 
@@ -101,6 +105,7 @@ def install_chdb_open_counter() -> None:
 
         cls.__init__ = counted_init
         _chdb_hooked.add(cls)
+    return complete
 
 
 def chdb_open_connection_error() -> str | None:

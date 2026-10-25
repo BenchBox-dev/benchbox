@@ -482,3 +482,16 @@ def test_module_guard_fails_a_module_that_leaves_a_chdb_connection_open(monkeypa
 
     with pytest.raises(pytest.fail.Exception, match="left a chDB connection open.*EmbeddedServer already initialized"):
         _run_module_guard(monkeypatch, during_module=lambda: connection_class(":memory:"))
+
+
+def test_module_guard_probes_when_the_connection_class_only_appears_during_the_module(monkeypatch):
+    live: list[object] = []
+    _install_chdb_stand_ins(monkeypatch, live=live)
+    monkeypatch.delitem(sys.modules, "chdb.state.sqlitelike")
+
+    def load_connection_module_and_leak() -> None:
+        _, connection_class = _install_chdb_stand_ins(monkeypatch, live=live)
+        connection_class(":memory:")
+
+    with pytest.raises(pytest.fail.Exception, match="left a chDB connection open"):
+        _run_module_guard(monkeypatch, during_module=load_connection_module_and_leak)
