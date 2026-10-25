@@ -130,7 +130,6 @@ def test_plan_reruns_groups_suites_by_actions_run() -> None:
         check("oracle-review", 1, "2026-10-24T09:00:00Z", "failure", run=501),
         check("hold", 1, "2026-10-24T09:00:01Z", "failure", run=501),
         check("oracle-review", 2, "2026-10-24T09:30:00Z", "cancelled", run=502),
-        check("oracle-review", 3, "2026-10-24T10:30:00Z", "success", run=503),
     ]
     plan = check_suites.plan_reruns(check_suites.evaluate(records, ["oracle-review", "hold"]))
     assert [(item.run_id, item.scope) for item in plan] == [(501, "failed"), (502, "all")]
@@ -265,3 +264,55 @@ def test_rules_without_required_status_checks_are_rejected() -> None:
         check_suites.required_contexts_from_rules([{"type": "deletion"}])
     with pytest.raises(ValueError):
         check_suites.required_contexts_from_rules({"message": "Not Found"})
+
+
+def test_a_cancelled_suite_superseded_by_a_newer_success_is_not_a_hidden_failure() -> None:
+    records = [
+        check("hold", 1, "2026-10-24T09:00:00Z", "cancelled", run=601),
+        check("hold", 2, "2026-10-24T10:00:00Z", "success", run=602),
+    ]
+    evaluations = check_suites.evaluate(records, ["hold"], check_suites.NON_BLOCKING)
+    assert evaluations["hold"].hidden_failures == ()
+    assert check_suites.hidden_failure_reasons(evaluations) == []
+
+
+def test_a_failed_suite_stays_hidden_next_to_a_cancelled_one() -> None:
+    records = [
+        check("hold", 1, "2026-10-24T09:00:00Z", "cancelled", run=601),
+        check("hold", 2, "2026-10-24T09:30:00Z", "failure", run=602),
+        check("hold", 3, "2026-10-24T10:00:00Z", "success", run=603),
+    ]
+    evaluation = check_suites.evaluate(records, ["hold"], check_suites.NON_BLOCKING)["hold"]
+    assert [suite.actions_run_id for suite in evaluation.hidden_failures] == [602]
+
+
+def test_the_sweep_does_not_list_a_pr_whose_only_stale_suite_was_cancelled() -> None:
+    cancelled = check("core", 90, "2026-10-24T09:00:00Z", "cancelled", run=77)
+    classified = sweep.classify_pr(_pr([*lane(GREEN), cancelled]), NOW)
+    assert classified.hidden_failures == []
+    assert classified.required_green
+    assert "make pr-rerun" not in sweep.build_digest([classified], now=NOW, repo=REPO)
+
+
+def test_a_superseded_cancelled_suite_does_not_taint_failed_worst_verdicts_or_reruns() -> None:
+    records = [
+        check("hold", 1, "2026-10-24T09:00:00Z", "cancelled", run=601),
+        check("hold", 2, "2026-10-24T10:00:00Z", "success", run=602),
+    ]
+    evaluation = check_suites.evaluate(records, ["hold"], check_suites.NON_BLOCKING)["hold"]
+    assert evaluation.green
+    assert evaluation.failed == ()
+    assert evaluation.worst() is not None and evaluation.worst().conclusion == "success"
+    assert check_suites.verdicts(records)["hold"]["conclusion"] == "success"
+    assert check_suites.plan_reruns({"hold": evaluation}) == []
+
+
+def test_a_newest_cancelled_suite_is_still_failed_and_rerun() -> None:
+    records = [
+        check("hold", 1, "2026-10-24T09:00:00Z", "success", run=601),
+        check("hold", 2, "2026-10-24T10:00:00Z", "cancelled", run=602),
+    ]
+    evaluation = check_suites.evaluate(records, ["hold"], check_suites.NON_BLOCKING)["hold"]
+    assert not evaluation.green
+    assert [suite.actions_run_id for suite in evaluation.failed] == [602]
+    assert [plan.run_id for plan in check_suites.plan_reruns({"hold": evaluation})] == [602]

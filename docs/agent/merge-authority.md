@@ -121,6 +121,12 @@ happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
   returns the latest run of every check suite, each with its `check_suite.id`
   and the Actions run in `details_url`. The required names come from
   `gh api repos/<owner>/<repo>/rules/branches/develop`.
+- A cancelled suite superseded by a newer success does not block the merge:
+  the superseded run is one that a newer run of the same workflow replaced
+  (for example `pr-hold` on a `synchronize` followed by an `edited` event). The
+  PR shows `mergeStateStatus` `UNSTABLE`, not `BLOCKED`, with the required check
+  satisfied, even though `statusCheckRollup.state` reads FAILURE. The tooling
+  lists only superseded suites that ended in a failure.
 - `make pr-arm` refuses a PR whose required check has a failed suite behind a
   newer success and prints the suite and run URL. `scripts/pr_landing.py`
   live verification and `make pr-landing-remote-*` report the failed suite

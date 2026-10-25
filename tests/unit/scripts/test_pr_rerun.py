@@ -285,11 +285,29 @@ def test_a_failed_suite_of_the_chosen_ci_run_is_rerun_once() -> None:
     assert gh.reruns() == [["gh", "run", "rerun", "11", "--repo", REPO, "--failed"]]
 
 
-def test_a_cancelled_stale_suite_reruns_its_whole_run() -> None:
+def test_a_cancelled_suite_superseded_by_a_newer_success_is_not_rerun() -> None:
     suites = [_check(501, 1, "2026-10-17T09:00:00Z", "cancelled"), STALE_SUITES[2]]
+    gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z", conclusion="success")], {11: _jobs()}, check_runs=suites)
+    assert "nothing to re-run" in pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == []
+
+
+def test_a_newest_cancelled_suite_reruns_its_whole_run() -> None:
+    suites = [STALE_SUITES[2], _check(501, 1, "2026-10-17T11:00:00Z", "cancelled")]
     gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z", conclusion="success")], {11: _jobs()}, check_runs=suites)
     pr_rerun.rerun(REPO, PR, gh)
     assert gh.reruns() == [["gh", "run", "rerun", "501", "--repo", REPO]]
+
+
+def test_a_failed_suite_is_rerun_next_to_a_superseded_cancelled_one() -> None:
+    suites = [
+        _check(501, 1, "2026-10-17T09:00:00Z", "cancelled"),
+        _check(502, 2, "2026-10-17T09:30:00Z", "failure"),
+        STALE_SUITES[2],
+    ]
+    gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z", conclusion="success")], {11: _jobs()}, check_runs=suites)
+    pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == [["gh", "run", "rerun", "502", "--repo", REPO, "--failed"]]
 
 
 def test_a_pending_suite_is_not_rerun() -> None:

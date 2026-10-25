@@ -1033,6 +1033,21 @@ def test_verify_evidence_live_refuses_a_stale_failed_suite_hidden_by_a_newer_suc
         landing.verify_evidence_live(run, "o/r", _live_pr(HEAD), _evidence(HEAD))
 
 
+def test_verify_evidence_live_accepts_a_cancelled_suite_superseded_by_a_newer_success() -> None:
+    records = _stale_suite_records()
+    records[-1] = {**records[-1], "conclusion": "cancelled"}
+    run = FakeRun([(0, _lines(records)), (0, _ruleset_contexts()), (0, _live_threads())])
+    landing.verify_evidence_live(run, "o/r", _live_pr(HEAD), _evidence(HEAD))
+
+
+def test_live_check_verdicts_report_the_newest_success_over_a_superseded_cancelled_suite() -> None:
+    records = _stale_suite_records()
+    records[-1] = {**records[-1], "conclusion": "cancelled"}
+    run = FakeRun([(0, _lines(records))])
+    verdicts = landing.live_check_verdicts(run, "o/r", HEAD)
+    assert {item["conclusion"] for item in verdicts.values()} == {"success"}
+
+
 def test_verify_evidence_live_refuses_a_hidden_failure_on_a_ruleset_check_outside_the_evidence() -> None:
     records = _live_check_records(HEAD)
     template = records[0]

@@ -16,6 +16,7 @@ SUCCESS = frozenset({"success"})
 NON_BLOCKING = frozenset({"success", "neutral", "skipped"})
 RERUN_FAILED = frozenset({"failure", "timed_out"})
 RERUN_ALL = frozenset({"cancelled"})
+SUPERSEDED_OK = "cancelled"
 ACTIONS_RUN_RE = re.compile(r"/actions/runs/([0-9]+)(?:/|$)")
 _EARLIEST = ""
 
@@ -147,8 +148,14 @@ class NameEvaluation:
         return not self.suites
 
     @property
+    def superseded(self) -> tuple[Suite, ...]:
+        if not self.suites or not self.suites[0].passes(self.passing):
+            return ()
+        return tuple(suite for suite in self.suites[1:] if suite.completed and suite.conclusion == SUPERSEDED_OK)
+
+    @property
     def failed(self) -> tuple[Suite, ...]:
-        return tuple(suite for suite in self.suites if suite.failed(self.passing))
+        return tuple(suite for suite in self.suites if suite.failed(self.passing) and suite not in self.superseded)
 
     @property
     def pending(self) -> tuple[Suite, ...]:
@@ -162,7 +169,7 @@ class NameEvaluation:
 
     @property
     def green(self) -> bool:
-        return bool(self.suites) and all(suite.passes(self.passing) for suite in self.suites)
+        return bool(self.suites) and not self.failed and not self.pending
 
     def worst(self) -> Suite | None:
         if self.failed:
