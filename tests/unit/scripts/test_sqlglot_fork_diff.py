@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -125,4 +126,24 @@ def test_non_ascii_and_glob_like_names_get_their_own_literal_diff(fork: tuple[Pa
         assert text.count("+GLOB = 1") == 1
     assert "+UNICODE = 1" in text
     assert "+PLAIN = 1" in text
+    assert "diff --git a/sqlglot/é.py b/sqlglot/é.py" in text
+
+
+def test_non_ascii_names_survive_a_non_utf8_locale(
+    fork: tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, old, _ = fork
+    (repo / "sqlglot" / "é.py").write_text("UNICODE = 1\n", encoding="utf-8")
+    git(repo, "add", ".")
+    git(repo, "commit", "-m", "odd name", "--quiet")
+    new = git(repo, "rev-parse", "HEAD")
+    real_run = subprocess.run
+
+    def locale_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess:
+        if kwargs.get("text") and "encoding" not in kwargs:
+            kwargs["encoding"] = "cp1252"
+        return real_run(*args, **kwargs)
+
+    monkeypatch.setattr(sqlglot_fork_diff, "subprocess", SimpleNamespace(run=locale_run))
+    text = sqlglot_fork_diff.render(repo, old, new, 50_000, "r")
     assert "diff --git a/sqlglot/é.py b/sqlglot/é.py" in text
