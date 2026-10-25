@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Owner decision recorded.",
+    "If retargeted: keyed overrides and bypass rules updated, a corpus diff lists every changed query, and affected published bundles are flagged or noted."
+  ],
+  "description": "After #3379 the platform manifest is the single platform-to-dialect home. Athena and SingleStore keep query_dialect trino and mysql because benchmark code keys behavior on those names. Native dialects would give SingleStore :> casts and NULLS FIRST, and Athena its own dialect. Retargeting needs the keyed overrides and the lock-bypass rules updated. Owner decision.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3379"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T12:30:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0d5592f90004419f9978bf340b511594",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}

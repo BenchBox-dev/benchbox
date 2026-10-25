@@ -1165,6 +1165,13 @@
       "status": "done",
       "title": "Athena: Convert text tables to Parquet using CTAS for query performance"
     },
+    "athena-singlestore-native-sql-dialects-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether Athena and SingleStore should translate through native athena/singlestore dialects"
+    },
     "athena-spark-emr-serverless-gcp-dataproc-live-tests": {
       "claim": null,
       "needs": [],
