@@ -596,11 +596,10 @@ policy or the attempt jobs must also:
 
 ## Cut-over
 
-The cut-over is done: `.github/oracle-reviewers.yml` sets `mode: enforce` and
-`.github/workflows/oracle-gate.yml` runs the checker with `--signal oracle`,
-the only signal the checker accepts. The checker
-(`_project/scripts/oracle_review_check.py`), whose decision the required
-`oracle-gate` check reports, requires, from the `benchbox-oracle` App's Bot account:
+The cut-over is done: `.github/oracle-reviewers.yml` sets `mode: enforce`, and
+the checker (`_project/scripts/oracle_review_check.py`), whose decision the
+required `oracle-gate` check reports, accepts only the oracle signal. It
+requires, from the `benchbox-oracle` App's Bot account:
 
 - a review of the head, not pending or dismissed, submitted after any retarget,
   whose latest one opens with `### oracle-verdict: success for` (or, before
@@ -624,9 +623,8 @@ current review body, so an edited oracle review can change the decision.
 
 Because `pull_request_review` runs the pull request's own workflow file, the
 notification is controlled by the pull request and can be deleted or altered by
-it. The trusted fallbacks are the hourly `oracle-gate` sweep and, once
-`oracle-verdict-dispatch-gate-after-review-20261025` lands, the verdict's
-explicit dispatch of the gate.
+it. The trusted fallbacks are the hourly `oracle-gate` sweep and the gate's own
+triggers: `pull_request_target`, stand-in comments and dispatch.
 
 GitHub Actions has no event for resolving a review thread, so resolving the
 oracle's last thread starts no run of either workflow. After resolving the
@@ -655,9 +653,9 @@ before the cut-over keeps check runs that required the connector; re-running
 them does not help, because a re-run reuses the original base, so such a pull
 request needs a new push, a fresh `pull_request` event, or a stand-in.
 
-The checker runs from the base commit, so the workflow can pass `--signal`
-only after `develop`'s copy of the script accepts it. A unit test fails if
-`mode: enforce` and `--signal oracle` disagree or if delivery is not `review`.
+`oracle-gate` runs `develop`'s copy of the gate and the checker, and both
+accept only the oracle signal. `tests/unit/scripts/oracle_reviewers/test_policy.py`
+fails if the live policy leaves `mode: enforce` or if delivery is not `review`.
 Going back to the connector would need this cleanup reverted and the connector
 App reinstalled.
 
