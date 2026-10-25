@@ -6081,10 +6081,15 @@
       "title": "Test Infrastructure & Coverage Improvement"
     },
     "coverage-map-missing-comment-policy-ids-20261023": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T03:17:13Z",
+        "generation": "e1c68113aef94aab9622e3395f65a149",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "81 medium test ids from test_comment_policy.py are missing from the medium coverage map"
     },
     "coverage-per-module-50-remaining-wave-2026-02-10": {
