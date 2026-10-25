@@ -2,7 +2,7 @@
   "acceptance": [
     "User-facing PRs add a validated fragment (path/schema from the #3298 series) instead of editing `[Unreleased]`; CI enforces the required entry with tested exemptions; release prep assembles fragments into the current dated format; two concurrent PRs with distinct fragments merge without conflict; the `merge=union` rule (`.gitattributes:13`) is removed with docs/tests updated in the cutover."
   ],
-  "context": "AMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Coordinate with the in-flight fragment series (PR #3298, feat/changelog-fragment-library, library step only; cutover not started). `.gitattributes:13` merge=union is ignored by GitHub's server-side merge.\n\nUPDATE 2026-10-23: PR #3285 sat armed but DIRTY/CONFLICTING on GitHub after #3284 merged, although `git merge origin/develop` was clean locally: CHANGELOG.md has `merge=union` in .gitattributes, and GitHub does not apply local merge drivers. Merging develop into the branch and pushing (new head, full CI and oracle again) was the only fix. The fragment cutover (changelog-fragments-03) retires the union rule.\n\nBoth batch agents reported this; it happened on most of #2965 to #2985. Options:\n- per-PR changelog fragments assembled at release time;\n- a git `merge=union` attribute for CHANGELOG.md;\n- keeping the single file but letting a bot apply CHANGELOG-only rebases.\n\nCheck the release tooling and the CHANGELOG checks in `make pr-preflight` before choosing.",
+  "context": "DONE 2026-10-25 (finish after the cutover item closes): the changelog-fragment cutover landed in PR #3428 (merge 8a0ad9b1b8435c78a751a6605879715591ce6cfe), after the library (#3298) and release-prep compilation (#3416) and a gate prerequisite (#3437). User-facing PRs now add a changelog.d/ fragment; CI enforces the required entry from the base commit's gate script, counting only fragments the PR adds, with tested exemptions (release-prep version change, text edits re-checked on title edits); make release-prep compiles fragments into the dated release section; CHANGELOG.md [Unreleased] is empty on develop and `merge=union` is removed from .gitattributes. Concurrency proof: draft probe PRs #3439 and #3440, each adding a distinct fragment, were both MERGEABLE on GitHub with ci-paths passing (closed unmerged afterwards); git merge-tree of two fragment branches exits 0 while two edits to the same CHANGELOG.md region conflict. Open PR #3358 still edits CHANGELOG.md and was given conversion steps.\n\nAMENDED 2026-10-24 per Advisor review 2026-10-24 (/Users/joe/.cache/remaining-tasks-advice.md, claude-fable-5 high), approved by the owner: Coordinate with the in-flight fragment series (PR #3298, feat/changelog-fragment-library, library step only; cutover not started). `.gitattributes:13` merge=union is ignored by GitHub's server-side merge.\n\nUPDATE 2026-10-23: PR #3285 sat armed but DIRTY/CONFLICTING on GitHub after #3284 merged, although `git merge origin/develop` was clean locally: CHANGELOG.md has `merge=union` in .gitattributes, and GitHub does not apply local merge drivers. Merging develop into the branch and pushing (new head, full CI and oracle again) was the only fix. The fragment cutover (changelog-fragments-03) retires the union rule.\n\nBoth batch agents reported this; it happened on most of #2965 to #2985. Options:\n- per-PR changelog fragments assembled at release time;\n- a git `merge=union` attribute for CHANGELOG.md;\n- keeping the single file but letting a bot apply CHANGELOG-only rebases.\n\nCheck the release tooling and the CHANGELOG checks in `make pr-preflight` before choosing.",
   "description": "During the two concurrent execution-variant batches on 2026-10-14, every PR conflicted on `CHANGELOG.md` more than once. Each one added an entry to the same Unreleased Fixed list, so whenever another PR merged first, the rest needed a rebase and a manual resolution. Each rebase restarted CI, at about 90 minutes per PR, so the conflicts added hours to the batch.",
   "sessions": [
     {
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "777df24b4fca45d0b4450db22f49fbca",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T09:21:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a6352a813570493a8898f3c6fa1e35ed",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
