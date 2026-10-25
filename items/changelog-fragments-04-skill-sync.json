@@ -5,7 +5,7 @@
     "make skill-sync idempotence: a second run produces no diff; scripts/check_untracked_skill_mirrors.sh and comment-policy/agent-instruction audits pass",
     "BenchBox PR merged with oracle success where required; if G1 blocks the source change, the item is blocked with owner, reason and the exact patch recorded"
   ],
-  "context": "Part of the changelog-fragments batch. Cross-repository work: serial mode, owner approval boundaries in G1 apply.",
+  "context": "DONE 2026-10-25 (finish pending 03): BenchBox PR #3441 merged as 943710e30171b4e0435ae0dccbed998705538c73 (head 1b21c9a17, oracle SHIP). Source change joeharris76/skill-sync-skills#97 merged as 420c04e46947264aebece5f6a7767ecfcdb01881, describing the fragment flow and citing docs/internal/release-guide.md; made in a fresh clone of origin/main; the owner's skill-sync-skills working tree was only fetched, its status unchanged. #3441 bumps the benchbox skill revision in skill-sync.conf and regenerates .claude/skills via make skill-sync (no hand edits); a second make skill-sync produced no diff.\n\nPart of the changelog-fragments batch. Cross-repository work: serial mode, owner approval boundaries in G1 apply.",
   "description": "OBJECTIVE: The generated mirror .claude/skills/benchbox/references/release.md (source: ~/Developer/skill-sync-skills, skills/benchbox/references/release.md) still describes drafting the changelog from commits and cites the stale docs/operations/release-guide.md path. Update the source to the fragment flow and the correct docs/internal/release-guide.md path, then regenerate the mirror in BenchBox.\n\nDECISION GATES:\n  G0 changelog-fragments-03 merged (the documented flow is live).\n  G1 Ownership gate: ~/Developer/skill-sync-skills is a separate owner repository whose working tree is DIRTY (README.md, deployment/global/skill-sync.conf modified) and behind origin/main. NEVER edit, stash, reset or commit in that working tree. Work in a fresh linked worktree/clone of origin/main. Read that repo's own contribution rules first. If it has no agent-write/PR path that you can follow with its documented rules, or requires an owner action (permissions, secrets), STOP: record the exact patch and owner step, mark the item blocked with owner and reason, and do not push to its main.\n  G2 skill-sync.conf revision bump follows the BenchBox skill-sync procedure (AGENTS.md 'Skills and generated mirrors'): regenerate with make skill-sync in a BenchBox write worktree; never hand-edit the mirror.\n\nCHANGE: (a) in skill-sync-skills: rewrite the benchbox release reference for changelog fragments (make changelog-entry, internal form, release-prep compiles, curation limits 45/160, no CHANGELOG.md edits) and fix the guide path; (b) in BenchBox: bump the pinned revision in skill-sync.conf, run make skill-sync, commit the regenerated .claude/skills mirror only; make skill mirror/guard checks pass (scripts/check_untracked_skill_mirrors.sh).\n\nGUARDRAILS: no hand edits to generated mirrors; no changes to the owner's dirty tree; explicit-path staging; durable commit text; BenchBox PR via make pr-open and monitor to merge; do not widen to unrelated skill edits.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "op": "update",
       "op_id": "b41434dbf5814c19b54504766e027be8",
       "session_id": "836cc2730a094567b8ae17d42d08ef84"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T09:20:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c142ee7825cf432ba5310c4d3435af96",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
