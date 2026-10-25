@@ -6,7 +6,7 @@
     "GUARDRAIL: The refresh workflow only opens PRs (contents and pull-requests write); it never pushes to develop, merges, or edits the baseline outside a PR; API calls bounded and logged",
     "VERIFY: The baseline stores per-test p50 normalized by each source run's runner-speed factor, plus the source runs' factors; refresh rejects source runs missing a calibration value"
   ],
-  "context": "Source: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
+  "context": "AMENDED 2026-10-25 after review of the chDB guard fix: hosted-runner speed varies about 1.7x (pre-incident fast-tier pytest totals 328-552 s on unchanged code: runs 40143597290, 40143651006, 40139142059, 40142795657, 40145835140), so raw summed test time is NOT a stable metric and a fixed +15% gate would fail on slow runners. The comparison must normalize for runner speed: record a runner-speed factor per run from a fixed deterministic CPU calibration measured at job start (and report pytest collection time as a cross-check), compare speed-normalized summed time, and also report the median per-test ratio versus baseline (which isolates overhead that hits only some tests, such as module-teardown cost).\n\nSource: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
   "description": "A reviewable reference that cannot drift silently. A script (unit-tested, reusing tests/duration_policy.py helpers including _junit_nodeid normalization) builds a schema-versioned JSON of per-test p50 seconds from the last ~20 merged-PR fast-job junit artifacts (same configuration as the PR gate: coverage on, -n auto). A weekly scheduled workflow regenerates it and opens a PR; that PR also reports medium-shard drift between tests/fixtures/medium_shard_durations.json and measured shard junit, recommending a refresh when skew exceeds 20%. A PR that intentionally slows tests updates the baseline itself with the same script and states why in its body. Do not route refresh through nightly workflows (mostly red in the 2026-10-10..24 window).",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "2c2909551f464d9098acae752a7940d2",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T17:31:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e40dc058b6c74b3d8f4c97be17f70c2f",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
