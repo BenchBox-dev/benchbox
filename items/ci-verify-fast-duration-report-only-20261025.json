@@ -8,7 +8,7 @@
     "VERIFY: Comparison uses speed-normalized summed time; replaying two unchanged-code runs on fast and slow runners (e.g. 40143597290 at 328 s vs 40145835140 at 552 s, or synthetic junit scaled 1.7x with matching calibration) reports pass, while a module-teardown overhead of 713 s still reports a would-block verdict",
     "VERIFY: The summary also reports the median per-test ratio and collection time so reviewers can tell runner speed from real slowdowns"
   ],
-  "context": "Source: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
+  "context": "AMENDED 2026-10-25 after review of the chDB guard fix: hosted-runner speed varies about 1.7x (pre-incident fast-tier pytest totals 328-552 s on unchanged code: runs 40143597290, 40143651006, 40139142059, 40142795657, 40145835140), so raw summed test time is NOT a stable metric and a fixed +15% gate would fail on slow runners. The comparison must normalize for runner speed: record a runner-speed factor per run from a fixed deterministic CPU calibration measured at job start (and report pytest collection time as a cross-check), compare speed-normalized summed time, and also report the median per-test ratio versus baseline (which isolates overhead that hits only some tests, such as module-teardown cost).\n\nSource: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
   "description": "The gate, first in report-only mode. A named step in the required core aggregate downloads the fast junit artifact and computes: (a) summed time over tests present in both baseline and PR; (b) summed time of tests not in the baseline, with an allowance of T1_BUDGET_SECONDS (0.5 s) x their count; (c) intersection coverage (warn under 95% of baseline ids); and the same comparison for each medium shard's existing junit. It writes a table and the would-be verdict (threshold +15% AND +60 s on summed intersection time) to the job summary, plus report-only pytest-wall and job-wall deltas. It never fails core in this item. A repo-committed policy file (enabled, mode report|block, thresholds) mirrors the fast-lane policy pattern and is the kill switch. Update docs/operations/fast-lane-budget.md (its claim that timeout-minutes bounds the lane's cost is not a detection mechanism) and add a changelog.d fragment.",
   "sessions": [
     {
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "1e66c9b9bbc84707a9ded4b2918e4c0f",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T17:32:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "79e4e43fafdf4e6691c71d4922ec6a1d",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
