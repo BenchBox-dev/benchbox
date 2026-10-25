@@ -170,7 +170,9 @@ def report(verdicts: Sequence[Verdict], emit: Callable[[str], None]) -> int:
             for run in verdict.recent_runs:
                 emit(f"  {verdict.workflow}: {describe_run(run)}")
         return 1
-    emit(f"All {len(verdicts)} scheduled workflow(s) alive within their cadence windows.")
+    emit(
+        f"All {len(verdicts)} scheduled workflow(s) alive within their cadence windows (run conclusions are not assessed)."
+    )
     return 0
 
 

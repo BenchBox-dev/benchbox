@@ -86,6 +86,7 @@ def _run_report(
     skip_without_posix_shell()
     if shutil.which("jq") is None:
         pytest.skip("report execution requires jq")
+    tmp_path.mkdir(parents=True, exist_ok=True)
     gh = tmp_path / "gh"
     gh.write_text(GH_STUB, encoding="utf-8")
     gh.chmod(0o755)
@@ -220,6 +221,33 @@ def test_cancelled_on_open_issue_comments_without_closing(tmp_path: Path) -> Non
 def test_cancelled_without_an_issue_changes_nothing(tmp_path: Path) -> None:
     _, calls = _run_report(tmp_path, {"windows": "cancelled"}, label="t3:windows", closed=[_closed_days_ago(5, 1)])
     assert _mutations(calls) == []
+
+
+def test_report_job_is_skipped_when_the_workflow_is_cancelled() -> None:
+    report = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["jobs"]["report"]
+    assert report["if"] == "${{ always() && !cancelled() }}"
+    assert "liveness" in report["needs"]
+
+
+def test_a_failure_result_names_the_job_result_in_the_issue_body(tmp_path: Path) -> None:
+    _, calls = _run_report(tmp_path, {"perf": "failure"}, label="t3:perf")
+    creates = [args for args in calls if args[:2] == ["issue", "create"]]
+    assert len(creates) == 1
+    assert "Domain job result: failure." in _body(creates[0])
+
+
+def test_a_failed_domain_is_reported_even_when_the_liveness_domain_is_alive(tmp_path: Path) -> None:
+    results = {"liveness": "success", "perf": "failure"}
+    _, perf_calls = _run_report(tmp_path / "perf", results, label="t3:perf")
+    assert [args[:2] for args in _mutations(perf_calls)] == [["issue", "create"]]
+    _, liveness_calls = _run_report(tmp_path / "liveness", results, label="t3:liveness")
+    assert [args for args in _mutations(liveness_calls) if "t3:liveness" in args] == []
+
+
+def test_a_passing_liveness_domain_never_closes_or_hides_another_domains_failure(tmp_path: Path) -> None:
+    results = {"liveness": "success", "perf": "failure"}
+    _, calls = _run_report(tmp_path / "perf", results, label="t3:perf", open_issue=7)
+    assert [args[:3] for args in _mutations(calls)] == [["issue", "comment", "7"]]
 
 
 def test_skipped_changes_nothing_even_with_an_open_issue(tmp_path: Path) -> None:
