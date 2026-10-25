@@ -52,3 +52,15 @@ def test_changelog_step_guards_unreleased_and_reads_the_classified_changed_list(
 
 def test_changelog_step_is_not_conditional() -> None:
     assert "if" not in _step()
+
+
+def test_title_edit_lane_rechecks_the_entry_rule_with_the_title_in_the_environment() -> None:
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["text-edit-verdict"]["steps"]
+    matches = [step for step in steps if step.get("name") == "Re-check the changelog entry against the edited title"]
+    assert len(matches) == 1
+    step = matches[0]
+    assert step["env"]["PR_TITLE"] == "${{ github.event.pull_request.title }}"
+    assert "github.event.pull_request.title" not in step["run"]
+    assert '--title "$PR_TITLE"' in step["run"]
+    assert "--require-empty-unreleased" in step["run"]

@@ -1865,3 +1865,31 @@ jobs:
           python scripts/ci_text_edit_verdict.py verdict --repo "${{ github.repository }}"
           --sha "${{ github.event.pull_request.head.sha }}" --unit "${{ matrix.unit }}"
           --run-id "${{ github.run_id }}"
+
+      - name: Checkout the pull request for the changelog title check
+        if: ${{ matrix.unit == 'tooling' }}
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          path: title-check
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Re-check the changelog entry against the edited title
+        if: ${{ matrix.unit == 'tooling' }}
+        working-directory: title-check
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EVENT_BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid event base SHA" >&2; exit 1; }
+          git fetch --no-tags origin "$EVENT_BASE_SHA"
+          python -I -S scripts/release_flow.py select --base-sha "$EVENT_BASE_SHA" --github-output "$RUNNER_TEMP/select.out"
+          git diff --name-only --diff-filter=ACDMRT "$EVENT_BASE_SHA" HEAD > "$RUNNER_TEMP/changed.txt"
+          identity=()
+          if grep -qx 'release-identity-changed=true' "$RUNNER_TEMP/select.out"; then identity=(--release-identity-changed); fi
+          python scripts/changelog_fragments.py check \
+            --require-empty-unreleased \
+            --title "$PR_TITLE" \
+            --changed-files-from "$RUNNER_TEMP/changed.txt" \
+            "${identity[@]}"

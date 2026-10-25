@@ -310,7 +310,7 @@ a pull request that adds text there. A pull request that changes shipped code
 Preview with `make changelog-preview` and validate with `make changelog-check`.
 `make pr-open` runs the same required-entry check against your PR title before
 pushing. Fragments are one file per pull request, so they cannot conflict.
-Title edits do not re-run `ci-paths`; push a commit to re-evaluate the check.
+Title edits re-run the entry rule in the `tooling (text edit)` check.
 See [changelog.d/README.md](changelog.d/README.md).
 
 We follow semantic versioning.

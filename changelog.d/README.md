@@ -68,8 +68,9 @@ for the pull request title. `make changelog-check` validates fragments locally,
 and `make pr-open` checks the required-entry rule against your title before
 pushing.
 
-Editing a pull request title does not re-run `ci-paths`. After changing a title
-so that an entry becomes required, push a commit to re-evaluate the check.
+Editing a pull request title does not re-run `ci-paths`; the `tooling (text edit)`
+check re-evaluates the entry rule against the new title, so retitling a pull
+request to `fix:` or `feat:` without a fragment fails that check.
 
 Fragments are one file per pull request, so they cannot conflict, and no local
 merge driver is involved.
