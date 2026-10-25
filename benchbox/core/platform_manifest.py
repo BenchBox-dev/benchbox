@@ -136,12 +136,6 @@ def _validate_capabilities(key: str, capabilities: object) -> None:
             raise ValueError(f"Platform {key!r} supports SQL and must declare a lowercase sql_dialect")
     elif sql_dialect is not None:
         raise ValueError(f"Platform {key!r} does not support SQL and must not declare sql_dialect")
-    query_dialect = capabilities.get("query_dialect")
-    if query_dialect is not None:
-        if not supports_sql or not isinstance(query_dialect, str) or not _SQL_DIALECT_PATTERN.fullmatch(query_dialect):
-            raise ValueError(f"Platform {key!r} query_dialect must be a lowercase dialect on a SQL platform")
-        if query_dialect == sql_dialect:
-            raise ValueError(f"Platform {key!r} query_dialect must differ from sql_dialect")
 
     deployment_modes = capabilities.get("deployment_modes", {})
     if not isinstance(deployment_modes, dict):
@@ -2513,11 +2507,10 @@ _PLATFORM_MANIFEST_JSON = """[
       "mysql-compatible"
     ],
     "driver_package": "singlestoredb",
-    "notes": "SingleStore 8.0+ with columnstore analytics. MySQL wire protocol on port 3306. SQLGlot 'mysql' dialect. Connects to self-managed clusters and to Helios endpoints by host; the deployment is not selected or recorded.",
+    "notes": "SingleStore 8.0+ with columnstore analytics. MySQL wire protocol on port 3306. SQLGlot 'singlestore' dialect. Connects to self-managed clusters and to Helios endpoints by host; the deployment is not selected or recorded.",
     "capabilities": {
       "supports_sql": true,
       "sql_dialect": "singlestore",
-      "query_dialect": "mysql",
       "supports_dataframe": false,
       "default_mode": "sql",
       "platform_family": "singlestore",
@@ -2729,7 +2722,6 @@ _PLATFORM_MANIFEST_JSON = """[
     "capabilities": {
       "supports_sql": true,
       "sql_dialect": "athena",
-      "query_dialect": "trino",
       "supports_dataframe": false,
       "default_mode": "sql",
       "cost_class": "paid_credits",
@@ -3659,14 +3651,6 @@ def _manifest_entry_for_dialect(name: str) -> PlatformManifestEntry | None:
 def get_platform_sql_dialect(name: str) -> str | None:
     entry = _manifest_entry_for_dialect(name)
     return None if entry is None else cast(str | None, entry.capabilities.get("sql_dialect"))
-
-
-def get_platform_query_dialect(name: str) -> str:
-    entry = _manifest_entry_for_dialect(name)
-    if entry is None or not entry.capabilities.get("supports_sql"):
-        raise KeyError(f"No SQL platform {name!r} in the platform manifest")
-    capabilities = entry.capabilities
-    return cast(str, capabilities.get("query_dialect") or capabilities["sql_dialect"])
 
 
 def is_valid_platform_key(key: str) -> bool:

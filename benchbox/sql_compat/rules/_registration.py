@@ -143,8 +143,13 @@ _PK_INFORMATIONAL_DIALECTS: tuple[tuple[str, str, str, str], ...] = (
         "trino",
         "trino",
         "Trino accepts PRIMARY KEY syntax but does not enforce uniqueness",
-        "Trino / Athena / Starburst accept CREATE TABLE PRIMARY KEY but do not enforce it "
-        "(covers trino, athena, starburst dialects)",
+        "Trino / Starburst accept CREATE TABLE PRIMARY KEY but do not enforce it (covers trino and starburst dialects)",
+    ),
+    (
+        "athena",
+        "athena",
+        "Athena accepts PRIMARY KEY syntax but does not enforce uniqueness",
+        "Athena accepts CREATE TABLE PRIMARY KEY in the table DDL but does not enforce it",
     ),
     (
         "presto",

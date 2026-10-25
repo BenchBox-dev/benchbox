@@ -146,7 +146,7 @@ def _schema_emit_records() -> list[BaselineRecord]:
         ("clickhouse", "nyctaxi"),
         ("duckdb", "nyctaxi"),
         ("postgresql", "nyctaxi"),
-        ("mysql", "joinorder"),
+        ("singlestore", "joinorder"),
         ("postgresql", "joinorder"),
         ("clickhouse", "tsbs_devops"),
     ]
