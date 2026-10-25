@@ -4,7 +4,7 @@
     "Executed tests compare Snowflake/Databricks-shaped SQL ordering against the reference engine for NULL sort keys (Spark in fork CI for Databricks).",
     "Affected published bundles are listed; flagged or noted per provenance policy if values or order changed."
   ],
-  "description": "The published-results audit found that, since v0.4.1, translated SQL for Snowflake and Databricks turns DESC into DESC NULLS LAST (e.g. TSBS queries, DataVault Q11). It is not attributed to any reviewed PR's published-impact section. It changes result order (and LIMIT membership) whenever the sort key has NULLs. Check that it reproduces the source dialect's NULL ordering (DuckDB/ANSI default: NULLS LAST for ASC, NULLS FIRST for DESC in Postgres; DuckDB sorts NULLS LAST by default), and decide which ordering is benchmark-correct.",
+  "description": "The published-results audit found that, since v0.4.1, translated SQL for Snowflake and Databricks turns DESC into DESC NULLS LAST (e.g. TSBS queries, DataVault Q11). No reviewed PR's published-impact section names it. Default NULL placement for DESC differs by engine (PostgreSQL and Snowflake place NULLs first; Spark/Databricks and DuckDB place them last), so the explicit NULLS LAST is a no-op on Databricks but can change order, and LIMIT membership, on Snowflake whenever the sort key has NULLs. Decide which placement matches the source dialect each benchmark is written in and the benchmark's intent.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "538ac00910fc4d2daf27735e925fe341",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T12:30:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "76aca51efcbb433fa5b06fb73d184298",
       "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
