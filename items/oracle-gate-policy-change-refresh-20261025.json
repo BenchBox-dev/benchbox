@@ -1,9 +1,11 @@
 {
   "acceptance": [
-    "tests/unit/workflows/test_oracle_gate_workflow.py asserts a push trigger on branches [develop] whose paths equal the gate's policy inputs, that the sweep job runs for schedule and push, and that push runs use their own concurrency group. The tests fail on the previous workflow.",
+    "tests/unit/workflows/test_oracle_gate_workflow.py asserts a push trigger on branches [develop]. Its paths equal the gate's sparse-checkout policy inputs with directories normalized to '<dir>/**' (for example _project/scripts/oracle_reviewers/**). The tests fail on the previous workflow.",
+    "On push, only the sweep job runs. The gate and bridge job conditions exclude push, and an expression test covers push leading to sweep only. test_triggers_are_trusted_only and the sweep run-title test are updated deliberately for the new trigger, not loosened.",
+    "Push-triggered runs use their own concurrency group, never a pull request's gate group. A test covers it.",
     "actionlint is clean, uv run -- pytest -q tests/unit/workflows passes, and make pr-preflight passes.",
     "docs/internal/oracle-review-v2.md states that policy changes on develop trigger a sweep, and make docs-validate passes.",
-    "Live check after merge: if the merge commit touches a listed path, its push runs the sweep; otherwise the next qualifying develop push does. The run ID and result are recorded in context."
+    "Live check after merge: if the merge commit touches a listed path, its push runs the sweep and no gate or bridge job; otherwise the next qualifying develop push does. The run ID and result are recorded in context."
   ],
   "context": "Source: Advisor review ~/Developer/benchmark_runs/oracle-review-workflow-advisor-20261025/report.md, stale-success table row 'Base branch advances ... trusted classifier/predicate changes on develop'.\n\nBatch order (serial): 1 oracle-review-notify-only, 2 oracle-review-recover-retire, 3 comment-policy-oracle-gate-evidence-only, 4 oracle-gate-standin-edit-delete, 5 oracle-gate-fail-closed-evaluation-errors, 6 oracle-gate-policy-change-refresh, 7 oracle-gate-cutover-live-verification, 8 oracle-verdict-dispatch-gate-after-review.",
   "description": "Problem: the gate's decision depends on trusted inputs read from develop: .github/oracle-reviewers.yml, .github/inert-paths.txt, .github/soundness-paths.txt, _project/scripts/oracle_gate.py, _project/scripts/oracle_review_check.py, _project/scripts/oracle_reviewers/, _project/scripts/inert_paths.py and _project/scripts/soundness_paths.py. A merge that changes them can change how an open pull request is classified, for example from exempt-only to soundness, but nothing re-evaluates open pull requests until the hourly sweep.\n\nOutcome: a push to develop that touches those paths runs the sweep job.\n\nDecision gates (stop and report if one fails):\n1. The push trigger is limited to branches [develop] and to exactly the gate's trusted policy inputs. A test keeps that path list equal to the gate job's sparse-checkout list, excluding .github/workflows/oracle-gate.yml if that is cleaner, and the decision is recorded.\n2. Push-triggered sweeps get their own concurrency group, so they never cancel or join a pull request's gate run.\n\nItem guardrails: sweep logic is unchanged and the sweep gets no new permissions. Do not add push triggers for other branches.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no stand-in approvals, no ruleset edits or bypasses, no raw gh pr merge. Close out with make pr-preflight, make pr-open, oracle SHIP on the exact head, then make pr-arm. Do not change oracle-gate's App binding (integration 5201041), the oracle decision rule, or the native review-thread-resolution requirement. Do not close and reopen, mass-rerun or rebase other pull requests. No explanatory comments or docstrings (COMMENT-POLICY-001). Every behavior change gets a test that fails on the previous code.",
@@ -14,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "c936f95b58fa4c6ba7489415169302ba",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T03:23:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1933bc75e69046e2b072bacdcba3ef49",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
