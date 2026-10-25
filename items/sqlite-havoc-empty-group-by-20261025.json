@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "6_v2 and 14_v2 execute on sqlite3 and match DuckDB at SF0.01 with non-vacuous results (or the gate's augmentation).",
+    "Fork test in CI; gate allowlist entry removed; sql-execution-gate PASS."
+  ],
+  "description": "Found by extending sql-execution-gate to TPC-Havoc (item sql-execution-gate-cover-tpchavoc-obt-20261025). The SQLite translation of 6_v2 and 14_v2 emits `GROUP BY ()`, which SQLite rejects (`near \")\": syntax error`). The fork carries empty-group-by-generator for other targets. GUARDRAILS: fix in the SQLGlot fork with real-engine tests (fork CI) and adopt via a wheel cut under the batch wheel mutex; benchmark text unchanged; when fixed, remove the matching sql-execution-gate allowlist entry (the gate fails on stale entries); list affected published bundles and flag only if recorded rows were wrong; no cloud spend.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T20:56:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ecbef22d8c354fcdbfbc64d2b1923c5c",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}
