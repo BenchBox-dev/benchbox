@@ -13933,7 +13933,7 @@
     "mcp-create-server-process-globals-20261025": {
       "claim": null,
       "needs": [],
-      "priority": "low",
+      "priority": "medium",
       "status": "open",
       "title": "Stop benchbox.mcp.create_server() from changing process-wide logging, quiet mode and tracing"
     },
