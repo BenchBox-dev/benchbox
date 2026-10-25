@@ -26381,7 +26381,8 @@
     "tpcds-obt-rerun-defective-sf1-bundles-20261017": {
       "claim": null,
       "needs": [
-        "tpcds-obt-empty-queries-conversion-20261017"
+        "tpcds-obt-empty-queries-conversion-20261017",
+        "local-rerun-bundles-fail-submission-validation-20261025"
       ],
       "priority": "medium-high",
       "status": "open",
