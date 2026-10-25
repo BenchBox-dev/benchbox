@@ -109,5 +109,7 @@ quoted number can lose its label.
 - `benchbox/core/results/subscale_policy.py` (class derivation, exclusion
   set, Power@Size derivation)
 - `benchbox/core/results/metrics.py` (`metrics_refusal_reason`)
-- `benchbox/validation/bundle.py` (`CLI_REFUSED_COMPLIANCE_CLASSES`)
+- `benchbox/validation/bundle.py` (`CLI_REFUSED_COMPLIANCE_CLASSES`; bundles whose
+  manifest sidecar declares `result_source: internal` are exempt from the
+  official-only submission rule, external sources stay refused)
 - [Corpus validation-status admission policy](adr-corpus-validation-admission-policy.md)

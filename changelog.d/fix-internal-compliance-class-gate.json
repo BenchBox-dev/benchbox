@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Submission validator accepts unofficial compliance classes for bundles whose manifest declares result_source internal; external sources stay refused."
+}
