@@ -15945,6 +15945,13 @@
       "status": "done",
       "title": "Move oracle-review consumers to oracle-gate"
     },
+    "oracle-gate-fail-closed-evaluation-errors-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Make oracle-gate post failure when evaluation errors, and sweep every open develop pull request"
+    },
     "oracle-gate-run-name-says-sweep-for-single-pr-20261023": {
       "claim": null,
       "needs": [],
