@@ -6742,12 +6742,17 @@
       "title": "Databricks Z-order tuned runs Z-order empty tables; loaded data is only compacted"
     },
     "databricks-zorder-templates-lost-date-locality-20261013": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T04:33:12Z",
+        "generation": "0a772e013eb74e44a704e2fe740f18c1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "databricks-zorder-applied-to-empty-tables-20261013"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Databricks Z-order TPC-H and TPC-DS templates lost all date locality, and the check was loosened to pass"
     },
     "dataframe-adapter-ledger-instrumentation-20260724": {
