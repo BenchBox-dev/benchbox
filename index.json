@@ -22964,7 +22964,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Apply or revert the pending global skill-sync pin for shared-agent-execution"
     },
     "skill-sync-item-scope-and-rung-path-form": {
