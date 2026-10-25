@@ -7,7 +7,7 @@
     "docs/internal/comment-policy.md describes the rule and the unchanged CI behavior",
     "PR merged with an oracle verdict on its final head; merge SHA recorded; no pre-registered digests in the PR"
   ],
-  "context": "NOTE 2026-10-24 (Advisor review): still real on develop (staged check counts new entries only when reviewed, check_comment_policy.py:425,475-481). Open PR #3355 implements it (oracle success on its head, 2 failing checks as of 2026-10-23); #3356 is adjacent fixture cleanup. Both belong to another agent; finish this item when #3355 merges.\n\n\n\nSource: soundness-gap plan (read-only planner review, 2026-10-22) of open issues 2806, 2807, 2808, 3125, 3126 in BenchBox-dev/benchbox plus owner decisions of 2026-10-22 (record: soundness-gaps-decisions-20261022). Line numbers, commit SHAs and findings are leads from that plan: re-verify them against current develop before acting. Not yet verified by anyone else.",
+  "context": "PR #3355 merged as f833fd52c (head 055d9cbd4, oracle verdict success on that head).",
   "description": "Owner decision 2026-10-22: yes. Problem: new fixture exceptions only count under oracle cover (scripts/check_comment_policy.py about lines 433 and 479-483; oracle_review_covers needs the GitHub environment), so the local pre-commit hook rejects an exception added in the same PR as the code it excuses. Agents therefore pre-register guessed digests in an earlier PR; then the oracle objects and the owner stands in over a High finding. That produced gap issues 3125 and 3126 and a digest that never matched (PR 3084).\n\nChange: in the local staged check only, accept a NEW exception when (1) its path is a file changed in the same staged commit, and (2) its digest equals the digest the checker computes from the staged content of that file, and (3) it is not reused for any other path or finding. CI must keep requiring oracle cover exactly as today: a PR adding an exception without oracle cover must still fail the CI check.\n\nDECISION GATE: before coding, write down the exact accept rule and the attack you must defeat: a commit that adds an exception for a file it changes in order to hide a new finding must still be caught in CI (the local hook accepts it only to unblock the commit; CI decides). If you cannot show CI still fails it, stop and report. Also decide where the staged-only acceptance lives so the CI path cannot reach it (separate flag defaulting to off; the hook sets it; the trusted base checker in CI never does).\n\nGUARDRAILS (all items): G1 never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict is required on every PR (soundness paths) and no digest may be pre-registered. G2 never weaken a gate, threshold, rule or check; no skip/xfail/quarantine. G3 the primary clone /Users/joe/Developer/BenchBox is read-only: use make worktree-create + make agent-write-preflight and absolute worktree paths; stage explicit paths; never git add -A; never git stash; identity Joe Harris, no agent trailers. G4 no CHANGELOG.md entry (curated section is at its 160-line ceiling) and no comments/docstrings in code (make comment-policy-check). G5 commit and PR text for a reader who never saw the session: no item ids, no plan/session labels. G6 never close, label or edit gap issues directly: the daily digest closes them after a valid attestation. G7 no settings/rulesets/secrets/variables writes; no new dependencies or unpinned images. G8 done means merged PR plus verification evidence recorded in the item; an open PR is not done. G9 self-review pass (code review action) before make pr-open; fix Critical and Required findings.",
   "sessions": [
     {
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "d4952de3f4804e43be3d50e77788706d",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-25T12:53:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9fd0275137414d0a9b22d9c0d3e1151c",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
 }
