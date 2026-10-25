@@ -26,7 +26,7 @@ except ImportError:
     DATABRICKS_CONNECT_AVAILABLE = False
     DatabricksSession = None
     _databricks_connect_error = None
-except Exception as exc:  # pragma: no cover
+except Exception as exc:
     DATABRICKS_CONNECT_AVAILABLE = False
     DatabricksSession = None
     _databricks_connect_error = str(exc)

@@ -51,7 +51,7 @@ def test_duckdb_tpch_power_generates_data(monkeypatch: pytest.MonkeyPatch, tmp_p
 def test_duckdb_tpch_power_dry_run_invokes_helper(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     from examples.getting_started.local import duckdb_tpch_power as script
 
-    def explode_run(*args, **kwargs):  # pragma: no cover
+    def explode_run(*args, **kwargs):
         raise AssertionError("run_benchmark should not execute during dry run")
 
     monkeypatch.setattr(script.DuckDBAdapter, "run_benchmark", explode_run, raising=False)

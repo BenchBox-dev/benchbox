@@ -27,7 +27,7 @@ def _alive(pid: int) -> bool:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
-    except PermissionError:  # pragma: no cover
+    except PermissionError:
         return True
     return True
 
@@ -54,7 +54,7 @@ def _run_cell_bounded(tmp_path, *, timeout_s: int = _CELL_TIMEOUT_S) -> tuple[bo
                 log_dir=tmp_path / "logs",
                 benchmark_runs_dir=tmp_path / "runs",
             )
-        except BaseException as exc:  # pragma: no cover
+        except BaseException as exc:
             outcome["error"] = exc
 
     worker = threading.Thread(target=_call, daemon=True)
@@ -104,7 +104,7 @@ def test_run_cell_timeout_kills_the_whole_process_group_not_just_the_child(tmp_p
             "only the direct child leaves this process orphaned to init."
         )
     finally:
-        if grandchild is not None and _alive(grandchild):  # pragma: no cover
+        if grandchild is not None and _alive(grandchild):
             with suppress(OSError):
                 os.kill(grandchild, signal.SIGKILL)
 
@@ -136,6 +136,6 @@ def test_run_cell_runs_the_child_in_its_own_session(tmp_path, monkeypatch):
         assert child_pgid != os.getpgid(0), "child shares the test runner's process group"
     finally:
         for pid in _pids_from(pgid_file):
-            if _alive(pid):  # pragma: no cover
+            if _alive(pid):
                 with suppress(OSError):
                     os.kill(pid, signal.SIGKILL)

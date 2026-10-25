@@ -104,7 +104,7 @@ class _DatabricksCursor:
     def fetchone(self) -> tuple[Any, ...] | None:
         return self._results[0] if self._results else None
 
-    def close(self) -> None:  # pragma: no cover
+    def close(self) -> None:
         return None
 
 
@@ -167,7 +167,7 @@ def install_databricks_stub(monkeypatch, *, catalog: str = "main", schema: str =
 
         monkeypatch.setattr(adapter_module, "databricks_sql", sql_module)
         monkeypatch.setattr(adapter_module, "DatabricksConnection", _DatabricksConnection, raising=False)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return state
@@ -389,7 +389,7 @@ def install_google_cloud_stubs(
         monkeypatch.setattr(adapter_module, "NotFound", NotFound)
         monkeypatch.setattr(adapter_module, "Conflict", Conflict, raising=False)
         monkeypatch.setattr(adapter_module, "google_auth", auth_module)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return client.state
@@ -438,7 +438,7 @@ class _RedshiftCursor:
     def fetchall(self) -> list[tuple[Any, ...]]:
         return list(self._results)
 
-    def close(self) -> None:  # pragma: no cover
+    def close(self) -> None:
         return None
 
 
@@ -513,7 +513,7 @@ def install_redshift_stubs(
         monkeypatch.setattr(adapter_module, "redshift_connector", redshift_module)
         monkeypatch.setattr(adapter_module, "psycopg", psycopg_module)
         monkeypatch.setattr(adapter_module, "boto3", boto3_module)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return state
@@ -560,7 +560,7 @@ class _SnowflakeCursor:
     def fetchone(self) -> tuple[Any, ...] | None:
         return self._results[0] if self._results else None
 
-    def close(self) -> None:  # pragma: no cover
+    def close(self) -> None:
         return None
 
 
@@ -604,7 +604,7 @@ def install_snowflake_stub(monkeypatch) -> SnowflakeStubState:
         monkeypatch.setattr(adapter_module, "snowflake", root_module)
         monkeypatch.setattr(adapter_module, "DictCursor", None)
         monkeypatch.setattr(adapter_module, "SnowflakeError", errors_module.Error, raising=False)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return state
@@ -667,7 +667,7 @@ class _AthenaCursor:
     def fetchone(self) -> tuple[Any, ...] | None:
         return self._results[0] if self._results else None
 
-    def close(self) -> None:  # pragma: no cover
+    def close(self) -> None:
         return None
 
 
@@ -784,7 +784,7 @@ def install_athena_stubs(
         monkeypatch.setattr(adapter_module, "boto3", boto3_module)
         monkeypatch.setattr(adapter_module, "athena_connect", athena_connect)
         monkeypatch.setattr(adapter_module, "AthenaCursor", _AthenaCursor, raising=False)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return state
@@ -890,14 +890,14 @@ def install_clickhouse_stub(
 
         monkeypatch.setattr(deps_module, "ClickHouseClient", StubClient)
         monkeypatch.setattr(deps_module, "ClickHouseError", ClickHouseError)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     try:
         import benchbox.platforms.clickhouse.setup as setup_module
 
         monkeypatch.setattr(setup_module, "ClickHouseClient", StubClient)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return state
@@ -1000,7 +1000,7 @@ def install_trino_stub(
 
         monkeypatch.setattr(adapter_module, "trino", trino_module)
         monkeypatch.setattr(adapter_module, "BasicAuthentication", BasicAuthentication)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return state
@@ -1103,7 +1103,7 @@ def install_presto_stub(
 
         monkeypatch.setattr(adapter_module, "prestodb", prestodb_module)
         monkeypatch.setattr(adapter_module, "PrestoBasicAuthentication", PrestoBasicAuthentication)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return state
@@ -1205,7 +1205,7 @@ def install_postgresql_stub(
         import benchbox.platforms.postgresql as adapter_module
 
         monkeypatch.setattr(adapter_module, "psycopg", psycopg_module)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return state
@@ -2120,7 +2120,7 @@ def install_doris_stub(
 
         monkeypatch.setattr(adapter_module, "pymysql", pymysql_module)
         monkeypatch.setattr(adapter_module, "_requests", None)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return state
@@ -2392,7 +2392,7 @@ def install_lakesail_stub(
             "is_spark_connect_reachable",
             lambda endpoint, *, timeout=2.0: True,
         )
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     try:
@@ -2406,7 +2406,7 @@ def install_lakesail_stub(
             return original_check(platform)
 
         monkeypatch.setattr(dep_utils, "check_platform_dependencies", patched_check)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return state

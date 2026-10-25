@@ -57,7 +57,7 @@ class DuckDBTuningIntrospector:
                     row[3],
                     row[4],
                 )
-            except Exception:  # pragma: no cover
+            except Exception:
                 continue
             if tables and normalize_identifier(table_name or "") not in tables:
                 continue

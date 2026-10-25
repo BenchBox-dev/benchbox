@@ -1822,7 +1822,7 @@ class TestUATGateReleaseEvidence:
         monkeypatch.setenv("RELEASE_READINESS_OVERRIDE_REASON", "INC-999 approved")
         monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
 
-        def _boom(*_args, **_kwargs):  # pragma: no cover
+        def _boom(*_args, **_kwargs):
             raise AssertionError("override must short-circuit before any evidence lookup")
 
         monkeypatch.setattr(release_readiness_check, "_load_uat_gate_evidence", _boom)

@@ -29,7 +29,7 @@ def _literal(node: ast.AST | None) -> str:
         return ""
     try:
         return ast.unparse(node)
-    except Exception:  # pragma: no cover
+    except Exception:
         return "<unparseable>"
 
 

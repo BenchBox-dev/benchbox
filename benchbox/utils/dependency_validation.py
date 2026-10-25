@@ -21,7 +21,7 @@ class DependencyValidationError(RuntimeError):
 
 
 def _load_toml(path: Path) -> Mapping[str, object]:
-    if not path.exists():  # pragma: no cover
+    if not path.exists():
         raise FileNotFoundError(f"Missing required file: {path}")
     return tomllib.loads(path.read_text(encoding="utf-8"))
 
@@ -31,7 +31,7 @@ def _collect_locked_versions(lock_data: Mapping[str, object]) -> dict[str, set[V
     packages: dict[str, set[Version]] = {}
     package_list: list[object] = list(lock_data.get("package", []))
     for pkg in package_list:
-        if not isinstance(pkg, Mapping):  # pragma: no cover
+        if not isinstance(pkg, Mapping):
             continue
         name_obj = pkg.get("name")
         version_obj = pkg.get("version")
@@ -70,7 +70,7 @@ def validate_dependency_versions(
 ) -> list[str]:
 
     project_section = pyproject_data.get("project")
-    if not isinstance(project_section, Mapping):  # pragma: no cover
+    if not isinstance(project_section, Mapping):
         raise DependencyValidationError("pyproject.toml missing [project] section")
 
     packages = _collect_locked_versions(lock_data)
@@ -88,7 +88,7 @@ def validate_dependency_versions(
     optional_deps = project_section.get("optional-dependencies", {})
     if isinstance(optional_deps, Mapping):
         for extra, entries in optional_deps.items():
-            if not isinstance(entries, Sequence):  # pragma: no cover
+            if not isinstance(entries, Sequence):
                 continue
             for requirement in _requirements_from_strings(entries):
                 name = canonicalize_name(requirement.name)
@@ -183,5 +183,5 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     sys.exit(main())

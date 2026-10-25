@@ -569,13 +569,50 @@ def _sales_returns_rollup_pandas(ctx: DataFrameContext, combined: Any) -> Any:
     )
 
 
-# fmt: off
 _Q49_CHANNEL_SPECS = (
-    ("web_sales", "web_returns", ("ws_order_number", "ws_item_sk"), ("wr_order_number", "wr_item_sk"), "ws_sold_date_sk", "ws_item_sk", "wr_return_quantity", "wr_return_amt", "ws_net_paid", "ws_net_profit", "ws_quantity", "web"),
-    ("catalog_sales", "catalog_returns", ("cs_order_number", "cs_item_sk"), ("cr_order_number", "cr_item_sk"), "cs_sold_date_sk", "cs_item_sk", "cr_return_quantity", "cr_return_amount", "cs_net_paid", "cs_net_profit", "cs_quantity", "catalog"),
-    ("store_sales", "store_returns", ("ss_ticket_number", "ss_item_sk"), ("sr_ticket_number", "sr_item_sk"), "ss_sold_date_sk", "ss_item_sk", "sr_return_quantity", "sr_return_amt", "ss_net_paid", "ss_net_profit", "ss_quantity", "store"),
+    (
+        "web_sales",
+        "web_returns",
+        ("ws_order_number", "ws_item_sk"),
+        ("wr_order_number", "wr_item_sk"),
+        "ws_sold_date_sk",
+        "ws_item_sk",
+        "wr_return_quantity",
+        "wr_return_amt",
+        "ws_net_paid",
+        "ws_net_profit",
+        "ws_quantity",
+        "web",
+    ),
+    (
+        "catalog_sales",
+        "catalog_returns",
+        ("cs_order_number", "cs_item_sk"),
+        ("cr_order_number", "cr_item_sk"),
+        "cs_sold_date_sk",
+        "cs_item_sk",
+        "cr_return_quantity",
+        "cr_return_amount",
+        "cs_net_paid",
+        "cs_net_profit",
+        "cs_quantity",
+        "catalog",
+    ),
+    (
+        "store_sales",
+        "store_returns",
+        ("ss_ticket_number", "ss_item_sk"),
+        ("sr_ticket_number", "sr_item_sk"),
+        "ss_sold_date_sk",
+        "ss_item_sk",
+        "sr_return_quantity",
+        "sr_return_amt",
+        "ss_net_paid",
+        "ss_net_profit",
+        "ss_quantity",
+        "store",
+    ),
 )
-# fmt: on
 
 
 def _three_channel_return_ratio_expression(ctx: DataFrameContext, query_id: int) -> Any:
@@ -803,14 +840,68 @@ def _q80_channel_pandas(
     return result[["channel", "id", "sales", "returns", "profit"]]
 
 
-def _q80_channel_specs() -> tuple[tuple[str, ...], ...]:
-    # fmt: off
-    return (
-        ("store_sales", "store_returns", "ss_item_sk", "ss_ticket_number", "sr_item_sk", "sr_ticket_number", "ss_sold_date_sk", "store", "ss_store_sk", "s_store_sk", "s_store_id", "ss_promo_sk", "ss_ext_sales_price", "sr_return_amt", "ss_net_profit", "sr_net_loss", "store channel", "store"),
-        ("catalog_sales", "catalog_returns", "cs_item_sk", "cs_order_number", "cr_item_sk", "cr_order_number", "cs_sold_date_sk", "catalog_page", "cs_catalog_page_sk", "cp_catalog_page_sk", "cp_catalog_page_id", "cs_promo_sk", "cs_ext_sales_price", "cr_return_amount", "cs_net_profit", "cr_net_loss", "catalog channel", "catalog_page"),
-        ("web_sales", "web_returns", "ws_item_sk", "ws_order_number", "wr_item_sk", "wr_order_number", "ws_sold_date_sk", "web_site", "ws_web_site_sk", "web_site_sk", "web_site_id", "ws_promo_sk", "ws_ext_sales_price", "wr_return_amt", "ws_net_profit", "wr_net_loss", "web channel", "web_site"),
-    )
-    # fmt: on
+_Q80_CHANNEL_SPECS: tuple[tuple[str, ...], ...] = (
+    (
+        "store_sales",
+        "store_returns",
+        "ss_item_sk",
+        "ss_ticket_number",
+        "sr_item_sk",
+        "sr_ticket_number",
+        "ss_sold_date_sk",
+        "store",
+        "ss_store_sk",
+        "s_store_sk",
+        "s_store_id",
+        "ss_promo_sk",
+        "ss_ext_sales_price",
+        "sr_return_amt",
+        "ss_net_profit",
+        "sr_net_loss",
+        "store channel",
+        "store",
+    ),
+    (
+        "catalog_sales",
+        "catalog_returns",
+        "cs_item_sk",
+        "cs_order_number",
+        "cr_item_sk",
+        "cr_order_number",
+        "cs_sold_date_sk",
+        "catalog_page",
+        "cs_catalog_page_sk",
+        "cp_catalog_page_sk",
+        "cp_catalog_page_id",
+        "cs_promo_sk",
+        "cs_ext_sales_price",
+        "cr_return_amount",
+        "cs_net_profit",
+        "cr_net_loss",
+        "catalog channel",
+        "catalog_page",
+    ),
+    (
+        "web_sales",
+        "web_returns",
+        "ws_item_sk",
+        "ws_order_number",
+        "wr_item_sk",
+        "wr_order_number",
+        "ws_sold_date_sk",
+        "web_site",
+        "ws_web_site_sk",
+        "web_site_sk",
+        "web_site_id",
+        "ws_promo_sk",
+        "ws_ext_sales_price",
+        "wr_return_amt",
+        "ws_net_profit",
+        "wr_net_loss",
+        "web channel",
+        "web_site",
+    ),
+)
 
 
 def _q77_expression_channel(
@@ -968,18 +1059,113 @@ def _q77_pandas_channel(
     return result[["channel", "id", "sales", "returns", "profit"]]
 
 
-# fmt: off
 _Q77_EXPRESSION_CHANNEL_SPECS = (
-    ("store channel", ("store_sales", "ss_sold_date_sk", "store", "ss_store_sk", "s_store_sk", "ss_store_sk", "ss_ext_sales_price", "ss_net_profit"), ("store_returns", "sr_returned_date_sk", "store", "sr_store_sk", "s_store_sk", "sr_store_sk", "sr_return_amt", "sr_net_loss"), "left"),
-    ("catalog channel", ("catalog_sales", "cs_sold_date_sk", "", "", "", "cs_call_center_sk", "cs_ext_sales_price", "cs_net_profit"), ("catalog_returns", "cr_returned_date_sk", "", "", "", "cr_call_center_sk", "cr_return_amount", "cr_net_loss"), "cross"),
-    ("web channel", ("web_sales", "ws_sold_date_sk", "web_page", "ws_web_page_sk", "wp_web_page_sk", "ws_web_page_sk", "ws_ext_sales_price", "ws_net_profit"), ("web_returns", "wr_returned_date_sk", "web_page", "wr_web_page_sk", "wp_web_page_sk", "wr_web_page_sk", "wr_return_amt", "wr_net_loss"), "left"),
+    (
+        "store channel",
+        (
+            "store_sales",
+            "ss_sold_date_sk",
+            "store",
+            "ss_store_sk",
+            "s_store_sk",
+            "ss_store_sk",
+            "ss_ext_sales_price",
+            "ss_net_profit",
+        ),
+        (
+            "store_returns",
+            "sr_returned_date_sk",
+            "store",
+            "sr_store_sk",
+            "s_store_sk",
+            "sr_store_sk",
+            "sr_return_amt",
+            "sr_net_loss",
+        ),
+        "left",
+    ),
+    (
+        "catalog channel",
+        ("catalog_sales", "cs_sold_date_sk", "", "", "", "cs_call_center_sk", "cs_ext_sales_price", "cs_net_profit"),
+        ("catalog_returns", "cr_returned_date_sk", "", "", "", "cr_call_center_sk", "cr_return_amount", "cr_net_loss"),
+        "cross",
+    ),
+    (
+        "web channel",
+        (
+            "web_sales",
+            "ws_sold_date_sk",
+            "web_page",
+            "ws_web_page_sk",
+            "wp_web_page_sk",
+            "ws_web_page_sk",
+            "ws_ext_sales_price",
+            "ws_net_profit",
+        ),
+        (
+            "web_returns",
+            "wr_returned_date_sk",
+            "web_page",
+            "wr_web_page_sk",
+            "wp_web_page_sk",
+            "wr_web_page_sk",
+            "wr_return_amt",
+            "wr_net_loss",
+        ),
+        "left",
+    ),
 )
 _Q77_PANDAS_CHANNEL_SPECS = (
-    ("store channel", ("store_sales", "ss_sold_date_sk", "store", "ss_store_sk", "s_store_sk", "s_store_sk", "ss_ext_sales_price", "ss_net_profit"), ("store_returns", "sr_returned_date_sk", "store", "sr_store_sk", "s_store_sk", "s_store_sk", "sr_return_amt", "sr_net_loss"), "left"),
+    (
+        "store channel",
+        (
+            "store_sales",
+            "ss_sold_date_sk",
+            "store",
+            "ss_store_sk",
+            "s_store_sk",
+            "s_store_sk",
+            "ss_ext_sales_price",
+            "ss_net_profit",
+        ),
+        (
+            "store_returns",
+            "sr_returned_date_sk",
+            "store",
+            "sr_store_sk",
+            "s_store_sk",
+            "s_store_sk",
+            "sr_return_amt",
+            "sr_net_loss",
+        ),
+        "left",
+    ),
     _Q77_EXPRESSION_CHANNEL_SPECS[1],
-    ("web channel", ("web_sales", "ws_sold_date_sk", "web_page", "ws_web_page_sk", "wp_web_page_sk", "wp_web_page_sk", "ws_ext_sales_price", "ws_net_profit"), ("web_returns", "wr_returned_date_sk", "web_page", "wr_web_page_sk", "wp_web_page_sk", "wp_web_page_sk", "wr_return_amt", "wr_net_loss"), "left"),
+    (
+        "web channel",
+        (
+            "web_sales",
+            "ws_sold_date_sk",
+            "web_page",
+            "ws_web_page_sk",
+            "wp_web_page_sk",
+            "wp_web_page_sk",
+            "ws_ext_sales_price",
+            "ws_net_profit",
+        ),
+        (
+            "web_returns",
+            "wr_returned_date_sk",
+            "web_page",
+            "wr_web_page_sk",
+            "wp_web_page_sk",
+            "wp_web_page_sk",
+            "wr_return_amt",
+            "wr_net_loss",
+        ),
+        "left",
+    ),
 )
-# fmt: on
 
 
 def _q58_balance_expression(ctx: DataFrameContext, result: Any) -> Any:
@@ -5289,13 +5475,47 @@ def q75_expression_impl(ctx: DataFrameContext) -> Any:
             )
         )
 
-    # fmt: off
     channel_specs = (
-        ("catalog_sales", "catalog_returns", "cs_item_sk", "cs_sold_date_sk", "cs_order_number", "cr_order_number", "cr_item_sk", "cs_quantity", "cr_return_quantity", "cs_ext_sales_price", "cr_return_amount"),
-        ("store_sales", "store_returns", "ss_item_sk", "ss_sold_date_sk", "ss_ticket_number", "sr_ticket_number", "sr_item_sk", "ss_quantity", "sr_return_quantity", "ss_ext_sales_price", "sr_return_amt"),
-        ("web_sales", "web_returns", "ws_item_sk", "ws_sold_date_sk", "ws_order_number", "wr_order_number", "wr_item_sk", "ws_quantity", "wr_return_quantity", "ws_ext_sales_price", "wr_return_amt"),
+        (
+            "catalog_sales",
+            "catalog_returns",
+            "cs_item_sk",
+            "cs_sold_date_sk",
+            "cs_order_number",
+            "cr_order_number",
+            "cr_item_sk",
+            "cs_quantity",
+            "cr_return_quantity",
+            "cs_ext_sales_price",
+            "cr_return_amount",
+        ),
+        (
+            "store_sales",
+            "store_returns",
+            "ss_item_sk",
+            "ss_sold_date_sk",
+            "ss_ticket_number",
+            "sr_ticket_number",
+            "sr_item_sk",
+            "ss_quantity",
+            "sr_return_quantity",
+            "ss_ext_sales_price",
+            "sr_return_amt",
+        ),
+        (
+            "web_sales",
+            "web_returns",
+            "ws_item_sk",
+            "ws_sold_date_sk",
+            "ws_order_number",
+            "wr_order_number",
+            "wr_item_sk",
+            "ws_quantity",
+            "wr_return_quantity",
+            "ws_ext_sales_price",
+            "wr_return_amt",
+        ),
     )
-    # fmt: on
     combined = ctx.concat([channel(*spec) for spec in channel_specs]).unique()
 
     all_sales = combined.group_by(["d_year", "i_brand_id", "i_class_id", "i_category_id", "i_manufact_id"]).agg(
@@ -5374,13 +5594,47 @@ def q75_pandas_impl(ctx: DataFrameContext) -> Any:
             ["d_year", "i_brand_id", "i_class_id", "i_category_id", "i_manufact_id", "sales_cnt", "sales_amt_cents"]
         ]
 
-    # fmt: off
     channel_specs = (
-        ("catalog_sales", "catalog_returns", "cs_item_sk", "cs_sold_date_sk", "cs_order_number", "cr_order_number", "cr_item_sk", "cs_quantity", "cr_return_quantity", "cs_ext_sales_price", "cr_return_amount"),
-        ("store_sales", "store_returns", "ss_item_sk", "ss_sold_date_sk", "ss_ticket_number", "sr_ticket_number", "sr_item_sk", "ss_quantity", "sr_return_quantity", "ss_ext_sales_price", "sr_return_amt"),
-        ("web_sales", "web_returns", "ws_item_sk", "ws_sold_date_sk", "ws_order_number", "wr_order_number", "wr_item_sk", "ws_quantity", "wr_return_quantity", "ws_ext_sales_price", "wr_return_amt"),
+        (
+            "catalog_sales",
+            "catalog_returns",
+            "cs_item_sk",
+            "cs_sold_date_sk",
+            "cs_order_number",
+            "cr_order_number",
+            "cr_item_sk",
+            "cs_quantity",
+            "cr_return_quantity",
+            "cs_ext_sales_price",
+            "cr_return_amount",
+        ),
+        (
+            "store_sales",
+            "store_returns",
+            "ss_item_sk",
+            "ss_sold_date_sk",
+            "ss_ticket_number",
+            "sr_ticket_number",
+            "sr_item_sk",
+            "ss_quantity",
+            "sr_return_quantity",
+            "ss_ext_sales_price",
+            "sr_return_amt",
+        ),
+        (
+            "web_sales",
+            "web_returns",
+            "ws_item_sk",
+            "ws_sold_date_sk",
+            "ws_order_number",
+            "wr_order_number",
+            "wr_item_sk",
+            "ws_quantity",
+            "wr_return_quantity",
+            "ws_ext_sales_price",
+            "wr_return_amt",
+        ),
     )
-    # fmt: on
     combined = ctx.concat([channel(*spec) for spec in channel_specs]).drop_duplicates()
 
     all_sales = _grouped_pandas_aggregates(
@@ -5737,12 +5991,27 @@ def q78_pandas_impl(ctx: DataFrameContext) -> Any:
     )
 
 
-# fmt: off
-_CUSTOMER_YEAR_COLS = ["c_customer_id", "c_first_name", "c_last_name", "c_preferred_cust_flag", "c_birth_country", "c_login", "c_email_address"]
-_SELECT_ONE_COLUMNS = {"t_s_secyear.customer_preferred_cust_flag": "c_preferred_cust_flag", "t_s_secyear.customer_birth_country": "c_birth_country", "t_s_secyear.customer_login": "c_login", "t_s_secyear.customer_email_address": "c_email_address"}
+_CUSTOMER_YEAR_COLS = [
+    "c_customer_id",
+    "c_first_name",
+    "c_last_name",
+    "c_preferred_cust_flag",
+    "c_birth_country",
+    "c_login",
+    "c_email_address",
+]
+_SELECT_ONE_COLUMNS = {
+    "t_s_secyear.customer_preferred_cust_flag": "c_preferred_cust_flag",
+    "t_s_secyear.customer_birth_country": "c_birth_country",
+    "t_s_secyear.customer_login": "c_login",
+    "t_s_secyear.customer_email_address": "c_email_address",
+}
 _SELECT_ONE_DEFAULT = "t_s_secyear.customer_preferred_cust_flag"
-_CHANNEL_YEAR_SPECS = {"s": ("store_sales", "ss_customer_sk", "ss_sold_date_sk", "ss"), "c": ("catalog_sales", "cs_bill_customer_sk", "cs_sold_date_sk", "cs"), "w": ("web_sales", "ws_bill_customer_sk", "ws_sold_date_sk", "ws")}
-# fmt: on
+_CHANNEL_YEAR_SPECS = {
+    "s": ("store_sales", "ss_customer_sk", "ss_sold_date_sk", "ss"),
+    "c": ("catalog_sales", "cs_bill_customer_sk", "cs_sold_date_sk", "cs"),
+    "w": ("web_sales", "ws_bill_customer_sk", "ws_sold_date_sk", "ws"),
+}
 
 
 def _select_one_column(select_one: str) -> str:
@@ -5985,13 +6254,36 @@ def q5_expression_impl(ctx: DataFrameContext) -> Any:
             .select(["channel", "id", "sales", "returns", "profit"])
         )
 
-    # fmt: off
     specs = (
-        ("store channel", "store", "store", "s_store_sk", "s_store_id", ("store_sales", "ss_store_sk", "ss_sold_date_sk", "ss_ext_sales_price", "ss_net_profit"), ("store_returns", "sr_store_sk", "sr_returned_date_sk", "sr_return_amt", "sr_net_loss")),
-        ("catalog channel", "catalog_page", "catalog_page", "cp_catalog_page_sk", "cp_catalog_page_id", ("catalog_sales", "cs_catalog_page_sk", "cs_sold_date_sk", "cs_ext_sales_price", "cs_net_profit"), ("catalog_returns", "cr_catalog_page_sk", "cr_returned_date_sk", "cr_return_amount", "cr_net_loss")),
-        ("web channel", "web_site", "web_site", "web_site_sk", "web_site_id", ("web_sales", "ws_web_site_sk", "ws_sold_date_sk", "ws_ext_sales_price", "ws_net_profit"), ("web_returns", "ws_web_site_sk", "wr_returned_date_sk", "wr_return_amt", "wr_net_loss"), ("web_sales", ("wr_item_sk", "wr_order_number"), ("ws_item_sk", "ws_order_number"))),
+        (
+            "store channel",
+            "store",
+            "store",
+            "s_store_sk",
+            "s_store_id",
+            ("store_sales", "ss_store_sk", "ss_sold_date_sk", "ss_ext_sales_price", "ss_net_profit"),
+            ("store_returns", "sr_store_sk", "sr_returned_date_sk", "sr_return_amt", "sr_net_loss"),
+        ),
+        (
+            "catalog channel",
+            "catalog_page",
+            "catalog_page",
+            "cp_catalog_page_sk",
+            "cp_catalog_page_id",
+            ("catalog_sales", "cs_catalog_page_sk", "cs_sold_date_sk", "cs_ext_sales_price", "cs_net_profit"),
+            ("catalog_returns", "cr_catalog_page_sk", "cr_returned_date_sk", "cr_return_amount", "cr_net_loss"),
+        ),
+        (
+            "web channel",
+            "web_site",
+            "web_site",
+            "web_site_sk",
+            "web_site_id",
+            ("web_sales", "ws_web_site_sk", "ws_sold_date_sk", "ws_ext_sales_price", "ws_net_profit"),
+            ("web_returns", "ws_web_site_sk", "wr_returned_date_sk", "wr_return_amt", "wr_net_loss"),
+            ("web_sales", ("wr_item_sk", "wr_order_number"), ("ws_item_sk", "ws_order_number")),
+        ),
     )
-    # fmt: on
     combined = ctx.concat([channel(*spec) for spec in specs])
     return _sales_returns_rollup_expression(ctx, combined)
 
@@ -6050,13 +6342,84 @@ def q5_pandas_impl(ctx: DataFrameContext) -> Any:
         result["profit"] = result["profit_sum"] - result["profit_loss"]
         return result[["channel", "id", "sales", "returns", "profit"]]
 
-    # fmt: off
     specs = (
-        ("store channel", "store", "store", "s_store_sk", "s_store_id", ("store_sales", {"ss_store_sk": "dim_sk", "ss_sold_date_sk": "date_sk", "ss_ext_sales_price": "sales_price", "ss_net_profit": "profit"}), ("store_returns", {"sr_store_sk": "dim_sk", "sr_returned_date_sk": "date_sk", "sr_return_amt": "return_amt", "sr_net_loss": "net_loss"})),
-        ("catalog channel", "catalog_page", "catalog_page", "cp_catalog_page_sk", "cp_catalog_page_id", ("catalog_sales", {"cs_catalog_page_sk": "dim_sk", "cs_sold_date_sk": "date_sk", "cs_ext_sales_price": "sales_price", "cs_net_profit": "profit"}), ("catalog_returns", {"cr_catalog_page_sk": "dim_sk", "cr_returned_date_sk": "date_sk", "cr_return_amount": "return_amt", "cr_net_loss": "net_loss"})),
-        ("web channel", "web_site", "web_site", "web_site_sk", "web_site_id", ("web_sales", {"ws_web_site_sk": "dim_sk", "ws_sold_date_sk": "date_sk", "ws_ext_sales_price": "sales_price", "ws_net_profit": "profit"}), ("web_returns", {"ws_web_site_sk": "dim_sk", "wr_returned_date_sk": "date_sk", "wr_return_amt": "return_amt", "wr_net_loss": "net_loss"}), ("web_sales", ("wr_item_sk", "wr_order_number"), ("ws_item_sk", "ws_order_number"))),
+        (
+            "store channel",
+            "store",
+            "store",
+            "s_store_sk",
+            "s_store_id",
+            (
+                "store_sales",
+                {
+                    "ss_store_sk": "dim_sk",
+                    "ss_sold_date_sk": "date_sk",
+                    "ss_ext_sales_price": "sales_price",
+                    "ss_net_profit": "profit",
+                },
+            ),
+            (
+                "store_returns",
+                {
+                    "sr_store_sk": "dim_sk",
+                    "sr_returned_date_sk": "date_sk",
+                    "sr_return_amt": "return_amt",
+                    "sr_net_loss": "net_loss",
+                },
+            ),
+        ),
+        (
+            "catalog channel",
+            "catalog_page",
+            "catalog_page",
+            "cp_catalog_page_sk",
+            "cp_catalog_page_id",
+            (
+                "catalog_sales",
+                {
+                    "cs_catalog_page_sk": "dim_sk",
+                    "cs_sold_date_sk": "date_sk",
+                    "cs_ext_sales_price": "sales_price",
+                    "cs_net_profit": "profit",
+                },
+            ),
+            (
+                "catalog_returns",
+                {
+                    "cr_catalog_page_sk": "dim_sk",
+                    "cr_returned_date_sk": "date_sk",
+                    "cr_return_amount": "return_amt",
+                    "cr_net_loss": "net_loss",
+                },
+            ),
+        ),
+        (
+            "web channel",
+            "web_site",
+            "web_site",
+            "web_site_sk",
+            "web_site_id",
+            (
+                "web_sales",
+                {
+                    "ws_web_site_sk": "dim_sk",
+                    "ws_sold_date_sk": "date_sk",
+                    "ws_ext_sales_price": "sales_price",
+                    "ws_net_profit": "profit",
+                },
+            ),
+            (
+                "web_returns",
+                {
+                    "ws_web_site_sk": "dim_sk",
+                    "wr_returned_date_sk": "date_sk",
+                    "wr_return_amt": "return_amt",
+                    "wr_net_loss": "net_loss",
+                },
+            ),
+            ("web_sales", ("wr_item_sk", "wr_order_number"), ("ws_item_sk", "ws_order_number")),
+        ),
     )
-    # fmt: on
     combined = ctx.concat([channel(*spec) for spec in specs])
     return _sales_returns_rollup_pandas(ctx, combined)
 
@@ -7415,7 +7778,7 @@ def q80_expression_impl(ctx: DataFrameContext) -> Any:
     combined = ctx.concat(
         [
             _q80_channel_expression(ctx, date_filtered, item_filtered, promo_filtered, spec)
-            for spec in _q80_channel_specs()
+            for spec in _Q80_CHANNEL_SPECS
         ]
     )
     return _sales_returns_rollup_expression(ctx, combined)
@@ -7427,7 +7790,7 @@ def q80_pandas_impl(ctx: DataFrameContext) -> Any:
     item_filtered = item[item["i_current_price"] > 50][["i_item_sk"]]
     promo_filtered = promotion[promotion["p_channel_tv"] == "N"][["p_promo_sk"]]
     combined = ctx.concat(
-        [_q80_channel_pandas(ctx, date_filtered, item_filtered, promo_filtered, spec) for spec in _q80_channel_specs()]
+        [_q80_channel_pandas(ctx, date_filtered, item_filtered, promo_filtered, spec) for spec in _Q80_CHANNEL_SPECS]
     )
     return _sales_returns_rollup_pandas(ctx, combined)
 

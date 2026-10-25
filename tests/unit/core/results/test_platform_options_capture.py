@@ -441,7 +441,7 @@ def test_sanitize_marks_unserializable_values_instead_of_using_repr() -> None:
     from benchbox.core.results.platform_options import sanitize_platform_options
 
     class _Opaque:
-        def __repr__(self) -> str:  # pragma: no cover
+        def __repr__(self) -> str:
             return "<Opaque object at 0x1234 with lots of internal repr text>"
 
     sanitized = sanitize_platform_options({"weird": _Opaque()})

@@ -9,10 +9,10 @@ class LivyStatementMixin:
     _total_statement_time_seconds: float
     _query_count: int
 
-    def _get_headers(self) -> dict[str, str]:  # pragma: no cover
+    def _get_headers(self) -> dict[str, str]:
         raise NotImplementedError
 
-    def _ensure_session(self) -> int:  # pragma: no cover
+    def _ensure_session(self) -> int:
         raise NotImplementedError
 
     def _execute_statement(self, code: str, kind: str = "sql") -> dict[str, Any]:

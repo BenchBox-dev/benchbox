@@ -24,33 +24,31 @@ class _BaseCtasTestAdapter(PlatformAdapter):
         return "duckdb"
 
     @staticmethod
-    def add_cli_arguments(parser) -> None:  # pragma: no cover
+    def add_cli_arguments(parser) -> None:
         return None
 
     @classmethod
-    def from_config(cls, config: dict[str, Any]):  # pragma: no cover
+    def from_config(cls, config: dict[str, Any]):
         return cls(**config)
 
-    def create_connection(self, **connection_config) -> Any:  # pragma: no cover
+    def create_connection(self, **connection_config) -> Any:
         return Mock()
 
-    def create_schema(self, benchmark, connection: Any) -> float:  # pragma: no cover
+    def create_schema(self, benchmark, connection: Any) -> float:
         return 0.0
 
-    def apply_platform_optimizations(self, platform_config, connection: Any) -> None:  # pragma: no cover
+    def apply_platform_optimizations(self, platform_config, connection: Any) -> None:
         return None
 
-    def apply_constraint_configuration(
-        self, primary_key_config, foreign_key_config, connection: Any
-    ) -> None:  # pragma: no cover
+    def apply_constraint_configuration(self, primary_key_config, foreign_key_config, connection: Any) -> None:
         return None
 
     def load_data(
         self, benchmark, connection: Any, data_dir: Path
-    ) -> tuple[dict[str, int], float, dict[str, Any] | None]:  # pragma: no cover
+    ) -> tuple[dict[str, int], float, dict[str, Any] | None]:
         return {}, 0.0, None
 
-    def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:  # pragma: no cover
+    def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
         return None
 
     def execute_query(
@@ -62,7 +60,7 @@ class _BaseCtasTestAdapter(PlatformAdapter):
         scale_factor: float | None = None,
         validate_row_count: bool = True,
         stream_id: int | None = None,
-    ) -> dict[str, Any]:  # pragma: no cover
+    ) -> dict[str, Any]:
         return {"query_id": query_id, "status": "SUCCESS", "execution_time_seconds": 0.0, "rows_returned": 0}
 
     def _build_ctas_sort_sql(self, table_name: str, sort_columns: list[Any]) -> str | list[str] | None:

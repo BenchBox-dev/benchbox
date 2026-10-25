@@ -126,7 +126,7 @@ def _cell_datagen_dir(benchmark_runs_dir: Path | str | None, benchmark: str, sca
         from benchbox.utils.output_path import normalize_output_root
 
         normalized = normalize_output_root(str(Path(benchmark_runs_dir) / "datagen"), benchmark, scale)
-    except Exception:  # pragma: no cover
+    except Exception:
         return None
     return Path(normalized) if normalized else None
 

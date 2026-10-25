@@ -1032,7 +1032,7 @@ def test_execute_readiness_check_fails_when_platform_unreachable_after_settle(tm
             return _healthy_stats_result(argv)
         return docker_assets.DockerCommandResult(tuple(argv), 0, "", "")
 
-    def fail_runner(platform, benchmark, scale, **kwargs):  # pragma: no cover
+    def fail_runner(platform, benchmark, scale, **kwargs):
         raise AssertionError("no cell should run against an unreachable stack")
 
     with platform_reachability(False):
@@ -1104,7 +1104,7 @@ def test_execute_readiness_check_skipped_for_dry_run(tmp_path):
     )
     sleep_calls: list[float] = []
 
-    def fake_docker(argv, **kwargs):  # pragma: no cover
+    def fake_docker(argv, **kwargs):
         return docker_assets.DockerCommandResult(tuple(argv), 0, "", "", dry_run=True)
 
     with platform_reachability(True):
@@ -1331,11 +1331,11 @@ def test_execute_memory_floor_aborts_the_platform_before_starting_it(tmp_path):
     cfg = _managed_docker_cfg("memory floor abort")
     started: list[str] = []
 
-    def fake_docker(argv, **kwargs):  # pragma: no cover
+    def fake_docker(argv, **kwargs):
         started.append(_docker_verb(argv))
         return docker_assets.DockerCommandResult(tuple(argv), 0, "", "")
 
-    def fail_runner(platform, benchmark, scale, **kwargs):  # pragma: no cover
+    def fail_runner(platform, benchmark, scale, **kwargs):
         raise AssertionError("no cell may run once the memory floor has aborted")
 
     outcome = exec_phase.run_execute(
@@ -1655,7 +1655,7 @@ def test_execute_outcome_exit_code_nonzero_when_every_compose_up_fails(tmp_path)
             )
         return docker_assets.DockerCommandResult(tuple(argv), 0, "", "")
 
-    def fail_runner(platform, benchmark, scale, **kwargs):  # pragma: no cover
+    def fail_runner(platform, benchmark, scale, **kwargs):
         raise AssertionError("no cell should run when the only compose-up failed")
 
     with platform_reachability(True):
@@ -1735,7 +1735,7 @@ def test_execute_unmanaged_docker_keeps_skip_probe_without_commands(tmp_path):
         }
     )
 
-    def fail_docker(argv, **kwargs):  # pragma: no cover
+    def fail_docker(argv, **kwargs):
         raise AssertionError(f"unexpected Docker command: {argv}")
 
     with platform_reachability(False):
@@ -1871,7 +1871,7 @@ def test_execute_fixed_container_name_platform_aborts_before_docker_command(tmp_
         }
     )
 
-    def fail_docker(argv, **kwargs):  # pragma: no cover
+    def fail_docker(argv, **kwargs):
         raise AssertionError(f"unexpected Docker command: {argv}")
 
     outcome = exec_phase.run_execute(
@@ -2580,7 +2580,7 @@ def test_execute_readiness_check_fails_closed_on_an_empty_compose_ps_table(tmp_p
             return docker_assets.DockerCommandResult(tuple(argv), 0, "NAME   IMAGE   STATUS\n", "")
         return docker_assets.DockerCommandResult(tuple(argv), 0, "", "")
 
-    def fail_runner(platform, benchmark, scale, **kwargs):  # pragma: no cover
+    def fail_runner(platform, benchmark, scale, **kwargs):
         raise AssertionError("no cell may run when compose ps -a lists no services")
 
     with platform_reachability(True):

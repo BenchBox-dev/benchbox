@@ -26,7 +26,7 @@ _SKIP_REASON = pyspark_skip_reason() or "PySpark is usable"
 
 if PYSPARK_AVAILABLE:
     from benchbox.platforms.dataframe.pyspark_df import PySparkDataFrameAdapter
-else:  # pragma: no cover
+else:
     PySparkDataFrameAdapter = None
 
 from benchbox.core.read_primitives.dataframe_queries import (

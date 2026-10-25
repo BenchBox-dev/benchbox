@@ -30,7 +30,7 @@ def _module_to_platform_key() -> dict[str, str]:
         mapping.setdefault(entry.adapter.module, entry.key)
         try:
             importlib.import_module(entry.adapter.module)
-        except Exception:  # pragma: no cover
+        except Exception:
             pass
     return mapping
 

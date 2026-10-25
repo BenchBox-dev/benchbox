@@ -6,7 +6,7 @@ from pathlib import Path
 
 try:
     import duckdb
-except ImportError as exc:  # pragma: no cover
+except ImportError as exc:
     raise SystemExit("DuckDB must be installed to run this example: pip install duckdb") from exc
 
 from benchbox import TPCHSkew
@@ -215,5 +215,5 @@ def main() -> None:
     print("=" * 70)
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     main()

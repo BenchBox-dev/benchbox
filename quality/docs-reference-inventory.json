@@ -2752,13 +2752,12 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "extra": 1,
     "file": 2
    },
-   "occurrences": 31,
+   "occurrences": 30,
    "path": "quality/comment-policy.json",
    "rule": "comment-policy-registries",
-   "target_count": 3,
+   "target_count": 2,
    "targets": [
     {
      "kind": "file",
@@ -2767,10 +2766,6 @@
     {
      "kind": "file",
      "target": "docs/benchmarks/read-primitives.md"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/generate_compat_docs.py"
     }
    ]
   },
@@ -5279,14 +5274,14 @@
   "kinds": {
    "built-url": 29043,
    "dir": 173,
-   "extra": 71,
+   "extra": 70,
    "file": 1562,
    "generated": 15,
    "pattern": 287,
    "root": 215,
    "unresolved": 2003
   },
-  "references": 33369,
+  "references": 33368,
   "unclassified": 0
  }
 }

@@ -25,7 +25,7 @@ try:
         TableLoadingStats,
         ValidationPhase,
     )
-except ImportError:  # pragma: no cover
+except ImportError:
     DataGenerationPhase = None
     DataLoadingPhase = None
     SchemaCreationPhase = None

@@ -126,7 +126,7 @@ class RemoteManifestValidator:
                 target = remote_path.rstrip("/") + "/" + str(rel)
                 try:
                     exists = fs.file_exists(target)
-                except Exception as e:  # pragma: no cover
+                except Exception as e:
                     logger.debug(f"file_exists({target}) failed: {e}")
                     exists = False
 

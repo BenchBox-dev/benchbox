@@ -72,7 +72,7 @@ def resolve_dataframe_tuning_config(
     if tuning_config_file_path:
         try:
             df_config = load_dataframe_tuning(tuning_config_file_path)
-        except Exception as e:  # pragma: no cover
+        except Exception as e:
             if logger:
                 logger.error(f"Failed to load DataFrame tuning configuration: {e}", exc_info=True)
             raise ValueError(f"Failed to load DataFrame tuning configuration: {e}") from e

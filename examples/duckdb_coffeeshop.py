@@ -5,7 +5,7 @@ from pathlib import Path
 
 try:
     import duckdb
-except ImportError as exc:  # pragma: no cover
+except ImportError as exc:
     raise SystemExit("DuckDB must be installed to run this example") from exc
 
 from benchbox.core.coffeeshop.benchmark import CoffeeShopBenchmark
@@ -84,6 +84,6 @@ def main(scale: float, output_dir: Path, query_id: str, start_date: str | None, 
     print("  python duckdb_coffeeshop.py --scale 0.1   # 100x more data")
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     args = parse_args()
     main(args.scale, args.output, args.query, args.start_date, args.end_date)

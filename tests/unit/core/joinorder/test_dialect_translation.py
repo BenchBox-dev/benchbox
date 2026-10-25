@@ -58,7 +58,7 @@ def _assert_explain_all(translated: dict[str, str], ddl_statements: str, dialect
                 connection.execute(f"EXPLAIN QUERY PLAN {sql}")
         finally:
             connection.close()
-    else:  # pragma: no cover
+    else:
         raise AssertionError(f"No EXPLAIN harness for {dialect}")
 
 

@@ -406,7 +406,7 @@ class DuckLakeAdapter(DuckDBAdapter):
             return f"sqlite:{self.metadata_path}"
         if self.catalog == "postgres":
             return f"postgres:{self._build_postgres_connstring()}"
-        raise ValueError(f"Unsupported DuckLake catalog backend: {self.catalog!r}")  # pragma: no cover
+        raise ValueError(f"Unsupported DuckLake catalog backend: {self.catalog!r}")
 
     def _build_s3_secret_sql(self) -> str:
         if self.s3_key_id and self.s3_secret:

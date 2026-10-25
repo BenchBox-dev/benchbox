@@ -163,7 +163,7 @@ class TestStagePathHandler:
     def test_stage_handler_does_not_require_cloudpathlib(self, monkeypatch):
         import benchbox.utils.cloud_storage as cs
 
-        def _fail():  # pragma: no cover
+        def _fail():
             raise AssertionError("cloudpathlib must not be loaded for stage paths")
 
         monkeypatch.setattr(cs, "_load_cloudpathlib", _fail)

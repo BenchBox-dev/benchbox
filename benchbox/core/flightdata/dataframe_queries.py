@@ -13,7 +13,7 @@ from benchbox.core.dataframe.query import DataFrameQuery, QueryCategory, QueryRe
 
 try:
     from benchbox.core.flightdata.downloader import LAST_AVAILABLE_YEAR as _LAST_YEAR
-except (ImportError, FileNotFoundError, KeyError, ValueError):  # pragma: no cover
+except (ImportError, FileNotFoundError, KeyError, ValueError):
     _LAST_YEAR = 2024
 
 FLIGHTDATA_DEFAULT_PARAMS: dict[str, Any] = {

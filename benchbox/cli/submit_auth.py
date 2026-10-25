@@ -42,7 +42,7 @@ def normalize_service_url(service_url: str) -> str:
 def _load_keyring() -> Any:
     try:
         import keyring
-    except ImportError as exc:  # pragma: no cover
+    except ImportError as exc:
         raise SubmissionAuthError(
             "The Python keyring package is required for stored hosted-submit credentials."
         ) from exc
@@ -52,7 +52,7 @@ def _load_keyring() -> Any:
 def _keyring_error_types() -> tuple[type[BaseException], ...]:
     try:
         from keyring.errors import KeyringError
-    except ImportError:  # pragma: no cover
+    except ImportError:
         return (Exception,)
     return (KeyringError,)
 
@@ -60,7 +60,7 @@ def _keyring_error_types() -> tuple[type[BaseException], ...]:
 def _password_delete_not_found_types() -> tuple[type[BaseException], ...]:
     try:
         from keyring.errors import PasswordDeleteError
-    except ImportError:  # pragma: no cover
+    except ImportError:
         return ()
     return (PasswordDeleteError,)
 

@@ -868,7 +868,7 @@ def _topological_sort(
             ready = next(b for b in benchmarks if b in pending)
         pending.remove(ready)
         out.append(ready)
-        for dependent in dependents.get(ready, ()):  # pragma: no branch
+        for dependent in dependents.get(ready, ()):
             indegree[dependent] -= 1
     return out
 

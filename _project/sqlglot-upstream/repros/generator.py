@@ -10,14 +10,14 @@ from typing import Any, cast
 try:
     from benchbox.utils.clock import elapsed_seconds, mono_time
     from benchbox.utils.dialect_utils import SQLTranslationError, translate_sql_query
-except Exception as import_error:  # pragma: no cover
+except Exception as import_error:
     print(f"generator infrastructure import error: {type(import_error).__name__}: {import_error}", file=sys.stderr)
     raise SystemExit(2) from import_error
 
 try:
     from benchbox._vendor import sqlglot as _sqlglot
     from benchbox._vendor.sqlglot.errors import ParseError
-except Exception as import_error:  # pragma: no cover
+except Exception as import_error:
     print(f"generator SQLGlot import error: {type(import_error).__name__}: {import_error}", file=sys.stderr)
     raise SystemExit(2) from import_error
 else:

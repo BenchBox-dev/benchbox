@@ -85,10 +85,41 @@ class _Stub:
 
 
 _OPERATORS = (
-    "lt", "le", "gt", "ge", "eq", "ne", "add", "radd", "sub", "rsub", "mul", "rmul", "truediv", "rtruediv",
-    "floordiv", "rfloordiv", "mod", "rmod", "pow", "rpow", "and", "rand", "or", "ror", "xor", "rxor",
-    "lshift", "rshift", "neg", "pos", "invert", "abs", "getitem", "matmul",
-)  # fmt: skip
+    "lt",
+    "le",
+    "gt",
+    "ge",
+    "eq",
+    "ne",
+    "add",
+    "radd",
+    "sub",
+    "rsub",
+    "mul",
+    "rmul",
+    "truediv",
+    "rtruediv",
+    "floordiv",
+    "rfloordiv",
+    "mod",
+    "rmod",
+    "pow",
+    "rpow",
+    "and",
+    "rand",
+    "or",
+    "ror",
+    "xor",
+    "rxor",
+    "lshift",
+    "rshift",
+    "neg",
+    "pos",
+    "invert",
+    "abs",
+    "getitem",
+    "matmul",
+)
 
 for _operator in _OPERATORS:
     setattr(_Stub, f"__{_operator}__", lambda self, *args: _Stub())

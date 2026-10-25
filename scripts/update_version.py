@@ -6,12 +6,12 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-try:  # pragma: no cover
+try:
     from benchbox.utils.version import (
         check_version_consistency as _core_check_version_consistency,
         reset_version_cache,
     )
-except ImportError:  # pragma: no cover
+except ImportError:
     _core_check_version_consistency = None
     reset_version_cache = None
 

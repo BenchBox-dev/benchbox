@@ -90,13 +90,13 @@ def apply_materialized_result_validation(
 
 try:
     from benchbox.core.results.models import ExecutionPhases, QueryDefinition
-except ImportError:  # pragma: no cover
+except ImportError:
     ExecutionPhases = None
     QueryDefinition = None
 
 try:
     from benchbox.core.validation import ValidationResult
-except ImportError:  # pragma: no cover
+except ImportError:
     ValidationResult = None
 
 
@@ -320,7 +320,7 @@ def _collect_process_metrics(process: Any) -> dict[str, Any]:
             except Exception:
                 process_snapshot["context_switches"] = None
 
-    except Exception:  # pragma: no cover
+    except Exception:
         return {}
 
     return process_snapshot
@@ -432,7 +432,7 @@ class ResultCaptureMixin:
 
         try:
             process = psutil.Process(os.getpid())
-        except Exception:  # pragma: no cover
+        except Exception:
             process = None
 
         cpu_percent = None
@@ -441,7 +441,7 @@ class ResultCaptureMixin:
             psutil.cpu_percent(interval=None)
             cpu_percent = psutil.cpu_percent(interval=0.0)
             per_cpu_percent = psutil.cpu_percent(interval=0.0, percpu=True)
-        except Exception:  # pragma: no cover
+        except Exception:
             cpu_percent = None
             per_cpu_percent = None
 
@@ -450,21 +450,21 @@ class ResultCaptureMixin:
 
         try:
             load_avg = psutil.getloadavg()
-        except Exception:  # pragma: no cover
+        except Exception:
             load_avg = None
         snapshot["cpu"]["load_average"] = load_avg
 
         try:
             freq = psutil.cpu_freq()
             snapshot["cpu"]["frequency_mhz"] = freq.current if freq else None
-        except Exception:  # pragma: no cover
+        except Exception:
             snapshot["cpu"]["frequency_mhz"] = None
 
         try:
             counted = psutil.cpu_count()
             if counted:
                 snapshot["cpu_count"] = counted
-        except Exception:  # pragma: no cover
+        except Exception:
             pass
 
         try:
@@ -475,7 +475,7 @@ class ResultCaptureMixin:
                 "used_mb": round((vm.total - vm.available) / (1024 * 1024), 2),
                 "percent": vm.percent,
             }
-        except Exception:  # pragma: no cover
+        except Exception:
             snapshot["memory"] = None
 
         try:
@@ -485,7 +485,7 @@ class ResultCaptureMixin:
                 "used_mb": round(swap.used / (1024 * 1024), 2),
                 "percent": swap.percent,
             }
-        except Exception:  # pragma: no cover
+        except Exception:
             snapshot["swap"] = None
 
         try:
@@ -497,7 +497,7 @@ class ResultCaptureMixin:
                 "free_mb": round(disk.free / (1024 * 1024), 2),
                 "percent": disk.percent,
             }
-        except Exception:  # pragma: no cover
+        except Exception:
             snapshot["disk"] = None
 
         try:
@@ -508,7 +508,7 @@ class ResultCaptureMixin:
                 "read_ops": disk_io.read_count,
                 "write_ops": disk_io.write_count,
             }
-        except Exception:  # pragma: no cover
+        except Exception:
             snapshot["disk_io"] = None
 
         try:
@@ -519,12 +519,12 @@ class ResultCaptureMixin:
                 "packets_sent": net_io.packets_sent,
                 "packets_recv": net_io.packets_recv,
             }
-        except Exception:  # pragma: no cover
+        except Exception:
             snapshot["network_io"] = None
 
         try:
             boot_time = datetime.fromtimestamp(psutil.boot_time()).isoformat()
-        except Exception:  # pragma: no cover
+        except Exception:
             boot_time = None
         snapshot["boot_time"] = boot_time
 
@@ -1563,7 +1563,7 @@ class ResultCaptureMixin:
                 platform=getattr(self, "platform_name", None),
                 tuning_config=effective_config,
             )
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:
             logger = getattr(self, "logger", None)
             if logger is not None:
                 logger.debug("Unable to build tuning profile metadata: %s", exc)

@@ -101,7 +101,7 @@ def _resolve_manifest_allowed_names(benchmark: Any, config: BenchmarkConfig) -> 
             alias = getter()
         except NotImplementedError:
             alias = None
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:
             logger.warning(
                 "data sharing alias resolution failed for %s: %s",
                 getattr(benchmark, "__class__", type(benchmark)).__name__,
@@ -196,7 +196,7 @@ def _run_postload_validation(
         connection = connection_lifecycle.create_connection(**(platform_config or {}))
         engine = DatabaseValidationEngine()
         return engine.validate_loaded_data(connection, benchmark_config.name.lower(), benchmark_config.scale_factor)
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:
         return ValidationResult(
             is_valid=False,
             errors=[f"Post-load validation failed: {exc}"],
@@ -207,7 +207,7 @@ def _run_postload_validation(
         if connection is not None:
             try:
                 connection_lifecycle.close_connection(connection)
-            except Exception:  # pragma: no cover
+            except Exception:
                 pass
 
 

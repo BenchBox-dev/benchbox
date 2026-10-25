@@ -79,7 +79,7 @@ def run_with_timeout(
             stderr=err,
         )
     except subprocess.TimeoutExpired:
-        if proc is None:  # pragma: no cover
+        if proc is None:
             raise
         _kill_process_group(proc)
         try:

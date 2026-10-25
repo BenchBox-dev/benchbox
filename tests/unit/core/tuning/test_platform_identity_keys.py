@@ -33,7 +33,7 @@ class _StubAdapter(PlatformAdapter):
         self._display_name = display_name
 
     @staticmethod
-    def add_cli_arguments(parser) -> None:  # pragma: no cover
+    def add_cli_arguments(parser) -> None:
         return None
 
     @classmethod
@@ -254,10 +254,10 @@ class _MetadataStubAdapter:
             self.canonical_platform_type = canonical_platform_type
         self.platform_config = {}
 
-    def create_connection(self, **_kwargs):  # pragma: no cover
+    def create_connection(self, **_kwargs):
         return Mock()
 
-    def close_connection(self, _conn):  # pragma: no cover
+    def close_connection(self, _conn):
         return None
 
 

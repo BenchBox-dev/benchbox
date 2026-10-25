@@ -83,7 +83,7 @@ class SnowflakeTuningIntrospector:
         for row in relevant_rows:
             try:
                 name, clustering_key = row[0], row[1]
-            except Exception:  # pragma: no cover
+            except Exception:
                 continue
             columns = parse_clustering_key(clustering_key)
             if not columns:

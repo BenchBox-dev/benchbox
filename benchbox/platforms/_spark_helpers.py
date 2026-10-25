@@ -336,7 +336,7 @@ class SparkLikeAdapterMixin:
                 mechanism=mechanism,
                 error=error,
             )
-        except Exception:  # pragma: no cover
+        except Exception:
             pass
 
 
