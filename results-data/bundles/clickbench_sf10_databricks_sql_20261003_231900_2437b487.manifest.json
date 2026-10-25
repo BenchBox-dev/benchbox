@@ -4,8 +4,5 @@
   "funding": "unspecified",
   "manifest_version": "1.0",
   "result_source": "internal",
-  "submitted_by": "maintainer",
-  "known_defects": [
-    "defective-superseded-sql-translation"
-  ]
+  "submitted_by": "maintainer"
 }

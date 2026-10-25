@@ -22,9 +22,10 @@
   ClickBench bundles (`clickbench_sf01_databricks_sql_20261003_220608_70c9438e`,
   `clickbench_sf1_databricks_sql_20261003_230712_3a9e1d61`,
   `clickbench_sf10_databricks_sql_20261003_231900_2437b487`) recorded those wrong
-  rows and now carry `known_defects: ["defective-superseded-sql-translation"]`.
-  They are not rerun or edited; replacing them means rerunning with the current
-  wheel.
+  rows. They carry no `known_defects` flag: flagging them leaves the ClickBench
+  Databricks cohorts below the three-identity depth floor, so the flag waits for
+  replacement bundles. They are not rerun or edited; replacing them means
+  rerunning with the current wheel.
 
 ## Results that ran superseded SQL translations (2026-10-24)
 

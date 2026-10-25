@@ -159,7 +159,8 @@ EXPECTED_SQL: dict[str, tuple[str, str]] = {
     ),
     "questdb": (
         "CREATE TABLE t (id INT NOT NULL, name VARCHAR(20), amt DECIMAL(10, 2), d DATE, PRIMARY KEY (id));",
-        "SELECT name, SUM(amt) AS s FROM t WHERE d >= CAST('2020-01-01' AS DATE) GROUP BY name ORDER BY s DESC LIMIT 5;",
+        "SELECT name, SUM(amt) AS s FROM t WHERE d >= CAST('2020-01-01' AS DATE) GROUP BY name "
+        "ORDER BY CASE WHEN SUM(amt) IS NULL THEN 1 ELSE 0 END DESC, SUM(amt) DESC LIMIT 5;",
     ),
     "influxdb": (
         "CREATE TABLE t (id INT NOT NULL, name VARCHAR(20), amt DECIMAL(10, 2), d DATE, PRIMARY KEY (id));",
