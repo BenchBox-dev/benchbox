@@ -5,7 +5,7 @@
     "Probe cost per call measured in Linux and recorded",
     "Post-merge: the next 3 develop-based PR CI fast jobs fall within the pre-incident range of 328-552 s pytest total, or within 5% of a pre-incident run of similar collection time (run ids recorded)"
   ],
-  "context": "REVIEW 2026-10-25: acceptance rewritten because 330 s was the fastest of five pre-incident runs (range 328-552 s, runner speed varies about 1.7x). PR #3462 head 43c6a7ecd: 34,024 passed, 67 skipped in 418.37 s (run 40211462226), collection 61.4 s, test phase 356.7 s, versus run 40143651006 collection 60.4 s, test phase 346.6 s: 2.9% slower with 1.4% more tests. Probe cost: 22-26 ms per call in an idle Linux container, but about 1.3-1.8 s per call in the real suite (estimated from similar-speed runners, 447-469 s before vs 953-964 s after #3423; the gc.collect on the large heap dominates); the probe now runs only after modules that opened chDB (test_clickhouse_local.py and a few in test_clickhouse_adapter.py). Known gap: a connection opened during collection or in a session- or package-scoped fixture is no longer flagged (none exists today).\n\nFix in progress on branch fix/chdb-guard-only-where-used. Source: CI time-regression incident 2026-10-25.",
+  "context": "PROGRESS 2026-10-25: PR #3462 merged as 00698603b6eeab03dde29ef688454fd267ebf230 (oracle SHIP on 43c6a7ec). Develop-based fast tier after merge: run 40220803482 (created 18:20Z) 34037 passed, 67 skipped in 399.01 s, within the 328-552 s pre-incident range (its separate medium-for-changed-paths step failed; unrelated to fast). Two more develop-based fast summaries are needed for acceptance. On PR heads: 418.37 s and 424.55 s, versus 1041.10 s before the fix.\n\nREVIEW 2026-10-25: acceptance rewritten because 330 s was the fastest of five pre-incident runs (range 328-552 s, runner speed varies about 1.7x). PR #3462 head 43c6a7ecd: 34,024 passed, 67 skipped in 418.37 s (run 40211462226), collection 61.4 s, test phase 356.7 s, versus run 40143651006 collection 60.4 s, test phase 346.6 s: 2.9% slower with 1.4% more tests. Probe cost: 22-26 ms per call in an idle Linux container, but about 1.3-1.8 s per call in the real suite (estimated from similar-speed runners, 447-469 s before vs 953-964 s after #3423; the gc.collect on the large heap dominates); the probe now runs only after modules that opened chDB (test_clickhouse_local.py and a few in test_clickhouse_adapter.py). Known gap: a connection opened during collection or in a session- or package-scoped fixture is no longer flagged (none exists today).\n\nFix in progress on branch fix/chdb-guard-only-where-used. Source: CI time-regression incident 2026-10-25.",
   "description": "PR #3423 added tests/conftest.py _chdb_connections_closed_after_module (autouse, module scope), which calls chdb_open_connection_error() and opens a chDB probe session after every test module. The fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347), making the fast job the PR critical path (about 12 to 20+ min). Fix: probe only modules that imported or used chDB, keeping the leak detection for modules that did.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "82b79024cd1e4d7fa582cc44961e299a",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T19:02:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ce1d8a37cce84e04bfa7e480e30ac2c6",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
