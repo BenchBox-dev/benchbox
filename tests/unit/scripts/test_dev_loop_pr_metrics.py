@@ -1600,7 +1600,7 @@ def test_failed_job_retrieval_yields_a_qualified_report_and_nonzero_exit(
         ["--usage-report", "--since", "2026-10-10", "--until", "2026-10-10", "--cache-dir", "", "--output", str(output)]
     )
     assert code == 3
-    assert json.loads(output.read_text())["completeness"]["status"] == "incomplete"
+    assert json.loads(output.read_text(encoding="utf-8"))["completeness"]["status"] == "incomplete"
     assert "INCOMPLETE" in capsys.readouterr().out
     api.failing = set()
     assert metrics.main(["--usage-report", "--since", "2026-10-10", "--until", "2026-10-10", "--cache-dir", ""]) == 0
@@ -2023,7 +2023,7 @@ def test_cache_keys_name_the_repository(tmp_path: Path) -> None:
     api.attempts[(1, 1)] = {"run_attempt": 1, "conclusion": "failure", "updated_at": _at(10, 10)}
     cache = metrics.DiskCache(tmp_path)
     _collect(api, USAGE_DAY, USAGE_DAY + timedelta(hours=14), cache=cache)
-    keys = [json.loads(path.read_text())["key"] for path in tmp_path.glob("*.json")]
+    keys = [json.loads(path.read_text(encoding="utf-8"))["key"] for path in tmp_path.glob("*.json")]
     assert {key.split(":")[0] for key in keys} == {"jobs", "attempt", "head"}
     assert all(key.split(":")[1] == "o/r" for key in keys)
 
