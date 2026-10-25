@@ -3142,15 +3142,10 @@
       "title": "Text-edit CI runs report required checks as failed when the full CI run is still queued, blocking auto-merge"
     },
     "ci-usage-metrics-report-20261024": {
-      "claim": {
-        "expires_at": "2026-10-26T09:03:06Z",
-        "generation": "e128a388378444c692b4361716dc0fa7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "One repeatable report of CI queue time, time-to-green and runner-minutes per workflow"
     },
     "ci-visual-baseline-queue-follower-gap": {
