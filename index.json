@@ -23012,6 +23012,13 @@
       "status": "done",
       "title": "Snowflake clustering: dead pre-ALTER comparison (LINEAR vs bare parens) re-fires ALTER+RESUME RECLUSTER on every reuse; introspector schema filter is case-sensitive raw interpolation"
     },
+    "snowflake-databricks-desc-nulls-last-audit-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Audit the Snowflake and Databricks ORDER BY ... DESC to DESC NULLS LAST translation change since v0.4.1"
+    },
     "snowflake-session-query-acceleration-invalid-20261013": {
       "claim": null,
       "needs": [],

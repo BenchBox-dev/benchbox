@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The fork change that introduced it is identified and its intent stated.",
+    "Executed tests compare Snowflake/Databricks-shaped SQL ordering against the reference engine for NULL sort keys (Spark in fork CI for Databricks).",
+    "Affected published bundles are listed; flagged or noted per provenance policy if values or order changed."
+  ],
+  "description": "The published-results audit found that, since v0.4.1, translated SQL for Snowflake and Databricks turns DESC into DESC NULLS LAST (e.g. TSBS queries, DataVault Q11). It is not attributed to any reviewed PR's published-impact section. It changes result order (and LIMIT membership) whenever the sort key has NULLs. Check that it reproduces the source dialect's NULL ordering (DuckDB/ANSI default: NULLS LAST for ASC, NULLS FIRST for DESC in Postgres; DuckDB sorts NULLS LAST by default), and decide which ordering is benchmark-correct.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T12:30:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "538ac00910fc4d2daf27735e925fe341",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}
