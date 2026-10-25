@@ -134,14 +134,12 @@ def _heading_gap(section: str, new_start: int, new_count: int, content: str | No
     return f"at{old_start}"
 
 
-def _block_gap(block: list[str], new_start: int, content: str | None) -> str:
+def _block_gap(block: list[str], start: int, content: str | None) -> str:
     if content is None or not block:
         return "first"
     lines = content.split("\n")
     size = len(block)
-    earlier = sum(
-        1 for index in range(min(new_start - 1, len(lines) - size + 1)) if lines[index : index + size] == block
-    )
+    earlier = sum(1 for index in range(max(start - size + 1, 0)) if lines[index : index + size] == block)
     return f"blk{earlier}"
 
 
@@ -178,9 +176,10 @@ def file_patches(diff_text: str, read: Callable[[str], str | None] | None = None
                 for body_line in lines[position + 1 :]:
                     if _HUNK.match(body_line):
                         break
-                    if body_line[:1] in (" ", "+"):
+                    if body_line[:1] in (" ", "-"):
                         block.append(body_line[1:])
-                gap = _block_gap(block[:new_count], int(hunk["new_start"]), read(match.group("new")))
+                start = int(hunk["new_start"]) - 1 + (1 if new_count == 0 else 0)
+                gap = _block_gap(block[:count], start, read(match.group("new")))
             else:
                 gap = _heading_gap(
                     hunk["section"], int(hunk["new_start"]), new_count, read(match.group("new")), int(hunk["start"])
