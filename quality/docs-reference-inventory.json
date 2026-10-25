@@ -4114,6 +4114,22 @@
    ]
   },
   {
+   "disposition": "fixture-data",
+   "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 3,
+   "path": "tests/unit/scripts/test_changelog_gate_cli.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/a.md"
+    }
+   ]
+  },
+  {
    "disposition": "site-pipeline-cutover",
    "kinds": {
     "file": 1,
@@ -5215,7 +5231,7 @@
   "dispositions": {
    "contract-replaced": 3,
    "contract-tooling": 5,
-   "fixture-data": 32,
+   "fixture-data": 33,
    "generator-deleted": 5,
    "governance-stays": 7,
    "historical-record": 112,
@@ -5225,7 +5241,7 @@
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 259,
+  "files": 260,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
@@ -5234,9 +5250,9 @@
    "generated": 15,
    "pattern": 287,
    "root": 212,
-   "unresolved": 1995
+   "unresolved": 1998
   },
-  "references": 33358,
+  "references": 33361,
   "unclassified": 0
  }
 }
