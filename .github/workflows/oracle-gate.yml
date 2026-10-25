@@ -236,7 +236,7 @@ jobs:
             [ -n "$PR_NUMBER" ] || continue
             STATUS=0
             uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$HEAD_SHA" $POST < /dev/null || STATUS=$?
-            if [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 1 ]; then
+            if [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 3 ]; then
               echo "::warning::oracle-gate failed for #$PR_NUMBER (exit $STATUS)"
               FAILED="$FAILED $PR_NUMBER"
             fi

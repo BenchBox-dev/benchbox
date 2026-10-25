@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -664,3 +666,23 @@ def test_fetch_head_oid_raises_on_graphql_errors(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(oracle_review_check, "_request", lambda token, url, body=None: {"errors": ["boom"]})
     with pytest.raises(oracle_review_check.CheckError):
         oracle_review_check.fetch_head_oid("token", "o/r", 7)
+
+
+def test_process_exit_gives_waiting_a_code_distinct_from_crashes() -> None:
+    assert oracle_gate.process_exit(oracle_gate.PASS) == 0
+    assert oracle_gate.process_exit(oracle_gate.ERROR) == oracle_gate.ERROR
+    assert oracle_gate.process_exit(oracle_gate.WAITING) == oracle_gate.WAITING_EXIT
+    assert oracle_gate.WAITING_EXIT not in (0, 1, oracle_gate.ERROR)
+
+
+def test_script_entry_point_exits_through_the_process_mapping() -> None:
+    env = {key: value for key, value in os.environ.items() if key not in ("GITHUB_TOKEN", "GH_TOKEN")}
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--repo", "o/r", "--pr", "7"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == oracle_gate.ERROR
+    assert "GITHUB_TOKEN is not set" in result.stderr
