@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+import tomllib
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,17 +20,18 @@ DEFAULT_MANIFEST = REPO_ROOT / ".github" / "changelog-paths.txt"
 SCHEMA_VERSION = 1
 MAX_ENTRIES = 5
 MAX_DETAILS = 8
-TEXT_BOUNDS = (20, 800)
+TEXT_BOUNDS = (20, 2000)
 INTERNAL_BOUNDS = (10, 300)
 LEAD_MAX = 120
-DETAIL_MAX = 400
+DETAIL_MAX = 600
 
-CATEGORIES = ("before-you-upgrade", "added", "changed", "fixed", "documentation")
+CATEGORIES = ("before-you-upgrade", "added", "changed", "fixed", "security", "documentation")
 HEADINGS = {
     "before-you-upgrade": "Before you upgrade",
     "added": "Added",
     "changed": "Changed",
     "fixed": "Fixed",
+    "security": "Security",
     "documentation": "Documentation",
 }
 ENTRY_KEYS = frozenset({"category", "breaking", "lead", "text", "details", "platforms", "benchmarks"})
@@ -296,6 +298,23 @@ def pr_number_for(repo: Path, path: str, ref: str = "HEAD") -> int | None:
     return int(match.group(1)) if match else None
 
 
+def project_version_changed(repo: Path, base_sha: str) -> bool:
+    if re.fullmatch(r"[0-9a-f]{40}", base_sha) is None:
+        raise ValueError("the release base must be a full commit SHA")
+    shown = subprocess.run(
+        ["git", "--no-replace-objects", "show", f"{base_sha}:pyproject.toml"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if shown.returncode != 0:
+        raise ValueError(f"cannot read pyproject.toml at {base_sha}")
+    before = tomllib.loads(shown.stdout)["project"]["version"]
+    after = tomllib.loads((repo / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    return before != after
+
+
 def normalize_path(path: str) -> str:
     return path.strip().replace("\\", "/")
 
@@ -335,10 +354,12 @@ def decide_required(
     rules: Sequence[Any],
     release_identity_changed: bool = False,
     user_entry_fragments: Iterable[str] = (),
+    added_paths: Iterable[str] | None = None,
 ) -> Decision:
     paths = [normalize_path(path) for path in changed_paths]
     user_entries = list(user_entry_fragments)
-    satisfied = any(is_fragment_path(path) for path in paths)
+    satisfying = paths if added_paths is None else [normalize_path(path) for path in added_paths]
+    satisfied = any(is_fragment_path(path) for path in satisfying)
     match = TITLE_RE.fullmatch(title)
     pr_type = match.group("type") if match else None
     scope = match.group("scope") if match else None
@@ -478,6 +499,8 @@ def command_check(args: argparse.Namespace) -> int:
         print("\n".join(errors), file=sys.stderr)
         return EXIT_FAILED
     print(f"changelog fragments OK: {len(paths)} checked")
+    if args.title is not None:
+        return evaluate_required(args)
     return EXIT_OK
 
 
@@ -506,16 +529,24 @@ def _read_lines(source: str) -> list[str]:
     return [line for line in text.splitlines() if line.strip()]
 
 
-def command_required(args: argparse.Namespace) -> int:
+def evaluate_required(args: argparse.Namespace) -> int:
     try:
         rules = load_rules(Path(args.manifest))
         changed = list(args.changed_file)
         for source in args.changed_files_from:
             changed.extend(_read_lines(source))
+        added = None
+        if args.added_files_from:
+            added = []
+            for source in args.added_files_from:
+                added.extend(_read_lines(source))
+        identity_changed = bool(args.release_base_sha) and project_version_changed(
+            Path(args.root), args.release_base_sha
+        )
     except ImportError as exc:
         print(f"error: path manifest parser unavailable: {exc}", file=sys.stderr)
         return EXIT_USAGE
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, KeyError, tomllib.TOMLDecodeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_USAGE
     root = Path(args.root)
@@ -533,8 +564,9 @@ def command_required(args: argparse.Namespace) -> int:
         args.title,
         changed,
         rules,
-        release_identity_changed=args.release_identity_changed,
+        release_identity_changed=identity_changed,
         user_entry_fragments=user_entries,
+        added_paths=added,
     )
     for warning in decision.warnings:
         print(f"warning: {warning}", file=sys.stderr)
@@ -549,6 +581,23 @@ def command_required(args: argparse.Namespace) -> int:
     return EXIT_FAILED
 
 
+def command_required(args: argparse.Namespace) -> int:
+    return evaluate_required(args)
+
+
+def _add_required_arguments(parser: argparse.ArgumentParser, title_required: bool) -> None:
+    parser.add_argument("--title", required=title_required, default=None)
+    parser.add_argument("--changed-file", action="append", default=[])
+    parser.add_argument("--changed-files-from", action="append", default=[], metavar="FILE", help="'-' for stdin.")
+    parser.add_argument("--added-files-from", action="append", default=[], metavar="FILE")
+    parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
+    parser.add_argument(
+        "--release-base-sha",
+        default=None,
+        help="Base commit; a changed project version there marks a release preparation pull request.",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Validate, create, render and gate changelog fragments.")
     parser.add_argument("--root", default=str(REPO_ROOT), help="Repository root.")
@@ -558,6 +607,7 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("paths", nargs="*", help="Fragment files (default: every file in changelog.d).")
     check.add_argument("--require-empty-unreleased", action="store_true")
     check.add_argument("--changelog", default=str(REPO_ROOT / "CHANGELOG.md"))
+    _add_required_arguments(check, False)
     check.set_defaults(handler=command_check)
 
     add = sub.add_parser("add", help="Create or extend this branch's fragment.")
@@ -579,11 +629,7 @@ def build_parser() -> argparse.ArgumentParser:
     preview.set_defaults(handler=command_preview)
 
     required = sub.add_parser("required", help="Decide whether a pull request needs a fragment.")
-    required.add_argument("--title", required=True)
-    required.add_argument("--changed-file", action="append", default=[])
-    required.add_argument("--changed-files-from", action="append", default=[], metavar="FILE", help="'-' for stdin.")
-    required.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
-    required.add_argument("--release-identity-changed", action="store_true")
+    _add_required_arguments(required, True)
     required.set_defaults(handler=command_required)
     return parser
 
