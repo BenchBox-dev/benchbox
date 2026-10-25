@@ -3124,10 +3124,15 @@
       "title": "Close three local/CI parity gaps beyond WS3/WS5: Make inventory in guards-fix, brittle inventory assertion, local lane-isolation check"
     },
     "ci-markdown-routed-as-code-20261015": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T20:10:17Z",
+        "generation": "b90ddfdb35174d278298086539c9cea6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "CI unit map sends markdown-only changes to the full lint and fast-test jobs"
     },
     "ci-medium-collect-cold-cache-cost": {
