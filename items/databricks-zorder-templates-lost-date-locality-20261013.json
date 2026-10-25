@@ -4,7 +4,7 @@
     "Temporal candidates map for Z-order; the parity test asserts full mapping.",
     "examples and packaged templates match."
   ],
-  "context": "Found 2026-10-13 by an adversarial review of Databricks tuning changes at origin/develop 77048bfb9.",
+  "context": "Delivered in merged PR #3408: Databricks TPC-H/TPC-DS tuned templates (packaged and examples, kept identical) lead each fact table's clustering with its date column (L_SHIPDATE, O_ORDERDATE, *_SOLD_DATE_SK, *_RETURNED_DATE_SK), at most four keys; L_SHIPDATE added to the TPC-H global z_ordering_columns; temporal candidates now map to clustering/Z-order with a four-key cap; docs/usage/tpc-tuning-profiles.md matrix rows updated. Deviation from the item: strict mapped_count == required_count could not be restored for TPC-DS because lower-priority candidates (SS_PROMO_SK, SS_TICKET_NUMBER, SR_TICKET_NUMBER, WS_SHIP_MODE_SK) are reported as capped under the four-key cap; tests assert mapped + capped == required and zero unsupported. Open PR #3412 reworks this check into waived/capped validation. No live Databricks run.",
   "description": "## Problem\ncbddc0cb8 (#2867) removed date partitioning (`L_SHIPDATE`, `O_ORDERDATE`, and the fact tables' `*_SOLD_DATE_SK`/`*_RETURNED_DATE_SK`) from the Databricks Z-order templates, but did not move those dates into the per-table clustering keys.\n- The global `z_ordering_columns` list still names O_ORDERDATE and SS_SOLD_DATE_SK. The adapter reads that list only to choose the strategy (`benchbox/platforms/databricks/adapter.py:388`). Z-order columns come from per-table clustering (`:3124-3127`).\n- Temporal candidates were marked UNSUPPORTED for Z-order (`benchbox/core/tuning/platform_capabilities.py:120-131`), although Z-ORDER on a date column is valid and the manual-liquid layout maps the same candidates. The test now freezes `unsupported == temporal`.\n- TPC-DS fact tables therefore lose date pruning, which most TPC-DS queries rely on.\n\n## Change\n- Make the date column the first clustering key on each fact table (at most 4 keys).\n- Map temporal candidates to clustering/Z-order.\n- Restore the `mapped_count == required_count` assertion.\n- Regenerate both template trees. Depends on `databricks-zorder-applied-to-empty-tables-20261013` for the Z-order to take effect.",
   "links": [
     "examples/tunings/databricks",
@@ -27,6 +27,14 @@
       "generation": "0a772e013eb74e44a704e2fe740f18c1",
       "op": "take",
       "op_id": "d96a1925f7734861a41100e20669193e",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T04:33:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c3b1e2229df94d74a1b9812665f1f8fd",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
