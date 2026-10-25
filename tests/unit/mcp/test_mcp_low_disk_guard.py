@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from benchbox.utils import disk_guard
-from tests.unit.mcp.public_api import build_tool_functions
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -21,7 +20,15 @@ def _guard_enabled(monkeypatch):
 
 @pytest.fixture(scope="module")
 def tool_functions() -> dict[str, Any]:
-    return build_tool_functions()
+    import benchbox.utils.printing as printing
+    from benchbox.mcp import create_server
+    from tests.unit.mcp.public_api import get_tool_functions
+
+    quiet = printing._QUIET
+    try:
+        return get_tool_functions(create_server())
+    finally:
+        printing._QUIET = quiet
 
 
 def test_mcp_run_below_threshold_fails_before_any_write(tool_functions, tmp_path, monkeypatch):

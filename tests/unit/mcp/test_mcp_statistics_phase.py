@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from tests.fixtures.result_dict_fixtures import write_v2_result_file
-from tests.unit.mcp.public_api import build_tool_functions
 
 pytestmark = [
     pytest.mark.unit,
@@ -20,9 +19,21 @@ pytestmark = [
 ]
 
 
+def _get_tool_functions() -> dict[str, Any]:
+    import benchbox.utils.printing as printing
+    from benchbox.mcp import create_server
+    from tests.unit.mcp.public_api import get_tool_functions
+
+    quiet = printing._QUIET
+    try:
+        return get_tool_functions(create_server())
+    finally:
+        printing._QUIET = quiet
+
+
 @pytest.fixture(scope="module")
 def tool_functions() -> dict[str, Any]:
-    return build_tool_functions()
+    return _get_tool_functions()
 
 
 def _mock_run(
