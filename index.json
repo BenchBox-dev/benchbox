@@ -3002,15 +3002,10 @@
       "title": "Required CI jobs: remove the remaining anonymous Docker Hub pull (questdb service in the lint job); Postgres images are owned by ci-sql-evidence-postgres-ecr-rate-limit-20261022"
     },
     "ci-duplicate-dispatch-ghost-runs": {
-      "claim": {
-        "expires_at": "2026-10-26T19:27:46Z",
-        "generation": "5c1792a1344145d0844200836c9acc20",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Stop duplicate CI dispatches and ghost pending runs stalling scheduling"
     },
     "ci-failure-baseline-dev-loop-metrics": {
