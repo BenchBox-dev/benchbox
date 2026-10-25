@@ -234,10 +234,12 @@ jobs:
           FAILED=""
           while read -r PR_NUMBER HEAD_SHA; do
             [ -n "$PR_NUMBER" ] || continue
-            uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$HEAD_SHA" $POST < /dev/null || {
-              echo "::warning::oracle-gate failed for #$PR_NUMBER"
+            STATUS=0
+            uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$HEAD_SHA" $POST < /dev/null || STATUS=$?
+            if [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 1 ]; then
+              echo "::warning::oracle-gate failed for #$PR_NUMBER (exit $STATUS)"
               FAILED="$FAILED $PR_NUMBER"
-            }
+            fi
           done <<< "$PRS"
           if [ -n "$FAILED" ]; then
             echo "::error::oracle-gate failed for:$FAILED"
