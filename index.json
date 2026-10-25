@@ -8938,14 +8938,19 @@
       "title": "Define published documentation ownership and supersede the split decision"
     },
     "docs-mig-core-bundle-schema4": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T19:27:31Z",
+        "generation": "5225736001e34ef6bc009cd8e32b7f03",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "docs-mig-core-relocate-contract-sql",
         "docs-mig-core-docs-data-export",
         "docs-mig-core-doc-contracts-export"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Produce the additive documentation-data bundle safely"
     },
     "docs-mig-core-doc-contracts-export": {
