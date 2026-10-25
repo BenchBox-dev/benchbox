@@ -1,10 +1,11 @@
 {
   "acceptance": [
-    "RUBRIC 1 Before 2027-01-05, every current dated directive (322 at c962e3e) is renewed or removed through the required oracle-reviewed policy change",
+    "RUBRIC 1 Before 2026-12-05 (first warning date), every directive dated 2027-01-04 (322 entries / 380 directives at a0e955d) is deleted with its suppression removed, fixed in code or tool config, made undated because it suppresses nothing (the 5 Spark broadcast hints), or renewed through the oracle-reviewed policy change",
     "RUBRIC 2 A non-blocking warning surfaces in local checks and CI/nightly at least 30 days before any directive expiry",
-    "RUBRIC 3 Expiries are staggered so no single date holds more than 10% of dated directives",
+    "RUBRIC 3 No single expiry date holds more than max(1, 10% of the remaining dated directives); the guard test counts only kind=directive entries and passes when none remain dated",
     "RUBRIC 4 Tests cover the warning boundary, validity through the expiry date, hard failure the following day, and that a date-only renewal still requires oracle review",
-    "RUBRIC 5 The renewal owner and process are documented"
+    "RUBRIC 5 docs/internal/comment-policy.md names the CI maintainer role as renewer and documents the undated class (directives that suppress nothing); shebang/encoding need no entry and legal text is a notice",
+    "RUBRIC 6 Ruff RUF100 is enabled so an unused noqa fails lint, and the nightly dead-exception report also flags entries whose count exceeds the real number of matching lines"
   ],
   "context": "OWNER DECISIONS 2026-10-25: (1) renewal owner is a 'CI maintainer' role (docs/internal/comment-policy.md to say so instead of naming workstream ids as owners); (2) before any staggering, re-audit the expiring exceptions and decide per class whether each should become a permanent policy rule, be fixed and removed, or be renewed. REVIEW findings: #3410's 30-day warning works but falls in the holidays; the saved stagger patch cannot pass the local hook (the #3355 dependency was false) and leaves 23 directives on 2027-01-04; dead entries must be removed first. Stagger patch preserved off-tracker.\n\nWarning part merged in PR #3410 (30-day expiry warning + renewal docs). Staggering (322 dates -> 14 dates, 23 per date, 2027-01-04..2027-07-05) is parked at /tmp/expiry-stagger.patch with its guard test /tmp/expiry-stagger-test.txt: the pre-commit hook fails with 345 findings because a changed `expires` is a 'new policy entry' that only counts after an oracle verdict read inside GitHub Actions. Owner decision 2026-10-25: wait for PR #3355 (fix/prereg-hook-same-commit-entries) to merge, then re-apply; no hook bypass. Re-apply after #3355 lands.",
   "description": "All 322 dated exceptions in quality/comment-policy.json (at develop c962e3e) are directives with `expires: 2027-01-04`. An exception is expired when `expires < date.today()` (scripts/check_comment_policy.py:61-67) and, since #3362, expired-exception findings are always in the failure set (:481). So from 2027-01-05 every strict commit hook run, PR CI comment-policy job and the nightly whole-tree scan fails until the policy is updated. There is no advance warning and no staggering; renewals are new policy entries that require oracle review (docs/internal/comment-policy.md:120-130).",
@@ -34,6 +35,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "d94eaf711ab34bed8db453015604d277",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T18:56:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "40581334f1984e0ea9d0d36f31ab51c3",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
