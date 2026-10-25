@@ -525,9 +525,10 @@ def test_candidate_selection_catches_each_split_version_bump(candidate_tree: tup
     root, base = candidate_tree
     file = root / path
     file.write_text(file.read_text(encoding="utf-8").replace(VERSION, "1.2.4"))
-    selected, _version, freshness_required, _identity = release_flow.select_candidate(root, base)
+    selected, _version, freshness_required, identity_changed = release_flow.select_candidate(root, base)
     assert selected
     assert freshness_required
+    assert identity_changed
     assert release_flow.run_checks(root, _version, ok_runner, baseline_ref=base)
 
 
@@ -774,7 +775,7 @@ def test_selection_reports_release_identity_separately_from_enforcement_changes(
     root, base = candidate_tree
     changelog = root / "CHANGELOG.md"
     changelog.write_text(changelog.read_text(encoding="utf-8").replace("A hand-curated entry", "A changed entry"))
-    assert release_flow.select_candidate(root, base) == (True, VERSION, True, True)
+    assert release_flow.select_candidate(root, base) == (True, VERSION, True, False)
 
     git(root, "checkout", "-q", "--", "CHANGELOG.md")
     enforcement = root / "scripts" / "changelog_fragments.py"
