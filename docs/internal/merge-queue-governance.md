@@ -202,10 +202,12 @@ A failed lookup, or no completed producer run, yields an `unknown` verdict: the
 monitor comments on an open issue and exits non-zero, so a broken interval is
 never counted healthy.
 
-Two limits are decided separately. Artifact discovery inspects the newest 50
-`trunk-coverage.yml` runs on `develop` (`MAX_DISCOVERY_RUNS`, about eight days
-of six producers plus the monitor, longer than the 7-day map retention, so
-discovery runs out of unexpired artifacts before it runs out of runs). Selection
+Two limits are decided separately. Artifact discovery inspects the newest 60
+`trunk-coverage.yml` runs on `develop` (`MAX_DISCOVERY_RUNS`: six producers plus
+the monitor is seven runs a day, so 60 runs reach back about eight and a half
+days, and a few extra dispatches still leave the window longer than the 7-day
+map retention, so discovery runs out of unexpired artifacts before it runs out
+of runs). Selection
 accepts a map at most 50 develop commits behind the PR base
 (`MAX_MAP_BEHIND_COMMITS`); a PR based further ahead of the newest map
 escalates with that reason instead of using stale impact data. Failed or

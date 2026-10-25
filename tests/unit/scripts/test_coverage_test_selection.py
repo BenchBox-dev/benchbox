@@ -1052,8 +1052,37 @@ def test_fetch_map_reports_the_producer_run_event_and_artifact(
     assert Path(result["path"]) == target / "map.json"
 
 
+def test_fetch_map_cli_writes_the_producer_identity_to_json_and_step_outputs(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    head = _head(repo)
+    monkeypatch.setattr(
+        sel,
+        "fetch_map",
+        lambda *_args, **_kwargs: {
+            "status": "found",
+            "sha": head,
+            "path": "/tmp/map.json",
+            "run_id": 42,
+            "event": "schedule",
+            "artifact": f"t2-coverage-map-{head}",
+            "reason": "found",
+        },
+    )
+    payload = tmp_path / "fetch.json"
+    outputs = tmp_path / "outputs.txt"
+    argv = ["fetch-map", "--base-sha", head, "--dest-dir", str(tmp_path / "maps"), "--repo-root", str(repo)]
+    assert sel.main([*argv, "--json-out", str(payload), "--github-output", str(outputs)]) == 0
+    written = json.loads(payload.read_text(encoding="utf-8"))
+    assert (written["run_id"], written["event"], written["artifact"]) == (42, "schedule", f"t2-coverage-map-{head}")
+    lines = outputs.read_text(encoding="utf-8").splitlines()
+    assert "map-run-id=42" in lines
+    assert "map-event=schedule" in lines
+    assert f"map-artifact=t2-coverage-map-{head}" in lines
+
+
 def test_discovery_and_ancestry_limits_are_separate_constants() -> None:
-    assert sel.MAX_DISCOVERY_RUNS == 50
+    assert sel.MAX_DISCOVERY_RUNS == 60
     assert sel.MAX_MAP_BEHIND_COMMITS == 50
     assert "schedule" in sel.TRUSTED_MAP_EVENTS
 

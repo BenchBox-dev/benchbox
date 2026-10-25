@@ -30,7 +30,7 @@ def test_decide_flags_a_missing_map_as_stale() -> None:
     assert stale.decide("missing", None, [])[0] == "stale"
 
 
-def test_decide_flags_a_map_further_behind_than_the_selection_limit() -> None:
+def test_decide_flags_a_map_more_than_twenty_commits_behind() -> None:
     assert stale.STALENESS_BEHIND_LIMIT == 20
     state, reason = stale.decide("found", 21, ["success", "success"])
     assert state == "stale"
@@ -78,6 +78,23 @@ def test_recent_conclusions_counts_only_map_producing_runs(repo: Path, monkeypat
     assert conclusions == ["failure", "failure", "failure"]
     assert stale.decide("found", 0, conclusions)[0] == "stale"
     assert not any("/runs/6/" in call for call in calls)
+
+
+def test_a_monitor_only_run_between_failures_does_not_reset_the_failure_history(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = "\n".join(f"{run}\tschedule" for run in (1, 2, 3, 4))
+    producer = {"1": "failure", "2": "skipped", "3": "failure", "4": "failure"}
+
+    def _gh(_repo: Path, *args: str) -> str:
+        if args[1].endswith("/runs"):
+            return listing
+        return producer[args[1].split("/")[-2]] + "\n"
+
+    monkeypatch.setattr(stale, "_gh", _gh)
+    conclusions = stale.recent_conclusions(repo, "o/r")
+    assert conclusions == ["failure", "failure", "failure"]
+    assert stale.decide("found", 0, conclusions)[0] == "stale"
 
 
 def test_a_failed_shard_with_a_published_map_is_not_stale(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:

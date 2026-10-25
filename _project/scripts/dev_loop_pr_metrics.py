@@ -1952,6 +1952,9 @@ USAGE_DEFAULT_WORKERS = 4
 USAGE_DEFAULT_RATE_RESERVE = 1000
 USAGE_PROGRESS_EVERY = 500
 TRUNK_WORKFLOWS = ("trunk.yml", "trunk-coverage.yml")
+TRUNK_COVERAGE_WORKFLOW = "trunk-coverage.yml"
+TRUNK_COVERAGE_PRODUCER_JOB = "medium-coverage-map"
+TRUNK_COVERAGE_EVENTS = frozenset({"push", "schedule", "workflow_dispatch"})
 RED_CONCLUSIONS = frozenset({"failure", "timed_out", "startup_failure"})
 GREEN_CHECK_CONCLUSIONS = frozenset({"success", "neutral", "skipped"})
 TRUNK_MISSING_GRACE = timedelta(minutes=30)
@@ -2602,6 +2605,7 @@ def run_facts(run: dict, jobs: list[dict], attempt_runs: dict[int, dict]) -> dic
         "os_minutes": os_minutes,
         "queue_seconds": queue,
         "job_kinds": kinds,
+        "active_job_names": sorted(active_names),
         "class": workload_class(run, workflow, active_names),
     }
 
@@ -3084,12 +3088,16 @@ def _trunk_sha_coverage(
     }
 
 
+def _is_trunk_signal_run(item: dict, workflow: str) -> bool:
+    if item["workflow"] != workflow or item["head_branch"] != "develop":
+        return False
+    if workflow != TRUNK_COVERAGE_WORKFLOW:
+        return item["event"] == "push"
+    return item["event"] in TRUNK_COVERAGE_EVENTS and TRUNK_COVERAGE_PRODUCER_JOB in item["active_job_names"]
+
+
 def _trunk_workflow_signal(collection: UsageCollection, workflow: str, facts: list[dict], reference: datetime) -> dict:
-    runs = [
-        item
-        for item in facts
-        if item["workflow"] == workflow and item["event"] == "push" and item["head_branch"] == "develop"
-    ]
+    runs = [item for item in facts if _is_trunk_signal_run(item, workflow)]
     outcomes = _trunk_outcomes(runs)
     commits = collection.develop_commits
     commit_times = (

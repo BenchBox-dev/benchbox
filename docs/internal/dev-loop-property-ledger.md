@@ -96,7 +96,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `sync-results-data-to-published.yml` | product-safety | Corpus trust boundary sync |
 | `test.yml` | product-safety | Test tiers; replaced by ci.yml units |
 | `todo-state-validate.yml` | tooling | Tracker state validation |
-| `trunk-coverage.yml` | product-safety | Develop-push instrumented four-shard medium tier, v2 coverage map combine, published-map self-fetch, and daily map-staleness issue; never consulted by arming |
+| `trunk-coverage.yml` | product-safety | Scheduled (six a day) and dispatched instrumented four-shard medium tier, v2 coverage map combine, published-map self-fetch, and a map-staleness issue on its own daily cron; never consulted by arming |
 | `trunk.yml` | product-safety | Develop-push fast lane, uninstrumented four-shard medium tier, correctness gate, required-local-cases and verified release artifact; retains pending runs with queue:max |
 | `upload-answers.yml` | product-safety | Answer file publication |
 | `validate-release-pr.yml` | product-safety | Release PR base validation |
