@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import duckdb
 import pytest
 from click.testing import CliRunner
 
+from benchbox.cli.config import CLIConfigProvider
 from benchbox.cli.main import cli
 from benchbox.core.system import SystemProfiler
 from benchbox.core.tuning import template_evidence
+from benchbox.utils.config_interface import get_config_provider
+from tests.utilities.owned_cli_state import owned_cli_state
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -40,7 +44,7 @@ def _tuned_run_payload(tmp_path: Path) -> dict | None:
 @pytest.fixture(scope="module")
 def duckdb_tuned_run(tmp_path_factory):
     output_dir = tmp_path_factory.mktemp("tuned_run")
-    with pytest.MonkeyPatch.context() as monkeypatch:
+    with owned_cli_state(), pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(output_dir))
         result = CliRunner().invoke(
             cli,
@@ -80,6 +84,11 @@ def test_duckdb_tuned_run_prints_tuning_verification_summary(duckdb_tuned_run):
     assert "Verdicts:" in result.output
     assert "Top reasons:" in result.output
     assert "Dropped intents" in result.output
+
+
+def test_module_scoped_run_leaves_process_state_untouched(duckdb_tuned_run):
+    assert not isinstance(get_config_provider(), CLIConfigProvider)
+    assert "BENCHBOX_DATA_ORGANIZATION_CONFIG_JSON" not in os.environ
 
 
 def test_duckdb_notuning_run_has_no_evidence_warning(tmp_path, monkeypatch, tpch_sf001_data):
