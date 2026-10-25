@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import batch_integration
+import pr_arm
 import pr_landing
 
 CLI_DESCRIPTION = "Bind, record, arm, withdraw, and re-arm a cloud-built pull request from fetched objects alone."
@@ -568,6 +569,7 @@ def _arm(
         print(f"reviewer family: {family}; model: {reviewer['model']}; run: {reviewer['run_id']}")
         if family == "anthropic":
             print("Claude-family review: less independent when the builder is also Claude-family.")
+        pr_arm.refresh_oracle_gate(run, repo, number, head, "pr-arm-remote")
         code, out = run(
             ["gh", "pr", "merge", str(number), "--repo", repo, "--squash", "--auto", "--match-head-commit", head]
         )

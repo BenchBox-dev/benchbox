@@ -56,6 +56,9 @@ class FakeGh:
         self.merge_code = kwargs.get("merge_code", 0)
         self.view_code = kwargs.get("view_code", 0)
         self.local_head = kwargs.get("local_head", HEAD)
+        self.gate_state = kwargs.get("gate_state", "success")
+        self.status_code = kwargs.get("status_code", 0)
+        self.dispatch_code = kwargs.get("dispatch_code", 0)
         self.calls: list[list[str]] = []
 
     def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
@@ -74,7 +77,14 @@ class FakeGh:
             return self.view_code, body
         if cmd[:3] == ["gh", "pr", "merge"]:
             return self.merge_code, "queued"
+        if cmd[:2] == ["gh", "api"] and cmd[-1] == f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/status":
+            return self.status_code, self.gate_state + "\n" if self.status_code == 0 else "gh: HTTP 502"
+        if cmd[:3] == ["gh", "workflow", "run"]:
+            return self.dispatch_code, "" if self.dispatch_code == 0 else "gh: HTTP 403"
         raise AssertionError(f"unexpected command {cmd}")
+
+    def dispatched(self) -> list[list[str]]:
+        return [call for call in self.calls if call[:3] == ["gh", "workflow", "run"]]
 
     def merged(self) -> list[list[str]]:
         return [call for call in self.calls if call[:3] == ["gh", "pr", "merge"]]
@@ -421,3 +431,56 @@ def test_the_live_suite_check_receives_the_base_branch_and_local_head() -> None:
 
     pr_arm.arm("7", None, run=FakeGh(), unpublished=lambda _c: [], threads=lambda *_a: False, suites=record)
     assert seen == [("develop", HEAD)]
+
+
+DISPATCH = [
+    "gh",
+    "workflow",
+    "run",
+    "oracle-gate.yml",
+    "--repo",
+    pr_arm.REPOSITORY,
+    "--ref",
+    "develop",
+    "-f",
+    "pr=7",
+    "-f",
+    f"head_sha={HEAD}",
+]
+
+
+@pytest.mark.parametrize("state", ["failure", "error", "pending", ""])
+def test_dispatches_the_gate_before_arming_when_its_status_is_not_success(state: str) -> None:
+    gh = FakeGh(gate_state=state)
+    assert _arm(gh) == 0
+    assert gh.dispatched() == [DISPATCH]
+    assert gh.calls.index(DISPATCH) < gh.calls.index(gh.merged()[0])
+
+
+def test_dispatches_nothing_when_the_gate_already_succeeded() -> None:
+    gh = FakeGh(gate_state="success")
+    assert _arm(gh) == 0
+    assert gh.dispatched() == []
+    assert len(gh.merged()) == 1
+
+
+def test_an_open_thread_refuses_without_dispatching_or_arming() -> None:
+    gh = FakeGh(gate_state="failure")
+    assert _arm(gh, threads=True) == 2
+    assert gh.dispatched() == []
+    assert gh.merged() == []
+
+
+def test_a_failed_dispatch_is_reported_and_arming_proceeds(capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh(gate_state="failure", dispatch_code=1)
+    assert _arm(gh) == 0
+    assert len(gh.merged()) == 1
+    assert "dispatch for PR #7 failed; arming continues" in capsys.readouterr().out
+
+
+def test_an_unreadable_gate_status_is_reported_and_arming_proceeds(capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh(status_code=1)
+    assert _arm(gh) == 0
+    assert gh.dispatched() == []
+    assert len(gh.merged()) == 1
+    assert "could not read the oracle-gate status" in capsys.readouterr().out
