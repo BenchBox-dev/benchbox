@@ -721,10 +721,10 @@ class TestReleaseInfrastructure:
 
     def test_release_cut_curation_accounts_for_the_changelog_fragment_directory(self):
         recipe = _make_target_recipe("release-cut")
-        first_rm = next(line for line in recipe.splitlines() if re.search(r"git rm -rf ", line))
+        removal = next(line for line in recipe.splitlines() if "git rm -rf --ignore-unmatch changelog.d" in line)
         guard_line = next(line for line in recipe.splitlines() if "LEFTOVER=$$(git ls-files" in line)
 
-        assert "changelog.d" in first_rm.split()
+        assert "changelog.d" in removal.split()
         assert "changelog.d" in guard_line.split()
 
     def test_release_cut_is_resumable_and_has_an_abort_target(self):
