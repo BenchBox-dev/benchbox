@@ -15978,10 +15978,15 @@
       "title": "oracle-gate runs triggered by workflow_run are titled 'pr=sweep' although they gate one PR"
     },
     "oracle-gate-standin-edit-delete-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T05:19:54Z",
+        "generation": "720b0ef28f63460d8737e0b658f03909",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Re-evaluate oracle-gate when a stand-in attestation comment is edited or deleted"
     },
     "oracle-gate-status-20261021": {
