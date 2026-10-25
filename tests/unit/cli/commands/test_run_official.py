@@ -77,5 +77,5 @@ def test_run_official_quiet_forwards_to_run_and_suppresses_banner(monkeypatch):
     assert captured["quiet"] is True
     lines = [line.strip() for line in result.output.splitlines() if line.strip()]
     assert lines[-1] == "/tmp/official-result.json"
-    assert "TPC-Compliant Official Benchmark Run" not in result.output
+    assert "TPC Official Mode Benchmark Run" not in result.output
     assert "Concurrency:" not in result.output

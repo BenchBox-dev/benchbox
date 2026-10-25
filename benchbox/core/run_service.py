@@ -45,7 +45,9 @@ def warn_polars_streaming_flag() -> None:
 
 def validate_tpc_scale_factor(scale: float) -> None:
     if scale not in TPC_ALLOWED_SCALE_FACTORS:
-        raise ValueError(f"Scale factor {scale} is not TPC-compliant. Allowed: {sorted(TPC_ALLOWED_SCALE_FACTORS)}")
+        raise ValueError(
+            f"Scale factor {scale} is not a TPC-specified scale factor. Allowed: {sorted(TPC_ALLOWED_SCALE_FACTORS)}"
+        )
 
 
 def validate_stream_count(streams: int | None, phases: str | None = None) -> None:

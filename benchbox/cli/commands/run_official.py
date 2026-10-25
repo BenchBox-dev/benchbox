@@ -10,6 +10,7 @@ from benchbox.core.run_service import (
     validate_stream_count,
     validate_tpc_scale_factor,
 )
+from benchbox.core.tpc_disclaimer import official_mode_disclaimer
 
 
 @click.command("run-official", hidden=True, deprecated=True)
@@ -25,7 +26,7 @@ from benchbox.core.run_service import (
     multiple=True,
     help="Platform option in KEY=VALUE form (repeatable).",
 )
-@click.option("--seed", type=int, help="Random seed for reproducible official runs")
+@click.option("--seed", type=int, help="Random seed for reproducible official-mode runs")
 @click.option("--output", "output_dir", type=click.Path(), help="Output directory")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option("-q", "--quiet", is_flag=True, help="Emit the exported result path on the final non-empty stdout line")
@@ -48,12 +49,12 @@ def run_official(
     try:
         validate_tpc_scale_factor(scale)
     except ValueError:
-        console.print(f"[red]Error: Scale factor {scale} is not TPC-compliant[/red]")
+        console.print(f"[red]Error: Scale factor {scale} is not a TPC-specified scale factor[/red]")
         console.print(f"Allowed scale factors: {sorted(TPC_ALLOWED_SCALE_FACTORS)}")
         sys.exit(1)
 
     if seed is None and not quiet:
-        console.print("[yellow]Warning: No seed specified. Official TPC runs require a random seed.[/yellow]")
+        console.print("[yellow]Warning: No seed specified. TPC official mode requires a random seed.[/yellow]")
         console.print("Use --seed <N> for reproducible results")
 
     try:
@@ -63,7 +64,8 @@ def run_official(
         sys.exit(1)
 
     if not quiet:
-        console.print("[bold blue]TPC-Compliant Official Benchmark Run[/bold blue]")
+        console.print("[bold blue]TPC Official Mode Benchmark Run[/bold blue]")
+        console.print(f"[dim]{official_mode_disclaimer(benchmark)}[/dim]")
         for label, value in [
             ("Benchmark", f"TPC-{benchmark.upper()}"),
             ("Platform", platform),

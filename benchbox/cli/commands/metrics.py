@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 
 from benchbox.cli.shared import console
+from benchbox.core.tpc_disclaimer import derived_results_disclaimer
 
 
 @click.group(
@@ -213,6 +214,7 @@ def _format_text_output(result: dict) -> str:
         lines.append(f"Refresh included:  {'yes' if result['refresh_included'] else 'no'}")
     lines.append("")
     lines.append("=" * 70)
+    lines.append(derived_results_disclaimer(str(result["benchmark"])))
     if result.get("qphh_at_size") is not None:
         lines.append("QphH@Size = sqrt(Power@Size × Throughput@Size), rounded to 0.1.")
     elif result.get("qphh_unavailable"):

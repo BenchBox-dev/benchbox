@@ -329,7 +329,9 @@ queries above, so don't compare those queries one for one with newer results.
 | Window Functions | High | High | Mixed | Partition management |
 | Data Mining | Very High | Very High | Mixed | Statistical computation |
 
-## Official TPC-DS Metrics
+## TPC-DS Derived Metrics
+
+> Derived from TPC-DS. These results do not comply with the TPC-DS Specification and must not be compared with official TPC-DS results.
 
 BenchBox exports Power@Size and Throughput@Size when the `power` and `throughput`
 phases run successfully. Values are surfaced in the JSON results.

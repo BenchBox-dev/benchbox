@@ -36,7 +36,7 @@ All parameters are keyword-only. Positional arguments raise `TypeError`.
 | `compression_type` | `str` | `"zstd"` | One of `zstd`, `gzip`, `lz4`, `snappy` or `none`. |
 | `compression_level` | `int` or `None` | `None` | Compression level from 1 to 22, or `None` for the codec default. |
 | `test_execution_type` | `str` | `"standard"` | One of `standard`, `power`, `throughput`, `maintenance`, `combined`, `data_only` or `load_only`. |
-| `official` | `bool` | `False` | Request TPC-compliant mode. |
+| `official` | `bool` | `False` | Request TPC official mode (validated scale factors and seed; results remain derived). |
 | `client_region` | `str` or `None` | `None` | Region of the machine that runs the client, recorded as a locality disclosure. |
 | `client_cloud` | `str` or `None` | `None` | Cloud provider of the machine that runs the client, recorded as a locality disclosure. |
 | `link_probe` | `bool` | `True` | Flag for the client-link locality disclosure; on by default. |

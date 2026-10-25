@@ -12,8 +12,8 @@ A systematic validation system for TPC benchmark test results that ensures compl
 The TPC Test Result Validation System provides:
 
 - **Comprehensive Validation**: Validates all aspects of TPC test results including completeness, query execution, timing, data integrity, and metrics
-- **Compliance Checking**: Ensures results meet official TPC specification requirements
-- **Certification Readiness**: Validates certification requirements and generates readiness reports
+- **Specification Checks**: Compares results against TPC specification requirements; passing does not make a result compliant with or comparable to official TPC results
+- **Readiness Reports**: Runs the strictest checks (the `CERTIFICATION` level and `CertificationChecker` keep their legacy API names) and reports a readiness status; it is not a TPC certification
 - **Audit Trail**: Tracks all validation activities for reproducibility and compliance auditing
 - **Multi-Benchmark Support**: Supports TPC-H, TPC-DS, TPC-DI, and other TPC benchmarks
 - **Detailed Reporting**: Generates systematic validation reports with issue tracking and metrics
@@ -35,8 +35,8 @@ The validation system consists of several key components:
 - **`TimingValidator`**: Validates timing measurements and precision requirements
 - **`DataIntegrityValidator`**: Validates data integrity during maintenance operations
 - **`MetricsValidator`**: Validates metric calculations and statistical validity
-- **`ComplianceChecker`**: Checks overall TPC compliance requirements
-- **`CertificationChecker`**: Validates certification readiness and requirements
+- **`ComplianceChecker`**: Checks results against TPC specification requirements
+- **`CertificationChecker`**: Runs the strictest readiness checks (legacy name; not a TPC certification)
 
 ## Installation
 
@@ -203,7 +203,7 @@ The system supports three validation levels:
 
 ### ValidationLevel.CERTIFICATION
 - All standard validations
-- Certification readiness checks
+- Strict readiness checks (not a TPC certification)
 - Enhanced documentation requirements
 - Performance threshold validation
 
@@ -223,7 +223,7 @@ The `ValidationReport` contains:
 - Calculated metrics
 - Execution summary
 - Audit trail
-- Certification status
+- Readiness status (`certification_status` field; not a TPC certification)
 
 ## Individual Validators
 
@@ -271,10 +271,10 @@ Checks TPC compliance requirements:
 - Reproducibility requirements
 
 ### CertificationChecker
-Validates certification readiness:
+Runs the strictest readiness checks. This is not a TPC certification:
 - Performance thresholds met
 - Documentation complete
-- Test completeness for certification
+- Test completeness
 - Overall readiness assessment
 
 ## Integration with Existing Benchmarks
@@ -399,7 +399,7 @@ print(f"Result: {report.overall_result.value}")
 print(f"Issues: {len(report.issues)}")
 ```
 
-### Certification Example
+### Strict Readiness Example
 
 ```python
 config = {
@@ -416,7 +416,7 @@ config = {
 validator = TPCResultValidator(config)
 report = validator.validate(test_results, ValidationLevel.CERTIFICATION)
 
-print(f"Certification Status: {report.certification_status}")
+print(f"Readiness Status: {report.certification_status}")
 ```
 
 ### Multi-Benchmark Suite

@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.tpc_disclaimer import TPCDS_DERIVED_DISCLAIMER
 from benchbox.utils.printing import emit
 
 from .benchmark import (
@@ -41,7 +42,7 @@ class TPCDSReportGenerator:
 
         reports["html_report"] = self._generate_html_report(result)
 
-        reports["compliance_report"] = self._generate_compliance_report(result)
+        reports["validation_checklist_report"] = self._generate_validation_checklist_report(result)
 
         reports["performance_summary"] = self._generate_performance_summary(result)
 
@@ -57,14 +58,15 @@ class TPCDSReportGenerator:
 
         with open(report_path, "w", encoding="utf-8") as f:
             f.write("TPC-DS BENCHMARK EXECUTIVE SUMMARY\n")
-            f.write("=" * 50 + "\n\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"{TPCDS_DERIVED_DISCLAIMER}\n\n")
 
             if result.benchmark_start_time:
                 f.write(f"Benchmark Date: {result.benchmark_start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Scale Factor: {result.scale_factor}\n")
             f.write(f"Total Execution Time: {result.total_benchmark_time:.2f} seconds\n\n")
 
-            f.write("OFFICIAL TPC-DS METRICS\n")
+            f.write("TPC-DS DERIVED METRICS\n")
             f.write("-" * 25 + "\n")
 
             if result.power_at_size:
@@ -286,15 +288,16 @@ class TPCDSReportGenerator:
 
         return report_path
 
-    def _generate_compliance_report(self, result: BenchmarkResult) -> Path:
-        report_path = self.reports_dir / "compliance_report.txt"
+    def _generate_validation_checklist_report(self, result: BenchmarkResult) -> Path:
+        report_path = self.reports_dir / "validation_checklist_report.txt"
 
         with open(report_path, "w", encoding="utf-8") as f:
-            f.write("TPC-DS COMPLIANCE REPORT\n")
-            f.write("=" * 50 + "\n\n")
+            f.write("TPC-DS VALIDATION CHECKLIST REPORT\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"{TPCDS_DERIVED_DISCLAIMER}\n\n")
 
-            f.write("COMPLIANCE CHECKLIST\n")
-            f.write("-" * 19 + "\n")
+            f.write("VALIDATION CHECKLIST\n")
+            f.write("-" * 20 + "\n")
 
             checks = [
                 ("Power Test executed", result.power_test is not None),
@@ -322,9 +325,8 @@ class TPCDSReportGenerator:
 
             f.write("\n")
 
-            overall_compliance = all(passed for _, passed in checks)
-            compliance_status = "COMPLIANT" if overall_compliance else "NON-COMPLIANT"
-            f.write(f"Overall Compliance Status: {compliance_status}\n\n")
+            overall_passed = all(passed for _, passed in checks)
+            f.write(f"Overall Checklist Status: {'ALL CHECKS PASSED' if overall_passed else 'CHECKS FAILED'}\n\n")
 
             if result.validation_results:
                 f.write("DETAILED VALIDATION RESULTS\n")
@@ -415,7 +417,8 @@ class TPCDSReportGenerator:
     </div>
 
     <div class="metric">
-        <h2>Official TPC-DS Metrics</h2>
+        <h2>TPC-DS Derived Metrics</h2>
+        <p>{TPCDS_DERIVED_DISCLAIMER}</p>
         <p><strong>Power@Size:</strong> {result.power_at_size:.2f}</p>
         <p><strong>Throughput@Size:</strong> {result.throughput_at_size:.2f}</p>
     </div>

@@ -163,7 +163,7 @@ def test_tpc_reporting_modules_generate_all_outputs(tmp_path: Path):
     tpch_result = _fake_tpch_result()
     tpch_reporter = TPCHReportGenerator(output_dir=tmp_path)
     detailed = tpch_reporter.generate_detailed_report(tpch_result)
-    cert = tpch_reporter.generate_certification_report(tpch_result)
+    cert = tpch_reporter.generate_validation_report(tpch_result)
     csv_file = tpch_reporter.generate_performance_csv(tpch_result)
     comparison = tpch_reporter.generate_comparison_report(tpch_result, tpch_result)
     assert detailed.exists() and cert.exists() and csv_file.exists() and comparison.exists()

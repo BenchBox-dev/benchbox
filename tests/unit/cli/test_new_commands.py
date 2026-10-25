@@ -491,7 +491,10 @@ class TestRunOfficialFlag:
 
         assert result.exit_code == 0
         assert "--official" in result.output
-        assert "TPC-compliant" in result.output
+        help_text = " ".join(result.output.split())
+        assert "TPC official mode" in help_text
+        assert "do not comply with the TPC Specification" in help_text
+        assert "TPC-compliant" not in help_text
 
     def test_run_official_invalid_scale_factor(self):
         runner = CliRunner()
@@ -501,7 +504,7 @@ class TestRunOfficialFlag:
         )
 
         assert result.exit_code == 1
-        assert "not TPC-compliant" in result.output
+        assert "not a TPC-specified scale factor" in result.output
 
     def test_run_official_warns_on_missing_seed(self):
         runner = CliRunner()
@@ -539,7 +542,7 @@ class TestRunOfficialCommand:
         runner = CliRunner()
         result = runner.invoke(cli, ["run-official", "--help"])
 
-        assert "TPC-compliant" in result.output or "DEPRECATED" in result.output
+        assert "TPC-specified" in result.output or "DEPRECATED" in result.output
 
     def test_run_official_help_mentions_quiet(self):
         runner = CliRunner()
@@ -562,7 +565,7 @@ class TestRunOfficialCommand:
         )
 
         assert result.exit_code == 1
-        assert "not TPC-compliant" in result.output
+        assert "not a TPC-specified scale factor" in result.output
 
 
 class TestDatagenParseRunArgs:
@@ -656,7 +659,7 @@ class TestRunOfficialCommandBranches:
             cli,
             ["run-official", "tpch", "--platform", "duckdb", "--scale", "5", "--phases", "power"],
         )
-        assert "seed" in result.output.lower() or "not TPC-compliant" in result.output
+        assert "seed" in result.output.lower() or "not a TPC-specified scale factor" in result.output
 
     def test_validate_results_forwarded(self):
         from benchbox.cli.composite_params import ValidationConfig

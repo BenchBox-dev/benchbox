@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Optional, Union
 
+from benchbox.core.tpc_disclaimer import TPCH_DERIVED_DISCLAIMER
 from benchbox.core.tpch.official_benchmark import TPCHOfficialBenchmarkResult
 
 
@@ -67,8 +68,8 @@ class PerformanceMetrics:
 
 @dataclass
 class ValidationResult:
-    compliant: bool
-    certification_ready: bool
+    checks_passed: bool
+    no_warnings: bool
     issues: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
@@ -94,7 +95,7 @@ class TPCHReportGenerator:
         result: TPCHOfficialBenchmarkResult,
         report_title: str = "TPC-H Benchmark Report",
         include_detailed_analysis: bool = True,
-        include_certification_info: bool = True,
+        include_validation_info: bool = True,
     ) -> Path:
         result = _report_view(result)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -110,7 +111,7 @@ class TPCHReportGenerator:
             validation,
             report_title,
             include_detailed_analysis,
-            include_certification_info,
+            include_validation_info,
         )
 
         with open(report_file, "w", encoding="utf-8") as f:
@@ -118,23 +119,24 @@ class TPCHReportGenerator:
 
         return report_file
 
-    def generate_certification_report(self, result: TPCHOfficialBenchmarkResult) -> Path:
+    def generate_validation_report(self, result: TPCHOfficialBenchmarkResult) -> Path:
         result = _report_view(result)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_file = self.output_dir / f"tpch_certification_report_{timestamp}.txt"
+        report_file = self.output_dir / f"tpch_validation_report_{timestamp}.txt"
 
         validation = self._validate_result(result)
         metrics = self._calculate_performance_metrics(result)
 
         with open(report_file, "w", encoding="utf-8") as f:
-            f.write("TPC-H BENCHMARK CERTIFICATION REPORT\n")
-            f.write("=" * 60 + "\n\n")
+            f.write("TPC-H DERIVED RESULTS VALIDATION REPORT\n")
+            f.write("=" * 60 + "\n")
+            f.write(f"{TPCH_DERIVED_DISCLAIMER}\n\n")
 
             f.write("EXECUTIVE SUMMARY\n")
             f.write("-" * 20 + "\n")
             f.write(f"Scale Factor: {result.scale_factor}\n")
-            f.write(f"Certification Ready: {'YES' if validation.certification_ready else 'NO'}\n")
-            f.write(f"Specification Compliant: {'YES' if validation.compliant else 'NO'}\n\n")
+            f.write(f"Validation Checks Passed: {'YES' if validation.checks_passed else 'NO'}\n")
+            f.write(f"No Validation Warnings: {'YES' if validation.no_warnings else 'NO'}\n\n")
 
             f.write("TEST RESULTS\n")
             f.write("-" * 15 + "\n")
@@ -185,15 +187,11 @@ class TPCHReportGenerator:
                 relative_perf = query_time / metrics.average_query_time
                 f.write(f"{query_id:8} | {query_time:16.3f} | {relative_perf:16.2f}\n")
 
-            f.write("\nCERTIFICATION STATEMENT\n")
+            f.write("\nDERIVED RESULTS NOTICE\n")
             f.write("-" * 25 + "\n")
-            if validation.certification_ready:
-                f.write("This benchmark result meets TPC-H specification requirements\n")
-                f.write("and is ready for certification submission.\n")
-            else:
-                f.write("This benchmark result does NOT meet all TPC-H specification\n")
-                f.write("requirements and is NOT ready for certification.\n")
-                f.write("Please address the issues listed above.\n")
+            f.write(f"{TPCH_DERIVED_DISCLAIMER}\n")
+            if not validation.checks_passed:
+                f.write("Validation checks did not pass. Please address the issues listed above.\n")
 
         return report_file
 
@@ -231,6 +229,7 @@ class TPCHReportGenerator:
             writer.writerow(["Throughput@Size", result.throughput_test.throughput_at_size])
             writer.writerow(["Scale_Factor", result.scale_factor])
             writer.writerow(["Total_Time", result.total_benchmark_time])
+            writer.writerow(["Notice", TPCH_DERIVED_DISCLAIMER])
 
         return csv_file
 
@@ -325,12 +324,12 @@ class TPCHReportGenerator:
         warnings = self._check_execution_warnings(result)
         recommendations = self._generate_recommendations(result)
 
-        compliant = len(issues) == 0
-        certification_ready = compliant and len(warnings) == 0
+        checks_passed = len(issues) == 0
+        no_warnings = checks_passed and len(warnings) == 0
 
         return ValidationResult(
-            compliant=compliant,
-            certification_ready=certification_ready,
+            checks_passed=checks_passed,
+            no_warnings=no_warnings,
             issues=issues,
             warnings=warnings,
             recommendations=recommendations,
@@ -423,7 +422,7 @@ class TPCHReportGenerator:
         validation: ValidationResult,
         title: str,
         include_detailed_analysis: bool,
-        include_certification_info: bool,
+        include_validation_info: bool,
     ) -> str:
         safe_title = html_escape(str(title), quote=True)
         html = f"""
@@ -449,6 +448,7 @@ class TPCHReportGenerator:
     <div class="header">
         <h1>{safe_title}</h1>
         <p>Generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+        <p>{html_escape(TPCH_DERIVED_DISCLAIMER, quote=True)}</p>
     </div>
 
     <div class="section">
@@ -506,14 +506,15 @@ class TPCHReportGenerator:
 
             html += "</table></div>"
 
-        if include_certification_info:
+        if include_validation_info:
             html += f"""
     <div class="section">
-        <h2>Certification Information</h2>
-        <p>Specification Compliant: <span class="{"success" if validation.compliant else "error"}">
-            {"YES" if validation.compliant else "NO"}</span></p>
-        <p>Certification Ready: <span class="{"success" if validation.certification_ready else "warning"}">
-            {"YES" if validation.certification_ready else "NO"}</span></p>
+        <h2>Validation Information</h2>
+        <p>{html_escape(TPCH_DERIVED_DISCLAIMER, quote=True)}</p>
+        <p>Validation Checks Passed: <span class="{"success" if validation.checks_passed else "error"}">
+            {"YES" if validation.checks_passed else "NO"}</span></p>
+        <p>No Validation Warnings: <span class="{"success" if validation.no_warnings else "warning"}">
+            {"YES" if validation.no_warnings else "NO"}</span></p>
 """
 
             if validation.issues:
@@ -569,6 +570,7 @@ class TPCHReportGenerator:
     <div class="header">
         <h1>{safe_title}</h1>
         <p>Generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+        <p>{html_escape(TPCH_DERIVED_DISCLAIMER, quote=True)}</p>
     </div>
 
     <div class="section">

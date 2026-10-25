@@ -50,8 +50,8 @@ def _metrics() -> PerformanceMetrics:
 def test_detailed_report_escapes_title_query_id_issues_and_warnings(tmp_path):
     generator = TPCHReportGenerator(tmp_path)
     validation = ValidationResult(
-        compliant=False,
-        certification_ready=False,
+        checks_passed=False,
+        no_warnings=False,
         issues=[UNTRUSTED_ISSUE],
         warnings=[UNTRUSTED_WARNING],
     )
@@ -62,7 +62,7 @@ def test_detailed_report_escapes_title_query_id_issues_and_warnings(tmp_path):
         validation,
         UNTRUSTED_TITLE,
         include_detailed_analysis=True,
-        include_certification_info=True,
+        include_validation_info=True,
     )
 
     for raw_value in (UNTRUSTED_TITLE, UNTRUSTED_QUERY_ID, UNTRUSTED_ISSUE, UNTRUSTED_WARNING):

@@ -859,15 +859,17 @@ def prompt_official_mode(benchmark_id: str, scale_factor: float) -> tuple[bool, 
         return False, None
 
     console.print("\n[bold cyan]TPC Official Mode[/bold cyan]")
-    console.print("[dim]Official mode ensures TPC-compliant benchmark runs with validated scale factors.[/dim]")
+    console.print(
+        "[dim]Official mode validates scale factors against the TPC-specified set. Results are derived from the TPC benchmark and do not comply with the TPC Specification.[/dim]"
+    )
 
-    if not Confirm.ask("Enable TPC-compliant official mode?", default=False):
+    if not Confirm.ask("Enable TPC official mode?", default=False):
         return False, None
 
     tpc_allowed_scales = {1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000}
 
     if scale_factor not in tpc_allowed_scales:
-        console.print(f"\n[yellow]⚠️  Scale factor {scale_factor} is not TPC-compliant.[/yellow]")
+        console.print(f"\n[yellow]⚠️  Scale factor {scale_factor} is not a TPC-specified scale factor.[/yellow]")
         console.print(f"[dim]Allowed scale factors: {sorted(tpc_allowed_scales)}[/dim]")
 
         if scale_factor < 1:
@@ -875,21 +877,21 @@ def prompt_official_mode(benchmark_id: str, scale_factor: float) -> tuple[bool, 
         else:
             nearest = min(tpc_allowed_scales, key=lambda x: abs(x - scale_factor))
 
-        if Confirm.ask(f"Use nearest TPC-compliant scale factor ({nearest})?", default=True):
-            console.print(f"[green]✓ Using TPC-compliant scale factor: {nearest}[/green]")
+        if Confirm.ask(f"Use nearest TPC-specified scale factor ({nearest})?", default=True):
+            console.print(f"[green]✓ Using TPC-specified scale factor: {nearest}[/green]")
             return True, float(nearest)
         else:
             new_scale = FloatPrompt.ask(
-                "Enter TPC-compliant scale factor",
+                "Enter TPC-specified scale factor",
                 default=float(nearest),
             )
             if new_scale not in tpc_allowed_scales:
-                console.print(f"[red]Scale factor {new_scale} is not TPC-compliant.[/red]")
+                console.print(f"[red]Scale factor {new_scale} is not a TPC-specified scale factor.[/red]")
                 console.print("[yellow]Disabling official mode.[/yellow]")
                 return False, None
             return True, new_scale
 
-    console.print(f"[green]✓ TPC Official Mode enabled (scale factor {scale_factor} is compliant)[/green]")
+    console.print(f"[green]✓ TPC Official Mode enabled (scale factor {scale_factor} is TPC-specified)[/green]")
     return True, None
 
 

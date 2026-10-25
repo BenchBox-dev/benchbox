@@ -1236,7 +1236,7 @@ class TestRunCommandValidation:
                 obj=_run_obj(),
             )
         assert result.exit_code != 0
-        assert "not TPC-compliant" in result.output
+        assert "not a TPC-specified scale factor" in result.output
 
     def test_official_mode_accepts_compliant_scale_factor(self):
         runner = CliRunner()
@@ -1264,7 +1264,7 @@ class TestRunCommandValidation:
                 ["--official", "--scale", "1", "--platform", "duckdb", "--benchmark", "tpch", "--non-interactive"],
                 obj=_run_obj(),
             )
-        assert "not TPC-compliant" not in result.output
+        assert "not a TPC-specified scale factor" not in result.output
 
     @pytest.mark.parametrize("benchmark_name", ["tpcds", "tpc-ds", "tpc_ds"])
     def test_tpcds_official_mode_rejects_tpch_only_scale_factor(self, benchmark_name):
@@ -1286,7 +1286,7 @@ class TestRunCommandValidation:
             )
 
         assert result.exit_code != 0
-        assert "Scale factor 30.0 is not TPC-compliant" in result.output
+        assert "Scale factor 30.0 is not a TPC-specified scale factor" in result.output
         assert "30.0" not in result.output.split("Allowed scale factors:", 1)[-1]
 
     def test_invalid_phases_rejected(self):
@@ -1378,7 +1378,7 @@ class TestRunCommandValidation:
         assert result.exit_code != 0
         assert "Platform options require a --platform selection" in result.output
 
-    def test_official_with_seed_shows_compliance_banner(self):
+    def test_official_with_seed_shows_derived_banner(self):
         runner = CliRunner()
         with _non_interactive_base_patches() as stack:
             stack.enter_context(patch.object(_run_module, "_execute_orchestrated_run", side_effect=SystemExit(0)))
@@ -1415,7 +1415,8 @@ class TestRunCommandValidation:
                 ],
                 obj=_run_obj(),
             )
-        assert "TPC-Compliant" in result.output
+        assert "TPC Official Mode Benchmark Run" in result.output
+        assert "do not comply with the TPC-H Specification" in " ".join(result.output.split())
         assert "Seed: 42" in result.output
 
     def test_official_without_seed_warns_about_reproducibility(self):

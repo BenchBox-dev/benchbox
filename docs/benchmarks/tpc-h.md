@@ -109,7 +109,9 @@ platform and scale.
 - **Complex Queries** ([Q2](queries/tpch/q2.md), [Q15](queries/tpch/q15.md), [Q20](queries/tpch/q20.md), [Q21](queries/tpch/q21.md)): Nested subqueries, correlated queries
 - **Analytical Queries** ([Q7](queries/tpch/q7.md), [Q8](queries/tpch/q8.md), [Q9](queries/tpch/q9.md)): Time-series and trend analysis
 
-## Official TPC-H Metrics
+## TPC-H Derived Metrics
+
+> Derived from TPC-H. These results do not comply with the TPC-H Specification and must not be compared with official TPC-H results.
 
 BenchBox reports Power@Size and Throughput@Size. TPC-H refresh functions are
 opt-in, so existing runs remain query-only:
@@ -499,8 +501,8 @@ query = tpch.get_query(1, seed=42)
 
 ### Official TPC-H Resources
 
-- **[Official TPC-H Benchmark Guide](../guides/tpc/tpc-h-official-guide.md)** - Compliance testing with BenchBox
-- **[TPC Validation Guide](../guides/tpc/tpc-validation-guide.md)** - Result validation and compliance
+- **[Official TPC-H Benchmark Guide](../guides/tpc/tpc-h-official-guide.md)** - Running TPC-H with BenchBox
+- **[TPC Validation Guide](../guides/tpc/tpc-validation-guide.md)** - Result validation
 - **[TPC Patterns Usage](../guides/tpc/tpc-patterns-usage.md)** - Parameter generation and stream patterns
 
 ### External Resources

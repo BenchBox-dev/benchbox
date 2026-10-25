@@ -96,6 +96,7 @@ from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.provenance import FUNDING_SOURCES, RESULT_SOURCES
 from benchbox.core.results.status import result_cli_failure_reason, result_non_clean_reason
 from benchbox.core.schemas import ExecutionContext
+from benchbox.core.tpc_disclaimer import official_mode_disclaimer
 from benchbox.core.tuning import modes as tuning_modes
 from benchbox.utils.cloud_storage import is_cloud_path
 from benchbox.utils.compression import CompressionManager
@@ -593,16 +594,17 @@ def _validate_initial_flags(s: types.SimpleNamespace) -> None:
         else:
             tpc_allowed = frozenset({1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000})
         if s.scale not in tpc_allowed:
-            console.print(f"[red]❌ Scale factor {s.scale} is not TPC-compliant[/red]")
+            console.print(f"[red]❌ Scale factor {s.scale} is not a TPC-specified scale factor[/red]")
             console.print(f"Allowed scale factors: {sorted(tpc_allowed)}")
             s.ctx.exit(1)
 
         if s.seed is None:
             console.print(
-                "[yellow]⚠️  Warning: No --seed specified. Official TPC runs require a random seed for reproducibility.[/yellow]"
+                "[yellow]⚠️  Warning: No --seed specified. TPC official mode requires a random seed for reproducibility.[/yellow]"
             )
 
-        console.print("[bold blue]TPC-Compliant Official Benchmark Run[/bold blue]")
+        console.print("[bold blue]TPC Official Mode Benchmark Run[/bold blue]")
+        console.print(f"[dim]{official_mode_disclaimer(benchmark)}[/dim]")
         console.print(f"Scale Factor: {s.scale} (TPC-allowed)")
         if s.seed is not None:
             console.print(f"Seed: {s.seed}")
@@ -2102,7 +2104,7 @@ def _interactive_prompt_seed(s: types.SimpleNamespace, prompt_seed_fn: Any) -> N
         return
     if s.official:
         console.print("\n[bold cyan]Seed (Required for Official Mode)[/bold cyan]")
-        console.print("[dim]Official TPC runs require a seed for reproducibility.[/dim]")
+        console.print("[dim]TPC official mode requires a seed for reproducibility.[/dim]")
         import random
 
         from rich.prompt import IntPrompt
@@ -2560,7 +2562,7 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
 @click.option(
     "--official",
     is_flag=True,
-    help="TPC-compliant mode: validates scale factors, requires seed for reproducibility",
+    help="TPC official mode: validates scale factors, requires seed for reproducibility; results are derived and do not comply with the TPC Specification",
 )
 @advanced_option(
     "--capture-plans",

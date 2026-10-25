@@ -27,7 +27,7 @@ These operations support common warehouse workflows:
 | **Database State** | Unchanged by default; modified with TPC-H refresh | **Modified after test** |
 | **Repeatability** | Reuse clean data or advance update-set number | **Reload or use unused update sets** |
 | **Purpose** | Query performance; optionally concurrent refresh | Data modification performance |
-| **TPC Compliance** | Depends on configuration and evidence | Required for official results |
+| **TPC specification coverage** | Depends on configuration and evidence | Required for QphH@Size |
 
 ## When to Use Maintenance Tests
 
@@ -432,7 +432,7 @@ print(f"Before: {before}, After: {after}, Difference: {after - before}")
 ### "Can I skip Maintenance tests?"
 
 ✅ **Yes, if you only need query performance metrics.** Maintenance tests are only required for:
-- Official TPC compliance
+- Full TPC specification coverage
 - Complete benchmark suite
 - ETL/data modification performance evaluation
 
@@ -441,7 +441,7 @@ print(f"Before: {before}, After: {after}, Difference: {after - before}")
 Some immutable analytical databases (like certain columnar stores) don't support data modifications. In this case:
 - Skip Maintenance tests entirely
 - Document this limitation in your results
-- Note that you cannot achieve full TPC compliance
+- Note that the run will not cover the full TPC specification
 
 ## Workflow Summary
 
@@ -486,7 +486,7 @@ A: Not by default. With TPC-H refresh enabled, Power applies set F and Throughpu
 A: It modifies the database. Reload original data or configure the next unused TPC-H update set before measuring.
 
 **Q: Can refresh functions run during Throughput tests?**
-A: Yes, for TPC-H when `tpch_refresh_functions=true`; one RF1/RF2 stream runs concurrently with query streams. This does not imply full TPC certification.
+A: Yes, for TPC-H when `tpch_refresh_functions=true`; one RF1/RF2 stream runs concurrently with query streams. BenchBox results remain derived results, not audited TPC results.
 
 **Q: How long does database reload take?**
 A: Depends on scale factor and platform:
