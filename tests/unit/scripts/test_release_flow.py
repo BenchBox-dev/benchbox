@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import shutil
 import subprocess
 import sys
@@ -55,7 +56,7 @@ source = {{ editable = "." }}
 def write_tree(root: Path, version: str = VERSION) -> Path:
 
     (root / "scripts").mkdir(parents=True, exist_ok=True)
-    for name in ("update_version.py", "generate_changelog_entry.py", "release_flow.py"):
+    for name in ("update_version.py", "generate_changelog_entry.py", "release_flow.py", "changelog_fragments.py"):
         shutil.copy(SCRIPTS / name, root / "scripts" / name)
     (root / "benchbox" / "utils").mkdir(parents=True, exist_ok=True)
     (root / "docs").mkdir(exist_ok=True)
@@ -266,26 +267,40 @@ def test_make_release_check_refuses_stale_lock_without_modifying_it(
 
 
 @pytest.mark.parametrize(
-    "version,ref,release_date",
+    "version,release_date",
     [
-        ("bad-version", "refs/tags/v1.2.2", None),
-        (VERSION, "refs/tags/missing", None),
-        (VERSION, "refs/tags/v1.2.2", "2026-02-30"),
+        ("bad-version", None),
+        (VERSION, "2026-02-30"),
     ],
 )
-def test_invalid_preparation_inputs_leave_files_unchanged(
-    tree: Path, version: str, ref: str, release_date: str | None
-) -> None:
+def test_invalid_preparation_inputs_leave_files_unchanged(tree: Path, version: str, release_date: str | None) -> None:
+    write_fragment(tree)
     before = {path: path.read_bytes() for path in tree.rglob("*") if path.is_file() and ".git" not in path.parts}
-    assert release_flow.prep(tree, version, ref, release_date, release_flow.run_command) != 0
+    assert release_flow.prep(tree, version, release_date, release_flow.run_command) != 0
     assert {path: path.read_bytes() for path in before} == before
 
 
 def test_missing_preparation_marker_fails_before_any_write(tree: Path) -> None:
+    write_fragment(tree)
     (tree / "docs/README.md").unlink()
     before = {path: path.read_bytes() for path in tree.rglob("*") if path.is_file() and ".git" not in path.parts}
-    assert release_flow.prep(tree, "1.2.4", "refs/tags/v1.2.2", None, release_flow.run_command) != 0
+    assert release_flow.prep(tree, "1.2.4", None, release_flow.run_command) != 0
     assert {path: path.read_bytes() for path in before} == before
+
+
+def test_invalid_fragment_aborts_preparation_before_any_marker_or_changelog_write(
+    tree: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_fragment(tree, "feat-good.json")
+    bad = write_fragment(tree, "feat-bad.json", {"schema": 1, "entries": [{"category": "added", "text": "short"}]})
+    before = {path: path.read_bytes() for path in tree.rglob("*") if path.is_file() and ".git" not in path.parts}
+
+    assert release_flow.prep(tree, "1.2.4", "2026-02-03", release_flow.run_command) != 0
+
+    assert {path: path.read_bytes() for path in before} == before
+    captured = capsys.readouterr()
+    assert bad.as_posix() in captured.err + captured.out
+    assert "release-prep failed at: changelog fragment validation" in captured.err
 
 
 @pytest.mark.parametrize(
@@ -337,6 +352,18 @@ def test_cli_check_reports_all_problems_and_exits_nonzero(tree: Path) -> None:
     assert "CHANGELOG.md" in result.stderr
 
 
+def write_fragment(root: Path, name: str = "feat-fixture.json", data: dict | None = None) -> Path:
+    path = root / "changelog.d" / name
+    path.parent.mkdir(exist_ok=True)
+    payload = (
+        data
+        if data is not None
+        else {"schema": 1, "entries": [{"category": "added", "breaking": False, "text": FRAGMENT_TEXT}]}
+    )
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
 def git(cwd: Path, *args: str) -> None:
     subprocess.run(
         ["git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", *args],
@@ -348,27 +375,21 @@ def git(cwd: Path, *args: str) -> None:
 
 @pytest.mark.skipif(shutil.which("uv") is None or shutil.which("git") is None, reason="needs uv and git")
 @pytest.mark.parametrize("version", ["1.2.3", "1.2.3-rc.1"])
-def test_prep_updates_every_marker_and_drafts_the_changelog(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version: str
-) -> None:
-
-    monkeypatch.setenv("BENCHBOX_CHANGELOG_SUMMARIZE", "0")
-    monkeypatch.delenv("UV_PROJECT_ENVIRONMENT", raising=False)
+def test_prep_updates_every_marker_and_compiles_the_fragments(tmp_path: Path, version: str) -> None:
     root = write_tree(tmp_path, "1.2.2")
     (root / "CHANGELOG.md").write_text(CHANGELOG.split("## [1.2.3]")[0] + "## [1.2.2] - 2025-12-01\n", encoding="utf-8")
+    write_fragment(root)
+    write_fragment(root, "chore-fixture.json", {"schema": 1, "internal": "Test scaffolding only."})
 
     subprocess.run(["uv", "lock", "--offline"], cwd=root, check=True, capture_output=True)
     git(root, "init", "-q")
     git(root, "add", "--all")
-    git(root, "commit", "-q", "-m", "chore: initial")
+    git(root, "commit", "-q", "-m", "feat: add a fixture feature (#7)")
     git(root, "tag", "v1.2.2")
-    (root / "feature.txt").write_text("new\n", encoding="utf-8")
-    git(root, "add", "feature.txt")
-    git(root, "commit", "-q", "-m", "feat: add a fixture feature")
     before = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True).stdout
     assert before == ""
 
-    code = release_flow.prep(root, version, None, "2026-02-03", release_flow.run_command)
+    code = release_flow.prep(root, version, "2026-02-03", release_flow.run_command)
 
     assert code == 0
     changed = set(
@@ -384,11 +405,16 @@ def test_prep_updates_every_marker_and_drafts_the_changelog(
         "README.md",
         "docs/README.md",
         "benchbox/utils/VERSION_MANAGEMENT.md",
+        "changelog.d/feat-fixture.json",
+        "changelog.d/chore-fixture.json",
     }
+    assert not list((root / "changelog.d").glob("*.json"))
     assert release_flow.check_version_markers(root, version) == []
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     assert f"## [{version}] - 2026-02-03" in changelog
-    assert "add a fixture feature" in changelog
+    assert f"- {FRAGMENT_TEXT}" in changelog
+    assert "Test scaffolding only" not in changelog
+    assert release_flow.check_changelog(root, version) == []
 
 
 def test_prep_stops_at_the_first_failing_step(tree: Path) -> None:
@@ -396,27 +422,81 @@ def test_prep_stops_at_the_first_failing_step(tree: Path) -> None:
 
     def runner(argv, cwd):
         calls.append(list(argv))
-        if argv[0] == "git":
-            return 0, "a" * 40
+        if Path(argv[1]).name == "generate_changelog_entry.py":
+            return 0, ""
         return 3, "boom"
 
-    assert release_flow.prep(tree, VERSION, "refs/tags/v1.2.2", None, runner) == 3
+    assert release_flow.prep(tree, VERSION, None, runner) == 3
     assert len(calls) == 2
+    assert Path(calls[0][1]).name == "generate_changelog_entry.py"
+    assert "--dry-run" in calls[0]
     assert Path(calls[1][1]).name == "update_version.py"
 
 
-def test_prep_passes_the_requested_lower_bound_to_the_changelog_step(tree: Path) -> None:
+def test_prep_validates_fragments_first_and_compiles_them_last(tree: Path) -> None:
     calls: list[list[str]] = []
 
     def runner(argv, cwd):
         calls.append(list(argv))
         return 0, ""
 
-    assert release_flow.prep(tree, VERSION, "origin/develop~5", None, runner) == 0
+    assert release_flow.prep(tree, VERSION, "2026-02-03", runner) == 0
 
-    changelog = next(argv for argv in calls if Path(argv[1]).name == "generate_changelog_entry.py")
-    assert changelog[changelog.index("--since-ref") + 1] == "origin/develop~5"
-    assert any(argv[:2] == ["uv", "lock"] for argv in calls)
+    scripts = [Path(argv[1]).name if argv[0] != "uv" else "uv" for argv in calls]
+    assert scripts == [
+        "generate_changelog_entry.py",
+        "update_version.py",
+        "update_version.py",
+        "uv",
+        "generate_changelog_entry.py",
+    ]
+    validate, compile_ = calls[0], calls[-1]
+    assert "--dry-run" in validate
+    assert "--dry-run" not in compile_
+    for argv in (validate, compile_):
+        assert "--compile-fragments" in argv
+        assert argv[argv.index("--version") + 1] == VERSION
+        assert argv[argv.index("--release-date") + 1] == "2026-02-03"
+        assert "--since-ref" not in argv
+
+
+def test_pre_tag_check_fails_while_any_fragment_is_pending(tree: Path) -> None:
+    assert release_flow.run_checks(tree, VERSION, ok_runner, pre_tag=True) == []
+    write_fragment(tree, "feat-pending.json")
+    write_fragment(tree, "chore-pending.json", {"schema": 1, "internal": "Test scaffolding only."})
+
+    assert release_flow.run_checks(tree, VERSION, ok_runner) == []
+    problems = release_flow.run_checks(tree, VERSION, ok_runner, pre_tag=True)
+    assert len(problems) == 1
+    assert "changelog.d" in problems[0]
+    assert "chore-pending.json" in problems[0]
+    assert "feat-pending.json" in problems[0]
+
+
+def test_cli_pre_tag_flag_reaches_the_pending_fragment_check(tree: Path) -> None:
+    write_fragment(tree)
+
+    def check(*extra: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "release_flow.py"),
+                "check",
+                "--version",
+                VERSION,
+                "--root",
+                str(tree),
+                "--skip-upstream-freshness",
+                *extra,
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+    assert "changelog.d:" not in check().stderr
+    pre_tag = check("--pre-tag")
+    assert pre_tag.returncode == 1
+    assert "changelog.d: 1 fragment(s) still pending" in pre_tag.stderr
 
 
 @pytest.fixture
@@ -445,9 +525,10 @@ def test_candidate_selection_catches_each_split_version_bump(candidate_tree: tup
     root, base = candidate_tree
     file = root / path
     file.write_text(file.read_text(encoding="utf-8").replace(VERSION, "1.2.4"))
-    selected, _version, freshness_required = release_flow.select_candidate(root, base)
+    selected, _version, freshness_required, identity_changed = release_flow.select_candidate(root, base)
     assert selected
     assert freshness_required
+    assert identity_changed
     assert release_flow.run_checks(root, _version, ok_runner, baseline_ref=base)
 
 
@@ -484,13 +565,14 @@ def test_candidate_selection_preserves_ordinary_prose_dependency_and_source_edit
     (root / "benchbox/new_module.py").write_text('"""Ordinary module."""\n')
     changelog = root / "CHANGELOG.md"
     changelog.write_text(changelog.read_text(encoding="utf-8").replace("Earlier entry.", "Clarified older entry."))
-    assert release_flow.select_candidate(root, base) == (False, VERSION, False)
+    assert release_flow.select_candidate(root, base) == (False, VERSION, False, False)
 
 
 @pytest.mark.parametrize(
     "path",
     [
         "scripts/release_flow.py",
+        "scripts/changelog_fragments.py",
         "scripts/check_dependency_bounds.py",
         "_project/decisions/single-repo-migration.md",
         ".github/workflows/ci.yml",
@@ -508,7 +590,7 @@ def test_candidate_selection_includes_committed_enforcement_changes(
     )
     git(root, "add", "--", path)
     git(root, "commit", "-q", "-m", "Update release enforcement")
-    assert release_flow.select_candidate(root, base) == (True, VERSION, False)
+    assert release_flow.select_candidate(root, base) == (True, VERSION, False, False)
 
 
 @pytest.mark.parametrize("path", ["scripts/check_sqlglot_upstream_freshness.py", "scripts/sqlglot_refresh_waiver.json"])
@@ -521,14 +603,20 @@ def test_candidate_selection_requires_freshness_when_the_gate_itself_changes(
     file.write_text(file.read_text(encoding="utf-8") + "\n" if file.exists() else "\n")
     git(root, "add", "--", path)
     git(root, "commit", "-q", "-m", "Update freshness gate")
-    assert release_flow.select_candidate(root, base) == (True, VERSION, True)
+    assert release_flow.select_candidate(root, base) == (True, VERSION, True, False)
 
 
 @pytest.mark.parametrize(
-    ("required", "expected"), [("true", ""), ("false", "SKIP_UPSTREAM_FRESHNESS=1"), ("", "SKIP_UPSTREAM_FRESHNESS=1")]
+    ("required", "identity", "expected_skip", "expected_pre_tag"),
+    [
+        ("true", "true", "", "1"),
+        ("false", "false", "SKIP_UPSTREAM_FRESHNESS=1", ""),
+        ("true", "false", "", ""),
+        ("", "", "SKIP_UPSTREAM_FRESHNESS=1", ""),
+    ],
 )
-def test_ci_release_check_step_passes_skip_only_when_freshness_not_required(
-    tmp_path: Path, required: str, expected: str
+def test_ci_release_check_step_passes_skip_and_pre_tag_from_the_selection_outputs(
+    tmp_path: Path, required: str, identity: str, expected_skip: str, expected_pre_tag: str
 ) -> None:
     import yaml
 
@@ -546,14 +634,17 @@ def test_ci_release_check_step_passes_skip_only_when_freshness_not_required(
         "RELEASE_VERSION": VERSION,
         "EVENT_BASE_SHA": "a" * 40,
         "UPSTREAM_FRESHNESS_REQUIRED": required,
+        "RELEASE_IDENTITY_CHANGED": identity,
     }
     step_script = tmp_path / "step.sh"
     step_script.write_text(check["run"])
     subprocess.run(["sh", "-c", '. "$1"', "sh", str(step_script)], env=env, check=True)
     args = calls.read_text(encoding="utf-8").split()
     assert args[0] == "release-check"
-    skip = [a for a in args if a.startswith("SKIP_UPSTREAM_FRESHNESS=")]
-    assert skip == ([expected] if expected else ["SKIP_UPSTREAM_FRESHNESS="])
+    assert [a for a in args if a.startswith("SKIP_UPSTREAM_FRESHNESS=")] == [
+        expected_skip or "SKIP_UPSTREAM_FRESHNESS="
+    ]
+    assert [a for a in args if a.startswith("RELEASE_PRE_TAG=")] == [f"RELEASE_PRE_TAG={expected_pre_tag}"]
 
 
 @pytest.mark.parametrize("base", ["HEAD", "", "0" * 40])
@@ -597,7 +688,7 @@ def test_candidate_selection_cli_is_stdlib_only_and_preserves_lock(
     assert result.returncode == 0, result.stdout + result.stderr
     assert (
         output.read_text(encoding="utf-8")
-        == f"release-check-needed=false\nrelease-version={VERSION}\nupstream-freshness-required=false\n"
+        == f"release-check-needed=false\nrelease-version={VERSION}\nupstream-freshness-required=false\nrelease-identity-changed=false\n"
     )
     assert (root / "uv.lock").read_bytes() == original
 
@@ -616,6 +707,9 @@ def test_candidate_check_is_required_on_pull_requests_without_changing_legacy_pu
     assert check["if"] == "steps.release.outputs.release-check-needed == 'true'"
     assert check["env"]["UPSTREAM_FRESHNESS_REQUIRED"] == "${{ steps.release.outputs.upstream-freshness-required }}"
     assert 'SKIP_UPSTREAM_FRESHNESS="$skip"' in check["run"]
+    assert check["env"]["RELEASE_IDENTITY_CHANGED"] == "${{ steps.release.outputs.release-identity-changed }}"
+    assert 'RELEASE_PRE_TAG="$pre_tag"' in check["run"]
+    assert 'if [ "$RELEASE_IDENTITY_CHANGED" = "true" ]; then pre_tag=1; fi' in check["run"]
     assert 'if [ "$UPSTREAM_FRESHNESS_REQUIRED" != "true" ]; then skip=1; fi' in check["run"]
     core = workflow["jobs"]["core"]
     assert "ci-paths" in core["needs"]
@@ -647,3 +741,52 @@ def test_make_targets_exist_and_legacy_release_targets_are_kept() -> None:
     assert "release_flow.py prep --version" in dry_run("release-prep")
     assert "release_finalize.py" in dry_run("release-finalize")
     assert "release_cut_start.sh" in dry_run("release-cut")
+    assert "--pre-tag" not in dry_run("release-check")
+    assert (
+        "--pre-tag"
+        in subprocess.run(
+            ["make", "-n", "release-check", f"VERSION={VERSION}", "RELEASE_PRE_TAG=1"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    )
+    assert "--since-ref" not in dry_run("release-prep")
+
+
+def test_release_v2_tag_time_release_check_confirms_the_tagged_tree_has_no_fragments() -> None:
+    import yaml
+
+    workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/release-v2.yml").read_text(encoding="utf-8"))
+    checks = [
+        step
+        for job in workflow["jobs"].values()
+        for step in job.get("steps", [])
+        if "make release-check" in step.get("run", "")
+    ]
+    assert len(checks) == 1
+    assert 'make release-check VERSION="$version" RELEASE_PRE_TAG=1' in checks[0]["run"]
+
+
+def test_selection_reports_release_identity_separately_from_enforcement_changes(
+    candidate_tree: tuple[Path, str],
+) -> None:
+    root, base = candidate_tree
+    changelog = root / "CHANGELOG.md"
+    changelog.write_text(changelog.read_text(encoding="utf-8").replace("A hand-curated entry", "A changed entry"))
+    assert release_flow.select_candidate(root, base) == (True, VERSION, True, False)
+    git(root, "checkout", "-q", "--", "CHANGELOG.md")
+    lock = root / "uv.lock"
+    lock.write_text(lock.read_text(encoding="utf-8").replace("revision = 3", "revision = 2"))
+    assert release_flow.select_candidate(root, base) == (True, VERSION, True, False)
+    git(root, "checkout", "-q", "--", "uv.lock")
+
+    enforcement = root / "scripts" / "changelog_fragments.py"
+    enforcement.write_text("# Updated enforcement.\n")
+    git(root, "add", "--", "scripts/changelog_fragments.py")
+    git(root, "commit", "-q", "-m", "Update fragment enforcement")
+    assert release_flow.select_candidate(root, base) == (True, VERSION, False, False)
+
+
+FRAGMENT_TEXT = "Prep compiles fragment entries into the dated section of the changelog."

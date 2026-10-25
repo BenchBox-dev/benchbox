@@ -6,16 +6,6 @@
     "scripts/compare_pg_duckdb.py": {
       "WA003": 1
     },
-    "scripts/generate_changelog_entry.py": {
-      "WA002": 1,
-      "WA003": 1
-    },
-    "scripts/publication/capture_baseline.py": {
-      "WA003": 1
-    },
-    "scripts/publication/check_plan_reconciliation.py": {
-      "WA003": 1
-    },
     "scripts/release_artifact_consumer.py": {
       "WA002": 1
     },
@@ -283,9 +273,6 @@
     "tests/unit/release/test_ruleset_drift_review_coverage.py": {
       "WA003": 2
     },
-    "tests/unit/scripts/publication/test_plan_reconciliation.py": {
-      "WA003": 2
-    },
     "tests/unit/scripts/test_check_release_curation.py": {
       "WA003": 1
     },
@@ -380,9 +367,6 @@
     },
     "tests/unit/utils/test_utils_dependency_validation.py": {
       "WA003": 2
-    },
-    "tests/unit/workflows/test_corpus_cutover.py": {
-      "WA003": 1
     },
     "tests/unit/workflows/test_corpus_trust_boundary.py": {
       "WA003": 2

@@ -687,35 +687,45 @@ class TestReleaseInfrastructure:
         assert "three curated Explorer" in release_template
         assert "non-curated portions of `_project/`" in release_template
 
-    def test_release_cut_generates_changelog_from_main_delta(self):
+    def test_release_cut_requires_the_prepared_changelog_instead_of_drafting_one(self):
         recipe = _make_target_recipe("release-cut")
         release_guide = (REPO_ROOT / "docs" / "internal" / "release-guide.md").read_text(encoding="utf-8")
         release_template = (REPO_ROOT / ".github" / "RELEASE_PR_TEMPLATE.md").read_text(encoding="utf-8")
 
-        assert "scripts/generate_changelog_entry.py --version $(VERSION) --since-ref origin/release" in recipe
-        assert "`origin/release` patch delta" in release_template
-        assert "git log origin/release..HEAD" in release_guide
-        assert "origin/release" in release_guide
-        assert "intentionally does not replay release commits onto" in release_guide
+        assert "scripts/generate_changelog_entry.py --version $(VERSION) --require-prepared" in recipe
+        assert "--since-ref" not in recipe
+        assert "`origin/release` patch delta" not in release_template
+        assert "compiled from `changelog.d`" in release_template
+        assert "--require-prepared" in release_guide
+        assert "--compile-fragments" in release_guide
 
-    def test_release_cut_gates_on_changelog_curation_not_on_editor(self):
+    def test_release_cut_gates_on_prepared_changelog_and_curation_before_git_rm(self):
         recipe = _make_target_recipe("release-cut")
 
         assert "scripts/generate_changelog_entry.py --check-curation --version $(VERSION)" in recipe
         assert "refusing to skip changelog curation" not in recipe
-        gen_idx = recipe.index("--version $(VERSION) --since-ref origin/release")
+        prepared_idx = recipe.index("--require-prepared")
         check_idx = recipe.index("--check-curation")
         rm_idx = recipe.index("git rm")
-        assert gen_idx < check_idx < rm_idx, "curation check must gate between changelog draft and `git rm`"
+        assert prepared_idx < check_idx < rm_idx, "the prepared and curation gates must run before `git rm`"
 
     def test_release_cut_takes_a_curated_section_in_one_pass_without_skipping_gates(self):
         recipe = _make_target_recipe("release-cut")
 
-        assert '$(if $(CHANGELOG_SECTION),--section-file "$(CHANGELOG_SECTION)")' in recipe
+        assert '--section-file "$(CHANGELOG_SECTION)"' in recipe
         assert recipe.index('sh scripts/release_cut_start.sh "$(VERSION)"') < recipe.index("--section-file")
-        assert recipe.index("--section-file") < recipe.index("--check-curation --version $(VERSION)")
+        assert recipe.index("--section-file") < recipe.index("--require-prepared")
+        assert recipe.index("--require-prepared") < recipe.index("--check-curation --version $(VERSION)")
         assert 'if [ -n "$(CHANGELOG_SECTION)" ]' in recipe
-        assert recipe.count("CHANGELOG_SECTION") == 5, "CHANGELOG_SECTION must not gate anything else"
+        assert recipe.count("CHANGELOG_SECTION") == 3, "CHANGELOG_SECTION must not gate anything else"
+
+    def test_release_cut_curation_accounts_for_the_changelog_fragment_directory(self):
+        recipe = _make_target_recipe("release-cut")
+        removal = next(line for line in recipe.splitlines() if "git rm -rf --ignore-unmatch changelog.d" in line)
+        guard_line = next(line for line in recipe.splitlines() if "LEFTOVER=$$(git ls-files" in line)
+
+        assert "changelog.d" in removal.split()
+        assert "changelog.d" in guard_line.split()
 
     def test_release_cut_is_resumable_and_has_an_abort_target(self):
         recipe = _make_target_recipe("release-cut")
@@ -891,7 +901,7 @@ class TestReleaseInfrastructure:
         )
         assert commit_match, "expected the `Release v$(VERSION)` commit line in release-cut"
         assert push_match, "expected `git push -u origin v$(VERSION)` in release-cut"
-        changelog_idx = recipe.index("generate_changelog_entry.py")
+        changelog_idx = recipe.index("--require-prepared")
         assert changelog_idx < commit_match.start() < merge_match.start() < push_match.start(), (
             "alignment merge must run after the `Release v$(VERSION)` commit and before the push"
         )

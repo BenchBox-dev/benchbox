@@ -81,7 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           version="${RELEASE_TAG#v}"
-          make release-check VERSION="$version"
+          make release-check VERSION="$version" RELEASE_PRE_TAG=1
 
       - name: Check ruleset drift without the readiness override
         env:

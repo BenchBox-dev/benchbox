@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import re
-import signal
 import subprocess
 import sys
 import tempfile
@@ -15,16 +15,10 @@ import urllib.request
 from datetime import date
 from pathlib import Path
 
-CLAUDE_TIMEOUT_SECONDS = 120
-
-_NESTED_CLAUDE_ENV_VARS = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID")
-
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
-_FALSE_VALUES = frozenset({"0", "false", "no", "off"})
 
 MAX_CURATED_BULLETS = 45
 MAX_CURATED_LINES = 160
-RAW_PLACEHOLDER = "(no user-facing changes detected -- please edit manually)"
 _PR_SUFFIX_RE = re.compile(r"\(#\d+\)\s*$")
 _BULLET_RE = re.compile(r"^\s*- \S")
 
@@ -36,6 +30,13 @@ _PYPI_RELEASE_URL = "https://pypi.org/pypi/benchbox/json"
 
 _RELEASE_BRANCH_RE = re.compile(r"^v(?P<version>\d+\.\d+\.\d+)(-[A-Za-z0-9.+-]+)?$")
 
+_ANY_SECTION_RE = re.compile(r"^## \[(?P<label>[^\]]+)\]")
+_LINK_RE = re.compile(r"^\[(?P<label>[^\]]+)\]: (?P<url>\S+)\s*$")
+_HEADING_RE = re.compile(r"^### (?P<name>.+?)\s*$")
+_COMPARE_BASE = "https://github.com/BenchBox-dev/BenchBox/compare/"
+_TAG_BASE = "https://github.com/BenchBox-dev/BenchBox/releases/tag/"
+_FRAGMENT_DIR = "changelog.d"
+
 
 def _run_git(source: Path, *args: str, check: bool = False) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
@@ -45,175 +46,6 @@ def _run_git(source: Path, *args: str, check: bool = False) -> subprocess.Comple
         text=True,
         check=check,
     )
-
-
-def _build_raw_changelog(
-    version: str, release_date: str, added: list[str], fixed: list[str], changed: list[str]
-) -> str:
-    lines = [f"## [{version}] - {release_date}", ""]
-    if added:
-        lines.append("### Added")
-        lines.append("")
-        for msg in added:
-            lines.append(f"- {msg}")
-        lines.append("")
-    if fixed:
-        lines.append("### Fixed")
-        lines.append("")
-        for msg in fixed:
-            lines.append(f"- {msg}")
-        lines.append("")
-    if changed:
-        lines.append("### Changed")
-        lines.append("")
-        for msg in changed:
-            lines.append(f"- {msg}")
-        lines.append("")
-    if not added and not fixed and not changed:
-        lines.append("### Added")
-        lines.append("")
-        lines.append("- (no user-facing changes detected -- please edit manually)")
-        lines.append("")
-    return "\n".join(lines)
-
-
-def summarize_skip_reason(env: dict[str, str] | None = None) -> str | None:
-    env = os.environ if env is None else env
-    flag = env.get("BENCHBOX_CHANGELOG_SUMMARIZE", "").strip().lower()
-    if flag in _FALSE_VALUES:
-        return "BENCHBOX_CHANGELOG_SUMMARIZE opts out"
-    if flag in _TRUE_VALUES:
-        return None
-    nested = next((name for name in _NESTED_CLAUDE_ENV_VARS if env.get(name)), None)
-    if nested:
-        return f"already inside a Claude Code session ({nested} set); set BENCHBOX_CHANGELOG_SUMMARIZE=1 to force"
-    return None
-
-
-def _kill_process_tree(proc: subprocess.Popen[str]) -> None:
-    try:
-        if hasattr(os, "killpg"):
-            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        else:  # pragma: no cover
-            proc.kill()
-    except (ProcessLookupError, PermissionError):  # pragma: no cover
-        proc.kill()
-
-
-def _run_claude_cli(prompt: str) -> subprocess.CompletedProcess[str]:
-    with subprocess.Popen(
-        ["claude", "--print", "--model", "sonnet", "-p", prompt],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        start_new_session=True,
-    ) as proc:
-        try:
-            stdout, stderr = proc.communicate(timeout=CLAUDE_TIMEOUT_SECONDS)
-        except subprocess.TimeoutExpired:
-            _kill_process_tree(proc)
-            proc.communicate()
-            raise
-    return subprocess.CompletedProcess(proc.args, proc.returncode, stdout, stderr)
-
-
-def _summarize_changelog_with_claude(
-    version: str, release_date: str, added: list[str], fixed: list[str], changed: list[str]
-) -> str | None:
-    if not added and not fixed and not changed:
-        return None
-
-    skip_reason = summarize_skip_reason()
-    if skip_reason is not None:
-        print(f"  Skipping Claude summarization: {skip_reason}")
-        return None
-
-    raw_parts: list[str] = []
-    if added:
-        raw_parts.append("### Added")
-        raw_parts.extend(f"- {msg}" for msg in added)
-    if fixed:
-        raw_parts.append("### Fixed")
-        raw_parts.extend(f"- {msg}" for msg in fixed)
-    if changed:
-        raw_parts.append("### Changed")
-        raw_parts.extend(f"- {msg}" for msg in changed)
-    raw_input = "\n".join(raw_parts)
-
-    prompt = f"""\
-Summarize these raw commit messages into a compact changelog entry for version {version}.
-
-RULES:
-- Output ONLY the markdown body (### Added, ### Fixed, ### Changed sections). Do NOT include
-  the ## [version] header line - the caller adds that.
-- Group related commits into single thematic bullets. Hundreds of raw commits should become
-  10-25 well-written bullets total across all sections.
-- Major features get **bold lead-ins** with a dash separator and a 1-2 sentence description
-  that explains the user impact, e.g.:
-  **DataFrame mode for all benchmarks** - Complete DataFrame query implementations across all
-  22 benchmarks including TPC-DS (99 queries), TPC-H (22 queries), SSB, ClickBench, and more.
-- Minor items can be plain single-line bullets without bold.
-- Omit internal refactors, TODO management, CI tweaks, and commit noise.
-- Use Keep a Changelog conventions (Added/Fixed/Changed).
-- Preserve technical accuracy - mention specific counts, platform names, and query IDs where
-  they add value.
-- Wrap lines at 100 characters with 2-space continuation indent.
-- Do NOT add any preamble, explanation, or commentary - output the markdown sections only.
-
-Now summarize the following raw commits:
-
-{raw_input}"""
-
-    try:
-        result = _run_claude_cli(prompt)
-    except FileNotFoundError:
-        print("  Claude CLI not found, falling back to raw changelog")
-        return None
-    except subprocess.TimeoutExpired:
-        print("  Claude CLI timed out, falling back to raw changelog")
-        return None
-
-    if result.returncode != 0:
-        print(f"  Claude CLI failed (exit {result.returncode}), falling back to raw changelog")
-        return None
-
-    summary = result.stdout.strip()
-    if not summary or "### " not in summary:
-        print("  Claude CLI returned invalid output, falling back to raw changelog")
-        return None
-
-    if summary.startswith("```"):
-        summary = "\n".join(summary.split("\n")[1:])
-    if summary.endswith("```"):
-        summary = "\n".join(summary.split("\n")[:-1])
-    summary = summary.strip()
-
-    print(f"  Claude summarized {len(added) + len(fixed) + len(changed)} commits into compact changelog")
-    return f"## [{version}] - {release_date}\n\n{summary}\n"
-
-
-def _resolve_log_range(source: Path, since_ref: str | None, since_tag: str | None) -> str | None:
-    if since_ref is not None:
-        print(f"  Since ref: {since_ref}")
-        return f"{since_ref}..HEAD"
-
-    if since_tag is None:
-        result = subprocess.run(
-            ["git", "describe", "--tags", "--abbrev=0", "--match", "v*"],
-            cwd=source,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            print("  Warning: No previous version tag found, using all commits")
-            return None
-        since_tag = result.stdout.strip()
-        print(f"  Previous tag: {since_tag}")
-    else:
-        print(f"  Since tag: {since_tag}")
-
-    return f"{since_tag}..HEAD"
 
 
 def released_versions_in_changelog(changelog_text: str) -> list[str]:
@@ -292,8 +124,7 @@ def check_changelog_curation(source: Path, version: str) -> tuple[bool, list[str
     problems: list[str] = []
     if not bullets:
         problems.append("section contains no bullets")
-    if RAW_PLACEHOLDER in body:
-        problems.append("section still carries the generator's manual-edit placeholder")
+    problems.extend(f"duplicate '### {name}' heading" for name in _duplicate_headings(body))
     raw_bullets = [b for b in bullets if _PR_SUFFIX_RE.search(b)]
     if raw_bullets:
         problems.append(
@@ -306,6 +137,16 @@ def check_changelog_curation(source: Path, version: str) -> tuple[bool, list[str
     if body_lines > MAX_CURATED_LINES:
         problems.append(f"{body_lines} lines exceeds the {MAX_CURATED_LINES}-line curated ceiling")
     return (not problems), problems
+
+
+def _duplicate_headings(body: str) -> list[str]:
+    seen: set[str] = set()
+    duplicated: list[str] = []
+    for _index, name in _heading_positions(body.splitlines()):
+        if name in seen and name not in duplicated:
+            duplicated.append(name)
+        seen.add(name)
+    return duplicated
 
 
 def curated_section_body(source: Path, version: str) -> tuple[str | None, list[str]]:
@@ -499,42 +340,6 @@ def _run_release_notes_sync(source: Path, version: str) -> int:
     return 0
 
 
-def _diff_name_status(source: Path, since_ref: str) -> list[tuple[str, str]]:
-    result = _run_git(source, "diff", "--name-status", "-z", since_ref, "HEAD", check=True)
-    parts = result.stdout.split("\0")
-    entries: list[tuple[str, str]] = []
-    idx = 0
-    while idx < len(parts) - 1:
-        status = parts[idx]
-        idx += 1
-        if not status:
-            continue
-        if status.startswith(("R", "C")):
-            if idx + 1 >= len(parts):
-                break
-            old_path = parts[idx]
-            new_path = parts[idx + 1]
-            idx += 2
-            entries.append((status[0], new_path or old_path))
-            continue
-        path = parts[idx]
-        idx += 1
-        if path:
-            entries.append((status[0], path))
-    return entries
-
-
-def _tree_entry_at(source: Path, ref: str, path: str) -> str | None:
-    result = _run_git(source, "ls-tree", "-z", ref, "--", path)
-    if result.returncode != 0:
-        return None
-    entry = result.stdout.split("\0", 1)[0]
-    if not entry:
-        return None
-    metadata, _separator, _entry_path = entry.partition("\t")
-    return metadata
-
-
 def _conventional_changelog_subject(subject: str) -> bool:
     if ":" not in subject:
         return False
@@ -543,8 +348,8 @@ def _conventional_changelog_subject(subject: str) -> bool:
     return bare_prefix in {"feat", "fix", "perf"}
 
 
-def _commits_since_ref(source: Path, since_ref: str) -> list[tuple[str, str]] | None:
-    result = _run_git(source, "log", "--format=%H%x00%s%x00", f"{since_ref}..HEAD")
+def _commits_since_ref(source: Path, ref: str) -> list[tuple[str, str]] | None:
+    result = _run_git(source, "log", "--format=%H%x00%s%x00", f"{ref}..HEAD")
     if result.returncode != 0:
         print(f"  Error: Failed to get git log: {result.stderr}")
         return None
@@ -556,150 +361,359 @@ def _commits_since_ref(source: Path, since_ref: str) -> list[tuple[str, str]] | 
     ]
 
 
-def _patch_delta_commit_subjects(source: Path, since_ref: str) -> list[str] | None:
-    commits = _commits_since_ref(source, since_ref)
+def _sibling_module(name: str):
+    key = f"_generate_changelog_entry_{name}"
+    cached = sys.modules.get(key)
+    if cached is not None:
+        return cached
+    path = Path(__file__).resolve().with_name(f"{name}.py")
+    spec = importlib.util.spec_from_file_location(key, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[key] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _heading_positions(lines: list[str]) -> list[tuple[int, str]]:
+    positions: list[tuple[int, str]] = []
+    fenced = False
+    for index, line in enumerate(lines):
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+            continue
+        match = None if fenced else _HEADING_RE.match(line)
+        if match:
+            positions.append((index, match.group("name")))
+    return positions
+
+
+def _trim(lines: list[str]) -> list[str]:
+    start = 0
+    end = len(lines)
+    while start < end and not lines[start].strip():
+        start += 1
+    while end > start and not lines[end - 1].strip():
+        end -= 1
+    return lines[start:end]
+
+
+def _insert_entries(core: list[str], name: str, entry_lines: list[str], rank: dict[str, int]) -> list[str]:
+    positions = _heading_positions(core)
+    for number, (start, existing) in enumerate(positions):
+        if existing != name:
+            continue
+        stop = positions[number + 1][0] if number + 1 < len(positions) else len(core)
+        last = max((index for index in range(start + 1, stop) if core[index].strip()), default=None)
+        if last is not None:
+            return [*core[: last + 1], *entry_lines, *core[last + 1 :]]
+        tail = core[start + 1 :]
+        gap = [""] if tail and tail[0].strip() else []
+        return [*core[: start + 1], "", *entry_lines, *gap, *tail]
+    block = [f"### {name}", "", *entry_lines]
+    for start, existing in positions:
+        if rank.get(existing, -1) > rank[name]:
+            return [*core[:start], *block, "", *core[start:]]
+    return [*core, "", *block] if core else block
+
+
+def _merge_entries(core: list[str], rendered: str) -> list[str]:
+    fragments = _sibling_module("changelog_fragments")
+    rank = {fragments.HEADINGS[category]: index for index, category in enumerate(fragments.CATEGORIES)}
+    new = _trim(rendered.splitlines())
+    positions = _heading_positions(new)
+    merged = list(core)
+    for number, (start, name) in enumerate(positions):
+        stop = positions[number + 1][0] if number + 1 < len(positions) else len(new)
+        merged = _insert_entries(merged, name, _trim(new[start + 1 : stop]), rank)
+    return merged
+
+
+def _split_changelog(text: str) -> tuple[list[str], list[tuple[str, list[str]]], list[str]]:
+    lines = text.splitlines()
+    end = len(lines)
+    while end > 0 and (not lines[end - 1].strip() or _LINK_RE.match(lines[end - 1])):
+        end -= 1
+    links = [line for line in lines[end:] if _LINK_RE.match(line)]
+    content = lines[:end]
+    headers = [index for index, line in enumerate(content) if _ANY_SECTION_RE.match(line)]
+    preamble = content[: headers[0]] if headers else content
+    sections: list[tuple[str, list[str]]] = []
+    for number, start in enumerate(headers):
+        stop = headers[number + 1] if number + 1 < len(headers) else len(content)
+        match = _ANY_SECTION_RE.match(content[start])
+        assert match is not None
+        sections.append((match.group("label"), content[start:stop]))
+    return preamble, sections, links
+
+
+def _folded_prereleases(labels: list[str], version: str) -> list[str]:
+    from packaging.version import InvalidVersion, Version
+
+    target = Version(version)
+    found: list[tuple[Version, str]] = []
+    for label in labels:
+        try:
+            candidate = Version(label)
+        except InvalidVersion:
+            continue
+        if candidate.is_prerelease and candidate.base_version == target.base_version and candidate < target:
+            found.append((candidate, label))
+    return [label for _candidate, label in sorted(found)]
+
+
+def _compare_links(
+    links: list[str], folded: list[str], version: str, previous_final: str | None, final: bool
+) -> list[str]:
+    urls: dict[str, str] = {}
+    for line in links:
+        match = _LINK_RE.match(line)
+        assert match is not None
+        if match.group("label") not in folded:
+            urls[match.group("label")] = match.group("url")
+    if previous_final is None:
+        version_url = f"{_TAG_BASE}v{version}"
+    else:
+        version_url = f"{_COMPARE_BASE}{previous_final}...v{version}"
+    if final:
+        unreleased_url: str | None = f"{_COMPARE_BASE}v{version}...HEAD"
+    elif "Unreleased" in urls:
+        unreleased_url = urls["Unreleased"]
+    else:
+        unreleased_url = f"{_COMPARE_BASE}{previous_final}...HEAD" if previous_final else None
+    ordered: list[tuple[str, str]] = []
+    if unreleased_url is not None:
+        ordered.append(("Unreleased", unreleased_url))
+    ordered.append((version, version_url))
+    ordered.extend((label, url) for label, url in urls.items() if label not in ("Unreleased", version))
+    return [f"[{label}]: {url}" for label, url in ordered]
+
+
+def compile_changelog(
+    text: str, version: str, release_date: str, rendered: str, previous_final: str | None
+) -> tuple[str | None, list[str]]:
+    from packaging.version import Version
+
+    fragments = _sibling_module("changelog_fragments")
+    violations = fragments.unreleased_violations(text)
+    if violations:
+        return None, violations
+    preamble, sections, links = _split_changelog(text)
+    labels = [label for label, _lines in sections]
+    existing = labels.index(version) if version in labels else None
+    folded = [] if existing is not None else _folded_prereleases(labels, version)
+    if existing is not None:
+        header, draft = sections[existing][1][0], sections[existing][1][1:]
+    elif folded:
+        header = f"## [{version}] - {release_date}"
+        draft = sections[labels.index(folded[-1])][1][1:]
+    else:
+        header, draft = f"## [{version}] - {release_date}", []
+    core = _trim(draft)
+    if rendered.strip():
+        core = _merge_entries(core, rendered)
+    if not core:
+        return None, [f"no user-facing fragments or pre-release section to compile into [{version}]"]
+    block = [header, "", *core, ""]
+    result: list[str] = []
+    for label, lines in sections:
+        if label in folded:
+            continue
+        if existing is not None and label == version:
+            result.extend(block)
+        elif label == "Unreleased" and existing is None:
+            result.extend(lines if not lines[-1].strip() else [*lines, ""])
+            result.extend(block)
+        else:
+            result.extend(lines)
+    if result and result[-1].strip():
+        result.append("")
+    final = not Version(version).is_prerelease
+    new_links = _compare_links(links, folded, version, previous_final, final)
+    return "\n".join([*preamble, *result, *new_links]) + "\n", []
+
+
+def pending_fragment_paths(source: Path) -> list[Path]:
+    directory = source / _FRAGMENT_DIR
+    if not directory.is_dir():
+        return []
+    return sorted(path for path in directory.glob("*.json") if path.is_file())
+
+
+def require_prepared(source: Path, version: str) -> list[str]:
+    problems: list[str] = []
+    changelog = source / "CHANGELOG.md"
+    if not changelog.exists():
+        problems.append(f"{changelog} not found")
+    elif section_body(changelog.read_text(encoding="utf-8"), version) is None:
+        problems.append(
+            f"CHANGELOG.md has no '## [{version}] - <date>' section; run `make release-prep VERSION={version}`"
+        )
+    pending = pending_fragment_paths(source)
+    if pending:
+        names = ", ".join(path.name for path in pending)
+        problems.append(
+            f"{len(pending)} changelog fragment(s) still pending in {_FRAGMENT_DIR}/: {names}; "
+            f"run `make release-prep VERSION={version}`"
+        )
+    return problems
+
+
+def _commit_added_fragment(source: Path, commit_hash: str) -> bool:
+    fragments = _sibling_module("changelog_fragments")
+    result = _run_git(source, "diff-tree", "--no-commit-id", "--name-status", "-r", "--diff-filter=A", commit_hash)
+    if result.returncode != 0:
+        return False
+    for line in result.stdout.splitlines():
+        _status, _separator, path = line.partition("\t")
+        if fragments.is_fragment_path(path):
+            return True
+    return False
+
+
+def _print_worksheet(source: Path, fragments: list) -> None:
+    library = _sibling_module("changelog_fragments")
+    print("  Worksheet (file -> PR -> category -> tags):")
+    for fragment in fragments:
+        relative = f"{_FRAGMENT_DIR}/{fragment.name}"
+        number = library.pr_number_for(source, relative)
+        pr = f"PR #{number}" if number is not None else "PR unknown"
+        if fragment.internal is not None:
+            print(f"    {relative} -> {pr} -> internal -> -")
+            continue
+        for entry in fragment.entries:
+            tags = [f"platform:{name}" for name in entry.platforms] + [f"benchmark:{name}" for name in entry.benchmarks]
+            print(f"    {relative} -> {pr} -> {entry.category} -> {', '.join(tags) or '-'}")
+
+
+def _previous_release_boundary(source: Path, previous_final: str) -> str | None:
+    heading = f"## [{previous_final.removeprefix('v')}] - "
+    result = _run_git(source, "log", "--format=%H", f"-S{heading}", "--", "CHANGELOG.md")
+    if result.returncode != 0:
+        return None
+    hashes = result.stdout.split()
+    return hashes[-1] if hashes else None
+
+
+def _print_coverage_report(source: Path, previous_final: str | None) -> None:
+    print("  Coverage: feat/fix/perf commits since the previous final release that added no fragment:")
+    if previous_final is None:
+        print("    skipped: no previous final release tag")
+        return
+    boundary = _previous_release_boundary(source, previous_final)
+    if boundary is None:
+        print(f"    skipped: no commit on this branch added the {previous_final} changelog section")
+        return
+    commits = _commits_since_ref(source, boundary)
     if commits is None:
-        return None
-    if not commits:
-        return []
-
-    try:
-        entries = _diff_name_status(source, since_ref)
-    except subprocess.CalledProcessError as exc:
-        print(f"  Error: Failed to diff {since_ref}..HEAD: {exc.stderr}")
-        return None
-
-    patch_paths = {path for _status, path in entries}
-    if not patch_paths:
-        return []
-
-    tree_entry_cache: dict[tuple[str, str], str | None] = {}
-
-    def tree_entry(ref: str, path: str) -> str | None:
-        key = (ref, path)
-        if key not in tree_entry_cache:
-            tree_entry_cache[key] = _tree_entry_at(source, ref, path)
-        return tree_entry_cache[key]
-
-    target_entries = {path: tree_entry("HEAD", path) for path in patch_paths}
-    base_entries = {path: tree_entry(since_ref, path) for path in patch_paths}
-    unresolved_paths = {path for path in patch_paths if target_entries[path] != base_entries[path]}
-
-    patch_commits: set[str] = set()
-    for commit_hash, subject in commits:
-        if not unresolved_paths:
-            break
-        result = _run_git(source, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", commit_hash)
-        if result.returncode != 0:
-            continue
-        candidate_paths = {part for part in result.stdout.split("\0") if part}
-        relevant_paths = candidate_paths & unresolved_paths
-        parent_ref = f"{commit_hash}^"
-        contributing_paths = [
-            path
-            for path in relevant_paths
-            if tree_entry(commit_hash, path) == target_entries[path]
-            and tree_entry(parent_ref, path) != target_entries[path]
-        ]
-        if not contributing_paths:
-            continue
-        if _conventional_changelog_subject(subject):
-            patch_commits.add(commit_hash)
-        for path in contributing_paths:
-            target_entries[path] = tree_entry(parent_ref, path)
-            if target_entries[path] == base_entries[path]:
-                unresolved_paths.remove(path)
-
-    if not patch_commits:
-        return []
-
-    return [subject for commit_hash, subject in commits if commit_hash in patch_commits]
+        print("    skipped: commit history unavailable")
+        return
+    uncovered = [
+        subject
+        for commit_hash, subject in commits
+        if _conventional_changelog_subject(subject) and not _commit_added_fragment(source, commit_hash)
+    ]
+    for subject in uncovered:
+        print(f"    - {subject}")
+    if not uncovered:
+        print("    none")
 
 
-def generate_changelog_entry(
-    source: Path,
-    version: str,
-    release_date: str,
-    since_tag: str | None = None,
-    since_ref: str | None = None,
-    section_file: Path | None = None,
-) -> bool:
-    print(f"\n  Auto-generating changelog entry for v{version}...")
+def compile_fragments(source: Path, version: str, release_date: str, dry_run: bool = False) -> bool:
+    from packaging.version import InvalidVersion, Version
 
+    library = _sibling_module("changelog_fragments")
+    flow = _sibling_module("release_flow")
+    print(f"\n  Compiling changelog fragments for v{version}...")
     changelog = source / "CHANGELOG.md"
     if not changelog.exists():
         print(f"  Error: {changelog} not found")
         return False
-
-    if section_file is not None:
-        return _write_curated_section(changelog, version, release_date, section_file)
-
-    if section_body(changelog.read_text(encoding="utf-8"), version) is not None:
-        print(f"  CHANGELOG.md already has a [{version}] section; leaving it untouched")
-        return True
-
-    if since_ref is not None:
-        print(f"  Since ref: {since_ref} (patch delta)")
-        commits = _patch_delta_commit_subjects(source, since_ref)
-        if commits is None:
-            return False
-    else:
-        log_range = _resolve_log_range(source, since_ref=since_ref, since_tag=since_tag) or "HEAD"
-        result = _run_git(source, "log", "--format=%s", log_range)
-        if result.returncode != 0:
-            print(f"  Error: Failed to get git log: {result.stderr}")
-            return False
-        commits = [line for line in result.stdout.strip().split("\n") if line.strip()]
-
-    if not commits:
-        print("  Warning: No commits found since last tag")
+    try:
+        Version(version)
+    except InvalidVersion:
+        print(f"  Error: {version!r} is not a valid version")
         return False
-
-    added: list[str] = []
-    fixed: list[str] = []
-    changed: list[str] = []
-    skipped_nonconventional = 0
-    skip_prefixes = ("test", "docs", "chore", "ci", "build", "refactor", "style")
-
-    for commit in commits:
-        if ":" in commit:
-            prefix = commit.split(":", 1)[0].strip().lower()
-            bare_prefix = prefix.split("(", 1)[0].strip()
-            message = commit.split(":", 1)[1].strip()
-
-            if bare_prefix == "feat":
-                added.append(message)
-            elif bare_prefix == "fix":
-                fixed.append(message)
-            elif bare_prefix == "perf":
-                changed.append(message)
-            elif bare_prefix in skip_prefixes:
-                continue
-            else:
-                skipped_nonconventional += 1
-        else:
-            skipped_nonconventional += 1
-
-    if skipped_nonconventional > 0:
-        print(f"  Skipped {skipped_nonconventional} non-conventional commit(s)")
-
-    if not added and not fixed and not changed:
-        print("  Warning: No user-facing changes found in commits")
-        print("  Generating empty changelog section (please edit manually)")
-
-    new_section = _summarize_changelog_with_claude(version, release_date, added, fixed, changed)
-    if new_section is None:
-        new_section = _build_raw_changelog(version, release_date, added, fixed, changed)
-
-    content = _insert_section(changelog.read_text(), new_section)
-    changelog.write_text(content)
-    print(f"  Updated {changelog}")
+    paths = pending_fragment_paths(source)
+    fragments, errors = library.collect_fragments(paths)
+    if errors:
+        print("  Error: invalid changelog fragment(s); nothing was written:", file=sys.stderr)
+        for error in errors:
+            print(f"    - {error}", file=sys.stderr)
+        return False
+    text = changelog.read_text(encoding="utf-8")
+    if section_body(text, version) is not None and not paths:
+        print(f"  [{version}] already compiled and no fragments pending; nothing to do")
+        return True
+    previous = flow.latest_release_tag(source, before_version=version)
+    previous_final = previous.removeprefix("refs/tags/") if previous else None
+    new_text, problems = compile_changelog(text, version, release_date, library.render(fragments), previous_final)
+    if new_text is None:
+        print("  Error: cannot compile the changelog; nothing was written:", file=sys.stderr)
+        for problem in problems:
+            print(f"    - {problem}", file=sys.stderr)
+        return False
+    if dry_run:
+        print(f"  Dry run: {len(paths)} fragment(s) would be compiled into [{version}]; nothing written")
+        return True
+    _print_worksheet(source, fragments)
+    if new_text != text:
+        changelog.write_text(new_text, encoding="utf-8")
+    for path in paths:
+        path.unlink()
+    body = section_body(new_text, version) or ""
+    bullets = len([line for line in body.splitlines() if _BULLET_RE.match(line)])
+    lines = len(body.splitlines())
+    print(
+        f"  Updated {changelog}: [{version}] has {bullets}/{MAX_CURATED_BULLETS} bullets, {lines}/{MAX_CURATED_LINES} lines"
+    )
+    _print_coverage_report(source, previous_final)
     return True
+
+
+def _run_require_prepared(source: Path, version: str) -> int:
+    problems = require_prepared(source, version)
+    if problems:
+        print(f"  Release {version} is not prepared:", file=sys.stderr)
+        for problem in problems:
+            print(f"    - {problem}", file=sys.stderr)
+        return 1
+    print(f"  Release {version} is prepared: [{version}] exists and no fragments are pending")
+    return 0
+
+
+def _run_curation_check(source: Path, version: str) -> int:
+    ok, problems = check_changelog_curation(source, version)
+    if ok:
+        print(f"  CHANGELOG.md curation guard: OK ([{version}] section looks curated)")
+        return 0
+    print(f"  CHANGELOG.md section [{version}] does not look curated:")
+    for problem in problems:
+        print(f"    - {problem}")
+    if has_changelog_section(source, version) and (
+        os.environ.get("RELEASE_ALLOW_RAW_CHANGELOG", "").strip().lower() in _TRUE_VALUES
+    ):
+        print("  RELEASE_ALLOW_RAW_CHANGELOG is set; accepting the section as-is")
+        return 0
+    print()
+    print(f"  Fix the [{version}] section in CHANGELOG.md, then re-run the cut:")
+    print(f"    make release-cut VERSION={version}")
+    print("  To accept the section deliberately: RELEASE_ALLOW_RAW_CHANGELOG=1 make release-cut ...")
+    return 1
+
+
+def _run_section_file(source: Path, version: str, release_date: str, section_file: Path) -> int:
+    changelog = source / "CHANGELOG.md"
+    if not changelog.exists():
+        print(f"  Error: {changelog} not found")
+        return 1
+    return 0 if _write_curated_section(changelog, version, release_date, section_file) else 1
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Generate a CHANGELOG.md entry from conventional commits since a release boundary."
+        description="Compile CHANGELOG.md release sections from changelog.d fragments and check release changelog state."
     )
     parser.add_argument(
         "--check-tag-claims",
@@ -721,11 +735,29 @@ def main() -> int:
         "--check-curation",
         action="store_true",
         help=(
-            "Check that the '## [VERSION]' section has been hand-curated (no raw commit "
-            "subjects, no placeholder, at most "
-            f"{MAX_CURATED_BULLETS} bullets and {MAX_CURATED_LINES} lines), then exit. "
-            "Requires --version. Override with RELEASE_ALLOW_RAW_CHANGELOG=1."
+            "Check that the '## [VERSION]' section is curated (no raw commit subjects, "
+            f"no duplicate headings, at most {MAX_CURATED_BULLETS} bullets and {MAX_CURATED_LINES} lines), "
+            "then exit. Requires --version. Override with RELEASE_ALLOW_RAW_CHANGELOG=1."
         ),
+    )
+    parser.add_argument(
+        "--compile-fragments",
+        action="store_true",
+        help=(
+            "Build the dated '## [VERSION]' section from changelog.d fragments (folding any pre-release "
+            "section of the same base version), update compare links, and delete the consumed fragments. "
+            "Requires --version."
+        ),
+    )
+    parser.add_argument(
+        "--require-prepared",
+        action="store_true",
+        help="Require a '## [VERSION]' section and no pending changelog.d fragments, then exit. Requires --version.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="With --compile-fragments: validate and compute the result without writing anything.",
     )
     parser.add_argument(
         "--print-section",
@@ -748,22 +780,12 @@ def main() -> int:
         help="Release date in YYYY-MM-DD format (default: today)",
     )
     parser.add_argument(
-        "--since-tag",
-        default=None,
-        help="Lower-bound tag for commit range (default: auto-detect latest v* tag unless --since-ref is set)",
-    )
-    parser.add_argument(
-        "--since-ref",
-        default=None,
-        help="Lower-bound ref for commit range, e.g. origin/release. Overrides --since-tag.",
-    )
-    parser.add_argument(
         "--section-file",
         type=Path,
         default=None,
         help=(
             "Write the [VERSION] section from this hand-curated body (the ### groups and bullets, "
-            "no version header) instead of generating a draft. Replaces an existing [VERSION] section. "
+            "no version header). Replaces an existing [VERSION] section. "
             "--check-curation still checks the result."
         ),
     )
@@ -805,34 +827,20 @@ def main() -> int:
     if args.sync_github_release_notes:
         return _run_release_notes_sync(args.source, args.version)
 
-    if args.check_curation:
-        ok, problems = check_changelog_curation(args.source, args.version)
-        if ok:
-            print(f"  CHANGELOG.md curation guard: OK ([{args.version}] section looks hand-curated)")
-            return 0
-        print(f"  CHANGELOG.md section [{args.version}] does not look hand-curated:")
-        for problem in problems:
-            print(f"    - {problem}")
-        if has_changelog_section(args.source, args.version) and (
-            os.environ.get("RELEASE_ALLOW_RAW_CHANGELOG", "").strip().lower() in _TRUE_VALUES
-        ):
-            print("  RELEASE_ALLOW_RAW_CHANGELOG is set; accepting the section as-is")
-            return 0
-        print()
-        print(f"  Edit the [{args.version}] section in CHANGELOG.md, then re-run the cut:")
-        print(f"    make release-cut VERSION={args.version}")
-        print("  To accept the raw draft deliberately: RELEASE_ALLOW_RAW_CHANGELOG=1 make release-cut ...")
-        return 1
+    if args.require_prepared:
+        return _run_require_prepared(args.source, args.version)
 
-    success = generate_changelog_entry(
-        source=args.source,
-        version=args.version,
-        release_date=args.release_date,
-        since_tag=args.since_tag,
-        since_ref=args.since_ref,
-        section_file=args.section_file,
-    )
-    return 0 if success else 1
+    if args.check_curation:
+        return _run_curation_check(args.source, args.version)
+
+    if args.compile_fragments:
+        return 0 if compile_fragments(args.source, args.version, args.release_date, args.dry_run) else 1
+
+    if args.section_file is not None:
+        return _run_section_file(args.source, args.version, args.release_date, args.section_file)
+
+    parser.error("choose --compile-fragments, --require-prepared, --section-file or a check option")
+    return 2
 
 
 if __name__ == "__main__":
