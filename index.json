@@ -5960,7 +5960,10 @@
     },
     "corpus-tpch-shallow-cohort-replacements-20261018": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "published-results-sqlglot-translation-rerun",
+        "flagged-local-bundles-compliance-class-gate-20261025"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Ingest replacement TPC-H bundles so SF 0.01/0.1/1.0 cohorts return to at least 3 ranked identities"
