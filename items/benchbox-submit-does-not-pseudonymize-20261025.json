@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Owner decision recorded.",
+    "If anonymizing: a raw local DuckDB TPC-H SF1 run passes `benchbox submit` with a test salt and the packaged bundle passes validate_submission.py --require-manifest; tests cover path and tuning redaction through submit.",
+    "If docs-only: docs describe the real behaviour and point contributors to the working path.",
+    "make pr-preflight passes; PR merged."
+  ],
+  "description": "Found while fixing local bundle validation (#3483, history://BundleValidation). docs/contributing-results.md says `benchbox submit` pseudonymizes the bundle, but benchbox/cli/commands/submit.py only checks that a salt is set and then validates and packages the raw bytes. A raw local run therefore can never pass submission validation through the community path (absolute paths, harness tuning diagnostics). The maintainer path is scripts/stage_seed_corpus_bundle.py --internal-manifest.\nDECISION GATE: (G1) make submit anonymize before validating (recommended: same anonymiser as stage_seed_corpus_bundle.py, salt from the documented variable), or correct the docs to the actual behaviour. Owner decides.\nGUARDRAILS: never relax validate_submission checks; never commit a salt; external submissions keep the official-only compliance rule.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T20:39:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9f4361e7ed124a15b8c24b73fae9d292",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}

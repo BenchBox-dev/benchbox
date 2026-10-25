@@ -1931,6 +1931,13 @@
       "status": "done",
       "title": "Unify BenchBox site header across landing, docs/blog, and Results Explorer"
     },
+    "benchbox-submit-does-not-pseudonymize-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "benchbox submit does not pseudonymize, contrary to docs/contributing-results.md"
+    },
     "benchmark-api-and-core-boundary-cleanup": {
       "claim": null,
       "needs": [
