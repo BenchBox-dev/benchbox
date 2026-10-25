@@ -13681,15 +13681,10 @@
       "title": "Run the local platform benchmark matrix against 1..S throughput stream numbering"
     },
     "local-rerun-bundles-fail-submission-validation-20261025": {
-      "claim": {
-        "expires_at": "2026-10-26T20:38:52Z",
-        "generation": "30d542913f154e7fabfba9d4d4ed0d14",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Locally produced result bundles fail submission validation (raw tuning diagnostics, absolute paths, no manifest)"
     },
     "local-tpcdi-bundles-regenerate-current-generator": {
