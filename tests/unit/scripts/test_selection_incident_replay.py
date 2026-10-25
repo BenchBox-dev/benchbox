@@ -52,23 +52,16 @@ def _commit(repo: Path, message: str) -> str:
 
 
 def _map_for(incident: dict[str, Any], sha: str) -> dict[str, Any]:
-    failed = incident["failed_test"]
-    return {
-        "version": 2,
-        "sha": sha,
-        "nodes": [failed],
-        "files": {
-            path: {"lines": {str(line): [0] for line in lines}, "statements": list(lines)}
-            for path, lines in incident["map"].items()
-        },
-        "failed_nodes": [],
-    }
+    mapping = sel.read_map(FIXTURES / f"pr{incident['pr']}.map.json")
+    assert mapping["sha"] == incident["provenance"]["base_sha"]
+    assert incident["failed_test"] in mapping["nodes"]
+    return {**mapping, "sha": sha}
 
 
 def _incident_repo(tmp_path: Path, incident: dict[str, Any]) -> tuple[Path, str]:
     repo = _init(tmp_path)
     _write(repo, incident["test_file"], "def test_placeholder():\n    assert True\n")
-    for path in incident["map"]:
+    for path in sel.read_map(FIXTURES / f"pr{incident['pr']}.map.json")["files"]:
         _write(repo, path, "VALUE = 1\n")
     return repo, _commit(repo, "base")
 
@@ -192,3 +185,20 @@ def test_site_asset_change_runs_the_fast_tier_and_escalates_the_medium_tier(
     verdict = heavy.heavy_needed(decision, base, repo, selection=result)
     assert verdict["heavy_needed"] is True
     assert "coverage selection escalated" in verdict["reason"]
+
+
+@pytest.mark.parametrize("pr", COVERED_INCIDENTS)
+def test_recorded_map_hits_the_changed_base_lines_for_the_failing_test(pr: int) -> None:
+    incident = _incident(pr)
+    mapping = sel.read_map(FIXTURES / f"pr{pr}.map.json")
+    index = mapping["nodes"].index(incident["failed_test"])
+    hit = False
+    for entry in sel.parse_diff(incident["diff"]):
+        recorded = mapping["files"].get(entry.old_path)
+        if recorded is None:
+            continue
+        probes = {line for start, count in entry.old_ranges for line in sel.probe_lines(start, count)}
+        hit = hit or any(index in recorded["lines"].get(str(line), []) for line in probes)
+    assert hit
+    assert incident["provenance"]["full_map_sha256"]
+    assert incident["provenance"]["merge_sha"]
