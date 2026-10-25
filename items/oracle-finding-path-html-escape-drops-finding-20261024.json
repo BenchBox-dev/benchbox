@@ -4,7 +4,7 @@
     "Failing-before test passes after; also covers & and quotes in paths; existing verdict tests unchanged",
     "PR merged with an oracle verdict on its final head; merge SHA recorded"
   ],
-  "context": "PR #3419 merged as 80d93b21a (head 67a476ee1, oracle verdict success on that head). Finding.file keeps the canonical path; escaping only at render via verdict.display_path.",
+  "context": "PR #3419 merged as 80d93b21a (head 67a476ee1, oracle verdict success on that head). Finding.file keeps the canonical path; escaping happens only at render via verdict.display_path.",
   "description": "Round-2 codex finding 2 (High): verdict._finding (_project/scripts/oracle_reviewers/verdict.py ~336) HTML-escapes a path containing '<!--' (benchbox/query<!--bad.py becomes benchbox/query&lt;!--bad.py) before protocol.judge (~463) compares it with the raw changed-path set, so the finding is excluded as out of scope and a High SHIP_WITH_FIXES finding ends as decision SHIP with the finding only under Not counted. Codex suggests keeping canonical paths for comparison and escaping only the rendered text.\n\nDECISION GATE: reproduce first (a diff touching a file whose name contains '<!--' or '&' and a reviewer finding on it). Fix so the comparison uses the unescaped canonical path everywhere and escaping happens only at render/marker boundaries; check every other comparison of reviewer-supplied paths with changed paths. No change to what counts as in scope.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun or dispatch the oracle; oracle verdict required on the PR (soundness path); no pre-registered digests; never weaken a gate; no skip/xfail; never bypass a hook by any route (no SKIP=, --no-verify, commit-tree); primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; always encoding utf-8; PR text for a reader who never saw the session; done = merged PR plus evidence.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "generation": "64321e04f50b42e6824b03e1b0014a2d",
       "op": "take",
       "op_id": "6d26addf34274a8d93169de72095f95f",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-25T12:53:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a6720f7fbccd43cf9b894f6295d6e234",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
