@@ -37,6 +37,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -93,6 +94,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -149,6 +151,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -190,6 +193,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -237,6 +241,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -287,6 +292,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -343,6 +349,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -399,6 +406,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -455,6 +463,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -505,6 +514,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -555,6 +565,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -605,6 +616,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -655,6 +667,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -701,6 +714,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -750,6 +764,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift
@@ -796,6 +811,7 @@ queries:
       - sqlite
       - postgresql
       - datafusion
+      - athena
       - trino
       - presto
       - redshift

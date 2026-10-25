@@ -9,7 +9,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from benchbox.core.platform_manifest import get_platform_query_dialect
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 if TYPE_CHECKING:
@@ -60,8 +59,6 @@ class AthenaAdapter(PlatformAdapter):
             if not available:
                 error_msg = get_dependency_error_message("athena", missing)
                 raise ImportError(error_msg)
-
-        self._dialect = "trino"
 
         self.region = config.get("region") or config.get("aws_region") or "us-east-1"
         self.aws_access_key_id = config.get("aws_access_key_id")
@@ -419,7 +416,7 @@ class AthenaAdapter(PlatformAdapter):
         )
 
     def get_target_dialect(self) -> str:
-        return get_platform_query_dialect("athena")
+        return "athena"
 
     def check_server_database_exists(self, **connection_config) -> bool:
         try:
@@ -616,6 +613,7 @@ class AthenaAdapter(PlatformAdapter):
             statements.extend(
                 translate_ddl(
                     statement,
+                    "athena",
                     "athena",
                     strip_primary_keys=True,
                     strip_foreign_keys=True,

@@ -146,7 +146,7 @@ def _resolve_tpch_seed(
     return actual_seed
 
 
-NAMED_COLUMN_ALIAS_UNSUPPORTED_DIALECTS = frozenset({"sqlite", "mysql", "bigquery", "doris"})
+NAMED_COLUMN_ALIAS_UNSUPPORTED_DIALECTS = frozenset({"sqlite", "singlestore", "bigquery", "doris"})
 
 
 def _expand_named_column_aliases(query: str) -> str:

@@ -202,7 +202,7 @@ class TPCDIDataLoader:
                     connection.execute(f"ANALYZE {table_name}")
                     connection.execute(f"VACUUM {table_name}")
                     optimize_sql = None
-                elif self.dialect.lower() == "mysql":
+                elif self.dialect.lower() == "singlestore":
                     optimize_sql = f"ANALYZE TABLE {table_name}"
                 else:
                     optimize_sql = f"ANALYZE {table_name}"
