@@ -5,7 +5,7 @@
     "VERIFY: First scheduled run id recorded with its output",
     "GUARDRAIL: Hard API-call budget in the script (abort and report on exceed); permissions limited to actions read and issues write; one pinned issue only, no tracker items or PR comments; the pinned issue is assigned to the repository owner (joeharris76) and names the jobs, their 7-day and 1-day p50 and the first Trunk run where the rise appears"
   ],
-  "context": "Source: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
+  "context": "PROGRESS 2026-10-25: PR #3508 merged as 3d69646738dd12bc65e000b219c1ed4f29c9a735 (oracle SHIP on 04210600; an earlier SHIP WITH FIXES found the script reported healthy and closed the issue when nothing could be compared, fixed with 5 tests). Files: .github/workflows/trunk-duration-trend.yml (daily cron plus workflow_dispatch), scripts/trunk_duration_trend.py, tests/unit/scripts/test_trunk_duration_trend.py (32 tests). Windows are anchored on the newest Trunk run's start, not the cron time. Thresholds: no alarm under 10 runs in the 1-day window, 5 samples per metric; hard 45-call cap (exceeding it exits 1 and writes no issue); actions read and issues write only. Backtest (job durations only, 42 calls): as of 2026-10-25T22:00Z it fires (fast 9.5 to 20.4 min, +113.6%, first rise 40131837686 at 85fb89967); as of 2026-10-24T22:00Z it is quiet (fast +13.4%, under 15%). Dispatched run 40243187075 succeeded (45 of 45 calls) and opened pinned issue #3511, assigned to joeharris76: a true detection, because the 1-day window is still mostly pre-#3462 runs while post-fix Trunk runs sit in the backlog. Risk: the quiet day was at +13.4% against the 15% line and fast wall time varies 7.8-18 min, so expect false alarms until the calibration-normalized junit metric is active (it needs 3 artifact runs in the prior window). Remaining: first scheduled run id and output; #3511 closing itself once healthy runs fill the window.\n\nSource: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
   "description": "Catch what the PR gate cannot: dependency install and setup time, runner-image changes, cross-PR creep and xdist imbalance. A scheduled workflow reads the last day of trunk.yml develop runs and their jobs (about 45 API calls; not make ci-usage-report, which is rate-limit-heavy and reported INCOMPLETE), computes per-job p50 (fast, each medium shard, correctness gates) and the fast-junit summed-time p50, compares with the prior 7 days, and opens or updates one pinned issue naming the jobs that rose more than 15%, closing it when healthy. PR time-to-green is not used (dominated by review latency).",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e9d3645bb09d41708c08449a83813004",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T23:08:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ee4d471da2ba432687446799538f0b97",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
