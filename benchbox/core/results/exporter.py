@@ -717,6 +717,21 @@ class ResultExporter:
             )
         return outcome
 
+    @classmethod
+    def _check_run_compatibility(cls, baseline_data: dict[str, Any], current_data: dict[str, Any]) -> dict[str, Any]:
+        from benchbox.core.results.power_stream_policy import check_power_stream_compatibility
+
+        outcome = cls._check_generation_compatibility(baseline_data, current_data)
+        power = check_power_stream_compatibility(baseline_data, current_data)
+        outcome["power_stream"] = power
+        if power["status"] == "compatible":
+            return outcome
+        if power["status"] == "incompatible" or outcome["status"] == "compatible":
+            outcome["status"] = power["status"]
+            outcome["compatible"] = power["compatible"]
+        outcome["warning"] = " ".join(w for w in (outcome["warning"], power["warning"]) if w)
+        return outcome
+
     def compare_results(self, baseline_path: Path, current_path: Path) -> dict[str, Any]:
         baseline_result = self.load_result_from_file(baseline_path)
         current_result = self.load_result_from_file(current_path)
@@ -741,7 +756,7 @@ class ResultExporter:
             "current_file": current_path.name if self.anonymize else str(current_path),
             "baseline_version": baseline_version,
             "current_version": current_version,
-            "generation_compatibility": self._check_generation_compatibility(baseline_data, current_data),
+            "generation_compatibility": self._check_run_compatibility(baseline_data, current_data),
             "performance_changes": {},
             "query_comparisons": [],
         }

@@ -395,6 +395,7 @@ class BenchmarkResults:
     table_statistics: dict[str, int] = field(default_factory=dict)
     data_generation_version: int | None = None
     data_generation_hash: str | None = None
+    power_stream_policy: str | None = None
     flightdata_source_provenance: dict[str, Any] | None = None
     per_query_timings: list[dict[str, Any]] | None = field(default_factory=list)
     execution_phases: ExecutionPhases | None = None

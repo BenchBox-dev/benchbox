@@ -399,6 +399,15 @@ def _attach_datagen_version(
     return result
 
 
+def _attach_power_stream_policy(result: BenchmarkResults) -> BenchmarkResults:
+    from benchbox.core.results.power_stream_policy import current_power_stream_policy
+
+    policy = current_power_stream_policy(result.benchmark_id)
+    if policy is not None:
+        result.power_stream_policy = policy
+    return result
+
+
 def _attach_variant_comparability_metadata(result: BenchmarkResults, benchmark: Any) -> BenchmarkResults:
     try:
         info_getter = getattr(benchmark, "get_benchmark_info", None)
@@ -1490,6 +1499,7 @@ def run_benchmark_lifecycle(
             result_obj.execution_context = execution_context.model_dump()
         result_obj = _attach_translation_metadata(result_obj, translation_outcomes, strict_mode=strict_translation)
         result_obj = _attach_variant_comparability_metadata(result_obj, benchmark)
+        result_obj = _attach_power_stream_policy(result_obj)
         return _attach_datagen_version(
             result_obj,
             benchmark,
@@ -1566,6 +1576,7 @@ def run_benchmark_lifecycle(
     )
     finalized = _attach_translation_metadata(finalized, translation_outcomes, strict_mode=strict_translation)
     finalized = _attach_variant_comparability_metadata(finalized, benchmark)
+    finalized = _attach_power_stream_policy(finalized)
     return _attach_datagen_version(
         finalized,
         benchmark,
