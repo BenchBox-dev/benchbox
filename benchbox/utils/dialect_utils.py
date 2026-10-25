@@ -296,6 +296,7 @@ def translate_sql_query(
     scope: str | None = None,
     date_columns: Iterable[str] | None = None,
     rewrites: Sequence[tuple[str, dict]] | None = None,
+    pretty: bool = False,
 ) -> str:
     import logging
 
@@ -339,7 +340,7 @@ def translate_sql_query(
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)
                 if date_columns:
                     expression = apply_rewrite("mark_date_columns", expression, tgt, date_columns=date_columns)
-            translated_statements.append(expression.sql(dialect=tgt, identify=should_identify))
+            translated_statements.append(expression.sql(dialect=tgt, identify=should_identify, pretty=pretty))
         translated = STATEMENT_SEPARATOR.join(translated_statements)
 
         record_sql_translation_outcome(

@@ -104,15 +104,12 @@ def _fence(code: str, lang: str) -> str:
 
 
 def _prettify_sql(sql: str, dialect: str) -> str:
-    try:
-        from benchbox._vendor import sqlglot
-        from benchbox.utils.dialect_utils import resolve_sql_dialect
+    from benchbox.utils.dialect_utils import translate_sql_query
 
-        read = resolve_sql_dialect(dialect) if dialect != "default" else None
-        pretty = sqlglot.transpile(sql, read=read, write=read, pretty=True)[0]
-        return pretty if pretty.strip() else sql
-    except Exception:
+    if dialect == "default":
         return sql
+    pretty = translate_sql_query(sql, dialect, source_dialect=dialect, identify=False, strict=False, pretty=True)
+    return pretty if pretty.strip() else sql
 
 
 def _recipe_class(benchmark_id: str) -> tuple[str, str]:
