@@ -2883,15 +2883,10 @@
       "title": "Stop a cancelled CI run's required summary jobs from delaying the next run for the same PR"
     },
     "ci-chdb-guard-fast-tier-regression-20261025": {
-      "claim": {
-        "expires_at": "2026-10-26T19:33:56Z",
-        "generation": "3151fc469a4d4eb59cbd1f371e49ab9e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "Restore fast-tier time after the chDB connection guard made it 3x slower"
     },
     "ci-dedupe-01-post-merge-skip-queue-certified-shas": {
