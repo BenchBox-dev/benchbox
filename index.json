@@ -2875,6 +2875,13 @@
       "status": "done",
       "title": "Measure complete PR lifecycles and repair missing-head CI accounting"
     },
+    "ci-cancelled-run-summary-jobs-hold-slots-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Stop a cancelled CI run's required summary jobs from delaying the next run for the same PR"
+    },
     "ci-chdb-guard-fast-tier-regression-20261025": {
       "claim": null,
       "needs": [],
