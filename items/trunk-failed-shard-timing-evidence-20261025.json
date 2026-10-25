@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Failed Trunk fast and medium jobs upload junit, per-test durations and a runner-load sample with 30-day retention; passing jobs add no upload",
+    "The next one-off Trunk timeout after the change is classified from that evidence and the result recorded here"
+  ],
+  "context": "Source: classification of every Trunk push run on develop from 2026-10-10 to 2026-10-24 (recorded on trunk-red-run-triage-20261024; incident ids refer to that table). ",
+  "description": "Three one-off Trunk failures (INC-01 pytest timeout, INC-05 fixture setup timeout, INC-07 'Query interrupted') could not be classified because only the step log survived. Keeping junit, pytest --durations output and a runner-load sample for failed Trunk shards would let the next such failure be attributed to the test, the fixture or the runner.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T03:29:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6fb26d25ed5542f98322c3bd2e7521a7",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}

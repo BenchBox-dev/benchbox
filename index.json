@@ -26780,6 +26780,13 @@
       "status": "open",
       "title": "Trunk's dist-artifact producer check fails intermittently with 'producer job is not unique and running'"
     },
+    "trunk-failed-shard-timing-evidence-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Keep per-test timing and runner load for failed Trunk shards so one-off timeouts can be classified"
+    },
     "trunk-lane-changes-run-before-merge-20261025": {
       "claim": null,
       "needs": [],
