@@ -90,7 +90,7 @@ secret does not appear in shell history.
 | `username`, `password` | environment | Password authentication |
 | `auth_token` | environment | Bearer token, used instead of a password |
 | `catalog` | server default | An already-attached DuckDB catalog |
-| `schema` | `benchbox_<benchmark>_sf<scale>` | Schema holding the benchmark tables |
+| `schema` | `benchbox_<benchmark>_sf<scale>_<tuning>` | Schema holding the benchmark tables |
 | `tls` | `true` | Connect with TLS |
 | `tls_ca_cert` | none | PEM CA bundle that signs the server certificate |
 | `tls_skip_verify` | `false` | Skip certificate verification (development only) |
@@ -118,7 +118,7 @@ Prefer `tls_ca_cert=/path/to/ca.pem` over `tls_skip_verify` for private certific
 
 A GizmoSQL server is shared state. BenchBox keeps its footprint small:
 
-- Tables go into one schema per benchmark and scale factor (override with `schema`). BenchBox
+- Tables go into one schema per benchmark, scale factor and tuning configuration, so tuned and notuning runs never share tables (override with `schema`). BenchBox
   creates that schema if it does not exist, and never drops schemas or databases.
 - If every benchmark table already exists, holds rows, and matches the row counts of the source files, BenchBox
   reuses them and skips schema creation and loading. A non-empty table whose count differs is reported as not

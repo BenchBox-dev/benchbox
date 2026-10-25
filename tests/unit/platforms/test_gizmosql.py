@@ -234,7 +234,22 @@ class TestConfiguration:
 
         assert adapter.username == "env-user"
         assert adapter.password == "env-pass"
-        assert adapter.schema == "benchbox_tpch_sf001"
+        assert adapter.schema == "benchbox_tpch_sf001_notuning_noconstraints"
+
+    def test_default_schema_separates_tuned_and_notuning_runs(self, driver):
+        from benchbox.core.tuning.interface import UnifiedTuningConfiguration
+
+        tuned = UnifiedTuningConfiguration()
+        tuned.primary_keys.enabled = True
+        tuned.foreign_keys.enabled = True
+        base = {"benchmark": "tpch", "scale_factor": 0.01}
+
+        plain = GizmoSQLAdapter.from_config(base)
+        constrained = GizmoSQLAdapter.from_config({**base, "tuning_config": tuned})
+        again = GizmoSQLAdapter.from_config({**base, "tuning_config": tuned})
+
+        assert plain.schema != constrained.schema
+        assert constrained.schema == again.schema
 
     def test_from_config_prefers_explicit_values_and_force(self, driver, monkeypatch):
         monkeypatch.setenv("GIZMOSQL_PASSWORD", "env-pass")

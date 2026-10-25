@@ -432,10 +432,15 @@ class GizmoSQLAdapter(PlatformAdapter):
             if not adapter_config.get(key) and os.environ.get(variable):
                 adapter_config[key] = os.environ[variable]
         if not adapter_config.get("schema") and config.get("benchmark") and config.get("scale_factor") is not None:
-            from benchbox.utils.scale_factor import format_benchmark_name
+            from benchbox.utils.database_naming import generate_database_name
 
-            benchmark_name = format_benchmark_name(config["benchmark"], config["scale_factor"])
-            adapter_config["schema"] = f"benchbox_{benchmark_name}".lower().replace("-", "_")
+            generated = generate_database_name(
+                benchmark_name=config["benchmark"],
+                scale_factor=config["scale_factor"],
+                platform="gizmosql",
+                tuning_config=config.get("tuning_config"),
+            )
+            adapter_config["schema"] = f"benchbox_{generated}".lower().replace("-", "_")
         if "force" in config:
             adapter_config["force_recreate"] = config["force"]
         elif "force_recreate" in config:
