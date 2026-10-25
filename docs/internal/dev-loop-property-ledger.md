@@ -313,6 +313,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `check_release_curation.py` | product-safety | Release curation |
 | `changelog_fragments.py` | tooling | Changelog fragment validation, rendering, required-entry decision and Unreleased guard |
 | `check_sqlglot_upstream_freshness.py` | product-safety | Bundled SQLGlot freshness release gate |
+| `check_sqlglot_advisories.py` | product-safety | Bundled SQLGlot published-advisory release gate |
 | `generate_landing_quickstarts.py` | product-safety | Landing quickstart generation |
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |
 | `site_inputs_parent.py` | product-safety | Site-inputs parent resolution by SHA |

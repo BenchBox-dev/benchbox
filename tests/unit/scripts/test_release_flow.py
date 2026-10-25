@@ -191,8 +191,10 @@ def test_run_checks_can_skip_the_network_dependent_freshness_check(tree: Path) -
 
     release_flow.run_checks(tree, VERSION, runner, skip_upstream_freshness=True)
     assert not any("check_sqlglot_upstream_freshness" in call for call in seen)
+    assert not any("check_sqlglot_advisories" in call for call in seen)
     release_flow.run_checks(tree, VERSION, runner)
     assert any("check_sqlglot_upstream_freshness" in call for call in seen)
+    assert any("check_sqlglot_advisories" in call for call in seen)
 
 
 def test_check_pins_an_explicit_lock_baseline(tree: Path) -> None:
@@ -232,6 +234,7 @@ def test_lock_baseline_cannot_be_replaced_to_hide_a_committed_downgrade(tree: Pa
         "scripts/check_release_curation.py",
         "scripts/check_dependency_bounds.py",
         "scripts/check_sqlglot_upstream_freshness.py",
+        "scripts/check_sqlglot_advisories.py",
         "scripts/sqlglot_refresh_waiver.json",
         "_project/scripts/check_uv_lock_revision.py",
         "_project/decisions/single-repo-migration.md",
@@ -311,6 +314,7 @@ def test_invalid_fragment_aborts_preparation_before_any_marker_or_changelog_writ
         ("check_release_curation.py", "release curation"),
         ("check_dependency_bounds.py", "dependency bounds"),
         ("check_sqlglot_upstream_freshness.py", "sqlglot upstream freshness"),
+        ("check_sqlglot_advisories.py", "sqlglot advisories"),
     ],
 )
 def test_check_fails_when_a_delegated_check_fails(tree: Path, script_name: str, label: str) -> None:
@@ -594,7 +598,14 @@ def test_candidate_selection_includes_committed_enforcement_changes(
     assert release_flow.select_candidate(root, base) == (True, VERSION, False, False)
 
 
-@pytest.mark.parametrize("path", ["scripts/check_sqlglot_upstream_freshness.py", "scripts/sqlglot_refresh_waiver.json"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "scripts/check_sqlglot_upstream_freshness.py",
+        "scripts/check_sqlglot_advisories.py",
+        "scripts/sqlglot_refresh_waiver.json",
+    ],
+)
 def test_candidate_selection_requires_freshness_when_the_gate_itself_changes(
     candidate_tree: tuple[Path, str], path: str
 ) -> None:

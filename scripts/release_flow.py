@@ -205,6 +205,11 @@ def check_sqlglot_upstream_freshness(root: Path, runner: Runner) -> list[str]:
     return _delegated("sqlglot upstream freshness", [sys.executable, str(script), "--root", str(root)], root, runner)
 
 
+def check_sqlglot_advisories(root: Path, runner: Runner) -> list[str]:
+    script = root / "scripts" / "check_sqlglot_advisories.py"
+    return _delegated("sqlglot advisories", [sys.executable, str(script), "--root", str(root)], root, runner)
+
+
 def run_checks(
     root: Path,
     version: str,
@@ -226,6 +231,7 @@ def run_checks(
     problems += check_dependency_bounds(root, runner)
     if not skip_upstream_freshness:
         problems += check_sqlglot_upstream_freshness(root, runner)
+        problems += check_sqlglot_advisories(root, runner)
     return problems
 
 
@@ -352,7 +358,11 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool, bool]:
     code, changed = run_command(["git", "--no-replace-objects", "diff", "--name-only", base_sha, "HEAD", "--"], root)
     if code != 0:
         raise ValueError("release selection cannot read changed enforcement inputs")
-    freshness_inputs = {"scripts/check_sqlglot_upstream_freshness.py", "scripts/sqlglot_refresh_waiver.json"}
+    freshness_inputs = {
+        "scripts/check_sqlglot_upstream_freshness.py",
+        "scripts/check_sqlglot_advisories.py",
+        "scripts/sqlglot_refresh_waiver.json",
+    }
     enforcement = {
         "scripts/release_flow.py",
         "scripts/update_version.py",
@@ -361,6 +371,7 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool, bool]:
         "scripts/check_release_curation.py",
         "scripts/check_dependency_bounds.py",
         "scripts/check_sqlglot_upstream_freshness.py",
+        "scripts/check_sqlglot_advisories.py",
         "scripts/sqlglot_refresh_waiver.json",
         "_project/scripts/check_uv_lock_revision.py",
         "_project/decisions/single-repo-migration.md",
