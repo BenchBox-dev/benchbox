@@ -350,11 +350,13 @@ def test_sweep_fails_visibly_when_a_pull_request_errors() -> None:
     assert "exit 1" in sweep["run"]
 
 
-def test_sweep_counts_only_evaluation_errors_as_failures() -> None:
+def test_sweep_counts_a_pull_request_as_evaluated_only_when_the_gate_reports_its_exit() -> None:
     gate = _script_module(REPO_ROOT / SCRIPT, "oracle_gate_under_workflow_test")
-    sweep = next(step for step in _steps("sweep") if step["name"].startswith("Gate every open"))
-    assert "|| STATUS=$?" in sweep["run"]
-    assert f'[ "$STATUS" -ne {gate.PASS} ] && [ "$STATUS" -ne {gate.WAITING_EXIT} ]' in sweep["run"]
+    run = next(step for step in _steps("sweep") if step["name"].startswith("Gate every open"))["run"]
+    assert run.index('rm -f "$RESULT"') < run.index(f'{gate.RESULT_FILE_ENV}="$RESULT" uv run')
+    assert "|| STATUS=$?" in run
+    assert '[ "$REPORTED" != "$STATUS" ]' in run
+    assert f'[ "$STATUS" -ne {gate.PASS} ] && [ "$STATUS" -ne {gate.WAITING_EXIT} ]' in run
     assert gate.WAITING_EXIT not in (1, gate.ERROR)
 
 
