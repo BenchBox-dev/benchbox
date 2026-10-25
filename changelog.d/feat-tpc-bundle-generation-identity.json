@@ -4,7 +4,7 @@
     {
       "category": "added",
       "breaking": false,
-      "text": "TPC-H and TPC-DS result bundles now record a power-stream policy marker, and benchbox compare warns when data-generation identity or power-stream policy differs between runs. Unmarked TPC-H bundles are read as the per-iteration-stream policy before 2026-10-07.",
+      "text": "TPC-H and TPC-DS result bundles now record a power-stream policy marker (fixed-stream-0 for TPC-H, per-iteration-stream for TPC-DS), and benchbox compare warns when data-generation identity or power-stream policy differs between runs. Unmarked TPC-H bundles are read as the per-iteration-stream policy before 2026-10-07.",
       "benchmarks": [
         "tpch",
         "tpcds"

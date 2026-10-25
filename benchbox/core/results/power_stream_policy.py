@@ -6,15 +6,16 @@ from typing import Any
 POWER_STREAM_POLICY_FIXED_STREAM_0 = "fixed-stream-0"
 POWER_STREAM_POLICY_PER_ITERATION = "per-iteration-stream"
 
-POWER_STREAM_BENCHMARKS = frozenset({"tpch", "tpcds"})
+POWER_STREAM_BENCHMARK_POLICIES = {
+    "tpch": POWER_STREAM_POLICY_FIXED_STREAM_0,
+    "tpcds": POWER_STREAM_POLICY_PER_ITERATION,
+}
 
 TPCH_FIXED_STREAM_CUTOFF = datetime(2026, 10, 7)
 
 
 def current_power_stream_policy(benchmark_id: str | None) -> str | None:
-    if str(benchmark_id or "").lower() in POWER_STREAM_BENCHMARKS:
-        return POWER_STREAM_POLICY_FIXED_STREAM_0
-    return None
+    return POWER_STREAM_BENCHMARK_POLICIES.get(str(benchmark_id or "").lower())
 
 
 def _parse_timestamp(value: object) -> datetime | None:
