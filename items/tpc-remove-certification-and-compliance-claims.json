@@ -4,6 +4,7 @@
     "The derived-results disclaimer appears with TPC results in docs, CLI reports and Explorer charts",
     "Power@Size and Throughput@Size keep their names"
   ],
+  "context": "Core repo delivered in merged PR #3435: TPC-H 'certification report' is now a validation report, TPC-DS compliance report a validation checklist report, 'Official TPC-DS Metrics' headings 'derived metrics'; CLI run-mode prompt, --official help, banners and scale-factor errors no longer say TPC-compliant; a 'Derived from <benchmark>... does not comply with the Specification ... must not be compared with official results' disclaimer is on reports (text/HTML/CSV), the audit trail, `benchbox metrics qphh` and the official-mode banner; docs reworded. Kept: Power@Size/Throughput@Size names, routed/official/unofficial result-class vocabulary, publish/submit refusal text; legacy names ValidationLevel.CERTIFICATION/CertificationChecker/certification_status remain with reworded messages. STILL OPEN in other repos: Explorer/site text (TrustBadge.tsx wording, Explorer chart disclaimer) and blog draft 18 (benchbox-site). Item stays open for those.",
   "description": "BenchBox text claims more than an unaudited run supports. The TPC Fair Use Quick Reference (v1.0.0, 2019) requires derived results to be labelled \"Derived from <benchmark>\", carry a disclaimer that they \"do not comply with the <benchmark> Specification\", and never be compared with official results. Remove: \"certification-ready\" (docs/guides/tpc/tpc-h-official-guide.md ~12, ~643; tpc-ds-official-guide.md ~12, ~850); the \"TPC-H BENCHMARK CERTIFICATION REPORT ... ready for certification submission\" output (benchbox/core/tpch/reporting.py ~121-195); \"TPC-compliant\" and \"is compliant\" in the run-mode prompt (benchbox/cli/benchmarks.py ~855-901) and banners (run.py ~549-558, ~1117-1137); \"Official TPC-H/DS Metrics\" headings (docs/benchmarks/tpc-h.md ~112, tpc-ds.md ~333); \"Running TPC-H compliant benchmarks\"; and similar in docs/contributing-results.md, publish.py, submit.py, blog draft 18. Keep \"official\" only for the TPC's own spec, tools, website and audited results. Owner decision 2026-10-08: keep the Power@Size and Throughput@Size names, with the derived-results disclaimer. Add the disclaimer wherever results and charts are shown (docs, CLI reports, Explorer).",
   "links": [
     "docs/guides/tpc/",
@@ -22,6 +23,14 @@
       "op": "create",
       "op_id": "292be1e2143548adaad59e5c75786b6d",
       "session_id": "bcebd139f88a4c38a6dc9549b9b03523"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T08:40:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a8e2ba4d76f94a67a33913485569f237",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
 }
