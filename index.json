@@ -2760,15 +2760,10 @@
       "title": "Reduce CHANGELOG.md merge conflicts between concurrent PRs"
     },
     "changelog-parallel-pr-conflicts-20261014": {
-      "claim": {
-        "expires_at": "2026-10-26T09:51:47Z",
-        "generation": "7747e35b04ac4583b8a7e27c2b1ea7f3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Parallel PRs conflict on CHANGELOG.md every time, because all of them append to the same Fixed list"
     },
     "changelog-unreleased-test-paths-20261017": {
