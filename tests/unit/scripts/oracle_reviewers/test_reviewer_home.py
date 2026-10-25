@@ -139,3 +139,111 @@ def test_gateway_clients_replace_an_existing_file(tmp_path: Path) -> None:
     out = _gateway_clients(tmp_path)
     assert "oracle-ci" in json.loads(out.read_text(encoding="utf-8"))
     assert [path.name for path in tmp_path.iterdir() if path.name.endswith(".tmp")] == []
+
+
+LOCAL_TOKEN = "l" * 48
+CLOUD_TOKEN = "c" * 48
+
+
+def _named_gateway_clients(tmp_path: Path, tokens: dict[str, str | None], accounts: dict | None = None) -> Path:
+    token_file = tmp_path / "client.token"
+    token_file.write_text(TOKEN, encoding="utf-8")
+    out = tmp_path / "clients.json"
+    argv = ["gateway-clients", "--token-file", str(token_file), "--out", str(out)]
+    for name, token in tokens.items():
+        named_file = tmp_path / f"{name}.token"
+        if token is not None:
+            named_file.write_text(token, encoding="utf-8")
+        argv += ["--client", f"{name}={named_file}"]
+    if accounts is not None:
+        accounts_file = tmp_path / "accounts.json"
+        accounts_file.write_text(json.dumps(accounts), encoding="utf-8")
+        argv += ["--accounts", str(accounts_file)]
+    assert cli.main(argv) == 0
+    return out
+
+
+def test_gateway_clients_write_one_entry_per_named_client_with_identical_scope(tmp_path: Path) -> None:
+    out = _named_gateway_clients(tmp_path, {"oracle-local": LOCAL_TOKEN, "oracle-cloud": CLOUD_TOKEN}, ACCOUNTS)
+    clients = json.loads(out.read_text(encoding="utf-8"))
+    assert list(clients) == ["oracle-ci", "oracle-local", "oracle-cloud"]
+    assert [clients[name]["tokenSha256"] for name in clients] == [
+        hashlib.sha256(token.encode()).hexdigest() for token in (TOKEN, LOCAL_TOKEN, CLOUD_TOKEN)
+    ]
+    assert len({client["tokenSha256"] for client in clients.values()}) == 3
+    for client in clients.values():
+        assert client["models"] == clients["oracle-ci"]["models"]
+        assert client["accounts"] == clients["oracle-ci"]["accounts"]
+    assert stat.S_IMODE(out.stat().st_mode) == 0o600
+
+
+def test_gateway_clients_with_only_oracle_ci_write_the_single_client_file(tmp_path: Path) -> None:
+    out = _gateway_clients(tmp_path, accounts=ACCOUNTS)
+    expected = {
+        "oracle-ci": {
+            "tokenSha256": hashlib.sha256(TOKEN.encode()).hexdigest(),
+            "models": cli.gateway_models(_load(CONFIG_PATH)),
+            "accounts": {
+                "openai-codex": ["email:o@example.com"],
+                "anthropic": ["email:a@example.com"],
+                "muse-code": ["account:m@example.com"],
+                "google-antigravity": ["email:g@example.com"],
+            },
+        }
+    }
+    assert out.read_text(encoding="utf-8") == json.dumps(expected, indent=2) + "\n"
+
+
+def test_gateway_clients_report_each_client(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _named_gateway_clients(tmp_path, {"oracle-local": LOCAL_TOKEN}, ACCOUNTS)
+    lines = capsys.readouterr().out.splitlines()
+    assert [line.split(":", 1)[0] for line in lines] == ["oracle-ci", "oracle-local"]
+    assert lines[0].split(":", 1)[1] == lines[1].split(":", 1)[1]
+    assert TOKEN not in "".join(lines) and LOCAL_TOKEN not in "".join(lines)
+
+
+@pytest.mark.parametrize("missing", ["oracle-local", "oracle-cloud"])
+def test_gateway_clients_refuse_a_missing_named_token_file(tmp_path: Path, missing: str) -> None:
+    tokens: dict[str, str | None] = {"oracle-local": LOCAL_TOKEN, "oracle-cloud": CLOUD_TOKEN}
+    tokens[missing] = None
+    with pytest.raises(SystemExit, match="cannot read the client token file"):
+        _named_gateway_clients(tmp_path, tokens)
+    assert not (tmp_path / "clients.json").exists()
+
+
+def test_gateway_clients_refuse_an_unreadable_named_token_file(tmp_path: Path) -> None:
+    (tmp_path / "oracle-local.token").mkdir()
+    with pytest.raises(SystemExit, match="cannot read the client token file"):
+        _named_gateway_clients(tmp_path, {"oracle-local": None})
+    assert not (tmp_path / "clients.json").exists()
+
+
+def test_gateway_clients_refuse_a_named_token_the_secret_would_not_match(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit, match="client token"):
+        _named_gateway_clients(tmp_path, {"oracle-local": LOCAL_TOKEN + "\n"})
+    assert not (tmp_path / "clients.json").exists()
+
+
+def test_gateway_clients_refuse_a_token_shared_between_clients(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit, match="oracle-local shares its token"):
+        _named_gateway_clients(tmp_path, {"oracle-local": TOKEN})
+    assert not (tmp_path / "clients.json").exists()
+
+
+@pytest.mark.parametrize("spec", ["oracle-ci=x", "oracle-local", "=x", "oracle-local="])
+def test_gateway_clients_refuse_a_malformed_or_reserved_client_spec(tmp_path: Path, spec: str) -> None:
+    token_file = tmp_path / "client.token"
+    token_file.write_text(TOKEN, encoding="utf-8")
+    argv = ["gateway-clients", "--token-file", str(token_file), "--out", str(tmp_path / "clients.json")]
+    with pytest.raises(SystemExit, match="--client expects|duplicate gateway client"):
+        cli.main([*argv, "--client", spec])
+    assert not (tmp_path / "clients.json").exists()
+
+
+def test_gateway_clients_refuse_a_repeated_client_name(tmp_path: Path) -> None:
+    token_file = tmp_path / "client.token"
+    token_file.write_text(TOKEN, encoding="utf-8")
+    argv = ["gateway-clients", "--token-file", str(token_file), "--out", str(tmp_path / "clients.json")]
+    with pytest.raises(SystemExit, match="duplicate gateway client name oracle-local"):
+        cli.main([*argv, "--client", "oracle-local=a", "--client", "oracle-local=b"])
+    assert not (tmp_path / "clients.json").exists()
