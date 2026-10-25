@@ -195,7 +195,7 @@ def test_vacuous_classifier(rows, vacuous):
 
 
 def test_vacuity_detail_names_the_shape():
-    assert vacuity_detail([]) == "0 rows"
+    assert vacuity_detail([]) == "no rows"
     assert vacuity_detail([(0, None)]) == "1 rows, every cell NULL or 0"
 
 
@@ -219,7 +219,7 @@ def test_matching_vacuous_results_fail_closed(tiny, tmp_path):
     assert {(f.engine, f.query, f.check) for f in report.unexplained} == {
         (engine, query, "vacuous") for engine in ("duckdb", "sqlite") for query in ("empty", "zero_sum")
     }
-    assert "0 rows" in next(f.detail for f in report.unexplained if f.query == "empty")
+    assert "no rows" in next(f.detail for f in report.unexplained if f.query == "empty")
     assert "every cell NULL or 0" in next(f.detail for f in report.unexplained if f.query == "zero_sum")
 
 
@@ -230,7 +230,7 @@ def test_vacuous_comparison_passes_only_with_a_reasoned_entry_that_goes_stale(ti
             "query": "empty",
             "engine": engine,
             "check": "vacuous",
-            "match": "0 rows",
+            "match": "no rows",
             "justification": "no data at this scale can satisfy the predicate",
         }
         for engine in ("duckdb", "sqlite")
@@ -263,7 +263,7 @@ def test_expected_difference_entries_can_name_several_engines(tmp_path):
         "queries": [1, 2],
         "engine": ["sqlite", "duckdb"],
         "check": "vacuous",
-        "match": "0 rows",
+        "match": "no rows",
         "justification": "why",
     }
     expanded = gate.load_expected(_write(tmp_path / "multi.json", [entry]))
@@ -398,3 +398,22 @@ def test_augmentation_gives_a_second_warehouse_and_the_query_parameters(tmp_path
 def test_augmentation_refuses_queries_that_name_no_parameters(tmp_path):
     with pytest.raises(ValueError, match="state or web_site company"):
         augmentation.augment(Dataset("tpcds", "", {}), {"16.default": {"duckdb": "SELECT 1"}}, tmp_path)
+
+
+def test_a_no_rows_entry_does_not_explain_rows_of_zeros(tiny, tmp_path):
+    entry = {
+        "benchmark": "tiny",
+        "query": "zero_sum",
+        "engine": "duckdb",
+        "check": "vacuous",
+        "match": "no rows",
+        "justification": "empty at this scale",
+    }
+    report = _evaluate(tiny, tmp_path, _side("candidate", ZERO_AGGREGATE), expected=[entry])
+    assert not report.passed
+    assert {(f.engine, f.query) for f in report.unexplained if f.check == "vacuous"} >= {("duckdb", "zero_sum")}
+    assert report.stale == [entry]
+    ten_rows = {"ten": ("SELECT 0 FROM lineitem, lineitem AS b", "SELECT 0 FROM lineitem, lineitem AS b")}
+    wide = _evaluate(tiny, tmp_path, _side("candidate", ten_rows), expected=[{**entry, "query": "ten"}])
+    assert "16 rows, every cell NULL or 0" in {f.detail for f in wide.unexplained}
+    assert not wide.passed

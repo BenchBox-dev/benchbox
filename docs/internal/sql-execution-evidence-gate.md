@@ -61,7 +61,7 @@ gate fails closed: a vacuous comparison fails unless it is proven or allowlisted
   reference and the DuckDB reference comparison are unchanged, and the augmented
   data never leaves the scratch directory and never reaches a published run.
 - Allowlisted: a `vacuous` entry in `expected_differences.json` with `match`
-  `0 rows` or `every cell NULL or 0` and a justification that names the executed
+  `no rows` or `every cell NULL or 0` and a justification that names the executed
   reason the query returns nothing at SF0.01. `engine` may be a list for this
   check. An entry that no longer matches is stale and fails the gate, so a query
   that gains signal (new seed, new data, new scale) has its entry removed.

@@ -79,5 +79,5 @@ def is_vacuous(rows) -> bool:
 
 def vacuity_detail(rows) -> str:
     if not rows:
-        return "0 rows"
+        return "no rows"
     return f"{len(rows)} rows, every cell NULL or 0"

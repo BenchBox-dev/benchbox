@@ -102,7 +102,7 @@
       "queries": [
         3
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): item has no i_manufact_id = 808 (180 items); dropping that predicate returns rows."
     },
     {
@@ -117,7 +117,7 @@
       "queries": [
         4
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): no customer has web-channel totals in both 1998 and 1999; dropping any one of the web sale_type or dyear predicates returns rows."
     },
     {
@@ -132,7 +132,7 @@
       "queries": [
         8
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the ca_zip prefix list matches 0 of 500 customer_address rows."
     },
     {
@@ -147,7 +147,7 @@
       "queries": [
         10
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the web-sales EXISTS predicate together with the other filters leaves no customer; dropping it returns rows."
     },
     {
@@ -162,7 +162,7 @@
       "queries": [
         11
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): no customer has store and web year totals in both 1998 and 1999; dropping any one sale_type or dyear predicate returns rows."
     },
     {
@@ -206,7 +206,7 @@
       "queries": [
         20
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the d_date window of 30 days from 2002-05-11 leaves no row; dropping that predicate returns rows."
     },
     {
@@ -236,7 +236,7 @@
       "queries": [
         24
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): store has one row with s_market_id 2, so s_market_id = 10 matches 0 of 1 stores."
     },
     {
@@ -251,7 +251,7 @@
       "queries": [
         31
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): no county has store and web totals for all of quarters 1 to 3 of 2000, so the self-joins return no row before the growth predicates apply."
     },
     {
@@ -281,7 +281,7 @@
       "queries": [
         37
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the i_manufact_id list leaves no row; dropping that predicate returns rows."
     },
     {
@@ -311,7 +311,7 @@
       "queries": [
         39
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): 68 warehouse and item groups have a coefficient of variation above 1 in 2000 but 0 pairs are high in both month 1 and month 2."
     },
     {
@@ -326,7 +326,7 @@
       "queries": [
         41
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the correlated item attribute count subquery predicate leaves no row; dropping it returns rows."
     },
     {
@@ -341,7 +341,7 @@
       "queries": [
         49
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the return amount > 10000 predicates, the year and the month together leave no row; dropping any of them returns rows."
     },
     {
@@ -356,7 +356,7 @@
       "queries": [
         54
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the Sports and sailing items have 6 catalog and 0 web sales in 1998-01 and the my_customers to my_revenue segment chain returns no customer."
     },
     {
@@ -371,7 +371,7 @@
       "queries": [
         55
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): i_manager_id = 8 and d_year = 1999 together leave no row; dropping either returns rows."
     },
     {
@@ -386,7 +386,7 @@
       "queries": [
         58
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): no item has revenue within the 10 percent band in all three channels for the week of 2000-04-24 (67 store and 39 catalog items sold that week)."
     },
     {
@@ -416,7 +416,7 @@
       "queries": [
         64
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the i_color list leaves no row; dropping that predicate returns rows."
     },
     {
@@ -431,7 +431,7 @@
       "queries": [
         65
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the revenue <= 0.1 * store average predicate leaves no row; dropping it returns rows."
     },
     {
@@ -446,7 +446,7 @@
       "queries": [
         69
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the d_year = 2003 and the store EXISTS predicates leave no customer; dropping either returns rows."
     },
     {
@@ -461,7 +461,7 @@
       "queries": [
         73
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the cnt BETWEEN 1 AND 5, d_dom BETWEEN 1 AND 2 and d_year predicates together leave no row; dropping any one returns rows."
     },
     {
@@ -476,7 +476,7 @@
       "queries": [
         82
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the i_manufact_id list leaves no row; dropping that predicate returns rows."
     },
     {
@@ -491,7 +491,7 @@
       "queries": [
         85
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): d_year = 2000 and the demographic and address/net-profit bands leave no row; dropping d_year or either band returns rows."
     },
     {
@@ -536,7 +536,7 @@
       "queries": [
         91
       ],
-      "match": "0 rows",
+      "match": "no rows",
       "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the d_moy = 12 predicate together with the other filters leaves no row; dropping it returns rows."
     },
     {
