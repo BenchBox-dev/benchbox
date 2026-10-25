@@ -4,7 +4,7 @@
     "Failing-before tests for each variant pass after; existing hash tests unchanged",
     "PR merged with an oracle verdict on its final head; merge SHA recorded or a stop report with options"
   ],
-  "context": "Created 2026-10-24 from the round-2 codex review of gap issue 2808 (packet /Users/joe/Developer/soundness-reviews/2808-round2/, develop 85fb89967aee37d54a6ea605d92893f59ffe63ab, raw output sha256 b34d14bc5cf5054ebbc6a3e733589661bb6170bee883f93a05f562d51b518286, final message sha256 c3791ed9839899f8a451c3ae7c9723852ca4e44d2ebcfc80ab4c92b0f2140178). Reviewer claims are UNVERIFIED: reproduce on current origin/develop first; line numbers are leads.",
+  "context": "2026-10-25 owner decision: keep the occurrence-index design for one more oracle round on PR #3420 head 009f4fae7 (fixes post-edit block binding, real-content fixtures, unreadable fallback at{old_start}, overlapping periodic copies). If that round ships, merge; if it finds another collision class, switch to treating every headingless first hunk of a changed file as changed.",
   "description": "Round-2 codex finding 1 (High) on gap 2808: protocol.file_patches (_project/scripts/oracle_reviewers/protocol.py ~160) gives a first hunk with no function heading the constant 'first', and _heading_gap (~129) collides when the heading text repeats, so a relocated edit hashes the same as the original and plan_round CARRYs the earlier SHIP. Codex produced identical fingerprints for requires_auth edits at hunk starts 4 and 15 and a repeated-heading variant reaching plan_round CARRY. This was a disclosed residual risk of the merged relocation fix (headingless first hunks indistinguishable from a rebase shift).\n\nDECISION GATE: reproduce first with real git diffs (headingless hunk at two positions; repeated heading). The fix must keep: a pure rebase keeps the hash; a relocation changes it (test_a_binary_change_is_never_mistaken_for_an_unchanged_patch and the shifted-hunk tests stay unchanged). If no design satisfies both for headingless hunks, STOP and report the options with evidence: owner decision needed (candidate: treat a headingless first hunk as always changed so it is re-reviewed, accepting extra re-reviews).\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun or dispatch the oracle; oracle verdict required on the PR (soundness path); no pre-registered digests; never weaken a gate; no skip/xfail; never bypass a hook by any route (no SKIP=, --no-verify, commit-tree); primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; always encoding utf-8; PR text for a reader who never saw the session; done = merged PR plus evidence.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0b377a93a0644a5d81f062932fe4c6a8",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-25T17:20:54Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7186a45afd424f6db5bd2729fd740d19",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
