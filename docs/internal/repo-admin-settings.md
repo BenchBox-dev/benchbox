@@ -123,6 +123,35 @@ required local-engine cases after each merge; revert a red run with
 an invariant, that run catches it after merge. If this happens more than about
 once a week, turn the strict policy back on.
 
+**Relaxing one required context to repair a broken base.**
+
+Owner only, and only when `develop`'s own content breaks a required check so
+no pull request can pass it (`docs/agent/emergency-merge.md` covers what agents
+do first). Ordinary one-pull-request bypasses follow
+`docs/agent/merge-authority.md`.
+
+1. Name one pull request and its head SHA. Confirm from the agent evidence that
+   the failure reproduces on current `develop`.
+2. Hold competing pull requests: disarm auto-merge on any other armed pull
+   request, or wait until none is armed, so only the named head can merge while
+   the ruleset is relaxed.
+3. Capture the full ruleset before any change:
+   `gh api repos/BenchBox-dev/benchbox/rulesets/15611785 > /tmp/ruleset-15611785-before.json`.
+4. Remove exactly one required context, the failing one, and nothing else. Do not
+   touch bypass actors, enforcement, or the `oracle-gate` binding.
+5. Merge the named pull request at the named head.
+6. Restore the context immediately, whether the merge succeeded or failed,
+   before retrying, starting other work, or recording notes.
+7. Read back and compare with the capture:
+   `gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin --compare-capture /tmp/ruleset-15611785-before.json`.
+   It ignores only `updated_at`, `_links` and `current_user_can_bypass`, prints
+   each differing field (including any context's `integration_id`, where a
+   missing binding equals `null`), requires `oracle-gate` to stay bound to
+   integration 5201041, and exits 0 only when nothing differs. Then run the
+   runbook drift check without `--compare-capture`.
+8. Write the decision record `emergency-merge.md` requires, citing the records
+   it names and the ruleset history versions of each window.
+
 The latest bounded, read-only wall-time and runner-minute remeasure, taken
 while the merge queue was still in use, is in
 [`_project/analysis/ci-waste-remeasure-2026-08-31.md`](https://github.com/BenchBox-dev/BenchBox/blob/develop/_project/analysis/ci-waste-remeasure-2026-08-31.md).

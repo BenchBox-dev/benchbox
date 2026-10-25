@@ -18,6 +18,7 @@ DEFAULT_RUNBOOK = REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md"
 sys.path.insert(0, str(REPO_ROOT / "_project" / "scripts"))
 
 from ruleset_review_enforcement import (
+    ORACLE_GATE_INTEGRATION_ID,
     TAG_RULESET_ENFORCED,
     extract_rules,
     review_enforcement_findings,
@@ -26,6 +27,9 @@ from ruleset_review_enforcement import (
 )
 
 CLI_DESCRIPTION = "Compare live GitHub rulesets with the repository admin runbook."
+
+DEVELOP_RULESET_ID = 15611785
+CAPTURE_IGNORED_FIELDS = frozenset({"updated_at", "_links", "current_user_can_bypass"})
 
 WARNING_PREFIX = "WARNING (non-blocking): "
 
@@ -284,6 +288,77 @@ def compare_ruleset(
     return findings
 
 
+def _normalized_for_capture(ruleset: dict[str, Any]) -> dict[str, Any]:
+    normalized = {key: value for key, value in ruleset.items() if key not in CAPTURE_IGNORED_FIELDS}
+    rules = []
+    for rule in normalized.get("rules") or []:
+        parameters = rule.get("parameters")
+        if rule.get("type") == "required_status_checks" and isinstance(parameters, dict):
+            checks = {
+                str(check.get("context")): {"integration_id": check.get("integration_id")}
+                for check in parameters.get("required_status_checks") or []
+            }
+            rule = {**rule, "parameters": {**parameters, "required_status_checks": checks}}
+        rules.append(rule)
+    if "rules" in normalized:
+        normalized["rules"] = rules
+    return normalized
+
+
+def _differing_fields(path: str, capture: Any, live: Any) -> list[str]:
+    if isinstance(capture, dict) and isinstance(live, dict):
+        findings: list[str] = []
+        for key in sorted(capture.keys() | live.keys(), key=str):
+            child = f"{path}.{key}" if path else str(key)
+            if key not in live:
+                findings.append(f"{child}: capture has {capture[key]!r}, live is missing")
+            elif key not in capture:
+                findings.append(f"{child}: capture is missing, live has {live[key]!r}")
+            else:
+                findings.extend(_differing_fields(child, capture[key], live[key]))
+        return findings
+    if isinstance(capture, list) and isinstance(live, list) and len(capture) == len(live):
+        findings = []
+        for index, (capture_item, live_item) in enumerate(zip(capture, live, strict=True)):
+            findings.extend(_differing_fields(f"{path}[{index}]", capture_item, live_item))
+        return findings
+    if capture != live:
+        return [f"{path}: capture has {capture!r}, live has {live!r}"]
+    return []
+
+
+def capture_comparison_findings(capture: dict[str, Any], live: dict[str, Any]) -> list[str]:
+    findings = _differing_fields("", _normalized_for_capture(capture), _normalized_for_capture(live))
+    bindings = {
+        context: check["integration_id"]
+        for rule in _normalized_for_capture(live).get("rules", [])
+        if rule.get("type") == "required_status_checks"
+        for context, check in rule["parameters"]["required_status_checks"].items()
+    }
+    if bindings.get("oracle-gate") != ORACLE_GATE_INTEGRATION_ID:
+        findings.append(
+            f"oracle-gate integration_id: live is {bindings.get('oracle-gate')!r}, expected {ORACLE_GATE_INTEGRATION_ID}"
+        )
+    return findings
+
+
+def compare_capture_main(args: argparse.Namespace, token: str) -> int:
+    try:
+        capture = json.loads(args.compare_capture.read_text(encoding="utf-8"))
+        live = _api_json(f"https://api.github.com/repos/{args.repo}/rulesets/{args.ruleset_id}", token)
+    except Exception as exc:
+        print(f"ERROR: capture comparison failed: {exc}", file=sys.stderr)
+        return 1
+    findings = capture_comparison_findings(capture, live)
+    if findings:
+        print(f"Ruleset {args.ruleset_id} differs from {args.compare_capture}:")
+        for finding in findings:
+            print(f"- {finding}")
+        return 1
+    print(f"Ruleset {args.ruleset_id} matches {args.compare_capture}.")
+    return 0
+
+
 def tag_creation_findings(
     all_live_rulesets: list[dict[str, Any]],
     *,
@@ -380,7 +455,20 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Fail if the GitHub API response does not expose bypass_actors.",
     )
+    parser.add_argument(
+        "--compare-capture",
+        type=Path,
+        help="compare the live develop ruleset with a saved ruleset JSON capture instead of the runbook",
+    )
+    parser.add_argument("--ruleset-id", type=int, default=DEVELOP_RULESET_ID)
     args = parser.parse_args(argv)
+
+    if args.compare_capture:
+        token = sys.stdin.read().strip() if args.token_stdin else args.token
+        if not token:
+            print("ERROR: capture comparison requires --token or --token-stdin.", file=sys.stderr)
+            return 1
+        return compare_capture_main(args, token)
 
     override, reason = _override_active(os.environ)
     try:
