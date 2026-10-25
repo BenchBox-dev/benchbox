@@ -124,3 +124,29 @@ def test_medium_tier_keeps_duration_sharding_without_a_coverage_map_job() -> Non
     assert "coverage" not in " ".join(jobs).lower()
     runs = "\n".join(step.get("run", "") for step in jobs["medium-test"]["steps"])
     assert "--durations tests/fixtures/medium_shard_durations.json" in runs
+
+
+def test_whole_tree_comment_policy_scan_runs_as_its_own_job_after_each_push() -> None:
+    job = _workflow()["jobs"]["comment-policy-scan"]
+    assert job["runs-on"] == "ubuntu-latest"
+    assert "needs" not in job and "if" not in job and "strategy" not in job and "permissions" not in job
+    assert not job.get("continue-on-error")
+    assert not any(step.get("continue-on-error") for step in job["steps"])
+    checkout = next(step for step in job["steps"] if step.get("uses", "").startswith("actions/checkout@"))
+    assert checkout["with"]["fetch-depth"] == 0
+    assert checkout["with"]["persist-credentials"] is False
+    assert "ref" not in checkout["with"]
+
+
+def test_comment_policy_scan_prints_the_checked_sha_before_scanning() -> None:
+    runs = [step["run"] for step in _workflow()["jobs"]["comment-policy-scan"]["steps"] if "run" in step]
+    assert len(runs) == 1
+    assert "set -euo pipefail" in runs[0]
+    assert runs[0].index("git rev-parse HEAD") < runs[0].index("python -I scripts/run_comment_policy.py --full")
+
+
+def test_comment_policy_scan_matches_the_nightly_invocation() -> None:
+    nightly = yaml.safe_load((ROOT / ".github/workflows/comment-policy-nightly.yml").read_text(encoding="utf-8"))
+    scan = next(step for step in nightly["jobs"]["whole-tree"]["steps"] if step.get("id") == "scan")
+    job = _workflow()["jobs"]["comment-policy-scan"]
+    assert scan["run"] in "\n".join(step["run"] for step in job["steps"] if "run" in step)

@@ -383,6 +383,29 @@ jobs:
       - name: Run the required local-engine cases
         run: make test-required-local-cases
 
+  comment-policy-scan:
+    name: comment-policy-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
+          working-directory: ${{ runner.temp }}
+          ignore-empty-workdir: true
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan the whole tree against the checked-out commit
+        run: |
+          set -euo pipefail
+          echo "Checked SHA: $(git rev-parse HEAD)"
+          python -I scripts/run_comment_policy.py --full
+
   dist-artifact:
     name: dist-artifact
     if: ${{ github.event_name == 'push' }}
