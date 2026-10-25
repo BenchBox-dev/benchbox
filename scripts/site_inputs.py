@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import tomllib
 from datetime import datetime, timezone
 from pathlib import Path
@@ -63,6 +64,17 @@ REQUIRED_MEMBERS = (
     "downloads",
     "attestations.json",
 )
+CONTRACT_MEMBERS = ("docs-data", "doc-contracts.json")
+MEMBERS_BY_SCHEMA: dict[int, tuple[str, ...]] = {
+    3: REQUIRED_MEMBERS,
+    4: REQUIRED_MEMBERS + CONTRACT_MEMBERS,
+    5: tuple(name for name in REQUIRED_MEMBERS if name not in ("docs", "downloads")) + CONTRACT_MEMBERS,
+}
+PROFILE_SCHEMAS = {"exact3": 3, "candidate4": 4, "candidate5": 5}
+CANDIDATE_CERTIFIER = "candidate"
+DOCS_DATA_FILE = "docs-data.json"
+DOCS_DATA_SCHEMA = ROOT / "quality/docs-data.schema.json"
+DOC_CONTRACTS_SCHEMA = ROOT / "quality/doc-contracts.schema.json"
 REQUIRED_ATTESTATIONS = (
     "privacy",
     "explorer_compat",
@@ -405,8 +417,32 @@ def resolve_parent(core_sha: str, parent_ref: str | None) -> str:
     return must_run("git", "-C", str(ROOT), "rev-parse", "--verify", "--end-of-options", f"{ref}^{{commit}}").strip()
 
 
+def build_docs_data(out_dir: Path) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    must_run("uv", "run", "--", "python", "scripts/export_docs_data.py", "--output", str(out_dir / DOCS_DATA_FILE))
+
+
+def build_doc_contracts(out: Path) -> None:
+    must_run("uv", "run", "--", "python", "scripts/doc_contracts.py", "--output", str(out))
+
+
+def schema_errors(instance: object, schema_path: Path) -> list[str]:
+    import jsonschema
+
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    validator = jsonschema.Draft202012Validator(schema)
+    return sorted(
+        f"{'/'.join(str(part) for part in error.absolute_path) or '<root>'}: {error.message}"
+        for error in validator.iter_errors(instance)
+    )
+
+
 def cmd_build(args: argparse.Namespace) -> int:
     out = Path(args.out)
+    schema = PROFILE_SCHEMAS[args.profile]
+    if schema != SCHEMA and args.certified_by:
+        raise RuntimeError(f"profile {args.profile} is a candidate build and cannot carry a certifier")
+    wanted = MEMBERS_BY_SCHEMA[schema]
     head = must_run("git", "-C", str(ROOT), "rev-parse", "HEAD").strip()
     core_sha = args.core_sha or head
     if head != core_sha:
@@ -422,42 +458,38 @@ def cmd_build(args: argparse.Namespace) -> int:
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
-    build_docs(out / "docs")
-    regenerated = [
-        line
-        for line in must_run("git", "-C", str(ROOT), "status", "--porcelain").splitlines()
-        if not line.startswith("??")
-    ]
-    if regenerated:
-        raise RuntimeError(f"docs generation dirtied the tree at {core_sha}: {regenerated[:5]}")
-    build_repo_files(out / "repo-files.json", core_sha)
-    build_explorer_snapshot(out / "explorer")
-    build_contract(out / "explorer/contract.json")
-    build_fixtures(out / "explorer/fixtures")
-    build_parity(out / "explorer/parity")
-    (out / "landing").mkdir(parents=True, exist_ok=True)
-    build_prompt_catalog(out / "landing/prompt-catalog.json")
-    shutil.copy2(ROOT / "_project/design/api-public-symbols.json", out / "api-public-symbols.json")
-    build_downloads(out / "downloads", out / "docs")
-    build_attestations(out / "attestations.json", out, core_sha, parent_sha)
-    members = {
-        "docs": member_digest(out / "docs"),
-        "repo-files.json": member_digest(out / "repo-files.json"),
-        "explorer/results.duckdb": member_digest(out / "explorer/results.duckdb"),
-        "explorer/contract.json": member_digest(out / "explorer/contract.json"),
-        "explorer/fixtures": member_digest(out / "explorer/fixtures"),
-        "explorer/parity": member_digest(out / "explorer/parity"),
-        "explorer/bundles": member_digest(out / "explorer/bundles"),
-        "landing/prompt-catalog.json": member_digest(out / "landing/prompt-catalog.json"),
-        "api-public-symbols.json": member_digest(out / "api-public-symbols.json"),
-        "downloads": member_digest(out / "downloads"),
-        "attestations.json": member_digest(out / "attestations.json"),
-    }
+    with tempfile.TemporaryDirectory() as scratch_root:
+        scratch = Path(scratch_root)
+        docs_dir = out / "docs" if "docs" in wanted else scratch / "docs"
+        downloads_dir = out / "downloads" if "downloads" in wanted else scratch / "downloads"
+        build_docs(docs_dir)
+        regenerated = [
+            line
+            for line in must_run("git", "-C", str(ROOT), "status", "--porcelain").splitlines()
+            if not line.startswith("??")
+        ]
+        if regenerated:
+            raise RuntimeError(f"docs generation dirtied the tree at {core_sha}: {regenerated[:5]}")
+        build_repo_files(out / "repo-files.json", core_sha)
+        build_explorer_snapshot(out / "explorer")
+        build_contract(out / "explorer/contract.json")
+        build_fixtures(out / "explorer/fixtures")
+        build_parity(out / "explorer/parity")
+        (out / "landing").mkdir(parents=True, exist_ok=True)
+        build_prompt_catalog(out / "landing/prompt-catalog.json")
+        shutil.copy2(ROOT / "_project/design/api-public-symbols.json", out / "api-public-symbols.json")
+        build_downloads(downloads_dir, docs_dir)
+        if "docs-data" in wanted:
+            build_docs_data(out / "docs-data")
+        if "doc-contracts.json" in wanted:
+            build_doc_contracts(out / "doc-contracts.json")
+        build_attestations(out / "attestations.json", out, core_sha, parent_sha)
+    members = {name: member_digest(out / name) for name in wanted}
     manifest = {
-        "schema": SCHEMA,
+        "schema": schema,
         "core_sha": core_sha,
         "package_version": package_version(),
-        "certified_by": args.certified_by or "local",
+        "certified_by": args.certified_by or ("local" if schema == SCHEMA else CANDIDATE_CERTIFIER),
         "corpus_sha": tree_sha(core_sha, "results-data"),
         "parent_core_sha": parent_sha,
         "parent_source": args.parent_source,
@@ -469,16 +501,31 @@ def cmd_build(args: argparse.Namespace) -> int:
     return 0
 
 
+def candidate_errors(out: Path, manifest: dict) -> list[str]:
+    problems: list[str] = []
+    if manifest.get("certified_by") != CANDIDATE_CERTIFIER:
+        problems.append(f"certified_by must be {CANDIDATE_CERTIFIER!r}, got {manifest.get('certified_by')!r}")
+    docs_data = json.loads((out / "docs-data" / DOCS_DATA_FILE).read_text(encoding="utf-8"))
+    problems += [f"docs-data: {e}" for e in schema_errors(docs_data, DOCS_DATA_SCHEMA)]
+    contracts = json.loads((out / "doc-contracts.json").read_text(encoding="utf-8"))
+    problems += [f"doc-contracts: {e}" for e in schema_errors(contracts, DOC_CONTRACTS_SCHEMA)]
+    extra = sorted(p.name for p in (out / "docs-data").iterdir() if p.name != DOCS_DATA_FILE)
+    if extra:
+        problems.append(f"docs-data has unexpected entries: {extra}")
+    return problems
+
+
 def cmd_verify(out: Path) -> int:
     manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
-    if manifest.get("schema") != SCHEMA:
+    schema = manifest.get("schema")
+    if schema not in MEMBERS_BY_SCHEMA:
         print(f"schema mismatch: {manifest.get('schema')!r}")
         return 1
     expected = manifest.get("members", {})
     if not expected:
         print("empty manifest")
         return 1
-    if sorted(expected) != sorted(REQUIRED_MEMBERS):
+    if sorted(expected) != sorted(MEMBERS_BY_SCHEMA[schema]):
         print(f"member set mismatch: {sorted(expected)}")
         return 1
     if any(not sha for sha in expected.values()):
@@ -488,6 +535,11 @@ def cmd_verify(out: Path) -> int:
     if bad:
         print(f"digest mismatch: {', '.join(bad)}")
         return 1
+    if schema != SCHEMA:
+        problems = candidate_errors(out, manifest)
+        if problems:
+            print(f"candidate schema {schema} invalid: {'; '.join(problems[:5])}")
+            return 1
     attestations = json.loads((out / "attestations.json").read_text(encoding="utf-8"))
     if not attestations:
         print("empty attestations")
@@ -542,7 +594,7 @@ def cmd_verify(out: Path) -> int:
         print(f"attestation range drifted from manifest: {', '.join(rebound)}")
         return 1
     print(
-        f"verify OK: schema {SCHEMA}, {len(expected)} members, "
+        f"verify OK: schema {schema}, {len(expected)} members, "
         f"{sum(1 for e in attestations if e['result'] == 'pass')} pass, "
         f"{sum(1 for e in attestations if e['result'] == 'skip')} skip"
     )
@@ -558,6 +610,7 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--parent-core-sha", default=None)
     build.add_argument("--parent-source", choices=PARENT_SOURCES, default="local")
     build.add_argument("--certified-by", default=None)
+    build.add_argument("--profile", choices=sorted(PROFILE_SCHEMAS), default="exact3")
     verify = sub.add_parser("verify")
     verify.add_argument("dir", type=Path)
     args = parser.parse_args(argv)

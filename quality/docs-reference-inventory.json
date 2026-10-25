@@ -3190,12 +3190,12 @@
     "extra": 3,
     "generated": 1,
     "root": 1,
-    "unresolved": 4
+    "unresolved": 5
    },
    "occurrences": 16,
    "path": "scripts/site_inputs.py",
    "rule": "site-input-pipeline",
-   "target_count": 9,
+   "target_count": 10,
    "targets": [
     {
      "kind": "extra",
@@ -3220,6 +3220,10 @@
     {
      "kind": "unresolved",
      "target": "docs/blog/"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/downloads"
     },
     {
      "kind": "unresolved",
@@ -4964,16 +4968,20 @@
    "kinds": {
     "built-url": 1,
     "root": 1,
-    "unresolved": 2
+    "unresolved": 4
    },
-   "occurrences": 10,
+   "occurrences": 15,
    "path": "tests/unit/scripts/test_site_inputs.py",
    "rule": "site-input-pipeline",
-   "target_count": 4,
+   "target_count": 6,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/downloads"
     },
     {
      "kind": "unresolved",
@@ -4982,6 +4990,10 @@
     {
      "kind": "unresolved",
      "target": "docs/guide/other.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/member.txt/docs"
     },
     {
      "kind": "built-url",
@@ -5271,10 +5283,10 @@
    "file": 1562,
    "generated": 15,
    "pattern": 287,
-   "root": 213,
-   "unresolved": 1997
+   "root": 215,
+   "unresolved": 2000
   },
-  "references": 33361,
+  "references": 33366,
   "unclassified": 0
  }
 }

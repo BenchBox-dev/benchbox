@@ -103,3 +103,10 @@ def test_reporter_jobs_add_no_permission_or_secret() -> None:
         job = _jobs()[name]
         assert job["permissions"] == {"issues": "write"}
         assert "secrets." not in str(job)
+
+
+def test_workflow_never_selects_a_candidate_profile() -> None:
+    text = _text()
+    assert "--profile" not in text
+    assert "candidate" not in text
+    assert "site-inputs-candidate" not in text
