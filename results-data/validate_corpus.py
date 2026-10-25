@@ -18,8 +18,11 @@ LEGACY_MANIFEST_NAME = "submission-manifest.json"
 MINIMUM_PLATFORMS_PER_COHORT = 3
 DOCUMENTED_SHALLOW_COHORTS = {
     ("tpch", "0.01"): frozenset({"datafusion", "duckdb"}),
+    ("coffeeshop", "0.01"): frozenset({"clickhouse-local", "duckdb"}),
     ("tpch", "0.1"): frozenset({"datafusion", "duckdb"}),
     ("tpch", "1.0"): frozenset({"duckdb"}),
+    ("tpcdi", "0.01"): frozenset({"clickhouse-local", "duckdb"}),
+    ("clickbench", "0.1"): frozenset({"bigquery", "snowflake"}),
 }
 NON_CLEAN_VALIDATION_STATUSES = frozenset(
     {"failed", "interrupted", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}

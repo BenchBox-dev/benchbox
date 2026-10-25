@@ -38,7 +38,7 @@ PUBLIC_SUBMISSION_SCHEMA_POLICY, result_schema_version_value = _load_schema_poli
 
 try:
     from benchbox.core.results.provenance import FUNDING_SOURCES, RESULT_SOURCES
-except ImportError:  # pragma: no cover
+except ImportError:
     FUNDING_SOURCES = ("employer", "personal", "free-trial", "vendor-sponsored", "grant", "unspecified")
     RESULT_SOURCES = ("internal", "community", "vendor")
 
@@ -119,6 +119,8 @@ SUBMISSION_NOTES_MAX_LEN = 500
 KNOWN_DEFECT_IDS = frozenset(
     {
         "defective-macdbgen-addresses",
+        "defective-sqlite-clickbench-row-counts",
+        "defective-superseded-sql-translation",
         "defective-tpcds-obt-parameters",
         "defective-tpchavoc-variant-divergence",
         "defective-windows-dsdgen-scale",
@@ -1116,15 +1118,22 @@ def _validate_compliance_section(
     benchmark: Any,
     vr: ValidationResult,
     *,
+    platform: Any = None,
     allow_partial_validation: bool = False,
+    internal_source: bool = False,
 ) -> None:
     if not isinstance(benchmark, dict):
         return
     compliance = benchmark.get("compliance_class")
+    gateway = platform.get("gateway") if isinstance(platform, dict) else None
+    if isinstance(gateway, dict) and gateway.get("name") and gateway.get("routed") is True:
+        compliance = "unofficial_nonstandard"
     if compliance is None:
         return
     if compliance != "official":
         if allow_partial_validation:
+            return
+        if internal_source and compliance in CLI_REFUSED_COMPLIANCE_CLASSES:
             return
         vr.error(
             f"benchmark.compliance_class={compliance!r} is not accepted for public submissions; "
@@ -2088,6 +2097,7 @@ def _validate_bundle(
     vr: ValidationResult,
     *,
     allow_partial_validation: bool = False,
+    internal_source: bool = False,
 ) -> None:
     _capture_metadata(data, vr)
 
@@ -2112,7 +2122,9 @@ def _validate_bundle(
     _validate_compliance_section(
         data.get("benchmark", {}),
         vr,
+        platform=data.get("platform", {}),
         allow_partial_validation=allow_partial_validation,
+        internal_source=internal_source,
     )
     _validate_platform_section(data.get("platform", {}), vr)
     _validate_cache_control_section(
@@ -2163,6 +2175,29 @@ def _is_safe_bundle_filename(name: str) -> bool:
     if Path(name).is_absolute() or ".." in parts or len(parts) != 1:
         return False
     return True
+
+
+def _find_manifest_path(bundle_path: Path) -> Path | None:
+    per_bundle_manifest = bundle_path.parent / f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}"
+    legacy_manifest = bundle_path.parent / SUBMISSION_MANIFEST_FILENAME
+    if per_bundle_manifest.exists():
+        return per_bundle_manifest
+    if legacy_manifest.exists():
+        return legacy_manifest
+    return None
+
+
+def _manifest_declares_internal_source(bundle_path: Path) -> bool:
+    manifest_path = _find_manifest_path(bundle_path)
+    if manifest_path is None:
+        return False
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    if not isinstance(manifest, dict):
+        return False
+    return manifest.get("result_source") == "internal" and manifest.get("bundle_file") == bundle_path.name
 
 
 def _validate_manifest_hash(manifest_path: Path, bundle_dir: Path, vr: ValidationResult) -> None:
@@ -2519,6 +2554,7 @@ def validate_bundles(
     require_manifest: bool = False,
     *,
     allow_partial_validation: bool = False,
+    trust_internal_source: bool = False,
 ) -> list[ValidationResult]:
     results = []
     parsed: list[tuple[dict[str, Any], ValidationResult]] = []
@@ -2549,7 +2585,12 @@ def validate_bundles(
             results.append(vr)
             continue
 
-        _validate_bundle(data, vr, allow_partial_validation=allow_partial_validation)
+        _validate_bundle(
+            data,
+            vr,
+            allow_partial_validation=allow_partial_validation,
+            internal_source=trust_internal_source and _manifest_declares_internal_source(bundle_path),
+        )
         parsed.append((data, vr))
 
         applied_name = f"{bundle_path.stem}.applied.json".lower()
@@ -2577,13 +2618,7 @@ def validate_bundles(
                         vr.error(
                             f"Public privacy contract rejects unanonymized plans diagnostics in {companion.name}: {finding}"
                         )
-        per_bundle_manifest = bundle_path.parent / f"{bundle_path.stem}{SUBMISSION_MANIFEST_SUFFIX}"
-        legacy_manifest = bundle_path.parent / SUBMISSION_MANIFEST_FILENAME
-        manifest_path = (
-            per_bundle_manifest
-            if per_bundle_manifest.exists()
-            else (legacy_manifest if legacy_manifest.exists() else None)
-        )
+        manifest_path = _find_manifest_path(bundle_path)
         if manifest_path is not None:
             _validate_manifest_hash(manifest_path, bundle_path.parent, vr)
         elif require_manifest:
