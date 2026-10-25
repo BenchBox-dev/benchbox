@@ -89,6 +89,9 @@ class TestManifestProvenance:
     def test_superseded_sql_translation_defect_ok(self):
         assert self._run({"known_defects": ["defective-superseded-sql-translation"]}).ok
 
+    def test_sqlite_clickbench_row_count_defect_ok(self):
+        assert self._run({"known_defects": ["defective-sqlite-clickbench-row-counts"]}).ok
+
     def test_multiple_known_defects_ok(self):
         assert self._run({"known_defects": ["defective-macdbgen-addresses", "defective-windows-dsdgen-scale"]}).ok
 
