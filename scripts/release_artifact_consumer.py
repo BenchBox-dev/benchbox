@@ -283,14 +283,23 @@ def running_producer_job(
     wait_seconds: float = PRODUCER_WAIT_SECONDS,
     poll_seconds: float = PRODUCER_POLL_SECONDS,
 ) -> dict[str, Any]:
-    deadline = clock() + wait_seconds
+    started = clock()
+    deadline = started + wait_seconds
+    first_lagging: str | None = None
     while True:
         jobs = _pages(api, f"actions/runs/{run_id}/attempts/{attempt}/jobs", "jobs")
         matches = [job for job in jobs if job.get("name") == JOB_NAME]
         detail = f"{len(matches)} job(s) named {JOB_NAME}: {_describe_jobs(matches)}"
         _require(len(matches) <= 1, f"producer job is not unique: {detail}")
         if matches and matches[0].get("status") == "in_progress":
+            if first_lagging is not None:
+                print(
+                    f"::notice::Producer job was not listed as running at first; waited {clock() - started:.1f}s "
+                    f"for run {run_id} attempt {attempt}. First non-running listing: {first_lagging}"
+                )
             return matches[0]
+        if first_lagging is None:
+            first_lagging = f"{detail} (run_attempt={attempt})"
         _require(
             not matches or matches[0].get("status") in {"queued", "waiting", "pending", "requested"},
             f"producer job is not running: {detail}",
