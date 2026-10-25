@@ -3127,7 +3127,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "sql-execution-evidence pulls Postgres anonymously from public.ecr.aws and fails on its rate limit"
+      "title": "Postgres CI images: pull only the GHCR mirror of the pinned Postgres 17 digest in sql-execution-evidence and nightly (replaces the closed embedded-pgserver PR #3382)"
     },
     "ci-stale-check-run-blocks-merge": {
       "claim": null,
