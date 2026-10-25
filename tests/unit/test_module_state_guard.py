@@ -82,12 +82,15 @@ def test_module_that_restores_what_it_changes_passes(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout
 
 
-def test_diff_names_a_replaced_tracer_provider() -> None:
-    before = module_state_guard.snapshot()
-    after = {**before, "tracer_provider": object()}
+def test_diff_names_an_installed_tracer_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    from opentelemetry import trace
 
-    assert module_state_guard.diff(before, after) == [
-        f"tracer provider changed from {type(before['tracer_provider']).__name__} to object"
+    monkeypatch.setattr(trace, "_TRACER_PROVIDER", None)
+    before = module_state_guard.snapshot()
+    monkeypatch.setattr(trace, "_TRACER_PROVIDER", object())
+
+    assert module_state_guard.diff(before, module_state_guard.snapshot()) == [
+        "tracer provider changed from NoneType to object"
     ]
 
 

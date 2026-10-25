@@ -25,11 +25,8 @@ def _logger_state(logger: logging.Logger) -> LoggerState:
 
 
 def _tracer_provider() -> Any:
-    try:
-        from opentelemetry import trace
-    except ImportError:
-        return None
-    return trace.get_tracer_provider()
+    trace = sys.modules.get("opentelemetry.trace")
+    return getattr(trace, "_TRACER_PROVIDER", None)
 
 
 def _quiet() -> bool:
