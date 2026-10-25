@@ -15,6 +15,8 @@ from .retry import State
 
 STATE_ARTIFACT_PREFIX = "oracle-verdict-state-"
 LEGACY_STATE_ARTIFACT_PREFIX = "oracle-review-shadow-state-"
+IN_FLIGHT_STATUSES = ("queued", "in_progress")
+RUN_TITLE_PULL = re.compile(r"\bpr=(\d+)\)$")
 STATE_FILE = "state.json"
 
 
@@ -276,6 +278,17 @@ def _latest_state(repo: str, pr: int, name: str, workflow_path: str) -> State | 
                 raise GitHubError(f"could not download {name} from run {run_id}: {result.stderr.strip()[:500]}")
             return State.from_json(json.loads((Path(directory) / STATE_FILE).read_text(encoding="utf-8")))
     return None
+
+
+def in_flight_pulls(repo: str, workflow: str) -> frozenset[int]:
+    running: set[int] = set()
+    for status in IN_FLIGHT_STATUSES:
+        listing = get_json(f"repos/{repo}/actions/workflows/{workflow}/runs?status={status}&per_page=100")
+        for run in listing.get("workflow_runs", []):
+            match = RUN_TITLE_PULL.search(run.get("display_title") or "")
+            if match:
+                running.add(int(match.group(1)))
+    return frozenset(running)
 
 
 def dispatch(repo: str, workflow: str, pr: int) -> None:
