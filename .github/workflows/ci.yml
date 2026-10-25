@@ -192,9 +192,10 @@ jobs:
         run: |
           set -euo pipefail
           trusted="$RUNNER_TEMP/trusted-changelog"
-          mkdir -p "$trusted/scripts" "$trusted/_project/scripts"
+          mkdir -p "$trusted/scripts" "$trusted/_project/scripts" "$trusted/.github"
           git show "$EVENT_BASE_SHA:scripts/changelog_fragments.py" > "$trusted/scripts/changelog_fragments.py"
           git show "$EVENT_BASE_SHA:_project/scripts/soundness_paths.py" > "$trusted/_project/scripts/soundness_paths.py"
+          git show "$EVENT_BASE_SHA:.github/soundness-paths.txt" > "$trusted/.github/soundness-paths.txt"
           if ! grep -q -- '--added-files-from' "$trusted/scripts/changelog_fragments.py"; then
             cp scripts/changelog_fragments.py "$trusted/scripts/changelog_fragments.py"
             cp _project/scripts/soundness_paths.py "$trusted/_project/scripts/soundness_paths.py"
@@ -1900,9 +1901,10 @@ jobs:
           git fetch --no-tags origin "$EVENT_BASE_SHA"
           python -I -S scripts/release_flow.py select --base-sha "$EVENT_BASE_SHA" --github-output "$RUNNER_TEMP/select.out"
           trusted="$RUNNER_TEMP/trusted-changelog"
-          mkdir -p "$trusted/scripts" "$trusted/_project/scripts"
+          mkdir -p "$trusted/scripts" "$trusted/_project/scripts" "$trusted/.github"
           git show "$EVENT_BASE_SHA:scripts/changelog_fragments.py" > "$trusted/scripts/changelog_fragments.py"
           git show "$EVENT_BASE_SHA:_project/scripts/soundness_paths.py" > "$trusted/_project/scripts/soundness_paths.py"
+          git show "$EVENT_BASE_SHA:.github/soundness-paths.txt" > "$trusted/.github/soundness-paths.txt"
           if ! grep -q -- '--added-files-from' "$trusted/scripts/changelog_fragments.py"; then
             cp scripts/changelog_fragments.py "$trusted/scripts/changelog_fragments.py"
             cp _project/scripts/soundness_paths.py "$trusted/_project/scripts/soundness_paths.py"
