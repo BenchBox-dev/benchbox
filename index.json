@@ -2375,7 +2375,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "scripts/generate_query_docs.py calls sqlglot.transpile outside the wrapper"
+      "title": "scripts/generate_query_docs.py pretty-prints SQL through the vendored fork outside translate_sql_query, and the bypass scanner does not scan scripts/ or _project/"
     },
     "calculate-checksum-collision-hardening": {
       "claim": null,
