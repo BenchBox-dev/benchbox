@@ -4,7 +4,7 @@
     "The shadow-miss report, run over #3066, #3122 and #3185, lists the failing medium tests as caught (by selection or by escalation); for #3018, whose failing test was a fast test deleted in #3096 and which the medium-only miss report cannot see, a routing pin (non-Python change routes to code tests) is the evidence",
     "cov-select-exit-shadow-20261021 cites the result"
   ],
-  "context": "REVIEW 2026-10-25: the four misses were in path routing at their bases (no coverage-selection step existed; #3018's base routed landing changes away from code tests), not in coverage selection; current routing already sends these changes to code tests. PR #3459 is kept (covers all four in live and shadow mode); PR #3454 (test-only replay, release-tree import failure, one of six tests pinned) closed as superseded, its map provenance carried into #3459. Acceptance 2 reworded for #3018.\n\nSource: classification of every Trunk push run on develop from 2026-10-10 to 2026-10-24 (recorded on trunk-red-run-triage-20261024; incident ids refer to that table). ",
+  "context": "DONE 2026-10-25: PR #3459 merged as 65d14f5af9aa10331c18aaaea33a425f8070ef97 (oracle SHIP on head 855df074; all required checks green). No routing or selection rule needed changing: current routing and selection catch all four cases, pinned by replay tests with real node ids and recorded per-test map provenance. The shadow-miss report lists the #3066/#3122/#3185 failures as caught (missed: []); for #3018 the routing pin is the evidence. The report now attributes escalation catches (selection_escalates, caught_by_escalation). The result is cited on cov-select-exit-shadow-20261021. Post-merge Trunk run 40228923964 was still pending at close; the red-trunk watcher covers it.\n\nREVIEW 2026-10-25: the four misses were in path routing at their bases (no coverage-selection step existed; #3018's base routed landing changes away from code tests), not in coverage selection; current routing already sends these changes to code tests. PR #3459 is kept (covers all four in live and shadow mode); PR #3454 (test-only replay, release-tree import failure, one of six tests pinned) closed as superseded, its map provenance carried into #3459. Acceptance 2 reworded for #3018.\n\nSource: classification of every Trunk push run on develop from 2026-10-10 to 2026-10-24 (recorded on trunk-red-run-triage-20261024; incident ids refer to that table). ",
   "description": "Four incidents (INC-08, 10, 11, 13; 15 red Trunk runs) were real regressions that no PR run executed: #3018 skipped the fast and medium jobs by path selection although tests/unit/test_site_header_parity.py covered its CSS; #3066 and #3122 skipped medium jobs although tests/unit/cli/test_platform_options_reach_adapters.py covered the change; #3185 skipped medium jobs although tests/test_benchbox.py::TestBenchBox::test_translate_query covered it. Each was fixed forward or reverted only after landing on develop. Coverage selection must not go live while the routing that missed these tests is unchanged.",
   "sessions": [
     {
@@ -29,6 +29,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "50b057ce205a4c67b846952706c5331b",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T20:03:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f72e84bbb1724cbc80d4e10cada3cdb0",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
