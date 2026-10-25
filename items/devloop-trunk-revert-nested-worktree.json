@@ -4,7 +4,7 @@
     "From a managed linked worktree, make worktree-create with a throwaway local branch and path succeeds, gives the new worktree a lifecycle ID different from the caller's, and is then removed with make worktree-remove. Nothing is pushed. Record the commands and output in context.",
     "Context records that make trunk-revert PR=3200, run from linked worktree BenchBox.wt-trunk-coverage-timeouts, opened revert PR #3223 on 2026-10-21T11:39:53Z, after the fix merged."
   ],
-  "context": "2026-10-21: `make trunk-revert PR=3200`, run from the managed linked worktree BenchBox.wt-trunk-coverage-timeouts, succeeded: it created worktree BenchBox.wt-revert-3200 and opened revert PR #3223. Re-check whether the refusal still reproduces before working this item.",
+  "context": "EVIDENCE 2026-10-25 (closes the item; no code change): develop c10155d8a401f85dc4a9427926e8cc8ede7f91dc. (1) uv run -- python -m pytest tests/unit/scripts/test_worktree_create_linked.py: 1 passed. (2) From managed linked worktree BenchBox.wt-batch2-evidence (lifecycle-id 1b55307e8e3e45cf8cdcf81b782000a1), make worktree-create BRANCH=chore/nested-wt-probe WORKTREE_PATH=../BenchBox.wt-nested-probe exited 0 and gave the new worktree lifecycle-id 566c74b43c784cf8a13f3135474ca7dd; make worktree-remove WORKTREE_PATH=../BenchBox.wt-nested-probe exited 0; the local branch was deleted; git ls-remote shows no such remote branch. (3) make trunk-revert PR=3200, run from linked worktree BenchBox.wt-trunk-coverage-timeouts after #3220 (262eb226675b) merged, opened revert PR #3223 on 2026-10-21T11:39:53Z.\n\n2026-10-21: `make trunk-revert PR=3200`, run from the managed linked worktree BenchBox.wt-trunk-coverage-timeouts, succeeded: it created worktree BenchBox.wt-revert-3200 and opened revert PR #3223. Re-check whether the refusal still reproduces before working this item.",
   "description": "make trunk-revert runs agent-write-preflight, which refuses the primary clone, and then make worktree-create. Before #3220, worktree-create run from a managed linked worktree copied the caller's benchbox.worktree.* keys into the new worktree's config.worktree and refused with 'Worktree already carries immutable lifecycle ID', so the 2026-10-12 and 2026-10-20 recoveries were done by hand. #3220 (262eb226675b36d9221f8dc554ffdd03c4913978) clears inherited benchbox.* keys (scripts/worktree_lifecycle.sh:164-171) and adds tests/unit/scripts/test_worktree_create_linked.py. This item closes on evidence; no code change is expected. Stop and reopen as a defect if any check below reproduces the error.\n\nGuardrails: do not run make trunk-revert against a real PR (it pushes a branch and opens a PR); do not push the throwaway branch. Common guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no raw gh pr merge.",
   "sessions": [
     {
@@ -29,6 +29,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "5713f390bc5c40719c76f1b215c10686",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T13:37:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0a4a8d3cd28f4ecfb22d898a54d0fb60",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
