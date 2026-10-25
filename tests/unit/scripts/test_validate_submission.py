@@ -2394,6 +2394,105 @@ class TestValidateBundles:
         assert results[0].ok
 
 
+class TestInternalSourceComplianceExemption:
+    REFUSED = ("unofficial_nonstandard", "unofficial_subscale")
+
+    def _bundle(
+        self,
+        tmp_path: Path,
+        compliance: str | None,
+        source: str | None,
+        *,
+        manifest_name: str = "result.manifest.json",
+        bundle_file: str | None = None,
+    ):
+        data = _minimal_bundle()
+        if compliance is not None:
+            data["benchmark"]["compliance_class"] = compliance
+        bundle = tmp_path / "result.json"
+        bundle.write_text(json.dumps(data), encoding="utf-8")
+        manifest = {
+            "bundle_file": bundle_file or bundle.name,
+            "bundle_hash": hashlib.sha256(bundle.read_bytes()).hexdigest(),
+        }
+        if source is not None:
+            manifest["result_source"] = source
+        (tmp_path / manifest_name).write_text(json.dumps(manifest), encoding="utf-8")
+        return bundle
+
+    @pytest.mark.parametrize("compliance", REFUSED)
+    def test_internal_source_bundle_with_refused_class_passes(self, tmp_path, compliance):
+        bundle = self._bundle(tmp_path, compliance, "internal")
+        (vr,) = validate_bundles([bundle], require_manifest=True, trust_internal_source=True)
+        assert vr.ok, vr.errors
+
+    @pytest.mark.parametrize("compliance", REFUSED)
+    @pytest.mark.parametrize("source", ["community", "vendor", None])
+    def test_non_internal_source_bundle_with_refused_class_is_rejected(self, tmp_path, compliance, source):
+        bundle = self._bundle(tmp_path, compliance, source)
+        (vr,) = validate_bundles([bundle], require_manifest=True, trust_internal_source=True)
+        assert not vr.ok
+        assert any("compliance_class" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("compliance", REFUSED)
+    def test_bundle_without_manifest_is_rejected(self, tmp_path, compliance):
+        data = _minimal_bundle()
+        data["benchmark"]["compliance_class"] = compliance
+        bundle = tmp_path / "result.json"
+        bundle.write_text(json.dumps(data), encoding="utf-8")
+        (vr,) = validate_bundles([bundle], trust_internal_source=True)
+        assert not vr.ok
+        assert any("compliance_class" in e for e in vr.errors)
+
+    def test_internal_manifest_naming_another_bundle_does_not_exempt(self, tmp_path):
+        bundle = self._bundle(tmp_path, "unofficial_subscale", "internal", bundle_file="other.json")
+        (vr,) = validate_bundles([bundle], trust_internal_source=True)
+        assert not vr.ok
+        assert any("compliance_class" in e for e in vr.errors)
+
+    def test_internal_source_exemption_does_not_apply_to_invalid_class_values(self, tmp_path):
+        bundle = self._bundle(tmp_path, "Official", "internal")
+        (vr,) = validate_bundles([bundle], require_manifest=True, trust_internal_source=True)
+        assert not vr.ok
+        assert any("compliance_class" in e for e in vr.errors)
+
+    def test_internal_source_exempts_gateway_routed_bundle(self, tmp_path):
+        data = _minimal_bundle()
+        data["benchmark"]["compliance_class"] = "official"
+        data["platform"]["gateway"] = {"name": "espresso", "routed": True}
+        bundle = tmp_path / "result.json"
+        bundle.write_text(json.dumps(data), encoding="utf-8")
+        (tmp_path / "result.manifest.json").write_text(
+            json.dumps(
+                {
+                    "bundle_file": bundle.name,
+                    "bundle_hash": hashlib.sha256(bundle.read_bytes()).hexdigest(),
+                    "result_source": "internal",
+                }
+            ),
+            encoding="utf-8",
+        )
+        (vr,) = validate_bundles([bundle], require_manifest=True, trust_internal_source=True)
+        assert vr.ok, vr.errors
+
+    @pytest.mark.parametrize("compliance", REFUSED)
+    def test_internal_source_is_not_trusted_by_default(self, tmp_path, compliance):
+        bundle = self._bundle(tmp_path, compliance, "internal")
+        (vr,) = validate_bundles([bundle], require_manifest=True)
+        assert not vr.ok
+        assert any("compliance_class" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("compliance", REFUSED)
+    def test_cli_exempts_internal_bundle_only_with_trust_flag(self, tmp_path, compliance):
+        bundle = self._bundle(tmp_path, compliance, "internal")
+        assert main([str(bundle), "--require-manifest"]) == 1
+        assert main([str(bundle), "--require-manifest", "--trust-internal-source"]) == 0
+
+    def test_cli_trust_flag_does_not_exempt_community_bundle(self, tmp_path):
+        bundle = self._bundle(tmp_path, "unofficial_subscale", "community")
+        assert main([str(bundle), "--require-manifest", "--trust-internal-source"]) == 1
+
+
 class TestRequireManifestCli:
     def test_cli_require_manifest_flag_fails_missing_sidecar(self, tmp_path: Path, capsys):
         bundle = tmp_path / "result.json"
