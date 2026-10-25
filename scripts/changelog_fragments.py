@@ -24,12 +24,13 @@ INTERNAL_BOUNDS = (10, 300)
 LEAD_MAX = 120
 DETAIL_MAX = 600
 
-CATEGORIES = ("before-you-upgrade", "added", "changed", "fixed", "documentation")
+CATEGORIES = ("before-you-upgrade", "added", "changed", "fixed", "security", "documentation")
 HEADINGS = {
     "before-you-upgrade": "Before you upgrade",
     "added": "Added",
     "changed": "Changed",
     "fixed": "Fixed",
+    "security": "Security",
     "documentation": "Documentation",
 }
 ENTRY_KEYS = frozenset({"category", "breaking", "lead", "text", "details", "platforms", "benchmarks"})

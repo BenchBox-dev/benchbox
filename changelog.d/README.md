@@ -42,7 +42,7 @@ the same file (at most five).
 }
 ```
 
-Categories: `before-you-upgrade`, `added`, `changed`, `fixed`, `documentation`.
+Categories: `before-you-upgrade`, `added`, `changed`, `fixed`, `security`, `documentation`.
 `text` is one line of 20 to 2000 characters; each `details` line is at most 600
 characters. Write for users, not contributors.
 

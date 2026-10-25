@@ -43,11 +43,20 @@ def test_release_identity_exemption_is_wired_from_the_select_step() -> None:
     assert any(s.get("id") == "release" for s in _steps())
 
 
-def test_changelog_step_guards_unreleased_and_reads_the_classified_changed_list() -> None:
+def test_changelog_step_guards_unreleased_and_diffs_against_the_merge_base() -> None:
     run = _step()["run"]
-    assert "scripts/changelog_fragments.py check" in run
     assert "--require-empty-unreleased" in run
-    assert "--changed-files-from .ci-paths/changed.txt" in run
+    assert '"$EVENT_BASE_SHA...HEAD"' in run
+    assert "--changed-files-from" in run
+    assert ".ci-paths/changed.txt" not in run
+
+
+def test_changelog_gate_runs_the_base_commit_copy_of_its_own_code() -> None:
+    run = _step()["run"]
+    assert 'git show "$EVENT_BASE_SHA:scripts/changelog_fragments.py"' in run
+    assert 'git show "$EVENT_BASE_SHA:_project/scripts/soundness_paths.py"' in run
+    assert '"$trusted/scripts/changelog_fragments.py"' in run
+    assert "python scripts/changelog_fragments.py" not in run
 
 
 def test_changelog_step_is_not_conditional() -> None:
@@ -71,3 +80,11 @@ def test_title_edit_lane_diffs_against_the_merge_base_like_the_main_lane() -> No
     steps = workflow["jobs"]["text-edit-verdict"]["steps"]
     step = next(s for s in steps if s.get("name") == "Re-check the changelog entry against the edited title")
     assert '"$EVENT_BASE_SHA...HEAD"' in step["run"]
+
+
+def test_title_edit_lane_also_runs_the_base_commit_copy_of_the_gate() -> None:
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["text-edit-verdict"]["steps"]
+    step = next(s for s in steps if s.get("name") == "Re-check the changelog entry against the edited title")
+    assert 'git show "$EVENT_BASE_SHA:scripts/changelog_fragments.py"' in step["run"]
+    assert "python scripts/changelog_fragments.py" not in step["run"]

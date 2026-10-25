@@ -155,6 +155,7 @@ def test_render_orders_headings_canonically_and_nests_details() -> None:
         [
             _entry(category="documentation", text="Documented the fragment workflow for contributors."),
             _entry(category="fixed", text="Fixed a crash when a result bundle is empty."),
+            _entry(category="security", text="BenchBox now requires a certifi release that drops a distrusted CA."),
             _entry(category="changed", text="Changed the default scale factor handling rules."),
         ],
         [
@@ -174,6 +175,7 @@ def test_render_orders_headings_canonically_and_nests_details() -> None:
         "### Added",
         "### Changed",
         "### Fixed",
+        "### Security",
         "### Documentation",
     ]
     assert "- **BREAKING: Config key renamed.** The old key is no longer read and must be renamed." in rendered

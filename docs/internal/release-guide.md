@@ -191,8 +191,8 @@ Each pull request that changes user-visible behavior adds one
 `changelog.d/<branch>.json` fragment (`make changelog-entry`; schema and
 rendering in `scripts/changelog_fragments.py`). `[Unreleased]` stays empty.
 Write for users, not contributors: include only changes a user would notice.
-Fragments render under `Before you upgrade`, `Added`, `Changed`, `Fixed` and
-`Documentation`, in that order; behavior changes carry `BREAKING:`.
+Fragments render under `Before you upgrade`, `Added`, `Changed`, `Fixed`,
+`Security` and `Documentation`, in that order; behavior changes carry `BREAKING:`.
 
 `make release-prep VERSION=X.Y.Z` compiles the fragments with
 `scripts/generate_changelog_entry.py --compile-fragments`:
@@ -202,7 +202,7 @@ Fragments render under `Before you upgrade`, `Added`, `Changed`, `Fixed` and
 2. The starting draft is the existing `[X.Y.Z]` body on a re-run, otherwise the
    body of the newest pre-release section of the same base version (for example
    `[0.5.0rc1]` when preparing `0.5.0` or `0.5.0rc2`), otherwise empty.
-3. User entries are appended under the five canonical headings: into a heading
+3. User entries are appended under the six canonical headings: into a heading
    that already exists, or into a new heading created in canonical order. A
    heading is never duplicated.
 4. `## [X.Y.Z] - DATE` is written directly below the empty `[Unreleased]`, and

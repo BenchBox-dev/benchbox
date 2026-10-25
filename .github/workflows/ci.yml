@@ -191,15 +191,24 @@ jobs:
           EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
-          test -f .ci-paths/changed.txt
+          trusted="$RUNNER_TEMP/trusted-changelog"
+          mkdir -p "$trusted/scripts" "$trusted/_project/scripts"
+          git show "$EVENT_BASE_SHA:scripts/changelog_fragments.py" > "$trusted/scripts/changelog_fragments.py"
+          git show "$EVENT_BASE_SHA:_project/scripts/soundness_paths.py" > "$trusted/_project/scripts/soundness_paths.py"
+          if ! grep -q -- '--added-files-from' "$trusted/scripts/changelog_fragments.py"; then
+            cp scripts/changelog_fragments.py "$trusted/scripts/changelog_fragments.py"
+            cp _project/scripts/soundness_paths.py "$trusted/_project/scripts/soundness_paths.py"
+          fi
           git show "$EVENT_BASE_SHA:.github/changelog-paths.txt" > "$RUNNER_TEMP/changelog-paths.txt"
+          git diff --name-only --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/changed.txt"
           git diff --name-only --diff-filter=A "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/added.txt"
           identity=()
           if [ "$RELEASE_IDENTITY_CHANGED" = "true" ]; then identity=(--release-identity-changed); fi
-          python scripts/changelog_fragments.py check \
+          python -I "$trusted/scripts/changelog_fragments.py" --root "$PWD" check \
+            --changelog "$PWD/CHANGELOG.md" \
             --require-empty-unreleased \
             --title "$PR_TITLE" \
-            --changed-files-from .ci-paths/changed.txt \
+            --changed-files-from "$RUNNER_TEMP/changed.txt" \
             --added-files-from "$RUNNER_TEMP/added.txt" \
             --manifest "$RUNNER_TEMP/changelog-paths.txt" \
             "${identity[@]}"
@@ -1890,12 +1899,21 @@ jobs:
           [[ "$EVENT_BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid event base SHA" >&2; exit 1; }
           git fetch --no-tags origin "$EVENT_BASE_SHA"
           python -I -S scripts/release_flow.py select --base-sha "$EVENT_BASE_SHA" --github-output "$RUNNER_TEMP/select.out"
+          trusted="$RUNNER_TEMP/trusted-changelog"
+          mkdir -p "$trusted/scripts" "$trusted/_project/scripts"
+          git show "$EVENT_BASE_SHA:scripts/changelog_fragments.py" > "$trusted/scripts/changelog_fragments.py"
+          git show "$EVENT_BASE_SHA:_project/scripts/soundness_paths.py" > "$trusted/_project/scripts/soundness_paths.py"
+          if ! grep -q -- '--added-files-from' "$trusted/scripts/changelog_fragments.py"; then
+            cp scripts/changelog_fragments.py "$trusted/scripts/changelog_fragments.py"
+            cp _project/scripts/soundness_paths.py "$trusted/_project/scripts/soundness_paths.py"
+          fi
           git diff --name-only --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/changed.txt"
           git diff --name-only --diff-filter=A "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/added.txt"
           git show "$EVENT_BASE_SHA:.github/changelog-paths.txt" > "$RUNNER_TEMP/changelog-paths.txt"
           identity=()
           if grep -qx 'release-identity-changed=true' "$RUNNER_TEMP/select.out"; then identity=(--release-identity-changed); fi
-          python scripts/changelog_fragments.py check \
+          python -I "$trusted/scripts/changelog_fragments.py" --root "$PWD" check \
+            --changelog "$PWD/CHANGELOG.md" \
             --require-empty-unreleased \
             --title "$PR_TITLE" \
             --changed-files-from "$RUNNER_TEMP/changed.txt" \
