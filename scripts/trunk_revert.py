@@ -90,9 +90,16 @@ def trunk_gate(
     if age <= grace:
         return None
     minutes = int(age.total_seconds() // 60)
+    named, revert_hint = "the culprit", "make trunk-revert PR=<number>"
+    try:
+        failed = red_streak_start(run, repo)
+        if failed is not None and not is_reverted(run, repo, failed.get("headSha") or ""):
+            named, revert_hint = describe_culprit(run, repo, failed)
+    except TrunkError:
+        pass
     return (
         f"develop has been red for {minutes} minutes (newest {TRUNK_WORKFLOW} run: {newest['url']}; "
-        f"failed at {red_since.isoformat()}). Fix it or revert the culprit with `make trunk-revert PR=<number>`; "
+        f"failed at {red_since.isoformat()}). Fix it or revert {named} with `{revert_hint}`; "
         f"branches named {REVERT_PREFIX}* are exempt."
     )
 
@@ -129,6 +136,14 @@ def culprit_pr(run: Runner, repo: str, sha: str) -> int | None:
     except (ValueError, KeyError, TypeError, AttributeError):
         return None
     return merged[0] if merged else None
+
+
+def describe_culprit(run: Runner, repo: str, failed: dict) -> tuple[str, str]:
+    sha = failed.get("headSha") or ""
+    culprit = culprit_pr(run, repo, sha) if sha else None
+    named = f"PR #{culprit}" if culprit else f"commit {sha[:9] or 'unknown'}"
+    revert_hint = f"make trunk-revert PR={culprit}" if culprit else "make trunk-revert PR=<number>"
+    return named, revert_hint
 
 
 def is_reverted(run: Runner, repo: str, sha: str) -> bool:
@@ -169,13 +184,29 @@ def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | 
         return None
     if sha and branch.startswith(REVERT_PREFIX) and any(f"This reverts commit {sha}" in text for text in messages):
         return None
-    culprit = culprit_pr(run, repo, sha) if sha else None
-    named = f"PR #{culprit}" if culprit else f"commit {sha[:9] or 'unknown'}"
-    revert_hint = f"make trunk-revert PR={culprit}" if culprit else "make trunk-revert PR=<number>"
+    named, revert_hint = describe_culprit(run, repo, failed)
     return (
         f"{BASE_BRANCH} is red: the first failing {TRUNK_WORKFLOW} run since the last green one failed at {named} ({failed['url']}). "
         f"Merge a revert ({revert_hint}) or get {BASE_BRANCH} green before arming other PRs; "
         f"only a {REVERT_PREFIX}* branch whose commits carry `This reverts commit {sha[:9] or '<sha>'}...` is exempt."
+    )
+
+
+def status(run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
+    try:
+        failed = red_streak_start(run, repo)
+    except NoTrunkRunsError:
+        return None
+    if failed is None:
+        return None
+    sha = failed.get("headSha") or ""
+    if sha and is_reverted(run, repo, sha):
+        return None
+    named, revert_hint = describe_culprit(run, repo, failed)
+    return (
+        f"{BASE_BRANCH} is red: the first failing {TRUNK_WORKFLOW} run since the last green one failed at {named} "
+        f"({failed['url']}, {_parse_time(failed['updatedAt']).isoformat()}). "
+        f"Arming other PRs is refused until {BASE_BRANCH} is green or `{revert_hint}` merges."
     )
 
 
@@ -305,6 +336,8 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
     arm.add_argument("--pr", type=int)
     arm.add_argument("--branch")
     arm.add_argument("--repo", default=REPOSITORY)
+    state = sub.add_parser("status", help="name the culprit while trunk is red")
+    state.add_argument("--repo", default=REPOSITORY)
     args = parser.parse_args(argv)
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repo):
         print(f"trunk: --repo must be owner/name, got {args.repo!r}", file=sys.stderr)
@@ -314,6 +347,17 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
         return 2
     if args.command == "revert":
         return revert(args.pr, repo=args.repo)
+    if args.command == "status":
+        try:
+            red = status(run, args.repo)
+        except TrunkError as exc:
+            print(f"trunk-status: could not establish the state: {exc}", file=sys.stderr)
+            return 1
+        if red:
+            print(red, file=sys.stderr)
+            return 1
+        print(f"{BASE_BRANCH} is green or its failing {TRUNK_WORKFLOW} culprit is already reverted.")
+        return 0
     if args.command == "arm-gate":
         if (args.pr is None) == (not args.branch) or (args.pr is not None and args.pr <= 0):
             print("trunk-arm-gate: pass exactly one of --pr <positive number> or --branch", file=sys.stderr)

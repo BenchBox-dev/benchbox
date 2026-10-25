@@ -267,6 +267,7 @@
         "tests/unit/scripts/oracle_reviewers/test_verdict.py",
         "tests/unit/scripts/test_blind_spot_tools.py",
         "tests/unit/scripts/test_changelog_fragments.py",
+        "tests/unit/scripts/test_changelog_gate_cli.py",
         "tests/unit/scripts/test_check_untracked_handoffs.py",
         "tests/unit/scripts/test_ci_text_edit_verdict.py",
         "tests/unit/scripts/test_comment_cleanup_scope.py",

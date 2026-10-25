@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "CI-only workflow change with no effect on the shipped package."
+}

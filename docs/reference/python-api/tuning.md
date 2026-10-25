@@ -612,7 +612,7 @@ A `UnifiedTuningConfiguration`. A new one has the four constraint types enabled 
 | `validate_for_platform_detailed(platform: str)` | `(errors, warnings)`, both `list[str]`. Constraint types that a platform does not support, and every unsupported type on a platform that BenchBox has no compatibility data for, are warnings; other unsupported types are errors. Platform-specific layout rules can add further errors. |
 | `to_dict()` | `dict` with the six settings above, ready for JSON. |
 | `get_configuration_hash()` | `str`: a 64-character SHA-256 hex digest of the `to_dict()` content. Equal configurations give equal hashes. |
-| `from_dict(data)` (class method) | A configuration built from such a dict; missing keys keep their defaults. |
+| `from_dict(data)` (class method) | A configuration built from such a dict; missing keys keep their defaults. An unknown key, at the top level (only `_metadata` is allowed besides the six settings), in a constraint section, in `platform_optimizations`, in a table tuning or in a column entry, raises `ValueError` that names the key, suggests the nearest valid key and lists the valid keys. |
 
 {#unified-tuning-raises}
 
