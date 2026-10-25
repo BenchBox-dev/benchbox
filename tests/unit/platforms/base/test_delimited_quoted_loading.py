@@ -143,3 +143,20 @@ def test_zstd_load_preserves_carriage_returns_in_quoted_fields(tmp_path: Path) -
     raw.unlink()
     data_dir = _compressed_dir(tmp_path, "hits.tbl.zst", (tmp_path / "hits.tbl.zst").read_bytes())
     _assert_cr_rows_preserved(data_dir, "hits.tbl.zst")
+
+
+def test_compression_handlers_translate_line_endings_unless_newline_is_requested(tmp_path: Path) -> None:
+    import gzip
+
+    from benchbox.platforms.base.data_loading import GzipHandler, NoCompressionHandler
+
+    plain = tmp_path / "x.dat"
+    plain.write_bytes(b"a\r\nb\r\n")
+    zipped = tmp_path / "x.dat.gz"
+    zipped.write_bytes(gzip.compress(b"a\r\nb\r\n"))
+
+    for handler, path in ((NoCompressionHandler(), plain), (GzipHandler(), zipped)):
+        with handler.open(path) as handle:
+            assert handle.read() == "a\nb\n"
+        with handler.open(path, newline="") as handle:
+            assert handle.read() == "a\r\nb\r\n"
