@@ -1479,7 +1479,7 @@ class _UsageApi:
             created = self.workflows.get(workflow_match.group(1))
             return None if created is None else {"created_at": created}
         if route == "/repos/o/r/rules/branches/develop":
-            return self.ruleset
+            return paged(self.ruleset) if isinstance(self.ruleset, list) else self.ruleset
         if route == "/repos/o/r/commits":
             return paged(self.commits)
         if route == "/repos/o/r/pulls":
@@ -1983,3 +1983,54 @@ def test_prs_opened_before_the_window_stay_out_of_the_time_to_green_distribution
     assert section["per_head"]["seconds_to_all_required_ready"]["n"] == 1
     report = metrics.build_usage_report(collection)
     assert any("opened_before_window" in note for note in report["completeness"]["qualifications"])
+
+
+def test_fork_prs_sharing_a_branch_name_keep_their_own_heads_and_minutes() -> None:
+    api = _UsageApi()
+    first = _pr(1, _at(10), _at(12), "F1")
+    second = _pr(2, _at(10, 5), _at(12), "F2")
+    first["head"].update(ref="main", repo={"full_name": "alice/fork"})
+    second["head"].update(ref="main", repo={"full_name": "bob/fork"})
+    api.prs = [second, first]
+    api.runs = [
+        _usage_run(1, _at(10, 1), head_sha="F1", head_branch="main", head_repository={"full_name": "alice/fork"}),
+        _usage_run(2, _at(10, 6), head_sha="F2", head_branch="main", head_repository={"full_name": "bob/fork"}),
+    ]
+    api.jobs = {
+        1: [_usage_job(1, "lint", 1, _at(10, 1), _at(10, 2), _at(10, 12))],
+        2: [_usage_job(2, "lint", 1, _at(10, 6), _at(10, 7), _at(10, 12))],
+    }
+    assert [sha for sha, _ in metrics.pr_heads(first, api.runs)] == ["F1"]
+    assert [sha for sha, _ in metrics.pr_heads(second, api.runs)] == ["F2"]
+    collection = _collect(api, USAGE_DAY, USAGE_DAY + timedelta(hours=14))
+    rows = {row["number"]: row for row in metrics.build_usage_report(collection)["pull_requests"]["pr_rows"]}
+    assert rows[1]["heads"] == 1 and rows[2]["heads"] == 1
+    assert rows[1]["lifecycle_runner_minutes"] == 10.0
+    assert rows[2]["lifecycle_runner_minutes"] == 5.0
+
+
+def test_cache_keys_name_the_repository(tmp_path: Path) -> None:
+    api = _two_pr_api()
+    api.runs[0]["run_attempt"] = 2
+    api.attempts[(1, 1)] = {"run_attempt": 1, "conclusion": "failure", "updated_at": _at(10, 10)}
+    cache = metrics.DiskCache(tmp_path)
+    _collect(api, USAGE_DAY, USAGE_DAY + timedelta(hours=14), cache=cache)
+    keys = [json.loads(path.read_text())["key"] for path in tmp_path.glob("*.json")]
+    assert {key.split(":")[0] for key in keys} == {"jobs", "attempt", "head"}
+    assert all(key.split(":")[1] == "o/r" for key in keys)
+
+
+def test_ruleset_is_read_across_every_page() -> None:
+    api = _UsageApi()
+    filler = [{"type": "pull_request", "ruleset_id": 1, "parameters": {}} for _ in range(100)]
+    api.ruleset = [
+        *filler,
+        {
+            "type": "required_status_checks",
+            "ruleset_id": 2,
+            "parameters": {"required_status_checks": [{"context": "late-context"}]},
+        },
+    ]
+    collection = _collect(api, USAGE_DAY, USAGE_DAY + timedelta(hours=1))
+    assert collection.required["contexts"] == ["late-context"]
+    assert collection.required["ruleset_ids"] == [2]

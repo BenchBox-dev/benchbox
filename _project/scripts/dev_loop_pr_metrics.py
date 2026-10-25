@@ -2007,9 +2007,10 @@ def _get_list_pages(client: GitHubClient, path: str) -> list[dict]:
 
 def fetch_required_contexts(client: GitHubClient, branch: str, now: datetime) -> dict:
     endpoint = f"/repos/{client.repo}/rules/branches/{branch}"
-    data = client.get(endpoint)
-    if not isinstance(data, list):
-        raise ApiFailure(f"required-context ruleset fetch failed: {endpoint}")
+    try:
+        data = _get_list_pages(client, endpoint)
+    except ApiFailure as exc:
+        raise ApiFailure(f"required-context ruleset fetch failed: {endpoint} ({exc})") from exc
     contexts: list[str] = []
     integration_ids: dict[str, int | None] = {}
     ruleset_ids: list[int] = []
@@ -2101,7 +2102,7 @@ def _collect_one_run(
     latest = int(run.get("run_attempt") or 1)
     immutable = run.get("status") == "completed"
     errors: list[str] = []
-    jobs_key = f"jobs:{run_id}:{latest}:{run.get('updated_at')}"
+    jobs_key = f"jobs:{client.repo}:{run_id}:{latest}:{run.get('updated_at')}"
     jobs = cache.get(jobs_key) if immutable else None
     if not isinstance(jobs, list):
         try:
@@ -2114,7 +2115,7 @@ def _collect_one_run(
                 cache.put(jobs_key, jobs)
     attempts: dict[int, dict] = {}
     for number in range(1, latest):
-        key = f"attempt:{run_id}:{number}"
+        key = f"attempt:{client.repo}:{run_id}:{number}"
         cached = cache.get(key)
         if isinstance(cached, dict):
             attempts[number] = cached
@@ -2178,14 +2179,22 @@ def collect_merged_prs(client: GitHubClient, collection: UsageCollection) -> Non
     collection.prs = [pr for pr in prs if collection.since <= _iso_to_dt(pr["merged_at"]) <= collection.until]
 
 
+def _run_belongs_to_head(run: dict, ref: str, repo: str | None) -> bool:
+    if run.get("event") != "pull_request" or run.get("head_branch") != ref or not run.get("head_sha"):
+        return False
+    run_repo = (run.get("head_repository") or {}).get("full_name")
+    return not (repo and run_repo and str(run_repo).lower() != repo.lower())
+
+
 def pr_heads(pr: dict, runs: list[dict]) -> list[tuple[str, datetime | None]]:
     ref = str((pr.get("head") or {}).get("ref") or "")
+    head_repo = ((pr.get("head") or {}).get("repo") or {}).get("full_name")
     opened = _parse_ts(pr.get("created_at"))
     merged = _parse_ts(pr.get("merged_at"))
     final = str((pr.get("head") or {}).get("sha") or "")
     seen: dict[str, datetime] = {}
     for run in runs:
-        if run.get("event") != "pull_request" or run.get("head_branch") != ref or not run.get("head_sha"):
+        if not _run_belongs_to_head(run, ref, head_repo):
             continue
         created = _parse_ts(run.get("created_at"))
         if created is None or opened is None or merged is None:
@@ -2206,7 +2215,7 @@ def pr_head_shas(pr: dict, runs: list[dict]) -> list[str]:
 
 
 def _collect_head(client: GitHubClient, cache: DiskCache, sha: str, cacheable: bool) -> dict | None:
-    key = f"head:{sha}"
+    key = f"head:{client.repo}:{sha}"
     cached = cache.get(key) if cacheable else None
     if isinstance(cached, dict):
         return cached
