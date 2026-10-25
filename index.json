@@ -11667,9 +11667,9 @@
     "flagged-local-bundles-compliance-class-gate-20261025": {
       "claim": null,
       "needs": [],
-      "priority": "low",
+      "priority": "medium",
       "status": "open",
-      "title": "Four flagged local bundles fail the benchmark.compliance_class submission gate"
+      "title": "validate_submission refuses all 34 corpus bundles with an unofficial compliance_class (incl. 4 flagged local bundles and the ranked subscale TPC-H cohorts): decide the gate/corpus policy"
     },
     "flaky-bigquery-credential-defaults-confirm-prompt": {
       "claim": null,
