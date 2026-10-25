@@ -5299,10 +5299,15 @@
       "title": "Comment-scope evidence is checked only at the base, so one stale entry breaks every later PR and blocks its own repair"
     },
     "comment-scope-head-policy-validation-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T17:24:28Z",
+        "generation": "bd2918980ada4cbea68b4d1b0f50a88a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Validate a pull request's own comment-scope policy before merge so an invalid entry cannot reach develop"
     },
     "comment-scope-unowned-modules-20261015": {
