@@ -6654,7 +6654,9 @@
     },
     "databricks-clickbench-q29-q43-result-mismatch": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "snowflake-databricks-desc-nulls-last-audit-20261025"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Databricks ClickBench Q29 and Q43 return different results from BigQuery and Snowflake"
