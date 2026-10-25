@@ -2999,6 +2999,15 @@
       "status": "open",
       "title": "Commit a fast-tier duration baseline from merged-PR junit and refresh it weekly by reviewed PR"
     },
+    "ci-fast-duration-gate-blocking-20261025": {
+      "claim": null,
+      "needs": [
+        "ci-verify-fast-duration-report-only-20261025"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Turn the fast-tier duration check into a blocking part of core with thresholds set from measured noise"
+    },
     "ci-fast-test-slowdown-20261016": {
       "claim": null,
       "needs": [],
