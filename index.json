@@ -16036,10 +16036,15 @@
       "title": "Re-evaluate oracle-gate when a stand-in attestation comment is edited or deleted"
     },
     "oracle-gate-standin-edit-delete-live-check-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T13:36:00Z",
+        "generation": "b6623377b2d347fc9333f1a139581766",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Observe a stand-in edit or deletion re-running oracle-gate live"
     },
     "oracle-gate-status-20261021": {
