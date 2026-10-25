@@ -76,5 +76,5 @@ tpc-trademarks
 ## See Also
 
 - [TPC Organization](http://www.tpc.org/) - Official TPC website with specifications and published results
-- {doc}`../guides/tpc/tpc-h-official-guide` - Running TPC-H compliant benchmarks
-- {doc}`../guides/tpc/tpc-ds-official-guide` - Running TPC-DS compliant benchmarks
+- {doc}`../guides/tpc/tpc-h-official-guide` - Running TPC-H derived benchmarks
+- {doc}`../guides/tpc/tpc-ds-official-guide` - Running TPC-DS derived benchmarks

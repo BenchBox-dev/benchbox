@@ -6,6 +6,8 @@ import time
 from pathlib import Path
 from typing import Any, Optional, Union
 
+from benchbox.core.tpc_disclaimer import derived_results_disclaimer
+
 
 def generate_official_benchmark_audit_trail(
     *,
@@ -25,8 +27,9 @@ def generate_official_benchmark_audit_trail(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_path, "w", encoding="utf-8") as file_obj:
-        file_obj.write(f"{benchmark_title} Official Benchmark Audit Trail\n")
-        file_obj.write("=" * 50 + "\n\n")
+        file_obj.write(f"{benchmark_title} Benchmark Audit Trail\n")
+        file_obj.write("=" * 50 + "\n")
+        file_obj.write(f"{derived_results_disclaimer(benchmark_title)}\n\n")
         file_obj.write(f"Scale Factor: {result.config.scale_factor}\n")
         file_obj.write(f"Number of Streams: {result.config.num_streams}\n")
         file_obj.write(f"Start Time: {result.start_time}\n")

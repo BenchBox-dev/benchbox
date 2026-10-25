@@ -619,7 +619,7 @@ class TestCertificationChecker:
         assert result == ValidationResult.WARNING
         assert report.certification_status == "CONDITIONAL"
         assert len(report.issues) > 0
-        assert any("exceeds certification threshold" in issue.message for issue in report.issues)
+        assert any("exceeds validation threshold" in issue.message for issue in report.issues)
 
 
 class TestAuditTrail:

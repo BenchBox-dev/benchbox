@@ -45,15 +45,18 @@ def test_every_report_runs_on_a_current_result_without_a_composite(tmp_path):
     generator = TPCHReportGenerator(tmp_path)
     result = _current_result()
 
-    certification = generator.generate_certification_report(result).read_text(encoding="utf-8")
+    validation_report = generator.generate_validation_report(result).read_text(encoding="utf-8")
     detailed = generator.generate_detailed_report(result).read_text(encoding="utf-8")
     csv_text = generator.generate_performance_csv(result).read_text(encoding="utf-8")
     comparison = generator.generate_comparison_report(_current_result(1800.0), result).read_text(encoding="utf-8")
 
-    assert "Power@Size: 3600.00" in certification
-    assert "Throughput@Size: 7200.00" in certification
-    for text in (certification, detailed, csv_text, comparison):
+    assert "Power@Size: 3600.00" in validation_report
+    assert "Throughput@Size: 7200.00" in validation_report
+    for text in (validation_report, detailed, csv_text, comparison):
         assert "QphH" not in text
+        assert "certif" not in text.lower()
+    for text in (validation_report, detailed, csv_text):
+        assert "do not comply with the TPC-H Specification" in text
 
 
 def test_comparison_uses_power_at_size(tmp_path):

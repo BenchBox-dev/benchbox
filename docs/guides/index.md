@@ -7,9 +7,9 @@
 
 Practical how-to guides for accomplishing specific tasks with BenchBox.
 
-## TPC Compliance
+## TPC Benchmarks
 
-Official procedures for running TPC-compliant benchmarks:
+Procedures for running TPC-derived benchmarks. Results are derived from TPC benchmarks and do not comply with the TPC specifications:
 
 - [TPC Guides Overview](tpc/index.md) - Index of all TPC-specific documentation
 - [TPC-H Official Guide](tpc/tpc-h-official-guide.md) - Complete TPC-H benchmark procedure

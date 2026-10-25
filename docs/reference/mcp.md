@@ -401,7 +401,7 @@ the same three categories as above.
 | `--verbose` | Omitted | interaction-scoped | Console verbosity control; MCP response detail is governed by tool schemas. |
 | `--iterations` | Omitted | not-yet-demanded | Repeated power-test measurement is expressible over MCP; no client has demanded it. |
 | `--seed` | Omitted | not-yet-demanded | RNG seed for query parameter generation; bounded integer, no client demand yet. |
-| `--official` | Omitted | not-yet-demanded | TPC-compliant mode is a bounded boolean; it additionally requires `--seed`, so both promote together. |
+| `--official` | Omitted | not-yet-demanded | TPC official mode is a bounded boolean; it additionally requires `--seed`, so both promote together. |
 | `--compression` | Omitted | not-yet-demanded | Bounded codec enum; no client demand yet. |
 | `--table-format` | Omitted | not-yet-demanded | Bounded table-format spec; no client demand yet. |
 | `--presort` | Omitted | not-yet-demanded | Bounded pre-sort enum; no client demand yet. |

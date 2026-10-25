@@ -99,7 +99,7 @@ class TestOfficialModeValidation:
         )
 
         assert result.exit_code == 1
-        assert "not TPC-compliant" in result.output
+        assert "not a TPC-specified scale factor" in result.output
         assert "0.01" in result.output
 
     def test_official_mode_warns_without_seed(self):
@@ -122,7 +122,7 @@ class TestOfficialModeValidation:
 
         assert "Warning" in result.output or "seed" in result.output.lower()
 
-    def test_official_mode_shows_compliance_banner(self):
+    def test_official_mode_shows_derived_banner(self):
         runner = CliRunner()
         result = runner.invoke(
             run,
@@ -142,7 +142,7 @@ class TestOfficialModeValidation:
             obj={},
         )
 
-        assert "TPC-Compliant" in result.output or "TPC-allowed" in result.output
+        assert "TPC Official Mode" in result.output or "TPC-allowed" in result.output
         assert "Seed: 42" in result.output
 
 

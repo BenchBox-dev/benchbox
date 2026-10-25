@@ -10,6 +10,7 @@ from benchbox.core.run_service import (
     validate_stream_count,
     validate_tpc_scale_factor,
 )
+from benchbox.core.tpc_disclaimer import derived_results_disclaimer
 
 
 @click.command("run-official", hidden=True, deprecated=True)
@@ -48,7 +49,7 @@ def run_official(
     try:
         validate_tpc_scale_factor(scale)
     except ValueError:
-        console.print(f"[red]Error: Scale factor {scale} is not TPC-compliant[/red]")
+        console.print(f"[red]Error: Scale factor {scale} is not a TPC-specified scale factor[/red]")
         console.print(f"Allowed scale factors: {sorted(TPC_ALLOWED_SCALE_FACTORS)}")
         sys.exit(1)
 
@@ -63,7 +64,8 @@ def run_official(
         sys.exit(1)
 
     if not quiet:
-        console.print("[bold blue]TPC-Compliant Official Benchmark Run[/bold blue]")
+        console.print("[bold blue]TPC Official Mode Benchmark Run[/bold blue]")
+        console.print(f"[dim]{derived_results_disclaimer('TPC-DS' if benchmark.lower() == 'tpcds' else 'TPC-H')}[/dim]")
         for label, value in [
             ("Benchmark", f"TPC-{benchmark.upper()}"),
             ("Platform", platform),

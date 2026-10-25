@@ -7,9 +7,11 @@
 
 This guide documents BenchBox's TPC-H Power@Size and Throughput@Size phases and its opt-in RF1/RF2 integration. QphH@Size is emitted only when the required evidence is present; see [QphH@Size](#qphh-size).
 
+> **Derived results.** Derived from TPC-H. Results produced by BenchBox do not comply with the TPC-H Specification and must not be compared with official TPC-H results. The TPC publishes official TPC-H results only after an audit.
+
 ## Overview
 
-The TPC-H official runner coordinates Power, Throughput, and Maintenance phases. Refresh-function integration is disabled by default and does not by itself certify a result.
+The TPC-H official runner coordinates Power, Throughput, and Maintenance phases. Refresh-function integration is disabled by default and does not make a result comparable to official TPC results.
 
 ### What is TPC-H?
 
@@ -23,7 +25,7 @@ Enable refresh functions with `--benchmark-option tpch_refresh_functions=true`. 
 
 The composite is `round(sqrt(Power@Size × Throughput@Size), 1)`. Results that fail any gate omit `qphh_at_size` and report `qphh_unavailable` reasons. `benchbox metrics qphh` uses the same gate.
 
-This implementation is not a TPC certification claim. It does not apply the specification's 0.01-second refresh rounding, 1000x clamp, upward Ts rounding, or two-run lower-score rule. Refresh support is declared for DuckDB, SQLite, PostgreSQL and the adapters built on it, Snowflake, and SingleStore.
+BenchBox results are derived results, not audited TPC results. The implementation does not apply the specification's 0.01-second refresh rounding, 1000x clamp, upward Ts rounding, or two-run lower-score rule. Refresh support is declared for DuckDB, SQLite, PostgreSQL and the adapters built on it, Snowflake, and SingleStore.
 
 BenchBox also reports the component metrics:
 
@@ -37,13 +39,13 @@ BenchBox also reports the component metrics:
 - **Power@Size, Throughput@Size, and gated QphH@Size**: QphH is emitted only when official-run and refresh-evidence requirements pass.
 - **Comprehensive Reporting**: HTML, text, and CSV report generation
 - **Result Validation**: Automatic validation against TPC-H specification
-- **Audit Trail**: Complete audit trail for certification submissions
+- **Audit Trail**: Run evidence recorded alongside each result
 - **Performance Analysis**: Detailed performance metrics and analysis
 - **Benchmark Comparison**: Compare results across different runs
 
-## TPC-H Specification Compliance
+## TPC-H Specification Coverage
 
-The implementation provides the TPC-H query, power, throughput, and maintenance phases. Adapter support and refresh evidence are reported per run; this implementation does not claim TPC certification.
+The implementation provides the TPC-H query, power, throughput, and maintenance phases. Adapter support and refresh evidence are reported per run; BenchBox does not claim TPC compliance or certification.
 
 - **Query Execution**: All 22 TPC-H queries with parameterization
 - **Stream Generation**: Query streams with the TPC-H permutation matrix
@@ -69,7 +71,7 @@ uv add benchbox
 
 ## Quick Start
 
-Run the official TPC-H benchmark with the CLI. `--official` marks the run metadata; it is not a certification claim, and QphH@Size requires the additional refresh evidence described below.
+Run the official TPC-H benchmark with the CLI. `--official` marks the run metadata; it is not a claim of TPC compliance, and QphH@Size requires the additional refresh evidence described below.
 
 ```bash
 benchbox run --official --platform duckdb --benchmark tpch --scale 1 --seed 42 --output ./official_data
@@ -184,7 +186,7 @@ power_result = adapter.run_benchmark(benchmark, test_execution_type="power")
 throughput_result = adapter.run_benchmark(benchmark, test_execution_type="throughput")
 ```
 
-This example modifies the database in both phases. The next run must use the next unused update set or reload the original data. Adapter support is declared per platform; see [TPC-H refresh support](../../benchmarks/tpc-h.md#official-tpc-h-metrics).
+This example modifies the database in both phases. The next run must use the next unused update set or reload the original data. Adapter support is declared per platform; see [TPC-H refresh support](../../benchmarks/tpc-h.md#tpc-h-derived-metrics).
 
 **Workflow:** `generate` → `load` → `power` → `throughput` → `maintenance`. Reload before reusing update sets or comparing against a fresh dataset.
 
@@ -234,21 +236,21 @@ html_report = report_generator.generate_detailed_report(
     result=result,
     report_title="TPC-H Benchmark Report",
     include_detailed_analysis=True,
-    include_certification_info=True
+    include_validation_info=True
 )
 
-cert_report = report_generator.generate_certification_report(result=result)
+validation_report = report_generator.generate_validation_report(result=result)
 
 csv_report = report_generator.generate_performance_csv(result=result)
 ```
 
 ### Result Validation
 
-The benchmark automatically validates results against TPC-H specification:
+BenchBox runs validation checks on results. Passing them does not make a result comparable to official TPC-H results:
 
 ```python
 if result.success and result.compliance_validated:
-    print("Benchmark is certification ready!")
+    print("Validation checks passed")
 else:
     print("Validation issues found:")
     for error in result.errors:
@@ -272,18 +274,18 @@ comparison_report = report_generator.generate_comparison_report(
 )
 ```
 
-## Certification Workflow
+## Derived Run Workflow
 
-For TPC-H certification, follow these steps:
+To run TPC-H at a TPC-specified scale factor, follow these steps. Results remain derived results:
 
 ### 1. Preparation
 
-Use an appropriate, certified scale factor for certification:
+Use a TPC-specified scale factor:
 
 ```python
 benchmark = TPCH(
     scale_factor=100.0,
-    output_dir="./certification_data",
+    output_dir="./tpch_data",
 )
 ```
 
@@ -295,11 +297,11 @@ data_files = benchmark.generate_data()
 
 ### 3. Database Setup
 
-Set up a production database with proper configuration. Use a database system appropriate for certification.
+Set up a production database with proper configuration. Use a database system appropriate for the scale factor.
 
 ### 4. Benchmark Execution
 
-Run with certification parameters, using an appropriate number of streams:
+Run with the official-mode parameters, using an appropriate number of streams:
 
 ```python
 config = TPCHOfficialBenchmarkConfig(
@@ -314,17 +316,17 @@ result = benchmark.run_official_benchmark(connection_factory, config, adapter=ad
 ### 5. Report Generation
 
 ```python
-report_generator = TPCHReportGenerator(output_dir="./certification_reports")
-cert_report = report_generator.generate_certification_report(result=result)
+report_generator = TPCHReportGenerator(output_dir="./reports")
+validation_report = report_generator.generate_validation_report(result=result)
 ```
 
 ### 6. Validation
 
 ```python
 if result.success and result.compliance_validated:
-    print("Ready for certification submission")
+    print("Validation checks passed")
 else:
-    print("Address validation issues before certification")
+    print("Address validation issues before publishing results")
 ```
 
 ## Best Practices
@@ -333,7 +335,7 @@ else:
 
 - **Development/Testing**: Use scale factors 0.01-1.0
 - **Performance Testing**: Use scale factors 1-10
-- **Certification**: Use TPC-approved scale factors (100, 300, 1000, etc.)
+- **TPC-specified scale factors**: Use 100, 300, 1000, etc.
 
 ### Database Configuration
 
@@ -344,7 +346,7 @@ else:
 
 ### Benchmark Configuration
 
-The examples below are, in order, for development, performance testing, and certification:
+The examples below are, in order, for development, performance testing, and a TPC-specified scale factor:
 
 ```python
 benchmark = TPCH(scale_factor=0.01, verbose=True)
@@ -358,7 +360,7 @@ benchmark = TPCH(scale_factor=100.0, verbose=True)
 
 - **Development**: Use 1-2 streams
 - **Performance Testing**: Use 2-4 streams
-- **Certification**: Use appropriate number based on system capabilities
+- **TPC-specified scale factors**: Use appropriate number based on system capabilities
 
 ## Troubleshooting
 
@@ -495,7 +497,7 @@ class TPCHReportGenerator:
     def generate_detailed_report(self, result, **kwargs) -> Path:
         pass
 
-    def generate_certification_report(self, result) -> Path:
+    def generate_validation_report(self, result) -> Path:
         pass
 
     def compare_results(self, baseline_result, current_result) -> ComparisonResult:
@@ -504,6 +506,6 @@ class TPCHReportGenerator:
 
 ## Conclusion
 
-The TPC-H official benchmark implementation coordinates all three test phases with Power@Size and Throughput@Size reporting, systematic reporting, and validation capabilities. Read the deviation note at the top before planning a certification submission.
+The TPC-H official benchmark implementation coordinates all three test phases with Power@Size and Throughput@Size reporting, systematic reporting, and validation capabilities. Results are derived from TPC-H and carry the derived-results disclaimer above.
 
 For more information, examples, and updates, visit the [BenchBox GitHub repository](https://github.com/BenchBox-dev/BenchBox).

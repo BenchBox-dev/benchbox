@@ -223,7 +223,7 @@ class TestTPCHOfficialBenchmark:
             assert audit_path == audit_file
 
             content = audit_path.read_text()
-            assert "TPC-H Official Benchmark Audit Trail" in content
+            assert "TPC-H Benchmark Audit Trail" in content
             assert "Scale Factor: 0.01" in content
             assert "Number of Streams: 2" in content
             assert "Throughput@Size:" in content

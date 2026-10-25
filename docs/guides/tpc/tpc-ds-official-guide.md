@@ -7,6 +7,8 @@
 
 This guide provides systematic documentation for the TPC-DS official benchmark implementation in BenchBox, including Power@Size and Throughput@Size. BenchBox does not export the composite QphDS@Size; see [QphDS@Size (not exported)](#qphds-size-not-exported).
 
+> **Derived results.** Derived from TPC-DS. Results produced by BenchBox do not comply with the TPC-DS Specification and must not be compared with official TPC-DS results. The TPC publishes official TPC-DS results only after an audit.
+
 ## Overview
 
 The TPC-DS official benchmark implementation coordinates all three test phases and reports Power@Size and Throughput@Size. It does not export the composite QphDS@Size (see below). It includes:
@@ -14,8 +16,8 @@ The TPC-DS official benchmark implementation coordinates all three test phases a
 - **Complete benchmark execution** with all three phases
 - **Power@Size and Throughput@Size** (no composite QphDS@Size; see below)
 - **Comprehensive reporting** and validation
-- **TPC compliance framework** integration
-- **Audit trail functionality** for certification readiness
+- **Validation framework** integration
+- **Audit trail functionality** recording run evidence
 
 ### Key Features
 
@@ -30,7 +32,7 @@ The TPC-DS official benchmark implementation coordinates all three test phases a
 
 ## Quick Start
 
-Run the official TPC-DS benchmark with the CLI (this SF1 DuckDB run completes in about a minute and reports a compliant `official` result):
+Run the official TPC-DS benchmark with the CLI (this SF1 DuckDB run completes in about a minute and reports a result in the `official` result class):
 
 ```bash
 benchbox run --official --platform duckdb --benchmark tpcds --scale 1 --seed 42 --output ./official_data
@@ -338,7 +340,7 @@ Maintenance results use the same result-file shape as power and throughput runs:
 
 ## Metrics and Calculations
 
-### Official TPC-DS Metrics
+### TPC-DS Derived Metrics
 
 The implementation calculates Power@Size and Throughput@Size. It does not calculate the composite QphDS@Size (see [QphDS@Size (not exported)](#qphds-size-not-exported)):
 
@@ -411,10 +413,10 @@ The benchmark generates systematic reports in multiple formats automatically:
    - Summary metrics and system information
    - Presentation ready
 
-7. **Compliance Report** (`compliance_report.txt`)
-   - TPC-DS compliance checklist
+7. **Validation Checklist Report** (`validation_checklist_report.txt`)
+   - Validation checklist
    - Validation results
-   - Certification readiness
+   - Derived-results disclaimer
 
 8. **Performance Summary** (`performance_summary.txt`)
    - Performance recommendations
@@ -444,9 +446,9 @@ generator = TPCDSReportGenerator(output_dir=Path("/custom/path"))
 reports = generator.generate_complete_report(result)
 ```
 
-`result` is the internal `BenchmarkResult` produced by the TPC-DS phase drivers; the returned dict maps report names (`executive_summary`, `detailed_analysis`, `query_analysis`, `json_report`, `csv_export`, `html_report`, `compliance_report`, `performance_summary`) to their files under `<output_dir>/reports/`.
+`result` is the internal `BenchmarkResult` produced by the TPC-DS phase drivers; the returned dict maps report names (`executive_summary`, `detailed_analysis`, `query_analysis`, `json_report`, `csv_export`, `html_report`, `validation_checklist_report`, `performance_summary`) to their files under `<output_dir>/reports/`.
 
-## Validation and Compliance
+## Validation
 
 ### Built-in Validation
 
@@ -463,7 +465,7 @@ results, raw = load_result_file("<runs-root>/results/tpcds_sf1_duckdb_sql_<times
 print(f"Validation: {raw['summary']['validation']}")
 ```
 
-### Compliance Checklist
+### Validation Checklist
 
 The validation framework checks:
 
@@ -670,7 +672,7 @@ done
 
 ## Conclusion
 
-The TPC-DS official benchmark implementation coordinates the power, throughput, and maintenance phases with Power@Size and Throughput@Size reporting. It does not export the composite QphDS@Size. Read the deviation note at the top before planning a certification submission.
+The TPC-DS official benchmark implementation coordinates the power, throughput, and maintenance phases with Power@Size and Throughput@Size reporting. It does not export the composite QphDS@Size. Results are derived from TPC-DS and carry the derived-results disclaimer above.
 
 For additional support:
 - Review the integration tests in `tests/integration/test_tpcds_official_benchmark.py`

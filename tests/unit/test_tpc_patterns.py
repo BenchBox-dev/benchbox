@@ -45,7 +45,7 @@ class TestGenerateOfficialBenchmarkAuditTrail:
         assert output_path.name.startswith("tpch_audit_trail_")
 
         content = output_path.read_text(encoding="utf-8")
-        assert "TPC-H Official Benchmark Audit Trail" in content
+        assert "TPC-H Benchmark Audit Trail" in content
         assert "Scale Factor: 1.0" in content
         assert "Number of Streams: 2" in content
         assert "Power@Size: 100.00" in content
@@ -68,7 +68,7 @@ class TestGenerateOfficialBenchmarkAuditTrail:
 
         assert output_path == explicit_path
         assert output_path.exists()
-        assert "TPC-DS Official Benchmark Audit Trail" in output_path.read_text(encoding="utf-8")
+        assert "TPC-DS Benchmark Audit Trail" in output_path.read_text(encoding="utf-8")
 
     def test_writes_errors_section_when_present(self, tmp_path):
         result = _FakeResult(config=_FakeConfig(output_dir=tmp_path), success=False, errors=["stream 0 failed"])

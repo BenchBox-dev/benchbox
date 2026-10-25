@@ -984,7 +984,7 @@ class CertificationChecker(BaseValidator):
                 if metric_value > threshold:
                     report.add_issue(
                         "WARNING",
-                        f"Performance metric {metric_name} ({metric_value}) exceeds certification threshold ({threshold})",
+                        f"Performance metric {metric_name} ({metric_value}) exceeds validation threshold ({threshold})",
                         {
                             "metric_name": metric_name,
                             "value": metric_value,
@@ -1013,7 +1013,7 @@ class CertificationChecker(BaseValidator):
         if not certification_completeness["complete"]:
             report.add_issue(
                 "ERROR",
-                f"Certification completeness check failed: {certification_completeness['reason']}",
+                f"Completeness check failed: {certification_completeness['reason']}",
                 {"completeness_check": certification_completeness},
                 self.name,
             )
@@ -1052,7 +1052,7 @@ class CertificationChecker(BaseValidator):
         return {
             "complete": complete,
             "checks": checks,
-            "reason": "All certification requirements met" if complete else "Some certification requirements not met",
+            "reason": "All specification checks met" if complete else "Some specification checks not met",
         }
 
 
@@ -1297,6 +1297,6 @@ if __name__ == "__main__":
 
     emit(f"Validation completed with result: {report.overall_result.value}")
     emit(f"Issues found: {len(report.issues)}")
-    emit(f"Certification status: {report.certification_status}")
+    emit(f"Readiness status: {report.certification_status}")
 
     validator.save_report(report, Path("validation_report.json"))

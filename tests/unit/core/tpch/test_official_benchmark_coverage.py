@@ -343,7 +343,7 @@ def test_generate_audit_trail_writes_file(monkeypatch, tmp_path):
 
     assert path.exists()
     content = path.read_text()
-    assert "TPC-H Official Benchmark Audit Trail" in content
+    assert "TPC-H Benchmark Audit Trail" in content
     assert "Throughput@Size" in content
     assert "QphH" not in content
     assert "Power@Size: 10.00" in content

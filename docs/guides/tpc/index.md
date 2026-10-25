@@ -10,10 +10,10 @@ Comprehensive guides for running official TPC benchmarks with BenchBox.
 ## Official Benchmark Guides
 
 ### TPC-H
-- [TPC-H Official Benchmark Guide](tpc-h-official-guide.md) - Complete guide for running compliant TPC-H benchmarks
+- [TPC-H Official Benchmark Guide](tpc-h-official-guide.md) - Complete guide for running TPC-H derived benchmarks
 
 ### TPC-DS
-- [TPC-DS Official Benchmark Guide](tpc-ds-official-guide.md) - Complete guide for running compliant TPC-DS benchmarks
+- [TPC-DS Official Benchmark Guide](tpc-ds-official-guide.md) - Complete guide for running TPC-DS derived benchmarks
 
 ### TPC-DI
 - [TPC-DI Deployment Guide](tpc-di-deployment-guide.md) - Deployment and configuration for TPC-DI
@@ -26,7 +26,7 @@ Comprehensive guides for running official TPC benchmarks with BenchBox.
 ## Additional Resources
 
 - [TPC Patterns Usage](tpc-patterns-usage.md) - Common patterns and best practices for TPC benchmarks
-- [TPC Validation Guide](tpc-validation-guide.md) - Validation strategies for ensuring TPC compliance
+- [TPC Validation Guide](tpc-validation-guide.md) - Validation strategies for checking results against TPC specification requirements
 
 ## Related Documentation
 
