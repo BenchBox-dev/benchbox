@@ -43,7 +43,30 @@ jobs:
 
       - name: Run fast tests
         run: |
-          uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120
+          uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120 -o junit_duration_report=total --junitxml=fast-junit/junit.xml
+
+      - name: Check fast-tier junit parses
+        if: always()
+        continue-on-error: true
+        run: |
+          uv run -- python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          from pathlib import Path
+
+          from tests.duration_policy import collect_junit_durations
+
+          durations = collect_junit_durations([Path("fast-junit/junit.xml")])
+          print(f"Fast-tier junit parsed: {len(durations)} tests")
+          PY
+
+      - name: Upload fast-tier junit
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: fast-junit-trunk-${{ github.sha }}
+          path: fast-junit/junit.xml
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: true
 
   medium-collect:
     name: medium-collect
