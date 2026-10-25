@@ -16161,6 +16161,15 @@
       "status": "open",
       "title": "Shorten the delay between an oracle SHIP verdict and the oracle-gate status on the PR head"
     },
+    "oracle-gateway-cloud-builder-access-20261025": {
+      "claim": null,
+      "needs": [
+        "oracle-gateway-named-clients-20261025"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Give cloud builder sessions access to the oracle gateway over the tailnet with their own client"
+    },
     "oracle-gateway-long-silence-timeout-20261022": {
       "claim": null,
       "needs": [],
