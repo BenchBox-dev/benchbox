@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "ParadeDB tuning files now apply heap partitioning and clustering/sorting, and the adapter claims `PARTITIONING`, `CLUSTERING` and `SORTING`. A TPC-H profile is at `examples/tunings/paradedb/tpch_tuned.yaml`."
+    }
+  ]
+}

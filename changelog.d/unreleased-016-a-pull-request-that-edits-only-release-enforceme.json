@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "A pull request that edits only release enforcement files (`Makefile`, `ci.yml`, the release check scripts) no longer fails `ci-paths` when upstream SQLGlot publishes a new release before the fork is refreshed. The freshness check still runs for pull requests that change the release version or edit the freshness check or its waiver file, and in the release workflows."
+    }
+  ]
+}

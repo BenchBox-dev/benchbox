@@ -773,31 +773,16 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "extra": 1,
-    "file": 1,
-    "root": 1,
-    "unresolved": 1
+    "file": 1
    },
-   "occurrences": 5,
+   "occurrences": 1,
    "path": "CHANGELOG.md",
    "rule": "agent-and-contributor-prose",
-   "target_count": 4,
+   "target_count": 1,
    "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/...md"
-    },
     {
      "kind": "file",
      "target": "docs/advanced/power-run-concurrent-queries.md"
-    },
-    {
-     "kind": "extra",
-     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -2560,6 +2545,59 @@
    "occurrences": 1,
    "path": "benchbox/utils/version.py",
    "rule": "readme-version-substitution",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    }
+   ]
+  },
+  {
+   "disposition": "prose-link-pinned",
+   "kinds": {
+    "extra": 1,
+    "unresolved": 1
+   },
+   "occurrences": 2,
+   "path": "changelog.d/unreleased-006-error-messages-benchbox-help-the-package-readmes.json",
+   "rule": "agent-and-contributor-prose",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/...md"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
+    }
+   ]
+  },
+  {
+   "disposition": "prose-link-pinned",
+   "kinds": {
+    "root": 1
+   },
+   "occurrences": 1,
+   "path": "changelog.d/unreleased-017-the-locked-filelock-moves-from-3-25-2-to-4-2-4-t.json",
+   "rule": "agent-and-contributor-prose",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    }
+   ]
+  },
+  {
+   "disposition": "prose-link-pinned",
+   "kinds": {
+    "root": 1
+   },
+   "occurrences": 1,
+   "path": "changelog.d/unreleased-020-make-doc-contracts-exports-doc-contracts-json-th.json",
+   "rule": "agent-and-contributor-prose",
    "target_count": 1,
    "targets": [
     {
@@ -5236,12 +5274,12 @@
    "governance-stays": 7,
    "historical-record": 112,
    "lock-test": 26,
-   "prose-link-pinned": 17,
+   "prose-link-pinned": 20,
    "runtime-link-updated": 7,
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 260,
+  "files": 263,
   "kinds": {
    "built-url": 29043,
    "dir": 173,

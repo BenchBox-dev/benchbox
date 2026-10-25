@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The bundled SQLGlot runtime moves from 30.24.0.9 to 30.24.0.10 (fork commit `75016d8ff27e`). It adds the `round_inputs_to_decimal` rewrite to the `apply_rewrite` registry and writes a one-parameter wide `DECIMAL(p)` as `BIGNUMERIC` for BigQuery DDL. BenchBox ships no one-parameter `DECIMAL`, and its first use of the rewrite (FlightData on PostgreSQL) is the next entry: the 23,667 translations of the 1,127 frozen shipped queries across 21 target dialects, the 2,600 golden-corpus runtime outputs and `make sql-execution-gate` are unchanged from 30.24.0.9, so no published result changes."
+    }
+  ]
+}

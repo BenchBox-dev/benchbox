@@ -181,6 +181,7 @@
         "benchbox/core/cost/README.md",
         "benchbox/core/tuning/templates/README.md",
         "benchbox/core/write_primitives/README.md",
+        "changelog.d/**",
         "docker/**",
         "examples/**/*.md",
         "results-data/*.md",

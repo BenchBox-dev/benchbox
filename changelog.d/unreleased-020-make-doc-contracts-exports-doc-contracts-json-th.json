@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "`make doc-contracts` exports `doc-contracts.json`, the registry, CLI, MCP, platform-option, tuning, publication and ownership facts that site-owned documentation is validated against. It is checked against `quality/doc-contracts.schema.json` and must be byte-identical across two builds; `make docs-generate` runs `make doc-contracts-check`. `quality/doc-lock-tests.json` maps every test that reads a site-owned page to the contract field that replaces it, and `quality/docs-reference-inventory.json` lists every reference to a site-owned path outside `docs/` with its disposition (`make docs-reference-inventory-check` fails when it is stale). The MCP omission tiers now live in `quality/mcp-run-surface.json`, shared by the exporter and the MCP surface tests."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "`make pr-arm`, `make pr-rerun`, the live checks in `scripts/pr_landing.py` and `make pr-landing-remote-*`, and the green-but-unmerged and soundness sweeps now read the latest check run of every check suite (`check-runs?filter=latest`) instead of one result per check name. A stale failed required suite hidden behind a newer success is refused at arming, named with its suite id and Actions run URL, listed in the sweep digest, and re-run by `make pr-rerun` (`--failed`, or the whole run for a cancelled suite). `docs/agent/merge-authority.md` documents the phantom-rollup close and reopen fallback."
+    }
+  ]
+}

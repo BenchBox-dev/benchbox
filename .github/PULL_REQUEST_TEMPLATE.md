@@ -44,6 +44,7 @@ the wrapper, or the TPC-H and TPC-DS query code.
 ## Documentation
 
 - [ ] I updated the relevant user-facing docs.
+- [ ] I added a `changelog.d/` fragment (`make changelog-entry`) for user-visible changes, or marked the change internal. I did not edit `CHANGELOG.md`.
 - [ ] I added regression notes for behavior changes.
 - [ ] I confirmed API contract wording remains accurate.
 - [ ] Site, Explorer app, landing page and blog changes went to

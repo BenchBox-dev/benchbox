@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "SQLite translation of `DATE('..') + INTERVAL 'N' DAY` now yields `DATETIME(DATE('..'), 'N DAY')`, which evaluates to a timestamp string (`1998-09-11 00:00:00`) where the previous fix-up gave a date string (`1998-09-11`). The runtime raises `UnsupportedError` at `ErrorLevel.RAISE` for month and year offsets that roll over a month end and for `DATE_PART('year', ..)`; `translate_sql_query` still applies the BenchBox fix-ups to them until they are removed. Because SQLite compares dates as text, a lower bound written as a day offset (`d >= DATETIME(DATE('1998-04-08'), '-30 DAY')`) excludes rows equal to the boundary date and a `<` upper bound includes them, where the previous `DATE(..)` form did not; the form was already emitted for typed dates by 30.24.0.1."
+    }
+  ]
+}

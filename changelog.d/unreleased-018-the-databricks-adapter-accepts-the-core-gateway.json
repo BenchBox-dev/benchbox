@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "The Databricks adapter accepts the core `gateway` setting (`native`, `espresso` or `custom`) and forwards it through `from_config`. Gateways use personal access tokens only: a non-native gateway with `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` or `DATABRICKS_CONFIG_PROFILE` set raises a `ConfigurationError` that points to token authentication. With a gateway, `from_config` requires an explicit `server_hostname` and `access_token` and never falls back to the auto-detected workspace. Runs through a gateway record `gateway` in platform info, so they get the `@<gateway>` variant suffix and `tpc_compliant=false`. The Databricks guide documents using the Espresso hostname as `server_hostname` with an unchanged `http_path`."
+    }
+  ]
+}

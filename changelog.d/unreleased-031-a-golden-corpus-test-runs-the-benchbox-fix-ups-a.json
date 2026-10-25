@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "A golden-corpus test runs the BenchBox fix-ups and the bundled runtime's output over the inputs of every area whose fix-ups move into the runtime and asserts that the differences equal a recorded set."
+    }
+  ]
+}

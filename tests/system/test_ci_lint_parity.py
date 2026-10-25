@@ -80,6 +80,12 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "dist-artifact", "Verify source bundled binary manifest"): "scripts/bundled_binary_manifest.py",
     ("ci.yml", "dist-artifact", "Build wheel and sdist"): "scripts/verify_distribution_binaries.py",
     ("ci.yml", "ci-paths", "Check release content"): "release-check",
+    ("ci.yml", "ci-paths", "Check changelog fragments"): "changelog-check",
+    (
+        "ci.yml",
+        "text-edit-verdict",
+        "Re-check the changelog entry against the edited title",
+    ): "changelog-check",
     ("ci.yml", "code-test", "Run changed tests on the curated release tree"): "scripts/release_curation_dry_run.py",
     ("ci.yml", "comment-policy", "Enforce comment and docstring policy"): "comment-policy-check",
     ("ci.yml", "comment-policy", "Enforce pinned notice drift"): "comment-policy-check",

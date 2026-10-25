@@ -191,8 +191,8 @@ Each pull request that changes user-visible behavior adds one
 `changelog.d/<branch>.json` fragment (`make changelog-entry`; schema and
 rendering in `scripts/changelog_fragments.py`). `[Unreleased]` stays empty.
 Write for users, not contributors: include only changes a user would notice.
-Fragments render under `Before you upgrade`, `Added`, `Changed`, `Fixed` and
-`Documentation`, in that order; behavior changes carry `BREAKING:`.
+Fragments render under `Before you upgrade`, `Added`, `Changed`, `Fixed`,
+`Security` and `Documentation`, in that order; behavior changes carry `BREAKING:`.
 
 `make release-prep VERSION=X.Y.Z` compiles the fragments with
 `scripts/generate_changelog_entry.py --compile-fragments`:
@@ -202,7 +202,7 @@ Fragments render under `Before you upgrade`, `Added`, `Changed`, `Fixed` and
 2. The starting draft is the existing `[X.Y.Z]` body on a re-run, otherwise the
    body of the newest pre-release section of the same base version (for example
    `[0.5.0rc1]` when preparing `0.5.0` or `0.5.0rc2`), otherwise empty.
-3. User entries are appended under the five canonical headings: into a heading
+3. User entries are appended under the six canonical headings: into a heading
    that already exists, or into a new heading created in canonical order. A
    heading is never duplicated.
 4. `## [X.Y.Z] - DATE` is written directly below the empty `[Unreleased]`, and
@@ -230,26 +230,18 @@ trimming, not a way around the gate.
 
 ### Changelog merges
 
-`.gitattributes` sets `/CHANGELOG.md merge=union`, so a local `git merge`,
-`git rebase`, or `git cherry-pick` keeps both sides' added lines instead of
-stopping on a conflict. Two branches that each add a bullet under
-`[Unreleased]` combine cleanly. The release-curation and tag-guard checks read
-only the resulting file, and `release-cut` merges `origin/release` with
-`-s ours`, which ignores merge drivers, so none of them changes behavior. `.gitattributes` is a development file that
-`release-cut` removes, so the union rule applies on `develop` and its feature
-branches only, not on the release tree; the rule's test skips there.
+Each pull request adds its own `changelog.d/<branch>.json` file, so two
+branches never edit the same lines and a merge or rebase cannot conflict on
+release notes. `CHANGELOG.md` is edited only by `make release-prep`, which
+compiles the fragments. GitHub's server-side merge ignores local merge
+drivers, which is why the repository does not rely on one.
 
-Caveats:
-
-- Union never reports a conflict, so review the merged `[Unreleased]` text.
-- It keeps both sides of a line both branches edited: two rewordings of the
-  same bullet both survive, and the older wording must be deleted by hand.
-- It merges by line, not by bullet. Continuation lines that two new bullets
-  share verbatim (for example identical wrapped text) collapse into one copy,
-  which can leave one bullet short of its tail. Reread multi-line bullets.
-- GitHub's server-side merge and the web conflict editor do not run custom
-  drivers. Rebase onto `origin/develop` locally before pushing, as the PR flow
-  already requires.
+The `ci-paths` job runs `scripts/changelog_fragments.py check` on every pull
+request. It fails when `[Unreleased]` holds any text, and when a pull request
+that changes shipped paths (`.github/changelog-paths.txt`) with a user-facing
+title adds no fragment. Release preparation pull requests are exempt from the
+entry requirement. The fragment schema limits are 2000 characters for entry
+text and 600 for each detail line.
 
 ### Tests on the release tree
 

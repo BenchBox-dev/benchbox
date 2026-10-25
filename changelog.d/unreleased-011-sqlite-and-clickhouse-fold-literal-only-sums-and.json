@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "SQLite and ClickHouse fold literal-only sums and differences in `BETWEEN` bounds and comparison operands to exact decimals for every table and column, not only `l_discount` on `lineitem`. Both engines read `0.06 - 0.01` as a double (SQLite `REAL`, ClickHouse `Float64`), so `l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01` evaluates as `BETWEEN 0.049999999999999996 AND 0.06999999999999999` and drops the rows at the bounds. The bundled SQLGlot runtime moves from 30.24.0.11 to 30.24.0.12 (fork commit `e484de3d1ffb`), whose `fold_between_literal_arithmetic` takes no column or table arguments, and the `SQLITE_DISCOUNT_BOUNDS` gate is removed from `translate_sql_query` and `rewrite_query_for_clickhouse`. An expression whose double result already equals the exact value is left alone. Data Vault Q6 (`sat_lineitem`) was the one shipped query the gate missed: at scale factor 0.01 it summed 734,493.7281 on SQLite and ClickHouse against 1,193,053.2253 on DuckDB, and now returns 1,193,053.2253 on all three. Of 6,444 SQLite and ClickHouse translations of every shipped query across 18 benchmarks, only Data Vault Q6 changes; TPC-H Q6 text and results are unchanged, and `make sql-execution-gate` is unchanged. Published results affected: the ClickHouse Local Data Vault bundles `datavault_sf001_clickhouse_local_sql_20260826_172319_c202ec05` and `datavault_sf01_clickhouse_local_sql_20260826_172329_b4fd5612`, whose Q6 `revenue` is understated and which now also carry `defective-superseded-sql-translation` in their sidecars (see `results-data/CORPUS_NOTES.md`); no published SQLite Data Vault bundle exists. The compatibility registry rule `query_compile.sqlite.tpch.q6_exact_discount_bounds` becomes the platform-wide `query_compile.sqlite.all.exact_literal_bounds`, and `query_compile.clickhouse.all.exact_literal_bounds` records the same rewrite for ClickHouse."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "QuestDB now translates to the runtime `questdb` dialect. TPC-H Q15 and every CTE column list keep their column names, which the removed rewriter dropped."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Tests pin the `apply_rewrite` behavior of the ClickHouse, StarRocks and TPC-DS runner engine rewrites (`lowercase_identifiers`, `decimal_zero_literals`, `add_query_settings`, `correlated_exists_to_in`, `add_derived_table_aliases`, `qualify_order_by_columns`), and the golden-corpus engines area records two more safe-division inputs from the ClickHouse transformer tests."
+    }
+  ]
+}

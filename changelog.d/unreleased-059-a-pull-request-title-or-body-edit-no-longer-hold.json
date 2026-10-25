@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "A pull request title or body edit no longer holds five runners while it waits for the full CI run. The `CI (text edit)` check makes one decision and fails at once when the full run on the commit is missing or still running; the new `ci-text-edit-refresh` workflow re-runs the failed jobs of the newest `CI (text edit)` run on that commit when the full CI run completes. The `oracle-gate` workflow now shares one concurrency group per pull request head commit for runs started by `pull_request` or `pull_request_target` workflows, so superseded gate runs are cancelled."
+    }
+  ]
+}

@@ -94,6 +94,7 @@ results-data:
 docs:
   - "docs/**"
   - "*.md"
+  - "changelog.d/**"
   - "_project/blind-spots/**"
   - "_project/decisions/**"
   - "_project/handoffs/**"

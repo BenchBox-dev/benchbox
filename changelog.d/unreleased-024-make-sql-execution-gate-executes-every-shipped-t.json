@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "`make sql-execution-gate` executes every shipped TPC-H and TPC-DS query on SQLite, DuckDB, DataFusion and PostgreSQL (when `BENCHBOX_POSTGRES_DSN` is set) at SF0.01 and compares the rows of the candidate tree with the baseline commit, DuckDB and the TPC reference row counts. Differences must be listed with a justification in `scripts/sql_execution_gate/expected_differences.json`. The `sql-execution-evidence` CI job runs it when SQL translation changes, and the pull request template asks for its output on every wheel adoption."
+    }
+  ]
+}

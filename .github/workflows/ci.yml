@@ -184,6 +184,29 @@ jobs:
             --github-output "$GITHUB_OUTPUT" \
             --summary "$GITHUB_STEP_SUMMARY"
 
+      - name: Check changelog fragments
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          trusted="$RUNNER_TEMP/trusted-changelog"
+          mkdir -p "$trusted/scripts" "$trusted/_project/scripts" "$trusted/.github"
+          git show "$EVENT_BASE_SHA:scripts/changelog_fragments.py" > "$trusted/scripts/changelog_fragments.py"
+          git show "$EVENT_BASE_SHA:_project/scripts/soundness_paths.py" > "$trusted/_project/scripts/soundness_paths.py"
+          git show "$EVENT_BASE_SHA:.github/soundness-paths.txt" > "$trusted/.github/soundness-paths.txt"
+          git show "$EVENT_BASE_SHA:.github/changelog-paths.txt" > "$RUNNER_TEMP/changelog-paths.txt"
+          git diff --name-only --no-renames --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/changed.txt"
+          git diff --name-only --diff-filter=A "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/added.txt"
+          python -I "$trusted/scripts/changelog_fragments.py" --root "$PWD" check \
+            --changelog "$PWD/CHANGELOG.md" \
+            --require-empty-unreleased \
+            --title "$PR_TITLE" \
+            --changed-files-from "$RUNNER_TEMP/changed.txt" \
+            --added-files-from "$RUNNER_TEMP/added.txt" \
+            --manifest "$RUNNER_TEMP/changelog-paths.txt" \
+            --release-base-sha "$EVENT_BASE_SHA"
+
       - name: Flag changed paths read by later jobs
         id: path-flags
         run: |
@@ -1850,3 +1873,38 @@ jobs:
           python scripts/ci_text_edit_verdict.py verdict --repo "${{ github.repository }}"
           --sha "${{ github.event.pull_request.head.sha }}" --unit "${{ matrix.unit }}"
           --run-id "${{ github.run_id }}"
+
+      - name: Checkout the pull request for the changelog title check
+        if: ${{ matrix.unit == 'tooling' }}
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          path: title-check
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Re-check the changelog entry against the edited title
+        if: ${{ matrix.unit == 'tooling' }}
+        working-directory: title-check
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EVENT_BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid event base SHA" >&2; exit 1; }
+          git fetch --no-tags origin "$EVENT_BASE_SHA"
+          trusted="$RUNNER_TEMP/trusted-changelog"
+          mkdir -p "$trusted/scripts" "$trusted/_project/scripts" "$trusted/.github"
+          git show "$EVENT_BASE_SHA:scripts/changelog_fragments.py" > "$trusted/scripts/changelog_fragments.py"
+          git show "$EVENT_BASE_SHA:_project/scripts/soundness_paths.py" > "$trusted/_project/scripts/soundness_paths.py"
+          git show "$EVENT_BASE_SHA:.github/soundness-paths.txt" > "$trusted/.github/soundness-paths.txt"
+          git diff --name-only --no-renames --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/changed.txt"
+          git diff --name-only --diff-filter=A "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/added.txt"
+          git show "$EVENT_BASE_SHA:.github/changelog-paths.txt" > "$RUNNER_TEMP/changelog-paths.txt"
+          python -I "$trusted/scripts/changelog_fragments.py" --root "$PWD" check \
+            --changelog "$PWD/CHANGELOG.md" \
+            --require-empty-unreleased \
+            --title "$PR_TITLE" \
+            --changed-files-from "$RUNNER_TEMP/changed.txt" \
+            --added-files-from "$RUNNER_TEMP/added.txt" \
+            --manifest "$RUNNER_TEMP/changelog-paths.txt" \
+            --release-base-sha "$EVENT_BASE_SHA"

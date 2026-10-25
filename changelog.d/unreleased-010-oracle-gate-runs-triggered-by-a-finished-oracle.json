@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "`oracle-gate` runs triggered by a finished oracle review or verdict run are titled with the source run's head SHA (`oracle-gate (workflow_run sha=<sha>)`) instead of `pr=sweep`; only the hourly scheduled run is titled `sweep`, so a single-PR gate run is no longer mistaken for a sweep of every open pull request."
+    }
+  ]
+}

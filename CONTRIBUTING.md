@@ -303,11 +303,15 @@ are cut by maintainers via the version-branch flow documented in
 Use `make release-cut-abort VERSION=X.Y.Z` to back out an uncommitted cut from
 the worktree that created it.
 
-`CHANGELOG.md` uses Git's union merge driver (`.gitattributes`), so entries two
-branches add under the same heading merge or rebase locally without a
-conflict. Skim the merged `[Unreleased]` text afterward; see
-[the release guide](docs/internal/release-guide.md#changelog-merges) for the
-caveats.
+Never edit `CHANGELOG.md`; its `[Unreleased]` section stays empty and CI fails
+a pull request that adds text there. A pull request that changes shipped code
+(`benchbox/`, packaging files) adds one fragment under `changelog.d/` with
+`make changelog-entry` (internal changes: `make changelog-entry CHANGELOG_INTERNAL="reason"`).
+Preview with `make changelog-preview` and validate with `make changelog-check`.
+`make pr-open` runs the same required-entry check against your PR title before
+pushing. Fragments are one file per pull request, so they cannot conflict.
+Title edits re-run the entry rule in the `tooling (text edit)` check.
+See [changelog.d/README.md](changelog.d/README.md).
 
 We follow semantic versioning.
 

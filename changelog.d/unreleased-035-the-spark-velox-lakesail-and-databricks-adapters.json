@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The Spark, Velox, LakeSail and Databricks adapters build `CREATE TABLE` statements with `translate_ddl` instead of rewriting the translated text: the `USING` format, Delta auto-optimize and Hudi table properties, `CREATE OR REPLACE`, and the Parquet and ORC constraint and `SMALLINT` stripping are `translate_ddl` options built from the adapter configuration. The cloud Spark DDL mixin returns table layouts (`generate_table_layout`) and renders them through `translate_ddl`. `optimize_spark_table_definition`, `_convert_to_delta_table`, `_convert_to_hudi_table` and `SparkDDLGeneratorMixin.generate_tuning_clauses` are removed. Differences from the old text output: a leading `/* comment */` is kept, a named `CONSTRAINT` is removed together with its key, a Hive partition column is moved out of the column list, a Parquet `SORTED BY` without `CLUSTERED BY` is no longer written, and the two Delta auto-optimize properties are listed in a different order."
+    }
+  ]
+}
