@@ -1,9 +1,11 @@
 {
   "acceptance": [
-    "make trunk-revert PR=<n> succeeds from a linked worktree, or the manual equivalent is documented and tested"
+    "uv run -- python -m pytest tests/unit/scripts/test_worktree_create_linked.py passes on current develop; record the develop SHA.",
+    "From a managed linked worktree, make worktree-create with a throwaway local branch and path succeeds, gives the new worktree a lifecycle ID different from the caller's, and is then removed with make worktree-remove. Nothing is pushed. Record the commands and output in context.",
+    "Context records that make trunk-revert PR=3200, run from linked worktree BenchBox.wt-trunk-coverage-timeouts, opened revert PR #3223 on 2026-10-21T11:39:53Z, after the fix merged."
   ],
   "context": "2026-10-21: `make trunk-revert PR=3200`, run from the managed linked worktree BenchBox.wt-trunk-coverage-timeouts, succeeded: it created worktree BenchBox.wt-revert-3200 and opened revert PR #3223. Re-check whether the refusal still reproduces before working this item.",
-  "description": "make trunk-revert runs preflight (refuses primary clone) then invokes make worktree-create, which refuses inside a managed worktree (new worktree reads the launcher lifecycle ID). No supported invocation context; 2026-10-12 recovery replicated the steps manually.",
+  "description": "make trunk-revert runs agent-write-preflight, which refuses the primary clone, and then make worktree-create. Before #3220, worktree-create run from a managed linked worktree copied the caller's benchbox.worktree.* keys into the new worktree's config.worktree and refused with 'Worktree already carries immutable lifecycle ID', so the 2026-10-12 and 2026-10-20 recoveries were done by hand. #3220 (262eb226675b36d9221f8dc554ffdd03c4913978) clears inherited benchbox.* keys (scripts/worktree_lifecycle.sh:164-171) and adds tests/unit/scripts/test_worktree_create_linked.py. This item closes on evidence; no code change is expected. Stop and reopen as a defect if any check below reproduces the error.\n\nGuardrails: do not run make trunk-revert against a real PR (it pushes a branch and opens a PR); do not push the throwaway branch. Common guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no raw gh pr merge.",
   "sessions": [
     {
       "actor": "mcp:pi:joe@joe-mac-mini.local:0e0437f497bd07bcca4ac997",
@@ -20,6 +22,14 @@
       "op": "update",
       "op_id": "d52476d56b9c4831b0c54e8e0d5db4fa",
       "session_id": "a4962e9a0d58442bae2ec42c3d79c405"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T13:18:13Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5713f390bc5c40719c76f1b215c10686",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
 }
