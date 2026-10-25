@@ -67,9 +67,12 @@ class _Benchmark:
 @pytest.fixture
 def connection():
     conn = ClickHouseLocalClient()
-    conn.execute("DROP TABLE IF EXISTS lineitem")
-    yield conn
-    conn.execute("DROP TABLE IF EXISTS lineitem")
+    try:
+        conn.execute("DROP TABLE IF EXISTS lineitem")
+        yield conn
+        conn.execute("DROP TABLE IF EXISTS lineitem")
+    finally:
+        conn.close()
 
 
 def _run(connection, *, apply_partition: bool) -> tuple[str, dict[str, str]]:

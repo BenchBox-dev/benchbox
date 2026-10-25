@@ -74,14 +74,21 @@ def load_durations(path: Path) -> Durations:
     )
 
 
+def shard_group(node_id: str) -> str:
+    return node_id.split("::", 1)[0]
+
+
 def _balanced_assignments(ordered: list[str], shard_count: int, durations: Durations) -> list[list[str]]:
-    weight = {node_id: durations.weight(node_id) for node_id in ordered}
+    groups: dict[str, list[str]] = {}
+    for node_id in ordered:
+        groups.setdefault(shard_group(node_id), []).append(node_id)
+    weight = {group: sum(durations.weight(node_id) for node_id in members) for group, members in groups.items()}
     loads = [0.0] * shard_count
     shards: list[list[str]] = [[] for _ in range(shard_count)]
-    for node_id in sorted(ordered, key=lambda candidate: (-weight[candidate], candidate)):
+    for group in sorted(groups, key=lambda candidate: (-weight[candidate], candidate)):
         target = min(range(shard_count), key=lambda index: (loads[index], index))
-        shards[target].append(node_id)
-        loads[target] += weight[node_id]
+        shards[target].extend(groups[group])
+        loads[target] += weight[group]
     return [sorted(shard) for shard in shards]
 
 

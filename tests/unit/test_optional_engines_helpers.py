@@ -340,3 +340,54 @@ assert 'pyspark' not in sys.modules
 """
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _install_session_module(monkeypatch: pytest.MonkeyPatch, *, session_error: BaseException | None, file: str | None):
+    opened: list[str] = []
+
+    class Session:
+        def __init__(self, path: str) -> None:
+            opened.append(path)
+            if session_error is not None:
+                raise session_error
+
+        def close(self) -> None:
+            opened.append("closed")
+
+    module = types.ModuleType("chdb.session")
+    if file is not None:
+        module.__file__ = file
+    module.Session = Session
+    monkeypatch.setitem(sys.modules, "chdb.session", module)
+    return opened
+
+
+def test_open_connection_probe_reports_nothing_when_the_probe_session_opens_and_closes(monkeypatch):
+    opened = _install_session_module(monkeypatch, session_error=None, file="chdb/session/__init__.py")
+
+    assert optional_engines.chdb_open_connection_error() is None
+    assert opened[-1] == "closed"
+
+
+def test_open_connection_probe_reports_a_live_connection_with_a_different_path(monkeypatch):
+    error = RuntimeError("EmbeddedServer already initialized with path ':memory:', cannot connect with a new path")
+    _install_session_module(monkeypatch, session_error=error, file="chdb/session/__init__.py")
+
+    reason = optional_engines.chdb_open_connection_error()
+
+    assert reason is not None
+    assert "EmbeddedServer already initialized" in reason
+
+
+def test_open_connection_probe_propagates_unrelated_runtime_errors(monkeypatch):
+    _install_session_module(monkeypatch, session_error=RuntimeError("disk full"), file="chdb/session/__init__.py")
+
+    with pytest.raises(RuntimeError, match="disk full"):
+        optional_engines.chdb_open_connection_error()
+
+
+def test_open_connection_probe_ignores_a_stand_in_session_module(monkeypatch):
+    opened = _install_session_module(monkeypatch, session_error=None, file=None)
+
+    assert optional_engines.chdb_open_connection_error() is None
+    assert opened == []

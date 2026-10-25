@@ -107,7 +107,7 @@ def test_medium_selection_and_receipts_gate_core() -> None:
     medium_text = "\n".join(step.get("run", "") for step in medium["steps"])
     assert selector in collect_text and selector in medium_text
     assert "--collect-only -q -n 0" in collect_text
-    assert "--tb=short --timeout=60 -n 5" in medium_text
+    assert "--tb=short --timeout=60 -n 5 --dist loadscope" in medium_text
     assert "-p scripts.pytest_shard_evidence" in medium_text
     assert "--collection-summary" in medium_text and "--checked-sha" in medium_text
     assert "test -s" in medium_text
@@ -197,3 +197,22 @@ def test_three_os_nightly_cells_retain_raw_framing_guard() -> None:
 
     with pytest.raises(AssertionError, match="trailing"):
         _assert_no_trailing_delimiter(["1|ARGENTINA|1|comment|"], "raw fixture")
+
+
+@pytest.mark.parametrize("filename", ["ci.yml", "trunk.yml", "trunk-coverage.yml", "test.yml"])
+def test_every_medium_sharding_command_binds_the_duration_fixture(filename: str) -> None:
+    runs = [
+        str(step.get("run", ""))
+        for job in _jobs(filename).values()
+        for step in job.get("steps", [])
+        if "release_canary_sharding.py" in str(step.get("run", ""))
+    ]
+    commands = [
+        " ".join(chunk.split())
+        for run in runs
+        for chunk in run.split("release_canary_sharding.py")[1:]
+        if chunk.lstrip().split()[0] in {"collect", "shard", "verify-medium"}
+    ]
+
+    assert len(commands) >= 2
+    assert all("--durations tests/fixtures/medium_shard_durations.json" in command for command in commands)

@@ -367,12 +367,13 @@ class TestClickHouseAdapter:
             assert "max_threads" in executed_sql
 
     @pytest.mark.skipif(not CHDB_AVAILABLE, reason=f"{CHDB_SKIP_REASON} (required to execute real ClickHouse DDL)")
-    def test_tuned_ddl_executes_against_real_chdb(self, tmp_path):
+    def test_tuned_ddl_executes_against_real_chdb(self, tmp_path, request):
         from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
         from benchbox.core.tuning.interface import TableTuning, TuningColumn
 
         adapter = ClickHouseAdapter(deployment_mode="local", strict_validation=False, data_path=str(tmp_path))
         connection = adapter.create_connection()
+        request.addfinalizer(connection.close)
 
         table_tuning = TableTuning(
             table_name="lineitem",
