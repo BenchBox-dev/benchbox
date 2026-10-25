@@ -12,11 +12,15 @@ _DEFAULT_LOGGER_STATE: LoggerState = (logging.NOTSET, (), (), True, False)
 _LOGGER_FIELDS = ("level", "handlers", "filters", "propagate", "disabled")
 
 
+_TRANSPORT_SECURITY_LOGGER = "mcp.server.transport_security"
+
+
 def _benchbox_loggers() -> dict[str, logging.Logger]:
     return {
         name: logger
         for name, logger in list(logging.root.manager.loggerDict.items())
-        if isinstance(logger, logging.Logger) and (name == "benchbox" or name.startswith("benchbox."))
+        if isinstance(logger, logging.Logger)
+        and (name == "benchbox" or name.startswith("benchbox.") or name == _TRANSPORT_SECURITY_LOGGER)
     }
 
 

@@ -366,19 +366,24 @@ def _benchbox_loggers() -> dict[str, logging.Logger]:
     return {
         name: logger
         for name, logger in list(logging.root.manager.loggerDict.items())
-        if isinstance(logger, logging.Logger) and (name == "benchbox" or name.startswith("benchbox."))
+        if isinstance(logger, logging.Logger)
+        and (name == "benchbox" or name.startswith("benchbox.") or name == "mcp.server.transport_security")
     }
 
 
-def _snapshot_logger(logger: logging.Logger) -> tuple[int, list[logging.Handler], bool, bool]:
-    return logger.level, list(logger.handlers), logger.propagate, logger.disabled
+_LoggerState = tuple[int, list[logging.Handler], bool, bool, list[logging.Filter]]
 
 
-def _restore_logger(logger: logging.Logger, state: tuple[int, list[logging.Handler], bool, bool]) -> None:
+def _snapshot_logger(logger: logging.Logger) -> _LoggerState:
+    return logger.level, list(logger.handlers), logger.propagate, logger.disabled, list(logger.filters)
+
+
+def _restore_logger(logger: logging.Logger, state: _LoggerState) -> None:
     logger.level = state[0]
     logger.handlers[:] = state[1]
     logger.propagate = state[2]
     logger.disabled = state[3]
+    logger.filters[:] = state[4]
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -408,7 +413,7 @@ def _restore_logging_state():
         if name in known:
             _restore_logger(logger, known[name][1])
         else:
-            _restore_logger(logger, (logging.NOTSET, [], True, False))
+            _restore_logger(logger, (logging.NOTSET, [], True, False, []))
     logging.root.manager._clear_cache()
 
 
