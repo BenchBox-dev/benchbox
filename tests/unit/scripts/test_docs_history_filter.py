@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -96,6 +97,70 @@ def test_privacy_rules_reject_unparseable_policy(tool):
         tool.load_privacy_rules("const PATTERNS = [];")
 
 
+def rule_view(rules):
+    return (
+        [(description, pattern.pattern) for description, pattern in rules["patterns"]],
+        rules["aws_examples"],
+        rules["connection"].pattern,
+        rules["placeholder_passwords"],
+    )
+
+
+def test_privacy_rules_match_site_policy_file(tool):
+    site = Path(os.environ.get("BENCHBOX_SITE_DIR", ROOT.parent / "benchbox-site"))
+    policy = site / "deploy/gates/privacy.ts"
+    if not policy.is_file():
+        pytest.skip("site checkout not available")
+    assert rule_view(tool.load_privacy_rules(policy.read_text(encoding="utf-8"))) == rule_view(
+        tool.load_privacy_rules(PRIVACY_TS)
+    )
+
+
+def init_repo(path: Path, branch: str) -> None:
+    path.mkdir()
+    git(path, "init", "-q", "-b", branch)
+    git(path, "config", "user.name", "Human")
+    git(path, "config", "user.email", "human@example.com")
+
+
+def test_scan_blobs_flags_blobs_once_and_ignores_trees(tool, tmp_path):
+    repo = tmp_path / "repo"
+    init_repo(repo, "main")
+    (repo / "docs").mkdir()
+    (repo / "docs/a.md").write_text("AKIA" + "B" * 16 + "\n", encoding="utf-8")
+    (repo / "docs/b.md").write_text("clean\n", encoding="utf-8")
+    git(repo, "add", "docs/a.md", "docs/b.md")
+    git(repo, "commit", "-q", "-m", "x")
+    findings = tool.scan_blobs(repo, tool.load_privacy_rules(PRIVACY_TS))
+    assert [(f["paths"], f["findings"]) for f in findings] == [(["docs/a.md"], ["AWS Access Key ID x1"])]
+
+
+def test_verify_lineage_detects_lost_rename_history(tool, tmp_path):
+    body = "".join(f"line {i}\n" for i in range(40))
+    source = tmp_path / "source"
+    init_repo(source, "develop")
+    (source / "docs").mkdir()
+    (source / "docs/old.rst").write_text(body, encoding="utf-8")
+    git(source, "add", "docs/old.rst")
+    git(source, "commit", "-q", "-m", "add")
+    git(source, "mv", "docs/old.rst", "docs/new.md")
+    git(source, "commit", "-q", "-m", "rename")
+    sha = git(source, "rev-parse", "HEAD")
+
+    lossy = tmp_path / "lossy"
+    init_repo(lossy, "docs-history-rehearsal")
+    (lossy / "docs").mkdir()
+    (lossy / "docs/new.md").write_text(body, encoding="utf-8")
+    git(lossy, "add", "docs/new.md")
+    git(lossy, "commit", "-q", "-m", "rename")
+
+    with pytest.raises(SystemExit) as lost:
+        tool.verify_lineage(source, sha, lossy, {"docs/new.md": "unused"}, {"docs/new.md"})
+    assert "rename lineage lost" in str(lost.value)
+    assert "followed names not kept" in str(lost.value)
+    assert "2 followed commits in source, 1 after filtering" in str(lost.value)
+
+
 def test_split_ownership_excludes_generated_outputs(tool):
     manifest = {
         "files": {"docs/a.md": "site-owned", "docs/b.md": "core-only", "docs/c.md": "core-generated"},
@@ -162,6 +227,7 @@ def test_rehearsal_follows_renames_and_strips_forbidden_content(tool, tmp_path):
     assert code == 0
     assert receipt["tip_equals_projection"] is True
     assert receipt["input_sha"] == sha
+    assert receipt["lineage"] == {"paths_checked": 1, "paths_with_renames": 1}
     assert git(clone, "ls-tree", "-r", "--name-only", "HEAD").splitlines() == ["docs/new.md"]
     names = git(clone, "log", "--all", "--name-only", "--format=").split()
     assert sorted(set(names)) == ["docs/new.md", "docs/old.rst"]

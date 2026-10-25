@@ -12,6 +12,7 @@ from typing import Any
 
 OWNERSHIP_PATH = "quality/docs-ownership.json"
 QUERY_ROOT = "docs/benchmarks/queries/"
+RENAME_LIMIT = 100000
 PROHIBITED = re.compile(
     r"(^|/)(pyproject\.toml|uv\.lock|CNAME)$|\.(py|pyi|pem)$|^docs/blog/|^docs/CNAME$",
 )
@@ -89,6 +90,8 @@ def selected_projection(repo: Path, sha: str, owned: set[str]) -> dict[str, str]
 def rename_edges(repo: Path, sha: str) -> list[tuple[str, str]]:
     out = run(
         repo,
+        "-c",
+        f"diff.renameLimit={RENAME_LIMIT}",
         "log",
         "--topo-order",
         "--no-merges",
@@ -163,7 +166,35 @@ def history_blobs(repo: Path) -> dict[str, set[str]]:
         .decode()
         .splitlines()
     )
-    return {sha: names for sha, names in paths.items() if any(k == f"{sha} blob" for k in kinds)}
+    blob_ids = {line.split(" ", 1)[0] for line in kinds if line.endswith(" blob")}
+    return {sha: names for sha, names in paths.items() if sha in blob_ids}
+
+
+def follow_history(repo: Path, rev: str, path: str) -> tuple[set[str], int]:
+    base = ["-c", f"diff.renameLimit={RENAME_LIMIT}", "log", "--follow", rev]
+    names = run(repo, *base, "--name-only", "--format=", "--", path).decode("utf-8", "surrogateescape")
+    commits = run(repo, *base, "--format=%H", "--", path).decode().split()
+    return {name for name in names.splitlines() if name}, len(commits)
+
+
+def verify_lineage(
+    source: Path, sha: str, clone: Path, projection: dict[str, str], accounted: set[str]
+) -> dict[str, int]:
+    problems: list[str] = []
+    renamed = 0
+    for path in sorted(projection):
+        source_names, source_commits = follow_history(source, sha, path)
+        clone_names, clone_commits = follow_history(clone, "docs-history-rehearsal", path)
+        missing = sorted(name for name in source_names - accounted if not is_prohibited(name))
+        if missing:
+            problems.append(f"{path}: followed names not kept: {missing}")
+        if source_commits != clone_commits or source_names != clone_names:
+            problems.append(f"{path}: {source_commits} followed commits in source, {clone_commits} after filtering")
+        if len(source_names) > 1:
+            renamed += 1
+    if problems:
+        raise SystemExit("rename lineage lost:\n" + "\n".join(problems))
+    return {"paths_checked": len(projection), "paths_with_renames": renamed}
 
 
 def scan_blobs(repo: Path, rules: dict[str, Any]) -> list[dict[str, Any]]:
@@ -342,6 +373,7 @@ def rehearse(args: argparse.Namespace) -> int:
 
     mapping = commit_map(clone)
     source_clone_metadata = verify_against_source(source, clone, mapping)
+    lineage = verify_lineage(source, sha, clone, projection, keep | excluded)
 
     blob_findings = scan_blobs(clone, rules)
     triage = json.loads(Path(args.triage).read_text(encoding="utf-8")) if args.triage else {}
@@ -364,6 +396,7 @@ def rehearse(args: argparse.Namespace) -> int:
         "filtered_commits": commits,
         "source_commits": int(run(source, "rev-list", "--count", sha).decode()),
         "metadata": source_clone_metadata,
+        "lineage": lineage,
         "prohibited_paths_in_history": 0,
         "privacy_rule_findings": blob_findings,
         "gitleaks_findings": leak_findings,
