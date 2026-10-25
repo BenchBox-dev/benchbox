@@ -3131,15 +3131,10 @@
       "title": "CI unit map sends markdown-only changes to the full lint and fast-test jobs"
     },
     "ci-medium-collect-cold-cache-cost": {
-      "claim": {
-        "expires_at": "2026-10-26T20:05:50Z",
-        "generation": "64cb413c86164908b8d68526dddf9a54",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "medium-collect spends about 108 s collecting because it starts with a cold assertion-rewrite cache"
     },
     "ci-oracle-reviewer-availability-and-head-race": {
