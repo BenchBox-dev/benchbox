@@ -623,8 +623,22 @@ current review body, so an edited oracle review can change the decision.
 
 Because `pull_request_review` runs the pull request's own workflow file, the
 notification is controlled by the pull request and can be deleted or altered by
-it. The trusted fallbacks are the hourly `oracle-gate` sweep and the gate's own
-triggers: `pull_request_target`, stand-in comments and dispatch.
+it. The verdict path does not rely on it: after the `post` job has posted the
+commit status, comment and review for a head, a final step reads the pull
+request's base through the API and, when it is `develop`, dispatches
+`oracle-gate.yml` from `develop` with `pr` and the reviewed `head_sha`. This
+covers comment, dispatch and scheduled verdict runs, whose completion carries
+`develop`'s head and so cannot be mapped to the pull request by the gate's
+bridge. The step runs only when the App is configured and the guard did not skip
+the head, so it never precedes the post. It holds `actions: write` on the `post`
+job for this dispatch alone, posts no status, and the gate re-reads everything
+when it runs. The remaining trusted fallbacks are the hourly `oracle-gate` sweep
+and the gate's own triggers: `pull_request_target`, stand-in comments and
+dispatch.
+
+GitHub dismisses only approvals and change requests, and the oracle posts
+comment reviews, so the notification's `dismissed` trigger covers human reviews,
+which are not `oracle-gate` inputs.
 
 GitHub Actions has no event for resolving a review thread, so resolving the
 oracle's last thread starts no run of either workflow. After resolving the

@@ -403,6 +403,21 @@ def test_actions_are_pinned_to_known_shas() -> None:
                 assert step["uses"].split("@")[1] in KNOWN_SHAS, (name, step["uses"])
 
 
+DISPATCH_COMMAND = re.compile(
+    r"gh workflow run oracle-gate\.yml --repo \"\$REPO\" --ref develop -f pr=\"\$PR_NUMBER\"( -f head_sha=\"\$HEAD_SHA\")?"
+)
+
+
+def _only_dispatches_the_gate(step: dict[str, Any]) -> bool:
+    run = step.get("run", "")
+    if not DISPATCH_COMMAND.search(run) or "statuses/" in run or "context" in run:
+        return False
+    remainder = DISPATCH_COMMAND.sub("", run)
+    return "oracle-gate" not in remainder and "oracle-gate" not in str(
+        {key: value for key, value in step.items() if key != "run"}
+    )
+
+
 def test_no_other_workflow_can_post_the_gate_context() -> None:
     variable_context = re.compile(r"context[\"']?\s*[=:]\s*[\"']?\$")
     offenders = []
@@ -413,7 +428,12 @@ def test_no_other_workflow_can_post_the_gate_context() -> None:
         for job_name, job in (data.get("jobs") or {}).items():
             for step in job.get("steps") or []:
                 run = step.get("run", "")
-                if "oracle-gate" in str(step) or ("statuses/" in run and variable_context.search(run)):
+                if (
+                    "oracle-gate" in str(step)
+                    and not _only_dispatches_the_gate(step)
+                    or "statuses/" in run
+                    and (variable_context.search(run) or "oracle-gate" in run)
+                ):
                     offenders.append((workflow.name, job_name, step.get("name")))
     assert offenders == []
     gate_py = (REPO_ROOT / "_project/scripts/oracle_gate.py").read_text(encoding="utf-8")
@@ -622,3 +642,20 @@ def test_pull_request_comment_and_dispatch_titles_keep_the_pr_number() -> None:
     assert _run_name("pull_request_target", {"pull_request": {"number": 7}}) == "oracle-gate (pull_request_target pr=7)"
     assert _run_name("issue_comment", {"issue": {"number": 8}}) == "oracle-gate (issue_comment pr=8)"
     assert _run_name("workflow_dispatch", {}, {"pr": "9"}) == "oracle-gate (workflow_dispatch pr=9)"
+
+
+def test_the_gate_dispatch_exemption_allows_dispatch_and_rejects_status_posts() -> None:
+    dispatch = {
+        "name": "d",
+        "run": 'gh workflow run oracle-gate.yml --repo "$REPO" --ref develop -f pr="$PR_NUMBER" -f head_sha="$HEAD_SHA"',
+    }
+    assert _only_dispatches_the_gate(dispatch)
+    post = {
+        "name": "p",
+        "run": 'gh api --method POST "repos/$REPO/statuses/$SHA" -f context=oracle-gate -f state=success',
+    }
+    assert not _only_dispatches_the_gate(post)
+    both = {"name": "b", "run": dispatch["run"] + '\ngh api "repos/$REPO/statuses/$SHA" -f context=oracle-gate'}
+    assert not _only_dispatches_the_gate(both)
+    renamed = {"name": "oracle-gate", "run": dispatch["run"]}
+    assert not _only_dispatches_the_gate(renamed)
