@@ -101,19 +101,24 @@ checks and reports the output to the owner:
 
 ```bash
 gh api repos/BenchBox-dev/BenchBox/rulesets/15611785 \
-  --jq '{enforcement, bypass_actors: [.bypass_actors[]?.actor_type]}'
-gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin
+  --jq '{enforcement, bypass_actors: (.bypass_actors | map(.actor_type))}'
+gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin \
+  --require-bypass-actor-visibility
 gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin \
   --compare-capture /tmp/ruleset-15611785-before.json
 ```
 
-The first must show `enforcement: active` and an empty `bypass_actors` list,
-the second must exit 0, and the third, which compares the live ruleset with the
-capture taken before the change, must exit 0 and print no differing field. It
-ignores only `updated_at`, `_links` and `current_user_can_bypass`, and it
-compares every required context's `integration_id`. If any differs, the agent
+The first must show `enforcement: active` and an empty `bypass_actors` list;
+it errors if the token cannot see `bypass_actors`. The second must exit 0 with
+bypass actors visible, and the third, which compares the live ruleset with the
+capture taken before the change, must exit 0 and print no differing field. The
+third fails when `bypass_actors` is missing from the capture or the live
+ruleset, or when live enforcement is not `active`. It ignores only
+`updated_at`, `_links` and `current_user_can_bypass`, and it compares every
+required context's `integration_id`. If any check differs or fails, the agent
 reports the command output to the owner and arms or merges nothing; it does not
-change the ruleset.
+change the ruleset. A capture taken with a token that cannot see
+`bypass_actors` is unusable; take it again with an admin-visible token.
 
 - The tracker entry links the repair PR and stays open until the repair has
   merged and the check above passes.

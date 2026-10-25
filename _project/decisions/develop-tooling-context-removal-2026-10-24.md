@@ -33,8 +33,11 @@ were written by the owner's user account. Times are 2026-10-24, US Eastern.
 | 2 | 54609215 | 11:57:34 | 54609293 | 11:58:48 | 1 m 14 s |
 | 3 | 54609810 | 12:07:03.988 | 54609816 | 12:07:07.636 | 3.6 s |
 
-Pull request 3385 (merge commit `a56738db4ab4803d80d48a5a24c6d67bf845ea0a`)
-merged during window 3. This record does not identify a merge in windows 1 and 2.
+Merges inside the windows, from `git log --first-parent origin/develop` over
+11:50 to 12:15 (a squash merge's committer date is its merge time): exactly one
+commit landed on `develop`, `a56738db4ab4803d80d48a5a24c6d67bf845ea0a` at
+12:07:05 (pull request 3385), inside window 3. Nothing merged inside windows 1
+or 2, so only pull request 3385 merged without `tooling` required.
 
 Only the `tooling` required context was removed in each window. No bypass actor
 was added, enforcement stayed `active`, and the `oracle-gate` binding to the
@@ -87,5 +90,9 @@ ruleset change was considered and not adopted. It would be new trusted logic tha
 must be installed before an incident to help, and relaxation frequency does not
 yet justify it. A separate proposal can reopen it.
 
-A later version, 54642714 at 21:53:22 on 2026-10-24, is not part of this
-exception.
+Version 54642714 at 21:53:22 on 2026-10-24 is not part of this exception. It
+removed `oracle-review` from the required contexts (the version before the
+window restores listed it), as recorded in
+`_project/decisions/oracle-review-check-retired-2026-10-24.md`. `tooling`,
+`oracle-gate` with integration 5201041, enforcement `active` and an empty
+bypass actor list are all present in it.

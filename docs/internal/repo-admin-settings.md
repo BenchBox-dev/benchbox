@@ -142,13 +142,16 @@ do first). Ordinary one-pull-request bypasses follow
 5. Merge the named pull request at the named head.
 6. Restore the context immediately, whether the merge succeeded or failed,
    before retrying, starting other work, or recording notes.
-7. Read back and compare with the capture:
+7. Read back and compare with the capture, using a token that can see
+   `bypass_actors`:
    `gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin --compare-capture /tmp/ruleset-15611785-before.json`.
    It ignores only `updated_at`, `_links` and `current_user_can_bypass`, prints
    each differing field (including any context's `integration_id`, where a
    missing binding equals `null`), requires `oracle-gate` to stay bound to
-   integration 5201041, and exits 0 only when nothing differs. Then run the
-   runbook drift check without `--compare-capture`.
+   integration 5201041, fails when `bypass_actors` is missing from the capture
+   or the live ruleset or when live enforcement is not `active`, and exits 0
+   only when nothing differs. Then run the runbook drift check with
+   `--require-bypass-actor-visibility` and without `--compare-capture`.
 8. Write the decision record `emergency-merge.md` requires, citing the records
    it names and the ruleset history versions of each window.
 

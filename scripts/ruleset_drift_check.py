@@ -328,7 +328,14 @@ def _differing_fields(path: str, capture: Any, live: Any) -> list[str]:
 
 
 def capture_comparison_findings(capture: dict[str, Any], live: dict[str, Any]) -> list[str]:
-    findings = _differing_fields("", _normalized_for_capture(capture), _normalized_for_capture(live))
+    findings = [
+        f"{source} ruleset has no bypass_actors field; the token cannot see bypass actors"
+        for source, document in (("capture", capture), ("live", live))
+        if "bypass_actors" not in document
+    ]
+    if live.get("enforcement") != "active":
+        findings.append(f"live enforcement is {live.get('enforcement')!r}, expected 'active'")
+    findings.extend(_differing_fields("", _normalized_for_capture(capture), _normalized_for_capture(live)))
     bindings = {
         context: check["integration_id"]
         for rule in _normalized_for_capture(live).get("rules", [])

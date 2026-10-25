@@ -446,6 +446,29 @@ def test_capture_comparison_reports_each_substantive_difference(mutate, expected
     assert any(expected_text in finding for finding in findings)
 
 
+@pytest.mark.parametrize("hidden_in", [("capture", "live"), ("capture",), ("live",)])
+def test_capture_comparison_fails_when_bypass_actors_are_hidden(hidden_in: tuple[str, ...]) -> None:
+    documents = {"capture": _capture(), "live": _capture()}
+    for name in hidden_in:
+        documents[name].pop("bypass_actors")
+
+    findings = ruleset_drift_check.capture_comparison_findings(documents["capture"], documents["live"])
+
+    assert any("bypass_actors" in finding for finding in findings)
+
+
+@pytest.mark.parametrize("enforcement", ["evaluate", "disabled"])
+def test_capture_comparison_fails_unless_live_enforcement_is_active(enforcement: str) -> None:
+    capture = _capture()
+    capture["enforcement"] = enforcement
+    live = _capture()
+    live["enforcement"] = enforcement
+
+    findings = ruleset_drift_check.capture_comparison_findings(capture, live)
+
+    assert any("enforcement" in finding and "active" in finding for finding in findings)
+
+
 def test_capture_comparison_distinguishes_null_from_numeric_integration_id() -> None:
     capture = _capture()
     live = _capture()
