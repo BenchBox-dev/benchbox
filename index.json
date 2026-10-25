@@ -9122,10 +9122,15 @@
       "title": "Generate query, compatibility and tuning pages in TypeScript"
     },
     "docs-mig-tpc-adjacent-eulas": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T19:27:12Z",
+        "generation": "ceb9946bbc6e41f1acb1f867d6e17399",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Place canonical TPC notices beside query templates before retiring site downloads"
     },
     "docs-mig-tpc-eula-gate": {
