@@ -5967,7 +5967,11 @@
         "inert-paths-manifest-20261021",
         "trunk-coverage-workflow-map-v2-20261021",
         "trunk-red-run-triage-20261024",
-        "ci-usage-metrics-report-20261024"
+        "ci-usage-metrics-report-20261024",
+        "coverage-map-missing-comment-policy-ids-20261023",
+        "trunk-coverage-scheduled-not-per-push-20261024",
+        "trunk-red-stops-further-merges",
+        "trunk-dist-artifact-producer-check-flake-20261022"
       ],
       "priority": "high",
       "status": "open",
