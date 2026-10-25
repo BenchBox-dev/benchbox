@@ -43,3 +43,20 @@ def test_table_statistics_mark_reused_tables():
     assert builder.calls["alpha"]["status"] == "REUSED"
     assert builder.calls["beta"]["status"] == "SUCCESS"
     assert builder.calls["beta"]["load_time_ms"] == 120
+
+
+def test_builder_totals_exclude_reused_tables():
+    from benchbox.core.results.builder import ResultBuilder
+
+    builder = ResultBuilder.__new__(ResultBuilder)
+    builder._table_stats = {}
+    builder._loading_time_ms = 120
+    builder.add_table_stats("alpha", 4, load_time_ms=0, status="REUSED")
+    builder.add_table_stats("beta", 3, load_time_ms=120)
+
+    phase = builder._build_setup_phase().data_loading
+
+    assert builder._loaded_row_total() == 3
+    assert phase.total_rows_loaded == 3
+    assert phase.tables_loaded == 1
+    assert phase.per_table_stats["alpha"].status == "REUSED"
