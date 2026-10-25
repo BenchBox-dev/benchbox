@@ -4,7 +4,7 @@
     "Unit test proves stats retrieval works under a gateway tag; legacy native tag behavior unchanged",
     "Run-level suffix scheme documented for vendor log-join"
   ],
-  "context": "Plan v2 A6. Failure mode it fixes: gateway suffix in session tag without lockstep stats-lookup change returns zero QUERY_HISTORY rows, silently nulling execution_time_ms/compilation/bytes/credits for all gateway queries. Depends on gw-snowflake-conn. Guardrails: worktree policy, never git add -A, no credentials.",
+  "context": "Delivered in merged PR #3450: SnowflakeAdapter._format_query_tag(query_id) is used by execute_query (ALTER SESSION SET QUERY_TAG) and _get_query_statistics (QUERY_HISTORY lookup) — the item's method names execute_query_with_retry/get_query_execution_stats do not exist in the code. Native runs keep the legacy tag `<query_tag>_<query_id>`; gateway runs append `_gw-<8 hex>` generated once per adapter instance (not a config option, so no user text reaches the SQL). Five mocked-connection tests (native unchanged, stable within a run, differs between runs, execute and stats use the same tag, stats retrieved under a gateway tag); docs/platforms/snowflake.md documents the scheme. No live Snowflake/gateway run.",
   "description": "Add SnowflakeAdapter._format_query_tag(query_id) used in BOTH execute_query_with_retry and get_query_execution_stats so gateway run suffixes stay consistent; native tag format unchanged; unit test for gateway-tag stats retrieval.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "generation": "639984406de64353a99efdf47c739110",
       "op": "take",
       "op_id": "7f0c825035b64c0d83b947529ef7ba3b",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T12:50:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6ddaa32f686a4bb280961ea7eee6b06e",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
