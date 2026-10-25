@@ -604,6 +604,7 @@ def test_candidate_selection_includes_committed_enforcement_changes(
         "scripts/check_sqlglot_upstream_freshness.py",
         "scripts/check_sqlglot_advisories.py",
         "scripts/sqlglot_refresh_waiver.json",
+        "benchbox/_vendor/sqlglot.json",
     ],
 )
 def test_candidate_selection_requires_freshness_when_the_gate_itself_changes(
@@ -729,6 +730,20 @@ def test_candidate_check_is_required_on_pull_requests_without_changing_legacy_pu
     aggregate = next(step for step in core["steps"] if step.get("id") == "aggregate")
     assert "--always ci-paths" in aggregate["run"]
     assert "origin/release" in (REPO_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+
+
+def test_publish_and_release_branch_workflows_run_the_advisory_check() -> None:
+    import yaml
+
+    release = yaml.safe_load((REPO_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8"))
+    job = release["jobs"]["sqlglot-upstream-freshness"]
+    assert any("scripts/check_sqlglot_advisories.py" in step.get("run", "") for step in job["steps"])
+    assert "sqlglot-upstream-freshness" in release["jobs"]["build"]["needs"]
+
+    test = yaml.safe_load((REPO_ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"))
+    runs = [step.get("run", "") for step in test["jobs"]["release-readiness"]["steps"]]
+    assert any("scripts/check_sqlglot_advisories.py" in run for run in runs)
+    assert any("scripts/check_sqlglot_upstream_freshness.py" in run for run in runs)
 
 
 def test_make_targets_exist_and_legacy_release_targets_are_kept() -> None:

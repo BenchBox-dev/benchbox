@@ -362,6 +362,7 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool, bool]:
         "scripts/check_sqlglot_upstream_freshness.py",
         "scripts/check_sqlglot_advisories.py",
         "scripts/sqlglot_refresh_waiver.json",
+        "benchbox/_vendor/sqlglot.json",
     }
     enforcement = {
         "scripts/release_flow.py",
@@ -373,6 +374,7 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool, bool]:
         "scripts/check_sqlglot_upstream_freshness.py",
         "scripts/check_sqlglot_advisories.py",
         "scripts/sqlglot_refresh_waiver.json",
+        "benchbox/_vendor/sqlglot.json",
         "_project/scripts/check_uv_lock_revision.py",
         "_project/decisions/single-repo-migration.md",
         "Makefile",

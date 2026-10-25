@@ -547,7 +547,7 @@ problem it finds. It verifies that:
   unreachable database, fails the check. The release owner acts on a failure:
   refresh the fork onto an upstream release that fixes the advisory and adopt
   the new wheel; there is no waiver. It runs wherever the freshness check
-  runs, and `SKIP_UPSTREAM_FRESHNESS=1` skips both because both need network access.
+  runs: `make release-check`, the `sqlglot-upstream-freshness` job in `release.yml` (which gates `build` and publish), and the `release-readiness` job in `test.yml`. `SKIP_UPSTREAM_FRESHNESS=1` skips both checks in `make release-check` because both need network access. A pull request that edits `benchbox/_vendor/sqlglot.json` or the advisory check re-runs it.
 - with `RELEASE_PRE_TAG=1` (`release_flow.py check --pre-tag`), no
   `changelog.d/*.json` fragment is pending. The pull request check passes it
   only when the pull request changes the release identity: a version marker,
