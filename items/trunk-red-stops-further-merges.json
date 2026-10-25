@@ -4,7 +4,7 @@
     "make trunk-revert PR=<n> succeeds from a linked worktree (reproduce the lifecycle ID error, fix it, add a regression test in tests/unit/scripts/test_trunk_revert.py).",
     "docs/internal/develop-post-merge-gaps.md states the final behavior and its remaining bound."
   ],
-  "context": "NOTE 2026-10-25 baseline from the Trunk failure classification (trunk-red-run-triage-20261024): 33 of 65 red runs only carried a defect an earlier run had already shown. 48 merges landed while the newest completed Trunk run was red, 19 of them more than 30 minutes into the red; 13 of those 19 were unrelated non-fix PRs (armed earlier, opened earlier, or bypassed; no gate logs exist to tell). Any later green run, including a flake, lifts both gates because they read only the newest run. Reverts took 1.2-3.0 h; fix-forwards 2.3-12.1 h (median 8.8 h). The arm gate's culprit naming was fixed in #3415.\n\n2026-10-21: the arm gate in scripts/trunk_revert.py exists, but it names the newest red run's PR as the culprit; when a failure persists across merges it blames an innocent later PR and refuses the real revert (trunk-arm-gate-blames-newest-red-run-20261022). On the same day `make trunk-revert PR=3200`, run from the linked worktree BenchBox.wt-trunk-coverage-timeouts, created revert PR #3223 and its worktree without the lifecycle-ID error, which bears on the second acceptance criterion.",
+  "context": "Partly delivered in merged PR #3433: `make trunk-status` prints the first red run of the streak, its culprit PR and the revert command and exits non-zero while develop is red and the culprit is unreverted (fails closed on read errors); `make pr-open` refusal names that culprit. The arm gate (scripts/trunk_revert.py, #3415) already refuses arming while the streak is unreverted. Still open and owner/workflow-owned: (1) disabling auto-merge on PRs already armed when a Trunk run goes red needs a workflow under .github/workflows (soundness path, oracle review); (2) blocking merges made through the GitHub UI or `gh pr merge --auto` needs a required status check or ruleset on develop that fails while Trunk is red (owner-only repository setting).",
   "description": "After PR 3185 merged, the Trunk run failed 14 minutes later. Nothing reverted the change or stopped further merges; pr-open only refuses new PRs after develop has been red for 30 minutes, and develop was red for about 39 minutes before anyone acted. The documented recovery (make trunk-revert PR=<n>) failed when run from a linked worktree: make worktree-create raised 'Worktree already carries immutable lifecycle ID' for the new revert worktree, so the revert had to be done by hand.",
   "links": [
     "scripts/trunk_revert.py",
@@ -35,6 +35,14 @@
       "op": "update",
       "op_id": "acbf652948e449468d9aa14cac5113fa",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T06:19:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2ff1e7441d4d488c9d57acefe22ce548",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
 }
