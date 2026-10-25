@@ -2726,17 +2726,12 @@
       "title": "Make release-prep compile changelog fragments into the release section and gate pre-tag state"
     },
     "changelog-fragments-03-cutover": {
-      "claim": {
-        "expires_at": "2026-10-26T09:51:29Z",
-        "generation": "61b84ca182b946b8ac499506a6076d9d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [
         "changelog-fragments-02-release-prep"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Cut over to changelog fragments: migrate [Unreleased], enforce entries in CI, retire the union rule"
     },
     "changelog-fragments-04-skill-sync": {
