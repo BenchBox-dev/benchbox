@@ -1,6 +1,6 @@
 {
   "acceptance": [
-    "Tests of the decision logic that fail on current develop: with a red streak, an armed ordinary PR is selected for disarming. Not selected: an unarmed PR; the armed genuine revert of the streak's first red commit; a PR the arm gate admits. On green, nothing is selected. When the arm gate errors for an armed PR, that PR is selected.",
+    "Tests of the decision logic that fail on current develop: with a red streak, an armed ordinary PR is selected for disarming. Not selected: an unarmed PR; the armed genuine revert of the streak's first red commit; a PR the arm gate admits. On green, nothing is selected. The red streak and its culprit are computed once per run; if that lookup fails (any GitHub API error), the workflow fails and disarms nothing. Only an error evaluating one specific armed PR selects that PR, and never the genuine revert. Tests cover the streak-lookup failure (nothing disarmed) and a per-PR evaluation failure",
     "Replay against a captured fixture of 2026-10-24 (Trunk runs 40069594552 green, 40071232825 red at 24bfcf8a0, 40071524792 red at c962e3e87, plus a fixture list of armed PRs): the decision disarms the ordinary armed PRs and names #3378 as the culprit.",
     "Live: the first Trunk completion after merge (green) triggers the workflow, which completes successfully, changes nothing, and logs its decision. The red path is not exercised live until a real red run occurs; report it when it does.",
     "docs/internal/develop-post-merge-gaps.md replaces the 'Already armed PRs still merge' bound with the new behavior and its remaining bound (UI and raw merges, and arming after the run), and updates the 'deliberately did not do' section. docs/internal/repo-admin-settings.md no longer says no workflow disarms auto-merge.",
@@ -64,6 +64,14 @@
       "op": "update",
       "op_id": "d372916e7a1e4002a202e7ba4eae7122",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T17:33:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8ca2d8223f1649bdb25922a293ff79b1",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
