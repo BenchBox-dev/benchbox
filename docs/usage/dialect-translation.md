@@ -261,6 +261,14 @@ except Exception as e:
 - Use fallback dialects for complex cases
 - Validate results against source database
 
+### NULL Ordering
+
+Translation keeps the NULL placement of the source dialect, so every engine returns the same row order as the reference engine. TPC-DS clause 7.3.4 allows an implementation to choose where NULLs sort, and the TPC-DS answer sets ship `_NULLS_FIRST` and `_NULLS_LAST` variants for 30 queries. TPC-H has no NULL-ordering text because its sort keys are `NOT NULL`. The other benchmarks have no specification text, so their declared source dialect decides: Netezza for TPC-H, TPC-DS, SSB and the catalog benchmarks, DuckDB for TSBS DevOps and DataVault, and ClickHouse for ClickBench.
+
+When a target engine has no `NULLS FIRST` or `NULLS LAST` clause for a position, the fork writes an equivalent sort key instead of dropping the clause with a warning. Positional `ORDER BY` keys, windows under a frame and non-`DISTINCT` BigQuery `ARRAY_AGG ... ORDER BY` sort on a leading `CASE WHEN key IS NULL` key. A few shapes still warn: `RANGE` frames with an offset, `DISTINCT` aggregates, and positional keys under `DISTINCT`, a set operation, a star or a window. The QuestDB dialect sorts NULLs smallest and writes no `NULLS` clause, because QuestDB rejects it.
+
+Only TPC-DS Q74 had NULL sort keys in the data checked (SF10), and the engines it affected were T-SQL, Doris and StarRocks. No published bundle is affected.
+
 ## When to Use Each Approach
 
 ### Use Dialect Translation When
