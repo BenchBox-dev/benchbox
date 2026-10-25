@@ -120,10 +120,10 @@ the first two lines of a Python file, and only for a non-UTF-8 encoding.
 
 To add an exception, first confirm the text has a real reader and need; the
 checker cannot judge that. You may register the exception and the code that
-uses it in the same pull request: the entries count once an actual successful
-oracle verdict review covers the registry head. A merely successful
-oracle-review check is not enough, since that check also passes for changes
-that need no review. Without that verdict the base policy still applies and
+uses it in the same pull request: the entries count only once the head carries
+an oracle-gate success status posted by the benchbox-oracle App and a success
+oracle verdict review. Neither alone is enough: a gate status also passes for
+changes that need no review. Without both, the base policy still applies and
 the new entries do not count, so a change never authorizes its own exception
 without that review. The local check and CI fail on the new entries until the
 verdict succeeds; push, obtain the success verdict, rerun the comment-policy

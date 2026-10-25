@@ -2,11 +2,12 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import difflib
 import hashlib
 import json
 import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from enum import Enum
 from typing import Any, Literal, Optional
 
@@ -78,6 +79,20 @@ SortOrderType = Literal["ASC", "DESC"]
 NullsPositionType = Literal["FIRST", "LAST", "DEFAULT"]
 
 
+def _reject_unknown_keys(data: Mapping[str, Any], allowed: Sequence[str], context: str) -> None:
+    if not isinstance(data, Mapping):
+        raise ValueError(f"{context} must be a mapping, got {type(data).__name__}")
+    valid = sorted(allowed)
+    unknown = [key for key in data if key not in valid]
+    if not unknown:
+        return
+    details: list[str] = []
+    for key in unknown:
+        matches = difflib.get_close_matches(str(key), valid, n=1)
+        details.append(f"'{key}' (did you mean '{matches[0]}'?)" if matches else f"'{key}'")
+    raise ValueError(f"Unknown key(s) in {context}: {', '.join(details)}. Valid keys: {', '.join(valid)}")
+
+
 @dataclass
 class TuningColumn:
     name: str
@@ -141,6 +156,9 @@ class TuningColumn:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TuningColumn":
+        _reject_unknown_keys(
+            data, ("name", "type", "order", "sort_order", "nulls_position", "compression"), "tuning column"
+        )
         required_fields = {"name", "type", "order"}
         missing_fields = required_fields - data.keys()
         if missing_fields:
@@ -212,6 +230,9 @@ class PartitioningConfig:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "PartitioningConfig":
+        _reject_unknown_keys(
+            data, ("columns", "strategy", "granularity", "bucket_count", "range_boundaries"), "partitioning config"
+        )
         columns = [TuningColumn.from_dict(col) for col in data.get("columns", [])]
         return cls(
             columns=columns,
@@ -247,6 +268,7 @@ class SortKeyConfig:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SortKeyConfig":
+        _reject_unknown_keys(data, ("columns", "style"), "sort key config")
         columns = [TuningColumn.from_dict(col) for col in data.get("columns", [])]
         return cls(
             columns=columns,
@@ -275,6 +297,7 @@ class ClusteringConfig:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ClusteringConfig":
+        _reject_unknown_keys(data, ("columns", "bucket_count"), "clustering config")
         columns = [TuningColumn.from_dict(col) for col in data.get("columns", [])]
         return cls(
             columns=columns,
@@ -421,6 +444,11 @@ class TableTuning:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TableTuning":
+        _reject_unknown_keys(
+            data,
+            ("table_name", "partitioning", "clustering", "distribution", "sorting", "reference", "columnar"),
+            "table tuning",
+        )
         if "table_name" not in data:
             raise ValueError("Missing required field: table_name")
 
@@ -545,6 +573,9 @@ class BenchmarkTunings:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "BenchmarkTunings":
+        _reject_unknown_keys(
+            data, ("benchmark_name", "enable_primary_keys", "enable_foreign_keys", "table_tunings"), "benchmark tunings"
+        )
         if "benchmark_name" not in data:
             raise ValueError("Missing required field: benchmark_name")
 
@@ -583,6 +614,7 @@ class ConstraintConfiguration:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ConstraintConfiguration":
+        _reject_unknown_keys(data, ("enabled",), "constraint configuration")
         return cls(enabled=data.get("enabled", True))
 
 
@@ -600,6 +632,7 @@ class PrimaryKeyConfiguration(ConstraintConfiguration):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "PrimaryKeyConfiguration":
+        _reject_unknown_keys(data, ("enabled", "enforce_uniqueness", "nullable"), "primary_keys")
         return cls(
             enabled=data.get("enabled", True),
             enforce_uniqueness=data.get("enforce_uniqueness", True),
@@ -623,6 +656,11 @@ class ForeignKeyConfiguration(ConstraintConfiguration):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ForeignKeyConfiguration":
+        _reject_unknown_keys(
+            data,
+            ("enabled", "enforce_referential_integrity", "on_delete_action", "on_update_action"),
+            "foreign_keys",
+        )
         return cls(
             enabled=data.get("enabled", True),
             enforce_referential_integrity=data.get("enforce_referential_integrity", True),
@@ -640,6 +678,7 @@ class UniqueConstraintConfiguration(ConstraintConfiguration):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "UniqueConstraintConfiguration":
+        _reject_unknown_keys(data, ("enabled", "ignore_nulls"), "unique_constraints")
         return cls(
             enabled=data.get("enabled", True),
             ignore_nulls=data.get("ignore_nulls", False),
@@ -660,6 +699,7 @@ class CheckConstraintConfiguration(ConstraintConfiguration):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "CheckConstraintConfiguration":
+        _reject_unknown_keys(data, ("enabled", "enforce_on_insert", "enforce_on_update"), "check_constraints")
         return cls(
             enabled=data.get("enabled", True),
             enforce_on_insert=data.get("enforce_on_insert", True),
@@ -866,6 +906,11 @@ class PlatformOptimizationConfiguration:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "PlatformOptimizationConfiguration":
+        _reject_unknown_keys(
+            data,
+            (*(f.name for f in fields(cls)), "deep_sort_mode", "deep_sort_method"),
+            "platform_optimizations",
+        )
         sorted_ingestion_mode = data.get("sorted_ingestion_mode", data.get("deep_sort_mode", "off"))
         sorted_ingestion_method = data.get("sorted_ingestion_method", data.get("deep_sort_method", "auto"))
         strategy = data.get("databricks_clustering_strategy")
@@ -935,6 +980,16 @@ def _clickhouse_primary_key_prefix_errors(
     return errors
 
 
+_UNIFIED_TUNING_KEYS = (
+    "primary_keys",
+    "foreign_keys",
+    "unique_constraints",
+    "check_constraints",
+    "platform_optimizations",
+    "table_tunings",
+)
+
+
 @dataclass
 class UnifiedTuningConfiguration:
     primary_keys: PrimaryKeyConfiguration = field(default_factory=PrimaryKeyConfiguration)
@@ -985,11 +1040,13 @@ class UnifiedTuningConfiguration:
         benchmark: str = "tpch",
         columns: Optional[list[Any]] = None,
         table_name: Optional[str] = None,
+        platform: Optional[str] = None,
         **kwargs,
-    ) -> None:
+    ) -> bool:
         if optimization_type in self._TABLE_LAYOUT_TYPES:
-            self._enable_table_layout(optimization_type, benchmark=benchmark, columns=columns, table_name=table_name)
-            return
+            return self._enable_table_layout(
+                optimization_type, benchmark=benchmark, columns=columns, table_name=table_name, platform=platform
+            )
         column_values = columns if columns is not None else kwargs.get("columns")
         if optimization_type == TuningType.Z_ORDERING:
             self.platform_optimizations.z_ordering_enabled = True
@@ -1011,6 +1068,7 @@ class UnifiedTuningConfiguration:
                 self.platform_optimizations.bloom_filter_columns = column_values
         elif optimization_type == TuningType.MATERIALIZED_VIEWS:
             self.platform_optimizations.materialized_views_enabled = True
+        return True
 
     def _enable_table_layout(
         self,
@@ -1018,18 +1076,36 @@ class UnifiedTuningConfiguration:
         benchmark: str = "tpch",
         columns: Optional[list[Any]] = None,
         table_name: Optional[str] = None,
-    ) -> None:
+        platform: Optional[str] = None,
+    ) -> bool:
+        if platform is not None and self.layout_unapplied_reason(platform, layout_type) is not None:
+            return False
+        platform = platform or "duckdb"
         slot = layout_type.value
         resolved_columns = self._resolve_layout_columns(columns)
         if resolved_columns:
-            target = self._explicit_layout_table(benchmark, table_name)
+            target = self._explicit_layout_table(benchmark, table_name, platform)
             self._record_layout_slot(target, slot, resolved_columns)
-            return
-        targets = self._default_layout_targets(layout_type, benchmark, table_name)
+            return True
+        targets = self._default_layout_targets(layout_type, benchmark, table_name, platform)
         if not targets:
-            return
+            return False
         for target_table, entry_columns in targets.items():
             self._record_layout_slot(target_table, slot, list(entry_columns))
+        return True
+
+    @staticmethod
+    def layout_unapplied_reason(platform: str, layout_type: TuningType) -> Optional[str]:
+        from benchbox.core.tuning.capability_registry import (
+            get_capability,
+            is_not_rendered_at_execution,
+            not_rendered_reason,
+        )
+
+        capability = get_capability(platform, layout_type)
+        if is_not_rendered_at_execution(capability):
+            return not_rendered_reason(capability)
+        return None
 
     @staticmethod
     def _resolve_layout_columns(columns: Optional[list[Any]]) -> list[TuningColumn]:
@@ -1049,10 +1125,10 @@ class UnifiedTuningConfiguration:
         return resolved
 
     @staticmethod
-    def _read_template_table_tunings(benchmark: str) -> dict[str, Any]:
+    def _read_template_table_tunings(benchmark: str, platform: str = "duckdb") -> dict[str, Any]:
         from benchbox.core.tuning.packaged_templates import packaged_template_path
 
-        template = packaged_template_path("duckdb", benchmark.lower())
+        template = packaged_template_path(platform, benchmark.lower())
         if not template.exists():
             return {}
         try:
@@ -1086,8 +1162,8 @@ class UnifiedTuningConfiguration:
         self.table_tunings[target_table] = TableTuning(**kwargs)
 
     @staticmethod
-    def _explicit_layout_table(benchmark: str, table_name: Optional[str]) -> str:
-        table_tunings = UnifiedTuningConfiguration._read_template_table_tunings(benchmark)
+    def _explicit_layout_table(benchmark: str, table_name: Optional[str], platform: str = "duckdb") -> str:
+        table_tunings = UnifiedTuningConfiguration._read_template_table_tunings(benchmark, platform)
         ordered = sorted(table_tunings) if table_tunings else []
         if table_name is not None:
             match = next((name for name in ordered if name.lower() == table_name.lower()), None)
@@ -1101,11 +1177,12 @@ class UnifiedTuningConfiguration:
         layout_type: TuningType,
         benchmark: str,
         table_name: Optional[str],
+        platform: str = "duckdb",
     ) -> dict[str, list[TuningColumn]]:
         if layout_type == TuningType.PARTITIONING:
             table_tunings = UnifiedTuningConfiguration._read_default_partitioning(benchmark)
         else:
-            table_tunings = UnifiedTuningConfiguration._read_template_table_tunings(benchmark.lower())
+            table_tunings = UnifiedTuningConfiguration._read_template_table_tunings(benchmark.lower(), platform)
         return UnifiedTuningConfiguration._layout_targets_from(table_tunings, layout_type, table_name)
 
     @staticmethod
@@ -1309,6 +1386,7 @@ class UnifiedTuningConfiguration:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "UnifiedTuningConfiguration":
+        _reject_unknown_keys(data, (*_UNIFIED_TUNING_KEYS, "_metadata"), "tuning configuration")
         instance = cls()
 
         if "primary_keys" in data:

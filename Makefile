@@ -31,7 +31,7 @@ DEVELOPMENT_TREE_ONLY_TARGETS := \
 	agent-commit-range-check skill-integrity-check ci-lint pr-preflight pr-arm-auto-merge shrink-rollup \
 	pr-review-followups-list pr-review-followups dev-loop-metrics platform-manifest \
 	platform-manifest-check test-docker-parity blind-spots-list blind-spots-report \
-	soundness-drain-report soundness-drain-self-test oracle-review-recover worktree-audit worktree-finish worktree-reap
+	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap
 
 .PHONY: coverage-check
 
@@ -1260,14 +1260,6 @@ pr-arm-auto-merge:
 PR_ARM_PR_SET := $(if $(filter undefined,$(origin PR)),,1)
 PR_ARM_HEAD_SET := $(if $(filter undefined,$(origin HEAD)),,1)
 PR_ARM_REPO_SET := $(if $(filter undefined,$(origin REPO)),,1)
-.PHONY: oracle-review-recover
-oracle-review-recover: override PR := $(value PR)
-oracle-review-recover: override REPO := $(value REPO)
-oracle-review-recover: export ORACLE_REVIEW_PR := $(PR)
-oracle-review-recover: export ORACLE_REVIEW_REPO := $(or $(REPO),BenchBox-dev/BenchBox)
-oracle-review-recover:
-	@uv run -- python scripts/oracle_review_recover.py
-
 .PHONY: pr-rerun
 pr-rerun: override PR := $(value PR)
 pr-rerun: override REPO := $(value REPO)

@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The Databricks Z-ORDER TPC-H and TPC-DS templates lead each fact table's clustering with its date column (`L_SHIPDATE`, `O_ORDERDATE`, and the `*_SOLD_DATE_SK` / `*_RETURNED_DATE_SK` keys), capped at four keys per table, so date pruning is back after the vendor-layout change dropped it. Temporal candidates now map to Z-ORDER clustering instead of `unsupported`.",
+      "platforms": [
+        "databricks"
+      ],
+      "benchmarks": [
+        "tpch",
+        "tpcds"
+      ]
+    }
+  ]
+}

@@ -136,7 +136,7 @@ def test_success_reruns_nothing() -> None:
 
 def test_running_ci_is_refused() -> None:
     gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z", status="in_progress", conclusion=None)], {11: _jobs()})
-    with pytest.raises(pr_rerun.RecoveryError, match="still running"):
+    with pytest.raises(pr_rerun.RerunError, match="still running"):
         pr_rerun.rerun(REPO, PR, gh)
     assert gh.reruns() == []
 
@@ -144,7 +144,7 @@ def test_running_ci_is_refused() -> None:
 @pytest.mark.parametrize("conclusion", ["timed_out", "action_required", "startup_failure"])
 def test_other_conclusions_are_refused(conclusion: str) -> None:
     gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z", conclusion=conclusion)], {11: _jobs()})
-    with pytest.raises(pr_rerun.RecoveryError, match=conclusion):
+    with pytest.raises(pr_rerun.RerunError, match=conclusion):
         pr_rerun.rerun(REPO, PR, gh)
 
 
@@ -168,7 +168,7 @@ def test_a_pending_real_run_behind_a_text_edit_run_is_refused() -> None:
         _run(12, "2026-10-17T10:05:00Z", conclusion="success"),
     ]
     gh = FakeGitHub(runs, {11: _jobs(), 12: _jobs(text_edit=True)})
-    with pytest.raises(pr_rerun.RecoveryError, match="still running"):
+    with pytest.raises(pr_rerun.RerunError, match="still running"):
         pr_rerun.rerun(REPO, PR, gh)
 
 
@@ -185,13 +185,13 @@ def test_the_newest_real_run_is_chosen() -> None:
 )
 def test_runs_for_another_head_are_ignored(mismatch: dict[str, Any]) -> None:
     gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z", **mismatch)], {11: _jobs()})
-    with pytest.raises(pr_rerun.RecoveryError, match="no CI run found"):
+    with pytest.raises(pr_rerun.RerunError, match="no CI run found"):
         pr_rerun.rerun(REPO, PR, gh)
 
 
 def test_another_open_pr_on_the_same_head_is_refused() -> None:
     gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, shared=[8])
-    with pytest.raises(pr_rerun.RecoveryError, match="#8"):
+    with pytest.raises(pr_rerun.RerunError, match="#8"):
         pr_rerun.rerun(REPO, PR, gh)
     assert gh.reruns() == []
 
@@ -206,28 +206,28 @@ def test_runs_from_before_a_retarget_are_refused(retarget: str, allowed: bool) -
         pr_rerun.rerun(REPO, PR, gh)
         assert gh.reruns()
     else:
-        with pytest.raises(pr_rerun.RecoveryError, match="retargeted"):
+        with pytest.raises(pr_rerun.RerunError, match="retargeted"):
             pr_rerun.rerun(REPO, PR, gh)
         assert gh.reruns() == []
 
 
 def test_a_head_change_before_the_rerun_is_refused() -> None:
     gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, pr_reads=[_pr(), _pr(head=OTHER_HEAD)])
-    with pytest.raises(pr_rerun.RecoveryError, match="head changed"):
+    with pytest.raises(pr_rerun.RerunError, match="head changed"):
         pr_rerun.rerun(REPO, PR, gh)
     assert gh.reruns() == []
 
 
 def test_a_new_pr_on_the_same_head_before_the_rerun_is_refused() -> None:
     gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, shared_after=[9])
-    with pytest.raises(pr_rerun.RecoveryError, match="#9"):
+    with pytest.raises(pr_rerun.RerunError, match="#9"):
         pr_rerun.rerun(REPO, PR, gh)
     assert gh.reruns() == []
 
 
 def test_no_runs_is_refused() -> None:
     gh = FakeGitHub([], {})
-    with pytest.raises(pr_rerun.RecoveryError, match="push a commit"):
+    with pytest.raises(pr_rerun.RerunError, match="push a commit"):
         pr_rerun.rerun(REPO, PR, gh)
 
 
@@ -308,7 +308,7 @@ def test_a_stale_suite_is_rerun_when_no_ci_run_exists() -> None:
 def test_an_unrerunnable_suite_conclusion_is_refused() -> None:
     suites = [_check(501, 1, "2026-10-17T09:00:00Z", "startup_failure"), STALE_SUITES[2]]
     gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z", conclusion="success")], {11: _jobs()}, check_runs=suites)
-    with pytest.raises(pr_rerun.RecoveryError, match="startup_failure"):
+    with pytest.raises(pr_rerun.RerunError, match="startup_failure"):
         pr_rerun.rerun(REPO, PR, gh)
     assert gh.reruns() == []
 
@@ -320,6 +320,96 @@ def test_a_stale_suite_from_before_a_retarget_is_refused() -> None:
         check_runs=STALE_SUITES,
         retargets=["2026-10-17T10:45:00Z"],
     )
-    with pytest.raises(pr_rerun.RecoveryError, match="retargeted"):
+    with pytest.raises(pr_rerun.RerunError, match="retargeted"):
         pr_rerun.rerun(REPO, PR, gh)
     assert gh.reruns() == []
+
+
+def test_main_help_exits_zero_and_names_the_command(capsys: pytest.CaptureFixture[str]) -> None:
+    assert pr_rerun.main(["--help"], {}) == 0
+    captured = capsys.readouterr()
+    assert "make pr-rerun" in captured.out
+    assert captured.err == ""
+
+
+def test_main_refuses_unknown_arguments(capsys: pytest.CaptureFixture[str]) -> None:
+    assert pr_rerun.main(["--force"], {}) == 2
+    assert "make pr-rerun" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("repo", ["", "owner", "owner/name/extra", "owner/na me", "-owner/name"])
+def test_an_invalid_repository_is_refused_before_any_gh_call(repo: str) -> None:
+    gh = FakeGitHub([], {})
+    with pytest.raises(pr_rerun.RerunError, match="owner/name"):
+        pr_rerun.rerun(repo, PR, gh)
+    assert gh.calls == []
+
+
+@pytest.mark.parametrize(
+    ("overrides", "reason"),
+    [
+        ({"state": "CLOSED"}, "is not open"),
+        ({"number": PR + 1}, "is not open"),
+        ({"baseRefName": "release"}, "does not target develop"),
+        ({"headRefOid": "abc123"}, "invalid head SHA"),
+        ({"headRefOid": "A" * 40}, "invalid head SHA"),
+        ({"headRefName": ""}, "no head branch"),
+        ({"headRepository": None}, "no head repository"),
+        ({"headRepository": {"nameWithOwner": "fork/BenchBox"}}, "inconsistent head repository"),
+        ({"isCrossRepository": "no"}, "inconsistent head repository"),
+    ],
+    ids=[
+        "closed",
+        "wrong-number",
+        "wrong-base",
+        "short-sha",
+        "uppercase-sha",
+        "no-branch",
+        "no-head-repository",
+        "fork-marked-same-repository",
+        "non-boolean-cross-repository",
+    ],
+)
+def test_an_invalid_pull_request_is_refused_before_any_ci_lookup(overrides: dict[str, Any], reason: str) -> None:
+    gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, pr_reads=[{**_pr(), **overrides}])
+    with pytest.raises(pr_rerun.RerunError, match=reason):
+        pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == []
+    assert not any(call[1] == "api" for call in gh.calls)
+
+
+def test_a_head_branch_change_before_the_rerun_is_refused() -> None:
+    gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, pr_reads=[_pr(), _pr(branch="feature/other")])
+    with pytest.raises(pr_rerun.RerunError, match="head branch changed"):
+        pr_rerun.rerun(REPO, PR, gh)
+    assert gh.reruns() == []
+
+
+def test_a_non_object_pull_request_record_is_refused() -> None:
+    gh = FakeGitHub([], {}, pr_reads=[[]])
+    with pytest.raises(pr_rerun.RerunError, match="invalid record"):
+        pr_rerun.rerun(REPO, PR, gh)
+
+
+def test_a_failing_gh_call_is_reported_with_its_detail() -> None:
+    def failing(command: list[str]) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 1, "", "HTTP 502")
+
+    with pytest.raises(pr_rerun.RerunError, match="gh pr failed: HTTP 502"):
+        pr_rerun.rerun(REPO, PR, failing)
+
+
+def test_a_missing_gh_binary_is_reported() -> None:
+    def missing(command: list[str]) -> subprocess.CompletedProcess[str]:
+        raise FileNotFoundError(command[0])
+
+    with pytest.raises(pr_rerun.RerunError, match="could not execute the GitHub CLI"):
+        pr_rerun.rerun(REPO, PR, missing)
+
+
+def test_invalid_gh_json_is_reported() -> None:
+    def garbled(command: list[str]) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 0, "not json", "")
+
+    with pytest.raises(pr_rerun.RerunError, match="gh pr returned invalid JSON"):
+        pr_rerun.rerun(REPO, PR, garbled)
