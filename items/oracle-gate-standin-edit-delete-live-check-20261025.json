@@ -1,10 +1,10 @@
 {
   "acceptance": [
-    "Context records the issue_comment edited or deleted gate run ID; that it ran develop's workflow code; and the oracle-gate status it posted, with timestamps after the edit or deletion. That status is failure if the stand-in was the only basis for success, and unchanged otherwise.",
+    "Context records the issue_comment gate run ID for the edit or deletion. gh api repos/BenchBox-dev/benchbox/actions/runs/<id> shows event issue_comment, path .github/workflows/oracle-gate.yml, head_branch develop and a status of completed, not cancelled. The oracle-gate status it posted is recorded from gh api repos/BenchBox-dev/benchbox/commits/<head>/statuses, with target_url naming that run, created after the edit or deletion: failure if the stand-in was the only basis for success, otherwise the same state as before.",
     "Or context records the owner's decision not to run the live check, with its date."
   ],
   "context": "Found 2026-10-25: the stand-in edit/delete item merged in #3430 with no live check, and the post-cutover live verification recorded the path as not exercisable without the owner. Blocked on owner action.",
-  "description": "Problem: #3430 made oracle-gate re-run on issue_comment edited and deleted events, so that withdrawing an accepted stand-in removes a gate success. Unit tests cover the decision. No live run has exercised the trigger, because only the owner can post a stand-in.\n\nOutcome: one recorded live observation, or a recorded decision to rely on the unit tests.\n\nDecision gates:\n1. Owner action only. Agents never post, edit or delete stand-ins. Ask the owner, next time a real stand-in is needed or on a throwaway PR the owner chooses, to edit or delete it after the gate passes. If the owner declines, record that and finish on the unit-test evidence.\n2. Withdrawing evidence. Following docs/agent/merge-authority.md, the PR stays unarmed before the stand-in is withdrawn.\n\nCommon guardrails: no stand-in approvals by agents, no ruleset edits or bypasses, no raw gh pr merge. Do not close and reopen, mass-rerun or rebase other pull requests.",
+  "description": "Problem: #3430 made oracle-gate re-run on issue_comment edited and deleted events (oracle-gate.yml:20-21, :41, :47-49), so that withdrawing an accepted stand-in removes a gate success; the checker accepts only a never-edited comment (oracle_review_check.py:37-44). Unit tests cover the trigger and decision (test_oracle_gate_workflow.py:483-522). No live run has exercised the trigger. Under docs/agent/merge-authority.md:44-46 an agent may post a stand-in only when the owner names the PR and head in the current request; this item keeps all stand-in actions with the owner.\n\nOutcome: one recorded live observation, or a recorded owner decision to rely on the unit tests.\n\nDecision gates:\n1. Owner action only. Agents never post, edit or delete stand-ins here. Ask the owner, next time a real stand-in is needed or on a PR the owner names, to edit (any change, even whitespace) or delete it after oracle-gate passes on it, then post a fresh stand-in if the PR should still pass. If the owner declines, record that and finish on the unit-test evidence.\n2. Ordering. Following merge-authority.md:69-72, the PR stays unarmed before the stand-in is withdrawn. Do not dispatch the gate until the issue_comment-triggered run has completed and its status is recorded: a dispatch shares the PR's concurrency group with cancel-in-progress (oracle-gate.yml:41-42) and would cancel the run under observation. After recording, dispatch and observe as merge-authority.md requires before treating the PR as ready.\n3. Never withdraw a stand-in on a merged PR: the merge digest would report a review gap.\n\nCommon guardrails: no stand-in approvals by agents, no ruleset edits or bypasses, no raw gh pr merge. Do not close and reopen, mass-rerun or rebase other pull requests. Durable text carries no tracker item IDs. No code changes.",
   "links": [
     ".github/workflows/oracle-gate.yml",
     "docs/agent/merge-authority.md"
@@ -24,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "bb9152ef814f42f0ab384e0b0d373fb6",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T13:17:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "80390631d60049eaa11e81c645f48047",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
