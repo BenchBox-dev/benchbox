@@ -27133,10 +27133,15 @@
       "title": "Let an owner-authorized fix-forward PR be armed while Trunk is red, without a revert"
     },
     "trunk-lane-changes-run-before-merge-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T21:23:00Z",
+        "generation": "b2e61079540b422c8ef3e60f4f177bf2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Run the Trunk medium job on the PR when a PR changes trunk.yml, trunk-coverage.yml or shard scheduling"
     },
     "trunk-red-rate-target-20261024": {
