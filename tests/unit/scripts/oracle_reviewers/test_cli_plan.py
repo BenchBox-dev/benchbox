@@ -1055,6 +1055,49 @@ def _unreadable_base_change(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(github, "base_changed_at", unreadable)
 
 
+def test_guard_lets_a_carry_publish_and_skips_once_the_carry_is_posted(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _unreadable_base_change(monkeypatch)
+    fake = _fake(_review(_decided_head()))
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event={"action": "edited", "changes": {"base": {}}})
+    assert values["decision"] == "carry" and plan["protocol"]["kind"] == "carry"
+    plan_path = tmp_path / "plan" / "plan.json"
+    output = tmp_path / "guard.out"
+    output.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    fake.install(monkeypatch)
+    assert cli.main(["guard", "--plan", str(plan_path)]) == 0
+    assert dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())["skip"] == "false"
+    carried = {**_decided_head(), "carried": True, "kind": "carry"}
+    fake.reviews = [_review(_decided_head()), _review(carried, id=2, submitted_at="2026-10-08T11:00:00Z")]
+    assert cli.main(["guard", "--plan", str(plan_path)]) == 0
+    assert dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())["skip"] == "true"
+
+
+def test_guard_still_sees_the_carry_after_an_earlier_review_is_dismissed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _unreadable_base_change(monkeypatch)
+    older = {**_decided_head(), "round": 1}
+    fake = _fake(_review(older), _review(_decided_head(), id=2, submitted_at="2026-10-08T10:30:00Z"))
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event={"action": "edited", "changes": {"base": {}}})
+    assert values["decision"] == "carry"
+    plan_path = tmp_path / "plan" / "plan.json"
+    output = tmp_path / "guard.out"
+    output.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    carried = {**_decided_head(), "carried": True, "kind": "carry"}
+    fake.reviews = [
+        _review(older, state="DISMISSED"),
+        _review(_decided_head(), id=2, submitted_at="2026-10-08T10:30:00Z"),
+        _review(carried, id=3, submitted_at="2026-10-08T11:00:00Z"),
+    ]
+    fake.install(monkeypatch)
+    assert cli.main(["guard", "--plan", str(plan_path)]) == 0
+    assert dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())["skip"] == "true"
+
+
 def test_unreadable_base_change_history_reviews_a_decided_head_whose_patch_changed(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
