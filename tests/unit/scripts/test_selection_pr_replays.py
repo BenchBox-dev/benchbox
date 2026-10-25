@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import subprocess
@@ -8,7 +9,16 @@ from typing import Any
 
 import pytest
 
-from scripts import ci_units, coverage_test_selection as sel, heavy_tier_needed as heavy, path_filter_decision
+pytest.importorskip(
+    "_project.scripts.preflight_targets",
+    reason="_project scripts are not in this checkout (release tree)",
+    exc_type=ImportError,
+)
+
+ci_units = importlib.import_module("scripts.ci_units")
+sel = importlib.import_module("scripts.coverage_test_selection")
+heavy = importlib.import_module("scripts.heavy_tier_needed")
+path_filter_decision = importlib.import_module("scripts.path_filter_decision")
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
