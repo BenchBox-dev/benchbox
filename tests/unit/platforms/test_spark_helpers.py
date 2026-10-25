@@ -147,6 +147,20 @@ class TestSparkSchemaStatements:
         assert "DELTA" not in result.upper()
         assert result.endswith("USING PARQUET")
 
+    def test_using_precedes_partitioned_by(self) -> None:
+        (result,) = self._statements("CREATE TABLE t (id INT, d DATE)\nPARTITIONED BY (d)", "delta", strip=False)
+        assert result == "CREATE TABLE `t` (`id` INT, `d` DATE) USING DELTA PARTITIONED BY (`d`)"
+
+    def test_using_precedes_cluster_by(self) -> None:
+        (result,) = self._statements("CREATE TABLE t (id INT, k INT)\nCLUSTER BY (k)", "delta", strip=False)
+        assert result == "CREATE TABLE `t` (`id` INT, `k` INT) USING DELTA CLUSTER BY (`k`)"
+
+    def test_untuned_tables_next_to_partitioned_tables_keep_default_format(self) -> None:
+        sql = "CREATE TABLE a (id INT, d DATE) PARTITIONED BY (d);\nCREATE TABLE b (id INT);"
+        partitioned, plain = self._statements(sql, "parquet")
+        assert partitioned.endswith("USING PARQUET PARTITIONED BY (`d`)")
+        assert plain.endswith("USING PARQUET")
+
     def test_empty_format_defaults_to_parquet(self) -> None:
         (result,) = self._statements("CREATE TABLE t (id INT)", "")
         assert result.endswith("USING PARQUET")

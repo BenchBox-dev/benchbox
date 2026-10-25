@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: gitignore-lint-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   ignore-vs-tracked:
     runs-on: ubuntu-latest

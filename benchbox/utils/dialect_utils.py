@@ -7,7 +7,7 @@ from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
-from typing import Callable
+from typing import Any, Callable
 
 SCHEMA_DDL_SCOPE = "schema_ddl"
 WORKLOAD_QUERY_SCOPE = "workload_query"
@@ -551,6 +551,44 @@ def schema_ddl_read_dialect(ddl: str, target_dialect: str) -> str:
     if any(isinstance(tree, exp.Command) for tree in trees):
         return target_dialect
     return "standard"
+
+
+def lift_ddl_table_layouts(schema_sql: str, read: str, table_format: str) -> tuple[str, dict[str, dict[str, Any]]]:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    dialect = resolve_sql_dialect(read)
+    trees = [tree for tree in sqlglot.parse(schema_sql, read=dialect) if tree is not None]
+    layouts: dict[str, dict[str, Any]] = {}
+    lifted = False
+    for tree in trees:
+        properties = tree.args.get("properties") if isinstance(tree, exp.Create) else None
+        if not properties or not isinstance(tree.this, exp.Schema) or not isinstance(tree.this.this, exp.Table):
+            continue
+        partition = next((p for p in properties.expressions if isinstance(p, exp.PartitionedByProperty)), None)
+        cluster = next((p for p in properties.expressions if isinstance(p, exp.ClusterProperty)), None)
+        if partition is None and cluster is None:
+            continue
+        partition_nodes = partition.this.expressions if partition is not None else []
+        cluster_nodes = cluster.expressions if cluster is not None else []
+        simple = (exp.Identifier, exp.Column, exp.ColumnDef)
+        if not all(isinstance(node, simple) for node in (*partition_nodes, *cluster_nodes)):
+            continue
+        layout: dict[str, Any] = {"format": table_format}
+        if partition_nodes:
+            layout["partition_by"] = [node.name for node in partition_nodes]
+        if cluster_nodes:
+            layout["cluster_by"] = [node.name for node in cluster_nodes]
+        layouts[tree.this.this.name.lower()] = layout
+        remaining = [p for p in properties.expressions if p is not partition and p is not cluster]
+        if remaining:
+            properties.set("expressions", remaining)
+        else:
+            tree.set("properties", None)
+        lifted = True
+    if not lifted:
+        return schema_sql, {}
+    return ";\n".join(tree.sql(dialect=dialect) for tree in trees), layouts
 
 
 def ddl_column_names(ddl: str, source_dialect: str = "standard") -> dict[str, list[str]]:

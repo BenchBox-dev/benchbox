@@ -163,9 +163,10 @@ def get_spark_query_plan(
 
 
 def spark_schema_statements(schema_sql: str, *, table_format: str, strip_constraints: bool) -> list[str]:
-    from benchbox.utils.dialect_utils import schema_ddl_read_dialect, translate_ddl
+    from benchbox.utils.dialect_utils import lift_ddl_table_layouts, schema_ddl_read_dialect, translate_ddl
 
-    options: dict[str, Any] = {"default_layout": {"format": (table_format or "parquet").lower()}}
+    fmt = (table_format or "parquet").lower()
+    options: dict[str, Any] = {"default_layout": {"format": fmt}}
     if strip_constraints:
         options.update(
             strip_primary_keys=True,
@@ -173,7 +174,11 @@ def spark_schema_statements(schema_sql: str, *, table_format: str, strip_constra
             strip_unique=True,
             type_map={"SMALLINT": "INT"},
         )
-    return translate_ddl(schema_sql, "spark", schema_ddl_read_dialect(schema_sql, "spark"), **options)
+    read = schema_ddl_read_dialect(schema_sql, "spark")
+    schema_sql, layouts = lift_ddl_table_layouts(schema_sql, read, fmt)
+    if layouts:
+        options["layouts"] = layouts
+    return translate_ddl(schema_sql, "spark", read, **options)
 
 
 def spark_format_strips_constraints(table_format: str) -> bool:
