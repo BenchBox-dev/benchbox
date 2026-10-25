@@ -20,7 +20,7 @@ class TestRunSurfaceRejectsUnknownPhases:
         from benchbox.mcp import create_server
         from tests.unit.mcp.public_api import call_tool
 
-        server = create_server(results_dir=tmp_path, charts_dir=tmp_path, log_level="ERROR")
+        server = create_server(results_dir=tmp_path, charts_dir=tmp_path)
         response = call_tool(
             server, "run_benchmark", platform="duckdb", benchmark="tpch", phases="load,lodad", scale_factor=0.01
         )
@@ -37,7 +37,7 @@ class TestRunSurfaceRejectsUnknownPhases:
         from benchbox.mcp.tools import benchmark as benchmark_tools
         from tests.unit.mcp.public_api import call_tool
 
-        server = create_server(results_dir=tmp_path, charts_dir=tmp_path, log_level="ERROR")
+        server = create_server(results_dir=tmp_path, charts_dir=tmp_path)
         with patch.object(benchmark_tools, "_run_benchmark_impl") as run_impl:
             call_tool(server, "run_benchmark", platform="duckdb", benchmark="tpch", phases="lodad", scale_factor=0.01)
 

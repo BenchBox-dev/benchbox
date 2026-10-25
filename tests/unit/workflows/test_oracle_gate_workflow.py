@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 import yaml
+from workflow_expressions import evaluate as _evaluate, render as _render
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -80,27 +81,27 @@ def test_triggers_are_trusted_only() -> None:
         "schedule",
     }
     assert triggers["push"]["branches"] == ["develop"]
-    assert set(triggers["push"]) == {"branches", "paths"}
+    assert set(triggers["push"]) == {"branches"}
     assert "pull_request" not in triggers
     assert "pull_request_review" not in triggers
 
 
-def _sparse_entries(job: str) -> list[str]:
-    checkouts = [step for step in _steps(job) if "actions/checkout" in step.get("uses", "")]
-    assert len(checkouts) == 1
-    return checkouts[0]["with"]["sparse-checkout"].split()
+def test_every_develop_push_runs_only_the_sweep_in_the_uncancelled_push_group() -> None:
+    push = _triggers()["push"]
+    assert push == {"branches": ["develop"]}
+    jobs = _jobs()
+    assert "github.event_name == 'push'" in jobs["sweep"]["if"]
+    assert "github.event_name != 'push'" in jobs["gate"]["if"]
+    assert jobs["bridge"]["if"] == "github.event_name == 'workflow_run'"
+    concurrency = _load()["concurrency"]
+    assert concurrency["group"].count("'push-sweep'") == 1
+    assert "github.event_name == 'push' && 'push-sweep'" in concurrency["group"]
+    assert concurrency["cancel-in-progress"] == "${{ github.event_name != 'push' }}"
 
 
-def _normalized(entries: list[str]) -> list[str]:
-    return [f"{entry}/**" if (REPO_ROOT / entry).is_dir() else entry for entry in entries]
-
-
-def test_push_paths_equal_the_sparse_checkout_policy_inputs() -> None:
-    paths = _triggers()["push"]["paths"]
-    assert "_project/scripts/oracle_reviewers/**" in paths
-    for job in ("gate", "sweep"):
-        assert sorted(paths) == sorted(_normalized(_sparse_entries(job)))
-    assert len(paths) == len(set(paths))
+def test_schedule_stays_as_the_fallback_for_hours_without_pushes() -> None:
+    assert "github.event_name == 'schedule'" in _jobs()["sweep"]["if"]
+    assert _triggers()["schedule"] == [{"cron": "41 * * * *"}]
 
 
 def test_pull_request_target_covers_open_push_reopen_ready_and_edit() -> None:
@@ -119,7 +120,7 @@ def test_workflow_run_bridges_both_posting_workflows() -> None:
     assert set(bridge["workflows"]) == {"oracle-verdict", "oracle-review"}
 
 
-def test_dispatch_takes_a_pr_number_and_schedule_sweeps_hourly() -> None:
+def test_dispatch_takes_a_pr_number_and_one_schedule_is_declared() -> None:
     assert _triggers()["workflow_dispatch"]["inputs"]["pr"]["required"] is True
     assert len(_triggers()["schedule"]) == 1
 
@@ -560,80 +561,6 @@ def test_non_comment_events_keep_the_gate_conditions() -> None:
 def _run_name(event_name: str, event: dict[str, Any], inputs: dict[str, Any] | None = None) -> str:
     context = {"github": {"event_name": event_name, "event": event}, "inputs": inputs or {}}
     return _render(_load()["run-name"], context)
-
-
-def _render(template: str, context: dict[str, Any]) -> str:
-    return re.sub(r"\$\{\{(.*?)\}\}(?=[ )\"]|$)", lambda m: str(_evaluate(m.group(1), context) or ""), template)
-
-
-def _evaluate(expression: str, context: dict[str, Any]) -> Any:
-    expression = " ".join(expression.split())
-
-    def value(expression: str) -> Any:
-        expression = expression.strip()
-        if expression.startswith("(") and _closing_paren(expression) == len(expression) - 1:
-            return value(expression[1:-1])
-        for operator in ("||", "&&"):
-            parts = _split_top_level(expression, operator)
-            if len(parts) > 1:
-                result = value(parts[0])
-                for part in parts[1:]:
-                    if operator == "||":
-                        result = result or value(part)
-                    else:
-                        result = value(part) if result else result
-                return result
-        for operator in ("==", "!="):
-            parts = _split_top_level(expression, operator)
-            if len(parts) == 2:
-                return (value(parts[0]) == value(parts[1])) == (operator == "==")
-        if expression.startswith("!"):
-            return not value(expression[1:])
-        if expression.startswith("'"):
-            return expression[1:-1]
-        for name, test in (("contains(", lambda a, b: b in a), ("startsWith(", lambda a, b: a.startswith(b))):
-            if expression.startswith(name):
-                left, right = _split_top_level(expression[len(name) : -1], ",")
-                return test(str(value(left) or ""), str(value(right) or ""))
-        if expression.startswith("format("):
-            template, *arguments = _split_top_level(expression[len("format(") : -1], ",")
-            return re.sub(r"\{(\d+)\}", lambda m: str(value(arguments[int(m.group(1))])), value(template))
-        found: Any = context
-        for key in expression.split("."):
-            found = found.get(key) if isinstance(found, dict) else None
-        return found
-
-    return value(expression)
-
-
-def _closing_paren(expression: str) -> int:
-    depth = 0
-    for index, char in enumerate(expression):
-        depth += char == "("
-        depth -= char == ")"
-        if depth == 0:
-            return index
-    return -1
-
-
-def _split_top_level(expression: str, separator: str) -> list[str]:
-    parts, depth, quoted, start = [], 0, False, 0
-    index = 0
-    while index < len(expression):
-        char = expression[index]
-        if char == "'":
-            quoted = not quoted
-        elif not quoted and char == "(":
-            depth += 1
-        elif not quoted and char == ")":
-            depth -= 1
-        elif not quoted and depth == 0 and expression.startswith(separator, index):
-            parts.append(expression[start:index])
-            start = index + len(separator)
-            index = start - 1
-        index += 1
-    parts.append(expression[start:])
-    return parts
 
 
 def test_only_the_scheduled_and_push_runs_are_titled_sweep() -> None:

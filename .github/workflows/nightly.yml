@@ -410,6 +410,14 @@ jobs:
     with:
       images: '["postgres17"]'
 
+  mirror-questdb:
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["questdb"]'
+
   postgres-integration:
     needs: mirror-postgres17
     runs-on: ubuntu-latest

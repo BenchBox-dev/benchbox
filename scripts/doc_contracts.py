@@ -5,15 +5,12 @@ import argparse
 import importlib
 import importlib.util
 import json
-import logging
-import os
 import re
 import sys
 import tempfile
 import tomllib
 import warnings
-from collections.abc import Iterator, Mapping
-from contextlib import contextmanager
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -393,28 +390,6 @@ def _cli() -> dict[str, Any]:
     }
 
 
-@contextmanager
-def _isolated_mcp_state() -> Iterator[dict[str, str]]:
-    from benchbox.utils.printing import is_quiet, set_quiet
-
-    loggers = [logging.getLogger("benchbox"), logging.getLogger("mcp.server.transport_security")]
-    saved = [
-        (logger, logger.level, list(logger.handlers), list(logger.filters), logger.propagate, logger.disabled)
-        for logger in loggers
-    ]
-    quiet = is_quiet()
-    try:
-        yield {key: value for key, value in os.environ.items() if not key.startswith("OTEL_EXPORTER_OTLP_")}
-    finally:
-        for logger, level, handlers, filters, propagate, disabled in saved:
-            logger.setLevel(level)
-            logger.handlers[:] = handlers
-            logger.filters[:] = filters
-            logger.propagate = propagate
-            logger.disabled = disabled
-        set_quiet(quiet)
-
-
 def _mcp() -> dict[str, Any]:
     import anyio
 
@@ -448,8 +423,8 @@ def _mcp() -> dict[str, Any]:
             }
         return dict(sorted(listed.items()))
 
-    with _isolated_mcp_state() as env, tempfile.TemporaryDirectory(prefix="doc-contracts-") as scratch:
-        local = tools(create_server(log_level="ERROR", env=env))
+    with tempfile.TemporaryDirectory(prefix="doc-contracts-") as scratch:
+        local = tools(create_server())
         base = Path(scratch)
         policy = {
             "issuer_url": "https://auth.example.test",
@@ -475,7 +450,7 @@ def _mcp() -> dict[str, Any]:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             runtime = RemoteSecurityRuntime.from_file(config)
-            remote = tools(create_server(log_level="ERROR", env=env, remote_security=runtime))
+            remote = tools(create_server(remote_security=runtime))
     return {
         "tools": local,
         "remote_only_tools": sorted(set(remote) - set(local)),

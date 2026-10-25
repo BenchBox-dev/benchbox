@@ -23,19 +23,17 @@ class TestMcpCreateServer:
             mcp_mod.create_server(
                 results_dir=tmp_path,
                 charts_dir=tmp_path / "charts",
-                log_level="DEBUG",
                 env={"FOO": "bar"},
             )
             mock_create.assert_called_once_with(
                 results_dir=tmp_path,
                 charts_dir=tmp_path / "charts",
-                log_level="DEBUG",
                 env={"FOO": "bar"},
             )
 
 
 class TestMcpRunServer:
-    def test_run_server_calls_server_run(self):
+    def test_run_server_calls_server_run(self, preserved_quiet_mode):
         with patch("benchbox.mcp.server.create_benchbox_server") as mock_create:
             mock_server = MagicMock()
             mock_create.return_value = mock_server

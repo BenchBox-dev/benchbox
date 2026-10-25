@@ -377,6 +377,28 @@ def validate_head_token_evidence(policy: dict[str, Any], root: Path, staged: boo
                 )
 
 
+def head_tracked_paths(root: Path, staged: bool) -> set[str]:
+    args = ("ls-files", "-z") if staged else ("ls-tree", "-r", "-z", "--name-only", "HEAD")
+    return {path for path in git(root, *args).decode().split("\0") if path}
+
+
+def validate_head_policy_structure(policy: dict[str, Any], root: Path, staged: bool) -> None:
+    tracked = head_tracked_paths(root, staged)
+    notices = policy["notices"]
+    for index, entry in enumerate(notices):
+        if not isinstance(entry, dict):
+            raise PolicyError(f"notices[{index}] must be an object")
+        require_fields(entry, EVIDENCE_FIELDS["notices"], f"notices[{index}]")
+        for field, value in entry.items():
+            check_evidence_field("notices", index, field, value)
+        check_owner(entry["owner"], f"notices[{index}].owner", None)
+        if entry["path"] not in tracked:
+            raise PolicyError(f"notices[{index}] path {entry['path']} is not tracked at the head")
+    validate_candidate_notices(notices, root, staged, pin_partial_blob=False)
+    validate_external_entries(policy, tracked, tree="head")
+    validate_payloads_and_edges(policy, tracked, tree="head")
+
+
 def retired_token_evidence(entry: Any, kept: set[tuple[str, str]], root: Path, staged: bool) -> bool:
     return (
         isinstance(entry, dict)
@@ -446,7 +468,9 @@ def validate_evidence(
                     raise PolicyError(f"notice {entry['path']} retained-byte digest does not match immutable base")
 
 
-def validate_payloads_and_edges(policy: dict[str, Any], paths: set[str], task_ids: set[str] | None = None) -> None:
+def validate_payloads_and_edges(
+    policy: dict[str, Any], paths: set[str], task_ids: set[str] | None = None, tree: str = "immutable base"
+) -> None:
     payload_ids = set()
     for index, payload in enumerate(policy["payloads"]):
         if not isinstance(payload, dict):
@@ -459,7 +483,7 @@ def validate_payloads_and_edges(policy: dict[str, Any], paths: set[str], task_id
             raise PolicyError(f"duplicate payload: {payload_id}")
         payload_ids.add(payload_id)
         if payload["path"] not in paths:
-            raise PolicyError(f"payload {payload_id} path is not tracked at the immutable base")
+            raise PolicyError(f"payload {payload_id} path is not tracked at the {tree}")
         check_string(payload["carrier"], f"payload {payload_id}.carrier")
         check_owner(payload["owner"], f"payload {payload_id}.owner", task_ids)
         if payload["state"] not in {"ready", "blocked"}:
@@ -682,7 +706,7 @@ def apply_derived_rules(
 
 
 def validate_external_entries(
-    policy: dict[str, Any], paths: set[str], task_ids: set[str] | None = None
+    policy: dict[str, Any], paths: set[str], task_ids: set[str] | None = None, tree: str = "base"
 ) -> list[dict[str, Any]]:
     fields = {"selector", "owner", "provenance", "governing_requirement", "blocking_disposition"}
     entries = []
@@ -696,7 +720,7 @@ def validate_external_entries(
             check_string(entry[field], f"external_entries[{index}].{field}")
         check_owner(entry["owner"], f"external_entries[{index}].owner", task_ids)
         if not any(matches(path, entry["selector"]) for path in paths):
-            raise PolicyError(f"external_entries[{index}] selector matches no tracked path at the base")
+            raise PolicyError(f"external_entries[{index}] selector matches no tracked path at the {tree}")
         entries.append(entry)
     prefixes = [entry["selector"]["prefix"] for entry in entries if "prefix" in entry["selector"]]
     for index, prefix in enumerate(prefixes):
@@ -1665,7 +1689,9 @@ def oracle_review_covers(root: Path) -> bool:
         return False
 
 
-def validate_candidate_notices(notices: Any, root: Path, staged: bool) -> list[dict[str, Any]]:
+def validate_candidate_notices(
+    notices: Any, root: Path, staged: bool, pin_partial_blob: bool = True
+) -> list[dict[str, Any]]:
     if not isinstance(notices, list):
         raise PolicyError("candidate notices must be a list")
     validated: list[dict[str, Any]] = []
@@ -1692,7 +1718,8 @@ def validate_candidate_notices(notices: Any, root: Path, staged: bool) -> list[d
             raise PolicyError(f"candidate notice {entry['path']} has an invalid retained byte range")
         if hashlib.sha256(raw[start:end]).hexdigest() != entry["retained_sha256"]:
             raise PolicyError(f"candidate notice {entry['path']} retained-byte digest does not match the head")
-        if hashlib.sha256(raw).hexdigest() != entry["blob_sha256"]:
+        whole_at_head = start == 0 and end == len(raw)
+        if (pin_partial_blob or whole_at_head) and hashlib.sha256(raw).hexdigest() != entry["blob_sha256"]:
             raise PolicyError(f"candidate notice {entry['path']} blob digest does not match the head")
         validated.append(entry)
     return validated
@@ -1753,6 +1780,7 @@ def immutable_external_ownership(
     if head is None:
         raise PolicyError(f"{POLICY_PATH} is missing at the head")
     validate_head_token_evidence(head, root, staged)
+    validate_head_policy_structure(head, root, staged)
     policy = without_retired_token_evidence(policy, head, root, staged)
     if candidate_notices is not None:
         effective_notices = validate_candidate_notices(candidate_notices, root, staged)

@@ -62,7 +62,7 @@ that was never edited, and both actions re-run `oracle-gate`, which then fails
 the head again. Other comment edits and deletions do not run the gate.
 Resolving an oracle review thread starts no workflow run, so after resolving
 threads run `gh workflow run oracle-gate.yml --ref develop -f pr=<number>` (or
-wait for the hourly sweep) and merge only after `oracle-gate` passes on the
+wait for the next sweep, which runs on every push to `develop` and on a schedule) and merge only after `oracle-gate` passes on the
 current head.
 
 To refresh the gate, dispatch it; `make pr-rerun` re-runs CI and does not
@@ -101,21 +101,8 @@ happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
 
 ## Bypassing a required check
 
-The `develop` ruleset has no bypass actors, so a bypass means relaxing the
-ruleset. An agent may do this only after the owner approves the bypass for that
-PR in the current request. Then:
-
-1. Post a PR comment quoting the owner's approval and stating which check is
-   bypassed and why.
-2. Relax the narrowest rule, merge the one PR, and restore the ruleset
-   immediately. Confirm with
-   `gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin`.
-3. Open an issue for the failure the bypass skipped, and link it from the PR.
-
-Do not bypass a check for a problem another open PR already fixes; rebase onto
-the fix instead.
-
-When the failing check is itself broken by the contents of `develop`, so that
-no PR can pass it, follow `docs/agent/emergency-merge.md`. It gives agents
-evidence-and-stop steps only; it does not authorize a ruleset change or a raw
-merge.
+Agents never bypass a required check, relax a ruleset, or merge around the gate.
+`docs/agent/emergency-merge.md` is the owner-only runbook for a gate that is
+broken by the contents of `develop`; it gives agents evidence-and-stop steps
+only. Do not skip a check for a problem another open PR already fixes; rebase
+onto the fix instead.
