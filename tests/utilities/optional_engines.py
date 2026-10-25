@@ -68,9 +68,44 @@ def require_chdb() -> ModuleType:
     return import_chdb()
 
 
+_CHDB_OPEN_HOOK_TARGETS = (("chdb.session", "Session"), ("chdb.state.sqlitelike", "Connection"))
+_chdb_open_count = 0
+_chdb_hooked: set[type] = set()
+
+
+def _real_chdb_module(name: str) -> ModuleType | None:
+    module = sys.modules.get(name)
+    return module if getattr(module, "__file__", None) is not None else None
+
+
+def chdb_loaded() -> bool:
+    return _real_chdb_module("chdb.session") is not None
+
+
+def chdb_open_count() -> int:
+    return _chdb_open_count
+
+
+def install_chdb_open_counter() -> None:
+    for module_name, class_name in _CHDB_OPEN_HOOK_TARGETS:
+        module = _real_chdb_module(module_name)
+        cls = getattr(module, class_name, None)
+        if not isinstance(cls, type) or cls in _chdb_hooked:
+            continue
+        original = cls.__init__
+
+        def counted_init(self, *args, _original=original, **kwargs):
+            global _chdb_open_count
+            _chdb_open_count += 1
+            _original(self, *args, **kwargs)
+
+        cls.__init__ = counted_init
+        _chdb_hooked.add(cls)
+
+
 def chdb_open_connection_error() -> str | None:
-    session_module = sys.modules.get("chdb.session")
-    if getattr(session_module, "__file__", None) is None:
+    session_module = _real_chdb_module("chdb.session")
+    if session_module is None:
         return None
 
     gc.collect()

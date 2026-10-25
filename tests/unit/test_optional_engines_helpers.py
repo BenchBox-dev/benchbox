@@ -391,3 +391,94 @@ def test_open_connection_probe_ignores_a_stand_in_session_module(monkeypatch):
 
     assert optional_engines.chdb_open_connection_error() is None
     assert opened == []
+
+
+def _install_chdb_stand_ins(monkeypatch: pytest.MonkeyPatch, *, live: list[object]):
+    class Session:
+        def __init__(self, path: str) -> None:
+            if live:
+                raise RuntimeError("EmbeddedServer already initialized with path ':memory:'")
+
+        def close(self) -> None:
+            pass
+
+    class Connection:
+        def __init__(self, connection_string: str) -> None:
+            live.append(self)
+
+    session_module = types.ModuleType("chdb.session")
+    session_module.__file__ = "chdb/session/__init__.py"
+    session_module.Session = Session
+    sqlitelike_module = types.ModuleType("chdb.state.sqlitelike")
+    sqlitelike_module.__file__ = "chdb/state/sqlitelike.py"
+    sqlitelike_module.Connection = Connection
+    monkeypatch.setitem(sys.modules, "chdb.session", session_module)
+    monkeypatch.setitem(sys.modules, "chdb.state.sqlitelike", sqlitelike_module)
+    return Session, Connection
+
+
+def _run_module_guard(monkeypatch: pytest.MonkeyPatch, during_module=None) -> int:
+    import tests.conftest as conftest_module
+
+    probes: list[str | None] = []
+    real_probe = optional_engines.chdb_open_connection_error
+
+    def spy() -> str | None:
+        probes.append(None)
+        return real_probe()
+
+    monkeypatch.setattr(conftest_module, "chdb_open_connection_error", spy)
+    guard = conftest_module._chdb_connections_closed_after_module.__wrapped__()
+    next(guard)
+    if during_module is not None:
+        during_module()
+    try:
+        next(guard)
+    except StopIteration:
+        pass
+    return len(probes)
+
+
+def test_module_guard_does_not_probe_a_module_when_chdb_was_never_loaded(monkeypatch):
+    monkeypatch.delitem(sys.modules, "chdb.session", raising=False)
+    monkeypatch.delitem(sys.modules, "chdb.state.sqlitelike", raising=False)
+
+    assert _run_module_guard(monkeypatch) == 0
+
+
+def test_module_guard_does_not_probe_a_module_that_never_opened_a_chdb_connection(monkeypatch):
+    _install_chdb_stand_ins(monkeypatch, live=[])
+
+    assert _run_module_guard(monkeypatch) == 0
+
+
+def test_module_guard_probes_a_module_that_imported_chdb(monkeypatch):
+    monkeypatch.delitem(sys.modules, "chdb.session", raising=False)
+    monkeypatch.delitem(sys.modules, "chdb.state.sqlitelike", raising=False)
+
+    assert _run_module_guard(monkeypatch, during_module=lambda: _install_chdb_stand_ins(monkeypatch, live=[])) == 1
+
+
+def test_module_guard_probes_a_module_that_opened_a_connection_and_closed_it(monkeypatch):
+    live: list[object] = []
+    _, connection_class = _install_chdb_stand_ins(monkeypatch, live=live)
+
+    def open_and_close() -> None:
+        live.append(connection_class(":memory:"))
+        live.clear()
+
+    assert _run_module_guard(monkeypatch, during_module=open_and_close) == 1
+
+
+def test_module_guard_probes_a_module_that_opened_a_session(monkeypatch):
+    session_class, _ = _install_chdb_stand_ins(monkeypatch, live=[])
+
+    assert _run_module_guard(monkeypatch, during_module=lambda: session_class(path="x")) == 1
+
+
+def test_module_guard_fails_a_module_that_leaves_a_chdb_connection_open(monkeypatch):
+    live: list[object] = []
+    _, connection_class = _install_chdb_stand_ins(monkeypatch, live=live)
+
+    with pytest.raises(pytest.fail.Exception, match="left a chDB connection open.*EmbeddedServer already initialized"):
+        _run_module_guard(monkeypatch, during_module=lambda: connection_class(":memory:"))

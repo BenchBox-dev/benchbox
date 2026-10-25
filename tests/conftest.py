@@ -52,7 +52,12 @@ import pytest
 
 pytest.register_assert_rewrite("tests.utilities.leak_detector")
 from tests.utilities.leak_detector import restore_global
-from tests.utilities.optional_engines import chdb_open_connection_error
+from tests.utilities.optional_engines import (
+    chdb_loaded,
+    chdb_open_connection_error,
+    chdb_open_count,
+    install_chdb_open_counter,
+)
 from tests.utilities.session_isolation import active as isolated_session_active
 
 pytest_plugins = [
@@ -377,7 +382,13 @@ def _restore_logger(logger: logging.Logger, state: tuple[int, list[logging.Handl
 
 @pytest.fixture(autouse=True, scope="module")
 def _chdb_connections_closed_after_module():
+    loaded_before = chdb_loaded()
+    install_chdb_open_counter()
+    opens_before = chdb_open_count()
     yield
+    install_chdb_open_counter()
+    if not chdb_loaded() or (loaded_before and chdb_open_count() == opens_before):
+        return
     reason = chdb_open_connection_error()
     if reason is not None:
         pytest.fail(
