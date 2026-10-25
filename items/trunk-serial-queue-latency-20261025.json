@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Measured baseline from make ci-usage-report: Trunk queue time (created to first job started) median and p90 per run over 14 days, and the number of times more than 3 runs were pending",
+    "A proposal that keeps an exact-commit Trunk push run for every develop commit, with the expected queue reduction and risks to release admission and culprit naming",
+    "Owner decision recorded before any workflow change; if approved, the change lands and the 14-day queue p90 falls versus the baseline"
+  ],
+  "context": "Source: observed 2026-10-25 while waiting for the Trunk run on the changelog cutover merge commit (run 40174662295, created 07:56 UTC, started after about an hour). Owner asked to track it the same day.",
+  "description": "trunk.yml runs one at a time on develop (`concurrency` group per ref with `queue: max` and no cancelling), so during merge bursts results queue up: on 2026-10-25 six Trunk runs were pending at once and the run for the changelog cutover merge waited about an hour before starting. Per-commit runs are required: release admission needs the exact-commit Trunk push run and its dist-artifact, and the arm gate names culprits from Trunk runs. Find safe ways to cut the wait while keeping every commit tested, for example letting independent Trunk jobs of different commits run concurrently where they share no state, splitting the serialized part to only what needs ordering, or faster runners for Trunk only.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T12:54:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cd25f2856b1044999de1643fcc06a0df",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
