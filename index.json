@@ -24368,7 +24368,7 @@
       "needs": [],
       "priority": "medium-high",
       "status": "open",
-      "title": "SQLite ClickBench SF1 returns different row counts from all other engines on about 25 of 43 queries"
+      "title": "SQLite ClickBench SF1 returns different row counts from all other engines on 26 of 43 queries (23 wrong counts, 3 failures)"
     },
     "sqlite-database-name-ignored-20261016": {
       "claim": null,
