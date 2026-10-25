@@ -597,11 +597,10 @@ policy or the attempt jobs must also:
 ## Cut-over
 
 The cut-over is done: `.github/oracle-reviewers.yml` sets `mode: enforce` and
-`.github/workflows/oracle-review.yml` passes `--signal oracle`, the only
-signal the checker accepts. The checker
+`.github/workflows/oracle-gate.yml` runs the checker with `--signal oracle`,
+the only signal the checker accepts. The checker
 (`_project/scripts/oracle_review_check.py`), whose decision the required
-`oracle-gate` check and the non-required `oracle-review` check both report,
-requires, from the `benchbox-oracle` App's Bot account:
+`oracle-gate` check reports, requires, from the `benchbox-oracle` App's Bot account:
 
 - a review of the head, not pending or dismissed, submitted after any retarget,
   whose latest one opens with `### oracle-verdict: success for` (or, before
@@ -616,24 +615,23 @@ oracle signal needs `findings_delivery: review`, under which every run that
 reaches a result, including a pending one, posts a review, so the latest
 review is the latest result.
 
-Each `oracle-review` run is its own check suite on the head. After the
-`post` job of `oracle-verdict` posts its review, it re-runs the failed
-`pull_request` runs for the head, at the same moment the review starts a
-`pull_request_review` run. The workflow has no concurrency group, because
-under `cancel-in-progress` one of those runs cancelled the other. Instead, a
-run for a pull request event checks, before and after the checker, that the
-head it was triggered for is still the pull request's head; a run for a
-superseded head fails rather than report on a head it was not created for.
-`oracle-review` is not a required check, so a stale failed run does not block
-a merge.
+The `oracle-review` workflow is a review-event notification, not a check. It
+triggers only on `pull_request_review` submitted, edited and dismissed, holds no
+token permissions, and runs one `review-event` job with a single no-op step: no
+checkout, no secrets and no API calls. It produces no check run named
+`oracle-review`. The `edited` type is included because the gate reads the
+current review body, so an edited oracle review can change the decision.
+
+Because `pull_request_review` runs the pull request's own workflow file, the
+notification is controlled by the pull request and can be deleted or altered by
+it. The trusted fallbacks are the hourly `oracle-gate` sweep and, once
+`oracle-verdict-dispatch-gate-after-review-20261025` lands, the verdict's
+explicit dispatch of the gate.
 
 GitHub Actions has no event for resolving a review thread, so resolving the
 oracle's last thread starts no run of either workflow. After resolving the
 threads, run `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`,
-or wait for the hourly sweep; `make oracle-review-recover PR=<number>` (add
-`REPO=<owner/repo>` outside the default repository) refreshes the
-non-required `oracle-review` check the same way. The checker's decision is
-unchanged: it passes only with a success verdict on the head and no
+or wait for the hourly sweep. The checker's decision is unchanged: it passes only with a success verdict on the head and no
 unresolved oracle thread.
 
 The stand-in attestation must be posted after the oracle's latest decisive
@@ -665,10 +663,10 @@ App reinstalled.
 
 ## Required gate from trusted code
 
-`oracle-review` runs its workflow file from the pull request, so a pull request
-that edits `.github/workflows/` can change the check that judges it, and the
-commit status it reads can be set by any pull request sharing the head commit.
-That is why `oracle-gate`, not `oracle-review`, is the required check:
+A check run from the pull request's workflow file lets a pull request that
+edits `.github/workflows/` change the check that judges it, and the commit
+status it reads can be set by any pull request sharing the head commit.
+That is why `oracle-gate`, not the pull request's workflow, is the required check:
 `_project/scripts/oracle_gate.py`
 imports the decision and its helpers from `_project/scripts/oracle_review_check.py`
 instead of reimplementing them, and posts `oracle-gate` for the pull request
@@ -723,5 +721,5 @@ one disagreement was an `oracle-review` run that went stale while
 `oracle-gate` correctly passed, and two heads were replaced before the gate ran.
 On 2026-10-24 `oracle-review` stopped being required
 (`_project/decisions/oracle-review-check-retired-2026-10-24.md`). Its
-workflow still runs, because its completion after a review event is how
+workflow now only notifies: its completion after a review event is how
 `oracle-gate` re-evaluates without a trusted trigger of its own.

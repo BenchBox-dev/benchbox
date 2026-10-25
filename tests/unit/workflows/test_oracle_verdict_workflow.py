@@ -63,6 +63,7 @@ def test_existing_gate_is_untouched() -> None:
     legacy = yaml.safe_load(LEGACY.read_text(encoding="utf-8"))
     assert legacy["name"] == "oracle-review"
     assert "context: oracle-review\n" not in WORKFLOW.read_text(encoding="utf-8")
+    assert list(legacy["jobs"]) == ["review-event"]
 
 
 def test_workflow_permissions_are_empty_and_jobs_are_minimal() -> None:
@@ -341,17 +342,17 @@ def test_the_post_job_rechecks_the_review_list_before_posting() -> None:
         assert "steps.guard.outputs.skip != 'true'" in step["if"], name
 
 
-def test_post_job_reruns_the_failed_synchronize_suite_for_the_head() -> None:
-    post = _jobs()["post"]
-    step = next(step for step in post["steps"] if step["name"] == "Rerun the failed synchronize suite for this head")
-    assert step["env"]["GH_TOKEN"] == "${{ github.token }}"
-    assert "set -euo pipefail" in step["run"]
+def test_no_step_lists_or_reruns_oracle_review_runs() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "oracle-review.yml" not in text
+    assert "gh run list" not in text
+    assert "gh run rerun" not in text
+    for job in _jobs().values():
+        assert "Rerun the failed synchronize suite for this head" not in [step.get("name") for step in job["steps"]]
 
 
-def test_post_job_rerun_failures_are_warned_and_skipped() -> None:
-    post = _jobs()["post"]
-    step = next(step for step in post["steps"] if step["name"] == "Rerun the failed synchronize suite for this head")
-    assert step["run"].count("gh run rerun") == 1
+def test_post_job_has_no_actions_write_permission() -> None:
+    assert _jobs()["post"]["permissions"] == {"contents": "read"}
 
 
 def test_post_waits_for_every_slot() -> None:

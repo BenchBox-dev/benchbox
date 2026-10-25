@@ -49,11 +49,12 @@ merged head had both contexts passing, as both were required.
 
 ## What stays
 
-- `.github/workflows/oracle-review.yml` keeps running and reporting a
-  non-required `oracle-review` check. Its completion after a review is
-  submitted or dismissed is how `oracle-gate` learns of review events, which
-  have no trusted trigger of their own. Retiring the workflow needs a
-  replacement for that trigger.
+- `.github/workflows/oracle-review.yml` keeps its path and name but reduces to
+  a notification: it triggers on `pull_request_review` submitted, edited and
+  dismissed, has no token permissions, and runs one no-op `review-event` job.
+  It reports no `oracle-review` check. Its completion is how `oracle-gate`
+  learns of review events, which have no trusted trigger of their own.
+  Retiring the workflow needs a replacement for that trigger.
 - `make oracle-review-recover` stays: `scripts/pr_rerun.py` reuses its module.
 
 ## Owner step
