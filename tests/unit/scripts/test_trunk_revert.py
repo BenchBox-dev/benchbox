@@ -387,12 +387,12 @@ def test_gate_exempts_revert_branches() -> None:
     assert _gate(_runs(("completed", "failure", timedelta(hours=5))), branch="fix/revert-12") is None
 
 
-def test_main_gate_exits_nonzero_on_refusal(
+def test_main_gate_opens_a_draft_instead_of_refusing(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setattr(trunk_revert, "trunk_gate", lambda branch, run=None, repo="": "develop is red")
-    assert trunk_revert.main(["gate", "--branch", "fix/x"]) == 1
-    assert "Refusing to open PR: develop is red" in capsys.readouterr().err
+    assert trunk_revert.main(["gate", "--branch", "fix/x"]) == 0
+    assert "Opening as a draft: develop is red" in capsys.readouterr().err
 
 
 def test_main_rejects_a_malformed_repo(capsys: pytest.CaptureFixture[str]) -> None:
@@ -730,3 +730,211 @@ def test_gate_names_the_first_red_commit_of_the_streak() -> None:
     assert message is not None
     assert "PR #3200" in message
     assert "make trunk-revert PR=3200" in message
+
+
+REPLAY = json.loads((ROOT / "tests/fixtures/trunk_red_20261024.json").read_text(encoding="utf-8"))
+FIRST_RED_RUN = 40071232825
+LATER_RED_RUN = 40071524792
+FIX_HEAD = REPLAY["pr"]["headRefOid"]
+OLDER_HEAD = "09aab4e9cab4cc83101db0677fa755272ea7a58a"
+FIRST_RED_COMPLETED = datetime(2026, 10, 24, 7, 2, 1, tzinfo=UTC)
+
+
+def _replayed_runs() -> list[dict]:
+    runs = []
+    for item in REPLAY["runs"]:
+        created = datetime.fromisoformat(item["createdAt"].replace("Z", "+00:00"))
+        runs.append(
+            {
+                **item,
+                "status": "completed",
+                "updatedAt": (created + timedelta(minutes=20)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "url": f"https://github.com/BenchBox-dev/BenchBox/actions/runs/{item['databaseId']}",
+            }
+        )
+    return runs
+
+
+def _authorization(
+    head: str = FIX_HEAD,
+    run_id: int = FIRST_RED_RUN,
+    *,
+    body: str | None = None,
+    login: str = "joeharris76",
+    user_type: str = "User",
+    created_at: datetime = FIRST_RED_COMPLETED + timedelta(minutes=30),
+    edited: bool = False,
+) -> dict:
+    created = created_at.strftime("%Y-%m-%dT%H:%M:%SZ")
+    return {
+        "login": login,
+        "user_type": user_type,
+        "body": body if body is not None else f"Fix-forward authorized: {head} for trunk run {run_id}",
+        "created_at": created,
+        "updated_at": (created_at + timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ") if edited else created,
+    }
+
+
+class FixForwardRun(ArmRun):
+    def __init__(
+        self, comments: list[dict], *, head: str = FIX_HEAD, number: int = 3385, indent: int | None = None
+    ) -> None:
+        super().__init__(
+            _replayed_runs(),
+            branch=REPLAY["pr"]["headRefName"],
+            pulls_by_sha={
+                "24bfcf8a0fb048c9ad554ef2e9e99066f7027167": _merged_pulls(3380),
+                "c962e3e8733e9107988ba05145d09a27717a8fda": _merged_pulls(3383),
+            },
+        )
+        self.comments = comments
+        self.head = head
+        self.number = number
+        self.indent = indent
+
+    def __call__(self, cmd: list[str]) -> tuple[int, str]:
+        if cmd[:3] == ["gh", "pr", "view"]:
+            self.calls.append(cmd)
+            payload = {
+                "headRefName": self.branch,
+                "commits": self.commits,
+                "number": self.number,
+                "headRefOid": self.head,
+            }
+            return 0, json.dumps(payload)
+        if cmd[:3] == ["gh", "api", "--paginate"]:
+            self.calls.append(cmd)
+            assert cmd[3] == f"repos/{trunk_revert.REPOSITORY}/issues/{self.number}/comments"
+            return 0, "\n".join(json.dumps(comment, indent=self.indent) for comment in self.comments)
+        return super().__call__(cmd)
+
+
+def test_replay_of_the_2026_10_24_red_streak_refuses_the_fix_forward_pr_without_authorization() -> None:
+    message = trunk_revert.arm_gate(str(REPLAY["pr"]["number"]), run=FixForwardRun([]))
+    assert message is not None
+    assert "PR #3380" in message
+    assert f"for trunk run {FIRST_RED_RUN}" in message
+
+
+def test_replay_of_the_2026_10_24_red_streak_admits_the_authorized_fix_forward_pr() -> None:
+    run = FixForwardRun([_authorization()])
+    assert trunk_revert.arm_gate(str(REPLAY["pr"]["number"]), run=run) is None
+
+
+def test_authorization_for_the_current_head_and_first_red_run_arms() -> None:
+    assert trunk_revert.arm_gate("3385", run=FixForwardRun([_authorization()])) is None
+
+
+@pytest.mark.parametrize("indent", [None, 2])
+def test_authorization_is_read_from_compact_or_indented_comment_listings(indent: int | None) -> None:
+    run = FixForwardRun([_authorization(body="unrelated"), _authorization()], indent=indent)
+    assert trunk_revert.arm_gate("3385", run=run) is None
+
+
+def test_arm_gate_fails_closed_when_the_comment_listing_is_unreadable() -> None:
+    class Garbled(FixForwardRun):
+        def __call__(self, cmd: list[str]) -> tuple[int, str]:
+            if cmd[:3] == ["gh", "api", "--paginate"]:
+                return 0, "not json"
+            return super().__call__(cmd)
+
+    with pytest.raises(trunk_revert.TrunkError):
+        trunk_revert.arm_gate("3385", run=Garbled([]))
+
+
+def test_authorization_is_found_among_unrelated_comments() -> None:
+    comments = [{**_authorization(body="Owner instruction: fix forward"), "login": "someone"}, _authorization()]
+    assert trunk_revert.arm_gate("3385", run=FixForwardRun(comments)) is None
+
+
+@pytest.mark.parametrize(
+    "comment",
+    [
+        pytest.param(_authorization(head=OLDER_HEAD), id="older-head"),
+        pytest.param(_authorization(run_id=LATER_RED_RUN), id="later-failing-run"),
+        pytest.param(_authorization(run_id=40069594552), id="green-run"),
+        pytest.param(_authorization(edited=True), id="edited"),
+        pytest.param(_authorization(login="someone-else"), id="non-allowlisted-login"),
+        pytest.param(_authorization(user_type="Bot"), id="bot"),
+        pytest.param(_authorization(created_at=FIRST_RED_COMPLETED - timedelta(minutes=1)), id="before-run-completed"),
+        pytest.param(_authorization(created_at=FIRST_RED_COMPLETED), id="at-run-completion"),
+        pytest.param(
+            _authorization(body=f"Fix-forward authorized: {FIX_HEAD} for trunk run {FIRST_RED_RUN} please"), id="suffix"
+        ),
+        pytest.param(
+            _authorization(body=f"Looks good.\nFix-forward authorized: {FIX_HEAD} for trunk run {FIRST_RED_RUN}"),
+            id="prefix",
+        ),
+        pytest.param(
+            _authorization(body=f"Fix-forward authorized: {FIX_HEAD[:9]} for trunk run {FIRST_RED_RUN}"), id="short-sha"
+        ),
+        pytest.param(
+            _authorization(body=f"fix-forward authorized: {FIX_HEAD} for trunk run {FIRST_RED_RUN}"), id="wrong-case"
+        ),
+    ],
+)
+def test_arm_gate_refuses_an_authorization_that_does_not_qualify(comment: dict) -> None:
+    assert trunk_revert.arm_gate("3385", run=FixForwardRun([comment])) is not None
+
+
+def test_a_fix_forward_looking_branch_without_authorization_is_refused() -> None:
+    run = FixForwardRun([])
+    assert run.branch.startswith("fix/")
+    assert trunk_revert.arm_gate("3385", run=run) is not None
+
+
+def test_a_push_after_authorization_voids_it() -> None:
+    run = FixForwardRun([_authorization()], head="f" * 40)
+    assert trunk_revert.arm_gate("3385", run=run) is not None
+
+
+def test_arm_gate_fails_closed_when_the_runs_are_unreadable_despite_an_authorization() -> None:
+    run = FixForwardRun([_authorization()])
+    run.runs_code = 1
+    with pytest.raises(trunk_revert.TrunkError):
+        trunk_revert.arm_gate("3385", run=run)
+
+
+def test_main_arm_gate_admits_an_authorized_pr_and_refuses_an_unauthorized_one(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert trunk_revert.main(["arm-gate", "--pr", "3385"], run=FixForwardRun([_authorization()])) == 0
+    assert trunk_revert.main(["arm-gate", "--pr", "3385"], run=FixForwardRun([])) == 1
+    assert "Refusing to arm 3385" in capsys.readouterr().err
+
+
+def test_main_gate_opens_a_draft_while_develop_has_been_red_over_thirty_minutes(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run = FixForwardRun([])
+    assert trunk_revert.main(["gate", "--branch", "fix/comment-policy-notice-paths"], run=run) == 0
+    captured = capsys.readouterr()
+    assert captured.out.strip() == "draft"
+    assert "Opening as a draft" in captured.err
+    assert trunk_revert.FIX_FORWARD_FORMAT in captured.err
+
+
+def test_main_gate_opens_a_draft_that_arming_still_refuses_until_authorized() -> None:
+    run = FixForwardRun([])
+    assert trunk_revert.main(["gate", "--branch", "fix/comment-policy-notice-paths"], run=run) == 0
+    assert trunk_revert.main(["arm-gate", "--pr", "3385"], run=run) == 1
+    run.comments.append(_authorization())
+    assert trunk_revert.main(["arm-gate", "--pr", "3385"], run=run) == 0
+
+
+def test_main_gate_opens_ready_when_develop_has_been_red_under_thirty_minutes(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run = FixForwardRun([])
+    just_now = datetime.now(UTC) - timedelta(minutes=5)
+    for item in run.runs:
+        item["updatedAt"] = just_now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert trunk_revert.main(["gate", "--branch", "fix/comment-policy-notice-paths"], run=run) == 0
+    assert capsys.readouterr().out.strip() == "ready"
+
+
+def test_main_gate_opens_a_revert_branch_ready_even_when_develop_has_long_been_red(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert trunk_revert.main(["gate", "--branch", "fix/revert-3380"], run=FixForwardRun([])) == 0
+    assert capsys.readouterr().out.strip() == "ready"

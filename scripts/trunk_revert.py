@@ -10,11 +10,17 @@ import sys
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import NamedTuple
 
 REPOSITORY = "BenchBox-dev/BenchBox"
 BASE_BRANCH = "develop"
 TRUNK_WORKFLOW = "trunk.yml"
 REVERT_PREFIX = "fix/revert-"
+FIX_FORWARD_AUTHORIZERS = frozenset({"joeharris76"})
+_FIX_FORWARD_MARKER = re.compile(r"Fix-forward authorized: ([0-9a-f]{40}) for trunk run ([0-9]+)")
+FIX_FORWARD_FORMAT = "Fix-forward authorized: <40-hex head SHA> for trunk run <run databaseId>"
+DRAFT_DECISION = "draft"
+READY_DECISION = "ready"
 GRACE = timedelta(minutes=30)
 RED_CONCLUSIONS = frozenset({"failure", "timed_out", "startup_failure"})
 RUN_FIELDS = "conclusion,status,createdAt,updatedAt,databaseId,url,headSha"
@@ -158,21 +164,74 @@ def is_reverted(run: Runner, repo: str, sha: str) -> bool:
         raise TrunkError(f"unreadable {BASE_BRANCH} commit list: {exc}") from exc
 
 
-def pr_head(ref: str, run: Runner, repo: str) -> tuple[str, list[str]]:
-    view = _check(run, ["gh", "pr", "view", ref, "--repo", repo, "--json", "headRefName,commits"], f"reading PR {ref}")
+class PrView(NamedTuple):
+    branch: str
+    messages: list[str]
+    number: int | None
+    head: str | None
+
+
+def pr_head(ref: str, run: Runner, repo: str) -> PrView:
+    fields = "headRefName,commits,number,headRefOid"
+    view = _check(run, ["gh", "pr", "view", ref, "--repo", repo, "--json", fields], f"reading PR {ref}")
     try:
         data = json.loads(view)
         branch = data["headRefName"]
         messages = [f"{item['messageHeadline']}\n{item['messageBody']}" for item in data["commits"]]
-    except (ValueError, KeyError, TypeError) as exc:
+        number, head = data.get("number"), data.get("headRefOid")
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
         raise TrunkError(f"unreadable PR {ref}: {exc}") from exc
     if not isinstance(branch, str) or not branch:
         raise TrunkError(f"unreadable PR {ref} head branch")
-    return branch, messages
+    return PrView(
+        branch, messages, number if isinstance(number, int) else None, head if isinstance(head, str) else None
+    )
+
+
+def issue_comments(run: Runner, repo: str, number: int) -> list[dict]:
+    projection = (
+        "{login: .user.login, user_type: .user.type, body: .body, created_at: .created_at, updated_at: .updated_at}"
+    )
+    out = _check(
+        run,
+        ["gh", "api", "--paginate", f"repos/{repo}/issues/{number}/comments", "--jq", f".[] | {projection}"],
+        f"reading PR {number} comments",
+    )
+    decoder = json.JSONDecoder()
+    comments: list[dict] = []
+    position = 0
+    try:
+        while True:
+            while position < len(out) and out[position].isspace():
+                position += 1
+            if position >= len(out):
+                return comments
+            comment, position = decoder.raw_decode(out, position)
+            comments.append(comment)
+    except ValueError as exc:
+        raise TrunkError(f"unreadable PR {number} comments: {exc}") from exc
+
+
+def fix_forward_authorized(comments: list[dict], head: str, failed: dict) -> bool:
+    completed = _parse_time(failed["updatedAt"])
+    run_id = str(failed.get("databaseId"))
+    for comment in comments:
+        match = _FIX_FORWARD_MARKER.fullmatch((comment.get("body") or "").strip())
+        if (
+            match
+            and match.group(1) == head
+            and match.group(2) == run_id
+            and comment.get("login") in FIX_FORWARD_AUTHORIZERS
+            and comment.get("user_type") == "User"
+            and comment.get("updated_at") in (None, comment.get("created_at"))
+            and _parse_time(comment["created_at"]) > completed
+        ):
+            return True
+    return False
 
 
 def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
-    branch, messages = pr_head(ref, run, repo)
+    pr = pr_head(ref, run, repo)
     try:
         failed = red_streak_start(run, repo)
     except NoTrunkRunsError:
@@ -182,13 +241,25 @@ def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | 
     sha = failed.get("headSha") or ""
     if sha and is_reverted(run, repo, sha):
         return None
-    if sha and branch.startswith(REVERT_PREFIX) and any(f"This reverts commit {sha}" in text for text in messages):
+    if (
+        sha
+        and pr.branch.startswith(REVERT_PREFIX)
+        and any(f"This reverts commit {sha}" in text for text in pr.messages)
+    ):
+        return None
+    if (
+        pr.number is not None
+        and pr.head
+        and fix_forward_authorized(issue_comments(run, repo, pr.number), pr.head, failed)
+    ):
         return None
     named, revert_hint = describe_culprit(run, repo, failed)
     return (
         f"{BASE_BRANCH} is red: the first failing {TRUNK_WORKFLOW} run since the last green one failed at {named} ({failed['url']}). "
         f"Merge a revert ({revert_hint}) or get {BASE_BRANCH} green before arming other PRs; "
-        f"only a {REVERT_PREFIX}* branch whose commits carry `This reverts commit {sha[:9] or '<sha>'}...` is exempt."
+        f"only a {REVERT_PREFIX}* branch whose commits carry `This reverts commit {sha[:9] or '<sha>'}...` is exempt, "
+        "or a PR whose current head carries an unedited owner comment "
+        f"`Fix-forward authorized: <head SHA> for trunk run {failed.get('databaseId')}`."
     )
 
 
@@ -372,10 +443,16 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
             print(f"Refusing to arm {ref}: {refusal}", file=sys.stderr)
             return 1
         return 0
-    refusal = trunk_gate(args.branch, repo=args.repo)
+    refusal = trunk_gate(args.branch, run=run, repo=args.repo)
     if refusal:
-        print(f"Refusing to open PR: {refusal}", file=sys.stderr)
-        return 1
+        print(
+            f"Opening as a draft: {refusal} Arming stays refused until the owner authorizes this head with a "
+            f"`{FIX_FORWARD_FORMAT}` comment, or {BASE_BRANCH} is green or the culprit is reverted.",
+            file=sys.stderr,
+        )
+        print(DRAFT_DECISION)
+        return 0
+    print(READY_DECISION)
     return 0
 
 

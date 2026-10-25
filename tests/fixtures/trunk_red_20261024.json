@@ -1,0 +1,27 @@
+{
+  "runs": [
+    {
+      "conclusion": "failure",
+      "createdAt": "2026-10-24T06:46:24Z",
+      "databaseId": 40071524792,
+      "headSha": "c962e3e8733e9107988ba05145d09a27717a8fda"
+    },
+    {
+      "conclusion": "failure",
+      "createdAt": "2026-10-24T06:42:01Z",
+      "databaseId": 40071232825,
+      "headSha": "24bfcf8a0fb048c9ad554ef2e9e99066f7027167"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-24T06:17:08Z",
+      "databaseId": 40069594552,
+      "headSha": "39a942435ae7fe9fc78afabb3a0182b0bbf4c317"
+    }
+  ],
+  "pr": {
+    "number": 3385,
+    "headRefName": "fix/comment-policy-notice-paths",
+    "headRefOid": "5e2fdde9d994b98a694d2891b41ef0006b8f058f"
+  }
+}

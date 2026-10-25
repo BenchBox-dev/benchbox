@@ -271,3 +271,20 @@ def test_malformed_matching_pr_fails_clearly() -> None:
 
     with pytest.raises(pr_open_rest.PrOpenError, match="missing number or html_url"):
         pr_open_rest.publish(REPO, "BenchBox-dev", "feat/w", "feat/w", None, None, gh)
+
+
+def test_draft_create_sends_the_draft_field_and_default_create_does_not() -> None:
+    drafted = FakeGh([], _log(("fix: widget", "")))
+    pr_open_rest.publish(REPO, "BenchBox-dev", "fix/widget", "fix/widget", None, None, drafted, draft=True)
+    assert _fields(drafted.api("POST")[0])["draft"] == "true"
+
+    ready = FakeGh([], _log(("fix: widget", "")))
+    pr_open_rest.publish(REPO, "BenchBox-dev", "fix/widget", "fix/widget", None, None, ready)
+    assert "draft" not in _fields(ready.api("POST")[0])
+
+
+def test_draft_reuse_leaves_an_existing_pr_untouched() -> None:
+    gh = FakeGh([_pull("BenchBox-dev", "fix/widget", 42)])
+    pr = pr_open_rest.publish(REPO, "BenchBox-dev", "fix/widget", "fix/widget", None, None, gh, draft=True)
+    assert pr.status == "reused"
+    assert gh.api("POST") == [] and gh.api("PATCH") == []

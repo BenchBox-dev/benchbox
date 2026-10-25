@@ -52,11 +52,12 @@ Check exact-commit workflow evidence before blaming a PR or admitting a release.
 A red `trunk.yml` run names its culprit and stops the repository's arming
 commands. `scripts/trunk_revert.py arm-gate` runs first in `make pr-arm`,
 `make pr-arm-remote`, `make pr-landing-remote-ready`, and `make pr-landing-ready`
-with `ARM=1`, which is what `make pr-ready` and `make pr-arm-auto-merge` reach. It looks at the newest
-completed `trunk.yml` run on `develop`, ignoring runs still in progress and
-cancelled runs. If that run failed, `timed_out` or `startup_failure`, arming
-is refused with the run URL and the culprit: the PR associated with the run's
-head commit through the GitHub commits API, or the bare commit when no merged
+with `ARM=1`, which is what `make pr-ready` and `make pr-arm-auto-merge` reach. It walks the
+completed `trunk.yml` runs on `develop` back to the last success, ignoring runs still in
+progress and cancelled runs. If the newest completed run failed, `timed_out` or
+`startup_failure`, arming is refused with the run URL and the culprit: the first red
+run of that streak, not the newest one. The culprit is the PR associated with that
+run's head commit through the GitHub commits API, or the bare commit when no merged
 PR is associated. The message gives the `make trunk-revert PR=<n>` command.
 
 The refusal lifts when either:
@@ -68,7 +69,19 @@ The refusal lifts when either:
 The revert PR itself is exempt: a `fix/revert-*` branch can be armed only if
 its own commits carry `This reverts commit <culprit sha>`, so the branch name
 alone buys nothing. Unlike `make pr-open`, which waits 30 minutes before
-refusing new PRs, arming is refused as soon as the red run completes.
+opening new PRs as drafts, arming is refused as soon as the red run completes.
+
+A fix-forward PR is the other way through. While `develop` has been red for more than
+30 minutes, `make pr-open` opens a non-revert branch as a draft instead of refusing
+it, and says that arming needs authorization. The arm gate admits that PR once the
+owner's GitHub account has posted an unedited comment whose whole body is
+`Fix-forward authorized: <40-hex head SHA> for trunk run <run databaseId>`, created
+after that run completed, with the PR's current head and the first red run of the
+streak (the culprit above). A new push, or a streak that starts from a different run,
+voids it. The authorization lifts only the red-trunk refusal: required checks,
+`oracle-gate`, review-thread resolution and owner holds still apply, and a draft
+must still be marked ready before it can be armed. `docs/agent/merge-authority.md`
+says when an agent may post it.
 
 Bound:
 
@@ -86,13 +99,16 @@ Bound:
   open.
 - **A flaky red run names an innocent PR.** The remedy is to rerun trunk to
   green; a revert is not required.
+- **The authorization is audit-enforced.** Every agent acts through the owner's
+  account, so no API signal separates the owner's comment from an agent's. The gate
+  binds the comment to the head and the run, never to who typed it.
 - **Delivery.** A push that GitHub never delivers produces no run, so the gate
   cannot see a red tree it was never told about.
 
 Run `make trunk-status` to read the same decision on demand: it prints the culprit and
 the revert command and exits non-zero while `develop` is red with the culprit not
 yet reverted. `make pr-open` names the same culprit when its 30-minute grace has
-lapsed.
+lapsed and it opens the PR as a draft.
 
 ## Diagnostic
 
