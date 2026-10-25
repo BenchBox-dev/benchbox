@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import csv
 import gzip
 import hashlib
 import inspect
@@ -581,7 +582,7 @@ class CompressionHandler(ABC):
 class GzipHandler(CompressionHandler):
     @contextmanager
     def open(self, file_path: Path) -> Iterator[Any]:
-        with gzip.open(file_path, "rt") as f:
+        with gzip.open(file_path, "rt", newline="") as f:
             yield f
 
 
@@ -627,7 +628,7 @@ class ZstdHandler(CompressionHandler):
 class NoCompressionHandler(CompressionHandler):
     @contextmanager
     def open(self, file_path: Path) -> Iterator[Any]:
-        with open(file_path, encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8", newline="") as f:
             yield f
 
 
@@ -706,18 +707,13 @@ class RowBatchProcessor:
         column_count: int,
         null_columns: Sequence[bool] | None = None,
         null_token: str = "",
+        quote: str | None = None,
     ) -> Iterator[tuple[list[tuple], int]]:
         batch_data = []
         row_count = 0
         null_indexes = [i for i, flag in enumerate(null_columns) if flag] if null_columns else []
 
-        for line in file_handle:
-            line = line.strip()
-            if not line:
-                continue
-
-            fields: list[Any] = line.split(delimiter)
-
+        for fields in self._iter_records(file_handle, delimiter, quote):
             while len(fields) < column_count:
                 fields.append("")
 
@@ -736,6 +732,18 @@ class RowBatchProcessor:
 
         if batch_data:
             yield (batch_data, row_count)
+
+    @staticmethod
+    def _iter_records(file_handle: Any, delimiter: str, quote: str | None) -> Iterator[list[Any]]:
+        if quote:
+            for record in csv.reader(file_handle, delimiter=delimiter, quotechar=quote, doublequote=True):
+                if record:
+                    yield record
+            return
+        for line in file_handle:
+            line = line.strip()
+            if line:
+                yield line.split(delimiter)
 
 
 class FileFormatHandler(ABC):
@@ -762,9 +770,10 @@ class FileFormatHandler(ABC):
 
 
 class DelimitedFileHandler(FileFormatHandler):
-    def __init__(self, delimiter: str, null_marker: str | None = None):
+    def __init__(self, delimiter: str, null_marker: str | None = None, quote: str | None = None):
         self.delimiter_char = delimiter
         self.null_marker = null_marker
+        self.quote = quote
 
     def get_delimiter(self) -> str:
         return self.delimiter_char
@@ -799,6 +808,7 @@ class DelimitedFileHandler(FileFormatHandler):
                 column_count,
                 null_columns,
                 self.null_marker if self.null_marker is not None else "",
+                self.quote,
             ):
                 connection.executemany(insert_sql, batch_data)
                 total_rows = current_count

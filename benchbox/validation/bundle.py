@@ -119,6 +119,7 @@ SUBMISSION_NOTES_MAX_LEN = 500
 KNOWN_DEFECT_IDS = frozenset(
     {
         "defective-macdbgen-addresses",
+        "defective-sqlite-clickbench-row-counts",
         "defective-superseded-sql-translation",
         "defective-tpcds-obt-parameters",
         "defective-tpchavoc-variant-divergence",
