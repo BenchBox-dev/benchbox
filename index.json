@@ -19377,15 +19377,10 @@
       "title": "QuestDB cannot run TPC-DS Q16/Q94/Q95: correlated EXISTS, HAVING and IN (subquery) unsupported"
     },
     "questdb-unpadded-date-cast-null-20261025": {
-      "claim": {
-        "expires_at": "2026-10-26T22:40:52Z",
-        "generation": "1618afc4dc9342c8adca810d1546e9b7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Unpadded date literals (CAST('1999-5-01' AS DATE)) evaluate to NULL on QuestDB and are unconfirmed on ClickHouse and other engines: audit every target engine and fix the generators that fail"
     },
     "quick-start-tutorials": {
