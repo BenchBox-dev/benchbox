@@ -212,7 +212,7 @@ A plain owner comment does not count. See [soundness drain](soundness-drain.md).
 A stand-in comment makes `oracle-gate` re-evaluate at once. Resolving a review
 thread starts no workflow run, so after resolving oracle threads run
 `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`, or wait for the
-hourly sweep.
+next sweep, which runs on every push to `develop` and on a schedule.
 
 The live `develop-squash-only` ruleset binds `oracle-gate` to
 `integration_id` 5201041, the `benchbox-oracle` App's ID

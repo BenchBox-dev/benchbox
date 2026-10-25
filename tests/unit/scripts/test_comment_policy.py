@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.request
@@ -3035,7 +3036,7 @@ def test_candidate_ownership_expansion_is_ineffective(tmp_path: Path) -> None:
 def test_immutable_ownership_rejects_changed_notice(tmp_path: Path, changed: bytes) -> None:
     base, _ = ownership_repo(tmp_path)
     (tmp_path / "benchbox/_binaries/vendor/tools/PATCHES.md").write_bytes(changed)
-    with pytest.raises(ValueError, match="protected external notice"):
+    with pytest.raises(ValueError, match="protected external notice|does not match the head"):
         check_comment_policy.ownership_exclusions(tmp_path, base, False)
 
 
@@ -3100,7 +3101,7 @@ def test_ownership_staged_changed_notice_rejects_clean_worktree(tmp_path: Path) 
     (tmp_path / path).write_bytes(b"Modified upstream notice\n")
     subprocess.run(["git", "-C", str(tmp_path), "add", path], check=True)
     (tmp_path / path).write_bytes(b"Required upstream notice\n")
-    with pytest.raises(ValueError, match="protected external notice"):
+    with pytest.raises(ValueError, match="protected external notice|does not match the head"):
         check_comment_policy.ownership_exclusions(tmp_path, base, True)
     assert path in check_comment_policy.ownership_exclusions(tmp_path, base, False)
 
@@ -3110,7 +3111,7 @@ def test_ownership_staged_clean_notice_ignores_changed_worktree(tmp_path: Path) 
     path = "benchbox/_binaries/vendor/tools/PATCHES.md"
     (tmp_path / path).write_bytes(b"Modified upstream notice\n")
     assert path in check_comment_policy.ownership_exclusions(tmp_path, base, True)
-    with pytest.raises(ValueError, match="protected external notice"):
+    with pytest.raises(ValueError, match="protected external notice|does not match the head"):
         check_comment_policy.ownership_exclusions(tmp_path, base, False)
 
 
@@ -3127,7 +3128,7 @@ def test_ownership_partial_notice_allows_outside_edit_without_file_waiver(tmp_pa
 def test_ownership_partial_notice_rejects_inside_edit(tmp_path: Path) -> None:
     base, _ = ownership_repo(tmp_path, partial_notice=True)
     (tmp_path / "benchbox/_binaries/vendor/tools/PATCHES.md").write_bytes(b"prefix\nModified notice!\nsuffix\n")
-    with pytest.raises(ValueError, match="protected external notice"):
+    with pytest.raises(ValueError, match="protected external notice|does not match the head"):
         check_comment_policy.ownership_exclusions(tmp_path, base, False)
 
 
@@ -3147,6 +3148,10 @@ def recomputed_candidate(ledger: dict, raw: bytes, start: int, end: int) -> dict
     return entry
 
 
+def write_head_notices(root: Path, ledger: dict, notices: list[dict]) -> None:
+    (root / "quality/comment-cleanup-scope.json").write_text(json.dumps({**ledger, "notices": notices}))
+
+
 @pytest.mark.parametrize("layer", ["scope-range-check", "base-anchored-pins"])
 def test_candidate_whole_file_notice_rewrite_with_recomputed_pins_is_rejected(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, layer: str
@@ -3157,6 +3162,7 @@ def test_candidate_whole_file_notice_rewrite_with_recomputed_pins_is_rejected(
     raw = b"Modified upstream notice\n"
     (tmp_path / NOTICE_PATH).write_bytes(raw)
     candidate = recomputed_candidate(ledger, raw, 0, len(raw))
+    write_head_notices(tmp_path, ledger, [candidate])
     if layer == "base-anchored-pins":
         monkeypatch.setattr(scope, "_check_candidate_ranges", lambda *args: None)
     with pytest.raises(ValueError, match="notice|retained bytes differ|base blob"):
@@ -3175,6 +3181,7 @@ def test_candidate_partial_notice_in_range_substitution_is_rejected(
     raw = original[:start] + b"X" * (end - start) + original[end:]
     (tmp_path / NOTICE_PATH).write_bytes(raw)
     candidate = recomputed_candidate(ledger, raw, start, end)
+    write_head_notices(tmp_path, ledger, [candidate])
     if layer == "base-anchored-pins":
         monkeypatch.setattr(scope, "_check_candidate_ranges", lambda *args: None)
     with pytest.raises(ValueError, match="protected external notice|retained bytes differ"):
@@ -3188,6 +3195,7 @@ def test_candidate_whole_file_truncation_is_rejected(tmp_path: Path, monkeypatch
     raw = (tmp_path / NOTICE_PATH).read_bytes()[:-1]
     (tmp_path / NOTICE_PATH).write_bytes(raw)
     candidate = recomputed_candidate(ledger, raw, 0, len(raw))
+    write_head_notices(tmp_path, ledger, [candidate])
     with pytest.raises(ValueError, match="base blob"):
         check_comment_policy.ownership_exclusions(tmp_path, base, False, [candidate])
     monkeypatch.setattr(scope, "_check_candidate_ranges", lambda *args: None)
@@ -3210,6 +3218,101 @@ def test_candidate_narrowed_partial_notice_allows_outside_edit(tmp_path: Path) -
     candidate = recomputed_candidate(ledger, edited, start + 1, end - 1)
     exclusions = check_comment_policy.ownership_exclusions(tmp_path, base, False, [candidate])
     assert NOTICE_PATH not in exclusions
+
+
+MISSING_NOTICE_PATH = "_binaries/tpc-ds/templates/query_templates/EULA.txt"
+HEAD_LEDGER_PATH = "quality/comment-cleanup-scope.json"
+
+
+def write_head_ledger(root: Path, ledger: dict, **changes: object) -> None:
+    (root / HEAD_LEDGER_PATH).write_text(json.dumps({**ledger, **changes}))
+
+
+def stage_head_ledger(root: Path) -> None:
+    subprocess.run(["git", "-C", str(root), "add", HEAD_LEDGER_PATH], check=True)
+
+
+def head_ownership(root: Path, base: str, reviewed: bool, staged: bool = False) -> set[str] | None:
+    candidates = check_comment_policy.candidate_scope_notices(root, staged) if reviewed else None
+    return check_comment_policy.ownership_exclusions(root, base, staged, candidates)
+
+
+@pytest.mark.parametrize("reviewed", [False, True], ids=["unreviewed", "reviewed"])
+def test_head_policy_notice_for_untracked_path_is_rejected(tmp_path: Path, reviewed: bool) -> None:
+    base, ledger = ownership_repo(tmp_path)
+    missing = deepcopy(ledger["notices"][0]) | {"path": MISSING_NOTICE_PATH}
+    write_head_ledger(tmp_path, ledger, notices=[*ledger["notices"], missing])
+    with pytest.raises(ValueError, match=re.escape(MISSING_NOTICE_PATH)):
+        head_ownership(tmp_path, base, reviewed)
+
+
+@pytest.mark.parametrize("reviewed", [False, True], ids=["unreviewed", "reviewed"])
+@pytest.mark.parametrize("field", ["blob_sha256", "retained_sha256"])
+def test_head_policy_notice_digest_must_match_head_bytes(tmp_path: Path, reviewed: bool, field: str) -> None:
+    base, ledger = ownership_repo(tmp_path)
+    stale = deepcopy(ledger["notices"][0]) | {field: "0" * 64}
+    write_head_ledger(tmp_path, ledger, notices=[stale])
+    with pytest.raises(ValueError, match="digest does not match the head"):
+        head_ownership(tmp_path, base, reviewed)
+
+
+@pytest.mark.parametrize("reviewed", [False, True], ids=["unreviewed", "reviewed"])
+def test_head_policy_external_selector_must_match_a_head_path(tmp_path: Path, reviewed: bool) -> None:
+    base, ledger = ownership_repo(tmp_path)
+    dangling = deepcopy(ledger["external_entries"][0]) | {"selector": {"prefix": "nowhere/"}}
+    write_head_ledger(tmp_path, ledger, external_entries=[*ledger["external_entries"], dangling])
+    with pytest.raises(ValueError, match="matches no tracked path at the head"):
+        head_ownership(tmp_path, base, reviewed)
+
+
+@pytest.mark.parametrize("reviewed", [False, True], ids=["unreviewed", "reviewed"])
+def test_staged_head_policy_is_validated_instead_of_the_worktree_copy(tmp_path: Path, reviewed: bool) -> None:
+    base, ledger = ownership_repo(tmp_path)
+    missing = deepcopy(ledger["notices"][0]) | {"path": MISSING_NOTICE_PATH}
+    write_head_ledger(tmp_path, ledger, notices=[*ledger["notices"], missing])
+    stage_head_ledger(tmp_path)
+    write_head_ledger(tmp_path, ledger)
+    with pytest.raises(ValueError, match=re.escape(MISSING_NOTICE_PATH)):
+        head_ownership(tmp_path, base, reviewed, staged=True)
+    assert head_ownership(tmp_path, base, False) is not None
+
+
+@pytest.mark.parametrize("reviewed", [False, True], ids=["unreviewed", "reviewed"])
+def test_valid_staged_head_policy_passes_when_the_worktree_copy_is_invalid(tmp_path: Path, reviewed: bool) -> None:
+    base, ledger = ownership_repo(tmp_path)
+    missing = deepcopy(ledger["notices"][0]) | {"path": MISSING_NOTICE_PATH}
+    write_head_ledger(tmp_path, ledger, notices=[*ledger["notices"], missing])
+    assert head_ownership(tmp_path, base, reviewed, staged=True) is not None
+
+
+def test_valid_head_notice_for_a_tracked_file_raises_no_validity_error(tmp_path: Path) -> None:
+    base, ledger = ownership_repo(tmp_path)
+    path = "catalog/tools/upstream.py"
+    raw = (tmp_path / path).read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    extra = deepcopy(ledger["notices"][0]) | {
+        "path": path,
+        "blob_sha256": digest,
+        "byte_start": 0,
+        "byte_end": len(raw),
+        "retained_sha256": digest,
+        "owner": "comment-cleanup-external-ownership",
+    }
+    write_head_ledger(tmp_path, ledger, notices=[*ledger["notices"], extra])
+    assert head_ownership(tmp_path, base, False) is not None
+    with pytest.raises(ValueError, match="must update paths already pinned at the base"):
+        head_ownership(tmp_path, base, True)
+
+
+@pytest.mark.parametrize("reviewed", [False, True], ids=["unreviewed", "reviewed"])
+def test_head_policy_external_entry_does_not_exempt_first_party_source_in_its_own_change(
+    tmp_path: Path, reviewed: bool
+) -> None:
+    base, ledger = ownership_repo(tmp_path)
+    owned = "benchbox/_binaries/vendor/tools/owned.py"
+    entry = deepcopy(ledger["external_entries"][0]) | {"selector": {"path": owned}}
+    write_head_ledger(tmp_path, ledger, external_entries=[*ledger["external_entries"], entry])
+    assert owned not in head_ownership(tmp_path, base, reviewed)
 
 
 def test_ownership_absent_ledger_preserves_legacy_behavior(tmp_path: Path) -> None:

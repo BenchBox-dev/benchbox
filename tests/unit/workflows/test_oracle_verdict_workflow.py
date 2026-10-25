@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 import yaml
+from workflow_expressions import evaluate, render
 
 from _project.scripts.oracle_reviewers.commands import build
 from _project.scripts.oracle_reviewers.policy import SIZE_BUCKETS, load_policy
@@ -56,7 +57,8 @@ def test_triggers() -> None:
     workflow = _load()
     assert workflow["name"] == "oracle-verdict"
     triggers = workflow[True] if True in workflow else workflow.get("on", {})
-    assert set(triggers) == {"pull_request_target", "issue_comment", "workflow_dispatch", "schedule"}
+    assert set(triggers) == {"pull_request_target", "issue_comment", "workflow_dispatch", "schedule", "push"}
+    assert triggers["push"] == {"branches": ["develop"]}
     assert "pull_request" not in triggers
 
 
@@ -139,7 +141,7 @@ def test_plan_guards_comments_and_edits() -> None:
     assert "issue_comment" in condition
     assert "author_association" in condition
     assert "review_comment" not in condition
-    assert _jobs()["sweep"]["if"] == "github.event_name == 'schedule'"
+    assert _jobs()["sweep"]["if"] == "github.event_name == 'schedule' || github.event_name == 'push'"
 
 
 def test_dispatch_is_refused_outside_develop() -> None:
@@ -405,3 +407,42 @@ def test_post_waits_for_every_slot() -> None:
     slots = POLICY.max_attempts
     assert {f"select-{slot}" for slot in range(1, slots + 1)} <= needs
     assert {f"attempt-{slot}-omp" for slot in range(1, slots + 1)} <= needs
+
+
+def _context(
+    event_name: str, event: dict[str, Any] | None = None, inputs: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    return {"github": {"event_name": event_name, "event": event or {}, "run_id": "55"}, "inputs": inputs or {}}
+
+
+def _cancels(event_name: str) -> Any:
+    expression = str(_load()["concurrency"]["cancel-in-progress"]).removeprefix("${{").removesuffix("}}")
+    return evaluate(expression, _context(event_name))
+
+
+def test_develop_push_runs_the_sweep_and_no_plan() -> None:
+    context = _context("push")
+    assert evaluate(_jobs()["sweep"]["if"], context)
+    assert not evaluate(_jobs()["plan"]["if"], context)
+
+
+def test_push_and_schedule_sweeps_share_one_group_that_never_cancels() -> None:
+    group = _load()["concurrency"]["group"]
+    pushed = render(group, _context("push"))
+    assert pushed == render(group, _context("schedule"))
+    pull_groups = {render(group, _context("workflow_dispatch", inputs={"pr": str(number)})) for number in (7, 8)} | {
+        render(group, _context("pull_request_target", {"action": "synchronize", "pull_request": {"number": 9}})),
+        render(group, _context("issue_comment", {"issue": {"number": 10}})),
+    }
+    assert pushed not in pull_groups
+    assert _cancels("push") is False
+    assert _cancels("schedule") is False
+    assert _cancels("workflow_dispatch") is True
+    assert _cancels("pull_request_target") is True
+
+
+def test_pull_request_groups_keep_one_group_per_number() -> None:
+    group = _load()["concurrency"]["group"]
+    assert render(group, _context("workflow_dispatch", inputs={"pr": "7"})) == "oracle-verdict-pr-7"
+    event = {"action": "synchronize", "pull_request": {"number": 7}}
+    assert render(group, _context("pull_request_target", event)) == "oracle-verdict-pr-7"

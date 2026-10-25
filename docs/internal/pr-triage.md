@@ -106,7 +106,7 @@ a PR's mergeability — both only alert.
   Withdraw readiness before editing an armed PR.
 
   `oracle-gate` re-evaluates on its own when the oracle posts a verdict, when
-  a stand-in comment lands, and on an hourly sweep. Resolving a review thread
+  a stand-in comment lands, and on a sweep that runs on every push to `develop` and on a schedule. Resolving a review thread
   starts no run, so after resolving oracle threads, re-evaluate the PR from
   `develop`:
 

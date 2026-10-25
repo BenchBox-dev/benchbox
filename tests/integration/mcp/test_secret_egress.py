@@ -8,7 +8,7 @@ import httpx2
 import pytest
 from mcp.server.transport_security import TransportSecuritySettings
 
-from tests.integration.mcp._security import authenticated_http_client, write_security_config
+from tests.integration.mcp._security import authenticated_http_client, start_remote_server, write_security_config
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 SENTINEL = "MCP_SECRET_SENTINEL"
@@ -54,11 +54,8 @@ def test_unauthorized_http_response_does_not_echo_bearer(tmp_path: Path) -> None
     )
 
     async def exercise() -> str:
-        from benchbox.mcp import create_server
-        from benchbox.mcp.security import RemoteSecurityRuntime
-
-        runtime = RemoteSecurityRuntime.from_file(config)
-        app = create_server(remote_security=runtime).streamable_http_app(stateless_http=True)
+        server, _ = start_remote_server(config)
+        app = server.streamable_http_app(stateless_http=True)
         async with httpx2.AsyncClient(
             transport=httpx2.ASGITransport(app=app),
             base_url="http://127.0.0.1:8000",
@@ -84,11 +81,8 @@ def test_hostile_host_and_origin_are_rejected_without_log_egress(
     )
 
     async def exercise() -> list[str]:
-        from benchbox.mcp import create_server
-        from benchbox.mcp.security import RemoteSecurityRuntime
-
-        runtime = RemoteSecurityRuntime.from_file(config)
-        app = create_server(remote_security=runtime).streamable_http_app(
+        server, runtime = start_remote_server(config)
+        app = server.streamable_http_app(
             stateless_http=True,
             transport_security=TransportSecuritySettings(
                 enable_dns_rebinding_protection=True,
