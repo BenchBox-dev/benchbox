@@ -110,6 +110,7 @@ def publish(
     title: str | None,
     body_file: Path | None,
     run: Runner = live_run,
+    draft: bool = False,
 ) -> PublishedPr:
     existing = find_open_pr(run, repo, head_owner, branch)
     if existing is not None:
@@ -131,6 +132,8 @@ def publish(
     cmd = ["gh", "api", "--method", "POST", f"repos/{repo}/pulls"]
     cmd += ["-f", f"title={resolved_title}", "-f", f"head={head_spec}", "-f", f"base={BASE_BRANCH}"]
     cmd += ["-F", f"body=@{body_file}"] if body_file is not None else ["-f", f"body={default_body(commits)}"]
+    if draft:
+        cmd += ["-F", "draft=true"]
     return _pr_from(_json(_check(run, cmd, "PR create"), "PR create"), "created")
 
 
@@ -142,6 +145,7 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
     parser.add_argument("--head-spec", required=True)
     parser.add_argument("--title", default="")
     parser.add_argument("--body-file", default="")
+    parser.add_argument("--draft", action="store_true")
     args = parser.parse_args(argv)
     if not re.fullmatch(REPOSITORY_PATTERN, args.repo):
         print(f"pr-open: --repo must be owner/name, got {args.repo!r}", file=sys.stderr)
@@ -151,7 +155,9 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
         print(f"PR_BODY_FILE does not exist: {body_file}", file=sys.stderr)
         return 1
     try:
-        pr = publish(args.repo, args.head_owner, args.branch, args.head_spec, args.title or None, body_file, run)
+        pr = publish(
+            args.repo, args.head_owner, args.branch, args.head_spec, args.title or None, body_file, run, args.draft
+        )
     except (PrOpenError, OSError) as exc:
         print(f"pr-open: {exc}", file=sys.stderr)
         return 1

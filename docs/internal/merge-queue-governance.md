@@ -88,7 +88,7 @@ make pr-ready PR=<number> HEAD=$(git rev-parse HEAD) EVIDENCE=<readiness.json>
 ```
 
 1. `make pr-open` opens or reuses the pull request against `develop`, with a
-   currency check. It refuses a non-revert branch once the newest
+   currency check. It opens a non-revert branch as a draft once the newest
    `trunk.yml` run on `develop` has been red for more than 30 minutes (see
    section 5).
 2. When the PR is ready to merge, `make pr-ready` runs the exact readiness
@@ -288,9 +288,10 @@ When a trunk run fails, revert the culprit first and fix it afterwards:
 make trunk-revert PR=<number>
 ```
 
-So nothing new stacks on a broken tip, `make pr-open` refuses a non-revert
-branch when the newest `trunk.yml` run on `develop` finished red more than 30
-minutes ago (`scripts/trunk_revert.py gate`). It warns instead of blocking
+So nothing new stacks on a broken tip, `make pr-open` opens a non-revert
+branch as a draft, and says arming needs authorization, when the newest
+`trunk.yml` run on `develop` finished red more than 30
+minutes ago (`scripts/trunk_revert.py gate`). It warns instead of drafting
 while a newer run is in progress or when `gh` cannot read the runs. If trunk
 stays red over two hours with no revert pull request open, that is a risk
 signal for the owner, who should revert the culprit; nothing enforces the
@@ -304,7 +305,9 @@ first red completed run after the last green one, so a failure that persists
 across later merges still blames the commit that broke it, and only a revert
 of that commit is exempt. The gate widens its run fetch (30, 100, 300, then
 1000 runs) until it finds a green run or the run history ends, and refuses
-when the streak outruns that bound. PRs
+when the streak outruns that bound. An owner-authorized fix-forward comment
+(see [merge authority](../agent/merge-authority.md)) also admits one PR at its
+current head; required checks, `oracle-gate`, threads and holds still apply. PRs
 armed before the run failed still merge, and arming outside these targets
 bypasses the gate; see [develop push gaps](develop-post-merge-gaps.md).
 

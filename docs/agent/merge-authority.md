@@ -74,6 +74,40 @@ evidence, such as deleting a stand-in comment: leave the PR unarmed, withdraw
 the evidence, dispatch the gate, and observe the new result on the current head
 before treating the PR as ready.
 
+## Fix-forward authorization
+
+While `develop` is red and its culprit is not reverted, `make pr-arm` refuses every
+PR except the revert of the streak's first red commit. When the right repair is a
+fix-forward instead, the owner's account posts one PR comment that the arm gate
+accepts. Post it only when the owner names the PR and its head in the current
+request. A goal such as "fix develop", a handoff, a tracker item, or an earlier
+message is not an authorization.
+
+The comment body must be exactly `Fix-forward authorized: <40-character head SHA>
+for trunk run <run databaseId>` and nothing else: no fences, quotes, prefixes, or
+extra text. The SHA is the PR's current head. The run is the first red `trunk.yml`
+run of the current streak, the one `make trunk-status` names, and it must have
+completed before the comment is posted. Quote the owner's instruction in a separate
+`Owner instruction` comment posted first, as for a stand-in.
+
+The gate accepts the comment only from an allowlisted owner login, with user type
+`User`, never edited, naming the current head and that run. A new push voids it, so
+post it after the last push. To withdraw it, edit or delete it.
+
+The gate also requires the PR to share at least one path with the red streak (the
+first-parent `develop` commits from the first red run's commit to the tip), read
+from the `develop` of the judged repository, and refuses when either list cannot be
+read. The comment can still be self-posted, the same trust model as a stand-in. The
+path rule narrows which PRs qualify but does not bound what a PR changes: a shared
+file such as the `Makefile` satisfies it. The owner's instruction in the current
+request is the control.
+
+The authorization lifts only the red-trunk refusal. Required checks, `oracle-gate`,
+review-thread resolution and owner holds still apply. While `develop` has been red
+for more than 30 minutes, `make pr-open` opens the PR as a draft and prints that
+arming needs this authorization; mark it ready (`gh pr ready <n>`) after the
+authorization lands, then arm with `make pr-arm`.
+
 ## Stale failed check suites
 
 `gh pr checks --required` shows one result per check name, so a superseded

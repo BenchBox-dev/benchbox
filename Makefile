@@ -1210,11 +1210,13 @@ pr-open:
 	if grep -qx 'release-identity-changed=true' "$$CL_DIR/select.txt"; then CL_IDENTITY=--release-identity-changed; fi; \
 	uv run -- python scripts/changelog_fragments.py required --title "$$CL_TITLE" --changed-files-from "$$CL_DIR/changed.txt" $$CL_IDENTITY || { rm -rf "$$CL_DIR"; echo "Refusing to open PR: add a changelog fragment (make changelog-entry) or fix the title." >&2; exit 1; }; \
 	rm -rf "$$CL_DIR"; \
-	uv run -- python scripts/trunk_revert.py gate --branch "$$CURRENT" --repo "$$REPOSITORY"; \
+	TRUNK_MODE=$$(uv run -- python scripts/trunk_revert.py gate --branch "$$CURRENT" --repo "$$REPOSITORY"); \
+	DRAFT_FLAG=; \
+	if [ "$$TRUNK_MODE" = "draft" ]; then DRAFT_FLAG=--draft; fi; \
 	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
 	git push -u origin "$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
 	PUBLISHED=$$(uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" \
-		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE"); \
+		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" $$DRAFT_FLAG); \
 	PR_STATUS="$${PUBLISHED%% *}"; \
 	PR_NUMBER="$${PUBLISHED#* }"; \
 	URL="$${PR_NUMBER#* }"; \
@@ -1225,7 +1227,9 @@ pr-open:
 		echo "Reusing existing PR: $$URL"; \
 	fi; \
 	echo "$$URL" && \
-	if [ "$(READY)" != "1" ]; then \
+	if [ "$$TRUNK_MODE" = "draft" ] && [ "$$REUSED_PR" != "1" ]; then \
+		echo "Opened as a draft because develop is red: mark it ready and arm it only after the owner authorizes this head (see docs/agent/merge-authority.md), or after develop is green."; \
+	elif [ "$(READY)" != "1" ]; then \
 		echo "Next: make pr-arm once the review fixes are pushed; auto-merge merges it when the required checks pass."; \
 	elif [ -n "$(EVIDENCE)$(BATCH)" ]; then \
 		if [ "$$REUSED_PR" != "1" ]; then \

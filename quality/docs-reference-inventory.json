@@ -3352,6 +3352,35 @@
    ]
   },
   {
+   "disposition": "fixture-data",
+   "kinds": {
+    "extra": 1,
+    "file": 3
+   },
+   "occurrences": 4,
+   "path": "tests/fixtures/trunk_red_20261024.json",
+   "rule": "test-sample-data",
+   "target_count": 4,
+   "targets": [
+    {
+     "kind": "file",
+     "target": "docs/development/adding-new-platforms.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/development/new-platform-acceptance-checklist.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/python-api/utilities.md"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
+    }
+   ]
+  },
+  {
    "disposition": "runtime-link-updated",
    "kinds": {
     "file": 1
@@ -5260,7 +5289,7 @@
   "dispositions": {
    "contract-replaced": 3,
    "contract-tooling": 5,
-   "fixture-data": 33,
+   "fixture-data": 34,
    "generator-deleted": 5,
    "governance-stays": 7,
    "historical-record": 112,
@@ -5270,18 +5299,18 @@
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 262,
+  "files": 263,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
-   "extra": 70,
-   "file": 1562,
+   "extra": 71,
+   "file": 1565,
    "generated": 15,
    "pattern": 287,
    "root": 215,
    "unresolved": 2003
   },
-  "references": 33368,
+  "references": 33372,
   "unclassified": 0
  }
 }
