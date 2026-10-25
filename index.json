@@ -19321,6 +19321,15 @@
       "status": "done",
       "title": "Ranking & Aggregation System - Platform Leaderboards & Trends"
     },
+    "raw-text-benchmarks-duckdb-source-dialect-20261025": {
+      "claim": null,
+      "needs": [
+        "snowflake-databricks-desc-nulls-last-audit-20261025"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Route hand-written benchmark SQL through translation with a declared duckdb source dialect"
+    },
     "re-audit-databend-firebolt-starburst-and-clickhouse-cloud-fo": {
       "claim": null,
       "needs": [],
