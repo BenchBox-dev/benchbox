@@ -239,8 +239,12 @@ def pr_changed_paths(ref: str, run: Runner, repo: str) -> set[str]:
         raise TrunkError(f"unreadable file list of PR {ref}: {exc}") from exc
 
 
-def streak_changes(run: Runner, sha: str) -> tuple[list[str], set[str]]:
-    _check(run, ["git", "fetch", "origin", BASE_BRANCH, "--quiet"], f"fetching {BASE_BRANCH}")
+def streak_changes(run: Runner, sha: str, repo: str) -> tuple[list[str], set[str]]:
+    source = f"https://github.com/{repo}.git"
+    _check(run, ["git", "fetch", "--quiet", source, BASE_BRANCH], f"fetching {BASE_BRANCH} from {repo}")
+    code, _ = run(["git", "merge-base", "--is-ancestor", sha, "FETCH_HEAD"])
+    if code != 0:
+        raise TrunkError(f"the first red commit {sha[:9]} is not an ancestor of the {BASE_BRANCH} tip of {repo}")
     log = _check(
         run,
         [
@@ -250,7 +254,7 @@ def streak_changes(run: Runner, sha: str) -> tuple[list[str], set[str]]:
             "-m",
             "--name-only",
             f"--format={STREAK_MARK}%h %s",
-            f"{sha}^..origin/{BASE_BRANCH}",
+            f"{sha}^..FETCH_HEAD",
         ],
         "reading the red streak's changed paths",
     )
@@ -274,7 +278,7 @@ def fix_forward_relatedness_refusal(ref: str, sha: str, run: Runner, repo: str) 
     except TrunkError as exc:
         return f"the files of PR {ref} could not be read ({exc}); refusing the fix-forward authorization"
     try:
-        commits, streak_paths = streak_changes(run, sha)
+        commits, streak_paths = streak_changes(run, sha, repo)
     except TrunkError as exc:
         return f"the paths changed by the red streak could not be read ({exc}); refusing the fix-forward authorization"
     if pr_paths & streak_paths:

@@ -786,6 +786,7 @@ class FixForwardRun(ArmRun):
         files: list[str] | None = None,
         files_code: int = 0,
         git_code: int = 0,
+        ancestor: bool = True,
     ) -> None:
         super().__init__(
             _replayed_runs(),
@@ -802,14 +803,18 @@ class FixForwardRun(ArmRun):
         self.files = REPLAY["pr"]["files"] if files is None else files
         self.files_code = files_code
         self.git_code = git_code
+        self.ancestor = ancestor
 
     def __call__(self, cmd: list[str]) -> tuple[int, str]:
+        if cmd[:2] == ["git", "merge-base"]:
+            self.calls.append(cmd)
+            return (0 if self.ancestor else 1), ""
         if cmd[:2] == ["git", "fetch"]:
             self.calls.append(cmd)
             return self.git_code, "" if self.git_code == 0 else "fetch failed"
         if cmd[:2] == ["git", "log"]:
             self.calls.append(cmd)
-            assert cmd[-1] == f"24bfcf8a0fb048c9ad554ef2e9e99066f7027167^..origin/{trunk_revert.BASE_BRANCH}"
+            assert cmd[-1] == "24bfcf8a0fb048c9ad554ef2e9e99066f7027167^..FETCH_HEAD"
             if self.git_code != 0:
                 return self.git_code, "log failed"
             return 0, "\n\n".join(f"@@{item['commit']}\n\n" + "\n".join(item["files"]) for item in REPLAY["streak"])
@@ -856,6 +861,30 @@ def test_authorized_pr_is_refused_when_its_files_cannot_be_read() -> None:
     message = trunk_revert.arm_gate("3385", run=FixForwardRun([_authorization()], files_code=1))
     assert message is not None
     assert "files of PR 3385 could not be read" in message
+
+
+def test_streak_is_read_from_the_judged_repository_never_from_origin() -> None:
+    run = FixForwardRun([_authorization()])
+    assert trunk_revert.arm_gate("3385", run=run) is None
+    fetches = [call for call in run.calls if call[:2] == ["git", "fetch"]]
+    assert fetches == [["git", "fetch", "--quiet", f"https://github.com/{trunk_revert.REPOSITORY}.git", "develop"]]
+    assert not any("origin/develop" in part for call in run.calls for part in call)
+
+
+def test_streak_is_read_from_a_differently_named_repository() -> None:
+    run = FixForwardRun([_authorization()])
+    other = "someone/BenchBox"
+    assert (
+        trunk_revert.fix_forward_relatedness_refusal("3385", "24bfcf8a0fb048c9ad554ef2e9e99066f7027167", run, other)
+        is None
+    )
+    assert ["git", "fetch", "--quiet", "https://github.com/someone/BenchBox.git", "develop"] in run.calls
+
+
+def test_authorized_pr_is_refused_when_the_first_red_commit_is_not_on_the_fetched_tip() -> None:
+    message = trunk_revert.arm_gate("3385", run=FixForwardRun([_authorization()], ancestor=False))
+    assert message is not None
+    assert "is not an ancestor" in message
 
 
 def test_authorized_pr_is_refused_when_the_streak_paths_cannot_be_read() -> None:

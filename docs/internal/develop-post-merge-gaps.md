@@ -102,8 +102,10 @@ Bound:
 - **The authorization is audit-enforced.** Every agent acts through the owner's
   account, so no API signal separates the owner's comment from an agent's. The gate
   binds the comment to the head and the run, never to who typed it. The gate also
-  requires the PR to change a path that the red streak changed, so a self-posted
-  comment can only admit changes that touch the broken paths.
+  requires the PR to share at least one path with the red streak, so a self-posted
+  comment narrows to PRs that share a path with the streak's commits. That does not
+  bound what the PR changes, because a shared file such as the `Makefile` qualifies;
+  the owner's instruction in the current request is the control.
 - **Delivery.** A push that GitHub never delivers produces no run, so the gate
   cannot see a red tree it was never told about.
 
