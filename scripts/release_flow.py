@@ -368,7 +368,7 @@ def select_candidate(root: Path, base_sha: str) -> tuple[bool, str, bool, bool]:
         ".github/workflows/ci.yml",
     }
     changed_paths = set(changed.splitlines())
-    identity_changed = before[:-1] != after[:-1] or (before[-1] is None) != (after[-1] is None)
+    identity_changed = before[:-3] != after[:-3] or (before[-1] is None) != (after[-1] is None)
     freshness_required = before != after or bool(freshness_inputs.intersection(changed_paths))
     selected = freshness_required or bool(enforcement.intersection(changed_paths))
     return selected, after[0], freshness_required, identity_changed

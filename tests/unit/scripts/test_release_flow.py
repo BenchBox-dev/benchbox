@@ -776,8 +776,12 @@ def test_selection_reports_release_identity_separately_from_enforcement_changes(
     changelog = root / "CHANGELOG.md"
     changelog.write_text(changelog.read_text(encoding="utf-8").replace("A hand-curated entry", "A changed entry"))
     assert release_flow.select_candidate(root, base) == (True, VERSION, True, False)
-
     git(root, "checkout", "-q", "--", "CHANGELOG.md")
+    lock = root / "uv.lock"
+    lock.write_text(lock.read_text(encoding="utf-8").replace("revision = 3", "revision = 2"))
+    assert release_flow.select_candidate(root, base) == (True, VERSION, True, False)
+    git(root, "checkout", "-q", "--", "uv.lock")
+
     enforcement = root / "scripts" / "changelog_fragments.py"
     enforcement.write_text("# Updated enforcement.\n")
     git(root, "add", "--", "scripts/changelog_fragments.py")

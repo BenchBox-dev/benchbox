@@ -536,11 +536,12 @@ problem it finds. It verifies that:
 - with `RELEASE_PRE_TAG=1` (`release_flow.py check --pre-tag`), no
   `changelog.d/*.json` fragment is pending. The pull request check passes it
   only when the pull request changes the release identity: a version marker,
-  the lock entry, or the creation or removal of the project version's changelog
-  section (`release-identity-changed`, reported by `release_flow.py select`
-  separately from enforcement-file changes; editing an existing section does
-  not count), which is the check that stops a release
-  preparation pull request from merging to `develop` with fragments left
+  the lock package version, or the creation or removal of the project
+  version's changelog section (`release-identity-changed`, reported by
+  `release_flow.py select` separately from enforcement-file changes; editing an
+  existing section or the lock schema does not count), which is the check that
+  stops a release preparation pull request from merging to `develop` with
+  fragments left
   uncompiled. `release-v2.yml` tags merged `develop` commits, so its tag-time
   `release-check` passes the flag and refuses to publish a tag whose tree still
   carries a fragment, for example one merged after the preparation pull
