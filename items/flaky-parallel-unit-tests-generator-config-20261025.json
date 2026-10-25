@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Cause identified and fixed so both tests are isolated; repeated parallel runs via make targets pass."
+  ],
+  "description": "Seen on PR CI during this effort: tests/unit/core/tpch/test_tpch_generator.py:181 test_default_none and tests/unit/utils/test_config_interface.py:246 test_default_provider_is_the_simple_one each failed once or twice under -n parallel runs and pass alone. Likely shared state or environment leakage between workers.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T12:30:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "187b63c9bea341d18ae4a6bc58abdd01",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}
