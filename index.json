@@ -13723,12 +13723,17 @@
       "title": "Refresh the medium-tier duration weights from a full trunk run and measure the result of the long-test work"
     },
     "longtest-16-refresh-durations-and-measure-deferral-1": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T03:17:19Z",
+        "generation": "0e0e7bd8eb65495c8934e98aa4d67053",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [
         "chdb-ssb-tests-share-instance-state-20261023"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Re-evaluate module-grouped medium scheduling after fixing chdb SSB test isolation"
     },
     "longtest-17-cli-startup-probe-and-datagen-chunks": {
