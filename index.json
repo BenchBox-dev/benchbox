@@ -3173,15 +3173,10 @@
       "title": "Compare soundness-flag against the merge commit's first parent, not the stale event base"
     },
     "ci-sql-evidence-postgres-ecr-rate-limit-20261022": {
-      "claim": {
-        "expires_at": "2026-10-26T18:49:47Z",
-        "generation": "1cae812f110e4dfc8a493598c7a4411c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Postgres CI images: pull only the GHCR mirror of the pinned Postgres 17 digest in sql-execution-evidence and nightly (replaces the closed embedded-pgserver PR #3382)"
     },
     "ci-stale-check-run-blocks-merge": {
