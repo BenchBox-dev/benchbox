@@ -1885,7 +1885,7 @@ jobs:
           [[ "$EVENT_BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid event base SHA" >&2; exit 1; }
           git fetch --no-tags origin "$EVENT_BASE_SHA"
           python -I -S scripts/release_flow.py select --base-sha "$EVENT_BASE_SHA" --github-output "$RUNNER_TEMP/select.out"
-          git diff --name-only --diff-filter=ACDMRT "$EVENT_BASE_SHA" HEAD > "$RUNNER_TEMP/changed.txt"
+          git diff --name-only --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/changed.txt"
           identity=()
           if grep -qx 'release-identity-changed=true' "$RUNNER_TEMP/select.out"; then identity=(--release-identity-changed); fi
           python scripts/changelog_fragments.py check \

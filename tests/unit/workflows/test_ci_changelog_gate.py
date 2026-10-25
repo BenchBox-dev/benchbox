@@ -64,3 +64,10 @@ def test_title_edit_lane_rechecks_the_entry_rule_with_the_title_in_the_environme
     assert "github.event.pull_request.title" not in step["run"]
     assert '--title "$PR_TITLE"' in step["run"]
     assert "--require-empty-unreleased" in step["run"]
+
+
+def test_title_edit_lane_diffs_against_the_merge_base_like_the_main_lane() -> None:
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["text-edit-verdict"]["steps"]
+    step = next(s for s in steps if s.get("name") == "Re-check the changelog entry against the edited title")
+    assert '"$EVENT_BASE_SHA...HEAD"' in step["run"]
