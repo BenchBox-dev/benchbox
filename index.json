@@ -1170,7 +1170,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "Decide whether Athena and SingleStore should translate through native athena/singlestore dialects"
+      "title": "Decide whether Athena and SingleStore should translate through native athena/singlestore dialects instead of trino/mysql"
     },
     "athena-spark-emr-serverless-gcp-dataproc-live-tests": {
       "claim": null,

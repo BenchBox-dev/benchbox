@@ -1,9 +1,13 @@
 {
   "acceptance": [
-    "Owner decision recorded.",
-    "If retargeted: keyed overrides and bypass rules updated, a corpus diff lists every changed query, and affected published bundles are flagged or noted."
+    "Owner decision G1 recorded in the item context with date, chosen option and reason.",
+    "If G1(a): the item closes with that record and nothing else changes (no code change; no docs promise).",
+    "If retargeted: a grep-derived inventory (command + output in context) of every place keyed on 'trino'/'mysql' for these two platforms, each migrated; `make platform-manifest-check` passes; the manifest still validates.",
+    "If retargeted: a corpus diff (all benchmarks x platform, seeds as in the #3426 evidence) listing every changed query for athena and singlestore; fork generator tests for `:>` casts / NULLS FIRST / athena output pass in fork CI; ENGINE-GAPS.md row updated for SingleStore/Athena; wheel-bump PR carries `make sqlglot-fork-diff` output.",
+    "If retargeted: the translation-change make targets pass (`make sql-execution-gate`, `make compat-docs-check`, `make typecheck`, `make comment-policy-check`, `BENCHBOX_QUESTDB_DSN=... make sqlglot-repro-retirement-check`) with exit codes recorded; statement that no published bundle is affected (re-verified at implementation time)."
   ],
-  "description": "After #3379 the platform manifest is the single platform-to-dialect home. Athena and SingleStore keep query_dialect trino and mysql because benchmark code keys behavior on those names. Native dialects would give SingleStore :> casts and NULLS FIRST, and Athena its own dialect. Retargeting needs the keyed overrides and the lock-bypass rules updated. Owner decision.",
+  "context": "REVIEW NOTES 2026-10-25\nIndependent of the other items; lowest priority. OWNER-APPROVAL STEPS: G1 (dialect retargeting), G2 (cloud spend), G3 (corpus diff).",
+  "description": "REVIEWED 2026-10-25 (TodoReview) against origin/develop 9a184b619 and fork main ea44bcc9 (30.24.0.13). PROBLEM\nAfter #3379 (merged 2026-10-24) benchbox/core/platform_manifest.py is the single platform-to-dialect home. Athena and SingleStore declare a native `sql_dialect` but keep a different `query_dialect` because benchmark code keys behaviour on the old names. Native dialects would give SingleStore `:>` casts and NULLS FIRST and Athena its own dialect. This is an owner decision with possible follow-up work.\n\nVERIFIED FACTS (2026-10-25)\n- Manifest (develop): singlestore `sql_dialect: singlestore`, `query_dialect: mysql`; athena `sql_dialect: athena`, `query_dialect: trino`. benchbox/platforms/athena.py and singlestore.py read it through `get_platform_query_dialect`. The manifest validator requires query_dialect to differ from sql_dialect.\n- No published Athena or SingleStore bundle exists in results-data (367 manifests searched recursively), so 'flag affected published bundles' is empty today; neither platform has a real engine in fork CI (SingleStore is a documented gap row in the fork's downstream/ENGINE-GAPS.md; Athena has none).\n- Which behaviours are keyed on `trino`/`mysql` (LIST_AGGREGATE_DIALECTS-style dispatch, keyed rewrites, lock-bypass rules) has not been inventoried; the item text asserted it without a list.\n\nDECISION GATES (stop and ask the owner)\nG1 Retarget? Options: (a) keep trino/mysql (recommended default: no published bundle, no engine to prove the change, low value now); (b) retarget SingleStore only; (c) retarget both. \nG2 If (b)/(c): cloud validation. SingleStore Helios and Athena/AWS checks cost money: owner approval before any live run; otherwise documented gap + golden-output tests only.\nG3 Dialect retargeting also changes translation for every benchmark on that platform: owner approves the corpus diff before merge.\n\nGUARDRAILS\n- Keep the manifest the single home; no second dialect table, no aliases or shims; every caller migrated or the change is not made.\n- Do not start implementation until G1 is answered; if G1(a), only record the decision and close.\n- No cloud spend; no edits to published bundles.\n\nTRANSLATION-CHANGE CHECKS (any BenchBox PR that changes emitted SQL): `make sql-execution-gate`, `make compat-docs-check`, `make typecheck`, `make comment-policy-check`, `BENCHBOX_QUESTDB_DSN=postgresql://admin:quest@127.0.0.1:8812/qdb make sqlglot-repro-retirement-check`. SQL translation fixes land in the fork BenchBox-dev/benchbox-sqlglot (clone /Users/joe/Developer/sqlglot) with a real-engine test in fork CI or a documented gap in downstream/ENGINE-GAPS.md; BenchBox adopts via a wheel-bump PR carrying `make sqlglot-fork-diff` output.\nSTANDING GUARDRAILS: work only in a `make worktree-create` worktree after `make agent-write-preflight` (primary clone /Users/joe/Developer/BenchBox is read-only); run tests only through make targets (`make test-fast`, `make pr-preflight`, `make sql-execution-gate`, `make tpcds-obt-equivalence`) or targeted `uv run -- python -m pytest <paths> -n 4`; never BENCHBOX_TEST_LOCK_DIR, `make test-unlock` or raw broad runs; one heavy run at a time; no live-cloud spend and no production publish without explicit owner approval; published result bundles are never edited (only manifest-sidecar `known_defects` and results-data/CORPUS_NOTES.md per results-data/DEFECTIVE_DATAGEN_AUDIT.md); no SKIP / --no-verify / `git add -A`; no explanatory comments or docstrings in code (`make comment-policy-check`); uv only; identity Joe Harris, no Co-Authored-By; PR flow `make pr-preflight` once, `make pr-open`, CI + oracle review, `make pr-arm`. Stop and ask the owner on unexpected result changes, relaxed guards, oracle stand-ins or real design choices.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3379"
   ],
@@ -14,6 +18,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0d5592f90004419f9978bf340b511594",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T13:04:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "686ba8fa5dce4710862468c682caed60",
       "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
