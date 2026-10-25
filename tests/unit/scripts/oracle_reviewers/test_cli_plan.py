@@ -37,6 +37,9 @@ def _pull(**over: Any) -> dict[str, Any]:
     return pull
 
 
+UNRELATED = "unrelated\n"
+
+
 class FakeGitHub:
     def __init__(
         self,
@@ -65,7 +68,7 @@ class FakeGitHub:
         monkeypatch.setattr(github, "latest_state", lambda repo, pr: self.state)
         monkeypatch.setattr(github, "dispatch", lambda repo, workflow, pr: self.dispatched.append(pr))
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
-        monkeypatch.setattr(github, "get_file", lambda repo, path, ref: self.contents.get(path))
+        monkeypatch.setattr(github, "get_file", lambda repo, path, ref: self.contents.get(path, UNRELATED))
 
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.reviews is None:
@@ -365,7 +368,7 @@ OLD_HEAD = "c" * 40
 
 def _record(diff: str, decision: str, **over: Any) -> dict[str, Any]:
     paths = over.pop("paths", None)
-    patches = protocol.file_patches(diff)
+    patches = protocol.file_patches(diff, lambda path: UNRELATED)
     chosen = paths if paths is not None else sorted(patches)
     current = protocol.patch_map(patches, chosen)
     record = {
@@ -856,6 +859,15 @@ def test_a_headingless_hunk_relocated_to_an_identical_block_is_a_different_patch
 def test_a_rebase_that_shifts_a_headingless_hunk_keeps_its_patch() -> None:
     assert _read_patches(_headingless(1), _repeated_blocks(removed=1)) == _read_patches(
         _headingless(1, pad=8), _repeated_blocks(removed=1, pad=8)
+    )
+
+
+def test_an_unreadable_file_binds_a_headingless_hunk_to_its_line_number() -> None:
+    assert protocol.file_patches(_headingless(0), lambda path: None) != protocol.file_patches(
+        _headingless(0, pad=8), lambda path: None
+    )
+    assert protocol.file_patches(_headingless(1), lambda path: None) != protocol.file_patches(
+        _headingless(0), lambda path: None
     )
 
 
