@@ -23448,13 +23448,18 @@
       "title": "Daily drain signal for soundness-gated PRs: green + auto-merge-withheld + idle > 24h"
     },
     "soundness-prereg-same-commit-entries-20261022": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T12:54:01Z",
+        "generation": "e1a1e92c13454c56a1c05edb1175c4d2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [
         "soundness-gaps-decisions-20261022",
         "soundness-dead-exception-report-20261022"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Let the local comment-policy hook accept fixture entries for files changed in the same commit"
     },
     "soundness-surface-widening": {
