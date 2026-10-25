@@ -23095,7 +23095,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "Audit the Snowflake and Databricks ORDER BY ... DESC to DESC NULLS LAST translation change since v0.4.1"
+      "title": "Audit the explicit NULLS LAST that translation adds on Snowflake (DESC), and on Databricks and BigQuery (ASC), since v0.4.1"
     },
     "snowflake-session-query-acceleration-invalid-20261013": {
       "claim": null,
