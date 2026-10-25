@@ -1166,15 +1166,10 @@
       "title": "Athena: Convert text tables to Parquet using CTAS for query performance"
     },
     "athena-singlestore-native-sql-dialects-20261025": {
-      "claim": {
-        "expires_at": "2026-10-26T20:38:32Z",
-        "generation": "c1ec518663854cc1ad60151828054d72",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Decide whether Athena and SingleStore should translate through native athena/singlestore dialects instead of trino/mysql"
     },
     "athena-spark-emr-serverless-gcp-dataproc-live-tests": {
