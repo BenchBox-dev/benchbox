@@ -130,8 +130,8 @@ Then:
 - **Provider login changed:** log in again with `omp auth-broker login
   <provider>`, then run `gateway` so the pinned accounts match.
 
-Restarting the gateway fails any review attempt in flight; the hourly sweep
-retries it.
+Restarting the gateway fails any review attempt in flight; the next retry sweep
+(on a push to `develop` or the hourly schedule) retries it.
 
 ## Move to another Mac
 

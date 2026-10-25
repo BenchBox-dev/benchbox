@@ -94,6 +94,27 @@ verdict from `benchbox-oracle` covers its head. Even then a changed pin must
 name a path already pinned at the base, stay inside the base range, keep those
 bytes identical to the base, and not turn a partial pin into a whole-file pin.
 
+## What the candidate ledger must satisfy
+
+The checker validates the pull request's own ledger, read from the committed
+tree, or from the index under `--staged`, for structure. The check fails when:
+
+- a `notices` entry names a path that is not tracked at the head, or its byte
+  range, `retained_sha256`, or (for a pin covering the whole file) `blob_sha256`
+  does not match the head bytes;
+- an `external_entries` selector or a `payloads` path matches no path tracked
+  at the head;
+- a notice, directive, or obligation has a missing or malformed field or an
+  owner that does not start with `comment-cleanup-`.
+
+This validation grants no exemption. Exclusions and authorization still come
+from the ledger at the base, so a candidate ledger never exempts source in its
+own pull request.
+
+CI and the commit hook run the checker copied from the base commit. The
+validation therefore protects pull requests whose base already contains it, not
+the pull request that introduces it.
+
 ## What the drift check enforces (`SCOPE008`)
 
 The drift check covers the two first-party pins, `LICENSE` and `COPYRIGHT.md`.

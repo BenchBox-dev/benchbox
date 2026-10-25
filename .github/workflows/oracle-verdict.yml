@@ -3,6 +3,8 @@ name: oracle-verdict
 run-name: oracle-verdict (${{ github.event_name }} pr=${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || 'sweep' }})
 
 on:
+  push:
+    branches: [develop]
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited]
   issue_comment:
@@ -19,13 +21,13 @@ on:
 permissions: {}
 
 concurrency:
-  group: oracle-verdict-${{ ((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/oracle-review') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id) }}
-  cancel-in-progress: true
+  group: oracle-verdict-${{ ((github.event_name == 'schedule' || github.event_name == 'push') && 'sweep') || (((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/oracle-review') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id)) }}
+  cancel-in-progress: ${{ github.event_name != 'push' && github.event_name != 'schedule' }}
 
 jobs:
   sweep:
     name: sweep
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -949,15 +951,6 @@ jobs:
           python3 -m _project.scripts.oracle_reviewers.cli finalize --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
           --out-dir "$RUNNER_TEMP/oracle-final" --classification "$RUNNER_TEMP/oracle-classification/classification.json"
 
-      - name: Upload the retry state
-        if: steps.finalize.outputs.has_state == 'true'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-        with:
-          name: oracle-verdict-state-${{ needs.plan.outputs.pr }}
-          path: ${{ runner.temp }}/oracle-final/state/state.json
-          if-no-files-found: error
-          retention-days: 7
-
       - name: Log the result when the App is not configured
         if: env.HAS_APP != 'true'
         env:
@@ -998,6 +991,15 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$RUNNER_TEMP/oracle-final/review.json"
+
+      - name: Upload the retry state
+        if: steps.finalize.outputs.has_state == 'true'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: oracle-verdict-state-${{ needs.plan.outputs.pr }}
+          path: ${{ runner.temp }}/oracle-final/state/state.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Dispatch the gate for the reviewed head
         if: env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'

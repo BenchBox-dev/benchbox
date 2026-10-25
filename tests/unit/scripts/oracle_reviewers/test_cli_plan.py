@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import stat
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
@@ -56,6 +57,7 @@ class FakeGitHub:
         self.reviews: list[dict[str, Any]] | None = []
         self.reread_sha: str | None = None
         self._pull_reads = 0
+        self.runs: dict[str, list[str]] = {}
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(github, "get_json", self._json)
@@ -73,6 +75,9 @@ class FakeGitHub:
         return self.reviews
 
     def _json(self, path: str) -> dict[str, Any]:
+        listing = re.search(r"/actions/workflows/oracle-verdict\.yml/runs\?status=(\w+)&", path)
+        if listing:
+            return {"workflow_runs": [{"display_title": title} for title in self.runs.get(listing.group(1), [])]}
         if path == f"repos/{REPO}/pulls/7":
             self._pull_reads += 1
             if self._pull_reads > 1 and self.reread_sha is not None:
@@ -333,6 +338,35 @@ def test_sweep_dispatches_only_due_pending_prs(monkeypatch: pytest.MonkeyPatch, 
     fresh.install(monkeypatch)
     assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
     assert fresh.dispatched == []
+
+
+def _due_state() -> State:
+    return State(7, HEAD, "pending", datetime.now(UTC) - timedelta(hours=2), pending_cause="all-absent")
+
+
+@pytest.mark.parametrize("status", ["queued", "in_progress"])
+@pytest.mark.parametrize("event", ["workflow_dispatch", "pull_request_target", "issue_comment"])
+def test_sweep_does_not_dispatch_over_a_run_still_in_flight(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, status: str, event: str
+) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.runs[status] = [f"oracle-verdict ({event} pr=7)"]
+    fake.install(monkeypatch)
+    _env(monkeypatch, tmp_path, "push", {}, "refs/heads/develop")
+    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
+    assert fake.dispatched == []
+
+
+def test_sweep_dispatches_once_when_only_other_runs_are_in_flight(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.runs["queued"] = ["oracle-verdict (workflow_dispatch pr=70)", "oracle-verdict (push pr=sweep)"]
+    fake.runs["in_progress"] = ["oracle-verdict (schedule pr=sweep)", "oracle-verdict (workflow_dispatch pr=17)"]
+    fake.install(monkeypatch)
+    _env(monkeypatch, tmp_path, "push", {}, "refs/heads/develop")
+    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
+    assert fake.dispatched == [7]
 
 
 @pytest.mark.parametrize(
@@ -1053,6 +1087,49 @@ def _unreadable_base_change(monkeypatch: pytest.MonkeyPatch) -> None:
         raise github.GitHubError("timeline unavailable")
 
     monkeypatch.setattr(github, "base_changed_at", unreadable)
+
+
+def test_guard_lets_a_carry_publish_and_skips_once_the_carry_is_posted(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _unreadable_base_change(monkeypatch)
+    fake = _fake(_review(_decided_head()))
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event={"action": "edited", "changes": {"base": {}}})
+    assert values["decision"] == "carry" and plan["protocol"]["kind"] == "carry"
+    plan_path = tmp_path / "plan" / "plan.json"
+    output = tmp_path / "guard.out"
+    output.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    fake.install(monkeypatch)
+    assert cli.main(["guard", "--plan", str(plan_path)]) == 0
+    assert dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())["skip"] == "false"
+    carried = {**_decided_head(), "carried": True, "kind": "carry"}
+    fake.reviews = [_review(_decided_head()), _review(carried, id=2, submitted_at="2026-10-08T11:00:00Z")]
+    assert cli.main(["guard", "--plan", str(plan_path)]) == 0
+    assert dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())["skip"] == "true"
+
+
+def test_guard_still_sees_the_carry_after_an_earlier_review_is_dismissed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _unreadable_base_change(monkeypatch)
+    older = {**_decided_head(), "round": 1}
+    fake = _fake(_review(older), _review(_decided_head(), id=2, submitted_at="2026-10-08T10:30:00Z"))
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event={"action": "edited", "changes": {"base": {}}})
+    assert values["decision"] == "carry"
+    plan_path = tmp_path / "plan" / "plan.json"
+    output = tmp_path / "guard.out"
+    output.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    carried = {**_decided_head(), "carried": True, "kind": "carry"}
+    fake.reviews = [
+        _review(older, state="DISMISSED"),
+        _review(_decided_head(), id=2, submitted_at="2026-10-08T10:30:00Z"),
+        _review(carried, id=3, submitted_at="2026-10-08T11:00:00Z"),
+    ]
+    fake.install(monkeypatch)
+    assert cli.main(["guard", "--plan", str(plan_path)]) == 0
+    assert dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())["skip"] == "true"
 
 
 def test_unreadable_base_change_history_reviews_a_decided_head_whose_patch_changed(

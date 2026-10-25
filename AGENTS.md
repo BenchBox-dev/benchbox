@@ -23,7 +23,7 @@ Personal defaults apply only where this guide is silent; where behavior conflict
 
 `[SESSION-STATE-001]` Session state lives in its tracker item, never in a handoff, scratchpad, `/tmp`, or commit; holds are enforced states (`docs/agent/handoffs.md`).
 
-`[MERGE-AUTHORITY-001]` A hold is the `no-auto-merge` label, applied in the turn the owner asks. Lift one, post a stand-in, or bypass a check only when the owner names that PR now (`docs/agent/merge-authority.md`).
+`[MERGE-AUTHORITY-001]` A hold is the `no-auto-merge` label, applied in the turn the owner asks. Lift one or post a stand-in only when the owner names that PR now; never bypass a check (`docs/agent/merge-authority.md`).
 
 ## Code Review Rules
 
@@ -83,6 +83,7 @@ A disposable clone (remote session, CI runner) declares `BENCHBOX_EPHEMERAL_CLON
 - Use Python 3.11+, four spaces, 120 columns, Ruff, and public API type hints.
 - No credentials in Git; redact logs and use environment variables.
 - Live cloud tests and broad/destructive cleanup require explicit approval.
+- `[CHANGELOG-001]` User-facing PRs add a `changelog.d/` fragment; never edit `CHANGELOG.md`.
 
 For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stress runs use `BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs` (announce command, max runtime, log path, and stop condition). Do not commit raw logs, screenshots, browser reports, or generated binaries.
 

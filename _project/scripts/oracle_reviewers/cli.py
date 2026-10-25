@@ -419,6 +419,7 @@ def _protocol_round(
         "changed": sorted(step.changed) if follow_up and step.changed is not None else None,
         "previous": dict(latest) if step.kind == protocol.CARRY else None,
         "forced": step.forced,
+        "seen": [item for item in found.ids if item is not None],
     }
     return step
 
@@ -804,7 +805,15 @@ def command_guard(args: argparse.Namespace) -> int:
     rules = plan.get("protocol") or {}
     planned = (int(rules.get("cycle", 0)), int(rules.get("round", 0)))
     posted = (int(latest.get("cycle", 0)), int(latest.get("round", 0))) if latest is not None else None
-    done = latest is not None and latest["head_sha"] == plan["head_sha"] and posted is not None and posted >= planned
+    seen = rules.get("seen")
+    published = seen is None or any(item is not None and item not in seen for item in found.ids)
+    done = (
+        latest is not None
+        and latest["head_sha"] == plan["head_sha"]
+        and posted is not None
+        and posted >= planned
+        and published
+    )
     _output({"skip": "true" if done else "false"})
     if done:
         _summary(f"oracle-verdict: head {plan['head_sha']} already has a decision; this run posts nothing")
@@ -816,6 +825,7 @@ def command_sweep(args: argparse.Namespace) -> int:
     repo = os.environ["GITHUB_REPOSITORY"]
     now = _now()
     dispatched = 0
+    in_flight: frozenset[int] | None = None
     for pull in github.get_paginated(f"repos/{repo}/pulls?state=open&base=develop&per_page=100"):
         if dispatched >= policy.retry.sweep_max_dispatches:
             break
@@ -823,6 +833,11 @@ def command_sweep(args: argparse.Namespace) -> int:
             continue
         state = github.latest_state(repo, pull["number"])
         if state is None or not retry.due_for_retry(state, pull["head"]["sha"], now, policy.retry):
+            continue
+        if in_flight is None:
+            in_flight = github.in_flight_pulls(repo, WORKFLOW_FILE)
+        if pull["number"] in in_flight:
+            _summary(f"retry skipped for #{pull['number']}: a run is still in flight")
             continue
         github.dispatch(repo, WORKFLOW_FILE, pull["number"])
         dispatched += 1
