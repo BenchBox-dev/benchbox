@@ -80,27 +80,27 @@ def test_triggers_are_trusted_only() -> None:
         "schedule",
     }
     assert triggers["push"]["branches"] == ["develop"]
-    assert set(triggers["push"]) == {"branches", "paths"}
+    assert set(triggers["push"]) == {"branches"}
     assert "pull_request" not in triggers
     assert "pull_request_review" not in triggers
 
 
-def _sparse_entries(job: str) -> list[str]:
-    checkouts = [step for step in _steps(job) if "actions/checkout" in step.get("uses", "")]
-    assert len(checkouts) == 1
-    return checkouts[0]["with"]["sparse-checkout"].split()
+def test_every_develop_push_runs_only_the_sweep_in_the_uncancelled_push_group() -> None:
+    push = _triggers()["push"]
+    assert push == {"branches": ["develop"]}
+    jobs = _jobs()
+    assert "github.event_name == 'push'" in jobs["sweep"]["if"]
+    assert "github.event_name != 'push'" in jobs["gate"]["if"]
+    assert jobs["bridge"]["if"] == "github.event_name == 'workflow_run'"
+    concurrency = _load()["concurrency"]
+    assert concurrency["group"].count("'push-sweep'") == 1
+    assert "github.event_name == 'push' && 'push-sweep'" in concurrency["group"]
+    assert concurrency["cancel-in-progress"] == "${{ github.event_name != 'push' }}"
 
 
-def _normalized(entries: list[str]) -> list[str]:
-    return [f"{entry}/**" if (REPO_ROOT / entry).is_dir() else entry for entry in entries]
-
-
-def test_push_paths_equal_the_sparse_checkout_policy_inputs() -> None:
-    paths = _triggers()["push"]["paths"]
-    assert "_project/scripts/oracle_reviewers/**" in paths
-    for job in ("gate", "sweep"):
-        assert sorted(paths) == sorted(_normalized(_sparse_entries(job)))
-    assert len(paths) == len(set(paths))
+def test_schedule_stays_as_the_fallback_for_hours_without_pushes() -> None:
+    assert "github.event_name == 'schedule'" in _jobs()["sweep"]["if"]
+    assert _triggers()["schedule"] == [{"cron": "41 * * * *"}]
 
 
 def test_pull_request_target_covers_open_push_reopen_ready_and_edit() -> None:
@@ -119,7 +119,7 @@ def test_workflow_run_bridges_both_posting_workflows() -> None:
     assert set(bridge["workflows"]) == {"oracle-verdict", "oracle-review"}
 
 
-def test_dispatch_takes_a_pr_number_and_schedule_sweeps_hourly() -> None:
+def test_dispatch_takes_a_pr_number_and_one_schedule_is_declared() -> None:
     assert _triggers()["workflow_dispatch"]["inputs"]["pr"]["required"] is True
     assert len(_triggers()["schedule"]) == 1
 
