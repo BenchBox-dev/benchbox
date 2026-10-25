@@ -6,7 +6,7 @@
     "RUBRIC 4 Tests cover the warning boundary, validity through the expiry date, hard failure the following day, and that a date-only renewal still requires oracle review",
     "RUBRIC 5 The renewal owner and process are documented"
   ],
-  "context": "Warning part merged in PR #3410 (30-day expiry warning + renewal docs). Staggering (322 dates -> 14 dates, 23 per date, 2027-01-04..2027-07-05) is parked at /tmp/expiry-stagger.patch with its guard test /tmp/expiry-stagger-test.txt: the pre-commit hook fails with 345 findings because a changed `expires` is a 'new policy entry' that only counts after an oracle verdict read inside GitHub Actions. Owner decision 2026-10-25: wait for PR #3355 (fix/prereg-hook-same-commit-entries) to merge, then re-apply; no hook bypass. Re-apply after #3355 lands.",
+  "context": "OWNER DECISIONS 2026-10-25: (1) renewal owner is a 'CI maintainer' role (docs/internal/comment-policy.md to say so instead of naming workstream ids as owners); (2) before any staggering, re-audit the expiring exceptions and decide per class whether each should become a permanent policy rule, be fixed and removed, or be renewed. REVIEW findings: #3410's 30-day warning works but falls in the holidays; the saved stagger patch cannot pass the local hook (the #3355 dependency was false) and leaves 23 directives on 2027-01-04; dead entries must be removed first. Stagger patch preserved off-tracker.\n\nWarning part merged in PR #3410 (30-day expiry warning + renewal docs). Staggering (322 dates -> 14 dates, 23 per date, 2027-01-04..2027-07-05) is parked at /tmp/expiry-stagger.patch with its guard test /tmp/expiry-stagger-test.txt: the pre-commit hook fails with 345 findings because a changed `expires` is a 'new policy entry' that only counts after an oracle verdict read inside GitHub Actions. Owner decision 2026-10-25: wait for PR #3355 (fix/prereg-hook-same-commit-entries) to merge, then re-apply; no hook bypass. Re-apply after #3355 lands.",
   "description": "All 322 dated exceptions in quality/comment-policy.json (at develop c962e3e) are directives with `expires: 2027-01-04`. An exception is expired when `expires < date.today()` (scripts/check_comment_policy.py:61-67) and, since #3362, expired-exception findings are always in the failure set (:481). So from 2027-01-05 every strict commit hook run, PR CI comment-policy job and the nightly whole-tree scan fails until the policy is updated. There is no advance warning and no staggering; renewals are new policy entries that require oracle review (docs/internal/comment-policy.md:120-130).",
   "links": [
     "/Users/joe/.cache/remaining-tasks-advice.md"
@@ -27,6 +27,14 @@
       "op": "update",
       "op_id": "9962d56a243943ddad4f41fae5356c1c",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T18:44:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d94eaf711ab34bed8db453015604d277",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
