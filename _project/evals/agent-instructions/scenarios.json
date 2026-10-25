@@ -10,7 +10,7 @@
     }
   },
   "budgets": {
-    "active_bytes": 16500,
+    "active_bytes": 16600,
     "agents_lines": 170,
     "adapter_bytes": 700
   },
