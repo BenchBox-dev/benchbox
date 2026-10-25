@@ -89,6 +89,11 @@ Bound:
 - **Delivery.** A push that GitHub never delivers produces no run, so the gate
   cannot see a red tree it was never told about.
 
+Run `make trunk-status` to read the same decision on demand: it prints the culprit and
+the revert command and exits non-zero while `develop` is red with the culprit not
+yet reverted. `make pr-open` names the same culprit when its 30-minute grace has
+lapsed.
+
 ## Diagnostic
 
 Exact-SHA coverage for the last 10 develop commits, for one workflow:
