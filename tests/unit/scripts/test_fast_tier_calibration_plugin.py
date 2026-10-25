@@ -44,3 +44,14 @@ def test_plugin_records_one_collection_time_per_collecting_process(tmp_path: Pat
     assert len(lines) == (workers or 1)
     assert {line["process"] for line in lines} == ({"main"} if workers == 0 else {"gw0", "gw1"})
     assert all(line["seconds"] >= 0 for line in lines)
+
+
+def test_loading_the_plugin_does_not_import_benchbox() -> None:
+    probe = "import sys; import scripts.fast_tier_calibration; sys.exit(int('benchbox' in sys.modules))"
+    env = {**os.environ, "PYTHONPATH": str(ROOT)}
+
+    result = subprocess.run(
+        [sys.executable, "-c", probe], cwd=ROOT, env=env, capture_output=True, text=True, check=False
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr

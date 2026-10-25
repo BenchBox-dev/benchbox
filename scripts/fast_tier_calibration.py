@@ -9,8 +9,6 @@ from pathlib import Path
 
 import pytest
 
-from benchbox.utils.clock import elapsed_seconds, mono_time
-
 SCHEMA = 1
 CALIBRATION_ITERATIONS = 6_000_000
 CALIBRATION_REPEATS = 3
@@ -27,6 +25,8 @@ def _is_xdist_controller(config: pytest.Config) -> bool:
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_collection(session: pytest.Session) -> Iterator[None]:
+    from benchbox.utils.clock import elapsed_seconds, mono_time
+
     start = mono_time()
     yield
     output = session.config.getoption("collection_timing")
@@ -48,6 +48,8 @@ def run_workload(iterations: int) -> int:
 
 
 def measure_workload(iterations: int | None = None, repeats: int = CALIBRATION_REPEATS) -> dict[str, object]:
+    from benchbox.utils.clock import elapsed_seconds, mono_time
+
     iterations = CALIBRATION_ITERATIONS if iterations is None else iterations
     runs: list[float] = []
     checksum = 0
