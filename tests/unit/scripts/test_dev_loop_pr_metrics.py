@@ -1887,3 +1887,36 @@ def test_make_target_and_help_expose_the_usage_report() -> None:
     assert "\nci-usage-report:\n" in makefile
     assert "--usage-report --since" in makefile
     assert "ci-usage-report" in (ROOT / "make" / "help.mk").read_text(encoding="utf-8")
+
+
+def test_urllib_api_retries_truncated_bodies_and_reports_exhaustion(monkeypatch: pytest.MonkeyPatch) -> None:
+    import http.client
+    import io
+
+    class _Response(io.BytesIO):
+        headers = {"x-ratelimit-remaining": "42", "x-ratelimit-reset": "99"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+    outcomes = [http.client.IncompleteRead(b"", 10), _Response(b'{"ok": true}')]
+    seen: list[dict] = []
+
+    def fake_urlopen(_request, timeout):
+        outcome = outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(metrics.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(metrics.time, "sleep", lambda _seconds: None)
+    assert metrics._urllib_api("/x", "t", attempts=3, on_headers=lambda headers: seen.append(dict(headers))) == {
+        "ok": True
+    }
+    assert seen == [{"x-ratelimit-remaining": "42", "x-ratelimit-reset": "99"}]
+
+    outcomes[:] = [http.client.IncompleteRead(b"", 10)] * 2
+    assert metrics._urllib_api("/x", "t", attempts=2) is None

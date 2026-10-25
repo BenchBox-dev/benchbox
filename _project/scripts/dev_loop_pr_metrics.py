@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import re
@@ -230,7 +231,7 @@ def _urllib_api(
                     continue
             if attempt == attempts - 1:
                 return None
-        except (urllib.error.URLError, TimeoutError, OSError):
+        except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError):
             if attempt == attempts - 1:
                 return None
         time.sleep(0.5 * (attempt + 1))
