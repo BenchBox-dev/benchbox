@@ -16271,6 +16271,17 @@
       "status": "dropped",
       "title": "BenchBox owner: make oracle-engine-installed a required check"
     },
+    "oracle-local-prepr-review-20261025": {
+      "claim": null,
+      "needs": [
+        "oracle-verdict-single-job-20261025",
+        "oracle-gateway-named-clients-20261025",
+        "oracle-gateway-cloud-builder-access-20261025"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Run a local oracle review inside make pr-open and refuse to open a PR with Critical or High findings"
+    },
     "oracle-map-staged-gate-scale-and-label-vocabulary": {
       "claim": null,
       "needs": [],
