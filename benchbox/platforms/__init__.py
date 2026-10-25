@@ -617,6 +617,7 @@ gizmosql|autocommit|Run the ADBC session in autocommit mode|{'parser': 'parse_bo
 gizmosql|query_timeout|Per-query timeout in seconds; the query is cancelled on the server (0 disables)|{'parser': 'int', 'default': 0}
 gizmosql|ingest_batch_bytes|Target size in bytes of each Arrow ingest batch (below the 16 MiB Flight message limit)|{'parser': 'int', 'default': 8388608}
 gizmosql|session_settings|Session-scoped DuckDB settings as name=value pairs separated by commas; server-wide settings are rejected|{}
+gizmosql|allow_unverified_reuse|Query preloaded tables on a read-only server without comparing row counts to local source files|{'parser': 'parse_bool', 'default': False}
 synapse|server|Azure Synapse server endpoint (e.g., myworkspace.sql.azuresynapse.net)|{}
 synapse|database|Azure Synapse database name (auto-generated if not specified)|{}
 synapse|username|Azure Synapse username|{}

@@ -442,7 +442,7 @@ class TestServerValidation:
     def test_read_only_detection(self, kwargs, expected):
         server = FakeGizmoSQLServer(**kwargs)
         driver = FakeDriver(server)
-        adapter = make_adapter()
+        adapter = make_adapter(allow_unverified_reuse=True)
         adapter._driver = driver
         server.tables = {"alpha": 1, "beta": 1}
 
@@ -459,13 +459,62 @@ class TestReadOnlyServer:
         monkeypatch.setattr(gizmosql_module, "load_gizmosql_driver", lambda: FakeDriver(server))
         return server
 
-    def test_query_only_runs_reuse_preloaded_data(self, read_only):
-        adapter = make_adapter()
+    def test_query_only_runs_reuse_preloaded_data_when_unverified_reuse_is_allowed(self, read_only):
+        adapter = make_adapter(allow_unverified_reuse=True)
         adapter.benchmark = StubBenchmark()
         connection = adapter.create_connection()
 
         assert adapter.database_was_reused is True
         assert adapter.execute_query(connection, "SELECT 1", "Q1")["status"] == "SUCCESS"
+
+    def test_unverifiable_preloaded_tables_are_refused_by_default(self, read_only):
+        adapter = make_adapter()
+        adapter.benchmark = StubBenchmark()
+
+        with pytest.raises(gizmosql_module.GizmoSQLExistingDataError, match="allow_unverified_reuse"):
+            adapter.create_connection()
+
+    def test_verified_preloaded_tables_are_reused_without_the_option(self, read_only, tmp_path):
+        read_only.tables = {"alpha": 4, "beta": 3}
+        adapter = make_adapter()
+        adapter.benchmark = TestDatabaseReuse().sourced(tmp_path, {"alpha": 4, "beta": 3})
+
+        adapter.create_connection().close()
+
+        assert adapter.database_was_reused is True
+
+    @pytest.mark.parametrize(
+        "statement",
+        [
+            "PRAGMA threads=1",
+            "pragma threads = 1",
+            "PRAGMA memory_limit='1GB'",
+            "PRAGMA threads(1)",
+            "PRAGMA enable_profiling",
+            "-- c\nPRAGMA x = y",
+            "CALL enable_logging()",
+            "INSTALL httpfs",
+            "LOAD httpfs",
+        ],
+    )
+    def test_pragma_call_and_extension_forms_are_blocked(self, read_only, statement):
+        adapter = make_adapter(allow_unverified_reuse=True)
+        adapter.benchmark = StubBenchmark()
+        connection = adapter.create_connection()
+        before = len(read_only.statements)
+
+        with pytest.raises(GizmoSQLReadOnlyError):
+            connection.execute(statement)
+
+        assert len(read_only.statements) == before
+
+    @pytest.mark.parametrize("statement", ["PRAGMA table_info('alpha')", "PRAGMA database_size", "PRAGMA version"])
+    def test_read_only_pragmas_are_allowed(self, read_only, statement):
+        adapter = make_adapter(allow_unverified_reuse=True)
+        adapter.benchmark = StubBenchmark()
+        connection = adapter.create_connection()
+
+        connection.execute(statement)
 
     def test_missing_tables_fail_with_actionable_error(self, read_only):
         read_only.tables = {"alpha": 5}
@@ -768,6 +817,22 @@ class TestDatabaseReuse:
         benchmark = StubBenchmark(tables=tables)
         benchmark.output_dir = tmp_path
         return benchmark
+
+    def test_kept_tables_are_reported_as_reused_with_no_load_time(self, server, driver, tmp_path):
+        server.tables = {"alpha": 4}
+        adapter = make_adapter()
+        connection = adapter.create_connection()
+        benchmark = StubBenchmark(
+            tables={
+                "alpha": [TestLoading().write_tbl(tmp_path, "alpha", 4)],
+                "beta": [TestLoading().write_tbl(tmp_path, "beta", 3)],
+            }
+        )
+
+        _, _, timings = adapter.load_data(benchmark, connection, tmp_path)
+
+        assert timings["alpha"] == {"total_ms": 0, "reused": True}
+        assert "reused" not in timings["beta"]
 
     def test_partial_table_is_not_reusable_and_load_is_not_skipped(self, server, driver, tmp_path):
         server.tables = {"alpha": 7, "beta": 3}

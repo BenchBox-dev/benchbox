@@ -47,6 +47,7 @@ _MUTATING_KEYWORDS = frozenset(
         "ALTER",
         "ANALYZE",
         "ATTACH",
+        "CALL",
         "CHECKPOINT",
         "COMMENT",
         "COPY",
@@ -57,6 +58,8 @@ _MUTATING_KEYWORDS = frozenset(
         "EXPORT",
         "IMPORT",
         "INSERT",
+        "INSTALL",
+        "LOAD",
         "MERGE",
         "REPLACE",
         "TRUNCATE",
@@ -81,6 +84,7 @@ _CONNECTION_FIELDS = (
     "query_timeout",
     "ingest_batch_bytes",
     "session_settings",
+    "allow_unverified_reuse",
 )
 _DRIVER_FORWARD_KEYS = (
     "driver_package",
@@ -200,7 +204,36 @@ def _leading_keyword(sql: str) -> str | None:
     return match.group(1).upper() if match else None
 
 
+_READ_ONLY_PRAGMAS = frozenset(
+    [
+        "database_list",
+        "database_size",
+        "functions",
+        "show_tables",
+        "show_tables_expanded",
+        "storage_info",
+        "table_info",
+        "version",
+    ]
+)
+_PRAGMA_NAME_PATTERN = re.compile(
+    r"^(?:\s+|--[^\n]*(?:\n|$)|/\*.*?\*/)*PRAGMA\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$", re.I | re.S
+)
+
+
+def _pragma_changes_server(sql: str) -> bool:
+    match = _PRAGMA_NAME_PATTERN.match(sql)
+    if match is None:
+        return False
+    name, rest = match.group(1).lower(), match.group(2).strip()
+    if rest.startswith("="):
+        return True
+    return name not in _READ_ONLY_PRAGMAS
+
+
 def _scope_changes_server(sql: str) -> bool:
+    if _pragma_changes_server(sql):
+        return True
     match = _LEADING_SCOPE_PATTERN.match(sql)
     if match is None or match.group(1).upper() not in {"SET", "RESET"}:
         return False
@@ -467,7 +500,9 @@ class GizmoSQLAdapter(PlatformAdapter):
         self.query_timeout = int(config.get("query_timeout") or 0)
         self.ingest_batch_bytes = int(config.get("ingest_batch_bytes") or _default_ingest_batch_bytes())
         self.session_settings = parse_session_settings(config.get("session_settings"))
+        self.allow_unverified_reuse = _as_bool(config.get("allow_unverified_reuse"), False)
         self.skip_database_management = True
+        self._kept_tables: set[str] = set()
         self.server_info: dict[str, Any] | None = None
         self.server_read_only = False
         self.effective_session_settings: dict[str, str] = {}
@@ -762,6 +797,7 @@ class GizmoSQLAdapter(PlatformAdapter):
             for name in expected
             if source_counts is not None and name in source_counts and counts[name] != source_counts[name]
         }
+        verified = source_counts is not None and all(name in source_counts for name in expected)
         if self.server_read_only:
             if not populated:
                 raise GizmoSQLReadOnlyError(
@@ -770,11 +806,16 @@ class GizmoSQLAdapter(PlatformAdapter):
                 )
             if mismatched:
                 raise GizmoSQLExistingDataError(self._mismatch_message(mismatched, "read-only"))
+            if not verified and not self.allow_unverified_reuse:
+                raise GizmoSQLExistingDataError(
+                    "The read-only GizmoSQL server holds populated tables, but their row counts cannot be checked "
+                    "because the benchmark source files are not available. Generate the data locally so BenchBox can "
+                    "compare counts, or set allow_unverified_reuse=true to query the preloaded tables as they are."
+                )
             return True
         if mismatched:
             self.logger.warning(self._mismatch_message(mismatched, "writable"))
             return False
-        verified = source_counts is not None and all(name in source_counts for name in expected)
         if populated and not verified:
             self.logger.warning(
                 "Source row counts are unavailable, so the populated GizmoSQL tables cannot be verified as complete; "
@@ -934,6 +975,7 @@ class GizmoSQLAdapter(PlatformAdapter):
                         "partial or stale and BenchBox will not delete it. Re-run with force_recreate=true to "
                         "rebuild the benchmark tables, or point the schema option at a fresh schema."
                     )
+                self._kept_tables.add(table.lower())
                 self.log_verbose(f"Table {table} already holds the expected {existing} rows; keeping them")
                 loader.rollback()
                 return existing
@@ -988,7 +1030,8 @@ class GizmoSQLAdapter(PlatformAdapter):
         loader.query_timeout = 0
         try:
             self._configure_session(loader)
-            return run_staged_table_loads(
+            self._kept_tables = set()
+            stats, total, timings = run_staged_table_loads(
                 self,
                 tables=tables,
                 stat_key=str.lower,
@@ -999,6 +1042,10 @@ class GizmoSQLAdapter(PlatformAdapter):
                 record_timings=True,
                 fail_fast=True,
             )
+            for name in self._kept_tables & set(timings or {}):
+                total = max(total - timings[name].get("total_ms", 0) / 1000, 0.0)
+                timings[name] = {"total_ms": 0, "reused": True}
+            return stats, total, timings
         finally:
             loader.close()
             self._commit(connection)

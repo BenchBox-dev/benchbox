@@ -138,7 +138,12 @@ A GizmoSQL server is shared state. BenchBox keeps its footprint small:
 
 A server started with `--readonly` supports query-only runs against preloaded data. Set `schema` to where the
 tables live (for example `main`). Schema creation, loading, statistics gathering and write benchmarks fail
-before anything is sent to the server, with an error that says the server is read-only.
+before anything is sent to the server, with an error that says the server is read-only. Server-wide `SET`/`RESET`, `PRAGMA` assignments, `CALL`, `INSTALL`
+and `LOAD` are refused client-side too.
+
+BenchBox compares each preloaded table's row count with the locally generated source files. If the source files are
+not available, it refuses the run; set `allow_unverified_reuse=true` to query the preloaded tables as they are. Tables
+kept at load time are recorded as reused with zero load time.
 
 ## Timing
 
