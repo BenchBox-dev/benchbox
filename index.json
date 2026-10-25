@@ -2717,17 +2717,12 @@
       "title": "Add the changelog fragment library and make targets (inert, no CI gate, no release-path change)"
     },
     "changelog-fragments-02-release-prep": {
-      "claim": {
-        "expires_at": "2026-10-25T20:33:17Z",
-        "generation": "3ec51b68eda24f7d8fca2448bd8b35e5",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [
         "changelog-fragments-01-library"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Make release-prep compile changelog fragments into the release section and gate pre-tag state"
     },
     "changelog-fragments-03-cutover": {
