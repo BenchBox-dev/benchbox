@@ -35,6 +35,7 @@ def test_decide_flags_a_map_more_than_twenty_commits_behind() -> None:
     state, reason = stale.decide("found", 21, ["success", "success"])
     assert state == "stale"
     assert "21" in reason
+    assert stale.decide("found", 20, ["success"])[0] == "healthy"
 
 
 def test_decide_flags_three_consecutive_failed_runs() -> None:
@@ -45,6 +46,87 @@ def test_decide_flags_three_consecutive_failed_runs() -> None:
 
 def test_decide_stays_unknown_when_the_lookup_fails() -> None:
     assert stale.decide("lookup-failed", None, [])[0] == "unknown"
+
+
+def test_decide_is_unknown_without_any_completed_producer_run() -> None:
+    assert stale.decide("found", 0, [])[0] == "unknown"
+    assert stale.decide("found", 0, ["cancelled", ""])[0] == "unknown"
+
+
+def test_recent_conclusions_counts_only_map_producing_runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    listing = "\n".join(
+        [
+            "1\tschedule",
+            "2\tschedule",
+            "3\tschedule",
+            "4\tschedule",
+            "5\tschedule",
+            "6\tpull_request",
+        ]
+    )
+    producer = {"1": "", "2": "failure", "3": "failure", "4": "failure", "5": "skipped", "6": "failure"}
+    calls: list[str] = []
+
+    def _gh(_repo: Path, *args: str) -> str:
+        calls.append(args[1])
+        if args[1].endswith("/runs"):
+            return listing
+        return producer[args[1].split("/")[-2]] + "\n"
+
+    monkeypatch.setattr(stale, "_gh", _gh)
+    conclusions = stale.recent_conclusions(repo, "o/r")
+    assert conclusions == ["failure", "failure", "failure"]
+    assert stale.decide("found", 0, conclusions)[0] == "stale"
+    assert not any("/runs/6/" in call for call in calls)
+
+
+def test_a_monitor_only_run_between_failures_does_not_reset_the_failure_history(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = "\n".join(f"{run}\tschedule" for run in (1, 2, 3, 4))
+    producer = {"1": "failure", "2": "skipped", "3": "failure", "4": "failure"}
+
+    def _gh(_repo: Path, *args: str) -> str:
+        if args[1].endswith("/runs"):
+            return listing
+        return producer[args[1].split("/")[-2]] + "\n"
+
+    monkeypatch.setattr(stale, "_gh", _gh)
+    conclusions = stale.recent_conclusions(repo, "o/r")
+    assert conclusions == ["failure", "failure", "failure"]
+    assert stale.decide("found", 0, conclusions)[0] == "stale"
+
+
+def test_a_failed_shard_with_a_published_map_is_not_stale(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    listing = "\n".join(f"{run}\tschedule" for run in (1, 2, 3))
+
+    def _gh(_repo: Path, *args: str) -> str:
+        if args[1].endswith("/runs"):
+            return listing
+        return "success\n"
+
+    monkeypatch.setattr(stale, "_gh", _gh)
+    conclusions = stale.recent_conclusions(repo, "o/r")
+    assert conclusions == ["success", "success", "success"]
+    assert stale.decide("found", 0, conclusions)[0] == "healthy"
+
+
+def test_recent_conclusions_propagates_lookup_failures(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _gh(_repo: Path, *args: str) -> str:
+        raise stale.sel.SelectionError("gh api failed")
+
+    monkeypatch.setattr(stale, "_gh", _gh)
+    with pytest.raises(stale.sel.SelectionError):
+        stale.recent_conclusions(repo, "o/r")
+
+
+def test_main_fails_when_the_state_is_unknown(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(stale, "evaluate", lambda _repo, _slug, _base: ("unknown", "no verdict", None, None, []))
+    monkeypatch.setattr(stale, "ensure_issue", lambda *_args: {"action": "none", "issue": None})
+    argv = ["--repo-root", str(repo), "--slug", "o/r", "--base-sha", "a" * 40]
+    assert stale.main(argv) == 1
+    monkeypatch.setattr(stale, "evaluate", lambda _repo, _slug, _base: ("healthy", "ok", None, 0, ["success"]))
+    assert stale.main(argv) == 0
 
 
 def test_decide_is_healthy_for_a_current_map_with_passing_runs() -> None:
