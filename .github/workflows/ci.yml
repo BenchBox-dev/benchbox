@@ -211,6 +211,8 @@ jobs:
 
       - name: Flag changed paths read by later jobs
         id: path-flags
+        env:
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
           test -f .ci-paths/changed.txt
@@ -230,8 +232,9 @@ jobs:
           if grep -qE '^(benchbox/_vendor/|benchbox/utils/dialect_utils\.py|benchbox/sql_compat/|benchbox/core/(tpch|tpcds)/|benchbox/platforms/(sqlite|duckdb|datafusion|postgresql)|scripts/sql_execution_gate/|tests/unit/scripts/test_sql_execution_gate\.py)' .ci-paths/changed.txt; then sql_evidence=true; fi
           trunk_plain=false
           trunk_coverage=false
-          if grep -qxE '\.github/workflows/trunk\.yml|scripts/release_canary_sharding\.py|tests/fixtures/medium_shard_durations\.json' .ci-paths/changed.txt; then trunk_plain=true; fi
-          if grep -qxE '\.github/workflows/trunk-coverage\.yml|scripts/release_canary_sharding\.py|tests/fixtures/medium_shard_durations\.json' .ci-paths/changed.txt; then trunk_coverage=true; fi
+          git diff --name-only --no-renames --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > .ci-paths/trunk-lane-changed.txt
+          if grep -qxE '\.github/workflows/trunk\.yml|scripts/release_canary_sharding\.py|scripts/pytest_shard_evidence\.py|tests/fixtures/medium_shard_durations\.json' .ci-paths/trunk-lane-changed.txt; then trunk_plain=true; fi
+          if grep -qxE '\.github/workflows/trunk-coverage\.yml|scripts/release_canary_sharding\.py|scripts/pytest_shard_evidence\.py|scripts/pytest_coverage_timeout\.py|scripts/coverage_map\.ini|tests/fixtures/medium_shard_durations\.json' .ci-paths/trunk-lane-changed.txt; then trunk_coverage=true; fi
           echo "trunk-lane-plain-needed=$trunk_plain" >> "$GITHUB_OUTPUT"
           echo "trunk-lane-coverage-needed=$trunk_coverage" >> "$GITHUB_OUTPUT"
           echo "sql-evidence-paths-changed=$sql_evidence" >> "$GITHUB_OUTPUT"

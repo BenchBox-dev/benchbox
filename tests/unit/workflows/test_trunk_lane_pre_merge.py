@@ -11,9 +11,18 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = ROOT / ".github" / "workflows"
 
-SHARED_PATHS = ("scripts/release_canary_sharding.py", "tests/fixtures/medium_shard_durations.json")
+SHARED_PATHS = (
+    "scripts/release_canary_sharding.py",
+    "scripts/pytest_shard_evidence.py",
+    "tests/fixtures/medium_shard_durations.json",
+)
 PLAIN_PATHS = (".github/workflows/trunk.yml", *SHARED_PATHS)
-COVERAGE_PATHS = (".github/workflows/trunk-coverage.yml", *SHARED_PATHS)
+COVERAGE_PATHS = (
+    ".github/workflows/trunk-coverage.yml",
+    "scripts/pytest_coverage_timeout.py",
+    "scripts/coverage_map.ini",
+    *SHARED_PATHS,
+)
 
 LANES = {
     "trunk-lane-plain": ("trunk.yml", "trunk-lane-plain-needed", "trunk-lane-plain-", PLAIN_PATHS),
@@ -41,7 +50,7 @@ def _flag_command() -> str:
 
 
 def _flag_pattern(variable: str) -> re.Pattern[str]:
-    match = re.search(rf"grep -qxE '([^']+)' \.ci-paths/changed\.txt; then {variable}=true", _flag_command())
+    match = re.search(rf"grep -qxE '([^']+)' \.ci-paths/trunk-lane-changed\.txt; then {variable}=true", _flag_command())
     assert match, f"no path pattern sets {variable}"
     return re.compile(match.group(1))
 
@@ -62,12 +71,22 @@ def test_the_trigger_paths_are_exactly_the_lane_inputs(lane: str) -> None:
         assert not pattern.fullmatch(path), path
 
 
+def test_the_changed_path_list_names_the_source_of_a_rename() -> None:
+    command = _flag_command()
+    assert 'git diff --name-only --no-renames --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD"' in command
+    steps = _load("ci.yml")["jobs"]["ci-paths"]["steps"]
+    (step,) = [step for step in steps if step.get("id") == "path-flags"]
+    assert step["env"]["EVENT_BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
+
+
 def test_each_workflow_change_triggers_only_its_own_lane_and_shared_inputs_trigger_both() -> None:
     plain = _flag_pattern(_flag_variable("trunk-lane-plain-needed"))
     coverage = _flag_pattern(_flag_variable("trunk-lane-coverage-needed"))
     assert plain.fullmatch(".github/workflows/trunk.yml") and not coverage.fullmatch(".github/workflows/trunk.yml")
     assert coverage.fullmatch(".github/workflows/trunk-coverage.yml")
     assert not plain.fullmatch(".github/workflows/trunk-coverage.yml")
+    for path in ("scripts/pytest_coverage_timeout.py", "scripts/coverage_map.ini"):
+        assert coverage.fullmatch(path) and not plain.fullmatch(path)
     for path in SHARED_PATHS:
         assert plain.fullmatch(path) and coverage.fullmatch(path)
 
