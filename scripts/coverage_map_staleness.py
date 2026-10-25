@@ -14,7 +14,9 @@ if str(REPO_ROOT) not in sys.path:
 
 from scripts import coverage_test_selection as sel
 
-STALENESS_BEHIND_LIMIT = 20
+STALENESS_BEHIND_LIMIT = sel.MAX_MAP_BEHIND_COMMITS
+PRODUCER_JOB = "medium-coverage-map"
+RUN_SCAN_LIMIT = 30
 STALENESS_FAILED_RUNS = 3
 STALENESS_LABEL = "ci-coverage-map"
 STALENESS_MARKER = "<!-- coverage-map-staleness -->"
@@ -37,6 +39,18 @@ def _gh_json(repo: Path, *args: str) -> object:
     return json.loads(_gh(repo, *args))
 
 
+def _producer_job_conclusion(repo: Path, slug: str, run_id: str) -> str:
+    return _gh(
+        repo,
+        "api",
+        f"repos/{slug}/actions/runs/{run_id}/jobs",
+        "--method",
+        "GET",
+        "--jq",
+        f'[.jobs[] | select(.name == "{PRODUCER_JOB}") | .conclusion // ""] | first // ""',
+    ).strip()
+
+
 def recent_conclusions(repo: Path, slug: str, limit: int = 5) -> list[str]:
     rows = _gh(
         repo,
@@ -47,13 +61,22 @@ def recent_conclusions(repo: Path, slug: str, limit: int = 5) -> list[str]:
         "-f",
         "branch=develop",
         "-f",
-        "event=push",
-        "-f",
-        f"per_page={limit}",
+        f"per_page={RUN_SCAN_LIMIT}",
         "--jq",
-        ".workflow_runs[] | [.conclusion // empty] | @tsv",
+        '.workflow_runs[] | select(.status == "completed") | [.id, .event] | @tsv',
     ).splitlines()
-    return [row.strip() for row in rows if row.strip()]
+    conclusions: list[str] = []
+    for row in rows:
+        run_id, event = (row.split("\t") + [""])[:2]
+        if not run_id.isdigit() or event not in sel.TRUSTED_MAP_EVENTS:
+            continue
+        conclusion = _producer_job_conclusion(repo, slug, run_id)
+        if conclusion not in ("success", "failure"):
+            continue
+        conclusions.append(conclusion)
+        if len(conclusions) >= limit:
+            break
+    return conclusions
 
 
 def decide(map_status: str, behind: int | None, conclusions: list[str]) -> tuple[str, str]:
@@ -67,9 +90,11 @@ def decide(map_status: str, behind: int | None, conclusions: list[str]) -> tuple
         return "unknown", "coverage map position against develop is unknown"
     if behind > STALENESS_BEHIND_LIMIT:
         return "stale", f"newest coverage map is {behind} develop commits behind (limit {STALENESS_BEHIND_LIMIT})"
+    if not completed:
+        return "unknown", "no completed map-producing trunk-coverage run was found"
     if len(recent) >= STALENESS_FAILED_RUNS and all(conclusion == "failure" for conclusion in recent):
-        return "stale", f"last {STALENESS_FAILED_RUNS} trunk-coverage runs failed"
-    return "healthy", "newest coverage map is current and recent trunk-coverage runs pass"
+        return "stale", f"last {STALENESS_FAILED_RUNS} map-producing trunk-coverage runs failed"
+    return "healthy", "newest coverage map is current and recent map-producing trunk-coverage runs pass"
 
 
 def render_body(reason: str, sha: str | None, behind: int | None, conclusions: list[str], run_url: str) -> str:
@@ -287,7 +312,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"coverage map staleness update failed: {exc}", file=sys.stderr)
         return 1
     print(f"issue {outcome['action']}: {outcome['issue']}")
-    return 0
+    return 1 if state == "unknown" else 0
 
 
 if __name__ == "__main__":

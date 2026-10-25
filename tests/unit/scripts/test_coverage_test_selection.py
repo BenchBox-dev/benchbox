@@ -990,7 +990,7 @@ def test_build_map_rejects_unexpected_shard_count(repo: Path, tmp_path: Path) ->
     assert json.loads(out.read_text(encoding="utf-8"))["sha"] == _head(repo)
 
 
-def test_trusted_run_head_accepts_trunk_push_runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_trusted_run_accepts_trunk_push_runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     sha = "a" * 40
     stdout = "\n".join([sha, ".github/workflows/trunk-coverage.yml", "push", "develop", "o/r"]) + "\n"
 
@@ -998,17 +998,74 @@ def test_trusted_run_head_accepts_trunk_push_runs(repo: Path, monkeypatch: pytes
         return subprocess.CompletedProcess(args, 0, stdout, "")
 
     monkeypatch.setattr(sel.subprocess, "run", _run)
-    assert sel._trusted_run_head(repo, "o/r", 7) == sha
+    assert sel._trusted_run(repo, "o/r", 7) == (sha, "push")
 
 
-def test_trusted_run_head_accepts_dispatched_runs_on_develop(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_trusted_run_accepts_scheduled_develop_runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    sha = "c" * 40
+    stdout = "\n".join([sha, ".github/workflows/trunk-coverage.yml", "schedule", "develop", "o/r"]) + "\n"
+    monkeypatch.setattr(sel.subprocess, "run", _fake_run(stdout))
+    assert sel._trusted_run(repo, "o/r", 11) == (sha, "schedule")
+
+
+def test_trusted_run_rejects_scheduled_runs_from_other_workflows_or_repositories(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sha = "c" * 40
+    for path, branch, head_repo in (
+        (".github/workflows/ci.yml", "develop", "o/r"),
+        (".github/workflows/trunk-coverage.yml", "main", "o/r"),
+        (".github/workflows/trunk-coverage.yml", "develop", "fork/r"),
+    ):
+        stdout = "\n".join([sha, path, "schedule", branch, head_repo]) + "\n"
+        monkeypatch.setattr(sel.subprocess, "run", _fake_run(stdout))
+        assert sel._trusted_run(repo, "o/r", 11) is None
+
+
+def test_fetch_map_reports_the_producer_run_event_and_artifact(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    head = _head(repo)
+    target = tmp_path / "maps" / f"t2-coverage-map-{head}"
+
+    def _download(_repo: Path, _slug: str, _run: int, _name: str, directory: Path) -> bool:
+        directory.mkdir(parents=True)
+        sel.write_map({"version": sel.MAP_VERSION, "sha": head, "nodes": [], "files": {}}, directory / "map.json")
+        return True
+
+    monkeypatch.setattr(sel, "_github_slug", lambda _repo: "o/r")
+    monkeypatch.setattr(
+        sel,
+        "_list_map_artifacts",
+        lambda _repo, _slug, _prefix: [(f"t2-coverage-map-{head}", 42, "2026-10-20T00:00:00Z")],
+    )
+    monkeypatch.setattr(sel, "_trusted_run", lambda _repo, _slug, _run: (head, "schedule"))
+    monkeypatch.setattr(sel, "_download_artifact", _download)
+    result = sel.fetch_map(repo, head, tmp_path / "maps")
+    assert result["status"] == "found"
+    assert (result["sha"], result["run_id"], result["event"], result["artifact"]) == (
+        head,
+        42,
+        "schedule",
+        f"t2-coverage-map-{head}",
+    )
+    assert Path(result["path"]) == target / "map.json"
+
+
+def test_discovery_and_ancestry_limits_are_separate_constants() -> None:
+    assert sel.MAX_DISCOVERY_RUNS == 50
+    assert sel.MAX_MAP_BEHIND_COMMITS == 50
+    assert "schedule" in sel.TRUSTED_MAP_EVENTS
+
+
+def test_trusted_run_accepts_dispatched_runs_on_develop(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     sha = "b" * 40
     stdout = "\n".join([sha, ".github/workflows/trunk-coverage.yml", "workflow_dispatch", "develop", "o/r"]) + "\n"
     monkeypatch.setattr(sel.subprocess, "run", _fake_run(stdout))
-    assert sel._trusted_run_head(repo, "o/r", 9) == sha
+    assert sel._trusted_run(repo, "o/r", 9) == (sha, "workflow_dispatch")
 
 
-def test_trusted_run_head_rejects_untrusted_runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_trusted_run_rejects_untrusted_runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     sha = "a" * 40
     good = [sha, ".github/workflows/trunk-coverage.yml", "push", "develop", "o/r"]
     cases = [
@@ -1020,16 +1077,16 @@ def test_trusted_run_head_rejects_untrusted_runs(repo: Path, monkeypatch: pytest
     ]
     for fields in cases:
         monkeypatch.setattr(sel.subprocess, "run", _fake_run("\n".join(fields) + "\n"))
-        assert sel._trusted_run_head(repo, "o/r", 7) is None
+        assert sel._trusted_run(repo, "o/r", 7) is None
 
 
-def test_trusted_run_head_reports_api_failures(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_trusted_run_reports_api_failures(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def _run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(command, 1, "", "HTTP 500")
 
     monkeypatch.setattr(sel.subprocess, "run", _run)
     with pytest.raises(sel.SelectionError, match="HTTP 500"):
-        sel._trusted_run_head(repo, "o/r", 7)
+        sel._trusted_run(repo, "o/r", 7)
 
 
 def _fake_run(stdout: str) -> object:
@@ -1056,8 +1113,11 @@ def test_list_map_artifacts_reads_trunk_runs_with_get_requests(repo: Path, monke
 
     monkeypatch.setattr(sel.subprocess, "run", _run)
     found = list(sel._list_map_artifacts(repo, "o/r", "t2-coverage-map-"))
-    assert found == [(f"t2-coverage-map-{second}", 12, "2026-10-20T00:00:00Z")]
-    assert [command[2:4] for command in commands] == [["--method", "GET"]] * 3
+    assert found == [
+        (f"t2-coverage-map-{second}", 12, "2026-10-20T00:00:00Z"),
+        (f"t2-coverage-map-{first}", 14, "2026-10-19T00:00:00Z"),
+    ]
+    assert [command[2:4] for command in commands] == [["--method", "GET"]] * 4
     assert commands[0][7:9] == ["-f", "branch=develop"]
     assert f"name=t2-coverage-map-{second}" in commands[2]
 
@@ -1076,7 +1136,7 @@ def test_fetch_map_skips_runs_failing_provenance(repo: Path, tmp_path: Path, mon
     monkeypatch.setattr(
         sel, "_list_map_artifacts", lambda _repo, _slug, _prefix: [("t2-coverage-map-abc", 7, "2026-10-20T00:00:00Z")]
     )
-    monkeypatch.setattr(sel, "_trusted_run_head", lambda _repo, _slug, _run: None)
+    monkeypatch.setattr(sel, "_trusted_run", lambda _repo, _slug, _run: None)
     result = sel.fetch_map(repo, _head(repo), tmp_path / "maps")
     assert result["status"] == "missing"
 
@@ -1182,7 +1242,7 @@ def test_fetch_map_skips_runs_that_are_not_base_ancestors(
     monkeypatch.setattr(
         sel, "_list_map_artifacts", lambda _repo, _slug, _prefix: [("t2-coverage-map-abc", 7, "2026-10-20T00:00:00Z")]
     )
-    monkeypatch.setattr(sel, "_trusted_run_head", lambda _repo, _slug, _run: "a" * 40)
+    monkeypatch.setattr(sel, "_trusted_run", lambda _repo, _slug, _run: ("a" * 40, "schedule"))
     monkeypatch.setattr(sel, "_is_ancestor", lambda _repo, _sha, _base: False)
     result = sel.fetch_map(repo, _head(repo), tmp_path / "maps")
     assert result["status"] == "missing"

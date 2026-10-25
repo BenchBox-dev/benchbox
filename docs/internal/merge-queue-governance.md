@@ -45,7 +45,7 @@ fails it. Checks run on the pull request head, which need not be current with
 
 | Required Context | Workflow Path | Contract |
 | --- | --- | --- |
-| `core` | `.github/workflows/ci.yml` | Lint, type checks, fast tests on Python 3.14 and parity gates on the PR head. Selection currently runs in shadow mode (computed and recorded, always escalates). The PR medium step runs the node IDs selected by coverage impact (`scripts/coverage_test_selection.py select` against the newest `t2-coverage-map-<sha>` artifact, found by asking each recent `trunk-coverage.yml` push run on develop for the artifact named after its head SHA and keeping the newest that is an ancestor of the base, plus the name-based `map_tests` fallback); tests that failed in the map's shards are always included; changes to paths listed as inert by `.github/inert-paths.txt` are inert (they add no tests and never trigger escalation; machine-read documents instead select the tests that read them from `_project/inert-doc-readers.json`, escalating only when nothing reads them), while any other non-Python change in a code-routed tree, any changed executable statement that no recorded test executed (changed blank, comment, and docstring lines are ignored rather than counted uncovered; new, renamed, or develop-changed files, module-level code, subprocess-only code, and `conftest.py` or fixture plugins included), a missing, stale, version-mismatched, or non-ancestor map, an unreadable durations file, a selection whose estimated runtime exceeds the cap or whose node count exceeds the argv guard, or an empty selection escalates through `scripts/heavy_tier_needed.py --selection-in`, so the full sharded heavy tier (medium-test, correctness-gate, required-local-cases, plan-capture-gate, DataFusion integration, and the macOS and Windows TPC-H binary-framing matrix) runs on `heavy-needed` alone instead of being skipped; `trunk.yml` runs the Python 3.12 fast lane, the uninstrumented medium tier with real per-test timeouts, the correctness gate and `required-local-cases` on `develop` after each merge, while `trunk-coverage.yml` runs the instrumented coverage shards and the map combine job whose `t2-coverage-map-<sha>` artifact feeds PR selection. |
+| `core` | `.github/workflows/ci.yml` | Lint, type checks, fast tests on Python 3.14 and parity gates on the PR head. Selection currently runs in shadow mode (computed and recorded, always escalates). The PR medium step runs the node IDs selected by coverage impact (`scripts/coverage_test_selection.py select` against the newest `t2-coverage-map-<sha>` artifact, found by asking each recent `trunk-coverage.yml` develop run (push, scheduled or dispatched) for the artifact named after its head SHA and keeping the newest that is an ancestor of the base, plus the name-based `map_tests` fallback); tests that failed in the map's shards are always included; changes to paths listed as inert by `.github/inert-paths.txt` are inert (they add no tests and never trigger escalation; machine-read documents instead select the tests that read them from `_project/inert-doc-readers.json`, escalating only when nothing reads them), while any other non-Python change in a code-routed tree, any changed executable statement that no recorded test executed (changed blank, comment, and docstring lines are ignored rather than counted uncovered; new, renamed, or develop-changed files, module-level code, subprocess-only code, and `conftest.py` or fixture plugins included), a missing, stale, version-mismatched, or non-ancestor map, an unreadable durations file, a selection whose estimated runtime exceeds the cap or whose node count exceeds the argv guard, or an empty selection escalates through `scripts/heavy_tier_needed.py --selection-in`, so the full sharded heavy tier (medium-test, correctness-gate, required-local-cases, plan-capture-gate, DataFusion integration, and the macOS and Windows TPC-H binary-framing matrix) runs on `heavy-needed` alone instead of being skipped; `trunk.yml` runs the Python 3.12 fast lane, the uninstrumented medium tier with real per-test timeouts, the correctness gate and `required-local-cases` on `develop` after each merge, while `trunk-coverage.yml` runs the instrumented coverage shards and the map combine job whose `t2-coverage-map-<sha>` artifact feeds PR selection. |
 | `explorer` | `.github/workflows/ci.yml` | CLI-versus-explorer parity fixtures on Explorer pipeline and visualization changes. Reports success on unaffected paths. The Explorer app and its browser suite live in `BenchBox-dev/benchbox-site`. |
 | `results-data` | `.github/workflows/ci.yml` | Corpus inventory and validation, submission validator sync, and corpus contract tests on results-data changes. |
 | `docs` | `.github/workflows/ci.yml` | Example validation, generated docs inputs (`make docs-generate`), and spell check on docs changes. The site build runs in `BenchBox-dev/benchbox-site`. |
@@ -131,18 +131,30 @@ job builds and verifies the release wheel and sdist. The marker and
 forbidden-path guards run in the PR `lint` job (`guard-fast-lane-markers`);
 the test-count ceiling is retired.
 
-`.github/workflows/trunk-coverage.yml` runs on pushes to `develop` alongside
-`trunk.yml` and publishes the coverage map that PR selection reads; it is not
-a required PR check and no arming gate consults it. It runs the same
+`.github/workflows/trunk-coverage.yml` runs on a schedule (six producer runs a
+day at `17 1,5,9,13,17,21 * * *` UTC) and on `workflow_dispatch`, not on every
+push to `develop`, and publishes the coverage map that PR selection reads; it
+is not a required PR check and no arming gate consults it (`trunk.yml` still
+runs on every push and remains what `scripts/trunk_revert.py` reads). A
+scheduled run checks out the `develop` tip at trigger time, so the map can lag
+`develop` by up to one cadence interval plus run time; the cadence, the
+acceptable map age and the cron itself are owner decisions. It runs the same
 four-shard medium tier with per-test line coverage enabled
 (`COVERAGE_CORE=ctrace`, `-p pytest_cov --cov --cov-context=test` under
 `scripts/coverage_map.ini`, one data file per shard) and a `medium-coverage-map`
-combine job (`if: always()`, `t2-coverage-map-<sha>` artifact with a 7-day
+combine job (`if: always()` on producer events, `t2-coverage-map-<sha>` artifact with a 7-day
 retention) that builds only when all 4 shard data files exist
 (`--expected-shards 4`), records the failed test node IDs from the shard junit
 reports into the map so `select` always includes them, and fails the run unless
 a `fetch-map --base-sha $GITHUB_SHA` self-check resolves the map it just
-uploaded. The coverage shards run with a 33-minute budget to cover the roughly
+uploaded; the self-check prints the producer run ID, event and artifact name,
+and `fetch-map` returns the same fields (`run_id`, `event`, `artifact`) in its
+JSON and as the `map-run-id`, `map-event` and `map-artifact` step outputs.
+Selection trusts a map only from a `trunk-coverage.yml` run on `develop` in this
+repository whose event is `push`, `schedule` or `workflow_dispatch` and whose
+head SHA is an ancestor of the PR base; other workflows, branches,
+repositories and non-ancestors are rejected. `push` stays trusted so maps from
+before the cutover, and from a rollback, still resolve. The coverage shards run with a 33-minute budget to cover the roughly
 30% coverage overhead and use the same durations file as the uninstrumented
 tier; the weights therefore skew low for instrumented runs, which is accepted
 because the split only needs roughly balanced shards, not exact ones. That
@@ -172,10 +184,49 @@ against argv limits. `fetch-map` reports `missing` when no map was published
 and `lookup-failed` (with a `::warning::` carrying the API error) when the
 lookup itself failed, so a broken query cannot pass as an absent map.
 
-A daily scheduled `coverage-map-staleness` job in the same workflow
-(`issues: write` only there) opens or updates a single `ci-coverage-map`
-labelled issue when the newest map is more than 20 develop commits behind or
-the last 3 `trunk-coverage` runs failed, and closes it once healthy. The
+A daily `coverage-map-staleness` job in the same workflow (cron
+`47 7 * * *`, `issues: write` only there) runs on its own cron, so the producer
+jobs and the monitor never run in the same workflow run. The monitor fires about
+two and a half hours after the 05:17 producer was scheduled, so that run has
+normally finished, and well before the 09:17 one starts. It opens or updates a single
+`ci-coverage-map` labelled issue when the newest map is more than 50 develop
+commits behind (the same limit selection applies to the distance between the
+map and the PR base) or the last 3 map-producing runs failed, and closes it once
+healthy. A map-producing run is a completed `develop` run whose
+`medium-coverage-map` job concluded `success` or `failure`; monitor-only,
+cancelled and skipped runs are not counted and cannot reset the failure history.
+Each counted run is judged by that job's conclusion, not the workflow run's, so a
+failed test shard that still published a fresh map does not count toward the
+three-failure stale verdict.
+A failed lookup, or no completed producer run, yields an `unknown` verdict: the
+monitor comments on an open issue and exits non-zero, so a broken interval is
+never counted healthy.
+
+Two limits are decided separately. Artifact discovery inspects the newest 50
+`trunk-coverage.yml` runs on `develop` (`MAX_DISCOVERY_RUNS`, about eight days
+of six producers plus the monitor, longer than the 7-day map retention, so
+discovery runs out of unexpired artifacts before it runs out of runs). Selection
+accepts a map at most 50 develop commits behind the PR base
+(`MAX_MAP_BEHIND_COMMITS`); a PR based further ahead of the newest map
+escalates with that reason instead of using stale impact data. Failed or
+expired production, an unavailable lookup and an older PR base all fail closed
+the same way: `fetch-map` reports `missing` or `lookup-failed`, `select`
+escalates to the full tier, and nothing selects from a map it could not verify.
+Recovery is to fix the producer failure and `workflow_dispatch` the workflow,
+which publishes a fresh map on `develop`. Rolling back to per-push production
+means restoring `push: branches: [develop]` in the workflow triggers; no script
+change is needed because `push` runs remain trusted and the monitor counts
+them as producers.
+
+Measurement for the schedule change: record for seven days producer and
+monitor run outcomes, `fetch-map` outcomes with `run_id`, `event`, map age and
+commit distance, and selection escalation reasons, treating any missing
+interval as unmeasured rather than healthy. Compare a seven-day pre-merge
+baseline against the seven days after, normalised for merge volume and
+including dispatch and monitor overhead, using the CI usage report. Raw
+before/after totals alone do not decide the change. The 20-PR shadow-miss
+window for `cov-select-exit-shadow-20261021` restarts from the merge, since map
+freshness changed. The
 `tests/conftest.py` coverage warning reads the data file named by
 `COVERAGE_FILE` so sharded runs report their own file.
 

@@ -21,18 +21,37 @@ def _shard_job() -> dict:
     return _workflow()["jobs"]["medium-test"]
 
 
-def test_runs_on_develop_push_and_on_demand_with_a_daily_staleness_tick() -> None:
+PRODUCER_CRON = "17 1,5,9,13,17,21 * * *"
+MONITOR_CRON = "47 7 * * *"
+
+
+def test_produces_maps_on_a_schedule_and_on_demand_but_not_on_push() -> None:
     triggers = _triggers()
-    assert triggers["push"] == {"branches": ["develop"]}
+    assert "push" not in triggers
     assert "workflow_dispatch" in triggers
     assert "pull_request" not in triggers and "merge_group" not in triggers
-    assert {"cron": "17 7 * * *"} in triggers["schedule"]
+    assert {"cron": PRODUCER_CRON} in triggers["schedule"]
+    assert {"cron": MONITOR_CRON} in triggers["schedule"]
+    assert len(triggers["schedule"]) == 2
 
 
-def test_coverage_runs_cancel_each_other() -> None:
+def test_six_producer_runs_a_day_and_a_monitor_after_a_finished_producer() -> None:
+    minute, hours, *_ = PRODUCER_CRON.split()
+    produced = [int(hour) for hour in hours.split(",")]
+    assert len(produced) == 6
+    monitor_minute, monitor_hour, *_ = MONITOR_CRON.split()
+    monitor = int(monitor_hour) * 60 + int(monitor_minute)
+    started = [hour * 60 + int(minute) for hour in produced]
+    previous = max(start for start in started if start < monitor)
+    following = min(start for start in started if start > monitor)
+    assert monitor - previous >= 90
+    assert following - monitor >= 60
+
+
+def test_scheduled_producers_and_monitor_do_not_cancel_each_other() -> None:
     concurrency = _workflow()["concurrency"]
     assert concurrency["cancel-in-progress"] is True
-    assert concurrency["group"] == "trunk-coverage-${{ github.event_name }}"
+    assert concurrency["group"] == "trunk-coverage-${{ github.event_name }}-${{ github.event.schedule }}"
 
 
 def test_is_read_only_by_default() -> None:
@@ -61,7 +80,7 @@ def test_four_coverage_shards_use_ctrace_and_test_phase_contexts() -> None:
 
 def test_map_job_requires_all_four_shards_and_declares_it() -> None:
     job = _workflow()["jobs"]["medium-coverage-map"]
-    assert job["if"] == "${{ always() && github.event_name != 'schedule' }}"
+    assert job["if"] == "${{ always() && github.event.schedule != '47 7 * * *' }}"
     assert "--expected-shards 4" in "\n".join(step.get("run", "") for step in job["steps"])
     upload = next(step for step in job["steps"] if step.get("uses", "").startswith("actions/upload-artifact@"))
     assert upload["with"]["retention-days"] == 7
@@ -74,6 +93,29 @@ def test_map_job_self_fetches_and_fails_without_a_resolving_map() -> None:
     assert "self-fetch failed" in runs
 
 
-def test_staleness_job_runs_only_on_the_schedule() -> None:
+def test_map_building_jobs_run_on_scheduled_producer_events() -> None:
+    jobs = _workflow()["jobs"]
+    for name in ("medium-collect", "medium-test", "medium-coverage-map"):
+        condition = jobs[name]["if"]
+        assert "github.event.schedule != '47 7 * * *'" in condition, name
+        assert "github.event_name" not in condition, name
+
+
+def test_staleness_job_runs_only_on_the_monitor_schedule() -> None:
     job = _workflow()["jobs"]["coverage-map-staleness"]
-    assert job["if"] == "${{ github.event_name == 'schedule' }}"
+    assert job["if"] == "${{ github.event.schedule == '47 7 * * *' }}"
+
+
+def test_monitor_and_producer_conditions_are_mutually_exclusive_on_every_event() -> None:
+    jobs = _workflow()["jobs"]
+    monitor = "github.event.schedule == '47 7 * * *'"
+    assert jobs["coverage-map-staleness"]["if"].count(monitor) == 1
+    for name in ("medium-collect", "medium-test", "medium-coverage-map"):
+        assert monitor.replace("==", "!=") in jobs[name]["if"]
+
+
+def test_self_fetch_reports_the_producer_identity() -> None:
+    runs = "\n".join(step.get("run", "") for step in _workflow()["jobs"]["medium-coverage-map"]["steps"])
+    assert "payload['run_id']" in runs
+    assert "payload['event']" in runs
+    assert "payload['artifact']" in runs
