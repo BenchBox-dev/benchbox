@@ -4,14 +4,17 @@ import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from unittest.mock import patch
 
 import httpx2
 from mcp.client import Client
 from mcp.client.streamable_http import streamable_http_client
+from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-from benchbox.mcp import create_server
+from benchbox.mcp import run_server
 from benchbox.mcp.security import RemoteSecurityRuntime, token_sha256
+from benchbox.mcp.transport import MCPTransportSettings
 
 
 def write_security_config(
@@ -51,13 +54,21 @@ def write_security_config(
     return path
 
 
+def start_remote_server(config_path: Path) -> tuple[MCPServer, RemoteSecurityRuntime]:
+    started: list[tuple[MCPServer, MCPTransportSettings]] = []
+    with patch("benchbox.mcp.transport.run_transport", lambda server, settings: started.append((server, settings))):
+        run_server(transport="streamable-http", security_config=config_path)
+    server, settings = started[0]
+    assert settings.remote_security is not None
+    return server, settings.remote_security
+
+
 @asynccontextmanager
 async def authenticated_http_client(
     config_path: Path, token: str
 ) -> AsyncIterator[tuple[Client, RemoteSecurityRuntime]]:
 
-    runtime = RemoteSecurityRuntime.from_file(config_path)
-    server = create_server(remote_security=runtime)
+    server, runtime = start_remote_server(config_path)
     app = server.streamable_http_app(
         host="127.0.0.1",
         streamable_http_path="/mcp",

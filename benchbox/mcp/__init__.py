@@ -36,7 +36,6 @@ def create_server(
     *,
     results_dir: str | Path | None = None,
     charts_dir: str | Path | None = None,
-    log_level: str | int | None = None,
     env: Mapping[str, str] | None = None,
     remote_security: RemoteSecurityRuntime | None = None,
 ) -> MCPServer:
@@ -45,7 +44,6 @@ def create_server(
     kwargs: dict[str, Any] = {
         "results_dir": results_dir,
         "charts_dir": charts_dir,
-        "log_level": log_level,
         "env": env,
     }
     if remote_security is not None:
@@ -67,6 +65,7 @@ def run_server(
     readiness_evidence: str | Path | None = None,
 ) -> None:
     from benchbox.mcp.security import RemoteSecurityRuntime
+    from benchbox.mcp.server import configure_server_process
     from benchbox.mcp.transport import MCPTransportSettings, run_transport
 
     remote_security = RemoteSecurityRuntime.from_file(security_config) if security_config is not None else None
@@ -80,10 +79,10 @@ def run_server(
         readiness_evidence=Path(readiness_evidence) if readiness_evidence is not None else None,
         env=env,
     )
+    configure_server_process(log_level=log_level, env=env, remote=remote_security is not None)
     server_kwargs: dict[str, Any] = {
         "results_dir": results_dir,
         "charts_dir": charts_dir,
-        "log_level": log_level,
         "env": env,
     }
     if remote_security is not None:

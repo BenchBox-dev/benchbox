@@ -21,7 +21,7 @@ DEPRECATION_KEYS = {"option", "replacement", "removed_in", "message"}
 def server(tmp_path: Path):
     from benchbox.mcp import create_server
 
-    return create_server(results_dir=tmp_path / "results", charts_dir=tmp_path / "charts", log_level="ERROR")
+    return create_server(results_dir=tmp_path / "results", charts_dir=tmp_path / "charts")
 
 
 def _dry_run(server, **arguments):
