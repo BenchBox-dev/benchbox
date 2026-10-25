@@ -24073,7 +24073,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "Confirm the upstream state of the four fork patches recorded as declined"
+      "title": "Correct the upstream-state record of the fork patches: 'declined' means fork-only by design; record the two real upstream refusals and fix the blog outline claims"
     },
     "sqlglot-fork-f0-base-and-manifest": {
       "claim": null,
