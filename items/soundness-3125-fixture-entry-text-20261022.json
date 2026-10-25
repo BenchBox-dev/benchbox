@@ -6,7 +6,7 @@
     "The live digest bindings are unchanged (before and after digests recorded)",
     "PR merged with an oracle verdict on its final head; merge SHA recorded"
   ],
-  "context": "Created 2026-10-22 from the 3125 external review findings 2 to 4 (reviewer output /Users/joe/Developer/soundness-reviews/3125/agy-run1.out). Finding 1 (High) is an owner decision.",
+  "context": "PR #3356 merged as 121f24c2a (head ab7e68f5c, oracle verdict success on that head; CI green after a failed-job rerun, the earlier red run predated the verdict).",
   "description": "External review of commit d153fbb1a (gap issue 3125, review item soundness-gap-3125-external-review-20261022) found real defects in quality/comment-policy.json (re-verify on current develop): (a) the four html-output:* entries for tests/unit/scripts/publication/test_artifacts.py describe a subprocess whose program is built at runtime, but the file has no subprocess reference: the findings are unresolved HTML output sources, so the necessity, alternative and removal text must say that (the digest binding is unchanged); (b) five older entries (digests 1cfb5e3e... and 028c7bd6...) match no current finding and sit beside the live entries; (c) the live entries' necessity text still says 'Pre-registered for the publication-plane retirement' although the retirement landed. Optional (low): tests/unit/scripts/test_validate_submission_override_approval.py:117 _all_run_text is unused; removing it changes the AST digest and needs the entry re-registered, so do it only under oracle cover in the same PR or skip with the reason recorded.\n\nDECISION GATE: do this only after PR 3212 (scoped digests) has merged and the dead-exception report exists, because the digest scheme and the policy file are in flux; recompute digests with the checker on the merged base. Change only the text fields of live entries and remove only entries the report lists dead for these two files; if the live entry digests no longer match, stop and report rather than re-register guessed digests. The reviewer's High finding (the five oracle 'weakens gate' threads stand) is an owner decision and is NOT in scope.\n\nGUARDRAILS: never post a stand-in or any oracle comment; never rerun the oracle; oracle verdict required on the PR; no pre-registered digests; never weaken a gate or the checker; primary clone read-only (make worktree-create, absolute worktree paths, no git stash, no git add -A, identity Joe Harris); no CHANGELOG entry; no code comments/docstrings; PR text for a reader who never saw the session; never close/label/edit gap issues; done = merged PR plus evidence.",
   "sessions": [
     {
@@ -24,6 +24,14 @@
       "generation": "288eeb792e4c4faa94cb37fd64aeef29",
       "op": "take",
       "op_id": "98cc9d3e77f74e5f8f496cbb83f4099d",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-25T13:18:54Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7c893cc207604078987677e5c2b8507c",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
