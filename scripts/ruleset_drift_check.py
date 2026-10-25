@@ -294,10 +294,12 @@ def _normalized_for_capture(ruleset: dict[str, Any]) -> dict[str, Any]:
     for rule in normalized.get("rules") or []:
         parameters = rule.get("parameters")
         if rule.get("type") == "required_status_checks" and isinstance(parameters, dict):
-            checks = {
-                str(check.get("context")): {"integration_id": check.get("integration_id")}
-                for check in parameters.get("required_status_checks") or []
-            }
+            checks: dict[str, list[dict[str, Any]]] = {}
+            for check in parameters.get("required_status_checks") or []:
+                context = str(check.get("context"))
+                checks.setdefault(context, []).append({**check, "integration_id": check.get("integration_id")})
+            for bindings in checks.values():
+                bindings.sort(key=lambda binding: json.dumps(binding, sort_keys=True))
             rule = {**rule, "parameters": {**parameters, "required_status_checks": checks}}
         rules.append(rule)
     if "rules" in normalized:
@@ -336,15 +338,16 @@ def capture_comparison_findings(capture: dict[str, Any], live: dict[str, Any]) -
     if live.get("enforcement") != "active":
         findings.append(f"live enforcement is {live.get('enforcement')!r}, expected 'active'")
     findings.extend(_differing_fields("", _normalized_for_capture(capture), _normalized_for_capture(live)))
-    bindings = {
-        context: check["integration_id"]
-        for rule in _normalized_for_capture(live).get("rules", [])
+    oracle_bindings = [
+        check.get("integration_id")
+        for rule in live.get("rules", [])
         if rule.get("type") == "required_status_checks"
-        for context, check in rule["parameters"]["required_status_checks"].items()
-    }
-    if bindings.get("oracle-gate") != ORACLE_GATE_INTEGRATION_ID:
+        for check in rule["parameters"]["required_status_checks"]
+        if check.get("context") == "oracle-gate"
+    ]
+    if not oracle_bindings or any(binding != ORACLE_GATE_INTEGRATION_ID for binding in oracle_bindings):
         findings.append(
-            f"oracle-gate integration_id: live is {bindings.get('oracle-gate')!r}, expected {ORACLE_GATE_INTEGRATION_ID}"
+            f"oracle-gate integration_id: live has {oracle_bindings!r}, expected {ORACLE_GATE_INTEGRATION_ID}"
         )
     return findings
 

@@ -127,8 +127,7 @@ once a week, turn the strict policy back on.
 
 Owner only, and only when `develop`'s own content breaks a required check so
 no pull request can pass it (`docs/agent/emergency-merge.md` covers what agents
-do first). Ordinary one-pull-request bypasses follow
-`docs/agent/merge-authority.md`.
+do first).
 
 1. Name one pull request and its head SHA. Confirm from the agent evidence that
    the failure reproduces on current `develop`.

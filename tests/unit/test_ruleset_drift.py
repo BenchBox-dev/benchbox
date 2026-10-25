@@ -497,3 +497,23 @@ def test_compare_capture_command_exit_codes(monkeypatch, capsys, tmp_path: Path)
     _drop_tooling(live)
     assert ruleset_drift_check.main(arguments) == 1
     assert "tooling" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("duplicate_in", ["capture", "live"])
+def test_capture_comparison_detects_context_multiplicity(duplicate_in: str) -> None:
+    documents = {"capture": _capture(), "live": _capture()}
+    document = documents[duplicate_in]
+    _required_checks(document).append(dict(_check(document, "core")))
+
+    findings = ruleset_drift_check.capture_comparison_findings(documents["capture"], documents["live"])
+
+    assert any("core" in finding for finding in findings)
+
+
+def test_capture_comparison_allows_reordered_duplicate_contexts() -> None:
+    capture = _capture()
+    _required_checks(capture).append(dict(_check(capture, "core")))
+    live = json.loads(json.dumps(capture))
+    _required_checks(live).reverse()
+
+    assert ruleset_drift_check.capture_comparison_findings(capture, live) == []
