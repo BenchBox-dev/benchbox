@@ -112,6 +112,7 @@ file	scripts/release_blocker_check.py
 file	scripts/release_requirements.txt
 file	scripts/update_version.py
 file	scripts/generate_changelog_entry.py
+file	scripts/changelog_fragments.py
 file	scripts/check_release_curation.py
 file	scripts/check_dependency_bounds.py
 file	scripts/check_sqlglot_upstream_freshness.py

@@ -1,105 +1,19 @@
 name: oracle-review
 
-run-name: oracle-review (${{ github.event.action || github.event_name }})
+run-name: oracle-review (${{ github.event.action }})
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, edited, ready_for_review]
-    branches-ignore: [release]
   pull_request_review:
-    types: [submitted, dismissed]
-  workflow_dispatch:
-    inputs:
-      pr:
-        description: Pull request number on the selected feature branch
-        required: true
-        type: string
+    types: [submitted, edited, dismissed]
 
-permissions:
-  actions: read
-  contents: read
-  issues: read
-  pull-requests: read
+permissions: {}
 
 jobs:
-  oracle-review:
-    name: oracle-review
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.base.ref != 'release'
+  review-event:
+    name: review-event
+    if: github.event.pull_request.base.ref != 'release'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 1
     steps:
-      - name: Resolve the dispatched pull request
-        if: github.event_name == 'workflow_dispatch'
-        id: dispatch-pr
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ inputs.pr }}
-          REPO: ${{ github.repository }}
-          EXPECTED_HEAD: ${{ github.sha }}
-          CURRENT_REF: ${{ github.ref }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] && [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]] && [ "$CURRENT_REF" != refs/heads/develop ] || {
-            echo "oracle-review: error: dispatch requires a PR number and its current feature-branch commit" >&2
-            exit 2
-          }
-          PULL=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json number,state,baseRefName,baseRefOid,headRefName,headRefOid,isCrossRepository)
-          printf '%s\n' "$PULL" | jq -e --arg pr "$PR_NUMBER" --arg head "$EXPECTED_HEAD" --arg ref "$CURRENT_REF" '
-            .number == ($pr | tonumber) and .state == "OPEN" and .baseRefName == "develop" and
-            .isCrossRepository == false and ("refs/heads/" + .headRefName) == $ref and .headRefOid == $head and
-            (.baseRefOid | type == "string" and test("^[0-9a-f]{40}$"))
-          ' > /dev/null
-          BASE_SHA=$(printf '%s\n' "$PULL" | jq -er '.baseRefOid')
-          SNAPSHOT=$(printf '%s\n' "$PULL" | jq -ceS 'del(.baseRefOid)')
-          printf 'base_sha=%s\nsnapshot=%s\n' "$BASE_SHA" "$SNAPSHOT" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout code
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-        with:
-          ref: ${{ steps.dispatch-pr.outputs.base_sha || github.event.pull_request.base.sha || 'develop' }}
-          persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: '3.12'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-
-      - name: Require a review of the head commit
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          GH_TOKEN: ${{ github.token }}
-          EVENT_NAME: ${{ github.event_name }}
-          EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr }}
-          PR_SNAPSHOT: ${{ steps.dispatch-pr.outputs.snapshot }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          check_dispatch_head() {
-            CURRENT_PULL=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json number,state,baseRefName,headRefName,headRefOid,isCrossRepository | jq -ceS .)
-            [ "$CURRENT_PULL" = "$PR_SNAPSHOT" ] || {
-              echo "oracle-review: error: dispatched PR identity or head changed" >&2
-              exit 2
-            }
-          }
-          check_event_head() {
-            CURRENT_HEAD=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid | jq -er .headRefOid)
-            [ "$CURRENT_HEAD" = "$EVENT_HEAD" ] || {
-              echo "oracle-review: error: this run is for $EVENT_HEAD, but the pull request head is now $CURRENT_HEAD" >&2
-              exit 2
-            }
-          }
-          check_head() {
-            if [ "$EVENT_NAME" = workflow_dispatch ]; then
-              check_dispatch_head
-            else
-              check_event_head
-            fi
-          }
-          check_head
-          uv run --no-project --with pyyaml==6.0.3 python _project/scripts/oracle_review_check.py --repo "$REPO" --pr "$PR_NUMBER" --signal oracle
-          check_head
+      - name: Record the review event
+        run: "true"

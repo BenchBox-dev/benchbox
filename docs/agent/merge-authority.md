@@ -61,6 +61,12 @@ an oracle review thread starts no workflow run, so after resolving threads run
 `gh workflow run oracle-gate.yml --ref develop -f pr=<number>` (or wait for the
 hourly sweep) and merge only after `oracle-gate` passes on the current head.
 
+To refresh the gate, dispatch it; `make pr-rerun` re-runs CI and does not
+refresh `oracle-gate`. Withhold readiness before withdrawing accepted review
+evidence, such as deleting a stand-in comment: leave the PR unarmed, withdraw
+the evidence, dispatch the gate, and observe the new result on the current head
+before treating the PR as ready.
+
 ## Stale failed check suites
 
 `gh pr checks --required` shows one result per check name, so a superseded

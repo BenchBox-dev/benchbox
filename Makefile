@@ -31,7 +31,7 @@ DEVELOPMENT_TREE_ONLY_TARGETS := \
 	agent-commit-range-check skill-integrity-check ci-lint pr-preflight pr-arm-auto-merge shrink-rollup \
 	pr-review-followups-list pr-review-followups dev-loop-metrics ci-usage-report platform-manifest \
 	platform-manifest-check test-docker-parity blind-spots-list blind-spots-report \
-	soundness-drain-report soundness-drain-self-test oracle-review-recover worktree-audit worktree-finish worktree-reap
+	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap
 
 .PHONY: coverage-check
 
@@ -917,17 +917,11 @@ release-cut: .release-cut-tree-required
 	sh scripts/release_cut_start.sh "$(VERSION)"
 	uv run -- python scripts/update_version.py --version $(VERSION) --update-pyproject
 	uv lock
-	uv run -- python scripts/generate_changelog_entry.py --version $(VERSION) --since-ref origin/release $(if $(CHANGELOG_SECTION),--section-file "$(CHANGELOG_SECTION)")
 	@if [ -n "$(CHANGELOG_SECTION)" ]; then \
+		uv run -- python scripts/generate_changelog_entry.py --version $(VERSION) --section-file "$(CHANGELOG_SECTION)" && \
 		echo "==> CHANGELOG.md [$(VERSION)] section written from $(CHANGELOG_SECTION)"; \
-	elif [ -n "$$EDITOR" ] && [ -t 0 ]; then \
-		echo "==> Opening CHANGELOG.md in $$EDITOR for hand-curation"; \
-		$$EDITOR CHANGELOG.md; \
-	else \
-		echo "==> Non-interactive: CHANGELOG.md holds the raw generated draft."; \
-		echo "    Hand-curate the [$(VERSION)] section, then re-run: make release-cut VERSION=$(VERSION)"; \
-		echo "    Or pass the curated section body in one pass: CHANGELOG_SECTION=<path>"; \
 	fi
+	uv run -- python scripts/generate_changelog_entry.py --version $(VERSION) --require-prepared
 	uv run -- python scripts/generate_changelog_entry.py --check-curation --version $(VERSION)
 	git rm -rf --ignore-unmatch _project ':(exclude)_project/scripts/explorer_pipeline/**' ':(exclude)_project/scripts/explorer_publish.py' ':(exclude)_project/scripts/results_explorer_snapshot_invariants.py' .claude .codex .gemini tools
 	git rm -f --ignore-unmatch .pre-commit-config.yaml .importlinter todo.config.yaml skill-sync.conf .gitattributes .coveragerc_core .dockerignore .env.example .mcp.json AGENTS.md CLAUDE.md GEMINI.md ANTIGRAVITY.md
@@ -994,12 +988,12 @@ release-finalize:
 .PHONY: release-prep
 release-prep:
 	@test -n "$(VERSION)" || (echo "Usage: make release-prep VERSION=X.Y.Z" && exit 1)
-	uv run --frozen -- python scripts/release_flow.py prep --version "$(VERSION)" $(if $(SINCE_REF),--since-ref "$(SINCE_REF)",)
+	uv run --frozen -- python scripts/release_flow.py prep --version "$(VERSION)"
 
 .PHONY: release-check
 release-check:
 	@test -n "$(VERSION)" || (echo "Usage: make release-check VERSION=X.Y.Z" && exit 1)
-	uv run --locked -- python scripts/release_flow.py check --version "$(VERSION)" $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",) $(if $(SKIP_UPSTREAM_FRESHNESS),--skip-upstream-freshness,)
+	uv run --locked -- python scripts/release_flow.py check --version "$(VERSION)" $(if $(BASE_REF),--baseline-ref "$(BASE_REF)",) $(if $(SKIP_UPSTREAM_FRESHNESS),--skip-upstream-freshness,) $(if $(RELEASE_PRE_TAG),--pre-tag,)
 
 .PHONY: changelog-entry
 changelog-entry:
@@ -1256,14 +1250,6 @@ pr-arm-auto-merge:
 PR_ARM_PR_SET := $(if $(filter undefined,$(origin PR)),,1)
 PR_ARM_HEAD_SET := $(if $(filter undefined,$(origin HEAD)),,1)
 PR_ARM_REPO_SET := $(if $(filter undefined,$(origin REPO)),,1)
-.PHONY: oracle-review-recover
-oracle-review-recover: override PR := $(value PR)
-oracle-review-recover: override REPO := $(value REPO)
-oracle-review-recover: export ORACLE_REVIEW_PR := $(PR)
-oracle-review-recover: export ORACLE_REVIEW_REPO := $(or $(REPO),BenchBox-dev/BenchBox)
-oracle-review-recover:
-	@uv run -- python scripts/oracle_review_recover.py
-
 .PHONY: pr-rerun
 pr-rerun: override PR := $(value PR)
 pr-rerun: override REPO := $(value REPO)

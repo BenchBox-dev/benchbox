@@ -6,7 +6,6 @@ import pytest
 import yaml
 
 from benchbox.cli.config import ConfigManager
-from benchbox.core.tuning.platform_capabilities import UNSUPPORTED
 from benchbox.core.tuning.profile_validation import candidate_key, validate_tuning_template
 from benchbox.core.tuning.workload_profiles import TEMPORAL_PARTITION, load_tpc_tuning_profile
 
@@ -74,7 +73,9 @@ def test_databricks_tpc_tuned_examples_consume_logical_tpc_profile(
     ("filename", "benchmark_id"),
     [("tpch_tuned.yaml", "tpch"), ("tpcds_tuned.yaml", "tpcds")],
 )
-def test_databricks_z_order_tuned_examples_exclude_temporal_partitions(filename: str, benchmark_id: str) -> None:
+def test_databricks_z_order_tuned_examples_map_temporal_candidates_to_leading_clustering_key(
+    filename: str, benchmark_id: str
+) -> None:
     tuning_config = _load_databricks_tuning(filename)
     result = validate_tuning_template(
         profile=load_tpc_tuning_profile(),
@@ -88,12 +89,13 @@ def test_databricks_z_order_tuned_examples_exclude_temporal_partitions(filename:
         if TEMPORAL_PARTITION in candidate.roles
     }
 
-    unsupported = {
-        mapping.candidate_key for mapping in result.mappings if mapping.platform_mapping.decision == UNSUPPORTED
+    mapped_temporal = {
+        mapping.candidate_key for mapping in result.mappings if mapping.mapped and mapping.candidate_key in temporal
     }
     assert result.is_valid, [issue.to_dict() for issue in result.issues]
-    assert unsupported == temporal
-    assert result.mapped_count + result.unsupported_count == result.required_count
+    assert mapped_temporal == temporal
+    assert result.unsupported_count == 0
+    assert result.mapped_count + result.capped_count == result.required_count
     assert result.waived_count == 0
     metadata = result.to_metadata()
     assert metadata["physical_rendering_id"] == "databricks_z_order"

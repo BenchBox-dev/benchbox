@@ -2447,20 +2447,6 @@ def test_transition_self_registered_exception_counts_with_review(
     assert check_comment_policy.main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 0
 
 
-def _check_runs_payload(*runs: dict, total: int | None = None) -> bytes:
-    import json as json_module
-
-    return json_module.dumps({"total_count": len(runs) if total is None else total, "check_runs": list(runs)}).encode()
-
-
-def _workflow_payload(
-    path: str = ".github/workflows/oracle-review.yml", head: str = "a" * 40, conclusion: str = "success"
-) -> bytes:
-    import json as json_module
-
-    return json_module.dumps({"path": path, "head_sha": head, "conclusion": conclusion}).encode()
-
-
 class _FakeResponse:
     def __init__(self, payload: bytes) -> None:
         self._payload = payload
@@ -2502,22 +2488,6 @@ def _review_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, head: str = "a"
     monkeypatch.setattr(scope, "scanned_tree_is_reviewed_head", lambda root, head: True)
 
 
-def _review_run(
-    conclusion: str = "success",
-    completed_at: str = "2026-10-14T00:00:00Z",
-    app: str = "github-actions",
-    run_id: int = 7,
-) -> dict:
-    return {
-        "name": "oracle-review",
-        "status": "completed",
-        "conclusion": conclusion,
-        "completed_at": completed_at,
-        "app": {"slug": app},
-        "html_url": f"https://github.com/o/r/actions/runs/{run_id}/job/9",
-    }
-
-
 def _verdict_review(
     state: str = "success",
     head: str = "a" * 40,
@@ -2536,111 +2506,109 @@ def _verdict_review(
     }
 
 
+def _gate_status(
+    state: str = "success",
+    login: str = "benchbox-oracle[bot]",
+    account_type: str = "Bot",
+    context: str = "oracle-gate",
+) -> dict:
+    return {"context": context, "state": state, "creator": {"login": login, "type": account_type}}
+
+
+def _review_run() -> dict:
+    return {
+        "name": "oracle-review",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-10-14T00:00:00Z",
+        "app": {"slug": "github-actions"},
+        "html_url": "https://github.com/o/r/actions/runs/7/job/9",
+    }
+
+
 def _fake_api(
     monkeypatch: pytest.MonkeyPatch,
-    runs: list[dict],
-    workflow: bytes,
-    seen: list[str],
     reviews: list[dict] | None = None,
     statuses: list[dict] | None = None,
+    seen: list[str] | None = None,
 ) -> None:
     import json as json_module
 
-    payload = json_module.dumps(reviews if reviews is not None else [_verdict_review()]).encode()
+    review_payload = json_module.dumps(reviews if reviews is not None else [_verdict_review()]).encode()
+    status_payload = json_module.dumps(statuses if statuses is not None else [_gate_status()]).encode()
+    run_payload = json_module.dumps({"total_count": 1, "check_runs": [_review_run()]}).encode()
+    workflow_payload = json_module.dumps(
+        {"path": ".github/workflows/oracle-review.yml", "head_sha": "a" * 40, "conclusion": "success"}
+    ).encode()
 
     def fake(request: urllib.request.Request, timeout: int = 30) -> _FakeResponse:
         url = request.full_url
-        seen.append(url)
-        if "/actions/runs/" in url:
-            return _FakeResponse(workflow)
+        if seen is not None:
+            seen.append(url)
         if "/pulls/" in url and url.endswith("/reviews?per_page=100&page=1"):
-            return _FakeResponse(payload)
+            return _FakeResponse(review_payload)
         if "/statuses?" in url:
-            return _FakeResponse(json_module.dumps(statuses if statuses is not None else []).encode())
-        return _FakeResponse(_check_runs_payload(*runs))
+            return _FakeResponse(status_payload)
+        if "/check-runs" in url:
+            return _FakeResponse(run_payload)
+        if "/actions/runs/" in url:
+            return _FakeResponse(workflow_payload)
+        raise AssertionError(url)
 
     monkeypatch.setattr("urllib.request.urlopen", fake)
 
 
-def test_oracle_review_covers_bound_workflow_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_oracle_review_covers_with_gate_status_and_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
     seen: list[str] = []
-    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen)
+    _fake_api(monkeypatch, seen=seen)
     assert scope.oracle_review_covers(tmp_path) is True
-    assert any("a" * 40 in url for url in seen)
+    assert any("/statuses?" in url and "a" * 40 in url for url in seen)
 
 
-def _gate_status(state: str = "success", login: str = "benchbox-oracle[bot]", account_type: str = "Bot") -> dict:
-    return {"context": "oracle-gate", "state": state, "creator": {"login": login, "type": account_type}}
-
-
-def test_oracle_review_covers_with_gate_status_when_review_check_is_absent(
+def test_oracle_review_covers_rejects_review_check_run_without_gate_status(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
-    _fake_api(monkeypatch, [], _workflow_payload(), [], statuses=[_gate_status()])
-    assert scope.oracle_review_covers(tmp_path) is True
+    seen: list[str] = []
+    _fake_api(monkeypatch, statuses=[], seen=seen)
+    assert scope.oracle_review_covers(tmp_path) is False
+    assert not any("/check-runs" in url or "/actions/runs/" in url for url in seen)
 
 
 @pytest.mark.parametrize(
-    "status",
+    "statuses",
     [
-        _gate_status(state="failure"),
-        _gate_status(login="someone-else"),
-        _gate_status(account_type="User"),
+        [],
+        [_gate_status(state="failure")],
+        [_gate_status(state="pending")],
+        [_gate_status(login="someone-else")],
+        [_gate_status(login="github-actions[bot]")],
+        [_gate_status(account_type="User")],
+        [_gate_status(context="oracle-review")],
+        [_gate_status(state="failure"), _gate_status()],
     ],
 )
 def test_oracle_review_covers_rejects_unsound_gate_status(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: dict
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, statuses: list[dict]
 ) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
-    _fake_api(monkeypatch, [], _workflow_payload(), [], statuses=[status])
+    _fake_api(monkeypatch, statuses=statuses)
     assert scope.oracle_review_covers(tmp_path) is False
 
 
-def test_oracle_review_covers_latest_completed_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_oracle_review_covers_uses_newest_gate_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
-    seen: list[str] = []
-    old = _review_run(completed_at="2026-10-13T00:00:00Z", run_id=6)
-    new = _review_run(conclusion="failure", run_id=7)
-    _fake_api(monkeypatch, [old, new], _workflow_payload(), seen)
-    assert scope.oracle_review_covers(tmp_path) is False
-
-
-def test_oracle_review_covers_rejects_foreign_app_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import check_comment_cleanup_scope as scope
-
-    _review_env(tmp_path, monkeypatch)
-    seen: list[str] = []
-    _fake_api(monkeypatch, [_review_run(app="forged-checks")], _workflow_payload(), seen)
-    assert scope.oracle_review_covers(tmp_path) is False
-    assert not any("/actions/runs/" in url for url in seen)
-
-
-def test_oracle_review_covers_rejects_other_workflow_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import check_comment_cleanup_scope as scope
-
-    _review_env(tmp_path, monkeypatch)
-    seen: list[str] = []
-    _fake_api(monkeypatch, [_review_run()], _workflow_payload(path=".github/workflows/ci.yml"), seen)
-    assert scope.oracle_review_covers(tmp_path) is False
-
-
-def test_oracle_review_covers_rejects_other_head_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import check_comment_cleanup_scope as scope
-
-    _review_env(tmp_path, monkeypatch)
-    seen: list[str] = []
-    _fake_api(monkeypatch, [_review_run()], _workflow_payload(head="b" * 40), seen)
-    assert scope.oracle_review_covers(tmp_path) is False
+    _fake_api(monkeypatch, statuses=[_gate_status(), _gate_status(state="failure")])
+    assert scope.oracle_review_covers(tmp_path) is True
 
 
 def test_oracle_review_covers_fails_closed_on_api_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -2658,14 +2626,13 @@ def test_oracle_review_covers_fails_closed_on_api_error(tmp_path: Path, monkeypa
     assert scope.oracle_review_covers(tmp_path) is False
 
 
-def test_oracle_review_covers_rejects_check_success_without_verdict(
+def test_oracle_review_covers_rejects_gate_status_without_verdict(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
-    seen: list[str] = []
-    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen, reviews=[])
+    _fake_api(monkeypatch, reviews=[])
     assert scope.oracle_review_covers(tmp_path) is False
 
 
@@ -2673,8 +2640,7 @@ def test_oracle_review_covers_rejects_failure_verdict(tmp_path: Path, monkeypatc
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
-    seen: list[str] = []
-    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen, reviews=[_verdict_review(state="failure")])
+    _fake_api(monkeypatch, reviews=[_verdict_review(state="failure")])
     assert scope.oracle_review_covers(tmp_path) is False
 
 
@@ -2682,14 +2648,7 @@ def test_oracle_review_covers_rejects_verdict_for_other_head(tmp_path: Path, mon
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
-    seen: list[str] = []
-    _fake_api(
-        monkeypatch,
-        [_review_run()],
-        _workflow_payload(),
-        seen,
-        reviews=[_verdict_review(commit="b" * 40, head="b" * 40)],
-    )
+    _fake_api(monkeypatch, reviews=[_verdict_review(commit="b" * 40, head="b" * 40)])
     assert scope.oracle_review_covers(tmp_path) is False
 
 
@@ -2697,8 +2656,7 @@ def test_oracle_review_covers_rejects_non_oracle_verdict(tmp_path: Path, monkeyp
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
-    seen: list[str] = []
-    _fake_api(monkeypatch, [_review_run()], _workflow_payload(), seen, reviews=[_verdict_review(login="attacker")])
+    _fake_api(monkeypatch, reviews=[_verdict_review(login="attacker")])
     assert scope.oracle_review_covers(tmp_path) is False
 
 
@@ -2706,12 +2664,8 @@ def test_oracle_review_covers_prefers_latest_verdict(tmp_path: Path, monkeypatch
     import check_comment_cleanup_scope as scope
 
     _review_env(tmp_path, monkeypatch)
-    seen: list[str] = []
     _fake_api(
         monkeypatch,
-        [_review_run()],
-        _workflow_payload(),
-        seen,
         reviews=[
             _verdict_review(state="success", submitted="2026-10-14T00:00:01Z"),
             _verdict_review(state="failure", submitted="2026-10-14T00:00:02Z"),
@@ -2733,13 +2687,7 @@ def _bound_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, event_head:
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
     monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
     monkeypatch.setenv("GITHUB_TOKEN", "t")
-    _fake_api(
-        monkeypatch,
-        [_review_run()],
-        _workflow_payload(head=reviewed),
-        [],
-        reviews=[_verdict_review(head=reviewed)],
-    )
+    _fake_api(monkeypatch, reviews=[_verdict_review(head=reviewed)])
     return repo, head
 
 
@@ -2808,13 +2756,7 @@ def _merge_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, tamper: boo
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
     monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
     monkeypatch.setenv("GITHUB_TOKEN", "t")
-    _fake_api(
-        monkeypatch,
-        [_review_run()],
-        _workflow_payload(head=reviewed),
-        [],
-        reviews=[_verdict_review(head=reviewed)],
-    )
+    _fake_api(monkeypatch, reviews=[_verdict_review(head=reviewed)])
     return repo
 
 

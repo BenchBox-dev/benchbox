@@ -93,6 +93,18 @@ def test_real_makefile_curation_list_parses_to_paths_only():
     assert not flags, f"parser leaked flags into the curation list: {sorted(flags)}"
 
 
+def test_changelog_fragment_directory_is_accounted_for_as_curated(tmp_path: Path) -> None:
+    assert "changelog.d" in check_release_curation.parse_curation_list(REPO_ROOT / "Makefile")
+
+    makefile = _write_makefile(tmp_path, ["git rm -rf --ignore-unmatch _project tools changelog.d"])
+    assert check_release_curation.parse_curation_list(makefile) == {"_project", "tools", "changelog.d"}
+    unaccounted = {"changelog.d"} - (
+        check_release_curation.parse_main_only_allowlist(check_release_curation.DECISION_DOC)
+        | check_release_curation.parse_curation_list(REPO_ROOT / "Makefile")
+    )
+    assert unaccounted == set()
+
+
 def _write_decision_doc(tmp_path: Path, ending: str) -> Path:
     doc = tmp_path / "single-repo-migration.md"
     doc.write_text(

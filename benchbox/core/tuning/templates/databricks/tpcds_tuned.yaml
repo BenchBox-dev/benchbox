@@ -31,77 +31,83 @@ table_tunings:
   STORE_SALES:
     table_name: STORE_SALES
     clustering:
-    - name: SS_ITEM_SK
+    - name: SS_SOLD_DATE_SK
       type: INTEGER
       order: 1
-    - name: SS_CUSTOMER_SK
+    - name: SS_ITEM_SK
       type: INTEGER
       order: 2
-    - name: SS_STORE_SK
+    - name: SS_CUSTOMER_SK
       type: INTEGER
       order: 3
-    - name: SS_PROMO_SK
+    - name: SS_STORE_SK
       type: INTEGER
       order: 4
-    - name: SS_TICKET_NUMBER
-      type: INTEGER
-      order: 5
 
   STORE_RETURNS:
     table_name: STORE_RETURNS
     clustering:
-    - name: SR_ITEM_SK
+    - name: SR_RETURNED_DATE_SK
       type: INTEGER
       order: 1
-    - name: SR_CUSTOMER_SK
+    - name: SR_ITEM_SK
       type: INTEGER
       order: 2
-    - name: SR_STORE_SK
+    - name: SR_CUSTOMER_SK
       type: INTEGER
       order: 3
-    - name: SR_TICKET_NUMBER
+    - name: SR_STORE_SK
       type: INTEGER
       order: 4
 
   CATALOG_SALES:
     table_name: CATALOG_SALES
     clustering:
-    - name: CS_ITEM_SK
+    - name: CS_SOLD_DATE_SK
       type: INTEGER
       order: 1
-    - name: CS_SHIP_MODE_SK
+    - name: CS_ITEM_SK
       type: INTEGER
       order: 2
+    - name: CS_SHIP_MODE_SK
+      type: INTEGER
+      order: 3
 
   CATALOG_RETURNS:
     table_name: CATALOG_RETURNS
     clustering:
-    - name: CR_ITEM_SK
+    - name: CR_RETURNED_DATE_SK
       type: INTEGER
       order: 1
+    - name: CR_ITEM_SK
+      type: INTEGER
+      order: 2
 
   WEB_SALES:
     table_name: WEB_SALES
     clustering:
-    - name: WS_ITEM_SK
+    - name: WS_SOLD_DATE_SK
       type: INTEGER
       order: 1
-    - name: WS_WEB_PAGE_SK
+    - name: WS_ITEM_SK
       type: INTEGER
       order: 2
-    - name: WS_WEB_SITE_SK
+    - name: WS_WEB_PAGE_SK
       type: INTEGER
       order: 3
-    - name: WS_SHIP_MODE_SK
+    - name: WS_WEB_SITE_SK
       type: INTEGER
       order: 4
 
   WEB_RETURNS:
     table_name: WEB_RETURNS
     clustering:
-    - name: WR_ITEM_SK
+    - name: WR_RETURNED_DATE_SK
       type: INTEGER
       order: 1
+    - name: WR_ITEM_SK
+      type: INTEGER
+      order: 2
 
   DATE_DIM:
     table_name: DATE_DIM

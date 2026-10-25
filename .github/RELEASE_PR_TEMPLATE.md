@@ -1,8 +1,8 @@
 ## Release v<!-- bump version here -->
 
 This PR was opened by `make release-cut VERSION=X.Y.Z` from `develop`.
-It cuts the release branch, bumps the version sources, generates the
-CHANGELOG entry from the `origin/release` patch delta, drops maintainer paths
+It cuts the release branch, bumps the version sources, requires the CHANGELOG
+entry that `make release-prep` compiled from `changelog.d`, drops maintainer paths
 while retaining the curated Results Explorer inputs, and queues the change for
 a squash-merge into `release`.
 

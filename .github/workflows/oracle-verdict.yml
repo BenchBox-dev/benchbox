@@ -898,7 +898,6 @@ jobs:
     timeout-minutes: 10
     environment: oracle
     permissions:
-      actions: write
       contents: read
     env:
       HAS_APP: ${{ secrets.ORACLE_APP_ID != '' && secrets.ORACLE_APP_PRIVATE_KEY != '' }}
@@ -998,14 +997,3 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$RUNNER_TEMP/oracle-final/review.json"
-
-      - name: Rerun the failed synchronize suite for this head
-        if: env.HAS_APP == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          IDS="$(gh run list --repo "$REPO" --workflow oracle-review.yml --limit 100 --json databaseId,headSha,event,conclusion --jq '[.[] | select(.headSha == env.HEAD_SHA and (.event == "pull_request" or .event == "pull_request_review") and .conclusion == "failure") | .databaseId] | join(" ")')"
-          for id in $IDS; do
-            gh run rerun "$id" --failed --repo "$REPO" || echo "::warning::could not rerun run $id; skipping"
-          done

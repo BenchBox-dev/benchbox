@@ -67,10 +67,9 @@ it passes at once for a change confined to inert paths (see Inert-path
 manifest in `docs/internal/oracle-review-v2.md`). `hold` comes from
 `.github/workflows/pr-hold.yml` and fails while the PR carries the
 `no-auto-merge` label; it re-runs when a label is added or removed.
-`.github/workflows/oracle-review.yml` still reports an `oracle-review` check
-on every pull request from the same rule, but it is not required: it runs the
-workflow file from the pull request, and it stays only because its completion
-after a review is submitted or dismissed makes `oracle-gate` re-evaluate.
+`.github/workflows/oracle-review.yml` reports no check: it runs a no-op
+`review-event` job on review submitted, edited and dismissed events, and its
+completion makes `oracle-gate` re-evaluate.
 
 The `ci-paths` job maps changed paths to units with `.github/ci-units.yml`. An
 untouched unit reports success at once. A touched unit succeeds only when every

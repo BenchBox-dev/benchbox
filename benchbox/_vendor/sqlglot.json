@@ -3,10 +3,10 @@
   "distribution": "benchbox-sqlglot",
   "namespace": "benchbox._vendor.sqlglot",
   "repository": "https://github.com/BenchBox-dev/benchbox-sqlglot",
-  "version": "30.24.0.12",
-  "fork_sha": "e484de3d1ffb27d1e9f52c80eead97a302f3302a",
+  "version": "30.24.0.13",
+  "fork_sha": "ea44bcc94a0e141a18e4663a7cbe059c8429d3e0",
   "upstream_sha": "5d588c0f32d17a08191898638f67ff27bb0a13ff",
-  "wheel": "benchbox_sqlglot-30.24.0.12-py3-none-any.whl",
-  "archive": "benchbox_sqlglot-30.24.0.12-py3-none-any.whl.zip",
-  "sha256": "12d554cd9e53ed06b643f0d31a2946b43d898655180b77c76776f7a62f8f142a"
+  "wheel": "benchbox_sqlglot-30.24.0.13-py3-none-any.whl",
+  "archive": "benchbox_sqlglot-30.24.0.13-py3-none-any.whl.zip",
+  "sha256": "cb05a62835a67de441266337e57ac5eab22b4ea9355db0b5488161fb5a9aadd0"
 }

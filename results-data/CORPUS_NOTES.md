@@ -112,6 +112,11 @@ Other issues found while checking, outside these PRs:
 - Since v0.4.1, Snowflake and Databricks translate `DESC` ordering to
   `DESC NULLS LAST` (TSBS DevOps and DataVault Q11), which can reorder rows
   containing NULLs.
+- SQLite zero-padded date literals (fork 30.24.0.13): TPC-DS Q16, Q94 and Q95, base
+  and OBT, filtered on `NULL` date bounds on SQLite, and TPC-Havoc `1_v7` failed
+  there. No published SQLite bundle is affected: the only SQLite TPC-DS bundle
+  (`tpcds_sf1_sqlite_sql_20260824_083944_c6745a86`) ran query 1 alone, and there
+  is no SQLite `tpcds_obt` or `tpchavoc` bundle. No sidecar changed.
 - ClickHouse DataVault Q6 was wrong because the Q6 bound fold applied only to
   the `lineitem` table, so `sat_lineitem` kept `BETWEEN 0.06 - 0.01 AND
   0.06 + 0.01`. Fork 30.24.0.12 folds every table and column, so rerunning

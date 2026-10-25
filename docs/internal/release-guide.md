@@ -130,27 +130,24 @@ must not be bypassed with an undocumented local change.
 
 1. Cuts a `vX.Y.Z` branch from the exact fetched `origin/develop` commit in a
    linked worktree (`develop` itself is never modified).
-2. Bumps the 6 version sources via `scripts/update_version.py` and generates
-   the CHANGELOG entry via `scripts/generate_changelog_entry.py --since-ref
-   origin/release`. The release note boundary is the current release branch patch
-   delta against `release`, not `git log origin/release..HEAD` ancestry and not the
-   latest tag reachable from `develop`, because `release-finalize`
-   intentionally does not replay release commits onto `develop`.
-3. Opens `$EDITOR` on `CHANGELOG.md` for hand-curation when a terminal is
-   attached, then gates on `generate_changelog_entry.py --check-curation`,
-   which inspects the drafted section's text: it rejects verbatim commit
-   subjects (trailing `(#NNNN)`), the manual-edit placeholder, and more than
-   45 bullets or 160 lines (see "Curating release notes" below). Curation is
-   always required — the draft is the raw
-   `origin/release..HEAD` delta, hundreds of commits whenever `release` lags
-   `develop`. A headless run without curated text stops here: hand-curate the
-   section, then re-run `make release-cut` (see "Resuming or aborting a cut"
-   below). That resume is refused once `origin/develop` moves past the cut's
-   starting commit, which a busy `develop` does within minutes.
-   `RELEASE_ALLOW_RAW_CHANGELOG=1` accepts the raw draft deliberately.
+2. Bumps the 6 version sources via `scripts/update_version.py`. The
+   `## [X.Y.Z]` changelog section is not built here: `make release-prep` builds
+   it from the `changelog.d` fragments on `develop` before the cut (see
+   "Release notes from fragments" below).
+3. Gates on `generate_changelog_entry.py --require-prepared`, which refuses
+   unless `CHANGELOG.md` has the `## [X.Y.Z]` section and no `changelog.d/*.json`
+   fragment is pending, then on `generate_changelog_entry.py --check-curation`,
+   which inspects the section's text: it rejects verbatim commit subjects
+   (trailing `(#NNNN)`), duplicate `###` headings, and more than 45 bullets or
+   160 lines. A cut from a tree without a prepared section stops here: run
+   `make release-prep VERSION=X.Y.Z` on `develop`, merge it, and cut again.
+   A stopped cut is resumed with `make release-cut` (see "Resuming or aborting
+   a cut" below); that resume is refused once `origin/develop` moves past the
+   cut's starting commit, which a busy `develop` does within minutes.
+   `RELEASE_ALLOW_RAW_CHANGELOG=1` accepts a flagged section deliberately.
 
-   **Non-interactive cuts (agents, CI).** Write the curated section first and
-   pass it in, so the cut finishes in one invocation:
+   **Non-interactive cuts (agents, CI).** To replace the prepared section in
+   the same invocation, write the section first and pass it in:
 
    ```bash
    make release-cut VERSION=X.Y.Z CHANGELOG_SECTION=/tmp/benchbox-X.Y.Z-section.md
@@ -159,11 +156,11 @@ must not be bypassed with an undocumented local change.
    The file holds the section body only: the `###` groups and their bullets,
    without the `## [X.Y.Z] - date` header, which the cut adds. Keep it outside
    the worktree, because an untracked file there blocks `release-cut-abort`.
-   The text replaces any `[X.Y.Z]` section an earlier pass left, and goes below
-   `[Unreleased]`, which the cut leaves unchanged. The
-   `--check-curation` gate checks it like any other section, so raw commit
-   subjects are still refused, and the exact-`origin/develop` start check still
-   runs first.
+   The text replaces any `[X.Y.Z]` section already present, and goes below
+   `[Unreleased]`, which the cut leaves unchanged. The `--require-prepared` and
+   `--check-curation` gates still run afterwards, so pending fragments and raw
+   commit subjects are still refused, and the exact-`origin/develop` start
+   check still runs first.
 4. Curates the release branch — `git rm`'s the dev-only and deferred
    release paths while retaining the curated Results Explorer publication
    inputs: `results-data/`,
@@ -174,6 +171,8 @@ must not be bypassed with an undocumented local change.
    development-only; the exact list is enforced by the `release-cut:`
    Makefile target and `scripts/check_release_curation.py`.
    Explorer seed, submission and sync workflows remain development-only.
+   `changelog.d/` is development-only too: `release-prep` consumes every
+   fragment, and the release tree carries none.
 5. Commits a single `Release vX.Y.Z` commit on `vX.Y.Z`.
 6. Merges `origin/release` into `vX.Y.Z` with `-s ours
    --allow-unrelated-histories`. `release` and `develop` have unrelated roots and
@@ -186,17 +185,48 @@ must not be bypassed with an undocumented local change.
 8. Sweeps prior `v*` branches on origin (option-c lifecycle: keep until
    superseded, then auto-delete on the next `release-cut`).
 
-### Curating release notes
+### Release notes from fragments
 
-Write for users, not contributors: include only changes a user would notice,
-grouped by theme (`Before you upgrade`, `Added`, `Changed`, `Fixed`) and
-matching the structure and length of earlier entries. Use plain language. Mark
-behavior changes in `Before you upgrade` with `BREAKING:` and date the section
-with the publication date. The curation gate enforces the length half of this
-standard: at most 45 bullets and 160 lines, set from the largest hand-curated
-section shipped (0.2.1, 39 bullets over 139 lines). A longer draft means the
-curation is not done yet — group and cut further rather than working around
-the gate.
+Each pull request that changes user-visible behavior adds one
+`changelog.d/<branch>.json` fragment (`make changelog-entry`; schema and
+rendering in `scripts/changelog_fragments.py`). `[Unreleased]` stays empty.
+Write for users, not contributors: include only changes a user would notice.
+Fragments render under `Before you upgrade`, `Added`, `Changed`, `Fixed` and
+`Documentation`, in that order; behavior changes carry `BREAKING:`.
+
+`make release-prep VERSION=X.Y.Z` compiles the fragments with
+`scripts/generate_changelog_entry.py --compile-fragments`:
+
+1. Every fragment is validated first. An invalid one aborts the run with a
+   path-specific error before any file, fragment or version marker changes.
+2. The starting draft is the existing `[X.Y.Z]` body on a re-run, otherwise the
+   body of the newest pre-release section of the same base version (for example
+   `[0.5.0rc1]` when preparing `0.5.0` or `0.5.0rc2`), otherwise empty.
+3. User entries are appended under the five canonical headings: into a heading
+   that already exists, or into a new heading created in canonical order. A
+   heading is never duplicated.
+4. `## [X.Y.Z] - DATE` is written directly below the empty `[Unreleased]`, and
+   the pre-release sections that were folded in are removed.
+5. Compare links are updated. A pre-release adds `[X.Y.Z]` (previous final tag
+   to the pre-release tag) and leaves `[Unreleased]` at the previous final tag.
+   A final release drops the folded sections' links, adds `[X.Y.Z]`, and points
+   `[Unreleased]` at `vX.Y.Z...HEAD`, which is what the published-release
+   accounting check expects.
+6. Every consumed fragment, user and internal, is deleted. Git history is the
+   archive.
+7. A worksheet (file, pull request, category, tags), the bullet and line counts
+   against the 45/160 ceilings, and a coverage report are printed. The coverage
+   report lists `feat`, `fix` and `perf` squash commits on `develop` since the
+   commit that added the previous final release's changelog section (release
+   tags sit on the unrelated `release` history, so the tag is not a usable
+   lower bound) that added no fragment, so a missing entry is a visible decision.
+
+Re-running prep appends fragments added since the last run to the existing
+`[X.Y.Z]` section and keeps its date; with no fragment pending the file is left
+unchanged byte for byte. A non-empty `[Unreleased]` section aborts the compile.
+The curation gate still enforces the length half of the standard: at most 45
+bullets and 160 lines. A longer section means entries need merging or
+trimming, not a way around the gate.
 
 ### Changelog merges
 
@@ -280,12 +310,6 @@ past the cut's starting commit. The branch and curated files remain untouched;
 review the new develop commits and preserve any authored changelog text before
 deciding whether to discard the cut and start again.
 
-Changelog summarization shells out to the `claude` CLI. It is skipped
-automatically inside a Claude Code session (where the nested call blocks until
-its 120s timeout) and whenever `BENCHBOX_CHANGELOG_SUMMARIZE=0`; set
-`BENCHBOX_CHANGELOG_SUMMARIZE=1` to force it. Skipping only means the draft is
-raw commit subjects, which step 3 requires you to curate anyway.
-
 ### What `release-finalize` does
 
 1. Finds the unique open or merged release PR for `vX.Y.Z`.
@@ -356,7 +380,7 @@ uv run -- python scripts/generate_changelog_entry.py --check-release-accounting
 
 If an existing GitHub Release has missing or generic notes, replace only its
 body from the validated changelog section. This command is idempotent and
-refuses empty, placeholder, or raw commit-subject notes:
+refuses empty notes and sections that fail the curation checks:
 
 ```bash
 uv run -- python scripts/generate_changelog_entry.py \
@@ -471,23 +495,22 @@ and tag `v0.5.0rc1` for a TestPyPI rehearsal, then `VERSION=0.5.0` and tag
 `v0.5.0` for PyPI. See `release-artifacts.md` for the gates it runs.
 
 ```bash
-make release-prep VERSION=X.Y.Z [SINCE_REF=<ref>]
-make release-check VERSION=X.Y.Z [BASE_REF=<immutable-predecessor-sha>]
+make release-prep VERSION=X.Y.Z
+make release-check VERSION=X.Y.Z [BASE_REF=<immutable-predecessor-sha>] [RELEASE_PRE_TAG=1]
 ```
 
-Hand-curate the `[X.Y.Z]` section of `CHANGELOG.md` between the two commands.
-
 `release-prep` runs `scripts/update_version.py` (`pyproject.toml`,
-`benchbox/__init__.py` and the documentation release markers), then `uv lock`, then `scripts/generate_changelog_entry.py`. The changelog
-lower bound defaults to the newest final `vX.Y.Z` tag; `SINCE_REF` overrides it.
-Commit the changed files as one PR.
+`benchbox/__init__.py` and the documentation release markers), then `uv lock`,
+then `scripts/generate_changelog_entry.py --compile-fragments`, which builds the
+`[X.Y.Z]` section from `changelog.d` (see "Release notes from fragments").
+Commit the changed files, including the deleted fragments, as one PR.
 
 `release-check` (`scripts/release_flow.py check`) exits non-zero and lists every
 problem it finds. It verifies that:
 
 - the version in `pyproject.toml`, `benchbox/__init__.py`, the documentation
   markers, and the `uv.lock` package entry equals `VERSION`;
-- `CHANGELOG.md` has a dated, hand-curated `## [X.Y.Z]` section;
+- `CHANGELOG.md` has a dated, curated `## [X.Y.Z]` section;
 - the `uv.lock` schema revision was not downgraded
   (`_project/scripts/check_uv_lock_revision.py`);
 - every top-level path is accounted for (`scripts/check_release_curation.py`);
@@ -510,6 +533,22 @@ problem it finds. It verifies that:
   `SKIP_UPSTREAM_FRESHNESS=1` so an upstream SQLGlot release cannot block
   unrelated merges. The release workflows and `release-readiness` still run
   the check unconditionally.
+- with `RELEASE_PRE_TAG=1` (`release_flow.py check --pre-tag`), no
+  `changelog.d/*.json` fragment is pending. The pull request check passes it
+  only when the pull request changes the release identity: a version marker,
+  the lock package version, or the creation or removal of the project
+  version's changelog section (`release-identity-changed`, reported by
+  `release_flow.py select` separately from enforcement-file changes; editing an
+  existing section or the lock schema does not count), which is the check that
+  stops a release preparation pull request from merging to `develop` with
+  fragments left
+  uncompiled. `release-v2.yml` tags merged `develop` commits, so its tag-time
+  `release-check` passes the flag and refuses to publish a tag whose tree still
+  carries a fragment, for example one merged after the preparation pull
+  request. The legacy `release-cut` path is covered separately: its recipe
+  removes `changelog.d` from the release branch and `--require-prepared`
+  refuses to cut while fragments are pending. A default `release-check` passes
+  while fragments are pending.
 
 Both targets need the full development tree, because the lock-revision check
 lives under `_project/`.
@@ -521,9 +560,9 @@ inputs. Its always-required `ci-paths` job runs the check with the immutable
 pull-request event base SHA as `BASE_REF`; a failed check blocks
 `core`. Unchanged release identity avoids the dependency installation and check.
 Missing baseline history fails the check. Preparation uses a frozen environment
-until its explicit `uv lock` step. It validates the date and changelog lower
-bound before changing version markers; a later command failure can leave
-partial changes for inspection.
+until its explicit `uv lock` step. It validates the date and every changelog
+fragment (a dry-run compile) before changing version markers; a later command
+failure can leave partial changes for inspection.
 
 ## Reference
 
