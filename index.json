@@ -26773,6 +26773,13 @@
       "status": "open",
       "title": "Trunk's dist-artifact producer check fails intermittently with 'producer job is not unique and running'"
     },
+    "trunk-lane-changes-run-before-merge-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run the Trunk medium job on the PR when a PR changes trunk.yml, trunk-coverage.yml or shard scheduling"
+    },
     "trunk-red-rate-target-20261024": {
       "claim": null,
       "needs": [

@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A PR touching any of the listed paths gets a Trunk-equivalent medium run on its head (same environment, coverage setting and shard scheduling as trunk.yml/trunk-coverage.yml) that must pass before merge; other PRs are unaffected",
+    "A workflow test pins the trigger paths and the equivalence with trunk.yml's medium job",
+    "The three precedents are shown to fail that pre-merge run when replayed on their heads, or the item records why a precedent cannot be replayed"
+  ],
+  "context": "Source: classification of every Trunk push run on develop from 2026-10-10 to 2026-10-24 (recorded on trunk-red-run-triage-20261024; incident ids refer to that table). ",
+  "description": "Three incidents (INC-02, 14, 16; 12 red Trunk runs) came from changes to the Trunk lane itself that no PR run could exercise: #2821 needed a TypeScript package the Trunk medium job did not install; #3200 moved Trunk medium shards under per-test line coverage and pushed datagen tests past their timeouts; #3400 changed shard assignment and exposed a process-global chDB server. A PR that changes .github/workflows/trunk.yml, .github/workflows/trunk-coverage.yml, scripts/release_canary_sharding.py or the medium durations fixture should run a Trunk-equivalent medium job on its own head before merge.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T03:29:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c949355059234e60a29657bdc12c3fcb",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
