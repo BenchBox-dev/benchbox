@@ -25167,6 +25167,13 @@
       "status": "done",
       "title": "Unit tests leak root logger levels, and `make test-pytest` turns off session isolation, so tests run against the real ~/.benchbox"
     },
+    "test-module-state-leak-guard-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Fail any test module that leaves benchbox logger, quiet flag or tracer state changed"
+    },
     "test-oracle-guard-global-sleep-patch": {
       "claim": null,
       "needs": [],

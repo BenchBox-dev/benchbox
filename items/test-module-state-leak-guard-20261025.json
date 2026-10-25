@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "An autouse module-scoped guard fails the module that leaves benchbox logger level or handlers, the quiet flag or the tracer provider changed, naming the state that leaked",
+    "INC-15's leak (the docs-export fixture before #3385) is caught by the guard without relying on the test that later observed it",
+    "The full fast and medium suites pass with the guard on, and any existing leaks it finds are fixed in the same change"
+  ],
+  "context": "Source: classification of every Trunk push run on develop from 2026-10-10 to 2026-10-24 (recorded on trunk-red-run-triage-20261024; incident ids refer to that table). ",
+  "description": "Two incidents (INC-15, 16; 6 red Trunk runs) were cross-test state leaking through module or session fixtures, exposed only by worker placement: a module-scoped docs-export fixture left the benchbox logger at ERROR (fixed in #3385), and chDB sessions held open across modules (fixed in #3423, which added an autouse module guard for open chDB connections). The same class recurred after test-logging-and-session-isolation-leaks-20261014. Extend the guard pattern from #3423 to logger levels and handlers, the quiet flag and the tracer provider.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T03:29:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8522ffcad1614fe690b9ad40c3e6bf00",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
