@@ -19,6 +19,7 @@ REVERT_PREFIX = "fix/revert-"
 FIX_FORWARD_AUTHORIZERS = frozenset({"joeharris76"})
 _FIX_FORWARD_MARKER = re.compile(r"Fix-forward authorized: ([0-9a-f]{40}) for trunk run ([0-9]+)")
 FIX_FORWARD_FORMAT = "Fix-forward authorized: <40-hex head SHA> for trunk run <run databaseId>"
+STREAK_MARK = "@@"
 DRAFT_DECISION = "draft"
 READY_DECISION = "ready"
 GRACE = timedelta(minutes=30)
@@ -230,6 +231,60 @@ def fix_forward_authorized(comments: list[dict], head: str, failed: dict) -> boo
     return False
 
 
+def pr_changed_paths(ref: str, run: Runner, repo: str) -> set[str]:
+    view = _check(run, ["gh", "pr", "view", ref, "--repo", repo, "--json", "files"], f"reading the files of PR {ref}")
+    try:
+        return {item["path"] for item in json.loads(view)["files"]}
+    except (ValueError, KeyError, TypeError) as exc:
+        raise TrunkError(f"unreadable file list of PR {ref}: {exc}") from exc
+
+
+def streak_changes(run: Runner, sha: str) -> tuple[list[str], set[str]]:
+    _check(run, ["git", "fetch", "origin", BASE_BRANCH, "--quiet"], f"fetching {BASE_BRANCH}")
+    log = _check(
+        run,
+        [
+            "git",
+            "log",
+            "--first-parent",
+            "-m",
+            "--name-only",
+            f"--format={STREAK_MARK}%h %s",
+            f"{sha}^..origin/{BASE_BRANCH}",
+        ],
+        "reading the red streak's changed paths",
+    )
+    commits: list[str] = []
+    paths: set[str] = set()
+    for line in log.splitlines():
+        if line.startswith(STREAK_MARK):
+            commits.append(line[len(STREAK_MARK) :])
+        elif line.strip():
+            paths.add(line.strip())
+    if not commits:
+        raise TrunkError(f"no {BASE_BRANCH} commits from {sha[:9]} to the {BASE_BRANCH} tip")
+    return commits, paths
+
+
+def fix_forward_relatedness_refusal(ref: str, sha: str, run: Runner, repo: str) -> str | None:
+    if not sha:
+        return f"cannot tell which paths the red streak changed: its first red run has no head commit; refusing {ref}"
+    try:
+        pr_paths = pr_changed_paths(ref, run, repo)
+    except TrunkError as exc:
+        return f"the files of PR {ref} could not be read ({exc}); refusing the fix-forward authorization"
+    try:
+        commits, streak_paths = streak_changes(run, sha)
+    except TrunkError as exc:
+        return f"the paths changed by the red streak could not be read ({exc}); refusing the fix-forward authorization"
+    if pr_paths & streak_paths:
+        return None
+    return (
+        f"the fix-forward authorization names a PR that changes none of the {len(streak_paths)} paths changed by the "
+        f"red streak on {BASE_BRANCH} ({'; '.join(commits)}); refusing"
+    )
+
+
 def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
     pr = pr_head(ref, run, repo)
     try:
@@ -252,7 +307,7 @@ def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | 
         and pr.head
         and fix_forward_authorized(issue_comments(run, repo, pr.number), pr.head, failed)
     ):
-        return None
+        return fix_forward_relatedness_refusal(ref, sha, run, repo)
     named, revert_hint = describe_culprit(run, repo, failed)
     return (
         f"{BASE_BRANCH} is red: the first failing {TRUNK_WORKFLOW} run since the last green one failed at {named} ({failed['url']}). "

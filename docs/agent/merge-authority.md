@@ -94,6 +94,12 @@ The gate accepts the comment only from an allowlisted owner login, with user typ
 `User`, never edited, naming the current head and that run. A new push voids it, so
 post it after the last push. To withdraw it, edit or delete it.
 
+The gate also requires the PR to change at least one path that the red streak
+changed (the first-parent `develop` commits from the first red run's commit to the
+tip), and refuses when either list cannot be read. The comment can still be
+self-posted, the same trust model as a stand-in; the path rule limits it to changes
+that touch the broken paths.
+
 The authorization lifts only the red-trunk refusal. Required checks, `oracle-gate`,
 review-thread resolution and owner holds still apply. While `develop` has been red
 for more than 30 minutes, `make pr-open` opens the PR as a draft and prints that

@@ -22,6 +22,58 @@
   "pr": {
     "number": 3385,
     "headRefName": "fix/comment-policy-notice-paths",
-    "headRefOid": "5e2fdde9d994b98a694d2891b41ef0006b8f058f"
-  }
+    "headRefOid": "5e2fdde9d994b98a694d2891b41ef0006b8f058f",
+    "files": [
+      "quality/comment-cleanup-scope.json",
+      "scripts/doc_contracts.py",
+      "tests/unit/scripts/test_doc_contracts.py"
+    ]
+  },
+  "streak": [
+    {
+      "commit": "c962e3e87 refactor(sql-compat): declare each platform's SQL dialect once in the platform manifest (#3379)",
+      "files": [
+        ".importlinter",
+        "CHANGELOG.md",
+        "benchbox/core/config_inheritance.py",
+        "benchbox/core/platform_manifest.py",
+        "benchbox/platforms/athena.py",
+        "benchbox/platforms/singlestore.py",
+        "benchbox/utils/dialect_utils.py",
+        "docs/development/adding-new-platforms.md",
+        "docs/development/new-platform-acceptance-checklist.md",
+        "docs/reference/python-api/utilities.md",
+        "scripts/new_platform_scaffold.py",
+        "tests/unit/core/test_config_inheritance.py",
+        "tests/unit/core/test_execution_engine.py",
+        "tests/unit/utils/test_dialect_utils.py",
+        "tests/unit/utils/test_platform_dialect_registry.py"
+      ]
+    },
+    {
+      "commit": "24bfcf8a0 feat(docs): export the facts site-owned documentation is validated against (#3378)",
+      "files": [
+        ".github/ci-units.yml",
+        ".github/workflows/ci.yml",
+        ".gitignore",
+        "CHANGELOG.md",
+        "Makefile",
+        "docs/internal/doc-contracts.md",
+        "make/documentation.mk",
+        "make/help.mk",
+        "quality/doc-contracts.schema.json",
+        "quality/doc-lock-tests.json",
+        "quality/docs-ownership.json",
+        "quality/docs-reference-inventory.json",
+        "quality/docs-reference-rules.json",
+        "quality/mcp-run-surface.json",
+        "scripts/doc_contracts.py",
+        "scripts/doc_reference_inventory.py",
+        "tests/system/test_ci_lint_parity.py",
+        "tests/unit/mcp/test_run_surface_contract.py",
+        "tests/unit/scripts/test_doc_contracts.py",
+        "tests/unit/scripts/test_doc_reference_inventory.py"
+      ]
+    }
+  ]
 }

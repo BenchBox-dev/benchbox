@@ -777,7 +777,15 @@ def _authorization(
 
 class FixForwardRun(ArmRun):
     def __init__(
-        self, comments: list[dict], *, head: str = FIX_HEAD, number: int = 3385, indent: int | None = None
+        self,
+        comments: list[dict],
+        *,
+        head: str = FIX_HEAD,
+        number: int = 3385,
+        indent: int | None = None,
+        files: list[str] | None = None,
+        files_code: int = 0,
+        git_code: int = 0,
     ) -> None:
         super().__init__(
             _replayed_runs(),
@@ -791,8 +799,25 @@ class FixForwardRun(ArmRun):
         self.head = head
         self.number = number
         self.indent = indent
+        self.files = REPLAY["pr"]["files"] if files is None else files
+        self.files_code = files_code
+        self.git_code = git_code
 
     def __call__(self, cmd: list[str]) -> tuple[int, str]:
+        if cmd[:2] == ["git", "fetch"]:
+            self.calls.append(cmd)
+            return self.git_code, "" if self.git_code == 0 else "fetch failed"
+        if cmd[:2] == ["git", "log"]:
+            self.calls.append(cmd)
+            assert cmd[-1] == f"24bfcf8a0fb048c9ad554ef2e9e99066f7027167^..origin/{trunk_revert.BASE_BRANCH}"
+            if self.git_code != 0:
+                return self.git_code, "log failed"
+            return 0, "\n\n".join(f"@@{item['commit']}\n\n" + "\n".join(item["files"]) for item in REPLAY["streak"])
+        if cmd[:3] == ["gh", "pr", "view"] and cmd[-1] == "files":
+            self.calls.append(cmd)
+            if self.files_code != 0:
+                return self.files_code, "boom"
+            return 0, json.dumps({"files": [{"path": path} for path in self.files]})
         if cmd[:3] == ["gh", "pr", "view"]:
             self.calls.append(cmd)
             payload = {
@@ -807,6 +832,36 @@ class FixForwardRun(ArmRun):
             assert cmd[3] == f"repos/{trunk_revert.REPOSITORY}/issues/{self.number}/comments"
             return 0, "\n".join(json.dumps(comment, indent=self.indent) for comment in self.comments)
         return super().__call__(cmd)
+
+
+def test_authorized_pr_that_changes_none_of_the_streak_paths_is_refused_naming_the_streak() -> None:
+    run = FixForwardRun([_authorization()], files=["examples/unrelated.py", "benchbox/platforms/duckdb.py"])
+    message = trunk_revert.arm_gate("3385", run=run)
+    assert message is not None
+    assert "changes none of the" in message
+    assert "24bfcf8a0 feat(docs)" in message
+    assert "c962e3e87 refactor(sql-compat)" in message
+
+
+def test_authorized_pr_touching_one_streak_path_is_admitted() -> None:
+    run = FixForwardRun([_authorization()], files=["examples/unrelated.py", "Makefile"])
+    assert trunk_revert.arm_gate("3385", run=run) is None
+
+
+def test_unauthorized_pr_touching_streak_paths_is_still_refused() -> None:
+    assert trunk_revert.arm_gate("3385", run=FixForwardRun([])) is not None
+
+
+def test_authorized_pr_is_refused_when_its_files_cannot_be_read() -> None:
+    message = trunk_revert.arm_gate("3385", run=FixForwardRun([_authorization()], files_code=1))
+    assert message is not None
+    assert "files of PR 3385 could not be read" in message
+
+
+def test_authorized_pr_is_refused_when_the_streak_paths_cannot_be_read() -> None:
+    message = trunk_revert.arm_gate("3385", run=FixForwardRun([_authorization()], git_code=1))
+    assert message is not None
+    assert "paths changed by the red streak could not be read" in message
 
 
 def test_replay_of_the_2026_10_24_red_streak_refuses_the_fix_forward_pr_without_authorization() -> None:

@@ -101,7 +101,9 @@ Bound:
   green; a revert is not required.
 - **The authorization is audit-enforced.** Every agent acts through the owner's
   account, so no API signal separates the owner's comment from an agent's. The gate
-  binds the comment to the head and the run, never to who typed it.
+  binds the comment to the head and the run, never to who typed it. The gate also
+  requires the PR to change a path that the red streak changed, so a self-posted
+  comment can only admit changes that touch the broken paths.
 - **Delivery.** A push that GitHub never delivers produces no run, so the gate
   cannot see a red tree it was never told about.
 
