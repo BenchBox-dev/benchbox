@@ -3,8 +3,8 @@
     "Root cause identified and addressed (timeout scope, fixture size, split test, or shard parallelism)",
     "20 consecutive green medium runs without recurrence"
   ],
-  "context": "2026-10-23 check: root cause fixed on develop by commit 194d67a2b (PR 3095, 2026-10-17). test_generate_data had used the shared small_scale_factor fixture (1.0), which generated the full SF1 AMPLab dataset (about 680 MB); the generator is CPU-bound, so a single-core runner took about 72 s against the 60 s timeout. The test now builds AMPLab at scale factor 0.01 and asserts exact row counts (rankings 2,500; uservisits 25,000; documents 1,250). Re-run on develop at 3e88bd238: the call took 0.69 s, setup 2.27 s, 3 tests passed in 3.0 s. No other AMPLab test generates SF1 data. Not verified: the acceptance criterion of consecutive green medium runs needs the CI history since 2026-10-17; close the item once that is confirmed.",
-  "description": "tests/test_amplab.py::TestAMPLab::test_generate_data fails intermittently in CI medium-test shards with pytest-timeout (>60s) inside _generate_uservisits_data, then passes on rerun. Observed 4+ times on 2026-10-12 across PRs #2830, #2875, #2917 and others; CI logs show memory pressure on the failing runners. Never root-caused; each occurrence burned a full shard rerun plus diagnosis.",
+  "context": "AMENDED 2026-10-25 from an independent second review of these plans: only the verification remains. Confirm 20 consecutive green medium runs without a test_generate_data timeout using CI history since 2026-10-17 (commit 194d67a2b), list the run ids here, then close. Do not plan another root-cause fix. This item is a need of trunk-red-rate-target-20261024.\n\n2026-10-23 check: root cause fixed on develop by commit 194d67a2b (PR 3095, 2026-10-17). test_generate_data had used the shared small_scale_factor fixture (1.0), which generated the full SF1 AMPLab dataset (about 680 MB); the generator is CPU-bound, so a single-core runner took about 72 s against the 60 s timeout. The test now builds AMPLab at scale factor 0.01 and asserts exact row counts (rankings 2,500; uservisits 25,000; documents 1,250). Re-run on develop at 3e88bd238: the call took 0.69 s, setup 2.27 s, 3 tests passed in 3.0 s. No other AMPLab test generates SF1 data. Not verified: the acceptance criterion of consecutive green medium runs needs the CI history since 2026-10-17; close the item once that is confirmed.",
+  "description": "tests/test_amplab.py::TestAMPLab::test_generate_data fails intermittently in CI medium-test shards with pytest-timeout (>60s) inside _generate_uservisits_data, then passes on rerun. Observed 4+ times on 2026-10-12 across PRs #2830, #2875, #2917 and others; CI logs show memory pressure on the failing runners. Never root-caused; each occurrence burned a full shard rerun plus diagnosis. STATUS 2026-10-25: the root cause is fixed (PR 3095, commit 194d67a2b); only verification of the consecutive green medium runs remains, and no further root-cause work is planned.",
   "sessions": [
     {
       "actor": "mcp:pi:joe@joe-mac-mini.local:0e0437f497bd07bcca4ac997",
@@ -29,6 +29,14 @@
       "op": "update",
       "op_id": "384ee2b5a98a43bfb15efb76abcdd336",
       "session_id": "8c28c3ba26704290a1e499b1b197791d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T03:10:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c4ea3e79d5a04c1089ec139de5e2af79",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
