@@ -26655,15 +26655,10 @@
       "title": "Trino Platform Adapter"
     },
     "trunk-arm-gate-blames-newest-red-run-20261022": {
-      "claim": {
-        "expires_at": "2026-10-26T01:17:48Z",
-        "generation": "d5e78a33b75846f3b74101fbcab15c19",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "The red-Trunk arm gate blames the newest failing run, so it refuses the revert of the real culprit"
     },
     "trunk-coverage-scheduled-not-per-push-20261024": {
