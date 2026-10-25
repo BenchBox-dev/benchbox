@@ -5,13 +5,14 @@ import os
 import shutil
 import signal
 import subprocess
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import absence, credentials, evidence, protocol
+from . import absence, credentials, evidence, processes, protocol
 from .commands import Invocation, build
 from .policy import Reviewer
 from .verdict import (
@@ -79,26 +80,41 @@ def _digest(path: Path) -> str | None:
 
 
 def execute(invocation: Invocation, timeout_seconds: int) -> RunResult:
-    try:
-        process = subprocess.Popen(
-            list(invocation.argv),
-            cwd=invocation.cwd,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            start_new_session=True,
-            env=dict(invocation.env) if invocation.env is not None else None,
-        )
-    except OSError as exc:
-        return RunResult(None, "", str(exc), False)
-    try:
-        stdout, stderr = process.communicate(timeout=timeout_seconds)
-    except subprocess.TimeoutExpired:
-        os.killpg(process.pid, signal.SIGKILL)
-        stdout, stderr = process.communicate()
-        return RunResult(process.returncode, stdout or "", stderr or "", True)
-    return RunResult(process.returncode, stdout or "", stderr or "", False)
+    with (
+        tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace") as stdout_file,
+        tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace") as stderr_file,
+    ):
+        try:
+            process = subprocess.Popen(
+                list(invocation.argv),
+                cwd=invocation.cwd,
+                stdin=subprocess.DEVNULL,
+                stdout=stdout_file,
+                stderr=stderr_file,
+                start_new_session=True,
+                env=dict(invocation.env) if invocation.env is not None else None,
+            )
+        except OSError as exc:
+            return RunResult(None, "", str(exc), False)
+        timed_out = False
+        try:
+            process.wait(timeout=timeout_seconds)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait()
+            timed_out = True
+        survivors = processes.confirm_exit(process.pid)
+        stdout_file.seek(0)
+        stderr_file.seek(0)
+        stdout, stderr = stdout_file.read(), stderr_file.read()
+    if survivors:
+        raise processes.HarnessLeakError(survivors)
+    return RunResult(process.returncode, stdout, stderr, timed_out)
+
+
+def reset_workspace(workspace: Path) -> None:
+    _git(workspace, "reset", "--hard", "--quiet", "HEAD")
+    _git(workspace, "clean", "-ffdxq")
 
 
 def _credentials() -> tuple[str, ...]:

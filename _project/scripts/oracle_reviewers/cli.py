@@ -1,19 +1,35 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
 import re
+import shutil
 import sys
-from collections.abc import Mapping
+import tempfile
+from collections.abc import Iterator, Mapping
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from time import sleep
 from typing import Any
 
-from . import attempts as attempt_files, dedup, github, protocol, report, retry, runner, selection
+from . import (
+    attempts as attempt_files,
+    credentials,
+    dedup,
+    disk_scan,
+    github,
+    processes,
+    protocol,
+    redaction_check,
+    report,
+    retry,
+    runner,
+    selection,
+)
 from .absence import ERROR, Absence
 from .brief import write_private
 from .classifier import ChangedFile, matching, soundness_scope
@@ -29,6 +45,7 @@ PLAN_FILE = "plan.json"
 CLASSIFICATION_FILE = "classification.json"
 DIFF_FILE = "diff.patch"
 DIFF_NOT_STAGED_DETAIL = "the full pull request diff could not be staged in the workspace"
+LEAK_DETAIL = "the reviewer's exit could not be confirmed clean"
 
 
 class DiffNotStagedError(Exception):
@@ -552,6 +569,16 @@ def _empty_selection(reason: str, slot: int) -> int:
     return 0
 
 
+def _choose_reviewer(
+    plan: Mapping[str, Any], loaded: attempt_files.LoadedAttempts, classification: Classification, slot: int
+) -> tuple[Reviewer | None, str]:
+    step, errors = attempt_files.decide(_selection(plan, classification), loaded)
+    chosen = (
+        step.reviewer if not errors and step.kind == selection.REVIEW and len(loaded.attempts) == slot - 1 else None
+    )
+    return chosen, f"slot {slot}: {chosen.name if chosen else step.kind} {'; '.join(errors)}".rstrip()
+
+
 def command_select(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
     loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"])
@@ -567,15 +594,9 @@ def command_select(args: argparse.Namespace) -> int:
         if read is None:
             return _empty_selection("classification unreadable", args.slot)
         classification = read
-    selection_input = _selection(plan, classification)
-    step, errors = attempt_files.decide(selection_input, loaded)
-    chosen = (
-        step.reviewer
-        if not errors and step.kind == selection.REVIEW and len(loaded.attempts) == args.slot - 1
-        else None
-    )
+    chosen, line = _choose_reviewer(plan, loaded, classification, args.slot)
     _output({"reviewer": chosen.name if chosen else "", "harness": chosen.harness if chosen else ""})
-    _summary(f"slot {args.slot}: {chosen.name if chosen else step.kind} {'; '.join(errors)}".rstrip())
+    _summary(line)
     return 0
 
 
@@ -695,21 +716,25 @@ def command_review(args: argparse.Namespace) -> int:
     return 0
 
 
-def command_ensure_attempt(args: argparse.Namespace) -> int:
-    plan = _read_json(Path(args.plan))
-    path = Path(args.out_dir) / attempt_files.artifact_name(args.slot)
+def _ensure_attempt(plan: Mapping[str, Any], out_dir: Path, slot: int, reviewer: str, detail: str) -> None:
+    path = out_dir / attempt_files.artifact_name(slot)
     if path.is_file():
-        return 0
+        return
     artifact = attempt_files.build_artifact(
         run_id=os.environ["GITHUB_RUN_ID"],
         pr=plan["pr"],
         head_sha=plan["head_sha"],
-        slot=args.slot,
-        reviewer=args.reviewer,
+        slot=slot,
+        reviewer=reviewer,
         verdict=None,
-        missing=Absence(ERROR, selection.JOB_FAILURE_DETAIL),
+        missing=Absence(ERROR, detail),
     )
     _write_json(path, artifact)
+
+
+def command_ensure_attempt(args: argparse.Namespace) -> int:
+    plan = _read_json(Path(args.plan))
+    _ensure_attempt(plan, Path(args.out_dir), args.slot, args.reviewer, selection.JOB_FAILURE_DETAIL)
     return 0
 
 
@@ -846,13 +871,13 @@ def command_sweep(args: argparse.Namespace) -> int:
     return 0
 
 
-def command_reviewer_home(args: argparse.Namespace) -> int:
-    url = args.gateway_url.strip()
+def write_reviewer_home(home: Path, gateway_url: str) -> None:
+    url = gateway_url.strip()
     if not url:
         raise SystemExit("oracle-verdict: error: the gateway URL is empty; set the ORACLE_GATEWAY_URL secret")
     if not url.startswith("https://") or len(url) == len("https://"):
         raise SystemExit("oracle-verdict: error: the gateway URL must be an https:// URL")
-    agent_dir = Path(args.home) / ".omp" / "agent"
+    agent_dir = home / ".omp" / "agent"
     agent_dir.mkdir(parents=True, exist_ok=True)
     (agent_dir / "config.yml").write_text(OMP_CONFIG_SOURCE.read_text(encoding="utf-8"), encoding="utf-8")
     providers = "".join(
@@ -860,6 +885,111 @@ def command_reviewer_home(args: argparse.Namespace) -> int:
         for provider in GATEWAY_PROVIDERS
     )
     (agent_dir / "models.yml").write_text(f"providers:\n{providers}", encoding="utf-8")
+
+
+def command_reviewer_home(args: argparse.Namespace) -> int:
+    write_reviewer_home(Path(args.home), args.gateway_url)
+    return 0
+
+
+@contextlib.contextmanager
+def _scratch_environment(home: Path) -> Iterator[None]:
+    (home / "tmp").mkdir()
+    values = {"HOME": str(home), "TMPDIR": str(home / "tmp")}
+    saved = {name: os.environ.get(name) for name in values}
+    os.environ.update(values)
+    try:
+        yield
+    finally:
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
+def _run_slot(args: argparse.Namespace, plan: Mapping[str, Any], slot: int, reviewer: Reviewer) -> bool:
+    out_dir = Path(args.attempts_dir)
+    workspace = Path(args.workspace)
+    runner.reset_workspace(workspace)
+    home = Path(tempfile.mkdtemp(prefix=f"oracle-home-{slot}-", dir=args.home_root))
+    leaked = False
+    detail = selection.JOB_FAILURE_DETAIL
+    try:
+        with _scratch_environment(home):
+            write_reviewer_home(home, os.environ.get("ORACLE_GATEWAY_URL", ""))
+            command_review(
+                argparse.Namespace(
+                    plan=args.plan,
+                    slot=slot,
+                    reviewer=reviewer.name,
+                    harness=reviewer.harness,
+                    workspace=str(workspace),
+                    scratch=str(home / "scratch"),
+                    out_dir=str(out_dir),
+                    classification=args.classification,
+                )
+            )
+    except processes.HarnessLeakError as exc:
+        leaked = True
+        detail = LEAK_DETAIL
+        _summary(f"slot {slot}: {reviewer.name} failed closed: {credentials.redact(str(exc))}")
+    except (Exception, SystemExit) as exc:
+        _summary(f"slot {slot}: {reviewer.name} crashed: {credentials.redact(f'{type(exc).__name__}: {exc}')}")
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+    _ensure_attempt(plan, out_dir, slot, reviewer.name, detail)
+    return leaked
+
+
+def command_attempts(args: argparse.Namespace) -> int:
+    plan = _read_json(Path(args.plan))
+    out_dir = Path(args.attempts_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    classification = _read_classification(Path(args.classification))
+    ran = 0
+    adopting = processes.become_subreaper()
+    try:
+        if processes.IS_LINUX and not adopting:
+            _summary("oracle-verdict: error: the loop could not become a child subreaper")
+            return 1
+        for slot in range(1, int(plan["max_attempts"]) + 1):
+            if classification is None:
+                _summary(f"slot {slot}: pending (classification unreadable)")
+                break
+            loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"])
+            chosen, line = _choose_reviewer(plan, loaded, classification, slot)
+            _summary(line)
+            if chosen is None:
+                break
+            ran = slot
+            if _run_slot(args, plan, slot, chosen):
+                return 1
+    finally:
+        processes.release_subreaper()
+        _output({"attempts": str(ran)})
+    return 0
+
+
+def command_scan_disk(args: argparse.Namespace) -> int:
+    needles = disk_scan.secret_values(args.env, os.environ)
+    hits = disk_scan.scan([Path(root) for root in args.root], needles)
+    for name, path in hits:
+        print(f"oracle-verdict: error: the value of {name} is on disk at {path}", file=sys.stderr)
+    _summary(f"disk scan of {len(args.root)} root(s) for {len(needles)} secret value(s): {len(hits)} hit(s)")
+    return 1 if hits else 0
+
+
+def command_redact_check(args: argparse.Namespace) -> int:
+    extra = tuple(value for value in (os.environ.get(name, "") for name in args.env) if value)
+    redacted = 0
+    for path in redaction_check.json_files([Path(item) for item in args.path]):
+        try:
+            redacted += redaction_check.sanitize(path, extra)
+        except redaction_check.Unredactable as exc:
+            print(f"oracle-verdict: error: {exc}", file=sys.stderr)
+            return 1
+    _summary(f"redaction check: {redacted} file(s) rewritten, no secret value remains")
     return 0
 
 
@@ -962,6 +1092,21 @@ def _parser() -> argparse.ArgumentParser:
     home.add_argument("--home", required=True)
     home.add_argument("--gateway-url", required=True)
     home.set_defaults(handler=command_reviewer_home)
+    attempts = commands.add_parser("attempts")
+    attempts.add_argument("--plan", required=True)
+    attempts.add_argument("--attempts-dir", required=True)
+    attempts.add_argument("--classification", required=True)
+    attempts.add_argument("--workspace", required=True)
+    attempts.add_argument("--home-root")
+    attempts.set_defaults(handler=command_attempts)
+    scan = commands.add_parser("scan-disk")
+    scan.add_argument("--root", action="append", required=True)
+    scan.add_argument("--env", action="append", required=True)
+    scan.set_defaults(handler=command_scan_disk)
+    redaction = commands.add_parser("redact-check")
+    redaction.add_argument("--path", action="append", required=True)
+    redaction.add_argument("--env", action="append", default=[])
+    redaction.set_defaults(handler=command_redact_check)
     clients = commands.add_parser("gateway-clients")
     clients.add_argument("--token-file", required=True)
     clients.add_argument("--accounts")

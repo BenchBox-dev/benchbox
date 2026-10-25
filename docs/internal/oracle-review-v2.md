@@ -30,12 +30,14 @@ its own.
    `develop`. Create it before the workflow first runs: GitHub creates a
    missing environment with no protection rules.
 3. Add these environment secrets to `oracle`:
-   - `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY`, used only by the `post`
-     job;
-   - `TYPESAFE_API_KEY`, used only by `select-1` to classify the change with
-     TypeSafe's Jev model;
-   - `ORACLE_GATEWAY_TOKEN` and `ORACLE_GATEWAY_URL`, used only by the
-     `attempt-N-omp` jobs: the reviewer's client token for the credential
+   - `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY`, used only by the `Mint the
+     App token` step of the `review` job, which runs after the attempt loop
+     and the redaction check;
+   - `TYPESAFE_API_KEY`, held only by the classify step, the two disk scans
+     and the redaction step of the `review` job; the classify step uses it to
+     classify the change with TypeSafe's Jev model;
+   - `ORACLE_GATEWAY_TOKEN` and `ORACLE_GATEWAY_URL`, held by the attempt loop
+     and the redaction step: the reviewer's client token for the credential
      gateway (see Credential gateway) and the gateway's HTTPS URL. No
      provider key, broker URL or broker token is stored for the reviewer, and
      the owner's OMP config is not stored as a secret: the reviewer's model
@@ -45,23 +47,24 @@ its own.
    repository secrets, because same-repository pull request workflows can
    read those.
 
-Each attempt job installs a pinned OMP Linux build and checks its SHA-256
+The `review` job installs a pinned OMP Linux build once and checks its SHA-256
 before running it.
 
 ### Credential gateway
 
-The reviewer holds no provider credential. Each attempt job runs the pinned
+The reviewer holds no provider credential. The attempt loop runs the pinned
 OMP with one environment variable, `OMP_GATEWAY_TOKEN`, a client token for an
 `omp auth-gateway` on the owner's Mac. The gateway sits in front of the
 credential broker: it checks the token, limits the client to the listed models
 and accounts, and forwards the request with the owner's real credential, so
-neither the broker token nor a provider key reaches the runner. The job writes
-the reviewer's OMP home first (`cli.py reviewer-home --home "$HOME"
---gateway-url "$ORACLE_GATEWAY_URL"`): a copy of
+neither the broker token nor a provider key reaches the runner. For every
+attempt the loop writes the reviewer's OMP home into a fresh scratch `HOME`
+(`write_reviewer_home`, the code behind `cli.py reviewer-home --home
+<home> --gateway-url <url>`): a copy of
 `.github/oracle-omp-config.yml` as `config.yml`, and a `models.yml` that
 points the providers `anthropic`, `openai-codex`, `muse-code` and
 `google-antigravity` at the gateway with `transport: pi-native` and
-`apiKey: OMP_GATEWAY_TOKEN` (the variable name, not a value). The command
+`apiKey: OMP_GATEWAY_TOKEN` (the variable name, not a value). The code
 refuses an empty URL or one that is not `https://`.
 
 Reviews reach the gateway only while the Mac is awake and online; otherwise
@@ -75,14 +78,16 @@ overlay and the prompt neutralization limit what a pull request can steer the
 reviewer to read, but are not a boundary. Do not enable OMP's `secrets.enabled`
 setting: it restores real values into URLs and output.
 
-Each attempt job joins the tailnet through `tailscale/github-action` with
+The `review` job joins the tailnet once, before the attempt loop, through
+`tailscale/github-action` with
 GitHub's OIDC token (`id-token: write`), so no long-lived Tailscale secret
 is stored. The step runs only when `TS_OAUTH_CLIENT_ID` and `TS_AUDIENCE`
-are set.
+are set. A failed join does not end the review: the reviewer cannot reach the
+gateway and its attempt is recorded as absent.
 
 [`oracle-gateway-host.md`](oracle-gateway-host.md) builds, checks, rotates and
 moves the gateway host, and lists the Tailscale OIDC credential and tailnet
-policy the attempt jobs need.
+policy the review job needs.
 
 **Cut-over cleanup (one time).** After a hosted run passes on the gateway,
 delete `CLAUDE_CODE_OAUTH_TOKEN`, `OPENAI_API_KEY`, `META_API_KEY`,
@@ -94,17 +99,19 @@ reaches the broker over the tailnet, also stop publishing it
 restores the old setup. `GEMINI_API_KEY` was referenced by the old workflow but
 never set in the environment, so there is nothing to delete for it.
 
-Without the App secrets, the `post` job logs the result and succeeds.
+Without `ORACLE_APP_ID`, the job logs the result and succeeds.
 
 ## How a run works
 
-1. `plan` holds no secret. It resolves the pull request and its head through
+1. The plan step holds only the job token. It resolves the pull request and its head through
    the API, refuses closed, draft and non-`develop` pull requests, classifies
    the change, applies the rerun rules and writes a 0600 brief. A fork's
    change outside the inert paths gets a pending `fork: owner review` status
-   and never reaches a reviewer job. A change touching only inert paths
-   (see Inert-path manifest) gets `success`.
-2. `select-1` asks Jev, through a direct call to TypeSafe's
+   and never reaches a reviewer. A change touching only inert paths
+   (see Inert-path manifest) gets `success`. The whole run is one job, `review`:
+   every later step is skipped unless the plan asks for a review (decision
+   `review`) or a post.
+2. The classify step asks Jev, through a direct call to TypeSafe's
    `/v1/systemone` API, for the change's size bucket, review capability,
    review template and per-file priority. The bucket names the first reviewer
    in `.github/oracle-reviewers.yml`; later slots can move up the chain (see
@@ -113,7 +120,8 @@ Without the App secrets, the `post` job logs the result and succeeds.
    Selection skips disabled reviewers, quota-exhausted pools and, when the
    diff exceeds the brief cap, any reviewer that is not hard read-only with
    `reads_files: true`.
-3. `attempt-N-omp` runs that reviewer through OMP on a detached,
+3. The attempt loop (`cli.py attempts`) runs that reviewer, once per slot,
+   through OMP on a detached,
    credential-free checkout of the head. OMP starts in an empty working
    directory with the checkout added as a read-only workspace, the tools
    limited to `read,grep,glob`, skills and rules off (`--no-skills`,
@@ -130,9 +138,12 @@ Without the App secrets, the `post` job logs the result and succeeds.
    pull request can make the reviewer load. They do not confine its file
    tools: the reviewer can still read any file the runner user can. It never
    runs pull request code. The result is an artifact with the run ID, head
-   SHA, reviewer and either a validated verdict or an absence.
-4. `post` re-validates every artifact from this run, replays the selection,
-   and posts the status and the findings. `findings_delivery` in
+   SHA, reviewer and either a validated verdict or an absence. See Job
+   structure for what holds which credential and the checks that guard the
+   job.
+4. After the loop, the same job re-validates every artifact from this run,
+   replays the selection, and posts the status and the findings.
+   `findings_delivery` in
    `.github/oracle-reviewers.yml` chooses how:
    - `comment` posts one pull request comment, so findings never block a
      merge.
@@ -146,6 +157,68 @@ Without the App secrets, the `post` job logs the result and succeeds.
      always reflects the latest run. The ruleset requires every thread to be
      resolved, so these threads block merges. The policy has used `review`
      since the parity period, and the oracle signal requires it.
+
+## Job structure and controls
+
+`oracle-verdict.yml` has two jobs. `sweep` dispatches due retries. `review`
+does everything else for one pull request in one admission to the runner pool,
+where earlier designs queued a chain of plan, select, attempt and post jobs
+and waited for a runner at every step. Its `if:` admits a manual dispatch, a
+`pull_request_target` event other than a plain edit, and a `/oracle-review`
+comment from an owner, member or collaborator. The decision record
+`_project/decisions/oracle-single-review-job-2026-10-25.md` holds the reasoning.
+
+Steps, in order:
+
+1. Refuse a dispatch from a ref other than `develop`.
+2. Check out the trusted `develop` copy into `trusted`.
+3. Plan the review (job token only). The plan's head SHA feeds the next step,
+   so the pull request head is checked out after the plan.
+4. Check out the pull request head into `workspace`, as data that is never
+   executed.
+5. Classify the change and select the reviewer for attempt 1 (the only step
+   that sets `TYPESAFE_API_KEY` for classification).
+6. Disk scan (C4).
+7. Install and verify OMP, then join the tailnet once. A failure in either
+   leaves the attempt absent instead of ending the run.
+8. Run the attempt loop (`cli.py attempts`): for every slot up to
+   `max_attempts`, select the reviewer with the existing selection logic,
+   reset the checkout, give the reviewer a fresh scratch `HOME` with its OMP
+   home, run it, confirm that it left nothing behind, delete the `HOME`, and
+   write the slot's result file. A crash or timeout still leaves an absence
+   result for the slot.
+9. Disk scan again (C4), finalize, then the redaction check (C5).
+10. Mint the App token, run the guard and post the status, comment and
+    review, upload the retry state and the attempt artifacts, and dispatch
+    `oracle-gate`.
+
+The reviewer is an untrusted model inside a trusted harness with read-only
+tools. It can read what the runner user can read while it runs and can leak it
+only through its published review text. A secret is therefore safe when it
+exists only in the environment of a step that ends before the reviewer starts,
+is never written to disk, or appears only after the reviewer exits. Each
+control below is a permanent check, not a one-time inspection:
+
+| Control | Enforced by |
+|---|---|
+| C2 total exit | `runner.execute` lists the harness process group and, when the loop runs on Linux, every orphan adopted by the loop (a child subreaper) after each reviewer exit. Survivors are killed and the run fails closed: the slot is recorded absent, the loop stops, the job fails and nothing posts. |
+| C3 no secret in a script | The workflow test fails if any `run:` block names `secrets.*` or `github.token`; secrets reach steps through `env:` or `with:` only. |
+| C4 disk scan | `cli.py scan-disk` searches `$HOME`, `$RUNNER_TEMP` and both checkouts for the exact TypeSafe key and job token before the reviewer and after the last exit. The values come from the scanning step's own `env:`. A hit fails the job. |
+| C5 redaction completeness | `cli.py redact-check` runs after finalize in a step that holds every secret value the job held (gateway token, TypeSafe key, gateway URL, Tailscale client ID and audience, the OIDC request token and the job token). It redacts attempt, verdict, diagnostic, absence and result text, across control-character splits, and fails if a value remains. The loop step cannot hold those values, because a same-user child can read its parent's environment. |
+| C6 fresh `HOME` | Every attempt gets a new directory from `mkdtemp`; the previous one is deleted before the next attempt starts, and the checkout is reset. |
+| C7 token scope | The job's permissions are exactly `actions: write`, `contents: read`, `pull-requests: read` and `id-token: write`. `github.token` appears only in the `env:` of steps that run before or after the loop step, and both checkouts use `persist-credentials: false`. |
+| C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus a setup allowance, under 360; the harness timeout still fires first and becomes an absence. A workflow test recomputes the number from the policy. |
+| C9 cancellation | The top-level concurrency group and `cancel-in-progress` are unchanged, and every posting step has the default success condition, so a cancelled run posts nothing. |
+| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by one step, which runs after the loop, the second disk scan and the redaction check. |
+
+The OIDC request token is in the loop step's environment, as the gateway token
+is, and is accepted on the same terms: GitHub documents it as valid only while
+the job runs, and its value is redacted. The gateway URL is sensitive and is
+redacted too.
+
+If any of C2 to C10 cannot be made to pass on GitHub-hosted runners, the
+fallback is the same `review` job without the posting steps, plus a separate
+`post` job that holds the App key and reads the uploaded artifacts.
 
 ## Inert-path manifest
 
@@ -260,7 +333,7 @@ does not reset the count; a new pull request does, so the limit is friction
 against review loops, not a security control. The stand-in attestation still
 works on a refused pull request.
 
-Before it posts, the `post` job reads the review list again and posts nothing
+Before it posts, the `review` job reads the review list again and posts nothing
 if the head already has a marker, so two runs for one head cannot both post.
 It tries the read three times, about two seconds apart. If every try fails, it
 posts anyway and says in the job summary that the post was not confirmed: the
@@ -477,7 +550,9 @@ never passes.
 - Credentials: `commands.omp_env()` forwards only the base environment and
   the gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`). One list
   (`credentials.py` `NAMES`) names that token, the broker and provider
-  variables the attempt jobs no longer receive, and the legacy extras, so a
+  variables the attempt loop no longer receives, the runner-held values (the
+  gateway URL, the Tailscale client ID and audience and the OIDC request
+  token), and the legacy extras, so a
   local run that still holds them is redacted too. Values of at least eight
   characters are removed by exact match before and after every sanitising
   transform and before any truncation, across control-character splits and
@@ -501,7 +576,8 @@ The brief no longer forbids running commands, but OMP's tool list holds only
 `read`, `grep` and `glob`, so the reviewer cannot write or run anything. A
 file-list brief also gets the whole pull request diff staged in the checkout.
 The workflow-level group for the pull request serializes runs on one pull
-request; the attempt jobs have no concurrency group of their own.
+request; the `review` job has no concurrency group of its own, so a new push
+cancels a run in flight and a cancelled run posts nothing.
 
 ## Commands
 
@@ -579,7 +655,7 @@ These checks must pass before the cut-over that makes the context required.
 The harness boundary is OMP's command line, its JSON event stream and its
 configuration, none of which the unit tests can check by themselves. A change
 to `commands.py`, `verdict.py`, `evidence.py`, `runner.py`, the reviewer
-policy or the attempt jobs must also:
+policy or the attempt loop must also:
 
 - keep `tests/fixtures/oracle_reviewers/omp_multi_turn_review.jsonl` a real
   recording. When OMP's output changes, record a new one with
@@ -631,15 +707,15 @@ current review body, so an edited oracle review can change the decision.
 
 Because `pull_request_review` runs the pull request's own workflow file, the
 notification is controlled by the pull request and can be deleted or altered by
-it. The verdict path does not rely on it: after the `post` job has posted the
+it. The verdict path does not rely on it: after the `review` job has posted the
 commit status, comment and review for a head, a final step reads the pull
 request's base through the API and, when it is `develop`, dispatches
 `oracle-gate.yml` from `develop` with `pr` and the reviewed `head_sha`. This
 covers comment, dispatch and scheduled verdict runs, whose completion carries
 `develop`'s head and so cannot be mapped to the pull request by the gate's
 bridge. The step runs only when the App is configured and the guard did not skip
-the head, so it never precedes the post. It holds `actions: write` on the `post`
-job for this dispatch alone, posts no status, and the gate re-reads everything
+the head, so it never precedes the post. It uses the job's `actions: write`
+permission for this dispatch alone, posts no status, and the gate re-reads everything
 when it runs. The remaining trusted fallbacks are the `oracle-gate` sweep (every push to
 `develop`, plus a scheduled run)
 and the gate's own triggers: `pull_request_target`, stand-in comments and
