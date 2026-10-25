@@ -173,19 +173,13 @@ def make_adapter_without_driver(**overrides: Any) -> GizmoSQLAdapter:
 
 class TestOptionalImport:
     def test_missing_driver_raises_install_hint(self, monkeypatch: pytest.MonkeyPatch):
-        def fail(name: str, *args: Any, **kwargs: Any) -> Any:
-            raise ImportError(f"No module named {name!r}")
-
-        monkeypatch.setattr(gizmosql_module.importlib, "import_module", fail)
+        monkeypatch.setitem(sys.modules, "adbc_driver_gizmosql", None)
 
         with pytest.raises(ImportError, match=r"uv add 'benchbox\[gizmosql\]'"):
             make_adapter()
 
     def test_dry_run_does_not_need_the_driver(self, monkeypatch: pytest.MonkeyPatch):
-        def fail(name: str, *args: Any, **kwargs: Any) -> Any:
-            raise ImportError(name)
-
-        monkeypatch.setattr(gizmosql_module.importlib, "import_module", fail)
+        monkeypatch.setitem(sys.modules, "adbc_driver_gizmosql", None)
 
         assert make_adapter(dry_run=True).platform_name == "GizmoSQL"
 

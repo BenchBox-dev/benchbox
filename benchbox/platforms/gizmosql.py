@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import importlib.metadata
 import json
 import logging
@@ -131,7 +130,9 @@ class GizmoSQLQueryTimeout(GizmoSQLError):
 
 def load_gizmosql_driver() -> Any:
     try:
-        return importlib.import_module("adbc_driver_gizmosql.dbapi")
+        from adbc_driver_gizmosql import dbapi
+
+        return dbapi
     except ImportError as exc:
         raise ImportError(
             "The GizmoSQL ADBC driver is not installed. Install it with: uv add 'benchbox[gizmosql]'"
