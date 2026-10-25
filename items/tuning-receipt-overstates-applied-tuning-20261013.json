@@ -5,7 +5,7 @@
     "counts.tuning_types and tables_tuned derive from applied statements.",
     "Snowflake PK/FK intents are corroborated or explicitly classified."
   ],
-  "context": "Found 2026-10-13 by adversarial reviews at origin/develop 77048bfb9; evidence bundle tpch_sf1_snowflake_sql_20261012_173334_97f9cfe1 (receipt: constraint unverifiable x17, transient x7).",
+  "context": "Delivered in merged PR #3409: configure_for_benchmark statements are recorded as harness_default and excluded from the executed count and ledger hash (PostgreSQL family and ClickHouse tuned OLAP settings opt in as session_config); session-only ledgers read noop; failed tuning session settings are unverifiable and block corroboration; counts.tuning_types/tables_tuned are built from the applied ledger and satisfied intents (layout types with column matching), excluding dropped intents. Snowflake PK/FK stay unverifiable by design (no catalog reads added). Not verified live (mocked connections). Databricks cache-disable SET still records through its session-phase wrapper (existing tests pin it) but is not counted as applied.",
   "description": "## Problem\n- **Harness statements recorded as tuning.** `configure_for_benchmark` runs through an unfiltered recording connection (`benchbox/platforms/base/adapter.py:596`). Ordinary harness statements that baselines also issue are recorded as tuning: on Snowflake, `USE WAREHOUSE`, `TIMEZONE`, `AUTOCOMMIT` and `USE_CACHED_RESULT`.\n- **Session-only ledgers report as applied.** `overall_status` (`benchbox/core/tuning/applied_ledger.py:255-264`) returns `applied_unverified` for a ledger that holds only session statements, so a tuned run whose physical tuning was entirely dropped still reads \"applied\".\n- **Failed requested settings never block verification.** A failed session statement is classified `transient` (`benchbox/core/tuning/introspection.py:744-754`) and does not block verification.\n- **Requested flags counted as applied.** `counts.tuning_types` is built from requested flags (`benchbox/core/results/schema.py:1279-1282`), so Snowflake bundles list check_constraints and unique_constraints although neither is rendered. `tables_tuned` counts table entries that carry no tuning.\n- **Snowflake constraints can never verify.** Snowflake introspection reads no primary or foreign keys, so a Snowflake run that requests constraints can never reach `applied_verified`.\n\n## Change\n- Record only statements derived from the tuning config.\n- Make failed requested settings block verification or record them as dropped.\n- Build counts from the applied ledger.\n- Read Snowflake PK/FK from `SHOW PRIMARY KEYS` / `SHOW IMPORTED KEYS`, or declare them unverifiable by design.\n- Coordinate with `tuning-requested-vs-rendered-reconciliation-20261001` (dropped intents).",
   "links": [
     "benchbox/core/tuning/applied_ledger.py",
@@ -29,6 +29,14 @@
       "generation": "463e3c39c98447539ef5ba6ea03f9742",
       "op": "take",
       "op_id": "21e5c46995004cb88b9996d9c1c80551",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T03:31:23Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9c8928e554864091938f74602ccdd26d",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
