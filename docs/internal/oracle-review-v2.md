@@ -629,7 +629,9 @@ triggers: `pull_request_target`, stand-in comments and dispatch.
 GitHub Actions has no event for resolving a review thread, so resolving the
 oracle's last thread starts no run of either workflow. After resolving the
 threads, run `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`,
-or wait for the hourly sweep. The checker's decision is unchanged: it passes only with a success verdict on the head and no
+or wait for the hourly sweep. `make pr-rerun` re-runs failed CI jobs and does
+not refresh `oracle-gate`. The checker's decision is
+unchanged: it passes only with a success verdict on the head and no
 unresolved oracle thread.
 
 The stand-in attestation must be posted after the oracle's latest decisive

@@ -55,7 +55,8 @@ merged head had both contexts passing, as both were required.
   It reports no `oracle-review` check. Its completion is how `oracle-gate`
   learns of review events, which have no trusted trigger of their own.
   Retiring the workflow needs a replacement for that trigger.
-- `make oracle-review-recover` stays: `scripts/pr_rerun.py` reuses its module.
+- Gate refresh is `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`; CI rerun is `make pr-rerun`.
+  `make oracle-review-recover` was retired because it refreshed no required check.
 
 ## Owner step
 
