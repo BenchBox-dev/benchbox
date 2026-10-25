@@ -458,7 +458,7 @@ _BYPASS_ENTRIES: dict[tuple[str, str], AllowlistEntry] = {
 
 
 def _root_present(path: str) -> bool:
-    return (REPO_ROOT / path.split("/", 1)[0]).is_dir()
+    return not path.startswith("_project/") or (REPO_ROOT / path).is_file()
 
 
 BYPASS_ALLOWLIST: dict[tuple[str, str], AllowlistEntry] = {
