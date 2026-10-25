@@ -39,6 +39,46 @@ UNSUPPORTED = "unsupported"
 WAIVED = "waived"
 LOCALITY_ROLES = frozenset({JOIN_LOCALITY, FACT_DIMENSION_JOIN, HIGH_SELECTIVITY_FILTER, GROUP_ORDER_LOCALITY})
 
+SNOWFLAKE_MAX_CLUSTERING_COLUMNS = 3
+SNOWFLAKE_SF1_REFERENCE_ROWS = {
+    "tpch": {
+        "CUSTOMER": 150000,
+        "ORDERS": 1500000,
+        "PART": 200000,
+        "SUPPLIER": 10000,
+    },
+    "tpcds": {
+        "CUSTOMER": 100000,
+        "ITEM": 18000,
+        "PROMOTION": 300,
+        "SHIP_MODE": 20,
+        "STORE": 12,
+        "WEB_PAGE": 60,
+        "WEB_SITE": 30,
+    },
+}
+SNOWFLAKE_FK_REFERENCE_TABLES = {
+    ("LINEITEM", "L_ORDERKEY"): "ORDERS",
+    ("LINEITEM", "L_PARTKEY"): "PART",
+    ("LINEITEM", "L_SUPPKEY"): "SUPPLIER",
+    ("ORDERS", "O_CUSTKEY"): "CUSTOMER",
+    ("STORE_SALES", "SS_ITEM_SK"): "ITEM",
+    ("STORE_SALES", "SS_CUSTOMER_SK"): "CUSTOMER",
+    ("STORE_SALES", "SS_STORE_SK"): "STORE",
+    ("STORE_SALES", "SS_PROMO_SK"): "PROMOTION",
+    ("STORE_RETURNS", "SR_ITEM_SK"): "ITEM",
+    ("STORE_RETURNS", "SR_CUSTOMER_SK"): "CUSTOMER",
+    ("STORE_RETURNS", "SR_STORE_SK"): "STORE",
+    ("CATALOG_SALES", "CS_ITEM_SK"): "ITEM",
+    ("CATALOG_SALES", "CS_SHIP_MODE_SK"): "SHIP_MODE",
+    ("CATALOG_RETURNS", "CR_ITEM_SK"): "ITEM",
+    ("WEB_SALES", "WS_ITEM_SK"): "ITEM",
+    ("WEB_SALES", "WS_WEB_PAGE_SK"): "WEB_PAGE",
+    ("WEB_SALES", "WS_WEB_SITE_SK"): "WEB_SITE",
+    ("WEB_SALES", "WS_SHIP_MODE_SK"): "SHIP_MODE",
+    ("WEB_RETURNS", "WR_ITEM_SK"): "ITEM",
+}
+
 
 @dataclass(frozen=True)
 class PlatformTuningMapping:
@@ -50,10 +90,41 @@ class PlatformTuningMapping:
     max_columns: int | None = None
     capped_tuning_types: tuple[str, ...] | None = None
     physical_rendering_id: str | None = None
+    waived_tuning_types: tuple[str, ...] = ()
 
     @property
     def is_required_in_template(self) -> bool:
         return self.decision == MAPPED and bool(self.tuning_types)
+
+
+def snowflake_cluster_rank(candidate: WorkloadTuningCandidate) -> tuple[int, int, str]:
+    if TEMPORAL_PARTITION in candidate.roles:
+        return (0, 0, candidate.column)
+    referenced = SNOWFLAKE_FK_REFERENCE_TABLES.get((candidate.table, candidate.column))
+    if referenced is not None:
+        reference_rows = SNOWFLAKE_SF1_REFERENCE_ROWS.get(candidate.benchmark, {})
+        return (1, reference_rows.get(referenced, 0), candidate.column)
+    return (2, 0, candidate.column)
+
+
+def waiver_is_justified(
+    platform: str,
+    candidate: WorkloadTuningCandidate,
+    mapping: PlatformTuningMapping,
+) -> bool:
+    if mapping.decision != WAIVED or not mapping.reason:
+        return False
+    platform_key = platform.lower().replace("_", "-")
+    roles = set(candidate.roles)
+    if platform_key == "snowflake":
+        return not candidate.fact_table and bool(roles & ({TEMPORAL_PARTITION} | LOCALITY_ROLES))
+    return False
+
+
+def candidate_cap_rank(platform: str, candidate: WorkloadTuningCandidate) -> tuple[int, int, str]:
+    if platform.lower().replace("_", "-") == "snowflake":
+        return snowflake_cluster_rank(candidate)
+    return (0, 0, "")
 
 
 def map_candidate_to_platform(
@@ -84,7 +155,7 @@ def map_candidate_to_platform(
         return _map_bigquery(roles)
     if platform_key == "redshift":
         return _map_redshift(roles)
-    return _map_snowflake(roles)
+    return _map_snowflake(roles, candidate)
 
 
 def _map_databricks(roles: set[str], physical_rendering_id: str) -> PlatformTuningMapping:
@@ -240,7 +311,19 @@ def _map_redshift(roles: set[str]) -> PlatformTuningMapping:
     return _unsupported("redshift", roles)
 
 
-def _map_snowflake(roles: set[str]) -> PlatformTuningMapping:
+def _map_snowflake(roles: set[str], candidate: WorkloadTuningCandidate) -> PlatformTuningMapping:
+    if (roles & ({TEMPORAL_PARTITION} | LOCALITY_ROLES)) and not candidate.fact_table:
+        return PlatformTuningMapping(
+            platform="snowflake",
+            tuning_types=(),
+            physical_mechanisms=(),
+            decision=WAIVED,
+            waived_tuning_types=(CLUSTERING,),
+            reason=(
+                "Snowflake clustering keys are applied to fact tables only; dimension tables are too small "
+                "for clustering to prune micro-partitions."
+            ),
+        )
     if roles & ({TEMPORAL_PARTITION} | LOCALITY_ROLES):
         reason = "Logical locality maps to Snowflake clustering keys where useful."
         if DISTRIBUTION_CANDIDATE in roles:
@@ -249,9 +332,9 @@ def _map_snowflake(roles: set[str]) -> PlatformTuningMapping:
             platform="snowflake",
             tuning_types=(CLUSTERING,),
             physical_mechanisms=(CLUSTERING,),
-            reason=reason
-            + " Tables carry at most three clustering columns so the adapter resumes automatic reclustering.",
-            max_columns=3,
+            reason=reason + f" Tables carry at most {SNOWFLAKE_MAX_CLUSTERING_COLUMNS} clustering columns, ranked by"
+            " ascending cardinality, because Snowflake recommends low-cardinality leading keys.",
+            max_columns=SNOWFLAKE_MAX_CLUSTERING_COLUMNS,
         )
     if DISTRIBUTION_CANDIDATE in roles:
         return PlatformTuningMapping(

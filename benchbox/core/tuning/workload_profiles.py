@@ -45,6 +45,7 @@ class WorkloadTuningCandidate:
     status: str
     rationale: str
     evidence_source: str
+    fact_table: bool = True
 
     @property
     def key(self) -> tuple[str, str, str]:
@@ -70,6 +71,7 @@ class WorkloadTuningCandidate:
             "status": self.status,
             "rationale": self.rationale,
             "evidence_source": self.evidence_source,
+            "fact_table": self.fact_table,
         }
 
 
@@ -124,12 +126,13 @@ def load_workload_tuning_profile(path: Path = DEFAULT_TPC_PROFILE) -> WorkloadTu
         if not isinstance(benchmark_data, dict):
             raise ValueError(f"{benchmark_key} profile entry must be a mapping")
         evidence_source = _required_str(benchmark_data, "evidence_source")
+        fact_tables = _parse_fact_tables(benchmark_key, benchmark_data.get("fact_tables"))
         raw_candidates = benchmark_data.get("candidates")
         if not isinstance(raw_candidates, list) or not raw_candidates:
             raise ValueError(f"{benchmark_key} profile entry must define candidates")
 
         candidates = tuple(
-            _parse_candidate(benchmark_key, raw_candidate, evidence_source, seen_keys)
+            _parse_candidate(benchmark_key, raw_candidate, evidence_source, seen_keys, fact_tables)
             for raw_candidate in raw_candidates
         )
         candidates_by_benchmark[benchmark_key] = candidates
@@ -147,11 +150,18 @@ def load_tpc_tuning_profile() -> WorkloadTuningProfile:
     return load_workload_tuning_profile(DEFAULT_TPC_PROFILE)
 
 
+def _parse_fact_tables(benchmark: str, raw: Any) -> frozenset[str]:
+    if not isinstance(raw, list) or not raw or not all(isinstance(item, str) and item for item in raw):
+        raise ValueError(f"{benchmark} profile entry must define fact_tables as a non-empty list of table names")
+    return frozenset(item.upper() for item in raw)
+
+
 def _parse_candidate(
     benchmark: str,
     data: Any,
     evidence_source: str,
     seen_keys: set[tuple[str, str, str]],
+    fact_tables: frozenset[str],
 ) -> WorkloadTuningCandidate:
     if not isinstance(data, dict):
         raise ValueError(f"{benchmark} candidate must be a mapping")
@@ -198,6 +208,7 @@ def _parse_candidate(
         status=status,
         rationale=rationale,
         evidence_source=evidence_source,
+        fact_table=table in fact_tables,
     )
 
 

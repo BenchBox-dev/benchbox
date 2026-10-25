@@ -15,11 +15,9 @@ if str(CHECKOUT_ROOT) not in sys.path:
 
 from benchbox.core.tuning.platform_capabilities import (
     map_candidate_to_platform,
+    snowflake_cluster_rank,
 )
-from benchbox.core.tuning.workload_profiles import (
-    TEMPORAL_PARTITION,
-    load_tpc_tuning_profile,
-)
+from benchbox.core.tuning.workload_profiles import load_tpc_tuning_profile
 
 CLI_DESCRIPTION = (
     "Generate cloud TPC tuned templates from the logical tuning profile.\n"
@@ -57,75 +55,9 @@ CLI_DESCRIPTION = (
 PLATFORMS = ("snowflake",)
 BENCHMARKS = ("tpch", "tpcds")
 
-SNOWFLAKE_FACT_TABLES = {
-    "tpch": frozenset({"LINEITEM", "ORDERS"}),
-    "tpcds": frozenset(
-        {
-            "STORE_SALES",
-            "STORE_RETURNS",
-            "CATALOG_SALES",
-            "CATALOG_RETURNS",
-            "WEB_SALES",
-            "WEB_RETURNS",
-            "INVENTORY",
-        }
-    ),
-}
 
-SNOWFLAKE_SF1_REFERENCE_ROWS = {
-    "tpch": {
-        "CUSTOMER": 150000,
-        "ORDERS": 1500000,
-        "PART": 200000,
-        "SUPPLIER": 10000,
-    },
-    "tpcds": {
-        "CUSTOMER": 100000,
-        "ITEM": 18000,
-        "PROMOTION": 300,
-        "SHIP_MODE": 20,
-        "STORE": 12,
-        "WEB_PAGE": 60,
-        "WEB_SITE": 30,
-    },
-}
-
-SNOWFLAKE_FK_REFERENCE_TABLES = {
-    ("LINEITEM", "L_ORDERKEY"): "ORDERS",
-    ("LINEITEM", "L_PARTKEY"): "PART",
-    ("LINEITEM", "L_SUPPKEY"): "SUPPLIER",
-    ("ORDERS", "O_CUSTKEY"): "CUSTOMER",
-    ("STORE_SALES", "SS_ITEM_SK"): "ITEM",
-    ("STORE_SALES", "SS_CUSTOMER_SK"): "CUSTOMER",
-    ("STORE_SALES", "SS_STORE_SK"): "STORE",
-    ("STORE_SALES", "SS_PROMO_SK"): "PROMOTION",
-    ("STORE_RETURNS", "SR_ITEM_SK"): "ITEM",
-    ("STORE_RETURNS", "SR_CUSTOMER_SK"): "CUSTOMER",
-    ("STORE_RETURNS", "SR_STORE_SK"): "STORE",
-    ("CATALOG_SALES", "CS_ITEM_SK"): "ITEM",
-    ("CATALOG_SALES", "CS_SHIP_MODE_SK"): "SHIP_MODE",
-    ("CATALOG_RETURNS", "CR_ITEM_SK"): "ITEM",
-    ("WEB_SALES", "WS_ITEM_SK"): "ITEM",
-    ("WEB_SALES", "WS_WEB_PAGE_SK"): "WEB_PAGE",
-    ("WEB_SALES", "WS_WEB_SITE_SK"): "WEB_SITE",
-    ("WEB_SALES", "WS_SHIP_MODE_SK"): "SHIP_MODE",
-    ("WEB_RETURNS", "WR_ITEM_SK"): "ITEM",
-}
-
-
-def snowflake_cluster_rank(candidate, benchmark: str) -> tuple[int, int, str]:
-    if TEMPORAL_PARTITION in candidate.roles:
-        return (0, 0, candidate.column)
-    referenced = SNOWFLAKE_FK_REFERENCE_TABLES.get((candidate.table, candidate.column))
-    if referenced is not None:
-        return (1, SNOWFLAKE_SF1_REFERENCE_ROWS[benchmark][referenced], candidate.column)
-    return (2, 0, candidate.column)
-
-
-def snowflake_table_candidates(benchmark: str, table: str, candidates: list) -> list:
-    if table not in SNOWFLAKE_FACT_TABLES.get(benchmark, frozenset()):
-        return []
-    return sorted(candidates, key=lambda candidate: snowflake_cluster_rank(candidate, benchmark))
+def snowflake_table_candidates(table: str, candidates: list) -> list:
+    return sorted(candidates, key=snowflake_cluster_rank)
 
 
 HEADER = """primary_keys:
@@ -201,7 +133,7 @@ def render_table(
     sorting: list[dict] = []
 
     if platform == "snowflake":
-        candidates = snowflake_table_candidates(benchmark, table, candidates)
+        candidates = snowflake_table_candidates(table, candidates)
 
     for candidate in candidates:
         mapping = map_candidate_to_platform(platform, candidate)

@@ -10,6 +10,7 @@ import yaml
 
 from benchbox.cli.config import ConfigManager
 from benchbox.core.tuning.interface import TuningType
+from benchbox.core.tuning.platform_capabilities import snowflake_cluster_rank
 
 pytestmark = [
     pytest.mark.unit,
@@ -85,14 +86,25 @@ def test_snowflake_tuned_template_keys_follow_sf1_cardinality_order(benchmark_id
 
 
 def test_snowflake_rank_orders_date_before_foreign_keys_before_own_key() -> None:
-    generator = _load_generator()
     candidates = [
-        SimpleNamespace(table="STORE_SALES", column="SS_TICKET_NUMBER", roles=("join_locality",)),
-        SimpleNamespace(table="STORE_SALES", column="SS_ITEM_SK", roles=("join_locality",)),
-        SimpleNamespace(table="STORE_SALES", column="SS_SOLD_DATE_SK", roles=("temporal_partition",)),
-        SimpleNamespace(table="STORE_SALES", column="SS_PROMO_SK", roles=("fact_dimension_join",)),
+        SimpleNamespace(
+            benchmark="tpcds", table="STORE_SALES", fact_table=True, column="SS_TICKET_NUMBER", roles=("join_locality",)
+        ),
+        SimpleNamespace(
+            benchmark="tpcds", table="STORE_SALES", fact_table=True, column="SS_ITEM_SK", roles=("join_locality",)
+        ),
+        SimpleNamespace(
+            benchmark="tpcds", table="STORE_SALES", column="SS_SOLD_DATE_SK", roles=("temporal_partition",)
+        ),
+        SimpleNamespace(
+            benchmark="tpcds",
+            table="STORE_SALES",
+            fact_table=True,
+            column="SS_PROMO_SK",
+            roles=("fact_dimension_join",),
+        ),
     ]
-    ordered = sorted(candidates, key=lambda candidate: generator.snowflake_cluster_rank(candidate, "tpcds"))
+    ordered = sorted(candidates, key=lambda candidate: snowflake_cluster_rank(candidate))
     assert [candidate.column for candidate in ordered] == [
         "SS_SOLD_DATE_SK",
         "SS_PROMO_SK",
@@ -104,10 +116,38 @@ def test_snowflake_rank_orders_date_before_foreign_keys_before_own_key() -> None
 def test_snowflake_render_table_caps_lineitem_clustering_at_three_lowest_cardinality_keys() -> None:
     generator = _load_generator()
     candidates = [
-        SimpleNamespace(table="LINEITEM", column="L_SHIPDATE", type="DATE", roles=("temporal_partition",)),
-        SimpleNamespace(table="LINEITEM", column="L_ORDERKEY", type="INTEGER", roles=("join_locality",)),
-        SimpleNamespace(table="LINEITEM", column="L_PARTKEY", type="INTEGER", roles=("join_locality",)),
-        SimpleNamespace(table="LINEITEM", column="L_SUPPKEY", type="INTEGER", roles=("join_locality",)),
+        SimpleNamespace(
+            benchmark="tpch",
+            table="LINEITEM",
+            fact_table=True,
+            column="L_SHIPDATE",
+            type="DATE",
+            roles=("temporal_partition",),
+        ),
+        SimpleNamespace(
+            benchmark="tpch",
+            table="LINEITEM",
+            fact_table=True,
+            column="L_ORDERKEY",
+            type="INTEGER",
+            roles=("join_locality",),
+        ),
+        SimpleNamespace(
+            benchmark="tpch",
+            table="LINEITEM",
+            fact_table=True,
+            column="L_PARTKEY",
+            type="INTEGER",
+            roles=("join_locality",),
+        ),
+        SimpleNamespace(
+            benchmark="tpch",
+            table="LINEITEM",
+            fact_table=True,
+            column="L_SUPPKEY",
+            type="INTEGER",
+            roles=("join_locality",),
+        ),
     ]
     block = generator.render_table("snowflake", "tpch", "LINEITEM", list(reversed(candidates)))
     assert [entry["name"] for entry in block["clustering"]] == ["L_SHIPDATE", "L_SUPPKEY", "L_PARTKEY"]
@@ -116,8 +156,22 @@ def test_snowflake_render_table_caps_lineitem_clustering_at_three_lowest_cardina
 def test_snowflake_render_table_leaves_dimension_tables_unclustered() -> None:
     generator = _load_generator()
     candidates = [
-        SimpleNamespace(table="CUSTOMER", column="C_CUSTKEY", type="INTEGER", roles=("join_locality",)),
-        SimpleNamespace(table="CUSTOMER", column="C_NATIONKEY", type="INTEGER", roles=("fact_dimension_join",)),
+        SimpleNamespace(
+            benchmark="tpch",
+            table="CUSTOMER",
+            fact_table=False,
+            column="C_CUSTKEY",
+            type="INTEGER",
+            roles=("join_locality",),
+        ),
+        SimpleNamespace(
+            benchmark="tpch",
+            table="CUSTOMER",
+            fact_table=False,
+            column="C_NATIONKEY",
+            type="INTEGER",
+            roles=("fact_dimension_join",),
+        ),
     ]
     block = generator.render_table("snowflake", "tpch", "CUSTOMER", candidates)
     assert block == {"table_name": "CUSTOMER"}

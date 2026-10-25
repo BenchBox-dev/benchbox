@@ -13,7 +13,12 @@ from benchbox.cli.config import ConfigManager
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.schema import build_result_payload, build_tuning_payload
 from benchbox.core.tuning.interface import TuningColumn, UnifiedTuningConfiguration
-from benchbox.core.tuning.platform_capabilities import UNSUPPORTED, map_candidate_to_platform
+from benchbox.core.tuning.platform_capabilities import (
+    UNSUPPORTED,
+    WAIVED,
+    map_candidate_to_platform,
+    snowflake_cluster_rank,
+)
 from benchbox.core.tuning.profile_validation import (
     build_tuning_profile_metadata,
     candidate_key,
@@ -238,6 +243,7 @@ def test_tuning_profile_metadata_exposes_comparison_semantics() -> None:
     assert coverage["mapped_count"] + coverage["capped_count"] == coverage["required_count"]
     assert coverage["unsupported_count"] == 0
     assert metadata["unmapped_logical_candidates"] == []
+    assert metadata["validation_status"] == "passed"
 
 
 def test_duckdb_tuning_profile_metadata_reports_temporal_partitions_as_unsupported() -> None:
@@ -388,14 +394,16 @@ def test_cloud_tpc_tuned_templates_certify_fact_tables_against_logical_profile(
         tuning_config=tuning_config,
     )
 
+    assert result.is_valid, [issue.to_dict() for issue in result.issues]
     assert result.unsupported_count == 0
-    assert result.waived_count == 0
+    assert result.mapped_count + result.capped_count + result.waived_count == result.required_count
     fact_tables = SNOWFLAKE_FACT_TABLES[benchmark_id]
     for mapping in result.mappings:
         if mapping.candidate.table in fact_tables:
+            assert not mapping.waived
             continue
-        assert not mapping.mapped
-        assert not mapping.capped
+        assert mapping.waived
+        assert mapping.platform_mapping.reason
     mapped_per_table: dict[str, int] = {}
     required_per_table: dict[str, int] = {}
     for mapping in result.mappings:
@@ -407,8 +415,7 @@ def test_cloud_tpc_tuned_templates_certify_fact_tables_against_logical_profile(
             assert mapped_per_table.get(table, 0) == min(3, required)
         else:
             assert mapped_per_table.get(table, 0) == 0
-    assert result.issues
-    assert all("missing template mapping" in issue.message for issue in result.issues)
+    assert result.to_metadata()["validation_status"] == "passed"
 
 
 def test_generated_cloud_templates_match_checked_in_files() -> None:
@@ -591,3 +598,181 @@ def test_redshift_sorting_is_not_capped_by_the_distkey_limit(
         assert result.mapped_count == result.required_count
         assert custkey.mapped
         assert custkey.mapped_tuning_types == ("sorting",)
+
+
+@pytest.mark.parametrize(
+    ("benchmark_id", "table", "expected_capped_columns"),
+    [
+        ("tpch", "LINEITEM", {"L_ORDERKEY"}),
+        ("tpcds", "STORE_SALES", {"SS_ITEM_SK", "SS_CUSTOMER_SK", "SS_TICKET_NUMBER"}),
+    ],
+)
+def test_snowflake_cap_counts_candidates_in_rank_order(
+    benchmark_id: str, table: str, expected_capped_columns: set[str]
+) -> None:
+    result = validate_tuning_template(
+        profile=load_tpc_tuning_profile(),
+        benchmark=benchmark_id,
+        platform="snowflake",
+        tuning_config=_load_tuning("snowflake", benchmark_id),
+    )
+    table_mappings = [mapping for mapping in result.mappings if mapping.candidate.table == table]
+    ranks = [snowflake_cluster_rank(mapping.candidate) for mapping in table_mappings]
+    assert ranks == sorted(ranks)
+    mapped = [mapping.candidate.column for mapping in table_mappings if mapping.mapped]
+    capped = {mapping.candidate.column for mapping in table_mappings if mapping.capped}
+    assert len(mapped) == 3
+    assert [mapping.candidate.column for mapping in table_mappings][:3] == mapped
+    assert expected_capped_columns <= capped
+    assert not any(not (mapping.mapped or mapping.capped) for mapping in table_mappings)
+
+
+def test_failed_validation_status_and_reasons_reach_result_bundle() -> None:
+    config = UnifiedTuningConfiguration(table_tunings={})
+    metadata = validate_tuning_template(
+        profile=load_tpc_tuning_profile(),
+        benchmark="tpch",
+        platform="duckdb",
+        tuning_config=config,
+    ).to_metadata()
+    assert metadata["validation_status"] == "failed"
+    result = BenchmarkResults(
+        benchmark_name="TPC-H",
+        platform="duckdb",
+        scale_factor=0.01,
+        execution_id="run-1",
+        timestamp=datetime(2026, 5, 26),
+        duration_seconds=1.0,
+        total_queries=1,
+        successful_queries=1,
+        failed_queries=0,
+        query_results=[
+            {
+                "query_id": "Q1",
+                "status": "SUCCESS",
+                "execution_time_seconds": 0.1,
+                "rows_returned": 1,
+                "run_type": "measurement",
+            }
+        ],
+        tunings_applied={"configuration": {"tuning_mode": "tuned"}},
+        tuning_source_file="examples/tunings/duckdb/tpch_tuned.yaml",
+        tuning_config_hash="abc123",
+        tuning_validation_status="applied_unverified",
+        execution_metadata={"tuning_profile": metadata},
+    )
+
+    logical_profile = build_result_payload(result)["platform"]["tuning"]["logical_profile"]
+
+    assert logical_profile["validation_status"] == "failed"
+    assert logical_profile["unmapped_candidates"]
+    assert all(entry["reason"] for entry in logical_profile["unmapped_candidates"])
+
+
+def test_profile_fact_tables_drive_snowflake_waivers_for_any_benchmark() -> None:
+    profile = load_tpc_tuning_profile()
+    for candidate in profile.required_candidates("ssb"):
+        mapping = map_candidate_to_platform("snowflake", candidate)
+        if candidate.table == "LINEORDER":
+            assert candidate.fact_table
+            assert mapping.decision == "mapped"
+        else:
+            assert not candidate.fact_table
+            assert mapping.decision == WAIVED
+            assert mapping.reason
+
+
+def test_profile_loader_requires_fact_tables(tmp_path: Path) -> None:
+    from benchbox.core.tuning.workload_profiles import load_workload_tuning_profile
+
+    payload = yaml.safe_load((REPO_ROOT / "benchbox" / "core" / "tuning" / "profiles" / "tpc.yaml").read_text("utf-8"))
+    del payload["profile"]["benchmarks"]["tpch"]["fact_tables"]
+    path = tmp_path / "profile.yaml"
+    path.write_text(yaml.safe_dump(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="fact_tables"):
+        load_workload_tuning_profile(path)
+
+
+def test_validator_rejects_waivers_the_profile_does_not_support(monkeypatch: pytest.MonkeyPatch) -> None:
+    import dataclasses
+
+    from benchbox.core.tuning import profile_validation
+
+    real_map = profile_validation.map_candidate_to_platform
+
+    def waive_everything(platform, candidate, **kwargs):
+        mapping = real_map(platform, candidate, **kwargs)
+        return dataclasses.replace(mapping, decision=WAIVED, tuning_types=(), reason="waived for the test")
+
+    monkeypatch.setattr(profile_validation, "map_candidate_to_platform", waive_everything)
+    result = validate_tuning_template(
+        profile=load_tpc_tuning_profile(),
+        benchmark="tpch",
+        platform="snowflake",
+        tuning_config=_load_tuning("snowflake", "tpch"),
+    )
+
+    assert not result.is_valid
+    flagged = {issue.candidate_key for issue in result.issues}
+    fact_candidates = {
+        candidate_key(candidate)
+        for candidate in load_tpc_tuning_profile().required_candidates("tpch")
+        if candidate.fact_table
+    }
+    assert fact_candidates <= flagged
+
+
+def test_snowflake_template_clustering_a_waived_dimension_table_fails_validation() -> None:
+    tuning_config = _load_tuning("snowflake", "tpch")
+    tuning_config.table_tunings["CUSTOMER"].clustering = [TuningColumn(name="C_CUSTKEY", type="INTEGER", order=1)]
+
+    result = validate_tuning_template(
+        profile=load_tpc_tuning_profile(),
+        benchmark="tpch",
+        platform="snowflake",
+        tuning_config=tuning_config,
+    )
+
+    assert not result.is_valid
+    assert result.to_metadata()["validation_status"] == "failed"
+    assert [issue.candidate_key for issue in result.issues] == ["tpch.CUSTOMER.C_CUSTKEY"]
+    assert "waived" in result.issues[0].message
+
+
+def test_snowflake_template_keeps_unwaived_dimension_tables_unclustered_and_within_cap() -> None:
+    result = validate_tuning_template(
+        profile=load_tpc_tuning_profile(),
+        benchmark="tpch",
+        platform="snowflake",
+        tuning_config=_load_tuning("snowflake", "tpch"),
+    )
+    assert result.is_valid
+    waived_tables = {mapping.candidate.table for mapping in result.mappings if mapping.waived}
+    assert waived_tables == {"CUSTOMER", "PART", "PARTSUPP", "SUPPLIER"}
+
+    over_cap = _load_tuning("snowflake", "tpch")
+    over_cap.table_tunings["LINEITEM"].clustering.append(TuningColumn(name="L_LINENUMBER", type="INTEGER", order=4))
+    capped = validate_tuning_template(
+        profile=load_tpc_tuning_profile(),
+        benchmark="tpch",
+        platform="snowflake",
+        tuning_config=over_cap,
+    )
+    assert not capped.is_valid
+    assert any("allows at most 3" in issue.message for issue in capped.issues)
+
+
+def test_snowflake_template_clustering_a_waived_table_on_a_non_candidate_column_fails_validation() -> None:
+    tuning_config = _load_tuning("snowflake", "tpch")
+    tuning_config.table_tunings["CUSTOMER"].clustering = [TuningColumn(name="C_COMMENT", type="VARCHAR", order=1)]
+
+    result = validate_tuning_template(
+        profile=load_tpc_tuning_profile(),
+        benchmark="tpch",
+        platform="snowflake",
+        tuning_config=tuning_config,
+    )
+
+    assert not result.is_valid
+    assert [issue.candidate_key for issue in result.issues] == ["tpch.CUSTOMER.C_COMMENT"]

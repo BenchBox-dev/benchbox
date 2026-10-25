@@ -5,6 +5,7 @@ profile:
   benchmarks:
     tpch:
       evidence_source: "benchbox/_binaries/tpc-h/templates/{queries,variants}/"
+      fact_tables: [LINEITEM, ORDERS]
       candidates:
       - table: LINEITEM
         column: L_SHIPDATE
@@ -136,6 +137,7 @@ profile:
         rationale: "Existing part-supplier join key."
     tpcds:
       evidence_source: "benchbox/_binaries/tpc-ds/templates/{query_templates,query_variants}/"
+      fact_tables: [STORE_SALES, STORE_RETURNS, CATALOG_SALES, CATALOG_RETURNS, WEB_SALES, WEB_RETURNS, INVENTORY]
       candidates:
       - table: STORE_SALES
         column: SS_SOLD_DATE_SK
@@ -411,6 +413,7 @@ profile:
         rationale: "Customer demographic locality appears in seven TPC-DS templates."
     ssb:
       evidence_source: "benchbox/core/ssb/queries.py"
+      fact_tables: [LINEORDER]
       candidates:
       - table: LINEORDER
         column: LO_ORDERDATE
