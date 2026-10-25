@@ -124,6 +124,7 @@
     "tests/unit/test_standardized_test_commands.py"
   ],
   "docs/internal/release-guide.md": [
+    "tests/unit/scripts/test_generate_changelog_entry.py",
     "tests/unit/test_release_infrastructure.py"
   ],
   "docs/internal/repo-admin-settings.md": [
