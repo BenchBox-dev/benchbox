@@ -1558,10 +1558,7 @@ def immutable_dependency_artifacts(
     return excluded
 
 
-ORACLE_REVIEW_CHECK = "oracle-review"
-ORACLE_REVIEW_WORKFLOW = ".github/workflows/oracle-review.yml"
 ORACLE_GATE_CONTEXT = "oracle-gate"
-ORACLE_ACTIONS_APP = "github-actions"
 ORACLE_LOGIN = "benchbox-oracle"
 _ORACLE_VERDICT = re.compile(r"### (?:oracle-verdict|oracle-review-shadow): ([a-z]+) for `([0-9a-f]{40})`")
 
@@ -1577,25 +1574,6 @@ def _github_api(token: str, path: str) -> Any:
     )
     with urllib.request.urlopen(request, timeout=30) as response:
         return json.load(response)
-
-
-def _oracle_run_covers(token: str, repo: str, head: str, run: Any) -> bool:
-    if not isinstance(run, dict):
-        return False
-    if run.get("name") != ORACLE_REVIEW_CHECK or run.get("status") != "completed" or run.get("conclusion") != "success":
-        return False
-    if not isinstance(run.get("app"), dict) or run["app"].get("slug") != ORACLE_ACTIONS_APP:
-        return False
-    match = re.search(r"/actions/runs/(\d+)/job/\d+", run.get("html_url") or "")
-    if not match:
-        return False
-    workflow = _github_api(token, f"/repos/{repo}/actions/runs/{match.group(1)}")
-    return (
-        isinstance(workflow, dict)
-        and workflow.get("path") == ORACLE_REVIEW_WORKFLOW
-        and workflow.get("head_sha") == head
-        and workflow.get("conclusion") == "success"
-    )
 
 
 def _oracle_verdict_covers(token: str, repo: str, number: Any, head: str) -> bool:
@@ -1649,25 +1627,6 @@ def scanned_tree_is_reviewed_head(root: Path, head: str) -> bool:
         return False
 
 
-def _oracle_review_run_covers(token: str, repo: str, head: str) -> bool:
-    page = 1
-    completed: list[Any] = []
-    while True:
-        runs = _github_api(token, f"/repos/{repo}/commits/{head}/check-runs?per_page=100&page={page}")
-        if not isinstance(runs, dict):
-            return False
-        for run in runs.get("check_runs", []):
-            if isinstance(run, dict) and run.get("name") == ORACLE_REVIEW_CHECK and run.get("status") == "completed":
-                completed.append(run)
-        if page * 100 >= runs.get("total_count", 0) or page >= 10:
-            break
-        page += 1
-    if not completed:
-        return False
-    latest = max(completed, key=lambda run: run.get("completed_at") or "")
-    return _oracle_run_covers(token, repo, head, latest)
-
-
 def _oracle_gate_covers(token: str, repo: str, head: str) -> bool:
     page = 1
     while True:
@@ -1701,9 +1660,7 @@ def oracle_review_covers(root: Path) -> bool:
             return False
         if not scanned_tree_is_reviewed_head(root, head):
             return False
-        if not _oracle_review_run_covers(token, repo, head) and not _oracle_gate_covers(token, repo, head):
-            return False
-        return _oracle_verdict_covers(token, repo, number, head)
+        return _oracle_gate_covers(token, repo, head) and _oracle_verdict_covers(token, repo, number, head)
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
         return False
 
