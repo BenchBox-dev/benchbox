@@ -406,6 +406,8 @@ def applied_tuning_counts(
     satisfied = [
         str(item.get("intent") or "") for item in ledger_payload.get("satisfied") or [] if isinstance(item, dict)
     ]
+    dropped = [str(item.get("intent") or "") for item in ledger_payload.get("dropped") or [] if isinstance(item, dict)]
+    dropped_targets = {target for target in map(_entry_target, dropped) if target is not None}
 
     def footprints_for(tuning_type: TuningType) -> tuple[str, ...]:
         capability = get_capability(platform, tuning_type) if platform else None
@@ -413,6 +415,8 @@ def applied_tuning_counts(
 
     def evidenced(intent: RequestedIntent, match_columns: bool) -> bool:
         footprints = footprints_for(intent.tuning_type)
+        if _covered(intent, footprints, dropped):
+            return False
         return any(
             _shows(intent, statement, footprints, match_columns=match_columns) for statement in physical
         ) or _covered(intent, footprints, satisfied)
@@ -421,7 +425,7 @@ def applied_tuning_counts(
     tables: set[str] = set()
     for entry in satisfied:
         parsed = _entry_target(entry)
-        if parsed is not None and parsed[1] is not None and parsed[0] in layout_types:
+        if parsed is not None and parsed[1] is not None and parsed[0] in layout_types and parsed not in dropped_targets:
             tables.add(parsed[1])
 
     types: set[str] = set()

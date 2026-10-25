@@ -233,6 +233,45 @@ class TestCountsDeriveFromAppliedStatements:
 
         assert counts == {"tables_tuned": 0, "tuning_types": []}
 
+    def test_dropped_layout_intent_is_not_counted_despite_an_executed_statement(self):
+        payload = _payload(_stmt("ALTER TABLE LINEITEM CLUSTER BY (l_shipdate)"))
+        payload["dropped"] = [{"intent": "clustering:LINEITEM (l_shipdate)", "reason": "catalog verification failed"}]
+
+        counts = applied_tuning_counts(["clustering"], _TABLE_TUNINGS, payload)
+
+        assert counts == {"tables_tuned": 0, "tuning_types": []}
+
+    def test_dropped_satisfied_layout_intent_is_not_counted(self):
+        payload = _payload(
+            _stmt("SELECT create_distributed_table('lineitem', 'l_orderkey')", "post_load"),
+            satisfied=[{"intent": "distribution:LINEITEM (l_orderkey)", "reason": "catalog readback"}],
+        )
+        payload["dropped"] = [{"intent": "distribution:LINEITEM (l_orderkey)", "reason": "mirroring failed"}]
+        table_tunings = {"LINEITEM": {"distribution": [{"name": "l_orderkey", "order": 1}]}}
+
+        counts = applied_tuning_counts(["distribution"], table_tunings, payload, "citus")
+
+        assert counts == {"tables_tuned": 0, "tuning_types": []}
+
+    def test_dropped_constraint_type_is_not_counted(self):
+        payload = _payload(_stmt("CREATE TABLE t (a INT, PRIMARY KEY (a))"))
+        payload["dropped"] = [{"intent": "primary_keys", "reason": "adapter rendered no statement"}]
+
+        counts = applied_tuning_counts(["primary_keys"], {}, payload)
+
+        assert counts == {"tables_tuned": 0, "tuning_types": []}
+
+    def test_drop_on_one_table_leaves_other_tables_counted(self):
+        payload = _payload(
+            _stmt("ALTER TABLE LINEITEM CLUSTER BY (l_shipdate)"),
+            _stmt("CREATE TABLE ORDERS (o_orderdate DATE) ORDER BY (o_orderdate)"),
+        )
+        payload["dropped"] = [{"intent": "clustering:LINEITEM (l_shipdate)", "reason": "failed"}]
+
+        counts = applied_tuning_counts(["clustering", "sorting"], _TABLE_TUNINGS, payload)
+
+        assert counts == {"tables_tuned": 1, "tuning_types": ["sorting"]}
+
 
 class TestResultSummaryCounts:
     def _result(self, ledger: dict | None, requested: dict) -> object:
