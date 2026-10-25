@@ -19,16 +19,15 @@ def _triggers(workflow: dict[str, Any]) -> dict[str, Any]:
     return workflow.get("on", workflow.get(True))
 
 
-@pytest.mark.parametrize("name", ["ci.yml", "oracle-review.yml"])
-def test_development_lanes_skip_release_pull_requests(name: str) -> None:
-    pull_request = _triggers(_load(name))["pull_request"]
+def test_development_lanes_skip_release_pull_requests() -> None:
+    pull_request = _triggers(_load("ci.yml"))["pull_request"]
     assert pull_request["branches-ignore"] == ["release"]
     assert "branches" not in pull_request
 
 
-def test_oracle_review_skips_reviews_on_release_pull_requests() -> None:
-    job = _load("oracle-review.yml")["jobs"]["oracle-review"]
-    assert job["if"] == "github.event_name == 'workflow_dispatch' || github.event.pull_request.base.ref != 'release'"
+def test_review_event_job_skips_reviews_on_release_pull_requests() -> None:
+    job = _load("oracle-review.yml")["jobs"]["review-event"]
+    assert job["if"] == "github.event.pull_request.base.ref != 'release'"
 
 
 @pytest.mark.parametrize(

@@ -115,7 +115,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Post the oracle-gate commit status for a pull request head from the same "
-            "decision the oracle-review check reads."
+            "decision the shared review checker reads."
         )
     )
     parser.add_argument("--repo", required=True)

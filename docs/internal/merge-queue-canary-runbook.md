@@ -47,7 +47,7 @@ This runbook provides the operational procedure and scenario checklist for condu
   1. Attempt to open with auto-merge and exact readiness evidence: `make pr-open READY=1 EVIDENCE=<readiness.json>`
   2. Assert that the readiness transaction reports: `soundness paths changed; auto-enqueue is forbidden and requires manual maintainer merge`.
   3. Verify on GitHub that `autoMergeRequest` is `null` (auto-merge withheld).
-  4. Confirm PR **does not enter the merge queue** without a passing `oracle-review` check and explicit manual enqueue.
+  4. Confirm PR **does not enter the merge queue** without a passing `oracle-gate` check and explicit manual enqueue.
 
 ---
 

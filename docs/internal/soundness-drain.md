@@ -36,12 +36,10 @@ hourly sweep.
 The develop ruleset requires `oracle-gate` bound to the `benchbox-oracle`
 App's integration ID, so only a status that App posts satisfies it, and the
 `oracle-gate` workflow runs only `develop` code. The `oracle-review` workflow
-still runs on every pull request but is not required; its
-`pull_request_review` submitted and dismissed triggers stay enabled because a
-completed `oracle-review` run is how `oracle-gate` learns that a review was
-submitted or dismissed. Keeping that trigger means each submitted thread
-reply can enqueue an `oracle-review` run; per-PR concurrency cancels
-superseded runs but still consumes runner slots.
+is a no-op `review-event` notification on `pull_request_review` submitted,
+edited and dismissed events; a completed `oracle-review` run is how
+`oracle-gate` learns that a review was submitted, edited or dismissed. It
+produces no check.
 
 The attester account is also the one local automation uses, so the
 attestation records who vouched for the review, not that a human read it.

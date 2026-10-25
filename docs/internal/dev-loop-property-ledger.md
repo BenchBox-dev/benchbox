@@ -81,7 +81,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `nightly.yml` | product-safety | Scheduled validation; nightly T3 replaces most domains, including the DuckDB and CedarDB throughput UAT; Windows legs and workflow liveness are non-blocking; ruleset drift runs as advisory |
 | `nightly-v2.yml` | product-safety | Nightly T3: platform matrix, docker engines, cross-browser, extension, install, DuckDB and CedarDB throughput UAT with the `nightly/throughput-uat` status, drift, external documentation links |
 | `oracle-gate.yml` | product-safety | Required gate from trusted code: result-affecting changes need a success review of the head from the `benchbox-oracle` App, whose Bot identity only the owner controls, or a stand-in approval comment from an attester account posted after the oracle's latest review; that account is also the one local automation uses, so the stand-in records who vouched, not that a human read it. Posted as `oracle-gate` for the head from develop code on trusted triggers; sole writer in-tree, with the required check scoped to the oracle App in the ruleset |
-| `oracle-review.yml` | product-safety | Non-required check from the same rule, run from the pull request's workflow file; its completion after a review is submitted or dismissed makes `oracle-gate` re-evaluate |
+| `oracle-review.yml` | product-safety | Review-event notification, not a check: a no-op job on review submitted, edited and dismissed whose completion makes `oracle-gate` re-evaluate |
 | `oracle-verdict.yml` | product-safety | Self-hosted soundness review: reviewers chosen by tier and availability, each with only its own credential, and a review and non-required `oracle-verdict` status posted by the owner's App, which the required `oracle-gate` check reads |
 | `perf-smoke.yml` | product-safety | Performance smoke |
 | `pr-hold.yml` | product-safety | Required `hold` check: fails while the `no-auto-merge` label is present, on every label change |
@@ -117,7 +117,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_nightly_t3_workflow.py` | product-safety | Nightly T3 domain coverage |
 | `test_nightly_legacy_test_job.py` | product-safety | Legacy nightly matrix timeout bound and Windows legs |
 | `test_oracle_gate_workflow.py` | product-safety | Trusted triggers, develop-only checkout, single per-PR concurrency group, App-only posting and no other workflow posting the gate context |
-| `test_oracle_review_workflow.py` | product-safety | The check name, triggers, read-only token and script invocation of the non-required oracle-review check |
+| `test_oracle_review_workflow.py` | product-safety | The notification-only shape of the oracle-review workflow: review triggers, empty permissions, one `review-event` job, no checkout, secrets or tools |
 | `test_oracle_verdict_workflow.py` | product-safety | Oracle review triggers, guards, per-job secret scoping, sequential reviewer slots and App-only posting |
 | `test_t2_partition_workflow.py` | product-safety | Complete medium selection, correctness gate conservation, and binary framing placement |
 | `test_comment_policy_nightly_workflow.py` | tooling | Nightly comment-policy workflow triggers, develop checkout, read-only permissions, whole-tree launcher call and shared action pins |
@@ -193,7 +193,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_local_validation.py` | pure-process |
 | `test_migrate_clickhouse_labels.py` | product-safety |
 | `test_mirror_partial_validation_policy.py` | pure-process |
-| `test_oracle_gate.py` | product-safety | Gate decision parity with the oracle-review check, status mapping and App posting |
+| `test_oracle_gate.py` | product-safety | Gate decision parity with the shared checker decision, status mapping and App posting |
 | `test_oracle_review_check.py` | product-safety | Oracle review or stand-in approval decision for soundness-path changes |
 | `oracle_reviewers/test_absence.py` | product-safety |
 | `oracle_reviewers/test_attempts.py` | product-safety |

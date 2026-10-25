@@ -117,7 +117,7 @@ jobs:
             echo "this scheduled workflow is the only path that writes this file."
             echo ""
             echo "**Merge by hand after review.** \`benchbox/core/equivalence/**\` is a soundness"
-            echo "path, so \`oracle-review\` needs the oracle's success review; check the diff (it"
+            echo "path, so the oracle review gate needs the oracle's success review; check the diff (it"
             echo "can only ever REMOVE a resolved entry - see the writer's own contract)."
             echo ""
             echo "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

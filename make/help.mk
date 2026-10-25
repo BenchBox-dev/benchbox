@@ -120,7 +120,6 @@ help:
 	@echo "  make agent-write-preflight  Refuse write work from the BenchBox primary clone unless explicitly overridden"
 	@echo "  make cloud-bootstrap  Set up a disposable cloud-session clone: human Git identity, uv sync, hooks, write preflight"
 	@echo "  make cloud-verify [LEVEL=static|tests]  Run the cloud builder checks and print per-step status and seconds"
-	@echo "  make oracle-review-recover PR=n [REPO=owner/repo]  Retry failed Oracle runs serially, then close/reopen the PR to requeue checks"
 	@echo "  make pr-rerun [PR=n] [REPO=owner/repo]  Re-run the failed jobs of the PR head's latest CI run (all jobs if any were cancelled)"
 	@echo "  make pr-preflight    Ruff on changed Python files, then the tests for changed files (serial, no test lock; CI runs the full fast lane)"
 	@echo "  make pr-preflight-fast-tests  Run the full fast lane and content guard locally, as CI does (takes the shared test lock)"
