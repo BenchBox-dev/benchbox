@@ -24081,10 +24081,15 @@
       "title": "BenchBox: delete the ClickHouse, StarRocks and TPC-DS runner rewrites"
     },
     "sqlglot-fork-declined-patch-states-confirm-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T13:45:47Z",
+        "generation": "886b512d310e409f937cfba8e40cc349",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Correct the upstream-state record of the fork patches: 'declined' means fork-only by design; record the two real upstream refusals and fix the blog outline claims"
     },
     "sqlglot-fork-f0-base-and-manifest": {
