@@ -265,6 +265,8 @@ def _gate(runs: list[dict] | None, branch: str = "fix/thing", *, code: int = 0, 
     payload = json.dumps(runs) if out is None else out
 
     def run(cmd: list[str]) -> tuple[int, str]:
+        if cmd[:2] == ["gh", "api"]:
+            return 1, "offline"
         assert cmd[:3] == ["gh", "run", "list"]
         assert cmd[cmd.index("--workflow") :][:6] == [
             "--workflow",
@@ -685,3 +687,46 @@ def test_arming_targets_run_the_arm_gate_before_arming(target: str) -> None:
         if name in done.stdout
     )
     assert gate < arm
+
+
+def test_status_names_the_first_red_commit_of_the_streak() -> None:
+    message = trunk_revert.status(run=_streak_run())
+    assert message is not None
+    assert "PR #3200" in message
+    assert "make trunk-revert PR=3200" in message
+    assert "3220" not in message
+
+
+def test_status_is_clear_when_trunk_is_green() -> None:
+    run = ArmRun(_red_runs(("completed", "success", timedelta(minutes=10))))
+    assert trunk_revert.status(run=run) is None
+
+
+def test_status_is_clear_once_the_culprit_is_reverted() -> None:
+    run = _streak_run(develop=[{"commit": {"message": f"Revert x\n\nThis reverts commit {FIRST_SHA}."}}])
+    assert trunk_revert.status(run=run) is None
+
+
+def test_main_status_exits_nonzero_naming_the_culprit(capsys: pytest.CaptureFixture[str]) -> None:
+    assert trunk_revert.main(["status"], run=_streak_run()) == 1
+    assert "PR #3200" in capsys.readouterr().err
+
+
+def test_main_status_exits_zero_when_trunk_is_green() -> None:
+    run = ArmRun(_red_runs(("completed", "success", timedelta(minutes=10))))
+    assert trunk_revert.main(["status"], run=run) == 0
+
+
+def test_main_status_fails_closed_when_runs_are_unreadable(capsys: pytest.CaptureFixture[str]) -> None:
+    run = ArmRun(_red_runs(("completed", "failure", timedelta(minutes=10))), runs_code=1)
+    assert trunk_revert.main(["status"], run=run) == 1
+    assert "could not establish" in capsys.readouterr().err
+
+
+def test_gate_names_the_first_red_commit_of_the_streak() -> None:
+    runs = _streak(None, FIRST_SHA, LATER_SHA)
+    run = ArmRun(runs, pulls_by_sha={FIRST_SHA: _merged_pulls(3200), LATER_SHA: _merged_pulls(3220)})
+    message = trunk_revert.trunk_gate("fix/thing", run=run, now=NOW + timedelta(days=1))
+    assert message is not None
+    assert "PR #3200" in message
+    assert "make trunk-revert PR=3200" in message
