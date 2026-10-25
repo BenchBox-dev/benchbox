@@ -17658,15 +17658,10 @@
       "title": "Bind PR readiness to the reviewed head and withdraw it before revisions"
     },
     "pr-selection-misses-behind-trunk-reds-20261025": {
-      "claim": {
-        "expires_at": "2026-10-26T20:03:51Z",
-        "generation": "853eec70119e40e39d35488009389015",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Close the four PR test-selection misses behind Trunk-only failures before coverage selection goes live"
     },
     "pr-stale-base-inflates-oracle-tier": {
