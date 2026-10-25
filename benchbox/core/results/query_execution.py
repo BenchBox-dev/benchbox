@@ -80,6 +80,7 @@ LEGACY_IGNORED_EXTRA_FIELDS = frozenset(
         "iterations",
         "job_id",
         "job_statistics",
+        "maintenance_skipped",
         "match_type",
         "max_time",
         "max_time_ms",

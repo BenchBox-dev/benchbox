@@ -110,6 +110,10 @@ def _throughput_config_options(run_config: dict) -> dict[str, Any]:
     return options
 
 
+def _greybeam_routed(adapter: Any) -> bool:
+    return is_greybeam_gateway(getattr(getattr(adapter, "gateway_endpoint", None), "name", None))
+
+
 class _CapturedPlan(NamedTuple):
     plan: Any
     fingerprint: str | None
@@ -767,12 +771,9 @@ class TestDriversMixin:
         run_config["_effective_execution_type"] = "power"
         return self._execute_all_queries(benchmark, connection, run_config)
 
-    def _greybeam_routed(self) -> bool:
-        return is_greybeam_gateway(getattr(getattr(self, "gateway_endpoint", None), "name", None))
-
     def _execute_maintenance_test(self, benchmark, connection: Any, run_config: dict) -> list[dict[str, Any]]:
         console = quiet_console
-        if self._greybeam_routed():
+        if _greybeam_routed(self):
             raise_greybeam_maintenance_unsupported()
 
         benchmark_name = self._resolve_benchmark_slug(benchmark, run_config)
@@ -791,7 +792,7 @@ class TestDriversMixin:
         requested_phases = set((run_config.get("options") or {}).get("requested_phases") or [])
         if not requested_phases:
             requested_phases = {"power", "throughput", "maintenance"}
-        skip_maintenance = self._greybeam_routed() and "maintenance" in requested_phases
+        skip_maintenance = _greybeam_routed(self) and "maintenance" in requested_phases
         if skip_maintenance and (run_config.get("options") or {}).get("requested_phases"):
             raise_greybeam_maintenance_unsupported()
 

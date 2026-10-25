@@ -17,6 +17,7 @@
   },
   "partial_cli_surfaces": ["--platform-option"],
   "omission_tiers": {
+    "--allow-greybeam-inline-load": "security-scoped",
     "--analyze-plans": "not-yet-demanded",
     "--benchmark-option": "security-scoped",
     "--client-cloud": "not-yet-demanded",
