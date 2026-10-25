@@ -2962,10 +2962,12 @@
     },
     "ci-dockerhub-anonymous-pulls-20261025": {
       "claim": null,
-      "needs": [],
-      "priority": "medium",
+      "needs": [
+        "ci-sql-evidence-postgres-ecr-rate-limit-20261022"
+      ],
+      "priority": "low",
       "status": "open",
-      "title": "CI jobs pull images anonymously from Docker Hub and fail on toomanyrequests"
+      "title": "Required CI jobs: remove the remaining anonymous Docker Hub pull (questdb service in the lint job); Postgres images are owned by ci-sql-evidence-postgres-ecr-rate-limit-20261022"
     },
     "ci-duplicate-dispatch-ghost-runs": {
       "claim": null,
