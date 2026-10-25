@@ -16264,6 +16264,13 @@
       "status": "done",
       "title": "oracle-review has no fallback when Codex connector hits usage limits"
     },
+    "oracle-review-notify-only-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Trim the oracle-review workflow to a review-event notification and drop the verdict's legacy rerun step"
+    },
     "oracle-review-pin-pyyaml-20261021": {
       "claim": null,
       "needs": [],
