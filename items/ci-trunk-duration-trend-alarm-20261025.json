@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "VERIFY: Backtest over 2026-10-24..25 Trunk runs: the alarm fires for the fast job's step change (about 11.5 to 20 min) within one day of samples and stays quiet on 2026-10-23..24",
+    "VERIFY: Unit tests cover p50 comparison, minimum sample count (no alarm under 10 runs), issue open/update/close, and the API-call budget",
+    "VERIFY: First scheduled run id recorded with its output",
+    "GUARDRAIL: Hard API-call budget in the script (abort and report on exceed); permissions limited to actions read and issues write; one pinned issue only, no tracker items or PR comments"
+  ],
+  "context": "Source: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
+  "description": "Catch what the PR gate cannot: dependency install and setup time, runner-image changes, cross-PR creep and xdist imbalance. A scheduled workflow reads the last day of trunk.yml develop runs and their jobs (about 45 API calls; not make ci-usage-report, which is rate-limit-heavy and reported INCOMPLETE), computes per-job p50 (fast, each medium shard, correctness gates) and the fast-junit summed-time p50, compares with the prior 7 days, and opens or updates one pinned issue naming the jobs that rose more than 15%, closing it when healthy. PR time-to-green is not used (dominated by review latency).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T13:57:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9f171622cfba4f7daf2cf40cc859797e",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
