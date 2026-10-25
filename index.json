@@ -5092,15 +5092,10 @@
       "title": "Update wording and consumer metadata for standardized test commands and release flow fixtures in comment-policy.json"
     },
     "comment-policy-hook-saturates-shared-host": {
-      "claim": {
-        "expires_at": "2026-10-26T03:17:07Z",
-        "generation": "1bc92ba632d04d25bf079ae69d9292d9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Concurrent comment-policy runs keep the shared host above the quiet-machine threshold for timed benchmarks"
     },
     "comment-policy-oracle-gate-evidence-only-20261025": {
