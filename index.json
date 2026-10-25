@@ -16678,6 +16678,13 @@
       "status": "done",
       "title": "Oracle reviews, status and workflow are still named \"oracle-review-shadow\" after it became the required reviewer"
     },
+    "oracle-verdict-single-job-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Run each oracle verdict as one GitHub Actions job instead of a chain of up to twelve"
+    },
     "oracle-verdict-workflow-not-soundness-path-20261009": {
       "claim": null,
       "needs": [],
