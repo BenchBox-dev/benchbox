@@ -57,11 +57,15 @@ never pushes and never creates `history/docs-through-*` refs.
 4. Every filtered commit has the same author, committer and dates as its
    source commit, the same `Co-Authored-By` lines, and a message equal to the
    source message with only the session lines removed.
-5. Every reachable blob passes the privacy rules. The rules are read from the
+5. Rename discovery uses a raised rename limit. For each kept tip path,
+   `git log --follow` must see the same names and the same commit count in the
+   source and in the filtered history, so a rename lost to git's rename limit
+   fails the run instead of silently shortening history.
+6. Every reachable blob passes the privacy rules. The rules are read from the
    site's `deploy/gates/privacy.ts` (patterns, AWS example values, connection
    string form and placeholder passwords), so the scan cannot drift from the
    deploy gate and adds no exceptions of its own.
-6. `gitleaks git` over the filtered history reports nothing outside the triage
+7. `gitleaks git` over the filtered history reports nothing outside the triage
    file.
 
 ## Gitleaks triage
