@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Medium-tier shards keep every test module on one shard, balanced by the summed durations of the module, and run with `--dist loadscope`, so a module's fixtures are built on one worker instead of every worker. Node ids are unchanged. The release test workflow now passes the duration fixture to its collect, shard and verify steps. Paired CI runs cut the slowest medium shard from about 380 s to 300 s. Every test that opens a chDB connection now closes it, and a module that leaves one open fails its own teardown, so modules sharing a worker no longer fail with `EmbeddedServer already initialized`."
+    }
+  ]
+}

@@ -10,7 +10,6 @@ from types import SimpleNamespace
 from benchbox._vendor.sqlglot import ErrorLevel
 from benchbox.utils.dialect_utils import (
     NO_IDENTIFY_DIALECTS,
-    SQLITE_DISCOUNT_BOUNDS,
     apply_rewrite,
     resolve_sql_dialect,
     translate_sql_query,
@@ -56,7 +55,7 @@ def _fork(sql: str, src: str, tgt: str, identify: bool = True, rewrites=()):
 
 
 def _case(case_id: str, sql: str, src: str, tgt: str, identify: bool = True) -> Case:
-    rewrites = [("fold_between_literal_arithmetic", SQLITE_DISCOUNT_BOUNDS)] if tgt == "sqlite" else []
+    rewrites = [("fold_between_literal_arithmetic", {})] if tgt == "sqlite" else []
     return WrapperCase(
         case_id,
         frozen_legacy(AREA, case_id),

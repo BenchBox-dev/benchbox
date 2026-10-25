@@ -203,7 +203,7 @@ def require_public_pseudonym_salt(
             "Community publish requires a non-empty public pseudonym salt. "
             f"Set the {PUBLIC_PSEUDONYM_SALT_ENV} environment variable to a "
             "deployment-private value before the first public export/submit. "
-            "See docs/development/adr/adr-published-identifier-field-set.md "
+            "See https://benchbox.dev/docs/development/adr/adr-published-identifier-field-set.html "
             "(retained-field salt decision)."
         )
     return salt

@@ -92,16 +92,22 @@ def _fetch(repo: str, sha: str, unit: str, token: str) -> tuple[list[dict[str, A
     return _fetch_runs(repo, sha, token), checks
 
 
+def _is_transient(error: Exception) -> bool:
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code >= 500
+    return True
+
+
 def _with_retries(action: Callable[[], T]) -> T:
-    for attempt in range(API_TRIES):
+    for _ in range(API_TRIES - 1):
         try:
             return action()
         except (urllib.error.URLError, TimeoutError) as error:
-            if attempt + 1 == API_TRIES:
+            if not _is_transient(error):
                 raise
             print(f"GitHub API request failed ({error}); retrying", file=sys.stderr, flush=True)
             time.sleep(API_RETRY_SECONDS)
-    raise AssertionError("unreachable")
+    return action()
 
 
 def newest_failed_text_edit_run(runs: list[dict[str, Any]]) -> int | None:

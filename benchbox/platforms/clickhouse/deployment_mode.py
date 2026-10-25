@@ -41,7 +41,7 @@ def clickhouse_legacy_selector_warning(selector: str, target: str) -> str:
     return (
         f"ClickHouse selector '{selector}' is deprecated. "
         f"Use '--platform {target}' instead. "
-        "See docs/platforms/clickhouse-migration.md for the full migration guide."
+        "See https://benchbox.dev/docs/platforms/clickhouse-migration.html for the full migration guide."
     )
 
 

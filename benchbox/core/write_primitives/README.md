@@ -188,7 +188,7 @@ ClickHouse uses its own `-State`/`-Merge` combinator serialization;
 ClickHouse-native variants are deferred to a follow-up.
 
 Full cross-platform reference:
-[docs/benchmarks/write-primitives-sketch-functions.md](../../../docs/benchmarks/write-primitives-sketch-functions.md).
+<https://benchbox.dev/docs/benchmarks/write-primitives-sketch-functions.html>.
 
 ## Schema Design
 

@@ -366,6 +366,21 @@
       "cutover_action": "Stay in core."
     },
     {
+      "id": "shipped-docs-url-shape",
+      "file": "tests/unit/cli/test_shipped_docs_urls.py",
+      "tests": [
+        "test_link_surfaces_do_not_cite_site_owned_pages_by_repo_path",
+        "test_link_surfaces_doc_urls_map_to_site_owned_pages",
+        "test_repo_path_matcher_flags_every_relative_form",
+        "test_repo_path_matcher_ignores_other_text",
+        "test_repo_path_matcher_covers_every_site_owned_page"
+      ],
+      "classification": "runtime-stays",
+      "site_reads": [],
+      "reason": "Pins that shipped messages and core READMEs cite published benchbox.dev URLs instead of repo paths of site-owned pages; it reads the ownership manifest, not site pages.",
+      "cutover_action": "Stay in core."
+    },
+    {
       "id": "cli-reference-page-exists",
       "file": "tests/unit/test_cli_documentation.py",
       "tests": ["test_cli_reference_documentation_exists"],

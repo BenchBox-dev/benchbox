@@ -143,7 +143,7 @@ class BenchBoxCommand(click.Command):
             color=ctx.color,
         )
         click.echo(
-            "  Cross-engine function reference: docs/benchmarks/read-primitives-approximate-functions.md",
+            "  Cross-engine function reference: https://benchbox.dev/docs/benchmarks/read-primitives-approximate-functions.html",
             color=ctx.color,
         )
         click.echo(
@@ -152,7 +152,7 @@ class BenchBoxCommand(click.Command):
             color=ctx.color,
         )
         click.echo(
-            "  Cross-engine sketch reference: docs/benchmarks/write-primitives-sketch-functions.md",
+            "  Cross-engine sketch reference: https://benchbox.dev/docs/benchmarks/write-primitives-sketch-functions.html",
             color=ctx.color,
         )
 

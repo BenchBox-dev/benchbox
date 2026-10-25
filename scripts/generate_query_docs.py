@@ -125,9 +125,7 @@ def _recipe_class(benchmark_id: str) -> tuple[str, str]:
     return f"from benchbox.core.{benchmark_id}.benchmark import {core}", core
 
 
-_TPCDS_PARITY_DOC_URL = (
-    "https://github.com/BenchBox-dev/benchbox/blob/develop/docs/development/tpcds-dataframe-parity.md"
-)
+_TPCDS_PARITY_DOC_URL = "https://benchbox.dev/docs/development/tpcds-dataframe-parity.html"
 _TPCDS_PARITY_NOTES_URL = f"{_TPCDS_PARITY_DOC_URL}#q85-and-q93-reason-table-size"
 _TPCDS_SUBSCALE_NOTES_URL = f"{_TPCDS_PARITY_DOC_URL}#q93-below-sf-1-reason-draw"
 

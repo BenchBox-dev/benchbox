@@ -52,6 +52,7 @@ import pytest
 
 pytest.register_assert_rewrite("tests.utilities.leak_detector")
 from tests.utilities.leak_detector import restore_global
+from tests.utilities.optional_engines import chdb_open_connection_error
 from tests.utilities.session_isolation import active as isolated_session_active
 
 pytest_plugins = [
@@ -372,6 +373,18 @@ def _restore_logger(logger: logging.Logger, state: tuple[int, list[logging.Handl
     logger.handlers[:] = state[1]
     logger.propagate = state[2]
     logger.disabled = state[3]
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _chdb_connections_closed_after_module():
+    yield
+    reason = chdb_open_connection_error()
+    if reason is not None:
+        pytest.fail(
+            "a test in this module left a chDB connection open, which breaks every later chDB client "
+            f"in the same worker process: {reason}",
+            pytrace=False,
+        )
 
 
 @pytest.fixture(autouse=True)

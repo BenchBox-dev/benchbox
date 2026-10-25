@@ -261,7 +261,11 @@ def test_main_reports_a_fetch_error(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_main_reports_a_policy_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GITHUB_TOKEN", "token")
-    monkeypatch.setattr(oracle_gate, "fetch_pull", lambda repo, pr, token: {"head": {"sha": HEAD}, "changed_files": 1})
+    monkeypatch.setattr(
+        oracle_gate,
+        "fetch_pull",
+        lambda repo, pr, token: {"base": {"ref": "develop"}, "head": {"sha": HEAD}, "changed_files": 1},
+    )
     monkeypatch.setattr(oracle_gate, "fetch_files", lambda repo, pr, token: [{"filename": "x"}])
 
     def failing_rules() -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -269,6 +273,22 @@ def test_main_reports_a_policy_error(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(oracle_gate, "load_policy_rules", failing_rules)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+
+
+def test_main_posts_nothing_for_a_pull_request_that_does_not_target_develop(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.setattr(
+        oracle_gate,
+        "fetch_pull",
+        lambda repo, pr, token: {"base": {"ref": "feature"}, "head": {"sha": HEAD}, "changed_files": 1},
+    )
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("must not evaluate or post")
+
+    for name in ("fetch_files", "fetch_reviews", "fetch_threads", "post_status"):
+        monkeypatch.setattr(oracle_gate, name, forbidden)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.PASS
 
 
 def test_main_posts_the_fresh_decision(monkeypatch: pytest.MonkeyPatch) -> None:

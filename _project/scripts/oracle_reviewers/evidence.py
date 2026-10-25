@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from .verdict import NOT_FIXED, WITHDRAWN, Finding, Verdict, sanitize
+from .verdict import NOT_FIXED, WITHDRAWN, Finding, Verdict, display_path, sanitize
 
 INLINE = "inline"
 _LINE_SUFFIX = re.compile(r":\d+(?:-\d+)?$")
@@ -267,10 +267,10 @@ def _line_count(workspace: Path, path: str) -> int | None:
 def _citation_error(finding: Finding, workspace: Path) -> str | None:
     count = _line_count(workspace, finding.file)
     if count is None:
-        return f"{finding.file} is not a file in the head commit"
+        return f"{display_path(finding.file)} is not a file in the head commit"
     last = finding.end_line or finding.line
     if last > count:
-        return f"{finding.file} has {count} lines, so line {last} does not exist"
+        return f"{display_path(finding.file)} has {count} lines, so line {last} does not exist"
     return None
 
 

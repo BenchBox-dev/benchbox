@@ -20,7 +20,7 @@ Decision and evidence:
    review is disabled.
 3. **Soundness Review Boundary:** A result-affecting pull request (one that
    changes a path in `.github/soundness-paths.txt`) needs a completed external
-   adversarial review of its current head. The required `oracle-review` check
+   adversarial review of its current head. The required `oracle-gate` check
    passes only on the `benchbox-oracle` app's successful latest review of that
    head, or on a listed attester's stand-in approval for that head after an
    independent review. The reviewer posts Critical and High findings as PR
@@ -36,8 +36,8 @@ Decision and evidence:
 
 ## 2. Required Status Checks Contract
 
-`develop` requires seven status checks: six always-reporting unit jobs in
-`.github/workflows/ci.yml`, plus `oracle-review`. `.github/ci-units.yml` maps
+`develop` requires five always-reporting unit jobs in
+`.github/workflows/ci.yml`, plus `hold` and `oracle-gate`. `.github/ci-units.yml` maps
 changed paths to units. An untouched unit reports success; a touched unit
 succeeds only if every job it requires succeeded, so a skipped required job
 fails it. Checks run on the pull request head, which need not be current with
@@ -49,9 +49,8 @@ fails it. Checks run on the pull request head, which need not be current with
 | `explorer` | `.github/workflows/ci.yml` | CLI-versus-explorer parity fixtures on Explorer pipeline and visualization changes. Reports success on unaffected paths. The Explorer app and its browser suite live in `BenchBox-dev/benchbox-site`. |
 | `results-data` | `.github/workflows/ci.yml` | Corpus inventory and validation, submission validator sync, and corpus contract tests on results-data changes. |
 | `docs` | `.github/workflows/ci.yml` | Example validation, generated docs inputs (`make docs-generate`), and spell check on docs changes. The site build runs in `BenchBox-dev/benchbox-site`. |
-| `landing` | `.github/workflows/ci.yml` | Always passes. Kept only until the context is removed from the ruleset. |
 | `tooling` | `.github/workflows/ci.yml` | Every event. Base-branch guard, comment policy, content guard, skill integrity, and audit checks by path. |
-| `oracle-review` | `.github/workflows/oracle-review.yml` (job and check name `oracle-review`) | Passes when only paths listed as inert by `.github/inert-paths.txt` (see Inert-path manifest in `docs/internal/oracle-review-v2.md`) change, or when the `benchbox-oracle` app's latest review of the current head, submitted after any retarget, reports success and none of the app's threads is unresolved. Each new head gets its own oracle result (`.github/workflows/oracle-verdict.yml`; rerun with a `/oracle-review` comment): a full review, a follow-up on files whose patch changed, or the earlier decision carried over when a rebase or prose-only push leaves the patch unchanged (Rounds in `docs/internal/oracle-review-v2.md`). If the oracle cannot review or its verdict is overruled, the check also passes on an independent stand-in review of the exact head followed by a `Stand-in oracle review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the oracle's latest review of that head (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. |
+| `oracle-gate` | `.github/workflows/oracle-gate.yml` (commit status posted by the `benchbox-oracle` app from `develop` code; the ruleset binds the context to that app) | Passes when only paths listed as inert by `.github/inert-paths.txt` (see Inert-path manifest in `docs/internal/oracle-review-v2.md`) change, or when the `benchbox-oracle` app's latest review of the current head, submitted after any retarget, reports success and none of the app's threads is unresolved. Each new head gets its own oracle result (`.github/workflows/oracle-verdict.yml`; rerun with a `/oracle-review` comment): a full review, a follow-up on files whose patch changed, or the earlier decision carried over when a rebase or prose-only push leaves the patch unchanged (Rounds in `docs/internal/oracle-review-v2.md`). If the oracle cannot review or its verdict is overruled, the check also passes on an independent stand-in review of the exact head followed by a `Stand-in oracle review: APPROVE <full head SHA>` comment from an account in `STANDIN_ATTESTERS`, posted after the oracle's latest review of that head (dev-loop ADR, D4; `docs/internal/soundness-drain.md`). A plain owner comment does not. The non-required `oracle-review` check (`.github/workflows/oracle-review.yml`) reports the same rule from the pull request's workflow file. |
 
 ### Shadow selection miss report
 
@@ -108,7 +107,7 @@ If a PR changes any soundness path (for example `benchbox/core/equivalence/`,
    only; to hold an armed PR, disable auto-merge
    (`gh pr merge <n> --disable-auto`) or withdraw it as above, then add the
    label.
-2. The required `oracle-review` check must pass on the current head before the
+2. The required `oracle-gate` check must pass on the current head before the
    PR can merge.
 3. A soundness-path PR that sits green and unarmed is reported by the
    soundness-drain digest (`make soundness-drain-report`, see
@@ -203,8 +202,13 @@ two-hour figure.
 
 Arming is stricter than opening: `make pr-arm`, `make pr-arm-remote`,
 `make pr-landing-remote-ready` and `make pr-landing-ready ARM=1` run `scripts/trunk_revert.py arm-gate`, which
-refuses at once, naming the culprit PR and run, while the newest completed
-trunk run is red and no revert of the culprit commit is on `develop`. PRs
+refuses at once, naming the culprit PR and run, while trunk is red and no
+revert of the culprit commit is on `develop`. The culprit is the head of the
+first red completed run after the last green one, so a failure that persists
+across later merges still blames the commit that broke it, and only a revert
+of that commit is exempt. The gate widens its run fetch (30, 100, 300, then
+1000 runs) until it finds a green run or the run history ends, and refuses
+when the streak outruns that bound. PRs
 armed before the run failed still merge, and arming outside these targets
 bypasses the gate; see [develop push gaps](develop-post-merge-gaps.md).
 
@@ -240,7 +244,7 @@ its final content:
 - a stand-in approval of the merged head, posted after any retarget and after
   the oracle's latest decisive verdict (`success` or `failure`) on that head.
   A later oracle review with no decisive verdict, such as `pending`, does not
-  void it. The `oracle-review` check uses the same rule through the same
+  void it. The `oracle-gate` check uses the same rule through the same
   helper;
 - for merges before the cut-over (2026-10-09 00:16 UTC), the Codex
   connector's submitted review of the last content commit (or of a later

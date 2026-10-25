@@ -287,7 +287,7 @@ def fetch_open_prs(client: GitHubClient, owner: str, repo: str) -> list[dict[str
         number = raw["number"]
         head_sha = raw["head"]["sha"]
         files = client.get_all(f"repos/{owner}/{repo}/pulls/{number}/files")
-        check_runs = client.get_all(f"repos/{owner}/{repo}/commits/{head_sha}/check-runs")
+        check_runs = client.get_all(f"repos/{owner}/{repo}/commits/{head_sha}/check-runs", {"filter": "latest"})
         normalized.append(
             {
                 "number": number,
@@ -307,6 +307,10 @@ def fetch_open_prs(client: GitHubClient, owner: str, repo: str) -> list[dict[str
                         "status": run.get("status"),
                         "conclusion": run.get("conclusion"),
                         "completed_at": run.get("completed_at"),
+                        "started_at": run.get("started_at"),
+                        "id": run.get("id"),
+                        "check_suite": {"id": (run.get("check_suite") or {}).get("id")},
+                        "details_url": run.get("details_url"),
                     }
                     for run in check_runs
                 ],

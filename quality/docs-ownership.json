@@ -19,6 +19,7 @@
     "docs/agent/batch-feature-delivery.md": "core-only",
     "docs/agent/batch-tracker-contract.md": "core-only",
     "docs/agent/cloud-builder.md": "core-only",
+    "docs/agent/emergency-merge.md": "core-only",
     "docs/agent/handoffs.md": "core-only",
     "docs/agent/identity-instruction-boundary.md": "core-only",
     "docs/agent/merge-authority.md": "core-only",

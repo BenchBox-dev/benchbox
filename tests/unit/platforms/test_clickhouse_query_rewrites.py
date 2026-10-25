@@ -36,8 +36,21 @@ class TestDecimalLiterals:
             f"WHERE l_discount BETWEEN 0.05 AND 0.07 {SESSION_SETTING}"
         )
 
-    def test_between_bounds_on_other_tables_are_preserved(self):
-        sql = "SELECT 1 FROM orders WHERE l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
+    def test_between_bounds_on_other_tables_and_columns_are_folded(self):
+        sql = (
+            "SELECT SUM(sl.l_extendedprice * sl.l_discount) AS revenue FROM link_lineitem ll "
+            "JOIN sat_lineitem sl ON ll.hk = sl.hk WHERE sl.l_discount BETWEEN 0.06 - 0.01 AND 0.06 + 0.01"
+        )
+        assert rewrite_query_for_clickhouse(sql) == (
+            "SELECT SUM(sl.l_extendedprice * sl.l_discount) AS revenue FROM link_lineitem AS ll "
+            f"JOIN sat_lineitem AS sl ON ll.hk = sl.hk WHERE sl.l_discount BETWEEN 0.05 AND 0.07 {SESSION_SETTING}"
+        )
+        assert rewrite_query_for_clickhouse("SELECT 1 FROM orders WHERE o_totalprice > 0.06 + 0.01") == (
+            f"SELECT 1 FROM orders WHERE o_totalprice > 0.07 {SESSION_SETTING}"
+        )
+
+    def test_exact_literal_bounds_are_preserved(self):
+        sql = "SELECT 1 FROM orders WHERE o_totalprice BETWEEN 0.05 AND 0.07"
         assert rewrite_query_for_clickhouse(sql) == f"{sql} {SESSION_SETTING}"
 
     def test_string_literals_are_not_rewritten(self):

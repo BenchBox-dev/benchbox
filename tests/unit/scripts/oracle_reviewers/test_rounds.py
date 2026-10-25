@@ -815,6 +815,20 @@ def test_a_defect_path_cannot_plant_a_protocol_marker(policy: Policy, tmp_path: 
     assert found.error is None and found.latest is not None
 
 
+@pytest.mark.parametrize("name", ["<!--bad", "a&b", "a&lt;b", "it's", 'say"hi', "a-->b"])
+def test_a_follow_up_counts_a_defect_on_a_changed_file_whose_name_needs_escaping(
+    policy: Policy, tmp_path: Path, name: str
+) -> None:
+    path = f"benchbox/query{name}.py"
+    plan = _follow_up(policy, [], [path])
+    final = _final(policy, tmp_path, plan, _v("s", [{**_finding("High", 2), "file": path}]))
+    assert final.state == "failure"
+    assert final.description.endswith(": SHIP WITH FIXES, 1 defect(s) to fix")
+    assert [item["file"] for item in _record(final)["open_defects"]] == [path]
+    assert "<details><summary>Not counted" not in final.body
+    assert "<!--bad" not in final.body and "a-->b" not in final.body
+
+
 def test_a_follow_up_lists_at_most_five_defects_as_not_counted(policy: Policy, tmp_path: Path) -> None:
     plan = _follow_up(policy, [], [CHECKER])
     outside = [{**_finding("Low", line), "file": OTHER, "title": f"outside {line}"} for line in range(1, 8)]

@@ -24,7 +24,14 @@ VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,baseRefName
 Runner = Callable[[list[str]], tuple[int, str]]
 
 
-def refusals(view: dict, local_head: str, *, unpublished: Sequence[str], unresolved_threads: bool) -> list[str]:
+def refusals(
+    view: dict,
+    local_head: str,
+    *,
+    unpublished: Sequence[str],
+    unresolved_threads: bool,
+    hidden_failures: Sequence[str] = (),
+) -> list[str]:
     reasons: list[str] = []
     if view.get("state") != "OPEN":
         reasons.append(f"PR is {view.get('state')!r}, not OPEN")
@@ -39,6 +46,7 @@ def refusals(view: dict, local_head: str, *, unpublished: Sequence[str], unresol
         reasons.append("a reviewer requested changes")
     if unresolved_threads:
         reasons.append("an unresolved, non-outdated review thread is open")
+    reasons.extend(hidden_failures)
     reasons.extend(f"unpublished work: {problem}" for problem in unpublished)
     if view.get("headRefOid") != local_head:
         reasons.append(f"pushed head {str(view.get('headRefOid'))[:9]} is not local HEAD {local_head[:9]}; push first")
@@ -71,6 +79,7 @@ def arm(
     checkout: Path = Path("."),
     unpublished: Callable[[Path], list[str]] = pr_landing.unpublished_work,
     threads: Callable[[Runner, str, int], bool] = pr_landing.unresolved_review_threads,
+    suites: Callable[[Runner, str, str, str], list[str]] = pr_landing.hidden_failed_suites,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         print(f"pr-arm: refusing: --repo must be owner/name, got {repo!r}", file=sys.stderr)
@@ -101,6 +110,7 @@ def arm(
             local_head,
             unpublished=unpublished(checkout),
             unresolved_threads=threads(run, repo, int(view["number"])),
+            hidden_failures=suites(run, repo, BASE_BRANCH, local_head),
         )
         if reasons:
             for reason in reasons:

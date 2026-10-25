@@ -42,7 +42,7 @@ branch is incomplete.
 ## Stand-in approvals
 
 A stand-in is the `Stand-in oracle review: APPROVE <head SHA>` comment that the
-required `oracle-review` check accepts from an attester account. Post one only
+required `oracle-gate` check accepts from an attester account. Post one only
 when the owner names the PR and its head in the current request. Otherwise wait
 for the oracle verdict, re-run it when a reviewer errors, and report a stalled
 verdict to the owner.
@@ -56,11 +56,38 @@ Quote the owner's instruction in a separate comment posted before the stand-in,
 naming the PR, the head, and the oracle findings the stand-in covers. The merge
 digest links each stand-in to the nearest preceding `Owner instruction` comment.
 
-Posting a comment starts no new `oracle-review` workflow run, so after the
-stand-in lands — and likewise after resolving oracle review threads — rerun the
-`oracle-review` workflow runs for that head (a head normally has one run from
-the push event and one from the review-submitted event) and merge only after a
-rerun passes.
+A stand-in comment makes `oracle-gate` re-evaluate the head at once. Resolving
+an oracle review thread starts no workflow run, so after resolving threads run
+`gh workflow run oracle-gate.yml --ref develop -f pr=<number>` (or wait for the
+hourly sweep) and merge only after `oracle-gate` passes on the current head.
+
+## Stale failed check suites
+
+`gh pr checks --required` shows one result per check name, so a superseded
+failed run hides behind a newer success. GitHub's merge rollup still counts the
+failed suite, and the PR stays `BLOCKED` with every listed check green. This
+happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
+`pull_request_review` events), and to eight PRs on 2026-10-12.
+
+- Read per-suite state, never the deduplicated list: for each required check
+  name, `gh api "repos/<owner>/<repo>/commits/<sha>/check-runs?filter=latest&per_page=100" --paginate`
+  returns the latest run of every check suite, each with its `check_suite.id`
+  and the Actions run in `details_url`. The required names come from
+  `gh api repos/<owner>/<repo>/rules/branches/develop`.
+- `make pr-arm` refuses a PR whose required check has a failed suite behind a
+  newer success and prints the suite and run URL. `scripts/pr_landing.py`
+  live verification and `make pr-landing-remote-*` report the failed suite
+  instead of the newest result for that name. The green-but-unmerged sweep
+  lists these PRs in its digest and never counts them as green.
+- `make pr-rerun` re-runs the failed jobs of the newest CI run and of every
+  Actions run behind a failed required suite (a cancelled suite re-runs the
+  whole run). Pending suites are left alone. It refuses a conclusion it cannot
+  re-run, such as `startup_failure`.
+- Phantom rollup: if the rollup shows FAILURE with no failed suite in the
+  `filter=latest` listing (as on #2829), re-running changes nothing. Close and
+  reopen the PR to make GitHub recompute the rollup, then check the listing
+  again. Do this only for a PR you own the task for, and never to release a
+  hold.
 
 ## Bypassing a required check
 
@@ -77,3 +104,8 @@ PR in the current request. Then:
 
 Do not bypass a check for a problem another open PR already fixes; rebase onto
 the fix instead.
+
+When the failing check is itself broken by the contents of `develop`, so that
+no PR can pass it, follow `docs/agent/emergency-merge.md`. It gives agents
+evidence-and-stop steps only; it does not authorize a ruleset change or a raw
+merge.

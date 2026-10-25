@@ -39,7 +39,11 @@ from benchbox.core.results.query_normalizer import (
     format_query_id,
 )
 from benchbox.core.results.query_status import has_failed_query_validation
-from benchbox.core.results.subscale_policy import NONSTANDARD_COMPLIANCE_CLASS
+from benchbox.core.results.subscale_policy import (
+    NONSTANDARD_COMPLIANCE_CLASS,
+    platform_info_gateway,
+    routed_compliance_class,
+)
 
 if TYPE_CHECKING:
     pass
@@ -371,7 +375,10 @@ class ResultBuilder:
         avg_time = timing_stats.get("avg_s", 0.0)
         geometric_mean = timing_stats.get("geometric_mean_s", 0.0)
 
-        compliance_class = getattr(self._benchmark.compliance_class, "value", self._benchmark.compliance_class)
+        platform_info = self._build_platform_info_dict()
+        compliance_class = routed_compliance_class(
+            self._benchmark.compliance_class, platform_info_gateway(platform_info)
+        )
         if failed_queries or compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
             tpc_metrics = {
                 "power_at_size": None,
@@ -381,7 +388,7 @@ class ResultBuilder:
                 geometric_mean = 0.0
         else:
             tpc_metrics = self._calculate_tpc_metrics()
-        self._add_qphh_metrics(tpc_metrics, len(failed_queries))
+        self._add_qphh_metrics(tpc_metrics, len(failed_queries), compliance_class)
 
         execution_phases = self._build_execution_phases(
             exec_times_all,
@@ -392,7 +399,6 @@ class ResultBuilder:
 
         query_results_list = self._format_query_results()
 
-        platform_info = self._build_platform_info_dict()
         execution_environment = self._build_execution_environment_metadata()
         platform_environment = self._build_platform_environment_metadata(platform_info)
 
@@ -478,11 +484,7 @@ class ResultBuilder:
             plan_capture_errors=self._plan_capture_errors,
             cost_summary=self._cost_summary,
             _benchmark_id_override=self._benchmark.benchmark_id,
-            compliance_class=(
-                self._benchmark.compliance_class.value
-                if hasattr(self._benchmark.compliance_class, "value")
-                else self._benchmark.compliance_class
-            ),
+            compliance_class=compliance_class,
         )
 
     def _calculate_duration(self) -> float:
@@ -523,7 +525,7 @@ class ResultBuilder:
 
         return metrics
 
-    def _add_qphh_metrics(self, metrics: dict[str, Any], failed_query_count: int) -> None:
+    def _add_qphh_metrics(self, metrics: dict[str, Any], failed_query_count: int, compliance_class: str | None) -> None:
         if normalize_benchmark_id(self._benchmark.name) != "tpch":
             return
 
@@ -563,9 +565,6 @@ class ResultBuilder:
                 "refresh_stream": refresh_stream,
             }
 
-        compliance_class = self._benchmark.compliance_class
-        if hasattr(compliance_class, "value"):
-            compliance_class = compliance_class.value
         power_data = {
             "benchmark": {"id": "tpch", "compliance_class": compliance_class},
             "phases": {"power_test": power_data_phase} if power_data_phase else {},

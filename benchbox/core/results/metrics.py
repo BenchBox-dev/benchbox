@@ -4,6 +4,8 @@ import math
 import statistics
 from typing import TYPE_CHECKING
 
+from benchbox.core.results.subscale_policy import bundle_compliance_class
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -126,7 +128,7 @@ class TPCMetricsCalculator:
         tpc_metrics = summary.get("tpc_metrics") or {}
         if tpc_metrics.get("suppressed"):
             return f"{label} results have suppressed TPC metrics ({tpc_metrics.get('reason', 'suppressed')})"
-        compliance_class = (data.get("benchmark") or {}).get("compliance_class")
+        compliance_class = bundle_compliance_class(data)
         if compliance_class in UNOFFICIAL_COMPLIANCE_CLASSES:
             return f"{label} results are {compliance_class} and carry no official TPC metrics"
         failed = (summary.get("queries") or {}).get("failed") or 0
@@ -252,7 +254,7 @@ class TPCMetricsCalculator:
         reasons = []
         for label, data in (("Power", power_data), ("Throughput", throughput_data)):
             benchmark = data.get("benchmark") or {}
-            compliance_class = getattr(benchmark.get("compliance_class"), "value", benchmark.get("compliance_class"))
+            compliance_class = bundle_compliance_class(data)
             if compliance_class != "official":
                 reasons.append(f"{label} results are not official compliance ({compliance_class or 'unspecified'})")
             if benchmark.get("id") != "tpch":

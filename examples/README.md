@@ -191,11 +191,11 @@ The `tunings/` directory contains example tuning configurations for optimizing b
 
 For detailed explanations of concepts used in these examples, see:
 
-- [Getting Started Guide](../docs/usage/getting-started.md) - Installation and first steps
-- [Usage Examples Documentation](../docs/usage/examples.md) - Detailed patterns and workflows
-- [CLI Quick Start](../docs/usage/cli-quick-start.md) - Command-line interface reference
-- [Platform Selection Guide](../docs/platforms/platform-selection-guide.md) - Choosing the right platform
-- [Configuration Handbook](../docs/usage/configuration.md) - Advanced configuration options
+- [Getting Started Guide](https://benchbox.dev/docs/usage/getting-started.html) - Installation and first steps
+- [Usage Examples Documentation](https://benchbox.dev/docs/usage/examples.html) - Detailed patterns and workflows
+- [CLI Quick Start](https://benchbox.dev/docs/usage/cli-quick-start.html) - Command-line interface reference
+- [Platform Selection Guide](https://benchbox.dev/docs/platforms/platform-selection-guide.html) - Choosing the right platform
+- [Configuration Handbook](https://benchbox.dev/docs/usage/configuration.html) - Advanced configuration options
 
 ## Troubleshooting
 
@@ -218,11 +218,11 @@ export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
 **`Permission denied` or authentication errors**
 - Check credentials are valid and not expired
 - Verify environment variables are set correctly
-- See [Platform Selection Guide](../docs/platforms/platform-selection-guide.md) for platform-specific auth help
+- See [Platform Selection Guide](https://benchbox.dev/docs/platforms/platform-selection-guide.html) for platform-specific auth help
 
 ### Getting Help
 
-- [Troubleshooting Guide](../docs/usage/troubleshooting.md) - Common errors and solutions
+- [Troubleshooting Guide](https://benchbox.dev/docs/usage/troubleshooting.html) - Common errors and solutions
 - [GitHub Issues](https://github.com/joeharris76/benchbox/issues) - Report bugs or request features
 
 ## Contributing Examples

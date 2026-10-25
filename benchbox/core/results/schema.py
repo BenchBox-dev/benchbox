@@ -36,7 +36,12 @@ from benchbox.core.results.schema_policy import (
     supports_round_trip_timing_fields,
     supports_row_count_validation,
 )
-from benchbox.core.results.subscale_policy import NONSTANDARD_COMPLIANCE_CLASS, unofficial_metric_marker
+from benchbox.core.results.subscale_policy import (
+    NONSTANDARD_COMPLIANCE_CLASS,
+    platform_info_gateway,
+    result_compliance_class,
+    unofficial_metric_marker,
+)
 from benchbox.core.results.timing_fields import (
     bundle_timing_field_paths,
     net_estimate_problems,
@@ -485,7 +490,7 @@ def _build_benchmark_section(result: BenchmarkResults) -> dict[str, Any]:
         "scale_factor": result.scale_factor,
         "test_type": result.test_execution_type,
     }
-    compliance_class = getattr(result, "compliance_class", None)
+    compliance_class = result_compliance_class(result)
     if compliance_class is not None:
         section["compliance_class"] = compliance_class
     if getattr(result, "data_generation_version", None) is not None:
@@ -662,7 +667,7 @@ def _add_execution_variant_fields(platform: dict[str, Any], result: BenchmarkRes
     )
     if engine_block:
         platform["execution_engine"] = order_dict(engine_block, PLATFORM_EXECUTION_ENGINE_KEY_ORDER)
-    gateway_block = gateway_payload(_platform_info_entry(platform_info, "gateway"))
+    gateway_block = gateway_payload(platform_info_gateway(platform_info))
     if gateway_block:
         platform["gateway"] = order_dict(gateway_block, PLATFORM_GATEWAY_KEY_ORDER)
     for key, lead in (("compute", PLATFORM_COMPUTE_LEAD_KEYS), ("deployment", PLATFORM_DEPLOYMENT_LEAD_KEYS)):
@@ -1546,7 +1551,7 @@ def _compute_timing_stats(times_ms: list[float]) -> dict[str, Any]:
 
 
 def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
-    compliance_class = getattr(result, "compliance_class", None)
+    compliance_class = result_compliance_class(result)
     if compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
         metrics: dict[str, Any] = {"suppressed": True, "reason": f"compliance_class={compliance_class}"}
     else:

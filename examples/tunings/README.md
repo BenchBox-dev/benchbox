@@ -100,7 +100,7 @@ comparing baseline vs. tuned performance.
 `--tuning tuned` is the primary day-to-day UX: you don't reference a path,
 BenchBox finds the matching template for you. The full resolution order
 (covering every `--tuning` value, not just `tuned`) is documented in
-[docs/reference/cli/tuning.md](../../docs/reference/cli/tuning.md); the part
+<https://benchbox.dev/docs/reference/cli/tuning.html>; the part
 relevant to these templates is:
 
 1. `benchbox.yaml`'s `tuning.default_config_file` (overridable with the
@@ -227,7 +227,7 @@ Run the checked-template profile gate with:
 uv run -- python _project/scripts/tuning_profile_check.py --benchmarks tpch,tpcds --platforms databricks,duckdb --strict
 ```
 
-See `docs/usage/tpc-tuning-profiles.md` for the profile schema, current
+See <https://benchbox.dev/docs/usage/tpc-tuning-profiles.html> for the profile schema, current
 Databricks/DuckDB mapping matrix, result metadata fields, and comparison
 caveats. Do not treat a benchmark-specific tuned template and a
 basic-constraints fallback as equivalent tuned runs.
@@ -315,4 +315,4 @@ This is a custom TPC-H configuration with specific partitioning. The `sorting` e
 
 For the full `--tuning` precedence order and the `tuning` command group
 (`init`, `validate`, `defaults`, `list`, `show`, `platforms`), see
-[docs/reference/cli/tuning.md](../../docs/reference/cli/tuning.md).
+<https://benchbox.dev/docs/reference/cli/tuning.html>.

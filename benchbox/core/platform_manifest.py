@@ -3138,7 +3138,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "batch"
     ],
     "driver_package": "pyspark",
-    "notes": "Apache Gluten + Velox accelerates Spark SQL by offloading physical operators to a vectorized C++ engine. Requires the Gluten bundle jar on the execution host. Linux only for local mode; Docker is the primary path on macOS/Windows. See docs/platforms/velox.md and docker/velox/.",
+    "notes": "Apache Gluten + Velox accelerates Spark SQL by offloading physical operators to a vectorized C++ engine. Requires the Gluten bundle jar on the execution host. Linux only for local mode; Docker is the primary path on macOS/Windows. See https://benchbox.dev/docs/platforms/velox.html and docker/velox/.",
     "capabilities": {
       "supports_sql": true,
       "sql_dialect": "spark",

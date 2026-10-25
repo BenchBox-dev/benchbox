@@ -49,7 +49,7 @@ This document provides guidelines and instructions for contributing.
 
 `develop` is the long-lived development branch and the repository's default branch; **all changes land via PR**. `release` is release-only (handled by the version-branch flow — see `docs/internal/release-guide.md`). PRs target `develop` and squash-merge with linear history.
 
-Required CI on `develop` reports five unit results (`core`, `explorer`, `results-data`, `docs` and `tooling` from `.github/workflows/ci.yml`), plus `oracle-review`, which passes on a result-affecting PR only when the `benchbox-oracle` app's latest review of its current head reports success (or a listed attester has posted the stand-in approval for that head) and the oracle's threads are resolved. `.github/ci-units.yml` and `.github/path-filters.yml` classify each PR: content-only PRs run content validation and skip Python fast tests, while code, infra, workflow, tooling, and unknown paths run the lint/type + Ubuntu Python 3.14 fast-test checks. Python 3.12 runs the same fast suite after each merge to `develop` (`trunk.yml`) and nightly (`nightly.yml`). Soundness-path review applies even when the author uses the owner's account; once a finished branch is armed, auto-merge lands it when required checks are green and all review threads are resolved.
+Required CI on `develop` reports five unit results (`core`, `explorer`, `results-data`, `docs` and `tooling` from `.github/workflows/ci.yml`), plus `hold` and `oracle-gate`. `oracle-gate` is posted by the `benchbox-oracle` app from `develop` code and passes on a result-affecting PR only when the app's latest review of its current head reports success (or a listed attester has posted the stand-in approval for that head) and the oracle's threads are resolved. `.github/ci-units.yml` and `.github/path-filters.yml` classify each PR: content-only PRs run content validation and skip Python fast tests, while code, infra, workflow, tooling, and unknown paths run the lint/type + Ubuntu Python 3.14 fast-test checks. Python 3.12 runs the same fast suite after each merge to `develop` (`trunk.yml`) and nightly (`nightly.yml`). Soundness-path review applies even when the author uses the owner's account; once a finished branch is armed, auto-merge lands it when required checks are green and all review threads are resolved.
 
 ## Development Workflow
 
@@ -241,7 +241,7 @@ BenchBox uses a family-based architecture for DataFrame platforms. To add a new 
 4. **Register the platform**: Add to `DATAFRAME_ADAPTERS` registry
 5. **Add tests**: Unit tests and integration tests
 
-See [Adding a DataFrame Platform](docs/development/adding-dataframe-platform.md) for detailed instructions.
+See [Adding a DataFrame Platform](https://benchbox.dev/docs/development/adding-dataframe-platform.html) for detailed instructions.
 
 ### DataFrame Query Guidelines
 

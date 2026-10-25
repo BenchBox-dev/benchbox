@@ -94,7 +94,7 @@ benchbox compare results_polars.json results_pandas.json
 
 ## Related Documentation
 
-- [DataFrame Platforms Overview](../../docs/platforms/dataframe.md)
-- [Pandas DataFrame Platform](../../docs/platforms/pandas-dataframe.md)
-- [TPC-H Guide](../../docs/guides/tpc/tpc-h-official-guide.md)
-- [TPC-DS Guide](../../docs/guides/tpc/tpc-ds-official-guide.md)
+- [DataFrame Platforms Overview](https://benchbox.dev/docs/platforms/dataframe.html)
+- [Pandas DataFrame Platform](https://benchbox.dev/docs/platforms/pandas-dataframe.html)
+- [TPC-H Guide](https://benchbox.dev/docs/guides/tpc/tpc-h-official-guide.html)
+- [TPC-DS Guide](https://benchbox.dev/docs/guides/tpc/tpc-ds-official-guide.html)

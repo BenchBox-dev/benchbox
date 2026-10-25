@@ -7,7 +7,7 @@ from typing import Any
 from . import absence, credentials, dedup, protocol, selection
 from .retry import ALL_ABSENT, FAILURE, INTEGRITY, MARKER_LIMIT, OVERSIZE, PENDING, SUCCESS, UNREPORTED
 from .selection import Attempt, Step
-from .verdict import Finding, Placement, Verdict, comment_span, place
+from .verdict import Finding, Placement, Verdict, comment_span, display_path, place
 
 DESCRIPTION_LIMIT = 140
 OVERSIZE_DESCRIPTION = "pending: too large for the oracle; split the pull request or ask the owner for a stand-in"
@@ -45,12 +45,12 @@ def _finding_line(finding: Finding, defect_id: str | None = None) -> str:
     detail = f"\n  {finding.detail}" if finding.detail else ""
     span = f"{finding.line}-{finding.end_line}" if finding.end_line else str(finding.line)
     named = f"{defect_id}: " if defect_id else ""
-    return f"- **{finding.severity}** `{finding.file}:{span}`: {named}{finding.title}{detail}"
+    return f"- **{finding.severity}** `{display_path(finding.file)}:{span}`: {named}{finding.title}{detail}"
 
 
 def _entry_line(entry: Mapping[str, Any]) -> str:
     span = f"{entry['line']}-{entry['end_line']}" if entry.get("end_line") else str(entry["line"])
-    return f"- **{entry['severity']}** `{entry['file']}:{span}`: {entry['id']}: {entry['title']}"
+    return f"- **{entry['severity']}** `{display_path(entry['file'])}:{span}`: {entry['id']}: {entry['title']}"
 
 
 def _record(
@@ -272,6 +272,8 @@ def finalize(
         lines += [judgement.summary, ""]
     if judgement is not None and judgement.decision == protocol.DO_NOT_SHIP:
         lines += ["No defects are listed for this decision. Rework the change and push a new head.", ""]
+    if judgement is not None and judgement.merged:
+        lines += [f"{judgement.merged} identical finding(s) were reported more than once and are listed once.", ""]
     if judgement is not None and judgement.fixed:
         lines += [f"Verified fixed: {', '.join(judgement.fixed)}. Resolve their review threads.", ""]
     if judgement is not None and judgement.withdrawn:
@@ -288,7 +290,7 @@ def finalize(
     lines += _section(
         "Defects already open as review threads, not posted again",
         [
-            f"- **{finding.severity}** `{finding.file}`: {ids.get(finding, '')}{': ' if finding in ids else ''}{finding.title}"
+            f"- **{finding.severity}** `{display_path(finding.file)}`: {ids.get(finding, '')}{': ' if finding in ids else ''}{finding.title}"
             for finding in repeated
         ],
     )
@@ -331,7 +333,7 @@ def carried(plan: Mapping[str, Any]) -> Final:
         f"The patch is unchanged since head `{reviewed_head}` was reviewed, so its decision is carried to this head"
         " without running a reviewer. Its open review threads still apply.",
         "",
-        *_section("Still open", [_entry_line(entry) for entry in previous["open_defects"]]),
+        *_section("Still open", [_entry_line(entry) for entry in protocol.unique_defects(previous["open_defects"])]),
         *_strike_line(plan, int(previous["strikes_after"])),
     ]
     body = (
@@ -342,7 +344,7 @@ def carried(plan: Mapping[str, Any]) -> Final:
             kind=protocol.CARRY,
             decision=decision,
             reviewer=previous["reviewer"],
-            open_defects=list(previous["open_defects"]),
+            open_defects=protocol.unique_defects(previous["open_defects"]),
             next_id=int(previous["next_id"]),
             strikes_after=int(previous["strikes_after"]),
             summary=previous["summary"],

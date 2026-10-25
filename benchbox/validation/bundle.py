@@ -1117,11 +1117,15 @@ def _validate_compliance_section(
     benchmark: Any,
     vr: ValidationResult,
     *,
+    platform: Any = None,
     allow_partial_validation: bool = False,
 ) -> None:
     if not isinstance(benchmark, dict):
         return
     compliance = benchmark.get("compliance_class")
+    gateway = platform.get("gateway") if isinstance(platform, dict) else None
+    if isinstance(gateway, dict) and gateway.get("name") and gateway.get("routed") is True:
+        compliance = "unofficial_nonstandard"
     if compliance is None:
         return
     if compliance != "official":
@@ -2113,6 +2117,7 @@ def _validate_bundle(
     _validate_compliance_section(
         data.get("benchmark", {}),
         vr,
+        platform=data.get("platform", {}),
         allow_partial_validation=allow_partial_validation,
     )
     _validate_platform_section(data.get("platform", {}), vr)

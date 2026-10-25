@@ -111,9 +111,15 @@ def test_saved_redshift_password_is_redacted_from_every_preview_file(tmp_path: P
     assert _platform_config(files)["password"] == REDACTED_VALUE
 
 
-def test_gateway_host_userinfo_is_scrubbed_from_every_preview_file(tmp_path: Path) -> None:
+def test_gateway_host_userinfo_is_rejected_before_any_preview_file_is_written(tmp_path: Path) -> None:
     _save_credentials(snowflake={"account": "acct", "username": "u", "password": "p", "warehouse": "COMPUTE_WH"})
+    preview_dir = tmp_path / "preview"
+    args = ["--platform", "snowflake", "--benchmark", "tpch", "--scale", "0.01", "--non-interactive"]
+    args += ["--platform-option", "gateway_host=https://gwuser:gateway-pw-9e61aa@gw.example.com"]
 
-    files = _preview_files(tmp_path, "snowflake", "gateway_host=https://gwuser:gateway-pw-9e61aa@gw.example.com")
+    result = CliRunner().invoke(run, [*args, "--dry-run", str(preview_dir)], obj={"config": ConfigManager()})
 
-    _assert_redacted(files, "gateway-pw-9e61aa", "gw.example.com")
+    assert result.exit_code == 1
+    assert "gateway_host must be a bare host name" in result.output
+    assert "gateway-pw-9e61aa" not in result.output
+    assert not preview_dir.exists() or not any(preview_dir.rglob("*"))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
     )
 
 from ..core.exceptions import ConfigurationError
+from ..core.gateway import GatewayEndpoint, resolve_gateway_endpoint
 from ..utils.cloud_storage import get_cloud_path_info, snowflake_stage_mode_error
 from ..utils.dependencies import check_platform_dependencies, get_dependency_error_message
 from ..utils.sql_identifier import is_valid_sql_identifier
@@ -45,6 +47,7 @@ def _compact_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 class SnowflakeAdapter(PlatformAdapter):
+    gateway_endpoint: GatewayEndpoint | None = None
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
 
@@ -130,6 +133,29 @@ class SnowflakeAdapter(PlatformAdapter):
                 "Configure with one of:\n"
                 "  1. CLI: benchbox setup --platform snowflake\n"
                 "  2. Environment variables: SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD, etc."
+            )
+
+        self.gateway_endpoint = resolve_gateway_endpoint(
+            "snowflake",
+            config.get("gateway"),
+            host=config.get("gateway_host"),
+            port=config.get("gateway_port"),
+            protocol=config.get("gateway_protocol"),
+            ca_bundle=config.get("gateway_ca_bundle"),
+            ocsp_fail_open=config.get("gateway_ocsp_fail_open"),
+            allow_insecure=bool(config.get("allow_insecure_gateway")),
+        )
+        self._require_environment_ca_bundle()
+
+    def _require_environment_ca_bundle(self) -> None:
+        endpoint = self.gateway_endpoint
+        if endpoint is None or endpoint.ca_bundle is None:
+            return
+        active = os.environ.get("REQUESTS_CA_BUNDLE")
+        if not active or Path(active).expanduser().resolve() != Path(endpoint.ca_bundle).resolve():
+            raise ConfigurationError(
+                "gateway_ca_bundle is only honoured by the Snowflake connector through the process environment: "
+                f"set REQUESTS_CA_BUNDLE to the same file before starting BenchBox ({endpoint.ca_bundle})"
             )
 
     @property
@@ -220,6 +246,13 @@ class SnowflakeAdapter(PlatformAdapter):
                 "strict_validation",
                 "suppress_nondeterministic_errors",
                 "modify_warehouse_settings",
+                "gateway",
+                "gateway_host",
+                "gateway_port",
+                "gateway_protocol",
+                "gateway_ca_bundle",
+                "gateway_ocsp_fail_open",
+                "allow_insecure_gateway",
                 "force_recreate",
             ],
         )
@@ -249,6 +282,8 @@ class SnowflakeAdapter(PlatformAdapter):
                 "staging_root": self.staging_root,
             },
         }
+        if self.gateway_endpoint is not None:
+            platform_info["gateway"] = {"name": self.gateway_endpoint.name, "routed": True}
 
         try:
             import snowflake.connector
@@ -497,6 +532,16 @@ class SnowflakeAdapter(PlatformAdapter):
         if include_database:
             conn_params["database"] = connection_config.get("database", self.database)
             conn_params["schema"] = connection_config.get("schema", self.schema)
+        endpoint = self.gateway_endpoint
+        if endpoint is not None:
+            conn_params["host"] = endpoint.host
+            conn_params["protocol"] = endpoint.protocol
+            if endpoint.port is not None:
+                conn_params["port"] = endpoint.port
+            if endpoint.ocsp_fail_open is not None:
+                conn_params["ocsp_fail_open"] = endpoint.ocsp_fail_open
+            if endpoint.insecure:
+                conn_params["insecure_mode"] = True
         return conn_params
 
     def _create_admin_connection(self, **connection_config) -> Any:

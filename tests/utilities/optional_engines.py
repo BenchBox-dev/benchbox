@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import gc
 import os
 import sys
+import tempfile
 from functools import lru_cache
 from types import ModuleType
 
@@ -64,6 +66,22 @@ def require_chdb() -> ModuleType:
     if reason is not None:
         pytest.skip(reason, allow_module_level=True)
     return import_chdb()
+
+
+def chdb_open_connection_error() -> str | None:
+    session_module = sys.modules.get("chdb.session")
+    if getattr(session_module, "__file__", None) is None:
+        return None
+
+    gc.collect()
+    with tempfile.TemporaryDirectory(suffix=".db.chdb") as probe_path:
+        try:
+            session_module.Session(path=probe_path).close()
+        except RuntimeError as exc:
+            if "EmbeddedServer already initialized" not in str(exc):
+                raise
+            return _first_line(exc)
+    return None
 
 
 @lru_cache(maxsize=1)

@@ -19,6 +19,7 @@ GRACE = timedelta(minutes=30)
 RED_CONCLUSIONS = frozenset({"failure", "timed_out", "startup_failure"})
 RUN_FIELDS = "conclusion,status,createdAt,updatedAt,databaseId,url,headSha"
 RUN_WINDOW = 30
+RUN_WINDOWS = (RUN_WINDOW, 100, 300, 1000)
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
@@ -48,10 +49,10 @@ def _parse_time(value: str) -> datetime:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
-def trunk_runs(run: Runner = live_run, repo: str = REPOSITORY) -> list[dict]:
+def trunk_runs(run: Runner = live_run, repo: str = REPOSITORY, limit: int = RUN_WINDOW) -> list[dict]:
     code, out = run(
         ["gh", "run", "list", "--repo", repo, "--workflow", TRUNK_WORKFLOW, "--branch", BASE_BRANCH]
-        + ["--limit", str(RUN_WINDOW), "--json", RUN_FIELDS]
+        + ["--limit", str(limit), "--json", RUN_FIELDS]
     )
     if code != 0:
         raise TrunkError(f"gh run list failed: {out.strip()}")
@@ -96,15 +97,23 @@ def trunk_gate(
     )
 
 
-def red_trunk_run(run: Runner, repo: str) -> dict | None:
-    for item in trunk_runs(run, repo):
-        if item.get("status") != "completed":
-            continue
-        if item.get("conclusion") in RED_CONCLUSIONS:
-            return item
-        if item.get("conclusion") == "success":
-            return None
-    return None
+def red_streak_start(run: Runner, repo: str) -> dict | None:
+    for limit in RUN_WINDOWS:
+        runs = trunk_runs(run, repo, limit)
+        start = None
+        for item in runs:
+            if item.get("status") != "completed":
+                continue
+            if item.get("conclusion") in RED_CONCLUSIONS:
+                start = item
+            elif item.get("conclusion") == "success":
+                return start
+        if len(runs) < limit:
+            return start
+    raise TrunkError(
+        f"the red {TRUNK_WORKFLOW} streak on {BASE_BRANCH} reaches back past the newest {RUN_WINDOWS[-1]} runs, "
+        "so its first failing run cannot be established; refusing"
+    )
 
 
 def culprit_pr(run: Runner, repo: str, sha: str) -> int | None:
@@ -150,7 +159,7 @@ def pr_head(ref: str, run: Runner, repo: str) -> tuple[str, list[str]]:
 def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
     branch, messages = pr_head(ref, run, repo)
     try:
-        failed = red_trunk_run(run, repo)
+        failed = red_streak_start(run, repo)
     except NoTrunkRunsError:
         return None
     if failed is None:
@@ -164,7 +173,7 @@ def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | 
     named = f"PR #{culprit}" if culprit else f"commit {sha[:9] or 'unknown'}"
     revert_hint = f"make trunk-revert PR={culprit}" if culprit else "make trunk-revert PR=<number>"
     return (
-        f"{BASE_BRANCH} is red: the newest completed {TRUNK_WORKFLOW} run failed at {named} ({failed['url']}). "
+        f"{BASE_BRANCH} is red: the first failing {TRUNK_WORKFLOW} run since the last green one failed at {named} ({failed['url']}). "
         f"Merge a revert ({revert_hint}) or get {BASE_BRANCH} green before arming other PRs; "
         f"only a {REVERT_PREFIX}* branch whose commits carry `This reverts commit {sha[:9] or '<sha>'}...` is exempt."
     )
