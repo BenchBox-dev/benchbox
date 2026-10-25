@@ -21,6 +21,7 @@ APP_SECRETS = {"ORACLE_APP_ID", "ORACLE_APP_PRIVATE_KEY"}
 SHA_PIN = re.compile(r"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$")
 SECRET_REF = re.compile(r"secrets\.([A-Z0-9_]+)")
 OMP_SHA = re.compile(r"^[0-9a-f]{64}$")
+DISPATCH_STEP = "Dispatch the gate for the reviewed head"
 
 
 def _load() -> dict[str, Any]:
@@ -296,9 +297,10 @@ def test_post_job_mints_the_app_token_and_tolerates_missing_secrets() -> None:
     assert absent["if"] == "env.HAS_APP != 'true'"
     for step in post["steps"]:
         if "GH_TOKEN" in step.get("env", {}):
-            if step["name"] == "Rerun the failed synchronize suite for this head":
+            if step["name"] == DISPATCH_STEP:
                 assert step["env"]["GH_TOKEN"] == "${{ github.token }}"
-                assert step["if"] == "env.HAS_APP == 'true'"
+                assert step["env"]["READ_TOKEN"] == "${{ steps.app.outputs.token }}"
+                assert step["if"].startswith("env.HAS_APP == 'true'")
             else:
                 assert step["env"]["GH_TOKEN"] == "${{ steps.app.outputs.token }}"
                 assert step["if"].startswith("env.HAS_APP == 'true'")
@@ -351,8 +353,42 @@ def test_no_step_lists_or_reruns_oracle_review_runs() -> None:
         assert "Rerun the failed synchronize suite for this head" not in [step.get("name") for step in job["steps"]]
 
 
-def test_post_job_has_no_actions_write_permission() -> None:
-    assert _jobs()["post"]["permissions"] == {"contents": "read"}
+def test_only_sweep_and_post_hold_actions_write() -> None:
+    assert _jobs()["post"]["permissions"] == {"actions": "write", "contents": "read"}
+    holders = {name for name, job in _jobs().items() if job.get("permissions", {}).get("actions") == "write"}
+    assert holders == {"sweep", "post"}
+
+
+def test_post_dispatches_the_gate_last_and_only_after_the_review_is_posted() -> None:
+    steps = _jobs()["post"]["steps"]
+    names = [step["name"] for step in steps]
+    assert names[-1] == DISPATCH_STEP
+    assert names.index(DISPATCH_STEP) > names.index("Post the findings review")
+    assert names.index(DISPATCH_STEP) > names.index("Post the commit status")
+    assert names.index(DISPATCH_STEP) > names.index("Post the findings comment")
+    step = steps[-1]
+    assert step["if"] == "env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'"
+
+
+def test_post_dispatch_targets_develop_with_the_reviewed_head() -> None:
+    run = _run(_jobs()["post"], DISPATCH_STEP)
+    assert 'gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .base.ref' in run
+    assert 'if [ "$base" = develop ]; then' in run
+    assert (
+        'gh workflow run oracle-gate.yml --repo "$REPO" --ref develop -f pr="$PR_NUMBER" -f head_sha="$HEAD_SHA"' in run
+    )
+    assert run.index("if [") < run.index("gh workflow run")
+    assert "statuses/" not in run
+
+
+def test_only_the_post_job_dispatches_the_gate() -> None:
+    dispatchers = [
+        (name, step["name"])
+        for name, job in _jobs().items()
+        for step in job["steps"]
+        if "gh workflow run oracle-gate.yml" in step.get("run", "")
+    ]
+    assert dispatchers == [("post", DISPATCH_STEP)]
 
 
 def test_post_waits_for_every_slot() -> None:
