@@ -6,7 +6,7 @@
     "GUARDRAIL: No pass/fail behavior change; the junit file covers only the fast-tier pytest invocation; artifact retention 14 days",
     "VERIFY: The fast job (PR and Trunk) records a runner-speed calibration (fixed deterministic CPU workload, a few seconds at most, timed with benchbox.utils.clock) and pytest collection time alongside the junit artifact; values from 3 runs recorded"
   ],
-  "context": "Source: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
+  "context": "AMENDED 2026-10-25 after review of the chDB guard fix: hosted-runner speed varies about 1.7x (pre-incident fast-tier pytest totals 328-552 s on unchanged code: runs 40143597290, 40143651006, 40139142059, 40142795657, 40145835140), so raw summed test time is NOT a stable metric and a fixed +15% gate would fail on slow runners. The comparison must normalize for runner speed: record a runner-speed factor per run from a fixed deterministic CPU calibration measured at job start (and report pytest collection time as a cross-check), compare speed-normalized summed time, and also report the median per-test ratio versus baseline (which isolates overhead that hits only some tests, such as module-teardown cost).\n\nSource: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
   "description": "Create the measurement the duration gate needs. Add --junitxml with junit_duration_report=total set explicitly (so setup and teardown, including module-scoped fixture teardown, are counted) to the fast pytest invocation in ci.yml (around line 953) and the Trunk fast job (trunk.yml around line 46), and upload each as an artifact. Only the fast-tier pytest step: not the 'Run medium tests for changed paths' step in the same job. Prior art: medium shards already write junit (ci.yml around 1153); tests/duration_policy.py collect_junit_durations parses junit.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "39142e7ea8da4e5791311adbbd94dcd5",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T17:31:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "edcb66b8f98a44ef90e892eb5938063a",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
