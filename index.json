@@ -5987,7 +5987,8 @@
         "coverage-map-missing-comment-policy-ids-20261023",
         "trunk-coverage-scheduled-not-per-push-20261024",
         "trunk-red-stops-further-merges",
-        "trunk-dist-artifact-producer-check-flake-20261022"
+        "trunk-dist-artifact-producer-check-flake-20261022",
+        "pr-selection-misses-behind-trunk-reds-20261025"
       ],
       "priority": "high",
       "status": "open",
