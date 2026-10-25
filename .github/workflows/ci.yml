@@ -955,6 +955,7 @@ jobs:
           BENCHBOX_XDIST_TRACE_DIR: xdist-failure-trace
           COVERAGE_CORE: sysmon
         run: |
+          mkdir -p fast-junit
           (
             min_kb=
             while :; do
@@ -968,7 +969,7 @@ jobs:
           ) &
           sampler=$!
           status=0
-          uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" -n auto --tb=short --timeout=120 --durations=25 -p pytest_cov --cov=benchbox --cov-report=xml --cov-report=term-missing --cov-fail-under=70 || status=$?
+          uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" -n auto --tb=short --timeout=120 --durations=25 -o junit_duration_report=total --junitxml=fast-junit/junit.xml -p scripts.fast_tier_calibration --collection-timing fast-junit/collection.jsonl -p pytest_cov --cov=benchbox --cov-report=xml --cov-report=term-missing --cov-fail-under=70 || status=$?
           kill "$sampler" 2>/dev/null || true
           total_mib=$(awk '/^MemTotal:/ { print int($2 / 1024) }' /proc/meminfo)
           if [ -s "$RUNNER_TEMP/mem-available-min-kb" ]; then
@@ -976,6 +977,37 @@ jobs:
             echo "Lowest available memory during the fast tests: ${min_mib} MiB of ${total_mib} MiB" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
           exit "$status"
+
+      - name: Check fast-tier junit parses
+        if: always()
+        continue-on-error: true
+        run: |
+          uv run -- python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          from pathlib import Path
+
+          from tests.duration_policy import collect_junit_durations
+
+          durations = collect_junit_durations([Path("fast-junit/junit.xml")])
+          print(f"Fast-tier junit parsed: {len(durations)} tests")
+          PY
+
+      - name: Record fast-tier runner calibration
+        if: always()
+        continue-on-error: true
+        run: |
+          uv run -- python -m scripts.fast_tier_calibration \
+            --collection-file fast-junit/collection.jsonl \
+            --output fast-junit/calibration.json | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload fast-tier junit
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: fast-junit-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: fast-junit/
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: true
 
       - name: Download coverage selection
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
