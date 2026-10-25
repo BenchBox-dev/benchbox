@@ -15952,6 +15952,13 @@
       "status": "open",
       "title": "Make oracle-gate post failure when evaluation errors, and sweep every open develop pull request"
     },
+    "oracle-gate-policy-change-refresh-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run the oracle-gate sweep when develop changes the oracle review policy or gate code"
+    },
     "oracle-gate-run-name-says-sweep-for-single-pr-20261023": {
       "claim": null,
       "needs": [],
