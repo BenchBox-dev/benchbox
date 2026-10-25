@@ -23647,7 +23647,7 @@
       "needs": [],
       "priority": "high",
       "status": "open",
-      "title": "SQL execution gate and OBT equivalence pass vacuously when the reference result is empty"
+      "title": "SQL execution gate and OBT equivalence accept vacuous results (empty or all-zero/NULL aggregate rows) as proof of correct translation"
     },
     "sql-query-generation-consistency-tpc-h-tpc-ds": {
       "claim": null,
