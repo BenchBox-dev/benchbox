@@ -672,7 +672,7 @@ class TestAthenaAdapterInit:
                 )
                 assert adapter.s3_bucket == "my-bucket"
                 assert adapter.s3_prefix == "staging"
-                assert adapter._dialect == "trino"
+                assert adapter._dialect == "athena"
 
     def test_init_with_bucket(self):
         from benchbox.platforms.athena import AthenaAdapter

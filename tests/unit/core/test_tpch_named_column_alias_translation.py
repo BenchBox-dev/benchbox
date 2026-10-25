@@ -8,7 +8,7 @@ from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-AFFECTED_DIALECTS = ["bigquery", "doris", "mysql", "sqlite"]
+AFFECTED_DIALECTS = ["bigquery", "doris", "mysql", "singlestore", "sqlite"]
 
 
 def _alias_column_lists(sql: str, dialect: str) -> list[str]:
