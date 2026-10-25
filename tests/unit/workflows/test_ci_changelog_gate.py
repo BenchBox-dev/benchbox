@@ -36,11 +36,11 @@ def test_title_reaches_the_script_through_the_environment_only() -> None:
     assert '--title "$PR_TITLE"' in step["run"]
 
 
-def test_release_identity_exemption_is_wired_from_the_select_step() -> None:
+def test_release_identity_is_derived_from_the_base_commit_not_from_pull_request_code() -> None:
     step = _step()
-    assert step["env"]["RELEASE_IDENTITY_CHANGED"] == "${{ steps.release.outputs.release-identity-changed }}"
-    assert "--release-identity-changed" in step["run"]
-    assert any(s.get("id") == "release" for s in _steps())
+    assert '--release-base-sha "$EVENT_BASE_SHA"' in step["run"]
+    assert "RELEASE_IDENTITY_CHANGED" not in step["env"]
+    assert "release_flow.py" not in step["run"]
 
 
 def test_changelog_step_guards_unreleased_and_diffs_against_the_merge_base() -> None:
@@ -57,6 +57,7 @@ def test_changelog_gate_runs_the_base_commit_copy_of_its_own_code() -> None:
     assert 'git show "$EVENT_BASE_SHA:_project/scripts/soundness_paths.py"' in run
     assert '"$trusted/scripts/changelog_fragments.py"' in run
     assert "python scripts/changelog_fragments.py" not in run
+    assert "cp scripts/changelog_fragments.py" not in run
 
 
 def test_changelog_step_is_not_conditional() -> None:
@@ -88,3 +89,5 @@ def test_title_edit_lane_also_runs_the_base_commit_copy_of_the_gate() -> None:
     step = next(s for s in steps if s.get("name") == "Re-check the changelog entry against the edited title")
     assert 'git show "$EVENT_BASE_SHA:scripts/changelog_fragments.py"' in step["run"]
     assert "python scripts/changelog_fragments.py" not in step["run"]
+    assert "release_flow.py" not in step["run"]
+    assert '--release-base-sha "$EVENT_BASE_SHA"' in step["run"]

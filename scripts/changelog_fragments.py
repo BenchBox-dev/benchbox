@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+import tomllib
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -297,6 +298,23 @@ def pr_number_for(repo: Path, path: str, ref: str = "HEAD") -> int | None:
     return int(match.group(1)) if match else None
 
 
+def project_version_changed(repo: Path, base_sha: str) -> bool:
+    if re.fullmatch(r"[0-9a-f]{40}", base_sha) is None:
+        raise ValueError("the release base must be a full commit SHA")
+    shown = subprocess.run(
+        ["git", "--no-replace-objects", "show", f"{base_sha}:pyproject.toml"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if shown.returncode != 0:
+        raise ValueError(f"cannot read pyproject.toml at {base_sha}")
+    before = tomllib.loads(shown.stdout)["project"]["version"]
+    after = tomllib.loads((repo / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    return before != after
+
+
 def normalize_path(path: str) -> str:
     return path.strip().replace("\\", "/")
 
@@ -522,10 +540,13 @@ def evaluate_required(args: argparse.Namespace) -> int:
             added = []
             for source in args.added_files_from:
                 added.extend(_read_lines(source))
+        identity_changed = bool(args.release_base_sha) and project_version_changed(
+            Path(args.root), args.release_base_sha
+        )
     except ImportError as exc:
         print(f"error: path manifest parser unavailable: {exc}", file=sys.stderr)
         return EXIT_USAGE
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, KeyError, tomllib.TOMLDecodeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_USAGE
     root = Path(args.root)
@@ -543,7 +564,7 @@ def evaluate_required(args: argparse.Namespace) -> int:
         args.title,
         changed,
         rules,
-        release_identity_changed=args.release_identity_changed,
+        release_identity_changed=identity_changed,
         user_entry_fragments=user_entries,
         added_paths=added,
     )
@@ -570,7 +591,11 @@ def _add_required_arguments(parser: argparse.ArgumentParser, title_required: boo
     parser.add_argument("--changed-files-from", action="append", default=[], metavar="FILE", help="'-' for stdin.")
     parser.add_argument("--added-files-from", action="append", default=[], metavar="FILE")
     parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
-    parser.add_argument("--release-identity-changed", action="store_true")
+    parser.add_argument(
+        "--release-base-sha",
+        default=None,
+        help="Base commit; a changed project version there marks a release preparation pull request.",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

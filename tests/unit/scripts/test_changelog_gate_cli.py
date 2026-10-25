@@ -79,10 +79,44 @@ def test_internal_titles_touching_shipped_paths_need_no_fragment(tmp_path: Path,
     assert _check(tmp_path, title, [SHIPPED]).returncode == 0
 
 
-def test_release_identity_change_exempts_a_preparation_pull_request(tmp_path: Path) -> None:
-    assert _check(tmp_path, "feat: release 1.2.3", [SHIPPED, "pyproject.toml"]).returncode == 1
-    exempt = _check(tmp_path, "feat: release 1.2.3", [SHIPPED, "pyproject.toml"], "--release-identity-changed")
+def _repo_with_version(tmp_path: Path, before: str, after: str) -> str:
+    def git(*args: str) -> str:
+        done = subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", *args],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return done.stdout.strip()
+
+    git("init", "-q")
+    (tmp_path / "pyproject.toml").write_text(f'[project]\nname = "x"\nversion = "{before}"\n', encoding="utf-8")
+    git("add", "pyproject.toml")
+    git("commit", "-q", "-m", "base")
+    base = git("rev-parse", "HEAD")
+    (tmp_path / "pyproject.toml").write_text(f'[project]\nname = "x"\nversion = "{after}"\n', encoding="utf-8")
+    return base
+
+
+def test_a_project_version_change_since_the_base_exempts_a_preparation_pull_request(tmp_path: Path) -> None:
+    base = _repo_with_version(tmp_path, "1.2.2", "1.2.3")
+    changed = [SHIPPED, "pyproject.toml"]
+    assert _check(tmp_path, "feat: release 1.2.3", changed).returncode == 1
+    exempt = _check(tmp_path, "feat: release 1.2.3", changed, "--release-base-sha", base)
     assert exempt.returncode == 0
+
+
+def test_an_unchanged_project_version_gives_no_exemption(tmp_path: Path) -> None:
+    base = _repo_with_version(tmp_path, "1.2.3", "1.2.3")
+    assert _check(tmp_path, "feat: x y", [SHIPPED], "--release-base-sha", base).returncode == 1
+
+
+def test_a_release_base_that_is_not_a_full_sha_is_a_usage_error(tmp_path: Path) -> None:
+    _repo_with_version(tmp_path, "1.2.2", "1.2.3")
+    result = _check(tmp_path, "feat: x y", [SHIPPED], "--release-base-sha", "HEAD")
+    assert result.returncode == 2
+    assert "full commit SHA" in result.stderr
 
 
 @pytest.mark.parametrize("fragment", ["changelog.d/feat-thing.json"])
