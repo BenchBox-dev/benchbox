@@ -10,7 +10,7 @@ from benchbox.core.run_service import (
     validate_stream_count,
     validate_tpc_scale_factor,
 )
-from benchbox.core.tpc_disclaimer import derived_results_disclaimer
+from benchbox.core.tpc_disclaimer import official_mode_disclaimer
 
 
 @click.command("run-official", hidden=True, deprecated=True)
@@ -26,7 +26,7 @@ from benchbox.core.tpc_disclaimer import derived_results_disclaimer
     multiple=True,
     help="Platform option in KEY=VALUE form (repeatable).",
 )
-@click.option("--seed", type=int, help="Random seed for reproducible official runs")
+@click.option("--seed", type=int, help="Random seed for reproducible official-mode runs")
 @click.option("--output", "output_dir", type=click.Path(), help="Output directory")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option("-q", "--quiet", is_flag=True, help="Emit the exported result path on the final non-empty stdout line")
@@ -54,7 +54,7 @@ def run_official(
         sys.exit(1)
 
     if seed is None and not quiet:
-        console.print("[yellow]Warning: No seed specified. Official TPC runs require a random seed.[/yellow]")
+        console.print("[yellow]Warning: No seed specified. TPC official mode requires a random seed.[/yellow]")
         console.print("Use --seed <N> for reproducible results")
 
     try:
@@ -65,7 +65,7 @@ def run_official(
 
     if not quiet:
         console.print("[bold blue]TPC Official Mode Benchmark Run[/bold blue]")
-        console.print(f"[dim]{derived_results_disclaimer('TPC-DS' if benchmark.lower() == 'tpcds' else 'TPC-H')}[/dim]")
+        console.print(f"[dim]{official_mode_disclaimer(benchmark)}[/dim]")
         for label, value in [
             ("Benchmark", f"TPC-{benchmark.upper()}"),
             ("Platform", platform),

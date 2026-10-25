@@ -96,7 +96,7 @@ from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.provenance import FUNDING_SOURCES, RESULT_SOURCES
 from benchbox.core.results.status import result_cli_failure_reason, result_non_clean_reason
 from benchbox.core.schemas import ExecutionContext
-from benchbox.core.tpc_disclaimer import derived_results_disclaimer
+from benchbox.core.tpc_disclaimer import official_mode_disclaimer
 from benchbox.core.tuning import modes as tuning_modes
 from benchbox.utils.cloud_storage import is_cloud_path
 from benchbox.utils.compression import CompressionManager
@@ -600,11 +600,11 @@ def _validate_initial_flags(s: types.SimpleNamespace) -> None:
 
         if s.seed is None:
             console.print(
-                "[yellow]⚠️  Warning: No --seed specified. Official TPC runs require a random seed for reproducibility.[/yellow]"
+                "[yellow]⚠️  Warning: No --seed specified. TPC official mode requires a random seed for reproducibility.[/yellow]"
             )
 
         console.print("[bold blue]TPC Official Mode Benchmark Run[/bold blue]")
-        console.print(f"[dim]{derived_results_disclaimer('TPC-DS' if benchmark == 'tpcds' else 'TPC-H')}[/dim]")
+        console.print(f"[dim]{official_mode_disclaimer(benchmark)}[/dim]")
         console.print(f"Scale Factor: {s.scale} (TPC-allowed)")
         if s.seed is not None:
             console.print(f"Seed: {s.seed}")
@@ -2104,7 +2104,7 @@ def _interactive_prompt_seed(s: types.SimpleNamespace, prompt_seed_fn: Any) -> N
         return
     if s.official:
         console.print("\n[bold cyan]Seed (Required for Official Mode)[/bold cyan]")
-        console.print("[dim]Official TPC runs require a seed for reproducibility.[/dim]")
+        console.print("[dim]TPC official mode requires a seed for reproducibility.[/dim]")
         import random
 
         from rich.prompt import IntPrompt
