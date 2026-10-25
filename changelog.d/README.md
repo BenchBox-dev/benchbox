@@ -10,8 +10,8 @@ A pull request whose changes touch shipped paths (`.github/changelog-paths.txt`)
 needs a fragment when its title is `feat`, `fix`, `perf`, `chore(deps)`, a
 breaking `!` title, or is not a conventional commit title. `docs`, `test`, `ci`,
 `refactor`, `chore`, `revert` pull requests and release preparation pull
-requests need none. Adding, changing or deleting any fragment satisfies the
-check.
+requests need none. In CI, only a fragment the pull request adds satisfies the
+check; the shipped-path list is read from the base branch.
 
 ## Writing an entry
 

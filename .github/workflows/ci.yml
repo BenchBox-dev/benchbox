@@ -188,15 +188,20 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           RELEASE_IDENTITY_CHANGED: ${{ steps.release.outputs.release-identity-changed }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
           test -f .ci-paths/changed.txt
+          git show "$EVENT_BASE_SHA:.github/changelog-paths.txt" > "$RUNNER_TEMP/changelog-paths.txt"
+          git diff --name-only --diff-filter=A "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/added.txt"
           identity=()
           if [ "$RELEASE_IDENTITY_CHANGED" = "true" ]; then identity=(--release-identity-changed); fi
           python scripts/changelog_fragments.py check \
             --require-empty-unreleased \
             --title "$PR_TITLE" \
             --changed-files-from .ci-paths/changed.txt \
+            --added-files-from "$RUNNER_TEMP/added.txt" \
+            --manifest "$RUNNER_TEMP/changelog-paths.txt" \
             "${identity[@]}"
 
       - name: Flag changed paths read by later jobs
@@ -1886,10 +1891,14 @@ jobs:
           git fetch --no-tags origin "$EVENT_BASE_SHA"
           python -I -S scripts/release_flow.py select --base-sha "$EVENT_BASE_SHA" --github-output "$RUNNER_TEMP/select.out"
           git diff --name-only --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/changed.txt"
+          git diff --name-only --diff-filter=A "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/added.txt"
+          git show "$EVENT_BASE_SHA:.github/changelog-paths.txt" > "$RUNNER_TEMP/changelog-paths.txt"
           identity=()
           if grep -qx 'release-identity-changed=true' "$RUNNER_TEMP/select.out"; then identity=(--release-identity-changed); fi
           python scripts/changelog_fragments.py check \
             --require-empty-unreleased \
             --title "$PR_TITLE" \
             --changed-files-from "$RUNNER_TEMP/changed.txt" \
+            --added-files-from "$RUNNER_TEMP/added.txt" \
+            --manifest "$RUNNER_TEMP/changelog-paths.txt" \
             "${identity[@]}"

@@ -113,3 +113,30 @@ def test_title_text_is_data_not_shell_syntax(tmp_path: Path) -> None:
     result = _check(tmp_path, 'feat: $(touch pwned) `id` "x"', [SHIPPED, "changelog.d/a.json"])
     assert result.returncode == 0
     assert not (tmp_path / "pwned").exists()
+
+
+def test_modified_or_deleted_fragments_do_not_satisfy_when_only_added_files_count(tmp_path: Path) -> None:
+    import subprocess
+    import sys
+
+    root = Path(__file__).resolve().parents[3]
+    changed = tmp_path / "changed.txt"
+    changed.write_text("benchbox/core/x.py\nchangelog.d/other.json\n", encoding="utf-8")
+    added = tmp_path / "added.txt"
+    added.write_text("", encoding="utf-8")
+    args = [
+        sys.executable,
+        str(root / "scripts" / "changelog_fragments.py"),
+        "required",
+        "--title",
+        "fix: repair a thing",
+        "--changed-files-from",
+        str(changed),
+        "--added-files-from",
+        str(added),
+    ]
+    refused = subprocess.run(args, capture_output=True, text=True, cwd=root)
+    assert refused.returncode == 1
+    added.write_text("changelog.d/new.json\n", encoding="utf-8")
+    accepted = subprocess.run(args, capture_output=True, text=True, cwd=root)
+    assert accepted.returncode == 0, accepted.stderr

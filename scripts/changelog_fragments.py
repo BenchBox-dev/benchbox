@@ -335,10 +335,12 @@ def decide_required(
     rules: Sequence[Any],
     release_identity_changed: bool = False,
     user_entry_fragments: Iterable[str] = (),
+    added_paths: Iterable[str] | None = None,
 ) -> Decision:
     paths = [normalize_path(path) for path in changed_paths]
     user_entries = list(user_entry_fragments)
-    satisfied = any(is_fragment_path(path) for path in paths)
+    satisfying = paths if added_paths is None else [normalize_path(path) for path in added_paths]
+    satisfied = any(is_fragment_path(path) for path in satisfying)
     match = TITLE_RE.fullmatch(title)
     pr_type = match.group("type") if match else None
     scope = match.group("scope") if match else None
@@ -514,6 +516,11 @@ def evaluate_required(args: argparse.Namespace) -> int:
         changed = list(args.changed_file)
         for source in args.changed_files_from:
             changed.extend(_read_lines(source))
+        added = None
+        if args.added_files_from:
+            added = []
+            for source in args.added_files_from:
+                added.extend(_read_lines(source))
     except ImportError as exc:
         print(f"error: path manifest parser unavailable: {exc}", file=sys.stderr)
         return EXIT_USAGE
@@ -537,6 +544,7 @@ def evaluate_required(args: argparse.Namespace) -> int:
         rules,
         release_identity_changed=args.release_identity_changed,
         user_entry_fragments=user_entries,
+        added_paths=added,
     )
     for warning in decision.warnings:
         print(f"warning: {warning}", file=sys.stderr)
@@ -559,6 +567,7 @@ def _add_required_arguments(parser: argparse.ArgumentParser, title_required: boo
     parser.add_argument("--title", required=title_required, default=None)
     parser.add_argument("--changed-file", action="append", default=[])
     parser.add_argument("--changed-files-from", action="append", default=[], metavar="FILE", help="'-' for stdin.")
+    parser.add_argument("--added-files-from", action="append", default=[], metavar="FILE")
     parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
     parser.add_argument("--release-identity-changed", action="store_true")
 
