@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "Apply path: tools/skill-sync apply -C ~/.skill-sync-deployment succeeds, the receipt names cb442602fe1ed5d85dab3dab8896284d44c67d9a for shared-agent-execution, and a fresh preview shows no changes.",
-    "Revert path: line 48 matches the receipt's commit, and a fresh preview shows no changes.",
-    "Context records the owner's decision and its date."
+    "Apply path: tools/skill-sync apply -C ~/.skill-sync-deployment exits 0; the receipt's shared-agent-execution block names cb442602fe1ed5d85dab3dab8896284d44c67d9a; tools/skill-sync check -C ~/.skill-sync-deployment exits 0 and tools/skill-sync verify -C ~/.skill-sync-deployment exits 0.",
+    "Revert path: line 48 reads rev    = cf81aaaf2ff97a73fa47d877eb39933ef3039472; tools/skill-sync check -C ~/.skill-sync-deployment exits 0; the store, manifest and receipt bytes are unchanged.",
+    "Activation, only if approved at gate 2: releases/cb442602fe1ed5d85dab3dab8896284d44c67d9a/store/skills exists, its receipt names cb442602 for shared-agent-execution, and ls -l on the three loader links (recorded) shows them pointing to it.",
+    "Context records each owner decision (gates 1-3) with its date, the command outputs above, and the template outcome (PR URL or 'deployment-only pin intentional')."
   ],
   "context": "Left pending 2026-10-25 after the skill mirror refresh (#3394): the pin was bumped and previewed but not applied, awaiting the owner. Blocked on owner decision.",
-  "description": "Problem: line 48 of ~/.skill-sync-deployment/skill-sync.conf pins shared-agent-execution to catalog commit cb442602fe1ed5d85dab3dab8896284d44c67d9a, but the pin was never applied. A preview with the primary clone's tools/skill-sync showed 4 changes: the 2 shared-agent-execution files, the manifest and the receipt. The global install and the pinned configuration therefore disagree.\n\nOutcome: the deployment matches its configuration, either applied at the new pin or reverted to the previous one.\n\nDecision gates:\n1. Owner decision. Applying changes the skills every local agent loads, so it needs the owner's explicit 'apply'. If the owner declines, restore line 48 to the commit named in the deployment's current receipt.\n2. Before either action, re-run the preview. If it shows changes beyond the 4 listed, stop and report them.\n\nItem guardrails: no edits to the store or receipt by hand; use tools/skill-sync only. No changes to the repository's tracked .claude/skills mirror under this item.",
+  "description": "Problem: line 48 of ~/.skill-sync-deployment/skill-sync.conf pins shared-agent-execution to catalog commit cb442602fe1ed5d85dab3dab8896284d44c67d9a, but apply was never run. The store receipt (~/.skill-sync-deployment/store/skills/skill-sync.receipt:22-25) and the live release still name cf81aaaf2ff97a73fa47d877eb39933ef3039472. tools/skill-sync preview -C ~/.skill-sync-deployment, run from the primary clone (vendored v1.0.0-rc1, same blob as develop), shows exactly 4 changes: store/skills/shared-agent-execution/SKILL.md, store/skills/shared-agent-execution/references/external-harnesses.md, store/skills/skill-sync.manifest and store/skills/skill-sync.receipt (re-verified 2026-10-25). cb442602 is on the catalog's origin/main and descends from cf81aaaf; the 5 commits between them change only those 2 skill files (36 insertions, 18 deletions: role routing and effort).\n\nWhat agents load: ~/.claude/skills, ~/.codex/skills and ~/.agents/skills are symlinks to ~/.skill-sync-deployment/releases/cf81aaaf2ff97a73fa47d877eb39933ef3039472/store/skills. apply writes only store/skills. Agents see a change only after activation (snapshot the store into releases/<sha> and repoint the three symlinks), which the conf header and the catalog README's Activation section make a separate, explicitly approved step.\n\nTemplate drift: the reviewed template deployment/global/skill-sync.conf on the catalog's origin/main lists shared-agent-execution under the 48be0487de361c0f12e0b5ac5bc84cf832da1dd0 block and has no separate block for it. The deployment conf has diverged from the template, against its own header rule (bump rev in the template through review, then re-apply). The catalog checkout also holds someone's uncommitted comment edit to that template.\n\nOutcome: the store matches the deployment configuration (applied or reverted), and the owner's choices on activation and template reconciliation are recorded.\n\nDecision gates (owner):\n1. Apply at cb442602fe1ed5d85dab3dab8896284d44c67d9a, or revert line 48 to cf81aaaf2ff97a73fa47d877eb39933ef3039472 (the commit in the current receipt).\n2. If applied: activate now (new release snapshot and repoint the three symlinks), or leave the live release serving.\n3. Reconcile the reviewed template through a pull request to joeharris76/skill-sync-skills, or record that the deployment-only split pin is intentional.\nBefore any action, run tools/skill-sync check -C ~/.skill-sync-deployment. It must exit 3 and list exactly the 4 paths above; on any other path or exit code, stop and report.\n\nItem guardrails: never hand-edit the store, manifest or receipt; change them only through tools/skill-sync apply. On the revert path edit only line 48 of the conf. No activation without gate 2 approval. No commit to any repository under this item without the owner's gate 3 authorization; leave the catalog checkout's uncommitted template edit alone. No changes to BenchBox's tracked .claude/skills mirror. The repository PR guardrails do not apply because this item makes no BenchBox commit.",
   "links": [
     "tools/skill-sync"
   ],
@@ -24,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "26ac3bbb78b541578742bdbb295dfecc",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T13:18:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "065344f0976d45cd8085a7de8ff8c0d0",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
