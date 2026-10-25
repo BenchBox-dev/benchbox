@@ -614,7 +614,6 @@ class AthenaAdapter(PlatformAdapter):
                 translate_ddl(
                     statement,
                     "athena",
-                    "athena",
                     strip_primary_keys=True,
                     strip_foreign_keys=True,
                     strip_not_null=True,

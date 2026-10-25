@@ -7,7 +7,7 @@
   },
   "athena_csv:float_array": {
     "classification": "legacy-bug",
-    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<FLOAT>) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/'",
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/'",
     "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) ROW FORMAT DELIMITED FIELDS TERMINATED BY ', ' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/'",
     "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
@@ -25,7 +25,7 @@
   },
   "athena_other:float_array": {
     "classification": "legacy-bug",
-    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<FLOAT>) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/' TBLPROPERTIES('skip.header.line.count'='0')",
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/' TBLPROPERTIES('skip.header.line.count'='0')",
     "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' LINES TERMINATED BY '\\n' STORED AS TEXTFILE LOCATION 's3://bucket/prefix/db/vectors/' TBLPROPERTIES('skip.header.line.count'='0')",
     "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
@@ -43,7 +43,7 @@
   },
   "athena_parquet:float_array": {
     "classification": "legacy-bug",
-    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<FLOAT>) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/vectors/'",
+    "fork": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY<DOUBLE>) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/vectors/'",
     "legacy": "CREATE EXTERNAL TABLE IF NOT EXISTS vectors(id BIGINT, embedding ARRAY(DOUBLE)[128]) STORED AS PARQUET LOCATION 's3://bucket/prefix/db/vectors/'",
     "reason": "Legacy wrote a fixed-size array (ARRAY(DOUBLE)[N], DOUBLE[N]) that the target rejects (QuestDB verified on 10.0.1: arrays do not have a fixed size); the fork writes the target's plain array type."
   },
