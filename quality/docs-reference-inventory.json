@@ -4245,7 +4245,7 @@
     "root": 1,
     "unresolved": 4
    },
-   "occurrences": 17,
+   "occurrences": 20,
    "path": "tests/unit/scripts/test_ci_units.py",
    "rule": "ci-path-classification",
    "target_count": 6,
@@ -5284,9 +5284,9 @@
    "generated": 15,
    "pattern": 287,
    "root": 215,
-   "unresolved": 2000
+   "unresolved": 2003
   },
-  "references": 33366,
+  "references": 33369,
   "unclassified": 0
  }
 }
