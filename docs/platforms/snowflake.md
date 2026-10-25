@@ -136,11 +136,16 @@ non-official. A stored result that claims `official` while `platform.gateway.rou
 
 Greybeam queries an Iceberg replica that CDC keeps in sync with the native Snowflake tables. Loading or refreshing
 through the gateway therefore leaves the replica empty or stale, and queries against it return wrong answers.
-BenchBox refuses these runs before any work starts:
+BenchBox enforces these runtime restrictions:
 
-- **Generate and load phases** raise `ConfigurationError`. The default phase set includes both, so pass explicit query
-  phases (for example `--phases power,throughput`) after loading natively. The escape hatch needs both
-  `--allow-greybeam-inline-load` and `BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD=1`; results from such a run are invalid data.
+- **Generate and load phases** raise `ConfigurationError`. Pass explicit query phases (for example
+  `--phases power,throughput`) after loading natively. Query-only runs also refuse automatic database recreation or
+  loading when the database is missing, empty, or incompatible. `--force-recreate` fails before database management.
+  The SQL adapter checks before database reset/drop, fresh setup, schema creation, and data loading, so a missing or
+  stale replica cannot trigger writes as a side effect of a query-only run. Fix the native dataset and wait for CDC
+  quiescence rather than recreating it through the gateway.
+  The escape hatch needs both `--allow-greybeam-inline-load` and `BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD=1`; it also covers
+  automatic reload/recreation, and results from such a run are invalid data.
 - **TPC-H RF1/RF2 and TPC-DS maintenance streams** fail fast when `maintenance` is named in `--phases` or the
   maintenance test type is selected. When the maintenance phase is only implied (a combined run without `--phases`), it
   is skipped with a loud warning and a `maintenance_skipped: true` row with status `SKIPPED` in the query results.

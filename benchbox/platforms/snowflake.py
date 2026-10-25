@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     )
 
 from ..core.exceptions import ConfigurationError
-from ..core.gateway import GatewayEndpoint, resolve_gateway_endpoint
+from ..core.gateway import GatewayEndpoint, enforce_greybeam_lifecycle, resolve_gateway_endpoint
 from ..utils.cloud_storage import get_cloud_path_info, snowflake_stage_mode_error
 from ..utils.dependencies import check_platform_dependencies, get_dependency_error_message
 from ..utils.sql_identifier import is_valid_sql_identifier
@@ -146,6 +146,7 @@ class SnowflakeAdapter(PlatformAdapter):
             ocsp_fail_open=config.get("gateway_ocsp_fail_open"),
             allow_insecure=bool(config.get("allow_insecure_gateway")),
         )
+        self.allow_greybeam_inline_load = bool(config.get("allow_greybeam_inline_load", False))
         self.gateway_run_suffix = ""
         if self.gateway_endpoint is not None:
             self.gateway_run_suffix = uuid.uuid4().hex[:8]
@@ -263,6 +264,7 @@ class SnowflakeAdapter(PlatformAdapter):
                 "gateway_ca_bundle",
                 "gateway_ocsp_fail_open",
                 "allow_insecure_gateway",
+                "allow_greybeam_inline_load",
                 "force_recreate",
             ],
         )
@@ -625,6 +627,7 @@ class SnowflakeAdapter(PlatformAdapter):
             cursor.execute(f"DROP EXTERNAL TABLE IF EXISTS {qualified_name}")
 
     def reset_database_in_place(self, **connection_config) -> bool:
+        self._guard_greybeam_database_write()
         from benchbox.core.tuning.metadata import TuningMetadataManager
 
         database = self._database_object_name(connection_config.get("database", self.database), "database")
@@ -650,6 +653,7 @@ class SnowflakeAdapter(PlatformAdapter):
         return True
 
     def drop_database(self, **connection_config) -> None:
+        self._guard_greybeam_database_write()
         database = self._database_object_name(connection_config.get("database", self.database), "database")
         try:
             connection = self._create_admin_connection(**connection_config)
@@ -662,6 +666,29 @@ class SnowflakeAdapter(PlatformAdapter):
         finally:
             if "connection" in locals() and connection:
                 connection.close()
+
+    def _guard_greybeam_database_write(self) -> None:
+        enforce_greybeam_lifecycle(
+            getattr(self.gateway_endpoint, "name", None),
+            generate=False,
+            load=True,
+            allow_inline_load=self.allow_greybeam_inline_load,
+        )
+
+    def handle_existing_database(self, **connection_config) -> None:
+        if self.force_recreate:
+            self._guard_greybeam_database_write()
+        super().handle_existing_database(**connection_config)
+        if not self.database_was_reused:
+            self._guard_greybeam_database_write()
+
+    def _remove_database(self, is_file_based: bool, db_path: str, **connection_config) -> None:
+        self._guard_greybeam_database_write()
+        super()._remove_database(is_file_based, db_path, **connection_config)
+
+    def _setup_fresh_database_phases(self, benchmark, connection: Any, effective_tuning_config) -> tuple:
+        self._guard_greybeam_database_write()
+        return super()._setup_fresh_database_phases(benchmark, connection, effective_tuning_config)
 
     def create_connection(self, **connection_config) -> Any:
         self.log_operation_start("Snowflake connection")
@@ -747,6 +774,7 @@ class SnowflakeAdapter(PlatformAdapter):
             return False
 
     def create_schema(self, benchmark, connection: Any) -> float:
+        self._guard_greybeam_database_write()
         self.log_operation_start("Snowflake schema creation")
         start_time = mono_time()
 
@@ -806,6 +834,7 @@ class SnowflakeAdapter(PlatformAdapter):
     def load_data(
         self, benchmark, connection: Any, data_dir: Path
     ) -> tuple[dict[str, int], float, dict[str, Any] | None]:
+        self._guard_greybeam_database_write()
         self.log_operation_start("Snowflake data loading")
 
         self.log_verbose(f"Starting data loading for benchmark: {benchmark.__class__.__name__}")
