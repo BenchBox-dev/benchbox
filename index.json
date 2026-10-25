@@ -5094,6 +5094,13 @@
       "status": "open",
       "title": "Concurrent comment-policy runs keep the shared host above the quiet-machine threshold for timed benchmarks"
     },
+    "comment-policy-oracle-gate-evidence-only-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Accept only the App-bound oracle-gate, not an oracle-review check run, as comment-policy review evidence"
+    },
     "comment-policy-pinned-notice-drift-guard": {
       "claim": null,
       "needs": [],
