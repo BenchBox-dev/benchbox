@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from ci_units import classify_units, load_unit_rules
 from path_filter_decision import classify_paths, load_rules
 
 from _project.scripts import inert_paths as inert
@@ -189,8 +190,8 @@ def test_symlink_guard_flags_inert_endpoints() -> None:
     assert inert.symlink_violations([("lib.py", "lib2.py")]) == []
 
 
-def test_guard_reports_no_unexcepted_inert_references() -> None:
-    refs = inert.scan_tree(ROOT)
+def test_guard_reports_no_unexcepted_inert_references(inert_scan: dict[str, list[str]]) -> None:
+    refs = inert_scan
     assert refs, "expected the guard to resolve references across the tree"
     violations = sorted(
         f"{source} -> {hit}" for source, hits in refs.items() for hit in hits if inert.is_inert_path(hit)
@@ -198,8 +199,8 @@ def test_guard_reports_no_unexcepted_inert_references() -> None:
     assert not violations, f"referenced inert paths missing an exception: {violations[:10]}"
 
 
-def test_guard_resolves_the_joined_path_consumers() -> None:
-    refs = inert.scan_tree(ROOT)
+def test_guard_resolves_the_joined_path_consumers(inert_scan: dict[str, list[str]]) -> None:
+    refs = inert_scan
     assert "docs/internal/repo-admin-settings.md" in refs["scripts/ruleset_drift_check.py"]
     assert "docs/operations/ci-local-parity.md" in refs["tests/system/test_ci_lint_parity.py"]
     assert "README.md" in refs["benchbox/utils/version.py"]
@@ -208,8 +209,8 @@ def test_guard_resolves_the_joined_path_consumers() -> None:
     assert "_project/scripts/prompts/pr_review_followup.md" in refs["_project/scripts/pr_review_followups.py"]
 
 
-def test_checked_in_readers_match_the_rebuilt_index() -> None:
-    assert json.loads(READERS_FILE.read_text(encoding="utf-8")) == inert.doc_reader_index(ROOT)
+def test_checked_in_readers_match_the_rebuilt_index(inert_scan: dict[str, list[str]]) -> None:
+    assert json.loads(READERS_FILE.read_text(encoding="utf-8")) == inert.doc_reader_index(ROOT, inert_scan)
 
 
 def test_no_tracked_symlinks_point_into_inert_paths() -> None:
@@ -277,3 +278,23 @@ def test_inert_docs_stay_safe_content() -> None:
         decision = classify_paths([path], ROUTER_RULES)
         assert decision["safe_content_only"] is True, path
         assert decision["needs_code_ci"] is False, path
+
+
+def test_non_markdown_files_read_by_tests_are_not_docs_only(inert_scan: dict[str, list[str]]) -> None:
+    rules = load_unit_rules(ROOT / ".github" / "ci-units.yml")
+    readers = sorted(
+        {
+            hit
+            for source, hits in inert_scan.items()
+            if inert._is_test_file(source)
+            for hit in hits
+            if not hit.endswith(".md")
+        }
+    )
+    assert "_project/planning/visible_metrics.yaml" in readers
+    unrouted = [
+        path
+        for path in readers
+        if {unit for unit, on in classify_units([path], rules)["units"].items() if on} == {"docs"}
+    ]
+    assert not unrouted, f"non-markdown files read by tests but routed to the docs unit only: {unrouted}"

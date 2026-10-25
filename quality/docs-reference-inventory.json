@@ -4240,7 +4240,7 @@
     "root": 1,
     "unresolved": 4
    },
-   "occurrences": 20,
+   "occurrences": 19,
    "path": "tests/unit/scripts/test_ci_units.py",
    "rule": "ci-path-classification",
    "target_count": 6,
@@ -4608,7 +4608,7 @@
     "root": 1,
     "unresolved": 5
    },
-   "occurrences": 26,
+   "occurrences": 27,
    "path": "tests/unit/scripts/test_inert_paths.py",
    "rule": "ci-path-classification",
    "target_count": 13,
