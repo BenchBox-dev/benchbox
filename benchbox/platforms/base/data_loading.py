@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import csv
 import gzip
 import hashlib
 import inspect
@@ -574,14 +575,14 @@ def resolve_adapter_data_source(adapter: Any, benchmark: Any, data_dir: Path) ->
 class CompressionHandler(ABC):
     @abstractmethod
     @contextmanager
-    def open(self, file_path: Path) -> Iterator[Any]:
+    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
         pass
 
 
 class GzipHandler(CompressionHandler):
     @contextmanager
-    def open(self, file_path: Path) -> Iterator[Any]:
-        with gzip.open(file_path, "rt") as f:
+    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
+        with gzip.open(file_path, "rt", newline=newline) as f:
             yield f
 
 
@@ -590,7 +591,7 @@ class ZstdHandler(CompressionHandler):
         self.adapter = adapter
 
     @contextmanager
-    def open(self, file_path: Path) -> Iterator[Any]:
+    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
         if shutil.which("zstd") is None:
             raise DataLoadingError(
                 f"Cannot load zstd-compressed file '{file_path.name}': the 'zstd' command was not found "
@@ -616,7 +617,7 @@ class ZstdHandler(CompressionHandler):
             if self.adapter and hasattr(self.adapter, "log_very_verbose"):
                 self.adapter.log_very_verbose(f"Decompressed to temporary file: {temp_file_path}")
 
-            with open(temp_file_path, encoding="utf-8") as f:
+            with open(temp_file_path, encoding="utf-8", newline=newline) as f:
                 yield f
 
         finally:
@@ -626,8 +627,8 @@ class ZstdHandler(CompressionHandler):
 
 class NoCompressionHandler(CompressionHandler):
     @contextmanager
-    def open(self, file_path: Path) -> Iterator[Any]:
-        with open(file_path, encoding="utf-8") as f:
+    def open(self, file_path: Path, newline: str | None = None) -> Iterator[Any]:
+        with open(file_path, encoding="utf-8", newline=newline) as f:
             yield f
 
 
@@ -706,18 +707,13 @@ class RowBatchProcessor:
         column_count: int,
         null_columns: Sequence[bool] | None = None,
         null_token: str = "",
+        quote: str | None = None,
     ) -> Iterator[tuple[list[tuple], int]]:
         batch_data = []
         row_count = 0
         null_indexes = [i for i, flag in enumerate(null_columns) if flag] if null_columns else []
 
-        for line in file_handle:
-            line = line.strip()
-            if not line:
-                continue
-
-            fields: list[Any] = line.split(delimiter)
-
+        for fields in self._iter_records(file_handle, delimiter, quote):
             while len(fields) < column_count:
                 fields.append("")
 
@@ -736,6 +732,18 @@ class RowBatchProcessor:
 
         if batch_data:
             yield (batch_data, row_count)
+
+    @staticmethod
+    def _iter_records(file_handle: Any, delimiter: str, quote: str | None) -> Iterator[list[Any]]:
+        if quote:
+            for record in csv.reader(file_handle, delimiter=delimiter, quotechar=quote, doublequote=True):
+                if record:
+                    yield record
+            return
+        for line in file_handle:
+            line = line.strip()
+            if line:
+                yield line.split(delimiter)
 
 
 class FileFormatHandler(ABC):
@@ -762,9 +770,10 @@ class FileFormatHandler(ABC):
 
 
 class DelimitedFileHandler(FileFormatHandler):
-    def __init__(self, delimiter: str, null_marker: str | None = None):
+    def __init__(self, delimiter: str, null_marker: str | None = None, quote: str | None = None):
         self.delimiter_char = delimiter
         self.null_marker = null_marker
+        self.quote = quote
 
     def get_delimiter(self) -> str:
         return self.delimiter_char
@@ -774,7 +783,7 @@ class DelimitedFileHandler(FileFormatHandler):
 
         compression_handler = FileFormatRegistry.get_compression_handler(file_path)
 
-        with compression_handler.open(file_path) as f:
+        with compression_handler.open(file_path, newline="" if self.quote else None) as f:
             column_count = SchemaInspector.get_column_count(benchmark, validated_table, f, self.delimiter_char)
 
             if column_count is None:
@@ -799,6 +808,7 @@ class DelimitedFileHandler(FileFormatHandler):
                 column_count,
                 null_columns,
                 self.null_marker if self.null_marker is not None else "",
+                self.quote,
             ):
                 connection.executemany(insert_sql, batch_data)
                 total_rows = current_count

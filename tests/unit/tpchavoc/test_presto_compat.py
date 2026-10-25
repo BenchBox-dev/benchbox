@@ -93,7 +93,7 @@ def test_presto_list_aggregate_variant_orders_arrays_and_reduces_with_presto_fun
             assert duckdb_function not in query.upper()
 
 
-@pytest.mark.parametrize("platform", ("presto", "trino"))
+@pytest.mark.parametrize("platform", ("presto", "trino", "athena"))
 def test_presto_rules_cover_each_rewritten_variant(platform):
     import benchbox.sql_compat.rules.query_adapter.presto_tpchavoc_rewrites
     from benchbox.sql_compat.context import Phase

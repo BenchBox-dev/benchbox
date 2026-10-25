@@ -38,6 +38,9 @@ def _pull(**over: Any) -> dict[str, Any]:
     return pull
 
 
+UNRELATED = "unrelated\n"
+
+
 class FakeGitHub:
     def __init__(
         self,
@@ -67,7 +70,7 @@ class FakeGitHub:
         monkeypatch.setattr(github, "latest_state", lambda repo, pr: self.state)
         monkeypatch.setattr(github, "dispatch", lambda repo, workflow, pr: self.dispatched.append(pr))
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
-        monkeypatch.setattr(github, "get_file", lambda repo, path, ref: self.contents.get(path))
+        monkeypatch.setattr(github, "get_file", lambda repo, path, ref: self.contents.get(path, UNRELATED))
 
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.reviews is None:
@@ -399,7 +402,7 @@ OLD_HEAD = "c" * 40
 
 def _record(diff: str, decision: str, **over: Any) -> dict[str, Any]:
     paths = over.pop("paths", None)
-    patches = protocol.file_patches(diff)
+    patches = protocol.file_patches(diff, lambda path: UNRELATED)
     chosen = paths if paths is not None else sorted(patches)
     current = protocol.patch_map(patches, chosen)
     record = {
@@ -866,6 +869,81 @@ def test_a_relocated_first_hunk_is_reviewed_again_and_a_rebase_is_carried(
         _, values, _ = _plan(monkeypatch, tmp_path / name, fake)
         outcomes.append(values["decision"])
     assert outcomes == ["review", "carry"]
+
+
+def _repeated_blocks(removed: int | None = None, pad: int = 0) -> str:
+    rows = ["# pad"] * pad
+    for block in range(3):
+        rows += ["a", "b"] + ([] if block == removed else ["c"]) + ["requires_auth", "d"]
+    return "\n".join(rows + ["tail"]) + "\n"
+
+
+def _headingless(block: int, pad: int = 0) -> str:
+    start = pad + 1 + block * 5
+    hunk = f"@@ -{start},4 +{start},3 @@\n a\n b\n-c\n requires_auth\n"
+    return _file_diff(hunk)
+
+
+def test_a_headingless_hunk_relocated_to_an_identical_block_is_a_different_patch() -> None:
+    first = _read_patches(_headingless(0), _repeated_blocks(removed=0))
+    second = _read_patches(_headingless(1), _repeated_blocks(removed=1))
+    assert first != second
+
+
+def test_a_rebase_that_shifts_a_headingless_hunk_keeps_its_patch() -> None:
+    assert _read_patches(_headingless(1), _repeated_blocks(removed=1)) == _read_patches(
+        _headingless(1, pad=8), _repeated_blocks(removed=1, pad=8)
+    )
+
+
+def test_an_unreadable_file_binds_a_headingless_hunk_to_its_line_number() -> None:
+    assert protocol.file_patches(_headingless(0), lambda path: None) != protocol.file_patches(
+        _headingless(0, pad=8), lambda path: None
+    )
+    assert protocol.file_patches(_headingless(1), lambda path: None) != protocol.file_patches(
+        _headingless(0), lambda path: None
+    )
+
+
+def _periodic(pad: int = 0) -> str:
+    return "\n".join(["# pad"] * pad + ["0"] * 10) + "\n"
+
+
+def _inserted_zero(row: int, pad: int = 0) -> str:
+    start = pad + row
+    return _file_diff(f"@@ -{start},3 +{start},4 @@\n 0\n 0\n+0\n 0\n")
+
+
+def test_an_insertion_moved_one_row_in_periodic_text_is_a_different_patch() -> None:
+    first = _read_patches(_inserted_zero(1), _periodic())
+    second = _read_patches(_inserted_zero(2), _periodic())
+    assert first != second
+
+
+def test_a_rebase_that_shifts_an_insertion_in_periodic_text_keeps_its_patch() -> None:
+    assert _read_patches(_inserted_zero(3), _periodic()) == _read_patches(_inserted_zero(3, pad=8), _periodic(pad=8))
+
+
+def _twin_functions(pad: int = 0) -> str:
+    function = ["def guarded(user):", "a", "b", "c", "", ""]
+    return "\n".join(["# pad"] * pad + function * 2) + "\n"
+
+
+def _twin_removal(function: int, pad: int = 0) -> str:
+    start = pad + 2 + function * 6
+    return _file_diff(f"@@ -{start},4 +{start},3 @@ def guarded(user):\n a\n-b\n c\n \n")
+
+
+def test_a_hunk_relocated_to_a_function_with_a_repeated_heading_is_a_different_patch() -> None:
+    first = _read_patches(_twin_removal(0), _twin_functions())
+    second = _read_patches(_twin_removal(1), _twin_functions())
+    assert first != second
+
+
+def test_a_rebase_that_shifts_a_repeated_heading_keeps_its_patch() -> None:
+    assert _read_patches(_twin_removal(1), _twin_functions()) == _read_patches(
+        _twin_removal(1, pad=8), _twin_functions(pad=8)
+    )
 
 
 def test_prose_is_untracked_apart_from_a_scoped_follow_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

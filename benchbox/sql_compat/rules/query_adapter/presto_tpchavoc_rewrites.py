@@ -16,7 +16,7 @@ _TRANSFORMERS = {
     "array_aggregation": "reduce_list_aggregates",
 }
 
-for _platform, _engine_label in (("presto", "Presto"), ("trino", "Trino")):
+for _platform, _engine_label in (("presto", "Presto"), ("trino", "Trino"), ("athena", "Athena")):
     for _query_ids, _name, _reason_template in (
         (
             PRESTO_ALIAS_VARIANT_IDS,

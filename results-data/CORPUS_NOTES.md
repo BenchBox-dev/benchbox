@@ -103,10 +103,9 @@ defects):
 
 Other issues found while checking, outside these PRs:
 
-- SQLite ClickBench SF1 returns row counts different from all nine other
-  engines for about 25 of 43 queries (for example Q8 returns 1 row against 20,
-  Q11 to Q15 return 0 against 9 or 10). The newer SQL changes only Q19 and Q43,
-  so a rerun will not fix it; the cause has not been identified.
+- SQLite ClickBench SF1 `6eb94fe6` returns row counts different from the other
+  nine engines for 26 of 43 queries; see "SQLite ClickBench quoted empty
+  strings" below.
 - Databricks ClickBench SF1 Q29 and Q43 differ from the other engines. This is
   the case already described under Cloud ClickBench (2026-10-04).
 - Since v0.4.1, Snowflake and Databricks translate `DESC` ordering to
@@ -155,6 +154,28 @@ remain available for comparison. Query rendering now takes every parameter
 from the dsqgen parameter log for the run's seed and scale, as TPC-DS does.
 Rerunning the six cells with the fixed renderer, then ingesting the new
 bundles, is a follow-up.
+
+## SQLite ClickBench quoted empty strings (2026-10-25)
+
+The SQLite loader split ClickBench rows on `|` without reading CSV quoting, so
+the generator's quoted empty string `""` was stored as the two characters `""`
+instead of an empty string, and a quoted field holding `|`, a quote or a
+newline would have shifted columns. Current develop at SF1 (1,000,000 rows, the
+same generated file loaded into SQLite and DuckDB) matched DuckDB on 24 of 43
+queries before the fix and returned 10 rows against 9 for Q11 and Q12, and
+wrong values for `SearchPhrase <> ''` and `MobilePhoneModel <> ''` groups. The
+loader now parses quoted fields with the manifest quote character, and every
+non-empty SQLite result matches DuckDB.
+
+Published bundle `clickbench_sf1_sqlite_sql_20260824_101152_6eb94fe6` recorded
+wrong rows for 23 queries (Q8 1 row against 20, Q9, Q10, Q16 to Q18, Q34 to
+Q36 one row against 8 or 10, Q11 to Q15, Q22, Q24 to Q27, Q31, Q32, Q37 and
+Q38 zero rows against 8 or 10) and failed Q19, Q29 and Q43. Its sidecar now
+carries `known_defects: ["defective-sqlite-clickbench-row-counts"]`; the
+bundle file is unchanged. The recorded counts are lower than a current-code
+run produces, so the bundle was loaded with older code or data; which one is
+not established. Rerunning the cell and ingesting the new bundle is a
+follow-up.
 
 ## DuckDB version matrix (operator-run, 2026-08-29)
 

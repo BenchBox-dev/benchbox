@@ -46,5 +46,5 @@ embedding_type_map:
   pyspark: ARRAY<REAL>
   velox: ARRAY<REAL>
   databricks: ARRAY<REAL>
-  mysql: VECTOR({dim}, F32)
+  singlestore: VECTOR({dim}, F32)
   default: REAL[{dim}]

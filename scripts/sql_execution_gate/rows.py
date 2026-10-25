@@ -65,3 +65,19 @@ def first_difference(left, right, strict: bool = False) -> str | None:
         ):
             return f"sorted row {index}: {left_row!r} != {right_row!r}"
     return None
+
+
+def _cell_is_vacuous(value) -> bool:
+    if value is None:
+        return True
+    return isinstance(value, (bool, int, float, Decimal)) and value == 0
+
+
+def is_vacuous(rows) -> bool:
+    return all(_cell_is_vacuous(cell) for row in rows for cell in row)
+
+
+def vacuity_detail(rows) -> str:
+    if not rows:
+        return "no rows"
+    return f"{len(rows)} rows, every cell NULL or 0"

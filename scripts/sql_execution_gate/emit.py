@@ -47,6 +47,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scale", type=float, default=0.01)
     parser.add_argument("--benchmarks", default="tpch,tpcds")
     parser.add_argument("--dialects", default=",".join(DIALECTS))
+    parser.add_argument("--augment-ids", default="")
+    parser.add_argument("--augment-seeds", default="")
     args = parser.parse_args(argv)
 
     import benchbox
@@ -65,6 +67,15 @@ def main(argv: list[str] | None = None) -> int:
 
         benchmark = TPCDSBenchmark(scale_factor=args.scale, output_dir=scratch / "tpcds")
         queries["tpcds"] = _emit("tpcds", benchmark, range(1, 100), TPCDS_SEED, dialects)
+        augmented: dict[str, dict[str, str]] = {}
+        for seed in filter(None, args.augment_seeds.split(",")):
+            ids = [int(query) for query in filter(None, args.augment_ids.split(","))]
+            for query, per_dialect in _emit(
+                "tpcds", benchmark, ids, None if seed == "default" else int(seed), dialects
+            ).items():
+                augmented[f"{query}.{seed}"] = per_dialect
+        if augmented:
+            queries["tpcds-augmented"] = augmented
     payload = {
         "benchbox_root": str(Path(benchbox.__file__).resolve().parent.parent),
         "runtime_pin": _runtime_pin(),

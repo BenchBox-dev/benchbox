@@ -129,8 +129,19 @@ def _heading_gap(section: str, new_start: int, new_count: int, content: str | No
     begin = new_start + (1 if new_count == 0 else 0)
     for index in range(min(begin - 2, len(lines) - 1), -1, -1):
         if lines[index].strip().startswith(heading):
-            return f"fn{begin - 1 - index}"
+            earlier = sum(1 for line in lines[:index] if line.strip().startswith(heading))
+            return f"fn{begin - 1 - index}n{earlier}"
     return f"at{old_start}"
+
+
+def _block_gap(block: list[str], start: int, content: str | None, old_start: int) -> str:
+    if content is None or not block:
+        return f"at{old_start}"
+    prefix = content.split("\n")[:start]
+    text = [*prefix, *block]
+    size = len(block)
+    earlier = sum(1 for index in range(len(prefix)) if text[index : index + size] == block)
+    return f"blk{earlier}"
 
 
 def file_patches(diff_text: str, read: Callable[[str], str | None] | None = None) -> dict[str, str]:
@@ -147,7 +158,7 @@ def file_patches(diff_text: str, read: Callable[[str], str | None] | None = None
         lines = body.split("\n")
         if lines[-1] == "":
             lines.pop()
-        for line in lines:
+        for position, line in enumerate(lines):
             if not binary and line.startswith("index "):
                 continue
             hunk = _HUNK.match(line)
@@ -159,8 +170,17 @@ def file_patches(diff_text: str, read: Callable[[str], str | None] | None = None
             first = int(hunk["start"]) + (1 if count == 0 else 0)
             if previous_end is not None:
                 gap = str(first - previous_end)
-            elif read is None or deleted or not hunk["section"].strip():
+            elif read is None or deleted:
                 gap = "first"
+            elif not hunk["section"].strip():
+                block = []
+                for body_line in lines[position + 1 :]:
+                    if _HUNK.match(body_line):
+                        break
+                    if body_line[:1] in (" ", "-"):
+                        block.append(body_line[1:])
+                start = int(hunk["new_start"]) - 1 + (1 if new_count == 0 else 0)
+                gap = _block_gap(block[:count], start, read(match.group("new")), int(hunk["start"]))
             else:
                 gap = _heading_gap(
                     hunk["section"], int(hunk["new_start"]), new_count, read(match.group("new")), int(hunk["start"])

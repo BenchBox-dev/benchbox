@@ -24,7 +24,7 @@ class JoinOrderSchema:
         platform_specific=True,
         reason=(
             "Substitutes dialect-specific type tokens: VARCHAR→CHARACTER VARYING for postgres, "
-            "TEXT→TEXT CHARACTER SET utf8mb4 for mysql. "
+            "TEXT→TEXT CHARACTER SET utf8mb4 for singlestore. "
             "Pure column-type translation - no engine/layout policy."
         ),
     )
@@ -43,13 +43,13 @@ class JoinOrderSchema:
 
         if dialect == "postgres":
             columns = [col.replace("VARCHAR", "CHARACTER VARYING") for col in columns]
-        elif dialect == "mysql":
+        elif dialect == "singlestore":
             columns = [col.replace("TEXT", "TEXT CHARACTER SET utf8mb4") for col in columns]
 
         sql = f"CREATE TABLE {table_name} (\n"
         sql += ",\n".join(f"    {col}" for col in columns)
 
-        if include_foreign_keys and dialect in ["postgres", "mysql"] and "foreign_keys" in table:
+        if include_foreign_keys and dialect in ["postgres", "singlestore"] and "foreign_keys" in table:
             for fk in table["foreign_keys"]:
                 sql += f",\n    {fk}"
 

@@ -151,8 +151,8 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "tpch-binary-framing", "Verify bundled dbgen binaries emit clean framing"): (
         "Cross-platform macOS/Windows binary smoke; the local macOS checkout has no Windows runner equivalent."
     ),
-    ("ci.yml", "medium-collect", "Compile sources with source-hash bytecode"): (
-        "Hosted bytecode cache warm-up for the collection job; it asserts nothing and a local checkout keeps its own __pycache__."
+    ("ci.yml", "medium-collect", "Compile sources in parallel before collection"): (
+        "Hosted parallel bytecode warm-up for the collection job; it asserts nothing and a local checkout keeps its own __pycache__."
     ),
     ("ci.yml", "medium-collect", "Collect the complete medium tier"): (
         "Hosted exact-SHA medium collection is consumed by both shards; local test-medium runs the same selector unsplit."
@@ -222,6 +222,12 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "lightweight Make target."
     ),
     ("ci.yml", "code-test", "Run fast tests"): "Covered by the local `test-fast` target.",
+    ("ci.yml", "code-test", "Check fast-tier junit parses"): (
+        "Non-blocking hosted parse of the fast-tier junit artifact; it cannot fail the job and has no local equivalent."
+    ),
+    ("ci.yml", "code-test", "Record fast-tier runner calibration"): (
+        "Non-blocking hosted measurement of runner speed for the fast-tier junit artifact; it has no local equivalent."
+    ),
     ("ci.yml", "code-test", "Run medium tests for changed paths"): (
         "Runs the medium tests that `pr-preflight` maps from the changed paths; covered locally by `pr-preflight`."
     ),

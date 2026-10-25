@@ -7063,7 +7063,7 @@ queries:
             ret_obt.sale_id
           FROM tpcds_sales_returns_obt AS ret_obt
           WHERE
-            ret_obt.sale_id = obt.sale_id AND ret_obt.has_return = 'Y' AND ret_obt.channel = 'web'
+            ret_obt.has_return = 'Y' AND ret_obt.channel = 'web'
         )
       )
       AND channel = 'web'

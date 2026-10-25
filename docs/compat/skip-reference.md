@@ -4,9 +4,9 @@
 
 Rules the registry applies to queries, benchmarks, and DDL statements. Split into two sections based on whether the outcome is user-visible in result counts. Each entry names the platform, the scope the rule applies to, the registered reason, and the rule_id you can grep for in `benchbox/sql_compat/rules/`.
 
-**Total rules:** 337
+**Total rules:** 339
 
-**Platforms with rules:** 22
+**Platforms with rules:** 23
 
 ## Will not run
 
@@ -403,6 +403,13 @@ Queries or benchmarks that are **omitted from the result set** - either because 
 ## Runs with caveats
 
 Benchmarks that **run end-to-end** but with documented internal gaps - either an auxiliary DDL statement is suppressed (SKIPPED_DDL_FRAGMENT) or a platform-level semantic guarantee is not enforced (INFORMATIONAL). Result counts are not affected; the caveat is noted for audit purposes.
+
+### athena
+
+| support | scope | phase | reason | rule_id |
+|---|---|---|---|---|
+| INFORMATIONAL | benchmark=transaction_primitives | schema_emit | Workload runs; PRIMARY KEY uniqueness is not enforced on athena - lock table bypass required to prevent concurrent double-population | `schema_emit.athena.transaction_primitives.pk_not_enforced` |
+| INFORMATIONAL | benchmark=write_primitives | schema_emit | Workload runs; PRIMARY KEY uniqueness is not enforced on athena - lock table bypass required to prevent concurrent double-population | `schema_emit.athena.write_primitives.pk_not_enforced` |
 
 ### bigquery
 

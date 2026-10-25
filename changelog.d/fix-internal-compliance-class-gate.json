@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "validate_submission.py gains an opt-in --trust-internal-source flag that exempts bundles whose manifest declares result_source internal from the official-only compliance rule; the submission CI does not use it."
+}

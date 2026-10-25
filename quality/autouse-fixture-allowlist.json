@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "enforcement": "blocking",
+  "fixtures": [
+    {
+      "name": "tests/conftest.py::_chdb_connections_closed_after_module",
+      "scope": "module",
+      "owner": "CI maintainer",
+      "rationale": "Closes chDB connections left open by a test module so embedded-engine state cannot accumulate across modules; the open counter keeps its cost to a counter read per module.",
+      "expiry": "2027-04-30"
+    },
+    {
+      "name": "tests/utilities/module_state_guard.py::_process_state_unchanged_after_module",
+      "scope": "module",
+      "owner": "CI maintainer",
+      "rationale": "Fails the module that leaves a benchbox logger, the quiet flag or the tracer provider changed, because a module-scoped fixture's change runs before the per-test restore and leaks into later modules in the same worker; it is an in-memory compare costing under a millisecond per module.",
+      "expiry": "2027-04-30"
+    }
+  ]
+}

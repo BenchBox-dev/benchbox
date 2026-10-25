@@ -199,7 +199,7 @@ operations:
   cleanup_sql: "DELETE FROM txn_orders WHERE o_orderkey = 9970002\n"
   expected_rows_affected: 1
   platform_overrides:
-    mysql:
+    singlestore:
       write_sql: null
     mariadb:
       write_sql: null

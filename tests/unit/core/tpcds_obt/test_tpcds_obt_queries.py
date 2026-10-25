@@ -206,10 +206,11 @@ def test_multi_warehouse_exists_is_correlated(query_id: int) -> None:
     assert "ret_obt.has_return = 'Y'" in sql
 
 
-def test_q95_multi_warehouse_and_return_sets_are_correlated() -> None:
+def test_q95_return_set_is_uncorrelated_like_the_base_query() -> None:
     sql = TPCDSOBTQueryManager().get_query(95)
     assert "other_obt.warehouse_sk" in sql
-    assert "ret_obt.sale_id = obt.sale_id" in sql
+    assert "ret_obt.has_return = 'Y'" in sql
+    assert "ret_obt.sale_id = obt.sale_id" not in sql
 
 
 @pytest.mark.parametrize("query_id", [18, 27, 36])
@@ -325,3 +326,33 @@ def test_q78_returns_store_sales_with_other_channel_sales() -> None:
     rows = conn.execute(TPCDSOBTQueryManager().get_query(78)).fetchall()
     conn.close()
     assert rows
+
+
+MULTI_STATEMENT_IDS = (14, 23, 24)
+
+
+@pytest.mark.parametrize("query_id", MULTI_STATEMENT_IDS)
+def test_multi_statement_queries_split_into_lettered_statements(query_id: int) -> None:
+    from benchbox.utils.dialect_utils import split_sql_statements
+
+    manager = TPCDSOBTQueryManager()
+    whole = split_sql_statements(manager.get_query(query_id), "duckdb")
+    assert len(whole) == 2
+    assert manager.get_query(f"{query_id}a") == whole[0]
+    assert manager.get_query(f"{query_id}b") == whole[1]
+
+
+def test_statement_queries_are_single_statements_named_like_tpcds() -> None:
+    from benchbox.utils.dialect_utils import split_sql_statements
+
+    queries = TPCDSOBTQueryManager().get_statement_queries()
+    expected = {str(qid) for qid in CONVERTIBLE_QUERY_IDS if qid not in MULTI_STATEMENT_IDS}
+    expected |= {f"{qid}{letter}" for qid in MULTI_STATEMENT_IDS for letter in "ab"}
+    assert set(queries) == expected
+    assert all(len(split_sql_statements(sql, "duckdb")) == 1 for sql in queries.values())
+
+
+@pytest.mark.parametrize("query_id", ["3a", "14c", "24z"])
+def test_a_statement_letter_beyond_the_query_is_unknown(query_id: str) -> None:
+    with pytest.raises(ValueError, match="Unknown query id"):
+        TPCDSOBTQueryManager().get_query(query_id)

@@ -557,16 +557,21 @@ def _running(metadata, **changes):
     return {**metadata["job"], "status": "in_progress", "conclusion": None, **changes}
 
 
-def test_producer_job_running_is_returned_without_waiting(metadata):
+def test_producer_job_running_is_returned_without_waiting(metadata, capsys):
     job, sleeps = _producer_wait(metadata, [[_running(metadata)]])
     assert job()["id"] == 9 and sleeps == []
+    assert capsys.readouterr().out == ""
 
 
 @pytest.mark.parametrize("lagging", [[], "queued"])
-def test_producer_job_listing_lag_is_waited_out(metadata, lagging):
+def test_producer_job_listing_lag_is_waited_out(metadata, lagging, capsys):
     first = [] if lagging == [] else [_running(metadata, status="queued")]
     job, sleeps = _producer_wait(metadata, [first, first, [_running(metadata)]])
     assert job()["id"] == 9 and len(sleeps) == 2
+    out = capsys.readouterr().out
+    assert out.startswith("::notice::") and out.count("\n") == 1
+    assert "waited 6.0s" in out and "run 7 attempt 2" in out
+    assert ("0 job(s) named dist-artifact: none" if lagging == [] else "id=9 run_attempt=2 status=queued") in out
 
 
 def test_producer_job_that_never_runs_fails_with_diagnostics(metadata):

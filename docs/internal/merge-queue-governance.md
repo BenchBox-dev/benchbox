@@ -54,7 +54,9 @@ fails it. Checks run on the pull request head, which need not be current with
 
 ### Shadow selection miss report
 
-`core` also measures the shadow selection. After the heavy medium-test shards finish, the aggregate downloads the shard junit reports and the `coverage-selection-<pr>-<sha>` artifact, runs `scripts/coverage_test_selection.py misses`, and writes a `Shadow selection misses` section to the step summary plus a `coverage-selection-misses-<pr>-<sha>` artifact (`selected_count`, `failed`, `missed`, `would_escalate`). A failed test counts as missed when neither its node ID nor its bare file path is in the selection; a selected sibling node does not cover it. When the selection or any junit report is missing or unparseable, the step reports `not available` with no escalation verdict instead of a clean bill. The step reports only and never fails the job.
+`core` also measures the shadow selection. After the heavy medium-test shards finish, the aggregate downloads the shard junit reports and the `coverage-selection-<pr>-<sha>` artifact, runs `scripts/coverage_test_selection.py misses`, and writes a `Shadow selection misses` section to the step summary plus a `coverage-selection-misses-<pr>-<sha>` artifact (`selected_count`, `failed`, `missed`, `selection_escalates`, `caught_by_escalation`, `would_escalate`). A failed test counts as missed when neither its node ID nor its bare file path is in the selection and the selection would not have escalated to the full tier; a selected sibling node does not cover it. A selection that would escalate runs every medium test, so its failures are listed under `caught_by_escalation` and not as misses. When the selection or any junit report is missing or unparseable, the step reports `not available` with no escalation verdict instead of a clean bill. The step reports only and never fails the job.
+
+Four pull requests whose regressions reached Trunk without a PR run executing the failing test (#3018, #3066, #3122, #3185) are pinned as replays in `tests/unit/scripts/test_selection_pr_replays.py`. Each fixture in `tests/fixtures/ci/selection_replays/` holds the PR's diff hunks, the failing test ids, and the per-line coverage hits of a real per-test coverage run of the failing test file (with a `provenance` block naming the base, the command and the digest of the full map); other tests that cover the same lines appear as one recorded stand-in node. The case for #3018 has no coverage hits because its failing test was deleted with the site; it pins the routing and non-Python escalation instead. Each replay must select the failing test or escalate to the full tier, and the miss report must list those failures as caught. When the miss report is unavailable it claims no escalation catches (`selection_escalates` is null).
 
 The coverage selection step in `ci-paths` should finish within 60 seconds and 3 GB peak RSS on that runner; it already prints `elapsed=` and `rss=`. Measured on PR #3264's CI run 39794063479: 21.6 s and 1384.5 MB with the v2 map, against 44.6 s and 2.2 GB for the v1 map.
 
@@ -159,6 +161,37 @@ measured coverage runtime (ClickBench `test_generate_data` at 628 s, Trunk run
 hold a shard past 20 minutes. The PR medium tests and the gating trunk
 `medium-test` shards, which run without coverage, still enforce the unscaled
 bounds before merge.
+
+A change to the Trunk lane itself cannot be exercised by an ordinary PR run, so
+the PR `ci.yml` calls the Trunk workflows directly. A PR that changes
+`.github/workflows/trunk.yml`, `scripts/release_canary_sharding.py`,
+`scripts/pytest_shard_evidence.py` or `tests/fixtures/medium_shard_durations.json`
+runs the `trunk-lane-plain` job. One that changes
+`.github/workflows/trunk-coverage.yml`, `scripts/pytest_coverage_timeout.py`,
+`scripts/coverage_map.ini` or any of the other three paths runs
+`trunk-lane-coverage`. The changed-path list names both sides of a rename, so
+moving one of these files still triggers its lane. Each lane is a
+`workflow_call` of the real file with `medium-only: true`, so the PR head runs
+the same collection, shard scheduling, environment and coverage setting as the
+post-merge run, with the fast lane, correctness gate, distribution build and
+coverage map jobs skipped. Their evidence artifacts carry a `trunk-lane-plain-`
+or `trunk-lane-coverage-` prefix so they never mix with the PR medium tier's
+`t2-medium-*` evidence that `core` verifies. `core` needs both jobs and expects
+them to run exactly when their paths changed, so a red or missing run blocks the
+merge and unaffected PRs skip both.
+
+Replaying the precedents against the current layout. #3200 put per-test
+coverage into the medium shards by editing `trunk.yml`. Coverage now lives in
+`trunk-coverage.yml`, so the same change today edits that file or
+`scripts/pytest_coverage_timeout.py` and runs `trunk-lane-coverage`, which is
+the lane where datagen tests exceeded their unscaled timeouts. #3400 changed
+both Trunk workflows and `release_canary_sharding.py`, so both lanes would have
+run with module-grouped shard scheduling, the condition under which the
+process-global chDB server broke. Both replays are inferred from the changed
+paths; the historical heads were not re-run. #2821 changed only the `ci.yml`
+`code-test` job and its tests, so no Trunk-lane path matched and this run
+cannot replay it; that incident was a missing TypeScript install in the `fast`
+job of `trunk.yml`, which the medium-only run does not execute.
 
 The v2 map stores a node table with per-line integer indices, per-file
 executable-statement line sets from coverage's own analysis (changed blank,

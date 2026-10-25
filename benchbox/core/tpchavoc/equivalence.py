@@ -553,7 +553,6 @@ CLICKHOUSE_TARGET_DIALECT = "clickhouse"
 CLICKHOUSE_BENCHMARK_TYPE = "tpch"
 
 CLICKHOUSE_KNOWN_DIVERGENCES: dict[str, str] = {
-    "1_v4": "decimal-division-truncation",
     "2_v8": "correlated-subquery-decorrelation",
     "3_v7": "sum-empty-group-zero",
     "7_v7": "sum-empty-group-zero",
@@ -562,9 +561,7 @@ CLICKHOUSE_KNOWN_DIVERGENCES: dict[str, str] = {
     "13_v1": "correlated-subquery-decorrelation",
 }
 
-CLICKHOUSE_KNOWN_DIVERGENCES_REVIEW_BY: dict[str, date] = {
-    "1_v4": date(2027, 1, 3),
-}
+CLICKHOUSE_KNOWN_DIVERGENCES_REVIEW_BY: dict[str, date] = {}
 
 
 def build_clickhouse_with_tpch(scale_factor: float, output_dir: str | Path) -> tuple[Any, TPCHavocBenchmark, TPCH]:

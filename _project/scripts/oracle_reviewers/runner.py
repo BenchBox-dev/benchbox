@@ -150,7 +150,7 @@ def review(
         reviewer.harness,
         result.exit_code,
         output,
-        f"{result.stderr}\n{result.stdout}",
+        result.stderr,
         timed_out=result.timed_out,
         now=now,
     )

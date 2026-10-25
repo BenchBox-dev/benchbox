@@ -1,15 +1,25 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from . import absence, credentials, dedup, protocol, selection
 from .retry import ALL_ABSENT, FAILURE, INTEGRITY, MARKER_LIMIT, OVERSIZE, PENDING, SUCCESS, UNREPORTED
 from .selection import Attempt, Step
-from .verdict import Finding, Placement, Verdict, comment_span, display_path, place
+from .verdict import (
+    MAX_DETAIL,
+    Finding,
+    Placement,
+    Verdict,
+    comment_span,
+    display_path,
+    place,
+)
 
 DESCRIPTION_LIMIT = 140
+BODY_LIMIT = 65536
+TRUNCATED = "… [truncated]"
 OVERSIZE_DESCRIPTION = "pending: too large for the oracle; split the pull request or ask the owner for a stand-in"
 OVERSIZE_NOTE = (
     "This pull request is too large for the oracle: its brief exceeds the size cap even without the diff, "
@@ -41,8 +51,12 @@ def _clip(text: str, limit: int = DESCRIPTION_LIMIT) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
-def _finding_line(finding: Finding, defect_id: str | None = None) -> str:
-    detail = f"\n  {finding.detail}" if finding.detail else ""
+def _cut(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[:limit].rstrip() + TRUNCATED
+
+
+def _finding_line(finding: Finding, defect_id: str | None = None, cap: int = MAX_DETAIL) -> str:
+    detail = f"\n  {_cut(finding.detail, cap)}" if finding.detail else ""
     span = f"{finding.line}-{finding.end_line}" if finding.end_line else str(finding.line)
     named = f"{defect_id}: " if defect_id else ""
     return f"- **{finding.severity}** `{display_path(finding.file)}:{span}`: {named}{finding.title}{detail}"
@@ -51,6 +65,29 @@ def _finding_line(finding: Finding, defect_id: str | None = None) -> str:
 def _entry_line(entry: Mapping[str, Any]) -> str:
     span = f"{entry['line']}-{entry['end_line']}" if entry.get("end_line") else str(entry["line"])
     return f"- **{entry['severity']}** `{display_path(entry['file'])}:{span}`: {entry['id']}: {entry['title']}"
+
+
+def _size_notice(listed: list[Finding], cap: int) -> str:
+    trimmed = sum(len(finding.detail) > cap for finding in listed)
+    return (
+        f"Size limit: the detail of {trimmed} of {len(listed)} listed defect(s) was shortened so this review stays"
+        f" under GitHub's {BODY_LIMIT}-character limit; every defect is still listed with its title and location."
+    )
+
+
+def _fit(render: Callable[[int | None], str]) -> str:
+    body = render(None)
+    if len(body) <= BODY_LIMIT:
+        return body
+    low, high, best = 0, MAX_DETAIL, render(0)
+    while low <= high:
+        mid = (low + high) // 2
+        candidate = render(mid)
+        if len(candidate) <= BODY_LIMIT:
+            best, low = candidate, mid + 1
+        else:
+            high = mid - 1
+    return best
 
 
 def _record(
@@ -209,6 +246,23 @@ def _description(step: Step, judgement: protocol.Judgement | None, reviewer: str
     return f"{reviewer}: {judgement.label}"
 
 
+def _judgement_notes(judgement: protocol.Judgement | None) -> list[str]:
+    if judgement is None:
+        return []
+    lines: list[str] = []
+    if judgement.summary:
+        lines += [judgement.summary, ""]
+    if judgement.decision == protocol.DO_NOT_SHIP:
+        lines += ["No defects are listed for this decision. Rework the change and push a new head.", ""]
+    if judgement.merged:
+        lines += [f"{judgement.merged} identical finding(s) were reported more than once and are listed once.", ""]
+    if judgement.fixed:
+        lines += [f"Verified fixed: {', '.join(judgement.fixed)}. Resolve their review threads.", ""]
+    if judgement.withdrawn:
+        lines += [f"Withdrawn as never defects: {', '.join(judgement.withdrawn)}. Resolve their review threads.", ""]
+    return lines + _section("Still open from earlier reviews", [_entry_line(entry) for entry in judgement.carried])
+
+
 def finalize(
     plan: Mapping[str, Any],
     step: Step,
@@ -258,59 +312,59 @@ def finalize(
         state, pending_cause = PENDING, MARKER_LIMIT
     description = MARKER_LIMIT_DESCRIPTION if unrecorded else _description(step, judgement, reviewer, pending_cause)
     delivery = plan.get("findings_delivery", "comment")
-    findings_lines = [_finding_line(finding, ids.get(finding)) for finding in placement.inline]
-    other_lines = [_finding_line(finding, ids.get(finding)) for finding in placement.summary]
-    lines = [*_header(plan, state)]
-    if unrecorded:
-        lines += [MARKER_LIMIT_NOTE, ""]
-    if pending_cause == OVERSIZE:
-        lines += [OVERSIZE_NOTE, ""]
-    if judgement is not None:
-        lines += [f"Decision: **{judgement.label}**.", ""]
-    lines += _reviewer_line(plan, reviewer)
-    if judgement is not None and judgement.summary:
-        lines += [judgement.summary, ""]
-    if judgement is not None and judgement.decision == protocol.DO_NOT_SHIP:
-        lines += ["No defects are listed for this decision. Rework the change and push a new head.", ""]
-    if judgement is not None and judgement.merged:
-        lines += [f"{judgement.merged} identical finding(s) were reported more than once and are listed once.", ""]
-    if judgement is not None and judgement.fixed:
-        lines += [f"Verified fixed: {', '.join(judgement.fixed)}. Resolve their review threads.", ""]
-    if judgement is not None and judgement.withdrawn:
-        lines += [f"Withdrawn as never defects: {', '.join(judgement.withdrawn)}. Resolve their review threads.", ""]
-    if judgement is not None:
-        lines += _section("Still open from earlier reviews", [_entry_line(entry) for entry in judgement.carried])
-    if delivery == "comment":
-        lines += _section("Defects on diff lines", findings_lines)
-    lines += _section(
-        "Defects without a review thread" if delivery == "review" else "Defects outside the diff", other_lines
-    )
-    if placement.summary:
-        lines += ["Defects outside the diff count like the others: fix them before merge.", ""]
-    lines += _section(
-        "Defects already open as review threads, not posted again",
-        [
-            f"- **{finding.severity}** `{display_path(finding.file)}`: {ids.get(finding, '')}{': ' if finding in ids else ''}{finding.title}"
-            for finding in repeated
-        ],
-    )
-    if judgement is not None and judgement.not_counted:
-        hidden = "\n".join(_finding_line(finding) for finding in judgement.not_counted)
-        lines += [
-            "<details><summary>Not counted: defects in files this follow-up did not review</summary>",
-            "",
-            hidden,
-            "",
-            "</details>",
-            "",
-        ]
-    if plan.get("scope") == "changed":
-        lines += [f"Scope: files changed since head `{plan['reviewed_head']}` was reviewed.", ""]
-    lines += _strike_line(plan, strikes if judgement is not None and not unrecorded else int(rules.get("strikes", 0)))
-    lines += _section("Reviewers not available", _absences(attempts, step))
-    body = "\n".join(lines).rstrip() + "\n"
-    if marker is not None:
-        body += "\n" + marker
+    listed = [*placement.inline, *placement.summary, *(judgement.not_counted if judgement is not None else ())]
+
+    def render(cap: int | None) -> str:
+        active = MAX_DETAIL if cap is None else cap
+        findings_lines = [_finding_line(finding, ids.get(finding), active) for finding in placement.inline]
+        other_lines = [_finding_line(finding, ids.get(finding), active) for finding in placement.summary]
+        lines = [*_header(plan, state)]
+        if unrecorded:
+            lines += [MARKER_LIMIT_NOTE, ""]
+        if pending_cause == OVERSIZE:
+            lines += [OVERSIZE_NOTE, ""]
+        if judgement is not None:
+            lines += [f"Decision: **{judgement.label}**.", ""]
+        lines += _reviewer_line(plan, reviewer)
+        if cap is not None:
+            lines += [_size_notice(listed, cap), ""]
+        lines += _judgement_notes(judgement)
+        if delivery == "comment":
+            lines += _section("Defects on diff lines", findings_lines)
+        lines += _section(
+            "Defects without a review thread" if delivery == "review" else "Defects outside the diff", other_lines
+        )
+        if placement.summary:
+            lines += ["Defects outside the diff count like the others: fix them before merge.", ""]
+        lines += _section(
+            "Defects already open as review threads, not posted again",
+            [
+                f"- **{finding.severity}** `{display_path(finding.file)}`: {ids.get(finding, '')}{': ' if finding in ids else ''}{finding.title}"
+                for finding in repeated
+            ],
+        )
+        if judgement is not None and judgement.not_counted:
+            hidden = "\n".join(_finding_line(finding, None, active) for finding in judgement.not_counted)
+            lines += [
+                "<details><summary>Not counted: defects in files this follow-up did not review</summary>",
+                "",
+                hidden,
+                "",
+                "</details>",
+                "",
+            ]
+        if plan.get("scope") == "changed":
+            lines += [f"Scope: files changed since head `{plan['reviewed_head']}` was reviewed.", ""]
+        lines += _strike_line(
+            plan, strikes if judgement is not None and not unrecorded else int(rules.get("strikes", 0))
+        )
+        lines += _section("Reviewers not available", _absences(attempts, step))
+        body = "\n".join(lines).rstrip() + "\n"
+        if marker is not None:
+            body += "\n" + marker
+        return body
+
+    body = _fit(render)
     has_content = bool(defects or judgement is None or judgement.decision != protocol.SHIP or state != SUCCESS)
     review = _review_payload(plan, body, placement, commentable, markers) if delivery == "review" else None
     cause = pending_cause if state == PENDING else None

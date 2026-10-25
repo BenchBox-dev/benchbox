@@ -3,7 +3,7 @@
 
 import hashlib
 from collections import Counter
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
@@ -264,6 +264,26 @@ def split_sql_statements(sql: str, source_dialect: str) -> list[str]:
     return non_empty or [sql]
 
 
+def statement_variant_id(query_id: str, index: int) -> str:
+    return f"{query_id}{chr(ord('a') + index)}"
+
+
+def expand_multi_statement_queries(queries: Mapping[Any, Any], source_dialect: str) -> dict[Any, Any]:
+    try:
+        resolve_sql_dialect(source_dialect)
+    except UnknownSqlDialectError:
+        source_dialect = "duckdb"
+    expanded: dict[Any, Any] = {}
+    for query_id, sql in queries.items():
+        statements = split_sql_statements(sql, source_dialect) if isinstance(sql, str) and ";" in sql else [sql]
+        if len(statements) < 2:
+            expanded[query_id] = sql
+            continue
+        for index, statement in enumerate(statements):
+            expanded[statement_variant_id(str(query_id), index)] = statement
+    return expanded
+
+
 STATEMENT_SEPARATOR = ";\n"
 
 
@@ -276,6 +296,7 @@ def translate_sql_query(
     scope: str | None = None,
     date_columns: Iterable[str] | None = None,
     rewrites: Sequence[tuple[str, dict]] | None = None,
+    pretty: bool = False,
 ) -> str:
     import logging
 
@@ -319,7 +340,7 @@ def translate_sql_query(
                 expression = apply_rewrite("fold_between_literal_arithmetic", expression, tgt)
                 if date_columns:
                     expression = apply_rewrite("mark_date_columns", expression, tgt, date_columns=date_columns)
-            translated_statements.append(expression.sql(dialect=tgt, identify=should_identify))
+            translated_statements.append(expression.sql(dialect=tgt, identify=should_identify, pretty=pretty))
         translated = STATEMENT_SEPARATOR.join(translated_statements)
 
         record_sql_translation_outcome(

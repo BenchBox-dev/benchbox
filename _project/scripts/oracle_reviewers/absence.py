@@ -29,7 +29,7 @@ CALIBRATED_QUOTA_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
 }
 CALIBRATED_AUTH_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
     "omp": (
-        re.compile(r"401[^\n]{0,80}"),
+        re.compile(r"\b401\b[^\n]{0,80}"),
         re.compile(r"[Uu]nauthorized"),
         re.compile(r"invalid[_\s-]?api[_\s-]?key"),
         re.compile(r"No API key found for [\w-]+"),
@@ -144,16 +144,15 @@ def classify(
     timed_out: bool,
     now: datetime,
 ) -> Absence:
-    combined = f"{stdout}\n{stderr}"
     if timed_out:
         return Absence(TIMEOUT, "the reviewer did not finish within its timeout")
-    if _first(CALIBRATED_EMPTY_PATTERNS.get(harness, ()), combined) is not None:
+    if _first(CALIBRATED_EMPTY_PATTERNS.get(harness, ()), stderr) is not None:
         return Absence(EMPTY, "the reviewer produced no output because tool use was denied")
     failed = exit_code not in (0, None)
-    quota = _first(CALIBRATED_QUOTA_PATTERNS.get(harness, ()), combined) if failed else None
+    quota = _first(CALIBRATED_QUOTA_PATTERNS.get(harness, ()), stderr) if failed else None
     if quota is not None:
-        return Absence(QUOTA, redact_detail(quota.group(0)), parse_reset(combined, now))
-    auth = _first(CALIBRATED_AUTH_PATTERNS.get(harness, ()), combined) if failed else None
+        return Absence(QUOTA, redact_detail(quota.group(0)), parse_reset(stderr, now))
+    auth = _first(CALIBRATED_AUTH_PATTERNS.get(harness, ()), stderr) if failed else None
     if auth is not None:
         return Absence(AUTH, redact_detail(auth.group(0)))
     if exit_code is None:

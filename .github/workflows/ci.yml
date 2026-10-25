@@ -99,6 +99,8 @@ jobs:
       api-contract-changed: ${{ steps.path-flags.outputs.api-contract-changed }}
       tuning-paths-changed: ${{ steps.path-flags.outputs.tuning-paths-changed }}
       sql-evidence-paths-changed: ${{ steps.path-flags.outputs.sql-evidence-paths-changed }}
+      trunk-lane-plain-needed: ${{ steps.path-flags.outputs.trunk-lane-plain-needed }}
+      trunk-lane-coverage-needed: ${{ steps.path-flags.outputs.trunk-lane-coverage-needed }}
       estimated-runner-minutes-saved: ${{ steps.classify.outputs.estimated-runner-minutes-saved }}
       packaging-needed: ${{ steps.classify.outputs.packaging-needed }}
       framing-needed: ${{ steps.classify.outputs.framing-needed }}
@@ -209,6 +211,8 @@ jobs:
 
       - name: Flag changed paths read by later jobs
         id: path-flags
+        env:
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
           test -f .ci-paths/changed.txt
@@ -226,6 +230,13 @@ jobs:
           if grep -qE '^(benchbox/core/tuning/|benchbox/cli/tuning|benchbox/platforms/base/(adapter|ddl_helpers|sorted_ingestion|tuning|tuning_config|tuning_trust)\.py|benchbox/platforms/(duckdb|sqlite|datafusion|polars)|benchbox/platforms/clickhouse/|benchbox/platforms/dataframe/polars|tests/integration/tuning/|tests/fixtures/tuning/|examples/tunings/)' .ci-paths/changed.txt; then tuning=true; fi
           echo "tuning-paths-changed=$tuning" >> "$GITHUB_OUTPUT"
           if grep -qE '^(benchbox/_vendor/|benchbox/utils/dialect_utils\.py|benchbox/sql_compat/|benchbox/core/(tpch|tpcds)/|benchbox/platforms/(sqlite|duckdb|datafusion|postgresql)|scripts/sql_execution_gate/|tests/unit/scripts/test_sql_execution_gate\.py)' .ci-paths/changed.txt; then sql_evidence=true; fi
+          trunk_plain=false
+          trunk_coverage=false
+          git diff --name-only --no-renames --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > .ci-paths/trunk-lane-changed.txt
+          if grep -qxE '\.github/workflows/trunk\.yml|scripts/release_canary_sharding\.py|scripts/pytest_shard_evidence\.py|tests/fixtures/medium_shard_durations\.json' .ci-paths/trunk-lane-changed.txt; then trunk_plain=true; fi
+          if grep -qxE '\.github/workflows/trunk-coverage\.yml|scripts/release_canary_sharding\.py|scripts/pytest_shard_evidence\.py|scripts/pytest_coverage_timeout\.py|scripts/coverage_map\.ini|tests/fixtures/medium_shard_durations\.json' .ci-paths/trunk-lane-changed.txt; then trunk_coverage=true; fi
+          echo "trunk-lane-plain-needed=$trunk_plain" >> "$GITHUB_OUTPUT"
+          echo "trunk-lane-coverage-needed=$trunk_coverage" >> "$GITHUB_OUTPUT"
           echo "sql-evidence-paths-changed=$sql_evidence" >> "$GITHUB_OUTPUT"
 
       - name: Classify merge units
@@ -601,9 +612,16 @@ jobs:
     needs: ci-paths
     if: ${{ needs.ci-paths.outputs.code-tests-needed == 'true' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      packages: read
     services:
       questdb:
-        image: questdb/questdb:10.0.1@sha256:67eaed863ebb2383227919ea9a5499a4a39ceca3862c20b974c84a10e11cdf89
+        image: ghcr.io/benchbox-dev/questdb@sha256:67eaed863ebb2383227919ea9a5499a4a39ceca3862c20b974c84a10e11cdf89
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
         ports:
           - 8812:8812
     steps:
@@ -937,6 +955,7 @@ jobs:
           BENCHBOX_XDIST_TRACE_DIR: xdist-failure-trace
           COVERAGE_CORE: sysmon
         run: |
+          mkdir -p fast-junit
           (
             min_kb=
             while :; do
@@ -950,7 +969,7 @@ jobs:
           ) &
           sampler=$!
           status=0
-          uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" -n auto --tb=short --timeout=120 --durations=25 -p pytest_cov --cov=benchbox --cov-report=xml --cov-report=term-missing --cov-fail-under=70 || status=$?
+          uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" -n auto --tb=short --timeout=120 --durations=25 -o junit_duration_report=total --junitxml=fast-junit/junit.xml -p scripts.fast_tier_calibration --collection-timing fast-junit/collection.jsonl -p pytest_cov --cov=benchbox --cov-report=xml --cov-report=term-missing --cov-fail-under=70 || status=$?
           kill "$sampler" 2>/dev/null || true
           total_mib=$(awk '/^MemTotal:/ { print int($2 / 1024) }' /proc/meminfo)
           if [ -s "$RUNNER_TEMP/mem-available-min-kb" ]; then
@@ -958,6 +977,37 @@ jobs:
             echo "Lowest available memory during the fast tests: ${min_mib} MiB of ${total_mib} MiB" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
           exit "$status"
+
+      - name: Check fast-tier junit parses
+        if: always()
+        continue-on-error: true
+        run: |
+          uv run -- python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          from pathlib import Path
+
+          from tests.duration_policy import collect_junit_durations
+
+          durations = collect_junit_durations([Path("fast-junit/junit.xml")])
+          print(f"Fast-tier junit parsed: {len(durations)} tests")
+          PY
+
+      - name: Record fast-tier runner calibration
+        if: always()
+        continue-on-error: true
+        run: |
+          uv run -- python -m scripts.fast_tier_calibration \
+            --collection-file fast-junit/collection.jsonl \
+            --output fast-junit/calibration.json | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload fast-tier junit
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: fast-junit-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: fast-junit/
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: true
 
       - name: Download coverage selection
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
@@ -1035,20 +1085,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
-      - name: Restore the collection bytecode cache
-        id: bytecode-cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809
-        with:
-          path: |
-            tests/**/__pycache__
-            benchbox/**/__pycache__
-          key: medium-collect-bytecode-${{ runner.os }}-py3.12-${{ hashFiles('uv.lock') }}-${{ hashFiles('tests/**/*.py', 'benchbox/**/*.py') }}
-          restore-keys: |
-            medium-collect-bytecode-${{ runner.os }}-py3.12-${{ hashFiles('uv.lock') }}-
-            medium-collect-bytecode-${{ runner.os }}-py3.12-
-
-      - name: Compile sources with source-hash bytecode
-        run: uv run -- python -m compileall -q -j 0 --invalidation-mode checked-hash tests benchbox || echo "::warning::Bytecode warm-up skipped some files"
+      - name: Compile sources in parallel before collection
+        run: uv run -- python -m compileall -q -j 0 tests benchbox || echo "::warning::Bytecode warm-up skipped some files"
 
       - name: Collect the complete medium tier
         shell: bash
@@ -1169,6 +1207,31 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           overwrite: true
+
+  trunk-lane-plain:
+    name: trunk-lane-plain
+    needs: ci-paths
+    if: ${{ needs.ci-paths.outputs.trunk-lane-plain-needed == 'true' }}
+    uses: ./.github/workflows/trunk.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      medium-only: true
+      artifact-prefix: trunk-lane-plain-
+
+  trunk-lane-coverage:
+    name: trunk-lane-coverage
+    needs: ci-paths
+    if: ${{ needs.ci-paths.outputs.trunk-lane-coverage-needed == 'true' }}
+    uses: ./.github/workflows/trunk-coverage.yml
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    with:
+      medium-only: true
+      artifact-prefix: trunk-lane-coverage-
 
   correctness-gate:
     name: correctness-gate (${{ matrix.partition }})
@@ -1572,7 +1635,7 @@ jobs:
 
   core:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
-    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, sql-execution-evidence, package-smoke, dependency-audit]
+    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, sql-execution-evidence, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
     if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1664,7 +1727,9 @@ jobs:
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
             --expect sql-execution-evidence=${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }} \
             --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \
-            --expect dependency-audit=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} || {
+            --expect dependency-audit=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \
+            --expect trunk-lane-plain=${{ needs.ci-paths.outputs.trunk-lane-plain-needed == 'true' }} \
+            --expect trunk-lane-coverage=${{ needs.ci-paths.outputs.trunk-lane-coverage-needed == 'true' }} || {
             rc=$?
             if [ "$rc" -eq 3 ]; then
               echo "superseded=true" >> "$GITHUB_OUTPUT"

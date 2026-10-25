@@ -89,6 +89,511 @@
       "match": "14.050525885720932",
       "justification": "DataFusion previously computed this exact division as DECIMAL with six fractional digits; the runtime now computes DOUBLE PRECISION. Both agree with the DuckDB reference within the comparison tolerance; the candidate keeps the digits beyond the sixth that the baseline rounded away. The entry is optional because it can only fire while the baseline commit predates the runtime that changed the division, so it is not stale once a baseline carries that runtime. Output precision change, not a row difference.",
       "optional": true
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        3
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): item has no i_manufact_id = 808 (180 items); dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        4
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): no customer has web-channel totals in both 1998 and 1999; dropping any one of the web sale_type or dyear predicates returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        8
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the ca_zip prefix list matches 0 of 500 customer_address rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        10
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the web-sales EXISTS predicate together with the other filters leaves no customer; dropping it returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        11
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): no customer has store and web year totals in both 1998 and 1999; dropping any one sale_type or dyear predicate returns rows."
+    },
+    {
+      "engine": [
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        13
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): neither OR band (household/customer demographics, address and net profit) matches a store sale jointly with the other; dropping either band returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        18
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the demographic, birth-month, year and state filters match no catalog sale together; dropping any one of cd_gender, cd_education_status, c_birth_month, d_year or ca_state returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        20
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the d_date window of 30 days from 2002-05-11 leaves no row; dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        23
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): HAVING COUNT(*) > 4 leaves no (item, date) group among store sales of 1999 to 2002 (0 groups)."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        24
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): store has one row with s_market_id 2, so s_market_id = 10 matches 0 of 1 stores."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        31
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): no county has store and web totals for all of quarters 1 to 3 of 2000, so the self-joins return no row before the growth predicates apply."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        32
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): item has no i_manufact_id = 942 (180 items); dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        37
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the i_manufact_id list leaves no row; dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        38
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the store and catalog (last name, first name, date) sets for months 1176 to 1187 have an empty INTERSECT (466, 425 and 126 distinct triples per channel)."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        39
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): 68 warehouse and item groups have a coefficient of variation above 1 in 2000 but 0 pairs are high in both month 1 and month 2."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        41
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the correlated item attribute count subquery predicate leaves no row; dropping it returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        49
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the return amount > 10000 predicates, the year and the month together leave no row; dropping any of them returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        54
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the Sports and sailing items have 6 catalog and 0 web sales in 1998-01 and the my_customers to my_revenue segment chain returns no customer."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        55
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): i_manager_id = 8 and d_year = 1999 together leave no row; dropping either returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        58
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): no item has revenue within the 10 percent band in all three channels for the week of 2000-04-24 (67 store and 39 catalog items sold that week)."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        61
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the only store has s_gmt_offset -5, so s_gmt_offset = -6 matches 0 of 1 stores."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        64
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the i_color list leaves no row; dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        65
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the revenue <= 0.1 * store average predicate leaves no row; dropping it returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        69
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the d_year = 2003 and the store EXISTS predicates leave no customer; dropping either returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        73
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the cnt BETWEEN 1 AND 5, d_dom BETWEEN 1 AND 2 and d_year predicates together leave no row; dropping any one returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        82
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the i_manufact_id list leaves no row; dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        85
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): d_year = 2000 and the demographic and address/net-profit bands leave no row; dropping d_year or either band returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        88
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the only store is not named ese, so s_store_name = 'ese' matches 0 of 1 stores and every time-bucket count is 0."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        90
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the only web page has wp_char_count 2531, so the 5000 to 5200 range matches 0 of 1 pages."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        91
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the d_moy = 12 predicate together with the other filters leaves no row; dropping it returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        92
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): item has no i_manufact_id = 942 (180 items); dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        96
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): the only store is not named ese, so s_store_name = 'ese' matches 0 of 1 stores."
+    },
+    {
+      "engine": "sqlite",
+      "benchmark": "tpcds",
+      "check": "vacuous",
+      "queries": [
+        13
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001): neither OR band (household/customer demographics, address and net profit) matches a store sale jointly with the other; dropping either band returns rows. SQLite times out on this query at SF0.01 on slow hosts, so the entry is optional.",
+      "optional": true
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpch",
+      "check": "vacuous",
+      "queries": [
+        17
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', so the SUM is NULL."
     }
   ]
 }
