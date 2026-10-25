@@ -18,29 +18,15 @@ def _index(steps: list[dict], name: str) -> int:
     return next(i for i, step in enumerate(steps) if step.get("name") == name)
 
 
-def test_bytecode_cache_is_restored_before_collection() -> None:
+def test_sources_are_compiled_in_parallel_before_collection() -> None:
     steps = _steps()
-    cache = steps[_index(steps, "Restore the collection bytecode cache")]
-    assert cache["uses"].startswith("actions/cache@")
-    assert len(cache["uses"].split("@", 1)[1]) == 40
-    paths = cache["with"]["path"].split()
-    assert paths == ["tests/**/__pycache__", "benchbox/**/__pycache__"]
-    key = cache["with"]["key"]
-    assert "hashFiles('uv.lock')" in key
-    assert "hashFiles('tests/**/*.py', 'benchbox/**/*.py')" in key
-    restore = cache["with"]["restore-keys"].splitlines()
-    assert restore[0] == key.rsplit("-${{ hashFiles('tests", 1)[0] + "-"
-    assert _index(steps, "Restore the collection bytecode cache") < _index(steps, "Collect the complete medium tier")
-
-
-def test_bytecode_uses_source_hash_invalidation_so_restored_files_survive_checkout_mtimes() -> None:
-    steps = _steps()
-    compile_step = steps[_index(steps, "Compile sources with source-hash bytecode")]
-    assert "--invalidation-mode checked-hash" in compile_step["run"]
-    assert (
-        _index(steps, "Restore the collection bytecode cache")
-        < _index(steps, "Compile sources with source-hash bytecode")
-        < _index(steps, "Collect the complete medium tier")
+    compile_step = steps[_index(steps, "Compile sources in parallel before collection")]
+    assert "compileall" in compile_step["run"]
+    assert "-j 0" in compile_step["run"]
+    assert "--invalidation-mode" not in compile_step["run"]
+    assert not any(step.get("uses", "").startswith("actions/cache@") for step in steps)
+    assert _index(steps, "Compile sources in parallel before collection") < _index(
+        steps, "Collect the complete medium tier"
     )
 
 

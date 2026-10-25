@@ -1035,20 +1035,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
-      - name: Restore the collection bytecode cache
-        id: bytecode-cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809
-        with:
-          path: |
-            tests/**/__pycache__
-            benchbox/**/__pycache__
-          key: medium-collect-bytecode-${{ runner.os }}-py3.12-${{ hashFiles('uv.lock') }}-${{ hashFiles('tests/**/*.py', 'benchbox/**/*.py') }}
-          restore-keys: |
-            medium-collect-bytecode-${{ runner.os }}-py3.12-${{ hashFiles('uv.lock') }}-
-            medium-collect-bytecode-${{ runner.os }}-py3.12-
-
-      - name: Compile sources with source-hash bytecode
-        run: uv run -- python -m compileall -q -j 0 --invalidation-mode checked-hash tests benchbox || echo "::warning::Bytecode warm-up skipped some files"
+      - name: Compile sources in parallel before collection
+        run: uv run -- python -m compileall -q -j 0 tests benchbox || echo "::warning::Bytecode warm-up skipped some files"
 
       - name: Collect the complete medium tier
         shell: bash
