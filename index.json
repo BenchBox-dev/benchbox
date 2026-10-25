@@ -8839,12 +8839,17 @@
       "title": "Export the contracts needed to validate site-owned documentation"
     },
     "docs-mig-core-doc-paths-to-urls": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T02:31:50Z",
+        "generation": "16b1d43e38ac4147948d03c259bcb0fc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "docs-mig-adr-ownership"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Replace core references to relocated pages with canonical URLs"
     },
     "docs-mig-core-docs-data-export": {
