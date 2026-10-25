@@ -5,7 +5,7 @@
     "`make test-pytest` passes on a fresh develop checkout.",
     "`make test-pytest` passes once serially and three times with `-n 8` on a fresh develop checkout, with the commit SHA recorded"
   ],
-  "context": "The three failures listed in the description were fixed test-side in #3027 (79c5d8005): a lazy pandas/pyarrow import in a memory-baseline test, an export schema version asserted as <=2.2, and DuckDB key receipts now reported as applied_verified. A later full run on 89b350dda found three more failures; they are fixed by #3039 (omitted UNIQUE/CHECK keys no longer count as requested) and #3035 (load-only runs no longer crash on a missing power result). #3048 and #3050 keep e2e runs out of the shared benchmark_runs folder. No full `make test-pytest` run on develop has been recorded since those merges. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Must be fully green\". Next: run `make test-pytest` once serially and three times with `-n 8` on a fresh develop checkout with a temporary HOME, and record the commit SHA.",
+  "context": "Merged PR #3421 fixed four real defects found by a full `-m 'not stress' -n 8` run on develop (49974 passed, 0 failed on the branch): Spark CREATE TABLE put USING DELTA after PARTITIONED BY/CLUSTER BY (new dialect_utils.lift_ddl_table_layouts); compat_lint exemption restored on FlightDataQueryManager.get_query; ClickHouse Q47/Q57 test normalizer treats comma joins and CROSS JOIN as equal (test edit, not a source fix); DataFusion TPC-Havoc 1_v4 added to DATAFUSION_KNOWN_DIVERGENCES (decimal-avg-scale-rounding, review by 2027-01-24; baseline entry for a real engine difference after the SQLGlot 30.24.0.8 adoption). The three originally named tests already passed on develop. Not done: the item's verification of one serial full run plus three -n 8 runs on a fresh develop checkout with the SHA recorded; item left open for that.",
   "description": "The general batch agent found three failures under `make test-pytest`. They also fail on unmodified develop, so they come from earlier work, not from that batch:\n- `tests/integration/test_database_integration.py::test_database_resource_management`\n- `tests/integration/test_export_cli.py::test_export_preserves_content`\n- `tests/integration/tuning/test_post_load_reconciliation_e2e.py::test_duckdb_inline_keys_are_satisfied_and_undeclared_unique_constraints_not_dropped`\n\nUntil they are fixed, no batch can pass a final verification that requires a clean `make test-pytest`.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "op": "update",
       "op_id": "30bf76e4ac5b481b985982d531641fa0",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T06:53:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5a32229c2f244e95ae4272a54025a351",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
 }
