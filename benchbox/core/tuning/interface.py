@@ -985,11 +985,13 @@ class UnifiedTuningConfiguration:
         benchmark: str = "tpch",
         columns: Optional[list[Any]] = None,
         table_name: Optional[str] = None,
+        platform: Optional[str] = None,
         **kwargs,
-    ) -> None:
+    ) -> bool:
         if optimization_type in self._TABLE_LAYOUT_TYPES:
-            self._enable_table_layout(optimization_type, benchmark=benchmark, columns=columns, table_name=table_name)
-            return
+            return self._enable_table_layout(
+                optimization_type, benchmark=benchmark, columns=columns, table_name=table_name, platform=platform
+            )
         column_values = columns if columns is not None else kwargs.get("columns")
         if optimization_type == TuningType.Z_ORDERING:
             self.platform_optimizations.z_ordering_enabled = True
@@ -1011,6 +1013,7 @@ class UnifiedTuningConfiguration:
                 self.platform_optimizations.bloom_filter_columns = column_values
         elif optimization_type == TuningType.MATERIALIZED_VIEWS:
             self.platform_optimizations.materialized_views_enabled = True
+        return True
 
     def _enable_table_layout(
         self,
@@ -1018,18 +1021,36 @@ class UnifiedTuningConfiguration:
         benchmark: str = "tpch",
         columns: Optional[list[Any]] = None,
         table_name: Optional[str] = None,
-    ) -> None:
+        platform: Optional[str] = None,
+    ) -> bool:
+        if platform is not None and self.layout_unapplied_reason(platform, layout_type) is not None:
+            return False
+        platform = platform or "duckdb"
         slot = layout_type.value
         resolved_columns = self._resolve_layout_columns(columns)
         if resolved_columns:
-            target = self._explicit_layout_table(benchmark, table_name)
+            target = self._explicit_layout_table(benchmark, table_name, platform)
             self._record_layout_slot(target, slot, resolved_columns)
-            return
-        targets = self._default_layout_targets(layout_type, benchmark, table_name)
+            return True
+        targets = self._default_layout_targets(layout_type, benchmark, table_name, platform)
         if not targets:
-            return
+            return False
         for target_table, entry_columns in targets.items():
             self._record_layout_slot(target_table, slot, list(entry_columns))
+        return True
+
+    @staticmethod
+    def layout_unapplied_reason(platform: str, layout_type: TuningType) -> Optional[str]:
+        from benchbox.core.tuning.capability_registry import (
+            get_capability,
+            is_not_rendered_at_execution,
+            not_rendered_reason,
+        )
+
+        capability = get_capability(platform, layout_type)
+        if is_not_rendered_at_execution(capability):
+            return not_rendered_reason(capability)
+        return None
 
     @staticmethod
     def _resolve_layout_columns(columns: Optional[list[Any]]) -> list[TuningColumn]:
@@ -1049,10 +1070,10 @@ class UnifiedTuningConfiguration:
         return resolved
 
     @staticmethod
-    def _read_template_table_tunings(benchmark: str) -> dict[str, Any]:
+    def _read_template_table_tunings(benchmark: str, platform: str = "duckdb") -> dict[str, Any]:
         from benchbox.core.tuning.packaged_templates import packaged_template_path
 
-        template = packaged_template_path("duckdb", benchmark.lower())
+        template = packaged_template_path(platform, benchmark.lower())
         if not template.exists():
             return {}
         try:
@@ -1086,8 +1107,8 @@ class UnifiedTuningConfiguration:
         self.table_tunings[target_table] = TableTuning(**kwargs)
 
     @staticmethod
-    def _explicit_layout_table(benchmark: str, table_name: Optional[str]) -> str:
-        table_tunings = UnifiedTuningConfiguration._read_template_table_tunings(benchmark)
+    def _explicit_layout_table(benchmark: str, table_name: Optional[str], platform: str = "duckdb") -> str:
+        table_tunings = UnifiedTuningConfiguration._read_template_table_tunings(benchmark, platform)
         ordered = sorted(table_tunings) if table_tunings else []
         if table_name is not None:
             match = next((name for name in ordered if name.lower() == table_name.lower()), None)
@@ -1101,11 +1122,12 @@ class UnifiedTuningConfiguration:
         layout_type: TuningType,
         benchmark: str,
         table_name: Optional[str],
+        platform: str = "duckdb",
     ) -> dict[str, list[TuningColumn]]:
         if layout_type == TuningType.PARTITIONING:
             table_tunings = UnifiedTuningConfiguration._read_default_partitioning(benchmark)
         else:
-            table_tunings = UnifiedTuningConfiguration._read_template_table_tunings(benchmark.lower())
+            table_tunings = UnifiedTuningConfiguration._read_template_table_tunings(benchmark.lower(), platform)
         return UnifiedTuningConfiguration._layout_targets_from(table_tunings, layout_type, table_name)
 
     @staticmethod
