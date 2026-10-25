@@ -2867,12 +2867,17 @@
       "title": "Refuse to arm a PR whose duration check warned unless the PR updates the baseline"
     },
     "ci-autouse-fixture-allowlist-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T20:43:36Z",
+        "generation": "2f63ae172f2f415b8ee8b55e9edf7811",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [
         "ci-chdb-guard-fast-tier-regression-20261025"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Require every non-function-scoped autouse pytest fixture to be on a reviewed allowlist"
     },
     "ci-baseline-representative-remeasure-sample": {
