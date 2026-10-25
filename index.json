@@ -7666,15 +7666,10 @@
       "title": "develop is red: agent instruction bytes 16088 exceed the 16000 budget, blocking all commits"
     },
     "devloop-trunk-revert-nested-worktree": {
-      "claim": {
-        "expires_at": "2026-10-26T13:37:30Z",
-        "generation": "9a4eb2511492430b865e44fafa1b69b9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "make trunk-revert unusable from inside a managed linked worktree"
     },
     "df-parity-id-mapping-builders": {
