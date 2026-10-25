@@ -417,3 +417,130 @@ def test_a_no_rows_entry_does_not_explain_rows_of_zeros(tiny, tmp_path):
     wide = _evaluate(tiny, tmp_path, _side("candidate", ten_rows), expected=[{**entry, "query": "ten"}])
     assert "16 rows, every cell NULL or 0" in {f.detail for f in wide.unexplained}
     assert not wide.passed
+
+
+@pytest.fixture
+def empty_tpch(tmp_path: Path) -> dict[str, Dataset]:
+    from benchbox.core.tpch.schema import TABLES, get_create_all_tables_sql
+
+    directory = tmp_path / "tpch-empty"
+    directory.mkdir()
+    for table in TABLES:
+        (directory / f"{table.name}.tbl").write_text("|" * len(table.columns) + "\n")
+    return {
+        "tpch": Dataset(
+            "tpch",
+            get_create_all_tables_sql(enable_primary_keys=False, enable_foreign_keys=False).replace(" NOT NULL", ""),
+            {table.name: directory / f"{table.name}.tbl" for table in TABLES},
+        )
+    }
+
+
+def _havoc_1_v7_findings(empty_tpch, tmp_path: Path) -> set[tuple[str, str, str, str]]:
+    from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
+    from scripts.sql_execution_gate import emit
+
+    benchmark = TPCHavocBenchmark(scale_factor=0.01, output_dir=tmp_path / "havoc")
+    emitted = emit._emit("tpchavoc", benchmark, ["1_v7"], None, ("sqlite", "duckdb"))
+    side = {"ref": "candidate", "runtime_pin": {}, "queries": {"tpchavoc": emitted}}
+    results, _, _ = gate.run_engines([DuckdbEngine, SqliteEngine], empty_tpch, {"candidate": side}, 30.0, tmp_path)
+    report = gate.evaluate(results, {"candidate": side}, {}, [], ["duckdb", "sqlite"])
+    return {f.key for f in report.unexplained if f.check == "error"}
+
+
+def test_the_sqlite_list_aggregate_dispatch_omission_fails_the_gate(empty_tpch, tmp_path, monkeypatch):
+    from benchbox.core.tpchavoc import dialect_compat
+
+    assert _havoc_1_v7_findings(empty_tpch, tmp_path) == set()
+    monkeypatch.setattr(dialect_compat, "LIST_AGGREGATE_DIALECTS", dialect_compat.LIST_AGGREGATE_DIALECTS - {"sqlite"})
+    assert _havoc_1_v7_findings(empty_tpch, tmp_path) == {("tpchavoc", "1_v7", "sqlite", "error")}
+
+
+def test_havoc_variants_run_on_the_tpch_dataset():
+    assert gate.DATASET_OF["tpchavoc"] == "tpch"
+
+
+OBT_DDL = "CREATE TABLE obt (k INTEGER, v INTEGER)"
+
+
+def _obt_datasets(tmp_path: Path) -> dict[str, Dataset]:
+    (tmp_path / "base.tbl").write_text("1|10|\n2|20|\n")
+    (tmp_path / "obt.tbl").write_text("1|10|\n2|21|\n")
+    return {
+        "tpcds": Dataset("tpcds", "CREATE TABLE base (k INTEGER, v INTEGER)", {"base": tmp_path / "base.tbl"}),
+        "tpcds_obt": Dataset("tpcds_obt", OBT_DDL, {"obt": tmp_path / "obt.tbl"}),
+    }
+
+
+def _obt_side(base_sql: str, obt_sql: str, part: bool = False) -> dict:
+    def cell(sql: str) -> dict[str, str]:
+        return {"sqlite": sql, "duckdb": sql}
+
+    return {
+        "ref": "candidate",
+        "runtime_pin": {},
+        "queries": {
+            gate.PARTS if part else "tpcds": {"14a" if part else "1": cell(base_sql)},
+            "tpcds_obt": {"14a" if part else "1": cell(obt_sql)},
+        },
+    }
+
+
+@pytest.mark.parametrize("part", [False, True])
+def test_obt_result_is_compared_with_the_tpcds_result_on_every_engine(tmp_path, part):
+    side = _obt_side("SELECT k, v FROM base", "SELECT k, v FROM obt", part)
+    results, _, _ = gate.run_engines(
+        [DuckdbEngine, SqliteEngine], _obt_datasets(tmp_path), {"candidate": side}, 30.0, tmp_path
+    )
+    report = gate.evaluate(results, {"candidate": side}, {}, [], ["duckdb", "sqlite"])
+    assert {(f.engine, f.check) for f in report.unexplained if f.benchmark == "tpcds_obt"} == {
+        ("duckdb", "base-equivalence"),
+        ("sqlite", "base-equivalence"),
+    }
+    assert all(
+        "differs from the TPC-DS result" in f.detail for f in report.unexplained if f.check == "base-equivalence"
+    )
+
+
+def test_obt_matching_the_tpcds_result_is_clean(tmp_path):
+    side = _obt_side("SELECT k, v FROM base WHERE k = 1", "SELECT k, v FROM obt WHERE k = 1")
+    results, _, _ = gate.run_engines(
+        [DuckdbEngine, SqliteEngine], _obt_datasets(tmp_path), {"candidate": side}, 30.0, tmp_path
+    )
+    assert gate.evaluate(results, {"candidate": side}, {}, [], ["duckdb", "sqlite"]).passed
+
+
+def test_obt_augmented_data_proves_a_vacuous_obt_query(tmp_path):
+    directory = tmp_path / "aug"
+    directory.mkdir()
+    (directory / "base.tbl").write_text("99|1|\n")
+    (directory / "obt.tbl").write_text("99|1|\n")
+    datasets = {
+        **_obt_datasets(tmp_path),
+        "tpcds-augmented": Dataset(
+            "tpcds-augmented", "CREATE TABLE base (k INTEGER, v INTEGER)", {"base": directory / "base.tbl"}
+        ),
+        "tpcds_obt-augmented": Dataset("tpcds_obt-augmented", OBT_DDL, {"obt": directory / "obt.tbl"}),
+    }
+
+    def cell(sql: str) -> dict[str, str]:
+        return {"sqlite": sql, "duckdb": sql}
+
+    vacuous = "SELECT COUNT(*), SUM(k) FROM {} WHERE k > 98"
+    probe = vacuous.replace("> 98", "> 50")
+    side = {
+        "ref": "candidate",
+        "runtime_pin": {},
+        "queries": {
+            "tpcds": {"16": cell(vacuous.format("base").replace("> 98", "> 500"))},
+            "tpcds_obt": {"16": cell(vacuous.format("obt").replace("> 98", "> 500"))},
+            "tpcds-augmented": {"16.default": cell(probe.format("base"))},
+            "tpcds_obt-augmented": {"16.default": cell(probe.format("obt"))},
+        },
+    }
+    results, _, _ = gate.run_engines([DuckdbEngine, SqliteEngine], datasets, {"candidate": side}, 30.0, tmp_path)
+    report = gate.evaluate(results, {"candidate": side}, {}, [], ["duckdb", "sqlite"])
+    assert report.passed
+    assert {(f.benchmark, f.engine, f.query) for f in report.proven} == {
+        (benchmark, engine, "16") for benchmark in ("tpcds", "tpcds_obt") for engine in ("duckdb", "sqlite")
+    }

@@ -594,6 +594,807 @@
       ],
       "match": "every cell NULL or 0",
       "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', so the SUM is NULL."
+    },
+    {
+      "engine": "sqlite",
+      "benchmark": "tpchavoc",
+      "check": "error",
+      "queries": [
+        "6_v2",
+        "14_v2"
+      ],
+      "match": "near \")\"",
+      "tracker": "sqlite-havoc-empty-group-by-20261025",
+      "justification": "Open defect: the SQLite translation keeps the empty grouping `GROUP BY ()` that SQLite rejects with `near \")\": syntax error`; DuckDB accepts it. Tracked in sqlite-havoc-empty-group-by-20261025; remove this entry when the translation is fixed."
+    },
+    {
+      "engine": "sqlite",
+      "benchmark": "tpchavoc",
+      "check": "error",
+      "queries": [
+        "5_v8",
+        "21_v1",
+        "21_v2",
+        "21_v3",
+        "21_v4",
+        "21_v5",
+        "21_v6",
+        "21_v7",
+        "21_v8",
+        "21_v9",
+        "21_v10"
+      ],
+      "match": "timeout",
+      "optional": true,
+      "justification": "SQLite without indexes does not finish these TPC-H Havoc variants inside the per-query budget at SF0.01: 5_v8 always exceeds it, and the ten 21_v variants run 13 to 15 seconds against the 15 second budget (TPC-H Q21 is already an optional timeout). The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on unindexed TPC-H, not a translation difference."
+    },
+    {
+      "engine": "postgres",
+      "benchmark": "tpchavoc",
+      "check": "error",
+      "queries": [
+        "20_v1",
+        "20_v2",
+        "20_v3",
+        "20_v4",
+        "20_v5",
+        "20_v6",
+        "20_v7",
+        "20_v8",
+        "20_v9",
+        "20_v10"
+      ],
+      "match": "statement timeout",
+      "optional": true,
+      "justification": "PostgreSQL without indexes does not finish the ten TPC-H Havoc 20_v variants inside the per-query budget at SF0.01, the same limit as TPC-H Q20 (already an optional timeout). The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on unindexed TPC-H, not a translation difference."
+    },
+    {
+      "engine": "postgres",
+      "benchmark": "tpchavoc",
+      "check": "error",
+      "queries": [
+        "1_v7"
+      ],
+      "match": "function list(numeric) does not exist",
+      "tracker": "postgres-datafusion-havoc-list-aggregate-20261025",
+      "justification": "Open defect: the PostgreSQL translation of variant 1_v7 keeps the DuckDB LIST aggregate, which PostgreSQL does not have (`function list(numeric) does not exist`); the list-aggregate rewrite runs only for SQLite and the cloud dialects. Tracked in postgres-datafusion-havoc-list-aggregate-20261025; remove this entry when the translation is fixed."
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpchavoc",
+      "check": "error",
+      "queries": [
+        "1_v7"
+      ],
+      "match": "Invalid function 'list'",
+      "tracker": "postgres-datafusion-havoc-list-aggregate-20261025",
+      "justification": "Open defect: the DataFusion translation of variant 1_v7 keeps the DuckDB LIST aggregate, which DataFusion 54.0.0 does not have (`Error during planning: Invalid function 'list'`); the list-aggregate rewrite runs only for SQLite and the cloud dialects. Tracked in postgres-datafusion-havoc-list-aggregate-20261025; remove this entry when the translation is fixed."
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpchavoc",
+      "check": "error",
+      "queries": [
+        "4_v7",
+        "4_v10",
+        "14_v8"
+      ],
+      "match": "Physical plan does not support logical expression Exists(",
+      "justification": "DataFusion 54.0.0 cannot plan a correlated EXISTS subquery in these TPC-H Havoc variants and fails with `This feature is not implemented: Physical plan does not support logical expression Exists(`. Engine limit on correlated subqueries, not a translation difference; a DataFusion upgrade that supports them makes the entry stale and fails the gate until it is removed."
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpchavoc",
+      "check": "error",
+      "queries": [
+        "16_v7",
+        "16_v10"
+      ],
+      "match": "Physical plan does not support logical expression InSubquery(",
+      "justification": "DataFusion 54.0.0 cannot plan a correlated IN subquery in these TPC-H Havoc variants and fails with `This feature is not implemented: Physical plan does not support logical expression InSubquery(`. Engine limit on correlated subqueries, not a translation difference; a DataFusion upgrade that supports them makes the entry stale and fails the gate until it is removed."
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpchavoc",
+      "check": "error",
+      "queries": [
+        "7_v1",
+        "9_v1",
+        "17_v7",
+        "17_v10"
+      ],
+      "match": "Physical plan does not support logical expression ScalarSubquery(",
+      "justification": "DataFusion 54.0.0 cannot plan a correlated scalar subquery in these TPC-H Havoc variants and fails with `This feature is not implemented: Physical plan does not support logical expression ScalarSubquery(`. Engine limit on correlated subqueries, not a translation difference; a DataFusion upgrade that supports them makes the entry stale and fails the gate until it is removed."
+    },
+    {
+      "engine": "datafusion",
+      "benchmark": "tpchavoc",
+      "check": "error",
+      "queries": [
+        "8_v1"
+      ],
+      "match": "Optimizer rule 'scalar_subquery_to_join' failed",
+      "justification": "DataFusion 54.0.0 cannot decorrelate the scalar subquery of TPC-H Havoc variant 8_v1 and fails with `Optimizer rule 'scalar_subquery_to_join' failed`. Engine limit on correlated subqueries, not a translation difference; a DataFusion upgrade that supports it makes the entry stale and fails the gate until it is removed."
+    },
+    {
+      "engine": "postgres",
+      "benchmark": "tpcds_obt",
+      "check": "error",
+      "queries": [
+        2,
+        78
+      ],
+      "match": "round(double precision, integer) does not exist",
+      "tracker": "postgres-obt-alias-and-round-double-20261025",
+      "justification": "Open defect: the PostgreSQL translation of the OBT query rounds a DOUBLE PRECISION expression with ROUND(x, n), which PostgreSQL only defines for NUMERIC (`function round(double precision, integer) does not exist`); the base TPC-DS query computes the same expression in DECIMAL. Tracked in postgres-obt-alias-and-round-double-20261025; remove this entry when the translation is fixed."
+    },
+    {
+      "engine": "postgres",
+      "benchmark": "tpcds_obt",
+      "check": "error",
+      "queries": [
+        36,
+        70,
+        86
+      ],
+      "match": "column \"lochierarchy\" does not exist",
+      "tracker": "postgres-obt-alias-and-round-double-20261025",
+      "justification": "Open defect: the PostgreSQL translation of the OBT query uses the output alias lochierarchy inside an ORDER BY or PARTITION BY expression, which PostgreSQL resolves only for a bare alias (`column \"lochierarchy\" does not exist`); the base TPC-DS query carries a fork rewrite for this. Tracked in postgres-obt-alias-and-round-double-20261025; remove this entry when the translation is fixed."
+    },
+    {
+      "engine": "postgres",
+      "benchmark": "tpcds_obt",
+      "check": "error",
+      "queries": [
+        58,
+        60
+      ],
+      "match": "statement timeout",
+      "tracker": "postgres-obt-alias-and-round-double-20261025",
+      "optional": true,
+      "justification": "PostgreSQL without indexes does not finish OBT Q58 inside the per-query budget at SF0.01 and Q60 runs 15 seconds against the 15 second budget; both run the 715-column OBT through correlated aggregates over the whole table. The outcome depends on wall-clock speed, so the entry is optional. Q58 is part of the PostgreSQL OBT translation defects tracked in postgres-obt-alias-and-round-double-20261025."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds-parts",
+      "check": "vacuous",
+      "queries": [
+        "23a"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001), statement a of Q23: same reason as the first statement: HAVING COUNT(*) > 4 leaves no (item, date) group among store sales of 1999 to 2002 (0 groups)."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds-parts",
+      "check": "vacuous",
+      "queries": [
+        "23b"
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001), statement b of Q23: same reason as the first statement: HAVING COUNT(*) > 4 leaves no (item, date) group among store sales of 1999 to 2002 (0 groups)."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds-parts",
+      "check": "vacuous",
+      "queries": [
+        "24a"
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001), statement a of Q24: same reason as the first statement: store has one row with s_market_id 2, so s_market_id = 10 matches 0 of 1 stores."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds-parts",
+      "check": "vacuous",
+      "queries": [
+        "24b"
+      ],
+      "match": "no rows",
+      "justification": "Executed on DuckDB with the gate data (SF0.01, seed 1001), statement b of Q24: same reason as the first statement: store has one row with s_market_id 2, so s_market_id = 10 matches 0 of 1 stores."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        3
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q3: Executed on DuckDB with the gate data (SF0.01, seed 1001): item has no i_manufact_id = 808 (180 items); dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        4
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q4: Executed on DuckDB with the gate data (SF0.01, seed 1001): no customer has web-channel totals in both 1998 and 1999; dropping any one of the web sale_type or dyear predicates returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        10
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q10: Executed on DuckDB with the gate data (SF0.01, seed 1001): the web-sales EXISTS predicate together with the other filters leaves no customer; dropping it returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        11
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q11: Executed on DuckDB with the gate data (SF0.01, seed 1001): no customer has store and web year totals in both 1998 and 1999; dropping any one sale_type or dyear predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        13
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q13: Executed on DuckDB with the gate data (SF0.01, seed 1001): neither OR band (household/customer demographics, address and net profit) matches a store sale jointly with the other; dropping either band returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        18
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q18: Executed on DuckDB with the gate data (SF0.01, seed 1001): the demographic, birth-month, year and state filters match no catalog sale together; dropping any one of cd_gender, cd_education_status, c_birth_month, d_year or ca_state returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        20
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q20: Executed on DuckDB with the gate data (SF0.01, seed 1001): the d_date window of 30 days from 2002-05-11 leaves no row; dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        "23a"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q23: Executed on DuckDB with the gate data (SF0.01, seed 1001): HAVING COUNT(*) > 4 leaves no (item, date) group among store sales of 1999 to 2002 (0 groups)."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        "23b"
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q23: Executed on DuckDB with the gate data (SF0.01, seed 1001): HAVING COUNT(*) > 4 leaves no (item, date) group among store sales of 1999 to 2002 (0 groups)."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        "24a"
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q24: Executed on DuckDB with the gate data (SF0.01, seed 1001): store has one row with s_market_id 2, so s_market_id = 10 matches 0 of 1 stores."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        "24b"
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q24: Executed on DuckDB with the gate data (SF0.01, seed 1001): store has one row with s_market_id 2, so s_market_id = 10 matches 0 of 1 stores."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        31
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q31: Executed on DuckDB with the gate data (SF0.01, seed 1001): no county has store and web totals for all of quarters 1 to 3 of 2000, so the self-joins return no row before the growth predicates apply."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        32
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q32: Executed on DuckDB with the gate data (SF0.01, seed 1001): item has no i_manufact_id = 942 (180 items); dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        38
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q38: Executed on DuckDB with the gate data (SF0.01, seed 1001): the store and catalog (last name, first name, date) sets for months 1176 to 1187 have an empty INTERSECT (466, 425 and 126 distinct triples per channel)."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        41
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q41: Executed on DuckDB with the gate data (SF0.01, seed 1001): the correlated item attribute count subquery predicate leaves no row; dropping it returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        49
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q49: Executed on DuckDB with the gate data (SF0.01, seed 1001): the return amount > 10000 predicates, the year and the month together leave no row; dropping any of them returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        55
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q55: Executed on DuckDB with the gate data (SF0.01, seed 1001): i_manager_id = 8 and d_year = 1999 together leave no row; dropping either returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        58
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q58: Executed on DuckDB with the gate data (SF0.01, seed 1001): no item has revenue within the 10 percent band in all three channels for the week of 2000-04-24 (67 store and 39 catalog items sold that week)."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        61
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q61: Executed on DuckDB with the gate data (SF0.01, seed 1001): the only store has s_gmt_offset -5, so s_gmt_offset = -6 matches 0 of 1 stores."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        64
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q64: Executed on DuckDB with the gate data (SF0.01, seed 1001): the i_color list leaves no row; dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        65
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q65: Executed on DuckDB with the gate data (SF0.01, seed 1001): the revenue <= 0.1 * store average predicate leaves no row; dropping it returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        69
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q69: Executed on DuckDB with the gate data (SF0.01, seed 1001): the d_year = 2003 and the store EXISTS predicates leave no customer; dropping either returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        73
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q73: Executed on DuckDB with the gate data (SF0.01, seed 1001): the cnt BETWEEN 1 AND 5, d_dom BETWEEN 1 AND 2 and d_year predicates together leave no row; dropping any one returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        85
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q85: Executed on DuckDB with the gate data (SF0.01, seed 1001): d_year = 2000 and the demographic and address/net-profit bands leave no row; dropping d_year or either band returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        88
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q88: Executed on DuckDB with the gate data (SF0.01, seed 1001): the only store is not named ese, so s_store_name = 'ese' matches 0 of 1 stores and every time-bucket count is 0."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        90
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q90: Executed on DuckDB with the gate data (SF0.01, seed 1001): the only web page has wp_char_count 2531, so the 5000 to 5200 range matches 0 of 1 pages."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        91
+      ],
+      "match": "no rows",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q91: Executed on DuckDB with the gate data (SF0.01, seed 1001): the d_moy = 12 predicate together with the other filters leaves no row; dropping it returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        92
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q92: Executed on DuckDB with the gate data (SF0.01, seed 1001): item has no i_manufact_id = 942 (180 items); dropping that predicate returns rows."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpcds_obt",
+      "check": "vacuous",
+      "queries": [
+        96
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "The result equals the TPC-DS result (checked by the base-equivalence check) and is vacuous for the same executed reason as TPC-DS Q96: Executed on DuckDB with the gate data (SF0.01, seed 1001): the only store is not named ese, so s_store_name = 'ese' matches 0 of 1 stores."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpchavoc",
+      "check": "vacuous",
+      "queries": [
+        "17_v1"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "postgres"
+      ],
+      "benchmark": "tpchavoc",
+      "check": "vacuous",
+      "queries": [
+        "17_v10"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpchavoc",
+      "check": "vacuous",
+      "queries": [
+        "17_v2"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpchavoc",
+      "check": "vacuous",
+      "queries": [
+        "17_v3"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpchavoc",
+      "check": "vacuous",
+      "queries": [
+        "17_v4"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpchavoc",
+      "check": "vacuous",
+      "queries": [
+        "17_v5"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpchavoc",
+      "check": "vacuous",
+      "queries": [
+        "17_v6"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "postgres"
+      ],
+      "benchmark": "tpchavoc",
+      "check": "vacuous",
+      "queries": [
+        "17_v7"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpchavoc",
+      "check": "vacuous",
+      "queries": [
+        "17_v8"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
+    },
+    {
+      "engine": [
+        "sqlite",
+        "duckdb",
+        "datafusion",
+        "postgres"
+      ],
+      "benchmark": "tpchavoc",
+      "check": "vacuous",
+      "queries": [
+        "17_v9"
+      ],
+      "match": "every cell NULL or 0",
+      "justification": "Executed on DuckDB with the gate data (SF0.01): part has 0 rows with p_brand 'Brand#23' and p_container 'MED BOX', which every Q17 variant keeps, so the SUM is NULL."
     }
   ]
 }
