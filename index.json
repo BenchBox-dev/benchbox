@@ -23269,18 +23269,13 @@
       "title": "Decide Snowpark tuning surface: warehouse sizing and session params"
     },
     "soundness-3125-fixture-entry-text-20261022": {
-      "claim": {
-        "expires_at": "2026-10-26T13:18:51Z",
-        "generation": "288eeb792e4c4faa94cb37fd64aeef29",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [
         "soundness-dead-exception-report-20261022",
         "comment-policy-digest-and-base-exception-catch22-20261008"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Correct the comment-policy fixture entries for test_artifacts.py and remove their stale twins"
     },
     "soundness-classifier-prefix-vs-exact-file": {
