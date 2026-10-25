@@ -115,6 +115,18 @@ owner, and when to remove it. A suppression also needs an unexpired `expires`
 date. Entries do not use line numbers. Each entry allows one occurrence unless
 it has an approved positive `count`.
 
+### Expiry renewal
+
+A directive is valid through its `expires` date and fails the next day. Every
+local check, the PR check and the nightly scan print a non-blocking warning
+(a `::warning::` annotation in CI) for each date within 30 days of today.
+The maintainers named as `owner` in the entry renew or remove
+the entries that a warning names: delete an entry whose suppression is gone, or
+move its `expires` date forward in a pull request that gets the same successful
+oracle verdict as a new exception. A date-only change is a new policy entry, so
+it does not count until that verdict covers the registry head. Keep the renewed
+dates spread across at least ten dates.
+
 A first-line shebang needs no entry. An encoding declaration is allowed only in
 the first two lines of a Python file, and only for a non-UTF-8 encoding.
 
@@ -125,9 +137,21 @@ an oracle-gate success status posted by the benchbox-oracle App and a success
 oracle verdict review. Neither alone is enough: a gate status also passes for
 changes that need no review. Without both, the base policy still applies and
 the new entries do not count, so a change never authorizes its own exception
-without that review. The local check and CI fail on the new entries until the
+without that review. CI and `make comment-policy-check` fail on the new entries until the
 verdict succeeds; push, obtain the success verdict, rerun the comment-policy
-check, then merge. Remove unused exceptions when you review a module. A
+check, then merge. The commit hook alone also accepts a new `fixture` entry
+without that verdict when all of these hold: the entry's path is a file the staged commit changes
+against the base, its digest equals the digest the checker computes from the
+staged content of that file, and the entry has no `count` above one, so it
+cannot excuse a second finding or another path. The hook passes
+`--accept-same-commit-fixtures` for this; the option is off by default, the
+checker refuses it outside a staged comparison with a base or when `GITHUB_ACTIONS`
+is set, and the CI job never passes it. CI behavior is unchanged: it still
+ignores every new entry until the verdict covers the registry head, so a commit
+that registers a fixture for a file it changes to hide a new finding passes the
+hook and fails CI. Do not register a digest in an earlier pull request to get
+around the hook; register the entry in the pull request that changes the code.
+Remove unused exceptions when you review a module. A
 candidate scope notice must stay inside the byte range already pinned at the
 base, must keep the bytes of that range identical to the base, and must not
 escalate a partial pin into a whole-file exclusion. The verdict counts only

@@ -50,6 +50,14 @@ PASS = 0
 WAITING = 1
 ERROR = 2
 
+_HEAD_OID_QUERY = """
+query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) { headRefOid }
+  }
+}
+"""
+
 _THREADS_QUERY = """
 query($owner: String!, $name: String!, $number: Int!, $after: String) {
   repository(owner: $owner, name: $name) {
@@ -292,6 +300,18 @@ def latest_base_change(events: Iterable[dict[str, Any]]) -> str | None:
 
 def fetch_base_change_date(token: str, repo: str, pr: int) -> str | None:
     return latest_base_change(_paginate(token, f"/repos/{repo}/issues/{pr}/timeline"))
+
+
+def fetch_head_oid(token: str, repo: str, pr: int) -> str:
+    owner, name = repo.split("/", 1)
+    payload = _request(
+        token,
+        f"{API_ROOT}/graphql",
+        {"query": _HEAD_OID_QUERY, "variables": {"owner": owner, "name": name, "number": pr}},
+    )
+    if payload.get("errors"):
+        raise CheckError(f"GitHub GraphQL returned errors: {payload['errors']}")
+    return payload["data"]["repository"]["pullRequest"]["headRefOid"]
 
 
 def fetch_threads(token: str, repo: str, pr: int) -> list[dict[str, Any]]:

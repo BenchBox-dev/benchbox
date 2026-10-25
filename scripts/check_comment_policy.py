@@ -14,7 +14,7 @@ import sys
 import tokenize
 from collections import Counter
 from dataclasses import asdict
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +41,7 @@ ENFORCEMENT_MODES = COMMENT_POLICY_ENFORCEMENT_MODES
 
 POLICY_PATH = "quality/comment-policy.json"
 LAUNCHER_PATH = "scripts/run_comment_policy.py"
+EXPIRY_WARNING_DAYS = 30
 BOOTSTRAP_BASE = "ed5c263c513ba65499f4918d3a7de607f280c65b"
 
 
@@ -65,6 +66,22 @@ def expired_exception_identities(policy: dict) -> set[tuple[str, str, str, str, 
         for entry in policy["exceptions"]
         if entry["kind"] == "directive" and "expires" in entry and date.fromisoformat(entry["expires"]) < date.today()
     }
+
+
+def expiring_policy_warnings(policy: dict, today: date | None = None) -> list[str]:
+    today = today or date.today()
+    horizon = today + timedelta(days=EXPIRY_WARNING_DAYS)
+    by_date: Counter = Counter(
+        entry["expires"]
+        for entry in policy["exceptions"]
+        if entry["kind"] == "directive"
+        and "expires" in entry
+        and today <= date.fromisoformat(entry["expires"]) <= horizon
+    )
+    return [
+        f"{count} directive exception(s) expire on {expires}; renew or remove them through an oracle-reviewed policy change"
+        for expires, count in sorted(by_date.items())
+    ]
 
 
 def expired_policy_findings(policy: dict) -> list[Finding]:
@@ -129,6 +146,29 @@ def bootstrap_base_allowed(root: Path, base: str) -> bool:
         for path in ("scripts/run_comment_policy.py", "quality/comment-policy.json")
     )
     return contains_rollout and not installed
+
+
+def same_commit_fixture(entry: dict, changed: set[str]) -> bool:
+    return entry["kind"] == "fixture" and entry.get("count", 1) == 1 and entry["path"] in changed
+
+
+def require_local_staged_check(args: argparse.Namespace) -> None:
+    if not args.accept_same_commit_fixtures:
+        return
+    if not (args.staged and args.base):
+        raise ValueError("same-commit fixture acceptance applies only to a staged comparison with a base")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        raise ValueError("same-commit fixture acceptance is not available in CI")
+
+
+def counted_exceptions(
+    policy: dict, baseline: dict, reviewed: bool, same_commit: bool, changed: set[str]
+) -> list[dict]:
+    return [
+        e
+        for e in policy["exceptions"]
+        if e in baseline["exceptions"] or reviewed or (same_commit and same_commit_fixture(e, changed))
+    ]
 
 
 def allowed(
@@ -407,6 +447,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--staged", action="store_true")
     parser.add_argument("--policy", default=POLICY_PATH)
     parser.add_argument("--bootstrap", action="store_true")
+    parser.add_argument("--accept-same-commit-fixtures", action="store_true")
     parser.add_argument("--json-out", type=Path)
     parser.add_argument("--path", action="append", default=[])
     parser.add_argument("--full", action="store_true")
@@ -419,6 +460,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.base and not re.fullmatch(r"[a-f0-9]{40}", args.base):
             raise ValueError("base must be a full commit SHA")
         compared = bool(args.base)
+        require_local_staged_check(args)
         if args.bootstrap and not (compared and bootstrap_base_allowed(root, args.base)):
             raise ValueError("bootstrap requires a base that contains the initial rollout commit")
         owner_base = ownership_base(root, args.mode, args.base, args.ownership_base)
@@ -437,6 +479,7 @@ def main(argv: list[str] | None = None) -> int:
             if not any(matches(path, scope) for path in paths):
                 raise ValueError(f"scope matches no registered source: {scope}")
         changed: set[str] = set()
+        committed: set[str] = set()
         if compared:
             revoked = [e["path"] for e in baseline_policy["exceptions"] if e not in policy["exceptions"]]
             revoked.extend(e["path"] for e in baseline_policy["external"] if e not in policy["external"])
@@ -449,6 +492,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             if not args.staged:
                 changed.update(git(root, "ls-files", "--others", "--exclude-standard", "-z").decode().split("\0"))
+            committed = set(changed)
             trusted = launcher_trusted_files(root, args.base)
             global_change = (
                 args.full
@@ -472,13 +516,16 @@ def main(argv: list[str] | None = None) -> int:
         validate_consumers(root, policy, args.staged)
         effective_policy = {
             **policy,
-            "exceptions": [e for e in policy["exceptions"] if e in baseline_policy["exceptions"] or reviewed],
+            "exceptions": counted_exceptions(
+                policy, baseline_policy, reviewed, args.accept_same_commit_fixtures, committed
+            ),
             "ownership_excluded_members": owned_exclusions,
         }
         if compared:
             base_paths = git(root, "ls-tree", "-r", "--name-only", "-z", args.base).decode().split("\0")
             effective_policy["external_members"] = set(base_paths) | bumped_wheels
         failed = expired_policy_findings(policy) + scan_sources(root, sources, effective_policy)
+        warnings = expiring_policy_warnings(policy)
         if args.json_out:
             args.json_out.write_text(
                 json.dumps(
@@ -487,6 +534,7 @@ def main(argv: list[str] | None = None) -> int:
                         "base": args.base,
                         "findings": [asdict(f) for f in failed],
                         "failed": [asdict(f) for f in failed],
+                        "warnings": warnings,
                     },
                     indent=2,
                 )
@@ -496,6 +544,12 @@ def main(argv: list[str] | None = None) -> int:
         for finding in failed[:100]:
             excerpt = finding.text.splitlines()[0][:160] if finding.text else ""
             print(plain_text(f"{finding.path}:{finding.line}: CP {finding.kind}: {excerpt}"))
+        for warning in warnings:
+            print(
+                f"::warning::{warning}"
+                if os.environ.get("GITHUB_ACTIONS") == "true"
+                else f"comment-policy: warning: {warning}"
+            )
         print(
             f"comment-policy: {len(sources)} source files, {len(failed)} violations, {len(failed)} enforced failures ({args.mode})"
         )

@@ -1322,6 +1322,10 @@ trunk-revert:
 	@case "$(PR)" in ""|*[!0-9]*) echo "PR=<merged PR number> is required" >&2; exit 2 ;; esac
 	@uv run -- python scripts/trunk_revert.py revert --pr "$(PR)" --repo "$(or $(REPO),BenchBox-dev/BenchBox)"
 
+.PHONY: trunk-status
+trunk-status:
+	@uv run -- python scripts/trunk_revert.py status --repo "$(or $(REPO),BenchBox-dev/BenchBox)"
+
 .PHONY: pr-ready
 pr-ready:
 	@[ -n "$(PR)" ] || [ -n "$(URL)" ] || { echo "PR or URL is required" >&2; exit 2; }

@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Contributor tooling: make trunk-status names the red-trunk culprit; no effect on the shipped package."
+}
