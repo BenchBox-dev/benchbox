@@ -1063,7 +1063,41 @@ def set_all_limits(daily_spend: float) -> None:
     print("\nTip: Use --budget to create a budget with automatic actions for additional protection.")
 
 
-def set_service_limit(service: str, daily_spend: float, resource_name: str | None = None) -> None:  # noqa: C901
+def _set_athena_limits(daily_spend: float, resource_name: str | None) -> None:
+    print(f"\nSetting Athena limit for ${daily_spend:.2f}/day...")
+    athena_workgroups = get_athena_workgroups()
+    if not athena_workgroups:
+        print("  No workgroups found")
+        return
+    for wg in athena_workgroups:
+        if wg.get("State") == "ENABLED" and (resource_name is None or wg["Name"] == resource_name):
+            try:
+                set_athena_limit(wg["Name"], daily_spend)
+            except ClientError as e:
+                print(f"  Skipping {wg['Name']}: {e}")
+
+
+def _set_lambda_limits(daily_spend: float, resource_name: str | None) -> None:
+    print("\nSetting Lambda concurrency limits...")
+    functions = get_lambda_functions()
+    if resource_name:
+        concurrency = calculate_lambda_concurrency(daily_spend)
+        set_lambda_concurrency(resource_name, concurrency)
+    elif functions:
+        concurrency = calculate_lambda_concurrency(daily_spend)
+        print(f"  Calculated concurrency: {concurrency} for ${daily_spend:.2f}/day")
+        print(f"  Found {len(functions)} functions:")
+        for fn in functions[:10]:
+            print(f"    - {fn['FunctionName']}")
+        if len(functions) > 10:
+            print(f"    ... and {len(functions) - 10} more")
+        print("\n  To set limits, specify function name:")
+        print(f"    --service lambda --resource FUNCTION_NAME --daily-spend {daily_spend}")
+    else:
+        print("  No functions found")
+
+
+def set_service_limit(service: str, daily_spend: float, resource_name: str | None = None) -> None:
     service = service.lower()
 
     if service in ("redshift", "redshift-serverless"):
@@ -1077,18 +1111,7 @@ def set_service_limit(service: str, daily_spend: float, resource_name: str | Non
             print("  No workgroups found")
 
     elif service == "athena":
-        print(f"\nSetting Athena limit for ${daily_spend:.2f}/day...")
-        athena_workgroups = get_athena_workgroups()
-        if athena_workgroups:
-            for wg in athena_workgroups:
-                if wg.get("State") == "ENABLED":
-                    if resource_name is None or wg["Name"] == resource_name:
-                        try:
-                            set_athena_limit(wg["Name"], daily_spend)
-                        except ClientError as e:
-                            print(f"  Skipping {wg['Name']}: {e}")
-        else:
-            print("  No workgroups found")
+        _set_athena_limits(daily_spend, resource_name)
 
     elif service in ("emr", "emr-serverless"):
         print(f"\nSetting EMR Serverless limit for ${daily_spend:.2f}/day...")
@@ -1101,23 +1124,7 @@ def set_service_limit(service: str, daily_spend: float, resource_name: str | Non
             print("  No applications found")
 
     elif service == "lambda":
-        print("\nSetting Lambda concurrency limits...")
-        functions = get_lambda_functions()
-        if resource_name:
-            concurrency = calculate_lambda_concurrency(daily_spend)
-            set_lambda_concurrency(resource_name, concurrency)
-        elif functions:
-            concurrency = calculate_lambda_concurrency(daily_spend)
-            print(f"  Calculated concurrency: {concurrency} for ${daily_spend:.2f}/day")
-            print(f"  Found {len(functions)} functions:")
-            for fn in functions[:10]:
-                print(f"    - {fn['FunctionName']}")
-            if len(functions) > 10:
-                print(f"    ... and {len(functions) - 10} more")
-            print("\n  To set limits, specify function name:")
-            print(f"    --service lambda --resource FUNCTION_NAME --daily-spend {daily_spend}")
-        else:
-            print("  No functions found")
+        _set_lambda_limits(daily_spend, resource_name)
 
     else:
         print(f"Unknown service: {service}")

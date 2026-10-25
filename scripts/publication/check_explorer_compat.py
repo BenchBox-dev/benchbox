@@ -1160,19 +1160,54 @@ def _print_text_report(output_data: dict[str, Any], schema_versions: Sequence[in
         print("Results Explorer compatibility checks FAILED.", file=sys.stderr)
 
 
-def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901
-    parser = build_parser()
-    args = parser.parse_args(argv)
-
+def _cli_args_valid(args: argparse.Namespace) -> bool:
     if args.generate_manifest and args.require_manifest:
         print("Error: --generate-manifest and --require-manifest are mutually exclusive", file=sys.stderr)
-        return 2
-
+        return False
     if args.artifact is None and args.db_path is None and not args.schema_only:
         print(
             "Error: provide --artifact and/or --db-path, or pass --schema-only for in-memory schema checks",
             file=sys.stderr,
         )
+        return False
+    return True
+
+
+def _schema_versions_supported(schema_versions: Sequence[int]) -> bool:
+    for v in schema_versions:
+        if v not in SUPPORTED_SCHEMA_VERSIONS:
+            print(
+                f"Error: Unsupported schema version {v}. Supported versions: {list(SUPPORTED_SCHEMA_VERSIONS)}",
+                file=sys.stderr,
+            )
+            return False
+    return True
+
+
+def _apply_artifact_check(args: argparse.Namespace, output_data: dict[str, Any]) -> bool | None:
+    if not args.artifact.exists():
+        print(f"Error: Artifact path not found: {args.artifact}", file=sys.stderr)
+        return None
+    if args.generate_manifest and not args.artifact.is_dir():
+        print("Error: --generate-manifest requires a directory for --artifact", file=sys.stderr)
+        return None
+
+    artifact_check, manifest_info = _run_artifact_check(
+        args.artifact,
+        generate_manifest=bool(args.generate_manifest),
+        require_manifest=False if args.generate_manifest else args.require_manifest,
+    )
+    if args.generate_manifest or manifest_info is not None:
+        output_data["manifest_generated"] = manifest_info
+    output_data["artifact_check"] = artifact_check
+    return bool(artifact_check["passed"])
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if not _cli_args_valid(args):
         return 2
 
     schema_versions = _parse_schema_versions_arg(args.schema_versions)
@@ -1180,13 +1215,8 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901
         print(f"Error: Invalid --schema-versions format: {args.schema_versions!r}", file=sys.stderr)
         return 2
 
-    for v in schema_versions:
-        if v not in SUPPORTED_SCHEMA_VERSIONS:
-            print(
-                f"Error: Unsupported schema version {v}. Supported versions: {list(SUPPORTED_SCHEMA_VERSIONS)}",
-                file=sys.stderr,
-            )
-            return 2
+    if not _schema_versions_supported(schema_versions):
+        return 2
 
     overall_passed = True
     output_data: dict[str, Any] = {
@@ -1216,30 +1246,11 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901
         output_data["database_check"] = db_check
 
     if args.artifact:
-        if not args.artifact.exists():
-            print(f"Error: Artifact path not found: {args.artifact}", file=sys.stderr)
+        artifact_passed = _apply_artifact_check(args, output_data)
+        if artifact_passed is None:
             return 2
-        if args.generate_manifest and not args.artifact.is_dir():
-            print("Error: --generate-manifest requires a directory for --artifact", file=sys.stderr)
-            return 2
-
-        if args.generate_manifest:
-            artifact_check, manifest_info = _run_artifact_check(
-                args.artifact, generate_manifest=True, require_manifest=False
-            )
-            output_data["manifest_generated"] = manifest_info
-            if not artifact_check["passed"]:
-                overall_passed = False
-            output_data["artifact_check"] = artifact_check
-        else:
-            artifact_check, manifest_info = _run_artifact_check(
-                args.artifact, generate_manifest=False, require_manifest=args.require_manifest
-            )
-            if manifest_info is not None:
-                output_data["manifest_generated"] = manifest_info
-            if not artifact_check["passed"]:
-                overall_passed = False
-            output_data["artifact_check"] = artifact_check
+        if not artifact_passed:
+            overall_passed = False
 
     output_data["status"] = "passed" if overall_passed else "failed"
 

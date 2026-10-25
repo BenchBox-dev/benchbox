@@ -39,8 +39,9 @@ Other tools:
 - `make comment-policy-report` lists every violation, including old ones. It
   fails only if configuration or parsing fails.
 - `make comment-policy-dead-exceptions` lists every registered exception with no
-  current finding at its path and digest, or whose path no longer exists, with
-  the commit and PR that registered it. It reuses the checker's scan, never
+  current finding at its path and digest, or whose path no longer exists, or
+  whose `count` exceeds the number of matching lines, with the commit and PR
+  that registered it. It reuses the checker's scan, never
   edits the policy, exits 0 unless configuration or parsing fails, and CI and
   the commit hook do not run it.
 - The pre-commit hook checks staged files, with the same result as
@@ -120,12 +121,26 @@ it has an approved positive `count`.
 A directive is valid through its `expires` date and fails the next day. Every
 local check, the PR check and the nightly scan print a non-blocking warning
 (a `::warning::` annotation in CI) for each date within 30 days of today.
-The maintainers named as `owner` in the entry renew or remove
-the entries that a warning names: delete an entry whose suppression is gone, or
-move its `expires` date forward in a pull request that gets the same successful
-oracle verdict as a new exception. A date-only change is a new policy entry, so
-it does not count until that verdict covers the registry head. Keep the renewed
-dates spread across at least ten dates.
+The CI maintainer role renews or removes the entries a warning names: delete
+an entry whose suppression is gone, or move its `expires` date forward in a
+pull request that gets the same successful oracle verdict as a new exception.
+The `owner` field in an entry is a routing hint for who fixes the code, not who
+renews it. A date-only change is a new policy entry, so it does not count until
+that verdict covers the registry head. Keep the renewed dates spread across at
+least ten dates, or at most one date per entry when fewer than ten dated
+directives remain.
+
+### Directives that need no expiry
+
+A directive that suppresses nothing needs no `expires` date and carries none:
+`# fmt: on`, `# shellcheck shell=`, `/// <reference ... />`, `// @ts-check`,
+`@vitest-environment`, and SQL optimizer hints such as `/*+ BROADCAST(t) */`.
+Every suppression (`noqa`, `type: ignore`, `pragma: no`, `fmt: off|skip`,
+`disable=`, `@ts-expect-error|ignore|nocheck`) needs an `expires` date. Required
+legal text is a notice, which has no expiry. A first-line shebang and a
+non-UTF-8 encoding declaration need no entry. Repository-wide conventions
+belong in tool configuration (`[tool.ruff.lint] ignore` and `per-file-ignores`,
+`[tool.coverage.report] exclude_lines`), not in per-line suppressions.
 
 A first-line shebang needs no entry. An encoding declaration is allowed only in
 the first two lines of a Python file, and only for a non-UTF-8 encoding.

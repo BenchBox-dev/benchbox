@@ -94,9 +94,61 @@ def _validate_adapter_sources(errors: list[str]) -> None:
             errors.append(f"{key}: {source_path.relative_to(REPO_ROOT)} does not declare or export {class_name}")
 
 
-def _validate_semantic_surfaces(errors: list[str]) -> None:  # noqa: C901
-    import benchbox.platforms as platform_package
+def _lazy_symbol_is_exported(module_path: str, symbol: str) -> bool:
     import benchbox.platforms.dataframe as dataframe_package
+
+    if module_path in {".dataframe", "benchbox.platforms.dataframe"}:
+        target = dataframe_package._LAZY_EXPORTS.get(symbol)
+        if target is None:
+            return False
+        module_path = target[0]
+    source = _lazy_source_path(module_path)
+    return source is not None and symbol in _declared_symbols(source)
+
+
+def _validate_dataframe_lazy_refs(
+    errors: list[str], platform_package: object, spelling: str, adapter_name: str, availability_name: str
+) -> None:
+    adapter_module = platform_package._LAZY_ADAPTERS.get(adapter_name)
+    if adapter_module is None:
+        errors.append(f"DataFrame factory spelling {spelling!r} references unknown lazy adapter {adapter_name!r}")
+    elif not _lazy_symbol_is_exported(adapter_module, adapter_name):
+        errors.append(f"DataFrame factory spelling {spelling!r} lazy adapter symbol {adapter_name!r} is not exported")
+
+    availability_spec = platform_package._LAZY_CONSTANTS.get(availability_name)
+    if availability_spec is None:
+        errors.append(
+            f"DataFrame factory spelling {spelling!r} references unknown lazy availability constant "
+            f"{availability_name!r}"
+        )
+    elif not _lazy_symbol_is_exported(availability_spec[0], availability_name):
+        errors.append(
+            f"DataFrame factory spelling {spelling!r} lazy availability symbol {availability_name!r} is not exported"
+        )
+
+
+def _validate_dataframe_spelling(
+    errors: list[str], platform_package: object, spelling: str, info: tuple[str, str, str]
+) -> None:
+    adapter_name, availability_name, install_guidance = info
+    canonical = get_platform_aliases("cli").get(spelling)
+    if canonical is None:
+        errors.append(f"DataFrame factory spelling {spelling!r} is not a CLI-scoped manifest alias")
+        return
+    if get_platform_alias_modes("cli").get(spelling) != "dataframe":
+        errors.append(f"DataFrame factory spelling {spelling!r} does not imply DataFrame mode in the manifest")
+    entry = PLATFORM_MANIFEST_BY_KEY.get(canonical)
+    if entry is None or not entry.capabilities["supports_dataframe"]:
+        errors.append(f"DataFrame factory spelling {spelling!r} does not resolve to a DataFrame-capable platform")
+
+    _validate_dataframe_lazy_refs(errors, platform_package, spelling, adapter_name, availability_name)
+
+    if not install_guidance.strip():
+        errors.append(f"DataFrame factory spelling {spelling!r} has empty installation guidance")
+
+
+def _validate_semantic_surfaces(errors: list[str]) -> None:
+    import benchbox.platforms as platform_package
     from benchbox.cli.commands.run import _GUIDED_CREDENTIAL_PLATFORMS
     from benchbox.core.tuning.capability_registry import PLATFORM_ALIASES as TUNING_ALIASES
     from benchbox.platforms.base.format_capabilities import (
@@ -107,8 +159,6 @@ def _validate_semantic_surfaces(errors: list[str]) -> None:  # noqa: C901
 
     manifest_keys = set(PLATFORM_MANIFEST_BY_KEY)
     manifest_aliases = get_all_platform_aliases()
-    cli_aliases = get_platform_aliases("cli")
-    cli_alias_modes = get_platform_alias_modes("cli")
 
     dataframe_classes = {row[0] for row in platform_package._DATAFRAME_PLATFORM_INFO.values()}
     runtime_classes = {class_name for _key, _module, class_name in get_adapter_imports()}
@@ -117,50 +167,8 @@ def _validate_semantic_surfaces(errors: list[str]) -> None:  # noqa: C901
     if unknown_lazy_classes:
         errors.append(f"lazy exports have no runtime/DataFrame semantic owner: {', '.join(unknown_lazy_classes)}")
 
-    def lazy_symbol_is_exported(module_path: str, symbol: str) -> bool:
-        if module_path in {".dataframe", "benchbox.platforms.dataframe"}:
-            target = dataframe_package._LAZY_EXPORTS.get(symbol)
-            if target is None:
-                return False
-            module_path = target[0]
-        source = _lazy_source_path(module_path)
-        return source is not None and symbol in _declared_symbols(source)
-
-    for spelling, (adapter_name, availability_name, install_guidance) in sorted(
-        platform_package._DATAFRAME_PLATFORM_INFO.items()
-    ):
-        canonical = cli_aliases.get(spelling)
-        if canonical is None:
-            errors.append(f"DataFrame factory spelling {spelling!r} is not a CLI-scoped manifest alias")
-            continue
-        if cli_alias_modes.get(spelling) != "dataframe":
-            errors.append(f"DataFrame factory spelling {spelling!r} does not imply DataFrame mode in the manifest")
-        entry = PLATFORM_MANIFEST_BY_KEY.get(canonical)
-        if entry is None or not entry.capabilities["supports_dataframe"]:
-            errors.append(f"DataFrame factory spelling {spelling!r} does not resolve to a DataFrame-capable platform")
-
-        adapter_module = platform_package._LAZY_ADAPTERS.get(adapter_name)
-        if adapter_module is None:
-            errors.append(f"DataFrame factory spelling {spelling!r} references unknown lazy adapter {adapter_name!r}")
-        elif not lazy_symbol_is_exported(adapter_module, adapter_name):
-            errors.append(
-                f"DataFrame factory spelling {spelling!r} lazy adapter symbol {adapter_name!r} is not exported"
-            )
-
-        availability_spec = platform_package._LAZY_CONSTANTS.get(availability_name)
-        if availability_spec is None:
-            errors.append(
-                f"DataFrame factory spelling {spelling!r} references unknown lazy availability constant "
-                f"{availability_name!r}"
-            )
-        elif not lazy_symbol_is_exported(availability_spec[0], availability_name):
-            errors.append(
-                f"DataFrame factory spelling {spelling!r} lazy availability symbol "
-                f"{availability_name!r} is not exported"
-            )
-
-        if not install_guidance.strip():
-            errors.append(f"DataFrame factory spelling {spelling!r} has empty installation guidance")
+    for spelling, info in sorted(platform_package._DATAFRAME_PLATFORM_INFO.items()):
+        _validate_dataframe_spelling(errors, platform_package, spelling, info)
 
     hook_keys = set(platform_package.PlatformHookRegistry._option_specs) | set(
         platform_package.PlatformHookRegistry._config_builders

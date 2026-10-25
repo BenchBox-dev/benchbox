@@ -34,15 +34,19 @@ def dead_exceptions(root: Path, policy: dict) -> list[tuple[dict, str]]:
             dead.append((entry, "path missing"))
             continue
         alone = {**policy, "exceptions": [entry]}
-        live = any(
-            finding.text == entry["text"] and allowed(finding, alone, texts[path], expired=set())
+        matching = sum(
+            1
             for finding in by_path.get(path, [])
+            if finding.text == entry["text"] and allowed(finding, alone, texts[path], expired=set())
         )
+        registered = entry.get("count", 1)
         is_expired = exception_identity(entry) in expired
-        if live and is_expired:
+        if matching and is_expired:
             dead.append((entry, "expired but live"))
-        elif not live:
+        elif not matching:
             dead.append((entry, "no current finding at path and digest"))
+        elif registered > matching:
+            dead.append((entry, f"count {registered} exceeds {matching} matching line(s)"))
     return dead
 
 
@@ -82,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"{entry['path']}\t{entry['kind']}\t{digest}\t{reason}\t{registration(root, entry)}\t{entry['symbol']}"
             )
         print(
-            f"dead-exceptions: {len(dead)} of {len(policy['exceptions'])} registered exceptions have no current finding"
+            f"dead-exceptions: {len(dead)} of {len(policy['exceptions'])} registered exceptions are dead or over-counted"
         )
     except (OSError, UnicodeError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"dead-exceptions: configuration or parser failure: {exc}", file=sys.stderr)

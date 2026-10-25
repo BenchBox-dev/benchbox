@@ -3981,28 +3981,7 @@
       "proof": "tests/unit/platforms/credentials/test_singlestore_credentials.py: test_singlestore_persistence_contract_is_documented asserts that the module docstring contains \"even when validation\"."
     }
   ],
-  "directives": [
-    {
-      "path": "_project/scripts/platform_manifest.py",
-      "token": "# noqa: N815",
-      "count": 2,
-      "consumer": "Ruff rule N815",
-      "necessity": "ast.NodeVisitor dispatches on method names such as visit_AsyncFunctionDef and visit_ImportFrom, and the two aliases must keep those mixed-case names.",
-      "alternative": "Define both methods explicitly and delegate to visit_FunctionDef and visit_Import, which removes the suppression.",
-      "owner": "comment-cleanup-project-tooling",
-      "removal_trigger": "The aliases are replaced by delegating methods."
-    },
-    {
-      "path": "_project/scripts/platform_manifest.py",
-      "token": "# noqa: C901",
-      "count": 1,
-      "consumer": "Ruff rule C901",
-      "necessity": "_validate_semantic_surfaces exceeds the cyclomatic complexity limit; this is a discretionary suppression.",
-      "alternative": "Split the function into one validator per semantic surface.",
-      "owner": "comment-cleanup-project-tooling",
-      "removal_trigger": "The function is split below the complexity limit."
-    }
-  ],
+  "directives": [],
   "notices": [
     {
       "path": "LICENSE",
