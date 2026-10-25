@@ -212,7 +212,37 @@ def test_report_passes_when_everything_is_alive() -> None:
     lines: list[str] = []
 
     assert liveness.report([liveness.Verdict("ok.yml", True, "ok.yml: fine")], lines.append) == 0
-    assert lines == ["All 1 scheduled workflow(s) alive within their cadence windows."]
+    assert lines == [
+        "All 1 scheduled workflow(s) alive within their cadence windows (run conclusions are not assessed)."
+    ]
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "cancelled", "timed_out"])
+def test_a_recent_scheduled_run_that_did_not_succeed_is_still_alive(conclusion: str) -> None:
+    verdict = liveness.assess(
+        "nightly.yml",
+        [_run(1, timedelta(hours=2), conclusion=conclusion)],
+        window_days=3,
+        now=NOW,
+        registered_at=None,
+    )
+
+    assert verdict.alive
+    lines: list[str] = []
+    assert liveness.report([verdict], lines.append) == 0
+    assert not any("::error::" in line for line in lines)
+
+
+def test_a_stale_successful_run_is_dead_regardless_of_its_conclusion() -> None:
+    verdict = liveness.assess(
+        "nightly.yml",
+        [_run(1, timedelta(days=5), conclusion="success")],
+        window_days=3,
+        now=NOW,
+        registered_at=None,
+    )
+
+    assert not verdict.alive
 
 
 def test_report_fails_when_no_scheduled_workflow_exists() -> None:

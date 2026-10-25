@@ -24,7 +24,7 @@ red domain does not hide the others, and each domain uploads its own artifacts.
 | `t3:drift` | `drift` | Corpus drift and privacy scan, submission-validator drift, cross-surface baseline drift, and vendor pricing drift. Scheduled runs execute it on Mondays (UTC); a manual run executes it unless `run_drift` is cleared. |
 | `t3:quarantine` | `quarantine` | Runs tests marked `quarantine`. It passes with a notice until the marker is registered in `pytest.ini`. |
 | `t3:linkcheck` | `linkcheck` | Checks external links in the documentation with `scripts/check_doc_external_links.py` (skipping patterns in `docs/linkcheck_ignore.txt`) and uploads the report. |
-| `t3:liveness` | `liveness` | Fails when a workflow with a `schedule:` trigger has no scheduled run inside its cadence window, and prints the newest ten scheduled runs of any workflow it flags. Runs `scripts/scheduled_workflow_liveness.py`. |
+| `t3:liveness` | `liveness` | Fails when a workflow with a `schedule:` trigger has no scheduled run inside its cadence window, and prints the newest ten scheduled runs of any workflow it flags. It measures cadence only: a recent scheduled run counts as alive whatever its conclusion, and a failed run is reported by its own `t3:<domain>` issue (see [Liveness versus success](#liveness-versus-success)). Runs `scripts/scheduled_workflow_liveness.py`. |
 | `t3:ruleset-drift` | `ruleset-drift` | Compares the live GitHub rulesets, merge-queue contexts and `pypi` environment with the recorded runbook through `scripts/ruleset_drift_check.py`, using the `RULESET_DRIFT_TOKEN` secret. It stays in this workflow when the release-branch workflows are retired, so a changed ruleset still opens a `t3:ruleset-drift` issue. |
 | `t3:windows` | `windows` | The fast unit tier on `windows-latest` with Python 3.12 (no coverage gate). The matrix domain only builds and smoke-tests on Windows; this is the Windows unit suite. |
 | `t3:tpcds-obt` | `tpcds-obt` | Runs `make tpcds-obt-equivalence TPCDS_OBT_EQUIVALENCE_SF=1`: every served OBT query against its TPC-DS query on DuckDB at SF1 with identical dsqgen parameters, failing on an unlisted divergence or a listed query that now matches (see `tests/integration/test_tpcds_obt_equivalence.py`). The PR tier runs the same test at SF0.01. |
@@ -37,6 +37,22 @@ The `cloud` job runs only when the repository variable
 so the job is skipped. It runs trivial `SELECT 1` plan-capture queries only, to
 stay inside free-tier and trial budgets. Setting the variable is a maintainer
 decision; do not set it in a pull request.
+
+## Liveness versus success
+
+The `liveness` domain answers one question: did each scheduled workflow create a
+scheduled run inside its cadence window. A recent scheduled run that failed,
+timed out or was cancelled still counts as alive, because the schedule fired.
+A green `t3:liveness` result therefore says nothing about whether the other
+domains passed.
+
+Execution success is reported separately. The `report` job reads the result of
+every domain job and opens, updates or closes one `t3:<domain>` issue per domain,
+so a failed domain issue exists whether `liveness` passed or failed. Read overall
+nightly health from the `t3:*` issues and the run's job results, not from the
+liveness line. `tests/unit/scripts/test_scheduled_workflow_liveness.py` and
+`tests/unit/workflows/test_nightly_t3_report_lifecycle.py` pin both halves of this
+contract.
 
 ## Issues
 
