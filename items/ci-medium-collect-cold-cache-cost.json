@@ -3,7 +3,7 @@
     "Find an approach whose job time is measured lower on CI over several runs, not only locally",
     "Collection evidence and the shard coverage check are unchanged"
   ],
-  "context": "Merged PR #3443: medium-collect restores tests/**/__pycache__ and benchbox/**/__pycache__ via actions/cache (keyed on uv.lock plus source hashes, prefix restore keys) and runs compileall --invalidation-mode checked-hash before collection; collection command, marker expression, shard-count check and evidence upload unchanged; documented exemption added in the CI lint-parity test. Local macOS measurement only: cold 24.1s vs 13.9s warm for the same collect command. NOT verified: any CI timing, cache hit rate or cache size on hosted runners. Acceptance (lower job time across several CI runs, identical collection evidence) needs observation of runs after merge; item stays open for that.",
+  "context": "DONE 2026-10-25: review found the bytecode cache from #3443 ineffective: compileall's freshness check accepts only timestamp pycs, so --invalidation-mode checked-hash recompiled every file on every run (a cache hit compiled in 11 s, a miss in 4 s). PR #3486, merged as 17e00cf4443f057b595b819e2c84f49d56578f13 (oracle SHIP on 4523e7dd), removes the cache step and the flag and keeps the parallel compile (compileall -q -j 0), which is what delivered the gain. medium-collect on the PR run 40217216742: 96 s (compile 4 s, collect 46 s), within the 79-103 s of six earlier post-#3443 runs, against a 154 s median before #3443 (collect step 108 s before, 33-47 s after). Collection command, evidence and shard verification unchanged.\n\nMerged PR #3443: medium-collect restores tests/**/__pycache__ and benchbox/**/__pycache__ via actions/cache (keyed on uv.lock plus source hashes, prefix restore keys) and runs compileall --invalidation-mode checked-hash before collection; collection command, marker expression, shard-count check and evidence upload unchanged; documented exemption added in the CI lint-parity test. Local macOS measurement only: cold 24.1s vs 13.9s warm for the same collect command. NOT verified: any CI timing, cache hit rate or cache size on hosted runners. Acceptance (lower job time across several CI runs, identical collection evidence) needs observation of runs after merge; item stays open for that.",
   "description": "medium-collect (ci.yml) is on the critical path: every medium shard needs it. Over the 18 most recent completed PR runs its job time was 119-183 s (median 154 s), of which the 'Collect the complete medium tier' step was a median 108 s (max 131 s), checkout 15 s (fetch-depth 0), dependency install 21 s. Locally the same command (pytest --collect-only -q -n 0 -m <medium expression>, 46,519 tests collected, 31,752 deselected, 14,767 kept) took 13.4 s with a warm __pycache__ and 49.9 s after deleting tests/**/__pycache__, so the cost is mostly compiling and assertion-rewriting the test modules on a fresh checkout, not the marker selection. The unit job already avoids this with a 'Pre-build the assertion-rewrite cache' step that collects the test files in nproc parallel chunks (ci.yml around line 817); medium-collect has no such step and collects single-process (-n 0). Directory-level timings with a warm cache: tests/unit 13 s (12,192 medium), tests/integration 4 s (1,181), everything else under 3 s combined.",
   "links": [
     "ci-rebalance-medium-shards"
@@ -40,6 +40,14 @@
       "op": "update",
       "op_id": "100ca4f1aebf4292b6fd5a1f784f9a89",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T20:05:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "de9eb663f09f41b19535214d9ac6ac33",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
