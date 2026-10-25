@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "No required CI job pulls from Docker Hub anonymously; images stay pinned by digest.",
+    "A required job run shows the mirrored pulls."
+  ],
+  "description": "During this effort the core and sql-execution-evidence jobs repeatedly failed on Docker Hub/ECR toomanyrequests and needed reruns. ci.yml:606 pulls questdb/questdb:10.0.1 from Docker Hub anonymously. The ECR Postgres pull at ci.yml:1337 is covered by ci-sql-evidence-postgres-ecr-rate-limit-20261022 (#3382); nightly.yml already uses ghcr.io. Identify every anonymous Docker Hub pull in required jobs (including whatever core pulls) and mirror to ghcr.io/benchbox-dev or authenticate.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T12:30:37Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6c0a4328dffc4979a3e6dea9bdeb8ee0",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}

@@ -2953,6 +2953,13 @@
       "status": "active",
       "title": "Stop CI jobs from failing on Docker Hub's unauthenticated pull rate limit"
     },
+    "ci-dockerhub-anonymous-pulls-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "CI jobs pull images anonymously from Docker Hub and fail on toomanyrequests"
+    },
     "ci-duplicate-dispatch-ghost-runs": {
       "claim": null,
       "needs": [],
