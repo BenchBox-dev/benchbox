@@ -15937,15 +15937,10 @@
       "title": "Check the oracle diff parser for the same control-character line splitting"
     },
     "oracle-duplicate-findings-collapse-to-same-id-20261024": {
-      "claim": {
-        "expires_at": "2026-10-26T12:53:35Z",
-        "generation": "e963f2f03d6440b4808b2fadd748ad25",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Give two identical reviewer findings distinct defect ids so a follow-up never receives duplicate prior ids"
     },
     "oracle-evidence-crediting-20261021": {
