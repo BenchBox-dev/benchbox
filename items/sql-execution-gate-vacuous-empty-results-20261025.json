@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The gate reports, per benchmark and engine, which queries compared empty reference results, and does not count them as proven.",
+    "Queries empty at the gate scale get non-empty evidence (data augmentation such as the second-warehouse setup from #3426, chosen seeds, or a larger scale), or are listed as unproven with reason.",
+    "Reintroducing the unpadded-date defect makes the gate fail."
+  ],
+  "description": "The SQLite unpadded-date defect (TPC-DS and OBT Q16/Q94/Q95 filtering on NULL bounds) survived make sql-execution-gate and make tpcds-obt-equivalence because at SF0.01 those queries return no rows on DuckDB for every seed (one warehouse). tests/integration/test_tpcds_obt_equivalence.py documents EMPTY at line 26. An empty-vs-empty comparison proves nothing about translation.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T12:30:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2e07e76351ff453886f3c303c0a34e83",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}
