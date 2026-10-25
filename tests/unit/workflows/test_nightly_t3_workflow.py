@@ -1135,3 +1135,42 @@ def test_pr_sql_evidence_and_nightly_postgres_share_one_ghcr_digest() -> None:
             "password": "${{ github.token }}",
         }
         assert job["permissions"]["packages"] == "read"
+
+
+QUESTDB_DIGEST = "sha256:67eaed863ebb2383227919ea9a5499a4a39ceca3862c20b974c84a10e11cdf89"
+
+
+def _run_questdb_copy(
+    tmp_path: Path, copy_plan: dict[str, list[str | None]] | None = None
+) -> tuple[subprocess.CompletedProcess[str], list[list[str]]]:
+    return _run_mirror_step(
+        tmp_path,
+        image="questdb",
+        source_image="unused",
+        source_manifest="{}",
+        mirror_error="Error reading manifest: manifest unknown",
+        pin_source=False,
+        copy_plan=copy_plan,
+    )
+
+
+def test_mirror_copies_the_pinned_questdb_digest_into_the_questdb_repository(tmp_path: Path) -> None:
+    result, calls = _run_questdb_copy(tmp_path)
+    copy = next(call for call in calls if call[0] == "copy")
+    assert copy[-2] == f"docker://docker.io/questdb/questdb@{QUESTDB_DIGEST}"
+    assert copy[-1] == f"docker://ghcr.io/benchbox-dev/questdb:digest-{QUESTDB_DIGEST.removeprefix('sha256:')}"
+    assert calls[0][-1] == f"docker://ghcr.io/benchbox-dev/questdb@{QUESTDB_DIGEST}"
+    assert "digest mismatch" in result.stdout + result.stderr
+
+
+def test_mirror_falls_back_to_the_gcr_mirror_when_docker_hub_stays_rate_limited(tmp_path: Path) -> None:
+    primary = f"docker://docker.io/questdb/questdb@{QUESTDB_DIGEST}"
+    _, calls = _run_questdb_copy(tmp_path, {primary: [RATE_LIMITED] * 3})
+    assert _copy_sources(calls) == [primary] * 3 + [f"docker://mirror.gcr.io/questdb/questdb@{QUESTDB_DIGEST}"]
+
+
+def test_nightly_seeds_the_questdb_mirror_with_package_write_permission() -> None:
+    mirror = _load(WORKFLOWS_DIR / "nightly.yml")["jobs"]["mirror-questdb"]
+    assert mirror["uses"] == "./.github/workflows/mirror-ci-images.yml"
+    assert mirror["permissions"] == {"contents": "read", "packages": "write"}
+    assert _mirrored_images(mirror) == ["questdb"]

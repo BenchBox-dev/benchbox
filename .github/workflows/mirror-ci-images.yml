@@ -55,6 +55,10 @@ jobs:
               repository=postgres
               fallback_sources=(docker.io/library/postgres)
               ;;
+            questdb)
+              pinned_source=docker.io/questdb/questdb:10.0.1@sha256:67eaed863ebb2383227919ea9a5499a4a39ceca3862c20b974c84a10e11cdf89
+              fallback_sources=(mirror.gcr.io/questdb/questdb)
+              ;;
             *) echo "::error::Unsupported mirror image: $IMAGE"; exit 1 ;;
           esac
           if [ -n "$pinned_source" ]; then
