@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from benchbox.utils.dialect_utils import SQLITE_DISCOUNT_BOUNDS, apply_rewrites
+from benchbox.utils.dialect_utils import apply_rewrites
 
 SESSION_SETTINGS: Mapping[str, str | int] = {"joined_subquery_requires_alias": 0}
 
@@ -41,7 +41,7 @@ def rewrite_query_for_clickhouse(
             ("decimal_zero_literals", {"precision": DECIMAL_PRECISION, "scale": DECIMAL_SCALE}),
             ("safe_division", {}),
             ("decimal_division_to_double", {}),
-            ("fold_between_literal_arithmetic", dict(SQLITE_DISCOUNT_BOUNDS)),
+            ("fold_between_literal_arithmetic", {}),
             ("use_nulls_for_rollups", {}),
             ("add_query_settings", {"settings": settings}),
         ],
