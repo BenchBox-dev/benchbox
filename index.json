@@ -12043,12 +12043,17 @@
       "title": "Gateway-aware metadata, baseline guard, cost suppression"
     },
     "gw-snowflake-conn": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T00:41:46Z",
+        "generation": "711e133f9a3f4a69a85af6f7e037cbae",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "core-exec-gateway-capability"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Snowflake adapter gateway-endpoint override (conn, CLI, option specs)"
     },
     "gw-snowflake-querytag": {
