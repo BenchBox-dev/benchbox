@@ -1,10 +1,10 @@
 {
   "acceptance": [
-    "A change to only `README.md`, `CHANGELOG.md`, or a `docs/agent/` page that no test reads sets `code_tests_needed=false`",
+    "A change only to markdown that no test or CI check reads sets `code_tests_needed=false`. README.md, CHANGELOG.md, AGENTS.md and docs/agent/*.md keep routing to code because tests (README: 4, CHANGELOG: 2) or the agent-instruction audit in CI lint read them",
     "A change to a markdown file that a test reads (for example `docs/agent/review-protocol.md` or `AGENTS.md`) still runs the tests that read it",
     "`.github/path-filters.yml` and `.github/ci-units.yml` agree on which markdown counts as code",
     "A unit test pins the routing for the paths in the table above",
-    "A guard or test fails when a test starts reading a markdown file that the unit map does not route to code"
+    "A guard or test fails when a test starts reading a markdown file that the unit map does not route to code; the same guard covers non-markdown files under docs-only patterns that tests read (for example `_project/planning/visible_metrics.yaml`)"
   ],
   "context": "PR #3406 merged: markdown that no test reads routes to the docs unit only (root DISCLAIMER.md, unlisted root *.md, _project blind-spots/decisions/handoffs/notes/research/planning/todo-db-export); ~40 docs that tests read were previously mis-routed to docs only and now run core. Deliberate deviations from the item: README/CHANGELOG/AGENTS and other root docs still run code tests because tests read them; docs/agent/** stays code because `make agent-instructions-check` runs in lint. Item left open: the README/CHANGELOG-only -> docs-only bullet is not met by design; owner to accept or ask for test changes that stop reading those files.",
   "description": "A pull request that changes only markdown can run the `lint` and `test (ubuntu-latest, 3.12)` jobs: the full fast suite, which has a 45-minute timeout. The two path classifiers in `ci.yml` disagree about markdown.\n\n**Path filters** (`.github/path-filters.yml`, read by `scripts/path_filter_decision.py`) list `docs/agent/**` (line 64), `docs/*/dependency-audit-raw.md` and `docs/*/agent-instruction*.md` as code. Root `*.md`, `_blog/**` and the `_project` notes folders are safe content.\n\n**Unit map** (`.github/ci-units.yml`, read by `scripts/ci_units.py`) puts the same `docs/agent/**` and named markdown files in `core` (lines 35-39). It also puts root `*.md` (line 100), `_blog/**` and `_project/**` in `tooling`. `ci_units.py` sets `code_tests_needed = core or tooling`, and that output gates both `code-lint` and `code-test`.\n\nWhat `classify_units` returns for single-file changes:\n\n| Changed file | Units | code_tests_needed |\n|---|---|---|\n| `README.md`, `AGENTS.md`, `CHANGELOG.md` | tooling | true |\n| `_blog/x.md`, `_project/notes/x.md` | tooling | true |\n| `docs/agent/attribution-surfaces.md` | core, docs | true |\n| `docs/internal/comment-policy.md` | docs | false |\n\nSo a typo fix in `README.md`, or in any `docs/agent/` page, runs the whole Python suite. Path filters already call root markdown safe content.\n\nWhy the rules exist: some tests read files in `docs/agent/` as inputs. `test_agent_instruction_audit.py` and `test_blind_spot_tools.py` read `review-protocol.md`, `test_pr_refresh_certification.py` reads `identity-instruction-boundary.md`, and `test_todo_review_own_edit_freshness.py` reads `todo-review.md`. `AGENTS.md` and `CLAUDE.md` feed the agent-instruction audit. The folder-wide globs were copied into `core` when the six-unit map replaced the old path filters (`c7bcdb9bc`, \"report six unit results from one workflow\"). Most `docs/agent/` pages, such as `attribution-surfaces.md` and `audit-evidence-provenance.md`, are not test inputs.",
@@ -31,6 +31,14 @@
       "op": "update",
       "op_id": "0d8659ffa8ad4b89acc33fbef26a4dc5",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T18:43:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "316075a12c154aab8abbb6a0c35d699d",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
 }
