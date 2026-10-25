@@ -44,7 +44,7 @@ jobs:
       - name: Run fast tests
         run: |
           mkdir -p fast-junit
-          uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120 -o junit_duration_report=total --junitxml=fast-junit/junit.xml
+          uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120 -o junit_duration_report=total --junitxml=fast-junit/junit.xml -p scripts.fast_tier_calibration --collection-timing fast-junit/collection.jsonl
 
       - name: Check fast-tier junit parses
         if: always()
@@ -59,12 +59,20 @@ jobs:
           print(f"Fast-tier junit parsed: {len(durations)} tests")
           PY
 
+      - name: Record fast-tier runner calibration
+        if: always()
+        continue-on-error: true
+        run: |
+          uv run -- python -m scripts.fast_tier_calibration \
+            --collection-file fast-junit/collection.jsonl \
+            --output fast-junit/calibration.json | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Upload fast-tier junit
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: fast-junit-trunk-${{ github.sha }}
-          path: fast-junit/junit.xml
+          path: fast-junit/
           if-no-files-found: warn
           retention-days: 14
           overwrite: true

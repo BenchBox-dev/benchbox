@@ -11,7 +11,12 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 WORKFLOWS_DIR = Path(__file__).resolve().parents[3] / ".github" / "workflows"
 
-_JUNIT_FLAGS = ("-o junit_duration_report=total", "--junitxml=fast-junit/junit.xml")
+_JUNIT_FLAGS = (
+    "-o junit_duration_report=total",
+    "--junitxml=fast-junit/junit.xml",
+    "-p scripts.fast_tier_calibration",
+    "--collection-timing fast-junit/collection.jsonl",
+)
 
 _CASES = [
     pytest.param(
@@ -61,7 +66,7 @@ def test_junit_artifact_uploaded_with_fourteen_day_retention(workflow: str, job:
     assert upload["uses"].startswith("actions/upload-artifact@")
     assert upload["if"] == "always()"
     assert upload["with"]["name"] == artifact
-    assert upload["with"]["path"] == "fast-junit/junit.xml"
+    assert upload["with"]["path"] == "fast-junit/"
     assert upload["with"]["retention-days"] == 14
     assert steps.index(upload) > steps.index(_step(steps, "Run fast tests"))
 
@@ -75,3 +80,16 @@ def test_junit_parse_check_uses_duration_policy_and_cannot_fail_the_job(workflow
     assert "fast-junit/junit.xml" in check["run"]
     assert check["continue-on-error"] is True
     assert check["if"] == "always()"
+
+
+@pytest.mark.parametrize(("workflow", "job", "artifact"), _CASES)
+def test_calibration_step_records_into_the_uploaded_directory(workflow: str, job: str, artifact: str) -> None:
+    steps = _steps(workflow, job)
+    calibration = _step(steps, "Record fast-tier runner calibration")
+
+    assert "scripts.fast_tier_calibration" in calibration["run"]
+    assert "--collection-file fast-junit/collection.jsonl" in calibration["run"]
+    assert "--output fast-junit/calibration.json" in calibration["run"]
+    assert calibration["continue-on-error"] is True
+    assert calibration["if"] == "always()"
+    assert steps.index(calibration) < steps.index(_step(steps, "Upload fast-tier junit"))
