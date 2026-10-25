@@ -2,7 +2,7 @@
 
 **Created:** 2026-04-02
 **Originating TODO:** `generate-seed-corpus-for-results-explorer`
-**Related:** `docs/development/benchbox-results-platform-strategy.md`
+**Related:** <https://github.com/BenchBox-dev/benchbox/blob/develop/docs/internal/benchbox-results-platform-strategy.md>
 
 This document belongs in `results-data/` because it describes the corpus contract and
 the maintainer-run seed-generation workflow, not scratch analysis. Current checked-in
@@ -42,7 +42,7 @@ these conditions, in order:
 1. The compliance class is not `unofficial_nonstandard`. Subscale TPC-H and TPC-DS
    (`unofficial_subscale`, or no class below SF 1) rank, labelled Subscale · Unofficial;
    a subscale bundle with no stored Power@Size ranks on Power@Size derived from its
-   final-iteration timings (see `docs/development/adr/adr-subscale-tpc-ranking-policy.md`).
+   final-iteration timings (see <https://benchbox.dev/docs/development/adr/adr-subscale-tpc-ranking-policy.html>).
 2. No measurement query failed.
 3. The validation status is clean. A `passed` or missing status with failed queries is
    `partial`, and one with a failed or fallback SQL translation is `uncertain`.
