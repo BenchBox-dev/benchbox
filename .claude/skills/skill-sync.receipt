@@ -3,7 +3,7 @@
 # carries no hashes and attests nothing about the current contents.
 
 source = https://github.com/joeharris76/skill-sync-skills.git
-rev = beddb2f5e3572529257875bf3368422284da996a
+rev = 420c04e46947264aebece5f6a7767ecfcdb01881
 dir = skills
 skill = benchbox
 
