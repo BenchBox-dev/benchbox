@@ -246,9 +246,13 @@ bypasses the gate; see [develop push gaps](develop-post-merge-gaps.md).
 If more than one medium-tier shard is killed in a day, someone should read
 that shard's memory sampler output for the test that is growing a worker.
 
-If a trunk failure traces to a pull request that was green on an older base
-more than about once a week, the owner should consider reinstating the strict
-up-to-date rule and its refresh cost.
+A stale-base incident is a trunk failure where the culprit pull request was
+green on its older base and the failure needs a commit that merged after that
+base. A failure that rebasing onto the then-current `develop` would not have
+prevented (a flaky test, a break that was already on the PR's base, or one
+caused by the PR alone) does not count. If two stale-base incidents occur in
+one week, the owner should reconsider reinstating the strict up-to-date rule
+and its refresh cost.
 
 ---
 

@@ -83,6 +83,7 @@ A disposable clone (remote session, CI runner) declares `BENCHBOX_EPHEMERAL_CLON
 - Use Python 3.11+, four spaces, 120 columns, Ruff, and public API type hints.
 - No credentials in Git; redact logs and use environment variables.
 - Live cloud tests and broad/destructive cleanup require explicit approval.
+- `[CHANGELOG-001]` User-facing PRs add a `changelog.d/` fragment; never edit `CHANGELOG.md`.
 
 For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stress runs use `BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs` (announce command, max runtime, log path, and stop condition). Do not commit raw logs, screenshots, browser reports, or generated binaries.
 

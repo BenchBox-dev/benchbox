@@ -1368,9 +1368,15 @@ jobs:
     if: ${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        image: ghcr.io/benchbox-dev/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
         env:
           POSTGRES_USER: benchbox
           POSTGRES_PASSWORD: benchbox
