@@ -2861,7 +2861,9 @@
     },
     "ci-autouse-fixture-allowlist-20261025": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "ci-chdb-guard-fast-tier-regression-20261025"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Require every non-function-scoped autouse pytest fixture to be on a reviewed allowlist"
