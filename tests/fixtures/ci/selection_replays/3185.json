@@ -1,0 +1,107 @@
+{
+ "base": "93f01fbe61701ecad90b5cccb6e83ade01c6a316",
+ "diff": [
+  "diff --git a/CHANGELOG.md b/CHANGELOG.md",
+  "index 0342ee7dd..4ecf87f65 100644",
+  "--- a/CHANGELOG.md",
+  "+++ b/CHANGELOG.md",
+  "@@ -104,0 +105,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0",
+  "@@ -235,0 +240,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0",
+  "diff --git a/benchbox/base.py b/benchbox/base.py",
+  "index a60fbd46e..d04e0a6bb 100644",
+  "--- a/benchbox/base.py",
+  "+++ b/benchbox/base.py",
+  "@@ -401 +401 @@ class BaseBenchmark(BenchmarkResultValidationMixin, VerbosityMixin, ABC):",
+  "@@ -405,2 +404,0 @@ class BaseBenchmark(BenchmarkResultValidationMixin, VerbosityMixin, ABC):",
+  "@@ -408,3 +406,2 @@ class BaseBenchmark(BenchmarkResultValidationMixin, VerbosityMixin, ABC):",
+  "diff --git a/benchbox/core/clickbench/benchmark.py b/benchbox/core/clickbench/benchmark.py",
+  "index ed78af684..5aab85940 100644",
+  "--- a/benchbox/core/clickbench/benchmark.py",
+  "+++ b/benchbox/core/clickbench/benchmark.py",
+  "@@ -64,11 +64,12 @@ class ClickBenchBenchmark(GeneratorOutputDirMixin, SimpleBenchmarkMixin, DataGen",
+  "diff --git a/benchbox/platforms/base/dialect_translation.py b/benchbox/platforms/base/dialect_translation.py",
+  "index 6be8a7b23..1819a19ae 100644",
+  "--- a/benchbox/platforms/base/dialect_translation.py",
+  "+++ b/benchbox/platforms/base/dialect_translation.py",
+  "@@ -28,13 +28 @@ class DialectTranslationMixin:",
+  "@@ -42,58 +30,5 @@ class DialectTranslationMixin:",
+  "@@ -101,9 +36,2 @@ class DialectTranslationMixin:",
+  "@@ -111 +38,0 @@ class DialectTranslationMixin:",
+  "@@ -113,4 +40,3 @@ class DialectTranslationMixin:",
+  "@@ -117,0 +44 @@ class DialectTranslationMixin:",
+  "diff --git a/benchbox/utils/dialect_utils.py b/benchbox/utils/dialect_utils.py",
+  "index 0324ea81b..1f0ee5aad 100644",
+  "--- a/benchbox/utils/dialect_utils.py",
+  "+++ b/benchbox/utils/dialect_utils.py",
+  "@@ -373,0 +374,19 @@ def normalize_dialect_for_sqlglot(dialect: str) -> str:",
+  "diff --git a/tests/unit/core/clickbench/test_clickbench_translation_routing.py b/tests/unit/core/clickbench/test_clickbench_translation_routing.py",
+  "new file mode 100644",
+  "index 000000000..b5d9fff23",
+  "--- /dev/null",
+  "+++ b/tests/unit/core/clickbench/test_clickbench_translation_routing.py",
+  "@@ -0,0 +1,103 @@",
+  "diff --git a/tests/unit/sql_compat/test_translate_sql_delegation.py b/tests/unit/sql_compat/test_translate_sql_delegation.py",
+  "index a33c16041..73e3c2f8d 100644",
+  "--- a/tests/unit/sql_compat/test_translate_sql_delegation.py",
+  "+++ b/tests/unit/sql_compat/test_translate_sql_delegation.py",
+  "@@ -169,0 +170,22 @@ class TestTranslateSqlAdapterSnapshots:",
+  "diff --git a/tests/unit/sql_compat/test_vendored_sqlglot_bypass.py b/tests/unit/sql_compat/test_vendored_sqlglot_bypass.py",
+  "new file mode 100644",
+  "index 000000000..7c1d848de",
+  "--- /dev/null",
+  "+++ b/tests/unit/sql_compat/test_vendored_sqlglot_bypass.py",
+  "@@ -0,0 +1,178 @@",
+  "diff --git a/tests/unit/test_base_advanced.py b/tests/unit/test_base_advanced.py",
+  "index f476f3be6..784744ba8 100644",
+  "--- a/tests/unit/test_base_advanced.py",
+  "+++ b/tests/unit/test_base_advanced.py",
+  "@@ -626,5 +626,3 @@ class TestMockBaseBenchmarkQueryTranslation:",
+  "@@ -632 +630,4 @@ class TestMockBaseBenchmarkQueryTranslation:",
+  "@@ -634,5 +635,2 @@ class TestMockBaseBenchmarkQueryTranslation:",
+  "@@ -649,2 +647,2 @@ class TestMockBaseBenchmarkQueryTranslation:",
+  "@@ -651,0 +650,2 @@ class TestMockBaseBenchmarkQueryTranslation:",
+  "@@ -653,10 +653 @@ class TestMockBaseBenchmarkQueryTranslation:"
+ ],
+ "failed": [
+  "tests/test_benchbox.py::TestBenchBox::test_translate_query"
+ ],
+ "failed_in_base_map": [
+  "tests/test_benchbox.py::TestBenchBox::test_translate_query"
+ ],
+ "head": "84e81d7a48d3f743386af6108e033366a0e6187f",
+ "hits": {
+  "benchbox/base.py": {
+   "lines": {
+    "401": [
+     "tests/test_benchbox.py::TestBenchBox::test_translate_query"
+    ],
+    "405": [
+     "tests/test_benchbox.py::TestBenchBox::test_translate_query"
+    ],
+    "408": [
+     "tests/test_benchbox.py::TestBenchBox::test_translate_query"
+    ],
+    "409": [
+     "tests/test_benchbox.py::TestBenchBox::test_translate_query"
+    ]
+   },
+   "statements": [
+    401,
+    405,
+    408,
+    409,
+    410
+   ]
+  }
+ },
+ "pr": 3185,
+ "provenance": {
+  "base_sha": "93f01fbe61701ecad90b5cccb6e83ade01c6a316",
+  "command": "BENCHBOX_TEST_TIER=t2 COVERAGE_CORE=ctrace pytest tests/test_benchbox.py -n 0 -m medium -p pytest_cov --cov --cov-config=scripts/coverage_map.ini --cov-context=test, then coverage_test_selection.py build-map at the base tree",
+  "full_map_sha256": "f556fa308dc3f6adeb17db373f14c58789d58efbfcbaf284a0d16308a85699ff",
+  "map_files": 58,
+  "map_nodes": 4,
+  "merge_sha": "ef67c6c118894659748ab425ad4e9ce0453cb882",
+  "test_file": "tests/test_benchbox.py"
+ }
+}
