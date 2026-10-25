@@ -196,7 +196,7 @@ jobs:
           git show "$EVENT_BASE_SHA:_project/scripts/soundness_paths.py" > "$trusted/_project/scripts/soundness_paths.py"
           git show "$EVENT_BASE_SHA:.github/soundness-paths.txt" > "$trusted/.github/soundness-paths.txt"
           git show "$EVENT_BASE_SHA:.github/changelog-paths.txt" > "$RUNNER_TEMP/changelog-paths.txt"
-          git diff --name-only --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/changed.txt"
+          git diff --name-only --no-renames --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/changed.txt"
           git diff --name-only --diff-filter=A "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/added.txt"
           python -I "$trusted/scripts/changelog_fragments.py" --root "$PWD" check \
             --changelog "$PWD/CHANGELOG.md" \
@@ -1897,7 +1897,7 @@ jobs:
           git show "$EVENT_BASE_SHA:scripts/changelog_fragments.py" > "$trusted/scripts/changelog_fragments.py"
           git show "$EVENT_BASE_SHA:_project/scripts/soundness_paths.py" > "$trusted/_project/scripts/soundness_paths.py"
           git show "$EVENT_BASE_SHA:.github/soundness-paths.txt" > "$trusted/.github/soundness-paths.txt"
-          git diff --name-only --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/changed.txt"
+          git diff --name-only --no-renames --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/changed.txt"
           git diff --name-only --diff-filter=A "$EVENT_BASE_SHA...HEAD" > "$RUNNER_TEMP/added.txt"
           git show "$EVENT_BASE_SHA:.github/changelog-paths.txt" > "$RUNNER_TEMP/changelog-paths.txt"
           python -I "$trusted/scripts/changelog_fragments.py" --root "$PWD" check \

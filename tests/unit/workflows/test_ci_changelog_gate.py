@@ -91,3 +91,12 @@ def test_title_edit_lane_also_runs_the_base_commit_copy_of_the_gate() -> None:
     assert "python scripts/changelog_fragments.py" not in step["run"]
     assert "release_flow.py" not in step["run"]
     assert '--release-base-sha "$EVENT_BASE_SHA"' in step["run"]
+
+
+def test_both_lanes_list_changed_paths_without_rename_detection() -> None:
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    edit_steps = workflow["jobs"]["text-edit-verdict"]["steps"]
+    edit = next(s for s in edit_steps if s.get("name") == "Re-check the changelog entry against the edited title")
+    for run in (_step()["run"], edit["run"]):
+        assert "--name-only --no-renames --diff-filter=ACDMRT" in run
+        assert "--name-only --diff-filter=A " in run
