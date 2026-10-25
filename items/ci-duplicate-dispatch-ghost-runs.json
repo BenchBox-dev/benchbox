@@ -3,6 +3,7 @@
     "Single CI run per push",
     "Stuck jobless runs auto-cancel or alert within 15 min"
   ],
+  "context": "Merged PR #3434: gitignore-lint.yml gained a per-PR cancel-in-progress concurrency group, and tests/unit/workflows/test_workflow_dispatch_dedupe.py now forbids overlapping push+pull_request triggers and requires a per-PR/per-ref cancel-in-progress group on every pull_request workflow. The observed duplicate (CI on opened plus `CI (text edit)` seconds later) is the deliberate edited-event verdict-copy design and was left alone. NOT done: automatic cancel/alert of stuck jobless ghost runs. A watchdog was built and dropped because the Actions API reports a run queued behind a concurrency group the same as a stuck jobless run (queued/pending, zero jobs) and does not expose the group, so cancelling could drop real CI runs. A safe watchdog needs another signal (e.g. runner-side or org-level data); item stays open for that.",
   "description": "Every push spawns two CI workflow runs ~13s apart; on 2026-10-12 a jobless ghost run (pending, zero jobs) held its concurrency group and stalled scheduling repo-wide ~45 min until manually cancelled + rerun. Seen on fix/revert-2821 and feat/tuning-merge-settle-recorded.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "02f74ccf43bf41a297c76376f7020e0c",
       "session_id": "8be230d790474fda8edea19668121bf9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T07:25:28Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bb2a1efcf0e0419e98ed25f6238de2dc",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
 }
