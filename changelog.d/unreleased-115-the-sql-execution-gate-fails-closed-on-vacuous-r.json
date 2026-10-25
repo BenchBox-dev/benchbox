@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "`make sql-execution-gate` fails closed on vacuous comparisons: a query whose result has no rows, or only NULL or 0 cells, on both the engine and DuckDB is a `vacuous` finding unless gate-only augmented data (a second warehouse for TPC-DS Q16, Q94 and Q95) proves it or a reasoned `vacuous` entry in `expected_differences.json` allows it. The report lists the vacuous queries per benchmark and engine as not proven. `make tpcds-obt-equivalence` uses the same definition and records Q16, Q94 and Q95 among its unverifiable queries."
+    }
+  ]
+}

@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from scripts.sql_execution_gate.rows import is_vacuous
+
 BASE_PARTS_AS_VARIANTS = {14, 23, 24}
 SEED_CANDIDATES: tuple[int | None, ...] = (None, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 FLOAT_ABS_TOLERANCE = 1e-6
@@ -126,13 +128,17 @@ def compare_parts(obt_parts: list[list[Row]], base_parts: list[list[Row]]) -> Co
     )
 
 
+def parts_are_vacuous(parts: list[list[Row]]) -> bool:
+    return not parts or any(is_vacuous(part) for part in parts)
+
+
 def choose_seed(base, benchmark, query_id: int, scale_factor: float) -> tuple[int | None, list[list[Row]]]:
     first: list[list[Row]] | None = None
     for seed in SEED_CANDIDATES:
         parts = run_statements(base, base_sql(benchmark, query_id, scale_factor, seed))
         if first is None:
             first = parts
-        if parts and all(parts):
+        if not parts_are_vacuous(parts):
             return seed, parts
     assert first is not None
     return None, first

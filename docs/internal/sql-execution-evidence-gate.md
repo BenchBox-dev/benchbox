@@ -18,6 +18,7 @@ transformer), executes it on generated SF0.01 data and checks:
 | `error` | The candidate SQL fails to translate, parse or execute, or exceeds the per-query budget. |
 | `row-count` | The row count differs from the TPC reference row counts recorded for SF0.01 (reference parameters). |
 | `reference` | The rows differ from DuckDB executing its own dialect of the same candidate query. |
+| `vacuous` | The compared result carries no signal: zero rows, or every cell of every row is NULL or 0 (an aggregate over an empty set), and the reference engine agrees. Equality of two such results proves nothing about the translation. |
 | `baseline` | The rows differ from the baseline checkout's rows and the difference is not a verified improvement. |
 
 Engines: SQLite and DuckDB always, DataFusion when installed, PostgreSQL when
@@ -38,6 +39,36 @@ every DuckDB difference, is unexplained.
 Rows are compared as multisets (row order is not checked). Numbers use
 tolerance, and cross-engine comparison tolerates midnight timestamps against
 dates and trailing spaces; baseline comparison on the same engine is strict.
+
+## Vacuous results
+
+A result is vacuous when it has no rows or when no row carries a non-NULL,
+non-zero value. A `vacuous` finding is raised for every engine whose result is
+vacuous and whose DuckDB reference result is too (DuckDB itself included). The
+gate fails closed: a vacuous comparison fails unless it is proven or allowlisted.
+
+- Proven: `scripts/sql_execution_gate/augmentation.py` builds a gate-only
+  dataset, `tpcds-augmented`, in the scratch directory. It gives `catalog_sales`
+  and `web_sales` a second warehouse (`(item_sk % 2) + 1`), adds a second
+  `warehouse` row, assigns the `ca_state` values and the `web_company_name` that
+  the emitted queries filter on to `customer_address` and `web_site`, and runs
+  TPC-DS Q16, Q94 and Q95 for the default seed and seed 1001 on every engine
+  against DuckDB with the usual `reference` and `baseline` checks. When every
+  augmented cell of a query is clean and non-vacuous, the vacuous base result
+  is reported as proven by augmented data. The query text, the row-count
+  reference and the DuckDB reference comparison are unchanged, and the augmented
+  data never leaves the scratch directory and never reaches a published run.
+- Allowlisted: a `vacuous` entry in `expected_differences.json` with `match`
+  `0 rows` or `every cell NULL or 0` and a justification that names the executed
+  reason the query returns nothing at SF0.01. `engine` may be a list for this
+  check. An entry that no longer matches is stale and fails the gate, so a query
+  that gains signal (new seed, new data, new scale) has its entry removed.
+
+The report prints the proven queries, the augmented DuckDB rows, and a section
+`NOT PROVEN, vacuous comparisons` with a count per benchmark and engine and one
+line per query. `--report` adds `proven_by_augmentation`, `augmented_reference_rows`
+and `not_proven`. Never add an entry to hide a vacuity that a seed or the
+augmentation could remove, and never loosen the row comparison tolerances.
 
 ## Expected differences
 
@@ -112,7 +143,7 @@ review on the current head.
 
 ## Regression proofs
 
-The gate is built to catch the two regressions that the text corpus accepted:
+The gate is built to catch the regressions that the text corpus accepted:
 
 - The DATETIME day-offset form in wheel 30.24.0.1 (`DATETIME(DATE(x), '-30 DAY')`
   drops the lower boundary row on SQLite). `tests/unit/scripts/test_sql_execution_gate.py`
@@ -120,3 +151,20 @@ The gate is built to catch the two regressions that the text corpus accepted:
 - Integer truncation in ratio queries (TPC-DS Q21 on SQLite through wheel
   30.24.0.3). The same test file requires a `reference` finding for the old
   `inv_after / inv_before` form.
+- Unpadded dates on SQLite (wheel 30.24.0.12; fixed in 30.24.0.13). TPC-DS Q16,
+  Q94 and Q95 filtered on NULL date bounds and passed the gate because SF0.01
+  holds one warehouse, so the result is `(0, NULL, NULL)` on every engine.
+  Running the gate with `--candidate-ref` at the commit before the adoption
+  (`bff115553d38905e3e30e04ce3cd286cd59f946b`, runtime 30.24.0.12) exits 1 with
+  a SQLite `reference` finding for each of the six augmented Q16, Q94 and Q95
+  runs, for example `(0.0, None, None) != (21.0, 108654.84, -11795.43)`. The same
+  gate on 30.24.0.13 passes.
+
+## TPC-DS OBT equivalence
+
+`make tpcds-obt-equivalence` applies the same vacuity definition when it picks
+the parameter seed and when it classifies a query as `unverifiable`: a base part
+with no rows, or with only NULL or 0 cells, is not evidence. That test is
+DuckDB-only (it loads TPC-DS and the OBT parquet into DuckDB), so it cannot
+detect a translation defect on SQLite, PostgreSQL or DataFusion; that coverage
+belongs to this gate.
