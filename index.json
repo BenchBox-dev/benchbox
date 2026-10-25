@@ -16533,7 +16533,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "The oracle's hourly retry sweep runs only 3 to 7 times a day, so pending verdicts wait hours"
+      "title": "The oracle-verdict retry sweep runs every 2 to 6 hours instead of hourly, so pending verdicts wait hours after they become due"
     },
     "oracle-swf-empty-defect-list-decision-20261008": {
       "claim": null,
