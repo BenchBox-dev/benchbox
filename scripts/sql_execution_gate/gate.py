@@ -564,7 +564,7 @@ def run(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scale", type=float, default=0.01)
-    parser.add_argument("--benchmarks", default="tpch,tpcds,tpchavoc")
+    parser.add_argument("--benchmarks", default="tpch,tpcds,tpchavoc,tpcds_obt")
     parser.add_argument("--engines", default="", help="comma-separated subset of sqlite,duckdb,datafusion,postgres")
     parser.add_argument("--candidate-ref", default="working-tree")
     parser.add_argument(

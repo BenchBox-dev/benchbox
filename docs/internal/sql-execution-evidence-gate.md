@@ -2,9 +2,31 @@
 
 `make sql-execution-gate` is the evidence every SQLGlot runtime adoption and
 every change to SQL translation must show. It executes the translated SQL of
-every shipped TPC-H (22) and TPC-DS (99) query on each local engine and compares
-the returned rows. It replaces the text-diff golden corpus as the primary
+every shipped TPC-H (22), TPC-DS (99), TPC-Havoc (220 variants) and TPC-DS OBT
+(90 queries, 93 statements) query on each local engine and compares the returned
+rows. It replaces the text-diff golden corpus as the primary
 evidence; the corpus remains a secondary view of output text.
+
+## Benchmarks
+
+`--benchmarks` is a comma-separated list; the default is `tpch,tpcds,tpchavoc`.
+
+| Name | Queries | Data |
+|---|---|---|
+| `tpch` | 1 to 22 | TPC-H SF0.01 |
+| `tpcds` | 1 to 99 | TPC-DS SF0.01, seed 1001 |
+| `tpchavoc` | every id of `TPCHavocBenchmark.get_queries()` (220 variants, `1_v1` onward) | the TPC-H dataset |
+| `tpcds_obt` | every statement of the OBT catalog (90 queries; Q14, Q23 and Q24 run as lettered statements `14a`, `14b`, ...) | the OBT built by `TPCDSOBTTransformer` from the gate's TPC-DS data (715 columns) |
+
+Q8, Q54, Q84 and the inventory queries are recorded OBT exclusions, so `tpcds_obt`
+has no cell for them. Requesting `tpcds_obt` also emits the base lettered
+statements (`tpcds-parts`: 14a to 24b) and the augmented queries, and
+`tpchavoc` needs no dataset of its own.
+
+The report prints a `coverage per benchmark and engine` table (compared, errors,
+vacuous unproven, expected differences, unexplained) and `--report` writes it
+under `coverage`. Every Havoc variant and every OBT statement is either
+executed and compared or named in an `expected_differences.json` entry.
 
 ## What it compares
 
@@ -19,6 +41,7 @@ transformer), executes it on generated SF0.01 data and checks:
 | `row-count` | The row count differs from the TPC reference row counts recorded for SF0.01 (reference parameters). |
 | `reference` | The rows differ from DuckDB executing its own dialect of the same candidate query. |
 | `vacuous` | The compared result carries no signal: zero rows, or every cell of every row is NULL or 0 (an aggregate over an empty set), and the reference engine agrees. Equality of two such results proves nothing about the translation. |
+| `base-equivalence` | An OBT statement (`tpcds_obt`, `tpcds_obt-augmented`) returns rows that differ from the matching TPC-DS statement on the same engine: `tpcds` for a whole query, `tpcds-parts` for a lettered statement, `tpcds-augmented` for the augmented queries. Multi-part OBT queries are compared part by part. |
 | `baseline` | The rows differ from the baseline checkout's rows and the difference is not a verified improvement. |
 
 Engines: SQLite and DuckDB always, DataFusion when installed, PostgreSQL when
@@ -50,7 +73,9 @@ vacuous and whose DuckDB reference result is too (DuckDB itself included). The
 gate fails closed: a vacuous comparison fails unless it is proven or allowlisted.
 
 - Proven: `scripts/sql_execution_gate/augmentation.py` builds a gate-only
-  dataset, `tpcds-augmented`, in the scratch directory. It gives `catalog_sales`
+  dataset, `tpcds-augmented`, in the scratch directory; the OBT transformer then
+  builds `tpcds_obt-augmented` from it so the same proof covers OBT Q16, Q94 and
+  Q95. It gives `catalog_sales`
   and `web_sales` a second warehouse (`(item_sk % 2) + 1`), adds a second
   `warehouse` row, assigns the `ca_state` values and the `web_company_name` that
   the emitted queries filter on to `customer_address` and `web_site`, and runs
@@ -80,7 +105,10 @@ carries a `match` substring that the finding detail must contain (so a different
 failure on the same query is still unexplained), and a non-empty
 `justification`. Entries for real defects name a `tracker` item and are removed
 when the defect is fixed; an entry that no longer matches any finding fails the
-gate as stale, except `optional` entries for wall-clock timeouts. Never add an
+gate as stale, except `optional` entries for wall-clock timeouts. Deterministic
+engine limits (DataFusion 54.0.0 cannot plan some correlated subqueries of the
+Havoc variants) are non-optional entries that quote the engine version and the
+exact planner error, so an engine upgrade that fixes them turns the entry stale. Never add an
 entry to make a regression pass: fix the fork or the wrapper.
 
 ## Running it
@@ -91,10 +119,13 @@ make sql-execution-gate SQL_EXECUTION_GATE_ARGS="--baseline-ref origin/develop -
 make sql-execution-gate SQL_EXECUTION_GATE_ARGS="--candidate-ref <commit> --baseline-ref <commit>"
 ```
 
-Runtime on a development machine at SF0.01: about 1 minute to emit each side's
-queries, about 80 seconds for SQLite (four queries run into the 15 second
-budget), a few seconds for DuckDB and DataFusion and about 50 seconds for
-PostgreSQL. A run with a baseline takes about 3 to 4 minutes. CI runs the
+DuckDB (the reference, which also writes the Parquet files DataFusion reads) runs
+first; every other engine then runs each dataset as its own unit on a thread
+pool sized to the CPU count, so the slowest unit rather than the sum of the
+engines sets the wall time. Each unit opens its own connection (PostgreSQL uses a
+schema per unit).
+
+Runtime at SF0.01 with all four benchmarks and a baseline: PLACEHOLDER_RUNTIME CI runs the
 `sql-execution-evidence` job only when the runtime pin, the wrapper, the
 SQL-compat package, the TPC-H and TPC-DS query code, the local engine adapters
 or the gate itself change.
@@ -162,6 +193,20 @@ The gate is built to catch the regressions that the text corpus accepted:
   runs, for example `(0.0, None, None) != (21.0, 108654.84, -11795.43)`. The same
   gate on 30.24.0.13 passes.
 
+- The SQLite list-aggregate dispatch omission (TPC-Havoc `1_v7`, fixed in
+  #3426). `test_the_sqlite_list_aggregate_dispatch_omission_fails_the_gate`
+  removes `sqlite` from `LIST_AGGREGATE_DIALECTS`, emits `1_v7` through the real
+  benchmark and requires an `error` finding for `tpchavoc 1_v7` on sqlite
+  (`near "[0]": syntax error`); with the real set the finding is absent. Run on
+  the full gate, the same mutation exits 1 with that single unexplained
+  difference.
+- Unpadded dates in OBT queries (wheel 30.24.0.12). Running the gate with
+  `--benchmarks tpcds_obt --engines sqlite,duckdb --candidate-ref <commit>` at a
+  commit whose `benchbox/_vendor` is the 30.24.0.12 wheel exits 1: Q16, Q94 and
+  Q95 stay vacuous on SQLite and each of the six `tpcds_obt-augmented` runs
+  reports a SQLite `reference` finding such as
+  `(0.0, None, None) != (21.0, 108654.84, -11795.43)`.
+
 ## TPC-DS OBT equivalence
 
 `make tpcds-obt-equivalence` applies the same vacuity definition when it picks
@@ -169,4 +214,6 @@ the parameter seed and when it classifies a query as `unverifiable`: a base part
 with no rows, or with only NULL or 0 cells, is not evidence. That test is
 DuckDB-only (it loads TPC-DS and the OBT parquet into DuckDB), so it cannot
 detect a translation defect on SQLite, PostgreSQL or DataFusion; that coverage
-belongs to this gate.
+belongs to this gate, which runs every OBT statement on every engine, compares
+it with the TPC-DS statement on the same engine and with DuckDB, and runs the
+vacuity proof on OBT data.

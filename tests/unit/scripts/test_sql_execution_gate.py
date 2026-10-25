@@ -544,3 +544,14 @@ def test_obt_augmented_data_proves_a_vacuous_obt_query(tmp_path):
     assert {(f.benchmark, f.engine, f.query) for f in report.proven} == {
         (benchmark, engine, "16") for benchmark in ("tpcds", "tpcds_obt") for engine in ("duckdb", "sqlite")
     }
+
+
+def test_sqlite_engine_interrupts_a_runaway_query_at_the_budget(tmp_path):
+    from scripts.sql_execution_gate.engines import QueryTimeout
+
+    engine = SqliteEngine(0.5)
+    engine.open(Dataset("t", "CREATE TABLE a (x INTEGER)", {}), tmp_path)
+    with pytest.raises(QueryTimeout):
+        engine.execute("WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c) SELECT COUNT(*) FROM c")
+    assert engine.execute("SELECT 1") == [(1,)]
+    engine.close()
