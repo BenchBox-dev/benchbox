@@ -16292,6 +16292,13 @@
       "status": "done",
       "title": "make oracle-review-recover never finds failed runs, and its close-and-reopen turns off auto-merge"
     },
+    "oracle-review-recover-retire-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Retire make oracle-review-recover and move pr_rerun's helpers out of its module"
+    },
     "oracle-review-stale-check-runs-block-merge-20261008": {
       "claim": null,
       "needs": [],
