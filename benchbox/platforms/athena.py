@@ -38,6 +38,8 @@ except ImportError:
     boto3 = None
     athena_connect = None
 
+_BARE_FLOAT_ARRAY = re.compile(r"\bFLOAT\s*\[", re.IGNORECASE)
+
 
 def _compact_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {str(key): value for key, value in payload.items() if value not in (None, "", {}, [], ())}
@@ -612,7 +614,8 @@ class AthenaAdapter(PlatformAdapter):
             layout = self._external_table_layout(table_name.strip('"`'), is_staging) if table_name else None
             statements.extend(
                 translate_ddl(
-                    statement,
+                    _BARE_FLOAT_ARRAY.sub("DOUBLE[", statement),
+                    "athena",
                     "athena",
                     strip_primary_keys=True,
                     strip_foreign_keys=True,

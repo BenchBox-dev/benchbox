@@ -428,6 +428,27 @@ class TestAthenaAdapter:
         assert "`customer`" in converted
         assert "(`id` INT)" in converted
 
+    def test_external_table_ddl_reads_backtick_quoted_athena_ddl(self, mock_boto3, mock_pyathena, mock_aws_credentials):
+        from benchbox.platforms.athena import AthenaAdapter
+
+        adapter = AthenaAdapter(s3_bucket="test-bucket")
+
+        [converted] = adapter._external_table_ddl("CREATE TABLE `CUSTOMER` (`id` INT NOT NULL, `v` ARRAY<FLOAT>)")
+
+        assert "`customer`" in converted
+        assert "`v` ARRAY<FLOAT>" in converted
+
+    def test_external_table_ddl_keeps_bare_float_arrays_as_double_arrays(
+        self, mock_boto3, mock_pyathena, mock_aws_credentials
+    ):
+        from benchbox.platforms.athena import AthenaAdapter
+
+        adapter = AthenaAdapter(s3_bucket="test-bucket")
+
+        [converted] = adapter._external_table_ddl("CREATE TABLE vectors (id BIGINT, embedding FLOAT[128])")
+
+        assert "`embedding` ARRAY<DOUBLE>" in converted
+
     def test_external_table_ddl_passes_through_non_create(self, mock_boto3, mock_pyathena, mock_aws_credentials):
 
         from benchbox.platforms.athena import AthenaAdapter
