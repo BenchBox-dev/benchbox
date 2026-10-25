@@ -271,6 +271,12 @@ Queries are tagged for tracking:
 ALTER SESSION SET QUERY_TAG = 'benchbox:tpch:power:Q1';
 ```
 
+A gateway-routed run appends a run-level suffix, `_gw-<8 hex characters>`, to the per-query tag
+(for example `BenchBox_Q1_gw-3fa9c2d1`). The suffix is generated once per adapter instance, so every query in one run
+shares it and a gateway vendor can join its logs to the run. The statistics lookup against `QUERY_HISTORY` uses the
+same tag, so execution time, compilation time, bytes scanned and credits are still recorded. Native runs keep the
+unsuffixed tag.
+
 ## Data Loading
 
 ### User Stage (Default)
