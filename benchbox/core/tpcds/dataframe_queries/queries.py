@@ -840,69 +840,68 @@ def _q80_channel_pandas(
     return result[["channel", "id", "sales", "returns", "profit"]]
 
 
-def _q80_channel_specs() -> tuple[tuple[str, ...], ...]:
-    return (
-        (
-            "store_sales",
-            "store_returns",
-            "ss_item_sk",
-            "ss_ticket_number",
-            "sr_item_sk",
-            "sr_ticket_number",
-            "ss_sold_date_sk",
-            "store",
-            "ss_store_sk",
-            "s_store_sk",
-            "s_store_id",
-            "ss_promo_sk",
-            "ss_ext_sales_price",
-            "sr_return_amt",
-            "ss_net_profit",
-            "sr_net_loss",
-            "store channel",
-            "store",
-        ),
-        (
-            "catalog_sales",
-            "catalog_returns",
-            "cs_item_sk",
-            "cs_order_number",
-            "cr_item_sk",
-            "cr_order_number",
-            "cs_sold_date_sk",
-            "catalog_page",
-            "cs_catalog_page_sk",
-            "cp_catalog_page_sk",
-            "cp_catalog_page_id",
-            "cs_promo_sk",
-            "cs_ext_sales_price",
-            "cr_return_amount",
-            "cs_net_profit",
-            "cr_net_loss",
-            "catalog channel",
-            "catalog_page",
-        ),
-        (
-            "web_sales",
-            "web_returns",
-            "ws_item_sk",
-            "ws_order_number",
-            "wr_item_sk",
-            "wr_order_number",
-            "ws_sold_date_sk",
-            "web_site",
-            "ws_web_site_sk",
-            "web_site_sk",
-            "web_site_id",
-            "ws_promo_sk",
-            "ws_ext_sales_price",
-            "wr_return_amt",
-            "ws_net_profit",
-            "wr_net_loss",
-            "web channel",
-            "web_site",
-        ),
-    )
+_Q80_CHANNEL_SPECS: tuple[tuple[str, ...], ...] = (
+    (
+        "store_sales",
+        "store_returns",
+        "ss_item_sk",
+        "ss_ticket_number",
+        "sr_item_sk",
+        "sr_ticket_number",
+        "ss_sold_date_sk",
+        "store",
+        "ss_store_sk",
+        "s_store_sk",
+        "s_store_id",
+        "ss_promo_sk",
+        "ss_ext_sales_price",
+        "sr_return_amt",
+        "ss_net_profit",
+        "sr_net_loss",
+        "store channel",
+        "store",
+    ),
+    (
+        "catalog_sales",
+        "catalog_returns",
+        "cs_item_sk",
+        "cs_order_number",
+        "cr_item_sk",
+        "cr_order_number",
+        "cs_sold_date_sk",
+        "catalog_page",
+        "cs_catalog_page_sk",
+        "cp_catalog_page_sk",
+        "cp_catalog_page_id",
+        "cs_promo_sk",
+        "cs_ext_sales_price",
+        "cr_return_amount",
+        "cs_net_profit",
+        "cr_net_loss",
+        "catalog channel",
+        "catalog_page",
+    ),
+    (
+        "web_sales",
+        "web_returns",
+        "ws_item_sk",
+        "ws_order_number",
+        "wr_item_sk",
+        "wr_order_number",
+        "ws_sold_date_sk",
+        "web_site",
+        "ws_web_site_sk",
+        "web_site_sk",
+        "web_site_id",
+        "ws_promo_sk",
+        "ws_ext_sales_price",
+        "wr_return_amt",
+        "ws_net_profit",
+        "wr_net_loss",
+        "web channel",
+        "web_site",
+    ),
+)
 
 
 def _q77_expression_channel(
@@ -7779,7 +7778,7 @@ def q80_expression_impl(ctx: DataFrameContext) -> Any:
     combined = ctx.concat(
         [
             _q80_channel_expression(ctx, date_filtered, item_filtered, promo_filtered, spec)
-            for spec in _q80_channel_specs()
+            for spec in _Q80_CHANNEL_SPECS
         ]
     )
     return _sales_returns_rollup_expression(ctx, combined)
@@ -7791,7 +7790,7 @@ def q80_pandas_impl(ctx: DataFrameContext) -> Any:
     item_filtered = item[item["i_current_price"] > 50][["i_item_sk"]]
     promo_filtered = promotion[promotion["p_channel_tv"] == "N"][["p_promo_sk"]]
     combined = ctx.concat(
-        [_q80_channel_pandas(ctx, date_filtered, item_filtered, promo_filtered, spec) for spec in _q80_channel_specs()]
+        [_q80_channel_pandas(ctx, date_filtered, item_filtered, promo_filtered, spec) for spec in _Q80_CHANNEL_SPECS]
     )
     return _sales_returns_rollup_pandas(ctx, combined)
 
