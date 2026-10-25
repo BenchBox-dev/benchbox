@@ -16140,6 +16140,13 @@
       "status": "done",
       "title": "Make the oracle-gate sweep fail only on evaluation errors, not on pull requests still waiting"
     },
+    "oracle-gate-verdict-to-status-latency-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Shorten the delay between an oracle SHIP verdict and the oracle-gate status on the PR head"
+    },
     "oracle-gateway-long-silence-timeout-20261022": {
       "claim": null,
       "needs": [],
