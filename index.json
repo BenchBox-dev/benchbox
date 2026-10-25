@@ -23637,10 +23637,12 @@
     },
     "sql-execution-gate-cover-tpchavoc-obt-20261025": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "sql-execution-gate-vacuous-empty-results-20261025"
+      ],
       "priority": "medium",
       "status": "open",
-      "title": "Extend the SQL execution gate to TPC-Havoc and TPC-DS OBT"
+      "title": "Extend the SQL execution gate to TPC-Havoc (220 variants) and TPC-DS OBT (90 queries) on every gate engine"
     },
     "sql-execution-gate-vacuous-empty-results-20261025": {
       "claim": null,
