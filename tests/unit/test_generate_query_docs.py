@@ -58,6 +58,10 @@ class TestSlugsAndLabels:
         assert "\n" in pretty and "SELECT" in pretty
         assert gqd._prettify_sql("-- not sql at all", "default") == "-- not sql at all"
 
+    def test_prettify_sql_leaves_native_sql_untouched(self):
+        sql = "SELECT a/b, JSON_EXTRACT(x, '$.k') FROM t WHERE NOT y IS NULL"
+        assert gqd._prettify_sql(sql, "default") == sql
+
     def test_prettify_sql_is_the_translate_sql_query_output(self):
         from benchbox.utils.dialect_utils import translate_sql_query
 

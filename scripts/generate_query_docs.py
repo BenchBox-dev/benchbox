@@ -61,7 +61,6 @@ _OVERVIEW_SLUG_OVERRIDES = {
     "joinorder": "join-order",
 }
 
-_NATIVE_SOURCE_DIALECT = "ansi"
 _GROUP_THRESHOLD = 30
 _BUCKET_SIZE = 25
 
@@ -107,8 +106,9 @@ def _fence(code: str, lang: str) -> str:
 def _prettify_sql(sql: str, dialect: str) -> str:
     from benchbox.utils.dialect_utils import translate_sql_query
 
-    target = _NATIVE_SOURCE_DIALECT if dialect == "default" else dialect
-    pretty = translate_sql_query(sql, target, source_dialect=target, identify=False, strict=False, pretty=True)
+    if dialect == "default":
+        return sql
+    pretty = translate_sql_query(sql, dialect, source_dialect=dialect, identify=False, strict=False, pretty=True)
     return pretty if pretty.strip() else sql
 
 
