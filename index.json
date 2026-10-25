@@ -19120,6 +19120,13 @@
       "status": "done",
       "title": "Add QuestDB time-series database platform support"
     },
+    "questdb-unpadded-date-cast-null-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "QuestDB evaluates CAST('1999-5-01' AS DATE) to NULL, so TPC-DS Q16/Q94/Q95 filter on NULL bounds"
+    },
     "quick-start-tutorials": {
       "claim": null,
       "needs": [],

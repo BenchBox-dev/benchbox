@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The fork's QuestDB generator writes date literals cast to or compared with dates zero padded, or the equivalent fix, with a QuestDB engine test in fork CI showing rows on the bounds.",
+    "TPC-DS Q16/Q94/Q95 on QuestDB return the same rows as DuckDB on data with rows in range (e.g. the two-warehouse setup used for #3426).",
+    "ClickHouse handling of unpadded date literals is confirmed by an executed chDB or ClickHouse test.",
+    "A corpus diff lists every changed QuestDB query."
+  ],
+  "description": "Found while fixing the same defect on SQLite (BenchBox #3426, fork 30.24.0.13). QuestDB at 127.0.0.1:8812 returns NULL for CAST('1999-5-01' AS DATE); dsqgen emits unpadded months ([YEAR]-[MONTH]-01), and QuestDB TPC-DS Q16 carries DATEADD('d', 60, CAST('2000-3-01' AS DATE)), so date filters match nothing. The fork's QuestDB generator was left unchanged. ClickHouse readDateText accepts YYYY-M-D per src/IO/ReadHelpers.h, but no ClickHouse engine ran to confirm it (chDB does not load on macOS). No QuestDB bundle is published.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3426"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T12:30:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6c65fb90f67a4130be2f7a10b9ed293c",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}
