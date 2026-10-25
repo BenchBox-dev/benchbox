@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Tests that fail on current develop: a fix-forward with valid owner authorization for the current head and failing run arms; a branch name alone is refused; authorization for an older head is refused; authorization naming a different failing run is refused; the causal revert still arms after a later failing tip.",
+    "make pr-preflight passes; the PR passes the oracle on its merged head and merges through make pr-arm.",
+    "docs/agent/merge-authority.md and docs/internal/develop-post-merge-gaps.md describe the fix-forward path, its authorization signal, and that checks and holds still apply."
+  ],
+  "context": "Found 2026-10-24 during the develop recovery (#3385). Source: Advisor review ~/Developer/benchmark_runs/ci-wedge-review-20261024/report.md, prevention plan row 'Fix-forward admission without false revert identity' and finding F14. trunk-red-stops-further-merges covers stopping merges and naming the culprit, not fix-forward admission.",
+  "description": "Problem: while develop's red streak is unreverted, the arm gate (scripts/trunk_revert.py arm-gate; #3415, #3433) refuses to arm every PR except the culprit's revert. On 2026-10-24 the right repair was a fix-forward (#3385), and the only way through was an owner ruleset relaxation. Advisor finding F14 adds a second defect: once a later run fails on a newer tip, the genuine causal revert can fail its identity check because the SHA differs (tests/unit/scripts/test_trunk_revert.py:448-504).\n\nOutcome: a narrowly authorized fix-forward path, bound to the PR number, the head SHA and the failing Trunk run. Required checks, oracle-gate, review threads and holds still apply.\n\nDecision gates:\n1. Authorization signal. The gate must verify the authorization through the GitHub API, including the actor's identity: for example a label applied by the owner, or an owner comment naming the PR, head and failing run, similar to the stand-in format. Branch names and commit-message claims are never authorization. If no API-verifiable owner signal is available, stop and ask the owner which one to use.\n2. Scope. The exemption covers arming only; it never bypasses required checks or holds.\n3. Causal revert identity. Match the genuine revert by culprit PR number, not by the newest failing tip's SHA. Show that a later failing tip no longer blocks it.\n\nItem guardrails: no unrestricted --force flag; no ruleset edits; no change to merge-authority holds; no change to who may revert.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no stand-in approvals, no ruleset edits or bypasses, no raw gh pr merge. Do not close and reopen, mass-rerun or rebase other pull requests.",
+  "links": [
+    "item:trunk-red-stops-further-merges",
+    "item:devloop-trunk-revert-nested-worktree",
+    "scripts/trunk_revert.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T12:52:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "866623bbd18d47c2808b7174105af12f",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
