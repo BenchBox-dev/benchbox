@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "VERIFY: Replay: the comparison run on run 40143597290 (before) vs 40195371347 (after) inputs, or synthetic junit adding 713 s spread over module-final tests, reports a would-block verdict; a run on unchanged code reports pass",
+    "VERIFY: Unit tests cover intersection, renamed and parametrized ids, new-test allowance, coverage warning, missing artifact (reported, not silently passed) and the policy kill switch",
+    "VERIFY: The step runs inside core's existing timeout and its failure text names the step, distinct from test failures",
+    "GATE: Report-only for at least 7 days and at least 50 PR runs before the blocking item may start; the measured run-to-run spread (p99 of summed-intersection deltas on PRs that did not change tests) is recorded on this item",
+    "GUARDRAIL: No ruleset or required-context change; mode=report cannot fail core (test); no label or comment bypass is added"
+  ],
+  "context": "Source: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
+  "description": "The gate, first in report-only mode. A named step in the required core aggregate downloads the fast junit artifact and computes: (a) summed time over tests present in both baseline and PR; (b) summed time of tests not in the baseline, with an allowance of T1_BUDGET_SECONDS (0.5 s) x their count; (c) intersection coverage (warn under 95% of baseline ids); and the same comparison for each medium shard's existing junit. It writes a table and the would-be verdict (threshold +15% AND +60 s on summed intersection time) to the job summary, plus report-only pytest-wall and job-wall deltas. It never fails core in this item. A repo-committed policy file (enabled, mode report|block, thresholds) mirrors the fast-lane policy pattern and is the kill switch. Update docs/operations/fast-lane-budget.md (its claim that timeout-minutes bounds the lane's cost is not a detection mechanism) and add a changelog.d fragment.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T13:57:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "aa54596193314f409faa4d23d0808cc0",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
