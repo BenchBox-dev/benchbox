@@ -14020,10 +14020,15 @@
       "title": "Make the MCP option contract matrix an enforced invariant, not documentation"
     },
     "mcp-create-server-process-globals-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T21:30:40Z",
+        "generation": "c1eb4a4823144a7a83de84ff3ce91418",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop benchbox.mcp.create_server() from changing process-wide logging, quiet mode and tracing"
     },
     "mcp-dask-envelope-refinements": {
