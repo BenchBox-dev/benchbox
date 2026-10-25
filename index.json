@@ -9075,17 +9075,12 @@
       "title": "Capture reproducible pre-migration site evidence"
     },
     "docs-mig-site-bundle-schema4": {
-      "claim": {
-        "expires_at": "2026-10-26T22:37:33Z",
-        "generation": "a2b1e99a588c4fdfb3cc77124b112039",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
-      },
+      "claim": null,
       "needs": [
         "docs-mig-core-bundle-schema4"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Verify documentation-data bundles without changing published output"
     },
     "docs-mig-site-bundle-schema5": {
