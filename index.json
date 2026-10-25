@@ -16039,7 +16039,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "blocked",
+      "status": "open",
       "title": "Observe a stand-in edit or deletion re-running oracle-gate live"
     },
     "oracle-gate-status-20261021": {
