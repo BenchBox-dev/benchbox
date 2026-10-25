@@ -1,3 +1,4 @@
+import importlib
 from pathlib import Path
 from typing import Any, cast
 
@@ -53,7 +54,7 @@ def translate_column_type(type_str: str, dialect: str) -> str | None:
 
 
 def _supports_primary_keys(dialect: str) -> bool:
-    import benchbox.sql_compat.rules.schema_emit.pk_capability  # noqa: F401
+    importlib.import_module("benchbox.sql_compat.rules.schema_emit.pk_capability")
     from benchbox.sql_compat.actions import CompatAction
     from benchbox.sql_compat.context import CompatibilityContext, Phase
     from benchbox.sql_compat.registry import REGISTRY

@@ -1,1 +1,1 @@
-from textcharts.comparison_bar import *  # noqa: F403
+from textcharts.comparison_bar import *

@@ -1,1 +1,1 @@
-from textcharts.heatmap import *  # noqa: F403
+from textcharts.heatmap import *

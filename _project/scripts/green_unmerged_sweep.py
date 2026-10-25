@@ -21,10 +21,10 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import check_suites
 from required_lane import (
-    REQUIRED_CHECK_NAMES,  # noqa: F401
-    is_check_run_success,  # noqa: F401
+    REQUIRED_CHECK_NAMES,
+    is_check_run_success as is_check_run_success,
     is_required_lane_green,
-    latest_check_run,  # noqa: F401
+    latest_check_run as latest_check_run,
 )
 from soundness_paths import any_soundness_path
 

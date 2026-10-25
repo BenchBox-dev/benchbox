@@ -46,12 +46,14 @@ def _declared_symbols(path: Path) -> set[str]:
         def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
             self.symbols.add(node.name)
 
-        visit_AsyncFunctionDef = visit_FunctionDef  # noqa: N815
+        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+            self.symbols.add(node.name)
 
         def visit_Import(self, node: ast.Import) -> None:
             self.symbols.update(alias.asname or alias.name.rsplit(".", 1)[-1] for alias in node.names)
 
-        visit_ImportFrom = visit_Import  # noqa: N815
+        def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+            self.symbols.update(alias.asname or alias.name.rsplit(".", 1)[-1] for alias in node.names)
 
         def visit_Assign(self, node: ast.Assign) -> None:
             self.symbols.update(target.id for target in node.targets if isinstance(target, ast.Name))

@@ -1,1 +1,1 @@
-from textcharts.histogram import *  # noqa: F403
+from textcharts.histogram import *

@@ -1,1 +1,1 @@
-from textcharts.scatter_plot import *  # noqa: F403
+from textcharts.scatter_plot import *

@@ -800,7 +800,7 @@ def pyspark_supports_approx_top_k(spark_session: Any) -> bool:
     if (major, minor) < (4, 1):
         return False
     try:
-        from pyspark.sql import functions as F  # noqa: N812
+        from pyspark.sql import functions as F
 
         return hasattr(F, "approx_top_k_accumulate")
     except ImportError:
@@ -817,7 +817,7 @@ def make_pyspark_hll_persist_builder(
     source_str = str(source_path)
 
     def builder() -> Any:
-        from pyspark.sql import functions as F  # noqa: N812
+        from pyspark.sql import functions as F
 
         return (
             spark_session.read.parquet(source_str)
@@ -834,7 +834,7 @@ def make_pyspark_hll_merge_extract(
 ) -> Any:
 
     def merge_extract(state_path: Path) -> float:
-        from pyspark.sql import functions as F  # noqa: N812
+        from pyspark.sql import functions as F
 
         state = spark_session.read.parquet(str(state_path))
         row = state.agg(F.hll_sketch_estimate(F.hll_union_agg(sketch_col))).collect()[0]
@@ -853,7 +853,7 @@ def make_pyspark_topk_persist_builder(
     source_str = str(source_path)
 
     def builder() -> Any:
-        from pyspark.sql import functions as F  # noqa: N812
+        from pyspark.sql import functions as F
 
         return (
             spark_session.read.parquet(source_str)
@@ -870,7 +870,7 @@ def make_pyspark_topk_merge_extract(
 ) -> Any:
 
     def merge_extract(state_path: Path) -> float:
-        from pyspark.sql import functions as F  # noqa: N812
+        from pyspark.sql import functions as F
 
         state = spark_session.read.parquet(str(state_path))
         row = state.agg(F.size(F.approx_top_k_estimate(F.approx_top_k_combine(sketch_col)))).collect()[0]

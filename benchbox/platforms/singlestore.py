@@ -18,12 +18,12 @@ from ..utils.file_format import get_data_extension
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.data_loading import (
     CsvDialect,
-    DataSourceResolver,  # noqa: F401
+    DataSourceResolver as DataSourceResolver,
     prepare_local_load_file,
     resolve_csv_dialect,
 )
 from .base.mysql_wire import MySqlWireLifecycleMixin, NoOpTableTuningMixin, build_database_config
-from .base.sql_execution import execute_sql_query  # noqa: F401
+from .base.sql_execution import execute_sql_query as execute_sql_query
 
 SINGLESTORE_DIALECT = "singlestore"
 
@@ -34,14 +34,14 @@ except ImportError:
 
 _DEFAULT_PORT = 3306
 
-_TPCH_SHARD_KEYS: dict[str, str] = dict(  # noqa: C408
-    lineitem="l_orderkey",
-    orders="o_orderkey",
-    customer="c_custkey",
-    part="p_partkey",
-    supplier="s_suppkey",
-    partsupp="ps_partkey",
-)
+_TPCH_SHARD_KEYS: dict[str, str] = {
+    "lineitem": "l_orderkey",
+    "orders": "o_orderkey",
+    "customer": "c_custkey",
+    "part": "p_partkey",
+    "supplier": "s_suppkey",
+    "partsupp": "ps_partkey",
+}
 
 _TPCH_SORT_KEYS: dict[str, list[str]] = {
     **{table: [key] for table, key in _TPCH_SHARD_KEYS.items()},

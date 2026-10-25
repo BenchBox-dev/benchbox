@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import importlib
 import logging
 import os
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-import benchbox.core.expected_results  # noqa: F401
+importlib.import_module("benchbox.core.expected_results")
 from benchbox.core.expected_results.models import ExpectedQueryResult, ValidationMode, ValidationResult
 from benchbox.core.expected_results.registry import LoadOutcome, get_registry
 from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id
