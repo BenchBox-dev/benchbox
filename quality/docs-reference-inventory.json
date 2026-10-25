@@ -3033,6 +3033,36 @@
    ]
   },
   {
+   "disposition": "contract-tooling",
+   "kinds": {
+    "extra": 1,
+    "generated": 1,
+    "unresolved": 2
+   },
+   "occurrences": 4,
+   "path": "scripts/docs_history_filter.py",
+   "rule": "contract-export-tooling",
+   "target_count": 4,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/CNAME"
+    },
+    {
+     "kind": "generated",
+     "target": "docs/benchmarks/queries/"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/blog/"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
+    }
+   ]
+  },
+  {
    "disposition": "generator-deleted",
    "kinds": {
     "dir": 1,
@@ -4786,6 +4816,93 @@
    ]
   },
   {
+   "disposition": "contract-tooling",
+   "kinds": {
+    "extra": 1,
+    "file": 1,
+    "generated": 2,
+    "unresolved": 14
+   },
+   "occurrences": 28,
+   "path": "tests/unit/scripts/test_docs_history_filter.py",
+   "rule": "contract-export-tooling",
+   "target_count": 18,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/CNAME"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/a.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/a.py"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/b.md"
+    },
+    {
+     "kind": "generated",
+     "target": "docs/benchmarks/queries/"
+    },
+    {
+     "kind": "generated",
+     "target": "docs/benchmarks/queries/q1.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/blog/p.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/blog/post.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/c.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/internal.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/key.pem"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/new.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/old.rst"
+    },
+    {
+     "kind": "file",
+     "target": "docs/platforms/duckdb.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/pyproject.toml"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/tool.py"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/uv.lock"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
+    }
+   ]
+  },
+  {
    "disposition": "site-pipeline-cutover",
    "kinds": {
     "dir": 1,
@@ -5568,7 +5685,7 @@
  "summary": {
   "dispositions": {
    "contract-replaced": 3,
-   "contract-tooling": 5,
+   "contract-tooling": 7,
    "fixture-data": 43,
    "generator-deleted": 5,
    "governance-stays": 7,
@@ -5579,18 +5696,18 @@
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 272,
+  "files": 274,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
-   "extra": 72,
-   "file": 1580,
-   "generated": 15,
+   "extra": 74,
+   "file": 1581,
+   "generated": 19,
    "pattern": 313,
    "root": 216,
-   "unresolved": 2007
+   "unresolved": 2032
   },
-  "references": 33419,
+  "references": 33451,
   "unclassified": 0
  }
 }
