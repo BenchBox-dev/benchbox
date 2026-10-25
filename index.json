@@ -26691,7 +26691,9 @@
       "claim": null,
       "needs": [
         "trunk-red-run-triage-20261024",
-        "ci-usage-metrics-report-20261024"
+        "ci-usage-metrics-report-20261024",
+        "trunk-dist-artifact-producer-check-flake-20261022",
+        "ci-amplab-generate-data-timeout-flake"
       ],
       "priority": "medium",
       "status": "open",
