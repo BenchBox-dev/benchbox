@@ -21413,11 +21413,12 @@
     "retire-oracle-review-workflow-20261021": {
       "claim": null,
       "needs": [
-        "owner-drop-oracle-review-required-20261021"
+        "owner-drop-oracle-review-required-20261021",
+        "oracle-verdict-dispatch-gate-after-review-20261025"
       ],
       "priority": "medium",
       "status": "open",
-      "title": "Retire the oracle-review workflow and its checker"
+      "title": "Retire the oracle-review notification workflow once the verdict's gate dispatch has proved reliable"
     },
     "retire-sqlglot-duckdb-all-workaround": {
       "claim": null,
