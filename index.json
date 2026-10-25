@@ -2378,15 +2378,10 @@
       "title": "Burn down the full repository-wide `ty` backlog outside release-critical entrypoints"
     },
     "bypass-scanner-scripts-transpile-20261025": {
-      "claim": {
-        "expires_at": "2026-10-26T20:50:20Z",
-        "generation": "1f327845e23d440f8b7896a63bc2160a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "scripts/generate_query_docs.py pretty-prints SQL through the vendored fork outside translate_sql_query, and the bypass scanner does not scan scripts/ or _project/"
     },
     "calculate-checksum-collision-hardening": {
