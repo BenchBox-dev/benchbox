@@ -2844,15 +2844,10 @@
       "title": "Medium-shard-0 amplab data-gen test times out inside random.randint (recurring infra flake)"
     },
     "ci-amplab-generate-data-timeout-flake": {
-      "claim": {
-        "expires_at": "2026-10-26T17:33:27Z",
-        "generation": "e6c966c09cc4486583266fdcc4e4bf82",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Fix chronic test_generate_data 60s timeout flake in medium shards"
     },
     "ci-arm-reads-duration-verdict-20261025": {
