@@ -888,15 +888,41 @@ def _gateway_accounts(path: Path, providers: list[str]) -> dict[str, list[str]]:
     return accounts
 
 
-def command_gateway_clients(args: argparse.Namespace) -> int:
-    import yaml
-
-    token = Path(args.token_file).read_text(encoding="utf-8")
+def _gateway_client_token(path: Path) -> str:
+    try:
+        token = path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise SystemExit(f"oracle-verdict: error: cannot read the client token file {path}") from error
     if len(token) < GATEWAY_TOKEN_MIN_LENGTH or token != token.strip():
         raise SystemExit(
             f"oracle-verdict: error: the client token must be at least {GATEWAY_TOKEN_MIN_LENGTH} characters "
             "with no surrounding whitespace"
         )
+    return token
+
+
+def _gateway_named_token_files(specs: list[str]) -> dict[str, Path]:
+    named: dict[str, Path] = {}
+    for spec in specs:
+        name, separator, path = spec.partition("=")
+        if not separator or not name or not path:
+            raise SystemExit(f"oracle-verdict: error: --client expects NAME=TOKEN_FILE, got {spec!r}")
+        if name == GATEWAY_CLIENT or name in named:
+            raise SystemExit(f"oracle-verdict: error: duplicate gateway client name {name}")
+        named[name] = Path(path)
+    return named
+
+
+def command_gateway_clients(args: argparse.Namespace) -> int:
+    import yaml
+
+    token_files = {GATEWAY_CLIENT: Path(args.token_file), **_gateway_named_token_files(args.client)}
+    digests: dict[str, str] = {}
+    for name, path in token_files.items():
+        digest = hashlib.sha256(_gateway_client_token(path).encode("utf-8")).hexdigest()
+        if digest in digests.values():
+            raise SystemExit(f"oracle-verdict: error: gateway client {name} shares its token with another client")
+        digests[name] = digest
     models = gateway_models(yaml.safe_load(OMP_CONFIG_SOURCE.read_text(encoding="utf-8")))
     providers = list(dict.fromkeys(model.split("/", 1)[0] for model in models))
     unknown = [provider for provider in providers if provider not in GATEWAY_PROVIDERS]
@@ -904,15 +930,20 @@ def command_gateway_clients(args: argparse.Namespace) -> int:
         raise SystemExit(
             f"oracle-verdict: error: the reviewer config names providers the gateway does not serve: {unknown}"
         )
-    client: dict[str, Any] = {"tokenSha256": hashlib.sha256(token.encode("utf-8")).hexdigest(), "models": models}
-    if args.accounts:
-        client["accounts"] = _gateway_accounts(Path(args.accounts), providers)
+    accounts = _gateway_accounts(Path(args.accounts), providers) if args.accounts else None
+    clients: dict[str, dict[str, Any]] = {}
+    for name, digest in digests.items():
+        client: dict[str, Any] = {"tokenSha256": digest, "models": models}
+        if accounts is not None:
+            client["accounts"] = accounts
+        clients[name] = client
     out = Path(args.out)
     staged = out.with_name(f".{out.name}.{os.getpid()}.tmp")
-    write_private(staged, json.dumps({GATEWAY_CLIENT: client}, indent=2) + "\n")
+    write_private(staged, json.dumps(clients, indent=2) + "\n")
     os.replace(staged, out)
-    pinned = ", ".join(f"{provider}={len(keys)}" for provider, keys in client.get("accounts", {}).items())
-    print(f"{GATEWAY_CLIENT}: {len(models)} models; pinned accounts: {pinned or 'none'}")
+    pinned = ", ".join(f"{provider}={len(keys)}" for provider, keys in (accounts or {}).items())
+    for name in clients:
+        print(f"{name}: {len(models)} models; pinned accounts: {pinned or 'none'}")
     return 0
 
 
@@ -965,6 +996,7 @@ def _parser() -> argparse.ArgumentParser:
     clients = commands.add_parser("gateway-clients")
     clients.add_argument("--token-file", required=True)
     clients.add_argument("--accounts")
+    clients.add_argument("--client", action="append", default=[], metavar="NAME=TOKEN_FILE")
     clients.add_argument("--out", required=True)
     clients.set_defaults(handler=command_gateway_clients)
     return parser
