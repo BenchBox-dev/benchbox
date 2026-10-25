@@ -121,6 +121,17 @@ def test_dispatch_build_records_numeric_trunk_run_id() -> None:
     assert certified == str(TRUNK_RUN["databaseId"])
 
 
+def test_trunk_run_id_satisfies_the_schema4_certifier_rule() -> None:
+    spec = importlib.util.spec_from_file_location("site_inputs_for_parent_test", ROOT / "scripts/site_inputs.py")
+    assert spec is not None and spec.loader is not None
+    site_inputs = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = site_inputs
+    spec.loader.exec_module(site_inputs)
+    certified = parent_mod.decide_certified_by(CORE, "", [TRUNK_RUN])
+    assert site_inputs.certifier_errors(4, certified) == []
+    assert site_inputs.certifier_errors(5, certified)
+
+
 def test_dispatch_build_without_trunk_run_is_refused() -> None:
     with pytest.raises(RuntimeError, match="no successful trunk.yml push run"):
         parent_mod.decide_certified_by(CORE, "", [])
