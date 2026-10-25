@@ -4,6 +4,7 @@ import ast
 import hashlib
 import re
 from collections import defaultdict
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,6 +17,7 @@ pytestmark = [
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_ROOT = REPO_ROOT / "benchbox"
+SCAN_ROOTS = (PACKAGE_ROOT, REPO_ROOT / "scripts", REPO_ROOT / "_project")
 
 VENDOR_PACKAGE = "benchbox._vendor"
 VENDORED_SQLGLOT = VENDOR_PACKAGE + ".sqlglot"
@@ -303,10 +305,15 @@ def count_kind(source: str, kind: str) -> int:
     return sum(finding.kind == kind for finding in scan_source(source))
 
 
-def scan_package(package_root: Path = PACKAGE_ROOT, repo_root: Path = REPO_ROOT) -> dict[tuple[str, str], Summary]:
+def _python_files(roots: Sequence[Path], repo_root: Path) -> Iterator[tuple[str, Path]]:
+    for root in roots:
+        for path in sorted(root.rglob("*.py")):
+            yield path.relative_to(repo_root).as_posix(), path
+
+
+def scan_package(roots: Sequence[Path] = SCAN_ROOTS, repo_root: Path = REPO_ROOT) -> dict[tuple[str, str], Summary]:
     offenders: dict[tuple[str, str], Summary] = {}
-    for path in sorted(package_root.rglob("*.py")):
-        relative = path.relative_to(repo_root).as_posix()
+    for relative, path in _python_files(roots, repo_root):
         if relative.startswith(ALLOWED_PATHS):
             continue
         for kind, summary in summarize(scan_source(path.read_text(encoding="utf-8"))).items():
@@ -347,6 +354,43 @@ EQUIVALENCE_CROSS_SURFACE = "Normalizes SQL and DataFrame surfaces to one AST fo
 EQUIVALENCE_TPCDS = "Splits a script into statements for result equivalence; emits no dialect SQL"
 VARIANT_CONTRACTS = "Reads projection names from variant SQL to check result contracts; emits no SQL"
 QUALIFICATION_PIN = "Records the bundled fork version and pin identity in qualification output; translates nothing"
+RETIREMENT_CHECK = (
+    "Parses the SQL that translate_sql_query already produced to classify repro outcomes; emits no dialect SQL"
+)
+RUNTIME_SYNC = "Names the vendored namespace when syncing the bundled runtime; translates nothing"
+SELF_BINDING_TOOL = (
+    "Developer analysis that parses DDL and queries into scopes to find self-binding columns; "
+    "emits no dialect SQL and ships in no wheel"
+)
+GENERATOR_FUZZ_PILOT = (
+    "Fuzzing pilot that translates through translate_sql_query and only parses the result to check it is "
+    "valid SQL; ships in no wheel"
+)
+UPSTREAM_ML_EVALUATION = (
+    "Evaluates upstream PyPI sqlglot as a baseline against machine-learning translators; a deliberately "
+    "different translator from the product, never imported by benchbox, ships in no wheel"
+)
+UPSTREAM_REPRO = (
+    "Reproduces behaviour of upstream PyPI sqlglot for bug reports; the upstream translator is the subject, "
+    "never imported by benchbox, ships in no wheel"
+)
+UPSTREAM_JOINORDER_PARSE = (
+    "Parses Join Order Benchmark SQL with upstream PyPI sqlglot to validate it at build time; "
+    "emits no dialect SQL and ships in no wheel"
+)
+
+UPSTREAM_SQLGLOT_ALLOWLIST: dict[str, str] = {
+    "_project/scripts/build_joinorder_data.py": UPSTREAM_JOINORDER_PARSE,
+    "_project/sql-translation-ml/corpus.py": UPSTREAM_ML_EVALUATION,
+    "_project/sql-translation-ml/evaluate.py": UPSTREAM_ML_EVALUATION,
+    "_project/sql-translation-ml/experiment.py": UPSTREAM_ML_EVALUATION,
+    "_project/sql-translation-ml/oracle.py": UPSTREAM_ML_EVALUATION,
+    "_project/sql-translation-ml/schema_evaluate.py": UPSTREAM_ML_EVALUATION,
+    "_project/sql-translation-ml/schema_generator.py": UPSTREAM_ML_EVALUATION,
+    "_project/sqlglot-upstream/repros/repro_all.py": UPSTREAM_REPRO,
+    "_project/sqlglot-upstream/repros/sqlite_extract.py": UPSTREAM_REPRO,
+}
+
 BASE_AVAILABILITY = (
     "Import guard that reports a missing bundled runtime before translate_query delegates to the wrapper"
 )
@@ -385,6 +429,30 @@ BYPASS_ALLOWLIST: dict[tuple[str, str], AllowlistEntry] = {
     ),
     ("benchbox/core/tpcds/qualification/runner.py", KIND_IMPORT): AllowlistEntry(
         2, "67a211d4931f4a34", PIN_IDENTITY, QUALIFICATION_PIN
+    ),
+    ("scripts/check_sqlglot_repro_retirement.py", KIND_IMPORT): AllowlistEntry(
+        1, "e13fca925c9c0f9f", PARSE_ONLY, RETIREMENT_CHECK
+    ),
+    ("scripts/check_sqlglot_repro_retirement.py", KIND_CALL): AllowlistEntry(
+        2, "49551fc000acd53e", PARSE_ONLY, RETIREMENT_CHECK
+    ),
+    ("scripts/sync_sqlglot_runtime.py", KIND_DYNAMIC): AllowlistEntry(
+        1, "528690f76dcd63ce", PIN_IDENTITY, RUNTIME_SYNC
+    ),
+    ("_project/scripts/detect_self_binding.py", KIND_IMPORT): AllowlistEntry(
+        4, "4648306936a3d0a5", PARSE_ONLY, SELF_BINDING_TOOL
+    ),
+    ("_project/scripts/detect_self_binding.py", KIND_CALL): AllowlistEntry(
+        3, "d341cc2ca4370ad1", PARSE_ONLY, SELF_BINDING_TOOL
+    ),
+    ("_project/scripts/detect_self_binding.py", KIND_OPTIMIZER): AllowlistEntry(
+        2, "0c3913e9381dddc0", PARSE_ONLY, SELF_BINDING_TOOL
+    ),
+    ("_project/sqlglot-upstream/repros/generator.py", KIND_IMPORT): AllowlistEntry(
+        2, "8a47d3886b82d5d4", PARSE_ONLY, GENERATOR_FUZZ_PILOT
+    ),
+    ("_project/sqlglot-upstream/repros/generator.py", KIND_CALL): AllowlistEntry(
+        3, "cb0adf22cc55efcd", PARSE_ONLY, GENERATOR_FUZZ_PILOT
     ),
 }
 
@@ -569,7 +637,7 @@ def test_new_offender_file_fails_scan(tmp_path: Path):
         "from benchbox._vendor import sqlglot\n\n\ndef translate(query):\n    return sqlglot.transpile(query)[0]\n",
         encoding="utf-8",
     )
-    found = scan_package(package_root, tmp_path)
+    found = scan_package([package_root], tmp_path)
     assert {key: summary.count for key, summary in found.items()} == {
         ("benchbox/new_offender.py", KIND_IMPORT): 1,
         ("benchbox/new_offender.py", KIND_CALL): 1,
@@ -583,7 +651,7 @@ def test_sql_compat_is_scanned_not_exempt(tmp_path: Path):
     (compat_root / "offender.py").write_text(
         "from benchbox._vendor import sqlglot\nsqlglot.transpile('SELECT 1')\n", encoding="utf-8"
     )
-    found = scan_package(tmp_path / "benchbox", tmp_path)
+    found = scan_package([tmp_path / "benchbox"], tmp_path)
     assert ("benchbox/sql_compat/offender.py", KIND_CALL) in found
 
 
@@ -594,7 +662,7 @@ def test_vendor_bootstrap_and_wrapper_paths_are_skipped(tmp_path: Path):
     (tmp_path / "benchbox" / "_vendor" / "loader.py").write_text(source, encoding="utf-8")
     (tmp_path / "benchbox" / "utils" / "dialect_utils.py").write_text(source, encoding="utf-8")
     (tmp_path / "benchbox" / "utils" / "other.py").write_text(source, encoding="utf-8")
-    found = scan_package(tmp_path / "benchbox", tmp_path)
+    found = scan_package([tmp_path / "benchbox"], tmp_path)
     assert {path for path, _kind in found} == {"benchbox/utils/other.py"}
 
 
@@ -689,11 +757,11 @@ def imports_fork_rewrites(source: str) -> bool:
     return False
 
 
-def scan_fork_rewrite_imports(package_root: Path = PACKAGE_ROOT, repo_root: Path = REPO_ROOT) -> list[str]:
+def scan_fork_rewrite_imports(roots: Sequence[Path] = SCAN_ROOTS, repo_root: Path = REPO_ROOT) -> list[str]:
     return [
         relative
-        for path in sorted(package_root.rglob("*.py"))
-        if not (relative := path.relative_to(repo_root).as_posix()).startswith(FORK_REWRITE_ALLOWED_PATHS)
+        for relative, path in _python_files(roots, repo_root)
+        if not relative.startswith(FORK_REWRITE_ALLOWED_PATHS)
         and imports_fork_rewrites(path.read_text(encoding="utf-8"))
     ]
 
@@ -744,3 +812,62 @@ def test_wrapper_exposes_translate_ddl_as_the_only_fork_ddl_entry():
     assert callable(dialect_utils.translate_ddl)
     offenders = [path for path in scan_fork_rewrite_imports() if path != "benchbox/utils/dialect_utils.py"]
     assert offenders == []
+
+
+def imports_upstream_sqlglot(source: str) -> bool:
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            if any(alias.name == "sqlglot" or alias.name.startswith("sqlglot.") for alias in node.names):
+                return True
+        elif isinstance(node, ast.ImportFrom) and node.level == 0:
+            module = node.module or ""
+            if module == "sqlglot" or module.startswith("sqlglot."):
+                return True
+    return False
+
+
+def scan_upstream_sqlglot_imports(roots: Sequence[Path] = SCAN_ROOTS, repo_root: Path = REPO_ROOT) -> set[str]:
+    return {
+        relative
+        for relative, path in _python_files(roots, repo_root)
+        if imports_upstream_sqlglot(path.read_text(encoding="utf-8"))
+    }
+
+
+def test_upstream_sqlglot_scanner_detects_each_import_form():
+    assert imports_upstream_sqlglot("import sqlglot\n")
+    assert imports_upstream_sqlglot("import sqlglot.expressions as e\n")
+    assert imports_upstream_sqlglot("from sqlglot import exp\n")
+    assert imports_upstream_sqlglot("def f():\n    import sqlglot\n")
+    assert not imports_upstream_sqlglot("from benchbox._vendor import sqlglot\n")
+    assert not imports_upstream_sqlglot("from benchbox._vendor.sqlglot import exp\n")
+
+
+def test_upstream_sqlglot_imports_are_exactly_the_allowlisted_project_tools():
+    found = scan_upstream_sqlglot_imports()
+    assert found == set(UPSTREAM_SQLGLOT_ALLOWLIST), (
+        "Upstream PyPI sqlglot is a different translator from the bundled fork. "
+        f"New: {sorted(found - set(UPSTREAM_SQLGLOT_ALLOWLIST))}; stale: {sorted(set(UPSTREAM_SQLGLOT_ALLOWLIST) - found)}"
+    )
+
+
+def test_upstream_sqlglot_allowlist_is_confined_to_project_tools_with_reasons():
+    for path, reason in UPSTREAM_SQLGLOT_ALLOWLIST.items():
+        assert path.startswith("_project/"), path
+        assert (REPO_ROOT / path).is_file(), path
+        assert reason.strip(), path
+
+
+def test_scripts_directory_is_scanned_for_fork_bypass(tmp_path: Path):
+    scripts_root = tmp_path / "scripts"
+    scripts_root.mkdir()
+    (scripts_root / "offender.py").write_text(
+        "from benchbox._vendor import sqlglot\nsqlglot.transpile('SELECT 1', pretty=True)\n", encoding="utf-8"
+    )
+    found = scan_package([scripts_root], tmp_path)
+    assert ("scripts/offender.py", KIND_CALL) in found
+    assert diff_allowlist(found, {}).new_or_grown
+
+
+def test_default_scan_roots_cover_scripts_and_project_tools():
+    assert {root.name for root in SCAN_ROOTS} == {"benchbox", "scripts", "_project"}
