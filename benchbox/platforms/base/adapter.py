@@ -48,7 +48,6 @@ from benchbox.platforms.base.phase_tracking import (
     PhaseTrackingMixin,
     _extract_table_names,  # noqa: F401
     _resolve_benchmark_table_names,
-    reused_tables,
 )
 from benchbox.platforms.base.result_capture import ResultCaptureMixin
 from benchbox.platforms.base.sorted_ingestion import SortedIngestionMixin
@@ -677,10 +676,7 @@ class PlatformAdapter(
             )
             execution_metadata, system_profile, anonymous_machine_id = self._build_execution_metadata(run_config)
 
-            kept_tables = reused_tables(getattr(self, "_last_per_table_timings", None))
-            total_rows_loaded = (
-                sum(rows for name, rows in table_stats.items() if name not in kept_tables) if table_stats else 0
-            )
+            total_rows_loaded = sum(table_stats.values()) if table_stats else 0
             data_size_mb = self._calculate_data_size(benchmark.output_dir) if hasattr(benchmark, "output_dir") else 0.0
 
             resource_snapshot = self._collect_resource_utilization()

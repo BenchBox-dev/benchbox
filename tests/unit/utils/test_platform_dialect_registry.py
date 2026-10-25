@@ -13,7 +13,6 @@ INTENDED_DIALECTS: dict[str, str] = {
     "sqlite": "sqlite",
     "motherduck": "duckdb",
     "ducklake": "duckdb",
-    "gizmosql": "duckdb",
     "clickhouse": "clickhouse",
     "clickhouse-local": "clickhouse",
     "clickhouse-server": "clickhouse",

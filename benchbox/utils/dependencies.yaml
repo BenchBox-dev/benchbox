@@ -37,7 +37,6 @@ platform_to_extra:
   influxdb: influxdb
   doris: doris
   singlestore: singlestore
-  gizmosql: gizmosql
   postgresql: postgresql
   postgres: postgresql
   timescaledb: postgresql
@@ -403,18 +402,6 @@ dependency_groups:
     platforms:
     - SingleStore Helios
     - SingleStore Self-Managed
-  gizmosql:
-    name: gizmosql
-    description: GizmoSQL Core server (DuckDB over Arrow Flight SQL) via the official ADBC driver
-    packages:
-    - adbc-driver-gizmosql
-    install_command: uv add benchbox --extra gizmosql
-    use_cases:
-    - DuckDB behind a network endpoint
-    - Arrow Flight SQL client overhead measurement
-    - Shared analytical server
-    platforms:
-    - GizmoSQL Core
   postgresql:
     name: postgresql
     description: PostgreSQL open-source relational database connector
@@ -714,7 +701,6 @@ dependency_groups:
     - databend-driver
     - pymysql
     - singlestoredb
-    - adbc-driver-gizmosql
     install_command: uv add benchbox --extra all
     use_cases:
     - Complete platform coverage

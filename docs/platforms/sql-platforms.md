@@ -15,7 +15,6 @@ clickhouse-local-mode
 clickhouse-server
 datafusion
 cedardb
-gizmosql
 ```
 
 ## Row-Based & Postgres-Compatible

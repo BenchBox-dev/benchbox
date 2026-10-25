@@ -55,10 +55,6 @@ test-live-cedardb:
 	@echo "Running CedarDB live tests (requires Docker CedarDB - make test-docker-up-cedardb)"
 	uv run -- python -m pytest -m "live_cedardb" --tb=short -v -n 0
 
-test-live-gizmosql:
-	@echo "Running GizmoSQL live tests against a local gizmosql_server (the pinned release is downloaded from GitHub on first use; set GIZMOSQL_SERVER_BINARY to use an offline binary)"
-	BENCHBOX_REQUIRE_LIVE_GIZMOSQL=1 uv run -- python -m pytest -m "live_gizmosql" --tb=short -v -n 0
-
 test-docker-up-pg-extensions:
 	@echo "Starting pg_duckdb (port 5432) and pg_mooncake (port 5433)..."
 	@set -e; \

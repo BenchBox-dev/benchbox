@@ -24,7 +24,7 @@ from benchbox.utils.dependencies import DEPENDENCY_GROUPS, PLATFORM_TO_EXTRA
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-EXPECTED_REGISTERED_PLATFORM_COUNT = 50
+EXPECTED_REGISTERED_PLATFORM_COUNT = 49
 
 
 def _catalog_required_packages(platform_name: str) -> tuple[str, ...] | None:
@@ -197,7 +197,7 @@ def _export_chokepoints(result: BenchmarkResults, tmp_path: Path) -> tuple[str, 
     return public, private, db_path.read_bytes()
 
 
-def test_registered_platform_count_is_fifty() -> None:
+def test_registered_platform_count_is_forty_nine() -> None:
     PlatformRegistry.clear_cache()
     platforms = PlatformRegistry.get_available_platforms()
     assert len(platforms) == EXPECTED_REGISTERED_PLATFORM_COUNT, (

@@ -143,7 +143,6 @@ def _create_default_registry() -> ParserRegistry:
     registry.register("duckdb", "0.0.0", DuckDBQueryPlanParser)
 
     registry.register("motherduck", "0.0.0", DuckDBQueryPlanParser)
-    registry.register("gizmosql", "0.0.0", DuckDBQueryPlanParser)
 
     registry.register("postgresql", "0.0.0", PostgreSQLQueryPlanParser)
     registry.register("postgres", "0.0.0", PostgreSQLQueryPlanParser)

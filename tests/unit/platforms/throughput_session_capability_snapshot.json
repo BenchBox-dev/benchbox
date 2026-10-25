@@ -206,15 +206,6 @@
     "key": "firebolt",
     "status": "resolved"
   },
-  "gizmosql": {
-    "adapter": "benchbox.platforms.gizmosql.GizmoSQLAdapter",
-    "capability": "independent_connection",
-    "declaration_site": "benchbox.core.platform_manifest",
-    "declared": true,
-    "gate": "pass",
-    "key": "gizmosql",
-    "status": "resolved"
-  },
   "glue": {
     "adapter": "benchbox.platforms.aws.glue_adapter.AWSGlueAdapter",
     "capability": "unsupported",

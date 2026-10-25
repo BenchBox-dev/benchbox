@@ -225,9 +225,6 @@ class ResultBuilder:
     def add_query_results(self, results: list[QueryResultInput]) -> None:
         self._query_results.extend(results)
 
-    def _loaded_row_total(self) -> int:
-        return sum(ts.rows for ts in self._table_stats.values() if ts.status != "REUSED")
-
     def add_table_stats(
         self,
         table_name: str,
@@ -428,7 +425,7 @@ class ResultBuilder:
             total_execution_time=total_exec_time,
             average_query_time=avg_time,
             data_loading_time=self._loading_time_ms / 1000.0,
-            total_rows_loaded=self._loaded_row_total(),
+            total_rows_loaded=sum(ts.rows for ts in self._table_stats.values()),
             table_statistics={
                 name: {"rows": stats.rows, "load_time_ms": stats.load_time_ms}
                 if stats.load_time_ms > 0
@@ -648,7 +645,7 @@ class ResultBuilder:
             for name, stats in self._table_stats.items()
         }
 
-        total_rows = self._loaded_row_total()
+        total_rows = sum(ts.rows for ts in self._table_stats.values())
         failed_count = sum(1 for ts in self._table_stats.values() if ts.status == "FAILED")
         status = "FAILED" if failed_count > 0 else "SUCCESS"
 
@@ -657,7 +654,7 @@ class ResultBuilder:
                 duration_ms=int(self._loading_time_ms),
                 status=status,
                 total_rows_loaded=total_rows,
-                tables_loaded=sum(1 for ts in self._table_stats.values() if ts.status != "REUSED"),
+                tables_loaded=len(self._table_stats),
                 per_table_stats=per_table_stats,
             )
         )

@@ -118,7 +118,6 @@ def _sqlite_explain() -> str:
 _FILE_FIXTURES: dict[str, str] = {
     "duckdb": "motherduck_duckdb_explain_sample.json",
     "motherduck": "motherduck_duckdb_explain_sample.json",
-    "gizmosql": "motherduck_duckdb_explain_sample.json",
     "clickhouse": "clickhouse_explain_plan_sample.txt",
     "clickhouse-local": "clickhouse_explain_plan_sample.txt",
     "clickhouse-server": "clickhouse_explain_plan_sample.txt",

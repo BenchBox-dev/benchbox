@@ -20,59 +20,6 @@ resolution-markers = [
 overrides = [{ name = "filelock", specifier = ">=4.2.1,<5" }]
 
 [[package]]
-name = "adbc-driver-gizmosql"
-version = "2.0.15"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "adbc-driver-manager" },
-    { name = "pyarrow" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3d/c3/d5db1abcea27640316d8bc8c5ef9a8e484141625869506576ba02516046a/adbc_driver_gizmosql-2.0.15-py3-none-macosx_11_0_universal2.whl", hash = "sha256:e2d0d1a9e27531c2b6b1802b4e91c247882b873ae128059a5d27c81cda36d512", size = 7731932, upload-time = "2026-10-15T15:32:07.645Z" },
-    { url = "https://files.pythonhosted.org/packages/59/81/c27222e2ca87c32fbd27fbf60dd34a7d6b8f998edfb50c22706570b9b7a2/adbc_driver_gizmosql-2.0.15-py3-none-macosx_11_0_x86_64.whl", hash = "sha256:4db0d79d338633c7851fd9201a13b5d2a348b1a80d5e18a315a0dc9fc7dd94be", size = 8364974, upload-time = "2026-10-15T15:32:09.478Z" },
-    { url = "https://files.pythonhosted.org/packages/e4/c6/4657531cd20cfdbc009274afc9732260851923605b65dff14b204ef1db9f/adbc_driver_gizmosql-2.0.15-py3-none-manylinux1_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:b4ab0ee877379a183dd57ada85ae597d145664fd820bd1f950bbf881b1efed33", size = 15145743, upload-time = "2026-10-15T15:32:11.565Z" },
-    { url = "https://files.pythonhosted.org/packages/69/d6/f0bce82c184b0cc210469037ef11bedf3d60eedeb5be8efe3720a1b7c394/adbc_driver_gizmosql-2.0.15-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:8a53915c959e91ed9a2d9a6460356cc0fd7af84d43a5cc397b11977a88958639", size = 13954800, upload-time = "2026-10-15T15:32:13.927Z" },
-    { url = "https://files.pythonhosted.org/packages/30/f0/ca80126114b838373d8c0446f354f0330551c42aa28a9aea24b18238c372/adbc_driver_gizmosql-2.0.15-py3-none-win_amd64.whl", hash = "sha256:1d689b38881d5161c733ecf05f1c94bf24fdaea94d4a361e855700088b78734e", size = 15081876, upload-time = "2026-10-15T15:32:16.144Z" },
-    { url = "https://files.pythonhosted.org/packages/cf/d3/73cd364434e532cd8d7109bef0882c476a8cdeb0c8cc29f426c22d87913a/adbc_driver_gizmosql-2.0.15-py3-none-win_arm64.whl", hash = "sha256:a82135401501f8c4f632059e448249acf9db3d80e13dfec99b167d3d79df04fb", size = 13707197, upload-time = "2026-10-15T15:32:18.354Z" },
-]
-
-[[package]]
-name = "adbc-driver-manager"
-version = "1.12.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/f8/ed6475b49a7cf35ea888d5c95e7d4bc9dc6568f9d741f14c0573d622cc1e/adbc_driver_manager-1.12.0.tar.gz", hash = "sha256:45991f0c2de369d330c6a211ca2edbcce6389c5dc81cde70461bdeb6f8f7b268", size = 217579, upload-time = "2026-07-28T00:43:03.512Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/2d/e41ea911f9486c497534ae181dfdab19adca21f71abc8a1fcaf2c27251a8/adbc_driver_manager-1.12.0-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:3c0c73670c8aa6fe42de1d5e71a0b329c4b37f7c55c560c23f6f3a1609200c1f", size = 600030, upload-time = "2026-07-28T00:41:54.753Z" },
-    { url = "https://files.pythonhosted.org/packages/10/ea/1a8b51999785d7dce17079dd635c9ee2372c75ec7328423ce862741cb503/adbc_driver_manager-1.12.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:6943c7adcf3c7c9f7c4b5bdb7589c331027a347e3c77471eb3f656b1a881e351", size = 611058, upload-time = "2026-07-28T00:41:56.306Z" },
-    { url = "https://files.pythonhosted.org/packages/85/a2/5ede53173a420742fa71d6c26792e2295fc73f25cf39055f912a5385b1f0/adbc_driver_manager-1.12.0-cp311-cp311-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:78c9936adb280e2c10e90632e41b58aa23be358e1136d8fb3c52862b72818a95", size = 4663735, upload-time = "2026-07-28T00:41:58.793Z" },
-    { url = "https://files.pythonhosted.org/packages/1c/1a/781561d0f55e05a0b884244ed563dab14b165b4dd74abd8af3f8efd95e3d/adbc_driver_manager-1.12.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:30d96ab4a2594b4109496fb4913646f41a5bf1ecce79b4313847d240a2a62db3", size = 4747090, upload-time = "2026-07-28T00:42:00.746Z" },
-    { url = "https://files.pythonhosted.org/packages/c6/fa/47c755a74ea4887968c52a968e02736007da4042fc0820292dc8c6827a94/adbc_driver_manager-1.12.0-cp311-cp311-win_amd64.whl", hash = "sha256:67419b92c286646944426992069f56fed90c2ceac83521f6d66d7d3cbf6c17ea", size = 760952, upload-time = "2026-07-28T00:42:02.432Z" },
-    { url = "https://files.pythonhosted.org/packages/de/8c/cd3fe16df716719116a6c79e64a768fe994f6ded55d5a8f091bb4f42d6f0/adbc_driver_manager-1.12.0-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:fd02364c65b8b376c5627e3b77410f457fcbbf983e52e8d15ca099da3a7ae314", size = 599054, upload-time = "2026-07-28T00:42:04.072Z" },
-    { url = "https://files.pythonhosted.org/packages/49/4a/2f060ff6bd61420ea1613670e1f85a22a8714934c235186dc3803de8ddac/adbc_driver_manager-1.12.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:d8dcf62621090e8d9c8216e08dfc4043f16331872522186af61a5de9478e9c63", size = 609964, upload-time = "2026-07-28T00:42:05.82Z" },
-    { url = "https://files.pythonhosted.org/packages/8a/f1/0746db149828ae91e4a6cf49f8d0e49210eec20c03ad80044454139c8240/adbc_driver_manager-1.12.0-cp312-cp312-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:efa5dbbf101962d212b176f25e6fc509dacf07afd4cf70b5027d81ec6871bdec", size = 4685726, upload-time = "2026-07-28T00:42:08.1Z" },
-    { url = "https://files.pythonhosted.org/packages/b9/c3/f8e9c5157b19e986df719259eb3502dad1268df9f7a1034f65ca220ab2ea/adbc_driver_manager-1.12.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8b340679a005a8adf6b0b58754dbc638dff00db7b2559c140406a1d92678b48c", size = 4768774, upload-time = "2026-07-28T00:42:10.359Z" },
-    { url = "https://files.pythonhosted.org/packages/92/51/f8e625af691e6b4c54945790854524356a02a0a69063e888f7cfee1b2e50/adbc_driver_manager-1.12.0-cp312-cp312-win_amd64.whl", hash = "sha256:47f428a922d224fd486b661deeaf9520e5faec558b3d144832bed09a080cac88", size = 760087, upload-time = "2026-07-28T00:42:11.871Z" },
-    { url = "https://files.pythonhosted.org/packages/9a/f9/674c5bbc5093617d72c4f58a5dab67982710b2320cc9aa826050a6aaa131/adbc_driver_manager-1.12.0-cp313-cp313-macosx_10_15_x86_64.whl", hash = "sha256:c42ca4d9caa22b3a5ce76bde8729169f403bb7393e3671734b9416634c207125", size = 596815, upload-time = "2026-07-28T00:42:13.64Z" },
-    { url = "https://files.pythonhosted.org/packages/56/5f/c1d888d787330801edae282d2a9def3765e8157547cc20e71154ff38c1bb/adbc_driver_manager-1.12.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:c894117c8f5c484b902c8b070bcfd9d31d90efe0288b2b58a3ddab97c80f66e7", size = 608277, upload-time = "2026-07-28T00:42:15.643Z" },
-    { url = "https://files.pythonhosted.org/packages/06/4b/ee799babf171e39690ef45560451096f869d9e7387bc0e5a754bb243ed2a/adbc_driver_manager-1.12.0-cp313-cp313-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:214f80f9b65562f08b4d1c52a756b5db557530e3c0652f587c43aaa80039579a", size = 4667230, upload-time = "2026-07-28T00:42:17.97Z" },
-    { url = "https://files.pythonhosted.org/packages/00/c6/a35e38ef5e0db391be79e0e14c019ce378b87d9d7e31d1dfcd451e9d291f/adbc_driver_manager-1.12.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:532ab290b3d923ce0a75bca21dc6e13f55835625f78808e1664755939f3ebdf6", size = 4745299, upload-time = "2026-07-28T00:42:20.189Z" },
-    { url = "https://files.pythonhosted.org/packages/16/e2/62bacd6844859036d79ea229401b5200056fb5050c82dc3a2e28b08ff49b/adbc_driver_manager-1.12.0-cp313-cp313-win_amd64.whl", hash = "sha256:034da82c1a6e195d67ca1f0c97a1a517046037ec3029ab9a0ea8f7ccb14056e4", size = 758878, upload-time = "2026-07-28T00:42:21.598Z" },
-    { url = "https://files.pythonhosted.org/packages/50/ea/f53b434fe36d0f138d147fc10a95784c8c0eeea1bec1f3f31eee5ec8bdb5/adbc_driver_manager-1.12.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:a740d634118722f42af31176374fddbad3846fa2e6536f497bac145e9511cecc", size = 597579, upload-time = "2026-07-28T00:42:23.216Z" },
-    { url = "https://files.pythonhosted.org/packages/ba/57/6208e66d9256550c2aff75db4a323a855a0d5d2d1bd639526f825d3e08b4/adbc_driver_manager-1.12.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:8a77ae39832e67946009816d83c321e540a3024aad1419ccba24ddeb7b6a01f4", size = 610337, upload-time = "2026-07-28T00:42:25.051Z" },
-    { url = "https://files.pythonhosted.org/packages/1d/cd/f5ea3f08191af5ae15041821fcb52bf35837dce1a9ac16fa039b3bfe308c/adbc_driver_manager-1.12.0-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:690f140ca67d49f995afac59f85441c3d5e896cd2fc8fd381423fe900e51f1f7", size = 4664297, upload-time = "2026-07-28T00:42:27.474Z" },
-    { url = "https://files.pythonhosted.org/packages/df/81/823a71a515078545eab8a4be8381206887129e11b91e9bf51ca2a9eea44d/adbc_driver_manager-1.12.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:fd568c94874c0586d82f99de2bb5d2c02b4fa9c5bafe3d0d8ab353bddf9d2fd6", size = 4733739, upload-time = "2026-07-28T00:42:29.814Z" },
-    { url = "https://files.pythonhosted.org/packages/cf/f7/7612d078d935344aee679a44a6283de6aae9008eb8e0ef80e475dd12dffa/adbc_driver_manager-1.12.0-cp314-cp314-win_amd64.whl", hash = "sha256:57f5101fb2a853b1ffb81ff807b5e29a51ba14c64032eb0038b8dfd433b6d533", size = 777952, upload-time = "2026-07-28T00:42:40.881Z" },
-    { url = "https://files.pythonhosted.org/packages/b0/ad/2478338aaece38b8b72259dbfd4d4c84d9a038421e25bbc283e510d47555/adbc_driver_manager-1.12.0-cp314-cp314t-macosx_10_15_x86_64.whl", hash = "sha256:bb9db6e4a3bcd73153435a900b5ae40ad36f5875df93a8faf784d9fcf6833983", size = 615694, upload-time = "2026-07-28T00:42:31.932Z" },
-    { url = "https://files.pythonhosted.org/packages/bc/a0/0592c85e653f005aa28de7733b3c3c4f0282238301694f76806e5f3cc1e1/adbc_driver_manager-1.12.0-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:07cae26bd5ccee6caa4227f817c0fd57f9ac131c2dd98e0c5d7fecfef61819c7", size = 628341, upload-time = "2026-07-28T00:42:33.481Z" },
-    { url = "https://files.pythonhosted.org/packages/9d/00/65705a72f768bc2dda82623a74cf816609dfdff56f3ad22b073d4a1ea7f8/adbc_driver_manager-1.12.0-cp314-cp314t-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:442ed2ee8ea62c475bf3478385555bb4f0b25d9d551087ffe40c73b91bf5431e", size = 4730268, upload-time = "2026-07-28T00:42:35.661Z" },
-    { url = "https://files.pythonhosted.org/packages/44/b9/60ecde5d9dde5acc5576cb0ba5ffa34e154464e07fa295c57cd975ea27c7/adbc_driver_manager-1.12.0-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9c2aa05c5dc52164692284b2df27fba5680dbc967b8e3ca704aabf5399667996", size = 4777527, upload-time = "2026-07-28T00:42:37.709Z" },
-    { url = "https://files.pythonhosted.org/packages/ac/76/6749e0c0c437219780c65487cff67dc09a556c1fccf577a2b27f7b92a704/adbc_driver_manager-1.12.0-cp314-cp314t-win_amd64.whl", hash = "sha256:cfa08f8c7c63e3fa92eb4e26ef4d8a9520cf92a39281cd011821f6f16a963080", size = 793451, upload-time = "2026-07-28T00:42:39.222Z" },
-]
-
-[[package]]
 name = "aiorwlock"
 version = "1.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -420,7 +367,6 @@ ai-primitives = [
     { name = "torch" },
 ]
 all = [
-    { name = "adbc-driver-gizmosql" },
     { name = "azure-identity" },
     { name = "azure-storage-file-datalake" },
     { name = "boto3" },
@@ -586,9 +532,7 @@ datafusion = [
     { name = "pyarrow" },
 ]
 dev = [
-    { name = "adbc-driver-gizmosql" },
     { name = "duckdb" },
-    { name = "gizmosql" },
     { name = "pyspark" },
     { name = "pytest" },
     { name = "pytest-benchmark" },
@@ -617,9 +561,6 @@ fabric = [
 firebolt = [
     { name = "cloudpathlib" },
     { name = "firebolt-sdk" },
-]
-gizmosql = [
-    { name = "adbc-driver-gizmosql" },
 ]
 influxdb = [
     { name = "influxdb3-python" },
@@ -698,7 +639,6 @@ velox = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "adbc-driver-gizmosql" },
     { name = "bashlex" },
     { name = "chdb", marker = "sys_platform != 'win32'" },
     { name = "clickhouse-connect" },
@@ -712,7 +652,6 @@ dev = [
     { name = "deltalake" },
     { name = "duckdb" },
     { name = "firebolt-sdk" },
-    { name = "gizmosql" },
     { name = "import-linter" },
     { name = "influxdb3-python" },
     { name = "lxml" },
@@ -743,9 +682,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "adbc-driver-gizmosql", marker = "extra == 'all'", specifier = ">=2.0.13,<3" },
-    { name = "adbc-driver-gizmosql", marker = "extra == 'dev'", specifier = ">=2.0.13,<3" },
-    { name = "adbc-driver-gizmosql", marker = "extra == 'gizmosql'", specifier = ">=2.0.13,<3" },
     { name = "azure-identity", marker = "extra == 'all'", specifier = ">=1.15.0" },
     { name = "azure-identity", marker = "extra == 'cloud-spark'", specifier = ">=1.15.0" },
     { name = "azure-identity", marker = "extra == 'cloud-spark-azure'", specifier = ">=1.15.0" },
@@ -816,7 +752,6 @@ requires-dist = [
     { name = "firebolt-sdk", marker = "extra == 'all'", specifier = ">=1.18.0" },
     { name = "firebolt-sdk", marker = "extra == 'cloud'", specifier = ">=1.18.0" },
     { name = "firebolt-sdk", marker = "extra == 'firebolt'", specifier = ">=1.18.0" },
-    { name = "gizmosql", marker = "extra == 'dev'", specifier = "==1.39.0" },
     { name = "google-cloud-bigquery", marker = "extra == 'all'", specifier = ">=3.0.0" },
     { name = "google-cloud-bigquery", marker = "extra == 'bigquery'", specifier = ">=3.0.0" },
     { name = "google-cloud-bigquery", marker = "extra == 'cloud'", specifier = ">=3.0.0" },
@@ -924,11 +859,10 @@ requires-dist = [
     { name = "vortex-data", marker = "extra == 'table-formats'", specifier = ">=0.29.0" },
     { name = "zstandard", specifier = ">=0.20.0" },
 ]
-provides-extras = ["dev", "viz", "explorer", "all", "cloud", "cloudstorage", "duckdb", "ducklake", "clickhouse", "clickhouse-server", "clickhouse-cloud", "databricks", "bigquery", "redshift", "snowflake", "trino", "presto", "postgresql", "questdb", "synapse", "fabric", "athena", "datafusion", "firebolt", "databend", "doris", "influxdb", "starrocks", "singlestore", "gizmosql", "tpcdi", "clickhouse-local", "table-formats", "ai-primitives", "pandas", "dataframe-pandas", "dask", "dataframe-dask", "cudf", "dataframe-cudf", "polars", "dataframe-polars", "pyspark", "lakesail", "velox", "dataframe-pyspark", "dataframe-datafusion", "dataframe-pandas-family", "dataframe-expression-family", "dataframe-all", "quick-start", "cloud-spark-aws", "cloud-spark-gcp", "cloud-spark-azure", "cloud-spark-snowflake", "cloud-spark-databricks", "cloud-spark", "mcp", "spark"]
+provides-extras = ["dev", "viz", "explorer", "all", "cloud", "cloudstorage", "duckdb", "ducklake", "clickhouse", "clickhouse-server", "clickhouse-cloud", "databricks", "bigquery", "redshift", "snowflake", "trino", "presto", "postgresql", "questdb", "synapse", "fabric", "athena", "datafusion", "firebolt", "databend", "doris", "influxdb", "starrocks", "singlestore", "tpcdi", "clickhouse-local", "table-formats", "ai-primitives", "pandas", "dataframe-pandas", "dask", "dataframe-dask", "cudf", "dataframe-cudf", "polars", "dataframe-polars", "pyspark", "lakesail", "velox", "dataframe-pyspark", "dataframe-datafusion", "dataframe-pandas-family", "dataframe-expression-family", "dataframe-all", "quick-start", "cloud-spark-aws", "cloud-spark-gcp", "cloud-spark-azure", "cloud-spark-snowflake", "cloud-spark-databricks", "cloud-spark", "mcp", "spark"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "adbc-driver-gizmosql", specifier = ">=2.0.13,<3" },
     { name = "bashlex", specifier = "==0.18" },
     { name = "chdb", marker = "sys_platform != 'win32'", specifier = ">=0.10.0" },
     { name = "clickhouse-connect", specifier = ">=0.10.0" },
@@ -942,7 +876,6 @@ dev = [
     { name = "deltalake", specifier = ">=1.2.1" },
     { name = "duckdb", specifier = ">=1.5.0,<2.0.0" },
     { name = "firebolt-sdk", specifier = ">=1.18.0" },
-    { name = "gizmosql", specifier = "==1.39.0" },
     { name = "import-linter", specifier = ">=2.13" },
     { name = "influxdb3-python", specifier = ">=0.10.0" },
     { name = "lxml", specifier = ">=6.0.0" },
@@ -2102,15 +2035,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/77/cd/9be253869fc42e764de7f3dedd6969af7d44ff9c3375214a3442a6f3fc08/fsspec-2026.9.0.tar.gz", hash = "sha256:0f08147951c8cb31d844c3547d631053b127863b60be04cf06e121333ee0e2fe", size = 333545, upload-time = "2026-09-18T17:50:42.825Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6c/c0/a98505f18594f1bce828bb159cec0fcf9860562f1a2c85913409fc8f3d9e/fsspec-2026.9.0-py3-none-any.whl", hash = "sha256:8dd6e646e99ea382bd85f97a45e6b526a442d79423a7dc673f1e2756d05fcb5f", size = 221738, upload-time = "2026-09-18T17:50:41.341Z" },
-]
-
-[[package]]
-name = "gizmosql"
-version = "1.39.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/cb/4e/d3ec544f7464fd47ddb4f7b9b1678829a4b80e50af8f9f7c21ee7315dc08/gizmosql-1.39.0.tar.gz", hash = "sha256:a7ceebbb78d8167698c003845bfd6804e1b8bf312e044ebf9ed2622913b79ce3", size = 16637, upload-time = "2026-09-14T15:27:42.319Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fa/fa/321e77d155930f9281b024ab7b52c9ae8cdd94780666ab1d663fec1c82b7/gizmosql-1.39.0-py3-none-any.whl", hash = "sha256:c59b1f9b9f756ebabea8e2267fb1af41df82e4ad8cc81031430b1312bf13e5ab", size = 14965, upload-time = "2026-09-14T15:27:40.962Z" },
 ]
 
 [[package]]

@@ -74,10 +74,7 @@ def _add_table_statistics(builder: ResultBuilder, kwargs: dict[str, Any]) -> Non
     per_table_timings: dict[str, Any] = raw_timings if isinstance(raw_timings, dict) else {}
     for table_name, row_count in table_statistics.items():
         load_time_ms = total_ms_or_zero(per_table_timings.get(table_name, {}))
-        reused = isinstance(per_table_timings.get(table_name), dict) and per_table_timings[table_name].get("reused")
-        builder.add_table_stats(
-            table_name, row_count, load_time_ms=load_time_ms, status="REUSED" if reused else "SUCCESS"
-        )
+        builder.add_table_stats(table_name, row_count, load_time_ms=load_time_ms)
 
 
 def _apply_phase_data(

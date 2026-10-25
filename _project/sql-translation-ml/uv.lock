@@ -33,9 +33,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "adbc-driver-gizmosql", marker = "extra == 'all'", specifier = ">=2.0.13,<3" },
-    { name = "adbc-driver-gizmosql", marker = "extra == 'dev'", specifier = ">=2.0.13,<3" },
-    { name = "adbc-driver-gizmosql", marker = "extra == 'gizmosql'", specifier = ">=2.0.13,<3" },
     { name = "azure-identity", marker = "extra == 'all'", specifier = ">=1.15.0" },
     { name = "azure-identity", marker = "extra == 'cloud-spark'", specifier = ">=1.15.0" },
     { name = "azure-identity", marker = "extra == 'cloud-spark-azure'", specifier = ">=1.15.0" },
@@ -106,7 +103,6 @@ requires-dist = [
     { name = "firebolt-sdk", marker = "extra == 'all'", specifier = ">=1.18.0" },
     { name = "firebolt-sdk", marker = "extra == 'cloud'", specifier = ">=1.18.0" },
     { name = "firebolt-sdk", marker = "extra == 'firebolt'", specifier = ">=1.18.0" },
-    { name = "gizmosql", marker = "extra == 'dev'", specifier = "==1.39.0" },
     { name = "google-cloud-bigquery", marker = "extra == 'all'", specifier = ">=3.0.0" },
     { name = "google-cloud-bigquery", marker = "extra == 'bigquery'", specifier = ">=3.0.0" },
     { name = "google-cloud-bigquery", marker = "extra == 'cloud'", specifier = ">=3.0.0" },
@@ -214,11 +210,10 @@ requires-dist = [
     { name = "vortex-data", marker = "extra == 'table-formats'", specifier = ">=0.29.0" },
     { name = "zstandard", specifier = ">=0.20.0" },
 ]
-provides-extras = ["dev", "viz", "explorer", "all", "cloud", "cloudstorage", "duckdb", "ducklake", "clickhouse", "clickhouse-server", "clickhouse-cloud", "databricks", "bigquery", "redshift", "snowflake", "trino", "presto", "postgresql", "questdb", "synapse", "fabric", "athena", "datafusion", "firebolt", "databend", "doris", "influxdb", "starrocks", "singlestore", "gizmosql", "tpcdi", "clickhouse-local", "table-formats", "ai-primitives", "pandas", "dataframe-pandas", "dask", "dataframe-dask", "cudf", "dataframe-cudf", "polars", "dataframe-polars", "pyspark", "lakesail", "velox", "dataframe-pyspark", "dataframe-datafusion", "dataframe-pandas-family", "dataframe-expression-family", "dataframe-all", "quick-start", "cloud-spark-aws", "cloud-spark-gcp", "cloud-spark-azure", "cloud-spark-snowflake", "cloud-spark-databricks", "cloud-spark", "mcp", "spark"]
+provides-extras = ["dev", "viz", "explorer", "all", "cloud", "cloudstorage", "duckdb", "ducklake", "clickhouse", "clickhouse-server", "clickhouse-cloud", "databricks", "bigquery", "redshift", "snowflake", "trino", "presto", "postgresql", "questdb", "synapse", "fabric", "athena", "datafusion", "firebolt", "databend", "doris", "influxdb", "starrocks", "singlestore", "tpcdi", "clickhouse-local", "table-formats", "ai-primitives", "pandas", "dataframe-pandas", "dask", "dataframe-dask", "cudf", "dataframe-cudf", "polars", "dataframe-polars", "pyspark", "lakesail", "velox", "dataframe-pyspark", "dataframe-datafusion", "dataframe-pandas-family", "dataframe-expression-family", "dataframe-all", "quick-start", "cloud-spark-aws", "cloud-spark-gcp", "cloud-spark-azure", "cloud-spark-snowflake", "cloud-spark-databricks", "cloud-spark", "mcp", "spark"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "adbc-driver-gizmosql", specifier = ">=2.0.13,<3" },
     { name = "bashlex", specifier = "==0.18" },
     { name = "chdb", marker = "sys_platform != 'win32'", specifier = ">=0.10.0" },
     { name = "clickhouse-connect", specifier = ">=0.10.0" },
@@ -232,7 +227,6 @@ dev = [
     { name = "deltalake", specifier = ">=1.2.1" },
     { name = "duckdb", specifier = ">=1.5.0,<2.0.0" },
     { name = "firebolt-sdk", specifier = ">=1.18.0" },
-    { name = "gizmosql", specifier = "==1.39.0" },
     { name = "import-linter", specifier = ">=2.13" },
     { name = "influxdb3-python", specifier = ">=0.10.0" },
     { name = "lxml", specifier = ">=6.0.0" },

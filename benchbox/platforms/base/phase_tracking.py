@@ -67,12 +67,6 @@ def _resolve_benchmark_table_names(benchmark: Any) -> list[str]:
     return []
 
 
-def reused_tables(per_table_timings: Any) -> set[str]:
-    if not isinstance(per_table_timings, dict):
-        return set()
-    return {name for name, timing in per_table_timings.items() if isinstance(timing, dict) and timing.get("reused")}
-
-
 class PhaseTrackingMixin:
     logger: logging.Logger
 
@@ -188,17 +182,14 @@ class PhaseTrackingMixin:
         duration_ms = int(loading_time * 1000)
 
         per_table_loading = {}
+        total_rows = sum(table_stats.values())
 
         timings = per_table_timings if isinstance(per_table_timings, dict) else {}
-        reused = reused_tables(timings)
-        total_rows = sum(rows for name, rows in table_stats.items() if name not in reused)
         if timings:
             for table_name, row_count in table_stats.items():
                 actual_time_ms = total_ms_or_zero(timings.get(table_name, {}))
                 per_table_loading[table_name] = TableLoadingStats(
-                    rows=row_count,
-                    load_time_ms=int(actual_time_ms),
-                    status="REUSED" if table_name in reused else "SUCCESS",
+                    rows=row_count, load_time_ms=int(actual_time_ms), status="SUCCESS"
                 )
         else:
             time_per_row = duration_ms / max(1, total_rows)
@@ -212,7 +203,7 @@ class PhaseTrackingMixin:
             duration_ms=duration_ms,
             status="SUCCESS",
             total_rows_loaded=total_rows,
-            tables_loaded=len(table_stats) - len(reused & set(table_stats)),
+            tables_loaded=len(table_stats),
             per_table_stats=per_table_loading,
         )
 
