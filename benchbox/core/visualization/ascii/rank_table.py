@@ -1,1 +1,1 @@
-from textcharts.rank_table import *  # noqa: F403
+from textcharts.rank_table import *

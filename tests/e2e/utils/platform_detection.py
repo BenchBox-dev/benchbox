@@ -115,7 +115,7 @@ def is_gpu_available() -> bool:
         return False
 
     try:
-        import cudf  # noqa: F401
+        importlib.import_module("cudf")
 
         return True
     except ImportError:

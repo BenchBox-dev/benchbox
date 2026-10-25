@@ -3984,16 +3984,6 @@
   "directives": [
     {
       "path": "_project/scripts/platform_manifest.py",
-      "token": "# noqa: N815",
-      "count": 2,
-      "consumer": "Ruff rule N815",
-      "necessity": "ast.NodeVisitor dispatches on method names such as visit_AsyncFunctionDef and visit_ImportFrom, and the two aliases must keep those mixed-case names.",
-      "alternative": "Define both methods explicitly and delegate to visit_FunctionDef and visit_Import, which removes the suppression.",
-      "owner": "comment-cleanup-project-tooling",
-      "removal_trigger": "The aliases are replaced by delegating methods."
-    },
-    {
-      "path": "_project/scripts/platform_manifest.py",
       "token": "# noqa: C901",
       "count": 1,
       "consumer": "Ruff rule C901",

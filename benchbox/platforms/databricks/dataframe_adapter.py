@@ -35,7 +35,7 @@ try:
     from pyspark.sql import (
         DataFrame as SparkDataFrame,
         SparkSession,
-        functions as F,  # noqa: N812
+        functions as F,
     )
 
     PYSPARK_AVAILABLE = True

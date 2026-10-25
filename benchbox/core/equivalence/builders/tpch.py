@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 
 from benchbox.core.equivalence.builders.base import CrossSurfaceData, _assemble_simple_duckdb_cell
@@ -10,7 +11,7 @@ def build_tpch_duckdb(scale_factor: float, output_dir: Path) -> CrossSurfaceData
     from benchbox.tpch import TPCH
 
     def _dataframe_query(query_id: str) -> object:
-        import benchbox.core.dataframe.benchmark_suite  # noqa: F401
+        importlib.import_module("benchbox.core.dataframe.benchmark_suite")
         from benchbox.core.tpch.dataframe_queries import TPCH_DATAFRAME_QUERIES, set_scale_factor_for_benchmark
 
         set_scale_factor_for_benchmark("tpch", scale_factor)

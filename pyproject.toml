@@ -430,6 +430,7 @@ select = [
     "PIE",
     "SIM",
     "PLW1514",
+    "RUF100",
     "TID251",
 ]
 ignore = [
@@ -488,6 +489,12 @@ max-complexity = 18
 "tests/**/test_*.py" = ["F401", "F811"]
 "**/__init__.py" = ["F401", "F811", "F822"]
 "benchbox/utils/runtime_env.py" = ["F401"]
+"benchbox/core/visualization/ascii/*.py" = ["F403"]
+"benchbox/core/visualization/ascii_api.py" = ["F403"]
+"benchbox/core/write_primitives/dataframe_operations.py" = ["N812"]
+"benchbox/platforms/databricks/dataframe_adapter.py" = ["N812"]
+"benchbox/platforms/dataframe/expression_family.py" = ["N812"]
+"benchbox/platforms/dataframe/unified_frame.py" = ["N812"]
 "_project/sqlglot-upstream/repros/repro_all.py" = ["TID251"]
 "_project/sqlglot-upstream/repros/sqlite_extract.py" = ["TID251"]
 "_project/scripts/build_joinorder_data.py" = ["TID251"]

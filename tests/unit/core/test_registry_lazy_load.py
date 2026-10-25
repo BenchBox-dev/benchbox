@@ -94,6 +94,6 @@ def test_unknown_attribute_still_raises_attribute_error() -> None:
     import benchbox.core.results.benchmark_specs as s
 
     with pytest.raises(AttributeError):
-        r.DOES_NOT_EXIST  # noqa: B018
+        _ = r.DOES_NOT_EXIST
     with pytest.raises(AttributeError):
-        s.DOES_NOT_EXIST  # noqa: B018
+        _ = s.DOES_NOT_EXIST

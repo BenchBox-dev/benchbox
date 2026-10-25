@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from io import StringIO
+from typing import ClassVar
 from unittest.mock import Mock
 
 import pytest
@@ -204,11 +206,10 @@ def test_show_sample_queries_handles_empty_query_registry(monkeypatch: pytest.Mo
     console, stream = _capture_console()
     monkeypatch.setattr(bench_mod, "console", console)
 
-    class _Benchmark:  # noqa: B903
-        queries: dict[str, str] = {}
-
-        def __init__(self, scale_factor: float):
-            self.scale_factor = scale_factor
+    @dataclass
+    class _Benchmark:
+        scale_factor: float
+        queries: ClassVar[dict[str, str]] = {}
 
     monkeypatch.setattr("benchbox.core.benchmark_loader.get_core_benchmark_class", lambda _bench: _Benchmark)
 
@@ -221,11 +222,10 @@ def test_show_sample_queries_truncates_long_sql(monkeypatch: pytest.MonkeyPatch,
     console, stream = _capture_console()
     monkeypatch.setattr(bench_mod, "console", console)
 
-    class _Benchmark:  # noqa: B903
-        queries = {"Q1": "SELECT 1\n" * 200}
-
-        def __init__(self, scale_factor: float):
-            self.scale_factor = scale_factor
+    @dataclass
+    class _Benchmark:
+        scale_factor: float
+        queries: ClassVar[dict[str, str]] = {"Q1": "SELECT 1\n" * 200}
 
     monkeypatch.setattr("benchbox.core.benchmark_loader.get_core_benchmark_class", lambda _bench: _Benchmark)
 

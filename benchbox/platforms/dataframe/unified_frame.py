@@ -256,7 +256,7 @@ class UnifiedStrExpr(_DataFusionDeferredOperations):
 
     def to_uppercase(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.upper(self._expr))
         if self._is_datafusion:
@@ -267,7 +267,7 @@ class UnifiedStrExpr(_DataFusionDeferredOperations):
 
     def to_lowercase(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.lower(self._expr))
         if self._is_datafusion:
@@ -279,7 +279,7 @@ class UnifiedStrExpr(_DataFusionDeferredOperations):
     def split(self, separator: str) -> UnifiedListExpr:
         separator = _unwrap_unified_expr(separator)
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedListExpr(F.split(self._expr, separator), is_pyspark=True)
         if self._is_datafusion:
@@ -291,7 +291,7 @@ class UnifiedStrExpr(_DataFusionDeferredOperations):
 
     def len_chars(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.length(self._expr))
         if self._is_datafusion:
@@ -319,7 +319,7 @@ class UnifiedListExpr(_DataFusionDeferredOperations):
 
     def __call__(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             collected = F.collect_list(self._expr)
             if self._ordered_collect_descending is not None:
@@ -342,7 +342,7 @@ class UnifiedListExpr(_DataFusionDeferredOperations):
     def contains(self, value: Any) -> UnifiedExpr:
         val = value._expr if isinstance(value, UnifiedExpr) else value
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.array_contains(self._expr, val))
         if self._is_datafusion:
@@ -354,7 +354,7 @@ class UnifiedListExpr(_DataFusionDeferredOperations):
 
     def unique(self) -> UnifiedListExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return self._wrap(F.array_distinct(self._expr))
         if self._is_datafusion:
@@ -365,7 +365,7 @@ class UnifiedListExpr(_DataFusionDeferredOperations):
 
     def len(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.size(self._expr))
         if self._is_datafusion:
@@ -376,7 +376,7 @@ class UnifiedListExpr(_DataFusionDeferredOperations):
 
     def min(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.array_min(self._expr))
         if self._is_datafusion:
@@ -387,7 +387,7 @@ class UnifiedListExpr(_DataFusionDeferredOperations):
 
     def max(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.array_max(self._expr))
         if self._is_datafusion:
@@ -401,7 +401,7 @@ class UnifiedListExpr(_DataFusionDeferredOperations):
 
     def sort(self, descending: bool = False) -> UnifiedListExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return self._wrap(F.sort_array(self._expr, asc=not descending))
         if self._is_datafusion:
@@ -412,7 +412,7 @@ class UnifiedListExpr(_DataFusionDeferredOperations):
 
     def slice(self, offset: int, length: int) -> UnifiedListExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return self._wrap(F.slice(self._expr, offset + 1, length))
         if self._is_datafusion:
@@ -423,7 +423,7 @@ class UnifiedListExpr(_DataFusionDeferredOperations):
 
     def sum(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.aggregate(self._expr, F.lit(0.0).cast("double"), lambda acc, x: acc + x))
         if self._is_datafusion:
@@ -485,7 +485,7 @@ class UnifiedMapExpr(_DataFusionDeferredOperations):
 
     def keys(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.map_keys(self._expr))
         if self._is_datafusion:
@@ -496,7 +496,7 @@ class UnifiedMapExpr(_DataFusionDeferredOperations):
 
     def values(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.map_values(self._expr))
         if self._is_datafusion:
@@ -514,7 +514,7 @@ class UnifiedDtExpr(_DataFusionDeferredOperations):
 
     def _extract_date_part(self, part: str, pyspark_fn_name: str | None = None) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(getattr(F, pyspark_fn_name or part)(self._expr))
         if self._is_datafusion:
@@ -540,7 +540,7 @@ class UnifiedDtExpr(_DataFusionDeferredOperations):
 
     def weekday(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr((F.dayofweek(self._expr) + 5) % 7)
         if self._is_datafusion:
@@ -551,7 +551,7 @@ class UnifiedDtExpr(_DataFusionDeferredOperations):
 
     def truncate(self, every: str) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             fmt_map = {"1m": "minute", "1h": "hour", "1d": "day", "1w": "week", "1mo": "month", "1y": "year"}
             fmt = fmt_map.get(every, every)
@@ -575,7 +575,7 @@ class UnifiedDtExpr(_DataFusionDeferredOperations):
 
     def total_days(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr((self._expr.cast("long") / F.lit(86400)).cast("long"))
         if self._is_datafusion:
@@ -638,7 +638,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
         is_string_concat = self_is_string or other_is_string
 
         if self._is_pyspark and is_string_concat:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             if isinstance(other, str):
                 return UnifiedExpr(F.concat(self._expr, F.lit(other)), _is_string_literal=True)
@@ -655,7 +655,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def concat_str(self, *others: Any) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             exprs = [self._expr]
             for o in others:
@@ -696,7 +696,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
         other_expr = other._expr if isinstance(other, UnifiedExpr) else other
 
         if self._is_pyspark and isinstance(other, str):
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.concat(F.lit(other), self._expr))
 
@@ -781,7 +781,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def _apply_aggregation(self, pyspark_name: str, datafusion_name: str, polars_name: str) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(getattr(F, pyspark_name)(self._expr))
         if self._is_datafusion:
@@ -822,7 +822,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def quantile(self, q: float, interpolation: str = "nearest") -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.percentile_approx(self._expr, q))
         if self._is_datafusion:
@@ -859,7 +859,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def round(self, decimals: int = 0) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.round(self._expr, decimals))
         if self._is_datafusion:
@@ -870,7 +870,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def floor(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.floor(self._expr))
         if self._is_datafusion:
@@ -881,7 +881,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def abs(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.abs(self._expr))
         return UnifiedExpr(self._expr.abs())
@@ -970,7 +970,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def n_unique(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.countDistinct(self._expr))
         if self._is_datafusion:
@@ -981,7 +981,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def approx_n_unique(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.approx_count_distinct(self._expr))
         if self._is_datafusion:
@@ -993,7 +993,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
     def filter(self, condition: Any) -> UnifiedExpr:
         cond = condition.native if isinstance(condition, UnifiedExpr) else condition
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.when(cond, self._expr))
         if self._is_datafusion:
@@ -1012,7 +1012,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def fill_null(self, value: Any) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             fill_value = value._expr if isinstance(value, UnifiedExpr) else F.lit(value)
             return UnifiedExpr(F.coalesce(self._expr, fill_value))
@@ -1050,7 +1050,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
         partition_cols = [partition_by] if isinstance(partition_by, str) else list(partition_by)
 
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
             from pyspark.sql.window import Window
 
             window = Window.partitionBy(*[F.col(c) for c in partition_cols])
@@ -1079,7 +1079,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def cum_sum(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.sum(self._expr))
         if self._is_datafusion:
@@ -1088,7 +1088,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def cum_max(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.max(self._expr))
         if self._is_datafusion:
@@ -1097,7 +1097,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def cum_min(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.min(self._expr))
         return UnifiedExpr(self._expr.cum_min())
@@ -1113,7 +1113,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
                 order_expr = col_name.sort(ascending=not descending)
             return UnifiedExpr(df_f.array_agg(self._expr, order_by=[order_expr]))
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             key = column._expr if isinstance(column, UnifiedExpr) else column
             if isinstance(key, str):
@@ -1127,7 +1127,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def unique(self) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.collect_set(self._expr), _is_agg_array=True)
         if self._is_datafusion:
@@ -1138,7 +1138,7 @@ class UnifiedExpr(_DataFusionDeferredOperations):
 
     def sort(self, descending: bool = False) -> UnifiedExpr:
         if self._is_pyspark:
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             if self._is_agg_array:
                 return UnifiedExpr(F.sort_array(self._expr, asc=not descending), _is_agg_array=True)
@@ -1194,7 +1194,7 @@ class _PySparkDeferredRank(UnifiedExpr):
         partition_by: str | list[str],
         order_by: str | None = None,
     ) -> UnifiedExpr:
-        from pyspark.sql import functions as F  # noqa: N812
+        from pyspark.sql import functions as F
         from pyspark.sql.window import Window
 
         partition_cols = [partition_by] if isinstance(partition_by, str) else list(partition_by)
@@ -1359,7 +1359,7 @@ class UnifiedWhenThen(_DataFusionDeferredOperations):
         val = value._expr if isinstance(value, UnifiedExpr) else value
 
         if self._platform == "PySpark":
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(self._when_builder.otherwise(val if val is not None else F.lit(None)))
 
@@ -1392,7 +1392,7 @@ class UnifiedWhen(_DataFusionDeferredOperations):
         val = value._expr if isinstance(value, UnifiedExpr) else value
 
         if self._platform == "PySpark":
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             when_expr = F.when(self._when_builder, val)
             return UnifiedWhenThen(when_expr, platform="PySpark")
@@ -1594,7 +1594,7 @@ def _normalize_sort_inputs(
 
 
 def _sort_pyspark(df, cols: list, desc_flags: list[bool], nulls_last: bool):
-    from pyspark.sql import functions as F  # noqa: N812
+    from pyspark.sql import functions as F
 
     order_exprs = []
     for col_item, desc in zip(cols, desc_flags, strict=False):
@@ -2217,7 +2217,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
 
     def sum(self) -> UnifiedLazyFrame:
         if _is_pyspark_df(self._df):
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             sum_exprs = [F.sum(F.col(c)).alias(c) for c in self._df.columns]
             result = self._df.agg(*sum_exprs)
@@ -2236,7 +2236,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
 
     def mean(self) -> UnifiedLazyFrame:
         if _is_pyspark_df(self._df):
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             mean_exprs = [F.avg(F.col(c)).alias(c) for c in self._df.columns]
             result = self._df.agg(*mean_exprs)
@@ -2355,7 +2355,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
 
     def explode(self, column: str) -> UnifiedLazyFrame:
         if _is_pyspark_df(self._df):
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             result = self._df.withColumn(column, F.explode(F.col(column)))
         elif _is_polars_df(self._df):
@@ -2396,7 +2396,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
                 value_name=value_name,
             )
         elif _is_pyspark_df(self._df):
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             stack_args = [F.lit(len(value_vars))]
             for var in value_vars:

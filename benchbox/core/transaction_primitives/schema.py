@@ -1,3 +1,4 @@
+import importlib
 from pathlib import Path
 from typing import Any, cast
 
@@ -46,7 +47,7 @@ STAGING_TABLES = {entry["key"]: globals()[symbol] for symbol, entry in _STAGING_
 
 
 def _requires_catalog_managed_staging(dialect: str) -> bool:
-    import benchbox.sql_compat.rules.ddl_optimize.databricks_ddl_rewrites  # noqa: F401
+    importlib.import_module("benchbox.sql_compat.rules.ddl_optimize.databricks_ddl_rewrites")
     from benchbox.sql_compat.actions import CompatAction
     from benchbox.sql_compat.context import CompatibilityContext, Phase
     from benchbox.sql_compat.registry import REGISTRY
@@ -72,7 +73,7 @@ def _requires_catalog_managed_staging(dialect: str) -> bool:
 
 
 def _supports_primary_keys(dialect: str) -> bool:
-    import benchbox.sql_compat.rules.schema_emit.pk_capability_txn  # noqa: F401
+    importlib.import_module("benchbox.sql_compat.rules.schema_emit.pk_capability_txn")
     from benchbox.sql_compat.actions import CompatAction
     from benchbox.sql_compat.context import CompatibilityContext, Phase
     from benchbox.sql_compat.registry import REGISTRY

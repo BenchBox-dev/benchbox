@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import importlib
 import logging
 import time
 from dataclasses import dataclass, field
@@ -62,35 +63,35 @@ class AIModelCapabilities:
         missing = []
 
         try:
-            import numpy  # noqa: F401
+            importlib.import_module("numpy")
 
             caps.has_numpy = True
         except ImportError:
             missing.append("numpy: pip install numpy")
 
         try:
-            import torch  # noqa: F401
+            importlib.import_module("torch")
 
             caps.has_torch = True
         except ImportError:
             missing.append("torch: pip install torch")
 
         try:
-            import sentence_transformers  # noqa: F401
+            importlib.import_module("sentence_transformers")
 
             caps.has_sentence_transformers = True
         except ImportError:
             missing.append("sentence-transformers: pip install sentence-transformers")
 
         try:
-            import textblob  # noqa: F401
+            importlib.import_module("textblob")
 
             caps.has_textblob = True
         except ImportError:
             missing.append("textblob: pip install textblob")
 
         try:
-            import spacy  # noqa: F401
+            importlib.import_module("spacy")
 
             caps.has_spacy = True
         except ImportError:
