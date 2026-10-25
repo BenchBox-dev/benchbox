@@ -4,7 +4,7 @@
     "The console message matches what was written.",
     "The tests no longer assert the defect."
   ],
-  "context": "Found 2026-10-13 by an adversarial review of tuning changes at origin/develop 77048bfb9.",
+  "context": "Delivered in merged PR #3407: the wizard reads the selected platform's packaged template and records clustering/distribution/sorting/partitioning only when the platform capability registry applies that layout at execution; otherwise it prints a 'not enabled' warning with the registry reason and records nothing (no false success). Tests now assert persistence (Snowflake, ClickHouse) and refusal (BigQuery, Redshift, Databricks, DuckDB). Behaviour change to confirm: Redshift sort keys are no longer copied from the DuckDB template. Not verified against live platforms.",
   "description": "## Problem\n`_read_template_table_tunings` always reads the DuckDB template, which has no clustering or distribution slots. Layout choices made in the wizard are therefore never written to `table_tunings`, yet the console prints \"✓ Clustering keys enabled\". The fix in bf7997e6c (#2419) did not cover this path. `tests/unit/.../test_tuning_wizard.py:82,188,232` assert that clustering is not enabled, so the tests lock in the defect.\n\n## Change\n- Read the template for the selected platform.\n- Persist the chosen layouts to `table_tunings`, or refuse with a clear message when the platform has no such slot.\n- Fix the tests to assert that the choices persist.",
   "links": [
     "benchbox/cli"
@@ -25,6 +25,14 @@
       "generation": "3d4580c8312b4094b9a0c4836183fd3a",
       "op": "take",
       "op_id": "7a314f5348ac47ba97ba701fb90500be",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T04:32:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2c7baebfaae245ecbc2b9230cec9a7d2",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
