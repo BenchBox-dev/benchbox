@@ -5,7 +5,7 @@
     "Capped counting follows rank order (unit test with LINEITEM and STORE_SALES).",
     "Result bundles carry the profile validation_status and unmapped reasons."
   ],
-  "context": "Found 2026-10-13 by two independent adversarial reviews (Snowflake templates; tuning trust) at origin/develop 77048bfb9. Related: tuning-profile-measured-outcomes-20261008.",
+  "context": "Delivered in merged PR #3412 (with #3408 for Databricks): Snowflake dimension-table candidates are waived with a reason; fact tables come from per-benchmark `fact_tables` in tpc.yaml (required by the loader; SSB included) instead of a hard-coded set; the Snowflake mapper owns the three-column cap and cluster rank, the generator imports them, capped candidates are counted in rank order; the validator fails a template that clusters any column of a waived table and rejects unjustified waivers; parity tests assert is_valid and mapped + capped + waived == required again; bundles carry platform.tuning.logical_profile.validation_status, unmapped_candidates and waived_candidates with reasons; docs updated (result-formats.md, tpc-tuning-profiles.md). Databricks temporal candidates are mapped to clustering (#3408), not waived. Caveats: Snowflake cap stays 3 (adapter/DDL generator allow 4); DuckDB temporal exclusions stay unsupported; no live Snowflake/Databricks runs; the strict mapped==required form is replaced by mapped + capped + waived == required.",
   "description": "## Problem\n- **Snowflake.** `validate_tuning_template` returns `is_valid=False` for both Snowflake templates: TPC-H has 10 \"missing template mapping\" errors and TPC-DS has 14. #2392 asserted `result.is_valid`. cd5ada010 (#2872) changed the test to `assert result.issues` (`tests/unit/core/tuning/test_tpc_tuning_template_parity.py:355-395`), so the test now requires failure.\n  - The fact-tables-only rule exists only in the generator (`scripts/generate_cloud_tpc_templates.py:60-73,125-128`). The mapper `_map_snowflake` (`benchbox/core/tuning/platform_capabilities.py:241-255`) still maps dimension candidates to clustering.\n  - The reason text says \"at most three … so the adapter resumes\". The adapter and DDL generator actually use ≤4 (`benchbox/platforms/snowflake.py` ~L1707, `generators/snowflake.py:39`).\n- **Databricks.** cbddc0cb8 (#2867) marked temporal candidates UNSUPPORTED for the Z-order layout (`platform_capabilities.py:120-131`) instead of mapping them, and the test now asserts `unsupported == temporal`.\n- **Capping.** Capped candidates are counted in profile order, not rank order (`benchbox/core/tuning/profile_validation.py:232-248`). As a result, L_ORDERKEY, SS_ITEM_SK and SS_CUSTOMER_SK are reported as missing while SS_TICKET_NUMBER is reported as capped.\n- **Bundles.** `benchbox/core/results/schema.py:1570-1582` copies the coverage counts but drops `validation_status` and the unmapped reasons. Published bundles show \"mapped 6 / unmapped 10\" with no hint that validation failed.\n\n## Change\n- Move platform exclusions (fact-only, column cap) into the mappers as waived or capped decisions with reasons.\n- Fix the cap ordering.\n- Restore `is_valid` and the `mapped + capped + waived == required` assertions.\n- Carry `validation_status` and the reasons into bundles.\n- Coordinate with `tuning-profile-measured-outcomes-20261008`, whose guardrail \"the parity test is not weakened\" these commits broke.",
   "links": [
     "benchbox/core/tuning/profile_validation.py",
@@ -30,6 +30,14 @@
       "generation": "619052d64d874bc0be5d9706097cd7e7",
       "op": "take",
       "op_id": "1208ef89b776489da601a35feb169f80",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T08:40:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5553bc0cf13d41da9d68614f00898557",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
