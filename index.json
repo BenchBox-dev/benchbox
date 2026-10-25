@@ -2990,6 +2990,15 @@
       "status": "dropped",
       "title": "Baseline CI-failure metrics in dev-loop-metrics before landing the reduction workstreams"
     },
+    "ci-fast-duration-baseline-20261025": {
+      "claim": null,
+      "needs": [
+        "ci-fast-tier-junit-emit-20261025"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Commit a fast-tier duration baseline from merged-PR junit and refresh it weekly by reviewed PR"
+    },
     "ci-fast-test-slowdown-20261016": {
       "claim": null,
       "needs": [],

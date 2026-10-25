@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "VERIFY: The baseline JSON is committed with schema version, source run ids, configuration (python version, coverage, worker count) and per-test p50; the script is deterministic for the same inputs (test)",
+    "VERIFY: The weekly refresh workflow opens one PR with the regenerated baseline and a medium-shard drift table; first refresh run id recorded",
+    "GATE: First baseline accepted only if its summed time is within 10% of the median summed time of the source runs and it covers at least 95% of currently collected fast-tier ids",
+    "GUARDRAIL: The refresh workflow only opens PRs (contents and pull-requests write); it never pushes to develop, merges, or edits the baseline outside a PR; API calls bounded and logged"
+  ],
+  "context": "Source: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
+  "description": "A reviewable reference that cannot drift silently. A script (unit-tested, reusing tests/duration_policy.py helpers including _junit_nodeid normalization) builds a schema-versioned JSON of per-test p50 seconds from the last ~20 merged-PR fast-job junit artifacts (same configuration as the PR gate: coverage on, -n auto). A weekly scheduled workflow regenerates it and opens a PR; that PR also reports medium-shard drift between tests/fixtures/medium_shard_durations.json and measured shard junit, recommending a refresh when skew exceeds 20%. A PR that intentionally slows tests updates the baseline itself with the same script and states why in its body. Do not route refresh through nightly workflows (mostly red in the 2026-10-10..24 window).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T13:57:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "60604de9744f41409ff9b48d78b87580",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
