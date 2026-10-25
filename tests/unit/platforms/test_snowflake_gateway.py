@@ -255,3 +255,65 @@ def test_explicit_gateway_options_reach_the_adapter_config() -> None:
     adapter = SnowflakeAdapter(**BASE, **{k: v for k, v in platform_config.items() if k.startswith("gateway")})
     assert adapter.gateway_endpoint is not None
     assert adapter.gateway_endpoint.port == 8443
+
+
+def _gateway_adapter() -> SnowflakeAdapter:
+    return _adapter(gateway="custom", gateway_host="gw.example.com")
+
+
+def test_native_query_tag_is_legacy_format() -> None:
+    adapter = _adapter()
+    assert adapter._format_query_tag("Q1") == "BenchBox_Q1"
+
+
+def test_gateway_query_tag_carries_stable_run_suffix() -> None:
+    adapter = _gateway_adapter()
+    suffix = adapter.gateway_run_suffix
+    assert len(suffix) == 8
+    assert adapter._format_query_tag("Q1") == f"BenchBox_Q1_gw-{suffix}"
+    assert adapter._format_query_tag("Q2") == f"BenchBox_Q2_gw-{suffix}"
+    assert _gateway_adapter().gateway_run_suffix != suffix
+
+
+def test_gateway_execute_and_stats_lookup_use_same_tag() -> None:
+    adapter = _gateway_adapter()
+    tag = adapter._format_query_tag("Q1")
+    connection = Mock()
+    cursor = connection.cursor.return_value
+    cursor.fetchone.return_value = ("sf-id", 10, 9, 1, 100, 5, 0.1, "MEDIUM", 1)
+
+    cursor.fetchall.return_value = [(1,)]
+    result = adapter.execute_query(connection, "SELECT 1", "Q1")
+    assert result["status"] == "SUCCESS"
+    executed = [call.args[0] for call in cursor.execute.call_args_list]
+    assert f"ALTER SESSION SET QUERY_TAG = '{tag}'" in executed
+    lookup = [sql for sql in executed if "QUERY_HISTORY" in sql]
+    assert lookup
+    assert all(f"WHERE QUERY_TAG = '{tag}'" in sql for sql in lookup)
+
+
+def test_gateway_stats_lookup_returns_rows_under_gateway_tag() -> None:
+    adapter = _gateway_adapter()
+    connection = Mock()
+    cursor = connection.cursor.return_value
+    tag = adapter._format_query_tag("Q7")
+
+    def execute(sql, *args, **kwargs):
+        cursor.fetchone.return_value = (
+            ("sf-id", 10, 9, 1, 100, 5, 0.1, "MEDIUM", 1) if f"QUERY_TAG = '{tag}'" in sql else None
+        )
+
+    cursor.execute.side_effect = execute
+    stats = adapter._get_query_statistics(connection, "Q7")
+    assert stats["snowflake_query_id"] == "sf-id"
+    assert stats["execution_time_ms"] == 9
+    assert stats["credits_used_cloud_services"] == 0.1
+
+
+def test_native_stats_lookup_uses_legacy_tag() -> None:
+    adapter = _adapter()
+    connection = Mock()
+    cursor = connection.cursor.return_value
+    cursor.fetchone.return_value = None
+    adapter._get_query_statistics(connection, "Q7")
+    assert "WHERE QUERY_TAG = 'BenchBox_Q7'" in cursor.execute.call_args.args[0]

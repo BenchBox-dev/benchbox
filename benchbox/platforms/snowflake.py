@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import uuid
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -145,7 +146,16 @@ class SnowflakeAdapter(PlatformAdapter):
             ocsp_fail_open=config.get("gateway_ocsp_fail_open"),
             allow_insecure=bool(config.get("allow_insecure_gateway")),
         )
+        self.gateway_run_suffix = ""
+        if self.gateway_endpoint is not None:
+            self.gateway_run_suffix = uuid.uuid4().hex[:8]
         self._require_environment_ca_bundle()
+
+    def _format_query_tag(self, query_id: str) -> str:
+        tag = f"{self.query_tag}_{query_id}"
+        if self.gateway_run_suffix:
+            tag = f"{tag}_gw-{self.gateway_run_suffix}"
+        return tag
 
     def _require_environment_ca_bundle(self) -> None:
         endpoint = self.gateway_endpoint
@@ -1253,8 +1263,9 @@ class SnowflakeAdapter(PlatformAdapter):
             stats_connection = getattr(connection, "connection", connection)
 
         try:
-            self.log_very_verbose(f"Setting query tag: {self.query_tag}_{query_id}")
-            cursor.execute(f"ALTER SESSION SET QUERY_TAG = '{self.query_tag}_{query_id}'")
+            query_tag = self._format_query_tag(query_id)
+            self.log_very_verbose(f"Setting query tag: {query_tag}")
+            cursor.execute(f"ALTER SESSION SET QUERY_TAG = '{query_tag}'")
 
             query = self._apply_fork_safe_division(query)
             self.log_verbose(f"Executing query {query_id} on Snowflake")
@@ -1473,7 +1484,7 @@ class SnowflakeAdapter(PlatformAdapter):
                         END_TIME_RANGE_START => DATEADD('MINUTE', -5, CURRENT_TIMESTAMP()),
                         END_TIME_RANGE_END => CURRENT_TIMESTAMP()
                     ))
-                    WHERE QUERY_TAG = '{self.query_tag}_{query_id}'
+                    WHERE QUERY_TAG = '{self._format_query_tag(query_id)}'
                     ORDER BY START_TIME DESC
                     LIMIT 1
                 """)
