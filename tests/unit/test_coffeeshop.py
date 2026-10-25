@@ -384,8 +384,8 @@ class _MockConnection:
     def cursor(self):
         return self.cursor_obj
 
-    def executescript(self, sql: str):  # pragma: no cover
+    def executescript(self, sql: str):
         self.cursor_obj.last_query = sql
 
-    def commit(self):  # pragma: no cover
+    def commit(self):
         pass

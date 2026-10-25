@@ -36,7 +36,7 @@ def _load_all_rules() -> None:
             continue
         try:
             importlib.import_module(mod_name)
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:
             failed.append(f"{mod_name}: {exc}")
     if failed:
         raise RuntimeError(

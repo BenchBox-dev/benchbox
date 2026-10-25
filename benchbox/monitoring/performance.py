@@ -413,7 +413,7 @@ class ResourceMonitor:
             import threading
 
             import psutil
-        except ImportError:  # pragma: no cover
+        except ImportError:
             return
 
         if self._thread is not None and self._thread.is_alive():
@@ -440,7 +440,7 @@ class ResourceMonitor:
                         self._peak_memory_mb = memory_mb
                         self.monitor.set_gauge("peak_memory_mb", memory_mb)
 
-                except Exception:  # pragma: no cover
+                except Exception:
                     pass
 
                 self._stop_event.wait(self.sample_interval)
@@ -470,7 +470,7 @@ class ResourceMonitor:
                 "memory_percent": self._process.memory_percent(),
                 "cpu_percent": self._process.cpu_percent(interval=0.1),
             }
-        except Exception:  # pragma: no cover
+        except Exception:
             return {"memory_mb": 0.0, "memory_percent": 0.0, "cpu_percent": 0.0}
 
 

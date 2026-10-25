@@ -15,7 +15,7 @@ class BenchmarkResultValidationMixin:
     output_dir: Any
 
     @property
-    def benchmark_name(self) -> str:  # pragma: no cover
+    def benchmark_name(self) -> str:
         return getattr(self, "_name", type(self).__name__)
 
     def create_enhanced_benchmark_result(

@@ -16,7 +16,7 @@ from benchbox.core.dryrun import DryRunExecutor as CoreDryRunExecutor, DryRunQue
 from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig, DryRunResult, SystemProfile
 from benchbox.utils.printing import quiet_console
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from rich.console import Console
 
 console: Any = quiet_console

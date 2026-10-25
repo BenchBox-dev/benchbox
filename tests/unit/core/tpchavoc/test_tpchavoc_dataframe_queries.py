@@ -9,7 +9,7 @@ try:
     from polars.testing import assert_frame_equal
 
     from benchbox.platforms.dataframe.polars_df import POLARS_AVAILABLE, PolarsDataFrameAdapter
-except ImportError:  # pragma: no cover
+except ImportError:
     POLARS_AVAILABLE = False
     pl = None
     assert_frame_equal = None

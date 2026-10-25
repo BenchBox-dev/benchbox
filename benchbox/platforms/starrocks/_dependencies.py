@@ -3,7 +3,7 @@ try:
     from pymysql.cursors import DictCursor as PyMySQLDictCursor
 
     PYMYSQL_AVAILABLE = True
-except ImportError:  # pragma: no cover
+except ImportError:
     pymysql = None
     PyMySQLDictCursor = None
     PYMYSQL_AVAILABLE = False
@@ -12,7 +12,7 @@ try:
     import requests
 
     REQUESTS_AVAILABLE = True
-except ImportError:  # pragma: no cover
+except ImportError:
     requests = None
     REQUESTS_AVAILABLE = False
 

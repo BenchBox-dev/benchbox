@@ -172,10 +172,10 @@ def test_load_only_mode_invokes_adapter_load(tmp_path):
             self.schema_created = False
             self.closed = False
 
-        def create_connection(self, **kwargs):  # pragma: no cover
+        def create_connection(self, **kwargs):
             return Mock()
 
-        def close_connection(self, _conn):  # pragma: no cover
+        def close_connection(self, _conn):
             self.closed = True
 
         def create_schema(self, benchmark, connection):
@@ -349,10 +349,10 @@ def test_load_only_external_mode_requires_adapter_support(tmp_path):
         platform_name = "duckdb"
         supports_external_tables = False
 
-        def create_connection(self, **kwargs):  # pragma: no cover
+        def create_connection(self, **kwargs):
             return Mock()
 
-        def close_connection(self, _conn):  # pragma: no cover
+        def close_connection(self, _conn):
             return None
 
         def create_schema(self, benchmark, connection):
@@ -408,10 +408,10 @@ def test_load_only_external_mode_reports_platform_specific_unsupported_errors(
         def platform_name(self):
             return platform_name
 
-        def create_connection(self, **kwargs):  # pragma: no cover
+        def create_connection(self, **kwargs):
             return Mock()
 
-        def close_connection(self, _conn):  # pragma: no cover
+        def close_connection(self, _conn):
             return None
 
     with (
@@ -467,10 +467,10 @@ def test_load_only_external_mode_invokes_adapter_runtime_validation_hook(tmp_pat
             self.validated_external = False
             self.external_created = False
 
-        def create_connection(self, **kwargs):  # pragma: no cover
+        def create_connection(self, **kwargs):
             return Mock()
 
-        def close_connection(self, _conn):  # pragma: no cover
+        def close_connection(self, _conn):
             return None
 
         def validate_external_table_requirements(self):
@@ -522,10 +522,10 @@ def test_load_only_external_mode_surfaces_adapter_validation_guidance(tmp_path):
         platform_name = "BigQuery"
         supports_external_tables = True
 
-        def create_connection(self, **kwargs):  # pragma: no cover
+        def create_connection(self, **kwargs):
             return Mock()
 
-        def close_connection(self, _conn):  # pragma: no cover
+        def close_connection(self, _conn):
             return None
 
         def validate_external_table_requirements(self):
@@ -970,7 +970,7 @@ def test_manifest_reuse_accepts_data_source_alias(tmp_path):
         def get_data_source_benchmark(self) -> str:
             return "tpch"
 
-        def generate_data(self):  # pragma: no cover
+        def generate_data(self):
             raise AssertionError("generate_data should not be called when manifest is reused")
 
         def get_queries(self, dialect: str | None = None):
@@ -1039,7 +1039,7 @@ def test_no_regenerate_respects_alias_manifest(tmp_path):
         def get_data_source_benchmark(self) -> str:
             return "tpch"
 
-        def generate_data(self):  # pragma: no cover
+        def generate_data(self):
             raise AssertionError("generate_data should not run when no_regenerate is set")
 
         def get_queries(self, dialect: str | None = None):

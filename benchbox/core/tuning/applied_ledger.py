@@ -129,7 +129,7 @@ def _split_sql_script(script: Any) -> list[str]:
         if tail:
             statements.append(tail)
         return statements
-    except Exception:  # pragma: no cover
+    except Exception:
         return [text]
 
 
@@ -142,14 +142,14 @@ def normalize_ledger_phase(phase: Any) -> str:
             return PHASE_ALIASES[text]
         logger.warning("applied-ledger unknown phase %r; recording as %r", phase, PHASE_DDL)
         return PHASE_DDL
-    except Exception:  # pragma: no cover
+    except Exception:
         return PHASE_DDL
 
 
 def _is_recordable_statement(statement: Any) -> bool:
     try:
         text = _SQL_COMMENT_RE.sub(" ", str(statement))
-    except Exception:  # pragma: no cover
+    except Exception:
         return True
     stripped = text.strip().strip(";").strip()
     if not stripped:
@@ -671,7 +671,7 @@ def recording_connection(
         return connection
     try:
         return RecordingConnection(connection, ledger, phase, statement_filter, execute_verbs, harness, mechanism)
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:
         logger.debug("applied-ledger connection wrap degraded: %s", exc)
         return connection
 

@@ -3124,7 +3124,7 @@ def compute_fk_dangling_census(parquet_dir: Path) -> list[dict[str, Any]]:
 
     try:
         import duckdb
-    except ImportError as exc:  # pragma: no cover
+    except ImportError as exc:
         raise JoinOrderBuildError("duckdb is required in _project/scripts for the FK dangling census") from exc
 
     census: list[dict[str, Any]] = []
@@ -3145,7 +3145,7 @@ def compute_fk_dangling_census(parquet_dir: Path) -> list[dict[str, Any]]:
                 f"SELECT 1 FROM read_parquet({duckdb_literal(parent_path)}) AS p "
                 f"WHERE p.{parent_col} = c.{child_col})"
             ).fetchone()
-            if stats is None or dangling_row is None:  # pragma: no cover
+            if stats is None or dangling_row is None:
                 raise JoinOrderBuildError(f"Empty census result for {fk.child_table}.{fk.child_column}")
             child_rows, child_non_null, dangling = int(stats[0]), int(stats[1]), int(dangling_row[0])
             census.append(

@@ -55,7 +55,7 @@ class ClickHouseTuningIntrospector:
             try:
                 name, sorting_key, partition_key = row[0], row[1], row[2]
                 primary_key = row[3] if len(row) > 3 else ""
-            except Exception:  # pragma: no cover
+            except Exception:
                 continue
             if sorting_key:
                 objects.append(

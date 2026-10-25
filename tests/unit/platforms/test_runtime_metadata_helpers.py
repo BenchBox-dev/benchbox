@@ -82,7 +82,7 @@ def test_embedded_platform_maps_to_local_process_runtime() -> None:
 def test_platform_raw_config_excludes_internal_tuning_keys_and_reprs() -> None:
 
     class _TuningConfig:
-        def __repr__(self) -> str:  # pragma: no cover
+        def __repr__(self) -> str:
             return "UnifiedTuningConfiguration(rules=[...], overrides={...}, " + "x" * 800 + ")"
 
     metadata = build_default_normalized_result_metadata(

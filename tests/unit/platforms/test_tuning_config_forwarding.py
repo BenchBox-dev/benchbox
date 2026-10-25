@@ -14,7 +14,7 @@ pytestmark = [
 
 
 class _TuningConfigSentinel:
-    def __repr__(self) -> str:  # pragma: no cover
+    def __repr__(self) -> str:
         return "<TuningConfigSentinel>"
 
 

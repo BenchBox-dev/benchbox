@@ -44,7 +44,7 @@ MCP_CACHE_HINTS = {
 def _install_static_registry_capability_policy(mcp: MCPServer) -> None:
     low_level_server = mcp._lowlevel_server
     discover_entry = low_level_server.get_request_handler("server/discover")
-    if discover_entry is None:  # pragma: no cover
+    if discover_entry is None:
         raise RuntimeError("MCP SDK did not register the server/discover handler")
 
     original_handler = cast(RequestHandler[Any, RequestParams], discover_entry.handler)

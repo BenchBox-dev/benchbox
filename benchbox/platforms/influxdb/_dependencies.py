@@ -6,7 +6,7 @@ try:
     from influxdb_client_3 import InfluxDBClient3
 
     INFLUXDB3_AVAILABLE = True
-except ImportError:  # pragma: no cover
+except ImportError:
     InfluxDBClient3 = None
     INFLUXDB3_AVAILABLE = False
 
@@ -14,7 +14,7 @@ try:
     from flightsql import FlightSQLClient
 
     FLIGHTSQL_AVAILABLE = True
-except ImportError:  # pragma: no cover
+except ImportError:
     FlightSQLClient = None
     FLIGHTSQL_AVAILABLE = False
 
@@ -22,7 +22,7 @@ try:
     import pyarrow
 
     PYARROW_AVAILABLE = True
-except ImportError:  # pragma: no cover
+except ImportError:
     pyarrow = None
     PYARROW_AVAILABLE = False
 

@@ -32,7 +32,7 @@ def _provide_fake_duckdb(_hermetic_state, monkeypatch):
         def fetchone(self):
             return None
 
-        def fetchmany(self, size=None):  # pragma: no cover
+        def fetchmany(self, size=None):
             return []
 
         def close(self):

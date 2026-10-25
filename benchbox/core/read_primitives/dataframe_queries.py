@@ -658,14 +658,57 @@ def _make_extreme_row_impls(
         _register_generated_impl(impl)
 
 
-# fmt: off
 for _spec in (
-    ("max_by_simple", "customer", (("nation", "c_nationkey", "n_nationkey"),), ("n_name",), ("n_name",), "c_acctbal", "max", "max_balance", ("n_name", "c_name", "max_balance"), ("n_name",), ("n_name", "c_name", "c_acctbal"), {"c_acctbal": "max_balance"}, True, None),
-    ("min_by_simple", "customer", (("nation", "c_nationkey", "n_nationkey"),), ("n_name",), ("n_name",), "c_acctbal", "min", "min_balance", ("n_name", "c_name", "min_balance"), ("n_name",), ("n_name", "c_name", "c_acctbal"), {"c_acctbal": "min_balance"}, False, None),
-    ("max_by_complex", "orders", (("customer", "o_custkey", "c_custkey"),), ("c_mktsegment",), ("c_mktsegment",), "o_totalprice", "max", "max_order_value", ("c_mktsegment", "o_orderkey", "o_orderdate", "max_order_value"), ("c_mktsegment",), ("c_mktsegment", "o_orderkey", "o_orderdate", "o_totalprice"), {"o_totalprice": "max_order_value"}, True, None),
+    (
+        "max_by_simple",
+        "customer",
+        (("nation", "c_nationkey", "n_nationkey"),),
+        ("n_name",),
+        ("n_name",),
+        "c_acctbal",
+        "max",
+        "max_balance",
+        ("n_name", "c_name", "max_balance"),
+        ("n_name",),
+        ("n_name", "c_name", "c_acctbal"),
+        {"c_acctbal": "max_balance"},
+        True,
+        None,
+    ),
+    (
+        "min_by_simple",
+        "customer",
+        (("nation", "c_nationkey", "n_nationkey"),),
+        ("n_name",),
+        ("n_name",),
+        "c_acctbal",
+        "min",
+        "min_balance",
+        ("n_name", "c_name", "min_balance"),
+        ("n_name",),
+        ("n_name", "c_name", "c_acctbal"),
+        {"c_acctbal": "min_balance"},
+        False,
+        None,
+    ),
+    (
+        "max_by_complex",
+        "orders",
+        (("customer", "o_custkey", "c_custkey"),),
+        ("c_mktsegment",),
+        ("c_mktsegment",),
+        "o_totalprice",
+        "max",
+        "max_order_value",
+        ("c_mktsegment", "o_orderkey", "o_orderdate", "max_order_value"),
+        ("c_mktsegment",),
+        ("c_mktsegment", "o_orderkey", "o_orderdate", "o_totalprice"),
+        {"o_totalprice": "max_order_value"},
+        True,
+        None,
+    ),
 ):
     _make_extreme_row_impls(*_spec)
-# fmt: on
 
 
 def min_by_complex_expression_impl(ctx: DataFrameContext) -> Any:

@@ -62,7 +62,7 @@ def test_lazy_registry_first_access_is_single_flight(monkeypatch: pytest.MonkeyP
     def access_registry() -> None:
         try:
             assert len(r.BENCHMARK_METADATA) > 0
-        except BaseException as exc:  # pragma: no cover
+        except BaseException as exc:
             errors.append(exc)
 
     threads = [threading.Thread(target=access_registry) for _ in range(8)]

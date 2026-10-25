@@ -96,7 +96,7 @@ class JoinOrderBenchmark(TranslatableQueryMixin, BaseBenchmark):
     def _extract_tar_zst(archive_path: Path, output_dir: Path) -> None:
         try:
             import zstandard as zstd
-        except ImportError as exc:  # pragma: no cover
+        except ImportError as exc:
             raise RuntimeError("zstandard is required to extract canonical JoinOrder data") from exc
 
         output_dir.mkdir(parents=True, exist_ok=True)

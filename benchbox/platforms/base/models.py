@@ -23,7 +23,7 @@ from benchbox.core.results.models import (
 
 try:
     from benchbox.core.tuning.interface import UnifiedTuningConfiguration
-except ImportError:  # pragma: no cover
+except ImportError:
     UnifiedTuningConfiguration = None
 
 

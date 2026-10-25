@@ -7,13 +7,13 @@ from types import ModuleType
 try:
     from clickhouse_driver import Client as ClickHouseClient
     from clickhouse_driver.errors import Error as ClickHouseError
-except ImportError:  # pragma: no cover
+except ImportError:
     ClickHouseClient = None
     ClickHouseError = Exception
 
 try:
     import clickhouse_connect
-except ImportError:  # pragma: no cover
+except ImportError:
     clickhouse_connect = None
 
 chdb: ModuleType | None = None

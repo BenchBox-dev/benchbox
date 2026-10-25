@@ -55,7 +55,7 @@ def _get_cloud_path_type() -> type[Any] | None:
     if _CLOUD_PATH_TYPE is None:
         try:
             cloud_path_type = importlib.import_module("cloudpathlib").CloudPath
-        except ImportError:  # pragma: no cover
+        except ImportError:
             return None
         _CLOUD_PATH_TYPE = cloud_path_type
     return _CLOUD_PATH_TYPE
@@ -105,7 +105,7 @@ def _normalise_to_root(root: Path | CloudPath, path: PathLike) -> tuple[Path | C
         try:
             rel = resolved.relative_to(local_root)
             return resolved, rel.as_posix()
-        except (ValueError, TypeError, AttributeError):  # pragma: no cover
+        except (ValueError, TypeError, AttributeError):
             return resolved, resolved.path
 
     try:
@@ -126,7 +126,7 @@ def resolve_compression_metadata(source: Any) -> dict[str, Any]:
     if hasattr(source, "should_use_compression"):
         try:
             enabled = bool(source.should_use_compression())
-        except Exception:  # pragma: no cover
+        except Exception:
             enabled = False
 
     if enabled:
@@ -191,7 +191,7 @@ class DataGenerationManifest:
         if size is None and hasattr(resolved, "stat"):
             try:
                 size = int(resolved.stat().st_size)
-            except Exception:  # pragma: no cover
+            except Exception:
                 size = 0
 
         entry = ManifestTableEntry(

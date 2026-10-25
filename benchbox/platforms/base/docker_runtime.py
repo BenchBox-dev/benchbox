@@ -138,7 +138,7 @@ def _run_docker_command(runner: DockerCommandRunner, args: Sequence[str]) -> dic
         return {"stdout": "", "error": "docker_timeout", "message": "Docker CLI command timed out"}
     except PermissionError as exc:
         return {"stdout": "", "error": "permission_denied", "message": str(exc)}
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:
         return {"stdout": "", "error": type(exc).__name__, "message": str(exc)}
 
     if result.returncode != 0:

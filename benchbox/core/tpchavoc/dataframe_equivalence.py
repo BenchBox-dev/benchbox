@@ -137,5 +137,5 @@ def _sort_key(key: str) -> tuple[int, int, str]:
     return int(query), int(variant or 0), backend
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     raise SystemExit(main())

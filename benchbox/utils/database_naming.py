@@ -248,10 +248,19 @@ def generate_database_filename(
 
 
 _KNOWN_EXTENSIONS = [
-    ".duckdb", ".sqlite", ".chdb", ".datafusion",
-    ".polars-df", ".polars", ".pandas-df", ".pandas",
-    ".cudf-df", ".cudf", ".dask-df", ".spark",
-]  # fmt: skip
+    ".duckdb",
+    ".sqlite",
+    ".chdb",
+    ".datafusion",
+    ".polars-df",
+    ".polars",
+    ".pandas-df",
+    ".pandas",
+    ".cudf-df",
+    ".cudf",
+    ".dask-df",
+    ".spark",
+]
 
 _TUNING_KEYWORDS = {"notuning": "notuning", "tuned": "tuned", "custom": "custom"}
 _CONSTRAINT_KEYWORDS = {"pk", "fk", "uniq", "check", "noconstraints"}

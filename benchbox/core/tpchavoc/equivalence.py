@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
 from benchbox.core.tpchavoc.validation import ValidationError
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from benchbox import TPCH
 
 EQUIVALENCE_SCALE = 0.1
@@ -671,5 +671,5 @@ def _sort_key(key: str) -> tuple[int, int]:
     return int(query), int(variant)
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     raise SystemExit(main())

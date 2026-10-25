@@ -583,7 +583,7 @@ def test_reference_failure_records_one_cell_and_skips_candidates():
         def execute(self, sql):
             raise RuntimeError("no such table")
 
-    def dataframe_query(_qid):  # pragma: no cover
+    def dataframe_query(_qid):
         raise AssertionError("candidates must not run without a reference")
 
     divergences = find_cross_surface_divergences(

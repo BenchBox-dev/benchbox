@@ -53,7 +53,7 @@ def _benchmark_instance(benchmark_id: str) -> Any | None:
             return cls(**kwargs)
         except TypeError:
             continue
-        except Exception:  # pragma: no cover
+        except Exception:
             logger.debug("query_catalog: cannot instantiate benchmark %r", benchmark_id, exc_info=True)
             return None
     return None

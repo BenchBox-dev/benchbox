@@ -38,7 +38,7 @@ PUBLIC_SUBMISSION_SCHEMA_POLICY, result_schema_version_value = _load_schema_poli
 
 try:
     from benchbox.core.results.provenance import FUNDING_SOURCES, RESULT_SOURCES
-except ImportError:  # pragma: no cover
+except ImportError:
     FUNDING_SOURCES = ("employer", "personal", "free-trial", "vendor-sponsored", "grant", "unspecified")
     RESULT_SOURCES = ("internal", "community", "vendor")
 

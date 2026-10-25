@@ -919,7 +919,7 @@ def test_collect_resource_utilization_without_psutil(monkeypatch):
 
     original_import = __import__
 
-    def fake_import(name, *args, **kwargs):  # pragma: no cover
+    def fake_import(name, *args, **kwargs):
         if name == "psutil":
             raise ImportError("psutil not installed")
         return original_import(name, *args, **kwargs)
@@ -944,10 +944,10 @@ def test_collect_resource_utilization_with_stub(monkeypatch):  # noqa: C901
             def __init__(self, process):
                 self._process = process
 
-            def __enter__(self):  # pragma: no cover
+            def __enter__(self):
                 return self._process
 
-            def __exit__(self, exc_type, exc, tb):  # pragma: no cover
+            def __exit__(self, exc_type, exc, tb):
                 return False
 
         def oneshot(self):
@@ -968,7 +968,7 @@ def test_collect_resource_utilization_with_stub(monkeypatch):  # noqa: C901
         def num_fds(self):
             return 24
 
-        def num_handles(self):  # pragma: no cover
+        def num_handles(self):
             return 30
 
         def io_counters(self):

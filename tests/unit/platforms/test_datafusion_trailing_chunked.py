@@ -60,7 +60,7 @@ try:
     import pyarrow.parquet as pq
 
     _PYARROW = True
-except ImportError:  # pragma: no cover
+except ImportError:
     _PYARROW = False
 
 try:

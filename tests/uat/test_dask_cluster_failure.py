@@ -76,7 +76,7 @@ def test_cluster_death_records_fail_result_and_does_not_hang():
     adapter.compute = _dying_compute
 
     class _LazyFrame:
-        def compute(self):  # pragma: no cover
+        def compute(self):
             raise AssertionError("adapter.compute should be used")
 
     def _impl(_ctx):

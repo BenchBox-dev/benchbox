@@ -33,7 +33,7 @@ class DummyAdapter(PlatformAdapter):
         super().__init__(**config)
 
     @staticmethod
-    def add_cli_arguments(parser) -> None:  # pragma: no cover
+    def add_cli_arguments(parser) -> None:
         return None
 
     @classmethod
@@ -403,7 +403,7 @@ class _FakeCursor:
     def execute(self, _sql: str) -> None:
         raise self._error
 
-    def fetchall(self):  # pragma: no cover
+    def fetchall(self):
         return []
 
     def close(self) -> None:

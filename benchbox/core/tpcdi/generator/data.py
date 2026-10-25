@@ -19,7 +19,7 @@ from .monitoring import ResourceMonitoringMixin
 
 try:
     import duckdb
-except ImportError:  # pragma: no cover
+except ImportError:
     duckdb = None
 
 

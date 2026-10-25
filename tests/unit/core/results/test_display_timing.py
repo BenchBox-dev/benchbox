@@ -204,7 +204,7 @@ def test_timing_collector_isolates_concurrent_repeated_query_ids():
             with collector.time_query("Q1"):
                 barrier.wait(timeout=5)
                 collector.record_metric("Q1", "thread_id", label)
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:
             errors.append((label, exc))
 
     threads = [Thread(target=worker, args=(label,)) for label in ("first", "second")]

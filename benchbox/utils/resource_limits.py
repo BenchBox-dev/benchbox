@@ -13,7 +13,7 @@ from typing import Any, Callable
 
 try:
     import psutil
-except ImportError:  # pragma: no cover
+except ImportError:
     psutil = None
 
 logger = logging.getLogger(__name__)

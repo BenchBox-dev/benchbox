@@ -906,7 +906,7 @@ def _build_platform_runner():
     ):
         try:
             info = get_benchmark_metadata(benchmark) or {}
-        except Exception:  # pragma: no cover
+        except Exception:
             info = {}
 
         options: dict[str, Any] = {}

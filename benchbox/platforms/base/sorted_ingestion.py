@@ -84,7 +84,7 @@ class SortedIngestionMixin:
         resolution_error: str | None = None
         try:
             resolved_mode, resolved_method = self.resolve_sorted_ingestion_strategy()
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:
             resolution_error = str(exc)
 
         applied_tables = getattr(self, "_sorted_ingestion_applied_tables", [])
@@ -292,7 +292,7 @@ class SortedIngestionMixin:
             if transaction_started:
                 try:
                     self._rollback_transaction(connection)
-                except Exception as cleanup_error:  # pragma: no cover
+                except Exception as cleanup_error:
                     rollback_error = cleanup_error
                     self.logger.warning(
                         f"Failed to roll back constraint-preserving CTAS sort for {table_name}: {cleanup_error}"
