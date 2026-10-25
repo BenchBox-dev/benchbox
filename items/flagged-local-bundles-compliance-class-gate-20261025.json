@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Cause identified (missing field in old bundles vs validator rule) and either the rule documents the legacy exemption or the reruns replace the bundles with compliant ones."
+  ],
+  "description": "validate_submission.py --require-manifest on the 18 bundles flagged by #3398 fails for four local bundles (f22a0442, 678507a6, c250741b, 5207d224) only on the existing benchmark.compliance_class gate. cloud-bundle-metadata-gaps covers cloud bundles; these are local ClickHouse Local and DataFusion bundles.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T12:30:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b49eae08dda74a07880a3b17c6d09b59",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}

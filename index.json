@@ -11655,6 +11655,13 @@
       "status": "done",
       "title": "Red test: CTAS caller-transaction preservation test fails on develop"
     },
+    "flagged-local-bundles-compliance-class-gate-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Four flagged local bundles fail the benchmark.compliance_class submission gate"
+    },
     "flaky-bigquery-credential-defaults-confirm-prompt": {
       "claim": null,
       "needs": [],
