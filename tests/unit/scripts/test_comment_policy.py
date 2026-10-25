@@ -21,6 +21,7 @@ from check_comment_policy import (
     allowed,
     check_ratchet,
     expired_policy_findings,
+    expiring_policy_warnings,
     load_policy,
     main,
     scan_sources,
@@ -4822,3 +4823,87 @@ def test_runner_forwards_same_commit_acceptance_only_to_a_checker_that_defines_i
         "parser.add_argument('--accept-same-commit-fixtures')\n", encoding="utf-8"
     )
     assert policy_runner.trusted_checker_supports_same_commit(tmp_path)
+
+
+def dated_policy(*expiries: str) -> dict:
+    return load_policy(
+        json.dumps(
+            policy(exceptions=[exception(path=f"m{index}.py", expires=value) for index, value in enumerate(expiries)])
+        ).encode()
+    )
+
+
+def test_expiry_warning_starts_thirty_days_before_the_expiry_date() -> None:
+    expiry = date(2027, 1, 4)
+    registered = dated_policy(expiry.isoformat())
+    assert expiring_policy_warnings(registered, expiry - timedelta(days=31)) == []
+    assert len(expiring_policy_warnings(registered, expiry - timedelta(days=30))) == 1
+    assert len(expiring_policy_warnings(registered, expiry - timedelta(days=1))) == 1
+    assert "1 directive exception(s) expire on 2027-01-04" in expiring_policy_warnings(registered, expiry)[0]
+    assert expiring_policy_warnings(registered, expiry + timedelta(days=1)) == []
+
+
+def test_expiry_warnings_group_entries_by_date() -> None:
+    registered = dated_policy("2027-01-04", "2027-01-04", "2027-01-18", "2028-01-01")
+    warnings = expiring_policy_warnings(registered, date(2027, 1, 1))
+    assert [warning.split(" directive")[0] for warning in warnings] == ["2", "1"]
+
+
+def test_directive_is_valid_through_its_expiry_date_and_fails_the_next_day(monkeypatch: pytest.MonkeyPatch) -> None:
+    registered = dated_policy("2027-01-04")
+
+    class Today(date):
+        current = date(2027, 1, 4)
+
+        @classmethod
+        def today(cls) -> date:
+            return cls.current
+
+    monkeypatch.setattr(check_comment_policy, "date", Today)
+    assert expired_policy_findings(registered) == []
+    Today.current = date(2027, 1, 5)
+    assert [finding.kind for finding in expired_policy_findings(registered)] == ["policy-error"]
+
+
+def test_expiring_directive_warning_does_not_fail_the_run(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    git_repo(tmp_path, "# noqa: F401\n")
+    soon = (date.today() + timedelta(days=5)).isoformat()
+    (tmp_path / "quality/comment-policy.json").write_text(
+        json.dumps(policy(exceptions=[exception(consumer="a.py", expires=soon)])), encoding="utf-8"
+    )
+    assert main(["--root", str(tmp_path), "--mode", "report"]) == 0
+    assert f"comment-policy: warning: 1 directive exception(s) expire on {soon}" in capsys.readouterr().out
+
+
+def test_expiry_warning_is_an_annotation_in_ci(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    git_repo(tmp_path, "# noqa: F401\n")
+    soon = (date.today() + timedelta(days=5)).isoformat()
+    (tmp_path / "quality/comment-policy.json").write_text(
+        json.dumps(policy(exceptions=[exception(consumer="a.py", expires=soon)])), encoding="utf-8"
+    )
+    assert main(["--root", str(tmp_path), "--mode", "report"]) == 0
+    assert f"::warning::1 directive exception(s) expire on {soon}" in capsys.readouterr().out
+
+
+def test_date_only_renewal_is_not_effective_without_oracle_review(tmp_path: Path) -> None:
+    git_repo(tmp_path, "# noqa: F401\n")
+    soon = (date.today() + timedelta(days=5)).isoformat()
+    registry = tmp_path / "quality/comment-policy.json"
+    registry.write_text(json.dumps(policy(exceptions=[exception(consumer="a.py", expires=soon)])), encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "quality/comment-policy.json"], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "-c", "user.name=F", "-c", "user.email=f@e.invalid", "commit", "-qm", "dated"],
+        check=True,
+    )
+    base = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+    args = ["--root", str(tmp_path), "--mode", "strict", "--base", base]
+    assert main(args) == 0
+    renewed = (date.today() + timedelta(days=400)).isoformat()
+    registry.write_text(json.dumps(policy(exceptions=[exception(consumer="a.py", expires=renewed)])), encoding="utf-8")
+    assert main(args) == 1

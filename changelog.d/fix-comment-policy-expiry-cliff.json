@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Comment-policy checker prints an expiry warning; contributor tooling only, no shipped behavior changes"
+}
