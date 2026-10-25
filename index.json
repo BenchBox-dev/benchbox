@@ -26747,7 +26747,7 @@
       ],
       "priority": "low",
       "status": "open",
-      "title": "Reduce post-merge Trunk work once coverage selection is live"
+      "title": "Evaluate whether trimming post-merge Trunk work is worthwhile after coverage selection stabilizes"
     },
     "tsbs-devops-dataframe-sql-id-mapping": {
       "claim": null,
