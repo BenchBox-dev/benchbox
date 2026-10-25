@@ -8,11 +8,10 @@ import duckdb
 import pytest
 from click.testing import CliRunner
 
-from benchbox.cli.config import CLIConfigProvider
 from benchbox.cli.main import cli
 from benchbox.core.system import SystemProfiler
 from benchbox.core.tuning import template_evidence
-from benchbox.utils.config_interface import get_config_provider
+from benchbox.utils import config_interface
 from tests.utilities.owned_cli_state import owned_cli_state
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -41,8 +40,19 @@ def _tuned_run_payload(tmp_path: Path) -> dict | None:
     return None
 
 
+DATA_ORGANIZATION_ENV = "BENCHBOX_DATA_ORGANIZATION_CONFIG_JSON"
+
+
 @pytest.fixture(scope="module")
-def duckdb_tuned_run(tmp_path_factory):
+def process_state_before_run():
+    return {
+        "provider": config_interface._config_provider,
+        "data_organization": os.environ.get(DATA_ORGANIZATION_ENV),
+    }
+
+
+@pytest.fixture(scope="module")
+def duckdb_tuned_run(tmp_path_factory, process_state_before_run):
     output_dir = tmp_path_factory.mktemp("tuned_run")
     with owned_cli_state(), pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(output_dir))
@@ -86,9 +96,9 @@ def test_duckdb_tuned_run_prints_tuning_verification_summary(duckdb_tuned_run):
     assert "Dropped intents" in result.output
 
 
-def test_module_scoped_run_leaves_process_state_untouched(duckdb_tuned_run):
-    assert not isinstance(get_config_provider(), CLIConfigProvider)
-    assert "BENCHBOX_DATA_ORGANIZATION_CONFIG_JSON" not in os.environ
+def test_module_scoped_run_leaves_process_state_untouched(duckdb_tuned_run, process_state_before_run):
+    assert config_interface._config_provider is process_state_before_run["provider"]
+    assert os.environ.get(DATA_ORGANIZATION_ENV) == process_state_before_run["data_organization"]
 
 
 def test_duckdb_notuning_run_has_no_evidence_warning(tmp_path, monkeypatch, tpch_sf001_data):
