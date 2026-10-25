@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Test-harness change only: each pytest-xdist worker now owns its benchmark_runs directory instead of sharing the controller's, so concurrent modules no longer delete each other's cached datagen files."
+}

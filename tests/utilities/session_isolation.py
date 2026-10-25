@@ -14,7 +14,8 @@ from scripts.local_validation import _close_lock, read_holder, seek_lock_byte, w
 
 _OWNER = "BENCHBOX_TEST_SESSION_OWNER"
 _OUTPUT_DIR = "BENCHBOX_OUTPUT_DIR"
-_ENV_KEYS = ("HOME", "USERPROFILE", "BENCHBOX_TEST_LOCK_DIR", _OUTPUT_DIR, _OWNER)
+_OWNED_OUTPUT_DIR = "BENCHBOX_TEST_SESSION_OUTPUT_DIR"
+_ENV_KEYS = ("HOME", "USERPROFILE", "BENCHBOX_TEST_LOCK_DIR", _OUTPUT_DIR, _OWNER, _OWNED_OUTPUT_DIR)
 _state: dict[str, Any] | None = None
 
 
@@ -87,8 +88,11 @@ def start(acquire_lock: bool = True) -> bool:
     os.environ["HOME"] = home.name
     os.environ["USERPROFILE"] = home.name
     os.environ["BENCHBOX_TEST_LOCK_DIR"] = str(lock_dir)
-    if not (previous[_OUTPUT_DIR] or "").strip():
-        os.environ[_OUTPUT_DIR] = str(Path(home.name) / "benchmark_runs")
+    caller_output = (previous[_OUTPUT_DIR] or "").strip()
+    if not caller_output or caller_output == previous[_OWNED_OUTPUT_DIR]:
+        owned_output = str(Path(home.name) / "benchmark_runs")
+        os.environ[_OUTPUT_DIR] = owned_output
+        os.environ[_OWNED_OUTPUT_DIR] = owned_output
     if acquire_lock and not inherited:
         os.environ[_OWNER] = str(os.getpid())
     _state = {"previous": previous, "home": home, "fd": fd}

@@ -238,6 +238,34 @@ def test_a_serial_run_does_not_wait_for_the_shared_lock(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+WORKER_OUTPUT_PROBE = (
+    "import os\n"
+    "def test_record():\n"
+    '    with open(os.environ["PROBE_RECORD"], "a", encoding="utf-8") as f:\n'
+    '        f.write(os.environ["PYTEST_XDIST_WORKER"] + "|" + os.environ["HOME"] + "|" + os.environ["BENCHBOX_OUTPUT_DIR"] + "\\n")\n'
+)
+
+
+def test_each_parallel_worker_owns_its_benchmark_runs_root(tmp_path: Path) -> None:
+    record = tmp_path / "record.txt"
+    result = _run_session_probe(
+        tmp_path,
+        WORKER_OUTPUT_PROBE,
+        "-n",
+        "2",
+        "--dist",
+        "each",
+        extra_env={"BENCHBOX_SKIP_TEST_LOCK": "1", "PROBE_RECORD": str(record)},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    rows = [line.split("|") for line in record.read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 2
+    assert len({row[0] for row in rows}) == 2
+    assert len({row[2] for row in rows}) == 2
+    for _worker, home, output in rows:
+        assert output == str(Path(home) / "benchmark_runs")
+
+
 def test_a_parallel_run_still_waits_for_the_shared_lock(tmp_path: Path) -> None:
     result = _run_session_probe(tmp_path, HOME_PROBE, "-n", "1", lock_held=True)
     assert result.returncode != 0, result.stdout + result.stderr
