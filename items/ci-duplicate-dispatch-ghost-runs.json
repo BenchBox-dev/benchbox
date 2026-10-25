@@ -3,7 +3,7 @@
     "One CI run per push for the CI workflow (the separate cheap CI (text edit) run is by design); met by #3434's per-PR concurrency and dedupe",
     "DROPPED by owner 2026-10-25: stuck-run alert. Study of 16,209 runs (2026-10-11 to 10-25) found 325 jobless waits over 15 min, all explained (Trunk queue 285, cancelled-run summary jobs 22, own-group queue 10, approval 7, one artifact), zero truly stuck; merge delay at most 0.6 h in two weeks"
   ],
-  "context": "Merged PR #3434: gitignore-lint.yml gained a per-PR cancel-in-progress concurrency group, and tests/unit/workflows/test_workflow_dispatch_dedupe.py now forbids overlapping push+pull_request triggers and requires a per-PR/per-ref cancel-in-progress group on every pull_request workflow. The observed duplicate (CI on opened plus `CI (text edit)` seconds later) is the deliberate edited-event verdict-copy design and was left alone. NOT done: automatic cancel/alert of stuck jobless ghost runs. A watchdog was built and dropped because the Actions API reports a run queued behind a concurrency group the same as a stuck jobless run (queued/pending, zero jobs) and does not expose the group, so cancelling could drop real CI runs. A safe watchdog needs another signal (e.g. runner-side or org-level data); item stays open for that.",
+  "context": "OWNER DECISION 2026-10-25: alert criterion dropped on the study evidence (zero truly stuck runs); item closed. The one real delay source, cancelled runs' summary jobs holding runner slots, is filed as ci-cancelled-run-summary-jobs-hold-slots-20261025, together with the dedupe-test gap.\n\nMerged PR #3434: gitignore-lint.yml gained a per-PR cancel-in-progress concurrency group, and tests/unit/workflows/test_workflow_dispatch_dedupe.py now forbids overlapping push+pull_request triggers and requires a per-PR/per-ref cancel-in-progress group on every pull_request workflow. The observed duplicate (CI on opened plus `CI (text edit)` seconds later) is the deliberate edited-event verdict-copy design and was left alone. NOT done: automatic cancel/alert of stuck jobless ghost runs. A watchdog was built and dropped because the Actions API reports a run queued behind a concurrency group the same as a stuck jobless run (queued/pending, zero jobs) and does not expose the group, so cancelling could drop real CI runs. A safe watchdog needs another signal (e.g. runner-side or org-level data); item stays open for that.",
   "description": "Every push spawns two CI workflow runs ~13s apart; on 2026-10-12 a jobless ghost run (pending, zero jobs) held its concurrency group and stalled scheduling repo-wide ~45 min until manually cancelled + rerun. Seen on fix/revert-2821 and feat/tuning-merge-settle-recorded.",
   "sessions": [
     {
@@ -28,6 +28,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "decbdc7891074632aa78f83f49115b10",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T19:27:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bd94e29c860443c88872b8a75aaad58e",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
