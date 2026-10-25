@@ -2,6 +2,7 @@
   "acceptance": [
     "tests/unit/workflows/test_oracle_gate_workflow.py asserts that issue_comment types are [created, edited, deleted] and fails on the previous workflow.",
     "An expression-evaluation test, reusing the run-name evaluator pattern in test_oracle_gate_workflow.py, covers the gate job condition and the concurrency group. A created marker comment runs the gate in the pull request's group. An edit that removes the marker runs the gate. A deleted marker comment runs the gate. A plain comment edit or deletion skips the gate and lands in an ignored-<run_id> group.",
+    "The trigger and decide() agree on bodies with leading whitespace. decide() accepts a stand-in after .strip() (oracle_review_check.py:29-33). Either the workflow condition handles leading whitespace the same way, or a test proves an accepted stand-in can never start with whitespace. Fails on the previous workflow if the condition changes.",
     "actionlint is clean, uv run -- pytest -q tests/unit/workflows passes, and make pr-preflight passes.",
     "docs/internal/oracle-review-v2.md (oracle-gate trigger paragraph) and docs/agent/merge-authority.md (withdrawing a stand-in) describe the new behavior, and make docs-validate passes.",
     "No live check: posting or editing a stand-in requires an owner instruction. Record that limitation in context at finish."
@@ -15,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "3cbb811cf2fe45259a4b5c90f7b0c67a",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T03:23:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "672df76632bf4339a0aa8f5796ca3084",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
