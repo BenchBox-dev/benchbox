@@ -15938,9 +15938,9 @@
     },
     "oracle-duplicate-findings-collapse-to-same-id-20261024": {
       "claim": {
-        "expires_at": "2026-10-26T12:52:59Z",
-        "generation": "a914c89b8a8f411387c99a9041b29dfd",
-        "renewals": 0,
+        "expires_at": "2026-10-26T12:53:35Z",
+        "generation": "e963f2f03d6440b4808b2fadd748ad25",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
       },
       "needs": [],
