@@ -695,11 +695,20 @@ the gate property would not hold.
 
 `.github/workflows/oracle-gate.yml` runs `develop` code only. It triggers on
 `pull_request_target` (opened, synchronize, reopened, ready_for_review, edited),
-on created issue comments that open with the stand-in marker, on completion of
+on created, edited and deleted issue comments whose body, or for an edit its
+previous body, contains the stand-in marker anywhere (so leading whitespace,
+which the checker strips, still triggers a run; the checker then decides on the
+exact text), on completion of
 `oracle-verdict` and `oracle-review` (the bridge for review and thread events,
 which have no trusted trigger of their own), on `workflow_dispatch` with a `pr`
-input, and on an hourly `schedule` sweep over open pull requests targeting
-`develop`. A completion run evaluates nothing itself: its `bridge` job finds the
+input, on an hourly `schedule` sweep over open pull requests targeting
+`develop`, and on a `push` to `develop` that touches the trusted inputs the
+gate reads from `develop` (the paths in the sparse checkout, including the
+workflow itself), so a merged policy or gate change re-evaluates open pull
+requests without waiting for the hour. Only the sweep job runs on `push`; the
+gate and bridge jobs exclude it. Push sweeps share one concurrency group,
+separate from every pull request's, and queue rather than cancel, so a running
+sweep finishes before the next starts. A completion run evaluates nothing itself: its `bridge` job finds the
 open `develop` pull request whose head is the completed run's head commit, not
 the first pull request in the event payload, which can target another branch or
 be stacked on that head, and dispatches the gate for it from `develop`. The
@@ -713,6 +722,29 @@ per-PR error and fails the run when any pull request errored. Every run that
 evaluates a pull request is in one concurrency group keyed by its number, with
 cancel-in-progress, so a newer run for a pull request cancels the earlier one
 instead of racing it.
+
+When evaluation fails after the head SHA is known, whatever the cause (an API,
+network, malformed-payload or policy error), the script posts `failure` for
+that head with a short error description and exits with the error code, so an
+earlier `success` on the head cannot outlive a gate that can no longer
+evaluate it. This is deliberately fail-closed: an API outage turns every pull
+request the gate touches to `failure` until its next successful evaluation.
+The pull request read is retried three times, waiting 2 seconds and then 4
+seconds. If it still fails there is no live head, so the script posts `failure` to the
+optional `--head-sha` when one was given. Without one it makes a single GraphQL
+read of the pull request's `headRefOid` and posts `failure` to that head when it
+is a 40-character lowercase hex SHA; a live REST read always wins over both. The
+hourly sweep and the bridge dispatch pass a head, and `pull_request_target`
+runs pass the head from the event payload, which the resolve step validates
+before outputting it. An `issue_comment` payload carries no head, so those runs
+rely on the GraphQL read. The one remaining limit is when the REST read and the
+GraphQL read both fail with no head supplied: nothing is posted, and the prior
+status on the head stands until the next sweep carries the head.
+A pull request whose base is not `develop`, and any `--no-post` run, never
+posts, errors included. The hourly sweep lists open `develop` pull requests
+with `gh api --paginate`, so every one is covered, and its 45-minute timeout is
+sized from a measured sweep of 16 pull requests in about 75 seconds (about 5
+seconds each), which leaves room for several hundred.
 
 `oracle-gate` became required on 2026-10-21, scoped to the `benchbox-oracle`
 App's integration ID, while `oracle-review` stayed required beside it. Across

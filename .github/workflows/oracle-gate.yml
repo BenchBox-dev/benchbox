@@ -3,10 +3,22 @@ name: oracle-gate
 run-name: oracle-gate (${{ github.event_name }} ${{ (github.event.pull_request.number || github.event.issue.number || inputs.pr) && format('pr={0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || github.event.workflow_run.head_sha && format('sha={0}', github.event.workflow_run.head_sha) || 'sweep' }})
 
 on:
+  push:
+    branches: [develop]
+    paths:
+      - .github/inert-paths.txt
+      - .github/oracle-reviewers.yml
+      - .github/soundness-paths.txt
+      - .github/workflows/oracle-gate.yml
+      - _project/scripts/oracle_gate.py
+      - _project/scripts/oracle_review_check.py
+      - _project/scripts/oracle_reviewers/**
+      - _project/scripts/inert_paths.py
+      - _project/scripts/soundness_paths.py
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited]
   issue_comment:
-    types: [created]
+    types: [created, edited, deleted]
   workflow_run:
     workflows: [oracle-verdict, oracle-review]
     types: [completed]
@@ -16,21 +28,25 @@ on:
         description: Pull request number to gate
         required: true
         type: string
+      head_sha:
+        description: Head commit the gate falls back to when the pull request cannot be read
+        required: false
+        type: string
   schedule:
     - cron: '41 * * * *'
 
 permissions: {}
 
 concurrency:
-  group: "oracle-gate-${{ (github.event_name == 'issue_comment' && !startsWith(github.event.comment.body, 'Stand-in oracle review: APPROVE') && format('ignored-{0}', github.run_id)) || (github.event_name == 'workflow_run' && format('bridge-{0}', github.event.workflow_run.head_sha)) || github.event.pull_request.number || github.event.issue.number || inputs.pr || format('run-{0}', github.run_id) }}"
-  cancel-in-progress: true
+  group: "oracle-gate-${{ (github.event_name == 'push' && 'push-sweep') || (github.event_name == 'issue_comment' && !(contains(github.event.comment.body, 'Stand-in oracle review: APPROVE') || (github.event.action == 'edited' && contains(github.event.changes.body.from, 'Stand-in oracle review: APPROVE'))) && format('ignored-{0}', github.run_id)) || (github.event_name == 'workflow_run' && format('bridge-{0}', github.event.workflow_run.head_sha)) || github.event.pull_request.number || github.event.issue.number || inputs.pr || format('run-{0}', github.run_id) }}"
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 jobs:
   gate:
     name: gate
     if: >-
-      github.event_name != 'schedule' && github.event_name != 'workflow_run' &&
-      (github.event_name != 'issue_comment' || (github.event.issue.pull_request && startsWith(github.event.comment.body, 'Stand-in oracle review: APPROVE')))
+      github.event_name != 'schedule' && github.event_name != 'workflow_run' && github.event_name != 'push' &&
+      (github.event_name != 'issue_comment' || (github.event.issue.pull_request && (contains(github.event.comment.body, 'Stand-in oracle review: APPROVE') || (github.event.action == 'edited' && contains(github.event.changes.body.from, 'Stand-in oracle review: APPROVE')))))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: oracle
@@ -75,6 +91,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+          INPUT_HEAD: ${{ inputs.head_sha }}
+          EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           PR_NUMBER="$EVENT_PR"
@@ -85,6 +103,10 @@ jobs:
               ;;
           esac
           echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          HEAD_SHA="${INPUT_HEAD:-$EVENT_HEAD}"
+          if printf '%s' "$HEAD_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Mint the App token
         id: app
@@ -102,7 +124,12 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app.outputs.token }}
           PR_NUMBER: ${{ steps.resolve.outputs.pr }}
-        run: uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER"
+          KNOWN_HEAD: ${{ steps.resolve.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          HEAD_ARGS=()
+          if [ -n "$KNOWN_HEAD" ]; then HEAD_ARGS=(--head-sha "$KNOWN_HEAD"); fi
+          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" "${HEAD_ARGS[@]}"
 
       - name: Log the gate without posting when the App is not configured
         if: steps.resolve.outputs.pr != '' && env.HAS_APP != 'true'
@@ -110,7 +137,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.resolve.outputs.pr }}
-        run: uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" --no-post
+          KNOWN_HEAD: ${{ steps.resolve.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          HEAD_ARGS=()
+          if [ -n "$KNOWN_HEAD" ]; then HEAD_ARGS=(--head-sha "$KNOWN_HEAD"); fi
+          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" --no-post "${HEAD_ARGS[@]}"
 
   bridge:
     name: bridge
@@ -141,14 +173,14 @@ jobs:
             echo "oracle-gate: no open develop pull request has head $HEAD_SHA; nothing to gate"
             exit 0
           fi
-          gh workflow run oracle-gate.yml --repo "$REPO" --ref develop -f pr="$PR_NUMBER"
+          gh workflow run oracle-gate.yml --repo "$REPO" --ref develop -f pr="$PR_NUMBER" -f head_sha="$HEAD_SHA"
           echo "oracle-gate: dispatched the gate for #$PR_NUMBER at $HEAD_SHA"
 
   sweep:
     name: sweep
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     environment: oracle
     permissions:
       contents: read
@@ -198,14 +230,15 @@ jobs:
           else
             echo "::notice::oracle-gate is not posted because the App secrets are not set"
           fi
-          PRS="$(gh pr list --repo "$REPO" --base develop --state open --limit 200 --json number --jq '.[].number')"
+          PRS="$(gh api --paginate "repos/$REPO/pulls?base=develop&state=open&per_page=100" --jq '.[] | "\(.number) \(.head.sha)"')"
           FAILED=""
-          for PR_NUMBER in $PRS; do
-            uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" $POST || {
+          while read -r PR_NUMBER HEAD_SHA; do
+            [ -n "$PR_NUMBER" ] || continue
+            uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$HEAD_SHA" $POST < /dev/null || {
               echo "::warning::oracle-gate failed for #$PR_NUMBER"
               FAILED="$FAILED $PR_NUMBER"
             }
-          done
+          done <<< "$PRS"
           if [ -n "$FAILED" ]; then
             echo "::error::oracle-gate failed for:$FAILED"
             exit 1

@@ -56,10 +56,14 @@ Quote the owner's instruction in a separate comment posted before the stand-in,
 naming the PR, the head, and the oracle findings the stand-in covers. The merge
 digest links each stand-in to the nearest preceding `Owner instruction` comment.
 
-A stand-in comment makes `oracle-gate` re-evaluate the head at once. Resolving
-an oracle review thread starts no workflow run, so after resolving threads run
-`gh workflow run oracle-gate.yml --ref develop -f pr=<number>` (or wait for the
-hourly sweep) and merge only after `oracle-gate` passes on the current head.
+A stand-in comment makes `oracle-gate` re-evaluate the head at once. To
+withdraw a stand-in, edit or delete it: the checker accepts only a comment
+that was never edited, and both actions re-run `oracle-gate`, which then fails
+the head again. Other comment edits and deletions do not run the gate.
+Resolving an oracle review thread starts no workflow run, so after resolving
+threads run `gh workflow run oracle-gate.yml --ref develop -f pr=<number>` (or
+wait for the hourly sweep) and merge only after `oracle-gate` passes on the
+current head.
 
 To refresh the gate, dispatch it; `make pr-rerun` re-runs CI and does not
 refresh `oracle-gate`. Withhold readiness before withdrawing accepted review
