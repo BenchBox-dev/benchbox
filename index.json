@@ -26892,7 +26892,10 @@
     },
     "trunk-comment-policy-full-scan-20261025": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "comment-scope-head-policy-validation-20261025",
+        "ruleset-break-glass-procedure-20261025"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Run the whole-tree comment-policy scan on each develop push so a bad policy entry is caught at the commit that added it"

@@ -1,13 +1,13 @@
 {
   "acceptance": [
-    "Gates 1 and 2 are recorded in context, with the scan's measured duration.",
-    "Replay: the trunk scan step fails on the develop commit that introduced the bad EULA notice entry, and passes on #3385's merge commit. The step's output prints the checked SHA.",
+    "Gates 1 and 2 are recorded in context, including the 64 s nightly measurement and the duration of the new job in its first live Trunk run.",
+    "Replay of the job's exact commands in a clean checkout: it exits non-zero on 39a942435ae7fe9fc78afabb3a0182b0bbf4c317 with a message naming the notice path, and exits 0 on a56738db4ab4803d80d48a5a24c6d67bf845ea0a. If a56738db fails for a reason unrelated to the EULA entry, record that reason and show a pass on 943710e30171b4e0435ae0dccbed998705538c73 instead. The output prints the checked SHA before the scan result.",
     "make pr-preflight passes; the PR passes the oracle on its merged head and merges through make pr-arm.",
-    "Live: the first Trunk run after merge shows the scan job, its checked SHA and its duration.",
-    "docs/internal/develop-post-merge-gaps.md lists the trunk scan and states that the nightly backstop remains."
+    "Live: the first Trunk run after merge shows the scan job, the checked SHA it printed, and its duration. That run's conclusion depends only on the job outcomes.",
+    "docs/internal/develop-post-merge-gaps.md lists the Trunk scan, says that an invalid-base-policy failure is recovered through the owner break-glass procedure rather than a revert, and says the nightly backstop remains."
   ],
   "context": "Found 2026-10-24 during the develop recovery (#3385). Source: Advisor review ~/Developer/benchmark_runs/ci-wedge-review-20261024/report.md, prevention plan row 'Post-merge whole-tree policy validation'. Checked 2026-10-25: trunk.yml on develop 9a184b619 contains no comment-policy step.",
-  "description": "Problem: the whole-tree comment-policy scan (scripts/run_comment_policy.py --full) runs on PRs and nightly (.github/workflows/comment-policy-nightly.yml:20-42), but not in .github/workflows/trunk.yml. On 2026-10-24 a bad scope entry on develop was noticed only when unrelated PRs started failing their tooling check, with no run that named the commit that introduced it.\n\nOutcome: every develop push runs the full scan, and a failure names the checked SHA, so normal trunk recovery points at the commit that added the violation. Detection only: prevention is comment-scope-head-policy-validation-20261025.\n\nDecision gates:\n1. Recovery path first. A scan failure turns Trunk red, which triggers the arm gate and the pr-open refusal. Before landing, confirm that make trunk-revert PR=<n> works for a policy-only culprit, including from a linked worktree (devloop-trunk-revert-nested-worktree). If revert is unusable, land after that fix.\n2. Cost. Measure the full scan on a hosted runner. If it would lengthen Trunk's critical path, run it as a separate parallel job and record the duration.\n3. Keep the nightly scan as a backstop; do not remove it.\n\nItem guardrails: detection only; never auto-revert. No change to the PR-time check. No new required context, which is owner-only.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no stand-in approvals, no ruleset edits or bypasses, no raw gh pr merge. Do not close and reopen, mass-rerun or rebase other pull requests.",
+  "description": "Problem: the whole-tree comment-policy scan (scripts/run_comment_policy.py --full) runs nightly (.github/workflows/comment-policy-nightly.yml:20-71) but not in .github/workflows/trunk.yml. On 2026-10-24 the bad scope entry from #3168 (39a942435ae7fe9fc78afabb3a0182b0bbf4c317) got a green Trunk run (40069594552). It was noticed only when unrelated PRs failed tooling and the nightly failed on c962e3e8733e9107988ba05145d09a27717a8fda (run 40082466628).\n\nOutcome: every develop push runs the full scan as its own Trunk job, and the job prints the checked SHA. A scan failure turns Trunk red, and trunk-status and the arm gate then name the commit that introduced it. Detection only: prevention is the head-policy validation item.\n\nDecision gates:\n1. Recovery path. A scan failure engages the arm gate and the pr-open refusal. A failure caused by an invalid base policy cannot be repaired by a revert PR, because that PR's own comment-policy check runs against the broken base. Its recovery is the owner break-glass procedure. Land only after head-policy validation and the documented break-glass procedure are on develop. For a source-file violation, make trunk-revert PR=<n> is the recovery.\n2. Cost (measured). The scan step took 64 s on a hosted runner (nightly run 40182292524) and Trunk's jobs run in parallel, so it runs as a separate parallel job. Stop and report if the new job's measured duration in the first live run exceeds the fast job's duration.\n3. Keep the nightly scan as a backstop; do not remove it.\n\nItem guardrails: detection only; never auto-revert and never open issues from Trunk. No change to the PR-time check. No new required context, which is owner-only.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no stand-in approvals, no ruleset edits or bypasses, no raw gh pr merge. Do not change oracle-gate's App binding (integration 5201041), the oracle decision rule, or the native review-thread-resolution requirement. Do not close and reopen, mass-rerun or rebase other pull requests. No explanatory comments or docstrings in code; commits, PR bodies and docs carry no tracker item IDs or session labels; timing uses benchbox.utils.clock.mono_time().",
   "links": [
     "item:comment-scope-head-policy-validation-20261025",
     "item:devloop-trunk-revert-nested-worktree",
@@ -21,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "41b9a72a8d224c4e89fb6fa3e207a42c",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T13:17:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1bbeb8bbb43b469e9223b4dc002fb6fc",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
