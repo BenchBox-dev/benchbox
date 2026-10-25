@@ -218,7 +218,17 @@ Recovery is to fix the producer failure and `workflow_dispatch` the workflow,
 which publishes a fresh map on `develop`. Rolling back to per-push production
 means restoring `push: branches: [develop]` in the workflow triggers; no script
 change is needed because `push` runs remain trusted and the monitor counts
-them as producers.
+them as producers. Roll back when the staleness issue opens twice within seven
+days, or when the newest map is more than 20 commits behind the base on more
+than 5% of code PRs. PR queue time is tracked but is not a rollback criterion.
+
+GitHub starts scheduled workflows late and sometimes skips or bunches them (a
+daily cron can start hours late, an hourly one can fire only a handful of times
+a day). The monitor therefore never infers health from the clock: it judges
+only completed producer runs, the newest map's commit distance and the last
+three producer results, so an irregular build time changes how soon a problem is
+seen, not whether it is seen. A monitor that runs before the day's producer has
+finished simply reads the previous completed runs.
 
 Measurement for the schedule change: record for seven days producer and
 monitor run outcomes, `fetch-map` outcomes with `run_id`, `event`, map age and
