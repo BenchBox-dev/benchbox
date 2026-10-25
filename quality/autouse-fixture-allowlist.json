@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "enforcement": "blocking",
+  "fixtures": [
+    {
+      "name": "tests/conftest.py::_chdb_connections_closed_after_module",
+      "scope": "module",
+      "owner": "CI maintainer",
+      "rationale": "Closes chDB connections left open by a test module so embedded-engine state cannot accumulate across modules; the open counter keeps its cost to a counter read per module.",
+      "expiry": "2027-04-30"
+    }
+  ]
+}
