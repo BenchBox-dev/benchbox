@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Root cause identified for each mismatching query with an executed sqlite3 vs DuckDB comparison on the same data.",
+    "Fix lands in the right layer (loader, fork generator, or benchmark) with a regression test, or the query is a registered SQLite skip with reason.",
+    "The published bundle is flagged with a known_defects id if its recorded rows were wrong, per results-data provenance policy."
+  ],
+  "description": "Found by the published-results audit (history://AffectedResults; noted in results-data/CORPUS_NOTES.md by #3398). In the published SQLite ClickBench SF1 bundle (…6eb94fe6) about 25 of 43 queries return row counts that differ from all 9 other engines, e.g. Q8 1 row vs 20, Q11-Q15 0 rows vs 9-10. The SQL changes since v0.4.1 touch only Q19 and Q43, so a rerun alone will not fix it. Likely causes to rule in or out: loading (empty strings vs NULL, type affinity of text/numeric columns), translation, or the SQLite reference data.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T12:30:20Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8aff157ca5d945018d3635cc00608481",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}

@@ -24255,6 +24255,13 @@
       "status": "done",
       "title": "Audit sqlglot >=30.23.0 BigQuery FILTER transpilation change against cloud_compat and pin or adapt"
     },
+    "sqlite-clickbench-sf1-row-count-mismatches-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "SQLite ClickBench SF1 returns different row counts from all other engines on about 25 of 43 queries"
+    },
     "sqlite-database-name-ignored-20261016": {
       "claim": null,
       "needs": [],
