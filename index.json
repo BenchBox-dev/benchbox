@@ -19188,7 +19188,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "QuestDB evaluates CAST('1999-5-01' AS DATE) to NULL, so TPC-DS Q16/Q94/Q95 filter on NULL bounds"
+      "title": "Unpadded date literals (CAST('1999-5-01' AS DATE)) evaluate to NULL on QuestDB and are unconfirmed on ClickHouse and other engines: audit every target engine and fix the generators that fail"
     },
     "quick-start-tutorials": {
       "claim": null,
