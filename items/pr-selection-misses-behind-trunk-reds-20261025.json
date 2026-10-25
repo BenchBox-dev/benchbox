@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "For each of #3018, #3066, #3122 and #3185, the current PR routing and coverage selection, replayed on that PR's diff and base, select the test that failed on Trunk (or a recorded dependency rule forces the tier that contains it); a test pins each case",
+    "The shadow-miss report, run over those four PRs, lists the failing tests as caught",
+    "cov-select-exit-shadow-20261021 cites the result"
+  ],
+  "context": "Source: classification of every Trunk push run on develop from 2026-10-10 to 2026-10-24 (recorded on trunk-red-run-triage-20261024; incident ids refer to that table). ",
+  "description": "Four incidents (INC-08, 10, 11, 13; 15 red Trunk runs) were real regressions that no PR run executed: #3018 skipped the fast and medium jobs by path selection although tests/unit/test_site_header_parity.py covered its CSS; #3066 and #3122 skipped medium jobs although tests/unit/cli/test_platform_options_reach_adapters.py covered the change; #3185 skipped medium jobs although tests/test_benchbox.py::TestBenchBox::test_translate_query covered it. Each was fixed forward or reverted only after landing on develop. Coverage selection must not go live while the routing that missed these tests is unchanged.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T03:29:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fd7297c567a44851b87f4ac753a9e998",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
