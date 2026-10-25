@@ -764,17 +764,21 @@ def corroborate(ledger: AppliedTuningLedger, introspected_state: IntrospectedSta
     entries: list[ReceiptEntry] = []
     for stmt in (s for s in ledger.statements if s.status != HARNESS_DEFAULT):
         if stmt.status == STATEMENT_FAILED:
-            is_session_failure = stmt.phase == PHASE_SESSION
+            is_transient_failure = stmt.phase == PHASE_SESSION and not stmt.mechanism
             reason = (
                 "session/config statement failed -- transient, not corroboration-eligible"
-                if is_session_failure
-                else "ddl/post_load statement failed -- blocks corroboration"
+                if is_transient_failure
+                else (
+                    "requested session setting failed -- blocks corroboration"
+                    if stmt.phase == PHASE_SESSION
+                    else "ddl/post_load statement failed -- blocks corroboration"
+                )
             )
             entries.append(
                 ReceiptEntry(
                     statement=stmt.statement,
                     phase=stmt.phase,
-                    verdict=TRANSIENT if is_session_failure else UNVERIFIABLE,
+                    verdict=TRANSIENT if is_transient_failure else UNVERIFIABLE,
                     table=stmt.table,
                     reason=reason,
                 )

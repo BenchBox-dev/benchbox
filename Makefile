@@ -29,7 +29,7 @@ DEVELOPMENT_TREE_ONLY_TARGETS := \
 	quality-governance-typecheck uv-lock-revision-check sqlglot-repro-retirement-check audit-deps audit-raw audit-raw-check \
 	audit-sha-check artifact-hygiene agent-instructions-check agent-identity-check security-audit \
 	agent-commit-range-check skill-integrity-check ci-lint pr-preflight pr-arm-auto-merge shrink-rollup \
-	pr-review-followups-list pr-review-followups dev-loop-metrics platform-manifest \
+	pr-review-followups-list pr-review-followups dev-loop-metrics ci-usage-report platform-manifest \
 	platform-manifest-check test-docker-parity blind-spots-list blind-spots-report \
 	soundness-drain-report soundness-drain-self-test oracle-review-recover worktree-audit worktree-finish worktree-reap
 
@@ -1481,6 +1481,13 @@ dev-loop-metrics:
 	@echo "---"; \
 	echo "Dev-loop PR metrics (CI-failure baseline, see dev-loop-metrics-ci-failure-baseline-2):"; \
 	test -f _project/scripts/dev_loop_pr_metrics.py && uv run -- python _project/scripts/dev_loop_pr_metrics.py --days "$(DEV_LOOP_METRICS_DAYS)" || true
+
+CI_USAGE_OUTPUT ?= .cache/ci-usage-report/report-$(CI_USAGE_SINCE)_$(CI_USAGE_UNTIL).json
+
+.PHONY: ci-usage-report
+ci-usage-report:
+	@test -n "$(CI_USAGE_SINCE)" -a -n "$(CI_USAGE_UNTIL)" || { echo "usage: make ci-usage-report CI_USAGE_SINCE=YYYY-MM-DD CI_USAGE_UNTIL=YYYY-MM-DD [CI_USAGE_OUTPUT=path] [CI_USAGE_ARGS=...]"; exit 2; }
+	uv run -- python _project/scripts/dev_loop_pr_metrics.py --usage-report --since "$(CI_USAGE_SINCE)" --until "$(CI_USAGE_UNTIL)" --output "$(CI_USAGE_OUTPUT)" $(CI_USAGE_ARGS)
 
 include $(BENCHBOX_MAKEFILE_ROOT)make/worktrees.mk
 

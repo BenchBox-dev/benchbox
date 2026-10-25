@@ -277,6 +277,7 @@ class PostgreSQLAdapter(PsycopgConnectionMixin, PlatformAdapter):
     plan_capture_phase_eligible = True
     supports_refresh_functions = True
     default_service_port = 5432
+    configure_session_is_tuning = True
 
     @property
     def platform_name(self) -> str:

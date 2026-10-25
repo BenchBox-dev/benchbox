@@ -9,6 +9,7 @@ from benchbox.core.tuning.applied_ledger import (
     EXECUTED,
     PHASE_DDL,
     PHASE_POST_LOAD,
+    PHASE_SESSION,
     STATEMENT_FAILED,
     AppliedStatement,
     AppliedTuningLedger,
@@ -383,6 +384,79 @@ def _bare_table(name: str) -> str:
     return normalize_identifier(last.strip('"`[]'))
 
 
+def applied_tuning_counts(
+    requested_types: Iterable[str],
+    table_tunings: dict[str, Any],
+    ledger_payload: dict[str, Any],
+    platform: str | None = None,
+) -> dict[str, Any]:
+    statements = [
+        AppliedStatement(
+            statement=str(item.get("statement") or ""),
+            phase=item.get("phase", PHASE_DDL),
+            status=str(item.get("status") or EXECUTED),
+            mechanism=item.get("mechanism"),
+            table=item.get("table"),
+        )
+        for item in ledger_payload.get("statements") or []
+        if isinstance(item, dict)
+    ]
+    applied = [statement for statement in statements if statement.is_tuning]
+    physical = [statement for statement in applied if statement.phase in _PHYSICAL_PHASES]
+    satisfied = [
+        str(item.get("intent") or "") for item in ledger_payload.get("satisfied") or [] if isinstance(item, dict)
+    ]
+    dropped = [str(item.get("intent") or "") for item in ledger_payload.get("dropped") or [] if isinstance(item, dict)]
+    dropped_targets = {target for target in map(_entry_target, dropped) if target is not None}
+
+    def footprints_for(tuning_type: TuningType) -> tuple[str, ...]:
+        capability = get_capability(platform, tuning_type) if platform else None
+        return _footprints(tuning_type, capability)
+
+    def evidenced(intent: RequestedIntent, match_columns: bool) -> bool:
+        footprints = footprints_for(intent.tuning_type)
+        if _covered(intent, footprints, dropped):
+            return False
+        return any(
+            _shows(intent, statement, footprints, match_columns=match_columns) for statement in physical
+        ) or _covered(intent, footprints, satisfied)
+
+    layout_types = {tuning_type for _attribute, tuning_type in LAYOUT_SLOTS}
+    tables: set[str] = set()
+    for entry in satisfied:
+        parsed = _entry_target(entry)
+        if parsed is not None and parsed[1] is not None and parsed[0] in layout_types and parsed not in dropped_targets:
+            tables.add(parsed[1])
+
+    types: set[str] = set()
+    for name in requested_types:
+        if name == "session_config":
+            if any(statement.phase == PHASE_SESSION for statement in applied):
+                types.add(name)
+            continue
+        tuning_type = _TUNING_TYPE_VALUES.get(name)
+        if (
+            tuning_type is not None
+            and tuning_type not in layout_types
+            and evidenced(RequestedIntent(tuning_type), False)
+        ):
+            types.add(name)
+
+    for table_name, table_tuning in table_tunings.items():
+        if not isinstance(table_tuning, dict):
+            continue
+        for attribute, tuning_type in LAYOUT_SLOTS:
+            columns = sorted(
+                (column for column in table_tuning.get(attribute) or [] if isinstance(column, dict)),
+                key=lambda column: column.get("order", 0),
+            )
+            names = tuple(str(column.get("name")) for column in columns)
+            if names and evidenced(RequestedIntent(tuning_type, str(table_name), names), True):
+                types.add(tuning_type.value)
+                tables.add(_bare_table(str(table_name)))
+    return {"tables_tuned": len(tables), "tuning_types": sorted(types)}
+
+
 __all__ = [
     "CONSTRAINT_TOGGLES",
     "DDL_REALIZED_REASON",
@@ -391,6 +465,7 @@ __all__ = [
     "OPTIMIZATION_FLAGS",
     "RECONCILIATION_FAILED_INTENT",
     "RequestedIntent",
+    "applied_tuning_counts",
     "declared_constraint_types",
     "reconcile_requested_intents",
     "requested_intents",

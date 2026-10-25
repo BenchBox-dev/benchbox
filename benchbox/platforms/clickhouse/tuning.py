@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from benchbox.core.exceptions import ConfigurationError
+from benchbox.core.tuning.applied_ledger import harness_connection
 from benchbox.platforms.base.tuning import make_informational_constraint_applier, supports_named_tuning_type
 from benchbox.utils.input_validation import validate_sql_identifier
 
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
 
 class ClickHouseTuningMixin:
     physical_identifier_case = "lower"
+    configure_session_is_tuning = True
 
     def _catalog_names(self, connection: Any, sql: str) -> list[str] | None:
         target = connection if connection is not None else getattr(self, "connection", None)
@@ -100,13 +102,14 @@ class ClickHouseTuningMixin:
                 }
             )
 
+        tuned_settings: dict[str, Any] = {}
         if self.tuning_enabled and benchmark_type.lower() in [
             "olap",
             "analytics",
             "tpch",
             "tpcds",
         ]:
-            olap_settings = {
+            tuned_settings = {
                 "max_bytes_in_join": int(self._parse_memory_setting(self.max_memory_usage) * 0.5),
                 "optimize_aggregation_in_order": 1,
                 "group_by_two_level_threshold": 100000,
@@ -114,17 +117,18 @@ class ClickHouseTuningMixin:
                 "max_bytes_before_external_sort": int(self._parse_memory_setting(self.max_memory_usage) * 0.5),
             }
 
-            settings.update(olap_settings)
-
         critical_failures = []
+        harness = harness_connection(connection)
         for setting, value in settings.items():
-            success = self._apply_setting_with_validation(connection, setting, value)
+            success = self._apply_setting_with_validation(harness, setting, value)
             if not success and setting in [
                 "use_query_cache",
                 "enable_writes_to_query_cache",
                 "enable_reads_from_query_cache",
             ]:
                 critical_failures.append(setting)
+        for setting, value in tuned_settings.items():
+            self._apply_setting_with_validation(connection, setting, value)
 
         if self.disable_result_cache or critical_failures:
             self.logger.debug("Validating cache control settings...")

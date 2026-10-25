@@ -16,6 +16,7 @@ from benchbox.core.throughput.containment import await_quiescence
 from benchbox.core.tuning.applied_ledger import (
     PHASE_DDL,
     PHASE_SESSION,
+    SESSION_CONFIG_MECHANISM,
     AppliedTuningLedger,
     is_schema_tuning_statement,
     recording_connection,
@@ -617,15 +618,7 @@ class PlatformAdapter(
                 quiet_console.print(self._applied_tuning_ledger.describe_outcome())
 
             benchmark_type = run_config.get("benchmark_type", "olap")
-            self.configure_for_benchmark(
-                recording_connection(
-                    connection,
-                    self._applied_tuning_ledger,
-                    PHASE_SESSION,
-                    execute_verbs=self.ledger_execute_verbs,
-                ),
-                benchmark_type,
-            )
+            self.configure_for_benchmark(self._session_recording_connection(connection), benchmark_type)
             self._drop_unhandled_spark_session_config(effective_tuning_config)
             self.capture_effective_session_config(connection, "after_configuration")
 
@@ -914,6 +907,17 @@ class PlatformAdapter(
         self._applied_tuning_ledger = AppliedTuningLedger()
         self._applied_layout_operations = []
 
+    def _session_recording_connection(self, connection: Any) -> Any:
+        tuning_session = self.configure_session_is_tuning
+        return recording_connection(
+            connection,
+            self._applied_tuning_ledger,
+            PHASE_SESSION,
+            execute_verbs=self.ledger_execute_verbs,
+            harness=not tuning_session,
+            mechanism=SESSION_CONFIG_MECHANISM if tuning_session else None,
+        )
+
     def _export_load_only_tuning(
         self,
         connection: Any,
@@ -928,15 +932,7 @@ class PlatformAdapter(
             requested_config_hash = effective_tuning_config.get_configuration_hash()
         self._fold_layout_operations_into_ledger()
         self._reconcile_requested_tuning(effective_tuning_config)
-        self.configure_for_benchmark(
-            recording_connection(
-                connection,
-                self._applied_tuning_ledger,
-                PHASE_SESSION,
-                execute_verbs=self.ledger_execute_verbs,
-            ),
-            benchmark_type,
-        )
+        self.configure_for_benchmark(self._session_recording_connection(connection), benchmark_type)
         apply_status = tuning_trust.apply_phase_status(self, bool(effective_tuning_config))
         final_status, ledger_payload, ledger_hash, _receipt_payload = tuning_trust.read_back_applied_ledger(
             self, connection, apply_status, bool(effective_tuning_config)

@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Development-only CI usage report in the maintainer metrics script and a make target; no shipped behavior changes."
+}
