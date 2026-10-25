@@ -24120,15 +24120,10 @@
       "title": "Fork: refresh onto upstream v30.24.0, reworking conflicting carried patches"
     },
     "sqlglot-fork-review-h1-governance": {
-      "claim": {
-        "expires_at": "2026-10-26T12:14:20Z",
-        "generation": "e6e4ebb608db48b0b769aa5a96dd94a2",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Governance: independent review for fork changes and soundness-path coverage of the wrapper, pin, baseline and recorded corpus"
     },
     "sqlglot-fork-review-h2-execution-evidence-gate": {
