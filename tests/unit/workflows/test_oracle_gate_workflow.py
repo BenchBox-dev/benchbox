@@ -67,9 +67,36 @@ def _text() -> str:
 
 def test_triggers_are_trusted_only() -> None:
     triggers = _triggers()
-    assert set(triggers) == {"pull_request_target", "issue_comment", "workflow_run", "workflow_dispatch", "schedule"}
+    assert set(triggers) == {
+        "push",
+        "pull_request_target",
+        "issue_comment",
+        "workflow_run",
+        "workflow_dispatch",
+        "schedule",
+    }
+    assert triggers["push"]["branches"] == ["develop"]
+    assert set(triggers["push"]) == {"branches", "paths"}
     assert "pull_request" not in triggers
     assert "pull_request_review" not in triggers
+
+
+def _sparse_entries(job: str) -> list[str]:
+    checkouts = [step for step in _steps(job) if "actions/checkout" in step.get("uses", "")]
+    assert len(checkouts) == 1
+    return checkouts[0]["with"]["sparse-checkout"].split()
+
+
+def _normalized(entries: list[str]) -> list[str]:
+    return [f"{entry}/**" if (REPO_ROOT / entry).is_dir() else entry for entry in entries]
+
+
+def test_push_paths_equal_the_sparse_checkout_policy_inputs() -> None:
+    paths = _triggers()["push"]["paths"]
+    assert "_project/scripts/oracle_reviewers/**" in paths
+    for job in ("gate", "sweep"):
+        assert sorted(paths) == sorted(_normalized(_sparse_entries(job)))
+    assert len(paths) == len(set(paths))
 
 
 def test_pull_request_target_covers_open_push_reopen_ready_and_edit() -> None:
@@ -261,7 +288,8 @@ def test_concurrency_is_one_group_per_pull_request() -> None:
     assert "inputs.pr" in group
     assert "pull_requests" not in group
     assert "github.run_id" in group
-    assert _load()["concurrency"]["cancel-in-progress"] is True
+    assert "cancel-in-progress: true" not in _text()
+    assert _load()["concurrency"]["cancel-in-progress"] == "${{ github.event_name != 'push' }}"
 
 
 def test_completion_runs_group_by_head_sha_apart_from_pull_request_gates() -> None:
@@ -270,6 +298,29 @@ def test_completion_runs_group_by_head_sha_apart_from_pull_request_gates() -> No
     assert group.count("github.event.workflow_run.head_sha") == 1
     assert group.index("bridge-") < group.index("github.event.pull_request.number")
     assert group.index("bridge-") < group.rindex("github.run_id")
+
+
+def _push_context() -> dict[str, Any]:
+    return {"github": {"event_name": "push", "event": {}, "run_id": "55", "sha": SHA}, "inputs": {}}
+
+
+def test_push_runs_only_the_sweep() -> None:
+    context = _push_context()
+    assert _evaluate(_jobs()["sweep"]["if"], context)
+    assert not _evaluate(_jobs()["gate"]["if"], context)
+    assert not _evaluate(_jobs()["bridge"]["if"], context)
+
+
+def test_push_sweeps_share_a_group_apart_from_pull_request_gates() -> None:
+    group = _render(_load()["concurrency"]["group"], _push_context())
+    assert group == "oracle-gate-push-sweep"
+    for number in (7, 8):
+        event = {"pull_request": {"number": number}}
+        context = {"github": {"event_name": "pull_request_target", "event": event, "run_id": "55"}, "inputs": {}}
+        assert _render(_load()["concurrency"]["group"], context) == f"oracle-gate-{number}"
+    cancel = _load()["concurrency"]["cancel-in-progress"].removeprefix("${{").removesuffix("}}")
+    assert _evaluate(cancel, _push_context()) is False
+    assert _evaluate(cancel, {"github": {"event_name": "pull_request_target"}}) is True
 
 
 def test_workflow_permissions_are_empty_and_jobs_stay_minimal() -> None:
@@ -403,7 +454,7 @@ def test_trigger_agrees_with_decide_on_trailing_whitespace(trailing: str) -> Non
 def test_non_comment_events_keep_the_gate_conditions() -> None:
     for name in ("pull_request_target", "workflow_dispatch"):
         assert _evaluate(_jobs()["gate"]["if"], {"github": {"event_name": name, "event": {}}})
-    for name in ("schedule", "workflow_run"):
+    for name in ("schedule", "workflow_run", "push"):
         assert not _evaluate(_jobs()["gate"]["if"], {"github": {"event_name": name, "event": {}}})
 
 
@@ -486,8 +537,9 @@ def _split_top_level(expression: str, separator: str) -> list[str]:
     return parts
 
 
-def test_only_the_scheduled_run_is_titled_sweep() -> None:
+def test_only_the_scheduled_and_push_runs_are_titled_sweep() -> None:
     assert _run_name("schedule", {}) == "oracle-gate (schedule sweep)"
+    assert _run_name("push", {}) == "oracle-gate (push sweep)"
     titles = {
         "workflow_run": _run_name("workflow_run", {"workflow_run": {"head_sha": SHA}}),
         "pull_request_target": _run_name("pull_request_target", {"pull_request": {"number": 7}}),

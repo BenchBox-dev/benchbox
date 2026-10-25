@@ -701,8 +701,14 @@ which the checker strips, still triggers a run; the checker then decides on the
 exact text), on completion of
 `oracle-verdict` and `oracle-review` (the bridge for review and thread events,
 which have no trusted trigger of their own), on `workflow_dispatch` with a `pr`
-input, and on an hourly `schedule` sweep over open pull requests targeting
-`develop`. A completion run evaluates nothing itself: its `bridge` job finds the
+input, on an hourly `schedule` sweep over open pull requests targeting
+`develop`, and on a `push` to `develop` that touches the trusted inputs the
+gate reads from `develop` (the paths in the sparse checkout, including the
+workflow itself), so a merged policy or gate change re-evaluates open pull
+requests without waiting for the hour. Only the sweep job runs on `push`; the
+gate and bridge jobs exclude it. Push sweeps share one concurrency group,
+separate from every pull request's, and queue rather than cancel, so a running
+sweep finishes before the next starts. A completion run evaluates nothing itself: its `bridge` job finds the
 open `develop` pull request whose head is the completed run's head commit, not
 the first pull request in the event payload, which can target another branch or
 be stacked on that head, and dispatches the gate for it from `develop`. The
