@@ -2735,12 +2735,17 @@
       "title": "Cut over to changelog fragments: migrate [Unreleased], enforce entries in CI, retire the union rule"
     },
     "changelog-fragments-04-skill-sync": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T09:51:35Z",
+        "generation": "81ad5493348e43c790c57e0510ce5b28",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [
         "changelog-fragments-03-cutover"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Update the benchbox release skill source and regenerate the tracked mirror for the fragment flow"
     },
     "changelog-fragments-05-end-to-end-verification": {
