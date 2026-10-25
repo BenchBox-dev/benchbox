@@ -15947,18 +15947,13 @@
       "title": "Move oracle-review consumers to oracle-gate"
     },
     "oracle-gate-cutover-live-verification-20261025": {
-      "claim": {
-        "expires_at": "2026-10-26T05:09:13Z",
-        "generation": "24f9a5db1f5e449fb1608a2f27d739a4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [
         "oracle-review-notify-only-20261025",
         "oracle-review-recover-retire-20261025"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Verify the oracle-gate event paths live after the oracle-review cutover"
     },
     "oracle-gate-fail-closed-evaluation-errors-20261025": {
