@@ -1,5 +1,34 @@
 # Corpus Generation Notes - 2026-04-03
 
+## Fork 30.24.0.15 published-impact audit (2026-10-25)
+
+- QuestDB unpadded date literals: QuestDB read `CAST('1999-5-01' AS DATE)` as
+  NULL, so TPC-DS Q16, Q94 and Q95 (base and OBT) filtered on NULL date bounds.
+  No QuestDB bundle exists (367 manifests checked), so no sidecar changed.
+  DataFusion text is unchanged for dates, and ClickHouse (chDB 26.9.2.1) reads
+  unpadded text, so ClickHouse bundles need no change.
+- NULL ordering (fork #67): translation now keeps the source dialect's NULL
+  placement where the target has no NULLS clause for the position. The audit
+  found TPC-DS Q74 on T-SQL, Doris and StarRocks as the only query whose sort
+  keys hold NULLs in the data checked. No published bundle ran an affected
+  query with NULL sort keys, and no `known_defects` id was added. The
+  explicit `NULLS LAST` on Snowflake, Databricks and BigQuery noted under the
+  2026-10-24 audit preserves the DuckDB reference placement and is kept.
+- Spark and Databricks (fork #69): `\1` regular-expression references are
+  written `$1`, and sub-day `DATE_TRUNC` units are no longer written as
+  `TRUNC`, which returns NULL for them. This fixes ClickBench Q29 (recorded
+  0, 1 and 1 rows at SF 0.1, 1 and 10 against 0, 0 and 6) and Q43 (1 row at
+  every scale against 2, 22 and 159) on Databricks. The three Databricks
+  ClickBench bundles (`clickbench_sf01_databricks_sql_20261003_220608_70c9438e`,
+  `clickbench_sf1_databricks_sql_20261003_230712_3a9e1d61`,
+  `clickbench_sf10_databricks_sql_20261003_231900_2437b487`) recorded those wrong
+  rows and now carry `known_defects: ["defective-superseded-sql-translation"]`
+  (the existing id; no new id). Flagging the SF0.1 bundle leaves two ranked
+  platforms (BigQuery and Snowflake) in the ClickBench SF0.1 cohort, so it is
+  listed in `DOCUMENTED_SHALLOW_COHORTS` in `validate_corpus.py`. The bundles
+  are not rerun or edited; replacing them means rerunning with the current
+  wheel, which restores the cohort.
+
 ## Results that ran superseded SQL translations (2026-10-24)
 
 BenchBox's SQL transpilation fix-ups moved into the permanent SQLGlot fork

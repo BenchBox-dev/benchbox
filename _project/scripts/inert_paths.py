@@ -386,9 +386,9 @@ def scan_tree(repo_root: str | Path) -> dict[str, list[str]]:
     return refs
 
 
-def doc_reader_index(repo_root: str | Path) -> dict[str, list[str]]:
+def doc_reader_index(repo_root: str | Path, refs: dict[str, list[str]] | None = None) -> dict[str, list[str]]:
     index: dict[str, set[str]] = {}
-    for source, hits in scan_tree(repo_root).items():
+    for source, hits in (scan_tree(repo_root) if refs is None else refs).items():
         if not _is_test_file(source):
             continue
         for hit in hits:

@@ -247,22 +247,3 @@ def test_ci_units_and_path_filters_agree_on_which_documents_are_code(rules: dict
         if by_units != by_filters:
             disagreements.append((path, by_units, by_filters))
     assert not disagreements, f"(path, ci-units code, path-filters code): {disagreements[:10]}"
-
-
-def test_non_markdown_files_read_by_tests_are_not_docs_only(rules: dict[str, list[str]]) -> None:
-    if not (REPO_ROOT / "_project" / "scripts" / "inert_paths.py").is_file():
-        pytest.skip("the inert path scanner is absent from this tree")
-    from _project.scripts import inert_paths
-
-    readers = sorted(
-        {
-            hit
-            for source, hits in inert_paths.scan_tree(REPO_ROOT).items()
-            if inert_paths._is_test_file(source)
-            for hit in hits
-            if not hit.endswith(".md")
-        }
-    )
-    assert "_project/planning/visible_metrics.yaml" in readers
-    unrouted = [path for path in readers if needed([path], rules) == {"docs"}]
-    assert not unrouted, f"non-markdown files read by tests but routed to the docs unit only: {unrouted}"

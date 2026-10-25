@@ -26,12 +26,13 @@ UNIDENTIFIED_TESTCASE = "<unidentified testcase>"
 CONTEXT_PHASES = ("setup", "run", "teardown")
 MAP_ARTIFACT_PREFIX = "t2-coverage-map-"
 MAX_MAP_BEHIND_COMMITS = 50
+MAX_DISCOVERY_RUNS = 60
 MAX_SELECTION_RUNTIME_SECONDS = 900.0
 MAX_ARGV_NODEIDS = 10000
 UNKNOWN_TEST_SECONDS = 1.0
 TESTS_ROOT = "tests"
 TRUNK_WORKFLOW_PATH = ".github/workflows/trunk-coverage.yml"
-TRUSTED_MAP_EVENTS = ("push", "workflow_dispatch")
+TRUSTED_MAP_EVENTS = ("push", "schedule", "workflow_dispatch")
 SELECTION_SHADOW = True
 
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -929,7 +930,7 @@ def _list_map_artifacts(repo: Path, slug: str, prefix: str) -> Iterator[tuple[st
     runs = _gh_get(
         repo,
         f"repos/{slug}/actions/workflows/{PurePosixPath(TRUNK_WORKFLOW_PATH).name}/runs",
-        {"branch": "develop", "per_page": str(MAX_MAP_BEHIND_COMMITS)},
+        {"branch": "develop", "per_page": str(MAX_DISCOVERY_RUNS)},
         '.workflow_runs[] | "\\(.id)\\t\\(.head_sha)\\t\\(.event)"',
     )
     for line in runs:
@@ -955,7 +956,7 @@ def _split_row(line: str) -> tuple[str, str, str]:
     return parts[0], parts[1], parts[2]
 
 
-def _trusted_run_head(repo: Path, slug: str, run_id: int) -> str | None:
+def _trusted_run(repo: Path, slug: str, run_id: int) -> tuple[str, str] | None:
     proc = subprocess.run(
         [
             "gh",
@@ -979,7 +980,7 @@ def _trusted_run_head(repo: Path, slug: str, run_id: int) -> str | None:
     sha, path, event, branch, head_slug = fields
     if path != TRUNK_WORKFLOW_PATH or event not in TRUSTED_MAP_EVENTS or branch != "develop" or head_slug != slug:
         return None
-    return sha if _SHA_RE.match(sha) else None
+    return (sha, event) if _SHA_RE.match(sha) else None
 
 
 def _is_ancestor(repo: Path, sha: str, base_sha: str) -> bool:
@@ -1024,9 +1025,10 @@ def fetch_map(
     try:
         resolved = slug or _github_slug(repo)
         for name, run_id, _created in _list_map_artifacts(repo, resolved, prefix):
-            head = _trusted_run_head(repo, resolved, run_id)
-            if head is None or not _is_ancestor(repo, head, base_sha):
+            trusted = _trusted_run(repo, resolved, run_id)
+            if trusted is None or not _is_ancestor(repo, trusted[0], base_sha):
                 continue
+            head, event = trusted
             target = dest / name
             if not _download_artifact(repo, resolved, run_id, name, target):
                 continue
@@ -1036,16 +1038,30 @@ def fetch_map(
                     "status": "found",
                     "sha": head,
                     "path": str(found[1]),
-                    "reason": f"newest coverage map from develop ancestor {head}",
+                    "run_id": run_id,
+                    "event": event,
+                    "artifact": name,
+                    "reason": f"newest coverage map from develop ancestor {head} (run {run_id}, event {event})",
                 }
         return {
             "status": "missing",
             "sha": None,
             "path": None,
+            "run_id": None,
+            "event": None,
+            "artifact": None,
             "reason": "no coverage map artifact from a develop SHA that is an ancestor of the base",
         }
     except SelectionError as exc:
-        return {"status": "lookup-failed", "sha": None, "path": None, "reason": str(exc)}
+        return {
+            "status": "lookup-failed",
+            "sha": None,
+            "path": None,
+            "run_id": None,
+            "event": None,
+            "artifact": None,
+            "reason": str(exc),
+        }
 
 
 def _write_github_output(path: Path | None, values: dict[str, str]) -> None:
@@ -1111,13 +1127,20 @@ def _cmd_build_map(args: argparse.Namespace) -> int:
 
 def _cmd_fetch_map(args: argparse.Namespace) -> int:
     result = fetch_map(args.repo_root, args.base_sha, args.dest_dir, slug=args.slug)
-    payload = {"status": result["status"], "sha": result["sha"], "path": result["path"], "reason": result["reason"]}
+    payload = {key: result[key] for key in ("status", "sha", "path", "run_id", "event", "artifact", "reason")}
     if args.json_out is not None:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
         args.json_out.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     _write_github_output(
         args.github_output,
-        {"map-status": result["status"], "map-sha": result["sha"] or "", "map-path": result["path"] or ""},
+        {
+            "map-status": result["status"],
+            "map-sha": result["sha"] or "",
+            "map-path": result["path"] or "",
+            "map-run-id": str(result["run_id"] or ""),
+            "map-event": result["event"] or "",
+            "map-artifact": result["artifact"] or "",
+        },
     )
     if result["status"] == "lookup-failed":
         print(f"::warning::coverage map lookup failed: {result['reason']}")

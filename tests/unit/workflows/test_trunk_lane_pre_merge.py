@@ -136,7 +136,10 @@ def test_core_waits_for_both_lanes_and_expects_them_exactly_when_their_paths_cha
 def test_the_trunk_workflow_accepts_the_medium_only_call(filename: str) -> None:
     workflow = _load(filename)
     triggers = workflow[True]
-    assert triggers["push"] == {"branches": ["develop"]}
+    if filename == "trunk.yml":
+        assert triggers["push"] == {"branches": ["develop"]}
+    else:
+        assert "push" not in triggers
     assert "workflow_dispatch" in triggers
     assert triggers["workflow_call"]["inputs"] == {
         "medium-only": {"type": "boolean", "default": False},

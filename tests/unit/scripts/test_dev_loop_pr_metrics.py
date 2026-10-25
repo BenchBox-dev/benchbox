@@ -1829,6 +1829,43 @@ def test_post_merge_signal_counts_incidents_missing_and_duplicate_runs() -> None
     assert coverage["runs"] == 0 and coverage["first_attempt_red_rate"] is None
 
 
+def test_trunk_coverage_signal_counts_scheduled_producer_runs_but_not_monitor_only_runs() -> None:
+    api = _UsageApi()
+    api.commits = [{"sha": "c1", "commit": {"committer": {"date": _at(10)}}}]
+
+    def coverage_run(run_id: int, event: str, sha: str) -> dict:
+        return _usage_run(
+            run_id,
+            _at(10, 5),
+            path=".github/workflows/trunk-coverage.yml",
+            event=event,
+            head_branch="develop",
+            head_sha=sha,
+            updated_at=_at(10, 50),
+            head_commit={"timestamp": _at(10)},
+        )
+
+    api.runs = [
+        coverage_run(1, "schedule", "c1"),
+        coverage_run(2, "workflow_dispatch", "c1"),
+        coverage_run(3, "schedule", "c1"),
+    ]
+    api.jobs = {
+        1: [_usage_job(1, "medium-coverage-map", 1, _at(10, 5), _at(10, 6), _at(10, 40))],
+        2: [_usage_job(2, "medium-coverage-map", 1, _at(10, 5), _at(10, 6), _at(10, 40))],
+        3: [
+            _usage_job(3, "coverage-map-staleness", 1, _at(10, 5), _at(10, 6), _at(10, 8)),
+            _usage_job(4, "medium-coverage-map", 1, _at(10, 5), _at(10, 5), _at(10, 5), "skipped"),
+        ],
+    }
+    collection = _collect(api, USAGE_DAY + timedelta(hours=10), USAGE_DAY + timedelta(hours=13))
+    signal = metrics.build_usage_report(collection)["post_merge"]["workflows"]["trunk-coverage.yml"]
+    assert signal["runs"] == 2
+    assert signal["missing_exact_sha_runs"] is None
+    assert signal["duplicate_exact_sha_runs"] is None
+    assert "do not apply" in signal["guardrail"]
+
+
 def test_open_red_incident_is_reported_as_ongoing() -> None:
     api = _UsageApi()
     api.commits = [
