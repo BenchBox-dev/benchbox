@@ -379,7 +379,7 @@ UPSTREAM_JOINORDER_PARSE = (
     "emits no dialect SQL and ships in no wheel"
 )
 
-UPSTREAM_SQLGLOT_ALLOWLIST: dict[str, str] = {
+_UPSTREAM_SQLGLOT_TOOLS: dict[str, str] = {
     "_project/scripts/build_joinorder_data.py": UPSTREAM_JOINORDER_PARSE,
     "_project/sql-translation-ml/corpus.py": UPSTREAM_ML_EVALUATION,
     "_project/sql-translation-ml/evaluate.py": UPSTREAM_ML_EVALUATION,
@@ -395,7 +395,7 @@ BASE_AVAILABILITY = (
     "Import guard that reports a missing bundled runtime before translate_query delegates to the wrapper"
 )
 
-BYPASS_ALLOWLIST: dict[tuple[str, str], AllowlistEntry] = {
+_BYPASS_ENTRIES: dict[tuple[str, str], AllowlistEntry] = {
     ("benchbox/base.py", KIND_IMPORT): AllowlistEntry(2, "7e7849bc6ba20bd5", AVAILABILITY_GUARD, BASE_AVAILABILITY),
     ("benchbox/core/equivalence/builders/tpcds.py", KIND_IMPORT): AllowlistEntry(
         2, "3cbc8c0042278b22", PARSE_ONLY, EQUIVALENCE_TPCDS
@@ -454,6 +454,18 @@ BYPASS_ALLOWLIST: dict[tuple[str, str], AllowlistEntry] = {
     ("_project/sqlglot-upstream/repros/generator.py", KIND_CALL): AllowlistEntry(
         3, "cb0adf22cc55efcd", PARSE_ONLY, GENERATOR_FUZZ_PILOT
     ),
+}
+
+
+def _root_present(path: str) -> bool:
+    return (REPO_ROOT / path.split("/", 1)[0]).is_dir()
+
+
+BYPASS_ALLOWLIST: dict[tuple[str, str], AllowlistEntry] = {
+    key: entry for key, entry in _BYPASS_ENTRIES.items() if _root_present(key[0])
+}
+UPSTREAM_SQLGLOT_ALLOWLIST: dict[str, str] = {
+    path: reason for path, reason in _UPSTREAM_SQLGLOT_TOOLS.items() if _root_present(path)
 }
 
 
