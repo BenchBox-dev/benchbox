@@ -16453,12 +16453,17 @@
       "title": "Owner: give agents their own GitHub identity so they cannot post stand-ins"
     },
     "owner-drop-oracle-review-required-20261021": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T02:04:20Z",
+        "generation": "46438ca2c7574b63822544b6171bbe26",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [
         "oracle-gate-consumers-cutover-20261021"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Owner: drop oracle-review from the develop ruleset"
     },
     "owner-oracle-gate-required-20261021": {
