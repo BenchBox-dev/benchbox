@@ -375,7 +375,7 @@ def test_augmentation_gives_a_second_warehouse_and_the_query_parameters(tmp_path
     tables = {}
     for table, lines in files.items():
         tables[table] = source / f"{table}.dat"
-        tables[table].write_text("\n".join(lines) + "\n")
+        tables[table].write_text("\n".join(lines) + "\n", encoding="utf-8")
     queries = {
         "16.default": {"duckdb": "WHERE \"ca_state\" = 'IL' AND \"web_company_name\" = 'pri'"},
         "16.1001": {"duckdb": "WHERE \"ca_state\" = 'IA'"},
@@ -385,7 +385,7 @@ def test_augmentation_gives_a_second_warehouse_and_the_query_parameters(tmp_path
     def column(table: str, name: str) -> list[str]:
         names = [c.name for c in next(t for t in TABLES if t.name == table).columns]
         index = names.index(name)
-        return [line.split("|")[index] for line in augmented.tables[table].read_text().splitlines()]
+        return [line.split("|")[index] for line in augmented.tables[table].read_text(encoding="utf-8").splitlines()]
 
     assert augmented.benchmark == augmentation.AUGMENTED
     assert column("catalog_sales", "cs_warehouse_sk") == ["2", "1", "2", "1"]

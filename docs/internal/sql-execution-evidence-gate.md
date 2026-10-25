@@ -22,7 +22,9 @@ transformer), executes it on generated SF0.01 data and checks:
 | `baseline` | The rows differ from the baseline checkout's rows and the difference is not a verified improvement. |
 
 Engines: SQLite and DuckDB always, DataFusion when installed, PostgreSQL when
-`BENCHBOX_POSTGRES_DSN` is set (the CI job provides a service container). chDB
+`BENCHBOX_POSTGRES_DSN` is set (the CI job provides a service container). PostgreSQL tables are
+analyzed after loading so that unindexed joins do not run on default planner
+statistics. chDB
 is not run: the `chdb` wheel does not load on the maintainer macOS host and no
 ClickHouse server is available locally, so ClickHouse output stays covered by
 the text corpus until a Linux run is added.
