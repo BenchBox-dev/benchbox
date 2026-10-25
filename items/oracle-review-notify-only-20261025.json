@@ -5,7 +5,7 @@
     "tests/unit/workflows/test_oracle_verdict_workflow.py asserts that no oracle-verdict step lists or reruns oracle-review runs, and fails on the previous workflow. The post job no longer has actions: write.",
     "Every test that references these workflows passes. Run: uv run -- pytest -q tests/unit/workflows tests/unit/scripts -k 'oracle or release_pr'.",
     "actionlint is clean for oracle-review.yml and oracle-verdict.yml, and make pr-preflight passes.",
-    "Updated for the notification-only role, with no remaining text that describes oracle-review as a check: docs/internal/oracle-review-v2.md, docs/internal/repo-admin-settings.md, docs/internal/soundness-drain.md (also remove the claim that every thread reply triggers the workflow), docs/internal/merge-queue-governance.md (line 53), docs/internal/dev-loop-property-ledger.md (workflow and test rows, and line 196), the 'What stays' section of _project/decisions/oracle-review-check-retired-2026-10-24.md, and the oracle_gate.py --help description. make docs-validate and make docs-reference-inventory-check pass.",
+    "Updated for the notification-only role, with no remaining current-behavior text that describes oracle-review as a check (historical narrative stays as written): docs/internal/oracle-review-v2.md, docs/internal/repo-admin-settings.md, docs/internal/soundness-drain.md (also remove the claim that every thread reply triggers the workflow), docs/internal/merge-queue-governance.md (line 53), docs/internal/dev-loop-property-ledger.md (workflow and test rows, and line 196), the 'What stays' section of _project/decisions/oracle-review-check-retired-2026-10-24.md, and the oracle_gate.py --help description. make docs-validate and make docs-reference-inventory-check pass.",
     "The design doc states that the notification workflow is controlled by the pull request and can be deleted or altered by it, so the trusted fallbacks are the hourly sweep and, once oracle-verdict-dispatch-gate-after-review-20261025 lands, the verdict's explicit dispatch.",
     "Live check after merge: on a develop pull request that receives a review, an oracle-review workflow run whose job is review-event succeeds. No new oracle-review check run appears on that head, and oracle-gate's bridge job runs for the completion. Run IDs are recorded in context."
   ],
@@ -38,6 +38,14 @@
       "generation": "9b0e2556c9e14eb0bb8e6eabe79ac1b4",
       "op": "take",
       "op_id": "41b950fc2b7d4ea19b04dfa6dc9cdd74",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T03:25:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "57b28fc43ead463a95531bfda13ed6ef",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
