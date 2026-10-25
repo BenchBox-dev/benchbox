@@ -65,7 +65,7 @@ points the providers `anthropic`, `openai-codex`, `muse-code` and
 refuses an empty URL or one that is not `https://`.
 
 Reviews reach the gateway only while the Mac is awake and online; otherwise
-attempts are absent and the hourly sweep retries.
+attempts are absent and the next sweep retries (see the triggers below).
 
 **Accepted risk.** The reviewer is not confined to files. It can read any file
 the runner user can read, and it can read its own client token, for example
@@ -518,8 +518,16 @@ request; the attempt jobs have no concurrency group of their own.
   checking any claimed grammar or documented behaviour.
 - `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>`
   does the same. A dispatch from any other ref is refused.
-- An hourly schedule retries pull requests whose last result on the current
-  head is pending.
+- A sweep retries pull requests whose last result on the current head is
+  pending and due. It runs on every push to `develop` and on an hourly
+  schedule; GitHub starts the schedule irregularly (2.0 to 6.1 hours apart
+  between 2026-10-20 and 2026-10-25), so the first push after a head becomes
+  due is the usual trigger. The target is a dispatch within 25 minutes of that
+  push, or at the next scheduled sweep when no push comes. Push and
+  schedule sweeps share one concurrency group that never cancels a running
+  sweep. The sweep skips a pull request that has a queued or in-progress
+  `oracle-verdict` run, so it never cancels a retry in flight. The daily
+  budget, backoff and attempt limits are unchanged.
 
 A rerun on the same head needs a previous run in which every attempted
 reviewer was absent. A run that stayed pending because its artifacts failed
