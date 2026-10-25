@@ -12,6 +12,7 @@ from benchbox.core.constants import (
     GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS,
 )
 from benchbox.core.errors import PlanCaptureError
+from benchbox.core.gateway import is_greybeam_gateway, raise_greybeam_maintenance_unsupported
 from benchbox.core.operations import OperationExecutor
 from benchbox.core.plan_capture_phase import (
     propagate_query_execution_metadata,
@@ -766,8 +767,13 @@ class TestDriversMixin:
         run_config["_effective_execution_type"] = "power"
         return self._execute_all_queries(benchmark, connection, run_config)
 
+    def _greybeam_routed(self) -> bool:
+        return is_greybeam_gateway(getattr(getattr(self, "gateway_endpoint", None), "name", None))
+
     def _execute_maintenance_test(self, benchmark, connection: Any, run_config: dict) -> list[dict[str, Any]]:
         console = quiet_console
+        if self._greybeam_routed():
+            raise_greybeam_maintenance_unsupported()
 
         benchmark_name = self._resolve_benchmark_slug(benchmark, run_config)
         benchmark_id = normalize_benchmark_id(benchmark_name)
@@ -785,6 +791,9 @@ class TestDriversMixin:
         requested_phases = set((run_config.get("options") or {}).get("requested_phases") or [])
         if not requested_phases:
             requested_phases = {"power", "throughput", "maintenance"}
+        skip_maintenance = self._greybeam_routed() and "maintenance" in requested_phases
+        if skip_maintenance and (run_config.get("options") or {}).get("requested_phases"):
+            raise_greybeam_maintenance_unsupported()
 
         benchmark_name = self._resolve_benchmark_slug(benchmark, run_config)
         benchmark_id = normalize_benchmark_id(benchmark_name)
@@ -806,6 +815,25 @@ class TestDriversMixin:
         )
         for phase_key, phase_label, method_name in phases:
             if phase_key in requested_phases:
+                if phase_key == "maintenance" and skip_maintenance:
+                    warning = (
+                        "Maintenance Test skipped: the greybeam gateway does not reflect refresh writes in its "
+                        "CDC-fed Iceberg replica; pass --phases without maintenance to silence this warning"
+                    )
+                    console.print(f"[bold red]WARNING: {warning}[/bold red]")
+                    self.logger.warning(warning)
+                    all_results.append(
+                        {
+                            "query_id": "maintenance_skipped",
+                            "execution_time_seconds": 0.0,
+                            "status": "SKIPPED",
+                            "rows_returned": 0,
+                            "error": warning,
+                            "test_type": "maintenance",
+                            "maintenance_skipped": True,
+                        }
+                    )
+                    continue
                 if phase_key == "maintenance":
                     boundary = check_phase_boundary(getattr(self, "_last_throughput_test_result", None))
                     if not boundary.proceed:

@@ -132,6 +132,33 @@ log a warning. Gateway options are not available through MCP. A gateway-routed r
 suppressed and publish, submit, bundle validation, the results database and metrics readiness all refuse it as
 non-official. A stored result that claims `official` while `platform.gateway.routed` is true is treated the same way.
 
+#### Greybeam lifecycle guardrails
+
+Greybeam queries an Iceberg replica that CDC keeps in sync with the native Snowflake tables. Loading or refreshing
+through the gateway therefore leaves the replica empty or stale, and queries against it return wrong answers.
+BenchBox refuses these runs before any work starts:
+
+- **Generate and load phases** raise `ConfigurationError`. The default phase set includes both, so pass explicit query
+  phases (for example `--phases power,throughput`) after loading natively. The escape hatch needs both
+  `--allow-greybeam-inline-load` and `BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD=1`; results from such a run are invalid data.
+- **TPC-H RF1/RF2 and TPC-DS maintenance streams** fail fast when `maintenance` is named in `--phases` or the
+  maintenance test type is selected. When the maintenance phase is only implied (a combined run without `--phases`), it
+  is skipped with a loud warning and a `maintenance_skipped: true` row with status `SKIPPED` in the query results.
+  The escape hatch does not cover maintenance.
+
+Quiescence runbook, to run after every native load or refresh and before the first gateway query:
+
+1. **Row-count parity.** For every benchmark table, compare `SELECT COUNT(*)` through the native endpoint with the same
+   count through the gateway. Any difference means the replica has not caught up.
+2. **Lag threshold.** Repeat the parity check at a fixed interval (for example 60 seconds). Treat the replica as
+   quiescent only after parity holds on three consecutive checks with no source writes in between. Replication lag
+   itself comes from the vendor's own monitoring; BenchBox does not read it.
+3. **Abort criteria.** Abort the run without recording results if parity is not reached within the time budget you set
+   before the load (size it to the data volume), if row counts ever move backwards, or if a gateway query returns zero
+   rows for a table that is non-empty natively.
+
+Only after step 3 passes run `benchbox run --platform snowflake --gateway greybeam ... --phases power`.
+
 ## Authentication Methods
 
 ### Password Authentication

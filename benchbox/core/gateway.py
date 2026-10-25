@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from benchbox.core.exceptions import ConfigurationError
 from benchbox.core.platform_manifest import get_all_platform_aliases
 
 if TYPE_CHECKING:
@@ -18,6 +19,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_GATEWAY = "native"
 GATEWAY_ROUTED_PLATFORMS = frozenset({"snowflake"})
 INSECURE_GATEWAY_ENV = "BENCHBOX_ALLOW_INSECURE_GATEWAY"
+GREYBEAM_GATEWAY = "greybeam"
+GREYBEAM_LOAD_ENV = "BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD"
+GREYBEAM_INLINE_LOAD_OPTION = "allow_greybeam_inline_load"
 GATEWAY_CONNECTION_OPTIONS = (
     "gateway_host",
     "gateway_port",
@@ -241,3 +245,48 @@ __all__ = [
     "resolve_requested_gateway",
     "supported_gateways",
 ]
+
+
+def is_greybeam_gateway(gateway: str | None) -> bool:
+    return (gateway or "").strip().lower() == GREYBEAM_GATEWAY
+
+
+def enforce_greybeam_lifecycle(
+    gateway: str | None,
+    *,
+    generate: bool,
+    load: bool,
+    maintenance_requested: bool = False,
+    allow_inline_load: bool = False,
+) -> None:
+    if not is_greybeam_gateway(gateway):
+        return
+    if generate or load:
+        phases = " and ".join(name for name, enabled in (("generate", generate), ("load", load)) if enabled)
+        if not allow_inline_load:
+            raise ConfigurationError(
+                f"The greybeam gateway cannot run the {phases} phase inline: Greybeam queries an Iceberg replica "
+                "kept in sync by CDC, so loading through the gateway leaves the replica empty or stale. Load native, "
+                "wait for CDC quiescence (see docs/platforms/snowflake.md), then run only query phases "
+                "(for example --phases power). To override, pass --allow-greybeam-inline-load and set "
+                f"{GREYBEAM_LOAD_ENV}=1; results from that run are invalid data."
+            )
+        if os.environ.get(GREYBEAM_LOAD_ENV) != "1":
+            raise ConfigurationError(
+                f"--allow-greybeam-inline-load also requires {GREYBEAM_LOAD_ENV}=1 in the environment "
+                f"(the {phases} phase through greybeam produces invalid data)"
+            )
+        logger.warning(
+            "Inline %s through the greybeam gateway was explicitly allowed; results from this run are invalid data.",
+            phases,
+        )
+    if maintenance_requested:
+        raise_greybeam_maintenance_unsupported()
+
+
+def raise_greybeam_maintenance_unsupported() -> None:
+    raise ConfigurationError(
+        "The greybeam gateway does not support maintenance (TPC-H RF1/RF2, TPC-DS maintenance streams): "
+        "refresh writes through the gateway are not reflected in the CDC-fed Iceberg replica. Remove the "
+        "maintenance phase from --phases."
+    )
