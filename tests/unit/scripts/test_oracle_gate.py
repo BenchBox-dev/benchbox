@@ -525,11 +525,75 @@ def test_pull_read_failing_three_times_posts_failure_to_the_given_head(
     assert [(head, oracle_gate.gate_state(status)) for head, status, _ in posts] == [(OTHER_HEAD, "failure")]
 
 
-def test_pull_read_failing_three_times_without_a_head_posts_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+def _stub_graphql_head(monkeypatch: pytest.MonkeyPatch, result: Any) -> list[tuple[str, int]]:
+    calls: list[tuple[str, int]] = []
+
+    def head(token: str, repo: str, pr: int) -> Any:
+        calls.append((repo, pr))
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    monkeypatch.setattr(oracle_gate, "fetch_head_oid", head)
+    return calls
+
+
+def test_pull_read_failing_three_times_with_a_graphql_head_posts_failure_to_it(
+    monkeypatch: pytest.MonkeyPatch, sleeps: list[float]
+) -> None:
+    calls = _stub_unreadable_pull(monkeypatch, failures=99)
+    graphql = _stub_graphql_head(monkeypatch, OTHER_HEAD)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+    assert len(calls) == 3
+    assert sleeps == [2, 4]
+    assert graphql == [("o/r", 7)]
+    assert [(head, oracle_gate.gate_state(status)) for head, status, _ in posts] == [(OTHER_HEAD, "failure")]
+
+
+def test_pull_read_and_graphql_read_both_failing_posts_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
     _stub_unreadable_pull(monkeypatch, failures=99)
+    graphql = _stub_graphql_head(monkeypatch, oracle_gate.CheckError("graphql down"))
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
+    assert graphql == [("o/r", 7)]
+    assert posts == []
+
+
+@pytest.mark.parametrize("value", [None, "", "abc", "A" * 40, 7])
+def test_an_unusable_graphql_head_posts_nothing(monkeypatch: pytest.MonkeyPatch, value: Any) -> None:
+    _stub_unreadable_pull(monkeypatch, failures=99)
+    _stub_graphql_head(monkeypatch, value)
     posts = _record_posts(monkeypatch)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
     assert posts == []
+
+
+def test_a_given_head_is_used_without_the_graphql_read(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_unreadable_pull(monkeypatch, failures=99)
+    graphql = _stub_graphql_head(monkeypatch, HEAD)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7", "--head-sha", OTHER_HEAD]) == oracle_gate.ERROR
+    assert graphql == []
+    assert [head for head, _, _ in posts] == [OTHER_HEAD]
+
+
+def test_no_post_never_reads_the_graphql_head(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_unreadable_pull(monkeypatch, failures=99)
+    graphql = _stub_graphql_head(monkeypatch, HEAD)
+    posts = _record_posts(monkeypatch)
+    assert oracle_gate.main(["--repo", "o/r", "--pr", "7", "--no-post"]) == oracle_gate.ERROR
+    assert graphql == []
+    assert posts == []
+
+
+def test_a_readable_pull_wins_over_the_graphql_head(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_unreadable_pull(monkeypatch, failures=0)
+    graphql = _stub_graphql_head(monkeypatch, OTHER_HEAD)
+    posts = _record_posts(monkeypatch)
+    oracle_gate.main(["--repo", "o/r", "--pr", "7"])
+    assert graphql == []
+    assert [head for head, _, _ in posts] == [HEAD]
 
 
 def test_pull_read_failure_with_a_head_never_posts_under_no_post(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -579,3 +643,24 @@ def test_an_invalid_head_sha_is_rejected(monkeypatch: pytest.MonkeyPatch, value:
         oracle_gate.main(["--repo", "o/r", "--pr", "7", "--head-sha", value])
     assert raised.value.code == 2
     assert posts == []
+
+
+def test_fetch_head_oid_reads_the_pull_request_head_through_graphql(monkeypatch: pytest.MonkeyPatch) -> None:
+    sent: list[tuple[str, dict[str, Any]]] = []
+
+    def request(token: str, url: str, body: dict[str, Any] | None = None) -> Any:
+        assert body is not None
+        sent.append((url, body))
+        return {"data": {"repository": {"pullRequest": {"headRefOid": HEAD}}}}
+
+    monkeypatch.setattr(oracle_review_check, "_request", request)
+    assert oracle_review_check.fetch_head_oid("token", "o/r", 7) == HEAD
+    assert sent[0][0].endswith("/graphql")
+    assert sent[0][1]["variables"] == {"owner": "o", "name": "r", "number": 7}
+    assert "headRefOid" in sent[0][1]["query"]
+
+
+def test_fetch_head_oid_raises_on_graphql_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(oracle_review_check, "_request", lambda token, url, body=None: {"errors": ["boom"]})
+    with pytest.raises(oracle_review_check.CheckError):
+        oracle_review_check.fetch_head_oid("token", "o/r", 7)

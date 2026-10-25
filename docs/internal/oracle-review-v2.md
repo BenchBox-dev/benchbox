@@ -730,14 +730,16 @@ earlier `success` on the head cannot outlive a gate that can no longer
 evaluate it. This is deliberately fail-closed: an API outage turns every pull
 request the gate touches to `failure` until its next successful evaluation.
 The pull request read is retried three times, waiting 2 seconds and then 4
-seconds. If it still fails there is no live head to post to, so the script
-posts `failure` to the optional `--head-sha` when one was given and otherwise
-posts nothing; a live read always wins over `--head-sha`. The hourly sweep
-passes each pull request's head from its listing, and the bridge dispatches
-with the head of the run it bridges, so those runs fail closed even when the
-read is down. A `pull_request_target` or `issue_comment` run does not pass a
-head, which leaves one limit: a persistent read failure there posts nothing,
-and the prior status on the head stands until the next sweep carries the head.
+seconds. If it still fails there is no live head, so the script posts `failure` to the
+optional `--head-sha` when one was given. Without one it makes a single GraphQL
+read of the pull request's `headRefOid` and posts `failure` to that head when it
+is a 40-character lowercase hex SHA; a live REST read always wins over both. The
+hourly sweep and the bridge dispatch pass a head, and `pull_request_target`
+runs pass the head from the event payload, which the resolve step validates
+before outputting it. An `issue_comment` payload carries no head, so those runs
+rely on the GraphQL read. The one remaining limit is when the REST read and the
+GraphQL read both fail with no head supplied: nothing is posted, and the prior
+status on the head stands until the next sweep carries the head.
 A pull request whose base is not `develop`, and any `--no-post` run, never
 posts, errors included. The hourly sweep lists open `develop` pull requests
 with `gh api --paginate`, so every one is covered, and its 45-minute timeout is

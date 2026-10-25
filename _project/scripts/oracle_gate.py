@@ -23,6 +23,7 @@ from oracle_review_check import (
     fetch_base_change_date,
     fetch_comments,
     fetch_files,
+    fetch_head_oid,
     fetch_pull,
     fetch_reviews,
     fetch_threads,
@@ -171,8 +172,22 @@ def _fail_closed(args: argparse.Namespace, token: str, exc: EvaluationFailed) ->
     return ERROR
 
 
+def _graphql_head(args: argparse.Namespace, token: str) -> str | None:
+    try:
+        head_sha = fetch_head_oid(token, args.repo, args.pr)
+    except Exception as exc:
+        print(f"oracle-gate: error: cannot read the head of #{args.pr} through GraphQL: {exc}", file=sys.stderr)
+        return None
+    if not isinstance(head_sha, str) or not HEAD_SHA_PATTERN.fullmatch(head_sha):
+        print(f"oracle-gate: error: GraphQL returned no usable head for #{args.pr}", file=sys.stderr)
+        return None
+    return head_sha
+
+
 def _read_failed(args: argparse.Namespace, token: str, exc: PullReadFailed, known_head: str | None) -> int:
     head_sha = known_head or args.head_sha
+    if head_sha is None and not args.no_post:
+        head_sha = _graphql_head(args, token)
     if head_sha is None:
         print(f"oracle-gate: error: {exc}", file=sys.stderr)
         return ERROR

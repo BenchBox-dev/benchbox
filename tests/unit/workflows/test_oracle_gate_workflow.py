@@ -130,7 +130,7 @@ def test_gate_passes_the_head_only_when_the_dispatch_input_is_valid() -> None:
     resolve = next(step for step in _steps("gate") if step["name"] == "Resolve the pull request")
     assert resolve["env"]["INPUT_HEAD"] == "${{ inputs.head_sha }}"
     assert "grep -Eq '^[0-9a-f]{40}$'" in resolve["run"]
-    assert "head_sha=$INPUT_HEAD" in resolve["run"]
+    assert "head_sha=$HEAD_SHA" in resolve["run"]
     for name in ("Post the gate for the head", "Log the gate without posting when the App is not configured"):
         step = next(step for step in _steps("gate") if step["name"] == name)
         assert step["env"]["KNOWN_HEAD"] == "${{ steps.resolve.outputs.head_sha }}"
@@ -138,19 +138,61 @@ def test_gate_passes_the_head_only_when_the_dispatch_input_is_valid() -> None:
         assert '"${HEAD_ARGS[@]}"' in step["run"]
 
 
+def _checkout_violations(workflow: dict[str, Any]) -> list[str]:
+    found: list[str] = []
+    for name, job in workflow["jobs"].items():
+        for step in job["steps"]:
+            if "actions/checkout" not in step.get("uses", ""):
+                continue
+            with_section = step.get("with", {})
+            if with_section.get("ref") != "develop" or with_section.get("persist-credentials") is not False:
+                found.append(f"{name}: checkout is not the trusted develop copy")
+            if "_project/scripts/oracle_gate.py" not in with_section.get("sparse-checkout", ""):
+                found.append(f"{name}: checkout does not carry the gate script")
+            for key, value in with_section.items():
+                if "github.event.pull_request.head" in str(value) or "github.head_ref" in str(value):
+                    found.append(f"{name}: checkout {key} references the pull request head")
+    return found
+
+
 def test_no_step_checks_out_pull_request_code() -> None:
     text = _text()
     assert "github.head_ref" not in text
-    assert "github.event.pull_request.head" not in text
     assert "pull/" not in text
+    assert _checkout_violations(_load()) == []
     for name, job in _jobs().items():
         for step in job["steps"]:
-            with_section = step.get("with", {})
-            if "actions/checkout" in step.get("uses", ""):
-                assert with_section.get("ref") == "develop", name
-                assert with_section.get("persist-credentials") is False, name
-                assert "_project/scripts/oracle_gate.py" in with_section.get("sparse-checkout", ""), name
             assert "pull_request.head" not in step.get("run", ""), name
+    resolve = next(step for step in _steps("gate") if step["name"] == "Resolve the pull request")
+    assert resolve["env"]["EVENT_HEAD"] == "${{ github.event.pull_request.head.sha }}"
+    assert text.count("github.event.pull_request.head") == 1
+    assert text.count("github.event.pull_request.head.sha") == 1
+
+
+@pytest.mark.parametrize("key", ["ref", "repository", "token"])
+def test_a_checkout_of_the_pull_request_head_is_rejected(key: str) -> None:
+    workflow = _load()
+    checkout = next(step for step in workflow["jobs"]["gate"]["steps"] if "actions/checkout" in step.get("uses", ""))
+    checkout["with"][key] = "${{ github.event.pull_request.head.sha }}"
+    assert any("references the pull request head" in violation for violation in _checkout_violations(workflow))
+
+
+def test_a_checkout_through_head_ref_is_rejected() -> None:
+    workflow = _load()
+    checkout = next(step for step in workflow["jobs"]["sweep"]["steps"] if "actions/checkout" in step.get("uses", ""))
+    checkout["with"]["ref"] = "${{ github.head_ref }}"
+    assert any("references the pull request head" in violation for violation in _checkout_violations(workflow))
+
+
+def test_pull_request_target_supplies_the_head_through_the_resolve_output() -> None:
+    resolve = next(step for step in _steps("gate") if step["name"] == "Resolve the pull request")
+    assert resolve["env"]["INPUT_HEAD"] == "${{ inputs.head_sha }}"
+    assert resolve["env"]["EVENT_HEAD"] == "${{ github.event.pull_request.head.sha }}"
+    run = resolve["run"]
+    assert 'HEAD_SHA="${INPUT_HEAD:-$EVENT_HEAD}"' in run
+    assert "grep -Eq '^[0-9a-f]{40}$'" in run
+    assert run.index("grep -Eq") < run.index('echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"')
+    assert "printf '%s' \"$HEAD_SHA\" | grep -Eq" in run
 
 
 def test_sparse_checkout_stays_in_the_gate_and_its_predicate() -> None:

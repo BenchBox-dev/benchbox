@@ -92,6 +92,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT_PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
           INPUT_HEAD: ${{ inputs.head_sha }}
+          EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           PR_NUMBER="$EVENT_PR"
@@ -102,8 +103,9 @@ jobs:
               ;;
           esac
           echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          if printf '%s' "$INPUT_HEAD" | grep -Eq '^[0-9a-f]{40}$'; then
-            echo "head_sha=$INPUT_HEAD" >> "$GITHUB_OUTPUT"
+          HEAD_SHA="${INPUT_HEAD:-$EVENT_HEAD}"
+          if printf '%s' "$HEAD_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Mint the App token
