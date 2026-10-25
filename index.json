@@ -16047,6 +16047,13 @@
       "status": "done",
       "title": "Post the merge gate as an App status from trusted develop code (oracle-gate)"
     },
+    "oracle-gate-sweep-cadence-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "The oracle-gate sweep runs every 3 to 5 hours instead of hourly, so gate refreshes that only the sweep performs wait hours"
+    },
     "oracle-gate-sweep-waiting-is-not-error-20261025": {
       "claim": null,
       "needs": [

@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Gate 2's measurement (pushes per day, sweep duration, runner-hours a day) and gate 1's mechanism choice are recorded in context before any edit.",
+    "A workflow test that fails on current develop shows that a develop push touching no policy file runs the sweep job, and runs no per-PR gate job.",
+    "make pr-preflight passes; the PR passes the oracle on its merged head and merges through make pr-arm.",
+    "Live, over 3 days after merge: list every develop push with the first sweep run that started after it. Each push has a sweep start within 25 minutes, or the exception is explained. Also record the largest gap between consecutive completed sweeps.",
+    "docs/internal/oracle-review-v2.md states the sweep's triggers and the measured bound in place of 'hourly'."
+  ],
+  "context": "Found 2026-10-25 while assessing residual risk after the oracle-review cutover. Evidence: gh run list --workflow oracle-gate.yml --event schedule --limit 12 (createdAt 2026-10-23T13:46:57Z, 18:40:55Z, 21:40:34Z, 2026-10-24T00:00:16Z, 04:58:57Z, 09:45:50Z, 14:06:21Z, 17:33:46Z, 19:43:47Z, 22:42:42Z, 2026-10-25T01:33:26Z, 06:46:43Z); queue-wait figures from the Actions runs API for oracle-gate since 2026-10-24T12:00Z, excluding schedule and push events. Advisor finding F7 (~/Developer/benchmark_runs/oracle-review-workflow-advisor-20261025/report.md) predicted this: an hourly schedule is not an expiry bound.",
+  "description": "Problem: .github/workflows/oracle-gate.yml schedules its sweep with cron '41 * * * *' (:35-36). The last 12 scheduled sweeps (2026-10-23T13:46Z to 2026-10-25T06:46Z) started 3 to 5 hours apart, for example 01:33Z then 06:46Z; GitHub delays or drops scheduled runs under load. The push trigger (:6-17) runs the sweep only when the gate's policy files change. Event-started gate runs are fast: across 100 non-sweep gate runs on 2026-10-24/25 the median and 90th-percentile queue wait was 0 s and the worst 21 minutes. So for the cases below the sweep cadence is the long pole:\n(a) a gate run that cannot read the PR through REST or GraphQL posts nothing;\n(b) a verdict post job that fails after posting its review but before its dispatch step, for verdict runs started by a comment, dispatch or schedule, whose completion the bridge cannot map;\n(c) resolving the last oracle thread starts no Actions run, leaving a stale failure. Merge safety is held by the ruleset's thread-resolution rule; this is a delay, and oracle-review-automatic-reevaluation-20261021 owns the event side;\n(d) the cancel-in-progress stranding cases recorded in oracle-review-automatic-reevaluation-20261021.\n\nOutcome: a sweep backstop with a measured upper bound that does not depend on GitHub's cron cadence.\n\nDecision gates:\n1. Mechanism. Default: run the sweep on every push to develop (push events are not dropped) and keep the cron. Alternatives: a delayed self-dispatch, or a scheduler outside GitHub. If oracle-sweep-schedule-drops-most-runs-20261022, which has the same cron problem in oracle-verdict, has already chosen a shared mechanism, reuse it rather than building a second one.\n2. Cost. Measure develop's push count over 7 days and the sweep's duration (about 2 minutes for 14 PRs on 2026-10-25). Record pushes times duration. If it exceeds 2 runner-hours a day, get the owner's approval before landing.\n3. Concurrency. Back-to-back pushes must not pile up sweeps: give the sweep its own concurrency group that keeps the newest sweep, and never cancel per-PR gate runs. If the existing group layout makes that impossible without changing per-PR behaviour, stop and record why.\n\nItem guardrails: no change to the gate decision, the statuses it posts, or how per-PR runs are triggered; the sweep remains the only multi-PR evaluator; no new secrets. oracle-gate.yml is a soundness path, so the PR needs the oracle's review.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no stand-in approvals, no ruleset edits or bypasses, no raw gh pr merge. Do not change oracle-gate's App binding (integration 5201041), the oracle decision rule, or the native review-thread-resolution requirement. Do not close and reopen, mass-rerun or rebase other pull requests.",
+  "links": [
+    "item:oracle-sweep-schedule-drops-most-runs-20261022",
+    "item:oracle-review-automatic-reevaluation-20261021",
+    ".github/workflows/oracle-gate.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T12:53:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "366707d5d6e145a1a4632c8848e63215",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
