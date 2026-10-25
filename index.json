@@ -2744,12 +2744,17 @@
       "title": "Update the benchbox release skill source and regenerate the tracked mirror for the fragment flow"
     },
     "changelog-fragments-05-end-to-end-verification": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T09:51:41Z",
+        "generation": "662a33c5355249d29aa08fa2436703eb",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [
         "changelog-fragments-03-cutover"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Rehearse the fragment flow end to end and record the evidence that closes the batch"
     },
     "changelog-merge-conflict-churn-20261020": {
