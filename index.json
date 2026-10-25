@@ -16341,7 +16341,9 @@
     },
     "oracle-review-recover-retire-20261025": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-review-notify-only-20261025"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Retire make oracle-review-recover and move pr_rerun's helpers out of its module"
