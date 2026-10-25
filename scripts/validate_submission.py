@@ -247,6 +247,7 @@ class _Args:
         self.corpus_changed_paths_path: Path | None = None
         self.require_manifest = False
         self.allow_partial_validation = False
+        self.trust_internal_source = False
         self.positional: list[str] = []
 
 
@@ -269,6 +270,10 @@ def _parse_args(args: list[str], parsed: _Args) -> int | None:
             parsed.allow_partial_validation = True
             i += 1
             continue
+        if args[i] == "--trust-internal-source":
+            parsed.trust_internal_source = True
+            i += 1
+            continue
         if args[i] == "--rules-version":
             return _print_rules_version()
         if args[i].startswith("--"):
@@ -289,12 +294,13 @@ def main(argv: list[str] | None = None) -> int:
     corpus_changed_paths_path = parsed.corpus_changed_paths_path
     require_manifest = parsed.require_manifest
     allow_partial_validation = parsed.allow_partial_validation
+    trust_internal_source = parsed.trust_internal_source
     positional = parsed.positional
 
     if not positional and corpus_changed_paths_path is None:
         print(
             "Usage: validate_submission.py [--pr-comment <path>] [--require-manifest] "
-            "[--allow-partial-validation] [--corpus-changed-paths <file>] "
+            "[--allow-partial-validation] [--trust-internal-source] [--corpus-changed-paths <file>] "
             "[--rules-version] <dir-or-files...>",
             file=sys.stderr,
         )
@@ -327,6 +333,7 @@ def main(argv: list[str] | None = None) -> int:
             paths,
             require_manifest=require_manifest,
             allow_partial_validation=allow_partial_validation,
+            trust_internal_source=trust_internal_source,
         )
         _append_corpus_anonymized_errors(paths, results)
         _append_public_privacy_errors(paths, results)

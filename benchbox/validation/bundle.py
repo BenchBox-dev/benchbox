@@ -2553,6 +2553,7 @@ def validate_bundles(
     require_manifest: bool = False,
     *,
     allow_partial_validation: bool = False,
+    trust_internal_source: bool = False,
 ) -> list[ValidationResult]:
     results = []
     parsed: list[tuple[dict[str, Any], ValidationResult]] = []
@@ -2587,7 +2588,7 @@ def validate_bundles(
             data,
             vr,
             allow_partial_validation=allow_partial_validation,
-            internal_source=_manifest_declares_internal_source(bundle_path),
+            internal_source=trust_internal_source and _manifest_declares_internal_source(bundle_path),
         )
         parsed.append((data, vr))
 
