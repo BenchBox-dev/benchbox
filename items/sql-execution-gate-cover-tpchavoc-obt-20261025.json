@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The gate executes TPC-Havoc variants and TPC-DS OBT queries on its engines with expected-difference entries where needed.",
+    "Reintroducing the 1_v7 SQLite dispatch omission fails the gate."
+  ],
+  "description": "scripts/sql_execution_gate covers TPC-H 1-22 and TPC-DS 1-99 only (--benchmarks defaults to tpch,tpcds, gate.py:373). TPC-Havoc and OBT translation defects on SQLite (1_v7 list aggregate, OBT date literals) were found only by manual reruns.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T12:30:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f9c1f67689704b0fb6b5c285f3638a88",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}

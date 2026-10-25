@@ -23564,6 +23564,13 @@
       "status": "done",
       "title": "SQL Cross-Platform Benchmark Suite"
     },
+    "sql-execution-gate-cover-tpchavoc-obt-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Extend the SQL execution gate to TPC-Havoc and TPC-DS OBT"
+    },
     "sql-execution-gate-vacuous-empty-results-20261025": {
       "claim": null,
       "needs": [],
