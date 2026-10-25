@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "VERIFY: Every green PR fast job and Trunk fast job uploads a junit artifact parsed without error by tests/duration_policy.py collect_junit_durations; recorded on 3 consecutive runs of each",
+    "VERIFY: Fast-job pytest time before and after the change differs by less than 2% plus 5 s on comparable runs (overhead measured and recorded)",
+    "GATE: Do not start the baseline item until at least 20 merged-PR fast-job junit artifacts with this configuration exist (count recorded)",
+    "GUARDRAIL: No pass/fail behavior change; the junit file covers only the fast-tier pytest invocation; artifact retention 14 days"
+  ],
+  "context": "Source: CI time-regression incident of 2026-10-25 and an independent adversarial review of the prevention plan. PR #3423 added an autouse module-scoped fixture (tests/conftest.py, _chdb_connections_closed_after_module) that opened a chDB probe session after every module; the fast-tier pytest time went from 327.81 s (run 40143597290) to 1041.10 s (run 40195371347) and PR CI wall time from about 12 to 20+ minutes for about 18 hours before anyone noticed. No CI check measured test time: _project/scripts/fast_lane_ceiling_check.py checks marker composition only, and tests/duration_policy.py's per-test T1 budget is refreshed from nightly data and never sees module-teardown cost spread across tests. Pre-incident fast-job wall time varied 7.8-18.0 min (cv about 19%), so job wall time cannot be a blocking signal; summed per-test junit time is the blocking metric. ",
+  "description": "Create the measurement the duration gate needs. Add --junitxml with junit_duration_report=total set explicitly (so setup and teardown, including module-scoped fixture teardown, are counted) to the fast pytest invocation in ci.yml (around line 953) and the Trunk fast job (trunk.yml around line 46), and upload each as an artifact. Only the fast-tier pytest step: not the 'Run medium tests for changed paths' step in the same job. Prior art: medium shards already write junit (ci.yml around 1153); tests/duration_policy.py collect_junit_durations parses junit.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-25T13:57:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c5d3960420904150a4e59c47ae480a19",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
