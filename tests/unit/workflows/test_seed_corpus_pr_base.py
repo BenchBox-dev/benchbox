@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 import os
@@ -89,6 +90,7 @@ def _stage_bundle(
     companions: tuple[str, ...] = (),
     salt: str | None = SEED_TEST_SALT,
     companion_payloads: dict[str, Any] | None = None,
+    internal_manifest: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     tmp_path.mkdir(parents=True, exist_ok=True)
     result_file = tmp_path / "bundle.json"
@@ -109,6 +111,7 @@ def _stage_bundle(
         [
             sys.executable,
             str(REPO_ROOT / "scripts" / "stage_seed_corpus_bundle.py"),
+            *(["--internal-manifest"] if internal_manifest else []),
             str(result_file),
             str(destination),
         ],
@@ -420,3 +423,56 @@ def test_seed_pr_body_tells_the_owner_to_merge_the_mirror_and_recut() -> None:
 
     assert "The owner merges that mirror PR in the same cycle." in body
     assert "make ledger-seed-recut" in body
+
+
+def _local_run_payload() -> dict[str, Any]:
+    payload = _clean_payload()
+    payload["platform"] = {
+        "name": "SQLite",
+        "config": {"database_path": "/Users/maintainer/benchmark_runs/databases/hits.sqlite"},
+        "raw_config": {"database_path": "/Users/maintainer/benchmark_runs/databases/hits.sqlite"},
+        "tuning": {
+            "applied": {
+                "dropped": [],
+                "statements": [
+                    {"phase": "session", "statement": "PRAGMA query_only = false", "status": "harness_default"},
+                    {"phase": "session", "statement": "PRAGMA read_uncommitted = true", "status": "harness_default"},
+                ],
+                "status": "not_applicable",
+            },
+            "validation_status": "not_applicable",
+        },
+    }
+    return payload
+
+
+def test_internal_staging_redacts_paths_and_tuning_diagnostics(tmp_path: Path) -> None:
+    process, destination = _stage_bundle(tmp_path, _local_run_payload(), internal_manifest=True)
+
+    assert process.returncode == 0, process.stderr
+    staged_text = (destination / "bundle.json").read_text(encoding="utf-8")
+    assert "/Users/maintainer" not in staged_text
+    assert "PRAGMA" not in staged_text
+
+
+def test_internal_staging_writes_internal_manifest_matching_staged_bytes(tmp_path: Path) -> None:
+    process, destination = _stage_bundle(
+        tmp_path, _local_run_payload(), (".plans.json",), internal_manifest=True, companion_payloads={".plans.json": {}}
+    )
+
+    assert process.returncode == 0, process.stderr
+    manifest = json.loads((destination / "bundle.manifest.json").read_text(encoding="utf-8"))
+    assert manifest["result_source"] == "internal"
+    assert manifest["funding"] == "unspecified"
+    assert manifest["bundle_file"] == "bundle.json"
+    assert manifest["bundle_hash"] == hashlib.sha256((destination / "bundle.json").read_bytes()).hexdigest()
+    assert manifest["companion_hashes"] == {
+        "bundle.plans.json": hashlib.sha256((destination / "bundle.plans.json").read_bytes()).hexdigest()
+    }
+
+
+def test_seed_staging_writes_no_manifest_by_default(tmp_path: Path) -> None:
+    process, destination = _stage_bundle(tmp_path, _local_run_payload())
+
+    assert process.returncode == 0, process.stderr
+    assert not (destination / "bundle.manifest.json").exists()
