@@ -15945,6 +15945,16 @@
       "status": "done",
       "title": "Move oracle-review consumers to oracle-gate"
     },
+    "oracle-gate-cutover-live-verification-20261025": {
+      "claim": null,
+      "needs": [
+        "oracle-review-notify-only-20261025",
+        "oracle-review-recover-retire-20261025"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Verify the oracle-gate event paths live after the oracle-review cutover"
+    },
     "oracle-gate-fail-closed-evaluation-errors-20261025": {
       "claim": null,
       "needs": [],
