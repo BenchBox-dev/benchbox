@@ -26807,15 +26807,10 @@
       "title": "Bring the post-merge Trunk failure rate below 2% after the classified causes are fixed"
     },
     "trunk-red-run-triage-20261024": {
-      "claim": {
-        "expires_at": "2026-10-26T09:03:00Z",
-        "generation": "4c17f88a5c214d13ac952e42dbdb3b57",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Classify every failed post-merge Trunk run from 2026-10-10 to 2026-10-24"
     },
     "trunk-red-stops-further-merges": {
