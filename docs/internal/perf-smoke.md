@@ -19,6 +19,9 @@ Workflow lives at `.github/workflows/perf-smoke.yml`. The nightly T3 perf
 domain in `.github/workflows/nightly-v2.yml` runs the same comparison against
 the same baseline.
 
+Detection limits of this gate, with measured examples, are recorded in
+[nightly-perf-gate-review.md](nightly-perf-gate-review.md).
+
 ## Noise floor
 
 At SF=0.01 every TPC-H query runs in 3 to 13 ms on a hosted runner, so a
