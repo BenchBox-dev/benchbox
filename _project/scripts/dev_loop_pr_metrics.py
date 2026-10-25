@@ -1914,6 +1914,7 @@ class DiskCache:
         self.root = root
         self.hits = 0
         self.writes = 0
+        self._lock = threading.Lock()
 
     def _path(self, key: str) -> Path:
         import hashlib
@@ -1930,7 +1931,8 @@ class DiskCache:
             return None
         if not isinstance(payload, dict) or payload.get("key") != key:
             return None
-        self.hits += 1
+        with self._lock:
+            self.hits += 1
         return payload.get("value")
 
     def put(self, key: str, value: object) -> None:
@@ -1941,7 +1943,8 @@ class DiskCache:
         temp = target.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
         temp.write_text(json.dumps({"key": key, "value": value}), encoding="utf-8")
         os.replace(temp, target)
-        self.writes += 1
+        with self._lock:
+            self.writes += 1
 
 
 @dataclass
