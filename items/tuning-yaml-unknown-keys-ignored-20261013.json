@@ -3,7 +3,7 @@
     "Loading a tuning YAML with an unknown top-level key fails with an actionable error (unit test with table_tuning typo).",
     "All shipped templates still load."
   ],
-  "context": "Found 2026-10-13 by an adversarial review of tuning changes at origin/develop 77048bfb9.",
+  "context": "Delivered in merged PR #3411: unknown keys at the top level and inside known sections (constraint sections, platform_optimizations, table tunings and columns, benchmark/partitioning/sort-key/clustering configs) now raise an error naming the key, the nearest valid key and the valid keys. No escape hatch was added. DataFrame tuning files are detected from DataFrameTuningConfiguration's own fields (write-only files included) and still load. All 63 shipped SQL tuning templates load under the stricter rule. Not verified live; full suite not run.",
   "description": "## Problem\n`UnifiedTuningConfiguration.from_dict` (`benchbox/core/tuning/interface.py` ~L1255) ignores unknown top-level keys. A file with `table_tuning:` (a typo for `table_tunings:`) runs constraints-only and is still labelled `explicit_file`, and reconciliation sees nothing missing. a1458ee66 (#2712) catches only files that consist entirely of DataFrame keys.\n\n## Change\n- Reject unknown top-level keys (and unknown keys inside known sections) with an error naming the key and the nearest valid key.\n- Allow an explicit, documented escape hatch only if a real need exists.\n- Validate all shipped templates under the stricter rule.",
   "links": [
     "benchbox/core/tuning/interface.py"
@@ -24,6 +24,14 @@
       "generation": "e3631a12e3534d9eabacf5c231d231b5",
       "op": "take",
       "op_id": "495a1c088ee7439badccd0cbca21eed9",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T04:33:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "22639c69795644969838ce5b7b9eb032",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
