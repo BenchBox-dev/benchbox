@@ -31,7 +31,7 @@ Posting the stand-in comment makes `oracle-gate` re-evaluate the head at once.
 Resolving an oracle review thread starts no workflow run; after resolving the
 oracle's threads, run
 `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`, or wait for the
-hourly sweep.
+next sweep, which runs on every push to `develop` and on a schedule.
 
 The develop ruleset requires `oracle-gate` bound to the `benchbox-oracle`
 App's integration ID, so only a status that App posts satisfies it, and the

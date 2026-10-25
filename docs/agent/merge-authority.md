@@ -62,7 +62,7 @@ that was never edited, and both actions re-run `oracle-gate`, which then fails
 the head again. Other comment edits and deletions do not run the gate.
 Resolving an oracle review thread starts no workflow run, so after resolving
 threads run `gh workflow run oracle-gate.yml --ref develop -f pr=<number>` (or
-wait for the hourly sweep) and merge only after `oracle-gate` passes on the
+wait for the next sweep, which runs on every push to `develop` and on a schedule) and merge only after `oracle-gate` passes on the
 current head.
 
 To refresh the gate, dispatch it; `make pr-rerun` re-runs CI and does not

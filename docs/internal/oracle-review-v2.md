@@ -632,7 +632,8 @@ covers comment, dispatch and scheduled verdict runs, whose completion carries
 bridge. The step runs only when the App is configured and the guard did not skip
 the head, so it never precedes the post. It holds `actions: write` on the `post`
 job for this dispatch alone, posts no status, and the gate re-reads everything
-when it runs. The remaining trusted fallbacks are the hourly `oracle-gate` sweep
+when it runs. The remaining trusted fallbacks are the `oracle-gate` sweep (every push to
+`develop`, plus a scheduled run)
 and the gate's own triggers: `pull_request_target`, stand-in comments and
 dispatch.
 
@@ -643,7 +644,7 @@ which are not `oracle-gate` inputs.
 GitHub Actions has no event for resolving a review thread, so resolving the
 oracle's last thread starts no run of either workflow. After resolving the
 threads, run `gh workflow run oracle-gate.yml --ref develop -f pr=<number>`,
-or wait for the hourly sweep. `make pr-rerun` re-runs failed CI jobs and does
+or wait for the next sweep (the next push to `develop`, or the schedule). `make pr-rerun` re-runs failed CI jobs and does
 not refresh `oracle-gate`. The checker's decision is
 unchanged: it passes only with a success verdict on the head and no
 unresolved oracle thread.
@@ -715,11 +716,14 @@ which the checker strips, still triggers a run; the checker then decides on the
 exact text), on completion of
 `oracle-verdict` and `oracle-review` (the bridge for review and thread events,
 which have no trusted trigger of their own), on `workflow_dispatch` with a `pr`
-input, on an hourly `schedule` sweep over open pull requests targeting
-`develop`, and on a `push` to `develop` that touches the trusted inputs the
-gate reads from `develop` (the paths in the sparse checkout, including the
-workflow itself), so a merged policy or gate change re-evaluates open pull
-requests without waiting for the hour. Only the sweep job runs on `push`; the
+input, on a `schedule` sweep over open pull requests targeting `develop`, and on
+every `push` to `develop`, so a merged change re-evaluates open pull requests
+without waiting for the schedule. GitHub delays and drops scheduled runs (the
+observed starts were 3 to 6 hours apart), so the push is the bound while
+`develop` is active and the schedule is only the fallback for hours without
+pushes. Sweeps measured since 2026-10-24 ran a median of 1.7 minutes and a
+90th percentile of 7.2 minutes, and `develop` received about 36 pushes a day,
+about one runner-hour a day. Only the sweep job runs on `push`; the
 gate and bridge jobs exclude it. Push sweeps share one concurrency group,
 separate from every pull request's, and queue rather than cancel, so a running
 sweep finishes before the next starts. A completion run evaluates nothing itself: its `bridge` job finds the
@@ -748,14 +752,14 @@ seconds. If it still fails there is no live head, so the script posts `failure` 
 optional `--head-sha` when one was given. Without one it makes a single GraphQL
 read of the pull request's `headRefOid` and posts `failure` to that head when it
 is a 40-character lowercase hex SHA; a live REST read always wins over both. The
-hourly sweep and the bridge dispatch pass a head, and `pull_request_target`
+sweep and the bridge dispatch pass a head, and `pull_request_target`
 runs pass the head from the event payload, which the resolve step validates
 before outputting it. An `issue_comment` payload carries no head, so those runs
 rely on the GraphQL read. The one remaining limit is when the REST read and the
 GraphQL read both fail with no head supplied: nothing is posted, and the prior
 status on the head stands until the next sweep carries the head.
 A pull request whose base is not `develop`, and any `--no-post` run, never
-posts, errors included. The hourly sweep lists open `develop` pull requests
+posts, errors included. The sweep lists open `develop` pull requests
 with `gh api --paginate`, so every one is covered, and its 45-minute timeout is
 sized from a measured sweep of 16 pull requests in about 75 seconds (about 5
 seconds each), which leaves room for several hundred.
