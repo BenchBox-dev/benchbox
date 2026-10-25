@@ -1861,6 +1861,9 @@ def test_trunk_coverage_signal_counts_scheduled_producer_runs_but_not_monitor_on
     collection = _collect(api, USAGE_DAY + timedelta(hours=10), USAGE_DAY + timedelta(hours=13))
     signal = metrics.build_usage_report(collection)["post_merge"]["workflows"]["trunk-coverage.yml"]
     assert signal["runs"] == 2
+    assert signal["missing_exact_sha_runs"] is None
+    assert signal["duplicate_exact_sha_runs"] is None
+    assert "do not apply" in signal["guardrail"]
 
 
 def test_open_red_incident_is_reported_as_ongoing() -> None:

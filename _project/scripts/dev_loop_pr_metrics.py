@@ -3088,6 +3088,21 @@ def _trunk_sha_coverage(
     }
 
 
+def _scheduled_sha_coverage(runs: list[dict], existed_from: datetime | None) -> dict:
+    first_run_at = min((item["created_at"] for item in runs if item["created_at"] is not None), default=None)
+    return {
+        "first_run_at": _iso_or_none(first_run_at),
+        "workflow_created_at": _iso_or_none(existed_from),
+        "missing_exact_sha_runs": None,
+        "missing_exact_sha_examples": [],
+        "commits_before_workflow_existed": None,
+        "commits_pending_recent": None,
+        "duplicate_exact_sha_runs": None,
+        "duplicate_exact_sha_examples": {},
+        "runs_on_shas_outside_commit_list": None,
+    }
+
+
 def _is_trunk_signal_run(item: dict, workflow: str) -> bool:
     if item["workflow"] != workflow or item["head_branch"] != "develop":
         return False
@@ -3131,9 +3146,18 @@ def _trunk_workflow_signal(collection: UsageCollection, workflow: str, facts: li
         "newest_tested_commit_age_seconds": (reference - newest_tested).total_seconds() if newest_tested else None,
         "newest_develop_commit_at": _iso_or_none(max(commit_times)) if commit_times else None,
         "develop_commits": None if commits is None else len(commits),
-        **_trunk_sha_coverage(commits or [], runs, reference, collection.workflow_created.get(workflow)),
+        **(
+            _scheduled_sha_coverage(runs, collection.workflow_created.get(workflow))
+            if workflow == TRUNK_COVERAGE_WORKFLOW
+            else _trunk_sha_coverage(commits or [], runs, reference, collection.workflow_created.get(workflow))
+        ),
         "job_kinds": outcomes["job_kinds"],
-        "guardrail": "a low red rate counts only if missing runs, skipped jobs and cancellations stay low; compare those figures too",
+        "guardrail": (
+            "scheduled map producers do not run once per commit, so per-commit missing and duplicate run counts do "
+            "not apply; compare skipped jobs and cancellations"
+            if workflow == TRUNK_COVERAGE_WORKFLOW
+            else "a low red rate counts only if missing runs, skipped jobs and cancellations stay low; compare those figures too"
+        ),
     }
 
 
@@ -3142,8 +3166,9 @@ def build_post_merge_signal(collection: UsageCollection, facts: list[dict]) -> d
     return {
         "reference_time": format_api_timestamp(reference),
         "incident_rule": (
-            "attempt results from every trunk push run on develop are ordered by completion time; an incident opens at "
-            "the first red result while none is open and closes at the next successful attempt"
+            "attempt results from every trunk push run on develop (for trunk-coverage.yml, every scheduled, dispatched or "
+            "push run that executed the map job) are ordered by completion time; an incident opens at the first red "
+            "result while none is open and closes at the next successful attempt"
         ),
         "workflows": {
             workflow: _trunk_workflow_signal(collection, workflow, facts, reference) for workflow in TRUNK_WORKFLOWS
@@ -3381,8 +3406,8 @@ def render_usage_report(report: dict) -> str:
                 _minutes_text(recovery["median"]),
                 _minutes_text(recovery["max"]),
                 _minutes_text(signal["newest_tested_commit_age_seconds"]),
-                signal["missing_exact_sha_runs"],
-                signal["duplicate_exact_sha_runs"],
+                "n/a" if signal["missing_exact_sha_runs"] is None else signal["missing_exact_sha_runs"],
+                "n/a" if signal["duplicate_exact_sha_runs"] is None else signal["duplicate_exact_sha_runs"],
                 signal["first_attempt_cancelled"],
                 signal["job_kinds"].get("skipped", 0),
             ]
