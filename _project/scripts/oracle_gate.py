@@ -36,6 +36,8 @@ DESCRIPTION_LIMIT = 140
 PULL_READ_ATTEMPTS = 3
 PULL_READ_BACKOFF_SECONDS = 2
 HEAD_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
+WAITING_EXIT = 3
+RESULT_FILE_ENV = "ORACLE_GATE_RESULT_FILE"
 
 
 class UngatedBase(Exception):
@@ -241,5 +243,17 @@ def main(argv: list[str] | None = None) -> int:
     return PASS if status == PASS else WAITING
 
 
+def process_exit(status: int) -> int:
+    return WAITING_EXIT if status == WAITING else status
+
+
+def run(argv: list[str] | None = None) -> int:
+    code = process_exit(main(argv))
+    target = os.environ.get(RESULT_FILE_ENV)
+    if target:
+        Path(target).write_text(f"{code}\n", encoding="utf-8")
+    return code
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run())

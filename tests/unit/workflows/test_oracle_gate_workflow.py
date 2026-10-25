@@ -20,16 +20,20 @@ SCRIPT = "_project/scripts/oracle_gate.py"
 CHECKER_PATH = REPO_ROOT / "_project/scripts/oracle_review_check.py"
 
 
-def _attested_shas(comment: dict[str, Any]) -> list[str]:
-    sys.path.insert(0, str(CHECKER_PATH.parent))
+def _script_module(path: Path, name: str) -> Any:
+    sys.path.insert(0, str(path.parent))
     try:
-        spec = importlib.util.spec_from_file_location("oracle_review_check_under_workflow_test", CHECKER_PATH)
+        spec = importlib.util.spec_from_file_location(name, path)
         assert spec and spec.loader
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
     finally:
-        sys.path.remove(str(CHECKER_PATH.parent))
-    return module._attested_shas(comment)
+        sys.path.remove(str(path.parent))
+    return module
+
+
+def _attested_shas(comment: dict[str, Any]) -> list[str]:
+    return _script_module(CHECKER_PATH, "oracle_review_check_under_workflow_test")._attested_shas(comment)
 
 
 SHA_PIN = re.compile(r"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$")
@@ -344,6 +348,16 @@ def test_sweep_fails_visibly_when_a_pull_request_errors() -> None:
     assert "::warning::oracle-gate failed for" in sweep["run"]
     assert "::error::oracle-gate failed for" in sweep["run"]
     assert "exit 1" in sweep["run"]
+
+
+def test_sweep_counts_a_pull_request_as_evaluated_only_when_the_gate_reports_its_exit() -> None:
+    gate = _script_module(REPO_ROOT / SCRIPT, "oracle_gate_under_workflow_test")
+    run = next(step for step in _steps("sweep") if step["name"].startswith("Gate every open"))["run"]
+    assert run.index('rm -f "$RESULT"') < run.index(f'{gate.RESULT_FILE_ENV}="$RESULT" uv run')
+    assert "|| STATUS=$?" in run
+    assert '[ "$REPORTED" != "$STATUS" ]' in run
+    assert f'[ "$STATUS" -ne {gate.PASS} ] && [ "$STATUS" -ne {gate.WAITING_EXIT} ]' in run
+    assert gate.WAITING_EXIT not in (1, gate.ERROR)
 
 
 def test_concurrency_is_one_group_per_pull_request() -> None:

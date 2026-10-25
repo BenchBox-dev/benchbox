@@ -232,12 +232,17 @@ jobs:
           fi
           PRS="$(gh api --paginate "repos/$REPO/pulls?base=develop&state=open&per_page=100" --jq '.[] | "\(.number) \(.head.sha)"')"
           FAILED=""
+          RESULT="$RUNNER_TEMP/oracle-gate-result"
           while read -r PR_NUMBER HEAD_SHA; do
             [ -n "$PR_NUMBER" ] || continue
-            uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$HEAD_SHA" $POST < /dev/null || {
-              echo "::warning::oracle-gate failed for #$PR_NUMBER"
+            rm -f "$RESULT"
+            STATUS=0
+            ORACLE_GATE_RESULT_FILE="$RESULT" uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python _project/scripts/oracle_gate.py --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$HEAD_SHA" $POST < /dev/null || STATUS=$?
+            REPORTED="$(cat "$RESULT" 2>/dev/null || true)"
+            if [ "$REPORTED" != "$STATUS" ] || { [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 3 ]; }; then
+              echo "::warning::oracle-gate failed for #$PR_NUMBER (exit $STATUS, reported ${REPORTED:-none})"
               FAILED="$FAILED $PR_NUMBER"
-            }
+            fi
           done <<< "$PRS"
           if [ -n "$FAILED" ]; then
             echo "::error::oracle-gate failed for:$FAILED"

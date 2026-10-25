@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -664,3 +666,60 @@ def test_fetch_head_oid_raises_on_graphql_errors(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(oracle_review_check, "_request", lambda token, url, body=None: {"errors": ["boom"]})
     with pytest.raises(oracle_review_check.CheckError):
         oracle_review_check.fetch_head_oid("token", "o/r", 7)
+
+
+def test_process_exit_gives_waiting_a_code_distinct_from_crashes() -> None:
+    assert oracle_gate.process_exit(oracle_gate.PASS) == 0
+    assert oracle_gate.process_exit(oracle_gate.ERROR) == oracle_gate.ERROR
+    assert oracle_gate.process_exit(oracle_gate.WAITING) == oracle_gate.WAITING_EXIT
+    assert oracle_gate.WAITING_EXIT not in (0, 1, oracle_gate.ERROR)
+
+
+def test_script_entry_point_exits_through_the_process_mapping() -> None:
+    env = {key: value for key, value in os.environ.items() if key not in ("GITHUB_TOKEN", "GH_TOKEN")}
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--repo", "o/r", "--pr", "7"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == oracle_gate.ERROR
+    assert "GITHUB_TOKEN is not set" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [("PASS", "0"), ("WAITING", "3"), ("ERROR", "2")],
+)
+def test_run_reports_the_process_exit_in_the_result_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, status: str, expected: str
+) -> None:
+    target = tmp_path / "result"
+    monkeypatch.setenv(oracle_gate.RESULT_FILE_ENV, str(target))
+    monkeypatch.setattr(oracle_gate, "main", lambda argv=None: getattr(oracle_gate, status))
+    assert oracle_gate.run([]) == int(expected)
+    assert target.read_text(encoding="utf-8") == f"{expected}\n"
+
+
+def test_run_writes_no_result_file_without_the_variable(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.delenv(oracle_gate.RESULT_FILE_ENV, raising=False)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(oracle_gate, "main", lambda argv=None: oracle_gate.WAITING)
+    assert oracle_gate.run([]) == oracle_gate.WAITING_EXIT
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_crash_before_the_exit_leaves_no_result(tmp_path: Path) -> None:
+    target = tmp_path / "result"
+    env = {key: value for key, value in os.environ.items() if key not in ("GITHUB_TOKEN", "GH_TOKEN")}
+    env[oracle_gate.RESULT_FILE_ENV] = str(target)
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--repo", "o/r", "--pr", "not-a-number"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert not target.exists()
