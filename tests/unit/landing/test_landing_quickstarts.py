@@ -260,12 +260,9 @@ def test_unknown_mcp_prompt_is_rejected(gen, catalog):
     assert any("prompt_that_does_not_exist" in e for e in errors)
 
 
-def test_mcp_prompt_catalog_matches_registered_prompt_surface(catalog, monkeypatch):
-    import benchbox.utils.printing as printing
+def test_mcp_prompt_catalog_matches_registered_prompt_surface(catalog):
     from benchbox.mcp import create_server
     from tests.unit.mcp.public_api import list_prompt_names
-
-    monkeypatch.setattr(printing, "_QUIET", printing._QUIET)
 
     configured = catalog["mcp"]["prompts"]
     assert set(configured) == {"analyze_results", "benchmark_run", "compare_platforms"}

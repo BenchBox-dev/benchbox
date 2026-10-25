@@ -97,19 +97,28 @@ def _configure_benchbox_logging(level: int) -> None:
         benchbox_logger.addHandler(handler)
 
 
-def create_benchbox_server(
+def configure_server_process(
     *,
-    results_dir: str | Path | None = None,
-    charts_dir: str | Path | None = None,
     log_level: str | int | None = None,
     env: Mapping[str, str] | None = None,
-    remote_security: RemoteSecurityRuntime | None = None,
-) -> MCPServer:
+    remote: bool = False,
+) -> None:
     from benchbox.utils.printing import set_quiet
 
     set_quiet(True)
     _configure_benchbox_logging(_resolve_log_level(log_level, env=env))
+    configure_telemetry(TelemetrySettings.from_env(env if env is not None else os.environ))
+    if remote:
+        configure_transport_security_logging()
 
+
+def create_benchbox_server(
+    *,
+    results_dir: str | Path | None = None,
+    charts_dir: str | Path | None = None,
+    env: Mapping[str, str] | None = None,
+    remote_security: RemoteSecurityRuntime | None = None,
+) -> MCPServer:
     if results_dir is not None and charts_dir is not None:
         resolved_results_dir = Path(results_dir)
         resolved_charts_dir = Path(charts_dir)
@@ -122,8 +131,6 @@ def create_benchbox_server(
         resolved_results_dir = runtime_paths.results_dir
         resolved_charts_dir = runtime_paths.charts_dir
 
-    environment = env if env is not None else os.environ
-    configure_telemetry(TelemetrySettings.from_env(environment))
     middleware: list[Any] = [RedactedTelemetryMiddleware()]
     server_kwargs: dict[str, object] = {"cache_hints": MCP_CACHE_HINTS}
     job_runtime = None
@@ -135,7 +142,6 @@ def create_benchbox_server(
             remote_security.config.jobs,
             remote_security.workspaces,
         )
-        configure_transport_security_logging()
         middleware.append(remote_security.middleware)
         server_kwargs.update(
             auth=remote_security.auth_settings(),
