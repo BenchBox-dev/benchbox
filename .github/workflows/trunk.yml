@@ -43,6 +43,7 @@ jobs:
 
       - name: Run fast tests
         run: |
+          mkdir -p fast-junit
           uv run -- python -m pytest tests -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120 -o junit_duration_report=total --junitxml=fast-junit/junit.xml
 
       - name: Check fast-tier junit parses

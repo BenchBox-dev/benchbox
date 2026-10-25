@@ -937,6 +937,7 @@ jobs:
           BENCHBOX_XDIST_TRACE_DIR: xdist-failure-trace
           COVERAGE_CORE: sysmon
         run: |
+          mkdir -p fast-junit
           (
             min_kb=
             while :; do

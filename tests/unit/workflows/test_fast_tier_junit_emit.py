@@ -41,6 +41,7 @@ def test_fast_pytest_step_writes_total_duration_junit(workflow: str, job: str, a
     for flag in _JUNIT_FLAGS:
         assert flag in run
     assert len(re.findall(r"--junitxml", run)) == 1
+    assert run.index("mkdir -p fast-junit") < run.index("--junitxml")
 
 
 @pytest.mark.parametrize(("workflow", "job", "artifact"), _CASES)
