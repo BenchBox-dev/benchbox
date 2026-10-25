@@ -16168,6 +16168,13 @@
       "status": "open",
       "title": "Confirm the oracle's auth-gateway survives a long silent thinking stretch from @slow or @plan reviewers"
     },
+    "oracle-gateway-named-clients-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Let the oracle gateway admit named clients besides oracle-ci, and add oracle-local"
+    },
     "oracle-hunk-headingless-and-repeated-heading-collisions-20261024": {
       "claim": null,
       "needs": [],
