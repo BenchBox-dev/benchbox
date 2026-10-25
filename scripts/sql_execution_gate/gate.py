@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import multiprocessing
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -249,6 +250,10 @@ def _query_count(sides: dict[str, dict], dataset_name: str) -> int:
     )
 
 
+def _worker_count(units: int) -> int:
+    return min(units, max(2, (os.cpu_count() or 2) - 1))
+
+
 def run_engines(
     engine_classes, datasets: dict[str, Dataset], sides: dict[str, dict], timeout: float, scratch: Path
 ) -> tuple[dict, dict[str, str], dict[str, float]]:
@@ -273,7 +278,9 @@ def run_engines(
         if engine_class.name != REFERENCE_ENGINE
     ]
     if units:
-        with ThreadPoolExecutor(max_workers=min(len(units), os.cpu_count() or 2)) as pool:
+        with ProcessPoolExecutor(
+            max_workers=_worker_count(len(units)), mp_context=multiprocessing.get_context("spawn")
+        ) as pool:
             futures = [
                 (unit[0], pool.submit(_run_unit, unit[0], unit[1], unit[2], sides, timeout, scratch)) for unit in units
             ]
