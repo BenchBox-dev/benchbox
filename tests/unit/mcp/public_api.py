@@ -68,6 +68,17 @@ def get_tool_functions(server: MCPServer) -> dict[str, Any]:
     }
 
 
+def build_tool_functions() -> dict[str, Any]:
+    from benchbox.mcp import create_server
+    from tests.utilities import module_state_guard
+
+    before = module_state_guard.snapshot()
+    try:
+        return get_tool_functions(create_server())
+    finally:
+        module_state_guard.restore(before)
+
+
 def read_resource_text(server: MCPServer, uri: str) -> str:
 
     async def read() -> str:

@@ -10,7 +10,7 @@ import pytest
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.schema import build_result_payload
 from tests.fixtures.result_dict_fixtures import write_v2_result_file
-from tests.unit.mcp.public_api import get_tool_functions
+from tests.unit.mcp.public_api import build_tool_functions
 
 pytestmark = [
     pytest.mark.unit,
@@ -18,20 +18,9 @@ pytestmark = [
 ]
 
 
-def _get_tool_functions():
-    import benchbox.utils.printing as printing
-    from benchbox.mcp import create_server
-
-    quiet = printing._QUIET
-    try:
-        return get_tool_functions(create_server())
-    finally:
-        printing._QUIET = quiet
-
-
 @pytest.fixture(scope="module")
 def tool_functions():
-    return _get_tool_functions()
+    return build_tool_functions()
 
 
 class TestValidateConfigTool:
