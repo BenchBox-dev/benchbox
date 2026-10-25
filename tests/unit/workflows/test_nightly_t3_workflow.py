@@ -142,6 +142,7 @@ def _run_mirror_step(
     mirror_error: str | None = None,
     copied_manifest: str | None = None,
     pin_source: bool = True,
+    copy_plan: dict[str, list[str | None]] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], list[list[str]]]:
     if pin_source and "@sha256:" not in source_image:
         digest = hashlib.sha256(source_manifest.encode("utf-8")).hexdigest()
@@ -184,6 +185,16 @@ def _run_mirror_step(
         "'Error reading manifest: manifest unknown'))\n"
         "        raise SystemExit(1)\n"
         "elif args[0] == 'copy':\n"
+        "    plan = json.loads(os.environ.get('COPY_PLAN', '{}'))\n"
+        "    state = Path(os.environ['MIRROR_STATE'] + '.copy-count')\n"
+        "    counts = json.loads(state.read_text(encoding='utf-8')) if state.exists() else {}\n"
+        "    index = counts.get(args[-2], 0)\n"
+        "    counts[args[-2]] = index + 1\n"
+        "    state.write_text(json.dumps(counts), encoding='utf-8')\n"
+        "    outcomes = plan.get(args[-2], [])\n"
+        "    if index < len(outcomes) and outcomes[index] is not None:\n"
+        "        sys.stderr.write(outcomes[index])\n"
+        "        raise SystemExit(1)\n"
         "    manifest = os.environ.get('COPIED_MANIFEST', os.environ['SOURCE_MANIFEST'])\n"
         "    Path(os.environ['MIRROR_STATE']).write_text(manifest, encoding='utf-8')\n"
         "else:\n"
@@ -210,7 +221,10 @@ def _run_mirror_step(
         "GITHUB_STEP_SUMMARY": str(summary_path),
         "SKOPEO_CALLS": str(calls_path),
         "MIRROR_STATE": str(tmp_path / "mirror-manifest.json"),
+        "MIRROR_RETRY_BASE_SECONDS": "0",
     }
+    if copy_plan is not None:
+        env["COPY_PLAN"] = json.dumps(copy_plan)
     if mirror_manifest is not None:
         env["MIRROR_MANIFEST"] = mirror_manifest
     if mirror_error is not None:
@@ -960,6 +974,111 @@ def test_mirror_skips_the_copy_when_postgres17_is_already_mirrored(tmp_path: Pat
     assert not any(call[0] == "copy" for call in calls)
     assert [call[-1] for call in calls] == [f"docker://ghcr.io/benchbox-dev/postgres@{POSTGRES17_DIGEST}"]
     assert "digest mismatch" in result.stdout + result.stderr
+
+
+POSTGRES17_ECR = f"docker://public.ecr.aws/docker/library/postgres@{POSTGRES17_DIGEST}"
+POSTGRES17_HUB = f"docker://docker.io/library/postgres@{POSTGRES17_DIGEST}"
+RATE_LIMITED = "reading manifest: toomanyrequests: Data limit exceeded"
+
+
+def _run_postgres17_copy(
+    tmp_path: Path, copy_plan: dict[str, list[str | None]], **kwargs: Any
+) -> tuple[subprocess.CompletedProcess[str], list[list[str]]]:
+    return _run_mirror_step(
+        tmp_path,
+        image="postgres17",
+        source_image="unused",
+        source_manifest="{}",
+        mirror_error="Error reading manifest: manifest unknown",
+        pin_source=False,
+        copy_plan=copy_plan,
+        **kwargs,
+    )
+
+
+def _copy_sources(calls: list[list[str]]) -> list[str]:
+    return [call[-2] for call in calls if call[0] == "copy"]
+
+
+def test_mirror_falls_back_to_docker_hub_when_the_first_source_stays_rate_limited(tmp_path: Path) -> None:
+    result, calls = _run_postgres17_copy(tmp_path, {POSTGRES17_ECR: [RATE_LIMITED] * 3})
+    assert _copy_sources(calls) == [POSTGRES17_ECR] * 3 + [POSTGRES17_HUB]
+    assert "digest mismatch" in result.stdout + result.stderr
+
+
+def test_mirror_retries_a_transient_error_on_the_same_source_before_falling_back(tmp_path: Path) -> None:
+    result, calls = _run_postgres17_copy(
+        tmp_path, {POSTGRES17_ECR: [RATE_LIMITED, "received unexpected HTTP status: 503", None]}
+    )
+    assert _copy_sources(calls) == [POSTGRES17_ECR] * 3
+    assert "Transient error copying" in result.stdout + result.stderr
+
+
+def test_mirror_does_not_retry_or_fall_back_on_authentication_errors(tmp_path: Path) -> None:
+    result, calls = _run_postgres17_copy(tmp_path, {POSTGRES17_ECR: ["unauthorized: authentication required"]})
+    assert result.returncode != 0
+    assert _copy_sources(calls) == [POSTGRES17_ECR]
+    assert "Authentication failure" in result.stdout + result.stderr
+
+
+def test_mirror_moves_on_without_retrying_when_a_source_does_not_have_the_digest(tmp_path: Path) -> None:
+    _, calls = _run_postgres17_copy(tmp_path, {POSTGRES17_ECR: ["manifest unknown: manifest unknown"]})
+    assert _copy_sources(calls) == [POSTGRES17_ECR, POSTGRES17_HUB]
+
+
+def test_mirror_reports_every_source_error_when_all_sources_fail(tmp_path: Path) -> None:
+    result, calls = _run_postgres17_copy(
+        tmp_path,
+        {POSTGRES17_ECR: [RATE_LIMITED] * 3, POSTGRES17_HUB: ["manifest unknown: manifest unknown"]},
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode != 0
+    assert _copy_sources(calls) == [POSTGRES17_ECR] * 3 + [POSTGRES17_HUB]
+    assert "Could not copy postgres17" in output
+    assert f"{POSTGRES17_ECR} (attempt 3): {RATE_LIMITED}" in output
+    assert f"{POSTGRES17_HUB} (attempt 1): manifest unknown" in output
+
+
+def test_mirror_checks_the_digest_of_a_fallback_copy(tmp_path: Path) -> None:
+    result, calls = _run_postgres17_copy(
+        tmp_path, {POSTGRES17_ECR: [RATE_LIMITED] * 3}, copied_manifest='{"other":true}'
+    )
+    assert result.returncode != 0
+    assert _copy_sources(calls)[-1] == POSTGRES17_HUB
+    assert "GHCR mirror digest mismatch" in result.stdout + result.stderr
+
+
+def test_mirror_postgres_pin_falls_back_to_the_docker_hub_official_image(tmp_path: Path) -> None:
+    source_image = _compose_default_image("docker/postgresql/docker-compose.yml")
+    digest = source_image.rsplit("@", 1)[1]
+    primary = f"docker://public.ecr.aws/docker/library/postgres@{digest}"
+    _, calls = _run_mirror_step(
+        tmp_path,
+        image="postgres",
+        source_image=source_image,
+        source_manifest="{}",
+        mirror_error="manifest unknown",
+        pin_source=False,
+        copy_plan={primary: [RATE_LIMITED] * 3},
+    )
+    assert _copy_sources(calls) == [primary] * 3 + [f"docker://docker.io/library/postgres@{digest}"]
+
+
+@pytest.mark.parametrize("image", ["clickhouse", "trino", "cedardb"])
+def test_mirror_keeps_single_source_images_single_source(tmp_path: Path, image: str) -> None:
+    source_image = _compose_default_image(f"docker/{image}/docker-compose.yml")
+    primary = f"docker://docker.io/{source_image.split(':')[0].split('@')[0]}@{source_image.rsplit('@', 1)[1]}"
+    result, calls = _run_mirror_step(
+        tmp_path,
+        image=image,
+        source_image=source_image,
+        source_manifest="{}",
+        mirror_error="manifest unknown",
+        pin_source=False,
+        copy_plan={primary: [RATE_LIMITED] * 3},
+    )
+    assert result.returncode != 0
+    assert _copy_sources(calls) == [primary] * 3
 
 
 def test_nightly_postgres_integration_pulls_the_authenticated_ghcr_mirror_after_it_is_published() -> None:

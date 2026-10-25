@@ -39,15 +39,21 @@ jobs:
         run: |
           set -euo pipefail
           pinned_source=
+          fallback_sources=()
           repository=$IMAGE
           case "$IMAGE" in
             clickhouse) compose=docker/clickhouse/docker-compose.yml; service=clickhouse ;;
             trino) compose=docker/trino/docker-compose.yml; service=trino ;;
             cedardb) compose=docker/cedardb/docker-compose.yml; service=cedardb ;;
-            postgres) compose=docker/postgresql/docker-compose.yml; service=postgresql ;;
+            postgres)
+              compose=docker/postgresql/docker-compose.yml
+              service=postgresql
+              fallback_sources=(docker.io/library/postgres)
+              ;;
             postgres17)
               pinned_source=public.ecr.aws/docker/library/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
               repository=postgres
+              fallback_sources=(docker.io/library/postgres)
               ;;
             *) echo "::error::Unsupported mirror image: $IMAGE"; exit 1 ;;
           esac
@@ -89,7 +95,58 @@ jobs:
               cat "$inspect_error" >&2
               exit 1
             fi
-            skopeo copy --all --preserve-digests "$source_ref" "docker://$copy_destination"
+            source_refs=("$source_ref")
+            for fallback in ${fallback_sources[@]+"${fallback_sources[@]}"}; do
+              source_refs+=("docker://$fallback@${digest}")
+            done
+            retry_pattern='toomanyrequests|too many requests|rate limit|Data limit exceeded|(^|[^[:alnum:]])(429|500|502|503|504)([^[:alnum:]]|$)|timeout|timed out|deadline exceeded|connection reset|connection refused|unexpected EOF|temporarily unavailable|service unavailable|bad gateway'
+            auth_pattern='unauthorized|denied|forbidden|authentication required|(^|[^[:alnum:]])(401|403)([^[:alnum:]]|$)'
+            max_attempts=3
+            base_delay=${MIRROR_RETRY_BASE_SECONDS:-10}
+            copy_error="$RUNNER_TEMP/${IMAGE}-mirror-copy.err"
+            failures=()
+            copied=false
+            for candidate in "${source_refs[@]}"; do
+              attempt=1
+              retry_delay=$base_delay
+              while true; do
+                if skopeo copy --all --preserve-digests "$candidate" "docker://$copy_destination" 2> "$copy_error"; then
+                  copied=true
+                  break 2
+                fi
+                copy_output=$(cat "$copy_error")
+                shopt -s nocasematch
+                retryable=false
+                authfail=false
+                if [[ "$copy_output" =~ $retry_pattern ]]; then
+                  retryable=true
+                elif [[ "$copy_output" =~ $auth_pattern ]]; then
+                  authfail=true
+                fi
+                shopt -u nocasematch
+                failures+=("$candidate (attempt $attempt): $copy_output")
+                if [ "$authfail" = true ]; then
+                  echo "::error::Authentication failure copying $candidate: $copy_output"
+                  exit 1
+                fi
+                if [ "$retryable" = true ] && [ "$attempt" -lt "$max_attempts" ]; then
+                  echo "::warning::Transient error copying $candidate (attempt $attempt of $max_attempts); retrying in ${retry_delay}s: $copy_output"
+                  sleep "$retry_delay"
+                  retry_delay=$((retry_delay * 2))
+                  attempt=$((attempt + 1))
+                  continue
+                fi
+                echo "::warning::Giving up on $candidate after $attempt attempt(s): $copy_output"
+                break
+              done
+            done
+            if [ "$copied" != true ]; then
+              echo "::error::Could not copy $IMAGE digest $digest from any source."
+              for failure in "${failures[@]}"; do
+                echo "::error::$failure"
+              done
+              exit 1
+            fi
             skopeo inspect --raw "$destination_ref" > "$mirror_manifest"
           fi
           mirror_digest="sha256:$(sha256sum "$mirror_manifest" | cut -d' ' -f1)"
