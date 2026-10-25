@@ -4,7 +4,7 @@
     "todo-db reads/writes no longer fail with ENOSPC",
     "Event log degradation alert clears"
   ],
-  "context": "On 2026-10-06 the host root volume hit 100% capacity (115Mi free on a 926Gi disk; ~/Developer/benchmark_runs alone 298G). todo-db list_items failed with ENOSPC and the session event log reported degradation. Tracker access recovered later without agent action, so pressure is intermittent. Do not delete benchmark_runs or other owner data without explicit owner approval of exact paths.",
+  "context": "Owner decision 2026-10-25: close. Guard shipped (PR #3334: ensure_run_output_space, make disk-check, BENCHBOX_MIN_FREE_DISK_PERCENT default 5). Root volume at 86% used / 117 GB free at close (was 95-99%). No deletions by agents. Host cleanup is the owner's; large consumers for reference: ~/.cache/uv (~55 GB), ~/Developer/benchmark_runs (~323 GB), ~42 BenchBox.wt-* worktrees mostly from other sessions.",
   "description": "Investigate what is filling the disk (benchmark run retention? logs? caches?), set a retention/pruning policy with owner approval, and add monitoring or a guard so tooling (tracker, event log, CI artifacts) degrades loudly before writes start failing.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "e37c19dde0e74c70879d8c3bbee1ec87",
       "session_id": "5709cef75a584579a236033476a263ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T13:22:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fceda98657d74d8a8b9bb09991e96321",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
 }
