@@ -2,6 +2,7 @@
   "acceptance": [
     "Gate 1 evidence (how omp accepts multiple clients) is recorded in context before the first edit.",
     "Tests that fail on current develop and pass after: two named clients produce two entries with distinct tokenSha256 values and identical models and accounts; an oracle-ci-only invocation produces output byte-identical to develop's; a missing or unreadable token file for any client fails without writing clients.json.",
+    "The host tooling that installs and checks the gateway (the documented gateway and check procedures and any script they call) handles several clients: it reports each client's model count and fails if any client's models differ from oracle-ci's.",
     "docs/internal/oracle-gateway-host.md documents adding, rotating and revoking a named client, and the oracle-local token path.",
     "make pr-preflight, make docs-reference-inventory-check and make doc-contracts-guard pass; oracle SHIP on the exact head; merged through make pr-arm.",
     "Live after host apply: GET /v1/models through 127.0.0.1:4000 with the oracle-local token returns the same model count as the oracle-ci token (counts only, no token printed); clients.json and both token files are mode 0600; the next CI oracle review after the apply completes with a posted verdict."
@@ -20,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "796deba65a284f339d349d0f1478e762",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T21:01:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0d829e4b0023442aa1b655cd9ecf737a",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
