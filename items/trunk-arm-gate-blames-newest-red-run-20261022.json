@@ -4,6 +4,7 @@
     "A `fix/revert-*` branch that reverts the streak's first red commit is exempt; a revert of a commit outside the streak is not.",
     "The refusal message names the streak's first culprit PR and its revert command."
   ],
+  "context": "Delivered in merged PR #3415: red_streak_start returns the first red completed run after the last green one (pending/cancelled runs do not break the streak); fix/revert-* exemption and is_reverted use that streak-start commit; fetch window widens 30/100/300/1000 and fails closed when the streak start cannot be established. Tests include the #3200/#3220 scenario. Not verified against live GitHub runs.",
   "description": "`scripts/trunk_revert.py` `arm_gate` (`:150-170`) takes the newest completed red Trunk run (`red_trunk_run`, `:99-107`), names the PR merged at that run's head as the culprit, and exempts only a `fix/revert-*` branch whose commits say `This reverts commit <that head>`. When a failure persists across later merges, the newest red run's head is a later, innocent PR. The gate then tells the operator to revert that PR and refuses the revert of the commit that broke Trunk. `is_reverted` checks the same newest head, so merging the real revert does not clear the gate until a new Trunk run completes.\n\nObserved 2026-10-21: #3200 (4e8118c98) turned Trunk red (run 39549351208). #3220 merged next and its Trunk run (39555893700) failed the same way. `make pr-arm` on the revert of #3200 (#3223, branch `fix/revert-3200`) refused with `the newest completed trunk.yml run failed at PR #3220 ... Merge a revert (make trunk-revert PR=3220)`. Related: trunk-red-stops-further-merges.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3223",
@@ -25,6 +26,14 @@
       "generation": "d5e78a33b75846f3b74101fbcab15c19",
       "op": "take",
       "op_id": "5d55f6b8d063460eab52d2b36bb390ad",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T01:17:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "81c471181124422d834799930ec3b86b",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
