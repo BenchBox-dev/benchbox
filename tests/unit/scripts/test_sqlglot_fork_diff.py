@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -129,33 +129,21 @@ def test_non_ascii_and_glob_like_names_get_their_own_literal_diff(fork: tuple[Pa
     assert "diff --git a/sqlglot/é.py b/sqlglot/é.py" in text
 
 
-def test_non_ascii_names_survive_a_non_utf8_locale(fork: tuple[Path, str, str]) -> None:
+def test_non_ascii_names_survive_a_non_utf8_locale(
+    fork: tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     repo, old, _ = fork
     (repo / "sqlglot" / "é.py").write_text("UNICODE = 1\n", encoding="utf-8")
     git(repo, "add", ".")
     git(repo, "commit", "-m", "odd name", "--quiet")
     new = git(repo, "rev-parse", "HEAD")
-    script = (
-        "import sys\n"
-        "from pathlib import Path\n"
-        "from scripts import sqlglot_fork_diff\n"
-        "text = sqlglot_fork_diff.render(Path(sys.argv[1]), sys.argv[2], sys.argv[3], 50000, 'r')\n"
-        "sys.stdout.buffer.write(text.encode('utf-8'))\n"
-    )
-    env = {
-        **os.environ,
-        "PYTHONUTF8": "0",
-        "PYTHONCOERCECLOCALE": "0",
-        "PYTHONIOENCODING": "utf-8",
-        "LC_ALL": "C",
-        "LANG": "C",
-    }
-    result = subprocess.run(
-        [sys.executable, "-c", script, str(repo), old, new],
-        cwd=Path(__file__).resolve().parents[3],
-        env=env,
-        capture_output=True,
-        check=False,
-    )
-    assert result.returncode == 0, result.stderr.decode("utf-8", "replace")
-    assert "diff --git a/sqlglot/é.py b/sqlglot/é.py" in result.stdout.decode("utf-8")
+    real_run = subprocess.run
+
+    def locale_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess:
+        if kwargs.get("text") and "encoding" not in kwargs:
+            kwargs["encoding"] = "cp1252"
+        return real_run(*args, **kwargs)
+
+    monkeypatch.setattr(sqlglot_fork_diff, "subprocess", SimpleNamespace(run=locale_run))
+    text = sqlglot_fork_diff.render(repo, old, new, 50_000, "r")
+    assert "diff --git a/sqlglot/é.py b/sqlglot/é.py" in text
