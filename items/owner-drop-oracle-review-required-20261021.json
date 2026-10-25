@@ -2,7 +2,7 @@
   "acceptance": [
     "Ruleset no longer lists oracle-review; drift check clean"
   ],
-  "context": "Owner-only ruleset edit.",
+  "context": "Owner-only ruleset edit. Done by the owner: ruleset 15611785 updated 2026-10-25T01:53:21Z. Live required checks are core, explorer, results-data, docs, tooling, hold and oracle-gate (integration_id 5201041); bypass_actors is empty. develop's scripts/ruleset_drift_check.py (at 0fbf14dca, after PR #3395 merged as 43a3e5e60) reports Ruleset Drift - OK for develop-squash-only.",
   "description": "Repository admin action after consumers moved: remove the oracle-review required context from ruleset 15611785.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "op": "update",
       "op_id": "8c1075085ffd41daa100041d27d18c71",
       "session_id": "a9046e3fb7d74eefb823245a0b359b69"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T02:04:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "de066fececcb4e329f2b56c111397600",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
 }

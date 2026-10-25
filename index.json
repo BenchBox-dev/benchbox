@@ -16458,7 +16458,7 @@
         "oracle-gate-consumers-cutover-20261021"
       ],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Owner: drop oracle-review from the develop ruleset"
     },
     "owner-oracle-gate-required-20261021": {
