@@ -6,7 +6,7 @@
     "Gateway selection uses the core gateway setting and validator from core-exec-gateway-capability (no adapter-level choice list or separate --gateway definition); the gateway connection options are registered only for Snowflake through that item's mechanism and are not exposed via MCP; test_advertised_platform_options passes",
     "No live-vendor calls in tests; mock tokens only"
   ],
-  "context": "Plan: /Users/joe/.jcode/scratch/espresso-greybeam-plan-v2.md items A1-A5, now layered on the core gateway capability (core-exec-gateway-capability, ADR docs/development/adr/adr-core-execution-variants.md D9/D10). Sources: benchbox/platforms/snowflake.py (_get_connection_params ~L511, _create_admin_connection ~L521, create_connection ~L600, add_cli_arguments ~L180, from_config ~L217); specs table benchbox/platforms/__init__.py _OPTION_SPEC_ROWS ~L623. Guardrails: linked worktree off develop (make worktree-create + agent-write-preflight), never git add -A, no credentials in git, never name anything proxy_host. The gateway plan's decision gate G1 (mock-gateway connection behavior, evaluated in gw-tests-gates) depends on this item.\n\nUpdate 2026-10-14: gateway option hygiene gaps on develop 9400b62c4, for this item and gw-databricks to close:\n- `gateway_protocol=https` is defaulted into every Snowflake and Databricks config, even with no gateway (core/gateway.py:54,86-91,112-116).\n- `gateway_host` userinfo (`alice:pw@gw`) is not rejected at parse time and is not scrubbed from result JSON (core/results/platform_options.py:68-70,169-171). Dry-run previews do redact it since #2958.\n- `gateway_*` options are accepted without a non-native `--gateway` (core/hooks/platform_hooks.py:57-62).\n- PlatformOptionSpec has no security-class field.\n\nNon-native `--gateway` currently fails closed (ADR D9 amendment, #2944), so this item must also lift that refusal for Snowflake.",
+  "context": "Delivered in merged PR #3375: Snowflake gateway endpoint override (host/TLS/CA-bundle/insecure settings fail closed), CLI --gateway for Snowflake only, routed results classed unofficial_nonstandard with TPC Power/Throughput/QphH not computed. Not done / follow-ups: CLI --gateway for Databricks (GATEWAY_ROUTED_PLATFORMS stays Snowflake-only because the Databricks adapter forwards only `gateway`, not gateway connection options); gateway_protocol default leaking, security-class field on PlatformOptionSpec, CLI-parse-time rejection (unaddressed hygiene gaps). Live Snowflake gateway run not performed.",
   "description": "Add gateway-endpoint override to SnowflakeAdapter per plan v2 A1-A5, on top of the core gateway capability (core-exec-gateway-capability): config params and validation, centralized gateway mapping in _get_connection_params covering benchmark and admin paths, and from_config fields. The gateway choice itself (--gateway and its allowed values) comes from the core setting and the manifest gateways declaration; this item registers only the Snowflake gateway connection options through the mechanism that item defines, not separate adapter CLI args or _OPTION_SPEC_ROWS choice lists.",
   "sessions": [
     {
@@ -48,6 +48,14 @@
       "generation": "711e133f9a3f4a69a85af6f7e037cbae",
       "op": "take",
       "op_id": "3c7e8ce9e74341dca55104f0ea1e44cc",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-25T00:41:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8183d61b143c41159a09307792392146",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
