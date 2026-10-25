@@ -2727,9 +2727,9 @@
     },
     "changelog-fragments-03-cutover": {
       "claim": {
-        "expires_at": "2026-10-26T03:17:31Z",
-        "generation": "e3f1c8b28b0648be898eb8dd89cb7bcf",
-        "renewals": 0,
+        "expires_at": "2026-10-26T09:02:55Z",
+        "generation": "e2268652d9884ec7bb81e93e93fb3657",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
       },
       "needs": [
