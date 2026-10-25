@@ -229,6 +229,13 @@ def test_report_job_is_skipped_when_the_workflow_is_cancelled() -> None:
     assert "liveness" in report["needs"]
 
 
+def test_a_failure_result_names_the_job_result_in_the_issue_body(tmp_path: Path) -> None:
+    _, calls = _run_report(tmp_path, {"perf": "failure"}, label="t3:perf")
+    creates = [args for args in calls if args[:2] == ["issue", "create"]]
+    assert len(creates) == 1
+    assert "Domain job result: failure." in _body(creates[0])
+
+
 def test_a_failed_domain_is_reported_even_when_the_liveness_domain_is_alive(tmp_path: Path) -> None:
     results = {"liveness": "success", "perf": "failure"}
     _, perf_calls = _run_report(tmp_path / "perf", results, label="t3:perf")

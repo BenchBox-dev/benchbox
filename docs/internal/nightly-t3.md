@@ -50,10 +50,13 @@ Execution success is reported separately. When the `report` job runs, it reads
 the result of every domain job and opens, updates or closes one `t3:<domain>`
 issue per domain, so a failed domain gets an issue whether `liveness` passed or
 failed. The job runs under `if: always() && !cancelled()`: a cancelled workflow
-skips it and produces no issue, and a cancelled or timed-out domain never opens
-an issue even when the report job runs (see Issues below). In those cases only
-the run's own job results show the failure, and `liveness` still catches a
-workflow that stops producing scheduled runs. Read overall nightly health from
+skips it and produces no issue. When it runs, the report script maps each job's
+`needs.<job>.result` literally: `failure` (including a job that hit its
+`timeout-minutes`, which GitHub reports as a failure result) creates or updates
+the domain issue, `success` closes it, `cancelled` only comments on an open
+issue, and anything else changes nothing (see Issues below). When the report job
+is skipped, only the run's own job results show a failure, and `liveness` still
+catches a workflow that stops producing scheduled runs. Read overall nightly health from
 the `t3:*` issues and the run's job results, not from the liveness line.
 `tests/unit/scripts/test_scheduled_workflow_liveness.py` and
 `tests/unit/workflows/test_nightly_t3_report_lifecycle.py` pin this contract.
@@ -74,7 +77,7 @@ no other labels. The job reads each domain's result and decides as follows:
    closed most recently, if it was closed within the last 14 days, and comments
    on it. Otherwise it creates a new issue.
 3. A passing domain closes its open issue with a link to the passing run.
-4. A cancelled or timed-out domain with an open issue gets one comment per run,
+4. A domain whose job result is `cancelled` with an open issue gets one comment per run,
    "no verdict (cancelled or timed out)". It never creates, reopens, or closes an
    issue. A cancelled image mirror job also counts as no verdict for its domain.
 5. A skipped domain (cloud disabled, or drift on a non-Monday) changes nothing.
