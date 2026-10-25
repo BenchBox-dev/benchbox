@@ -15957,10 +15957,15 @@
       "title": "Verify the oracle-gate event paths live after the oracle-review cutover"
     },
     "oracle-gate-fail-closed-evaluation-errors-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T03:52:07Z",
+        "generation": "fabde9bbcb4846ee9e8fc22b42dbe6b1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Make oracle-gate post failure when evaluation errors, and sweep every open develop pull request"
     },
     "oracle-gate-policy-change-refresh-20261025": {
