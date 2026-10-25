@@ -188,7 +188,10 @@ the verified release distribution artifact. Pending runs are retained with
 push event still needs separate recovery. A red develop tip is a trunk
 failure that the PR's own checks did not catch. Revert first: run
 `make trunk-revert PR=<n>` for the culprit and fix it afterwards. While trunk has
-been red for more than 30 minutes, `make pr-open` refuses any PR that is not a
-revert, because every PR opened on a red tip inherits the breakage. The
-green-unmerged sweep does not report it.
+been red for more than 30 minutes, `make pr-open` opens any PR that is not a
+revert as a draft and says that arming needs the owner's fix-forward
+authorization, because every PR opened on a red tip inherits the breakage. Arming
+stays refused until that authorization exists; see
+[Fix-forward authorization](../agent/merge-authority.md#fix-forward-authorization).
+The revert flow is unchanged. The green-unmerged sweep does not report it.
 See [Merge and trunk governance](merge-queue-governance.md).
