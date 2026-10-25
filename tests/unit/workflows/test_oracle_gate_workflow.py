@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import re
 import shutil
 import subprocess
@@ -16,6 +17,21 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "oracle-gate.yml"
 VERDICT = REPO_ROOT / ".github" / "workflows" / "oracle-verdict.yml"
 SCRIPT = "_project/scripts/oracle_gate.py"
+CHECKER_PATH = REPO_ROOT / "_project/scripts/oracle_review_check.py"
+
+
+def _attested_shas(comment: dict[str, Any]) -> list[str]:
+    sys.path.insert(0, str(CHECKER_PATH.parent))
+    try:
+        spec = importlib.util.spec_from_file_location("oracle_review_check_under_workflow_test", CHECKER_PATH)
+        assert spec and spec.loader
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.remove(str(CHECKER_PATH.parent))
+    return module._attested_shas(comment)
+
+
 SHA_PIN = re.compile(r"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$")
 KNOWN_SHAS = {
     match.group(0).split("@")[1]
@@ -61,8 +77,8 @@ def test_pull_request_target_covers_open_push_reopen_ready_and_edit() -> None:
     assert set(types) == {"opened", "synchronize", "reopened", "ready_for_review", "edited"}
 
 
-def test_issue_comment_covers_created_standins() -> None:
-    assert _triggers()["issue_comment"]["types"] == ["created"]
+def test_issue_comment_covers_created_edited_and_deleted_comments() -> None:
+    assert _triggers()["issue_comment"]["types"] == ["created", "edited", "deleted"]
     assert "Stand-in oracle review: APPROVE" in _jobs()["gate"]["if"]
 
 
@@ -282,16 +298,116 @@ def test_workflow_has_no_comments() -> None:
     assert not any(line.lstrip().startswith("#") for line in _text().splitlines())
 
 
-def test_comments_that_skip_the_gate_job_never_cancel_a_running_gate() -> None:
-    group = _load()["concurrency"]["group"]
-    marker = "Stand-in oracle review: APPROVE"
-    assert f"github.event_name == 'issue_comment' && !startsWith(github.event.comment.body, '{marker}')" in group
-    assert group.index("ignored-") < group.index("github.event.pull_request.number")
-    assert marker in _jobs()["gate"]["if"]
+SHA = "0123456789abcdef0123456789abcdef01234567"
+MARKER = "Stand-in oracle review: APPROVE"
+STANDIN = f"{MARKER} {SHA}"
+
+
+def _comment_event(action: str, body: str | None, previous: str | None = None) -> dict[str, Any]:
+    event: dict[str, Any] = {"action": action, "issue": {"number": 8, "pull_request": {"url": "x"}}}
+    event["comment"] = {"body": body}
+    if previous is not None:
+        event["changes"] = {"body": {"from": previous}}
+    return event
+
+
+def _gate_runs(event: dict[str, Any]) -> bool:
+    return bool(_evaluate(_jobs()["gate"]["if"], {"github": {"event_name": "issue_comment", "event": event}}))
+
+
+def _group(event: dict[str, Any]) -> str:
+    context = {"github": {"event_name": "issue_comment", "event": event, "run_id": "55"}, "inputs": {}}
+    return _render(_load()["concurrency"]["group"], context)
+
+
+def test_created_marker_comment_runs_the_gate_in_the_pull_request_group() -> None:
+    event = _comment_event("created", STANDIN)
+    assert _gate_runs(event)
+    assert _group(event) == "oracle-gate-8"
+
+
+def test_edit_that_removes_the_marker_runs_the_gate_in_the_pull_request_group() -> None:
+    event = _comment_event("edited", "withdrawn", STANDIN)
+    assert _gate_runs(event)
+    assert _group(event) == "oracle-gate-8"
+
+
+def test_edit_that_adds_the_marker_runs_the_gate() -> None:
+    event = _comment_event("edited", STANDIN, "draft")
+    assert _gate_runs(event)
+    assert _group(event) == "oracle-gate-8"
+
+
+def test_deleted_marker_comment_runs_the_gate_in_the_pull_request_group() -> None:
+    event = _comment_event("deleted", STANDIN)
+    assert _gate_runs(event)
+    assert _group(event) == "oracle-gate-8"
+
+
+def test_plain_comment_edit_skips_the_gate_and_never_joins_the_pull_request_group() -> None:
+    event = _comment_event("edited", "looks good", "looks fine")
+    assert not _gate_runs(event)
+    assert _group(event) == "oracle-gate-ignored-55"
+
+
+def test_plain_comment_deletion_skips_the_gate_and_never_joins_the_pull_request_group() -> None:
+    event = _comment_event("deleted", "looks good")
+    assert not _gate_runs(event)
+    assert _group(event) == "oracle-gate-ignored-55"
+
+
+def test_edit_without_a_body_change_skips_the_gate() -> None:
+    event = _comment_event("edited", "looks good")
+    assert not _gate_runs(event)
+    assert _group(event) == "oracle-gate-ignored-55"
+
+
+def test_previous_body_is_ignored_for_events_that_are_not_edits() -> None:
+    event = _comment_event("created", "plain", STANDIN)
+    assert not _gate_runs(event)
+
+
+def test_comment_on_a_plain_issue_never_runs_the_gate() -> None:
+    event = _comment_event("created", STANDIN)
+    del event["issue"]["pull_request"]
+    assert not _gate_runs(event)
+
+
+@pytest.mark.parametrize("padding", [" ", "\n", "\t", "\r\n", "  \n\n"])
+def test_trigger_agrees_with_decide_on_leading_whitespace(padding: str) -> None:
+    body = f"{padding}{STANDIN}"
+    assert _attested_shas({"body": body}) == [SHA]
+    assert _gate_runs(_comment_event("created", body))
+    assert _gate_runs(_comment_event("edited", "withdrawn", body))
+    assert _gate_runs(_comment_event("deleted", body))
+    assert _group(_comment_event("created", body)) == "oracle-gate-8"
+
+
+@pytest.mark.parametrize("trailing", [" ", "\n", "\r\n"])
+def test_trigger_agrees_with_decide_on_trailing_whitespace(trailing: str) -> None:
+    body = f"{STANDIN}{trailing}"
+    assert _attested_shas({"body": body}) == [SHA]
+    assert _gate_runs(_comment_event("created", body))
+
+
+def test_non_comment_events_keep_the_gate_conditions() -> None:
+    for name in ("pull_request_target", "workflow_dispatch"):
+        assert _evaluate(_jobs()["gate"]["if"], {"github": {"event_name": name, "event": {}}})
+    for name in ("schedule", "workflow_run"):
+        assert not _evaluate(_jobs()["gate"]["if"], {"github": {"event_name": name, "event": {}}})
 
 
 def _run_name(event_name: str, event: dict[str, Any], inputs: dict[str, Any] | None = None) -> str:
     context = {"github": {"event_name": event_name, "event": event}, "inputs": inputs or {}}
+    return _render(_load()["run-name"], context)
+
+
+def _render(template: str, context: dict[str, Any]) -> str:
+    return re.sub(r"\$\{\{(.*?)\}\}(?=[ )\"]|$)", lambda m: str(_evaluate(m.group(1), context) or ""), template)
+
+
+def _evaluate(expression: str, context: dict[str, Any]) -> Any:
+    expression = " ".join(expression.split())
 
     def value(expression: str) -> Any:
         expression = expression.strip()
@@ -307,8 +423,18 @@ def _run_name(event_name: str, event: dict[str, Any], inputs: dict[str, Any] | N
                     else:
                         result = value(part) if result else result
                 return result
+        for operator in ("==", "!="):
+            parts = _split_top_level(expression, operator)
+            if len(parts) == 2:
+                return (value(parts[0]) == value(parts[1])) == (operator == "==")
+        if expression.startswith("!"):
+            return not value(expression[1:])
         if expression.startswith("'"):
             return expression[1:-1]
+        for name, test in (("contains(", lambda a, b: b in a), ("startsWith(", lambda a, b: a.startswith(b))):
+            if expression.startswith(name):
+                left, right = _split_top_level(expression[len(name) : -1], ",")
+                return test(str(value(left) or ""), str(value(right) or ""))
         if expression.startswith("format("):
             template, *arguments = _split_top_level(expression[len("format(") : -1], ",")
             return re.sub(r"\{(\d+)\}", lambda m: str(value(arguments[int(m.group(1))])), value(template))
@@ -317,8 +443,7 @@ def _run_name(event_name: str, event: dict[str, Any], inputs: dict[str, Any] | N
             found = found.get(key) if isinstance(found, dict) else None
         return found
 
-    template = _load()["run-name"]
-    return re.sub(r"\$\{\{(.*?)\}\}(?=[ )]|$)", lambda m: str(value(m.group(1)) or ""), template)
+    return value(expression)
 
 
 def _closing_paren(expression: str) -> int:
@@ -349,9 +474,6 @@ def _split_top_level(expression: str, separator: str) -> list[str]:
         index += 1
     parts.append(expression[start:])
     return parts
-
-
-SHA = "0123456789abcdef0123456789abcdef01234567"
 
 
 def test_only_the_scheduled_run_is_titled_sweep() -> None:

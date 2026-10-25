@@ -6,7 +6,7 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited]
   issue_comment:
-    types: [created]
+    types: [created, edited, deleted]
   workflow_run:
     workflows: [oracle-verdict, oracle-review]
     types: [completed]
@@ -22,7 +22,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: "oracle-gate-${{ (github.event_name == 'issue_comment' && !startsWith(github.event.comment.body, 'Stand-in oracle review: APPROVE') && format('ignored-{0}', github.run_id)) || (github.event_name == 'workflow_run' && format('bridge-{0}', github.event.workflow_run.head_sha)) || github.event.pull_request.number || github.event.issue.number || inputs.pr || format('run-{0}', github.run_id) }}"
+  group: "oracle-gate-${{ (github.event_name == 'issue_comment' && !(contains(github.event.comment.body, 'Stand-in oracle review: APPROVE') || (github.event.action == 'edited' && contains(github.event.changes.body.from, 'Stand-in oracle review: APPROVE'))) && format('ignored-{0}', github.run_id)) || (github.event_name == 'workflow_run' && format('bridge-{0}', github.event.workflow_run.head_sha)) || github.event.pull_request.number || github.event.issue.number || inputs.pr || format('run-{0}', github.run_id) }}"
   cancel-in-progress: true
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
     name: gate
     if: >-
       github.event_name != 'schedule' && github.event_name != 'workflow_run' &&
-      (github.event_name != 'issue_comment' || (github.event.issue.pull_request && startsWith(github.event.comment.body, 'Stand-in oracle review: APPROVE')))
+      (github.event_name != 'issue_comment' || (github.event.issue.pull_request && (contains(github.event.comment.body, 'Stand-in oracle review: APPROVE') || (github.event.action == 'edited' && contains(github.event.changes.body.from, 'Stand-in oracle review: APPROVE')))))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: oracle

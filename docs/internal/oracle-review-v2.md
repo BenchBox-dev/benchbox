@@ -695,7 +695,10 @@ the gate property would not hold.
 
 `.github/workflows/oracle-gate.yml` runs `develop` code only. It triggers on
 `pull_request_target` (opened, synchronize, reopened, ready_for_review, edited),
-on created issue comments that open with the stand-in marker, on completion of
+on created, edited and deleted issue comments whose body, or for an edit its
+previous body, contains the stand-in marker anywhere (so leading whitespace,
+which the checker strips, still triggers a run; the checker then decides on the
+exact text), on completion of
 `oracle-verdict` and `oracle-review` (the bridge for review and thread events,
 which have no trusted trigger of their own), on `workflow_dispatch` with a `pr`
 input, and on an hourly `schedule` sweep over open pull requests targeting
