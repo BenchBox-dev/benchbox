@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Gates 1 and 2 are recorded in context, with the scan's measured duration.",
+    "Replay: the trunk scan step fails on the develop commit that introduced the bad EULA notice entry, and passes on #3385's merge commit. The step's output prints the checked SHA.",
+    "make pr-preflight passes; the PR passes the oracle on its merged head and merges through make pr-arm.",
+    "Live: the first Trunk run after merge shows the scan job, its checked SHA and its duration.",
+    "docs/internal/develop-post-merge-gaps.md lists the trunk scan and states that the nightly backstop remains."
+  ],
+  "context": "Found 2026-10-24 during the develop recovery (#3385). Source: Advisor review ~/Developer/benchmark_runs/ci-wedge-review-20261024/report.md, prevention plan row 'Post-merge whole-tree policy validation'. Checked 2026-10-25: trunk.yml on develop 9a184b619 contains no comment-policy step.",
+  "description": "Problem: the whole-tree comment-policy scan (scripts/run_comment_policy.py --full) runs on PRs and nightly (.github/workflows/comment-policy-nightly.yml:20-42), but not in .github/workflows/trunk.yml. On 2026-10-24 a bad scope entry on develop was noticed only when unrelated PRs started failing their tooling check, with no run that named the commit that introduced it.\n\nOutcome: every develop push runs the full scan, and a failure names the checked SHA, so normal trunk recovery points at the commit that added the violation. Detection only: prevention is comment-scope-head-policy-validation-20261025.\n\nDecision gates:\n1. Recovery path first. A scan failure turns Trunk red, which triggers the arm gate and the pr-open refusal. Before landing, confirm that make trunk-revert PR=<n> works for a policy-only culprit, including from a linked worktree (devloop-trunk-revert-nested-worktree). If revert is unusable, land after that fix.\n2. Cost. Measure the full scan on a hosted runner. If it would lengthen Trunk's critical path, run it as a separate parallel job and record the duration.\n3. Keep the nightly scan as a backstop; do not remove it.\n\nItem guardrails: detection only; never auto-revert. No change to the PR-time check. No new required context, which is owner-only.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no stand-in approvals, no ruleset edits or bypasses, no raw gh pr merge. Do not close and reopen, mass-rerun or rebase other pull requests.",
+  "links": [
+    "item:comment-scope-head-policy-validation-20261025",
+    "item:devloop-trunk-revert-nested-worktree",
+    ".github/workflows/trunk.yml",
+    ".github/workflows/comment-policy-nightly.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T12:52:37Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "41b9a72a8d224c4e89fb6fa3e207a42c",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}

@@ -26839,6 +26839,13 @@
       "status": "done",
       "title": "The red-Trunk arm gate blames the newest failing run, so it refuses the revert of the real culprit"
     },
+    "trunk-comment-policy-full-scan-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run the whole-tree comment-policy scan on each develop push so a bad policy entry is caught at the commit that added it"
+    },
     "trunk-coverage-scheduled-not-per-push-20261024": {
       "claim": null,
       "needs": [
