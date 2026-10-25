@@ -32,7 +32,7 @@ def test_runs_on_develop_push_and_on_demand_with_a_daily_staleness_tick() -> Non
 def test_coverage_runs_cancel_each_other() -> None:
     concurrency = _workflow()["concurrency"]
     assert concurrency["cancel-in-progress"] is True
-    assert concurrency["group"] == "trunk-coverage-${{ github.event_name }}"
+    assert concurrency["group"].startswith("trunk-coverage-${{ github.event_name }}")
 
 
 def test_is_read_only_by_default() -> None:
@@ -61,7 +61,7 @@ def test_four_coverage_shards_use_ctrace_and_test_phase_contexts() -> None:
 
 def test_map_job_requires_all_four_shards_and_declares_it() -> None:
     job = _workflow()["jobs"]["medium-coverage-map"]
-    assert job["if"] == "${{ always() && github.event_name != 'schedule' }}"
+    assert job["if"] == "${{ always() && github.event_name != 'schedule' && !inputs.medium-only }}"
     assert "--expected-shards 4" in "\n".join(step.get("run", "") for step in job["steps"])
     upload = next(step for step in job["steps"] if step.get("uses", "").startswith("actions/upload-artifact@"))
     assert upload["with"]["retention-days"] == 7

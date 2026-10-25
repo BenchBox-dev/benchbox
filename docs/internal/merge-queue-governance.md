@@ -160,6 +160,37 @@ hold a shard past 20 minutes. The PR medium tests and the gating trunk
 `medium-test` shards, which run without coverage, still enforce the unscaled
 bounds before merge.
 
+A change to the Trunk lane itself cannot be exercised by an ordinary PR run, so
+the PR `ci.yml` calls the Trunk workflows directly. A PR that changes
+`.github/workflows/trunk.yml`, `scripts/release_canary_sharding.py`,
+`scripts/pytest_shard_evidence.py` or `tests/fixtures/medium_shard_durations.json`
+runs the `trunk-lane-plain` job. One that changes
+`.github/workflows/trunk-coverage.yml`, `scripts/pytest_coverage_timeout.py`,
+`scripts/coverage_map.ini` or any of the other three paths runs
+`trunk-lane-coverage`. The changed-path list names both sides of a rename, so
+moving one of these files still triggers its lane. Each lane is a
+`workflow_call` of the real file with `medium-only: true`, so the PR head runs
+the same collection, shard scheduling, environment and coverage setting as the
+post-merge run, with the fast lane, correctness gate, distribution build and
+coverage map jobs skipped. Their evidence artifacts carry a `trunk-lane-plain-`
+or `trunk-lane-coverage-` prefix so they never mix with the PR medium tier's
+`t2-medium-*` evidence that `core` verifies. `core` needs both jobs and expects
+them to run exactly when their paths changed, so a red or missing run blocks the
+merge and unaffected PRs skip both.
+
+Replaying the precedents against the current layout. #3200 put per-test
+coverage into the medium shards by editing `trunk.yml`. Coverage now lives in
+`trunk-coverage.yml`, so the same change today edits that file or
+`scripts/pytest_coverage_timeout.py` and runs `trunk-lane-coverage`, which is
+the lane where datagen tests exceeded their unscaled timeouts. #3400 changed
+both Trunk workflows and `release_canary_sharding.py`, so both lanes would have
+run with module-grouped shard scheduling, the condition under which the
+process-global chDB server broke. Both replays are inferred from the changed
+paths; the historical heads were not re-run. #2821 changed only the `ci.yml`
+`code-test` job and its tests, so no Trunk-lane path matched and this run
+cannot replay it; that incident was a missing TypeScript install in the `fast`
+job of `trunk.yml`, which the medium-only run does not execute.
+
 The v2 map stores a node table with per-line integer indices, per-file
 executable-statement line sets from coverage's own analysis (changed blank,
 comment, and docstring lines are ignored rather than counted uncovered), the
