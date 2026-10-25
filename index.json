@@ -22977,15 +22977,10 @@
       "title": "Support immutable Git sources whose skills live in a repository subdirectory"
     },
     "skill-sync-global-pin-apply-or-revert-20261025": {
-      "claim": {
-        "expires_at": "2026-10-26T13:53:53Z",
-        "generation": "8f3e6e3acaaa4b4ab9c505e632b5e2af",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Apply or revert the pending global skill-sync pin for shared-agent-execution"
     },
     "skill-sync-item-scope-and-rung-path-form": {
