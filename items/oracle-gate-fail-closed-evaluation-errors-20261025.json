@@ -1,7 +1,8 @@
 {
   "acceptance": [
     "New unit tests in tests/unit/scripts/test_oracle_gate.py fail on the previous code and pass after the change. An evaluation error after the head SHA is known posts failure with an error description and returns ERROR. A fetch_pull failure, so no head SHA, posts nothing and returns ERROR. UngatedBase posts nothing and returns PASS. --no-post never posts.",
-    "The sweep step lists every open develop pull request, through pagination or by removing the fixed 200 cap. A workflow test asserts there is no fixed cap.",
+    "The sweep lists open develop pull requests with gh api --paginate 'repos/$REPO/pulls?base=develop&state=open&per_page=100' or equivalent full pagination. A workflow test asserts --paginate and that gh pr list is not used; deleting --limit alone would fall back to gh's default of 30.",
+    "The sweep's per-PR time is measured from a recent sweep run and recorded in context. Either timeout-minutes is sized for the current open-PR count with headroom, or the sweep orders pull requests least recently gated first, so a timeout never cuts off the same tail every hour. The choice is recorded.",
     "actionlint is clean, uv run -- pytest -q tests/unit/workflows/test_oracle_gate_workflow.py tests/unit/scripts/test_oracle_gate.py passes, and make pr-preflight passes.",
     "docs/internal/oracle-review-v2.md (Required gate from trusted code) states the fail-closed error behavior, its no-SHA limit and full sweep coverage, and make docs-validate passes."
   ],
@@ -14,6 +15,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "982fe35fe63446a198b57fc6f75eac68",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T03:23:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a9a7249edaf54845ae6a64e83ea9d6e3",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
