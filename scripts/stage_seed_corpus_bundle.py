@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 import os
@@ -27,6 +28,8 @@ exclusion_reason = importlib.import_module("validate_corpus").exclusion_reason
 
 PLANS_SUFFIX = ".plans.json"
 TUNING_SUFFIX = ".tuning.json"
+MANIFEST_SUFFIX = ".manifest.json"
+MANIFEST_VERSION = "1.0"
 
 
 class StagingError(Exception):
@@ -83,7 +86,7 @@ def _anonymized_companion(path: Path, manager: AnonymizationManager) -> dict[str
     return payload
 
 
-def stage_seed_bundle(result_file: Path, destination: Path) -> bool:
+def stage_seed_bundle(result_file: Path, destination: Path, *, internal_manifest: bool = False) -> bool:
     payload: Any = json.loads(result_file.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise StagingError(f"{result_file.name} is not a JSON object")
@@ -103,8 +106,23 @@ def stage_seed_bundle(result_file: Path, destination: Path) -> bool:
             staged[companion.name] = _anonymized_companion(companion, manager)
 
     destination.mkdir(parents=True, exist_ok=True)
+    written = {}
     for name, content in staged.items():
-        (destination / name).write_text(canonical_json_text(content), encoding="utf-8")
+        text = canonical_json_text(content)
+        (destination / name).write_text(text, encoding="utf-8")
+        written[name] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    if internal_manifest:
+        manifest = {
+            "bundle_file": result_file.name,
+            "bundle_hash": written.pop(result_file.name),
+            "companion_hashes": written,
+            "funding": "unspecified",
+            "manifest_version": MANIFEST_VERSION,
+            "result_source": "internal",
+            "submitted_by": "maintainer",
+        }
+        manifest_path = destination / f"{result_file.stem}{MANIFEST_SUFFIX}"
+        manifest_path.write_text(canonical_json_text(manifest), encoding="utf-8")
     _write_status(None)
     _write_output(True)
     print(f"Staged anonymized bundle to: {destination / result_file.name}")
@@ -113,14 +131,16 @@ def stage_seed_bundle(result_file: Path, destination: Path) -> bool:
 
 def main(arguments: list[str] | None = None) -> int:
     arguments = sys.argv[1:] if arguments is None else arguments
-    if len(arguments) != 2:
-        raise SystemExit("usage: stage_seed_corpus_bundle.py RESULT_FILE DESTINATION")
+    internal_manifest = "--internal-manifest" in arguments
+    positional = [argument for argument in arguments if argument != "--internal-manifest"]
+    if len(positional) != 2:
+        raise SystemExit("usage: stage_seed_corpus_bundle.py [--internal-manifest] RESULT_FILE DESTINATION")
     try:
-        stage_seed_bundle(Path(arguments[0]), Path(arguments[1]))
+        stage_seed_bundle(Path(positional[0]), Path(positional[1]), internal_manifest=internal_manifest)
     except (StagingError, OSError, ValueError) as exc:
         _write_status(f"staging_failed: {exc}".replace("\t", " ").replace("\n", " "))
         _write_output(False)
-        print(f"ERROR cannot stage {arguments[0]}: {exc}", file=sys.stderr)
+        print(f"ERROR cannot stage {positional[0]}: {exc}", file=sys.stderr)
         return 1
     return 0
 
