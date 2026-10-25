@@ -15991,6 +15991,15 @@
       "status": "done",
       "title": "Post the merge gate as an App status from trusted develop code (oracle-gate)"
     },
+    "oracle-gate-sweep-waiting-is-not-error-20261025": {
+      "claim": null,
+      "needs": [
+        "oracle-gate-policy-change-refresh-20261025"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make the oracle-gate sweep fail only on evaluation errors, not on pull requests still waiting"
+    },
     "oracle-gateway-long-silence-timeout-20261022": {
       "claim": null,
       "needs": [],

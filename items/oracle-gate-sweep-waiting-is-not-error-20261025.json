@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "tests/unit/workflows/test_oracle_gate_workflow.py asserts that the sweep step distinguishes exit 1 from other non-zero codes. Only codes other than 0 and 1 are recorded as failed. The test fails on the previous workflow.",
+    "actionlint is clean, uv run -- pytest -q tests/unit/workflows passes, and make pr-preflight passes.",
+    "Live check after merge: the next schedule or push sweep with only waiting pull requests concludes success. Its run ID is recorded in context."
+  ],
+  "context": "Found while closing out oracle-gate-policy-change-refresh-20261025: push sweep run 40165045688 on d1e1d1551 (2026-10-25T05:18Z) ran only the sweep job, as designed, but concluded failure. It listed #3435, #3434, #3431, #3428, #3420, #3418, #3412 and #3358, all waiting, with no 'oracle-gate: error' lines in the log.",
+  "description": "Problem: the sweep job in .github/workflows/oracle-gate.yml runs _project/scripts/oracle_gate.py for every open develop pull request and records the pull request as failed when the script exits non-zero. The script returns PASS (0), WAITING (1) or ERROR (2). WAITING means the gate correctly posted failure because the pull request is not ready yet, for example while it waits for an oracle review. That is a successful evaluation, but the sweep counts it as a failure and exits non-zero. Every schedule sweep since at least 2026-10-24 (runs 40101016116, 40116686358, 40126613035, 40139722596, 40151094620) and the first push sweep (40165045688) concluded failure, listing only waiting pull requests. A real evaluation error is therefore indistinguishable from normal waiting, and the run is always red.\n\nOutcome: the sweep treats exit 1 (WAITING) as evaluated. It records and fails only on exit 2 (ERROR) or any other non-zero code, and its warning names the errored pull requests only.\n\nDecision gates (stop and report if one fails):\n1. Confirm the exit-code contract in oracle_gate.py: PASS 0, WAITING 1, ERROR 2. Confirm that main() posts a status before returning WAITING, so a waiting pull request already carries its failure status.\n2. Confirm nothing else, such as alerting or another workflow, relies on the sweep run failing when pull requests are waiting.\n\nItem guardrails: no change to oracle_gate.py exit codes, decide(), the App binding or posting. Only the sweep's classification of exit codes changes.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, after make agent-write-preflight; the primary clone is read-only. No SKIP or --no-verify, no stand-in approvals, no ruleset edits or bypasses, no raw gh pr merge. Close out with make pr-preflight, make pr-open, oracle SHIP on the exact head, then make pr-arm. Do not change oracle-gate's App binding (integration 5201041), the oracle decision rule, or the native review-thread-resolution requirement. No explanatory comments or docstrings (COMMENT-POLICY-001). Every behavior change gets a test that fails on the previous code.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-25T05:21:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "49bb7a1b01c94d14927c5038f4093f41",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
