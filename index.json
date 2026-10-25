@@ -14843,10 +14843,15 @@
       "title": "Drain develop merge queue to zero after bulk-enrollment backlog"
     },
     "merge-stale-failure-rollup-blocks": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-26T03:16:57Z",
+        "generation": "97978348682e4befbfaea7ab8a179019",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stale failed check instances linger in merge rollup and block auto-merge"
     },
     "metadata-primitives-benchmark": {
