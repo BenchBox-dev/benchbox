@@ -221,32 +221,30 @@ def build_map(
 ) -> dict:
     from coverage import CoverageData
 
-    merged = CoverageData()
-    for path in data_files:
-        shard = CoverageData(str(path))
-        shard.read()
-        merged.update(shard)
     by_line: dict[str, dict[int, set[str]]] = {}
     setup_by_line: dict[str, dict[int, set[str]]] = {}
-    for filename in merged.measured_files():
-        rel = _relative_name(repo, filename)
-        if rel is None:
-            continue
-        for lineno, contexts in merged.contexts_by_lineno(filename).items():
-            for context in contexts:
-                node, phase = split_phase(context)
-                if node is None:
-                    continue
-                by_line.setdefault(rel, {}).setdefault(lineno, set()).add(node)
-                if phase == "setup":
-                    setup_by_line.setdefault(rel, {}).setdefault(lineno, set()).add(node)
-    nodes = sorted({node for lines in by_line.values() for hit in lines.values() for node in hit})
-    positions = {node: index for index, node in enumerate(nodes)}
     with tempfile.TemporaryDirectory() as tmp:
         merged_path = str(Path(tmp) / "merged.dat")
-        writer = CoverageData(merged_path)
-        writer.update(merged)
-        writer.write()
+        merged = CoverageData(merged_path)
+        for path in data_files:
+            shard = CoverageData(str(path))
+            shard.read()
+            merged.update(shard)
+        merged.write()
+        for filename in merged.measured_files():
+            rel = _relative_name(repo, filename)
+            if rel is None:
+                continue
+            for lineno, contexts in merged.contexts_by_lineno(filename).items():
+                for context in contexts:
+                    node, phase = split_phase(context)
+                    if node is None:
+                        continue
+                    by_line.setdefault(rel, {}).setdefault(lineno, set()).add(node)
+                    if phase == "setup":
+                        setup_by_line.setdefault(rel, {}).setdefault(lineno, set()).add(node)
+        nodes = sorted({node for lines in by_line.values() for hit in lines.values() for node in hit})
+        positions = {node: index for index, node in enumerate(nodes)}
         statements = _statement_lines(repo, merged_path, list(merged.measured_files()))
     files: dict[str, dict[str, object]] = {}
     for rel, lines in by_line.items():

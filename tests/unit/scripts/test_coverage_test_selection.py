@@ -255,6 +255,19 @@ def test_build_map_merges_shards_and_strips_contexts(tmp_path: Path, repo: Path)
     assert mapping["failed_nodes"] == []
 
 
+def test_build_map_does_not_touch_the_default_coverage_file(
+    tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.chdir(work)
+    base = str(repo / "benchbox/base.py")
+    first = _coverage_data(tmp_path, {base: {4: ["tests/test_benchbox.py::test_translate|run"]}})
+    mapping = sel.build_map([first], repo, _head(repo))
+    assert mapping["nodes"] == ["tests/test_benchbox.py::test_translate"]
+    assert sorted(path.name for path in work.iterdir()) == []
+
+
 def test_build_map_setup_phase_expands_selection_to_module(
     tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
