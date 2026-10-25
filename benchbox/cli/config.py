@@ -527,7 +527,11 @@ class ConfigManager:
             if not config_data:
                 raise ValueError("Configuration file is empty")
 
-            unified_config = UnifiedTuningConfiguration.from_dict(config_data)
+            from benchbox.cli.tuning_resolver import is_dataframe_tuning_file
+
+            unified_config = UnifiedTuningConfiguration.from_dict(
+                {} if is_dataframe_tuning_file(config_data) else config_data
+            )
 
             if self.get("tuning.validate_on_load", True):
                 self._validate_unified_tuning_config(unified_config, platform)
