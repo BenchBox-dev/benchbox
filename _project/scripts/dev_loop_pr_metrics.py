@@ -1956,6 +1956,7 @@ class UsageCollection:
     prs: list[dict] = field(default_factory=list)
     head_data: dict[str, dict] = field(default_factory=dict)
     develop_commits: list[dict] | None = None
+    workflow_created: dict[str, datetime] = field(default_factory=dict)
     required: dict | None = None
     effective_from_override: dict[str, datetime] = field(default_factory=dict)
     gaps: list[dict] = field(default_factory=list)
@@ -2155,6 +2156,16 @@ def collect_develop_commits(client: GitHubClient, collection: UsageCollection) -
         collection.gap("develop_commits", str(exc))
 
 
+def collect_workflow_metadata(client: GitHubClient, collection: UsageCollection) -> None:
+    for workflow in TRUNK_WORKFLOWS:
+        data = client.get(f"/repos/{client.repo}/actions/workflows/{workflow}")
+        created = _parse_ts(data.get("created_at")) if isinstance(data, dict) else None
+        if created is None:
+            collection.gap("workflow_metadata", f"creation time of {workflow} unavailable", workflow=workflow)
+        else:
+            collection.workflow_created[workflow] = created
+
+
 def collect_merged_prs(client: GitHubClient, collection: UsageCollection) -> None:
     try:
         prs = fetch_merged_prs(client, collection.since)
@@ -2258,6 +2269,7 @@ def collect_usage(
     collect_runs(client, collection)
     collect_run_details(client, collection, cache, workers)
     collect_develop_commits(client, collection)
+    collect_workflow_metadata(client, collection)
     collect_merged_prs(client, collection)
     collect_head_data(client, collection, cache, workers)
     collection.stats["api_calls"] = getattr(client, "calls", 0)
@@ -2616,7 +2628,13 @@ def _head_row(sha: str, final: bool, head_update: datetime | None, data: dict | 
         else None,
     }
     if data is None:
-        return {**row, "status": "no_check_data"}
+        return {
+            **row,
+            "status": "no_check_data",
+            "_head_update": head_update,
+            "_all_ready": None,
+            "_ci_ready": None,
+        }
     applicable: list[str] = []
     excluded: list[str] = []
     for name in policy["contexts"]:
@@ -2689,6 +2707,8 @@ def build_pr_section(collection: UsageCollection, facts: list[dict]) -> dict:
         }
         if final_row is None or not observed:
             pr_row["status"] = "missing_head_observation"
+        elif final_row["status"] == "no_check_data":
+            pr_row["status"] = "no_check_data"
         elif final_row["_all_ready"] is None:
             pr_row["status"] = "unresolved"
         elif final_row["_all_ready"] < min(observed):
@@ -2827,20 +2847,22 @@ def _trunk_incidents(
     return rows
 
 
-def _trunk_sha_coverage(commits: list[dict], runs: list[dict], reference: datetime) -> dict:
+def _trunk_sha_coverage(
+    commits: list[dict], runs: list[dict], reference: datetime, existed_from: datetime | None
+) -> dict:
     by_sha: dict[str, set[int]] = {}
     for item in runs:
         by_sha.setdefault(item["head_sha"], set()).add(int(item["id"]))
     first_run_at = min((item["created_at"] for item in runs if item["created_at"] is not None), default=None)
     missing: list[str] = []
-    pending_recent = before_first_run = 0
+    pending_recent = before_existence = 0
     for commit in commits:
         stamp = _commit_time(commit)
         sha = str(commit.get("sha") or "")
         if sha in by_sha:
             continue
-        if stamp is not None and first_run_at is not None and stamp < first_run_at - TRUNK_MISSING_GRACE:
-            before_first_run += 1
+        if stamp is not None and existed_from is not None and stamp < existed_from:
+            before_existence += 1
         elif stamp is not None and stamp > reference - TRUNK_MISSING_GRACE:
             pending_recent += 1
         else:
@@ -2849,9 +2871,10 @@ def _trunk_sha_coverage(commits: list[dict], runs: list[dict], reference: dateti
     duplicates = {sha: sorted(ids) for sha, ids in by_sha.items() if len(ids) > 1}
     return {
         "first_run_at": _iso_or_none(first_run_at),
+        "workflow_created_at": _iso_or_none(existed_from),
         "missing_exact_sha_runs": len(missing),
         "missing_exact_sha_examples": missing[:20],
-        "commits_before_workflow_existed": before_first_run,
+        "commits_before_workflow_existed": before_existence,
         "commits_pending_recent": pending_recent,
         "duplicate_exact_sha_runs": len(duplicates),
         "duplicate_exact_sha_examples": dict(list(duplicates.items())[:20]),
@@ -2898,7 +2921,7 @@ def _trunk_workflow_signal(collection: UsageCollection, workflow: str, facts: li
         "newest_tested_commit_age_seconds": (reference - newest_tested).total_seconds() if newest_tested else None,
         "newest_develop_commit_at": _iso_or_none(max(commit_times)) if commit_times else None,
         "develop_commits": None if commits is None else len(commits),
-        **_trunk_sha_coverage(commits or [], runs, reference),
+        **_trunk_sha_coverage(commits or [], runs, reference, collection.workflow_created.get(workflow)),
         "job_kinds": outcomes["job_kinds"],
         "guardrail": "a low red rate counts only if missing runs, skipped jobs and cancellations stay low; compare those figures too",
     }

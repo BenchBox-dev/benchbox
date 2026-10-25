@@ -1441,7 +1441,10 @@ class _UsageApi:
         self.failing: set[str] = set()
         self.fuzzy_boundary = False
         self.requests: list[str] = []
-        self.attempts_setting = 0
+        self.workflows: dict[str, str] = {
+            "trunk.yml": "2026-01-01T00:00:00Z",
+            "trunk-coverage.yml": "2026-01-01T00:00:00Z",
+        }
 
     def get(self, path: str) -> object | None:
         self.requests.append(path)
@@ -1471,6 +1474,10 @@ class _UsageApi:
         attempt_match = _re.fullmatch(r"/repos/o/r/actions/runs/(\d+)/attempts/(\d+)", route)
         if attempt_match:
             return self.attempts.get((int(attempt_match.group(1)), int(attempt_match.group(2))))
+        workflow_match = _re.fullmatch(r"/repos/o/r/actions/workflows/([^/]+)", route)
+        if workflow_match:
+            created = self.workflows.get(workflow_match.group(1))
+            return None if created is None else {"created_at": created}
         if route == "/repos/o/r/rules/branches/develop":
             return self.ruleset
         if route == "/repos/o/r/commits":
@@ -1825,6 +1832,43 @@ def test_open_red_incident_is_reported_as_ongoing() -> None:
     incident = metrics.build_usage_report(collection)["post_merge"]["workflows"]["trunk.yml"]["incidents"][0]
     assert incident["ongoing"] is True and incident["seconds_to_recovery"] is None
     assert incident["merges_admitted"] == 1
+
+
+def test_commits_without_runs_are_missing_unless_the_workflow_did_not_exist_yet() -> None:
+    api = _UsageApi()
+    times = {"c1": _at(10), "c2": _at(11), "c3": _at(12)}
+    api.commits = [{"sha": sha, "commit": {"committer": {"date": when}}} for sha, when in times.items()]
+    api.runs = [_trunk_run(1, "c3", times["c3"], "success", _at(12, 20))]
+    collection = _collect(api, USAGE_DAY + timedelta(hours=10), USAGE_DAY + timedelta(hours=13))
+    signal = metrics.build_usage_report(collection)["post_merge"]["workflows"]["trunk.yml"]
+    assert signal["missing_exact_sha_runs"] == 2
+    assert signal["commits_before_workflow_existed"] == 0
+
+    api.workflows["trunk.yml"] = _at(11, 30)
+    created = _collect(api, USAGE_DAY + timedelta(hours=10), USAGE_DAY + timedelta(hours=13))
+    signal = metrics.build_usage_report(created)["post_merge"]["workflows"]["trunk.yml"]
+    assert signal["missing_exact_sha_runs"] == 0
+    assert signal["commits_before_workflow_existed"] == 2
+    assert signal["workflow_created_at"] == _at(11, 30)
+
+    del api.workflows["trunk.yml"]
+    unknown = _collect(api, USAGE_DAY + timedelta(hours=10), USAGE_DAY + timedelta(hours=13))
+    assert [gap["scope"] for gap in unknown.gaps] == ["workflow_metadata"]
+    signal = metrics.build_usage_report(unknown)["post_merge"]["workflows"]["trunk.yml"]
+    assert signal["missing_exact_sha_runs"] == 2
+
+
+def test_failed_head_check_fetch_is_a_gap_and_does_not_break_the_pr_section() -> None:
+    api = _two_pr_api()
+    api.failing = {"/commits/B/check-runs"}
+    collection = _collect(api, USAGE_DAY, USAGE_DAY + timedelta(hours=14))
+    assert [gap["scope"] for gap in collection.gaps] == ["head_checks"]
+    report = metrics.build_usage_report(collection)
+    assert report["completeness"]["status"] == "incomplete"
+    section = report["pull_requests"]
+    assert section["pr_status_counts"] == {"no_check_data": 1, "unresolved": 1}
+    assert {row["sha"]: row["status"] for row in section["head_rows"]} == {"A": "unresolved", "B": "no_check_data"}
+    assert "INCOMPLETE" in metrics.render_usage_report(report)
 
 
 def test_workload_mix_separates_text_edits_heavy_tier_and_cancelled_work() -> None:
