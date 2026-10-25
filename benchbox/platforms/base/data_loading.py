@@ -617,7 +617,7 @@ class ZstdHandler(CompressionHandler):
             if self.adapter and hasattr(self.adapter, "log_very_verbose"):
                 self.adapter.log_very_verbose(f"Decompressed to temporary file: {temp_file_path}")
 
-            with open(temp_file_path, encoding="utf-8") as f:
+            with open(temp_file_path, encoding="utf-8", newline="") as f:
                 yield f
 
         finally:

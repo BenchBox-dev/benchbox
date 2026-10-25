@@ -56,8 +56,8 @@ def quoted_dir(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _load_sqlite(data_dir: Path):
-    benchmark = types.SimpleNamespace(get_schema=lambda: _SCHEMA, tables={"hits": data_dir / "hits.tbl"})
+def _load_sqlite(data_dir: Path, file_name: str = "hits.tbl"):
+    benchmark = types.SimpleNamespace(get_schema=lambda: _SCHEMA, tables={"hits": data_dir / file_name})
     adapter = SQLiteAdapter(database_path=":memory:")
     connection = adapter.create_connection()
     connection.execute(_DDL)
@@ -101,3 +101,45 @@ def test_row_batch_processor_without_quote_keeps_legacy_splitting() -> None:
     batches = list(processor.process_file(io.StringIO('1|""|x\n'), "|", 3))
 
     assert batches == [([("1", '""', "x")], 1)]
+
+
+_CR_ROWS = '1|"a\r\nb"|x|10\r\n2|"c\rd"|""|20\r\n'
+
+
+def _compressed_dir(tmp_path: Path, name: str, payload: bytes) -> Path:
+    (tmp_path / name).write_bytes(payload)
+    generator = types.SimpleNamespace(output_dir=tmp_path, scale_factor=1.0, compression_type="none")
+    write_delimited_manifest(
+        generator, "clickbench", {"hits": tmp_path / name}, {"hits": 2}, null_marker="__NULL__", quote='"'
+    )
+    return tmp_path
+
+
+def _assert_cr_rows_preserved(data_dir: Path, file_name: str) -> None:
+    connection, stats = _load_sqlite(data_dir, file_name)
+    assert stats == {"hits": 2}
+    assert connection.execute("SELECT phrase, model FROM hits ORDER BY id").fetchall() == [
+        ("a\r\nb", "x"),
+        ("c\rd", ""),
+    ]
+
+
+def test_gzip_load_preserves_carriage_returns_in_quoted_fields(tmp_path: Path) -> None:
+    import gzip
+
+    data_dir = _compressed_dir(tmp_path, "hits.tbl.gz", gzip.compress(_CR_ROWS.encode("utf-8")))
+    _assert_cr_rows_preserved(data_dir, "hits.tbl.gz")
+
+
+def test_zstd_load_preserves_carriage_returns_in_quoted_fields(tmp_path: Path) -> None:
+    import shutil
+    import subprocess
+
+    if shutil.which("zstd") is None:
+        pytest.skip("zstd CLI not installed")
+    raw = tmp_path / "raw.tbl"
+    raw.write_bytes(_CR_ROWS.encode("utf-8"))
+    subprocess.run(["zstd", "-q", str(raw), "-o", str(tmp_path / "hits.tbl.zst")], check=True)
+    raw.unlink()
+    data_dir = _compressed_dir(tmp_path, "hits.tbl.zst", (tmp_path / "hits.tbl.zst").read_bytes())
+    _assert_cr_rows_preserved(data_dir, "hits.tbl.zst")
