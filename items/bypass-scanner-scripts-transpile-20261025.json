@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "The call goes through a wrapper entry point or is an allowlisted, reasoned exception, and the scanner covers scripts/."
+  ],
+  "description": "Final audit of the fork migration: scripts/generate_query_docs.py:112 calls sqlglot.transpile(sql, read=read, write=read, pretty=True) for doc pretty-printing. It does not translate benchmark SQL, but it bypasses translate_sql_query. Confirm whether the bypass scanner (tests/unit/sql_compat/test_vendored_sqlglot_bypass.py) covers scripts/, and either route it through a wrapper formatting entry point or allowlist it with a reason.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-25T12:30:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6cfed49a7e8b446c85ff8bdd5443558a",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}

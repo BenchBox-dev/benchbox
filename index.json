@@ -2370,6 +2370,13 @@
       "status": "open",
       "title": "Burn down the full repository-wide `ty` backlog outside release-critical entrypoints"
     },
+    "bypass-scanner-scripts-transpile-20261025": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "scripts/generate_query_docs.py calls sqlglot.transpile outside the wrapper"
+    },
     "calculate-checksum-collision-hardening": {
       "claim": null,
       "needs": [],
