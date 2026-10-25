@@ -4821,13 +4821,18 @@
     "extra": 1,
     "file": 1,
     "generated": 2,
+    "root": 1,
     "unresolved": 14
    },
-   "occurrences": 28,
+   "occurrences": 44,
    "path": "tests/unit/scripts/test_docs_history_filter.py",
    "rule": "contract-export-tooling",
-   "target_count": 18,
+   "target_count": 19,
    "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    },
     {
      "kind": "unresolved",
      "target": "docs/CNAME"
@@ -5704,10 +5709,10 @@
    "file": 1581,
    "generated": 19,
    "pattern": 313,
-   "root": 216,
-   "unresolved": 2032
+   "root": 219,
+   "unresolved": 2045
   },
-  "references": 33451,
+  "references": 33467,
   "unclassified": 0
  }
 }
