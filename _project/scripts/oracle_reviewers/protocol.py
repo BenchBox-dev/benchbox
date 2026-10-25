@@ -137,9 +137,10 @@ def _heading_gap(section: str, new_start: int, new_count: int, content: str | No
 def _block_gap(block: list[str], start: int, content: str | None, old_start: int) -> str:
     if content is None or not block:
         return f"at{old_start}"
-    lines = content.split("\n")
+    prefix = content.split("\n")[:start]
+    text = [*prefix, *block]
     size = len(block)
-    earlier = sum(1 for index in range(max(start - size + 1, 0)) if lines[index : index + size] == block)
+    earlier = sum(1 for index in range(len(prefix)) if text[index : index + size] == block)
     return f"blk{earlier}"
 
 

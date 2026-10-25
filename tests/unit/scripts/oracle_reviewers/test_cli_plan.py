@@ -871,6 +871,25 @@ def test_an_unreadable_file_binds_a_headingless_hunk_to_its_line_number() -> Non
     )
 
 
+def _periodic(pad: int = 0) -> str:
+    return "\n".join(["# pad"] * pad + ["0"] * 10) + "\n"
+
+
+def _inserted_zero(row: int, pad: int = 0) -> str:
+    start = pad + row
+    return _file_diff(f"@@ -{start},3 +{start},4 @@\n 0\n 0\n+0\n 0\n")
+
+
+def test_an_insertion_moved_one_row_in_periodic_text_is_a_different_patch() -> None:
+    first = _read_patches(_inserted_zero(1), _periodic())
+    second = _read_patches(_inserted_zero(2), _periodic())
+    assert first != second
+
+
+def test_a_rebase_that_shifts_an_insertion_in_periodic_text_keeps_its_patch() -> None:
+    assert _read_patches(_inserted_zero(3), _periodic()) == _read_patches(_inserted_zero(3, pad=8), _periodic(pad=8))
+
+
 def _twin_functions(pad: int = 0) -> str:
     function = ["def guarded(user):", "a", "b", "c", "", ""]
     return "\n".join(["# pad"] * pad + function * 2) + "\n"
