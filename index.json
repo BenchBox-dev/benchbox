@@ -16377,7 +16377,9 @@
       "needs": [
         "oracle-verdict-single-job-20261025",
         "oracle-gateway-named-clients-20261025",
-        "oracle-gateway-cloud-builder-access-20261025"
+        "oracle-gateway-cloud-builder-access-20261025",
+        "oracle-review-driver-local-20261026",
+        "oracle-local-findings-record-disputes-20261026"
       ],
       "priority": "medium-high",
       "status": "open",
