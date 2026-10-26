@@ -3331,15 +3331,10 @@
       "title": "Rework PR #3549: include _project/, fix WA004/WA006 precision, drop 215-entry WA007 baseline, scan staged files only"
     },
     "ci-windows-fcntl-and-git-utf8-fixes-20261026": {
-      "claim": {
-        "expires_at": "2026-10-27T20:05:19Z",
-        "generation": "c6d87fe706324678aef658a2953bded7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Fix Windows fcntl import in oracle-reviewers local.py and UTF-8 git decoding in four scripts"
     },
     "ci-windows-pr-leg-rework-3548-20261026": {
