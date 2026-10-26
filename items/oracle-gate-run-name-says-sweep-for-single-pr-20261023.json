@@ -2,6 +2,7 @@
   "acceptance": [
     "RUBRIC 1 a workflow_run gate run's title identifies its source (head SHA or PR) and the scheduled run is the only one titled sweep, pinned by a workflow test"
   ],
+  "context": "2026-10-26: the bridge and push sweep are removed by retire-oracle-review-workflow-20261021; re-check the run names after that merges (likely moot).\n\n",
   "description": "oracle-gate.yml's run-name falls back to 'sweep' when the event has no pull_request or issue number, so every workflow_run-triggered gate run (which runs the single-PR gate job) is titled 'oracle-gate (workflow_run pr=sweep)', the same as the hourly cron sweep. During the 2026-10-22 queue investigation this was misread as a full sweep of every open PR on each oracle completion. CHANGE: title workflow_run gate runs with the source run's head SHA or resolved PR, and keep 'sweep' for the scheduled sweep only.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "op": "create",
       "op_id": "a547cf93c1264263b5b6be5749091b59",
       "session_id": "9e892b089b04472a95f2a5d0c12e890b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T15:57:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "823ff35a04a644e78fb03b4cab130394",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
 }
