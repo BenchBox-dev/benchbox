@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "DECISION GATE: `quality/windows-antipatterns-baseline.json` has zero WA007 entries (or is removed/kept at the existing 0-entry schema): WA007 is either dropped or narrowed strictly to `git` calls passing `-z`/`--null` with `text=True`/`universal_newlines=True` and no `encoding`, yielding 0 violations on `develop` after `ci-windows-fcntl-and-git-utf8-fixes-20261026`",
+    "VERIFY: `_DEFAULT_ROOTS` in `scripts/check_windows_antipatterns.py` includes `_project` (or `_project/scripts`), and any remaining legitimate POSIX-only modules under `_project/` use lazy/platform-guarded imports so the full scan passes with 0 violations",
+    "VERIFY: WA004 exempts git diff header comparisons (`--- /dev/null`, `+++ /dev/null`) and `sys.platform` Windows-excluded branches; WA006 inspects single-hop local dict assignments (`env = {...}; subprocess.run(..., env=env)`) within the same function; unit tests cover both",
+    "VERIFY: `.pre-commit-config.yaml` passes staged filenames (`pass_filenames: true`) to `check_windows_antipatterns.py` so single-file commits run in <1 s instead of scanning the full tree; full-tree scan still runs in CI `lint`",
+    "GUARDRAIL: All 5 previously failing jobs on #3549 (`lint`, `test`, `example-validation`, `docs`, `core`) pass in CI; `check_doc_reference_inventory` passes; PR merges with `Decision: **SHIP**` on the exact head"
+  ],
+  "context": "Source: 2026-10-26 adversarial review of PR #3549 (worktree `/Users/joe/Developer/BenchBox.wt-win-posix`, branch `fix/windows-antipattern-posix-rules`).",
+  "description": "Objective: make PR #3549 (`fix/windows-antipattern-posix-rules`) pass CI and satisfy solution-fit (`[REVIEW-FIT-001]`) with a zero-baseline check and fast pre-commit hook. Review findings on #3549 (`fedd9e024`): (1) CI blocker: `quality/windows-antipatterns-baseline.json` fails `check_doc_reference_inventory` across `lint`, `test`, `example-validation`, `docs`, and `core`, and already conflicts with PR #3545. (2) Solution-fit defect (`[REVIEW-FIT-001]`): WA007 (`git` with `text=True` and no `encoding`) seeded 215 baseline entries (~102 `git rev-parse`, ~154 ASCII test repos) by bypassing `--write-baseline`'s ratchet refusal; because stale counts also fail, every future edit touching any of the 215 sites must update the shared baseline JSON. Either drop WA007 (since `ci-windows-fcntl-and-git-utf8-fixes-20261026` fixes the 4 real `git -z`/`git show` sites) or narrow WA007 strictly to `git` commands passing `-z` with zero baseline entries. (3) Coverage & precision defects: `_DEFAULT_ROOTS` in `scripts/check_windows_antipatterns.py` omits `_project/`, so WA005 misses `_project/scripts/oracle_reviewers/local.py:5` and `_project/sql-translation-ml/conftest.py:1`; WA004 flags git diff header comparisons (`--- /dev/null`, `+++ /dev/null`) and `sys.platform != 'win32'` guarded branches; WA006 only checks inline dict literals `env={...}`, missing local variable dicts `env=environment` (`test_module_state_guard.py:46-52`). (4) Hook performance: `.pre-commit-config.yaml` sets `pass_filenames: false`, adding an ~11 s full-tree AST scan to every `.py` commit. Prior art: modifies PR #3549 (`scripts/check_windows_antipatterns.py`, `.pre-commit-config.yaml`, `tests/unit/scripts/test_check_windows_antipatterns.py`).",
+  "links": [
+    "scripts/check_windows_antipatterns.py",
+    ".pre-commit-config.yaml",
+    "tests/unit/scripts/test_check_windows_antipatterns.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-26T19:04:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "38f8c4e5dc0e4c84a6ccf2b23b25d6ab",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
