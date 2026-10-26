@@ -1030,6 +1030,10 @@ agent-write-preflight:
 cloud-bootstrap:
 	@sh scripts/cloud_bootstrap.sh
 
+.PHONY: cloud-gateway
+cloud-gateway:
+	@sh scripts/cloud_gateway.sh "$(or $(ACTION),up)"
+
 .PHONY: cloud-verify
 cloud-verify:
 	@sh scripts/cloud_verify.sh "$(or $(LEVEL),tests)"

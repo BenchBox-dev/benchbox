@@ -40,18 +40,32 @@ These settings outlive any one machine. Redo them only if they are lost.
   `repo:BenchBox-dev@319264189/benchbox@1135770337:environment:oracle` (the
   name-only subject is rejected with a 403). Its client ID and audience are the
   `TS_OAUTH_CLIENT_ID` and `TS_AUDIENCE` environment secrets.
-- **Tailnet policy:** `tag:oracle-ci` has a `tagOwners` entry. The default
-  allow-all rule's source is `autogroup:member`, so tagged nodes match nothing
-  else. One rule lets `tag:oracle-ci` reach only the gateway host on
-  `tcp:4000`. The relevant parts of the policy file, for example:
+- **Tailscale auth key for cloud builders:** a reusable, ephemeral,
+  pre-approved key that tags nodes `tag:oracle-cloud`. It is the `TS_AUTHKEY`
+  variable of the cloud builder environments. Cloud sessions join in
+  userspace-networking mode with in-memory state, so each session is one
+  ephemeral node that disappears when the session ends.
+- **Tailnet policy:** `tag:oracle-ci` and `tag:oracle-cloud` have `tagOwners`
+  entries. The policy uses `grants`, not the older `acls` and host-alias
+  form. The default allow-all grant's source is `autogroup:member`, so tagged
+  nodes match nothing else. One grant per tag lets it reach only the gateway
+  host on `tcp:4000`, and a `tests` block pins both results. The relevant
+  parts of the policy file, for example:
 
   ```json
   {
-    "tagOwners": { "tag:oracle-ci": ["autogroup:admin"] },
-    "hosts": { "oracle-gateway": "<tailnet IPv4 of the host>" },
-    "acls": [
-      { "action": "accept", "src": ["autogroup:member"], "dst": ["*:*"] },
-      { "action": "accept", "src": ["tag:oracle-ci"], "dst": ["oracle-gateway:4000"] }
+    "tagOwners": {
+      "tag:oracle-ci": ["autogroup:admin"],
+      "tag:oracle-cloud": ["autogroup:admin"]
+    },
+    "grants": [
+      { "src": ["autogroup:member"], "dst": ["*"], "ip": ["*"] },
+      { "src": ["tag:oracle-ci"], "dst": ["<tailnet IPv4 of the host>"], "ip": ["tcp:4000"] },
+      { "src": ["tag:oracle-cloud"], "dst": ["<tailnet IPv4 of the host>"], "ip": ["tcp:4000"] }
+    ],
+    "tests": [
+      { "src": "tag:oracle-cloud", "accept": ["<tailnet IPv4 of the host>:4000"], "deny": ["<tailnet IPv4 of the host>:22"] },
+      { "src": "tag:oracle-ci", "accept": ["<tailnet IPv4 of the host>:4000"], "deny": ["<tailnet IPv4 of the host>:22"] }
     ]
   }
   ```
@@ -172,6 +186,34 @@ Every client gets the same models and pinned accounts as `oracle-ci` and its own
   http://127.0.0.1:4000: oracle-local models=11/11 usage=403
   ```
 
+## Cloud builder client
+
+Cloud builder sessions (see
+[`cloud-builder.md`](../agent/cloud-builder.md#oracle-gateway-access)) use the
+named client `oracle-cloud`, whose token file is
+`~/.omp/oracle-gateway/cloud-client.token`. It already exists on the host; it
+is created, rotated and revoked as any [named client](#named-clients), so
+`oracle-ci` and `oracle-local` are never touched. The cloud environments hold
+three values by name only: `ORACLE_CLOUD_GATEWAY_TOKEN` (the contents of
+`cloud-client.token`), `ORACLE_GATEWAY_URL` and `TS_AUTHKEY`.
+
+- **Rotate the cloud token:** replace `cloud-client.token` as shown under
+  [named clients](#named-clients), run `gateway`, then set the new value as
+  `ORACLE_CLOUD_GATEWAY_TOKEN` in each cloud environment. The old token stops
+  working within 10 seconds; `oracle-ci` and `oracle-local` keep working.
+- **Revoke cloud access:** `rm ~/.omp/oracle-gateway/cloud-client.token`, then
+  run `gateway`. To stop sessions from joining the tailnet at all, also
+  revoke the `tag:oracle-cloud` auth key (below).
+- **Rotate or revoke the Tailscale credential:** in the Tailscale admin
+  console, Settings, Keys, revoke the auth key behind `TS_AUTHKEY`, generate a
+  new reusable, ephemeral, pre-approved key tagged `tag:oracle-cloud`, and set
+  it as `TS_AUTHKEY` in each cloud environment. Revoking it does not affect
+  the OIDC credential used by `oracle-ci`, nor the gateway tokens. Nodes
+  already joined stay until their session ends; remove them in the Machines
+  page to cut them off immediately.
+- **Check:** `check` lists `oracle-cloud` with the other clients, with the
+  same model count as `oracle-ci` and `/v1/usage` refused with a 403.
+
 ## Move to another Mac
 
 Build the new host, then on the old Mac remove the gateway:
@@ -195,7 +237,7 @@ rm ~/Library/LaunchAgents/dev.omp.auth-broker.plist
 | Symptom | Cause and fix |
 | --- | --- |
 | Attempts end absent with connection errors | The Mac is asleep, offline or logged out, or an agent is down. Run `check`. |
-| Attempts end absent with `exit code 1` after about two minutes while `check` passes | The tailnet policy does not let `tag:oracle-ci` reach the host on port 4000. Add the port to that rule. While the review job is on the tailnet, `tailscale debug netmap \| jq -r '.PacketFilterRules[].DstPorts[] \| select(.Ports.Last < 65535) \| "\(.IP):\(.Ports.First)"'` on the host lists the ports open to it; with no tagged node online it prints nothing. |
+| Attempts end absent with `exit code 1` after about two minutes while `check` passes | The tailnet policy does not let `tag:oracle-ci` reach the host on port 4000. Add the port to that tag's grant. While the review job is on the tailnet, `tailscale debug netmap \| jq -r '.PacketFilterRules[].DstPorts[] \| select(.Ports.Last < 65535) \| "\(.IP):\(.Ports.First)"'` on the host lists the ports open to it; with no tagged node online it prints nothing. |
 | Gateway answers 401 | `ORACLE_GATEWAY_TOKEN` does not match `client.token`. Run `secrets`. |
 | Gateway answers 403 for a model | The model is not in `clients.json`. Pull `develop` and run `gateway`. |
 | `check` reports fewer models than `clients.json` | The gateway has not loaded the file. Run `gateway`. |
