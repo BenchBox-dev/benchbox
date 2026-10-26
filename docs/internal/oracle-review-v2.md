@@ -68,7 +68,10 @@ points the providers `anthropic`, `openai-codex`, `muse-code` and
 refuses an empty URL or one that is not `https://`.
 
 Reviews reach the gateway only while the Mac is awake and online; otherwise
-attempts are absent and the next sweep retries (see the triggers below).
+attempts are absent and the next sweep retries (see the triggers below). A run that
+fails without posting a result is re-dispatched once by the sweep; when two runs on the same
+head have failed without a result, the sweep posts a pending `oracle-verdict`
+status that names the failed step.
 
 **Accepted risk.** The reviewer is not confined to files. It can read any file
 the runner user can read, and it can read its own client token, for example
@@ -189,8 +192,8 @@ Steps, in order:
    result for the slot.
 9. Disk scan again (C4), finalize, then the redaction check (C5).
 10. Mint the App token, run the guard and post the status, comment and
-    review, upload the retry state and the attempt artifacts, and dispatch
-    `oracle-gate`.
+    review, upload the retry state (only when the status was posted) and the
+    attempt artifacts, and dispatch `oracle-gate`.
 
 The reviewer is an untrusted model inside a trusted harness with read-only
 tools. It can read what the runner user can read while it runs and can leak it
@@ -217,8 +220,8 @@ permanent, not a one-time inspection:
 | C6 fresh `HOME` | Every attempt gets a new directory from `mkdtemp`; the previous one is deleted before the next attempt starts, and the checkout is reset. |
 | C7 token scope | The job's permissions are exactly `actions: write`, `contents: read`, `pull-requests: read` and `id-token: write`. `github.token` appears only in the `env:` of steps that run before or after the loop step, and both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus a setup allowance, under 360; the harness timeout still fires first and becomes an absence. A workflow test recomputes the number from the policy. |
-| C9 cancellation | The top-level concurrency group and `cancel-in-progress` are unchanged, and every posting step has the default success condition, so a cancelled run posts nothing. |
-| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by one step, which runs after the loop, the second disk scan and the redaction check. |
+| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs queue behind a run in flight. Every posting step has the default success condition, so a cancelled run posts nothing. |
+| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, which runs after the loop, the second disk scan and the redaction check, and by the sweep job's failure-status mint. The sweep job never runs a reviewer, so its mint cannot leak to one. |
 
 The OIDC request token is in the loop step's environment, as the gateway token
 is, and is accepted on the same terms: GitHub documents it as valid only while
@@ -266,9 +269,9 @@ sanitised model text, which cannot contain an HTML comment; defect file paths
 are escaped the same way. It records the
 cycle and round, the kind of round, the decision, the head, the base branch,
 the reviewer, the size bucket (in the marker's `tier` field), the strike count, the open defects with their ids, and
-a hash of each changed file's patch (an 8-hex path hash and a 16-hex patch hash;
+a hash of each changed file's identity (an 8-hex path hash and a 16-hex identity hash;
 a marker over 4 KB keeps only the aggregate digest, which is computed from the
-full-length patch hashes). The per-file map fits for about 200 changed files
+full-length identity hashes). The per-file map fits for about 200 changed files
 when 10 defects are open, and about 210 when none are. Without the map, every
 file counts as changed, so a larger pull request gets a follow-up on every
 file after each push instead of one on the files that changed. `plan` reads
@@ -276,9 +279,18 @@ every review from the App's Bot account, page by page, and ignores dismissed rev
 reviews without a marker. A review with more than one marker, or a marker that
 does not decode, holds the result pending, as does a review list that cannot be
 read. Pending results write no marker.
-A file's patch hash ignores the `index` line and hunk line numbers, except for
-binary files, so a rebase that leaves the pull request's changes alone keeps
-every hash. Prose files outside the review scope are left out.
+A file's identity is its old path, new path, old and new mode, and the full
+merge-base and head blob ids. In CI the files API supplies the paths and the
+head blob id, and the recursive git trees of the merge base and the head
+supply the modes and blob ids; locally `git diff --raw --full-index
+--no-abbrev` against the merge base supplies the same six fields, so one pull
+request has one digest in both places. A file added or removed has an absent
+mode (`000000`) and blob id (forty zeros) on the missing side. The patch digest
+covers every changed file, prose included, and is the one digest that keys
+carry, strikes and forced re-review budgets. If any field cannot be read (a
+truncated file list, a truncated tree, a head blob id that disagrees with the
+tree, a merge base that cannot be resolved) the digest is `unread-<head>` and
+nothing carries.
 
 | Situation | Action |
 |---|---|
@@ -286,16 +298,24 @@ every hash. Prose files outside the review scope are left out.
 | Three DO NOT SHIP decisions | refused: one review per head, no reviewer runs |
 | The latest decision is on this head | nothing runs |
 | Base branch changed | new cycle with a full review; strikes are kept |
-| Patch unchanged (a rebase or a prose-only change) | the decision is carried to the new head |
+| Patch digest unchanged (the merge-base diff is byte-identical) | the decision is carried to the new head |
 | Latest SHIP or SHIP WITH FIXES, patch changed | follow-up on the changed files |
 | Latest DO NOT SHIP, patch changed | new cycle with a full review that quotes the previous summary |
 | Author rebuttal (`/oracle-review` comment, or a push after a `Dispute:` thread reply), head unchanged | forced follow-up that rejudges the disputed defects, at most twice per patch |
-A move of the base commit alone does not restart a cycle. A diff that cannot be
-read, a file list that is truncated, or a file missing from the diff never
-carries a decision, and neither does a file leaving the pull request: each
-gives a follow-up on every file instead. A decision carries only when the
-full-length digest matches; when it differs but the stored per-file hashes do
-not show which file changed, the follow-up covers every file.
+A move of the base commit alone does not restart a cycle. A file list that is
+truncated, or a file whose blob ids cannot be read, never carries a decision,
+and neither does a file leaving the pull request: each gives a follow-up on
+every file instead. A decision carries only when the full-length digest
+matches, so a rebase that changes any file the pull request touches, a hunk
+that moves, or a mode, rename or binary change gets a fresh review; when the
+digest differs but the stored per-file hashes do not show which file changed,
+the follow-up covers every file.
+
+Because the digest keys strikes and forced re-review budgets as well, a rebase
+onto a develop that changed one of the pull request's files is a new digest: it
+can add a strike when that patch is reviewed and refused, and it starts a new
+forced re-review allowance. A rebase that leaves the merge-base diff
+byte-identical keeps the digest, the strike count and the allowance.
 
 A follow-up brief lists the earlier defects with their ids (D1, D2, ...,
 numbered by code within a cycle) and asks the reviewer to mark each one fixed,
@@ -325,7 +345,7 @@ acknowledgement such as `done` is not a dispute.
 A forced re-review runs only after a SHIP or SHIP WITH FIXES decision, never
 after DO NOT SHIP. The third forced re-review of one patch is refused with a
 message to change the patch or ask the owner for a stand-in: empty commits and
-rebases keep the patch digest, so they share the patch's budget instead of
+byte-identical rebases keep the patch digest, so they share the patch's budget instead of
 resetting it. Ordinary follow-ups never consume this budget, and a push that
 disputes nothing is still carried, not rejudged.
 
@@ -346,8 +366,8 @@ Before it posts, the `review` job reads the review list again and posts nothing
 if the head already has a marker, so two runs for one head cannot both post.
 It tries the read three times, about two seconds apart. If every try fails, it
 posts anyway and says in the job summary that the post was not confirmed: the
-retry state is already uploaded by then, so skipping would leave the head
-recorded as decided with no review.
+skipping would leave the head with no review. A run that skips posting, or
+whose status post failed, uploads no retry state, so it adds no strike.
 
 Before posting, `post` drops any finding that matches an open review thread
 from this App, by file and normalized title, unless the new finding is more
@@ -610,9 +630,31 @@ cancels a run in flight and a cancelled run posts nothing.
   due is the usual trigger. The target is a dispatch within 25 minutes of that
   push, or at the next scheduled sweep when no push comes. Push and
   schedule sweeps share one concurrency group that never cancels a running
-  sweep. The sweep skips a pull request that has a queued or in-progress
-  `oracle-verdict` run, so it never cancels a retry in flight. The daily
-  budget, backoff and attempt limits are unchanged.
+  sweep. The sweep lists the last seven days of `oracle-verdict` runs, all
+  pages, and skips a pull request that has a run that is queued, in progress,
+  waiting, pending or requested, or started in the last two minutes, so it
+  never cancels a retry in flight. Beyond due pending heads, it re-dispatches
+  a head whose latest run failed, timed out or was cancelled without leaving a
+  retry state, unless the head already carries a decisive App verdict status.
+  The stateless dispatch carries a marker the plan verifies against the head's
+  failed runs, so the redispatched run reviews instead of skipping on backoff. That happens once: when the two latest runs on the head both
+  failed without a result (runs that never reviewed the head, such as a
+  skipped run from a plain comment, are ignored), the sweep stops dispatching
+  and posts a pending `oracle-verdict` status naming the failed step, using an
+  App token minted in the reviewer-free sweep job. A status that is already
+  pending on the head is left in place, and a sweep without the App configured
+  reports the gap instead of failing. A failure inside one pull
+  request's lookup, dispatch or surfacing is reported and the sweep continues with the
+  others, then fails the job. The daily budget, backoff and attempt limits are
+  unchanged.
+- `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the
+  owner clear the backoff and retry window of one pull request head once. It
+  needs an `Owner instruction` comment from an attester that names the head,
+  posted first, as for a stand-in. It posts `Oracle backoff reset: <sha>` and
+  the reason, which `plan` and the sweep honour only from an attester, unedited,
+  after that instruction, until the next verdict run that reviews the head spends it.
+  The reset applies only when the head's recorded result is a pending reviewer-outage
+  result; it never re-rolls a decisive verdict and never restores budget.
 
 A rerun on the same head needs a previous run in which every attempted
 reviewer was absent. A run that stayed pending because its artifacts failed
@@ -677,12 +719,27 @@ posts nothing to GitHub.
   that also covers the stored result. The accepted risk of the hosted job
   applies: the reviewer can read files the user can read, including that
   token.
-- **Harness pin.** The `Install omp` step pins `OMP_VERSION` beside the
-  download URL and checks that the binary reports it. The local review runs
-  only when `omp --version` reports that version, and otherwise refuses with
-  the mismatch. Bump `OMP_URL`, `OMP_SHA256` and `OMP_VERSION` together.
-  Like the policy, the pin is read from `origin/develop`, not from the branch
-  or the working tree.
+- **Harness pin.** The `omp:` section of `.github/oracle-reviewers.yml` pins
+  the version and each platform's URL and SHA-256. CI reads that section from
+  its trusted checkout through `cli.py install-omp`, running under isolated
+  `uv` with `pyyaml==6.0.3`. YAML is imported only when parsing the policy;
+  the other bare-Python CLI commands do not require PyYAML. The shared `omp_pin.py`
+  installer downloads into `~/.cache/benchbox/omp/<version>/<platform>/omp`
+  (`BENCHBOX_OMP_CACHE` overrides the cache root), verifies SHA-256 before
+  making the download executable, and verifies its reported version before
+  publishing it in the cache. Unpinned platforms refuse by name. The build
+  host publishes no checksum files; these hashes were computed from fresh
+  TLS downloads, as was the original linux-x64 workflow pin. The darwin-arm64
+  download matches the existing cached build and reports `omp/18.12.1`.
+  During the consumer migration, CI adds the verified cache directory to its
+  job PATH. Local review still checks PATH omp against the workflow's
+  `OMP_VERSION` read from `origin/develop`; cloud bootstrap still reads
+  `OMP_URL` and `OMP_SHA256` from the branch workflow. Those legacy values
+  remain solely for these consumers. CI's installer refuses if any legacy
+  value differs from the policy pin, and the workflow test enforces equality.
+  Change both sets together until local and cloud consume the policy pin.
+  That cutover removes the legacy values and equality check and invokes the
+  cached binary by explicit path rather than through PATH.
 - **Blocking.** A Critical or High finding, or a reviewer decision of DO NOT
   SHIP, makes `pr-open` refuse before any push (exit 1). A
   `Local oracle override: <reason>` line with a non-empty reason in the PR

@@ -23,6 +23,7 @@ DOCUMENTED_SHALLOW_COHORTS = {
     ("tpch", "1.0"): frozenset({"duckdb"}),
     ("tpcdi", "0.01"): frozenset({"clickhouse-local", "duckdb"}),
     ("clickbench", "0.1"): frozenset({"bigquery", "snowflake"}),
+    ("tpcds_obt", "1.0"): frozenset({"datafusion", "duckdb"}),
 }
 NON_CLEAN_VALIDATION_STATUSES = frozenset(
     {"failed", "interrupted", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}

@@ -134,7 +134,18 @@ removes `expires` from a directive that suppresses nothing, or sets a valid
 date later than the base date. Any other field difference, an entry absent from
 the base, or a date that is not later does not count locally. CI never applies
 this acceptance, so the PR check still needs the oracle verdict on the exact
-head before the entry counts. Keep the renewed dates spread across at
+head before the entry counts.
+
+The same local check also counts a `notice` entry that differs from exactly one
+base entry only in `consumer`, so a notice can be repointed (for example when
+its consumer page moves) without skipping hooks. Every other field (`path`,
+`symbol`, `text`, `kind`, `necessity`, `alternative`, `owner`, `removal`,
+`count`) must equal the base entry, and the new consumer must exist in the
+staged tree, which the consumer validation already enforces for every entry.
+Directives and fixtures do not qualify: a directive's consumer ties a
+suppression to what justifies it, and a fixture's digest binds it to a
+changed file. CI never applies this acceptance either, so the repointed entry
+still counts only after the oracle verdict covers the registry head. Keep the renewed dates spread across at
 least ten dates, or at most one date per entry when fewer than ten dated
 directives remain.
 

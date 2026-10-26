@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -539,17 +540,137 @@ def test_gh_reports_decodable_stderr_on_failure(monkeypatch: pytest.MonkeyPatch)
         github._gh("repos/x")
 
 
-def test_gh_reads_a_file_at_a_ref_and_reports_none_when_unreadable(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[list[str]] = []
+def test_merge_base_reads_the_compare_merge_base_and_none_when_unreadable(monkeypatch: pytest.MonkeyPatch) -> None:
+    paths: list[str] = []
 
-    def fake_run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
-        calls.append(argv)
-        if "missing.py" in argv[-1]:
-            return subprocess.CompletedProcess(argv, 1, b"", b"not found")
-        return subprocess.CompletedProcess(argv, 0, b"def f():\n", b"")
+    def get_json(path: str) -> Any:
+        paths.append(path)
+        if "bad" in path:
+            raise github.GitHubError("down")
+        return {"merge_base_commit": {"sha": "c" * 40 if "good" in path else "short"}}
+
+    monkeypatch.setattr(github, "get_json", get_json)
+    assert github.merge_base(REPO, "good", "head") == "c" * 40
+    assert paths == [f"repos/{REPO}/compare/good...head?per_page=1"]
+    assert github.merge_base(REPO, "bad", "head") is None
+    assert github.merge_base(REPO, "other", "head") is None
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        (
+            {
+                "truncated": False,
+                "tree": [
+                    {"path": "a.py", "mode": "100755", "type": "blob", "sha": "1" * 40},
+                    {"path": "dir", "mode": "040000", "type": "tree", "sha": "2" * 40},
+                    {"path": "mod", "mode": "160000", "type": "commit", "sha": "3" * 40},
+                ],
+            },
+            {"a.py": ("100755", "1" * 40), "mod": ("160000", "3" * 40)},
+        ),
+        ({"truncated": True, "tree": []}, None),
+        ({"truncated": False}, None),
+    ],
+    ids=["entries", "truncated", "no-tree"],
+)
+def test_tree_blobs_keeps_modes_and_full_ids_and_refuses_a_truncated_tree(
+    monkeypatch: pytest.MonkeyPatch, payload: dict[str, Any], expected: dict[str, tuple[str, str]] | None
+) -> None:
+    monkeypatch.setattr(github, "get_json", lambda path: payload)
+    assert github.tree_blobs(REPO, "c" * 40) == expected
+
+
+def test_tree_blobs_is_none_when_the_tree_cannot_be_read(monkeypatch: pytest.MonkeyPatch) -> None:
+    def get_json(path: str) -> Any:
+        raise github.GitHubError("down")
+
+    monkeypatch.setattr(github, "get_json", get_json)
+    assert github.tree_blobs(REPO, "c" * 40) is None
+
+
+def test_failed_steps_names_every_step_that_failed_timed_out_or_was_cancelled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    listing = {
+        "jobs": [
+            {
+                "steps": [
+                    {"name": "Plan the review", "conclusion": "success"},
+                    {"name": "Verify Linux process isolation", "conclusion": "failure"},
+                    {"name": "Run the attempt loop", "conclusion": "timed_out"},
+                    {"name": "Late checkout", "conclusion": "cancelled"},
+                    {"name": "Skipped post", "conclusion": "skipped"},
+                    {"name": "Surface", "conclusion": None},
+                ]
+            }
+        ]
+    }
+    monkeypatch.setattr(github, "get_json", lambda path: listing)
+    assert github.failed_steps(REPO, 5) == [
+        "Verify Linux process isolation",
+        "Run the attempt loop",
+        "Late checkout",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("creator", "expected"),
+    [
+        ({"login": "benchbox-oracle[bot]", "type": "Bot"}, True),
+        ({"login": "benchbox-oracle", "type": "Bot"}, True),
+        ({"login": "benchbox-oracle[bot]", "type": "User"}, False),
+        ({"login": "someone", "type": "User"}, False),
+        ("benchbox-oracle[bot]", False),
+        ({}, False),
+        (None, False),
+    ],
+)
+def test_only_the_oracle_app_marks_a_status_as_its_own(creator: Any, expected: bool) -> None:
+    assert github.is_app_status({"creator": creator}, "benchbox-oracle") is expected
+
+
+def test_commit_statuses_lists_paginated_statuses_with_creator_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entries: list[Any] = [
+        {
+            "context": "oracle-verdict",
+            "state": "pending",
+            "description": "verdict in progress",
+            "target_url": "https://github.com/BenchBox-dev/benchbox/actions/runs/1",
+            "creator": {"login": "benchbox-oracle[bot]", "type": "Bot"},
+            "created_at": "2026-10-26T17:35:11Z",
+            "updated_at": "2026-10-26T17:35:11Z",
+        },
+        "not-a-status",
+        {"context": "ci", "state": "success", "creator": {"login": "someone", "type": "User"}},
+    ]
+    seen: list[str] = []
+    monkeypatch.setattr(github, "get_paginated", lambda path: (seen.append(path), entries)[1])
+    assert github.commit_statuses(REPO, SHA) == [entries[0], entries[2]]
+    assert seen == [f"repos/{REPO}/commits/{SHA}/statuses?per_page=100"]
+
+
+def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[list[str], dict[str, str]]] = []
+    environment = dict(os.environ)
+
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append((argv, kwargs["env"]))
+        return subprocess.CompletedProcess(argv, 0, "", "")
 
     monkeypatch.setattr(github.subprocess, "run", fake_run)
-    assert github.get_file(REPO, "src/a b.py", "abc") == b"def f():\n"
-    assert calls[0][-1] == f"repos/{REPO}/contents/src/a%20b.py?ref=abc"
-    assert "Accept: application/vnd.github.raw+json" in calls[0]
-    assert github.get_file(REPO, "missing.py", "abc") is None
+    payload = {"state": "pending", "context": "oracle-verdict", "description": "d", "target_url": "u"}
+    github.post_status(REPO, SHA, payload, "app-token")
+    assert len(calls) == 1
+    argv, env = calls[0]
+    assert argv[:4] == ["gh", "api", "--method", "POST"] and f"repos/{REPO}/statuses/{SHA}" in argv
+    assert env["GH_TOKEN"] == "app-token" and environment.get("GH_TOKEN") != "app-token"
+
+
+def test_committed_at_reads_the_committer_date(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = {"commit": {"committer": {"date": "2026-10-25T08:30:00Z"}}}
+    monkeypatch.setattr(github, "get_json", lambda path: payload)
+    assert github.committed_at(REPO, SHA) == datetime(2026, 10, 25, 8, 30, tzinfo=UTC)

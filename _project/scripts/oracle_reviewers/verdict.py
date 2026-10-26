@@ -442,6 +442,28 @@ def extract_omp_text(stdout: str) -> str:
     return final
 
 
+def omp_terminal_error(stdout: str) -> str:
+    last: dict[str, Any] | None = None
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict) or event.get("type") != "message_end":
+            continue
+        message = event.get("message")
+        if isinstance(message, dict) and message.get("role") == "assistant":
+            last = message
+    if last is None or last.get("stopReason") != "error":
+        return ""
+    detail = last.get("errorMessage")
+    status = last.get("errorStatus")
+    parts = [str(status)] if isinstance(status, int) and not isinstance(status, bool) else []
+    if isinstance(detail, str):
+        parts.append(detail)
+    return " ".join(parts)
+
+
 def omp_stream_without_answer(stdout: str) -> bool:
     if extract_omp_text(stdout).strip():
         return False

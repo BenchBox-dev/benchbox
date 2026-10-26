@@ -71,6 +71,17 @@ def recent_retries(state: State | None, now: datetime) -> tuple[datetime, ...]:
     return tuple(moment for moment in state.retries if now - moment < WINDOW)
 
 
+def reset_applies(previous: State | None, head_sha: str, reset_at: datetime | None) -> bool:
+    return (
+        reset_at is not None
+        and previous is not None
+        and previous.head_sha == head_sha
+        and previous.outcome == PENDING
+        and previous.pending_cause == ALL_ABSENT
+        and reset_at > previous.updated_at
+    )
+
+
 def decide_rerun(
     *,
     manual: bool,
@@ -79,6 +90,8 @@ def decide_rerun(
     previous: State | None,
     now: datetime,
     rules: RetryRules,
+    reset_at: datetime | None = None,
+    stateless_retry: bool = False,
 ) -> RerunDecision:
     same_head = previous is not None and previous.head_sha == head_sha
     if same_head and previous is not None and previous.outcome in DECISIVE and not new_diff and not manual:
@@ -91,6 +104,8 @@ def decide_rerun(
             )
     if not manual:
         return RerunDecision(True, "pull request event")
+    if reset_applies(previous, head_sha, reset_at):
+        return RerunDecision(True, "retry backoff reset by the owner")
     retries = recent_retries(previous, now)
     if len(retries) >= rules.daily_budget:
         return RerunDecision(False, f"the daily retry budget of {rules.daily_budget} is used")
@@ -98,6 +113,8 @@ def decide_rerun(
         wait = timedelta(minutes=rules.backoff_start_minutes * 2 ** len(retries))
         ready_at = previous.updated_at + wait
         if now < ready_at:
+            if stateless_retry and previous.outcome == PENDING:
+                return RerunDecision(True, "stateless retry of a run that failed without a result")
             return RerunDecision(False, f"backoff: the next retry is allowed after {ready_at.isoformat()}")
         if previous.outcome in DECISIVE:
             return RerunDecision(True, "manual same-head re-review within budget")
@@ -122,9 +139,11 @@ def next_state(
     return State(pr, head_sha, outcome, now, retries, dict(pool_blocked_until), cause, kept)
 
 
-def due_for_retry(state: State, current_head: str, now: datetime, rules: RetryRules) -> bool:
+def due_for_retry(
+    state: State, current_head: str, now: datetime, rules: RetryRules, reset_at: datetime | None = None
+) -> bool:
     if state.outcome != PENDING or state.head_sha != current_head:
         return False
     return decide_rerun(
-        manual=True, new_diff=False, head_sha=current_head, previous=state, now=now, rules=rules
+        manual=True, new_diff=False, head_sha=current_head, previous=state, now=now, rules=rules, reset_at=reset_at
     ).allowed

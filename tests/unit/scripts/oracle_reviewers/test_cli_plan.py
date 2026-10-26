@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import stat
@@ -10,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import cli, github, protocol, render
+from _project.scripts.oracle_reviewers import cli, github, protocol, render, sweep
 from _project.scripts.oracle_reviewers.dedup import fingerprint
 from _project.scripts.oracle_reviewers.retry import State
 
@@ -38,7 +39,40 @@ def _pull(**over: Any) -> dict[str, Any]:
     return pull
 
 
-UNRELATED = "unrelated\n"
+MERGE_BASE = "d" * 40
+
+
+def _blob(text: str) -> str:
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()
+
+
+def _sections(diff: str | None) -> dict[str, tuple[str, str, str]]:
+    found = {}
+    for section in re.split(r"(?m)^(?=diff --git )", diff or ""):
+        header = re.match(r"diff --git a/(\S+) b/(\S+)\n", section)
+        if header is None:
+            continue
+        old = re.search(r"(?m)^old mode (\d+)$", section)
+        new = re.search(r"(?m)^new mode (\d+)$", section)
+        found[header.group(2)] = (old.group(1) if old else MODE, new.group(1) if new else MODE, _blob(section))
+    return found
+
+
+def _head_entry(diff: str | None, path: str) -> tuple[str, str]:
+    _, mode, blob = _sections(diff).get(path, (MODE, MODE, _blob(f"head:{path}")))
+    return mode, blob
+
+
+def _base_entry(diff: str | None, path: str, tag: str = "") -> tuple[str, str]:
+    mode = _sections(diff).get(path, (MODE, MODE, ""))[0]
+    return mode, _blob(f"base:{tag}:{path}")
+
+
+def _states(diff: str, tag: str = "") -> list[protocol.FileState]:
+    return [
+        protocol.file_state(path, None, _base_entry(diff, path, tag), _head_entry(diff, path))
+        for path in _sections(diff)
+    ]
 
 
 class FakeGitHub:
@@ -56,11 +90,20 @@ class FakeGitHub:
         self.threads = None if threads is None else list(threads)
         self.diff = diff
         self.dispatched: list[int] = []
+        self.base_tag = ""
+        self.merge_base: str | None = MERGE_BASE
+        self.reasons: list[str | None] = []
         self.contents: dict[str, str] = {}
         self.reviews: list[dict[str, Any]] | None = []
         self.reread_sha: str | None = None
         self._pull_reads = 0
-        self.runs: dict[str, list[str]] = {}
+        self.runs: list[dict[str, Any]] = []
+        self.committed = datetime.now(UTC) - timedelta(days=1)
+        self.comments: list[dict[str, Any]] = []
+        self.failing_prs: set[int] = set()
+        self.failed: dict[int, list[str]] = {}
+        self.statuses: list[dict[str, Any]] = []
+        self.posted: list[tuple[int, dict[str, Any]]] = []
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(github, "get_json", self._json)
@@ -68,13 +111,24 @@ class FakeGitHub:
         monkeypatch.setattr(github, "get_diff", self._diff)
         monkeypatch.setattr(github, "review_threads", self._threads)
         monkeypatch.setattr(github, "latest_state", lambda repo, pr: self.state)
-        monkeypatch.setattr(github, "dispatch", lambda repo, workflow, pr: self.dispatched.append(pr))
+        monkeypatch.setattr(github, "dispatch", self._dispatch)
+        monkeypatch.setattr(github, "verdict_runs", lambda repo, workflow, since: list(self.runs))
+        monkeypatch.setattr(github, "committed_at", lambda repo, sha: self.committed)
+        monkeypatch.setattr(github, "failed_steps", lambda repo, run_id: list(self.failed.get(run_id, [])))
+        monkeypatch.setattr(github, "commit_statuses", lambda repo, sha: list(self.statuses))
+        monkeypatch.setattr(github, "post_status", self._post)
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
-        monkeypatch.setattr(
-            github,
-            "get_file",
-            lambda repo, path, ref: self.contents.get(path, UNRELATED).encode("utf-8"),
-        )
+        monkeypatch.setattr(github, "merge_base", lambda repo, base, head: self.merge_base)
+        monkeypatch.setattr(github, "tree_blobs", self._tree)
+
+    def _post(self, repo: str, head_sha: str, payload: dict[str, Any], token: str) -> None:
+        self.posted.append((len(self.posted), {"head_sha": head_sha, **payload, "token": token}))
+
+    def _dispatch(self, repo: str, workflow: str, pr: int, reason: str | None = None) -> None:
+        if pr in self.failing_prs:
+            raise github.GitHubError(f"could not dispatch {workflow} for #{pr}")
+        self.dispatched.append(pr)
+        self.reasons.append(reason)
 
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.reviews is None:
@@ -82,9 +136,6 @@ class FakeGitHub:
         return self.reviews
 
     def _json(self, path: str) -> dict[str, Any]:
-        listing = re.search(r"/actions/workflows/oracle-verdict\.yml/runs\?status=(\w+)&", path)
-        if listing:
-            return {"workflow_runs": [{"display_title": title} for title in self.runs.get(listing.group(1), [])]}
         if path == f"repos/{REPO}/pulls/7":
             self._pull_reads += 1
             if self._pull_reads > 1 and self.reread_sha is not None:
@@ -99,8 +150,20 @@ class FakeGitHub:
     def _diff(self, repo: str, pr: int) -> bytes | None:
         return None if self.diff is None else self.diff.encode("utf-8")
 
+    def _tree(self, repo: str, sha: str) -> dict[str, tuple[str, str]] | None:
+        paths = [(item.get("previous_filename") or item["filename"], item["filename"]) for item in self.files]
+        if sha == self.merge_base:
+            return {old: _base_entry(self.diff, new, self.base_tag) for old, new in paths}
+        if sha == HEAD:
+            return {new: _head_entry(self.diff, new) for _, new in paths}
+        return None
+
     def _paginated(self, path: str) -> list[dict[str, Any]]:
-        return [self.pull] if path.startswith(f"repos/{REPO}/pulls?") else self.files
+        if "/issues/" in path and path.split("?")[0].endswith("/comments"):
+            return self.comments
+        if path.startswith(f"repos/{REPO}/pulls?"):
+            return [self.pull]
+        return [{**item, "sha": _head_entry(self.diff, item["filename"])[1]} for item in self.files]
 
 
 def _env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, event_name: str, event: dict[str, Any], ref: str) -> Path:
@@ -340,7 +403,7 @@ def test_sweep_dispatches_only_due_pending_prs(monkeypatch: pytest.MonkeyPatch, 
     fake.install(monkeypatch)
     _env(monkeypatch, tmp_path, "schedule", {}, "refs/heads/develop")
     assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
-    assert fake.dispatched == [7]
+    assert fake.dispatched == [7] and fake.reasons == [None]
     fresh = FakeGitHub(_pull(), SOUNDNESS, State(7, HEAD, "pending", datetime.now(UTC), pending_cause="all-absent"))
     fresh.install(monkeypatch)
     assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
@@ -351,16 +414,48 @@ def _due_state() -> State:
     return State(7, HEAD, "pending", datetime.now(UTC) - timedelta(hours=2), pending_cause="all-absent")
 
 
-@pytest.mark.parametrize("status", ["queued", "in_progress"])
+_RUN_IDS = iter(range(1000, 100000))
+
+
+def _verdict_run(
+    pr: int | str,
+    *,
+    status: str = "completed",
+    conclusion: str | None = "success",
+    event: str = "workflow_dispatch",
+    age: timedelta = timedelta(hours=1),
+) -> dict[str, Any]:
+    return {
+        "id": next(_RUN_IDS),
+        "display_title": f"oracle-verdict ({event} pr={pr})",
+        "event": event,
+        "status": status,
+        "conclusion": conclusion,
+        "created_at": (datetime.now(UTC) - age).isoformat(),
+    }
+
+
+def _sweep(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake: FakeGitHub, event: str = "schedule") -> int:
+    fake.install(monkeypatch)
+    _env(monkeypatch, tmp_path, event, {}, "refs/heads/develop")
+    return cli.main(["sweep", "--policy", str(POLICY_PATH)])
+
+
+@pytest.mark.parametrize("status", ["queued", "in_progress", "waiting", "pending", "requested"])
 @pytest.mark.parametrize("event", ["workflow_dispatch", "pull_request_target", "issue_comment"])
 def test_sweep_does_not_dispatch_over_a_run_still_in_flight(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, status: str, event: str
 ) -> None:
     fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
-    fake.runs[status] = [f"oracle-verdict ({event} pr=7)"]
-    fake.install(monkeypatch)
-    _env(monkeypatch, tmp_path, "push", {}, "refs/heads/develop")
-    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
+    fake.runs = [_verdict_run(7, status=status, conclusion=None, event=event)]
+    assert _sweep(monkeypatch, tmp_path, fake, "push") == 0
+    assert fake.dispatched == []
+
+
+def test_sweep_treats_a_run_started_moments_ago_as_in_flight(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.runs = [_verdict_run(7, age=timedelta(seconds=20))]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
     assert fake.dispatched == []
 
 
@@ -368,12 +463,575 @@ def test_sweep_dispatches_once_when_only_other_runs_are_in_flight(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
-    fake.runs["queued"] = ["oracle-verdict (workflow_dispatch pr=70)", "oracle-verdict (push pr=sweep)"]
-    fake.runs["in_progress"] = ["oracle-verdict (schedule pr=sweep)", "oracle-verdict (workflow_dispatch pr=17)"]
-    fake.install(monkeypatch)
-    _env(monkeypatch, tmp_path, "push", {}, "refs/heads/develop")
-    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
+    fake.runs = [
+        _verdict_run(70, status="queued", conclusion=None),
+        _verdict_run("sweep", status="queued", conclusion=None, event="push"),
+        _verdict_run("sweep", status="in_progress", conclusion=None, event="schedule"),
+        _verdict_run(17, status="in_progress", conclusion=None),
+    ]
+    assert _sweep(monkeypatch, tmp_path, fake, "push") == 0
     assert fake.dispatched == [7]
+
+
+def test_sweep_reads_every_page_of_runs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.runs = [_verdict_run(900 + index) for index in range(250)] + [
+        _verdict_run(7, status="in_progress", conclusion=None, age=timedelta(days=3))
+    ]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+
+
+def test_the_run_listing_follows_every_page(monkeypatch: pytest.MonkeyPatch) -> None:
+    pages = [{"workflow_runs": [{"id": index}]} for index in range(3)]
+    seen: list[tuple[str, ...]] = []
+
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        seen.append(args)
+        return json.dumps(pages)
+
+    monkeypatch.setattr(github, "_gh", fake_gh)
+    assert github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC)) == [
+        {"id": 0},
+        {"id": 1},
+        {"id": 2},
+    ]
+    assert seen[0][:2] == ("--paginate", "--slurp")
+    assert "created=%3E%3D2026-10-19T00%3A00%3A00Z" in seen[0][2]
+
+
+def _stateless_fake(*runs: dict[str, Any]) -> FakeGitHub:
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.runs = list(runs)
+    return fake
+
+
+def test_a_head_whose_run_failed_without_state_is_redispatched_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    failed = _verdict_run(7, conclusion="failure", event="pull_request_target", age=timedelta(hours=3))
+    fake = _stateless_fake(failed)
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7] and fake.reasons == ["stateless-retry"]
+    second = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=2))
+    again = _stateless_fake(second, failed)
+    assert _sweep(monkeypatch, tmp_path, again) == 0
+    assert again.dispatched == []
+
+
+def test_a_failure_before_the_head_was_committed_is_not_retried(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(days=3)))
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "timed_out", "cancelled"])
+def test_every_unfinished_conclusion_counts_as_a_failure_without_state(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, conclusion: str
+) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion=conclusion))
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7]
+
+
+@pytest.mark.parametrize("conclusion", ["success"])
+def test_a_run_that_finished_is_not_retried(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, conclusion: str) -> None:
+    fake = _stateless_fake(
+        _verdict_run(7, conclusion=conclusion, age=timedelta(minutes=30)), _verdict_run(7, conclusion="failure")
+    )
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+
+
+def test_a_failed_run_on_a_head_with_a_decisive_state_is_not_retried(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, State(7, HEAD, "success", datetime.now(UTC) - timedelta(hours=3)))
+    fake.runs = [_verdict_run(7, conclusion="failure")]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+
+
+def test_stateless_redispatch_is_bounded_by_the_daily_budget(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    policy_budget = cli.load_policy(POLICY_PATH).retry.daily_budget
+    dispatches = [
+        _verdict_run(7, conclusion="success", age=timedelta(hours=2 + index)) for index in range(policy_budget)
+    ]
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", event="pull_request_target"), *dispatches)
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+
+
+def test_the_sweep_never_dispatches_more_than_its_cap(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    cap = cli.load_policy(POLICY_PATH).retry.sweep_max_dispatches
+    pulls = [
+        _pull(number=number, head={"sha": HEAD, "repo": {"full_name": REPO}}) for number in range(20, 20 + cap + 3)
+    ]
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.runs = [_verdict_run(pull["number"], conclusion="failure") for pull in pulls]
+    fake._paginated = lambda path: pulls if path.startswith(f"repos/{REPO}/pulls?") else []
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert len(fake.dispatched) == cap
+
+
+def test_one_pull_requests_error_does_not_stop_the_others(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pulls = [_pull(number=number) for number in (21, 22, 23)]
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.runs = [_verdict_run(pull["number"], conclusion="failure") for pull in pulls]
+    fake.failing_prs = {22}
+    fake._paginated = lambda path: pulls if path.startswith(f"repos/{REPO}/pulls?") else []
+    assert _sweep(monkeypatch, tmp_path, fake) == 1
+    assert fake.dispatched == [21, 23]
+    captured = capsys.readouterr()
+    assert "#22" in captured.out
+    assert "could not handle 1 pull request" in captured.err
+
+
+def test_a_state_that_cannot_be_read_isolates_to_its_pull_request(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pulls = [_pull(number=number) for number in (21, 22)]
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.runs = [_verdict_run(pull["number"], conclusion="failure") for pull in pulls]
+    fake._paginated = lambda path: pulls if path.startswith(f"repos/{REPO}/pulls?") else []
+    fake.install(monkeypatch)
+
+    def latest(repo: str, pr: int) -> State | None:
+        if pr == 21:
+            raise github.GitHubError("artifact unreadable")
+        return None
+
+    monkeypatch.setattr(github, "latest_state", latest)
+    _env(monkeypatch, tmp_path, "schedule", {}, "refs/heads/develop")
+    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 1
+    assert fake.dispatched == [22]
+
+
+def _surfaced_sweep(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake: FakeGitHub, token: str | None = "surface-token"
+) -> int:
+    fake.install(monkeypatch)
+    if token is None:
+        monkeypatch.delenv("SURFACE_TOKEN", raising=False)
+    else:
+        monkeypatch.setenv("SURFACE_TOKEN", token)
+    _env(monkeypatch, tmp_path, "schedule", {}, "refs/heads/develop")
+    return cli.main(["sweep", "--policy", str(POLICY_PATH)])
+
+
+def test_a_timeout_run_counts_as_a_failure_without_a_result(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    first = _verdict_run(7, conclusion="timed_out", event="pull_request_target", age=timedelta(hours=2))
+    second = _verdict_run(7, conclusion="timed_out", event="workflow_dispatch", age=timedelta(hours=1))
+    fake = _stateless_fake(second, first)
+    fake.failed = {second["id"]: ["Run the attempt loop"]}
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    posted = fake.posted[0][1]
+    assert posted["head_sha"] == HEAD and posted["state"] == "pending" and posted["context"] == "oracle-verdict"
+    assert "Run the attempt loop" in posted["description"]
+    assert len(posted["description"]) <= 140
+    assert posted["target_url"].endswith(f"/actions/runs/{second['id']}")
+    assert posted["token"] == "surface-token"
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Verify Linux process isolation",
+        "Scan the disk for secret values after the reviewer exits",
+        "Redact every secret value held by the job from the results",
+    ],
+)
+def test_an_isolation_scan_or_redaction_failure_is_surfaced_by_the_sweep(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, step: str
+) -> None:
+    first = _verdict_run(7, conclusion="failure", event="pull_request_target", age=timedelta(hours=3))
+    second = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=2))
+    fake = _stateless_fake(second, first)
+    fake.failed = {second["id"]: [step]}
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    assert step in fake.posted[0][1]["description"]
+
+
+def test_a_second_failure_with_no_step_listed_still_posts_a_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _stateless_fake(
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+    )
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    assert "an earlier step" in fake.posted[0][1]["description"]
+
+
+APP = {"login": "benchbox-oracle[bot]", "type": "Bot"}
+
+
+def _twice_failed() -> tuple[dict[str, Any], dict[str, Any]]:
+    return (
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+    )
+
+
+def _expected(second: dict[str, Any], steps: list[str]) -> dict[str, Any]:
+    description = sweep.surface_description(steps)
+    return {
+        "context": "oracle-verdict",
+        "state": "pending",
+        "description": description,
+        "target_url": f"https://github.com/{REPO}/actions/runs/{second['id']}",
+        "creator": dict(APP),
+        "updated_at": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
+    }
+
+
+def test_an_in_progress_claim_is_replaced_with_the_failed_step_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    fake.failed = {second["id"]: ["Verify Linux process isolation"]}
+    fake.statuses = [
+        {
+            "context": "oracle-verdict",
+            "state": "pending",
+            "description": "verdict in progress",
+            "target_url": f"https://github.com/{REPO}/actions/runs/1",
+            "creator": dict(APP),
+            "updated_at": (datetime.now(UTC) - timedelta(minutes=10)).isoformat(),
+        }
+    ]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    assert fake.posted[0][1]["description"] == sweep.surface_description(["Verify Linux process isolation"])
+    assert fake.posted[0][1]["target_url"] == f"https://github.com/{REPO}/actions/runs/{second['id']}"
+
+
+def test_a_non_app_pending_status_cannot_suppress_the_failure_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    fake.statuses = [
+        {
+            "context": "oracle-verdict",
+            "state": "pending",
+            "description": "oracle-verdict failed twice without a result at: an earlier step. Rerun",
+            "target_url": f"https://github.com/{REPO}/actions/runs/{second['id']}",
+            "creator": {"login": "someone", "type": "User"},
+        }
+    ]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and len(fake.posted) == 1
+
+
+def test_an_identical_surfacing_is_not_reposted(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    fake.statuses = [_expected(second, [])]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
+
+
+def test_a_recorded_verdict_is_never_overwritten_by_the_failure_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    expected = _expected(second, [])
+    fake.statuses = [{**expected, "state": "success", "description": "oracle-verdict: success"}]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
+
+
+def test_a_second_failure_without_an_app_token_is_reported_but_not_an_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fake = _stateless_fake(
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+    )
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake, token=None) == 0
+    assert fake.dispatched == [] and fake.posted == []
+    assert "not configured to surface it" in capsys.readouterr().out
+
+
+def test_a_failure_after_a_finished_run_is_a_first_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    finished = _verdict_run(7, conclusion="success", age=timedelta(hours=1))
+    older = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    fake = _stateless_fake(finished, older)
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
+
+
+def test_a_skipped_review_run_neither_dispatches_nor_hides_a_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    failed = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    skipped = _verdict_run(7, conclusion="skipped", age=timedelta(hours=1))
+    fresh = _stateless_fake(skipped, failed)
+    assert _sweep(monkeypatch, tmp_path, fresh) == 0
+    assert fresh.dispatched == [7]
+    only = _stateless_fake(skipped)
+    assert _sweep(monkeypatch, tmp_path, only) == 0
+    assert only.dispatched == []
+
+
+def test_a_skipped_run_between_two_failures_stops_the_second_dispatch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    runs = _stateless_fake(
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="skipped", age=timedelta(hours=2)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=3)),
+    )
+    assert _sweep(monkeypatch, tmp_path, runs) == 0
+    assert runs.dispatched == []
+
+
+def test_an_owner_reset_covers_one_run_then_expires_on_a_failure_without_a_result(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    reset = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    reset.comments = _reset_comments()
+    reset.runs = [_verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(minutes=10))]
+    assert _sweep(monkeypatch, tmp_path, reset) == 0
+    assert reset.dispatched == []
+
+
+def test_an_owner_reset_is_spent_by_the_first_later_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    first = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    first.comments = _reset_comments()
+    _, values, _ = _plan(monkeypatch, tmp_path, first, event_name="issue_comment", event=event)
+    assert values["decision"] == "review"
+    second = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    second.comments = _reset_comments()
+    second.runs = [_verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(minutes=10))]
+    _, values, plan = _plan(monkeypatch, tmp_path, second, event_name="issue_comment", event=event)
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+    assert "reset" not in plan["decision_reason"]
+
+
+def test_a_skipped_run_after_the_reset_does_not_spend_it(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    fake = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    fake.comments = _reset_comments()
+    fake.runs = [_verdict_run(7, conclusion="skipped", age=timedelta(minutes=10))]
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "review"
+    assert "reset by the owner" in plan["decision_reason"]
+
+
+def _decisive_state(outcome: str = "success") -> State:
+    return State(7, HEAD, outcome, datetime.now(UTC) - timedelta(minutes=10))
+
+
+def test_an_owner_reset_never_rerolls_a_decisive_head(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    fake = FakeGitHub(_pull(), SOUNDNESS, _decisive_state())
+    fake.comments = _reset_comments()
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+    assert "reset" not in plan["decision_reason"]
+
+
+def _marked_dispatch(*runs: dict[str, Any]) -> FakeGitHub:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    fake.runs = list(runs)
+    return fake
+
+
+def test_a_marked_stateless_retry_reviews_despite_backoff(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    failed = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=2))
+    fake = _marked_dispatch(failed)
+    code, values, plan = _plan(
+        monkeypatch,
+        tmp_path,
+        fake,
+        event_name="workflow_dispatch",
+        event={"inputs": {"reason": "stateless-retry"}},
+        ref="refs/heads/develop",
+    )
+    assert code == 0
+    assert values["decision"] == "review"
+    assert "failed without a result" in plan["decision_reason"]
+
+
+@pytest.mark.parametrize(
+    "previous_runs",
+    [
+        [],
+        [
+            _verdict_run(7, conclusion="failure", age=timedelta(hours=3)),
+            _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+        ],
+    ],
+    ids=["no-failure", "two-failures"],
+)
+def test_a_marked_retry_without_exactly_one_prior_failure_follows_normal_rules(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, previous_runs: list[dict[str, Any]]
+) -> None:
+    fake = _marked_dispatch(*previous_runs)
+    _, values, plan = _plan(
+        monkeypatch,
+        tmp_path,
+        fake,
+        event_name="workflow_dispatch",
+        event={"inputs": {"reason": "stateless-retry"}},
+        ref="refs/heads/develop",
+    )
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+
+
+def test_a_marked_retry_never_rerolls_a_decisive_head(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    failed = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    fake = FakeGitHub(_pull(), SOUNDNESS, _decisive_state("failure"))
+    fake.runs = [failed]
+    _, values, plan = _plan(
+        monkeypatch,
+        tmp_path,
+        fake,
+        event_name="workflow_dispatch",
+        event={"inputs": {"reason": "stateless-retry"}},
+        ref="refs/heads/develop",
+    )
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+
+
+USER = {"login": "someone", "type": "User"}
+
+
+def _verdict_status(state: str, creator: dict[str, Any] = APP, description: str = "d") -> dict[str, Any]:
+    return {
+        "context": "oracle-verdict",
+        "state": state,
+        "description": description,
+        "target_url": "u",
+        "creator": dict(creator),
+        "updated_at": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
+    }
+
+
+@pytest.mark.parametrize("state", ["success", "failure"])
+def test_a_posted_decisive_status_blocks_the_stateless_redispatch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, state: str
+) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(hours=1)))
+    fake.statuses = [_verdict_status(state)]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
+
+
+def test_a_non_app_decisive_status_does_not_block_the_stateless_retry(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(hours=1)))
+    fake.statuses = [_verdict_status("failure", USER)]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7] and fake.reasons == ["stateless-retry"]
+
+
+def test_a_pending_claim_does_not_block_the_stateless_retry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(hours=1)))
+    fake.statuses = [_verdict_status("pending", APP, "verdict in progress")]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7] and fake.reasons == ["stateless-retry"]
+
+
+def _parsed(*runs: dict[str, Any]) -> tuple[sweep.Run, ...]:
+    return sweep.parse_runs(runs).get(7, ())
+
+
+def test_the_surfaced_description_keeps_the_shared_prefix_intact() -> None:
+    assert len(github.SWEEP_FAILURE_SURFACE_PREFIX) < sweep.STATUS_DESCRIPTION_LIMIT
+    assert sweep.surface_description([]).startswith(github.SWEEP_FAILURE_SURFACE_PREFIX)
+    assert sweep.surface_description(["x" * 500]).startswith(github.SWEEP_FAILURE_SURFACE_PREFIX)
+
+
+def test_reset_spent_counts_only_runs_that_could_have_used_the_reset() -> None:
+    reset_at = datetime.now(UTC) - timedelta(minutes=30)
+    before = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    after = _verdict_run(7, conclusion="failure", age=timedelta(minutes=10))
+    skipped = _verdict_run(7, conclusion="skipped", age=timedelta(minutes=10))
+    assert not sweep.reset_spent(_parsed(), reset_at)
+    assert not sweep.reset_spent(_parsed(before), reset_at)
+    assert not sweep.reset_spent(_parsed(skipped), reset_at)
+    assert sweep.reset_spent(_parsed(after), reset_at)
+    assert not sweep.reset_spent(_parsed(after), reset_at, exclude=after["id"])
+    in_flight = _verdict_run(7, status="in_progress", conclusion=None, age=timedelta(minutes=10))
+    assert sweep.reset_spent(_parsed(in_flight), reset_at)
+
+
+def _reset_comments(head: str = HEAD, *, edited: bool = False) -> list[dict[str, Any]]:
+    start = datetime.now(UTC) - timedelta(minutes=30)
+    owner = {"login": "joeharris76", "type": "User"}
+    return [
+        {
+            "user": owner,
+            "body": f"Owner instruction: reset the backoff on {head}",
+            "created_at": start.isoformat(),
+            "updated_at": start.isoformat(),
+        },
+        {
+            "user": owner,
+            "body": f"Oracle backoff reset: {head}\nReason: the gateway was down",
+            "created_at": (start + timedelta(minutes=5)).isoformat(),
+            "updated_at": (start + timedelta(minutes=9 if edited else 5)).isoformat(),
+        },
+    ]
+
+
+def _backed_off() -> State:
+    now = datetime.now(UTC)
+    return State(
+        7, HEAD, "pending", now - timedelta(minutes=40), (now - timedelta(minutes=40),), pending_cause="all-absent"
+    )
+
+
+def test_the_sweep_dispatches_a_pending_head_after_the_owner_resets_its_backoff(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    waiting = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    assert _sweep(monkeypatch, tmp_path, waiting) == 0
+    assert waiting.dispatched == []
+    reset = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    reset.comments = _reset_comments()
+    assert _sweep(monkeypatch, tmp_path, reset) == 0
+    assert reset.dispatched == [7] and reset.reasons == [None]
+    edited = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    edited.comments = _reset_comments(edited=True)
+    assert _sweep(monkeypatch, tmp_path, edited) == 0
+    assert edited.dispatched == []
+
+
+def test_a_manual_retry_inside_backoff_runs_once_after_the_owner_reset(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    fake = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    fake.comments = _reset_comments()
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "review"
+    assert "reset by the owner" in plan["decision_reason"]
+    consumed = tmp_path / "consumed"
+    consumed.mkdir()
+    after = datetime.now(UTC)
+    fake = FakeGitHub(_pull(), SOUNDNESS, State(7, HEAD, "pending", after, (after,), pending_cause="all-absent"))
+    fake.comments = _reset_comments()
+    _, values, plan = _plan(monkeypatch, consumed, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
 
 
 @pytest.mark.parametrize(
@@ -406,9 +1064,9 @@ OLD_HEAD = "c" * 40
 
 def _record(diff: str, decision: str, **over: Any) -> dict[str, Any]:
     paths = over.pop("paths", None)
-    patches = protocol.file_patches(diff, lambda path: UNRELATED)
-    chosen = paths if paths is not None else sorted(patches)
-    current = protocol.patch_map(patches, chosen)
+    prints = protocol.fingerprints(_states(diff, over.pop("tag", "")))
+    chosen = paths if paths is not None else sorted(prints)
+    current = protocol.patch_map(prints, chosen)
     record = {
         "v": 1,
         "cycle": 1,
@@ -422,7 +1080,7 @@ def _record(diff: str, decision: str, **over: Any) -> dict[str, Any]:
         "strikes_after": 1 if decision == "DO_NOT_SHIP" else 0,
         "open_defects": [],
         "next_id": 1,
-        "patch_digest": protocol.patch_digest(patches, chosen) or f"unread-{OLD_HEAD}",
+        "patch_digest": protocol.patch_digest(prints) if prints else f"unread-{OLD_HEAD}",
         "carried": False,
         "summary": "",
         **over,
@@ -474,24 +1132,98 @@ def test_no_review_history_gives_a_first_full_review(monkeypatch: pytest.MonkeyP
     assert (tmp_path / "plan" / "diff.patch").read_text(encoding="utf-8") == TWO_FILE_DIFF
 
 
-@pytest.mark.parametrize("diff", [TWO_FILE_DIFF, REBASED], ids=["identical", "rebased"])
+NOTES_FILE = {"filename": "docs/notes.md", "additions": 1, "deletions": 0}
+NOTES_SECTION = (
+    "diff --git a/docs/notes.md b/docs/notes.md\n--- a/docs/notes.md\n+++ b/docs/notes.md\n@@ -1 +1 @@\n-a\n+b\n"
+)
+
+
 @pytest.mark.parametrize("decision", ["SHIP", "SHIP_WITH_FIXES", "DO_NOT_SHIP"])
-def test_an_unchanged_patch_carries_the_decision_without_a_reviewer(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, diff: str, decision: str
+def test_a_byte_identical_diff_carries_the_decision_without_a_reviewer(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, decision: str
 ) -> None:
-    files = [*TWO_FILES, {"filename": "docs/notes.md", "additions": 1, "deletions": 0, "sha": "9" * 40}]
-    notes = (
-        diff
-        + "diff --git a/docs/notes.md b/docs/notes.md\n--- a/docs/notes.md\n+++ b/docs/notes.md\n@@ -1 +1 @@\n-a\n+b\n"
-    )
+    diff = TWO_FILE_DIFF + NOTES_SECTION
     fake = _fake(
-        _review(_record(TWO_FILE_DIFF, decision)), files=files, diff=notes, base={"ref": "develop", "sha": "f" * 40}
+        _review(_record(diff, decision)),
+        files=[*TWO_FILES, NOTES_FILE],
+        diff=diff,
+        base={"ref": "develop", "sha": "f" * 40},
     )
     _, values, plan = _plan(monkeypatch, tmp_path, fake)
     assert values["decision"] == "carry" and values["post"] == "true"
     assert plan["reviewed_head"] == OLD_HEAD and plan["chain"] == []
     assert plan["protocol"]["kind"] == "carry" and plan["protocol"]["previous"]["decision"] == decision
     assert not (tmp_path / "plan" / "diff.patch").exists()
+
+
+@pytest.mark.parametrize(
+    "change",
+    ["relocated", "prose", "mode", "base-blob", "merge-base-missing"],
+)
+def test_any_difference_in_the_merge_base_diff_is_reviewed_again(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, change: str
+) -> None:
+    diff = TWO_FILE_DIFF + NOTES_SECTION
+    record = _record(diff, "SHIP")
+    current = {
+        "relocated": diff.replace("@@ -1,1 +1,2 @@", "@@ -7,1 +7,2 @@"),
+        "prose": diff.replace("+b\n", "+c\n"),
+        "mode": diff.replace(f"--- a/{CAPTURE}", f"old mode 100644\nnew mode 100755\n--- a/{CAPTURE}"),
+    }.get(change, diff)
+    fake = _fake(_review(record), files=[*TWO_FILES, NOTES_FILE], diff=current)
+    if change == "base-blob":
+        fake.base_tag = "moved"
+    if change == "merge-base-missing":
+        fake.merge_base = None
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "review" and plan["protocol"]["kind"] == "follow-up"
+    if change == "merge-base-missing":
+        assert plan["protocol"]["patch_digest"] == f"unread-{HEAD}"
+
+
+def test_a_file_without_an_api_blob_id_takes_its_head_blob_from_the_head_tree(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _fake(_review(_record(TWO_FILE_DIFF, "SHIP")))
+    fake._paginated = lambda path: (
+        [fake.pull] if path.startswith(f"repos/{REPO}/pulls?") else [{**item, "sha": ""} for item in TWO_FILES]
+    )
+    _, values, _ = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "carry"
+
+
+def test_a_missing_blob_id_for_one_file_carries_nothing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP")
+    fake = _fake(_review(record))
+    whole = fake._tree
+    fake._tree = lambda repo, sha: {path: entry for path, entry in (whole(repo, sha) or {}).items() if path == CHECKER}
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "review"
+    assert plan["protocol"]["patch_digest"] == f"unread-{HEAD}"
+
+
+BINARY = "assets/blob.bin"
+BASE_BLOB = "c" * 40
+REVIEWED_BLOB = "1234567890" + "a" * 30
+FORGED_BLOB = "1234567890" + "b" * 30
+
+
+@pytest.mark.parametrize(("head_blob", "decision"), [(REVIEWED_BLOB, "carry"), (FORGED_BLOB, "review")])
+def test_a_binary_file_with_the_same_abbreviated_id_but_a_different_full_id_does_not_carry(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, head_blob: str, decision: str
+) -> None:
+    files = [{"filename": BINARY, "additions": 0, "deletions": 0, "status": "modified"}]
+    record = _record(TWO_FILE_DIFF, "SHIP")
+    record["patch_digest"] = protocol.patch_digest(
+        protocol.fingerprints([protocol.file_state(BINARY, None, (MODE, BASE_BLOB), (MODE, REVIEWED_BLOB))])
+    )
+    fake = _fake(_review(record), files=files)
+    fake._tree = lambda repo, sha: {BINARY: (MODE, head_blob if sha == HEAD else BASE_BLOB)}
+    fake._paginated = lambda path: (
+        [fake.pull] if path.startswith(f"repos/{REPO}/pulls?") else [{**files[0], "sha": head_blob}]
+    )
+    _, values, _ = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == decision
 
 
 def test_a_code_change_outside_soundness_paths_is_followed_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -738,216 +1470,6 @@ def test_a_mode_only_change_is_a_changed_patch(monkeypatch: pytest.MonkeyPatch, 
     record = _record(TWO_FILE_DIFF, "SHIP")
     _, values, plan = _plan(monkeypatch, tmp_path, _fake(_review(record), diff=moded))
     assert values["decision"] == "review" and plan["protocol"]["changed"] == [CAPTURE]
-
-
-def test_a_binary_change_is_never_mistaken_for_an_unchanged_patch() -> None:
-    def binary(blob: str) -> str:
-        return f"diff --git a/a.bin b/a.bin\nindex 111..{blob} 100644\nBinary files a/a.bin and b/a.bin differ\n"
-
-    assert protocol.file_patches(binary("222")) != protocol.file_patches(binary("333"))
-    text = "diff --git a/a.py b/a.py\nindex 111..{0} 100644\n--- a/a.py\n+++ b/a.py\n@@ -{1},1 +{1},2 @@\n a\n+b\n"
-    assert protocol.file_patches(text.format("222", 1)) == protocol.file_patches(text.format("333", 9))
-
-
-def _file_diff(*hunks: str) -> str:
-    return "diff --git a/a.py b/a.py\nindex 111..222 100644\n--- a/a.py\n+++ b/a.py\n" + "".join(hunks)
-
-
-GUARDED = "@@ -{0},3 +{0},4 @@ def {1}(user):\n a\n+require_admin(user)\n b\n c\n"
-MOVE_OUT = "@@ -{0},4 +{0},3 @@\n a\n-require_admin(user)\n b\n c\n"
-MOVE_IN = "@@ -{0},3 +{0},4 @@\n a\n+require_admin(user)\n b\n c\n"
-
-
-def test_the_same_added_line_in_a_different_function_is_a_different_patch() -> None:
-    guarded = protocol.file_patches(_file_diff(GUARDED.format(10, "guarded_write")))
-    public = protocol.file_patches(_file_diff(GUARDED.format(40, "public_read")))
-    assert guarded != public
-
-
-def test_a_line_moved_to_another_place_is_a_different_patch() -> None:
-    near = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(20)))
-    far = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(50)))
-    assert near != far
-
-
-def test_a_rebase_that_shifts_every_hunk_equally_keeps_the_patch() -> None:
-    before = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(20)))
-    after = protocol.file_patches(_file_diff(MOVE_OUT.format(18), MOVE_IN.format(28)))
-    assert before == after
-
-
-def test_reordered_hunks_are_a_different_patch() -> None:
-    one = MOVE_OUT.format(10)
-    two = MOVE_IN.format(20)
-    assert protocol.file_patches(_file_diff(one, two)) != protocol.file_patches(_file_diff(two, one))
-
-
-def test_a_hunk_added_above_shifts_the_later_hunk_and_changes_the_patch() -> None:
-    alone = protocol.file_patches(_file_diff(MOVE_IN.format(30)))
-    above = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(30)))
-    assert alone != above
-
-
-def _added(*lines: str, count: int) -> str:
-    body = "".join(f"+{line}\n" for line in lines)
-    return _file_diff(f"@@ -0,0 +1,{count} @@\n{body}")
-
-
-def test_a_form_feed_inside_an_added_line_is_not_a_line_break() -> None:
-    scope = {"READ": 1, "WRITE": 2}
-    assert eval("READ", scope) == 1
-    assert eval("READ\f+WRITE", scope) == 3
-    two_lines = _added("permissions = READ", "WRITE", count=2)
-    one_line = _added("permissions = READ\f+WRITE", count=1)
-    assert protocol.file_patches(two_lines) != protocol.file_patches(one_line)
-
-
-@pytest.mark.parametrize("separator", ["\f", "\v", "\u2028", "\u0085", "\x1c", "\r"])
-def test_a_control_character_inside_an_added_line_differs_from_splitting_there(separator: str) -> None:
-    inside = _added(f"first{separator}+second", "third", count=2)
-    split = _added("first", "second", "third", count=3)
-    same_header = _added("first", "second", "third", count=2)
-    assert protocol.file_patches(inside) != protocol.file_patches(split)
-    assert protocol.file_patches(inside) != protocol.file_patches(same_header)
-
-
-def test_hunk_line_counts_are_part_of_the_patch() -> None:
-    fewer = _file_diff("@@ -1,1 +1,1 @@\n+a\n")
-    more = _file_diff("@@ -1,1 +1,2 @@\n+a\n")
-    assert protocol.file_patches(fewer) != protocol.file_patches(more)
-
-
-def _function(pad: int = 0) -> str:
-    body = ["def guarded(user):"]
-    for _ in range(3):
-        body += ["a", "b", "c", "", ""]
-    return "\n".join(["# pad"] * pad + body) + "\n"
-
-
-def _removal(block: int, pad: int = 0, path: str = "a.py") -> str:
-    start = pad + 2 + block * 5
-    hunk = f"@@ -{start},4 +{start},3 @@ def guarded(user):\n a\n-require_admin(user)\n b\n c\n"
-    return _file_diff(hunk).replace("a.py", path)
-
-
-def _read_patches(diff: str, content: str) -> dict[str, str]:
-    return protocol.file_patches(diff, lambda path: content)
-
-
-def test_the_same_removal_at_two_places_in_one_function_is_a_different_patch() -> None:
-    assert protocol.file_patches(_removal(0)) == protocol.file_patches(_removal(2))
-    assert _read_patches(_removal(0), _function()) != _read_patches(_removal(2), _function())
-
-
-def test_a_rebase_that_shifts_a_function_keeps_its_first_hunk_patch() -> None:
-    assert _read_patches(_removal(2), _function()) == _read_patches(_removal(2, pad=8), _function(pad=8))
-
-
-def test_an_unreadable_file_binds_the_first_hunk_to_its_line_number() -> None:
-    assert protocol.file_patches(_removal(0), lambda path: None) != protocol.file_patches(
-        _removal(0, pad=8), lambda path: None
-    )
-
-
-def test_a_heading_missing_from_the_file_binds_the_first_hunk_to_its_line_number() -> None:
-    assert _read_patches(_removal(0), "x\n" * 40) != _read_patches(_removal(0, pad=8), "x\n" * 40)
-
-
-def test_a_relocated_first_hunk_is_reviewed_again_and_a_rebase_is_carried(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    stored = _removal(0, path=CHECKER)
-    patches = _read_patches(stored, _function())
-    record = _record(stored, "SHIP", paths=[CHECKER])
-    record["patch_map"] = protocol.patch_map(patches, [CHECKER])
-    record["patch_digest"] = protocol.patch_digest(patches, [CHECKER])
-    files = [{"filename": CHECKER, "additions": 0, "deletions": 1, "sha": "1" * 40}]
-    outcomes = []
-    for name, diff, content in (
-        ("relocated", _removal(2, path=CHECKER), _function()),
-        ("rebased", _removal(0, pad=8, path=CHECKER), _function(pad=8)),
-    ):
-        fake = _fake(_review(record), files=files, diff=diff)
-        fake.contents = {CHECKER: content}
-        (tmp_path / name).mkdir()
-        _, values, _ = _plan(monkeypatch, tmp_path / name, fake)
-        outcomes.append(values["decision"])
-    assert outcomes == ["review", "carry"]
-
-
-def _repeated_blocks(removed: int | None = None, pad: int = 0) -> str:
-    rows = ["# pad"] * pad
-    for block in range(3):
-        rows += ["a", "b"] + ([] if block == removed else ["c"]) + ["requires_auth", "d"]
-    return "\n".join(rows + ["tail"]) + "\n"
-
-
-def _headingless(block: int, pad: int = 0) -> str:
-    start = pad + 1 + block * 5
-    hunk = f"@@ -{start},4 +{start},3 @@\n a\n b\n-c\n requires_auth\n"
-    return _file_diff(hunk)
-
-
-def test_a_headingless_hunk_relocated_to_an_identical_block_is_a_different_patch() -> None:
-    first = _read_patches(_headingless(0), _repeated_blocks(removed=0))
-    second = _read_patches(_headingless(1), _repeated_blocks(removed=1))
-    assert first != second
-
-
-def test_a_rebase_that_shifts_a_headingless_hunk_keeps_its_patch() -> None:
-    assert _read_patches(_headingless(1), _repeated_blocks(removed=1)) == _read_patches(
-        _headingless(1, pad=8), _repeated_blocks(removed=1, pad=8)
-    )
-
-
-def test_an_unreadable_file_binds_a_headingless_hunk_to_its_line_number() -> None:
-    assert protocol.file_patches(_headingless(0), lambda path: None) != protocol.file_patches(
-        _headingless(0, pad=8), lambda path: None
-    )
-    assert protocol.file_patches(_headingless(1), lambda path: None) != protocol.file_patches(
-        _headingless(0), lambda path: None
-    )
-
-
-def _periodic(pad: int = 0) -> str:
-    return "\n".join(["# pad"] * pad + ["0"] * 10) + "\n"
-
-
-def _inserted_zero(row: int, pad: int = 0) -> str:
-    start = pad + row
-    return _file_diff(f"@@ -{start},3 +{start},4 @@\n 0\n 0\n+0\n 0\n")
-
-
-def test_an_insertion_moved_one_row_in_periodic_text_is_a_different_patch() -> None:
-    first = _read_patches(_inserted_zero(1), _periodic())
-    second = _read_patches(_inserted_zero(2), _periodic())
-    assert first != second
-
-
-def test_a_rebase_that_shifts_an_insertion_in_periodic_text_keeps_its_patch() -> None:
-    assert _read_patches(_inserted_zero(3), _periodic()) == _read_patches(_inserted_zero(3, pad=8), _periodic(pad=8))
-
-
-def _twin_functions(pad: int = 0) -> str:
-    function = ["def guarded(user):", "a", "b", "c", "", ""]
-    return "\n".join(["# pad"] * pad + function * 2) + "\n"
-
-
-def _twin_removal(function: int, pad: int = 0) -> str:
-    start = pad + 2 + function * 6
-    return _file_diff(f"@@ -{start},4 +{start},3 @@ def guarded(user):\n a\n-b\n c\n \n")
-
-
-def test_a_hunk_relocated_to_a_function_with_a_repeated_heading_is_a_different_patch() -> None:
-    first = _read_patches(_twin_removal(0), _twin_functions())
-    second = _read_patches(_twin_removal(1), _twin_functions())
-    assert first != second
-
-
-def test_a_rebase_that_shifts_a_repeated_heading_keeps_its_patch() -> None:
-    assert _read_patches(_twin_removal(1), _twin_functions()) == _read_patches(
-        _twin_removal(1, pad=8), _twin_functions(pad=8)
-    )
 
 
 def test_prose_is_untracked_apart_from_a_scoped_follow_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -1231,3 +1753,47 @@ def test_unreadable_base_change_history_carries_a_decided_head_whose_patch_is_un
     fake = _fake(_review(_decided_head()))
     _, values, _ = _plan(monkeypatch, tmp_path, fake, event={"action": "edited", "changes": {"base": {}}})
     assert values["decision"] == "carry"
+
+
+def _round(records: list[dict[str, Any]], tag: str = "", **kwargs: Any) -> protocol.Round:
+    prints = protocol.fingerprints(_states(TWO_FILE_DIFF, tag))
+    return protocol.plan_round(
+        protocol.History(records),
+        head_sha=HEAD,
+        base_ref="develop",
+        digest=protocol.patch_digest(prints),
+        patches=protocol.patch_map(prints, sorted(prints)),
+        paths=sorted(prints),
+        strike_count=protocol.strikes(records),
+        max_do_not_ship=3,
+        **kwargs,
+    )
+
+
+def test_a_byte_identical_rebase_keeps_the_strike_count_and_the_forced_round_allowance() -> None:
+    struck = _record(TWO_FILE_DIFF, "DO_NOT_SHIP")
+    carried = _round([struck])
+    assert carried.kind == protocol.CARRY
+    records = [struck, _record(TWO_FILE_DIFF, "DO_NOT_SHIP", kind="carry", carried=True, head_sha=HEAD)]
+    assert protocol.strikes(records) == 1
+
+    forced = {"kind": "follow-up", "forced": True, "round": 2}
+    spent = [_record(TWO_FILE_DIFF, "SHIP"), *(_record(TWO_FILE_DIFF, "SHIP", **forced) for _ in range(2))]
+    refused = _round(spent, force=True)
+    assert refused.kind == protocol.SKIP and "already had 2 forced re-reviews" in refused.reason
+
+
+def test_a_rebase_onto_changed_files_is_a_new_digest_with_its_own_strike_and_forced_allowance() -> None:
+    first = _record(TWO_FILE_DIFF, "DO_NOT_SHIP")
+    rebased = _record(TWO_FILE_DIFF, "DO_NOT_SHIP", tag="moved", head_sha=HEAD)
+    assert first["patch_digest"] != rebased["patch_digest"]
+    assert _round([first], "moved").kind == protocol.FIRST
+    assert protocol.strikes([first, rebased]) == 2
+
+    forced = {"kind": "follow-up", "forced": True, "round": 2}
+    spent = [_record(TWO_FILE_DIFF, "SHIP"), *(_record(TWO_FILE_DIFF, "SHIP", **forced) for _ in range(2))]
+    fresh = _round(spent, "moved", force=True)
+    assert fresh.kind == protocol.FOLLOW_UP and fresh.forced is False
+    reviewed = [*spent, _record(TWO_FILE_DIFF, "SHIP", tag="moved")]
+    allowed = _round(reviewed, "moved", force=True)
+    assert allowed.kind == protocol.FOLLOW_UP and allowed.forced is True

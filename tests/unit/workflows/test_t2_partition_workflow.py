@@ -97,11 +97,18 @@ def test_required_local_cases_run_before_merge_and_gate_core() -> None:
 def test_medium_selection_and_receipts_gate_core() -> None:
     jobs = _jobs("ci.yml")
     medium = jobs["medium-test"]
-    assert medium["strategy"] == {"fail-fast": False, "matrix": {"shard_index": [0, 1, 2, 3]}}
+    assert medium["strategy"] == {
+        "fail-fast": False,
+        "matrix": {"shard_index": "${{ fromJSON(needs.ci-paths.outputs.medium-shards) }}"},
+    }
     assert medium["needs"] == ["ci-paths", "medium-collect"]
-    for name in ("medium-collect", "medium-test", "correctness-gate"):
+    for name in ("medium-collect", "correctness-gate"):
         assert jobs[name]["if"].endswith("needs.ci-paths.outputs.heavy-needed == 'true' }}")
         assert "unit-core" not in jobs[name]["if"]
+    assert "needs.ci-paths.outputs.medium-shards != '[]'" in medium["if"]
+    assert "needs.ci-paths.result == 'success'" in medium["if"]
+    assert "(needs.ci-paths.outputs.heavy-needed != 'true' || needs.medium-collect.result == 'success')" in medium["if"]
+    assert "unit-core" not in medium["if"]
     selector = "medium and not (slow or stress or resource_heavy or live_integration)"
     collect_text = "\n".join(step.get("run", "") for step in jobs["medium-collect"]["steps"])
     medium_text = "\n".join(step.get("run", "") for step in medium["steps"])
@@ -113,10 +120,91 @@ def test_medium_selection_and_receipts_gate_core() -> None:
     assert "test -s" in medium_text
     assert not medium.get("continue-on-error")
     core_text = "\n".join(step.get("run", "") for step in jobs["core"]["steps"])
-    for job in ("medium-collect", "medium-test", "correctness-gate"):
+    for job in ("medium-collect", "correctness-gate"):
         assert job in jobs["core"]["needs"]
         assert f"--expect {job}={HEAVY_CONDITION}" in core_text
+    assert "medium-test" in jobs["core"]["needs"]
+    assert "--expect medium-test=${{ needs.ci-paths.outputs.medium-shards != '[]' }}" in core_text
     assert "verify-medium" in core_text
+
+
+def _steps_by_name(job: dict) -> dict[str, dict]:
+    return {step["name"]: step for step in job["steps"] if "name" in step}
+
+
+def test_ci_paths_decides_the_medium_shards() -> None:
+    ci_paths = _jobs("ci.yml")["ci-paths"]
+    assert ci_paths["outputs"]["medium-shards"] == "${{ steps.medium-shards.outputs.medium-shards }}"
+    step = _steps_by_name(ci_paths)["Decide medium shards"]
+    names = [candidate.get("name") for candidate in ci_paths["steps"]]
+    assert names.index("Decide medium shards") > names.index("Decide heavy-tier need")
+    assert step["id"] == "medium-shards"
+    run = step["run"]
+    assert "grep -c . coverage-nodeids.txt" in run
+    assert "steps.heavy.outputs.heavy-needed" in run
+    assert "steps.units.outputs.code-tests-needed" in run
+    assert run.count("shards='[0,1,2,3]'") == 2
+    assert "shards='[0]'" in run and "shards='[]'" in run
+
+
+def test_code_test_no_longer_runs_the_medium_work() -> None:
+    steps = _steps_by_name(_jobs("ci.yml")["code-test"])
+    for name in (
+        "Run changed tests on the curated release tree",
+        "Download coverage selection",
+        "Run medium tests for changed paths",
+    ):
+        assert name not in steps
+    assert "Pre-build the assertion-rewrite cache" in steps
+    text = "\n".join(step.get("run", "") for step in steps.values())
+    assert "release_curation_dry_run" not in text
+    assert "coverage-selection" not in text
+
+
+def test_release_tree_check_runs_once_in_the_first_shard() -> None:
+    medium = _jobs("ci.yml")["medium-test"]
+    steps = _steps_by_name(medium)
+    step = steps["Run changed tests on the curated release tree"]
+    assert step["if"] == (
+        "${{ !cancelled() && matrix.shard_index == 0 && needs.ci-paths.outputs.code-tests-needed == 'true' }}"
+    )
+    assert step["env"] == {"BASE_SHA": "${{ github.event.pull_request.base.sha }}", "UV_PYTHON": "3.14"}
+    assert step["run"] == 'uv run -- python scripts/release_curation_dry_run.py --changed-since "$BASE_SHA"'
+    setup = next(s for s in medium["steps"] if s.get("uses", "").startswith("actions/setup-python@"))
+    assert setup["with"]["python-version"] == "${{ needs.ci-paths.outputs.heavy-needed == 'true' && '3.12' || '3.14' }}"
+    checkout = next(s for s in medium["steps"] if s.get("uses", "").startswith("actions/checkout@"))
+    assert checkout["with"] == {"fetch-depth": 0}
+
+
+def test_non_heavy_shards_run_their_share_of_the_coverage_selection() -> None:
+    medium = _jobs("ci.yml")["medium-test"]
+    steps = _steps_by_name(medium)
+    names = list(steps)
+    non_heavy = "needs.ci-paths.outputs.heavy-needed != 'true'"
+    heavy = "needs.ci-paths.outputs.heavy-needed == 'true'"
+    download = steps["Download coverage selection"]
+    assert download["if"] == non_heavy
+    assert download["with"]["name"] == (
+        "coverage-selection-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}"
+    )
+    selected = steps["Run medium tests for changed paths"]
+    assert selected["if"] == non_heavy
+    run = selected["run"]
+    assert "scripts/coverage_test_selection.py prune" in run
+    assert "release_canary_sharding.py shard" in run
+    assert "--durations tests/fixtures/medium_shard_durations.json" in run
+    assert '--shard-index "$SHARD_INDEX" --shard-count 4' in run
+    assert '-m "medium and not (slow or stress or resource_heavy or live_integration)"' in run
+    assert "--tb=short --timeout=60 -q" in run
+    assert '[ "$status" -ne 0 ] && [ "$status" -ne 5 ]' in run
+    assert names.index("Download coverage selection") < names.index("Run medium tests for changed paths")
+    for name in (
+        "Download medium collection evidence",
+        "Partition the complete medium tier",
+        "Run medium speed tier",
+    ):
+        assert steps[name]["if"] == heavy
+    assert steps["Upload medium shard evidence"]["if"] == f"${{{{ always() && {heavy} }}}}"
 
 
 def test_the_medium_shard_records_memory_and_stalled_stacks() -> None:
@@ -148,7 +236,7 @@ def test_heavy_payload_uses_at_most_nine_standard_linux_runners() -> None:
     for name in payload:
         assert jobs[name]["runs-on"] == "ubuntu-latest"
         matrix = jobs[name].get("strategy", {}).get("matrix", {})
-        count += prod(len(values) for values in matrix.values())
+        count += prod(len(values) if isinstance(values, list) else 4 for values in matrix.values())
     assert count == 9
 
 

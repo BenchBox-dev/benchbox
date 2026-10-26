@@ -156,15 +156,25 @@ class FakeGitHub:
         self.deleted: set[str] = set()
         self.gate_state = "success"
         self.dispatch_code = 0
-        self.verdict: dict | None = None
+        self.verdict: dict | None = {"verdict": "pass"}
+        self.verdict_lookup = (0, None)
+        self.verdict_bound_head: str | None = None
+        self.verdict_download = (0, None)
         self.changed_files: list[str] = []
 
     def _duration_verdict_reply(self, cmd: list[str]) -> tuple[int, str] | None:
         if cmd[:2] == ["gh", "api"] and "/actions/artifacts?name=fast-duration-verdict-" in cmd[-1]:
-            return 0, "" if self.verdict is None else f"555 {self.view['headRefOid']}"
+            code, text = self.verdict_lookup
+            if code != 0:
+                return code, text
+            head = self.verdict_bound_head or self.view["headRefOid"]
+            return 0, "" if self.verdict is None else f"555 {head}"
         if cmd[:3] == ["gh", "run", "download"]:
+            code, text = self.verdict_download
+            if code != 0:
+                return code, text
             Path(cmd[cmd.index("-D") + 1], "fast-duration-verdict.json").write_text(
-                json.dumps(self.verdict), encoding="utf-8"
+                text if text is not None else json.dumps(self.verdict), encoding="utf-8"
             )
             return 0, ""
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/pulls/7/files"):
@@ -500,6 +510,53 @@ def test_refuses_a_would_block_duration_verdict_unless_the_baseline_changes(
     assert "summed-time ratio 1.500" in err
     assert "median per-test ratio 1.250" in err
     assert "scripts/build_fast_duration_baseline.py" in err
+
+
+def test_refuses_until_the_fast_duration_verdict_exists(
+    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ready_pr.verdict = None
+    ready_pr.conclusions["core"] = None
+    err = _refusal(world, ready_pr, capsys)
+    assert "no verify-fast-duration verdict is recorded" in err
+    assert "core job" in err
+    assert "has not finished" in err
+    ready_pr.verdict = {"verdict": "pass"}
+    assert arm(world, ready_pr) == 0
+    assert len(ready_pr.arms()) == 1
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "skipped", "cancelled"])
+def test_refuses_a_missing_verdict_when_the_producing_job_ended_without_one(
+    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str], conclusion: str
+) -> None:
+    ready_pr.verdict = None
+    ready_pr.conclusions["core"] = conclusion
+    err = _refusal(world, ready_pr, capsys)
+    assert f"ended {conclusion}" in err
+    assert "make pr-rerun PR=7" in err
+
+
+@pytest.mark.parametrize(
+    ("attribute", "value", "expected"),
+    [
+        ("verdict_lookup", (1, "gh: HTTP 502"), "could not look up the verify-fast-duration verdict"),
+        ("verdict_bound_head", "0" * 40, "is not bound to"),
+        ("verdict_download", (1, "gh: HTTP 404"), "could not download the verify-fast-duration verdict"),
+        ("verdict_download", (0, "{not json"), "is unreadable"),
+        ("verdict_download", (0, "[1]"), "is unreadable"),
+    ],
+)
+def test_refuses_when_the_fast_duration_verdict_cannot_be_trusted(
+    world: World,
+    ready_pr: FakeGitHub,
+    capsys: pytest.CaptureFixture[str],
+    attribute: str,
+    value: object,
+    expected: str,
+) -> None:
+    setattr(ready_pr, attribute, value)
+    assert expected in _refusal(world, ready_pr, capsys)
 
 
 def test_refuses_without_a_binding(tmp_path: Path, world: World, capsys: pytest.CaptureFixture[str]) -> None:

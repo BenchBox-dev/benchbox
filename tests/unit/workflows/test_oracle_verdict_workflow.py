@@ -24,7 +24,7 @@ OMP_SHA = re.compile(r"^[0-9a-f]{64}$")
 DISPATCH_STEP = "Dispatch the gate for the reviewed head"
 SETUP_ALLOWANCE_MINUTES = 30
 JOB_TIMEOUT_CEILING_MINUTES = 360
-UNCHANGED_PREFIX_SHA256 = "8e6956a8b101cf0b51537981ea2140277a7a2a655e9c45e5ea76efbd553058c5"
+UNCHANGED_PREFIX_SHA256 = "afca918ff33a3553a202821c8589308cce23b1c0730ac3ff65dc61bfff82a47d"
 REVIEW_CONDITION = (
     "github.event_name == 'workflow_dispatch' ||"
     " (github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) ||"
@@ -148,7 +148,7 @@ def test_the_review_condition_admits_exactly_what_the_plan_job_did() -> None:
     assert _jobs()["sweep"]["if"] == "github.event_name == 'schedule' || github.event_name == 'push'"
 
 
-def test_the_sweep_the_triggers_and_the_concurrency_are_byte_identical_to_develop() -> None:
+def test_the_sweep_and_the_triggers_and_the_concurrency_keep_their_reviewed_text() -> None:
     text = _text_of_workflow()
     prefix = text[: text.index("\n  review:\n") + 1]
     assert hashlib.sha256(prefix.encode("utf-8")).hexdigest() == UNCHANGED_PREFIX_SHA256
@@ -294,7 +294,30 @@ def test_the_only_step_referencing_the_app_key_mints_after_the_loop_and_the_reda
     assert mint > names.index(REDACT_STEP)
     assert mint > names.index(SCAN_STEPS[1])
     assert "ORACLE_APP_PRIVATE_KEY" not in _text(_review()["env"])
-    assert _text_of_workflow().count("ORACLE_APP_PRIVATE_KEY") == 1
+
+
+def _sweep_steps() -> list[dict[str, Any]]:
+    return _jobs()["sweep"]["steps"]
+
+
+def _sweep_step(name: str) -> dict[str, Any]:
+    return next(step for step in _sweep_steps() if step["name"] == name)
+
+
+def test_the_sweep_mints_an_app_token_for_failure_statuses_in_the_oracle_environment() -> None:
+    assert _jobs()["sweep"]["environment"] == "oracle"
+    assert _jobs()["sweep"]["env"] == {"HAS_APP": "${{ secrets.ORACLE_APP_ID != '' }}"}
+    mint = _sweep_step("Mint the App token for failure statuses")
+    assert mint["id"] == "app"
+    assert mint["if"] == "env.HAS_APP == 'true'"
+    assert mint["uses"] == "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1"
+    assert mint["with"]["permission-statuses"] == "write"
+    assert "permission-pull-requests" not in mint["with"]
+    assert _text_of_workflow().count("ORACLE_APP_PRIVATE_KEY") == 2
+    dispatch = _sweep_step("Dispatch due retries")
+    assert dispatch["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert dispatch["env"]["SURFACE_TOKEN"] == "${{ steps.app.outputs.token }}"
+    assert "cli sweep" in dispatch["run"]
 
 
 def test_every_secret_is_referenced_only_where_it_is_needed() -> None:
@@ -394,19 +417,26 @@ def test_omp_is_installed_once_pinned_and_checked() -> None:
     assert "CODEX_HOME" not in text
     assert "AGY_CLI_DISABLE_AUTO_UPDATE" not in text
     install = _step("Install omp")
-    assert install["env"]["OMP_URL"].startswith("https://build.stencil.so/d/omp/")
-    assert OMP_SHA.match(install["env"]["OMP_SHA256"])
+    pin = yaml.safe_load((REPO_ROOT / ".github/oracle-reviewers.yml").read_text(encoding="utf-8"))["omp"]
+    linux = pin["builds"]["linux-x64"]
+    assert install["env"] == {
+        "OMP_URL": linux["url"],
+        "OMP_SHA256": linux["sha256"],
+        "OMP_VERSION": pin["version"],
+    }
+    assert pin["version"] == "18.12.1"
+    assert linux["url"] == "https://build.stencil.so/d/omp/20261017-231446-291e055/omp-linux-x64"
+    assert linux["sha256"] == "16181401e616d7d895bae31fa97476f1513d4080807d60d3a1a04006191a1bb3"
+    assert install["working-directory"] == "trusted"
     lines = install["run"].splitlines()
-    check = 'echo "$OMP_SHA256  $RUNNER_TEMP/omp" | sha256sum --check --strict'
-    assert lines.index(check) < lines.index('chmod +x "$RUNNER_TEMP/omp"')
-    assert set(install["env"]) == {"OMP_URL", "OMP_SHA256", "OMP_VERSION"}
-    assert text.count("OMP_SHA256: ") == 1
-    assert text.count("OMP_VERSION: ") == 1
-    version_check = '"$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY" | grep -Fwq "$OMP_VERSION"'
-    assert lines.index('chmod +x "$RUNNER_TEMP/omp"') < lines.index(version_check)
-    assert lines.index(version_check) < lines.index('echo "$RUNNER_TEMP" >> "$GITHUB_PATH"')
-    curl = "curl -fsSL --proto '=https' --tlsv1.2 \"$OMP_URL\""
-    assert "curl " not in text.replace(curl, "")
+    command = (
+        "uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- "
+        "python -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml"
+    )
+    assert lines[0] == f"binary=$({command})"
+    assert lines[1] == '"$binary" --version | tee -a "$GITHUB_STEP_SUMMARY"'
+    assert lines[2] == 'dirname "$binary" >> "$GITHUB_PATH"'
+    assert "curl " not in text
     assert "--dangerously" not in text and "--yolo" not in text
 
 
@@ -464,6 +494,8 @@ def test_attempt_and_retry_state_artifacts_keep_their_names_and_retention() -> N
     assert state["with"]["retention-days"] == 7
     assert names.index(state["name"]) > posts
     assert "always()" not in state["if"]
+    assert state["if"] == "steps.status.outcome == 'success' && steps.finalize.outputs.has_state == 'true'"
+    assert _step("Post the commit status")["id"] == "status"
 
 
 def test_the_attempt_loop_and_redaction_steps_have_the_ids_the_uploads_read() -> None:
@@ -615,8 +647,38 @@ def test_push_and_schedule_sweeps_share_one_group_that_never_cancels() -> None:
     assert pushed not in pull_groups
     assert _cancels("push") is False
     assert _cancels("schedule") is False
-    assert _cancels("workflow_dispatch") is True
-    assert _cancels("pull_request_target") is True
+
+
+@pytest.mark.parametrize(
+    ("event_name", "cancels"),
+    [
+        ("pull_request_target", True),
+        ("workflow_dispatch", False),
+        ("issue_comment", False),
+        ("schedule", False),
+        ("push", False),
+    ],
+)
+def test_only_a_pull_request_event_cancels_a_run_in_flight(event_name: str, cancels: bool) -> None:
+    assert _cancels(event_name) is cancels
+
+
+def test_a_dispatch_run_queues_in_the_pull_request_group_instead_of_cancelling() -> None:
+    group = _load()["concurrency"]["group"]
+    pull = {"action": "synchronize", "pull_request": {"number": 7}}
+    groups = {
+        render(group, _context("workflow_dispatch", inputs={"pr": "7"})),
+        render(group, _context("pull_request_target", pull)),
+    }
+    assert groups == {"oracle-verdict-pr-7"}
+    assert _cancels("workflow_dispatch") is False
+
+
+def test_the_dispatch_reason_input_is_optional_and_unset_by_default() -> None:
+    inputs = _load()[True]["workflow_dispatch"]["inputs"]
+    assert set(inputs) == {"pr", "reason"}
+    assert inputs["pr"]["required"] is True
+    assert inputs["reason"]["required"] is False
 
 
 def test_pull_request_groups_keep_one_group_per_number() -> None:

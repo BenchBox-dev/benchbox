@@ -15,6 +15,10 @@ on:
         description: Pull request number to review
         required: true
         type: string
+      reason:
+        description: Why this dispatch was requested
+        required: false
+        type: string
   schedule:
     - cron: '23 * * * *'
 
@@ -22,7 +26,7 @@ permissions: {}
 
 concurrency:
   group: oracle-verdict-${{ ((github.event_name == 'schedule' || github.event_name == 'push') && 'sweep') || (((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/oracle-review') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id)) }}
-  cancel-in-progress: ${{ github.event_name != 'push' && github.event_name != 'schedule' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
 
 jobs:
   sweep:
@@ -30,10 +34,13 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: oracle
     permissions:
       actions: write
       contents: read
       pull-requests: read
+    env:
+      HAS_APP: ${{ secrets.ORACLE_APP_ID != '' }}
     steps:
       - name: Check out the trusted develop copy
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -52,9 +59,19 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
+      - name: Mint the App token for failure statuses
+        id: app
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ secrets.ORACLE_APP_ID }}
+          private-key: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
+          permission-statuses: write
+
       - name: Dispatch due retries
         env:
           GH_TOKEN: ${{ github.token }}
+          SURFACE_TOKEN: ${{ steps.app.outputs.token }}
         run: uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli sweep --policy .github/oracle-reviewers.yml
 
   review:
@@ -151,16 +168,15 @@ jobs:
       - name: Install omp
         if: steps.plan.outputs.decision == 'review'
         continue-on-error: true
+        working-directory: trusted
         env:
           OMP_URL: https://build.stencil.so/d/omp/20261017-231446-291e055/omp-linux-x64
           OMP_SHA256: 16181401e616d7d895bae31fa97476f1513d4080807d60d3a1a04006191a1bb3
           OMP_VERSION: 18.12.1
         run: |
-          curl -fsSL --proto '=https' --tlsv1.2 "$OMP_URL" -o "$RUNNER_TEMP/omp"
-          echo "$OMP_SHA256  $RUNNER_TEMP/omp" | sha256sum --check --strict
-          chmod +x "$RUNNER_TEMP/omp"
-          "$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY" | grep -Fwq "$OMP_VERSION"
-          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          binary=$(uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml)
+          "$binary" --version | tee -a "$GITHUB_STEP_SUMMARY"
+          dirname "$binary" >> "$GITHUB_PATH"
 
       - name: Join the tailnet to reach the credential gateway
         if: steps.plan.outputs.decision == 'review' && env.HAS_TAILNET == 'true'
@@ -248,6 +264,7 @@ jobs:
         run: python3 -m _project.scripts.oracle_reviewers.cli guard --plan "$RUNNER_TEMP/oracle-plan/plan.json"
 
       - name: Post the commit status
+        id: status
         if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
@@ -269,7 +286,7 @@ jobs:
         run: gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$RUNNER_TEMP/oracle-final/review.json"
 
       - name: Upload the retry state
-        if: steps.finalize.outputs.has_state == 'true'
+        if: steps.status.outcome == 'success' && steps.finalize.outputs.has_state == 'true'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: oracle-verdict-state-${{ steps.plan.outputs.pr }}

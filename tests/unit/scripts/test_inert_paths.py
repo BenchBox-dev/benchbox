@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from ci_units import classify_units, load_unit_rules
@@ -298,3 +300,67 @@ def test_non_markdown_files_read_by_tests_are_not_docs_only(inert_scan: dict[str
         if {unit for unit, on in classify_units([path], rules)["units"].items() if on} == {"docs"}
     ]
     assert not unrouted, f"non-markdown files read by tests but routed to the docs unit only: {unrouted}"
+
+
+def _windows_locale_run(real_run: Any) -> Any:
+    def run(*args: Any, **kwargs: Any) -> Any:
+        if kwargs.get("text") and "encoding" not in kwargs:
+            kwargs["encoding"] = "cp1252"
+        return real_run(*args, **kwargs)
+
+    return run
+
+
+def _quoted_repo(path: Path, extra: str | None = None) -> str:
+    quoted = "notes/right" + chr(0x201D) + "quote.md"
+    path.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "-C", str(path), "init", "-b", "main"], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(path), "config", "core.quotepath", "false"], check=True, capture_output=True)
+    target = path / quoted
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("page\n", encoding="utf-8")
+    if extra == "symlink":
+        (path / "target.md").write_text("page\n", encoding="utf-8")
+        (path / ("notes/link" + chr(0x201D) + "name.md")).symlink_to("target.md")
+    subprocess.run(
+        ["git", "-C", str(path), "-c", "user.name=t", "-c", "user.email=t@example.com", "add", "."],
+        check=True,
+        capture_output=True,
+    )
+    return quoted
+
+
+def test_tracked_files_decode_smart_quote_names(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    quoted = _quoted_repo(tmp_path / "repo")
+    monkeypatch.setattr(inert, "subprocess", SimpleNamespace(run=_windows_locale_run(subprocess.run)))
+    assert quoted in inert.tracked_files(tmp_path / "repo")
+
+
+def test_tracked_symlink_entries_decode_smart_quote_names(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _quoted_repo(tmp_path / "repo", extra="symlink")
+    monkeypatch.setattr(inert, "subprocess", SimpleNamespace(run=_windows_locale_run(subprocess.run)))
+    names = {name for name, _ in inert.tracked_symlink_entries(tmp_path / "repo")}
+    assert "notes/link" + chr(0x201D) + "name.md" in names
+
+
+def test_tracked_files_decode_names_as_strict_utf8(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "notes-ok.md").write_text("page\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "init", "-b", "main"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.com", "add", "."],
+        check=True,
+        capture_output=True,
+    )
+    seen: dict[str, Any] = {}
+    real_run = subprocess.run
+
+    def run(*args: Any, **kwargs: Any) -> Any:
+        seen.update(kwargs)
+        return real_run(*args, **kwargs)
+
+    monkeypatch.setattr(inert, "subprocess", SimpleNamespace(run=run))
+    assert inert.tracked_files(repo) == {"notes-ok.md"}
+    assert seen.get("encoding") == "utf-8"
+    assert "errors" not in seen

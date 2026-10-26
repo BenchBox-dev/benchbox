@@ -596,6 +596,10 @@ def _replay_verdict(defects: list[dict[str, Any]], prior: list[dict[str, Any]], 
     )
 
 
+def _digest(patches: dict[str, str], paths: list[str]) -> str:
+    return protocol.patch_digest({path: patches[path] for path in paths})
+
+
 def test_replaying_the_real_pr_2769_history_reviews_each_patch_once_and_scopes_follow_ups() -> None:
     history = json.loads(FIXTURE.read_text(encoding="utf-8"))
     records: list[dict[str, Any]] = []
@@ -605,7 +609,7 @@ def test_replaying_the_real_pr_2769_history_reviews_each_patch_once_and_scopes_f
     for entry in history["rounds"]:
         paths = sorted(path for path in entry["patches"] if not path.endswith(".md"))
         current = protocol.patch_map(entry["patches"], paths)
-        digest = protocol.patch_digest(entry["patches"], paths)
+        digest = _digest(entry["patches"], paths)
         step = protocol.plan_round(
             protocol.History(list(records)),
             head_sha=entry["head_sha"],
@@ -668,8 +672,7 @@ def test_a_docs_only_rebuttal_push_is_rejudged_not_carried() -> None:
     first, second = history["rounds"]
     records: list[dict[str, Any]] = []
     paths = sorted(path for path in first["patches"] if not path.endswith(".md"))
-    digest = protocol.patch_digest(first["patches"], paths)
-    assert digest is not None
+    digest = _digest(first["patches"], paths)
     opening = protocol.plan_round(
         protocol.History(list(records)),
         head_sha=first["head_sha"],
@@ -711,7 +714,7 @@ def test_a_docs_only_rebuttal_push_is_rejudged_not_carried() -> None:
         protocol.History(list(records)),
         head_sha=second["head_sha"],
         base_ref="develop",
-        digest=protocol.patch_digest(second["patches"], paths),
+        digest=_digest(second["patches"], paths),
         patches=protocol.patch_map(second["patches"], paths),
         paths=paths,
         strike_count=0,
@@ -723,7 +726,7 @@ def test_a_docs_only_rebuttal_push_is_rejudged_not_carried() -> None:
         protocol.History(list(records)),
         head_sha=second["head_sha"],
         base_ref="develop",
-        digest=protocol.patch_digest(second["patches"], paths),
+        digest=_digest(second["patches"], paths),
         patches=protocol.patch_map(second["patches"], paths),
         paths=paths,
         strike_count=0,
@@ -735,13 +738,12 @@ def test_a_docs_only_rebuttal_push_is_rejudged_not_carried() -> None:
     assert forced.previous is not None and [item["id"] for item in forced.previous["open_defects"]] == ["D1"]
 
 
-def test_the_carry_digest_uses_full_patch_hashes_not_the_truncated_map() -> None:
+def test_the_carry_digest_uses_full_hashes_not_the_truncated_map() -> None:
     reviewed = {"a.py": "1" * 16 + "2" * 48}
     forged = {"a.py": "1" * 16 + "3" * 48}
     assert protocol.patch_map(reviewed, ["a.py"]) == protocol.patch_map(forged, ["a.py"])
-    assert protocol.patch_digest(reviewed, ["a.py"]) != protocol.patch_digest(forged, ["a.py"])
+    assert protocol.patch_digest(reviewed) != protocol.patch_digest(forged)
     assert len(next(iter(protocol.patch_map(reviewed, ["a.py"]).values()))) == 16
-    assert protocol.patch_digest(reviewed, ["a.py", "b.py"]) is None
 
 
 @pytest.mark.parametrize(
