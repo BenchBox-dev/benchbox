@@ -16359,6 +16359,13 @@
       "status": "dropped",
       "title": "muse often returns output the oracle cannot parse as a verdict, so it is recorded absent (invalid)"
     },
+    "oracle-omp-pin-single-source-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Pin the reviewer omp build per platform in one file and install it verified for CI, local and cloud reviews"
+    },
     "oracle-oversize-pr-pending-loop-20261009": {
       "claim": null,
       "needs": [
