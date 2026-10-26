@@ -71,8 +71,10 @@
       "id": "contract-export-tooling",
       "match": [
         "scripts/doc_contracts.py",
+        "scripts/docs_history_filter.py",
         "scripts/doc_reference_inventory.py",
         "tests/unit/scripts/test_doc_contracts.py",
+        "tests/unit/scripts/test_docs_history_filter.py",
         "tests/unit/scripts/test_doc_reference_inventory.py"
       ],
       "disposition": "contract-tooling",
