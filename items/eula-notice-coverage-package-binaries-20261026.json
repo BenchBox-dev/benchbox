@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Owner-landed pin for benchbox/_binaries/tpc-h/templates/queries/EULA.txt exists on develop",
+    "PR #3542 (branch test/eula-notice-coverage-package-binaries, worktree ../BenchBox.wt-eula-notice, local head 176a9e8bb with regenerated docs reference inventory) is rebased without its own scope-file entry, passes CI and the oracle, and merges"
+  ],
+  "context": "2026-10-26: #3542 head 664327384 fails CI (stale docs reference inventory, fixed locally at 176a9e8bb, not pushed) and the local oracle blocks its added pin. Blocked on the owner pin.",
+  "description": "tests/unit/scripts/test_comment_cleanup_scope.py::test_every_tracked_eula_and_notice_file_has_a_notice_entry inventories only _binaries and _sources, so benchbox/_binaries EULA files are never checked for a notice pin. That gap let a wrong EULA path reach develop (fixed by #3385). Widening the test exposes benchbox/_binaries/tpc-h/templates/queries/EULA.txt with no pin. PRs cannot add new pins (comment-cleanup-scope.md:92-95; check_comment_cleanup_scope.py immutable_external_ownership ~1837-1840), so owner decision 2026-10-26: the owner adds the pin, then the test PR lands.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-26T15:24:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0eba2d58ffdd4f2a8149a23ef6f8931b",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}

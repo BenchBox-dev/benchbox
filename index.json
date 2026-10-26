@@ -9809,6 +9809,13 @@
       "status": "done",
       "title": "Error Message Polish"
     },
+    "eula-notice-coverage-package-binaries-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Cover benchbox/_binaries EULA and NOTICE files in the notice-entry test after the owner pins the TPC-H query EULA"
+    },
     "evaluate-mutation-testing-on-dialect-result-model-core": {
       "claim": null,
       "needs": [],
