@@ -82,3 +82,7 @@ def test_refresh_reports_medium_shard_drift() -> None:
 def test_refresh_only_commits_the_baseline() -> None:
     text = all_run_text()
     assert "git add tests/fixtures/fast_tier_baseline" in text
+
+
+def test_refresh_only_accepts_successful_source_runs() -> None:
+    assert 'run.get("conclusion") == "success"' in all_run_text()

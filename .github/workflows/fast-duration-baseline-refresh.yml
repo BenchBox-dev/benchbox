@@ -63,7 +63,7 @@ jobs:
           import json
           runs = json.load(open("fast-refresh/ci-runs.json"))
           for run in runs:
-              if run["status"] == "completed" and run.get("conclusion") not in ("cancelled", "skipped"):
+              if run["status"] == "completed" and run.get("conclusion") == "success":
                   print(run["databaseId"])
           PY
           : > fast-refresh/manifest.json

@@ -388,7 +388,7 @@ def check_command(args: argparse.Namespace) -> int:
     if args.report_out:
         Path(args.report_out).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))
-    return 0
+    return 0 if report["sum_within_tolerance"] and report["coverage_within_minimum"] else 2
 
 
 def medium_drift_command(args: argparse.Namespace) -> int:

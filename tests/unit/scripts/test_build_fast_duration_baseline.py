@@ -276,3 +276,30 @@ def test_added_test_only_touches_its_own_shard(tmp_path: Path) -> None:
         if (before_dir / f"tests-{index:02d}.json").read_bytes() != (after_dir / f"tests-{index:02d}.json").read_bytes()
     ]
     assert changed == [baseline.test_shard_index("tests/test_sample.py::TestSample::test_gamma")]
+
+
+def test_check_command_fails_when_a_gate_fails(tmp_path: Path) -> None:
+    manifest, _runs = build_fixture(tmp_path)
+    built, _ = baseline.build_baseline(baseline.load_manifest(manifest), GENERATED_AT)
+    baseline_dir = tmp_path / "baseline"
+    baseline.write_sharded_baseline(baseline_dir, built)
+    ids_path = tmp_path / "ids.txt"
+    ids_path.write_text("tests/other.py::test_missing\n", encoding="utf-8")
+    report_path = tmp_path / "report.json"
+
+    status = baseline.main(
+        [
+            "check",
+            "--baseline",
+            str(baseline_dir),
+            "--manifest",
+            str(manifest),
+            "--collected-ids",
+            str(ids_path),
+            "--report-out",
+            str(report_path),
+        ]
+    )
+
+    assert status != 0
+    assert json.loads(report_path.read_text(encoding="utf-8"))["coverage_within_minimum"] is False
