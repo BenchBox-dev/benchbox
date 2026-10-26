@@ -160,18 +160,6 @@ class TestCLIDocumentation:
                 assert result.exit_code == 0, f"Help failed for command: {command}"
                 assert "Usage:" in result.output, f"No usage info for command: {command}"
 
-    def test_cli_reference_documentation_exists(self):
-
-        from pathlib import Path
-
-        docs_path = Path(__file__).parent.parent.parent / "docs" / "CLI_REFERENCE.md"
-        assert docs_path.exists(), "CLI_REFERENCE.md documentation file should exist"
-
-        content = docs_path.read_text()
-        assert len(content) > 1000, "CLI_REFERENCE.md should have substantial content"
-        assert "# BenchBox CLI Reference" in content, "CLI_REFERENCE.md should have proper title"
-        assert "## Command Reference" in content, "CLI_REFERENCE.md should have command reference section"
-
     @pytest.mark.parametrize(
         "command,expected_content",
         [

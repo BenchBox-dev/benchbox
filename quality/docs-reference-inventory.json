@@ -3111,38 +3111,6 @@
   {
    "disposition": "lock-test",
    "kinds": {
-    "dir": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/core/test_compute_resource_unification.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "dir",
-     "target": "docs/platforms/"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "dir": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/core/test_execution_vocabulary_parity.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "dir",
-     "target": "docs/platforms/"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
     "file": 1
    },
    "occurrences": 1,
@@ -3174,38 +3142,6 @@
     {
      "kind": "extra",
      "target": "quality/docs-ownership.json"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 2,
-   "path": "tests/unit/generators/test_sf1_measurement.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/sf1-calibrated-sizes.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/platforms/credentials/test_singlestore_credentials.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/platforms/singlestore.md"
     }
    ]
   },
@@ -4287,22 +4223,6 @@
    "kinds": {
     "file": 1
    },
-   "occurrences": 1,
-   "path": "tests/unit/test_cli_documentation.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/CLI_REFERENCE.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
    "occurrences": 2,
    "path": "tests/unit/test_post_merge_signature.py",
    "rule": "lock-tests-core",
@@ -4403,23 +4323,23 @@
    "fixture-data": 44,
    "governance-stays": 8,
    "historical-record": 112,
-   "lock-test": 12,
+   "lock-test": 7,
    "prose-link-pinned": 15,
    "site-pipeline-cutover": 4,
    "wiring-updated": 30
   },
-  "files": 232,
+  "files": 227,
   "kinds": {
    "built-url": 29042,
-   "dir": 167,
+   "dir": 165,
    "extra": 32,
-   "file": 1401,
+   "file": 1397,
    "generated": 3,
    "pattern": 316,
    "root": 197,
    "unresolved": 2047
   },
-  "references": 33205,
+  "references": 33199,
   "unclassified": 0
  }
 }

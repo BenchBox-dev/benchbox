@@ -1,7 +1,6 @@
 # Copyright 2026 Joe Harris / BenchBox Project
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -11,7 +10,6 @@ from benchbox.platforms.credentials import singlestore as ss
 from benchbox.security.credentials import CredentialManager, CredentialStatus
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
-_REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 def _run_setup(tmp_path, validation_result):
@@ -43,7 +41,12 @@ class TestSingleStorePersistence:
         assert reloaded.get_platform_credentials("singlestore")["host"] == "db.example.com"
         assert reloaded.get_credential_status("singlestore") == CredentialStatus.VALID
 
-    def test_singlestore_failure_retry_contract_is_in_platform_guide(self):
-        guide = (_REPO_ROOT / "docs" / "platforms" / "singlestore.md").read_text(encoding="utf-8")
-        assert "even when validation fails" in guide
-        assert "benchbox setup --platform singlestore --validate-only" in guide
+    def test_singlestore_failure_retry_command_is_available(self):
+        from click.testing import CliRunner
+
+        from benchbox.cli.main import cli
+
+        result = CliRunner().invoke(cli, ["setup", "--help"])
+        assert result.exit_code == 0
+        assert "--platform" in result.output
+        assert "--validate-only" in result.output

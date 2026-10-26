@@ -11,14 +11,19 @@
         "test_excluded_directories_are_top_level_and_excluded_files_are_catalogued"
       ],
       "classification": "governance-stays",
-      "site_reads": ["docs/publish-allowlist.txt", "docs/publish-exclusions.txt"],
+      "site_reads": [
+        "docs/publish-allowlist.txt",
+        "docs/publish-exclusions.txt"
+      ],
       "reason": "Core retains publication list invariants against the ownership catalogue, including mandatory exclusions. Site boundary checks enforce the lists against actual published pages.",
       "cutover_action": "Keep list governance in core; published-page selection and synthetic publication fixtures are covered by site docs-contracts/checks/boundary.ts and website/tests/sources.test.ts."
     },
     {
       "id": "architecture-decision-surfaces",
       "file": "tests/unit/docs/test_architecture_decision_surfaces.py",
-      "tests": ["test_ssb_pilot_stop_is_reflected_in_future_state_surfaces"],
+      "tests": [
+        "test_ssb_pilot_stop_is_reflected_in_future_state_surfaces"
+      ],
       "classification": "governance-stays",
       "site_reads": [],
       "reason": "Reads only docs/design/future-state pages and a _project decision, all retained in core.",
@@ -32,8 +37,13 @@
         "test_compare_deep_link_exception_does_not_mask_other_live_routes"
       ],
       "classification": "contract-field",
-      "contract_fields": ["/publication/linkcheck_ignore_patterns", "/ownership/transitions/linkcheck_policy"],
-      "site_reads": ["docs/linkcheck_ignore.txt"],
+      "contract_fields": [
+        "/publication/linkcheck_ignore_patterns",
+        "/ownership/transitions/linkcheck_policy"
+      ],
+      "site_reads": [
+        "docs/linkcheck_ignore.txt"
+      ],
       "reason": "The placeholder and ignore policy moves to the site link checker, which applies the exported patterns.",
       "cutover_action": "Delete from core; the site keeps the pattern tests against its .lychee.toml."
     },
@@ -70,9 +80,14 @@
     {
       "id": "readme-quickstart-extras",
       "file": "tests/unit/docs/test_readme_quickstart_installs_what_it_uses.py",
-      "tests": ["test_duckdb_is_not_a_core_dependency"],
+      "tests": [
+        "test_duckdb_is_not_a_core_dependency"
+      ],
       "classification": "runtime-stays",
-      "contract_fields": ["/package/core_dependencies", "/package/optional_extras"],
+      "contract_fields": [
+        "/package/core_dependencies",
+        "/package/optional_extras"
+      ],
       "site_reads": [],
       "reason": "Asserts packaging; reads pyproject only.",
       "cutover_action": "Stay in core."
@@ -96,7 +111,10 @@
         "test_only_introspected_platforms_can_reach_applied_verified"
       ],
       "classification": "contract-field",
-      "contract_fields": ["/tuning/platforms", "/tuning/aliases"],
+      "contract_fields": [
+        "/tuning/platforms",
+        "/tuning/aliases"
+      ],
       "site_reads": [],
       "reason": "The site renders the matrix from exported capability facts and checks coverage and the verifiable-platform set from them.",
       "cutover_action": "Deleted with the tuning support matrix generator."
@@ -108,7 +126,11 @@
         "test_benchmark_support_status_criteria_matrix_rejects_stale_benchmark_rows"
       ],
       "classification": "contract-field",
-      "contract_fields": ["/benchmarks/support_status", "/benchmarks/num_queries", "/benchmarks/supports_dataframe"],
+      "contract_fields": [
+        "/benchmarks/support_status",
+        "/benchmarks/num_queries",
+        "/benchmarks/supports_dataframe"
+      ],
       "site_reads": [],
       "reason": "Per-benchmark status, query count and DataFrame capability are exported instead of re-derived from rationale text.",
       "cutover_action": "Delete the page-parsing helpers; the site check parses its own table."
@@ -116,37 +138,17 @@
     {
       "id": "benchmark-count-claims",
       "file": "tests/unit/core/test_benchmark_api_contract.py",
-      "tests": ["test_registry_derived_claim_matcher_requires_numeric_boundaries"],
+      "tests": [
+        "test_registry_derived_claim_matcher_requires_numeric_boundaries"
+      ],
       "classification": "contract-field",
-      "contract_fields": ["/benchmarks/public_ids", "/benchmarks/spec_ids"],
+      "contract_fields": [
+        "/benchmarks/public_ids",
+        "/benchmarks/spec_ids"
+      ],
       "site_reads": [],
       "reason": "Count claims are checked by the site from exported public and spec-covered benchmark ids.",
       "cutover_action": "Delete from core."
-    },
-    {
-      "id": "compute-resource-guides",
-      "file": "tests/unit/core/test_compute_resource_unification.py",
-      "tests": ["test_docs_compute_examples_parse_against_registry"],
-      "classification": "contract-field",
-      "contract_fields": [
-        "/execution/compute",
-        "/execution/compute_resource_option",
-        "/execution/compute_size_option",
-        "/platform_options/platforms"
-      ],
-      "site_reads": ["docs/platforms/"],
-      "reason": "Guide examples are checked against exported compute declarations and accepted option names.",
-      "cutover_action": "Delete this test; the other tests in the file stay."
-    },
-    {
-      "id": "execution-vocabulary-guides",
-      "file": "tests/unit/core/test_execution_vocabulary_parity.py",
-      "tests": ["test_platform_guides_list_declared_execution_engines"],
-      "classification": "contract-field",
-      "contract_fields": ["/execution/engines"],
-      "site_reads": [],
-      "reason": "Guides must list the selectable engines each platform declares.",
-      "cutover_action": "Delete this test."
     },
     {
       "id": "execution-vocabulary-runtime",
@@ -159,43 +161,12 @@
         "test_grandfather_list_matches_live_registrations"
       ],
       "classification": "runtime-stays",
-      "contract_fields": ["/execution/reserved_option_keys", "/execution/engine_classes"],
+      "contract_fields": [
+        "/execution/reserved_option_keys",
+        "/execution/engine_classes"
+      ],
       "site_reads": [],
       "reason": "Execution vocabulary and reserved-key governance over registries; no page is read.",
-      "cutover_action": "Stay in core."
-    },
-    {
-      "id": "singlestore-guide",
-      "file": "tests/unit/platforms/credentials/test_singlestore_credentials.py",
-      "tests": ["test_singlestore_failure_retry_contract_is_in_platform_guide"],
-      "classification": "contract-field",
-      "contract_fields": ["/cli/commands"],
-      "site_reads": [],
-      "reason": "The documented setup command is checked against exported commands; the sentence wording is deleted.",
-      "cutover_action": "Delete this test; credential persistence tests stay."
-    },
-    {
-      "id": "sf1-calibrated-sizes",
-      "file": "tests/unit/generators/test_sf1_measurement.py",
-      "tests": [
-        "test_calibrated_table_covers_all_measured_benchmarks",
-        "test_calibrated_table_values_are_positive",
-        "test_calibrated_table_matches_baseline_fixture"
-      ],
-      "classification": "contract-field",
-      "contract_fields": ["/sf1_calibrated_sizes"],
-      "site_reads": [],
-      "reason": "The calibrated table is compared with the exported baseline, tolerance and measurable benchmark ids.",
-      "cutover_action": "Delete these three tests; measurement-script tests stay."
-    },
-    {
-      "id": "cli-help-runtime",
-      "file": "tests/unit/test_cli_documentation.py",
-      "tests": ["TestCLIDocumentation"],
-      "classification": "runtime-stays",
-      "contract_fields": ["/cli/commands"],
-      "site_reads": [],
-      "reason": "Asserts CLI help output through CliRunner; no site page is read.",
       "cutover_action": "Stay in core."
     },
     {
@@ -214,22 +185,18 @@
       "cutover_action": "Stay in core."
     },
     {
-      "id": "cli-reference-page-exists",
-      "file": "tests/unit/test_cli_documentation.py",
-      "tests": ["test_cli_reference_documentation_exists"],
-      "classification": "wiring-deleted",
-      "site_reads": [],
-      "reason": "Checks a page exists with a title and heading; existence of site pages is a site build concern.",
-      "cutover_action": "Delete."
-    },
-    {
       "id": "mcp-docs-surface",
       "file": "tests/unit/mcp/test_run_surface_contract.py",
       "tests": [
         "test_security_scoped_omissions_are_never_promotable"
       ],
       "classification": "contract-field",
-      "contract_fields": ["/mcp/tools", "/mcp/remote_only_tools", "/mcp/run_surface", "/cli/commands"],
+      "contract_fields": [
+        "/mcp/tools",
+        "/mcp/remote_only_tools",
+        "/mcp/run_surface",
+        "/cli/commands"
+      ],
       "site_reads": [],
       "reason": "Tool inventory, parameter schemas, omission ledger tiers and tool-to-CLI mapping are exported; ratified tiers live in quality/mcp-run-surface.json, shared by the exporter and the retained tests.",
       "cutover_action": "Delete the page-parsing tests; the site check reads /mcp."
@@ -237,7 +204,9 @@
     {
       "id": "mcp-implementation-boundary",
       "file": "tests/unit/mcp/test_run_surface_contract.py",
-      "tests": ["TestMCPImplementationBoundary"],
+      "tests": [
+        "TestMCPImplementationBoundary"
+      ],
       "classification": "runtime-stays",
       "site_reads": [],
       "reason": "AST import boundary over benchbox/mcp; reads no page.",
@@ -250,7 +219,11 @@
         "test_install_docs_do_not_claim_duckdb_is_default"
       ],
       "classification": "contract-field",
-      "contract_fields": ["/package/core_dependencies", "/package/optional_extras", "/package/experimental_exported"],
+      "contract_fields": [
+        "/package/core_dependencies",
+        "/package/optional_extras",
+        "/package/experimental_exported"
+      ],
       "site_reads": [],
       "reason": "DuckDB being an optional extra and benchbox.experimental being unexported are facts the site checks its pages against.",
       "cutover_action": "Remove the doc-reading halves; test_duckdb_is_optional_in_pyproject and test_experimental_not_in_benchbox_all stay."
@@ -258,9 +231,13 @@
     {
       "id": "beta-release-surface-status-wording",
       "file": "tests/unit/test_release_infrastructure.py",
-      "tests": ["test_canonical_docs_say_beta_not_alpha"],
+      "tests": [
+        "test_canonical_docs_say_beta_not_alpha"
+      ],
       "classification": "incidental-deleted",
-      "contract_fields": ["/package/development_status_classifiers"],
+      "contract_fields": [
+        "/package/development_status_classifiers"
+      ],
       "site_reads": [],
       "reason": "Regex over page wording; the exported Development Status classifier is the fact. The README half stays checked in core.",
       "cutover_action": "Dropped the deleted usage FAQ from STATUS_DOCS."
@@ -276,7 +253,10 @@
         "test_release_finalize_docs_separate_premerge_and_postmerge_signals"
       ],
       "classification": "governance-stays",
-      "contract_fields": ["/package/development_status_classifiers", "/package/core_dependencies"],
+      "contract_fields": [
+        "/package/development_status_classifiers",
+        "/package/core_dependencies"
+      ],
       "site_reads": [],
       "reason": "Release workflow and docs/internal release guide assertions; the pages read are core-retained.",
       "cutover_action": "None."
@@ -284,7 +264,9 @@
     {
       "id": "post-merge-signature-samples",
       "file": "tests/unit/test_post_merge_signature.py",
-      "tests": ["test_attribution_advisory_when_blamed_sha_misses_failing_test"],
+      "tests": [
+        "test_attribution_advisory_when_blamed_sha_misses_failing_test"
+      ],
       "classification": "governance-stays",
       "site_reads": [],
       "reason": "Uses a UAT framework page only as a sample changed path for attribution; no page content is read.",
@@ -293,7 +275,9 @@
     {
       "id": "post-merge-signature-script-samples",
       "file": "tests/unit/scripts/test_post_merge_signature.py",
-      "tests": ["test_job_level_ids_are_advisory_incidents"],
+      "tests": [
+        "test_job_level_ids_are_advisory_incidents"
+      ],
       "classification": "governance-stays",
       "site_reads": [],
       "reason": "Uses docs/x.md only as a sample changed path; no page content is read.",
@@ -302,7 +286,9 @@
     {
       "id": "stacked-pr-guard-agent-docs",
       "file": "tests/unit/workflows/test_stacked_pr_base_guard.py",
-      "tests": ["test_stacking_rule_is_stated_consistently_in_agent_and_policy_docs"],
+      "tests": [
+        "test_stacking_rule_is_stated_consistently_in_agent_and_policy_docs"
+      ],
       "classification": "governance-stays",
       "site_reads": [],
       "reason": "The rebase policy assertions over AGENTS.md and docs/internal stay; the deleted index negative-wording assertion is incidental.",
@@ -311,7 +297,9 @@
     {
       "id": "ci-local-parity-inventory",
       "file": "tests/system/test_ci_lint_parity.py",
-      "tests": ["test_merge_gate_local_equivalents_and_exemptions_are_documented"],
+      "tests": [
+        "test_merge_gate_local_equivalents_and_exemptions_are_documented"
+      ],
       "classification": "governance-stays",
       "site_reads": [],
       "reason": "Merge-gate local equivalents must be discoverable in the Makefiles or the documented hosted-only guard inventory; the inventory page is site-owned.",
@@ -320,7 +308,9 @@
     {
       "id": "soundness-public-record-negatives",
       "file": "tests/unit/scripts/test_soundness_paths.py",
-      "tests": ["test_soundness_predicate_matches_review_required_paths"],
+      "tests": [
+        "test_soundness_predicate_matches_review_required_paths"
+      ],
       "classification": "governance-stays",
       "site_reads": [],
       "reason": "Names public-record pages as sample paths asserted not to be soundness paths; no page content is read. The inert-path exceptions for those pages are wiring changed at cutover.",
@@ -329,7 +319,9 @@
     {
       "id": "tpcds-obt-lineage-page",
       "file": "tests/unit/core/tpcds_obt/test_tpcds_obt_model.py",
-      "tests": ["test_lineage_markdown_renders_the_whole_model_deterministically"],
+      "tests": [
+        "test_lineage_markdown_renders_the_whole_model_deterministically"
+      ],
       "classification": "governance-stays",
       "contract_fields": [],
       "site_reads": [],
