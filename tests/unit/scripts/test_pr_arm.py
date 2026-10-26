@@ -59,7 +59,10 @@ class FakeGh:
         self.gate_state = kwargs.get("gate_state", "success")
         self.status_code = kwargs.get("status_code", 0)
         self.dispatch_code = kwargs.get("dispatch_code", 0)
-        self.verdict = kwargs.get("verdict")
+        self.verdict = kwargs["verdict"] if "verdict" in kwargs else {"verdict": "pass"}
+        self.core = kwargs.get("core", ("completed", "success"))
+        self.lookup_code = kwargs.get("lookup_code", 0)
+        self.download = kwargs.get("download", (0, None))
         self.verdict_head = kwargs.get("verdict_head", self.local_head)
         self.changed_files = kwargs.get("changed_files", ["scripts/x.py"])
         self.calls: list[list[str]] = []
@@ -84,12 +87,21 @@ class FakeGh:
             return self.status_code, self.gate_state + "\n" if self.status_code == 0 else "gh: HTTP 502"
         if cmd[:2] == ["gh", "api"] and "/actions/artifacts?" in cmd[-1]:
             assert cmd[-1].startswith(f"repos/{pr_arm.REPOSITORY}/actions/artifacts?name=fast-duration-verdict-7-")
+            if self.lookup_code != 0:
+                return self.lookup_code, "gh: HTTP 502"
             return 0, "" if self.verdict is None else f"555 {self.verdict_head}\n"
         if cmd[:3] == ["gh", "run", "download"]:
+            code, text = self.download
+            if code != 0:
+                return code, text
             Path(cmd[cmd.index("-D") + 1], "fast-duration-verdict.json").write_text(
-                json.dumps(self.verdict), encoding="utf-8"
+                text if text is not None else json.dumps(self.verdict), encoding="utf-8"
             )
             return 0, ""
+        if cmd[:3] == ["gh", "api", "--paginate"] and "/check-runs?" in cmd[-1]:
+            status, conclusion = self.core
+            record = {"id": 1, "name": "core", "status": status, "conclusion": conclusion, "head_sha": self.local_head}
+            return 0, json.dumps({**record, "check_suite": {"id": 9}})
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/pulls/7/files"):
             return 0, "\n".join(self.changed_files)
         if cmd[:3] == ["gh", "workflow", "run"]:
@@ -548,22 +560,22 @@ def test_a_would_block_verdict_refuses_when_the_changed_files_cannot_be_listed(
         {"verdict": "pass", "sum_ratio": 1.01, "median_test_ratio": 1.0},
         {"verdict": "neutral", "reason": "no baseline"},
         {"verdict": "rejected", "reason": "calibration missing"},
-        None,
+        {"verdict": "not-applicable", "reason": "no fast-tier tests ran for this head"},
     ],
 )
-def test_pass_neutral_rejected_and_missing_verdicts_arm_normally(verdict: dict | None) -> None:
+def test_pass_neutral_rejected_and_not_applicable_verdicts_arm_normally(verdict: dict | None) -> None:
     gh = FakeGh(verdict=verdict)
     assert _arm(gh) == 0
     assert len(gh.merged()) == 1
     assert not any(call[-1].endswith("/pulls/7/files") for call in gh.calls)
 
 
-def test_a_verdict_bound_to_a_superseded_head_is_ignored(capsys: pytest.CaptureFixture[str]) -> None:
+def test_a_verdict_bound_to_a_superseded_head_refuses(capsys: pytest.CaptureFixture[str]) -> None:
     gh = FakeGh(verdict=WOULD_BLOCK, verdict_head="c" * 40)
-    assert _arm(gh) == 0
-    assert len(gh.merged()) == 1
+    assert _arm(gh) == 2
+    assert gh.merged() == []
     assert not any(call[:3] == ["gh", "run", "download"] for call in gh.calls)
-    assert "not bound to" in capsys.readouterr().out
+    assert "not bound to" in capsys.readouterr().err
 
 
 def test_the_verdict_is_looked_up_for_the_current_head_only() -> None:
@@ -571,3 +583,60 @@ def test_the_verdict_is_looked_up_for_the_current_head_only() -> None:
     _arm(gh)
     lookup = next(call for call in gh.calls if "/actions/artifacts?" in call[-1])
     assert lookup[-1].endswith(f"name=fast-duration-verdict-7-{HEAD}&per_page=5")
+
+
+def test_a_missing_verdict_refuses_while_the_producing_job_is_pending_and_arms_once_it_exists(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    pending = FakeGh(verdict=None, core=("in_progress", None))
+    assert _arm(pending) == 2
+    assert pending.merged() == []
+    err = capsys.readouterr().err
+    assert "no verify-fast-duration verdict is recorded" in err
+    assert "core job" in err
+    assert "has not finished" in err
+    recorded = FakeGh(verdict={"verdict": "pass"}, core=("in_progress", None))
+    assert _arm(recorded) == 0
+    assert len(recorded.merged()) == 1
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "skipped", "cancelled", "success"])
+def test_a_missing_verdict_refuses_with_the_rerun_step_when_the_producing_job_finished(
+    conclusion: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh(verdict=None, core=("completed", conclusion))
+    assert _arm(gh) == 2
+    assert gh.merged() == []
+    err = capsys.readouterr().err
+    assert f"ended {conclusion}" in err
+    assert "make pr-rerun PR=7" in err
+
+
+def test_a_missing_verdict_with_no_producing_job_refuses() -> None:
+    class NoCore(FakeGh):
+        def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
+            if list(cmd)[:3] == ["gh", "api", "--paginate"] and "/check-runs?" in list(cmd)[-1]:
+                return 0, ""
+            return super().__call__(cmd)
+
+    gh = NoCore(verdict=None)
+    assert _arm(gh) == 2
+    assert gh.merged() == []
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        ({"lookup_code": 1}, "could not look up the verify-fast-duration verdict"),
+        ({"download": (1, "gh: HTTP 404")}, "could not download the verify-fast-duration verdict"),
+        ({"download": (0, "{not json")}, "is unreadable"),
+        ({"download": (0, "[1]")}, "is unreadable"),
+    ],
+)
+def test_an_untrustworthy_verdict_refuses_instead_of_arming(
+    kwargs: dict, expected: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh(**kwargs)
+    assert _arm(gh) == 2
+    assert gh.merged() == []
+    assert expected in capsys.readouterr().err

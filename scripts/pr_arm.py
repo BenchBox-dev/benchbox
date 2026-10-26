@@ -29,12 +29,26 @@ GATE_OK_STATE = "success"
 BASELINE_DIRECTORY = "tests/fixtures/fast_tier_baseline"
 VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
 VERDICT_FILE = "fast-duration-verdict.json"
+PRODUCER_CHECK = "core"
 MEASUREMENT_ITEM = "ci-verify-fast-duration-report-only-20261025"
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
 
-def _read_duration_verdict(run: Runner, repo: str, number: int, head: str, label: str) -> dict | None:
+def _core_state(run: Runner, repo: str, number: int, head: str) -> str:
+    core = pr_landing.live_check_verdicts(run, repo, head).get(PRODUCER_CHECK)
+    if core is None or core.get("status") != "completed":
+        return (
+            f"the {PRODUCER_CHECK} job that records it has not finished for {head[:9]}; "
+            f"arm again once {PRODUCER_CHECK} completes"
+        )
+    return (
+        f"the {PRODUCER_CHECK} job ended {core.get('conclusion') or 'without a conclusion'} for {head[:9]} and no "
+        f"verdict will arrive; rerun it with make pr-rerun PR={number}, or push a new head, then arm again"
+    )
+
+
+def _read_duration_verdict(run: Runner, repo: str, number: int, head: str) -> tuple[dict | None, str | None]:
     name = f"{VERDICT_ARTIFACT_PREFIX}-{number}-{head}"
     code, out = run(
         [
@@ -47,27 +61,27 @@ def _read_duration_verdict(run: Runner, repo: str, number: int, head: str, label
         ]
     )
     if code != 0:
-        print(f"{label}: could not look up the verify-fast-duration verdict of {head[:9]}: {out.strip()[:200]}")
-        return None
+        return None, f"could not look up the verify-fast-duration verdict of {head[:9]}: {out.strip()[:200]}"
     fields = out.split()
     if not fields:
-        print(f"{label}: no verify-fast-duration verdict is recorded for {head[:9]}; arming is not held")
-        return None
+        return (
+            None,
+            f"no verify-fast-duration verdict is recorded for {head[:9]}: {_core_state(run, repo, number, head)}",
+        )
     if len(fields) != 2 or not fields[0].isdigit() or fields[1] != head:
-        print(f"{label}: ignoring a verify-fast-duration verdict that is not bound to {head[:9]}")
-        return None
+        return None, f"the verify-fast-duration verdict found is not bound to {head[:9]}"
     with tempfile.TemporaryDirectory(prefix="pr-arm-verdict-") as scratch:
         code, out = run(["gh", "run", "download", fields[0], "--repo", repo, "-n", name, "-D", scratch])
         path = Path(scratch) / VERDICT_FILE
         if code != 0 or not path.is_file():
-            print(f"{label}: could not download the verify-fast-duration verdict of {head[:9]}: {out.strip()[:200]}")
-            return None
+            return None, f"could not download the verify-fast-duration verdict of {head[:9]}: {out.strip()[:200]}"
         try:
             report = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
-            print(f"{label}: the verify-fast-duration verdict of {head[:9]} is unreadable; arming is not held")
-            return None
-    return report if isinstance(report, dict) else None
+            return None, f"the verify-fast-duration verdict of {head[:9]} is unreadable"
+    if not isinstance(report, dict):
+        return None, f"the verify-fast-duration verdict of {head[:9]} is unreadable"
+    return report, None
 
 
 def _changes_baseline(run: Runner, repo: str, number: int) -> bool:
@@ -82,9 +96,9 @@ def _ratio(value: object) -> str:
 
 
 def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> list[str]:
-    report = _read_duration_verdict(run, repo, number, head, label)
+    report, refusal = _read_duration_verdict(run, repo, number, head)
     if report is None:
-        return []
+        return [refusal] if refusal else []
     verdict = report.get("verdict")
     if verdict != "would-block":
         print(f"{label}: verify-fast-duration verdict for {head[:9]} is {verdict}; arming is not held")
