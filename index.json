@@ -16444,6 +16444,15 @@
       "status": "done",
       "title": "Stop file_patches from treating control characters as line breaks and bind hunk counts"
     },
+    "oracle-plan-head-base-rechecks-20261026": {
+      "claim": null,
+      "needs": [
+        "oracle-carry-byte-identical-20261026"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Re-check the PR head after reading the diff and detect base changes from the event"
+    },
     "oracle-post-guard-reread-retry-20261009": {
       "claim": null,
       "needs": [

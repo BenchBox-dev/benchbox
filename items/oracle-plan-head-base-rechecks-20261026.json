@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Tests that fail on develop and pass after: the head moving between the file list and the diff makes plan defer; a base-edit event with a lagging timeline plans a review, not SKIP.",
+    "ci-oracle-reviewer-availability-and-head-race context records which of its parts this resolves.",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "OWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q13 include low items (head recheck, base-change detection).",
+  "description": "Problem: plan re-checks the head after listing files (_project/scripts/oracle_reviewers/cli.py:319-321) but fetches the diff later without re-checking, so the digest and inline lines can describe a newer head than head_sha. Base-change staleness uses only the timeline (github.py:164-172): when the timeline lags an edited-base event, plan returns SKIP and the gate waits for a review that never comes. Related open item: ci-oracle-reviewer-availability-and-head-race.\n\nOutcome: plan re-reads the PR head after fetching the diff and defers to the newer head's own run on a mismatch; an edited event with changes.base marks the base change directly, with the timeline as a second source.\n\nDecision gates:\n1. A deferral must leave the newer head's run responsible; prove no head is left without a planned run.\n\nItem guardrails: no change to decisions, carry or budgets.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, then make agent-write-preflight; the primary clone is read-only. Never use git stash (refs/stash is shared across worktrees). Commit as Joe Harris <joeharris76@gmail.com>, staging explicit paths only; no git add -A, no --no-verify, no SKIP, no agent trailers. Durable text (commits, PR bodies, docs, code) carries no tracker ids, session labels or plan references. Maintained code has no explanatory comments or docstrings (make comment-policy-check). Before publishing run make docs-reference-inventory-check, make doc-contracts-guard and make pr-preflight, and self-review with the code review action, fixing every Critical and Required finding. Publish only with make pr-open: never gh pr create, a raw push-and-open, or a PR-body override line; if make pr-open refuses, stop and report the exact refusal instead of routing around it. Until oracle-omp-pin-single-source-20261026 merges, make pr-open may run only with PATH prefixed by the darwin-arm64 omp 18.12.1 build whose SHA-256 that item records, verified with shasum immediately before use; never any other side-loaded omp. Close out only with oracle SHIP on the exact head, every oracle thread answered (reply naming the fixing SHA, then resolve) and make pr-arm; never raw gh pr merge, a stand-in, an adjudication, or a ruleset or settings change. Never print tokens, keys, or the gateway URL or hostname; never spend model quota outside the review harness. Owner decisions are recorded in context and in the decisions file; a step that would contradict one stops and asks the owner.",
+  "links": [
+    "_project/scripts/oracle_reviewers/cli.py",
+    "_project/scripts/oracle_reviewers/github.py",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevVerdictJob.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevVerdictLogic.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T15:00:03Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d7f762d7d6264107b57be85389ff7be7",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
