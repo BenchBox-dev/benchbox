@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A guard test fails on --with/pip/uv add of PyPI sqlglot (all spellings, continuations, Python arg lists) outside the isolated comparison form.",
+    "Guard passes on the repository and runs on the release tree.",
+    "PR merged with oracle SHIP."
+  ],
+  "description": "benchbox/_vendor/__init__.py appends the bundled SQLGlot wheel to benchbox._vendor.__path__, so a PyPI sqlglot added with uv run --with sqlglot==X is never imported by code under test (probe: --with sqlglot==26.0.0 printed 26.0.0 while exercised code used vendored 30.x). The retired tpchavoc-sqlglot-minimum-check gate was green but meaningless.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-26T16:08:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1a85b4e3d6fe44c7b05c315d121d4572",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}

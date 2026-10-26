@@ -24776,6 +24776,13 @@
       "status": "open",
       "title": "Give the MySQL SQLGlot workaround retirement check real execution evidence"
     },
+    "sqlglot-overlay-vacuous-guard": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Guard against SQLGlot version overlays that the vendored runtime ignores"
+    },
     "sqlglot-refresh-one-command-benchbox-adoption": {
       "claim": null,
       "needs": [],
