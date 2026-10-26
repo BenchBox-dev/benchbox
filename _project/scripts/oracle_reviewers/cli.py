@@ -163,7 +163,6 @@ def _base_plan(policy: Policy, repo: str, pr: int | None, run_id: str) -> dict[s
         "max_attempts": policy.max_attempts,
         "pool_blocked_until": {},
         "manual": False,
-        "backoff_reset_at": None,
         "created_at": _now().isoformat(),
     }
 
@@ -289,7 +288,7 @@ def command_plan_entry(args: argparse.Namespace) -> int:
 
 
 def _backoff_reset(
-    repo: str, pr: int, head_sha: str, run_id: int, manual: bool, previous: retry.State | None
+    repo: str, pr: int, head_sha: str, run_id: str, manual: bool, previous: retry.State | None
 ) -> datetime | None:
     if not manual or previous is None or previous.head_sha != head_sha:
         return None
@@ -301,18 +300,37 @@ def _backoff_reset(
     if not retry.reset_applies(previous, head_sha, reset_at):
         return reset_at
     try:
-        later = [
-            run
-            for run in sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, reset_at)).get(pr, ())
-            if run.id != run_id and run.created_at > reset_at and run.conclusion not in sweep.NEUTRAL
-        ]
+        current = int(run_id)
+        grouped = sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, reset_at))
+        spent = sweep.reset_spent(grouped.get(pr, ()), reset_at, exclude=current)
     except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
         _summary(f"oracle-verdict: the owner's backoff reset could not be confirmed unused: {exc}")
         return None
-    if later:
+    if spent:
         _summary("oracle-verdict: the owner's backoff reset was already used by a later run")
         return None
     return reset_at
+
+
+def _stateless_retry_allowed(repo: str, pr: int, head_sha: str, run_id: str, previous: retry.State | None) -> bool:
+    if (
+        previous is None
+        or previous.head_sha != head_sha
+        or previous.outcome != retry.PENDING
+        or previous.pending_cause != retry.ALL_ABSENT
+    ):
+        return False
+    try:
+        current = int(run_id)
+        grouped = sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, _now() - sweep.RUN_WINDOW))
+        failures = sweep.stateless_failures(
+            tuple(run for run in grouped.get(pr, ()) if run.id != current),
+            github.committed_at(repo, head_sha),
+        )
+    except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
+        _summary(f"oracle-verdict: the stateless retry could not be confirmed, so the backoff stands: {exc}")
+        return False
+    return 1 <= failures < 2
 
 
 def command_plan(args: argparse.Namespace) -> int:
@@ -373,7 +391,16 @@ def command_plan(args: argparse.Namespace) -> int:
             return _finish_plan(out_dir, plan)
         previous = None
     now = _now()
-    reset_at = _backoff_reset(repo, pr, plan["head_sha"], int(plan["run_id"]), manual, previous)
+    event_inputs = event.get("inputs") or {}
+    marked = (
+        event_name == "workflow_dispatch"
+        and isinstance(event_inputs, dict)
+        and event_inputs.get("reason") == sweep.STATELESS_RETRY_REASON
+    )
+    reset_at = _backoff_reset(repo, pr, plan["head_sha"], plan["run_id"], manual, previous)
+    allow_stateless = (
+        _stateless_retry_allowed(repo, pr, plan["head_sha"], plan["run_id"], previous) if marked else False
+    )
     rerun = retry.decide_rerun(
         manual=manual,
         new_diff=new_diff,
@@ -382,6 +409,7 @@ def command_plan(args: argparse.Namespace) -> int:
         now=now,
         rules=policy.retry,
         reset_at=reset_at,
+        stateless_retry=allow_stateless,
     )
     if not rerun.allowed:
         plan["decision_reason"] = rerun.reason
@@ -390,8 +418,6 @@ def command_plan(args: argparse.Namespace) -> int:
     scoped = _scoped_files(files, in_scope, policy)
     plan["manual"] = manual
     plan["previous_state"] = previous.to_json() if previous else None
-    applied = reset_at if retry.reset_applies(previous, plan["head_sha"], reset_at) else None
-    plan["backoff_reset_at"] = applied.isoformat() if applied else None
     try:
         found = protocol.history(github.oracle_reviews(repo, pr), policy.bot_login)
     except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
@@ -818,11 +844,6 @@ def command_ensure_attempt(args: argparse.Namespace) -> int:
     return 0
 
 
-def _reset_at(plan: Mapping[str, Any]) -> datetime | None:
-    value = plan.get("backoff_reset_at")
-    return datetime.fromisoformat(value) if value else None
-
-
 def command_finalize(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
     out_dir = Path(args.out_dir)
@@ -850,7 +871,6 @@ def command_finalize(args: argparse.Namespace) -> int:
             now=now,
             pool_blocked_until=previous.pool_blocked_until if previous else {},
             strikes=final.strikes,
-            reset_at=_reset_at(plan),
         )
         _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     else:
@@ -872,7 +892,6 @@ def command_finalize(args: argparse.Namespace) -> int:
             pool_blocked_until=selection.pool_resets(selection_input, loaded.attempts),
             pending_cause=final.pending_cause,
             strikes=final.strikes,
-            reset_at=_reset_at(plan),
         )
         _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     _write_json(out_dir / "status.json", report.status_payload(plan, final, run_url))
@@ -996,6 +1015,9 @@ def _retry_reason(
         if state.outcome == retry.PENDING and state.pending_cause == retry.ALL_ABSENT:
             reset_at = github.backoff_reset_at(repo, number, head)
             if reset_at is not None and retry.due_for_retry(state, head, now, rules, reset_at):
+                if sweep.reset_spent(runs, reset_at):
+                    _summary(f"retry not dispatched for #{number}: the reset was already used by a later run")
+                    return None
                 since = max(github.committed_at(repo, head), reset_at)
                 if sweep.stateless_failures(runs, since) > 0:
                     _summary(f"retry not dispatched for #{number}: a run since the reset failed without a result")
@@ -1010,6 +1032,13 @@ def _retry_reason(
     committed = github.committed_at(repo, head)
     failures = sweep.stateless_failures(runs, committed)
     if failures == 0:
+        return None
+    if any(
+        status.get("state") in ("success", "failure", "error")
+        for status in github.commit_statuses(repo, head)
+        if status.get("context") == status_context and github.is_app_status(status, bot_login)
+    ):
+        _summary(f"retry not dispatched for #{number}: the head already has a decisive oracle-verdict status")
         return None
     if failures > 1:
         _surface_twice_failed(
@@ -1052,7 +1081,12 @@ def command_sweep(args: argparse.Namespace) -> int:
             if number in busy:
                 _summary(f"retry skipped for #{number}: a run is still in flight")
                 continue
-            github.dispatch(repo, WORKFLOW_FILE, number)
+            github.dispatch(
+                repo,
+                WORKFLOW_FILE,
+                number,
+                sweep.STATELESS_RETRY_REASON if reason == STATELESS_FAILURE else None,
+            )
         except (github.GitHubError, KeyError, TypeError, ValueError, OSError) as exc:
             errors.append(f"#{number}: {exc}")
             _summary(f"retry failed for #{number}: {exc}")

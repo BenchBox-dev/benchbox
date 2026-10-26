@@ -92,6 +92,8 @@ class FakeGitHub:
         self.dispatched: list[int] = []
         self.base_tag = ""
         self.merge_base: str | None = MERGE_BASE
+        self.reasons: list[str | None] = []
+        self.contents: dict[str, str] = {}
         self.reviews: list[dict[str, Any]] | None = []
         self.reread_sha: str | None = None
         self._pull_reads = 0
@@ -122,10 +124,11 @@ class FakeGitHub:
     def _post(self, repo: str, head_sha: str, payload: dict[str, Any], token: str) -> None:
         self.posted.append((len(self.posted), {"head_sha": head_sha, **payload, "token": token}))
 
-    def _dispatch(self, repo: str, workflow: str, pr: int) -> None:
+    def _dispatch(self, repo: str, workflow: str, pr: int, reason: str | None = None) -> None:
         if pr in self.failing_prs:
             raise github.GitHubError(f"could not dispatch {workflow} for #{pr}")
         self.dispatched.append(pr)
+        self.reasons.append(reason)
 
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.reviews is None:
@@ -400,7 +403,7 @@ def test_sweep_dispatches_only_due_pending_prs(monkeypatch: pytest.MonkeyPatch, 
     fake.install(monkeypatch)
     _env(monkeypatch, tmp_path, "schedule", {}, "refs/heads/develop")
     assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
-    assert fake.dispatched == [7]
+    assert fake.dispatched == [7] and fake.reasons == [None]
     fresh = FakeGitHub(_pull(), SOUNDNESS, State(7, HEAD, "pending", datetime.now(UTC), pending_cause="all-absent"))
     fresh.install(monkeypatch)
     assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
@@ -509,7 +512,7 @@ def test_a_head_whose_run_failed_without_state_is_redispatched_once(
     failed = _verdict_run(7, conclusion="failure", event="pull_request_target", age=timedelta(hours=3))
     fake = _stateless_fake(failed)
     assert _sweep(monkeypatch, tmp_path, fake) == 0
-    assert fake.dispatched == [7]
+    assert fake.dispatched == [7] and fake.reasons == ["stateless-retry"]
     second = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=2))
     again = _stateless_fake(second, failed)
     assert _sweep(monkeypatch, tmp_path, again) == 0
@@ -818,7 +821,7 @@ def test_an_owner_reset_is_spent_by_the_first_later_run(monkeypatch: pytest.Monk
     second.runs = [_verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(minutes=10))]
     _, values, plan = _plan(monkeypatch, tmp_path, second, event_name="issue_comment", event=event)
     assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
-    assert plan["backoff_reset_at"] is None
+    assert "reset" not in plan["decision_reason"]
 
 
 def test_a_skipped_run_after_the_reset_does_not_spend_it(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -829,6 +832,140 @@ def test_a_skipped_run_after_the_reset_does_not_spend_it(monkeypatch: pytest.Mon
     _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
     assert values["decision"] == "review"
     assert "reset by the owner" in plan["decision_reason"]
+
+
+def _decisive_state(outcome: str = "success") -> State:
+    return State(7, HEAD, outcome, datetime.now(UTC) - timedelta(minutes=10))
+
+
+def test_an_owner_reset_never_rerolls_a_decisive_head(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    fake = FakeGitHub(_pull(), SOUNDNESS, _decisive_state())
+    fake.comments = _reset_comments()
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+    assert "reset" not in plan["decision_reason"]
+
+
+def _marked_dispatch(*runs: dict[str, Any]) -> FakeGitHub:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    fake.runs = list(runs)
+    return fake
+
+
+def test_a_marked_stateless_retry_reviews_despite_backoff(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    failed = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=2))
+    fake = _marked_dispatch(failed)
+    code, values, plan = _plan(
+        monkeypatch,
+        tmp_path,
+        fake,
+        event_name="workflow_dispatch",
+        event={"inputs": {"reason": "stateless-retry"}},
+        ref="refs/heads/develop",
+    )
+    assert code == 0
+    assert values["decision"] == "review"
+    assert "failed without a result" in plan["decision_reason"]
+
+
+@pytest.mark.parametrize(
+    "previous_runs",
+    [
+        [],
+        [
+            _verdict_run(7, conclusion="failure", age=timedelta(hours=3)),
+            _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+        ],
+    ],
+    ids=["no-failure", "two-failures"],
+)
+def test_a_marked_retry_without_exactly_one_prior_failure_follows_normal_rules(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, previous_runs: list[dict[str, Any]]
+) -> None:
+    fake = _marked_dispatch(*previous_runs)
+    _, values, plan = _plan(
+        monkeypatch,
+        tmp_path,
+        fake,
+        event_name="workflow_dispatch",
+        event={"inputs": {"reason": "stateless-retry"}},
+        ref="refs/heads/develop",
+    )
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+
+
+def test_a_marked_retry_never_rerolls_a_decisive_head(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    failed = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    fake = FakeGitHub(_pull(), SOUNDNESS, _decisive_state("failure"))
+    fake.runs = [failed]
+    _, values, plan = _plan(
+        monkeypatch,
+        tmp_path,
+        fake,
+        event_name="workflow_dispatch",
+        event={"inputs": {"reason": "stateless-retry"}},
+        ref="refs/heads/develop",
+    )
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+
+
+USER = {"login": "someone", "type": "User"}
+
+
+def _verdict_status(state: str, creator: dict[str, Any] = APP, description: str = "d") -> dict[str, Any]:
+    return {
+        "context": "oracle-verdict",
+        "state": state,
+        "description": description,
+        "target_url": "u",
+        "creator": dict(creator),
+        "updated_at": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
+    }
+
+
+@pytest.mark.parametrize("state", ["success", "failure"])
+def test_a_posted_decisive_status_blocks_the_stateless_redispatch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, state: str
+) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(hours=1)))
+    fake.statuses = [_verdict_status(state)]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
+
+
+def test_a_non_app_decisive_status_does_not_block_the_stateless_retry(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(hours=1)))
+    fake.statuses = [_verdict_status("failure", USER)]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7] and fake.reasons == ["stateless-retry"]
+
+
+def test_a_pending_claim_does_not_block_the_stateless_retry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(hours=1)))
+    fake.statuses = [_verdict_status("pending", APP, "verdict in progress")]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7] and fake.reasons == ["stateless-retry"]
+
+
+def _parsed(*runs: dict[str, Any]) -> tuple[sweep.Run, ...]:
+    return sweep.parse_runs(runs).get(7, ())
+
+
+def test_reset_spent_counts_only_runs_that_could_have_used_the_reset() -> None:
+    reset_at = datetime.now(UTC) - timedelta(minutes=30)
+    before = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    after = _verdict_run(7, conclusion="failure", age=timedelta(minutes=10))
+    skipped = _verdict_run(7, conclusion="skipped", age=timedelta(minutes=10))
+    assert not sweep.reset_spent(_parsed(), reset_at)
+    assert not sweep.reset_spent(_parsed(before), reset_at)
+    assert not sweep.reset_spent(_parsed(skipped), reset_at)
+    assert sweep.reset_spent(_parsed(after), reset_at)
+    assert not sweep.reset_spent(_parsed(after), reset_at, exclude=after["id"])
+    in_flight = _verdict_run(7, status="in_progress", conclusion=None, age=timedelta(minutes=10))
+    assert sweep.reset_spent(_parsed(in_flight), reset_at)
 
 
 def _reset_comments(head: str = HEAD, *, edited: bool = False) -> list[dict[str, Any]]:
@@ -866,7 +1003,7 @@ def test_the_sweep_dispatches_a_pending_head_after_the_owner_resets_its_backoff(
     reset = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
     reset.comments = _reset_comments()
     assert _sweep(monkeypatch, tmp_path, reset) == 0
-    assert reset.dispatched == [7]
+    assert reset.dispatched == [7] and reset.reasons == [None]
     edited = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
     edited.comments = _reset_comments(edited=True)
     assert _sweep(monkeypatch, tmp_path, edited) == 0
@@ -882,7 +1019,6 @@ def test_a_manual_retry_inside_backoff_runs_once_after_the_owner_reset(
     _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
     assert values["decision"] == "review"
     assert "reset by the owner" in plan["decision_reason"]
-    assert plan["backoff_reset_at"] is not None
     consumed = tmp_path / "consumed"
     consumed.mkdir()
     after = datetime.now(UTC)

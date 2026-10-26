@@ -76,6 +76,8 @@ def reset_applies(previous: State | None, head_sha: str, reset_at: datetime | No
         reset_at is not None
         and previous is not None
         and previous.head_sha == head_sha
+        and previous.outcome == PENDING
+        and previous.pending_cause == ALL_ABSENT
         and reset_at > previous.updated_at
     )
 
@@ -89,6 +91,7 @@ def decide_rerun(
     now: datetime,
     rules: RetryRules,
     reset_at: datetime | None = None,
+    stateless_retry: bool = False,
 ) -> RerunDecision:
     same_head = previous is not None and previous.head_sha == head_sha
     if same_head and previous is not None and previous.outcome in DECISIVE and not new_diff and not manual:
@@ -110,6 +113,8 @@ def decide_rerun(
         wait = timedelta(minutes=rules.backoff_start_minutes * 2 ** len(retries))
         ready_at = previous.updated_at + wait
         if now < ready_at:
+            if stateless_retry and previous.outcome == PENDING:
+                return RerunDecision(True, "stateless retry of a run that failed without a result")
             return RerunDecision(False, f"backoff: the next retry is allowed after {ready_at.isoformat()}")
         if previous.outcome in DECISIVE:
             return RerunDecision(True, "manual same-head re-review within budget")
@@ -127,10 +132,8 @@ def next_state(
     pool_blocked_until: Mapping[str, datetime],
     pending_cause: str | None = None,
     strikes: int | None = None,
-    reset_at: datetime | None = None,
 ) -> State:
-    kept_retries = tuple(moment for moment in recent_retries(previous, now) if reset_at is None or moment > reset_at)
-    retries = kept_retries + ((now,) if manual else ())
+    retries = recent_retries(previous, now) + ((now,) if manual else ())
     cause = pending_cause if outcome == PENDING else None
     kept = max(strikes or 0, previous.strikes if previous else 0)
     return State(pr, head_sha, outcome, now, retries, dict(pool_blocked_until), cause, kept)

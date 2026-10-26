@@ -391,9 +391,10 @@ def post_comment(repo: str, pr: int, body: str) -> None:
     _gh("--method", "POST", f"repos/{repo}/issues/{pr}/comments", "-f", f"body={body}")
 
 
-def dispatch(repo: str, workflow: str, pr: int) -> None:
+def dispatch(repo: str, workflow: str, pr: int, reason: str | None = None) -> None:
+    fields = ["-f", f"pr={pr}"] + (["-f", f"reason={reason}"] if reason else [])
     result = subprocess.run(
-        ["gh", "workflow", "run", workflow, "--ref", "develop", "-f", f"pr={pr}", "-R", repo],
+        ["gh", "workflow", "run", workflow, "--ref", "develop", *fields, "-R", repo],
         capture_output=True,
         text=True,
         check=False,

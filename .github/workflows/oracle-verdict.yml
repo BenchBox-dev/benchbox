@@ -15,6 +15,10 @@ on:
         description: Pull request number to review
         required: true
         type: string
+      reason:
+        description: Why this dispatch was requested
+        required: false
+        type: string
   schedule:
     - cron: '23 * * * *'
 

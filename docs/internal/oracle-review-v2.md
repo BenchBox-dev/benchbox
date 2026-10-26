@@ -635,7 +635,9 @@ cancels a run in flight and a cancelled run posts nothing.
   waiting, pending or requested, or started in the last two minutes, so it
   never cancels a retry in flight. Beyond due pending heads, it re-dispatches
   a head whose latest run failed, timed out or was cancelled without leaving a
-  retry state. That happens once: when the two latest runs on the head both
+  retry state, unless the head already carries a decisive App verdict status.
+  The stateless dispatch carries a marker the plan verifies against the head's
+  failed runs, so the redispatched run reviews instead of skipping on backoff. That happens once: when the two latest runs on the head both
   failed without a result (runs that never reviewed the head, such as a
   skipped run from a plain comment, are ignored), the sweep stops dispatching
   and posts a pending `oracle-verdict` status naming the failed step, using an
@@ -651,6 +653,8 @@ cancels a run in flight and a cancelled run posts nothing.
   posted first, as for a stand-in. It posts `Oracle backoff reset: <sha>` and
   the reason, which `plan` and the sweep honour only from an attester, unedited,
   after that instruction, until the next verdict run that reviews the head spends it.
+  The reset applies only when the head's recorded result is a pending reviewer-outage
+  result; it never re-rolls a decisive verdict and never restores budget.
 
 A rerun on the same head needs a previous run in which every attempted
 reviewer was absent. A run that stayed pending because its artifacts failed

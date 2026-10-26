@@ -24,7 +24,7 @@ OMP_SHA = re.compile(r"^[0-9a-f]{64}$")
 DISPATCH_STEP = "Dispatch the gate for the reviewed head"
 SETUP_ALLOWANCE_MINUTES = 30
 JOB_TIMEOUT_CEILING_MINUTES = 360
-UNCHANGED_PREFIX_SHA256 = "f25d73d89c9f1b6f762dd2833e76c1362ce87b1faf1af195495afb0e89ae53a2"
+UNCHANGED_PREFIX_SHA256 = "afca918ff33a3553a202821c8589308cce23b1c0730ac3ff65dc61bfff82a47d"
 REVIEW_CONDITION = (
     "github.event_name == 'workflow_dispatch' ||"
     " (github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) ||"
@@ -665,6 +665,13 @@ def test_a_dispatch_run_queues_in_the_pull_request_group_instead_of_cancelling()
     }
     assert groups == {"oracle-verdict-pr-7"}
     assert _cancels("workflow_dispatch") is False
+
+
+def test_the_dispatch_reason_input_is_optional_and_unset_by_default() -> None:
+    inputs = _load()[True]["workflow_dispatch"]["inputs"]
+    assert set(inputs) == {"pr", "reason"}
+    assert inputs["pr"]["required"] is True
+    assert inputs["reason"]["required"] is False
 
 
 def test_pull_request_groups_keep_one_group_per_number() -> None:

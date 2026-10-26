@@ -40,8 +40,23 @@ def _state(
     )
 
 
-def _decide(policy: Policy, previous: State | None, *, manual: bool = True, new_diff: bool = False):
-    return decide_rerun(manual=manual, new_diff=new_diff, head_sha=HEAD, previous=previous, now=NOW, rules=policy.retry)
+def _decide(
+    policy: Policy,
+    previous: State | None,
+    *,
+    manual: bool = True,
+    new_diff: bool = False,
+    stateless_retry: bool = False,
+):
+    return decide_rerun(
+        manual=manual,
+        new_diff=new_diff,
+        head_sha=HEAD,
+        previous=previous,
+        now=NOW,
+        rules=policy.retry,
+        stateless_retry=stateless_retry,
+    )
 
 
 def test_rerun_on_the_same_head_needs_every_reviewer_absent(policy: Policy) -> None:
@@ -178,7 +193,7 @@ def test_strikes_survive_pending_runs_and_never_go_down() -> None:
     assert State.from_json({**legacy, "reviewed": {"head_sha": OTHER}}).strikes == 0
 
 
-def test_the_owner_reset_lifts_backoff_and_budget_once(policy: Policy) -> None:
+def test_the_owner_reset_covers_one_attempt_without_restoring_the_budget(policy: Policy) -> None:
     inside = _state("pending", age=timedelta(minutes=10), retries=policy.retry.daily_budget)
     assert not _decide(policy, inside).allowed
     reset_at = NOW - timedelta(minutes=5)
@@ -196,14 +211,36 @@ def test_the_owner_reset_lifts_backoff_and_budget_once(policy: Policy) -> None:
         now=NOW,
         pool_blocked_until={},
         pending_cause=ALL_ABSENT,
-        reset_at=reset_at,
     )
-    assert recorded.retries == (NOW,)
+    assert recorded.retries == inside.retries + (NOW,)
     spent = decide_rerun(
         manual=True, new_diff=False, head_sha=HEAD, previous=recorded, now=NOW, rules=policy.retry, reset_at=reset_at
     )
-    assert not spent.allowed and "backoff" in spent.reason
+    assert not spent.allowed and "budget" in spent.reason
     assert not due_for_retry(recorded, HEAD, NOW, policy.retry, reset_at)
+
+
+@pytest.mark.parametrize("outcome", ["success", "failure"])
+def test_the_owner_reset_never_rerolls_a_decisive_result(policy: Policy, outcome: str) -> None:
+    decided = _state(outcome, age=timedelta(minutes=10))
+    reset_at = NOW - timedelta(minutes=5)
+    rerun = decide_rerun(
+        manual=True, new_diff=False, head_sha=HEAD, previous=decided, now=NOW, rules=policy.retry, reset_at=reset_at
+    )
+    assert not rerun.allowed and "backoff" in rerun.reason
+    assert "reset" not in rerun.reason
+    assert not due_for_retry(decided, HEAD, NOW, policy.retry, reset_at)
+
+
+def test_a_marked_stateless_retry_skips_only_the_backoff(policy: Policy) -> None:
+    inside = _state("pending", age=timedelta(minutes=10))
+    assert not _decide(policy, inside).allowed
+    marked = _decide(policy, inside, stateless_retry=True)
+    assert marked.allowed and "failed without a result" in marked.reason
+    over_budget = _state("pending", age=timedelta(minutes=10), retries=policy.retry.daily_budget)
+    refused = _decide(policy, over_budget, stateless_retry=True)
+    assert not refused.allowed and "budget" in refused.reason
+    assert not _decide(policy, _state("success", age=timedelta(minutes=10)), stateless_retry=True).allowed
 
 
 def test_an_owner_reset_for_another_head_or_before_the_state_changes_nothing(policy: Policy) -> None:

@@ -15,6 +15,7 @@ RUN_WINDOW = timedelta(days=7)
 DISPATCH_GRACE = timedelta(minutes=2)
 DISPATCH_WINDOW = timedelta(hours=24)
 DISPATCH_EVENT = "workflow_dispatch"
+STATELESS_RETRY_REASON = "stateless-retry"
 STATUS_DESCRIPTION_LIMIT = 140
 
 
@@ -85,6 +86,10 @@ def surface_description(steps: Iterable[str]) -> str:
     if len(description) > STATUS_DESCRIPTION_LIMIT:
         description = description[: STATUS_DESCRIPTION_LIMIT - 1] + "…"
     return description
+
+
+def reset_spent(runs: Iterable[Run], reset_at: datetime, exclude: int | None = None) -> bool:
+    return any(run.id != exclude and run.created_at >= reset_at and run.conclusion not in NEUTRAL for run in runs)
 
 
 def newest_failed(runs: tuple[Run, ...]) -> bool:
