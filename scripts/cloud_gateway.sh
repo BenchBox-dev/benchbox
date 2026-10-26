@@ -8,7 +8,6 @@ status_file="$git_dir/benchbox-cloud-gateway.status"
 workflow="$top/.github/workflows/oracle-verdict.yml"
 proxy_port=${BENCHBOX_GATEWAY_PROXY_PORT:-1055}
 install_dir=${BENCHBOX_OMP_INSTALL_DIR:-${HOME:-/tmp}/.local/bin}
-socket="$state_dir/tailscaled.sock"
 pid_file="$state_dir/tailscaled.pid"
 
 say() {
@@ -22,6 +21,19 @@ sha256_of() {
     shasum -a 256 "$1" | awk '{print $1}'
   fi
 }
+
+short_socket_dir() {
+  tag=$(printf '%s' "$git_dir" | { sha256sum 2>/dev/null || shasum -a 256; } | cut -c1-16)
+  base=${TMPDIR:-/tmp}
+  base=${base%/}
+  if [ "${#base}" -gt 70 ]; then
+    base=/tmp
+  fi
+  printf '%s/bbcg-%s' "$base" "$tag"
+}
+
+socket_dir=$(short_socket_dir)
+socket="$socket_dir/ts.sock"
 
 daemon_alive() {
   [ -f "$pid_file" ] || return 1
@@ -48,7 +60,7 @@ stop_daemon() {
       kill -9 "$pid" 2>/dev/null || true
     fi
   fi
-  rm -rf "$state_dir"
+  rm -rf "$state_dir" "$socket_dir"
 }
 
 record() {
@@ -135,8 +147,8 @@ bring_up() {
     return 0
   fi
   stop_daemon
-  mkdir -p "$state_dir"
-  chmod 700 "$state_dir"
+  mkdir -p "$state_dir" "$socket_dir"
+  chmod 700 "$state_dir" "$socket_dir"
   nohup tailscaled --tun=userspace-networking --state=mem: --socket="$socket" \
     --outbound-http-proxy-listen="127.0.0.1:$proxy_port" >"$state_dir/tailscaled.log" 2>&1 &
   echo "$!" >"$pid_file"

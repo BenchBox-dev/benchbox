@@ -520,6 +520,43 @@ def test_gateway_second_run_reuses_the_daemon_and_the_install(tmp_path: Path) ->
         _stop(repo, env)
 
 
+def test_gateway_socket_path_stays_short_for_a_long_git_dir(tmp_path: Path) -> None:
+    deep = tmp_path / ("a" * 60) / ("b" * 60)
+    deep.mkdir(parents=True)
+    repo = _gateway_clone(deep)
+    env = _gateway_env(tmp_path)
+    try:
+        result = _run(GATEWAY, cwd=repo, env=env)
+
+        assert result.returncode == 0, result.stderr
+        assert "gateway=reachable" in _status(repo)
+        daemon_args = _stub_lines(tmp_path, "tailscaled.log")[0].split()
+        socket_arg = next(a for a in daemon_args if a.startswith("--socket=")).split("=", 1)[1]
+        assert len(socket_arg.encode()) <= 104
+        assert len(str(repo / ".git" / "benchbox-cloud-gateway" / "tailscaled.sock")) > 104
+        assert Path(socket_arg).exists()
+    finally:
+        _stop(repo, env)
+    assert not Path(socket_arg).exists()
+
+
+def test_gateway_uses_a_separate_socket_per_checkout(tmp_path: Path) -> None:
+    sockets = []
+    for name in ("one", "two"):
+        workspace = tmp_path / name
+        workspace.mkdir()
+        repo = _gateway_clone(workspace)
+        env = _gateway_env(tmp_path)
+        try:
+            _run(GATEWAY, cwd=repo, env=env)
+            sockets.append(
+                next(a for a in _stub_lines(tmp_path, "tailscaled.log")[-1].split() if a.startswith("--socket="))
+            )
+        finally:
+            _stop(repo, env)
+    assert sockets[0] != sockets[1]
+
+
 def test_gateway_stop_ends_the_daemon(tmp_path: Path) -> None:
     repo = _gateway_clone(tmp_path)
     env = _gateway_env(tmp_path)
