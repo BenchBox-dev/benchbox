@@ -128,6 +128,7 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "parity-check", "Verify parity fixtures match Python source"): "parity-check",
     ("ci.yml", "example-validation", "Validate examples and docs references"): "docs-validate",
     ("ci.yml", "example-validation", "Generate documentation inputs"): "docs-generate",
+    ("ci.yml", "example-validation", "Enforce the site-owned documentation freeze"): "docs-freeze-check",
 }
 
 MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
