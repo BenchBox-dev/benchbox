@@ -19573,10 +19573,15 @@
       "title": "Add QuestDB time-series database platform support"
     },
     "questdb-tpcds-q16-q94-q95-unsupported-constructs-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T15:08:39Z",
+        "generation": "a57756d9d37247e9ae8d1a3c4bfc9492",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "QuestDB cannot run TPC-DS Q16/Q94/Q95: correlated EXISTS, HAVING and IN (subquery) unsupported"
     },
     "questdb-unpadded-date-cast-null-20261025": {
