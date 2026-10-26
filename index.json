@@ -16245,7 +16245,9 @@
     },
     "oracle-gate-verdict-to-status-latency-20261025": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-gate-from-verdict-job-20261026"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Shorten the delay between an oracle SHIP verdict and the oracle-gate status on the PR head"
