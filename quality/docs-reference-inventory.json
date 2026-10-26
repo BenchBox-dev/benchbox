@@ -3159,6 +3159,27 @@
   {
    "disposition": "lock-test",
    "kinds": {
+    "extra": 1,
+    "root": 1
+   },
+   "occurrences": 3,
+   "path": "tests/unit/docs/test_publish_policy.py",
+   "rule": "lock-tests-docs-directory",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
+    }
+   ]
+  },
+  {
+   "disposition": "lock-test",
+   "kinds": {
     "file": 1
    },
    "occurrences": 2,
@@ -4382,23 +4403,23 @@
    "fixture-data": 44,
    "governance-stays": 8,
    "historical-record": 112,
-   "lock-test": 11,
+   "lock-test": 12,
    "prose-link-pinned": 15,
    "site-pipeline-cutover": 4,
    "wiring-updated": 30
   },
-  "files": 231,
+  "files": 232,
   "kinds": {
    "built-url": 29042,
    "dir": 167,
-   "extra": 31,
+   "extra": 32,
    "file": 1401,
    "generated": 3,
    "pattern": 316,
-   "root": 195,
+   "root": 197,
    "unresolved": 2047
   },
-  "references": 33202,
+  "references": 33205,
   "unclassified": 0
  }
 }
