@@ -16072,6 +16072,16 @@
       "status": "open",
       "title": "Bind each oracle dispute to its finding id, require evidence to maintain it, and publish every disposition"
     },
+    "oracle-dispute-trigger-budget-escalation-20261026": {
+      "claim": null,
+      "needs": [
+        "oracle-dispute-keyed-published-evidence-20261026",
+        "oracle-gate-from-verdict-job-20261026"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Re-judge a dispute when it is posted, exempt dispute rounds from the budget, and escalate twice-maintained findings to owner adjudication"
+    },
     "oracle-duplicate-findings-collapse-to-same-id-20261024": {
       "claim": null,
       "needs": [],
