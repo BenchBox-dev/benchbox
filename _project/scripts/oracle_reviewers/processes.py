@@ -11,6 +11,7 @@ from dataclasses import dataclass
 IS_LINUX = sys.platform.startswith("linux")
 PR_SET_CHILD_SUBREAPER = 36
 SETTLE_SECONDS = 2.0
+REAP_SETTLE_SECONDS = 5.0
 SETTLE_POLLS = 20
 ZOMBIE = "Z"
 
@@ -93,13 +94,18 @@ def _signal(pid: int) -> None:
 
 
 def _reap_children() -> None:
+    deadline = time.monotonic() + REAP_SETTLE_SECONDS
     while True:
         try:
             pid, _ = os.waitpid(-1, os.WNOHANG)
         except ChildProcessError:
             return
         if pid == 0:
-            return
+            if time.monotonic() >= deadline:
+                return
+            time.sleep(REAP_SETTLE_SECONDS / SETTLE_POLLS)
+        else:
+            deadline = time.monotonic() + REAP_SETTLE_SECONDS
 
 
 def confirm_exit(group: int) -> tuple[int, ...]:

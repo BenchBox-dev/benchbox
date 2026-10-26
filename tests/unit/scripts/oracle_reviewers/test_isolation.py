@@ -44,7 +44,7 @@ def test_isolation_rejects_missing_controls(tmp_path, monkeypatch) -> None:
 def test_isolation_rejects_ptrace_capability(tmp_path, monkeypatch, field) -> None:
     root = _proc(tmp_path, monkeypatch)
     status = root / "self/status"
-    status.write_text(status.read_text().replace(f"{field}:\t0", f"{field}:\t80000"))
+    status.write_text(status.read_text(encoding="utf-8").replace(f"{field}:\t0", f"{field}:\t80000"))
     with pytest.raises(ValueError, match="CAP_SYS_PTRACE"):
         isolation.require_isolation(root)
 
@@ -52,7 +52,7 @@ def test_isolation_rejects_ptrace_capability(tmp_path, monkeypatch, field) -> No
 def test_isolation_rejects_root(tmp_path, monkeypatch) -> None:
     root = _proc(tmp_path, monkeypatch)
     status = root / "self/status"
-    status.write_text(status.read_text().replace("1001", "0"))
+    status.write_text(status.read_text(encoding="utf-8").replace("1001", "0"))
     with pytest.raises(ValueError, match="non-root"):
         isolation.require_isolation(root)
 

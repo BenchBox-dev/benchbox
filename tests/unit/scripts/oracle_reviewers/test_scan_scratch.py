@@ -14,7 +14,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 def test_workflow_scans_include_leaks_outside_home_and_runner_temp(tmp_path, monkeypatch) -> None:
     workflow = Path(__file__).resolve().parents[4] / ".github/workflows/oracle-verdict.yml"
-    steps = yaml.safe_load(workflow.read_text())["jobs"]["review"]["steps"]
+    steps = yaml.safe_load(workflow.read_text(encoding="utf-8"))["jobs"]["review"]["steps"]
     scans = [step for step in steps if "cli scan-disk" in step.get("run", "")]
     secret = "scratch-fixture-secret-value"
     monkeypatch.setenv("TYPESAFE_API_KEY", secret)

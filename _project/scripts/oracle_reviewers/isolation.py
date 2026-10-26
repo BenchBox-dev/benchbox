@@ -10,10 +10,10 @@ SYS_PTRACE = 1 << 19
 def require_isolation(proc: Path = Path("/proc")) -> None:
     if not sys.platform.startswith("linux"):
         raise ValueError("reviewer isolation requires Linux")
-    scope = int((proc / "sys/kernel/yama/ptrace_scope").read_text().strip())
-    if scope not in (1, 2, 3):
+    if int((proc / "sys/kernel/yama/ptrace_scope").read_text(encoding="utf-8").strip()) not in (1, 2, 3):
         raise ValueError("Yama must restrict tracing of unrelated processes")
-    status = dict(line.split(":", 1) for line in (proc / "self/status").read_text().splitlines() if ":" in line)
+    status_text = (proc / "self/status").read_text(encoding="utf-8")
+    status = dict(line.split(":", 1) for line in status_text.splitlines() if ":" in line)
     uids = [int(value) for value in status["Uid"].split()]
     if len(uids) != 4 or len(set(uids)) != 1 or uids[0] == 0 or uids[0] != os.getuid():
         raise ValueError("reviewer must run with one non-root UID")
