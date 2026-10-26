@@ -29688,6 +29688,13 @@
       "status": "done",
       "title": "Windows Nightly: preserve agent preflight pool guard across Git/MSYS paths"
     },
+    "windows-antipattern-rules-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Land the WA004-WA007 Windows antipattern rules in the existing checker"
+    },
     "windows-auto-merge-soundness-executable-mode-check": {
       "claim": null,
       "needs": [],
