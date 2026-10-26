@@ -390,9 +390,10 @@ def drift_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-VERIFY_RATIO_THRESHOLD = 0.15
-VERIFY_DELTA_SECONDS = 60.0
+VERIFY_RATIO_THRESHOLD = 0.30
+VERIFY_DELTA_SECONDS = 360.0
 VERIFY_NEW_TEST_ALLOWANCE_SECONDS = 0.5
+VERIFY_MODE = "report"
 
 
 def normalized_pr_samples(run_dir: Path, baseline: dict[str, object]) -> tuple[dict[str, float], float, float]:
@@ -482,9 +483,11 @@ def verify_run(baseline_dir: Path, run_dir: Path) -> dict[str, object]:
     return report
 
 
-def verify_markdown(report: dict[str, object]) -> str:
+def verify_markdown(report: dict[str, object], *, mode: str | None = None) -> str:
+    effective_mode = str(mode or report.get("mode") or VERIFY_MODE)
     verdict = str(report["verdict"])
-    lines = ["### verify-fast-duration (report only)", "", f"Verdict: **{verdict}**", ""]
+    heading = "### verify-fast-duration" if effective_mode == "block" else "### verify-fast-duration (report only)"
+    lines = [heading, "", f"Verdict: **{verdict}**", ""]
     if "reason" in report:
         lines.append(f"Reason: {report['reason']}")
         return "\n".join(lines) + "\n"
@@ -506,17 +509,29 @@ def verify_markdown(report: dict[str, object]) -> str:
         f"| Runner speed factor | {fmt(report['speed_factor'], '.3f')} |",
         f"| Pytest collection time (max) | {fmt(report['collection_max_seconds'], '.1f')} s |",
         "",
-        f"Would block when the ratio exceeds {1 + float(report['ratio_threshold']):.2f} and the delta exceeds "
-        f"{float(report['delta_threshold_seconds']):.0f} s (provisional thresholds; job wall time is not a metric).",
     ]
+    if effective_mode == "block":
+        lines.append(
+            f"Blocks when the ratio exceeds {1 + float(report['ratio_threshold']):.2f} and the delta exceeds "
+            f"{float(report['delta_threshold_seconds']):.0f} s (provisional thresholds; job wall time is not a metric)."
+        )
+    else:
+        lines.append(
+            f"Would block when the ratio exceeds {1 + float(report['ratio_threshold']):.2f} and the delta exceeds "
+            f"{float(report['delta_threshold_seconds']):.0f} s (provisional thresholds; job wall time is not a metric)."
+        )
     if report["coverage_warning"]:
         lines.append(f"Warning: coverage is under {GATE_COVERAGE_MINIMUM:.0%} of baseline ids.")
     return "\n".join(lines) + "\n"
 
 
 def verify_command(args: argparse.Namespace) -> int:
-    report = verify_run(Path(args.baseline), Path(args.run_dir))
-    text = verify_markdown(report)
+    mode = getattr(args, "mode", VERIFY_MODE)
+    baseline_path = Path(args.baseline)
+    run_path = Path(args.run_dir)
+    report = verify_run(baseline_path, run_path)
+    report["mode"] = mode
+    text = verify_markdown(report, mode=mode)
     if args.summary:
         with Path(args.summary).open("a", encoding="utf-8") as handle:
             handle.write(text)
@@ -525,9 +540,21 @@ def verify_command(args: argparse.Namespace) -> int:
     print(text)
     verdict = report["verdict"]
     if verdict == "would-block":
+        if mode == "block":
+            ratio_str = f"{report['sum_ratio']:.3f}" if isinstance(report.get("sum_ratio"), (int, float)) else "n/a"
+            delta_str = (
+                f"{report['delta_seconds']:+.1f}" if isinstance(report.get("delta_seconds"), (int, float)) else "n/a"
+            )
+            print(
+                f"::error title=verify-fast-duration::fast-tier time exceeded the duration gate thresholds "
+                f"(summed ratio {ratio_str} > {1 + float(report['ratio_threshold']):.2f}, "
+                f"delta {delta_str} s > {float(report['delta_threshold_seconds']):.0f} s)"
+            )
+            return 1
         print(
             "::warning title=verify-fast-duration::fast-tier time would be blocked by the duration gate (report only)"
         )
+        return 0
     elif verdict == "rejected":
         print(f"::warning title=verify-fast-duration::run rejected: {report['reason']}")
     return 0
@@ -601,6 +628,7 @@ def main(argv: list[str] | None = None) -> int:
     verify_parser.add_argument("--run-dir", required=True)
     verify_parser.add_argument("--summary", default=None)
     verify_parser.add_argument("--report-out", default=None)
+    verify_parser.add_argument("--mode", choices=["report", "block"], default=VERIFY_MODE)
     verify_parser.set_defaults(handler=verify_command)
     args = parser.parse_args(argv)
     try:

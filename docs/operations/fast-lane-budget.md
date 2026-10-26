@@ -13,22 +13,36 @@ mechanism; it does not notice a slowdown that stays under the cap.
 
 ## Fast-tier duration report
 
-The `core` job runs a report-only `verify-fast-duration (report only)` step
-on pull requests. It downloads the PR's `fast-junit` artifact and compares it
-with the committed baseline in `tests/fixtures/fast_tier_baseline`
-(`python -m scripts.build_fast_duration_baseline verify`). Each run's test
-times are scaled by the runner-speed factor from its calibration record, so a
-slow hosted runner is not mistaken for a slowdown. A run without a calibration
-record is rejected, and a missing baseline gives a neutral verdict.
+The `core` job runs `verify-fast-duration` on pull requests. The policy
+`VERIFY_MODE` in `scripts/build_fast_duration_baseline.py` remains `report`
+until controlled noise evidence and live draft-PR experiments support enabling
+`block`; changing it back to `report` is the rollback. The step downloads only
+the PR head's `fast-junit` artifact and compares it with that head's committed
+baseline in `tests/fixtures/fast_tier_baseline`. Calibration scales test times
+to a reference CPU speed; it does not establish that runner noise is removed.
+A missing calibration is rejected and a missing baseline is neutral.
 
 The job summary shows the normalized summed time over tests present in both
 runs, the delta, the summed-time ratio, the median per-test ratio, coverage of
 the baseline ids, the runner speed factor and the pytest collection time. The
-verdict is `would-block` when the ratio exceeds 1.15 and the delta exceeds 60
-seconds (provisional thresholds). Tests missing from the baseline are allowed
-0.5 seconds each; time beyond that counts toward the delta. Job wall time is
-not a metric. The step has `continue-on-error` and never changes the `core`
-result.
+verdict is `would-block` when the ratio exceeds 1.30 and the delta exceeds 360
+seconds, both strictly (provisional thresholds). New tests receive 0.5 seconds
+each; only excess time counts toward the comparison. Job wall time is not a
+metric. In report mode the command returns success; in block mode a
+`would-block` verdict fails `core` at the duration step. Baseline refreshes are
+visible in the PR diff and change the comparison data; changing a baseline
+file does not exempt additional regressions. The required status contexts do
+not change.
+
+`quality/fast-duration-calibration.json` retains artifact IDs, exact heads,
+run IDs, attempts, comparison paths and verdicts for a bounded convenience
+sample. One no-test-change PR verdict and one pair of repeated-head verdicts
+pass the provisional thresholds. The repeated head ranges from ratio 0.976
+to 1.156 as the runner-speed factor ranges from 1.242 to 1.843. The second
+run trips the original 1.15/+60-second thresholds. This does not establish
+the cause of the variation or a false-block rate below 1%. Assorted PR
+verdicts are not unchanged-code controls, and baseline source runs overlap
+the observed PR runs rather than adding independent verdicts.
 
 ## Marker and path guards
 

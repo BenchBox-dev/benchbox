@@ -1,0 +1,1 @@
+{"internal": "The core fast-tier duration check supports blocking above provisional speed-normalized thresholds (+30% and +360 s), but remains report-only pending controlled reliability evidence. Baseline updates remain subject to the same comparison.", "schema": 1}
