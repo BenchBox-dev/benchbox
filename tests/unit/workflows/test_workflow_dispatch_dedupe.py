@@ -34,24 +34,16 @@ def _matches_all(branches: set[str] | None) -> bool:
     return branches is not None and "**" in branches
 
 
-def _overlap(first: set[str] | None, second: set[str] | None) -> bool:
-    if first is None or second is None:
-        return True
-    if "**" in first or "**" in second:
-        return True
-    return bool(first & second)
-
-
 def _dispatches_twice(triggers: dict[str, Any]) -> bool:
     if "push" not in triggers or "pull_request" not in triggers:
         return False
     push_branches = _branch_filter(triggers["push"])
     pull_branches = _branch_filter(triggers["pull_request"])
-    if push_branches is None:
+    if push_branches is None or pull_branches is None:
         return True
-    return _overlap(push_branches, pull_branches) and (
-        push_branches != pull_branches or _matches_all(push_branches) or _matches_all(pull_branches)
-    )
+    if push_branches != pull_branches:
+        return True
+    return _matches_all(push_branches)
 
 
 def test_no_workflow_dispatches_twice_for_one_push_to_a_pull_request_branch() -> None:
@@ -67,11 +59,11 @@ def test_no_workflow_dispatches_twice_for_one_push_to_a_pull_request_branch() ->
         ({"branches": ["develop"]}, {"branches": ["**"]}, True),
         (None, {"branches": ["develop"]}, True),
         ({"branches": ["release"]}, {"branches": ["release"]}, False),
-        ({"branches": ["release"]}, {"branches": ["develop"]}, False),
+        ({"branches": ["release"]}, {"branches": ["develop"]}, True),
         ({"branches": ["develop"]}, None, True),
     ],
 )
-def test_duplicate_dispatch_predicate_flags_wildcard_branch_filters(
+def test_duplicate_dispatch_predicate_flags_cross_line_and_wildcard_branch_filters(
     push: Any, pull_request: Any, expected: bool
 ) -> None:
     assert _dispatches_twice({"push": push, "pull_request": pull_request}) is expected
