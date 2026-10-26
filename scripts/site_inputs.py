@@ -370,10 +370,9 @@ def certifier_errors(schema: int, certified_by: object) -> list[str]:
         return []
     if certified_by == CANDIDATE_CERTIFIER:
         return []
-    if schema == 4 and isinstance(certified_by, str) and RUN_ID.fullmatch(certified_by):
+    if schema in (4, 5) and isinstance(certified_by, str) and RUN_ID.fullmatch(certified_by):
         return []
-    wanted = "candidate or a run id" if schema == 4 else CANDIDATE_CERTIFIER
-    return [f"schema {schema} requires certified_by {wanted}, got {certified_by!r}"]
+    return [f"schema {schema} requires certified_by candidate or a run id, got {certified_by!r}"]
 
 
 def cmd_build(args: argparse.Namespace) -> int:

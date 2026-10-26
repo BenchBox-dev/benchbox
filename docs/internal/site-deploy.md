@@ -33,8 +33,8 @@ Schema 5 keeps the schema 4 contract checks: `verify` selects the exact member
 set from `manifest.schema` and rejects any other set, validates
 `docs-data/docs-data.json` against `quality/docs-data.schema.json` and
 `doc-contracts.json` against `quality/doc-contracts.schema.json`, and checks
-`certified_by` the way the site's verifier does (schema 5 takes only
-`candidate`; schema 4 takes `candidate` or a numeric run id). `build` records
+`certified_by` the way the site's verifier does (schemas 4 and 5 take
+`candidate` or a numeric run id string). `build` records
 `candidate` when no `--certified-by` is given (schema 3 keeps `local`). The
 site's deploy additionally requires a numeric run id whose run is the
 `trunk.yml` push on `develop` for the same commit and succeeded, so a locally

@@ -505,13 +505,31 @@ def test_schema4_verify_rejects_a_numeric_certifier_stored_as_a_number(
     assert site_inputs.cmd_verify(out) == 1
 
 
-@pytest.mark.parametrize("certified_by", ["123456", "local"])
-def test_schema5_verify_rejects_publication_certifiers(
+@pytest.mark.parametrize("certified_by", ["local", "", "12a", "-1", "1 ", "\u0663", "latest"])
+def test_schema5_verify_rejects_other_certifiers(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], certified_by: str
 ) -> None:
     out = _candidate(tmp_path, monkeypatch, 5, certified_by=certified_by)
     assert site_inputs.cmd_verify(out) == 1
     assert "certified_by" in capsys.readouterr().out
+
+
+def test_schema5_verify_accepts_a_run_id_certifier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = _candidate(tmp_path, monkeypatch, 5, certified_by="38216829987")
+    assert site_inputs.cmd_verify(out) == 0
+    assert "schema 5" in capsys.readouterr().out
+
+
+def test_schema5_verify_rejects_a_numeric_certifier_stored_as_a_number(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = _candidate(tmp_path, monkeypatch, 5)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest["certified_by"] = 123456
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    assert site_inputs.cmd_verify(out) == 1
 
 
 def test_schema3_verify_ignores_the_certifier(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -544,7 +562,9 @@ def test_certifier_rules_match_the_site_verifier() -> None:
     assert site_inputs.certifier_errors(4, "42") == []
     assert site_inputs.certifier_errors(4, "local")
     assert site_inputs.certifier_errors(5, "candidate") == []
-    assert site_inputs.certifier_errors(5, "42")
+    assert site_inputs.certifier_errors(5, "42") == []
+    assert site_inputs.certifier_errors(5, 42)
+    assert site_inputs.certifier_errors(5, "local")
 
 
 def test_default_certifier_is_never_local_for_schema4() -> None:
