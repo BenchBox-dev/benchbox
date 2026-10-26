@@ -9,6 +9,7 @@ import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from tests.duration_policy import _junit_nodeid, _percentile
 
@@ -26,7 +27,7 @@ class BaselineError(RuntimeError):
     pass
 
 
-def read_calibration_best(run_dir: Path) -> tuple[float, dict[str, object]]:
+def read_calibration_best(run_dir: Path) -> tuple[float, dict[str, Any]]:
     try:
         payload = json.loads((run_dir / "calibration.json").read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
@@ -37,7 +38,7 @@ def read_calibration_best(run_dir: Path) -> tuple[float, dict[str, object]]:
         raise BaselineError("calibration workload.best_seconds is not numeric")
     if not math.isfinite(best) or best <= 0:
         raise BaselineError("calibration workload.best_seconds is not finite and positive")
-    metadata: dict[str, object] = {}
+    metadata: dict[str, Any] = {}
     if isinstance(payload, dict):
         for key in ("python", "cpu_count"):
             if payload.get(key) is not None:
@@ -71,11 +72,11 @@ def read_run_samples(run_dir: Path) -> dict[str, list[float]]:
     return samples
 
 
-def load_manifest(path: Path) -> list[dict[str, object]]:
+def load_manifest(path: Path) -> list[dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, list) or not payload:
         raise BaselineError("manifest must be a non-empty list of run entries")
-    entries: list[dict[str, object]] = []
+    entries: list[dict[str, Any]] = []
     for entry in payload:
         if not isinstance(entry, dict):
             raise BaselineError("manifest entries must be objects")
@@ -86,12 +87,10 @@ def load_manifest(path: Path) -> list[dict[str, object]]:
     return entries
 
 
-def build_baseline(
-    entries: list[dict[str, object]], generated_at: str
-) -> tuple[dict[str, object], list[dict[str, object]]]:
+def build_baseline(entries: list[dict[str, Any]], generated_at: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     ordered = sorted(entries, key=lambda entry: (int(entry["run_id"]), int(entry["artifact_id"])))
-    usable: list[dict[str, object]] = []
-    rejected: list[dict[str, object]] = []
+    usable: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
     for entry in ordered:
         run_dir = Path(str(entry["dir"]))
         try:
@@ -123,11 +122,11 @@ def build_baseline(
         raise BaselineError("no usable source runs: every run is missing a calibration value or junit samples")
     reference = float(statistics.median([run["best_seconds"] for run in usable]))
     normalized: dict[str, list[float]] = {}
-    run_records: list[dict[str, object]] = []
+    run_records: list[dict[str, Any]] = []
     for run in usable:
         best = float(run["best_seconds"])
         factor = reference / best
-        record: dict[str, object] = {
+        record: dict[str, Any] = {
             "run_id": run["run_id"],
             "pr": run["pr"],
             "sha": run["sha"],
@@ -169,13 +168,13 @@ def test_shard_index(nodeid: str) -> int:
     return int(digest, 16) % TEST_SHARD_COUNT
 
 
-def write_sharded_baseline(output_dir: Path, baseline: dict[str, object]) -> list[Path]:
+def write_sharded_baseline(output_dir: Path, baseline: dict[str, Any]) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest = {key: baseline[key] for key in baseline if key != "tests"}
     manifest["test_shard_count"] = TEST_SHARD_COUNT
     manifest_path = output_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    buckets: dict[int, list[dict[str, object]]] = {index: [] for index in range(TEST_SHARD_COUNT)}
+    buckets: dict[int, list[dict[str, Any]]] = {index: [] for index in range(TEST_SHARD_COUNT)}
     for record in baseline["tests"]:
         buckets[test_shard_index(record["id"])].append(record)
     written = [manifest_path]
@@ -186,7 +185,7 @@ def write_sharded_baseline(output_dir: Path, baseline: dict[str, object]) -> lis
     return written
 
 
-def read_sharded_baseline(input_dir: Path) -> dict[str, object]:
+def read_sharded_baseline(input_dir: Path) -> dict[str, Any]:
     try:
         manifest = json.loads((input_dir / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
@@ -196,7 +195,7 @@ def read_sharded_baseline(input_dir: Path) -> dict[str, object]:
     shard_count = manifest.get("test_shard_count")
     if shard_count != TEST_SHARD_COUNT:
         raise BaselineError(f"unsupported test shard count: {shard_count!r}")
-    tests: list[dict[str, object]] = []
+    tests: list[dict[str, Any]] = []
     for index in range(TEST_SHARD_COUNT):
         try:
             records = json.loads((input_dir / f"tests-{index:02d}.json").read_text(encoding="utf-8"))
@@ -208,7 +207,7 @@ def read_sharded_baseline(input_dir: Path) -> dict[str, object]:
     return {**manifest, "tests": tests}
 
 
-def run_sums(baseline: dict[str, object], entries: list[dict[str, object]]) -> list[float]:
+def run_sums(baseline: dict[str, Any], entries: list[dict[str, Any]]) -> list[float]:
     factors = {int(run["run_id"]): float(run["speed_factor"]) for run in baseline["runs"]}
     totals: list[float] = []
     for entry in entries:
@@ -220,7 +219,7 @@ def run_sums(baseline: dict[str, object], entries: list[dict[str, object]]) -> l
     return totals
 
 
-def baseline_tests_map(baseline: dict[str, object]) -> dict[str, float]:
+def baseline_tests_map(baseline: dict[str, Any]) -> dict[str, float]:
     records = baseline.get("tests")
     if not isinstance(records, list):
         raise BaselineError("baseline tests must be a list of id/p50_seconds records")
@@ -238,9 +237,7 @@ def baseline_tests_map(baseline: dict[str, object]) -> dict[str, float]:
     return tests
 
 
-def check_baseline(
-    baseline: dict[str, object], entries: list[dict[str, object]], collected_ids: set[str]
-) -> dict[str, object]:
+def check_baseline(baseline: dict[str, Any], entries: list[dict[str, Any]], collected_ids: set[str]) -> dict[str, Any]:
     baseline_tests = baseline_tests_map(baseline)
     baseline_sum = float(sum(baseline_tests.values()))
     totals = run_sums(baseline, entries)
@@ -309,8 +306,8 @@ def read_shard_measured(paths: list[Path]) -> dict[str, dict[str, float]]:
     return measured
 
 
-def medium_drift_report(recorded: dict[str, float], measured: dict[str, dict[str, float]]) -> dict[str, object]:
-    shards: list[dict[str, object]] = []
+def medium_drift_report(recorded: dict[str, float], measured: dict[str, dict[str, float]]) -> dict[str, Any]:
+    shards: list[dict[str, Any]] = []
     all_ratios: list[float] = []
     for shard in sorted(measured):
         shard_tests = measured[shard]
@@ -346,7 +343,7 @@ def medium_drift_report(recorded: dict[str, float], measured: dict[str, dict[str
     }
 
 
-def drift_markdown(report: dict[str, object]) -> str:
+def drift_markdown(report: dict[str, Any]) -> str:
     lines = [
         "### Medium-shard drift",
         "",
