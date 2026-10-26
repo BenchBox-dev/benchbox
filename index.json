@@ -27544,10 +27544,15 @@
       "title": "develop is red: test_translate_query sees normalize_dialect_for_sqlglot called twice after #3185"
     },
     "trunk-serial-queue-latency-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T19:59:43Z",
+        "generation": "0bf37d4e667d4cc9a10bc795290d9f4c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Shorten the wait for post-merge Trunk results without losing a run per commit"
     },
     "trunk-trim-after-selection-live-20261024": {
