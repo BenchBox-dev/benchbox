@@ -196,6 +196,15 @@ Use the owned `BenchBox.wt-sqlglot-soft-fork` worktree on a current merged
   runtime imports with Ruff TID251 and an execution-based negative proving case.
   Raw upstream comparisons remain isolated with
   `uv run --no-project --isolated --with sqlglot==VERSION -- python ...`.
+- Version overlays are vacuous. `benchbox/_vendor/__init__.py` appends the bundled
+  wheel to `benchbox._vendor.__path__`, so BenchBox code never imports a PyPI
+  `sqlglot` added by `uv run --with sqlglot==VERSION`; such a run reports the
+  overlaid version while exercising the vendored one. Alternate-parser checks
+  use only the isolated, benchbox-free form above.
+  `tests/unit/sql_compat/test_sqlglot_overlay_guard.py` fails when a workflow,
+  Makefile, pre-commit config, Dockerfile or script passes `--with sqlglot...`
+  to `uv run`/`uvx` without `--no-project`, or installs PyPI `sqlglot` with
+  `pip install`, `uv pip install` or `uv add`.
 - Replace the version-only retirement regex with the bundled artifact/source
   identity. Parse TOML when comparing the pre-migration lock or validating
   dependency removal. Run offline artifact verification and schema-1
