@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import fcntl
 import json
 import os
 import subprocess
@@ -490,6 +489,8 @@ def test_planted_cloud_values_never_appear_in_the_output(
 def test_a_second_review_waits_for_the_machine_lock_then_refuses(
     env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    import fcntl
+
     monkeypatch.setattr(local, "LOCK_WAIT_SECONDS", 0.3)
     monkeypatch.setattr(local, "LOCK_POLL_SECONDS", 0.05)
     directory = local.state_dir()

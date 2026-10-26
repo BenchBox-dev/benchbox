@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import sys
 import textwrap
@@ -38,8 +39,14 @@ def _run_synthetic_modules(tmp_path: Path, sources: dict[str, str]) -> subproces
     paths = []
     for name, source in sources.items():
         path = tmp_path / name
-        path.write_text(textwrap.dedent(source))
+        path.write_text(textwrap.dedent(source), encoding="utf-8")
         paths.append(str(path))
+    config = tmp_path / "empty.ini"
+    config.write_text("[pytest]\n", encoding="utf-8")
+    environment = {"PYTHONPATH": str(REPO_ROOT), "PATH": "/usr/bin:/bin"}
+    for inherited in ("SYSTEMROOT", "SystemRoot", "WINDIR"):
+        if inherited in os.environ:
+            environment[inherited] = os.environ[inherited]
     return subprocess.run(
         [
             sys.executable,
@@ -54,11 +61,11 @@ def _run_synthetic_modules(tmp_path: Path, sources: dict[str, str]) -> subproces
             "--rootdir",
             str(tmp_path),
             "-c",
-            "/dev/null",
+            str(config),
             *paths,
         ],
         cwd=REPO_ROOT,
-        env={"PYTHONPATH": str(REPO_ROOT), "PATH": "/usr/bin:/bin"},
+        env=environment,
         capture_output=True,
         text=True,
         check=False,
