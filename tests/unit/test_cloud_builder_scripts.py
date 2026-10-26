@@ -383,7 +383,7 @@ def test_gateway_joins_userspace_verifies_and_installs_omp_without_printing_secr
         assert any(" up " in f" {line} " for line in tailscale_log)
         assert "key-ok" in tailscale_log
         assert (tmp_path / "omp-bin" / "omp").read_text(encoding="utf-8") == FAKE_OMP
-        assert os.access(tmp_path / "omp-bin" / "omp", os.X_OK)
+        assert (tmp_path / "omp-bin" / "omp").stat().st_mode & 0o111
         assert "omp=installed" in _status(repo)
         _assert_no_secrets(result.stdout, result.stderr)
         assert FAKE_TOKEN not in "\n".join(_stub_lines(tmp_path, "curl.log"))
@@ -431,6 +431,7 @@ def test_gateway_refuses_an_omp_download_with_a_bad_checksum(tmp_path: Path) -> 
         _stop(repo, env)
 
 
+@pytest.mark.skipif(not WORKFLOW.exists(), reason="CI workflows are not in this checkout (release tree)")
 def test_gateway_reads_the_pin_from_the_real_oracle_workflow(tmp_path: Path) -> None:
     repo = _gateway_clone(tmp_path, workflow_text=WORKFLOW.read_text(encoding="utf-8"))
     env = _gateway_env(tmp_path)
@@ -441,6 +442,64 @@ def test_gateway_reads_the_pin_from_the_real_oracle_workflow(tmp_path: Path) -> 
         assert "unreadable" not in result.stdout
         assert any("https://" in line and "omp" in line for line in _stub_lines(tmp_path, "curl.log"))
     finally:
+        _stop(repo, env)
+
+
+@pytest.mark.parametrize("failing", ["chmod", "mv"])
+def test_gateway_does_not_record_omp_installed_when_a_step_fails(tmp_path: Path, failing: str) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path)
+    stub = tmp_path / "stubs" / "bin" / failing
+    real = f"/bin/{failing}" if Path(f"/bin/{failing}").exists() else f"/usr/bin/{failing}"
+    marker = "+x" if failing == "chmod" else "omp.download"
+    stub.write_text(f'#!/bin/sh\ncase "$*" in *{marker}*) exit 1 ;; esac\nexec {real} "$@"\n', encoding="utf-8")
+    stub.chmod(0o755)
+    try:
+        result = _run(GATEWAY, cwd=repo, env=env)
+
+        assert result.returncode == 1
+        assert "refusing to install" in result.stdout
+        assert "omp=not-installed" in _status(repo)
+        assert not (tmp_path / "omp-bin" / "omp").exists()
+    finally:
+        _stop(repo, env)
+
+
+def test_bootstrap_does_not_record_omp_installed_when_the_install_fails(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    (repo / "scripts").mkdir()
+    (repo / "scripts" / "cloud_gateway.sh").write_text(GATEWAY.read_text(encoding="utf-8"), encoding="utf-8")
+    env = _gateway_env(tmp_path, STUB_OMP_CONTENT="tampered\n")
+    try:
+        result = _run(BOOTSTRAP, cwd=repo, env=env)
+
+        assert result.returncode == 0, result.stderr
+        assert "omp=installed" not in result.stdout
+        assert "omp=not-installed" in result.stdout
+    finally:
+        _stop(repo, env)
+
+
+def test_gateway_ignores_a_stored_pid_that_belongs_to_another_process(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path)
+    bystander = subprocess.Popen(["sleep", "600"])
+    try:
+        state = repo / ".git" / "benchbox-cloud-gateway"
+        state.mkdir()
+        (state / "tailscaled.pid").write_text(str(bystander.pid), encoding="utf-8")
+        (state / "tailscaled.sock").write_text("", encoding="utf-8")
+
+        result = _run(GATEWAY, cwd=repo, env=env)
+
+        assert result.returncode == 0, result.stderr
+        assert len(_stub_lines(tmp_path, "tailscaled.log")) == 1
+        assert bystander.poll() is None
+        _stop(repo, env)
+        assert bystander.poll() is None
+    finally:
+        bystander.kill()
+        bystander.wait()
         _stop(repo, env)
 
 

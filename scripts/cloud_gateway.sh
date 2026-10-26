@@ -26,13 +26,19 @@ sha256_of() {
 daemon_alive() {
   [ -f "$pid_file" ] || return 1
   pid=$(cat "$pid_file")
-  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+  [ -n "$pid" ] || return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+  args=$(ps -p "$pid" -o args= 2>/dev/null) || return 1
+  case "$args" in
+    *tailscaled*"--socket=$socket"*) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 stop_daemon() {
-  if [ -f "$pid_file" ]; then
+  if daemon_alive; then
     pid=$(cat "$pid_file")
-    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    if [ -n "$pid" ]; then
       kill "$pid" 2>/dev/null || true
       waited=0
       while kill -0 "$pid" 2>/dev/null && [ "$waited" -lt 50 ]; do
@@ -92,7 +98,10 @@ install_omp() {
     say "OMP already installed and verified"
     return 0
   fi
-  mkdir -p "$install_dir" "$state_dir"
+  if ! mkdir -p "$install_dir" "$state_dir"; then
+    say "cannot create the OMP install directory"
+    return 1
+  fi
   candidate="$state_dir/omp.download"
   rm -f "$candidate"
   if ! curl -fsSL --proto '=https' --tlsv1.2 "$omp_url" -o "$candidate"; then
@@ -105,8 +114,16 @@ install_omp() {
     say "OMP checksum mismatch; refusing to install"
     return 1
   fi
-  chmod +x "$candidate"
-  mv -f "$candidate" "$target"
+  if ! chmod +x "$candidate"; then
+    rm -f "$candidate"
+    say "cannot mark OMP executable; refusing to install"
+    return 1
+  fi
+  if ! mv -f "$candidate" "$target"; then
+    rm -f "$candidate"
+    say "cannot move OMP into place; refusing to install"
+    return 1
+  fi
   omp_state=installed
   say "OMP installed and verified"
 }
