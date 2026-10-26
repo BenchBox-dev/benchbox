@@ -6,6 +6,7 @@
     "Query docs for these benchmarks render translated SQL with pretty output; regenerated page list in the PR.",
     "make sql-execution-gate, compat-docs-check, typecheck, comment-policy-check and the retirement check pass; affected published bundles listed in the PR body."
   ],
+  "context": "DONE: PR #3544 merged (7b8484a4c), oracle SHIP_WITH_FIXES then SHIP. Hand-written benchmark SQL now declares a duckdb source dialect and routes through translate_sql_query (pin test asserts exact (benchmark, dialect, query) triples); ReadPrimitives pinned to netezza per owner ruling. Corpus: changed cells datavault 330, flightdata 360, metadata_primitives 990, nyctaxi 407, tsbs_devops 270, vector_search 78, write_primitives 2144; read_primitives none. Executed: no result changed on DuckDB/SQLite/DataFusion/PostgreSQL (23 SQLite queries that errored now run); write ops 112x4 engines identical except SQLite 9 diffs (7 improvements, 2 error-text). Query docs regenerated for those benchmarks. sql-execution-gate PASS 0 unexplained; pr-preflight pass; 2497 tests. No bundles affected.",
   "description": "Found by the NULL-ordering audit (fork #67; history://NullsAudit-2). Several benchmarks hand their SQL to engines without translation, so NULL placement and other dialect semantics follow each engine's default: TSBS and DataVault on cloud dialects, NYCTaxi, FlightData, VectorSearch, the Read/Write/Metadata primitives, and the hand-written TPC-DI and CoffeeShop variants. No NULL sort keys exist in the checked data, so there is no impact today. OWNER DECISION 2026-10-25: declare duckdb as their source dialect so they are translated like every other benchmark. Second owner decision: query docs for these benchmarks then render translate_sql_query(pretty) output per platform (exactly what runs); until then #3469 shows them verbatim.\nDECISION GATES: (G1) any benchmark whose hand-written per-platform variant exists because translation could not express it: keep the variant and record why, or replace it only if translation reproduces it exactly (executed evidence); stop and ask if neither. (G2) any changed query whose executed result changes on a local engine: stop and ask before landing.\nGUARDRAILS: benchmark definitions (query intent, parameters) unchanged; hand-written variants are benchmark data and stay unless G1 allows; no cloud spend; published bundles untouched except known_defects flags per policy when recorded rows were wrong.",
   "sessions": [
     {
@@ -23,6 +24,14 @@
       "generation": "a635547c705d4f70895946fadca000d2",
       "op": "take",
       "op_id": "67f783a1bee94f68aad21ccb3e0a696b",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-26T15:08:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9825d9e8c05e4913a1af40a1184ff7fc",
       "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
