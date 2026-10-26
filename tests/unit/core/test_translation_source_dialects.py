@@ -12,7 +12,7 @@ from benchbox.core.benchmark_registry import get_all_benchmarks, get_benchmark_s
 from benchbox.core.query_catalog import _benchmark_instance
 from benchbox.core.query_catalog_base import is_native_dialect
 
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 DIALECTS = (
     "duckdb",
