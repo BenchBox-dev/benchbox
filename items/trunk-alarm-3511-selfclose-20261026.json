@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A daily alarm run after 2026-10-26T18:00Z is read live: either #3511 is closed by the alarm (record run id) or the risen metrics are reported with numbers",
+    "No code change is made under this item; if it flaps for 3 consecutive days, report that pattern to the owner instead"
+  ],
+  "context": "Do not close #3511 manually; the alarm owns it.",
+  "description": "Issue #3511: scripts/trunk_duration_trend.py (daily 05:23 UTC) compares the 1-day p50 against the prior 7 days at a 15% threshold. The real regression (#3423 chDB probe) was fixed by #3462; remaining elevation is runner variance (uniform 1.8x including startup) plus window contamination by pre-fix runs. Owner decision 2026-10-26: leave the alarm unchanged; it auto-closes on the first run with no risen metric and all metrics evaluated. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
+  "not_before": "2026-10-27T06:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-26T19:28:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "aa996cc5cf594baea720af179f4c6c83",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}
