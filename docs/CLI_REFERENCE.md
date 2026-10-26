@@ -227,7 +227,7 @@ offline row-count validation.
 
 ### `benchbox compare`
 
-Compares benchmark result files for regression detection. See [results](reference/cli/results.md#compare).
+Compares benchmark result files for regression detection. See [results](reference/cli/results.md#cli-compare).
 
 ### `benchbox convert`
 

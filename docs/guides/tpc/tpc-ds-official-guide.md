@@ -63,6 +63,8 @@ The TPC-DS benchmark is the official Transaction Processing Performance Council 
 - **Multi-Stream**: Concurrent execution capability
 - **Refresh Functions**: Data maintenance operations
 
+(qphds-size-not-exported)=
+
 ### QphDS@Size (not exported)
 
 The **QphDS@Size** (Queries per Hour at Scale Factor) is the TPC-DS primary composite metric. The specification defines it as:
