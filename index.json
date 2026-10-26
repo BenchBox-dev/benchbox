@@ -15949,12 +15949,17 @@
       "title": "Dask `threads_per_worker` under `threaded` and LakeSail `sail_workers` are recorded but have no effect; LakeSail `distributed` is overstated in the docs"
     },
     "oracle-absence-auth-pattern-matches-diff-text-20261023": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T17:15:04Z",
+        "generation": "22c807198c994281abc743db694554e2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [
         "oracle-absence-json-error-events-20261026"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "The oracle records an attempt as an auth absence when the reviewed diff contains \"401\""
     },
     "oracle-absence-classification-lows-20261008": {
