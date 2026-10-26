@@ -20,6 +20,9 @@ docs-validate:
 	@echo ""
 	@echo "Checking repo-local doc relative links..."
 	@uv run -- python scripts/check_doc_relative_links.py
+	@echo ""
+	@echo "Checking Markdown heading anchors..."
+	@uv run -- python scripts/check_doc_anchors.py
 
 prompt-quickstarts-check:
 	@uv run -- python scripts/generate_landing_quickstarts.py

@@ -17,6 +17,8 @@ The TPC-H official runner coordinates Power, Throughput, and Maintenance phases.
 
 TPC-H is a decision support benchmark that consists of a suite of business-oriented ad-hoc queries and concurrent data modifications. The benchmark illustrates decision support systems that examine large volumes of data, execute queries with a high degree of complexity, and give answers to critical business questions.
 
+(qphh-size)=
+
 ### QphH@Size
 
 TPC-H QphH@Size is the geometric mean of Power@Size and Throughput@Size. BenchBox emits it only for an official run with complete evidence: all 22 Power queries and RF1/RF2 succeed on update set F; Throughput completes at least two query streams and one successful RF1/RF2 pair per stream on consecutive sets F+1 through F+S; and neither phase has failed queries. Query-subset runs and refresh failures do not qualify.

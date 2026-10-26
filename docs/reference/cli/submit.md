@@ -176,5 +176,5 @@ In order, the commands:
 
 - [auth](auth.md) - Manage hosted submission credentials
 - [results](results.md) - View benchmark result files
-- [export](results.md#export) - Export results to CSV, HTML, or JSON formats
+- [export](results.md#cli-export) - Export results to CSV, HTML, or JSON formats
 - [report](report.md) - Historical analysis and trend detection

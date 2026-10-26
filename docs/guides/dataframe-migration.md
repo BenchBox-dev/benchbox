@@ -148,5 +148,5 @@ The first command runs SQL execution. The second runs DataFrame execution. The t
 ## Next Steps
 
 - [DataFrame Platform Documentation](../platforms/dataframe.md)
-- [Tuning System Reference](../platforms/dataframe.md#tuning-system)
+- [Tuning System Reference](../platforms/dataframe.md#dataframe-tuning)
 - [Platform Selection Guide](../platforms/platform-selection-guide.md)
