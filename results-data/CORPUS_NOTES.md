@@ -1,5 +1,156 @@
 # Corpus Generation Notes - 2026-04-03
 
+## Fork 30.24.0.15 published-impact audit (2026-10-25)
+
+- QuestDB unpadded date literals: QuestDB read `CAST('1999-5-01' AS DATE)` as
+  NULL, so TPC-DS Q16, Q94 and Q95 (base and OBT) filtered on NULL date bounds.
+  No QuestDB bundle exists (367 manifests checked), so no sidecar changed.
+  DataFusion text is unchanged for dates, and ClickHouse (chDB 26.9.2.1) reads
+  unpadded text, so ClickHouse bundles need no change.
+- NULL ordering (fork #67): translation now keeps the source dialect's NULL
+  placement where the target has no NULLS clause for the position. The audit
+  found TPC-DS Q74 on T-SQL, Doris and StarRocks as the only query whose sort
+  keys hold NULLs in the data checked. No published bundle ran an affected
+  query with NULL sort keys, and no `known_defects` id was added. The
+  explicit `NULLS LAST` on Snowflake, Databricks and BigQuery noted under the
+  2026-10-24 audit preserves the DuckDB reference placement and is kept.
+- Spark and Databricks (fork #69): `\1` regular-expression references are
+  written `$1`, and sub-day `DATE_TRUNC` units are no longer written as
+  `TRUNC`, which returns NULL for them. This fixes ClickBench Q29 (recorded
+  0, 1 and 1 rows at SF 0.1, 1 and 10 against 0, 0 and 6) and Q43 (1 row at
+  every scale against 2, 22 and 159) on Databricks. The three Databricks
+  ClickBench bundles (`clickbench_sf01_databricks_sql_20261003_220608_70c9438e`,
+  `clickbench_sf1_databricks_sql_20261003_230712_3a9e1d61`,
+  `clickbench_sf10_databricks_sql_20261003_231900_2437b487`) recorded those wrong
+  rows and now carry `known_defects: ["defective-superseded-sql-translation"]`
+  (the existing id; no new id). Flagging the SF0.1 bundle leaves two ranked
+  platforms (BigQuery and Snowflake) in the ClickBench SF0.1 cohort, so it is
+  listed in `DOCUMENTED_SHALLOW_COHORTS` in `validate_corpus.py`. The bundles
+  are not rerun or edited; replacing them means rerunning with the current
+  wheel, which restores the cohort.
+
+## Results that ran superseded SQL translations (2026-10-24)
+
+BenchBox's SQL transpilation fix-ups moved into the permanent SQLGlot fork
+(PRs #3185, #3235, #3239, #3257, #3260, #3291, #3294, #3295 and #3342, plus
+the TPC-DS OBT v0.2 renderer in #3361/#3380). Every bundle in the corpus was
+produced before those changes (bundles span 2026-08-23 to 2026-10-13), by
+BenchBox 0.4.2 or earlier on upstream sqlglot 30.6.0 or 30.18.0. Comparing
+the SQL each benchmark generated then with the SQL it generates now found 124
+bundles whose executed SQL has since changed. 43 of them recorded wrong
+values, wrong rows or queries that failed; the rest changed only in timing or
+SQL text.
+
+Eighteen bundles with wrong values from superseded SQL were still ranked.
+Each now carries `known_defects: ["defective-superseded-sql-translation"]` in
+its `.manifest.json` sidecar, which the explorer pipeline turns into
+`ranking_exclusion_reason=known_defective_data`; the bundles stay available
+for comparison. Two ClickHouse Local Data Vault bundles (below) were already
+unranked under `defective-macdbgen-addresses`; they gained the same id without
+changing ranking. Ten sidecars were created for bundles that had none, recording
+`result_source: internal` so trust labels are unchanged; the other eight were
+extended. `corpus-inventory.json` is untouched because no bundle was added or
+removed. Replacing them means rerunning the cells with the current fork wheel,
+not editing these bundles.
+
+Flagged (short hash is the final segment of the bundle name):
+
+- ClickHouse Local TPC-H SF1 `f22a0442`, `678507a6` (#3342, #3235): Q6's
+  `BETWEEN 0.06 - 0.01 AND 0.06 + 0.01` bound was folded to a range that
+  dropped `l_discount = 0.07` rows, Q8's quotient truncated in decimal
+  division, and Q14/Q17 text changed.
+- ClickHouse Local TPC-DS SF1 `c250741b`, `4eb148cf` (#3342, #3235): ROLLUP
+  NULL keys and decimal division changed values in Q2, Q5, Q12, Q14, Q20, Q36,
+  Q59, Q66, Q77, Q80 and Q98.
+- DataFusion TPC-DI SF0.01, SF0.1, SF1 `b9971b30`, `51f0bade`, `85837db4`
+  (#3239, #3260, #3291): DataFusion was translated as PostgreSQL and divided
+  integers exactly as written. AQ8 returned 1 row against 2 to 3 on every
+  other engine and EQ8 returned 0 (`45 / 50` is integer division on DataFusion).
+- DataFusion TPC-DS SF1 `f8619d78`, `5207d224`, `6bed4cfc`, `754e0bfc` and
+  SF10 `15b41887` (#3239, #3291): integer division gave wrong values in Q21,
+  Q78 and Q83, and Q12, Q36, Q59, Q66 and Q98 differ in precision; 25 query
+  texts changed.
+- DataFusion CoffeeShop SF0.01, SF0.1, SF1 `bb01b471`, `387c45c7`, `e1266562`
+  (#3291): QC1 and SA3 divided `SUM(quantity)` by `COUNT` as integers; SA1,
+  SA4 and TR1 are equivalent.
+- SQLite CoffeeShop SF0.01, SF0.1, SF1 `16f67069`, `3aadc9a8`, `5bd85b97`
+  (#3257, #3291): the same QC1 and SA3 integer-division truncation.
+- ClickHouse Local Data Vault SF0.01 and SF0.1 `c202ec05`, `b4fd5612` (fork
+  30.24.0.12): Q6's `sat_lineitem` `BETWEEN 0.06 - 0.01 AND 0.06 + 0.01` bounds
+  were evaluated as Float64 and dropped the `l_discount = 0.07` rows (SF0.01 sum
+  734493.7281 against 1193053.2253 on DuckDB). These two were already unranked,
+  keep their existing `defective-macdbgen-addresses` id and gain the new one;
+  they are not among the eighteen ranked bundles counted above.
+
+Flagging the DataFusion and ClickHouse Local TPC-DI SF0.01 bundles and the
+DataFusion and SQLite CoffeeShop SF0.01 bundles leaves two ranked platforms in
+those two cohorts (DuckDB and ClickHouse Local), so both are listed in
+`DOCUMENTED_SHALLOW_COHORTS` in `validate_corpus.py` alongside the TPC-H
+cohorts. They are restored by rerunning the flagged cells.
+
+Already flagged, and also ran superseded SQL: 24 bundles keep their existing
+ids and gain no new one. They are the 22 ClickHouse Local, ClickHouse Server
+and SQLite TPC-H, TPC-H skew and TPC-Havoc bundles (Q6 bound fold in #3342
+for ClickHouse; SQLite Q6 `BETWEEN` float bounds fixed in #2512 and moved to
+the fork by #3239, with the Q8 cast in #3257), the two SQLite read_primitives
+bundles whose `timeseries_trend_analysis`, `olap_cube_analysis`,
+`olap_rollup_analysis`, `statistical_variance_stddev`, `groupby_all_complex`
+and `decimal_arithmetic` queries failed before #3291 and now run, and the six
+SF1 TPC-DS OBT bundles (#3361/#3380). The ones carrying
+`defective-macdbgen-addresses` or `defective-tpcds-obt-parameters` stay
+unranked for that reason too.
+
+Changed SQL but no flag (results are not wrong; do not read these as
+defects):
+
+- ClickHouse Local decimal-division and `safe_division` text (#3342, #3235)
+  changed values only at decimal precision or on a zero divisor: CoffeeShop,
+  NYC Taxi, FlightData, TPC-DI, read_primitives and DataVault bundles (16).
+  Rerun them with the ClickHouse batch.
+- DataFusion TPC-H Q11/Q16/Q18/Q20 rewrites (#3294) and the Q8 cast (#3291):
+  timing only; Q16 row counts equal DuckDB's (296, 2762, 18314). Same for
+  DataFusion TPC-H skew Q8, TPC-Havoc `1_v4`/`8_v*` and read_primitives
+  `decimal_arithmetic` (precision or timing).
+- DataFusion ClickBench SF1 `8014d1c9` (#3185) ran untranslated ClickHouse
+  text; 27 of 43 query texts change, all 43 row counts match DuckDB.
+- SQLite ClickBench SF1 `6eb94fe6` (#3185, #3291): Q19 and Q43 failed before
+  and now run.
+- TPC-DI EQ7 (#3294): the query now uses a derived-table form. Row counts are
+  unchanged at 3 and the changelog says to treat the old text as superseded.
+  It affects BigQuery, Databricks and Snowflake at SF0.1, SF1 and SF10 and the
+  DuckDB, DataFusion and ClickHouse Local runs. A whole-bundle flag would
+  unrank every query in those bundles for one changed query, so EQ7 is
+  recorded here only.
+- TPC-DS Q58 (#3295, qualified `ORDER BY ss_items.item_id`) on BigQuery,
+  Databricks and Spark, and Q90 (#3342, guard placement) on every SQL TPC-DS
+  bundle except ClickHouse and SQLite: no failure and no wrong row count was
+  observed. Q90's guard only matters when `pmc = 0`, and every run returned
+  one row.
+- ClickHouse timing boundary (#3235): the sub-millisecond parse now sits
+  outside the timer. It touches the AMPLab, H2ODB, SSB, JoinOrder and
+  ClickBench ClickHouse Local bundles (11) and changes no value.
+
+Other issues found while checking, outside these PRs:
+
+- SQLite ClickBench SF1 `6eb94fe6` returns row counts different from the other
+  nine engines for 26 of 43 queries; see "SQLite ClickBench quoted empty
+  strings" below.
+- Databricks ClickBench SF1 Q29 and Q43 differ from the other engines. This is
+  the case already described under Cloud ClickBench (2026-10-04).
+- Since v0.4.1, Snowflake and Databricks translate `DESC` ordering to
+  `DESC NULLS LAST` (TSBS DevOps and DataVault Q11), which can reorder rows
+  containing NULLs.
+- SQLite zero-padded date literals (fork 30.24.0.13): TPC-DS Q16, Q94 and Q95, base
+  and OBT, filtered on `NULL` date bounds on SQLite, and TPC-Havoc `1_v7` failed
+  there. No published SQLite bundle is affected: the only SQLite TPC-DS bundle
+  (`tpcds_sf1_sqlite_sql_20260824_083944_c6745a86`) ran query 1 alone, and there
+  is no SQLite `tpcds_obt` or `tpchavoc` bundle. No sidecar changed.
+- SQLite `GROUP BY ()`, PostgreSQL and DataFusion TPC-Havoc `1_v7`, and PostgreSQL TPC-DS OBT Q2, Q36, Q70, Q78 and Q86 (fork 30.24.0.16): these failed on the engines with syntax or function errors. No published bundle is affected: there are no PostgreSQL bundles and no SQLite `tpchavoc` or `tpcds_obt` bundle, and the DataFusion TPC-Havoc bundles skipped `1_v7`, so they recorded no wrong rows. No sidecar changed.
+- ClickHouse DataVault Q6 was wrong because the Q6 bound fold applied only to
+  the `lineitem` table, so `sat_lineitem` kept `BETWEEN 0.06 - 0.01 AND
+  0.06 + 0.01`. Fork 30.24.0.12 folds every table and column, so rerunning
+  DataVault on the current wheel fixes it; the two bundles are flagged above.
+
 ## TPC-Havoc cross-variant row-count divergence audit (2026-10-17)
 
 The three SF=0.01 TPC-Havoc SQL bundles (`tpchavoc_sf001_duckdb_sql_20260826_163147_d96baca2.json`,
@@ -33,6 +184,28 @@ remain available for comparison. Query rendering now takes every parameter
 from the dsqgen parameter log for the run's seed and scale, as TPC-DS does.
 Rerunning the six cells with the fixed renderer, then ingesting the new
 bundles, is a follow-up.
+
+## SQLite ClickBench quoted empty strings (2026-10-25)
+
+The SQLite loader split ClickBench rows on `|` without reading CSV quoting, so
+the generator's quoted empty string `""` was stored as the two characters `""`
+instead of an empty string, and a quoted field holding `|`, a quote or a
+newline would have shifted columns. Current develop at SF1 (1,000,000 rows, the
+same generated file loaded into SQLite and DuckDB) matched DuckDB on 24 of 43
+queries before the fix and returned 10 rows against 9 for Q11 and Q12, and
+wrong values for `SearchPhrase <> ''` and `MobilePhoneModel <> ''` groups. The
+loader now parses quoted fields with the manifest quote character, and every
+non-empty SQLite result matches DuckDB.
+
+Published bundle `clickbench_sf1_sqlite_sql_20260824_101152_6eb94fe6` recorded
+wrong rows for 23 queries (Q8 1 row against 20, Q9, Q10, Q16 to Q18, Q34 to
+Q36 one row against 8 or 10, Q11 to Q15, Q22, Q24 to Q27, Q31, Q32, Q37 and
+Q38 zero rows against 8 or 10) and failed Q19, Q29 and Q43. Its sidecar now
+carries `known_defects: ["defective-sqlite-clickbench-row-counts"]`; the
+bundle file is unchanged. The recorded counts are lower than a current-code
+run produces, so the bundle was loaded with older code or data; which one is
+not established. Rerunning the cell and ingesting the new bundle is a
+follow-up.
 
 ## DuckDB version matrix (operator-run, 2026-08-29)
 
