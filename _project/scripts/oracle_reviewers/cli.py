@@ -929,7 +929,14 @@ def _retry_reason(
             return "its retry is due"
         if state.outcome == retry.PENDING and state.pending_cause == retry.ALL_ABSENT:
             reset_at = github.backoff_reset_at(repo, number, head)
-            if retry.due_for_retry(state, head, now, rules, reset_at):
+            if reset_at is not None and retry.due_for_retry(state, head, now, rules, reset_at):
+                since = max(github.committed_at(repo, head), reset_at)
+                if sweep.stateless_failures(runs, since) > 0:
+                    _summary(f"retry not dispatched for #{number}: a run since the reset failed without a result")
+                    return None
+                if sweep.recent_dispatches(runs, now) >= rules.daily_budget:
+                    _summary(f"retry not dispatched for #{number}: the daily budget of {rules.daily_budget} is used")
+                    return None
                 return "the owner reset its backoff"
         return None
     if not sweep.newest_failed(runs):

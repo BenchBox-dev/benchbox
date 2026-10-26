@@ -679,7 +679,10 @@ def test_the_failure_status_is_decided_with_the_job_token_and_posted_with_the_ap
     decide, mint, post = (_step(name) for name in FAILURE_STEPS)
     assert decide["env"]["GH_TOKEN"] == "${{ github.token }}"
     assert "surface-failure" in decide["run"]
+    assert "pyyaml==6.0.3" in decide["run"]
+    assert decide["run"].lstrip().startswith("uv run")
     assert _secrets(decide) == set()
+    assert _step("Scan the disk for secret values after the reviewer exits")["id"] == "scan_after"
     assert "permission-statuses" in mint["with"] and "permission-pull-requests" not in mint["with"]
     assert post["env"]["GH_TOKEN"] == "${{ steps.failure_app.outputs.token }}"
     assert "statuses/$HEAD_SHA" in post["run"]
@@ -688,6 +691,8 @@ def test_the_failure_status_is_decided_with_the_job_token_and_posted_with_the_ap
 def test_the_app_token_for_the_failure_status_is_not_minted_while_the_reviewer_may_still_run() -> None:
     condition = _step_if("Mint the App token for the failure status")
     assert "steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false'" in condition
+    assert "steps.scan_after.outcome != 'failure'" in condition
+    assert "steps.redact.outcome != 'failure'" in condition
     assert "steps.surface.outputs.post == 'true'" in condition
 
 

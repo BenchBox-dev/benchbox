@@ -637,7 +637,8 @@ cancels a run in flight and a cancelled run posts nothing.
   never cancels a retry in flight. Beyond due pending heads, it re-dispatches
   a head whose latest run failed, timed out or was cancelled without leaving a
   retry state. That happens once: when the two latest runs on the head both
-  failed without a result, the sweep stops and the failed run posts a pending
+  failed without a result (runs that never reviewed the head, such as a
+  skipped run from a plain comment, are ignored), the sweep stops and the failed run posts a pending
   `oracle-verdict` status naming the failed step. A failure inside one pull
   request's lookup or dispatch is reported and the sweep continues with the
   others, then fails the job. The daily budget, backoff and attempt limits are

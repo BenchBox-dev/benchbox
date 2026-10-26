@@ -524,7 +524,7 @@ def test_every_unfinished_conclusion_counts_as_a_failure_without_state(
     assert fake.dispatched == [7]
 
 
-@pytest.mark.parametrize("conclusion", ["success", "skipped"])
+@pytest.mark.parametrize("conclusion", ["success"])
 def test_a_run_that_finished_is_not_retried(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, conclusion: str) -> None:
     fake = _stateless_fake(
         _verdict_run(7, conclusion=conclusion, age=timedelta(minutes=30)), _verdict_run(7, conclusion="failure")
@@ -648,6 +648,41 @@ def test_a_second_failure_with_no_step_listed_still_posts_a_status(
     fake = _stateless_fake(_verdict_run(7, conclusion="failure"))
     _, status, _ = _surface(monkeypatch, tmp_path, fake, [])
     assert status is not None and "an earlier step" in status["description"]
+
+
+def test_a_skipped_review_run_neither_dispatches_nor_hides_a_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    failed = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    skipped = _verdict_run(7, conclusion="skipped", age=timedelta(hours=1))
+    fresh = _stateless_fake(skipped, failed)
+    assert _sweep(monkeypatch, tmp_path, fresh) == 0
+    assert fresh.dispatched == [7]
+    only = _stateless_fake(skipped)
+    assert _sweep(monkeypatch, tmp_path, only) == 0
+    assert only.dispatched == []
+
+
+def test_a_skipped_run_between_two_failures_stops_the_second_dispatch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    runs = _stateless_fake(
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="skipped", age=timedelta(hours=2)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=3)),
+    )
+    assert _sweep(monkeypatch, tmp_path, runs) == 0
+    assert runs.dispatched == []
+
+
+def test_an_owner_reset_covers_one_run_then_expires_on_a_failure_without_a_result(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    reset = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    reset.comments = _reset_comments()
+    reset.runs = [_verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(minutes=10))]
+    assert _sweep(monkeypatch, tmp_path, reset) == 0
+    assert reset.dispatched == []
 
 
 def _reset_comments(head: str = HEAD, *, edited: bool = False) -> list[dict[str, Any]]:

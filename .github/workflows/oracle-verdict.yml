@@ -189,6 +189,7 @@ jobs:
           --workspace "$GITHUB_WORKSPACE/workspace" --home-root "$RUNNER_TEMP"
 
       - name: Scan the disk for secret values after the reviewer exits
+        id: scan_after
         if: steps.plan.outputs.decision == 'review'
         working-directory: trusted
         env:
@@ -332,12 +333,12 @@ jobs:
           PR_NUMBER: ${{ steps.plan.outputs.pr }}
           HEAD_SHA: ${{ steps.plan.outputs.head_sha }}
         run: >-
-          python3 -m _project.scripts.oracle_reviewers.cli surface-failure --policy .github/oracle-reviewers.yml
-          --pr "$PR_NUMBER" --head-sha "$HEAD_SHA" --out "$RUNNER_TEMP/oracle-failure/status.json"
+          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli
+          surface-failure --policy .github/oracle-reviewers.yml --pr "$PR_NUMBER" --head-sha "$HEAD_SHA" --out "$RUNNER_TEMP/oracle-failure/status.json"
 
       - name: Mint the App token for the failure status
         id: failure_app
-        if: ${{ failure() && steps.surface.outputs.post == 'true' && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') }}
+        if: ${{ failure() && steps.surface.outputs.post == 'true' && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') && steps.scan_after.outcome != 'failure' && steps.redact.outcome != 'failure' }}
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
           app-id: ${{ secrets.ORACLE_APP_ID }}

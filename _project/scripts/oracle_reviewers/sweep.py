@@ -10,6 +10,7 @@ from typing import Any
 RUN_TITLE_PULL = re.compile(r"\bpr=(\d+)\)$")
 COMPLETED = "completed"
 FAILED = frozenset({"failure", "timed_out", "cancelled"})
+NEUTRAL = frozenset({"skipped"})
 RUN_WINDOW = timedelta(days=7)
 DISPATCH_GRACE = timedelta(minutes=2)
 DISPATCH_WINDOW = timedelta(hours=24)
@@ -65,7 +66,7 @@ def stateless_failures(runs: Iterable[Run], head_committed_at: datetime, exclude
     for run in runs:
         if run.created_at < head_committed_at:
             break
-        if run.id == exclude or run.status != COMPLETED:
+        if run.id == exclude or run.status != COMPLETED or run.conclusion in NEUTRAL:
             continue
         if run.conclusion not in FAILED:
             break
@@ -78,5 +79,5 @@ def recent_dispatches(runs: Iterable[Run], now: datetime) -> int:
 
 
 def newest_failed(runs: tuple[Run, ...]) -> bool:
-    finished = next((run for run in runs if run.status == COMPLETED), None)
+    finished = next((run for run in runs if run.status == COMPLETED and run.conclusion not in NEUTRAL), None)
     return finished is not None and finished.conclusion in FAILED
