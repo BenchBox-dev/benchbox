@@ -219,7 +219,7 @@ def test_genuine_revert_is_never_selected() -> None:
         "fix/revert-3378",
         3391,
         "e" * 40,
-        [('Revert "docs" (#3378)', f"This reverts commit {FIRST_RED_SHA}.")],
+        [('Revert "export" (#3378)', f"This reverts commit {FIRST_RED_SHA}.")],
     )
     assert [item["number"] for item in _selected(run)] == [3385]
 
@@ -306,7 +306,7 @@ def test_replay_disarms_ordinary_armed_and_names_culprit_3378() -> None:
         "fix/revert-3378",
         3391,
         "e" * 40,
-        [('Revert "docs" (#3378)', f"This reverts commit {FIRST_RED_SHA}.")],
+        [('Revert "export" (#3378)', f"This reverts commit {FIRST_RED_SHA}.")],
     )
     run.armed.append(_armed(3392, "fix/other", armed=False))
     selected, failed = trunk_red_disarm.select_for_disarm(run, trunk_revert.REPOSITORY)
