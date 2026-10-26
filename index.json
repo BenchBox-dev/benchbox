@@ -16113,6 +16113,15 @@
       "status": "done",
       "title": "Credit oracle evidence only for files actually read"
     },
+    "oracle-evidence-exempt-binary-prose-20261026": {
+      "claim": null,
+      "needs": [
+        "oracle-dispute-keyed-published-evidence-20261026"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop the oracle evidence check making attempts absent on binary and prose files"
+    },
     "oracle-external-review-findings-20261026": {
       "claim": null,
       "needs": [],
