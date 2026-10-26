@@ -2,7 +2,7 @@
   "acceptance": [
     "Agreed behavior (code or documented reading) so a waiting verdict is never misread as a refusal."
   ],
-  "context": "Unblocked 2026-10-18: the blocking pair (ci-stale + cancel-race) merged in PR #3111. Ready to implement: show waiting-for-review as pending instead of failed, following the pending reporting decided by that fix. Not started; work stopped 2026-10-18.",
+  "context": "2026-10-26: the gate's waiting messages change in oracle-gate-from-verdict-job-20261026 (thread check removed) and retire-oracle-review-workflow-20261021 (no manual dispatch instruction); re-check this item against the result.\n\nUnblocked 2026-10-18: the blocking pair (ci-stale + cancel-race) merged in PR #3111. Ready to implement: show waiting-for-review as pending instead of failed, following the pending reporting decided by that fix. Not started; work stopped 2026-10-18.",
   "description": "The oracle-review CI check exits failure while merely awaiting a verdict for the head, which reads identically to a refusal. Consider reporting pending/neutral until a verdict exists for the head, failing only on refusal, expiry, or SHIP-with-unresolved-threads; or document the reading so the next session does not chase a non-defect.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "op": "update",
       "op_id": "6bd85f22c1624d73acb30c06de130a74",
       "session_id": "d2c53a64af484bf0b44e45ae35143611"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T15:57:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "627a9a7e4383417aa084820a0641e63c",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
 }
