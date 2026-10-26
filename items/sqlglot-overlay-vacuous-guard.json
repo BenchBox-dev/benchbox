@@ -4,6 +4,7 @@
     "Guard passes on the repository and runs on the release tree.",
     "PR merged with oracle SHIP."
   ],
+  "context": "DONE: PR #3553 merged (head 61f7881f2). tests/unit/sql_compat/test_sqlglot_overlay_guard.py scans workflows, composite actions, .pre-commit-config.yaml, Makefile, Dockerfiles and scripts/ (plus _project/scripts/ when present); 10 bad inputs flagged, 5 good inputs (incl. isolated uv run --no-project --isolated --with sqlglot==VERSION) allowed. Local oracle SHIP, pr-open proceeded; CI oracle SHIP; armed after trunk went green (#3554). Guard passes on repo; tests/system/test_ci_lint_parity.py, test_release_infrastructure.py, test_ci_units.py pass; pr-preflight pass. Soft-fork decision record documents the rule.",
   "description": "benchbox/_vendor/__init__.py appends the bundled SQLGlot wheel to benchbox._vendor.__path__, so a PyPI sqlglot added with uv run --with sqlglot==X is never imported by code under test (probe: --with sqlglot==26.0.0 printed 26.0.0 while exercised code used vendored 30.x). The retired tpchavoc-sqlglot-minimum-check gate was green but meaningless.",
   "sessions": [
     {
@@ -21,6 +22,14 @@
       "generation": "11be48fc10534a3ba70cad1b6600824e",
       "op": "take",
       "op_id": "9902dd74346b41ea8dff99bb5c6f60ae",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-26T16:08:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "543c6c383e0f411db6f8f9af7c008984",
       "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
