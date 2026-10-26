@@ -121,3 +121,14 @@ def test_validator_error_snippets_never_echo_a_credential(monkeypatch: pytest.Mo
     with pytest.raises(VerdictError) as caught:
         validate({**VERDICT, "summary": 5, "extra_" + SECRET[:3]: 1})
     assert SECRET not in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    "name", ["ORACLE_GATEWAY_URL", "TS_OAUTH_CLIENT_ID", "TS_AUDIENCE", "ACTIONS_ID_TOKEN_REQUEST_TOKEN"]
+)
+def test_the_runner_held_values_are_named_and_redacted(name: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert name in credentials.NAMES
+    monkeypatch.setenv(name, SECRET)
+    assert credentials.redact(f"before {SECRET} after") == f"before {REDACTED} after"
+    split = SECRET[:6] + "\x01" + SECRET[6:]
+    assert credentials.redact(f"before {split} after") == f"before {REDACTED} after"
