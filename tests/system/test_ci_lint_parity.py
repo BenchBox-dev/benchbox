@@ -89,7 +89,6 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
         "text-edit-verdict",
         "Re-check the changelog entry against the edited title",
     ): "changelog-check",
-    ("ci.yml", "medium-test", "Run changed tests on the curated release tree"): "scripts/release_curation_dry_run.py",
     ("ci.yml", "comment-policy", "Enforce comment and docstring policy"): "comment-policy-check",
     ("ci.yml", "comment-policy", "Enforce pinned notice drift"): "comment-policy-check",
     ("ci.yml", "api-contract-check", "Verify public API symbols against the released wheel"): "api-contract-check",
@@ -133,7 +132,7 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
 }
 
 MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
-    ("ci.yml", "code-test", "Run changed tests on the curated release tree"): (
+    ("ci.yml", "medium-test", "Run changed tests on the curated release tree"): (
         "The curated release-tree selector runs hosted against the PR base ref; no "
         "standalone Make target invokes scripts/release_curation_dry_run.py, and "
         "its logic is pinned by tests/unit/scripts/test_release_curation_dry_run.py."
