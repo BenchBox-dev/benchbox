@@ -19,6 +19,7 @@ SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?")
 CHUNK_BYTES = 1 << 20
 DOWNLOAD_SECONDS = 600
+USER_AGENT = "benchbox-oracle/1.0"
 VERSION_SECONDS = 60
 SYSTEMS = {"darwin": "darwin", "linux": "linux"}
 MACHINES = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "x64", "amd64": "x64"}
@@ -102,7 +103,8 @@ def sha256_of(path: Path) -> str:
 def download(url: str, destination: Path) -> None:
     if not url.startswith("https://"):
         raise PinError("omp is downloaded over https only")
-    with urllib.request.urlopen(url, timeout=DOWNLOAD_SECONDS) as response, destination.open("wb") as handle:
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(request, timeout=DOWNLOAD_SECONDS) as response, destination.open("wb") as handle:
         while chunk := response.read(CHUNK_BYTES):
             handle.write(chunk)
 
