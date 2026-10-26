@@ -2,6 +2,8 @@
 develop_sha: 6d406a6fca8ddfbd4b45e739145b0361f5a0c9da
 checked_sha: 50147781465c2305b812c0789c2ce3e2f9ab03a7
 measured_at_sha: 50147781465c2305b812c0789c2ce3e2f9ab03a7
+replay_sha: d394ba383efc19b35f69f88986c4ce8c9610ffcc
+replay_scope: Stock limits, SF1 to SF3, one repeat, Trino 484, after removing the SQLGlot version field from the harness report; SF1 and SF2 passed and SF3 failed with EXCEEDED_LOCAL_MEMORY_LIMIT, as measured.
 ---
 
 # TPC-Havoc Q1 `1_v7` list-aggregate rewrite at scale on Trino
@@ -36,6 +38,10 @@ relative tolerance of 1e-8 and reads each query's peak user memory from
 
 - Trino 484 (Homebrew) on Java 27, one node acting as coordinator and worker,
   macOS arm64, bundled SQLGlot runtime 30.24.0.16, tree clean at `50147781`.
+- The harness no longer reports the SQLGlot runtime, because the repository's
+  vendored-SQLGlot guard forbids importing it there. The replay at `d394ba38`
+  reproduced the stock-limit boundary: SF1 passed at 805 MiB, SF2 passed at
+  1526 MiB, and SF3 failed with `EXCEEDED_LOCAL_MEMORY_LIMIT`.
 - Start the server by invoking `java -cp '<libexec>/lib/*'` directly with
   `--add-modules=jdk.incubator.vector`, `--enable-native-access=ALL-UNNAMED`,
   `-Dconfig=<config.properties>`, `plugin.dir` and `catalog.config-dir` set, and
