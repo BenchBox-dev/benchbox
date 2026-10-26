@@ -86,3 +86,7 @@ def test_refresh_only_commits_the_baseline() -> None:
 
 def test_refresh_only_accepts_successful_source_runs() -> None:
     assert 'run.get("conclusion") == "success"' in all_run_text()
+
+
+def test_medium_drift_only_uses_successful_trunk_runs() -> None:
+    assert '.status == "completed" and .conclusion == "success"' in all_run_text()

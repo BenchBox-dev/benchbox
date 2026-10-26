@@ -143,7 +143,7 @@ jobs:
           set -euo pipefail
           run_id=$(gh run list --workflow trunk.yml --limit 5 \
             --json databaseId,status,conclusion \
-            -q '[.[] | select(.status == "completed")][0].databaseId')
+            -q '[.[] | select(.status == "completed" and .conclusion == "success")][0].databaseId')
           test -n "$run_id"
           mkdir -p fast-refresh/medium
           for shard in 0 1 2 3; do
