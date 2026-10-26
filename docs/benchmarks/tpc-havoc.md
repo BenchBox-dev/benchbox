@@ -307,12 +307,12 @@ TPC-Havoc is under active development. Current limitations:
 
 `1_v7` is Q1 with four ordered list aggregates per group. On Presto, Trino and Athena it runs as four `ARRAY_AGG(... ORDER BY l_orderkey, l_linenumber)` columns, so each of the four Q1 groups holds four arrays with every qualifying `lineitem` row. Peak memory is linear in the rows of the largest group and the query shape cannot bound it. BenchBox runs `1_v7` at every scale factor on these platforms and does not skip it.
 
-- Measured on Trino 484: about 760 to 835 MiB of per-node memory per TPC-H scale factor (about 0.8 GiB), held by the aggregation operator. The canonical Q1 needs under 16 MiB.
-- Trino's default per-node limit is about 1.8 GB (30% of a 6 GiB heap), so `1_v7` passes at scale factors 1 and 2 and fails with a memory-limit error from scale factor 3.
+- Measured on Trino 484: about 760 to 835 MiB of per-node memory per TPC-H scale factor (about 0.8 GiB), held by the aggregation operator. Measured on PrestoDB 0.298.1 (Java): about 1.9 GiB per scale factor (1.9 GiB at scale factor 1, 3.7 GiB at scale factor 2). The canonical Q1 needs under 16 MiB on both.
+- Trino's default per-node limit is about 1.8 GB (30% of a 6 GiB heap), so `1_v7` passes at scale factors 1 and 2 and fails with a memory-limit error from scale factor 3. PrestoDB's default per-node limit is 10% of the heap (614 MB at 6 GiB), so on a default PrestoDB `1_v7` fails with a memory-limit error from scale factor 1.
 - Q1 has only four groups, so adding worker nodes does not divide the largest group.
 - Presto C++ workers are reported to cap `REDUCE` input at 100,000 elements. This has not been tested, and the limit is not covered by the figures above.
 
-To run larger scale factors, either raise `query.max-memory-per-node` (and the JVM heap so it can hold that limit) to at least 0.8 GiB times the scale factor plus headroom, or leave the variant out. BenchBox has no exclude option; `--queries` selects the queries to run, so list every variant except `1_v7`.
+To run larger scale factors, either raise `query.max-memory-per-node` (and the JVM heap so it can hold that limit) to at least the per-scale-factor figure above (0.8 GiB on Trino, 1.9 GiB on PrestoDB) times the scale factor plus headroom, or leave the variant out. BenchBox has no exclude option; `--queries` selects the queries to run, so list every variant except `1_v7`.
 
 ### Interpretation Guidelines
 
