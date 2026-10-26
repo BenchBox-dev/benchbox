@@ -98,8 +98,10 @@ a PR's mergeability — both only alert.
   is a draft. Nothing disarms a PR that is already armed when the label is
   added later: to hold an armed PR, disable auto-merge
   (`gh pr merge <n> --disable-auto`) or withdraw it with
-  `make pr-landing-withdraw PR=<n> HEAD=<sha>`, then add the label. The
-  evidence transaction also refuses for soundness paths.
+  `make pr-landing-withdraw PR=<n> HEAD=<sha>`, then add the label. (The
+  `trunk-disarm.yml` workflow only disarms PRs the red-trunk arm gate would
+  refuse, never for labels.) The evidence transaction also refuses for
+  soundness paths.
   Soundness-path PRs require `oracle-gate` on the current head and resolved
   threads. After any push or refresh, rerun CI and wait for the oracle's
   result on that head (or the stand-in approval) before arming.

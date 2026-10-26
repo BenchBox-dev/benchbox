@@ -165,6 +165,27 @@ def is_reverted(run: Runner, repo: str, sha: str) -> bool:
         raise TrunkError(f"unreadable {BASE_BRANCH} commit list: {exc}") from exc
 
 
+class RedStreak(NamedTuple):
+    failed: dict
+    sha: str
+    named: str
+    revert_hint: str
+
+
+def red_streak_summary(run: Runner, repo: str) -> RedStreak | None:
+    try:
+        failed = red_streak_start(run, repo)
+    except NoTrunkRunsError:
+        return None
+    if failed is None:
+        return None
+    sha = failed.get("headSha") or ""
+    if sha and is_reverted(run, repo, sha):
+        return None
+    named, revert_hint = describe_culprit(run, repo, failed)
+    return RedStreak(failed, sha, named, revert_hint)
+
+
 class PrView(NamedTuple):
     branch: str
     messages: list[str]
@@ -289,37 +310,82 @@ def fix_forward_relatedness_refusal(ref: str, sha: str, run: Runner, repo: str) 
     )
 
 
-def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
-    pr = pr_head(ref, run, repo)
-    try:
-        failed = red_streak_start(run, repo)
-    except NoTrunkRunsError:
-        return None
-    if failed is None:
-        return None
-    sha = failed.get("headSha") or ""
-    if sha and is_reverted(run, repo, sha):
-        return None
+def streak_refusal(pr: PrView, streak: RedStreak, ref: str, run: Runner, repo: str) -> str | None:
     if (
-        sha
+        streak.sha
         and pr.branch.startswith(REVERT_PREFIX)
-        and any(f"This reverts commit {sha}" in text for text in pr.messages)
+        and any(f"This reverts commit {streak.sha}" in text for text in pr.messages)
     ):
         return None
     if (
         pr.number is not None
         and pr.head
-        and fix_forward_authorized(issue_comments(run, repo, pr.number), pr.head, failed)
+        and fix_forward_authorized(issue_comments(run, repo, pr.number), pr.head, streak.failed)
     ):
-        return fix_forward_relatedness_refusal(ref, sha, run, repo)
-    named, revert_hint = describe_culprit(run, repo, failed)
+        return fix_forward_relatedness_refusal(ref, streak.sha, run, repo)
     return (
-        f"{BASE_BRANCH} is red: the first failing {TRUNK_WORKFLOW} run since the last green one failed at {named} ({failed['url']}). "
-        f"Merge a revert ({revert_hint}) or get {BASE_BRANCH} green before arming other PRs; "
-        f"only a {REVERT_PREFIX}* branch whose commits carry `This reverts commit {sha[:9] or '<sha>'}...` is exempt, "
+        f"{BASE_BRANCH} is red: the first failing {TRUNK_WORKFLOW} run since the last green one failed at {streak.named} ({streak.failed['url']}). "
+        f"Merge a revert ({streak.revert_hint}) or get {BASE_BRANCH} green before arming other PRs; "
+        f"only a {REVERT_PREFIX}* branch whose commits carry `This reverts commit {streak.sha[:9] or '<sha>'}...` is exempt, "
         "or a PR whose current head carries an unedited owner comment "
-        f"`Fix-forward authorized: <head SHA> for trunk run {failed.get('databaseId')}`."
+        f"`Fix-forward authorized: <head SHA> for trunk run {streak.failed.get('databaseId')}`."
     )
+
+
+def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
+    pr = pr_head(ref, run, repo)
+    streak = red_streak_summary(run, repo)
+    if streak is None:
+        return None
+    return streak_refusal(pr, streak, ref, run, repo)
+
+
+def armed_prs(run: Runner, repo: str) -> list[tuple[int, str]]:
+    out = _check(
+        run,
+        [
+            "gh",
+            "pr",
+            "list",
+            "--repo",
+            repo,
+            "--base",
+            BASE_BRANCH,
+            "--state",
+            "open",
+            "--limit",
+            "100",
+            "--json",
+            "number,headRefName,autoMergeRequest",
+        ],
+        f"listing open PRs against {BASE_BRANCH}",
+    )
+    try:
+        return [
+            (int(item["number"]), item["headRefName"])
+            for item in json.loads(out)
+            if item.get("autoMergeRequest") and isinstance(item.get("headRefName"), str)
+        ]
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise TrunkError(f"unreadable open PR list: {exc}") from exc
+
+
+def disarm_plan(run: Runner = live_run, repo: str = REPOSITORY) -> tuple[RedStreak | None, list[int]]:
+    streak = red_streak_summary(run, repo)
+    if streak is None:
+        return None, []
+    selected = []
+    for number, branch in armed_prs(run, repo):
+        try:
+            refusal = streak_refusal(pr_head(str(number), run, repo), streak, str(number), run, repo)
+        except TrunkError:
+            if branch.startswith(REVERT_PREFIX):
+                continue
+            selected.append(number)
+        else:
+            if refusal is not None:
+                selected.append(number)
+    return streak, selected
 
 
 def status(run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
@@ -466,6 +532,8 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
     arm.add_argument("--pr", type=int)
     arm.add_argument("--branch")
     arm.add_argument("--repo", default=REPOSITORY)
+    dis = sub.add_parser("disarm", help="list armed PRs the arm gate would refuse while trunk is red")
+    dis.add_argument("--repo", default=REPOSITORY)
     state = sub.add_parser("status", help="name the culprit while trunk is red")
     state.add_argument("--repo", default=REPOSITORY)
     args = parser.parse_args(argv)
@@ -502,6 +570,27 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
             print(f"Refusing to arm {ref}: {refusal}", file=sys.stderr)
             return 1
         return 0
+    if args.command == "disarm":
+        try:
+            streak, selected = disarm_plan(run, args.repo)
+        except TrunkError as exc:
+            print(f"trunk-disarm: could not establish the red streak: {exc}; disarming nothing", file=sys.stderr)
+            return 1
+        if streak is None:
+            print(
+                f"{BASE_BRANCH} is green or its failing {TRUNK_WORKFLOW} culprit is already reverted; nothing to disarm.",
+                file=sys.stderr,
+            )
+            return 0
+        print(
+            f"{BASE_BRANCH} is red at {streak.named} ({streak.failed['url']}); "
+            f"disarming {len(selected)} armed PR(s): {selected}.",
+            file=sys.stderr,
+        )
+        for number in selected:
+            print(number)
+        return 0
+
     refusal = trunk_gate(args.branch, run=run, repo=args.repo)
     if refusal:
         print(

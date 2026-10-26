@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Trunk auto-merge disarm: trunk-disarm.yml disables auto-merge on armed PRs while the develop red streak is unreverted"
+}

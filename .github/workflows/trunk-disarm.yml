@@ -1,0 +1,65 @@
+name: trunk-disarm
+
+on:
+  workflow_run:
+    workflows: [Trunk]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: trunk-disarm-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  disarm:
+    name: disarm
+    if: ${{ github.event.workflow_run.head_branch == 'develop' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out the trusted develop copy
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: develop
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/trunk_revert.py
+
+      - name: Select armed PRs the arm gate would refuse
+        id: select
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          python3 scripts/trunk_revert.py disarm --repo "$REPO" > selected.txt
+          echo "trunk-disarm: selected PRs:"
+          cat selected.txt
+
+      - name: Disable auto-merge on the selected PRs
+        env:
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          set -euo pipefail
+          if [ ! -s selected.txt ]; then
+            echo "trunk-disarm: nothing to disarm."
+            exit 0
+          fi
+          while IFS= read -r pr; do
+            [ -n "$pr" ] || continue
+            echo "trunk-disarm: disabling auto-merge on PR #${pr} (trunk run ${RUN_URL})."
+            gh pr merge --repo "$REPO" --disable-auto "$pr"
+          done < selected.txt
+          while IFS= read -r pr; do
+            [ -n "$pr" ] || continue
+            if [ "$(gh pr view --repo "$REPO" "$pr" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
+              echo "trunk-disarm: auto-merge still armed on PR #${pr} after disable." >&2
+              exit 1
+            fi
+            echo "trunk-disarm: auto-merge off on PR #${pr} (trunk run ${RUN_URL})."
+          done < selected.txt

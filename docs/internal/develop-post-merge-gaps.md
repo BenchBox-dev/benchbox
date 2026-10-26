@@ -49,8 +49,9 @@ Check exact-commit workflow evidence before blaming a PR or admitting a release.
 
 ## Red trunk stops arming
 
-A red `trunk.yml` run names its culprit and stops the repository's arming
-commands. `scripts/trunk_revert.py arm-gate` runs first in `make pr-arm`,
+A red `trunk.yml` run names its culprit, stops the repository's arming
+commands, and disarms PRs armed before the red run completed.
+`scripts/trunk_revert.py arm-gate` runs first in `make pr-arm`,
 `make pr-arm-remote`, `make pr-landing-remote-ready`, and `make pr-landing-ready`
 with `ARM=1`, which is what `make pr-ready` and `make pr-arm-auto-merge` reach. It walks the
 completed `trunk.yml` runs on `develop` back to the last success, ignoring runs still in
@@ -85,10 +86,16 @@ says when an agent may post it.
 
 Bound:
 
-- **Already armed PRs still merge.** Disabling auto-merge on open PRs when a
-  trunk run fails needs a job in `.github/workflows/`, a soundness path that
-  requires oracle review, so it is not done here. The window is PRs armed
-  before the red run completed.
+- **Armed PRs are disarmed while the streak is unreverted.** When a
+  `trunk.yml` run on `develop` completes, `trunk-disarm.yml` reuses the
+  arm-gate decision in `scripts/trunk_revert.py` and disables auto-merge on
+  the armed PRs the gate would refuse. The streak and its culprit are read
+  once per run: if that lookup fails, the workflow fails and disarms nothing.
+  A per-PR read failure disarms that PR, except a `fix/revert-*` branch,
+  which is never touched without proof it is not the genuine revert. The
+  remaining window is merges made through the GitHub UI or raw
+  `gh pr merge`, and PRs armed after the disarm ran through a path that
+  bypasses the gate.
 - **Bypass.** The gate lives in the repository's make targets. Arming from the
   GitHub UI or `gh pr merge --auto`, or calling `scripts/pr_arm.py` directly,
   skips it. A required check or ruleset would close this; both are owner
@@ -142,12 +149,16 @@ them together with their tests.
 
 ## What we deliberately did not do
 
-- **No extra push-adjacent spam** (`pull_request`, `workflow_run`,
-  `repository_dispatch`, and so on) to force more events. That papers over the
+- **No extra push-adjacent spam** (`pull_request`, `repository_dispatch`,
+  and so on) to force more events. That papers over the
   class without bounding exposure cleanly and burns runners on every related
-  event.
+  event. `trunk-disarm.yml` listens for `workflow_run` completion of
+  `trunk.yml`, but it forces nothing: it only reacts to a delivered Trunk
+  completion, so a dropped push delays the disarm until the next delivered
+  run instead of manufacturing coverage.
 - **No replacement of the push trigger.** Push stays the primary trigger for
   workflows that record state on a develop commit; recovery is dispatch.
 - **No mutation jobs on schedule.** Anything that opens or closes GitHub
-  objects stays push and dispatch only, so a cron run cannot change state
+  objects runs on push, dispatch, or a delivered `trunk.yml` completion,
+  never on a timer, so a cron run cannot change state
   without a real merge event.

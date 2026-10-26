@@ -1022,3 +1022,199 @@ def test_main_gate_opens_a_revert_branch_ready_even_when_develop_has_long_been_r
 ) -> None:
     assert trunk_revert.main(["gate", "--branch", "fix/revert-3380"], run=FixForwardRun([])) == 0
     assert capsys.readouterr().out.strip() == "ready"
+
+
+RED_SHA = next(item["headSha"] for item in REPLAY["runs"] if item["databaseId"] == FIRST_RED_RUN)
+LATER_SHA = next(item["headSha"] for item in REPLAY["runs"] if item["databaseId"] == LATER_RED_RUN)
+ORDINARY_HEAD = "d" * 40
+REVERT_HEAD = "e" * 40
+
+
+def _disarm_listed(*numbers: int) -> list[dict]:
+    armed = {3401: "fix/thing", 3402: "fix/revert-3378", 3403: REPLAY["pr"]["headRefName"]}
+    return [
+        {
+            "number": number,
+            "headRefName": armed.get(number, "fix/unrelated"),
+            "autoMergeRequest": {"enabledAt": "2026-10-24T08:00:00Z"} if number != 3404 else None,
+        }
+        for number in numbers
+    ]
+
+
+def _disarm_views(*, ordinary: dict | None = None) -> dict:
+    views: dict = {
+        "3401": {
+            "headRefName": "fix/thing",
+            "commits": [{"messageHeadline": "change", "messageBody": ""}],
+            "number": 3401,
+            "headRefOid": ORDINARY_HEAD,
+        },
+        "3402": {
+            "headRefName": "fix/revert-3378",
+            "commits": [{"messageHeadline": 'Revert "x" (#3378)', "messageBody": f"This reverts commit {RED_SHA}."}],
+            "number": 3402,
+            "headRefOid": REVERT_HEAD,
+        },
+        "3403": {
+            "headRefName": REPLAY["pr"]["headRefName"],
+            "commits": [{"messageHeadline": "fix", "messageBody": ""}],
+            "number": 3403,
+            "headRefOid": FIX_HEAD,
+        },
+    }
+    if ordinary is not None:
+        views["3401"] = ordinary
+    return views
+
+
+class DisarmRun(FixForwardRun):
+    def __init__(
+        self,
+        views: dict,
+        comments_by_number: dict,
+        listed: list[dict],
+        *,
+        runs: list[dict] | None = None,
+        files: list[str] | None = None,
+        runs_code: int = 0,
+        develop: list[dict] | None = None,
+    ) -> None:
+        super().__init__([], files=["examples/unrelated.py", "Makefile"] if files is None else files)
+        self.views = views
+        self.comments_by_number = comments_by_number
+        self.listed = listed
+        if runs is not None:
+            self.runs = runs
+        self.runs_code = runs_code
+        if develop is not None:
+            self.develop = develop
+        self.pulls_by_sha = {RED_SHA: _merged_pulls(3378), LATER_SHA: _merged_pulls(3379)}
+
+    def __call__(self, cmd: list[str]) -> tuple[int, str]:
+        if cmd[:3] == ["gh", "pr", "list"]:
+            self.calls.append(cmd)
+            assert cmd[cmd.index("--base") + 1] == "develop"
+            return 0, json.dumps(self.listed)
+        if cmd[:3] == ["gh", "pr", "view"] and cmd[-1] != "files":
+            self.calls.append(cmd)
+            payload = self.views[cmd[3]]
+            if payload is None:
+                return 1, "boom"
+            return 0, json.dumps(payload)
+        if cmd[:3] == ["gh", "api", "--paginate"]:
+            self.calls.append(cmd)
+            number = int(cmd[3].split("/issues/")[1].split("/")[0])
+            comments = self.comments_by_number.get(number, [])
+            if comments == "garbled":
+                return 0, "not json"
+            return 0, "\n".join(json.dumps(comment) for comment in comments)
+        return super().__call__(cmd)
+
+
+def _replay_disarm_run(**kwargs) -> DisarmRun:
+    return DisarmRun(
+        _disarm_views(),
+        {3403: [_authorization()]},
+        _disarm_listed(3401, 3402, 3403, 3404),
+        **kwargs,
+    )
+
+
+def test_disarm_replay_selects_only_the_ordinary_armed_pr() -> None:
+    run = _replay_disarm_run()
+    streak, selected = trunk_revert.disarm_plan(run=run)
+    assert streak is not None
+    assert streak.named == "PR #3378"
+    assert "make trunk-revert PR=3378" in streak.revert_hint
+    assert selected == [3401]
+
+
+def test_disarm_computes_the_streak_and_culprit_once_per_run() -> None:
+    run = _replay_disarm_run()
+    trunk_revert.disarm_plan(run=run)
+    assert len([call for call in run.calls if call[:3] == ["gh", "run", "list"]]) == 1
+    pulls = [call for call in run.calls if call[:2] == ["gh", "api"] and "/pulls" in call[2]]
+    assert len(pulls) == 1
+    assert RED_SHA in pulls[0][2]
+    assert len([call for call in run.calls if call[:3] == ["gh", "pr", "list"]]) == 1
+
+
+def test_disarm_matches_arm_gate_for_every_listed_pr() -> None:
+    for ref in ("3401", "3402", "3403"):
+        assert (trunk_revert.arm_gate(ref, run=_replay_disarm_run()) is not None) == (int(ref) in [3401])
+    _, selected = trunk_revert.disarm_plan(run=_replay_disarm_run())
+    assert selected == [3401]
+
+
+def test_disarm_disarms_nothing_when_the_streak_lookup_fails() -> None:
+    run = _replay_disarm_run(runs_code=1)
+    with pytest.raises(trunk_revert.TrunkError):
+        trunk_revert.disarm_plan(run=run)
+    assert not any(call[:3] == ["gh", "pr", "list"] for call in run.calls)
+    assert not any(call[:3] == ["gh", "pr", "merge"] for call in run.calls)
+
+
+def test_main_disarm_fails_closed_when_the_streak_lookup_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    assert trunk_revert.main(["disarm"], run=_replay_disarm_run(runs_code=1)) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "disarming nothing" in captured.err
+
+
+def test_disarm_selects_only_the_pr_whose_evaluation_fails() -> None:
+    run = DisarmRun(
+        _disarm_views(),
+        {3401: "garbled", 3403: [_authorization()]},
+        _disarm_listed(3401, 3402, 3403, 3404),
+    )
+    _, selected = trunk_revert.disarm_plan(run=run)
+    assert selected == [3401]
+
+
+def test_disarm_selects_the_pr_whose_head_is_unreadable() -> None:
+    run = DisarmRun(
+        _disarm_views(ordinary=None) | {"3401": None},
+        {3403: [_authorization()]},
+        _disarm_listed(3401, 3402, 3403, 3404),
+    )
+    _, selected = trunk_revert.disarm_plan(run=run)
+    assert selected == [3401]
+
+
+def test_disarm_never_selects_a_revert_named_pr_whose_evaluation_fails() -> None:
+    views = _disarm_views()
+    views["3402"] = None
+    run = DisarmRun(views, {3403: [_authorization()]}, _disarm_listed(3401, 3402, 3403, 3404))
+    _, selected = trunk_revert.disarm_plan(run=run)
+    assert selected == [3401]
+
+
+def test_disarm_selects_nothing_when_trunk_is_green() -> None:
+    runs = _runs(("completed", "success", timedelta(minutes=10)))
+    streak, selected = trunk_revert.disarm_plan(run=_replay_disarm_run(runs=runs))
+    assert streak is None
+    assert selected == []
+
+
+def test_disarm_selects_nothing_once_the_culprit_is_reverted() -> None:
+    develop = [{"commit": {"message": f'Revert "x" (#3378)\n\nThis reverts commit {RED_SHA}.'}}]
+    streak, selected = trunk_revert.disarm_plan(run=_replay_disarm_run(develop=develop))
+    assert streak is None
+    assert selected == []
+
+
+def test_main_disarm_lists_selected_prs_naming_the_culprit(capsys: pytest.CaptureFixture[str]) -> None:
+    assert trunk_revert.main(["disarm"], run=_replay_disarm_run()) == 0
+    captured = capsys.readouterr()
+    assert captured.out.split() == ["3401"]
+    assert "PR #3378" in captured.err
+    assert str(FIRST_RED_RUN) in captured.err
+
+
+def test_main_disarm_selects_nothing_when_trunk_is_green(capsys: pytest.CaptureFixture[str]) -> None:
+    runs = _runs(("completed", "success", timedelta(minutes=10)))
+    assert trunk_revert.main(["disarm"], run=_replay_disarm_run(runs=runs)) == 0
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "nothing to disarm" in captured.err
