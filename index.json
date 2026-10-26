@@ -3327,6 +3327,16 @@
       "status": "open",
       "title": "Fix Windows fcntl import in oracle-reviewers local.py and UTF-8 git decoding in four scripts"
     },
+    "ci-windows-pr-leg-rework-3548-20261026": {
+      "claim": null,
+      "needs": [
+        "ci-windows-fcntl-and-git-utf8-fixes-20261026",
+        "ci-pr-arm-disarm-red-and-refuse-visible-failures-20261026"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Rework PR #3548 so windows-tests excludes develop-changed tests, uses @file args, and passes"
+    },
     "ci-workflow-fanout-oracle-text-edit-20261025": {
       "claim": null,
       "needs": [
