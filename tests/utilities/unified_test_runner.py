@@ -138,7 +138,7 @@ class UnifiedTestRunner:
 
         return sorted(set(test_files))
 
-    def build_pytest_command(  # noqa: C901
+    def build_pytest_command(
         self,
         test_files: list[Path],
         config: UnifiedRunnerConfig,
@@ -151,10 +151,7 @@ class UnifiedTestRunner:
         if test_files:
             cmd.extend([str(f) for f in test_files])
 
-        if config.verbose:
-            cmd.append("-v")
-        elif not config.verbose:
-            cmd.append("-q")
+        cmd.append("-v" if config.verbose else "-q")
 
         if config.fail_fast:
             cmd.append("-x")
@@ -162,30 +159,57 @@ class UnifiedTestRunner:
         if config.parallel and config.workers > 1:
             cmd.extend(["-n", str(config.workers)])
 
-        if config.coverage:
-            cmd.extend(
-                [
-                    "--cov=benchbox",
-                    "--cov-report=term-missing",
-                    "--cov-report=html",
-                    "--cov-report=xml",
-                ]
-            )
-
-            if config.min_coverage:
-                cmd.append(f"--cov-fail-under={config.min_coverage}")
-
-        if config.output_format == "json":
-            cmd.append("--json-report")
-            if config.output_location:
-                cmd.append(f"--json-report-file={config.output_location}")
-        elif config.output_format == "junit":
-            output_file = config.output_location or "test_results.xml"
-            cmd.append(f"--junit-xml={output_file}")
+        cmd.extend(self._coverage_args(config))
+        cmd.extend(self._report_args(config))
 
         if config.timeout:
             cmd.extend(["--timeout", str(config.timeout)])
 
+        cmd.extend(self._marker_args(config, benchmark, mode, database))
+
+        if config.benchmark_only:
+            cmd.append("--benchmark-only")
+
+        if config.collect_only:
+            cmd.append("--collect-only")
+
+        cmd.extend(["--tb=short", "--strict-markers", "--disable-warnings"])
+
+        return cmd
+
+    @staticmethod
+    def _coverage_args(config: UnifiedRunnerConfig) -> list[str]:
+        if not config.coverage:
+            return []
+        args = [
+            "--cov=benchbox",
+            "--cov-report=term-missing",
+            "--cov-report=html",
+            "--cov-report=xml",
+        ]
+        if config.min_coverage:
+            args.append(f"--cov-fail-under={config.min_coverage}")
+        return args
+
+    @staticmethod
+    def _report_args(config: UnifiedRunnerConfig) -> list[str]:
+        if config.output_format == "json":
+            args = ["--json-report"]
+            if config.output_location:
+                args.append(f"--json-report-file={config.output_location}")
+            return args
+        if config.output_format == "junit":
+            output_file = config.output_location or "test_results.xml"
+            return [f"--junit-xml={output_file}"]
+        return []
+
+    @staticmethod
+    def _marker_args(
+        config: UnifiedRunnerConfig,
+        benchmark: Benchmark,
+        mode: UnifiedRunnerMode,
+        database: DatabaseType,
+    ) -> list[str]:
         markers = config.markers.copy()
 
         if benchmark != Benchmark.ALL:
@@ -210,17 +234,8 @@ class UnifiedTestRunner:
             marker_expr.append(f"({exclude_expr})")
 
         if marker_expr:
-            cmd.extend(["-m", " and ".join(marker_expr)])
-
-        if config.benchmark_only:
-            cmd.append("--benchmark-only")
-
-        if config.collect_only:
-            cmd.append("--collect-only")
-
-        cmd.extend(["--tb=short", "--strict-markers", "--disable-warnings"])
-
-        return cmd
+            return ["-m", " and ".join(marker_expr)]
+        return []
 
     def execute_test_suite(
         self,

@@ -30,20 +30,43 @@ def _branch_filter(trigger: Any) -> set[str] | None:
     return None if branches is None else set(branches)
 
 
-def _overlap(first: set[str] | None, second: set[str] | None) -> bool:
-    return first is None or second is None or bool(first & second)
+def _matches_all(branches: set[str] | None) -> bool:
+    return branches is not None and "**" in branches
+
+
+def _dispatches_twice(triggers: dict[str, Any]) -> bool:
+    if "push" not in triggers or "pull_request" not in triggers:
+        return False
+    push_branches = _branch_filter(triggers["push"])
+    pull_branches = _branch_filter(triggers["pull_request"])
+    if push_branches is None or pull_branches is None:
+        return True
+    if push_branches != pull_branches:
+        return True
+    return _matches_all(push_branches)
 
 
 def test_no_workflow_dispatches_twice_for_one_push_to_a_pull_request_branch() -> None:
-    offenders = []
-    for path in sorted(WORKFLOWS.glob("*.yml")):
-        triggers = _triggers(_load(path))
-        if "push" in triggers and "pull_request" in triggers:
-            push_branches = _branch_filter(triggers["push"])
-            pull_branches = _branch_filter(triggers["pull_request"])
-            if push_branches is None or (_overlap(push_branches, pull_branches) and push_branches != pull_branches):
-                offenders.append(path.name)
+    offenders = [path.name for path in sorted(WORKFLOWS.glob("*.yml")) if _dispatches_twice(_triggers(_load(path)))]
     assert offenders == []
+
+
+@pytest.mark.parametrize(
+    ("push", "pull_request", "expected"),
+    [
+        ({"branches": ["**"]}, {"branches": ["**"]}, True),
+        ({"branches": ["**"]}, {"branches": ["develop"]}, True),
+        ({"branches": ["develop"]}, {"branches": ["**"]}, True),
+        (None, {"branches": ["develop"]}, True),
+        ({"branches": ["release"]}, {"branches": ["release"]}, False),
+        ({"branches": ["release"]}, {"branches": ["develop"]}, True),
+        ({"branches": ["develop"]}, None, True),
+    ],
+)
+def test_duplicate_dispatch_predicate_flags_cross_line_and_wildcard_branch_filters(
+    push: Any, pull_request: Any, expected: bool
+) -> None:
+    assert _dispatches_twice({"push": push, "pull_request": pull_request}) is expected
 
 
 def test_pull_request_workflows_cancel_superseded_runs_per_pull_request_or_ref() -> None:

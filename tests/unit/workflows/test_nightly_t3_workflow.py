@@ -38,6 +38,7 @@ DOMAIN_JOBS = {
     "ruleset-drift": "t3:ruleset-drift",
     "windows": "t3:windows",
     "tpcds-obt": "t3:tpcds-obt",
+    "sql-execution-gate-obt": "t3:sql-execution-gate-obt",
     "durations-refresh": "t3:durations",
 }
 
@@ -1135,6 +1136,20 @@ def test_pr_sql_evidence_and_nightly_postgres_share_one_ghcr_digest() -> None:
             "password": "${{ github.token }}",
         }
         assert job["permissions"]["packages"] == "read"
+
+
+def test_sql_execution_gate_obt_runs_the_obt_gate_against_ghcr_postgres() -> None:
+    job = _load()["jobs"]["sql-execution-gate-obt"]
+    assert job["name"].startswith("t3:sql-execution-gate-obt")
+    assert job["services"]["postgres"]["image"] == _POSTGRES_17_GHCR_IMAGE
+    assert job["services"]["postgres"]["credentials"] == {
+        "username": "${{ github.actor }}",
+        "password": "${{ github.token }}",
+    }
+    assert job["permissions"]["packages"] == "read"
+    assert "--benchmarks tpcds_obt" in _run_text(job)
+    gate_step = next(step for step in job["steps"] if "--benchmarks tpcds_obt" in str(step.get("run", "")))
+    assert gate_step["env"]["BENCHBOX_POSTGRES_DSN"].startswith("postgresql://benchbox:benchbox@")
 
 
 QUESTDB_DIGEST = "sha256:67eaed863ebb2383227919ea9a5499a4a39ceca3862c20b974c84a10e11cdf89"

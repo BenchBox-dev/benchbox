@@ -21,102 +21,104 @@ pytestmark = [
 ]
 
 
+class FakeQuery:
+    def __init__(self, stream_id, position, query_id, variant=None, sql="SELECT 1"):
+        self.stream_id = stream_id
+        self.position = position
+        self.query_id = query_id
+        self.variant = variant
+        self.sql = sql
+
+
+class FakeStreamManager:
+    def __init__(self, num_streams, base_seed):
+        self.num_streams = num_streams
+        self.base_seed = base_seed
+
+    def generate_streams(self):
+        streams = {}
+        for stream_id in range(self.num_streams):
+            streams[stream_id] = [
+                FakeQuery(stream_id, 0, 1, sql=f"SELECT {stream_id + 1}"),
+                FakeQuery(stream_id, 1, 2, variant="a", sql=f"SELECT {stream_id + 2}"),
+            ]
+        return streams
+
+
+class FakeDSQGen:
+    def generate(self, query_id, **_):
+        return f"SELECT {query_id}"
+
+    def generate_with_parameters(self, query_id, parameters, **_):
+        return f"SELECT {query_id} /* params:{parameters} */"
+
+    def get_query_variations(self, query_id):
+        return [str(query_id)]
+
+    def validate_query_id(self, query_id):
+        try:
+            value = int(query_id)
+        except (TypeError, ValueError):
+            return False
+        return 1 <= value <= 99
+
+
+class FakeQueryManager:
+    def __init__(self):
+        self.dsqgen = FakeDSQGen()
+
+    def get_query(self, query_id, **_):
+        return f"SELECT {query_id}"
+
+    def get_all_queries(self, **_):
+        return {1: "SELECT 1", 2: "SELECT 2"}
+
+
+class FakeDataGenerator:
+    def __init__(self, scale_factor=1.0, parallel=1, output_dir=None, **kwargs):
+        self.scale_factor = scale_factor
+        self.parallel = parallel
+        self.output_dir = Path(output_dir) if output_dir else Path.cwd()
+        self.kwargs = kwargs
+        self.generated = False
+
+    def generate(self):
+        self.generated = True
+        return {
+            "store_sales": self.output_dir / "store_sales.dat",
+            "store_returns": self.output_dir / "store_returns.dat",
+        }
+
+
+class FakeCTools:
+    def __init__(self, *args, **kwargs):
+        self.kwargs = kwargs
+
+    def get_tools_info(self):
+        return {"dsqgen_available": False, "templates_available": False, "available_tools": []}
+
+
+class FakeValidationEngine:
+    def validate(self, *_args, **_kwargs):
+        return {"status": "skipped"}
+
+
+def _fake_create_standard_streams(query_manager, num_streams, base_seed):
+    return FakeStreamManager(num_streams, base_seed)
+
+
 @pytest.fixture(autouse=True)
-def fake_tpcds_stream_environment(monkeypatch):  # noqa: C901
-
-    class FakeQuery:
-        def __init__(self, stream_id, position, query_id, variant=None, sql="SELECT 1"):
-            self.stream_id = stream_id
-            self.position = position
-            self.query_id = query_id
-            self.variant = variant
-            self.sql = sql
-
-    class FakeStreamManager:
-        def __init__(self, num_streams, base_seed):
-            self.num_streams = num_streams
-            self.base_seed = base_seed
-
-        def generate_streams(self):
-            streams = {}
-            for stream_id in range(self.num_streams):
-                streams[stream_id] = [
-                    FakeQuery(stream_id, 0, 1, sql=f"SELECT {stream_id + 1}"),
-                    FakeQuery(stream_id, 1, 2, variant="a", sql=f"SELECT {stream_id + 2}"),
-                ]
-            return streams
-
-    def _fake_create_standard_streams(query_manager, num_streams, base_seed):
-        return FakeStreamManager(num_streams, base_seed)
-
+def fake_tpcds_stream_environment(monkeypatch):
     monkeypatch.setattr("benchbox.core.tpcds.streams.create_standard_streams", _fake_create_standard_streams)
-
-    class FakeDSQGen:
-        def generate(self, query_id, **_):
-            return f"SELECT {query_id}"
-
-        def generate_with_parameters(self, query_id, parameters, **_):
-            return f"SELECT {query_id} /* params:{parameters} */"
-
-        def get_query_variations(self, query_id):
-            return [str(query_id)]
-
-        def validate_query_id(self, query_id):
-            try:
-                value = int(query_id)
-            except (TypeError, ValueError):
-                return False
-            return 1 <= value <= 99
-
-    class FakeQueryManager:
-        def __init__(self):
-            self.dsqgen = FakeDSQGen()
-
-        def get_query(self, query_id, **_):
-            return f"SELECT {query_id}"
-
-        def get_all_queries(self, **_):
-            return {1: "SELECT 1", 2: "SELECT 2"}
-
     monkeypatch.setattr("benchbox.core.tpcds.benchmark.runner.TPCDSQueryManager", lambda: FakeQueryManager())
-
-    class FakeDataGenerator:
-        def __init__(self, scale_factor=1.0, parallel=1, output_dir=None, **kwargs):
-            self.scale_factor = scale_factor
-            self.parallel = parallel
-            self.output_dir = Path(output_dir) if output_dir else Path.cwd()
-            self.kwargs = kwargs
-            self.generated = False
-
-        def generate(self):
-            self.generated = True
-            return {
-                "store_sales": self.output_dir / "store_sales.dat",
-                "store_returns": self.output_dir / "store_returns.dat",
-            }
-
     monkeypatch.setattr(
         "benchbox.core.tpcds.benchmark.runner.TPCDSDataGenerator",
         lambda *args, **kwargs: FakeDataGenerator(*args, **kwargs),
     )
-
-    class FakeCTools:
-        def __init__(self, *args, **kwargs):
-            self.kwargs = kwargs
-
-        def get_tools_info(self):
-            return {"dsqgen_available": False, "templates_available": False, "available_tools": []}
-
     monkeypatch.setattr("benchbox.core.tpcds.benchmark.runner.TPCDSCTools", FakeCTools)
-
     fake_module = types.ModuleType("benchbox.core.tpcds.benchmark.streams")
     fake_module.create_standard_streams = _fake_create_standard_streams
     monkeypatch.setitem(sys.modules, "benchbox.core.tpcds.benchmark.streams", fake_module)
-
-    class FakeValidationEngine:
-        def validate(self, *_args, **_kwargs):
-            return {"status": "skipped"}
-
     monkeypatch.setattr("benchbox.core.tpcds.benchmark.runner.DataValidationEngine", FakeValidationEngine)
     monkeypatch.setattr("benchbox.core.tpcds.benchmark.runner.DatabaseValidationEngine", FakeValidationEngine)
 

@@ -268,7 +268,25 @@ def run_sweep(
         _restore_sweep_sigterm_shim(sigterm_prev)
 
 
-def _run_sweep_phases(  # noqa: C901
+def _print_disabled_gate_warnings(config: UATConfig) -> None:
+    if config.dry_run or "execute" not in config.phases:
+        return
+    for gate_warning in (disk_gate_disabled_warning(config), memory_gate_disabled_warning(config)):
+        if gate_warning is not None:
+            print(gate_warning, file=sys.stderr)
+
+
+def _print_preflight_diagnostics(result: Any) -> None:
+    disk_budget_summary = getattr(result, "disk_budget_summary", None)
+    if disk_budget_summary:
+        print(disk_budget_summary, file=sys.stderr)
+    for line in getattr(result, "free_space_report", ()):
+        print(line, file=sys.stderr)
+    for warning in getattr(result, "warnings", ()):
+        print(f"[preflight warn] {warning}", file=sys.stderr)
+
+
+def _run_sweep_phases(
     config: UATConfig,
     *,
     now: _dt.datetime,
@@ -293,10 +311,7 @@ def _run_sweep_phases(  # noqa: C901
     validate_result: Any = None
     report_summary: Any = None
 
-    if not config.dry_run and "execute" in config.phases:
-        for gate_warning in (disk_gate_disabled_warning(config), memory_gate_disabled_warning(config)):
-            if gate_warning is not None:
-                print(gate_warning, file=sys.stderr)
+    _print_disabled_gate_warnings(config)
 
     for phase in config.phases:
         phase_holder[0] = phase
@@ -308,13 +323,7 @@ def _run_sweep_phases(  # noqa: C901
                 **preflight_phase.preflight_kwargs_from_config(config, benchmark_runs_dir=benchmark_runs_dir)
             )
             preflight_result = result
-            disk_budget_summary = getattr(result, "disk_budget_summary", None)
-            if disk_budget_summary:
-                print(disk_budget_summary, file=sys.stderr)
-            for line in getattr(result, "free_space_report", ()):
-                print(line, file=sys.stderr)
-            for warning in getattr(result, "warnings", ()):
-                print(f"[preflight warn] {warning}", file=sys.stderr)
+            _print_preflight_diagnostics(result)
             phase_exit_codes[phase] = result.exit_code()
             if result.aborted:
                 aborted_phase = phase

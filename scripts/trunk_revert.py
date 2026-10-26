@@ -289,16 +289,13 @@ def fix_forward_relatedness_refusal(ref: str, sha: str, run: Runner, repo: str) 
     )
 
 
-def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
-    pr = pr_head(ref, run, repo)
-    try:
-        failed = red_streak_start(run, repo)
-    except NoTrunkRunsError:
-        return None
+def arm_refusal(
+    ref: str, pr: PrView, failed: dict | None, run: Runner, repo: str, reverted: bool | None = None
+) -> str | None:
     if failed is None:
         return None
     sha = failed.get("headSha") or ""
-    if sha and is_reverted(run, repo, sha):
+    if sha and (reverted if reverted is not None else is_reverted(run, repo, sha)):
         return None
     if (
         sha
@@ -320,6 +317,15 @@ def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | 
         "or a PR whose current head carries an unedited owner comment "
         f"`Fix-forward authorized: <head SHA> for trunk run {failed.get('databaseId')}`."
     )
+
+
+def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
+    pr = pr_head(ref, run, repo)
+    try:
+        failed = red_streak_start(run, repo)
+    except NoTrunkRunsError:
+        return None
+    return arm_refusal(ref, pr, failed, run, repo)
 
 
 def status(run: Runner = live_run, repo: str = REPOSITORY) -> str | None:

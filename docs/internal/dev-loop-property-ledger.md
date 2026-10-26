@@ -82,7 +82,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `nightly-v2.yml` | product-safety | Nightly T3: platform matrix, docker engines, cross-browser, extension, install, DuckDB and CedarDB throughput UAT with the `nightly/throughput-uat` status, drift, external documentation links |
 | `oracle-gate.yml` | product-safety | Required gate from trusted code: result-affecting changes need a success review of the head from the `benchbox-oracle` App, whose Bot identity only the owner controls, or a stand-in approval comment from an attester account posted after the oracle's latest review; that account is also the one local automation uses, so the stand-in records who vouched, not that a human read it. Posted as `oracle-gate` for the head from develop code on trusted triggers; sole writer in-tree, with the required check scoped to the oracle App in the ruleset |
 | `oracle-review.yml` | product-safety | Review-event notification, not a check: a no-op job on review submitted, edited and dismissed whose completion makes `oracle-gate` re-evaluate |
-| `oracle-verdict.yml` | product-safety | Self-hosted soundness review: reviewers chosen by tier and availability, each with only its own credential, and a review and non-required `oracle-verdict` status posted by the owner's App, which the required `oracle-gate` check reads |
+| `oracle-verdict.yml` | product-safety | Self-hosted soundness review: reviewers chosen by tier and availability in one review job, each holding only the gateway client token, and a review and non-required `oracle-verdict` status posted by the owner's App, which the required `oracle-gate` check reads |
 | `perf-smoke.yml` | product-safety | Performance smoke |
 | `pr-hold.yml` | product-safety | Required `hold` check: fails while the `no-auto-merge` label is present, on every label change |
 | `pricing-data-drift-check.yml` | product-safety | Pricing data integrity |
@@ -97,7 +97,8 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test.yml` | product-safety | Test tiers; replaced by ci.yml units |
 | `todo-state-validate.yml` | tooling | Tracker state validation |
 | `trunk-coverage.yml` | product-safety | Scheduled (six a day) and dispatched instrumented four-shard medium tier, v2 coverage map combine, published-map self-fetch, and a map-staleness issue on its own daily cron; never consulted by arming |
-| `trunk.yml` | product-safety | Develop-push fast lane, uninstrumented four-shard medium tier, correctness gate, required-local-cases and verified release artifact; retains pending runs with queue:max |
+| `trunk.yml` | product-safety | Develop-push fast lane, uninstrumented four-shard medium tier, correctness gate, required-local-cases, whole-tree comment-policy scan and verified release artifact; retains pending runs with queue:max |
+| `trunk-red-disarm.yml` | product-safety | Completed develop Trunk run disables auto-merge on armed PRs the arm gate would refuse |
 | `upload-answers.yml` | product-safety | Answer file publication |
 | `trunk-duration-trend.yml` | tooling | Daily comparison of Trunk job p50 durations with the prior week; opens or closes one issue assigned to the repository owner; read-only actions access plus issue writes |
 | `validate-release-pr.yml` | product-safety | Release PR base validation |
@@ -119,11 +120,12 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_nightly_legacy_test_job.py` | product-safety | Legacy nightly matrix timeout bound and Windows legs |
 | `test_oracle_gate_workflow.py` | product-safety | Trusted triggers, develop-only checkout, single per-PR concurrency group, App-only posting and no other workflow posting the gate context |
 | `test_oracle_review_workflow.py` | product-safety | The notification-only shape of the oracle-review workflow: review triggers, empty permissions, one `review-event` job, no checkout, secrets or tools |
-| `test_oracle_verdict_workflow.py` | product-safety | Oracle review triggers, guards, per-job secret scoping, sequential reviewer slots and App-only posting |
+| `test_oracle_verdict_workflow.py` | product-safety | Oracle review triggers, guards, the single review job's step order and secret scoping, and App-only posting |
 | `test_t2_partition_workflow.py` | product-safety | Complete medium selection, correctness gate conservation, and binary framing placement |
 | `test_comment_policy_nightly_workflow.py` | tooling | Nightly comment-policy workflow triggers, develop checkout, read-only permissions, whole-tree launcher call and shared action pins |
 | `test_trunk_coverage_workflow.py` | product-safety | Coverage workflow triggers, instrumented shards, map combine with self-fetch, schedule-only staleness issue |
-| `test_trunk_workflow.py` | product-safety | Develop-push triggers, uninstrumented medium tier, retained pending runs and read-only test permissions |
+| `test_trunk_workflow.py` | product-safety | Develop-push triggers, uninstrumented medium tier, whole-tree comment-policy scan, retained pending runs and read-only test permissions |
+| `test_trunk_red_disarm_workflow.py` | product-safety | Red-trunk disarm trigger, develop-push filter, exact permissions, workflow token and full-history checkout |
 | `test_published_results_base_ci.py` | product-safety | Published corpus CI |
 | `test_release_canary_shard_evidence.py` | product-safety | Release canary evidence |
 | `test_release_uat_charter_guard.py` | product-safety | Release charter guard |
@@ -217,6 +219,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_pr_ready_make.py` | pure-process |
 | `test_pr_landing.py` | pure-process |
 | `test_trunk_revert.py` | pure-process |
+| `test_trunk_red_disarm.py` | pure-process |
 | `test_pytest_shard_evidence.py` | product-safety | Real serial and distributed test selection and execution conservation |
 | `test_required_case_evidence.py` | product-safety | A required local-engine case that skips, is deselected, fails or is expected to fail fails the required-case check |
 | `test_pr_refresh_certification.py` | pure-process |
@@ -319,6 +322,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `pytest_shard_evidence.py` | product-safety | Exact assigned, collected, and executed medium test evidence |
 | `pr_landing.py` | pure-process | PR-loop mechanics |
 | `trunk_revert.py` | pure-process | Revert of a merged PR and the red-trunk gate on `make pr-open` |
+| `trunk_red_disarm.py` | pure-process | Disables auto-merge on armed PRs the arm gate would refuse when a develop Trunk run is red |
 | `pr_refresh_certification.py` | pure-process | Refresh mechanics |
 | `pr_refresh_replay.py` | pure-process | Refresh mechanics |
 | `post_merge_signature.py` | pure-process | Post-merge mechanics |

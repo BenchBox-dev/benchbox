@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 from typing import Any
@@ -17,111 +18,220 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "oracle-verdict.yml"
 LEGACY = REPO_ROOT / ".github" / "workflows" / "oracle-review.yml"
 POLICY = load_policy(REPO_ROOT / ".github" / "oracle-reviewers.yml")
-REVIEW_SECRETS = {"ORACLE_GATEWAY_TOKEN", "ORACLE_GATEWAY_URL", "TS_OAUTH_CLIENT_ID", "TS_AUDIENCE"}
-APP_SECRETS = {"ORACLE_APP_ID", "ORACLE_APP_PRIVATE_KEY"}
 SHA_PIN = re.compile(r"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$")
 SECRET_REF = re.compile(r"secrets\.([A-Z0-9_]+)")
 OMP_SHA = re.compile(r"^[0-9a-f]{64}$")
 DISPATCH_STEP = "Dispatch the gate for the reviewed head"
+SETUP_ALLOWANCE_MINUTES = 30
+JOB_TIMEOUT_CEILING_MINUTES = 360
+UNCHANGED_PREFIX_SHA256 = "8e6956a8b101cf0b51537981ea2140277a7a2a655e9c45e5ea76efbd553058c5"
+REVIEW_CONDITION = (
+    "github.event_name == 'workflow_dispatch' ||"
+    " (github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) ||"
+    " (github.event_name == 'issue_comment' && github.event.issue.pull_request"
+    " && startsWith(github.event.comment.body, '/oracle-review')"
+    ' && contains(fromJSON(\'["OWNER", "MEMBER", "COLLABORATOR"]\'), github.event.comment.author_association))'
+)
+STEP_ORDER = [
+    "Refuse a dispatch from any ref other than develop",
+    "Check out the trusted develop copy",
+    "Install uv",
+    "Plan the review",
+    "Check out the pull request head for reading only",
+    "Classify the change and select the reviewer for attempt 1",
+    "Scan the disk for secret values before the reviewer runs",
+    "Install omp",
+    "Join the tailnet to reach the credential gateway",
+    "Verify Linux process isolation",
+    "Run the attempt loop",
+    "Scan the disk for secret values after the reviewer exits",
+    "Validate this run's attempts and decide",
+    "Redact every secret value held by the job from the results",
+    "Log the result when the App is not configured",
+    "Mint the App token",
+    "Skip a result this head already has",
+    "Post the commit status",
+    "Post the findings comment",
+    "Post the findings review",
+    "Upload the retry state",
+    *[f"Upload attempt {slot}" for slot in range(1, POLICY.max_attempts + 1)],
+    DISPATCH_STEP,
+]
+LOOP_STEP = "Run the attempt loop"
+REDACT_STEP = "Redact every secret value held by the job from the results"
+REDACTION_ENV = {
+    "OMP_GATEWAY_TOKEN": "${{ secrets.ORACLE_GATEWAY_TOKEN }}",
+    "TYPESAFE_API_KEY": "${{ secrets.TYPESAFE_API_KEY }}",
+    "ORACLE_GATEWAY_URL": "${{ secrets.ORACLE_GATEWAY_URL }}",
+    "TS_OAUTH_CLIENT_ID": "${{ secrets.TS_OAUTH_CLIENT_ID }}",
+    "TS_AUDIENCE": "${{ secrets.TS_AUDIENCE }}",
+    "JOB_TOKEN": "${{ github.token }}",
+}
+SCAN_STEPS = (
+    "Scan the disk for secret values before the reviewer runs",
+    "Scan the disk for secret values after the reviewer exits",
+)
+
+
+def _text_of_workflow() -> str:
+    return WORKFLOW.read_text(encoding="utf-8")
 
 
 def _load() -> dict[str, Any]:
-    return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    return yaml.safe_load(_text_of_workflow())
 
 
 def _jobs() -> dict[str, Any]:
     return _load()["jobs"]
 
 
+def _review() -> dict[str, Any]:
+    return _jobs()["review"]
+
+
+def _steps() -> list[dict[str, Any]]:
+    return _review()["steps"]
+
+
+def _names() -> list[str]:
+    return [step["name"] for step in _steps()]
+
+
+def _step(name: str) -> dict[str, Any]:
+    return next(step for step in _steps() if step["name"] == name)
+
+
 def _text(value: Any) -> str:
     return yaml.safe_dump(value, sort_keys=True)
 
 
-def _secrets(job: dict[str, Any]) -> set[str]:
-    return set(SECRET_REF.findall(_text(job)))
+def _secrets(value: Any) -> set[str]:
+    return set(SECRET_REF.findall(_text(value)))
 
 
-def _attempt_jobs() -> dict[str, dict[str, Any]]:
-    return {name: job for name, job in _jobs().items() if name.startswith("attempt-")}
+def _steps_referencing(secret: str) -> list[str]:
+    return [step["name"] for step in _steps() if secret in _secrets(step)]
 
 
-def _select_jobs() -> dict[str, dict[str, Any]]:
-    return {name: job for name, job in _jobs().items() if name.startswith("select-")}
-
-
-def _run(job: dict[str, Any], step_name: str) -> str:
-    return next(step["run"] for step in job["steps"] if step.get("name") == step_name)
+def _run(step_name: str) -> str:
+    return _step(step_name)["run"]
 
 
 def test_triggers() -> None:
     workflow = _load()
     assert workflow["name"] == "oracle-verdict"
     triggers = workflow[True] if True in workflow else workflow.get("on", {})
-    assert set(triggers) == {"pull_request_target", "issue_comment", "workflow_dispatch", "schedule", "push"}
-    assert triggers["push"] == {"branches": ["develop"]}
+    assert set(triggers) == {"push", "pull_request_target", "issue_comment", "workflow_dispatch", "schedule"}
     assert "pull_request" not in triggers
 
 
 def test_existing_gate_is_untouched() -> None:
     legacy = yaml.safe_load(LEGACY.read_text(encoding="utf-8"))
     assert legacy["name"] == "oracle-review"
-    assert "context: oracle-review\n" not in WORKFLOW.read_text(encoding="utf-8")
-    assert list(legacy["jobs"]) == ["review-event"]
+    assert "context: oracle-review\n" not in _text_of_workflow()
 
 
-def test_workflow_permissions_are_empty_and_jobs_are_minimal() -> None:
+def test_one_review_job_replaces_the_chain_and_the_steps_keep_their_order() -> None:
+    assert set(_jobs()) == {"sweep", "review"}
+    for name in _jobs():
+        assert not re.fullmatch(r"select-\d+|attempt-\d+-omp|post|plan", name), name
+    assert _names() == STEP_ORDER
+    assert "needs" not in _review()
+    assert " ".join(_review()["if"].split()) == REVIEW_CONDITION
+
+
+def test_the_review_condition_admits_exactly_what_the_plan_job_did() -> None:
+    condition = _review()["if"]
+    assert "issue_comment" in condition
+    assert "author_association" in condition
+    assert "review_comment" not in condition
+    assert _jobs()["sweep"]["if"] == "github.event_name == 'schedule' || github.event_name == 'push'"
+
+
+def test_the_sweep_the_triggers_and_the_concurrency_are_byte_identical_to_develop() -> None:
+    text = _text_of_workflow()
+    prefix = text[: text.index("\n  review:\n") + 1]
+    assert hashlib.sha256(prefix.encode("utf-8")).hexdigest() == UNCHANGED_PREFIX_SHA256
+    assert prefix.index("jobs:\n  sweep:") > prefix.index("concurrency:")
+
+
+def test_workflow_permissions_are_empty_and_the_review_job_holds_exactly_the_union_it_needs() -> None:
     assert _load()["permissions"] == {}
-    for name, job in _jobs().items():
-        allowed = {"actions", "contents", "pull-requests"}
-        if name.startswith("attempt-"):
-            assert job["permissions"].get("id-token") == "write", name
-            allowed = allowed | {"id-token"}
-        assert set(job.get("permissions", {})) <= allowed, name
+    assert _review()["permissions"] == {
+        "actions": "write",
+        "contents": "read",
+        "pull-requests": "read",
+        "id-token": "write",
+    }
+    assert _jobs()["sweep"]["permissions"] == {"actions": "write", "contents": "read", "pull-requests": "read"}
+    assert _review()["environment"] == "oracle"
 
 
-def test_attempt_jobs_join_the_tailnet_before_the_reviewer_runs() -> None:
-    for name, job in _attempt_jobs().items():
-        names = [step["name"] for step in job["steps"]]
-        join = job["steps"][names.index("Join the tailnet to reach the credential gateway")]
-        assert names.index("Join the tailnet to reach the credential gateway") < names.index("Run the reviewer"), name
-        assert join["uses"].startswith("tailscale/github-action@"), name
-        assert join["with"]["tags"] == "tag:oracle-ci", name
-        assert "oauth-secret" not in join["with"] and "authkey" not in join["with"], name
-        assert join["if"] == "env.HAS_TAILNET == 'true'", name
+def test_the_job_timeout_is_derived_from_the_policy_and_stays_under_the_platform_limit() -> None:
+    longest = max(reviewer.timeout_minutes for reviewer in POLICY.reviewers.values())
+    budget = POLICY.max_attempts * longest + SETUP_ALLOWANCE_MINUTES
+    assert _review()["timeout-minutes"] == budget
+    assert budget < JOB_TIMEOUT_CEILING_MINUTES
+    assert _review()["timeout-minutes"] > POLICY.max_attempts * longest
 
 
-def test_attempt_jobs_write_the_reviewer_home_before_the_reviewer_runs() -> None:
-    for name, job in _attempt_jobs().items():
-        names = [step["name"] for step in job["steps"]]
-        home = names.index("Write the reviewer's OMP home")
-        assert names.index("Check out the trusted develop copy") < home < names.index("Run the reviewer"), name
-        step = job["steps"][home]
-        assert step["working-directory"] == "trusted", name
-        assert step["env"] == {"ORACLE_GATEWAY_URL": "${{ secrets.ORACLE_GATEWAY_URL }}"}, name
-        assert 'reviewer-home --home "$HOME" --gateway-url "$ORACLE_GATEWAY_URL"' in step["run"], name
+def test_no_run_block_interpolates_a_secret_or_the_job_token() -> None:
+    for job_name, job in _jobs().items():
+        for step in job["steps"]:
+            run = step.get("run", "")
+            assert "secrets." not in run, (job_name, step["name"])
+            assert "github.token" not in run, (job_name, step["name"])
+            assert "GITHUB_TOKEN" not in run, (job_name, step["name"])
+    text = _text_of_workflow()
+    for line in text.splitlines():
+        if "secrets." in line or "github.token" in line:
+            assert re.match(r"^\s+[\w-]+: .*\$\{\{", line) or line.lstrip().startswith("if:"), line
 
 
-def test_attempt_jobs_hold_only_the_gateway_token_and_no_provider_credentials() -> None:
-    for name, job in _attempt_jobs().items():
-        step = next(step for step in job["steps"] if step["name"] == "Run the reviewer")
-        assert set(step["env"]) == {"OMP_GATEWAY_TOKEN", "REVIEWER"}, name
-        assert step["env"]["OMP_GATEWAY_TOKEN"] == "${{ secrets.ORACLE_GATEWAY_TOKEN }}", name
-        text = _text(job)
-        for gone in (
-            "OMP_AGENT_CONFIG",
-            "OMP_AUTH_BROKER",
-            "CLAUDE_CODE_OAUTH_TOKEN",
-            "OPENAI_API_KEY",
-            "META_API_KEY",
-            "GEMINI_API_KEY",
-        ):
-            assert gone not in text, (name, gone)
+def test_the_tailnet_is_joined_once_before_the_attempt_loop() -> None:
+    names = _names()
+    joins = [step for step in _steps() if str(step.get("uses", "")).startswith("tailscale/github-action@")]
+    assert len(joins) == 1
+    join = joins[0]
+    assert names.index(join["name"]) < names.index(LOOP_STEP)
+    assert join["with"]["tags"] == "tag:oracle-ci"
+    assert "oauth-secret" not in join["with"] and "authkey" not in join["with"]
+    assert "env.HAS_TAILNET == 'true'" in join["if"]
 
 
-def test_attempt_jobs_check_out_the_committed_reviewer_config() -> None:
-    for name, job in _attempt_jobs().items():
-        trusted = next(step for step in job["steps"] if step["name"] == "Check out the trusted develop copy")
-        assert ".github/oracle-omp-config.yml" in trusted["with"]["sparse-checkout"].split(), name
+def test_the_loop_holds_only_what_the_reviewer_holds_and_the_reviewer_home() -> None:
+    step = _step(LOOP_STEP)
+    assert step["env"] == {
+        "OMP_GATEWAY_TOKEN": "${{ secrets.ORACLE_GATEWAY_TOKEN }}",
+        "ORACLE_GATEWAY_URL": "${{ secrets.ORACLE_GATEWAY_URL }}",
+    }
+    assert step["working-directory"] == "trusted"
+    assert "cli attempts" in step["run"]
+    assert "reviewer-home" not in step["run"]
+    assert "github.token" not in _text(step)
+    assert _secrets(step) == {"ORACLE_GATEWAY_TOKEN", "ORACLE_GATEWAY_URL"}
+    text = _text(_review())
+    for gone in (
+        "OMP_AGENT_CONFIG",
+        "OMP_AUTH_BROKER",
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        "OPENAI_API_KEY",
+        "META_API_KEY",
+        "GEMINI_API_KEY",
+    ):
+        assert gone not in text, gone
+
+
+def test_the_job_checks_out_the_committed_reviewer_config() -> None:
+    trusted = _step("Check out the trusted develop copy")
+    assert ".github/oracle-omp-config.yml" in trusted["with"]["sparse-checkout"].split()
+    assert trusted["with"]["path"] == "trusted"
+    assert trusted["with"]["ref"] == "${{ github.sha }}"
+
+
+def test_the_job_job_relies_on_the_per_pull_request_group_alone() -> None:
+    assert "concurrency" not in _review()
+    assert "strategy" not in _review()
 
 
 def test_concurrency_is_per_pull_request_and_ignores_unrelated_events() -> None:
@@ -131,129 +241,150 @@ def test_concurrency_is_per_pull_request_and_ignores_unrelated_events() -> None:
     assert "github.event.changes.base" in group
 
 
-def test_attempt_jobs_rely_on_the_per_pull_request_group_alone() -> None:
-    for name, job in _attempt_jobs().items():
-        assert "concurrency" not in job, name
-
-
-def test_plan_guards_comments_and_edits() -> None:
-    condition = _jobs()["plan"]["if"]
-    assert "issue_comment" in condition
-    assert "author_association" in condition
-    assert "review_comment" not in condition
-    assert _jobs()["sweep"]["if"] == "github.event_name == 'schedule' || github.event_name == 'push'"
-
-
 def test_dispatch_is_refused_outside_develop() -> None:
-    plan = _jobs()["plan"]
-    guard = next(step for step in plan["steps"] if step["name"] == "Refuse a dispatch from any ref other than develop")
+    guard = _step("Refuse a dispatch from any ref other than develop")
+    assert guard["if"] == "github.event_name == 'workflow_dispatch'"
     assert guard["env"]["CURRENT_REF"] == "${{ github.ref }}"
     assert "exit 2" in guard["run"]
+    assert _names()[0] == guard["name"]
 
 
-def test_plan_job_holds_no_secret_and_resolves_the_head_by_api() -> None:
-    plan = _jobs()["plan"]
+def test_the_plan_step_holds_only_the_job_token_and_resolves_the_head_by_api() -> None:
+    plan = _step("Plan the review")
     assert _secrets(plan) == set()
-    run = _run(plan, "Plan the review")
-    assert "cli plan" in run
-    upload = next(step for step in plan["steps"] if step.get("name") == "Upload the plan")
-    assert upload["with"]["name"] == "oracle-verdict-plan"
+    assert set(plan["env"]) == {"GH_TOKEN", "PR_NUMBER"}
+    assert "cli plan" in plan["run"]
+    assert plan["id"] == "plan"
 
 
-def test_reviewer_slots_cover_the_policy_and_run_sequentially() -> None:
-    jobs = _jobs()
-    slots = POLICY.max_attempts
-    assert {f"select-{slot}" for slot in range(1, slots + 1)} <= set(jobs)
-    assert set(_attempt_jobs()) == {f"attempt-{slot}-omp" for slot in range(1, slots + 1)}
-    for name, job in jobs.items():
-        assert "strategy" not in job, name
-    assert jobs["select-1"]["needs"] == "plan"
-    for slot in range(2, slots + 1):
-        needs = set(jobs[f"select-{slot}"]["needs"])
-        assert {f"select-{slot - 1}", f"attempt-{slot - 1}-omp"} <= needs
-        assert f"needs.select-{slot - 1}.outputs.reviewer != ''" in jobs[f"select-{slot}"]["if"]
-    for name, job in _attempt_jobs().items():
-        slot = name.split("-")[1]
-        assert job["needs"] == ["plan", f"select-{slot}"]
-        assert job["if"] == f"${{{{ !cancelled() && needs.select-{slot}.outputs.reviewer != '' }}}}"
-
-
-def test_every_bucket_reviewer_resolves_and_selects_cover_all_buckets() -> None:
+def test_every_bucket_reviewer_resolves() -> None:
     assert set(POLICY.reviewers) == set(SIZE_BUCKETS)
     assert set(POLICY.buckets) == set(SIZE_BUCKETS)
     for bucket in SIZE_BUCKETS:
         assert POLICY.reviewers[bucket].harness == "omp"
 
 
-def test_classification_flows_from_select_1_to_every_later_job() -> None:
-    jobs = _jobs()
-    upload = next(step for step in jobs["select-1"]["steps"] if step.get("name") == "Upload the classification")
-    assert upload["with"]["name"] == "oracle-verdict-classification"
-    assert upload["with"]["if-no-files-found"] == "warn"
-    for slot in range(2, POLICY.max_attempts + 1):
-        download = next(
-            step for step in jobs[f"select-{slot}"]["steps"] if step.get("name") == "Download the classification"
-        )
-        assert download["with"]["name"] == "oracle-verdict-classification"
-    for job in _attempt_jobs().values():
-        download = next(step for step in job["steps"] if step.get("name") == "Download the classification")
-        assert download["with"]["name"] == "oracle-verdict-classification"
-        assert "--classification " in _run(job, "Run the reviewer")
+def test_classification_is_written_once_before_the_loop_and_read_by_it() -> None:
+    classify = _step("Classify the change and select the reviewer for attempt 1")
+    assert "cli select" in classify["run"] and "--slot 1" in classify["run"]
+    assert classify["env"] == {"TYPESAFE_API_KEY": "${{ secrets.TYPESAFE_API_KEY }}"}
+    assert _names().index(classify["name"]) < _names().index(LOOP_STEP)
+    assert "oracle-classification/classification.json" in _run(LOOP_STEP)
+    assert "oracle-classification/classification.json" in classify["run"]
+    assert "actions/upload-artifact" not in _text(classify)
 
 
-def test_only_select_1_holds_the_judgment_key() -> None:
-    for name, job in _select_jobs().items():
-        if name == "select-1":
-            assert _secrets(job) == {"TYPESAFE_API_KEY"}, name
-        else:
-            assert _secrets(job) == set(), name
-    assert _jobs()["select-1"]["environment"] == "oracle"
+def test_only_the_scans_the_classifier_and_the_redaction_step_hold_the_judgment_key() -> None:
+    assert set(_steps_referencing("TYPESAFE_API_KEY")) == {
+        "Classify the change and select the reviewer for attempt 1",
+        *SCAN_STEPS,
+        REDACT_STEP,
+    }
+    names = _names()
+    loop = names.index(LOOP_STEP)
+    for name in _steps_referencing("TYPESAFE_API_KEY"):
+        assert names.index(name) != loop
 
 
-def test_each_reviewer_job_loads_only_provider_secrets() -> None:
-    for name, job in _attempt_jobs().items():
-        assert job["environment"] == "oracle", name
-        assert _secrets(job) == REVIEW_SECRETS, name
+def test_the_only_step_referencing_the_app_key_mints_after_the_loop_and_the_redaction() -> None:
+    assert _steps_referencing("ORACLE_APP_PRIVATE_KEY") == ["Mint the App token"]
+    names = _names()
+    mint = names.index("Mint the App token")
+    assert mint > names.index(LOOP_STEP)
+    assert mint > names.index(REDACT_STEP)
+    assert mint > names.index(SCAN_STEPS[1])
+    assert "ORACLE_APP_PRIVATE_KEY" not in _text(_review()["env"])
+    assert _text_of_workflow().count("ORACLE_APP_PRIVATE_KEY") == 1
 
 
-def test_only_the_post_job_holds_the_app_key() -> None:
-    for name, job in _jobs().items():
-        secrets = _secrets(job)
-        if name == "post":
-            assert secrets == APP_SECRETS
-        else:
-            assert not secrets & APP_SECRETS, name
-    assert _jobs()["post"]["environment"] == "oracle"
+def test_every_secret_is_referenced_only_where_it_is_needed() -> None:
+    allowed = {
+        "ORACLE_GATEWAY_TOKEN": {LOOP_STEP, REDACT_STEP},
+        "ORACLE_GATEWAY_URL": {LOOP_STEP, REDACT_STEP},
+        "TS_OAUTH_CLIENT_ID": {"Join the tailnet to reach the credential gateway", REDACT_STEP},
+        "TS_AUDIENCE": {"Join the tailnet to reach the credential gateway", REDACT_STEP},
+        "ORACLE_APP_ID": {"Mint the App token"},
+    }
+    for secret, steps in allowed.items():
+        assert set(_steps_referencing(secret)) == steps, secret
+    declared = set().union(*(_secrets(step) for step in _steps()))
+    assert declared == {*allowed, "TYPESAFE_API_KEY", "ORACLE_APP_PRIVATE_KEY"}
 
 
-def test_reviewer_jobs_never_execute_pull_request_code() -> None:
-    for name, job in _attempt_jobs().items():
-        checkouts = [step for step in job["steps"] if str(step.get("uses", "")).startswith("actions/checkout@")]
-        trusted, head = checkouts
-        assert trusted["with"]["ref"] == "${{ github.sha }}"
-        assert trusted["with"]["path"] == "trusted"
-        assert head["with"]["ref"] == "${{ needs.plan.outputs.head_sha }}"
-        assert head["with"]["path"] == "workspace"
-        assert head["with"]["persist-credentials"] is False
-        for step in job["steps"]:
-            if "run" in step:
-                assert step.get("working-directory") in (None, "trusted"), (name, step["name"])
-                assert "bash -c" not in step["run"]
-                assert "workspace/" not in step["run"].replace("$GITHUB_WORKSPACE/workspace", "")
-        run = _run(job, "Run the reviewer")
-        assert "_project.scripts.oracle_reviewers.cli review" in run
-        assert "--harness omp" in run
+def test_the_redaction_step_holds_every_secret_value_the_job_held() -> None:
+    step = _step(REDACT_STEP)
+    assert step["env"] == REDACTION_ENV
+    assert "cli redact-check" in step["run"]
+    assert "--env JOB_TOKEN" in step["run"]
+    assert (
+        '--path "$RUNNER_TEMP/oracle-attempts"' in step["run"] and '--path "$RUNNER_TEMP/oracle-final"' in step["run"]
+    )
+    names = _names()
+    assert names.index(LOOP_STEP) < names.index("Validate this run's attempts and decide") < names.index(step["name"])
+    assert names.index(step["name"]) < names.index("Mint the App token")
+    assert step["if"] == "steps.plan.outputs.post == 'true'"
+
+
+def test_the_disk_scans_bracket_the_reviewer_and_cover_the_declared_scratch_roots() -> None:
+    names = _names()
+    before, after = (_step(name) for name in SCAN_STEPS)
+    assert names.index(before["name"]) < names.index("Install omp") < names.index(LOOP_STEP)
+    assert names.index(after["name"]) > names.index(LOOP_STEP)
+    assert names.index(before["name"]) > names.index("Classify the change and select the reviewer for attempt 1")
+    for step in (before, after):
+        assert step["env"] == {
+            "TYPESAFE_API_KEY": "${{ secrets.TYPESAFE_API_KEY }}",
+            "JOB_TOKEN": "${{ github.token }}",
+        }
+        for root in ('"$HOME"', '"$RUNNER_TEMP"', '"$GITHUB_WORKSPACE/trusted"', '"$GITHUB_WORKSPACE/workspace"'):
+            assert f"--root {root}" in step["run"], (step["name"], root)
+        for root in ("/tmp", "/var/tmp", "/dev/shm", '"${TMPDIR:-/tmp}"'):
+            assert f"--root {root}" in step["run"]
+        assert "--env TYPESAFE_API_KEY --env JOB_TOKEN" in step["run"]
+        assert "continue-on-error" not in step
+
+
+def test_the_job_token_is_never_present_while_the_reviewer_runs() -> None:
+    names = _names()
+    loop = names.index(LOOP_STEP)
+    holders = [step["name"] for step in _steps() if "github.token" in _text(step)]
+    assert LOOP_STEP not in holders
+    for name in holders:
+        step = _step(name)
+        assert names.index(name) != loop
+        assert "github.token" in _text(step.get("env", {})), name
+        assert "github.token" not in _text({key: value for key, value in step.items() if key != "env"}), name
+    assert "github.token" not in _text(_review()["env"])
+    assert _load()["permissions"] == {}
+
+
+def test_the_pull_request_head_is_data_and_never_executed() -> None:
+    checkouts = [step for step in _steps() if str(step.get("uses", "")).startswith("actions/checkout@")]
+    trusted, head = checkouts
+    assert trusted["with"]["ref"] == "${{ github.sha }}"
+    assert trusted["with"]["path"] == "trusted"
+    assert head["with"]["ref"] == "${{ steps.plan.outputs.head_sha }}"
+    assert head["with"]["path"] == "workspace"
+    assert head["if"] == "steps.plan.outputs.decision == 'review'"
+    for step in _steps():
+        if "run" in step:
+            assert step.get("working-directory") in (None, "trusted"), step["name"]
+            assert "bash -c" not in step["run"]
+            assert "workspace/" not in step["run"].replace("$GITHUB_WORKSPACE/workspace", "")
+    assert '--workspace "$GITHUB_WORKSPACE/workspace"' in _run(LOOP_STEP)
 
 
 def test_every_checkout_disables_persisted_credentials() -> None:
-    for name, job in _jobs().items():
-        for step in job["steps"]:
-            if str(step.get("uses", "")).startswith("actions/checkout@"):
-                assert step["with"]["persist-credentials"] is False, name
+    checkouts = [step for step in _steps() if str(step.get("uses", "")).startswith("actions/checkout@")]
+    assert len(checkouts) == 2
+    for step in checkouts:
+        assert step["with"]["persist-credentials"] is False
+    sweep = [step for step in _jobs()["sweep"]["steps"] if str(step.get("uses", "")).startswith("actions/checkout@")]
+    assert all(step["with"]["persist-credentials"] is False for step in sweep)
 
 
-def test_omp_installs_are_pinned_and_checked() -> None:
-    text = WORKFLOW.read_text(encoding="utf-8")
+def test_omp_is_installed_once_pinned_and_checked() -> None:
+    text = _text_of_workflow()
     assert "npm install" not in text
     assert "setup-node" not in text
     assert "dev.meta.ai" not in text
@@ -262,60 +393,121 @@ def test_omp_installs_are_pinned_and_checked() -> None:
     assert "sysctl" not in text
     assert "CODEX_HOME" not in text
     assert "AGY_CLI_DISABLE_AUTO_UPDATE" not in text
-    for name, job in _attempt_jobs().items():
-        install = next(step for step in job["steps"] if step["name"] == "Install omp")
-        assert install["env"]["OMP_URL"].startswith("https://build.stencil.so/d/omp/")
-        assert OMP_SHA.match(install["env"]["OMP_SHA256"]), name
-        lines = install["run"].splitlines()
-        check = 'echo "$OMP_SHA256  $RUNNER_TEMP/omp" | sha256sum --check --strict'
-        assert lines.index(check) < lines.index('chmod +x "$RUNNER_TEMP/omp"')
-        assert "env" not in install or set(install["env"]) == {"OMP_URL", "OMP_SHA256"}
-    assert text.count("OMP_SHA256: ") == POLICY.max_attempts
+    install = _step("Install omp")
+    assert install["env"]["OMP_URL"].startswith("https://build.stencil.so/d/omp/")
+    assert OMP_SHA.match(install["env"]["OMP_SHA256"])
+    lines = install["run"].splitlines()
+    check = 'echo "$OMP_SHA256  $RUNNER_TEMP/omp" | sha256sum --check --strict'
+    assert lines.index(check) < lines.index('chmod +x "$RUNNER_TEMP/omp"')
+    assert set(install["env"]) == {"OMP_URL", "OMP_SHA256", "OMP_VERSION"}
+    assert text.count("OMP_SHA256: ") == 1
+    assert text.count("OMP_VERSION: ") == 1
+    version_check = '"$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY" | grep -Fwq "$OMP_VERSION"'
+    assert lines.index('chmod +x "$RUNNER_TEMP/omp"') < lines.index(version_check)
+    assert lines.index(version_check) < lines.index('echo "$RUNNER_TEMP" >> "$GITHUB_PATH"')
     curl = "curl -fsSL --proto '=https' --tlsv1.2 \"$OMP_URL\""
     assert "curl " not in text.replace(curl, "")
     assert "--dangerously" not in text and "--yolo" not in text
 
 
-def test_reviewer_attempts_always_leave_an_artifact() -> None:
-    for name, job in _attempt_jobs().items():
-        ensure = next(
-            step for step in job["steps"] if step["name"] == "Record an absence if the reviewer did not finish"
-        )
-        upload = next(step for step in job["steps"] if step["name"] == "Upload the attempt")
-        assert ensure["if"] == "always()" and upload["if"] == "always()"
-        assert upload["with"]["name"] == f"oracle-verdict-attempt-{name.split('-')[1]}"
+TOLERATED_FAILURES = (
+    "Check out the pull request head for reading only",
+    "Classify the change and select the reviewer for attempt 1",
+    "Install omp",
+    "Join the tailnet to reach the credential gateway",
+)
+FAIL_CLOSED_STEPS = (*SCAN_STEPS, LOOP_STEP, REDACT_STEP, "Validate this run's attempts and decide")
 
 
-def test_post_job_mints_the_app_token_and_tolerates_missing_secrets() -> None:
-    post = _jobs()["post"]
-    assert post["if"] == "${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.post == 'true' }}"
-    assert post["env"]["HAS_APP"] == "${{ secrets.ORACLE_APP_ID != '' && secrets.ORACLE_APP_PRIVATE_KEY != '' }}"
-    mint = next(step for step in post["steps"] if step.get("id") == "app")
+def test_setup_failures_become_absences_instead_of_ending_the_review() -> None:
+    for name in TOLERATED_FAILURES:
+        assert _step(name)["continue-on-error"] is True, name
+    assert "if" in _step(LOOP_STEP) and "always()" not in _step(LOOP_STEP)["if"]
+    assert "cancelled()" not in _step(LOOP_STEP)["if"]
+
+
+def test_the_security_checks_and_the_loop_fail_the_job_closed() -> None:
+    for name in FAIL_CLOSED_STEPS:
+        step = _step(name)
+        assert "continue-on-error" not in step, name
+        assert "always()" not in step.get("if", ""), name
+        assert "cancelled()" not in step.get("if", ""), name
+
+
+def test_linux_isolation_runs_immediately_before_the_loop_and_fails_closed() -> None:
+    name = "Verify Linux process isolation"
+    step = _step(name)
+    assert _names()[_names().index(LOOP_STEP) - 1] == name
+    assert step["if"] == "steps.plan.outputs.decision == 'review'"
+    assert step["working-directory"] == "trusted"
+    assert step["run"] == "python3 -m _project.scripts.oracle_reviewers.isolation"
+    assert "continue-on-error" not in step
+
+
+def test_attempt_and_retry_state_artifacts_keep_their_names_and_retention() -> None:
+    names = _names()
+    posts = max(
+        names.index(name)
+        for name in ("Post the commit status", "Post the findings comment", "Post the findings review")
+    )
+    for slot in range(1, POLICY.max_attempts + 1):
+        upload = _step(f"Upload attempt {slot}")
+        assert upload["with"]["name"] == f"oracle-verdict-attempt-{slot}"
+        assert upload["with"]["path"] == f"${{{{ runner.temp }}}}/oracle-attempts/attempt-{slot}.json"
+        assert upload["with"]["retention-days"] == 7
+        assert names.index(upload["name"]) > names.index(LOOP_STEP)
+        assert "steps.redact.outcome == 'success'" in upload["if"]
+        assert f"steps.loop.outputs.attempts >= {slot}" in upload["if"]
+        assert upload["if"].startswith("${{ always()")
+    state = _step("Upload the retry state")
+    assert state["with"]["name"] == "oracle-verdict-state-${{ steps.plan.outputs.pr }}"
+    assert state["with"]["retention-days"] == 7
+    assert names.index(state["name"]) > posts
+    assert "always()" not in state["if"]
+
+
+def test_the_attempt_loop_and_redaction_steps_have_the_ids_the_uploads_read() -> None:
+    assert _step(LOOP_STEP)["id"] == "loop"
+    assert _step(REDACT_STEP)["id"] == "redact"
+    assert _step("Validate this run's attempts and decide")["id"] == "finalize"
+
+
+def test_the_post_steps_mint_the_app_token_and_tolerate_missing_secrets() -> None:
+    env = _review()["env"]
+    assert env["HAS_APP"] == "${{ secrets.ORACLE_APP_ID != '' }}"
+    mint = _step("Mint the App token")
     assert mint["uses"] == "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1"
-    assert mint["if"] == "env.HAS_APP == 'true'"
+    assert mint["if"] == "steps.plan.outputs.post == 'true' && env.HAS_APP == 'true'"
     assert mint["with"]["permission-statuses"] == "write"
     assert mint["with"]["permission-pull-requests"] == "write"
-    absent = next(step for step in post["steps"] if step["name"] == "Log the result when the App is not configured")
-    assert absent["if"] == "env.HAS_APP != 'true'"
-    for step in post["steps"]:
-        if "GH_TOKEN" in step.get("env", {}):
-            if step["name"] == DISPATCH_STEP:
-                assert step["env"]["GH_TOKEN"] == "${{ github.token }}"
-                assert step["env"]["READ_TOKEN"] == "${{ steps.app.outputs.token }}"
-                assert step["if"].startswith("env.HAS_APP == 'true'")
-            else:
-                assert step["env"]["GH_TOKEN"] == "${{ steps.app.outputs.token }}"
-                assert step["if"].startswith("env.HAS_APP == 'true'")
-    finalize = _run(post, "Validate this run's artifacts and decide")
-    assert "cli finalize" in finalize
-    downloads = [step for step in post["steps"] if str(step.get("uses", "")).startswith("actions/download-artifact@")]
-    assert all("run-id" not in step["with"] for step in downloads)
+    absent = _step("Log the result when the App is not configured")
+    assert absent["if"] == "steps.plan.outputs.post == 'true' && env.HAS_APP != 'true'"
+    for name in ("Skip a result this head already has", "Post the commit status", "Post the findings comment"):
+        step = _step(name)
+        assert step["env"]["GH_TOKEN"] == "${{ steps.app.outputs.token }}"
+        assert "env.HAS_APP == 'true'" in step["if"]
+    assert "cli finalize" in _run("Validate this run's attempts and decide")
+    assert not any(str(step.get("uses", "")).startswith("actions/download-artifact@") for step in _steps())
+
+
+def test_every_post_step_requires_the_plan_to_post() -> None:
+    for name in (
+        "Skip a result this head already has",
+        "Post the commit status",
+        "Post the findings comment",
+        "Post the findings review",
+        DISPATCH_STEP,
+        "Mint the App token",
+    ):
+        assert "steps.plan.outputs.post == 'true'" in _step(name)["if"], name
+        assert "cancelled()" not in _step(name)["if"], name
 
 
 def test_status_is_posted_on_the_api_resolved_head() -> None:
-    post = _jobs()["post"]
-    assert post["env"]["HEAD_SHA"] == "${{ needs.plan.outputs.head_sha }}"
-    assert "repos/$REPO/statuses/$HEAD_SHA" in _run(post, "Post the commit status")
+    step = _step("Post the commit status")
+    assert step["env"]["HEAD_SHA"] == "${{ steps.plan.outputs.head_sha }}"
+    assert "repos/$REPO/statuses/$HEAD_SHA" in step["run"]
+    assert _review()["env"]["REPO"] == "${{ github.repository }}"
 
 
 def test_actions_are_pinned_to_full_shas() -> None:
@@ -326,7 +518,7 @@ def test_actions_are_pinned_to_full_shas() -> None:
 
 
 def test_workflow_has_no_comments() -> None:
-    assert not any(line.lstrip().startswith("#") for line in WORKFLOW.read_text(encoding="utf-8").splitlines())
+    assert not any(line.lstrip().startswith("#") for line in _text_of_workflow().splitlines())
 
 
 def test_reviewer_commands_keep_read_only_flags(tmp_path: Path) -> None:
@@ -337,52 +529,45 @@ def test_reviewer_commands_keep_read_only_flags(tmp_path: Path) -> None:
         assert reviewer.model in argv, name
 
 
-def test_the_post_job_rechecks_the_review_list_before_posting() -> None:
-    post = _jobs()["post"]
-    names = [step["name"] for step in post["steps"]]
-    assert "Skip a result this head already has" in names
-    for name in ("Post the commit status", "Post the findings comment", "Post the findings review"):
-        step = next(step for step in post["steps"] if step["name"] == name)
-        assert "steps.guard.outputs.skip != 'true'" in step["if"], name
+def test_the_post_steps_recheck_the_review_list_before_posting() -> None:
+    assert "Skip a result this head already has" in _names()
+    for name in ("Post the commit status", "Post the findings comment", "Post the findings review", DISPATCH_STEP):
+        assert "steps.guard.outputs.skip != 'true'" in _step(name)["if"], name
 
 
 def test_no_step_lists_or_reruns_oracle_review_runs() -> None:
-    text = WORKFLOW.read_text(encoding="utf-8")
+    text = _text_of_workflow()
     assert "oracle-review.yml" not in text
     assert "gh run list" not in text
     assert "gh run rerun" not in text
-    for job in _jobs().values():
-        assert "Rerun the failed synchronize suite for this head" not in [step.get("name") for step in job["steps"]]
 
 
 def test_the_retry_state_is_stored_only_after_every_review_post_succeeds() -> None:
-    steps = _jobs()["post"]["steps"]
-    names = [step["name"] for step in steps]
+    names = _names()
     upload = names.index("Upload the retry state")
     for name in ("Post the commit status", "Post the findings comment", "Post the findings review"):
         assert names.index(name) < upload, name
-    assert "if" not in steps[upload] or "always()" not in steps[upload]["if"]
 
 
-def test_only_sweep_and_post_hold_actions_write() -> None:
-    assert _jobs()["post"]["permissions"] == {"actions": "write", "contents": "read"}
+def test_only_sweep_and_review_hold_actions_write() -> None:
     holders = {name for name, job in _jobs().items() if job.get("permissions", {}).get("actions") == "write"}
-    assert holders == {"sweep", "post"}
+    assert holders == {"sweep", "review"}
 
 
-def test_post_dispatches_the_gate_last_and_only_after_the_review_is_posted() -> None:
-    steps = _jobs()["post"]["steps"]
-    names = [step["name"] for step in steps]
+def test_the_gate_is_dispatched_last_and_only_after_the_review_is_posted() -> None:
+    names = _names()
     assert names[-1] == DISPATCH_STEP
-    assert names.index(DISPATCH_STEP) > names.index("Post the findings review")
-    assert names.index(DISPATCH_STEP) > names.index("Post the commit status")
-    assert names.index(DISPATCH_STEP) > names.index("Post the findings comment")
-    step = steps[-1]
-    assert step["if"] == "env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'"
+    for name in ("Post the findings review", "Post the commit status", "Post the findings comment"):
+        assert names.index(DISPATCH_STEP) > names.index(name)
+    step = _step(DISPATCH_STEP)
+    assert (
+        step["if"] == "steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'"
+    )
+    assert step["env"]["GH_TOKEN"] == "${{ github.token }}"
 
 
-def test_post_dispatch_targets_develop_with_the_reviewed_head() -> None:
-    run = _run(_jobs()["post"], DISPATCH_STEP)
+def test_the_dispatch_targets_develop_with_the_reviewed_head() -> None:
+    run = _run(DISPATCH_STEP)
     assert 'gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .base.ref' in run
     assert 'if [ "$base" = develop ]; then' in run
     assert (
@@ -392,21 +577,14 @@ def test_post_dispatch_targets_develop_with_the_reviewed_head() -> None:
     assert "statuses/" not in run
 
 
-def test_only_the_post_job_dispatches_the_gate() -> None:
+def test_only_the_review_job_dispatches_the_gate() -> None:
     dispatchers = [
         (name, step["name"])
         for name, job in _jobs().items()
         for step in job["steps"]
         if "gh workflow run oracle-gate.yml" in step.get("run", "")
     ]
-    assert dispatchers == [("post", DISPATCH_STEP)]
-
-
-def test_post_waits_for_every_slot() -> None:
-    needs = set(_jobs()["post"]["needs"])
-    slots = POLICY.max_attempts
-    assert {f"select-{slot}" for slot in range(1, slots + 1)} <= needs
-    assert {f"attempt-{slot}-omp" for slot in range(1, slots + 1)} <= needs
+    assert dispatchers == [("review", DISPATCH_STEP)]
 
 
 def _context(
@@ -420,10 +598,10 @@ def _cancels(event_name: str) -> Any:
     return evaluate(expression, _context(event_name))
 
 
-def test_develop_push_runs_the_sweep_and_no_plan() -> None:
+def test_develop_push_runs_the_sweep_and_no_review() -> None:
     context = _context("push")
     assert evaluate(_jobs()["sweep"]["if"], context)
-    assert not evaluate(_jobs()["plan"]["if"], context)
+    assert not evaluate(_review()["if"], context)
 
 
 def test_push_and_schedule_sweeps_share_one_group_that_never_cancels() -> None:

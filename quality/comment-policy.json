@@ -31498,18 +31498,6 @@
       "removal": "Remove when the test no longer checks comment handling."
     },
     {
-      "path": "_project/scripts/platform_manifest.py",
-      "symbol": "_validate_semantic_surfaces",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-project-tooling",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
       "path": "benchbox/core/read_primitives/catalog/queries.yaml",
       "symbol": ".queries[broadcast_join_two_tables].sql:",
       "text": "/*+ BROADCAST(n) */",
@@ -31543,18 +31531,6 @@
       "alternative": "Configure the join strategy through session settings instead of an inline hint.",
       "owner": "comment-cleanup-documentation-samples",
       "removal": "Remove when the query no longer needs the hinted join strategy.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "scripts/aws_cost_limits.py",
-      "symbol": "set_service_limit",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-operational-tooling",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
       "expires": "2027-01-04"
     },
     {
@@ -31594,54 +31570,6 @@
       "expires": "2027-01-04"
     },
     {
-      "path": "scripts/publication/check_explorer_compat.py",
-      "symbol": "main",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-publication-tooling",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "scripts/publication/validator_parity.py",
-      "symbol": "_discover_changed_bundles",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-publication-tooling",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "tests/integration/test_datavault_duckdb.py",
-      "symbol": "TestDataVaultTPCHEquivalence._tpch_query_for_params",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-cross-module-integration-tests",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "tests/uat/orchestrator.py",
-      "symbol": "_run_sweep_phases",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-uat-framework",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
       "path": "tests/unit/mcp/test_benchmark_tools.py",
       "symbol": "TestRunBenchmarkTool.test_every_matrix_option_reaches_effective_preparation",
       "text": "# noqa: C901",
@@ -31650,42 +31578,6 @@
       "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
       "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
       "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "tests/unit/platforms/test_base_adapter.py",
-      "symbol": "test_collect_resource_utilization_with_stub",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-unit-tests-core",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "tests/unit/test_tpcds_streams.py",
-      "symbol": "fake_tpcds_stream_environment",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-tpcds-runtime",
-      "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
-    },
-    {
-      "path": "tests/utilities/unified_test_runner.py",
-      "symbol": "UnifiedTestRunner.build_pytest_command",
-      "text": "# noqa: C901",
-      "kind": "directive",
-      "consumer": "pyproject.toml",
-      "necessity": "Ruff C901 measures this function above the configured complexity ceiling. Ruff RUF100 confirms the suppression is used.",
-      "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
-      "owner": "comment-cleanup-test-support",
       "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
       "expires": "2027-01-04"
     },

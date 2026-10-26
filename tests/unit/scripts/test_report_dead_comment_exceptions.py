@@ -102,6 +102,22 @@ def test_expired_exception_with_live_finding_is_reported_as_expired_not_dead(tmp
     assert [(e["path"], reason) for e, reason in dead_exceptions(tmp_path, policy)] == [("live.py", "expired but live")]
 
 
+def test_entry_whose_count_exceeds_the_matching_lines_is_reported(tmp_path: Path) -> None:
+    (tmp_path / "pair.py").write_text("import os  # noqa: F401\nimport sys  # noqa: F401\n", encoding="utf-8")
+    policy = repo(
+        tmp_path,
+        [
+            entry("live.py", count=2),
+            entry("pair.py", count=2),
+            entry("changed.py", count=1),
+        ],
+    )
+    subprocess.run(["git", "-C", str(tmp_path), "add", "pair.py"], check=True)
+    assert [(e["path"], reason) for e, reason in dead_exceptions(tmp_path, policy)] == [
+        ("live.py", "count 2 exceeds 1 matching line(s)")
+    ]
+
+
 def commit_policy(tmp_path: Path, policy: dict, message: str) -> None:
     (tmp_path / POLICY_PATH).write_text(json.dumps(policy, indent=2) + "\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(tmp_path), "add", POLICY_PATH], check=True)

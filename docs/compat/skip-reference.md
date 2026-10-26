@@ -4,9 +4,9 @@
 
 Rules the registry applies to queries, benchmarks, and DDL statements. Split into two sections based on whether the outcome is user-visible in result counts. Each entry names the platform, the scope the rule applies to, the registered reason, and the rule_id you can grep for in `benchbox/sql_compat/rules/`.
 
-**Total rules:** 339
+**Total rules:** 347
 
-**Platforms with rules:** 23
+**Platforms with rules:** 29
 
 ## Will not run
 
@@ -104,6 +104,12 @@ Queries or benchmarks that are **omitted from the result set** - either because 
 | SKIPPED_QUERY | benchmark=tpchavoc, query=8_v1 | execution_filter | ClickHouse cannot execute the two correlated market-share subqueries (Code 1/48 correlated subquery planning failure). | `execution_filter.clickhouse-server.tpchavoc.8_v1` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=9_v1 | execution_filter | ClickHouse cannot execute this correlated profit subquery (Code 1/48 correlated subquery planning failure). | `execution_filter.clickhouse-server.tpchavoc.9_v1` |
 
+### databend
+
+| support | scope | phase | reason | rule_id |
+|---|---|---|---|---|
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | No Databend form of the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses exists in the translator (the Snowflake-dialect translation leaves them in place). | `execution_filter.databend.tpchavoc.1_v7` |
+
 ### databricks
 
 | support | scope | phase | reason | rule_id |
@@ -127,12 +133,17 @@ Queries or benchmarks that are **omitted from the result set** - either because 
 | SKIPPED_QUERY | benchmark=tpchavoc, query=16_v7 | execution_filter | DataFusion physical planning does not support the IN sub-query in this variant shape. | `execution_filter.datafusion.tpchavoc.16_v7` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=17_v10 | execution_filter | DataFusion physical planning does not support the scalar sub-query in this variant shape. | `execution_filter.datafusion.tpchavoc.17_v10` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=17_v7 | execution_filter | DataFusion physical planning does not support the scalar sub-query in this variant shape. | `execution_filter.datafusion.tpchavoc.17_v7` |
-| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | DataFusion has no `LIST` aggregate used by this variant (`Invalid function 'list'`). | `execution_filter.datafusion.tpchavoc.1_v7` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=4_v10 | execution_filter | DataFusion physical planning does not support EXISTS in this variant shape. | `execution_filter.datafusion.tpchavoc.4_v10` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=4_v7 | execution_filter | DataFusion physical planning does not support EXISTS in this variant shape. | `execution_filter.datafusion.tpchavoc.4_v7` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=7_v1 | execution_filter | DataFusion physical planning does not support the scalar sub-query in this variant shape. | `execution_filter.datafusion.tpchavoc.7_v1` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=8_v1 | execution_filter | DataFusion `scalar_subquery_to_join` optimizer rule fails to resolve a sub-query field for this variant. | `execution_filter.datafusion.tpchavoc.8_v1` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=9_v1 | execution_filter | DataFusion physical planning does not support the scalar sub-query in this variant shape. | `execution_filter.datafusion.tpchavoc.9_v1` |
+
+### doris
+
+| support | scope | phase | reason | rule_id |
+|---|---|---|---|---|
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | No Doris form of the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses exists in the translator. | `execution_filter.doris.tpchavoc.1_v7` |
 
 ### duckdb
 
@@ -164,6 +175,18 @@ Queries or benchmarks that are **omitted from the result set** - either because 
 | SKIPPED_QUERY | benchmark=write_primitives, query=merge_upsert_with_delete | execution_filter | DuckDB 1.3.2 rejects the catalog's MERGE INTO statements; keep them explicit skips until the bundled driver supports MERGE. Portable merge operations written as UPDATE/INSERT run normally. | `execution_filter.duckdb.write_primitives.merge_upsert_with_delete` |
 | SKIPPED_QUERY | benchmark=write_primitives, query=merge_with_cte_source | execution_filter | DuckDB 1.3.2 rejects the catalog's MERGE INTO statements; keep them explicit skips until the bundled driver supports MERGE. Portable merge operations written as UPDATE/INSERT run normally. | `execution_filter.duckdb.write_primitives.merge_with_cte_source` |
 | SKIPPED_QUERY | benchmark=write_primitives, query=merge_with_join_condition | execution_filter | DuckDB 1.3.2 rejects the catalog's MERGE INTO statements; keep them explicit skips until the bundled driver supports MERGE. Portable merge operations written as UPDATE/INSERT run normally. | `execution_filter.duckdb.write_primitives.merge_with_join_condition` |
+
+### fabric-dw
+
+| support | scope | phase | reason | rule_id |
+|---|---|---|---|---|
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | T-SQL has no array type, so the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses cannot be translated. | `execution_filter.fabric-dw.tpchavoc.1_v7` |
+
+### fabric-lakehouse
+
+| support | scope | phase | reason | rule_id |
+|---|---|---|---|---|
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | T-SQL has no array type, so the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses cannot be translated. | `execution_filter.fabric-lakehouse.tpchavoc.1_v7` |
 
 ### lakesail
 
@@ -260,7 +283,7 @@ Queries or benchmarks that are **omitted from the result set** - either because 
 | SKIPPED_QUERY | benchmark=tpchavoc, query=10_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.pg-duckdb.tpchavoc.10_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=11_v9 | execution_filter | PostgreSQL-family engines reject this window expression in WHERE. | `execution_filter.pg-duckdb.tpchavoc.11_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=13_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.pg-duckdb.tpchavoc.13_v9` |
-| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | PostgreSQL-family engines do not provide DuckDB's `LIST()` aggregate used by this variant. | `execution_filter.pg-duckdb.tpchavoc.1_v7` |
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | The PostgreSQL form of the LIST aggregate variant reads its arrays with a multi-argument `UNNEST`, which DuckDB rejects (`No function matches the given name and argument types 'unnest(DECIMAL(15,2)[], DECIMAL(15,2)[])'`), and this engine can plan a query in DuckDB. | `execution_filter.pg-duckdb.tpchavoc.1_v7` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=5_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.pg-duckdb.tpchavoc.5_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=7_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.pg-duckdb.tpchavoc.7_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=9_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.pg-duckdb.tpchavoc.9_v9` |
@@ -282,7 +305,7 @@ Queries or benchmarks that are **omitted from the result set** - either because 
 | SKIPPED_QUERY | benchmark=tpchavoc, query=10_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.pg-mooncake.tpchavoc.10_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=11_v9 | execution_filter | PostgreSQL-family engines reject this window expression in WHERE. | `execution_filter.pg-mooncake.tpchavoc.11_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=13_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.pg-mooncake.tpchavoc.13_v9` |
-| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | PostgreSQL-family engines do not provide DuckDB's `LIST()` aggregate used by this variant. | `execution_filter.pg-mooncake.tpchavoc.1_v7` |
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | The PostgreSQL form of the LIST aggregate variant reads its arrays with a multi-argument `UNNEST`, which DuckDB rejects (`No function matches the given name and argument types 'unnest(DECIMAL(15,2)[], DECIMAL(15,2)[])'`), and this engine can plan a query in DuckDB. | `execution_filter.pg-mooncake.tpchavoc.1_v7` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=5_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.pg-mooncake.tpchavoc.5_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=7_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.pg-mooncake.tpchavoc.7_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=9_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.pg-mooncake.tpchavoc.9_v9` |
@@ -364,6 +387,19 @@ Queries or benchmarks that are **omitted from the result set** - either because 
 | support | scope | phase | reason | rule_id |
 |---|---|---|---|---|
 | BLOCKED | benchmark=vector_search | benchmark_gate | QuestDB 9.3.4 has no VECTOR column type. Schema creation fails immediately. No fix planned: requires QuestDB to add native vector support. | `benchmark_gate.questdb.vector_search.unsupported` |
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | No QuestDB form of the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses exists in the translator. | `execution_filter.questdb.tpchavoc.1_v7` |
+
+### redshift
+
+| support | scope | phase | reason | rule_id |
+|---|---|---|---|---|
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | No Redshift form of the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses exists in the translator (Redshift has no multi-argument `UNNEST`, so the PostgreSQL form does not apply). | `execution_filter.redshift.tpchavoc.1_v7` |
+
+### singlestore
+
+| support | scope | phase | reason | rule_id |
+|---|---|---|---|---|
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | No SingleStore form of the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses exists in the translator. | `execution_filter.singlestore.tpchavoc.1_v7` |
 
 ### snowflake
 
@@ -377,11 +413,24 @@ Queries or benchmarks that are **omitted from the result set** - either because 
 | SKIPPED_QUERY | benchmark=transaction_primitives, query=transaction_savepoint_deep_nesting | execution_filter | Snowflake has no SAVEPOINT statement. | `execution_filter.snowflake.transaction_primitives.transaction_savepoint_deep_nesting` |
 | SKIPPED_QUERY | benchmark=transaction_primitives, query=transaction_savepoint_nested | execution_filter | Snowflake has no SAVEPOINT statement. | `execution_filter.snowflake.transaction_primitives.transaction_savepoint_nested` |
 
+### snowpark-connect
+
+| support | scope | phase | reason | rule_id |
+|---|---|---|---|---|
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | The Snowflake-dialect translation keeps DuckDB's `LIST` aggregate and `list_*` lambda functions, which Snowflake does not support. | `execution_filter.snowpark-connect.tpchavoc.1_v7` |
+
 ### starrocks
 
 | support | scope | phase | reason | rule_id |
 |---|---|---|---|---|
 | SKIPPED_QUERY | benchmark=vector_search, query=Q2 | query_source | StarRocks <3.2 does not support l2_distance - skip Q2 rather than fail at runtime | `query_source.starrocks.vector_search.q2_lt_32_skip` |
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | No StarRocks form of the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses exists in the translator. | `execution_filter.starrocks.tpchavoc.1_v7` |
+
+### synapse
+
+| support | scope | phase | reason | rule_id |
+|---|---|---|---|---|
+| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | T-SQL has no array type, so the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses cannot be translated. | `execution_filter.synapse.tpchavoc.1_v7` |
 
 ### timescaledb
 
@@ -393,7 +442,6 @@ Queries or benchmarks that are **omitted from the result set** - either because 
 | SKIPPED_QUERY | benchmark=tpchavoc, query=10_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.timescaledb.tpchavoc.10_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=11_v9 | execution_filter | PostgreSQL-family engines reject this window expression in WHERE. | `execution_filter.timescaledb.tpchavoc.11_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=13_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.timescaledb.tpchavoc.13_v9` |
-| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | PostgreSQL-family engines do not provide DuckDB's `LIST()` aggregate used by this variant. | `execution_filter.timescaledb.tpchavoc.1_v7` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=5_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.timescaledb.tpchavoc.5_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=7_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.timescaledb.tpchavoc.7_v9` |
 | SKIPPED_QUERY | benchmark=tpchavoc, query=9_v9 | execution_filter | PostgreSQL-family engines reject aggregate expressions inside window definitions. | `execution_filter.timescaledb.tpchavoc.9_v9` |

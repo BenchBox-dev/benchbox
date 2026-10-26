@@ -142,11 +142,10 @@ base, so an ownership change takes effect only after it merges.
   `selector` (`{"prefix": "dir/"}` or `{"path": "file"}`), `owner`,
   `provenance`, `governing_requirement`, and `blocking_disposition`. Check that
   no ownership rule claims the paths, or the entry has no effect.
-- **Change a registered directive.** The one `directives` entry pins the
-  `# noqa: C901` comment on `_validate_semantic_surfaces` in
-  `_project/scripts/platform_manifest.py`. If you change how many there are,
-  update the entry's `count` in the same pull request; if you remove it,
-  remove the entry.
+- **Change a registered directive.** The `directives` list is empty. Add an
+  entry only for a `# noqa` or similar comment that this ledger must pin to a
+  count in a named file; update its `count` in the same pull request when the
+  number changes, and remove the entry when the last comment goes.
 - **Register a comment in maintained source.** Use
   `quality/comment-policy.json`, not this ledger.
 

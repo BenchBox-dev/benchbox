@@ -1,19 +1,36 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
 import re
+import shutil
 import sys
-from collections.abc import Mapping
+import tempfile
+from collections.abc import Iterator, Mapping
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from time import sleep
 from typing import Any
+from urllib.parse import urlparse
 
-from . import attempts as attempt_files, dedup, github, protocol, report, retry, runner, selection
+from . import (
+    attempts as attempt_files,
+    credentials,
+    dedup,
+    disk_scan,
+    github,
+    processes,
+    protocol,
+    redaction_check,
+    report,
+    retry,
+    runner,
+    selection,
+)
 from .absence import ERROR, Absence
 from .brief import write_private
 from .classifier import ChangedFile, matching, soundness_scope
@@ -21,7 +38,15 @@ from .classify import Classification, classify_diff
 from .diff import commentable_lines, select_files
 from .jev import JevError, JevSession
 from .policy import SIZE_BUCKETS, Policy, Reviewer, load_policy
-from .render import OversizeError, dispute_listing, file_listing, prior_listing, render_review, select_prior_rule
+from .render import (
+    UNOPENED_PR,
+    OversizeError,
+    dispute_listing,
+    file_listing,
+    prior_listing,
+    render_review,
+    select_prior_rule,
+)
 from .selection import SelectionInput
 from .verdict import DO_NOT_SHIP
 
@@ -29,6 +54,7 @@ PLAN_FILE = "plan.json"
 CLASSIFICATION_FILE = "classification.json"
 DIFF_FILE = "diff.patch"
 DIFF_NOT_STAGED_DETAIL = "the full pull request diff could not be staged in the workspace"
+LEAK_DETAIL = "the reviewer's exit could not be confirmed clean"
 
 
 class DiffNotStagedError(Exception):
@@ -44,6 +70,7 @@ GATEWAY_CLIENT = "oracle-ci"
 GATEWAY_TOKEN_MIN_LENGTH = 32
 DEVELOP_REF = "refs/heads/develop"
 NEW_DIFF_ACTIONS = ("opened", "synchronize")
+LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
 REVIEW = "review"
 SUCCESS = "success"
 FORK = "fork"
@@ -104,7 +131,7 @@ def _soundness_predicate() -> Any:
     return is_soundness_path
 
 
-def _base_plan(policy: Policy, repo: str, pr: int, run_id: str) -> dict[str, Any]:
+def _base_plan(policy: Policy, repo: str, pr: int | None, run_id: str) -> dict[str, Any]:
     return {
         "schema": 1,
         "mode": policy.mode,
@@ -140,16 +167,17 @@ def _base_plan(policy: Policy, repo: str, pr: int, run_id: str) -> dict[str, Any
 
 def _finish_plan(out_dir: Path, plan: dict[str, Any]) -> int:
     _write_json(out_dir / PLAN_FILE, plan)
-    post = plan["decision"] in (REVIEW, SUCCESS, FORK, CARRY, REFUSED, HOLD)
+    post = plan["pr"] is not None and plan["decision"] in (REVIEW, SUCCESS, FORK, CARRY, REFUSED, HOLD)
     _output(
         {
             "decision": plan["decision"],
             "post": "true" if post else "false",
-            "pr": str(plan["pr"]),
+            "pr": "" if plan["pr"] is None else str(plan["pr"]),
             "head_sha": plan["head_sha"],
         }
     )
-    _summary(f"oracle-verdict plan for #{plan['pr']}: {plan['decision']} ({plan['decision_reason']})")
+    subject = "the local change" if plan["pr"] is None else f"#{plan['pr']}"
+    _summary(f"oracle-verdict plan for {subject}: {plan['decision']} ({plan['decision_reason']})")
     return 0
 
 
@@ -230,6 +258,34 @@ def _base_changed_at(repo: str, pr: int) -> tuple[datetime | None, bool]:
         return None, True
 
 
+def _scoped_files(
+    files: list[ChangedFile], in_scope: set[str], policy: Policy, is_soundness: Any = None
+) -> list[ChangedFile]:
+    gate_paths = policy.classifier.gate_paths
+    is_soundness = is_soundness or _soundness_predicate()
+    return [
+        item
+        for item in files
+        if any(
+            path in in_scope
+            or is_soundness(path)
+            or matching([path], gate_paths) != []
+            or not path.endswith(PROSE_SUFFIXES)
+            for path in item.paths
+        )
+    ]
+
+
+def command_plan_entry(args: argparse.Namespace) -> int:
+    if args.local:
+        from . import local
+
+        return local.command_plan(args)
+    if not args.pr:
+        raise SystemExit("oracle-verdict: error: plan needs --pr or --local")
+    return command_plan(args)
+
+
 def command_plan(args: argparse.Namespace) -> int:
     policy = load_policy(Path(args.policy))
     repo = os.environ["GITHUB_REPOSITORY"]
@@ -295,19 +351,7 @@ def command_plan(args: argparse.Namespace) -> int:
         plan["decision_reason"] = rerun.reason
         return _finish_plan(out_dir, plan)
     in_scope = set(scope.paths)
-    gate_paths = policy.classifier.gate_paths
-    is_soundness = _soundness_predicate()
-    scoped = [
-        item
-        for item in files
-        if any(
-            path in in_scope
-            or is_soundness(path)
-            or matching([path], gate_paths) != []
-            or not path.endswith(PROSE_SUFFIXES)
-            for path in item.paths
-        )
-    ]
+    scoped = _scoped_files(files, in_scope, policy)
     plan["manual"] = manual
     plan["previous_state"] = previous.to_json() if previous else None
     try:
@@ -538,7 +582,7 @@ def _classify_plan(plan: dict[str, Any]) -> Classification:
         return classify_diff(
             session,
             repo=plan["repo"],
-            pr=int(plan["pr"]),
+            pr=plan["pr"],
             base_sha=plan["base_sha"],
             head_sha=plan["head_sha"],
             stats=stats,
@@ -550,6 +594,16 @@ def _empty_selection(reason: str, slot: int) -> int:
     _output({"reviewer": "", "harness": ""})
     _summary(f"slot {slot}: pending ({reason})")
     return 0
+
+
+def _choose_reviewer(
+    plan: Mapping[str, Any], loaded: attempt_files.LoadedAttempts, classification: Classification, slot: int
+) -> tuple[Reviewer | None, str]:
+    step, errors = attempt_files.decide(_selection(plan, classification), loaded)
+    chosen = (
+        step.reviewer if not errors and step.kind == selection.REVIEW and len(loaded.attempts) == slot - 1 else None
+    )
+    return chosen, f"slot {slot}: {chosen.name if chosen else step.kind} {'; '.join(errors)}".rstrip()
 
 
 def command_select(args: argparse.Namespace) -> int:
@@ -567,15 +621,9 @@ def command_select(args: argparse.Namespace) -> int:
         if read is None:
             return _empty_selection("classification unreadable", args.slot)
         classification = read
-    selection_input = _selection(plan, classification)
-    step, errors = attempt_files.decide(selection_input, loaded)
-    chosen = (
-        step.reviewer
-        if not errors and step.kind == selection.REVIEW and len(loaded.attempts) == args.slot - 1
-        else None
-    )
+    chosen, line = _choose_reviewer(plan, loaded, classification, args.slot)
     _output({"reviewer": chosen.name if chosen else "", "harness": chosen.harness if chosen else ""})
-    _summary(f"slot {args.slot}: {chosen.name if chosen else step.kind} {'; '.join(errors)}".rstrip())
+    _summary(line)
     return 0
 
 
@@ -635,7 +683,7 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
         template_name=classification.template,
         classification=classification,
         repo=plan["repo"],
-        pr=int(plan["pr"]),
+        pr=UNOPENED_PR if plan["pr"] is None else int(plan["pr"]),
         base_sha=plan["base_sha"],
         head_sha=plan["head_sha"],
         max_defects=int(plan["max_defects"]),
@@ -695,21 +743,25 @@ def command_review(args: argparse.Namespace) -> int:
     return 0
 
 
-def command_ensure_attempt(args: argparse.Namespace) -> int:
-    plan = _read_json(Path(args.plan))
-    path = Path(args.out_dir) / attempt_files.artifact_name(args.slot)
+def _ensure_attempt(plan: Mapping[str, Any], out_dir: Path, slot: int, reviewer: str, detail: str) -> None:
+    path = out_dir / attempt_files.artifact_name(slot)
     if path.is_file():
-        return 0
+        return
     artifact = attempt_files.build_artifact(
         run_id=os.environ["GITHUB_RUN_ID"],
         pr=plan["pr"],
         head_sha=plan["head_sha"],
-        slot=args.slot,
-        reviewer=args.reviewer,
+        slot=slot,
+        reviewer=reviewer,
         verdict=None,
-        missing=Absence(ERROR, selection.JOB_FAILURE_DETAIL),
+        missing=Absence(ERROR, detail),
     )
     _write_json(path, artifact)
+
+
+def command_ensure_attempt(args: argparse.Namespace) -> int:
+    plan = _read_json(Path(args.plan))
+    _ensure_attempt(plan, Path(args.out_dir), args.slot, args.reviewer, selection.JOB_FAILURE_DETAIL)
     return 0
 
 
@@ -846,13 +898,17 @@ def command_sweep(args: argparse.Namespace) -> int:
     return 0
 
 
-def command_reviewer_home(args: argparse.Namespace) -> int:
-    url = args.gateway_url.strip()
+def write_reviewer_home(home: Path, gateway_url: str, allow_loopback_http: bool = False) -> None:
+    url = gateway_url.strip()
     if not url:
         raise SystemExit("oracle-verdict: error: the gateway URL is empty; set the ORACLE_GATEWAY_URL secret")
-    if not url.startswith("https://") or len(url) == len("https://"):
+    parsed = urlparse(url)
+    secure = parsed.scheme == "https" or (
+        allow_loopback_http and parsed.scheme == "http" and parsed.hostname in LOOPBACK_HOSTS
+    )
+    if not secure or not parsed.hostname:
         raise SystemExit("oracle-verdict: error: the gateway URL must be an https:// URL")
-    agent_dir = Path(args.home) / ".omp" / "agent"
+    agent_dir = home / ".omp" / "agent"
     agent_dir.mkdir(parents=True, exist_ok=True)
     (agent_dir / "config.yml").write_text(OMP_CONFIG_SOURCE.read_text(encoding="utf-8"), encoding="utf-8")
     providers = "".join(
@@ -860,6 +916,113 @@ def command_reviewer_home(args: argparse.Namespace) -> int:
         for provider in GATEWAY_PROVIDERS
     )
     (agent_dir / "models.yml").write_text(f"providers:\n{providers}", encoding="utf-8")
+
+
+def command_reviewer_home(args: argparse.Namespace) -> int:
+    write_reviewer_home(Path(args.home), args.gateway_url)
+    return 0
+
+
+@contextlib.contextmanager
+def _scratch_environment(home: Path) -> Iterator[None]:
+    (home / "tmp").mkdir()
+    values = {"HOME": str(home), "TMPDIR": str(home / "tmp")}
+    saved = {name: os.environ.get(name) for name in values}
+    os.environ.update(values)
+    try:
+        yield
+    finally:
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
+def _run_slot(args: argparse.Namespace, plan: Mapping[str, Any], slot: int, reviewer: Reviewer) -> bool:
+    out_dir = Path(args.attempts_dir)
+    workspace = Path(args.workspace)
+    runner.reset_workspace(workspace)
+    home = Path(tempfile.mkdtemp(prefix=f"oracle-home-{slot}-", dir=args.home_root))
+    leaked = False
+    detail = selection.JOB_FAILURE_DETAIL
+    try:
+        with _scratch_environment(home):
+            write_reviewer_home(
+                home, os.environ.get("ORACLE_GATEWAY_URL", ""), bool(getattr(args, "allow_loopback_http", False))
+            )
+            command_review(
+                argparse.Namespace(
+                    plan=args.plan,
+                    slot=slot,
+                    reviewer=reviewer.name,
+                    harness=reviewer.harness,
+                    workspace=str(workspace),
+                    scratch=str(home / "scratch"),
+                    out_dir=str(out_dir),
+                    classification=args.classification,
+                )
+            )
+    except processes.HarnessLeakError as exc:
+        leaked = True
+        detail = LEAK_DETAIL
+        _summary(f"slot {slot}: {reviewer.name} failed closed: {credentials.redact(str(exc))}")
+    except (Exception, SystemExit) as exc:
+        _summary(f"slot {slot}: {reviewer.name} crashed: {credentials.redact(f'{type(exc).__name__}: {exc}')}")
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+    _ensure_attempt(plan, out_dir, slot, reviewer.name, detail)
+    return leaked
+
+
+def command_attempts(args: argparse.Namespace) -> int:
+    plan = _read_json(Path(args.plan))
+    out_dir = Path(args.attempts_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    classification = _read_classification(Path(args.classification))
+    ran = 0
+    adopting = processes.become_subreaper()
+    try:
+        if processes.IS_LINUX and not adopting:
+            _summary("oracle-verdict: error: the loop could not become a child subreaper")
+            return 1
+        for slot in range(1, int(plan["max_attempts"]) + 1):
+            if classification is None:
+                _summary(f"slot {slot}: pending (classification unreadable)")
+                break
+            loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"])
+            chosen, line = _choose_reviewer(plan, loaded, classification, slot)
+            _summary(line)
+            if chosen is None:
+                break
+            ran = slot
+            if _run_slot(args, plan, slot, chosen):
+                return 1
+    finally:
+        processes.release_subreaper()
+        _output({"attempts": str(ran)})
+    return 0
+
+
+def command_scan_disk(args: argparse.Namespace) -> int:
+    needles = disk_scan.secret_values(args.env, os.environ)
+    hits = disk_scan.scan([Path(root) for root in args.root], needles)
+    for name, path in hits:
+        print(f"oracle-verdict: error: the value of {name} is on disk at {path}", file=sys.stderr)
+    _summary(f"disk scan of {len(args.root)} root(s) for {len(needles)} secret value(s): {len(hits)} hit(s)")
+    return 1 if hits else 0
+
+
+def command_redact_check(args: argparse.Namespace) -> int:
+    extra = tuple(value for value in (os.environ.get(name, "") for name in args.env) if value)
+    redacted = 0
+    for path in redaction_check.json_files([Path(item) for item in args.path]):
+        try:
+            redacted += redaction_check.sanitize(path, extra)
+        except redaction_check.Unredactable as exc:
+            print(f"oracle-verdict: error: {exc}", file=sys.stderr)
+            return 1
+    _summary(f"redaction check: {redacted} file(s) rewritten, no secret value remains")
     return 0
 
 
@@ -947,14 +1110,22 @@ def command_gateway_clients(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_local_review(args: argparse.Namespace) -> int:
+    from . import local
+
+    return local.command_review(args)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="oracle-verdict")
     commands = parser.add_subparsers(dest="command", required=True)
     plan = commands.add_parser("plan")
     plan.add_argument("--policy", required=True)
-    plan.add_argument("--pr", required=True)
+    plan.add_argument("--pr")
+    plan.add_argument("--local", action="store_true")
+    plan.add_argument("--base-ref", default="origin/develop")
     plan.add_argument("--out", required=True)
-    plan.set_defaults(handler=command_plan)
+    plan.set_defaults(handler=command_plan_entry)
     select = commands.add_parser("select")
     select.add_argument("--plan", required=True)
     select.add_argument("--attempts-dir", required=True)
@@ -993,12 +1164,33 @@ def _parser() -> argparse.ArgumentParser:
     home.add_argument("--home", required=True)
     home.add_argument("--gateway-url", required=True)
     home.set_defaults(handler=command_reviewer_home)
+    attempts = commands.add_parser("attempts")
+    attempts.add_argument("--plan", required=True)
+    attempts.add_argument("--attempts-dir", required=True)
+    attempts.add_argument("--classification", required=True)
+    attempts.add_argument("--workspace", required=True)
+    attempts.add_argument("--home-root")
+    attempts.set_defaults(handler=command_attempts)
+    scan = commands.add_parser("scan-disk")
+    scan.add_argument("--root", action="append", required=True)
+    scan.add_argument("--env", action="append", required=True)
+    scan.set_defaults(handler=command_scan_disk)
+    redaction = commands.add_parser("redact-check")
+    redaction.add_argument("--path", action="append", required=True)
+    redaction.add_argument("--env", action="append", default=[])
+    redaction.set_defaults(handler=command_redact_check)
     clients = commands.add_parser("gateway-clients")
     clients.add_argument("--token-file", required=True)
     clients.add_argument("--accounts")
     clients.add_argument("--client", action="append", default=[], metavar="NAME=TOKEN_FILE")
     clients.add_argument("--out", required=True)
     clients.set_defaults(handler=command_gateway_clients)
+    local_review = commands.add_parser("local-review")
+    local_review.add_argument("--policy", required=True)
+    local_review.add_argument("--base-ref", default="origin/develop")
+    local_review.add_argument("--head", default="HEAD")
+    local_review.add_argument("--body-file", default="")
+    local_review.set_defaults(handler=command_local_review)
     return parser
 
 

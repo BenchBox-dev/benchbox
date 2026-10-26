@@ -325,7 +325,13 @@ The soundness gate, as operated:
   ancestor. It does not verify a merge queue or merge `develop` itself. Refresh
   a conflicting PR near its landing turn, then rerun CI and get review on the
   resulting head before arming.
-- No workflow arms or disarms auto-merge. Bare `gh pr create` does not
+- No workflow arms auto-merge. One workflow disarms: when a `trunk.yml` run
+  on `develop` completes red, `.github/workflows/trunk-red-disarm.yml` disables
+  auto-merge on each open PR against `develop` that has it enabled and that
+  `scripts/trunk_revert.py arm-gate` would refuse, through the GraphQL
+  `disablePullRequestAutoMerge` mutation. That mutation needs `contents: write`
+  in addition to `pull-requests: write`; `pull-requests: write` alone is rejected
+  with `Resource not accessible by integration`. Bare `gh pr create` does not
   auto-arm. The old `ready_for_review` arm point never fired (drafts were
   unused) and was deleted per
   `_project/decisions/auto-merge-policy-consolidation-2026-08-06.md`, D2.

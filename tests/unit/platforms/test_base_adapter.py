@@ -931,95 +931,99 @@ def test_collect_resource_utilization_without_psutil(monkeypatch):
     assert "cpu_count" in snapshot
 
 
-def test_collect_resource_utilization_with_stub(monkeypatch):  # noqa: C901
-    adapter = MockPlatformAdapter()
+_MB = 1024 * 1024
 
-    mb = 1024 * 1024
 
-    class DummyProcess:
-        def __init__(self, *_args, **_kwargs):
-            self.pid = 4321
+class _DummyProcess:
+    def __init__(self, *_args, **_kwargs):
+        self.pid = 4321
 
-        class _OneShot:
-            def __init__(self, process):
-                self._process = process
+    class _OneShot:
+        def __init__(self, process):
+            self._process = process
 
-            def __enter__(self):
-                return self._process
+        def __enter__(self):
+            return self._process
 
-            def __exit__(self, exc_type, exc, tb):
-                return False
+        def __exit__(self, exc_type, exc, tb):
+            return False
 
-        def oneshot(self):
-            return DummyProcess._OneShot(self)
+    def oneshot(self):
+        return _DummyProcess._OneShot(self)
 
-        def memory_full_info(self):
-            return SimpleNamespace(rss=256 * mb, vms=512 * mb)
+    def memory_full_info(self):
+        return SimpleNamespace(rss=256 * _MB, vms=512 * _MB)
 
-        def memory_percent(self):
-            return 7.5
+    def memory_percent(self):
+        return 7.5
 
-        def cpu_percent(self, interval=None):
-            return 12.5
+    def cpu_percent(self, interval=None):
+        return 12.5
 
-        def num_threads(self):
-            return 8
+    def num_threads(self):
+        return 8
 
-        def num_fds(self):
-            return 24
+    def num_fds(self):
+        return 24
 
-        def num_handles(self):
-            return 30
+    def num_handles(self):
+        return 30
 
-        def io_counters(self):
-            return SimpleNamespace(read_bytes=25 * mb, write_bytes=10 * mb, read_count=120, write_count=45)
+    def io_counters(self):
+        return SimpleNamespace(read_bytes=25 * _MB, write_bytes=10 * _MB, read_count=120, write_count=45)
 
-        def open_files(self):
-            return [SimpleNamespace(path="/tmp/query.sql")]
+    def open_files(self):
+        return [SimpleNamespace(path="/tmp/query.sql")]
 
-        def num_ctx_switches(self):
-            return SimpleNamespace(voluntary=5, involuntary=1)
+    def num_ctx_switches(self):
+        return SimpleNamespace(voluntary=5, involuntary=1)
 
-        def create_time(self):
-            return 1_700_000_000.0
+    def create_time(self):
+        return 1_700_000_000.0
 
-        def name(self):
-            return "dummy-process"
+    def name(self):
+        return "dummy-process"
 
-        def status(self):
-            return "running"
+    def status(self):
+        return "running"
 
-    def cpu_percent(interval=None, percpu=False):
-        if percpu:
-            return [20.0, 22.0]
-        return 21.5
 
-    dummy_psutil = SimpleNamespace(
+def _stub_cpu_percent(interval=None, percpu=False):
+    if percpu:
+        return [20.0, 22.0]
+    return 21.5
+
+
+def _build_dummy_psutil():
+    return SimpleNamespace(
         cpu_count=lambda: 16,
-        virtual_memory=lambda: SimpleNamespace(total=64 * mb, available=40 * mb, percent=37.5),
-        swap_memory=lambda: SimpleNamespace(total=8 * mb, used=2 * mb, percent=25.0),
-        cpu_percent=cpu_percent,
+        virtual_memory=lambda: SimpleNamespace(total=64 * _MB, available=40 * _MB, percent=37.5),
+        swap_memory=lambda: SimpleNamespace(total=8 * _MB, used=2 * _MB, percent=25.0),
+        cpu_percent=_stub_cpu_percent,
         getloadavg=lambda: (0.5, 0.4, 0.3),
         cpu_freq=lambda: SimpleNamespace(current=3200.0),
-        disk_usage=lambda path: SimpleNamespace(total=120 * mb, used=60 * mb, free=60 * mb, percent=50.0),
+        disk_usage=lambda path: SimpleNamespace(total=120 * _MB, used=60 * _MB, free=60 * _MB, percent=50.0),
         disk_io_counters=lambda: SimpleNamespace(
-            read_bytes=600 * mb,
-            write_bytes=150 * mb,
+            read_bytes=600 * _MB,
+            write_bytes=150 * _MB,
             read_count=1200,
             write_count=300,
         ),
         net_io_counters=lambda: SimpleNamespace(
-            bytes_sent=800 * mb,
-            bytes_recv=400 * mb,
+            bytes_sent=800 * _MB,
+            bytes_recv=400 * _MB,
             packets_sent=500,
             packets_recv=250,
         ),
         boot_time=lambda: 1_699_000_000.0,
-        Process=lambda pid=None: DummyProcess(),
+        Process=lambda pid=None: _DummyProcess(),
         __version__="6.0.0",
     )
 
-    monkeypatch.setitem(sys.modules, "psutil", dummy_psutil)
+
+def test_collect_resource_utilization_with_stub(monkeypatch):
+    adapter = MockPlatformAdapter()
+    monkeypatch.setitem(sys.modules, "psutil", _build_dummy_psutil())
 
     snapshot = adapter._collect_resource_utilization()
     assert snapshot["available"] is True

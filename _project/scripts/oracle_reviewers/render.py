@@ -17,6 +17,7 @@ TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 TEMPLATES = ("standard", "deep", "gate")
 FENCE_TOKEN = "%%FENCE%%"
 CAPABILITIES = ("routine", "deep")
+UNOPENED_PR = "unopened"
 SLOT_MAX_BYTES = {
     "template_name": 16,
     "template_version": 4,
@@ -51,9 +52,11 @@ def _validate(name: str, values: Mapping[str, object]) -> None:
         raise ValueError(f"unknown size_bucket {values.get('size_bucket')!r}")
     if values.get("capability") not in CAPABILITIES:
         raise ValueError(f"unknown capability {values.get('capability')!r}")
-    for slot in ("pr", "max_defects", "template_version"):
+    for slot in ("max_defects", "template_version"):
         if not str(values.get(slot)).isdigit():
             raise ValueError(f"template {name} slot {slot} must be an integer")
+    if not (str(values.get("pr")).isdigit() or values.get("pr") == UNOPENED_PR):
+        raise ValueError(f"template {name} slot pr must be an integer")
     for slot in ("base", "head"):
         if not _SHA.fullmatch(str(values.get(slot))):
             raise ValueError(f"template {name} slot {slot} must be a 40-char hex sha")
@@ -223,7 +226,7 @@ def assemble_values(
     template_name: str,
     classification: Classification,
     repo: str,
-    pr: int,
+    pr: int | str,
     base_sha: str,
     head_sha: str,
     max_defects: int,
@@ -271,7 +274,7 @@ def render_review(
     template_name: str,
     classification: Classification,
     repo: str,
-    pr: int,
+    pr: int | str,
     base_sha: str,
     head_sha: str,
     max_defects: int,

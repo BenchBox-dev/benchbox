@@ -6,7 +6,6 @@ from benchbox.sql_compat.decision import CompatibilityDecision, FailureMode, Ski
 from benchbox.sql_compat.registry import REGISTRY
 
 POSTGRES_TPCHAVOC_SKIPS: dict[str, str] = {
-    "1_v7": "PostgreSQL-family engines do not provide DuckDB's `LIST()` aggregate used by this variant.",
     "5_v9": "PostgreSQL-family engines reject aggregate expressions inside window definitions.",
     "7_v9": "PostgreSQL-family engines reject aggregate expressions inside window definitions.",
     "9_v9": "PostgreSQL-family engines reject aggregate expressions inside window definitions.",
@@ -15,10 +14,22 @@ POSTGRES_TPCHAVOC_SKIPS: dict[str, str] = {
     "13_v9": "PostgreSQL-family engines reject aggregate expressions inside window definitions.",
 }
 
-_POSTGRES_TPCHAVOC_PLATFORMS = ("pg-duckdb", "pg-mooncake", "timescaledb")
+POSTGRES_DUCKDB_BACKED_TPCHAVOC_SKIPS: dict[str, str] = {
+    "1_v7": (
+        "The PostgreSQL form of the LIST aggregate variant reads its arrays with a multi-argument `UNNEST`, which "
+        "DuckDB rejects (`No function matches the given name and argument types 'unnest(DECIMAL(15,2)[], "
+        "DECIMAL(15,2)[])'`), and this engine can plan a query in DuckDB."
+    ),
+}
 
-for _platform in _POSTGRES_TPCHAVOC_PLATFORMS:
-    for _query_id, _reason in POSTGRES_TPCHAVOC_SKIPS.items():
+_POSTGRES_TPCHAVOC_PLATFORM_SKIPS: dict[str, dict[str, str]] = {
+    "pg-duckdb": {**POSTGRES_TPCHAVOC_SKIPS, **POSTGRES_DUCKDB_BACKED_TPCHAVOC_SKIPS},
+    "pg-mooncake": {**POSTGRES_TPCHAVOC_SKIPS, **POSTGRES_DUCKDB_BACKED_TPCHAVOC_SKIPS},
+    "timescaledb": POSTGRES_TPCHAVOC_SKIPS,
+}
+
+for _platform, _platform_skips in _POSTGRES_TPCHAVOC_PLATFORM_SKIPS.items():
+    for _query_id, _reason in _platform_skips.items():
         REGISTRY.register(
             CompatibilityDecision(
                 rule_id=f"execution_filter.{_platform}.tpchavoc.{_query_id}",

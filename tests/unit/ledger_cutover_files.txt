@@ -128,6 +128,7 @@ tests/unit/scripts/test_todo_state_workflow.py
 tests/unit/scripts/test_tpcds_divergence_report.py
 tests/unit/scripts/test_tpcds_platform_identity.py
 tests/unit/scripts/test_trunk_revert.py
+tests/unit/scripts/test_trunk_red_disarm.py
 tests/unit/scripts/test_update_version.py
 tests/unit/scripts/test_validate_submission.py
 tests/unit/scripts/test_validate_submission_corpus_allowlist.py
@@ -158,6 +159,7 @@ tests/unit/workflows/test_stacked_pr_base_guard.py
 tests/unit/workflows/test_t2_partition_workflow.py
 tests/unit/workflows/test_trunk_coverage_workflow.py
 tests/unit/workflows/test_trunk_workflow.py
+tests/unit/workflows/test_trunk_red_disarm_workflow.py
 tests/unit/workflows/test_validate_submission_changed_bundles.py
 tests/unit/workflows/test_validate_submission_comment_security.py
 tests/unit/workflows/test_validate_submission_corpus_allowlist.py

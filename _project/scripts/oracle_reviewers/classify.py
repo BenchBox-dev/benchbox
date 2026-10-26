@@ -140,12 +140,13 @@ class Classification:
 
 def pr_state(
     repo: str,
-    pr: int,
+    pr: int | None,
     base_sha: str,
     head_sha: str,
     stats: Sequence[tuple[str, int, int, str]],
     gate_flags: Sequence[str],
 ) -> dict[str, Any]:
+    subject = f"PR #{pr}" if pr is not None else "Unopened local change"
     top = sorted(stats, key=lambda item: -(item[1] + item[2]))[:12]
     lines = "; ".join(f"{path} +{added}/-{deleted}" for path, added, deleted, _ in top)
     gate = " Gate signals: touches review/merge machinery." if gate_flags else " Gate signals: none."
@@ -153,7 +154,7 @@ def pr_state(
     total_deleted = sum(deleted for _, _, deleted, _ in stats)
     return {
         "text": (
-            f"PR #{pr} in {repo}: {len(stats)} files, +{total_added}/-{total_deleted}, base {base_sha} head "
+            f"{subject} in {repo}: {len(stats)} files, +{total_added}/-{total_deleted}, base {base_sha} head "
             f"{head_sha}.{gate} Largest changes: {lines}."
         )
     }
@@ -224,7 +225,7 @@ def classify_diff(
     session: JevSession,
     *,
     repo: str,
-    pr: int,
+    pr: int | None,
     base_sha: str,
     head_sha: str,
     stats: Sequence[tuple[str, int, int, str]],
