@@ -4,7 +4,7 @@
     "Required contexts on the live head still report the real outcome; a cancelled run never posts success for a head that did not pass (tests on the summary-job conditions)",
     "The workflow dedupe test fails when a workflow sets both push and pull_request branches to ['**']"
   ],
-  "context": "Source: CI cost study on ci-duplicate-dispatch-ghost-runs (2026-10-25), approved by the owner.",
+  "context": "PROGRESS 2026-10-26: PR #3516 merged as b50b9526527504f7a9cd7d246472c76a015a899a (oracle SHIP on c604191a). The 5 required summary jobs in ci.yml now use `if: always() && !cancelled() && <existing guard>`; a job-level if evaluates without a runner, so a superseded run's summaries skip immediately instead of holding a slot. Tests (tests/unit/workflows, 876 passed) pin skip-on-cancelled, still-runs-on-failure, and no continue-on-error masking; ci_unit_result.py still fails skipped-required jobs, so a cancelled run never posts success. The dedupe test now flags any push+pull_request combo except identical non-wildcard filters, including both-['**']. Remaining: observe the first superseded run after the merge (summaries should conclude skipped within seconds) — watcher running.\n\nSource: CI cost study on ci-duplicate-dispatch-ghost-runs (2026-10-25), approved by the owner.",
   "description": "When a push cancels a CI run, that run's 5 required summary jobs (core, explorer, results-data, docs, tooling) still run because they use `if: always()`. When the 20-job runner pool is full they wait for a slot, and the new run for the same PR gets no jobs until they finish, because of per-PR concurrency. Seen 22 times from 2026-10-11 to 10-25: median 26 min, max 177 min (run 39803982201: summary jobs started about 3 h late, and the next run got its first job the second they finished). Make a superseded run's summary jobs skip or finish without a runner wait while keeping required contexts correct for the live head. Also extend the #3434 dedupe test to catch `push` and `pull_request` both set to `['**']`.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "91a2e52a397d4566864496f063168891",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-26T02:35:13Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3359ddbda6e546c0a1db8c7b46e9f846",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
