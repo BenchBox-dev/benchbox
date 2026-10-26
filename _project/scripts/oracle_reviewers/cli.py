@@ -217,7 +217,7 @@ def _dispute_step(
     policy: Policy,
     found: protocol.History,
     scoped: list[ChangedFile],
-    full_diff: str | None,
+    raw_diff: bytes | None,
     complete: bool,
     strike_count: int,
     step: protocol.Round,
@@ -241,7 +241,7 @@ def _dispute_step(
             policy,
             found,
             scoped,
-            full_diff if complete else None,
+            raw_diff if complete else None,
             strike_count,
             force=True,
             base_changed_at=base_changed_at,
@@ -361,7 +361,8 @@ def command_plan(args: argparse.Namespace) -> int:
     if found.error is not None:
         plan.update({"decision": HOLD, "decision_reason": found.error})
         return _finish_plan(out_dir, plan)
-    full_diff = github.get_diff(repo, pr)
+    raw_diff = github.get_diff(repo, pr)
+    full_diff = None if raw_diff is None else raw_diff.decode("utf-8", errors="replace")
     complete = full_diff is not None and len(files) >= int(pull.get("changed_files") or 0)
     strike_count = max(protocol.strikes(found.records), previous.strikes if previous else 0)
     base_changed_at, base_change_unreadable = _base_changed_at(repo, pr)
@@ -370,7 +371,7 @@ def command_plan(args: argparse.Namespace) -> int:
         policy,
         found,
         scoped,
-        full_diff if complete else None,
+        raw_diff if complete else None,
         strike_count,
         base_changed_at=base_changed_at,
         base_change_unreadable=base_change_unreadable,
@@ -380,7 +381,7 @@ def command_plan(args: argparse.Namespace) -> int:
         policy,
         found,
         scoped,
-        full_diff,
+        raw_diff,
         complete,
         strike_count,
         step,
@@ -414,7 +415,7 @@ def _protocol_round(
     policy: Policy,
     found: protocol.History,
     scoped: list[ChangedFile],
-    full_diff: str | None,
+    raw_diff: bytes | None,
     strike_count: int,
     force: bool = False,
     base_changed_at: datetime | None = None,
@@ -424,12 +425,13 @@ def _protocol_round(
     scope = frozenset(paths)
 
     def read(path: str) -> str | None:
-        return github.get_file(plan["repo"], path, plan["head_sha"]) if path in scope else None
+        data = github.get_file(plan["repo"], path, plan["head_sha"]) if path in scope else None
+        return None if data is None else protocol.exact_text(data)
 
-    patches = protocol.file_patches(full_diff or "", read)
+    patches = protocol.file_patches(protocol.exact_text(raw_diff or b""), read)
     current = protocol.patch_map(patches, paths)
     digest = (
-        protocol.patch_digest(patches, paths) if full_diff is not None else None
+        protocol.patch_digest(patches, paths) if raw_diff is not None else None
     ) or f"{protocol.UNREAD_DIGEST}{plan['head_sha']}"
     base_ref = plan["base_ref"]
     step = protocol.plan_round(

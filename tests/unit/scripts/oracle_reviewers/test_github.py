@@ -520,14 +520,14 @@ def test_latest_state_pairs_each_artifact_name_with_its_own_workflow(
     assert downloaded == []
 
 
-def test_gh_decodes_non_utf8_diff_bytes_with_replacement(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_gh_returns_diff_bytes_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = b"diff --git a/EULA.txt b/EULA.txt\n\x93smart quote\x94\n"
 
     def fake_run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
         return subprocess.CompletedProcess(argv, 0, payload, b"")
 
     monkeypatch.setattr(github.subprocess, "run", fake_run)
-    assert github.get_diff(REPO, PR) == payload.decode("utf-8", errors="replace")
+    assert github.get_diff(REPO, PR) == payload
 
 
 def test_gh_reports_decodable_stderr_on_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -549,7 +549,7 @@ def test_gh_reads_a_file_at_a_ref_and_reports_none_when_unreadable(monkeypatch: 
         return subprocess.CompletedProcess(argv, 0, b"def f():\n", b"")
 
     monkeypatch.setattr(github.subprocess, "run", fake_run)
-    assert github.get_file(REPO, "src/a b.py", "abc") == "def f():\n"
+    assert github.get_file(REPO, "src/a b.py", "abc") == b"def f():\n"
     assert calls[0][-1] == f"repos/{REPO}/contents/src/a%20b.py?ref=abc"
     assert "Accept: application/vnd.github.raw+json" in calls[0]
     assert github.get_file(REPO, "missing.py", "abc") is None

@@ -24,13 +24,17 @@ class GitHubError(RuntimeError):
     pass
 
 
-def _gh(*args: str, accept: str | None = None) -> str:
+def _gh_bytes(*args: str, accept: str | None = None) -> bytes:
     argv = ["gh", "api", *(("-H", f"Accept: {accept}") if accept else ()), *args]
     result = subprocess.run(argv, capture_output=True, check=False)
     if result.returncode != 0:
         detail = result.stderr.decode("utf-8", errors="replace").strip()[:500]
         raise GitHubError(f"gh api {' '.join(args)} failed: {detail}")
-    return result.stdout.decode("utf-8", errors="replace")
+    return result.stdout
+
+
+def _gh(*args: str, accept: str | None = None) -> str:
+    return _gh_bytes(*args, accept=accept).decode("utf-8", errors="replace")
 
 
 def get_json(path: str) -> Any:
@@ -42,16 +46,16 @@ def get_paginated(path: str) -> list[Any]:
     return [item for page in pages for item in page]
 
 
-def get_diff(repo: str, pr: int) -> str | None:
+def get_diff(repo: str, pr: int) -> bytes | None:
     try:
-        return _gh(f"repos/{repo}/pulls/{pr}", accept="application/vnd.github.v3.diff")
+        return _gh_bytes(f"repos/{repo}/pulls/{pr}", accept="application/vnd.github.v3.diff")
     except GitHubError:
         return None
 
 
-def get_file(repo: str, path: str, ref: str) -> str | None:
+def get_file(repo: str, path: str, ref: str) -> bytes | None:
     try:
-        return _gh(f"repos/{repo}/contents/{quote(path)}?ref={ref}", accept="application/vnd.github.raw+json")
+        return _gh_bytes(f"repos/{repo}/contents/{quote(path)}?ref={ref}", accept="application/vnd.github.raw+json")
     except GitHubError:
         return None
 

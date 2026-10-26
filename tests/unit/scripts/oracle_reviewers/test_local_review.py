@@ -555,3 +555,15 @@ def test_a_rebase_onto_a_new_base_invalidates_the_cache_for_an_identical_patch(e
     _git(env.repo, "rebase", "--quiet", "develop")
     assert env.run() == local.EXIT_PROCEED
     assert len(env.reviews) == 2
+
+
+def test_local_patch_digest_hashes_exact_diff_bytes(tmp_path: Path, env: Env) -> None:
+    digests = []
+    for index, byte in enumerate((b"\xe9", b"\xf1")):
+        repo = _make_repo(tmp_path / f"latin-{index}")
+        (repo / CHECKER).write_bytes(b"value = '" + byte + b"'\n")
+        _git(repo, "add", CHECKER)
+        _git(repo, "commit", "--quiet", "-m", "latin-1")
+        plan = local.build_plan(env.policy, repo, "develop", _git(repo, "rev-parse", "HEAD"), tmp_path / f"out-{index}")
+        digests.append(plan["protocol"]["patch_digest"])
+    assert digests[0] != digests[1]
