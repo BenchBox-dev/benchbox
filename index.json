@@ -16510,7 +16510,8 @@
     "oracle-plan-head-base-rechecks-20261026": {
       "claim": null,
       "needs": [
-        "oracle-carry-byte-identical-20261026"
+        "oracle-carry-byte-identical-20261026",
+        "oracle-dispute-keyed-published-evidence-20261026"
       ],
       "priority": "medium",
       "status": "open",
