@@ -194,6 +194,11 @@ in front of the gateway to add limits.
   broker down or a provider logged out and leaves `oracle-ci` untouched. The
   token stops working within 10 seconds; run `check` to confirm the remaining
   clients. `revoke` refuses `oracle-ci`: rotate that token instead.
+- **Client names:** a client is `oracle-<name>` where `<name>` is lowercase
+  letters and digits joined by single hyphens. `gateway`, `check` and `revoke`
+  share that rule: a `*-client.token` file whose name does not fit makes
+  `gateway` and `check` fail naming the file, so rename or remove it; none is
+  skipped silently.
 - **Check:** `check` prints each client's model count and fails if a client's
   `clients.json` models or its live `/v1/models` list differ from `oracle-ci`'s,
   if a client's `/v1/usage` is not refused with a 403, or if `clients.json` and

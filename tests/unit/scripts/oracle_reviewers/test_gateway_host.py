@@ -214,3 +214,42 @@ def test_export_fails_without_origin_develop(tmp_path: Path) -> None:
     assert result.returncode != 0
     assert "cannot fetch origin/develop" in result.stderr
     assert list(exported.iterdir()) == []
+
+
+def _require_valid_token_files(host: dict) -> subprocess.CompletedProcess[str]:
+    return run_posix_shell(
+        f"bash -c '. \"$0\"; require_valid_token_files' {shlex.quote(str(HOST_SCRIPT))}",
+        env=host["env"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+@pytest.mark.parametrize("suffix", ["Ops", "my_ci", "a--b", "-x", "x-"])
+def test_a_token_file_with_a_non_matching_name_is_refused_by_name(host: dict, suffix: str) -> None:
+    (host["dir"] / f"{suffix}-client.token").write_text("t" * 48, encoding="utf-8")
+    result = _require_valid_token_files(host)
+    assert result.returncode != 0
+    assert f"{suffix}-client.token" in result.stderr
+    assert "t" * 48 not in result.stdout + result.stderr
+
+
+def test_the_existing_token_file_names_are_accepted(host: dict) -> None:
+    assert _require_valid_token_files(host).returncode == 0
+
+
+@pytest.mark.parametrize("suffix", ["local", "my-ci", "ci2", "Ops", "my_ci", "a--b", "x-", "a.b"])
+def test_revoke_and_the_token_file_check_accept_the_same_names(host: dict, suffix: str) -> None:
+    name = f"oracle-{suffix}"
+    clients_file = host["dir"] / "clients.json"
+    clients = json.loads(clients_file.read_text(encoding="utf-8"))
+    clients[name] = _entry("z" * 48)
+    clients_file.write_text(json.dumps(clients, indent=2) + "\n", encoding="utf-8")
+    token_file = host["dir"] / f"{suffix}-client.token"
+    token_file.parent.mkdir(parents=True, exist_ok=True)
+    token_file.write_text("z" * 48, encoding="utf-8")
+    checked = _require_valid_token_files(host).returncode == 0
+    revoked = _revoke(host, name).returncode == 0
+    assert checked == revoked
+    assert revoked == (suffix in {"local", "my-ci", "ci2"})

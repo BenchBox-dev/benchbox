@@ -137,6 +137,11 @@ gateway_code() {
   gateway_curl "$CLIENT_TOKEN_FILE" "$1" -o /dev/null -w '%{http_code}' || true
 }
 
+valid_client_name() {
+  local LC_ALL=C
+  [[ $1 =~ ^oracle-[a-z0-9]+(-[a-z0-9]+)*$ ]]
+}
+
 client_token_files() {
   local file
   echo "oracle-ci $CLIENT_TOKEN_FILE"
@@ -144,6 +149,14 @@ client_token_files() {
     [ -e "$file" ] || continue
     echo "oracle-$(basename "$file" -client.token) $file"
   done
+}
+
+require_valid_token_files() {
+  local name file
+  while read -r name file; do
+    valid_client_name "$name" \
+      || fail "$file names the client '$name'; rename it to <name>-client.token with <name> lowercase letters, digits and single hyphens"
+  done < <(client_token_files)
 }
 
 gateway_healthy() {
@@ -235,6 +248,7 @@ cmd_gateway() {
   local missing
   missing=$(missing_logins)
   [ -z "$missing" ] || fail "no broker login for: $(printf '%s\n' "$missing" | paste -sd ' ' -)"
+  require_valid_token_files
   mkdir -p "$GATEWAY_DIR/home"
   chmod 700 "$GATEWAY_DIR" "$GATEWAY_DIR/home"
   if [ ! -s "$CLIENT_TOKEN_FILE" ]; then
@@ -288,7 +302,7 @@ cmd_revoke() {
   local name=${1:-} token_file staged
   [ "$name" != oracle-ci ] \
     || fail "oracle-ci is the review client; rotate its token with '$(basename "$0") gateway' instead"
-  [[ $name =~ ^oracle-[a-z0-9]+(-[a-z0-9]+)*$ ]] \
+  valid_client_name "$name" \
     || fail "name a client like oracle-local; usage: $(basename "$0") revoke <client>"
   token_file=$GATEWAY_DIR/${name#oracle-}-client.token
   jq -e --arg name "$name" 'has($name)' "$CLIENTS_FILE" >/dev/null 2>&1 || [ -e "$token_file" ] \
@@ -321,6 +335,7 @@ cmd_check() {
   missing=$(missing_logins)
   [ -z "$missing" ] || fail "no broker login for: $(printf '%s\n' "$missing" | paste -sd ' ' -)"
   echo "logins: ${GATEWAY_PROVIDERS[*]}"
+  require_valid_token_files
   check_gateway_scope "http://127.0.0.1:$GATEWAY_PORT"
   url=$(tailnet_url)
   check_gateway_scope "$url"
