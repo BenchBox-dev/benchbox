@@ -31506,8 +31506,7 @@
       "necessity": "This optimizer hint is part of the query text; the engine reads it to choose a broadcast join, so the query plan depends on it.",
       "alternative": "Configure the join strategy through session settings instead of an inline hint.",
       "owner": "comment-cleanup-read-primitives",
-      "removal": "Remove when the query no longer needs the hinted join strategy.",
-      "expires": "2027-01-04"
+      "removal": "Remove when the query no longer needs the hinted join strategy."
     },
     {
       "path": "benchbox/core/read_primitives/catalog/queries.yaml",
@@ -31518,8 +31517,7 @@
       "necessity": "This optimizer hint is part of the query text; the engine reads it to choose a broadcast join, so the query plan depends on it.",
       "alternative": "Configure the join strategy through session settings instead of an inline hint.",
       "owner": "comment-cleanup-read-primitives",
-      "removal": "Remove when the query no longer needs the hinted join strategy.",
-      "expires": "2027-01-04"
+      "removal": "Remove when the query no longer needs the hinted join strategy."
     },
     {
       "path": "docs/benchmarks/amplab.md",
@@ -31530,8 +31528,7 @@
       "necessity": "This optimizer hint is part of the query text; the engine reads it to choose a broadcast join, so the query plan depends on it.",
       "alternative": "Configure the join strategy through session settings instead of an inline hint.",
       "owner": "comment-cleanup-documentation-samples",
-      "removal": "Remove when the query no longer needs the hinted join strategy.",
-      "expires": "2027-01-04"
+      "removal": "Remove when the query no longer needs the hinted join strategy."
     },
     {
       "path": "scripts/canary_impact.py",
@@ -31543,7 +31540,7 @@
       "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
       "owner": "comment-cleanup-operational-tooling",
       "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
+      "expires": "2027-03-15"
     },
     {
       "path": "scripts/canary_impact.py",
@@ -31555,7 +31552,7 @@
       "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
       "owner": "comment-cleanup-operational-tooling",
       "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
+      "expires": "2027-02-15"
     },
     {
       "path": "scripts/canary_impact.py",
@@ -31567,7 +31564,7 @@
       "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
       "owner": "comment-cleanup-operational-tooling",
       "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
+      "expires": "2027-04-15"
     },
     {
       "path": "tests/unit/mcp/test_benchmark_tools.py",
@@ -31579,7 +31576,7 @@
       "alternative": "Restructure the code so the rule no longer fires, then delete the suppression.",
       "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
       "removal": "Remove when Ruff RUF100 reports the suppression as unused or the code is restructured.",
-      "expires": "2027-01-04"
+      "expires": "2027-05-17"
     },
     {
       "path": "benchbox/core/read_primitives/catalog/queries.yaml",
@@ -31698,8 +31695,7 @@
       "necessity": "This optimizer hint is part of the query text; the engine reads it to choose a broadcast join, so the query plan depends on it.",
       "alternative": "Configure the join strategy through session settings instead of an inline hint.",
       "owner": "comment-cleanup-read-primitives",
-      "removal": "Remove when the query no longer needs the hinted join strategy.",
-      "expires": "2027-01-04"
+      "removal": "Remove when the query no longer needs the hinted join strategy."
     },
     {
       "path": "benchbox/core/read_primitives/catalog/queries.yaml",
@@ -31710,8 +31706,7 @@
       "necessity": "This optimizer hint is part of the query text; the engine reads it to choose a broadcast join, so the query plan depends on it.",
       "alternative": "Configure the join strategy through session settings instead of an inline hint.",
       "owner": "comment-cleanup-read-primitives",
-      "removal": "Remove when the query no longer needs the hinted join strategy.",
-      "expires": "2027-01-04"
+      "removal": "Remove when the query no longer needs the hinted join strategy."
     },
     {
       "path": "benchbox/core/metadata_primitives/catalog/queries.yaml",
