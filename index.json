@@ -16343,6 +16343,16 @@
       "status": "dropped",
       "title": "BenchBox: delete the in-repo oracle engine"
     },
+    "oracle-local-findings-record-disputes-20261026": {
+      "claim": null,
+      "needs": [
+        "oracle-review-driver-local-20261026",
+        "oracle-dispute-trigger-budget-escalation-20261026"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Carry local findings and disputes into CI as claims and replace the local override with dispute and owner adjudication"
+    },
     "oracle-local-o10-delete-reviewer-secrets": {
       "claim": null,
       "needs": [
