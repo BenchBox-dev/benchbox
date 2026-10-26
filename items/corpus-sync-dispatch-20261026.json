@@ -4,7 +4,7 @@
     "Corpus drift check passes after the sync: local drift check clean or the next nightly t3:drift corpus step green (evidence recorded)",
     "Issue #2471 state re-checked live and reported; the issue is not closed by an agent unless its own automation closes it"
   ],
-  "context": "Decision gate passed: owner approved the dispatch on 2026-10-26, accepting a non-destructive union overlay write to published-results outside a PR. If the workflow fails or drift remains, stop and report the failing paths; do not hand-edit published-results.",
+  "context": "2026-10-26: sync-results-data-to-published.yml dispatched on develop (run 40387221672, completed success 19:30:47Z). Correction: the workflow does not push directly to published-results; it refreshes/validates mirror PR #3568 (auto/results-mirror-8f27bed5 -> published-results, head 5b8113719, CLEAN, corpus-mirror/validate-bundles pass) and states \"Maintainer review the diff and flip the PR ready to merge. This PR will not auto-merge.\" Waiting on owner merge of #3568 (or authorization to merge it), then re-verify corpus drift = 0 paths.",
   "description": "Nightly-v2 run 40339587542 (2026-10-26) failed t3:drift on corpus drift only: the published-results branch is 28 paths behind develop (CORPUS_NOTES.md, README.md, SEED_CORPUS_SPEC.md, validate_corpus.py, 24 bundle manifests). The cross-surface baseline and pricing checks pass locally on develop (verified 2026-10-26); the earlier quoted baseline/pricing errors were echoed script text. Owner decision 2026-10-26: dispatch the sync now. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "generation": "a2b3ea53a4ef43038ea604f92bccd575",
       "op": "take",
       "op_id": "25f39622421e4b64bee0450091b516b8",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-26T20:25:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2b28566764c5470dbddec49cb9139f8f",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
