@@ -4,7 +4,7 @@
     "benchbox compare warns or refuses when either differs between the compared runs, with a unit test.",
     "The published corpus's pre-2026-10-07 TPC-H power results are identifiable as the older policy (documented rule or backfilled marker)."
   ],
-  "context": "Found 2026-10-13 during an adversarial review of the Snowflake trial-exit comparability matrix. Evidence: tpch_sf1_snowflake_sql_20261003_113923_e545c1c5 runs query order 14,2,9,... / 21,3,18,... / 6,17,14,... / 8,5,4,... across iterations, while 20261012_172155_3067b960 runs 14,2,9,... every iteration. Neither bundle has data_generation_version.",
+  "context": "Found 2026-10-13 during an adversarial review of the Snowflake trial-exit comparability matrix. Evidence: tpch_sf1_snowflake_sql_20261003_113923_e545c1c5 runs query order 14,2,9,... / 21,3,18,... / 6,17,14,... / 8,5,4,... across iterations, while 20261012_172155_3067b960 runs 14,2,9,... every iteration. Neither bundle has data_generation_version.\n\n## Delivered\nCore PR #3451 merged 2026-10-26T06:34:43Z (head 1cfec3cc075f07c62d908398c7bc5effd31c89a7, oracle verdict success on that head). TPC result bundles now record data-generation identity and power-stream policy: benchbox/core/results/power_stream_policy.py maps tpch to fixed-stream-0 and tpcds to per-iteration-stream (the earlier review finding that TPC-DS was stamped fixed-stream-0 was fixed on the merged head; thread resolved with that evidence). Auto-merge completed after oracle-gate success.\n",
   "description": "## Problem\nTwo changes made TPC-H results before and after them non-comparable, and nothing in a result bundle shows it:\n- Commit ff1dec15e (#2683, 2026-10-07) runs every TPC-H power iteration on stream 0. Before it, each iteration used its own stream, with a different query order (`benchbox/core/tpch/power_test.py:203-204`) and, when seeded, different qgen parameters (`benchbox/core/tpch/benchmark.py:36-39`).\n- Commit e23ba66c9 (#2622, 2026-10-04) made dbgen produce canonical customer and supplier addresses. Data generated earlier differs in content.\n\nThe result schema supports `benchmark.data_generation_version` and `data_generation_hash` (`benchbox/core/results/schema.py:435-438`), added under `add-data-generation-version-field-to-benchmarkresults-for-ch`. Yet neither a 2026-10-03 nor a 2026-10-12 Snowflake TPC-H bundle carries them. The datagen manifests do hold `data_generation_version`, `base_constants_hash` and `generator_binary_sha256`, but those values are not propagated into the bundle. No field records the power-stream policy either.\n\nA careful manual comparability pass still marked the affected 2026-10-03 TPC-H baselines (sf0.1, sf1, sf10) as reproducible-exact. Compare tooling and the results explorer cannot detect the mismatch on any platform.\n\n## Change\n- Propagate the datagen manifest identity (data_generation_version, base_constants_hash or generator hash) into `benchmark.*` for generated benchmarks.\n- Record a power-stream policy marker for TPC-H and TPC-DS power tests.\n- Make `benchbox compare` and the explorer warn or refuse when these differ between compared runs.",
   "links": [
     "benchbox/core/results/schema.py",
@@ -27,6 +27,14 @@
       "generation": "03a7e710499e4418ac5962dc67630b47",
       "op": "take",
       "op_id": "ea0b95e1aa3546e7b43a53b0fe6ba646",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-26T07:04:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "76afa0933be342c5866cd025158ecd64",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
     }
   ]
