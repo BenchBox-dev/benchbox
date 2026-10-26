@@ -7,6 +7,14 @@ from benchbox.sql_compat.registry import REGISTRY
 
 LIST_AGGREGATE_TPCHAVOC_QUERY_ID = "1_v7"
 
+LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES = {
+    "apache-doris": "doris",
+    "azure-synapse": "synapse",
+    "fabric-warehouse": "fabric-dw",
+    "snowpark-connect-for-spark": "snowpark-connect",
+    "snowparkconnectadapter": "snowpark-connect",
+}
+
 LIST_AGGREGATE_TPCHAVOC_SKIPS: dict[str, str] = {
     "clickhouse": "The ClickHouse translation keeps DuckDB's `LIST` aggregate and `list_transform`/`list_zip` lambdas, which ClickHouse does not accept.",
     "databend": "No Databend form of the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses exists in the translator (the Snowflake-dialect translation leaves them in place).",

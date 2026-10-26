@@ -24,6 +24,7 @@ from benchbox.sql_compat.rules.execution_filter.cloud_tpchavoc import CLOUD_TPCH
 from benchbox.sql_compat.rules.execution_filter.datafusion_tpchavoc import DATAFUSION_TPCHAVOC_SKIPS
 from benchbox.sql_compat.rules.execution_filter.lakesail_tpchavoc import LAKESAIL_TPCHAVOC_SKIPS
 from benchbox.sql_compat.rules.execution_filter.list_aggregate_tpchavoc import (
+    LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES,
     LIST_AGGREGATE_TPCHAVOC_QUERY_ID,
     LIST_AGGREGATE_TPCHAVOC_SKIPS,
 )
@@ -72,6 +73,7 @@ class TPCHavocBenchmark(TPCHBenchmark):
             return list(POSTGRES_TPCHAVOC_SKIPS)
         if platform in CLOUD_TPCHAVOC_SKIPS:
             return list(CLOUD_TPCHAVOC_SKIPS[platform])
+        platform = LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES.get(platform, platform)
         if platform in LIST_AGGREGATE_TPCHAVOC_SKIPS:
             return [LIST_AGGREGATE_TPCHAVOC_QUERY_ID]
         return []

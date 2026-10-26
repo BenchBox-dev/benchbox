@@ -10,7 +10,10 @@ from benchbox.core.platform_manifest import PLATFORM_MANIFEST, get_platform_sql_
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
 from benchbox.core.tpchavoc.dialect_compat import LIST_AGGREGATE_DIALECTS, LIST_AGGREGATE_VARIANT_IDS
 from benchbox.sql_compat.rules.execution_filter.datafusion_tpchavoc import DATAFUSION_TPCHAVOC_SKIPS
-from benchbox.sql_compat.rules.execution_filter.list_aggregate_tpchavoc import LIST_AGGREGATE_TPCHAVOC_SKIPS
+from benchbox.sql_compat.rules.execution_filter.list_aggregate_tpchavoc import (
+    LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES,
+    LIST_AGGREGATE_TPCHAVOC_SKIPS,
+)
 from benchbox.sql_compat.rules.execution_filter.postgres_tpchavoc import POSTGRES_TPCHAVOC_SKIPS
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -125,6 +128,33 @@ def test_every_sql_platform_translates_or_documents_the_list_aggregate_variant()
             undocumented.append(platform)
 
     assert undocumented == []
+
+
+ADAPTER_DISPLAY_NAMES = {
+    "Apache Doris": "doris",
+    "Azure Synapse": "synapse",
+    "Fabric Warehouse": "fabric-dw",
+    "SnowparkConnectAdapter": "snowpark-connect",
+    "StarRocks": "starrocks",
+    "Redshift": "redshift",
+    "QuestDB": "questdb",
+    "SingleStore": "singlestore",
+    "Databend": "databend",
+    "Fabric Lakehouse": "fabric-lakehouse",
+}
+
+
+def test_list_aggregate_skips_fire_for_adapter_display_names():
+    benchmark = TPCHavocBenchmark(scale_factor=0.01)
+
+    import re
+
+    for display_name, key in ADAPTER_DISPLAY_NAMES.items():
+        assert key in LIST_AGGREGATE_TPCHAVOC_SKIPS
+        normalized = re.sub(r"[^a-z0-9]+", "-", display_name.lower()).strip("-")
+        if normalized != key:
+            assert LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES[normalized] == key
+        assert benchmark.get_platform_skip_queries(display_name) == ["1_v7"]
 
 
 def test_list_aggregate_skip_reasons_name_a_platform_without_a_translation():

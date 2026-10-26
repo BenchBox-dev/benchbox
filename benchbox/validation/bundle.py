@@ -296,6 +296,15 @@ TPCHAVOC_DOCUMENTED_SKIPS: dict[str, frozenset[str]] = {
 }
 
 
+TPCHAVOC_LIST_AGGREGATE_PLATFORM_ALIASES = {
+    "apache-doris": "doris",
+    "azure-synapse": "synapse",
+    "fabric-warehouse": "fabric-dw",
+    "snowpark-connect-for-spark": "snowpark-connect",
+    "snowparkconnectadapter": "snowpark-connect",
+}
+
+
 TPCHAVOC_LIST_AGGREGATE_SKIP_PLATFORMS = frozenset(
     {
         "clickhouse",
@@ -323,6 +332,7 @@ def _tpchavoc_documented_skips(platform_name: Any) -> frozenset[str]:
         return TPCHAVOC_DOCUMENTED_SKIPS["postgres"] | {"1_v7"}
     if platform == "timescaledb":
         return TPCHAVOC_DOCUMENTED_SKIPS["postgres"]
+    platform = TPCHAVOC_LIST_AGGREGATE_PLATFORM_ALIASES.get(platform, platform)
     if platform in TPCHAVOC_LIST_AGGREGATE_SKIP_PLATFORMS:
         return frozenset({"1_v7"})
     return TPCHAVOC_DOCUMENTED_SKIPS.get(platform, frozenset())
