@@ -341,3 +341,26 @@ def test_tracked_symlink_entries_decode_smart_quote_names(tmp_path: Path, monkey
     monkeypatch.setattr(inert, "subprocess", SimpleNamespace(run=_windows_locale_run(subprocess.run)))
     names = {name for name, _ in inert.tracked_symlink_entries(tmp_path / "repo")}
     assert "notes/link" + chr(0x201D) + "name.md" in names
+
+
+def test_tracked_files_decode_names_as_strict_utf8(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "notes-ok.md").write_text("page\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "init", "-b", "main"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.com", "add", "."],
+        check=True,
+        capture_output=True,
+    )
+    seen: dict[str, Any] = {}
+    real_run = subprocess.run
+
+    def run(*args: Any, **kwargs: Any) -> Any:
+        seen.update(kwargs)
+        return real_run(*args, **kwargs)
+
+    monkeypatch.setattr(inert, "subprocess", SimpleNamespace(run=run))
+    assert inert.tracked_files(repo) == {"notes-ok.md"}
+    assert seen.get("encoding") == "utf-8"
+    assert "errors" not in seen

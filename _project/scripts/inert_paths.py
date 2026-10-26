@@ -324,7 +324,6 @@ def tracked_files(repo_root: str | Path) -> set[str]:
         check=True,
         text=True,
         encoding="utf-8",
-        errors="replace",
         capture_output=True,
         timeout=120,
     )
@@ -419,16 +418,17 @@ def load_readers(repo_root: str | Path) -> dict[str, list[str]]:
 
 def tracked_symlink_entries(repo_root: str | Path) -> list[tuple[str, str]]:
     proc = subprocess.run(
-        ["git", "-C", str(repo_root), "ls-files", "-s"],
+        ["git", "-C", str(repo_root), "ls-files", "-s", "-z"],
         check=True,
         text=True,
         encoding="utf-8",
-        errors="replace",
         capture_output=True,
         timeout=120,
     )
     entries: list[tuple[str, str]] = []
-    for line in proc.stdout.splitlines():
+    for line in proc.stdout.split("\0"):
+        if not line:
+            continue
         meta, _, name = line.partition("\t")
         if meta.split(" ", 1)[0] != "120000" or not name:
             continue

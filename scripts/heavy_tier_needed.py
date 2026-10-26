@@ -95,7 +95,6 @@ def _read_base_copy(base_ref: str, repo_root: Path) -> dict[str, str]:
                 ["git", "--no-replace-objects", "-C", str(repo_root), "show", f"{commit}:{path}"],
                 text=True,
                 encoding="utf-8",
-                errors="replace",
                 stderr=subprocess.DEVNULL,
             )
             for path in POLICY_PATHS

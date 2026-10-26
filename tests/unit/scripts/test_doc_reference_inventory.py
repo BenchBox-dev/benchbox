@@ -10,6 +10,8 @@ from typing import Any
 
 import pytest
 
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
 ROOT = Path(__file__).resolve().parents[3]
 
 if not (ROOT / "_project/design/api-public-symbols.json").exists():

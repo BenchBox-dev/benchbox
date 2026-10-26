@@ -323,3 +323,25 @@ def test_base_reader_decodes_smart_quotes(tmp_path: Path, monkeypatch: pytest.Mo
     git("commit", "-m", "base")
     monkeypatch.setattr(heavy.subprocess, "check_output", _windows_locale_output(subprocess.check_output))
     assert heavy._read_base_copy("HEAD", repo) == {relative: f"{relative}\n{quoted}\n" for relative in POLICY_FILES}
+
+
+def test_non_utf8_base_copy_fails_closed(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def git(*args: str) -> str:
+        return subprocess.check_output(["git", "-C", str(repo), *args], text=True).strip()
+
+    git("init", "-b", "main")
+    git("config", "user.name", "Test")
+    git("config", "user.email", "test@example.invalid")
+    git("config", "commit.gpgsign", "false")
+    for relative in POLICY_FILES:
+        path = repo / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"soundness \xff quote\n")
+    git("add", "--", *POLICY_FILES)
+    git("commit", "-m", "base")
+    result = heavy.heavy_needed(_decision(["ordinary.py"]), "HEAD", repo)
+    assert result["heavy_needed"] is True
+    assert "failed closed" in result["reason"]
