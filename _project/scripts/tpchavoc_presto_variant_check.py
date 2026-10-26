@@ -25,16 +25,19 @@ DUCKDB_TYPES = {
     "real": "DOUBLE",
     "date": "DATE",
 }
-SCALE_SCHEMAS = {1.0: "sf1", 2.0: "sf2", 3.0: "sf3", 5.0: "sf5"}
+SCALE_SCHEMAS = {0.1: "sf0.1", 1.0: "sf1", 2.0: "sf2", 3.0: "sf3", 5.0: "sf5"}
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
 class PrestoClient:
-    def __init__(self, server: str, user: str, catalog: str, schema: str) -> None:
+    def __init__(
+        self, server: str, user: str, catalog: str, schema: str, session: dict[str, str] | None = None
+    ) -> None:
         self.server = server.rstrip("/")
         self.user = user
         self.catalog = catalog
         self.schema = schema
+        self.session = dict(session or {})
 
     def _request(self, url: str, data: bytes | None, schema: str | None = None) -> dict[str, Any]:
         headers = {
@@ -42,6 +45,8 @@ class PrestoClient:
             "X-Presto-Catalog": self.catalog,
             "X-Presto-Schema": schema or self.schema,
         }
+        if self.session:
+            headers["X-Presto-Session"] = ",".join(f"{name}={value}" for name, value in self.session.items())
         method = "POST" if data is not None else "GET"
         request = urllib.request.Request(url, data=data, headers=headers, method=method)
         with urllib.request.urlopen(request, timeout=3600) as response:
@@ -256,12 +261,12 @@ def load_duckdb(client: PrestoClient, schema: str):
     connection = duckdb.connect()
     counts = {}
     for table in TPCH_TABLES:
-        described = client.execute(f"DESCRIBE tpch.{schema}.{table}")
+        described = client.execute(f'DESCRIBE tpch."{schema}".{table}')
         names = [row[0] for row in described["rows"]]
         types = [duckdb_type(row[1]) for row in described["rows"]]
         columns = ", ".join(f'"{name}" {kind}' for name, kind in zip(names, types))
         connection.execute(f"CREATE TABLE {table} ({columns})")
-        data = client.execute(f"SELECT * FROM tpch.{schema}.{table}")
+        data = client.execute(f'SELECT * FROM tpch."{schema}".{table}')
         placeholders = ", ".join("?" for _ in names)
         connection.executemany(f"INSERT INTO {table} VALUES ({placeholders})", data["rows"])
         counts[table] = len(data["rows"])
@@ -321,9 +326,35 @@ def run_variants(
     return {"table_row_counts": counts, "results": results}
 
 
+def parse_session(items: list[str] | None) -> dict[str, str]:
+    session = {}
+    for item in items or []:
+        name, separator, value = item.partition("=")
+        if not separator or not name:
+            raise ValueError(f"session property must be NAME=VALUE: {item!r}")
+        session[name] = value
+    return session
+
+
+def run_statements(client: PrestoClient, statements: list[str], schema: str | None = None) -> list[dict[str, Any]]:
+    outcomes = []
+    for statement in statements:
+        execution = client.execute(statement.strip().rstrip(";"), schema)
+        outcome: dict[str, Any] = {"sql": statement, "ok": execution["ok"]}
+        if execution["ok"]:
+            outcome["row_count"] = len(execution["rows"])
+            outcome["rows_head"] = execution["rows"][:5]
+        else:
+            outcome["error_name"] = execution["error_name"]
+            outcome["error_message"] = execution["error_message"]
+        outcome["wall_seconds"] = round(execution["wall_seconds"], 3)
+        outcomes.append(outcome)
+    return outcomes
+
+
 def run_scale(client: PrestoClient, benchmark: TPCHavocBenchmark, scale: float, repeats: int) -> dict[str, Any]:
     schema = SCALE_SCHEMAS[scale]
-    count = client.execute(f"SELECT count(*) FROM tpch.{schema}.lineitem", schema)["rows"][0][0]
+    count = client.execute(f'SELECT count(*) FROM tpch."{schema}".lineitem', schema)["rows"][0][0]
     outputs = {}
     for name, sql in (
         ("canonical", benchmark.get_query(1, dialect="presto")),
@@ -364,7 +395,7 @@ def run_scale(client: PrestoClient, benchmark: TPCHavocBenchmark, scale: float, 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run TPC-Havoc variants on PrestoDB and compare with DuckDB.")
-    parser.add_argument("mode", choices=("variants", "scale"))
+    parser.add_argument("mode", choices=("variants", "scale", "sql"))
     parser.add_argument("--server", default="http://localhost:18081")
     parser.add_argument("--user", default="benchbox")
     parser.add_argument("--schema", default="tiny")
@@ -373,16 +404,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repeats", type=int, default=2)
     parser.add_argument("--only", nargs="*")
     parser.add_argument("--reruns", type=int, default=4)
+    parser.add_argument("--session", action="append", default=[])
+    parser.add_argument("--statement", action="append", default=[])
     parser.add_argument("--output", default="")
     args = parser.parse_args(argv)
 
-    client = PrestoClient(args.server, args.user, "tpch", args.schema)
+    client = PrestoClient(args.server, args.user, "tpch", args.schema, parse_session(args.session))
     info = client.info()
     report: dict[str, Any] = {
         "presto_version": info["nodeVersion"]["version"],
         "benchbox_revision": git_output("rev-parse", "HEAD") or "unknown",
         "benchbox_tree_dirty": repository_dirty(),
         "relative_tolerance": RELATIVE_TOLERANCE,
+        "session": client.session,
     }
     if args.mode == "variants":
         report.update(run_variants(client, args.schema, args.scale_factor, args.only, args.reruns))
@@ -391,6 +425,9 @@ def main(argv: list[str] | None = None) -> int:
             counts[entry["status"]] = counts.get(entry["status"], 0) + 1
         report["status_counts"] = counts
         success = set(counts) == {"PASS"}
+    elif args.mode == "sql":
+        report["results"] = run_statements(client, args.statement, args.schema)
+        success = all(entry["ok"] for entry in report["results"])
     else:
         benchmark = TPCHavocBenchmark(scale_factor=1.0)
         report["repeats"] = args.repeats

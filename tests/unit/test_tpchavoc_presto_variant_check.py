@@ -11,8 +11,11 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from _project.scripts.tpchavoc_presto_variant_check import (
+    PrestoClient,
     compare_results,
     has_top_level_order_by,
+    parse_session,
+    run_statements,
     variant_ids,
 )
 
@@ -76,3 +79,50 @@ def test_variant_set_has_ten_variants_for_each_of_the_22_queries():
     assert len(set(identifiers)) == 220
     assert "1_v7" in identifiers
     assert "16_v6" in identifiers
+
+
+def test_parse_session_splits_name_and_value():
+    assert parse_session(["a=1", "b=x=y"]) == {"a": "1", "b": "x=y"}
+    assert parse_session(None) == {}
+
+
+@pytest.mark.parametrize("bad", ["novalue", "=1"])
+def test_parse_session_rejects_malformed_items(bad):
+    with pytest.raises(ValueError):
+        parse_session([bad])
+
+
+def test_session_properties_are_sent_as_header(monkeypatch):
+    seen = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self):
+            return b"{}"
+
+    def fake_urlopen(request, timeout):
+        seen.update(request.headers)
+        return Response()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    PrestoClient("http://x", "u", "tpch", "tiny", {"p": "1", "q": "2"}).info()
+
+    assert seen["X-presto-session"] == "p=1,q=2"
+
+
+def test_run_statements_reports_success_and_failure():
+    class Stub:
+        def execute(self, sql, schema=None):
+            if "bad" in sql:
+                return {"ok": False, "error_name": "NOT_SUPPORTED", "error_message": "nope", "wall_seconds": 0.0}
+            return {"ok": True, "rows": [[1], [2]], "wall_seconds": 0.0}
+
+    good, bad = run_statements(Stub(), ["SELECT 1;", "SELECT bad"])
+
+    assert good["ok"] and good["row_count"] == 2 and good["rows_head"] == [[1], [2]]
+    assert not bad["ok"] and bad["error_name"] == "NOT_SUPPORTED" and bad["error_message"] == "nope"
