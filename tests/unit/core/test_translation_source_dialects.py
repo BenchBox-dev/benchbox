@@ -94,8 +94,15 @@ def test_duckdb_source_translates_every_query_for_non_duckdb_dialects(monkeypatc
             assert set(sources) == {"duckdb"}, dialect
 
 
-def _observed_bypasses(monkeypatch) -> dict[str, set[str]]:
+@pytest.fixture
+def quiet_logging():
+    previous = logging.root.manager.disable
     logging.disable(logging.CRITICAL)
+    yield
+    logging.disable(previous)
+
+
+def _observed_bypasses(monkeypatch) -> dict[str, set[str]]:
     produced: set[str] = set()
     _install_spy(monkeypatch, lambda args, kwargs, result: produced.add(result))
 
@@ -127,7 +134,7 @@ def test_allowlist_entries_carry_reasons():
         assert entry["queries"], benchmark_id
 
 
-def test_no_benchmark_bypasses_translation_without_an_allowlisted_reason(monkeypatch):
+def test_no_benchmark_bypasses_translation_without_an_allowlisted_reason(monkeypatch, quiet_logging):
     allowed = {benchmark_id: set(entry["queries"]) for benchmark_id, entry in _allowlist().items()}
     observed = _observed_bypasses(monkeypatch)
 
