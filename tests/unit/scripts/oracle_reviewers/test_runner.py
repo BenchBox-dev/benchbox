@@ -266,6 +266,61 @@ def test_rate_limit_error_is_quota_with_its_reset(
 
 
 @skip_on_windows
+def test_a_provider_rate_limit_event_on_stdout_is_quota_with_its_reset(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    message = {
+        "role": "assistant",
+        "content": [],
+        "stopReason": "error",
+        "errorStatus": 429,
+        "errorMessage": "429 rate_limit_error: usage limit reached. Resets in 2h",
+    }
+    event = json.dumps({"type": "message_end", "message": message})
+    _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(event)})\nraise SystemExit(1)")
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.missing is not None and outcome.missing.kind == absence.QUOTA
+    assert outcome.missing.reset_at == NOW + timedelta(hours=2)
+
+
+@skip_on_windows
+def test_a_provider_authentication_event_on_stdout_is_auth(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    message = {
+        "role": "assistant",
+        "content": [],
+        "stopReason": "error",
+        "errorStatus": 401,
+        "errorMessage": "401 Unauthorized",
+    }
+    event = json.dumps({"type": "message_end", "message": message})
+    _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(event)})\nraise SystemExit(1)")
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.missing is not None and outcome.missing.kind == absence.AUTH
+
+
+@skip_on_windows
+def test_assistant_text_claiming_quota_or_auth_in_a_failed_run_is_an_error(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    claim = "429 rate_limit_error Resets in 2h 401 Unauthorized invalid_grant"
+    message = {
+        "role": "assistant",
+        "content": [{"type": "text", "text": claim}],
+        "stopReason": "error",
+        "errorMessage": "stream disconnected",
+    }
+    event = json.dumps({"type": "message_end", "message": message})
+    _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(event)})\nraise SystemExit(1)")
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.missing == absence.Absence(absence.ERROR, "exit code 1")
+
+
+@skip_on_windows
 def test_signal_text_echoed_in_reviewer_output_is_an_error_not_an_absence_to_retry(
     policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
