@@ -9143,12 +9143,17 @@
       "title": "Place canonical TPC notices beside query templates before retiring site downloads"
     },
     "docs-mig-tpc-eula-gate": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T09:29:20Z",
+        "generation": "866c215dba08473282138a7a38729d1f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "docs-mig-tpc-adjacent-eulas"
       ],
       "priority": "critical",
-      "status": "open",
+      "status": "active",
       "title": "Verify TPC notices before removing query downloads"
     },
     "docs-mig-ts-parity-gate": {
