@@ -23964,15 +23964,10 @@
       "title": "Spark SQL TPCHavoc scalar subquery and dual rewrites"
     },
     "spark-trunc-day-returns-null-20261026": {
-      "claim": {
-        "expires_at": "2026-10-27T15:08:28Z",
-        "generation": "805b2a9caad34f74a4ec3b0fac3a4625",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Spark/Databricks: DATE_TRUNC('DAY', x) translated to TRUNC(x, 'DAY') returns NULL"
     },
     "spark-tuned-template-measured": {
