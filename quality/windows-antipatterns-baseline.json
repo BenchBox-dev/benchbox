@@ -1,25 +1,144 @@
 {
   "files": {
+    "benchbox/cli/commands/submit.py": {
+      "WA007": 1
+    },
+    "benchbox/core/tpcds/qualification/runner.py": {
+      "WA007": 1
+    },
+    "scripts/batch_integration.py": {
+      "WA007": 3
+    },
+    "scripts/canary_impact.py": {
+      "WA007": 1
+    },
+    "scripts/changelog_fragments.py": {
+      "WA007": 3
+    },
     "scripts/check_api_contract_symbols.py": {
       "WA001": 1
+    },
+    "scripts/check_comment_cleanup_scope.py": {
+      "WA007": 2
+    },
+    "scripts/check_docs_ownership.py": {
+      "WA007": 2
+    },
+    "scripts/check_duplicate_code.py": {
+      "WA007": 3
+    },
+    "scripts/check_release_curation.py": {
+      "WA007": 1
+    },
+    "scripts/check_sqlglot_repro_retirement.py": {
+      "WA007": 3
+    },
+    "scripts/check_sqlglot_upstream_freshness.py": {
+      "WA007": 1
+    },
+    "scripts/ci_units.py": {
+      "WA007": 1
     },
     "scripts/compare_pg_duckdb.py": {
       "WA003": 1
     },
+    "scripts/coverage_map_staleness.py": {
+      "WA007": 1
+    },
+    "scripts/coverage_test_selection.py": {
+      "WA004": 2,
+      "WA007": 1
+    },
+    "scripts/doc_reference_inventory.py": {
+      "WA007": 1
+    },
+    "scripts/generate_changelog_entry.py": {
+      "WA007": 1
+    },
+    "scripts/heavy_tier_needed.py": {
+      "WA007": 3
+    },
+    "scripts/make_timing.py": {
+      "WA007": 1
+    },
+    "scripts/path_filter_decision.py": {
+      "WA007": 3
+    },
+    "scripts/post_merge_signature.py": {
+      "WA007": 2
+    },
+    "scripts/pr_landing.py": {
+      "WA007": 1
+    },
+    "scripts/pr_refresh_certification.py": {
+      "WA007": 1
+    },
+    "scripts/publication/check_corpus_bijection.py": {
+      "WA007": 2
+    },
+    "scripts/publication/create_ledger_seed.py": {
+      "WA007": 1
+    },
+    "scripts/publication/reconciler.py": {
+      "WA007": 1
+    },
+    "scripts/publication/validator_parity.py": {
+      "WA007": 1
+    },
     "scripts/release_artifact_consumer.py": {
       "WA002": 1
+    },
+    "scripts/release_curation_dry_run.py": {
+      "WA007": 1
+    },
+    "scripts/release_finalize.py": {
+      "WA007": 1
     },
     "scripts/release_flow.py": {
       "WA003": 1
     },
+    "scripts/release_readiness_check.py": {
+      "WA007": 2
+    },
+    "scripts/release_tag_recheck.py": {
+      "WA007": 1
+    },
+    "scripts/run_comment_policy.py": {
+      "WA007": 4
+    },
     "scripts/run_version_matrix.py": {
-      "WA002": 1
+      "WA002": 1,
+      "WA007": 1
+    },
+    "scripts/site_inputs_parent.py": {
+      "WA007": 1
+    },
+    "scripts/skill_sync_ci_policy.py": {
+      "WA007": 1
+    },
+    "scripts/sql_execution_gate/gate.py": {
+      "WA007": 1
     },
     "scripts/update_version.py": {
       "WA003": 4
     },
     "scripts/validate_example_references.py": {
       "WA003": 1
+    },
+    "scripts/verify_mcp_conformance.py": {
+      "WA007": 3
+    },
+    "scripts/worktree_finish.py": {
+      "WA007": 1
+    },
+    "scripts/worktree_lifecycle_metadata.py": {
+      "WA007": 1
+    },
+    "scripts/worktree_reap.py": {
+      "WA007": 1
+    },
+    "tests/conftest.py": {
+      "WA007": 1
     },
     "tests/integration/test_compression_integration.py": {
       "WA003": 2
@@ -39,6 +158,24 @@
     "tests/integration/test_tpchavoc_duckdb.py": {
       "WA003": 1
     },
+    "tests/integration/worktree/test_pr_process.py": {
+      "WA007": 2
+    },
+    "tests/integration/worktree/test_worktree_audit.py": {
+      "WA007": 1
+    },
+    "tests/integration/worktree/test_worktree_finish_preview.py": {
+      "WA007": 3
+    },
+    "tests/integration/worktree/test_worktree_lifecycle_metadata.py": {
+      "WA007": 2
+    },
+    "tests/integration/worktree/test_worktree_reap.py": {
+      "WA007": 1
+    },
+    "tests/integration/worktree/test_worktree_release_dirty_guard.py": {
+      "WA007": 4
+    },
     "tests/performance/test_compression_performance.py": {
       "WA003": 2
     },
@@ -48,8 +185,12 @@
     "tests/performance/test_tpcds_regression.py": {
       "WA003": 1
     },
+    "tests/system/test_ci_lint_parity.py": {
+      "WA007": 1
+    },
     "tests/uat/orchestrator.py": {
-      "WA002": 2
+      "WA002": 2,
+      "WA007": 1
     },
     "tests/uat/test_docker_assets.py": {
       "WA003": 3
@@ -171,6 +312,9 @@
     "tests/unit/core/tpch/test_official_benchmark_coverage.py": {
       "WA003": 1
     },
+    "tests/unit/core/tpch/test_tpch_dbgen_framing.py": {
+      "WA007": 1
+    },
     "tests/unit/core/tpch/test_tpch_stdout_datagen.py": {
       "WA003": 1
     },
@@ -185,6 +329,9 @@
     },
     "tests/unit/core/tuning/test_template_evidence.py": {
       "WA003": 1
+    },
+    "tests/unit/core/tuning/test_unknown_key_rejection.py": {
+      "WA007": 1
     },
     "tests/unit/core/vector_search/test_vector_benchmark.py": {
       "WA003": 4
@@ -243,6 +390,9 @@
     "tests/unit/platforms/test_throughput_session_capability_sweep.py": {
       "WA003": 2
     },
+    "tests/unit/publication/test_validator_parity.py": {
+      "WA007": 2
+    },
     "tests/unit/query_plans/test_azure_synapse_parser.py": {
       "WA003": 1
     },
@@ -273,30 +423,113 @@
     "tests/unit/release/test_ruleset_drift_review_coverage.py": {
       "WA003": 2
     },
+    "tests/unit/scripts/oracle_reviewers/test_attempt_loop.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/oracle_reviewers/test_local_review.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/oracle_reviewers/test_runner.py": {
+      "WA007": 4
+    },
+    "tests/unit/scripts/publication/test_ledger_seed.py": {
+      "WA007": 4
+    },
+    "tests/unit/scripts/publication/test_override_companion_exclusion.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/publication/test_reconciler.py": {
+      "WA007": 6
+    },
+    "tests/unit/scripts/test_batch_integration.py": {
+      "WA007": 5
+    },
+    "tests/unit/scripts/test_branch_prune_merged.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_changelog_fragments.py": {
+      "WA007": 2
+    },
+    "tests/unit/scripts/test_changelog_gate_cli.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_check_duplicate_code.py": {
+      "WA007": 1
+    },
     "tests/unit/scripts/test_check_release_curation.py": {
-      "WA003": 1
+      "WA003": 1,
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_ci_units.py": {
+      "WA007": 1
     },
     "tests/unit/scripts/test_comment_cleanup_scope.py": {
-      "WA003": 2
+      "WA003": 2,
+      "WA007": 8
+    },
+    "tests/unit/scripts/test_comment_parity.py": {
+      "WA007": 1
     },
     "tests/unit/scripts/test_comment_policy.py": {
-      "WA003": 3
+      "WA003": 3,
+      "WA007": 17
+    },
+    "tests/unit/scripts/test_comment_policy_changed_files.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_comment_policy_strict_ownership.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_corpus_drift_canary.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_coverage_test_selection.py": {
+      "WA007": 1
     },
     "tests/unit/scripts/test_dev_loop_pr_metrics.py": {
-      "WA003": 15
+      "WA003": 15,
+      "WA007": 2
+    },
+    "tests/unit/scripts/test_docs_freeze.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_docs_history_filter.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_docs_ownership.py": {
+      "WA007": 1
     },
     "tests/unit/scripts/test_duckdb_version_matrix.py": {
       "WA003": 1
     },
+    "tests/unit/scripts/test_generate_changelog_entry.py": {
+      "WA007": 1
+    },
     "tests/unit/scripts/test_heavy_tier_needed.py": {
-      "WA003": 1
+      "WA003": 1,
+      "WA007": 2
+    },
+    "tests/unit/scripts/test_inert_paths.py": {
+      "WA007": 1
     },
     "tests/unit/scripts/test_make_timing.py": {
       "WA001": 1,
       "WA002": 2
     },
+    "tests/unit/scripts/test_path_filter_decision.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_post_merge_signature.py": {
+      "WA007": 3
+    },
+    "tests/unit/scripts/test_pr_landing.py": {
+      "WA007": 24
+    },
     "tests/unit/scripts/test_pr_ready_make.py": {
       "WA003": 2
+    },
+    "tests/unit/scripts/test_pr_review_followups.py": {
+      "WA007": 5
     },
     "tests/unit/scripts/test_pytest_shard_evidence.py": {
       "WA003": 4
@@ -312,16 +545,56 @@
     },
     "tests/unit/scripts/test_release_artifact_execution.py": {
       "WA002": 1,
-      "WA003": 8
+      "WA003": 8,
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_release_curation_dry_run.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_release_cut_start.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_release_finalize.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_release_flow.py": {
+      "WA007": 6
+    },
+    "tests/unit/scripts/test_remote_closeout.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_selection_pr_replays.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_soundness_merge_digest.py": {
+      "WA007": 1
+    },
+    "tests/unit/scripts/test_sqlglot_fork_diff.py": {
+      "WA007": 1
     },
     "tests/unit/scripts/test_todo_state_workflow.py": {
       "WA003": 1
     },
+    "tests/unit/scripts/test_worktree_create_linked.py": {
+      "WA007": 2
+    },
+    "tests/unit/test_agent_write_preflight.py": {
+      "WA007": 7
+    },
+    "tests/unit/test_canary_impact_live.py": {
+      "WA007": 1
+    },
     "tests/unit/test_cli_documentation.py": {
       "WA003": 1
     },
+    "tests/unit/test_cloud_builder_scripts.py": {
+      "WA007": 2
+    },
     "tests/unit/test_coffeeshop.py": {
       "WA003": 1
+    },
+    "tests/unit/test_conftest_git_environment.py": {
+      "WA007": 2
     },
     "tests/unit/test_generate_query_docs.py": {
       "WA003": 1
@@ -339,7 +612,8 @@
       "WA003": 2
     },
     "tests/unit/test_release_infrastructure.py": {
-      "WA003": 2
+      "WA003": 2,
+      "WA007": 2
     },
     "tests/unit/test_ruleset_drift.py": {
       "WA003": 7
@@ -349,6 +623,9 @@
     },
     "tests/unit/test_tpcds_streams.py": {
       "WA003": 2
+    },
+    "tests/unit/test_worktree_identity.py": {
+      "WA007": 1
     },
     "tests/unit/utils/test_compression.py": {
       "WA003": 3
@@ -370,6 +647,12 @@
     },
     "tests/unit/workflows/test_corpus_trust_boundary.py": {
       "WA003": 2
+    },
+    "tests/unit/workflows/test_validate_submission_changed_bundles.py": {
+      "WA007": 2
+    },
+    "tests/unit/workflows/test_validate_submission_override_approval.py": {
+      "WA006": 1
     },
     "tests/validation/test_dsqgen_integration_light.py": {
       "WA001": 1

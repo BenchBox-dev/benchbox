@@ -116,7 +116,10 @@ unaffected.
 with ruff and runs the tests mapped from the changed paths, failed tests
 first. CI-only checks and their local commands: `ty`
 (`uv run ty check`), import-linter (`make lint-imports`), comment policy
-(`make comment-policy-check`), the content guard
+(`make comment-policy-check`), the Windows antipattern ratchet
+(`make windows-antipatterns-check`, also a pre-commit hook; it rejects `/dev/null`
+literals, module-level POSIX-only imports, `env=` dict literals without
+`SYSTEMROOT`, and git `text=True` calls without `encoding=`), the content guard
 (`make pr-preflight-fast-tests`), skill integrity
 (`make skill-integrity-check`), and UAT hygiene (`make uat-artifact-hygiene`).
 The full fast lane is `make pr-preflight-fast-tests`; all `ci-lint` guards run

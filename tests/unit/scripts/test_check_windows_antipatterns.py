@@ -275,3 +275,128 @@ def test_write_baseline_creates_a_missing_file(tmp_path: Path) -> None:
 
     assert write_baseline(path, [_violation(tmp_path, "tests/a.py")], tmp_path, [tmp_path / "tests"]) == 0
     assert load_baseline(path) == {"tests/a.py": {"WA003": 1}}
+
+
+def _codes(tmp_path: Path, src: str) -> list[str]:
+    return [v.code for v in check_file(_write(tmp_path, src))]
+
+
+def test_wa004_dev_null_literal(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "import subprocess\nsubprocess.run(['git', '-c', '/dev/null'])\n") == ["WA004"]
+
+
+def test_wa004_dev_null_as_path(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "from pathlib import Path\np = Path('/dev/null')\n") == ["WA004"]
+
+
+def test_wa004_os_devnull_is_clean(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "import os\np = os.devnull\n") == []
+
+
+def test_wa004_longer_path_is_clean(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "p = '/dev/nullable'\n") == []
+
+
+@pytest.mark.parametrize("module", ["fcntl", "termios", "pwd", "grp", "resource"])
+def test_wa005_module_level_import(tmp_path: Path, module: str) -> None:
+    assert _codes(tmp_path, f"import {module}\n") == ["WA005"]
+
+
+def test_wa005_from_import(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "from fcntl import flock\n") == ["WA005"]
+
+
+def test_wa005_function_level_import_is_clean(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "def f():\n    import fcntl\n    return fcntl\n") == []
+
+
+def test_wa005_sys_platform_guard_is_clean(tmp_path: Path) -> None:
+    src = "import sys\nif sys.platform != 'win32':\n    import fcntl\n"
+    assert _codes(tmp_path, src) == []
+
+
+def test_wa005_os_name_guard_is_clean(tmp_path: Path) -> None:
+    src = "import os\nif os.name == 'posix':\n    import pwd\n"
+    assert _codes(tmp_path, src) == []
+
+
+def test_wa005_try_except_import_error_is_clean(tmp_path: Path) -> None:
+    src = "try:\n    import termios\nexcept ImportError:\n    termios = None\n"
+    assert _codes(tmp_path, src) == []
+
+
+def test_wa005_try_without_import_error_handler_flags(tmp_path: Path) -> None:
+    src = "try:\n    import grp\nexcept ValueError:\n    pass\n"
+    assert _codes(tmp_path, src) == ["WA005"]
+
+
+def test_wa005_unrelated_if_still_flags(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "import os\nif os.environ.get('X'):\n    import resource\n") == ["WA005"]
+
+
+def test_wa006_env_literal_without_systemroot(tmp_path: Path) -> None:
+    src = "import subprocess\nsubprocess.run(['x'], env={'PATH': '/usr/bin:/bin'})\n"
+    assert _codes(tmp_path, src) == ["WA006"]
+
+
+@pytest.mark.parametrize("func", ["run", "Popen", "check_output", "check_call"])
+def test_wa006_covers_subprocess_entry_points(tmp_path: Path, func: str) -> None:
+    assert _codes(tmp_path, f"import subprocess\nsubprocess.{func}(['x'], env={{'A': '1'}})\n") == ["WA006"]
+
+
+def test_wa006_alias_and_from_import(tmp_path: Path) -> None:
+    aliased = "import subprocess as sp\nsp.run(['x'], env={'A': '1'})\n"
+    imported = "from subprocess import run as r\nr(['x'], env={'A': '1'})\n"
+    assert _codes(tmp_path, aliased) == ["WA006"]
+    assert _codes(tmp_path, imported) == ["WA006"]
+
+
+def test_wa006_systemroot_key_is_clean(tmp_path: Path) -> None:
+    src = "import subprocess\nsubprocess.run(['x'], env={'PATH': 'p', 'SYSTEMROOT': 'c'})\n"
+    assert _codes(tmp_path, src) == []
+
+
+def test_wa006_os_environ_spread_is_clean(tmp_path: Path) -> None:
+    src = "import os, subprocess\nsubprocess.run(['x'], env={**os.environ, 'A': '1'})\n"
+    assert _codes(tmp_path, src) == []
+
+
+def test_wa006_dict_of_os_environ_is_clean(tmp_path: Path) -> None:
+    src = "import os, subprocess\nsubprocess.run(['x'], env=dict(os.environ, A='1'))\n"
+    assert _codes(tmp_path, src) == []
+
+
+def test_wa006_name_env_is_not_inspected(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "import subprocess\nenv = {}\nsubprocess.run(['x'], env=env)\n") == []
+
+
+def test_wa006_non_subprocess_call_is_clean(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "import foo\nfoo.run(['x'], env={'A': '1'})\n") == []
+
+
+def test_wa007_git_text_true_without_encoding(tmp_path: Path) -> None:
+    src = "import subprocess\nsubprocess.run(['git', 'ls-files', '-z'], capture_output=True, text=True)\n"
+    assert _codes(tmp_path, src) == ["WA007"]
+
+
+def test_wa007_universal_newlines(tmp_path: Path) -> None:
+    src = "import subprocess\nsubprocess.check_output(['git', 'log'], universal_newlines=True)\n"
+    assert _codes(tmp_path, src) == ["WA007"]
+
+
+def test_wa007_encoding_is_clean(tmp_path: Path) -> None:
+    src = "import subprocess\nsubprocess.run(['git', 'log'], text=True, encoding='utf-8')\n"
+    assert _codes(tmp_path, src) == []
+
+
+def test_wa007_bytes_mode_is_clean(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "import subprocess\nsubprocess.run(['git', 'log'], capture_output=True)\n") == []
+
+
+def test_wa007_non_git_is_clean(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "import subprocess\nsubprocess.run(['make'], text=True)\n") == []
+
+
+def test_wa007_kwargs_forwarding_is_clean(tmp_path: Path) -> None:
+    src = "import subprocess\nsubprocess.run(['git', 'log'], text=True, **opts)\n"
+    assert _codes(tmp_path, src) == []

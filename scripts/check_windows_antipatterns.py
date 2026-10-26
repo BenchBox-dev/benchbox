@@ -24,6 +24,17 @@ CLI_DESCRIPTION = (
     "  3. pathlib-style read_text() calls without an explicit encoding - these use\n"
     "     the locale encoding and can fail on non-UTF-8 Windows installations.\n"
     "     Builtin open() without an encoding is covered by ruff PLW1514.\n"
+    "  4. The literal path /dev/null - it does not exist on Windows; use\n"
+    "     os.devnull or a temporary file.\n"
+    "  5. Module-level imports of POSIX-only modules (fcntl, termios, pwd, grp,\n"
+    "     resource) outside a sys.platform/os.name guard or a try/except\n"
+    "     ImportError - the import itself fails on Windows.\n"
+    "  6. subprocess calls passing an env= dict literal without SYSTEMROOT that\n"
+    "     is not built from os.environ - Windows children cannot initialise\n"
+    "     Winsock or the CRT without it (WinError 10106).\n"
+    "  7. subprocess calls running git with text=True or universal_newlines=True\n"
+    "     and no encoding= - git emits UTF-8 but the pipe is decoded with the\n"
+    "     locale code page.\n"
     "\n"
     "Existing violations are recorded per file and code in\n"
     "quality/windows-antipatterns-baseline.json. A file fails when it holds more\n"
@@ -38,6 +49,14 @@ CLI_DESCRIPTION = (
 )
 
 _UNIX_SIGNALS = {"SIGTERM", "SIGKILL", "SIGHUP", "SIGUSR1", "SIGUSR2", "SIGCHLD", "SIGPIPE"}
+
+_DEV_NULL = "/".join(("", "dev", "null"))
+
+_POSIX_ONLY_MODULES = {"fcntl", "termios", "pwd", "grp", "resource"}
+
+_SUBPROCESS_CALLS = {"run", "Popen", "check_output", "check_call", "call"}
+
+_IMPORT_ERROR_NAMES = {"ImportError", "ModuleNotFoundError", "Exception", "BaseException"}
 
 _DEFAULT_ROOTS = ["benchbox", "tests", "scripts"]
 
@@ -62,6 +81,53 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
     def __init__(self, path: Path) -> None:
         self.path = path
         self.violations: list[Violation] = []
+        self.subprocess_modules: set[str] = {"subprocess"}
+        self.subprocess_funcs: set[str] = set()
+
+    def visit_Module(self, node: ast.Module) -> None:
+        for child in ast.walk(node):
+            if isinstance(child, ast.Import):
+                for alias in child.names:
+                    if alias.name == "subprocess":
+                        self.subprocess_modules.add(alias.asname or alias.name)
+            elif isinstance(child, ast.ImportFrom) and child.module == "subprocess" and child.level == 0:
+                for alias in child.names:
+                    if alias.name in _SUBPROCESS_CALLS:
+                        self.subprocess_funcs.add(alias.asname or alias.name)
+        self._check_posix_module_imports(node.body)
+        self.generic_visit(node)
+
+    def _check_posix_module_imports(self, body: list[ast.stmt]) -> None:
+        for stmt in body:
+            if isinstance(stmt, ast.Import):
+                for alias in stmt.names:
+                    self._flag_posix_import(stmt, alias.name)
+            elif isinstance(stmt, ast.ImportFrom) and stmt.level == 0 and stmt.module:
+                self._flag_posix_import(stmt, stmt.module)
+            elif isinstance(stmt, ast.If):
+                if _mentions_platform(stmt.test):
+                    continue
+                self._check_posix_module_imports(stmt.body)
+                self._check_posix_module_imports(stmt.orelse)
+            elif isinstance(stmt, ast.Try):
+                if not any(_handler_catches_import_error(h) for h in stmt.handlers):
+                    self._check_posix_module_imports(stmt.body)
+                for h in stmt.handlers:
+                    self._check_posix_module_imports(h.body)
+                self._check_posix_module_imports(stmt.orelse)
+                self._check_posix_module_imports(stmt.finalbody)
+            elif isinstance(stmt, ast.With):
+                self._check_posix_module_imports(stmt.body)
+
+    def _flag_posix_import(self, node: ast.stmt, module: str) -> None:
+        root = module.split(".")[0]
+        if root in _POSIX_ONLY_MODULES:
+            self._add(
+                node,
+                "WA005",
+                f"module-level import of POSIX-only '{root}' fails on Windows - import it inside the function "
+                "that needs it, or guard with `if sys.platform != 'win32'` or try/except ImportError",
+            )
 
     def _add(self, node: ast.AST, code: str, message: str) -> None:
         self.violations.append(
@@ -78,7 +144,51 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
         self._check_os_access(node)
         self._check_getattr_signal(node)
         self._check_read_text_encoding(node)
+        self._check_subprocess_call(node)
         self.generic_visit(node)
+
+    def visit_Constant(self, node: ast.Constant) -> None:
+        if node.value == _DEV_NULL:
+            self._add(
+                node,
+                "WA004",
+                "'/dev/null' does not exist on Windows - use os.devnull or a temporary file",
+            )
+
+    def _is_subprocess_call(self, node: ast.Call) -> bool:
+        func = node.func
+        if isinstance(func, ast.Attribute):
+            return (
+                func.attr in _SUBPROCESS_CALLS
+                and isinstance(func.value, ast.Name)
+                and func.value.id in self.subprocess_modules
+            )
+        return isinstance(func, ast.Name) and func.id in self.subprocess_funcs
+
+    def _check_subprocess_call(self, node: ast.Call) -> None:
+        if not self._is_subprocess_call(node):
+            return
+        keywords = {kw.arg: kw.value for kw in node.keywords if kw.arg is not None}
+        env = keywords.get("env")
+        if isinstance(env, ast.Dict) and not _env_dict_is_safe(env):
+            self._add(
+                node,
+                "WA006",
+                "subprocess env= dict literal lacks SYSTEMROOT and is not built from os.environ - Windows children "
+                "fail with WinError 10106; use {**os.environ, ...} or add SYSTEMROOT",
+            )
+        if (
+            any(_is_true_constant(keywords.get(name)) for name in ("text", "universal_newlines"))
+            and "encoding" not in keywords
+            and not any(kw.arg is None for kw in node.keywords)
+            and _runs_git(node)
+        ):
+            self._add(
+                node,
+                "WA007",
+                "git subprocess with text=True decodes output with the locale encoding - "
+                "pass encoding='utf-8' (and errors=) instead",
+            )
 
     def _check_read_text_encoding(self, node: ast.Call) -> None:
         encoding: ast.expr | None = None
@@ -153,6 +263,53 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
             f"signal.{node.attr} does not exist on Windows - "
             f"guard with `if hasattr(signal, '{node.attr}')` or `if os.name != 'nt'`",
         )
+
+
+def _is_true_constant(node: ast.expr | None) -> bool:
+    return isinstance(node, ast.Constant) and node.value is True
+
+
+def _runs_git(node: ast.Call) -> bool:
+    if not node.args:
+        return False
+    cmd = node.args[0]
+    if isinstance(cmd, (ast.List, ast.Tuple)) and cmd.elts:
+        cmd = cmd.elts[0]
+    return isinstance(cmd, ast.Constant) and cmd.value in {"git", "git.exe"}
+
+
+def _mentions_environ(node: ast.AST) -> bool:
+    return any(isinstance(n, ast.Attribute) and n.attr == "environ" for n in ast.walk(node))
+
+
+def _env_dict_is_safe(env: ast.Dict) -> bool:
+    for key, value in zip(env.keys, env.values, strict=True):
+        if key is None:
+            if _mentions_environ(value) or isinstance(value, (ast.Name, ast.Attribute, ast.Call, ast.Subscript)):
+                return True
+        elif isinstance(key, ast.Constant) and isinstance(key.value, str) and key.value.upper() == "SYSTEMROOT":
+            return True
+    return False
+
+
+def _mentions_platform(test: ast.expr) -> bool:
+    for n in ast.walk(test):
+        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name):
+            if (n.value.id, n.attr) in {("sys", "platform"), ("os", "name")}:
+                return True
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "system":
+            if isinstance(n.func.value, ast.Name) and n.func.value.id == "platform":
+                return True
+        if isinstance(n, ast.Name) and n.id == "TYPE_CHECKING":
+            return True
+    return False
+
+
+def _handler_catches_import_error(h: ast.ExceptHandler) -> bool:
+    if h.type is None:
+        return True
+    types = h.type.elts if isinstance(h.type, ast.Tuple) else [h.type]
+    return any(isinstance(t, ast.Name) and t.id in _IMPORT_ERROR_NAMES for t in types)
 
 
 def _is_platform_check(node: ast.expr) -> bool:

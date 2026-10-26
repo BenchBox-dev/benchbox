@@ -12,6 +12,14 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      - id: windows-antipatterns
+        name: windows antipattern ratchet
+        entry: uv run -- python scripts/check_windows_antipatterns.py
+        language: system
+        pass_filenames: false
+        files: ^((benchbox|tests|scripts)/.*\.py|quality/windows-antipatterns-baseline\.json)$
+        stages: [pre-commit]
+
       - id: corpus-inventory
         name: corpus-inventory drift check
         entry: uv run -- python scripts/generate_corpus_inventory.py --check
