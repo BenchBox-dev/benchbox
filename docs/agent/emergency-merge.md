@@ -19,13 +19,19 @@ keeps every GitHub-side action with the owner.
 ## What agents never do
 
 This list applies when `develop`'s own content breaks a required gate so that
-no PR can pass it. Agents never run, script, or propose any of these in that
-case, whoever asks and whatever the outage:
+no PR can pass it. Agents never run, script, or propose any of these:
 
 - add a bypass actor to a ruleset, or relax the `develop-squash-only` ruleset
-  in any way;
+  in any way (ruleset relaxation is owner-only everywhere; agents never relax a
+  ruleset);
 - merge with raw `gh pr merge`, with or without `--admin`;
-- post a stand-in approval, or lift a hold, to get around the broken gate.
+- post a stand-in approval or lift a hold without owner instruction. An agent
+  never self-posts a stand-in approval or lifts a hold to work around a broken
+  gate. An owner-named stand-in is allowed, but only with the exact evidence
+  required by `docs/agent/merge-authority.md`: the owner names the PR and its
+  head SHA in the current request, and the agent quotes that instruction in a
+  preceding `Owner instruction` comment naming the PR, head SHA, and covered
+  findings.
 
 `docs/agent/merge-authority.md` already requires `make pr-arm` for every merge
 and the owner naming each PR. A broken gate changes neither.
@@ -60,39 +66,40 @@ and the owner naming each PR. A broken gate changes neither.
 
 ## What the owner does
 
-Any GitHub-side action to unblock merges is the owner's alone and is outside
-this note. The owner records the action in a new decision record at the time
-it is taken.
-
-The decision records below hold the current policy of zero bypass actors and no
-ruleset relaxation:
+Ruleset relaxation is owner-only everywhere (ratified by owner decision Q8,
+superseding earlier notes). Agents never relax a ruleset. Adding a bypass actor
+remains permanently forbidden under the zero-bypass policy held by the records
+below:
 
 - `_project/decisions/native-merge-queue-activation-20260822.md:88`
 - `_project/decisions/github-org-transfer-benchbox-dev-2026-08-21.md:74-75`
 - `docs/internal/github-org-transfer.md:8`
 - `_project/decisions/strict-base-refresh-policy-2026-08-14.md:175-176`
 
-Adopting any bypass or ruleset relaxation, even once, supersedes those
-accepted records. The new decision record cites them and says which it
-supersedes. Without that record, the policy stands.
+When `develop`'s own content breaks a required check so that no pull request can
+pass it, the owner alone may perform the single-merge relaxation procedure
+documented in `docs/internal/repo-admin-settings.md`. If `oracle-gate` itself is
+the broken context, the owner may remove `oracle-gate` for exactly that one merge.
+The owner records the action in a decision record at the time it is taken.
 
 ## Owner sequence
 
-Only the owner performs these, in this order. The owner's steps and the
-comparison command are in `docs/internal/repo-admin-settings.md`.
+Only the owner performs these, in this order. Full details and the comparison
+command are in `docs/internal/repo-admin-settings.md`.
 
 1. Name one pull request and its head SHA, and hold every other armed pull
    request so only that head can merge during the window.
 2. Capture the full ruleset JSON before any change.
-3. Remove exactly one required context, the failing one, and merge the named
-   head.
+3. Remove exactly one required context, the failing one (if `oracle-gate` itself
+   is broken, the owner may remove `oracle-gate` for that single merge), and merge
+   the named head.
 4. Restore the ruleset immediately after the merge attempt, whether it
    succeeded or failed. This step is unconditional and comes before any other
    action, including retrying the merge, starting other work, or recording
-   notes.
+   notes. If `oracle-gate` was removed, restore it bound to integration 5201041.
 5. Read the ruleset back and compare it with the capture using the command
-   under Follow-up.
-6. Record the action in the new decision record described above.
+   under Follow-up, confirming `oracle-gate` is bound to integration 5201041 again.
+6. Record the action in the decision record described above.
 
 ## Follow-up
 

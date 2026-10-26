@@ -172,7 +172,8 @@ happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
 ## Bypassing a required check
 
 Agents never bypass a required check, relax a ruleset, or merge around the gate.
+Ruleset relaxation is owner-only everywhere (`docs/internal/repo-admin-settings.md`).
 `docs/agent/emergency-merge.md` is the owner-only runbook for a gate that is
-broken by the contents of `develop`; it gives agents evidence-and-stop steps
-only. Do not skip a check for a problem another open PR already fixes; rebase
-onto the fix instead.
+broken by the contents of `develop` (including when `oracle-gate` itself is
+broken); it gives agents evidence-and-stop steps only. Do not skip a check for a
+problem another open PR already fixes; rebase onto the fix instead.
