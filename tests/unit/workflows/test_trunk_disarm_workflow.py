@@ -51,8 +51,16 @@ def test_actions_are_pinned_by_sha() -> None:
 def test_the_job_checks_out_the_trusted_develop_copy() -> None:
     checkout = next(step for step in _job()["steps"] if "uses" in step)
     assert checkout["with"]["ref"] == "develop"
+    assert checkout["with"]["fetch-depth"] == 0
     assert checkout["with"]["persist-credentials"] is False
     assert "scripts/trunk_revert.py" in checkout["with"]["sparse-checkout"]
+
+
+def test_api_using_steps_receive_the_job_token_explicitly() -> None:
+    runs = [step for step in _job()["steps"] if "run" in step]
+    assert runs
+    for step in runs:
+        assert step["env"]["GH_TOKEN"] == "${{ github.token }}"
 
 
 def test_selection_reuses_the_arm_gate_decision() -> None:

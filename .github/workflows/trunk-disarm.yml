@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: develop
+          fetch-depth: 0
           persist-credentials: false
           sparse-checkout: |
             scripts/trunk_revert.py
@@ -33,6 +34,7 @@ jobs:
       - name: Select armed PRs the arm gate would refuse
         id: select
         env:
+          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -42,6 +44,7 @@ jobs:
 
       - name: Disable auto-merge on the selected PRs
         env:
+          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           RUN_URL: ${{ github.event.workflow_run.html_url }}
         run: |
