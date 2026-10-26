@@ -24917,7 +24917,7 @@
       "needs": [],
       "priority": "medium-high",
       "status": "open",
-      "title": "SQLite: fork's explicit NULLS LAST makes TPC-H Q21 pathologically slow (full scans instead of automatic indexes)"
+      "title": "SQLite: reusing an existing database skips load_data, so TPC-H helper indexes are missing and Q21 crawls"
     },
     "ssb-dataframe-row-count-validation-20261016": {
       "claim": null,
