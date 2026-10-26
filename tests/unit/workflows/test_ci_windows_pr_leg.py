@@ -101,3 +101,19 @@ def test_windows_leg_has_no_secrets_and_pinned_actions() -> None:
             assert pinned.match(step["uses"]), step["uses"]
     assert "secrets." not in yaml.safe_dump(job)
     assert _step(job, "Checkout code")["with"]["persist-credentials"] is False
+
+
+def test_windows_leg_uses_in_process_pytest_main_target_loader() -> None:
+    job = _jobs("ci.yml")["windows-tests"]
+    run = _step(job, "Run the selected and changed test files on Windows")["run"]
+    assert "pytest.main" in run
+    assert "${targets[@]}" not in run
+    assert "mapfile" not in run
+
+
+def test_windows_leg_empty_targets_exits_zero_without_running_pytest() -> None:
+    job = _jobs("ci.yml")["windows-tests"]
+    run = _step(job, "Run the selected and changed test files on Windows")["run"]
+    assert "if [ ! -s coverage-selection/windows-test-files.txt ]; then" in run
+    assert "exit 0" in run
+    assert "0 if not targets else pytest.main" in run

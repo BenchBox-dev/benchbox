@@ -1454,11 +1454,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t targets < coverage-selection/windows-test-files.txt
-          echo "Test files selected for Windows: ${#targets[@]}"
-          printf '%s\n' "${targets[@]:0:50}"
+          if [ ! -s coverage-selection/windows-test-files.txt ]; then
+            echo "No test files selected for Windows."
+            exit 0
+          fi
+          target_count=$(wc -l < coverage-selection/windows-test-files.txt | tr -d ' ')
+          echo "Test files selected for Windows: $target_count"
+          head -n 50 coverage-selection/windows-test-files.txt
           status=0
-          uv run -- python -m pytest "${targets[@]}" -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120 --junitxml=junit-windows-pr.xml || status=$?
+          uv run -- python -c "import pathlib, sys, pytest; targets = [l.strip() for l in pathlib.Path('coverage-selection/windows-test-files.txt').read_text(encoding='utf-8').splitlines() if l.strip()]; raise SystemExit(0 if not targets else pytest.main([*sys.argv[1:], *targets]))" -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120 --junitxml=junit-windows-pr.xml || status=$?
           if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
             exit "$status"
           fi

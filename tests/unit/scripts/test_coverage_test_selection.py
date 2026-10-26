@@ -1896,3 +1896,65 @@ def test_windows_targets_cli_rejects_unreadable_selection(repo: Path, tmp_path: 
     selection.unlink()
     assert sel.main(args) == 1
     assert not out.exists()
+
+
+def test_windows_test_files_excludes_develop_changed_tests(repo: Path) -> None:
+    _write(repo, "tests/unit/test_develop_broken.py")
+    payload = {
+        "selected": ["tests/unit/test_develop_broken.py::test_fail", "tests/unit/core/test_engine.py"],
+        "develop_changed_tests": ["tests/unit/test_develop_broken.py"],
+    }
+    assert sel.windows_test_files(repo, payload, []) == ["tests/unit/core/test_engine.py"]
+    assert sel.windows_test_files(repo, payload, ["tests/unit/test_develop_broken.py"]) == [
+        "tests/unit/core/test_engine.py",
+        "tests/unit/test_develop_broken.py",
+    ]
+
+
+def test_windows_test_files_excludes_posix_only_directories(repo: Path) -> None:
+    _write(repo, "tests/unit/scripts/oracle_reviewers/test_posix.py")
+    payload = {
+        "selected": [
+            "tests/unit/scripts/oracle_reviewers/test_posix.py",
+            "tests/unit/core/test_engine.py",
+        ]
+    }
+    assert sel.windows_test_files(repo, payload, []) == ["tests/unit/core/test_engine.py"]
+    assert sel.windows_test_files(repo, payload, ["tests/unit/scripts/oracle_reviewers/test_posix.py"]) == [
+        "tests/unit/core/test_engine.py",
+        "tests/unit/scripts/oracle_reviewers/test_posix.py",
+    ]
+
+
+def test_windows_targets_cli_excludes_develop_changed_tests(repo: Path, tmp_path: Path) -> None:
+    _write(repo, "tests/unit/test_develop_broken.py")
+    selection = tmp_path / "selection.json"
+    selection.write_text(
+        json.dumps(
+            {
+                "selected": ["tests/unit/test_develop_broken.py::test_x", "tests/unit/core/test_engine.py"],
+                "develop_changed_tests": ["tests/unit/test_develop_broken.py"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    out = tmp_path / "targets.txt"
+    output = tmp_path / "github-output.txt"
+    assert (
+        sel.main(
+            [
+                "windows-targets",
+                "--selection-in",
+                str(selection),
+                "--targets-out",
+                str(out),
+                "--github-output",
+                str(output),
+                "--repo-root",
+                str(repo),
+            ]
+        )
+        == 0
+    )
+    assert out.read_text(encoding="utf-8").splitlines() == ["tests/unit/core/test_engine.py"]
+    assert output.read_text(encoding="utf-8") == "windows-test-files=1\n"

@@ -672,13 +672,32 @@ def prune_missing_nodeids(repo: Path, node_ids: list[str], collected: list[str])
     return pruned
 
 
+POSIX_ONLY_TEST_PREFIXES = (
+    "tests/unit/scripts/oracle_reviewers/",
+    "_project/sql-translation-ml/",
+)
+
+
 def windows_test_files(repo: Path, payload: dict, changed_paths: list[str]) -> list[str]:
-    entries = [*payload.get("selected", []), *payload.get("changed_tests", []), *changed_paths]
-    files = {
-        path
-        for path in (str(entry).replace("\\", "/").split("::", 1)[0] for entry in entries)
-        if _is_test_file(path) and (repo / path).is_file()
+    pr_changed = {
+        str(entry).replace("\\", "/").split("::", 1)[0] for entry in [*payload.get("changed_tests", []), *changed_paths]
     }
+    develop_changed = {
+        str(entry).replace("\\", "/").split("::", 1)[0] for entry in payload.get("develop_changed_tests", [])
+    }
+    files: set[str] = set()
+    for entry in payload.get("selected", []):
+        path = str(entry).replace("\\", "/").split("::", 1)[0]
+        if not (_is_test_file(path) and (repo / path).is_file()):
+            continue
+        if path in develop_changed and path not in pr_changed:
+            continue
+        if any(path.startswith(prefix) for prefix in POSIX_ONLY_TEST_PREFIXES) and path not in pr_changed:
+            continue
+        files.add(path)
+    for path in pr_changed:
+        if _is_test_file(path) and (repo / path).is_file():
+            files.add(path)
     return sorted(files)
 
 
