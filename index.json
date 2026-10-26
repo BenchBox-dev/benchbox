@@ -24605,15 +24605,10 @@
       "title": "SQLite TPC-DS Q21, Q40 and tpcds_obt Q40 exclude the boundary-day row (DATETIME day-offset bound)"
     },
     "sqlite-havoc-empty-group-by-20261025": {
-      "claim": {
-        "expires_at": "2026-10-27T03:33:59Z",
-        "generation": "bf1a33ad4df84cb8864f2e44df4593cd",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "SQLite: TPC-Havoc 6_v2 and 14_v2 emit GROUP BY () and fail with a syntax error"
     },
     "sqlite-havoc-obt-remaining-failures": {
