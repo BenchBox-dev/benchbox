@@ -194,16 +194,25 @@ Steps, in order:
 
 The reviewer is an untrusted model inside a trusted harness with read-only
 tools. It can read what the runner user can read while it runs and can leak it
-only through its published review text. A secret is therefore safe when it
-exists only in the environment of a step that ends before the reviewer starts,
-is never written to disk, or appears only after the reviewer exits. Each
-control below is a permanent check, not a one-time inspection:
+only through its published review text. Step environment scoping alone does
+not hide secrets from the runner: the initial job message can contain the App
+key and job token in Runner.Worker memory throughout the job. Immediately before
+the loop, a permanent Linux prerequisite requires Yama `ptrace_scope` 1, 2 or 3,
+one non-root UID, and no effective, permitted, inheritable or ambient
+`CAP_SYS_PTRACE`. Yama prevents a child from reading ancestor or unrelated
+process memory without an explicit tracing grant. This assumes the trusted
+runner does not grant `PR_SET_PTRACER` access and the read-only harness does not
+execute privilege-escalation tools or change UID/capabilities. It is not a
+sandbox against arbitrary execution with the runner's sudo access. Parent step
+environments remain readable, so the loop environment still holds only its
+gateway values (plus the accepted OIDC request token). Each control below is
+permanent, not a one-time inspection:
 
 | Control | Enforced by |
 |---|---|
 | C2 total exit | `runner.execute` lists the harness process group and, when the loop runs on Linux, every orphan adopted by the loop (a child subreaper) after each reviewer exit. Survivors are killed and the run fails closed: the slot is recorded absent, the loop stops, the job fails and nothing posts. |
 | C3 no secret in a script | The workflow test fails if any `run:` block names `secrets.*` or `github.token`; secrets reach steps through `env:` or `with:` only. |
-| C4 disk scan | `cli.py scan-disk` searches `$HOME`, `$RUNNER_TEMP` and both checkouts for the exact TypeSafe key and job token before the reviewer and after the last exit. The values come from the scanning step's own `env:`. A hit fails the job. |
+| C4 disk scan | `cli.py scan-disk` searches `$HOME`, `$RUNNER_TEMP`, both checkouts, `/tmp`, `/var/tmp`, `/dev/shm` and `${TMPDIR:-/tmp}` for the exact TypeSafe key and job token before the reviewer and after the last exit. It deduplicates nested roots and does not follow file or directory symlinks. This covers the declared readable scratch roots, not every file the user can read. Values come from the scanning step's own `env:`. A hit fails the job. |
 | C5 redaction completeness | `cli.py redact-check` runs after finalize in a step that holds every secret value the job held (gateway token, TypeSafe key, gateway URL, Tailscale client ID and audience, the OIDC request token and the job token). It redacts attempt, verdict, diagnostic, absence and result text, across control-character splits, and fails if a value remains. The loop step cannot hold those values, because a same-user child can read its parent's environment. |
 | C6 fresh `HOME` | Every attempt gets a new directory from `mkdtemp`; the previous one is deleted before the next attempt starts, and the checkout is reset. |
 | C7 token scope | The job's permissions are exactly `actions: write`, `contents: read`, `pull-requests: read` and `id-token: write`. `github.token` appears only in the `env:` of steps that run before or after the loop step, and both checkouts use `persist-credentials: false`. |

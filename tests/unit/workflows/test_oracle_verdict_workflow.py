@@ -42,6 +42,7 @@ STEP_ORDER = [
     "Scan the disk for secret values before the reviewer runs",
     "Install omp",
     "Join the tailnet to reach the credential gateway",
+    "Verify Linux process isolation",
     "Run the attempt loop",
     "Scan the disk for secret values after the reviewer exits",
     "Validate this run's attempts and decide",
@@ -324,7 +325,7 @@ def test_the_redaction_step_holds_every_secret_value_the_job_held() -> None:
     assert step["if"] == "steps.plan.outputs.post == 'true'"
 
 
-def test_the_disk_scans_bracket_the_reviewer_and_cover_every_place_it_can_read() -> None:
+def test_the_disk_scans_bracket_the_reviewer_and_cover_the_declared_scratch_roots() -> None:
     names = _names()
     before, after = (_step(name) for name in SCAN_STEPS)
     assert names.index(before["name"]) < names.index("Install omp") < names.index(LOOP_STEP)
@@ -337,6 +338,8 @@ def test_the_disk_scans_bracket_the_reviewer_and_cover_every_place_it_can_read()
         }
         for root in ('"$HOME"', '"$RUNNER_TEMP"', '"$GITHUB_WORKSPACE/trusted"', '"$GITHUB_WORKSPACE/workspace"'):
             assert f"--root {root}" in step["run"], (step["name"], root)
+        for root in ("/tmp", "/var/tmp", "/dev/shm", '"${TMPDIR:-/tmp}"'):
+            assert f"--root {root}" in step["run"]
         assert "--env TYPESAFE_API_KEY --env JOB_TOKEN" in step["run"]
         assert "continue-on-error" not in step
 
@@ -425,6 +428,16 @@ def test_the_security_checks_and_the_loop_fail_the_job_closed() -> None:
         assert "continue-on-error" not in step, name
         assert "always()" not in step.get("if", ""), name
         assert "cancelled()" not in step.get("if", ""), name
+
+
+def test_linux_isolation_runs_immediately_before_the_loop_and_fails_closed() -> None:
+    name = "Verify Linux process isolation"
+    step = _step(name)
+    assert _names()[_names().index(LOOP_STEP) - 1] == name
+    assert step["if"] == "steps.plan.outputs.decision == 'review'"
+    assert step["working-directory"] == "trusted"
+    assert step["run"] == "python3 -m _project.scripts.oracle_reviewers.isolation"
+    assert "continue-on-error" not in step
 
 
 def test_attempt_and_retry_state_artifacts_keep_their_names_and_retention() -> None:

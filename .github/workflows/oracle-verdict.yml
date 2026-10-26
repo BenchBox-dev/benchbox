@@ -145,6 +145,7 @@ jobs:
           JOB_TOKEN: ${{ github.token }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli scan-disk --root "$HOME" --root "$RUNNER_TEMP" --root "$GITHUB_WORKSPACE/trusted" --root "$GITHUB_WORKSPACE/workspace"
+          --root /tmp --root /var/tmp --root /dev/shm --root "${TMPDIR:-/tmp}"
           --env TYPESAFE_API_KEY --env JOB_TOKEN
 
       - name: Install omp
@@ -169,6 +170,11 @@ jobs:
           audience: ${{ secrets.TS_AUDIENCE }}
           tags: tag:oracle-ci
 
+      - name: Verify Linux process isolation
+        if: steps.plan.outputs.decision == 'review'
+        working-directory: trusted
+        run: python3 -m _project.scripts.oracle_reviewers.isolation
+
       - name: Run the attempt loop
         id: loop
         if: steps.plan.outputs.decision == 'review'
@@ -189,6 +195,7 @@ jobs:
           JOB_TOKEN: ${{ github.token }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli scan-disk --root "$HOME" --root "$RUNNER_TEMP" --root "$GITHUB_WORKSPACE/trusted" --root "$GITHUB_WORKSPACE/workspace"
+          --root /tmp --root /var/tmp --root /dev/shm --root "${TMPDIR:-/tmp}"
           --env TYPESAFE_API_KEY --env JOB_TOKEN
 
       - name: Validate this run's attempts and decide

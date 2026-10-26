@@ -81,8 +81,8 @@ def _digest(path: Path) -> str | None:
 
 def execute(invocation: Invocation, timeout_seconds: int) -> RunResult:
     with (
-        tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace") as stdout_file,
-        tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace") as stderr_file,
+        tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace", dir=invocation.cwd) as stdout_file,
+        tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace", dir=invocation.cwd) as stderr_file,
     ):
         try:
             process = subprocess.Popen(

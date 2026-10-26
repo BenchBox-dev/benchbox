@@ -49,10 +49,21 @@ chain's jobs changes no required check.
 The reviewer is an untrusted model inside a trusted harness with read-only
 tools. It can read what the runner user can read while it runs, and can leak
 it only through the review text it publishes. It cannot write, execute or
-persist processes. A secret is therefore safe when it exists only in the
-environment of a step that ends before the reviewer starts, is never written
-to disk, or appears only after the reviewer exits. Any step after the reviewer
-exits is trustworthy.
+persist processes. Step timing alone is not a memory-isolation boundary:
+Runner.Worker may receive the App key and the actions-write job token in the
+initial job message. Immediately before the loop a fail-closed Linux
+prerequisite requires Yama `ptrace_scope` 1, 2 or 3, a single non-root UID, and
+no effective, permitted, inheritable or ambient `CAP_SYS_PTRACE`.
+The [kernel's Yama documentation](https://www.kernel.org/doc/html/latest/admin-guide/LSM/Yama.html)
+defines mode 1 as descendant-only tracing unless the target explicitly grants
+access. The Worker is an ancestor, not a descendant. This relies on the
+trusted runner not granting `PR_SET_PTRACER` access, and the read-only harness
+not executing sudo, changing UID or acquiring capabilities. It does not claim
+to withstand arbitrary code execution with the hosted user's sudo access.
+Same-user parent environments are still readable; the loop must not hold the
+TypeSafe key, App key, job token or Tailscale values there. A permanent Linux
+CI test checks the real prerequisite and that a sibling cannot open another
+process's memory. No sentinel secrets or standalone canary are introduced.
 
 The per-job credential isolation of `0e5123270` no longer applies: its premise
 was that several reviewer CLIs each held a different provider key and that
@@ -72,8 +83,10 @@ in every review:
   `github.token`.
 - C4 disk scan: the exact TypeSafe key and job token, and the job token's
   basic-auth header form, must not appear under
-  `$HOME`, `$RUNNER_TEMP` or either checkout, before the reviewer and after the
-  loop. The values come from the scanning step's environment only.
+  `$HOME`, `$RUNNER_TEMP`, either checkout, `/tmp`, `/var/tmp`, `/dev/shm`
+  or `${TMPDIR:-/tmp}`, before the reviewer and after the loop. These are
+  declared scratch roots, not all readable files. Nested roots are deduplicated
+  and symlinks are not followed. Values come from the scanning step's environment.
 - C5 redaction completeness: after the loop, a step holding every secret value
   the job held redacts the attempt and result files and fails if a value
   remains in clear or control-split form. The loop step cannot hold those
