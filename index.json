@@ -9043,14 +9043,19 @@
       "title": "Archive filtered documentation history without forbidden content"
     },
     "docs-mig-legacy-downloads-redirects": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T09:29:30Z",
+        "generation": "87ccf1d2a93f4fa99e9f726701b6e958",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "docs-mig-site-bundle-schema4",
         "docs-mig-tpc-eula-gate",
         "docs-mig-activate-schema4"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Replace copied downloads with canonical GitHub links and legacy redirects"
     },
     "docs-mig-oracle-diff-decode": {
