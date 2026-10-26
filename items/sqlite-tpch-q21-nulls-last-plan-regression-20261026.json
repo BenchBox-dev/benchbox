@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "TPC-H Q21 on SQLite SF0.1 completes in a time comparable to the old bundle (order of 100 ms warmup) with rows equal to DuckDB.",
+    "No SQLite query's executed results change; corpus diff listed.",
+    "Fork CI sqlite tests pass; sql-execution-gate PASS; the held tpch/sqlite/sf0.1 rerun cell completes."
+  ],
+  "description": "Found by the superseded-bundle reruns on fork 30.24.0.17 (#3544). TPC-H Q21 on SQLite at SF0.1 hangs >15 min in warmup (old bundle: 84.8 ms). The translated SQL appends NULLS LAST to `ORDER BY numwait DESC, s_name`; EXPLAIN QUERY PLAN shows the new plan does SCAN orders + SCAN l3 per outer row where the old plan used automatic indexes. Sibling cells complete with degraded times (SF0.01 Q21 12.5 s, SF1 0.9 s). Cause is the source-dialect NULL-placement preservation (fork #67): DuckDB places NULLs last by default, SQLite first for ASC, so the generator writes it explicitly. On NOT NULL columns (s_name) the explicit clause is semantically a no-op but changes the plan.\nDECISION GATE: fix in the fork (e.g. omit explicit NULL ordering where the column is known NOT NULL via mark_date_columns-style nullability info, or where SQLite's default already matches), versus a BenchBox-side skip. Most-correct result wins; benchmark text unchanged.\nGUARDRAILS: fork fix with sqlite3 engine tests including EXPLAIN QUERY PLAN or timing evidence on SF0.1; corpus diff of changed SQLite queries; executed row equality vs DuckDB; wheel cut under the batch mutex; no guard relaxed.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-26T17:22:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "dfa3604527ee4938bb67a4037a5a2a64",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}

@@ -24912,6 +24912,13 @@
       "status": "done",
       "title": "SQLite lowering emits parenthesised compound operands that SQLite rejects (TPC-DS Q87 EXCEPT)"
     },
+    "sqlite-tpch-q21-nulls-last-plan-regression-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "SQLite: fork's explicit NULLS LAST makes TPC-H Q21 pathologically slow (full scans instead of automatic indexes)"
+    },
     "ssb-dataframe-row-count-validation-20261016": {
       "claim": null,
       "needs": [],
