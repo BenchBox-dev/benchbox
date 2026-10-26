@@ -144,6 +144,18 @@ Consumer policy is intentionally split by use case:
 | `name` | string | Display name |
 | `scale_factor` | float | Data scale factor |
 | `test_type` | string | Optional run/test classification |
+| `data_generation_version` | integer | Optional. Data-generation version from the datagen manifest, stamped only when the manifest matches the generator in use. |
+| `data_generation_hash` | string | Optional. Datagen identity hash (falls back to the base-constants hash). Runs with different values loaded different data. |
+| `power_stream_policy` | string | Optional, TPC-H and TPC-DS. How the power harness chooses streams across iterations: `fixed-stream-0` (every warm-up and measurement iteration reuses the configured stream, same query order and parameters; current TPC-H) or `per-iteration-stream` (each iteration runs its own stream, with its own query order and seeded parameters; current TPC-DS, where warm-up `i` runs stream `i` and measurement `i` runs stream `warm_up_iterations + i`, and older TPC-H). |
+
+`benchbox compare` warns when two results differ in `data_generation_version`,
+`data_generation_hash` or `power_stream_policy`, and reports an unknown
+comparison when either side lacks them (see `generation_compatibility` in the
+comparison output, with the power-stream detail under `power_stream`).
+Bundles without `power_stream_policy` are interpreted by rule: a TPC-H bundle
+whose `run.timestamp` is before 2026-10-07 is `per-iteration-stream`, and one
+on or after that date is `fixed-stream-0`; the comparison marks such values as
+inferred. Unmarked bundles of other benchmarks have an unknown policy.
 
 #### Platform Block
 

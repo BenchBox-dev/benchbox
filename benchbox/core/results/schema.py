@@ -497,6 +497,8 @@ def _build_benchmark_section(result: BenchmarkResults) -> dict[str, Any]:
         section["data_generation_version"] = result.data_generation_version
     if getattr(result, "data_generation_hash", None) is not None:
         section["data_generation_hash"] = result.data_generation_hash
+    if getattr(result, "power_stream_policy", None) is not None:
+        section["power_stream_policy"] = result.power_stream_policy
     source_provenance = getattr(result, "flightdata_source_provenance", None)
     if source_provenance is not None:
         section["source_provenance"] = source_provenance
