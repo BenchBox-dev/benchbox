@@ -3354,6 +3354,22 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "root": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/ruleset-develop-squash-only.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "extra": 1,
     "file": 3
    },
@@ -5289,7 +5305,7 @@
   "dispositions": {
    "contract-replaced": 3,
    "contract-tooling": 5,
-   "fixture-data": 34,
+   "fixture-data": 35,
    "generator-deleted": 5,
    "governance-stays": 7,
    "historical-record": 112,
@@ -5299,7 +5315,7 @@
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 263,
+  "files": 264,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
@@ -5307,10 +5323,10 @@
    "file": 1565,
    "generated": 15,
    "pattern": 287,
-   "root": 215,
+   "root": 216,
    "unresolved": 2003
   },
-  "references": 33372,
+  "references": 33373,
   "unclassified": 0
  }
 }
