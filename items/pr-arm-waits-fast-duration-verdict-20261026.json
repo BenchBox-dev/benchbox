@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Tests that fail on develop and pass after: missing verdict refuses with a non-zero exit and a message; a present verdict arms; a failed producer job refuses with the rerun instruction.",
+    "Live: one real PR arms after its verdict exists (record the PR).",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "OWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q14 make pr-arm wait for the fast-duration verdict.",
+  "description": "Problem: #3536 lets make pr-arm arm a PR before the core job uploads its fast-duration verdict (scripts/pr_arm.py:37-70,84-102), so a head whose verdict would block can be armed; the Advisor flagged it as a weakening nobody adjudicated.\n\nOutcome (owner Q14): pr-arm refuses while the fast-duration verdict for the exact head is missing, names the pending job, and arms once it exists. The verdict's own computation is unchanged.\n\nDecision gates:\n1. Read #3536 and the tracker item it implemented (ci-verify-fast-duration-report-only-20261025) and confirm what 'report-only' covers; if waiting conflicts with a recorded owner decision there, stop and ask.\n2. When the producing job failed or was skipped, no verdict will ever arrive: refuse with a message naming the rerun step; never arm.\n\nItem guardrails: no change to the verdict computation; no new required check; no raw gh pr merge.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, then make agent-write-preflight; the primary clone is read-only. Never use git stash (refs/stash is shared across worktrees). Commit as Joe Harris <joeharris76@gmail.com>, staging explicit paths only; no git add -A, no --no-verify, no SKIP, no agent trailers. Durable text (commits, PR bodies, docs, code) carries no tracker ids, session labels or plan references. Maintained code has no explanatory comments or docstrings (make comment-policy-check). Before publishing run make docs-reference-inventory-check, make doc-contracts-guard and make pr-preflight, and self-review with the code review action, fixing every Critical and Required finding. Publish only with make pr-open: never gh pr create, a raw push-and-open, or a PR-body override line; if make pr-open refuses, stop and report the exact refusal instead of routing around it. Until oracle-omp-pin-single-source-20261026 merges, make pr-open may run only with PATH prefixed by the darwin-arm64 omp 18.12.1 build whose SHA-256 that item records, verified with shasum immediately before use; never any other side-loaded omp. Close out only with oracle SHIP on the exact head, every oracle thread answered (reply naming the fixing SHA, then resolve) and make pr-arm; never raw gh pr merge, a stand-in, an adjudication, or a ruleset or settings change. Never print tokens, keys, or the gateway URL or hostname; never spend model quota outside the review harness. Owner decisions are recorded in context and in the decisions file; a step that would contradict one stops and asks the owner.",
+  "links": [
+    "scripts/pr_arm.py",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/advisor.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T14:59:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4ee84e8d93974cdd9751c9384d0e2699",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}

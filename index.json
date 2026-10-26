@@ -17619,6 +17619,13 @@
       "status": "open",
       "title": "make pr-arm reads stale remote head right after push and refuses"
     },
+    "pr-arm-waits-fast-duration-verdict-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make make pr-arm refuse until the PR head's fast-duration verdict exists"
+    },
     "pr-changed-tests-miss-name-mismatched-tests": {
       "claim": null,
       "needs": [],
