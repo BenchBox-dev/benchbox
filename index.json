@@ -3023,12 +3023,17 @@
       "title": "Baseline CI-failure metrics in dev-loop-metrics before landing the reduction workstreams"
     },
     "ci-fast-duration-baseline-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T06:52:12Z",
+        "generation": "8abea1b181024ab6b47de088a3a3fc41",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [
         "ci-fast-tier-junit-emit-20261025"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Commit a fast-tier duration baseline from merged-PR junit and refresh it weekly by reviewed PR"
     },
     "ci-fast-duration-gate-blocking-20261025": {
