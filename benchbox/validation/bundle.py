@@ -1297,6 +1297,7 @@ def _validate_summary_section(
     *,
     allow_partial_validation: bool = False,
     data: dict[str, Any] | None = None,
+    internal_source: bool = False,
 ) -> None:
     if not isinstance(summary, dict):
         vr.error("'summary' must be a dict")
@@ -1313,7 +1314,12 @@ def _validate_summary_section(
         if allow_partial_validation
         else frozenset({PUBLIC_CLEAN_VALIDATION_STATUS})
     )
-    if validation_status == "partial" and data is not None and documented_exclusions_cover_failures(data):
+    if (
+        internal_source
+        and validation_status == "partial"
+        and data is not None
+        and documented_exclusions_cover_failures(data)
+    ):
         return
     if validation_status not in allowed:
         if validation_status is None:
@@ -2177,6 +2183,7 @@ def _validate_bundle(
         vr,
         allow_partial_validation=allow_partial_validation,
         data=data,
+        internal_source=internal_source,
     )
     _validate_translation_section(data, vr)
     _validate_environment_client_link(data, vr)

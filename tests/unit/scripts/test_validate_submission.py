@@ -624,8 +624,13 @@ class TestValidateBundle:
 
     def test_documented_platform_query_exclusions_accept_partial_summary(self):
         vr = ValidationResult("test")
-        _validate_bundle(self._obt_bundle("ClickHouse Local", ["41", "44"]), vr)
+        _validate_bundle(self._obt_bundle("ClickHouse Local", ["41", "44"]), vr, internal_source=True)
         assert not any("summary.validation" in e for e in vr.errors), vr.errors
+
+    def test_documented_exclusions_do_not_relax_community_admission(self):
+        vr = ValidationResult("community")
+        _validate_bundle(self._obt_bundle("ClickHouse Local", ["41", "44"]), vr)
+        assert any("summary.validation must be 'passed'" in e for e in vr.errors)
 
     def test_documented_platform_query_exclusions_reject_other_driver_versions_and_summary_drift(self):
         other_driver = self._obt_bundle("ClickHouse Local", ["41", "44"])
@@ -634,14 +639,14 @@ class TestValidateBundle:
         drifted["summary"]["queries"]["failed"] = 5
         for data in (other_driver, drifted):
             vr = ValidationResult("test")
-            _validate_bundle(data, vr)
+            _validate_bundle(data, vr, internal_source=True)
             assert any("summary.validation must be 'passed'" in e for e in vr.errors)
 
     def test_documented_platform_query_exclusions_still_run_clean_bundle_checks(self):
         data = self._obt_bundle("ClickHouse Local", ["41", "44"])
         data["queries"][0]["row_count_validation"] = {"status": "FAILED"}
         vr = ValidationResult("test")
-        _validate_bundle(data, vr)
+        _validate_bundle(data, vr, internal_source=True)
         assert any("row_count_validation.status" in e for e in vr.errors), vr.errors
 
     @pytest.mark.parametrize(
@@ -650,7 +655,7 @@ class TestValidateBundle:
     )
     def test_undocumented_failures_keep_partial_summary_rejected(self, platform: str, failed_ids: list[str]):
         vr = ValidationResult("test")
-        _validate_bundle(self._obt_bundle(platform, failed_ids), vr)
+        _validate_bundle(self._obt_bundle(platform, failed_ids), vr, internal_source=True)
         assert any("summary.validation must be 'passed'" in e for e in vr.errors)
 
     def test_not_run_validation_allowed_only_for_trusted_mirror(self):

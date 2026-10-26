@@ -258,7 +258,7 @@ def test_head_vs_merge_divergence_fails(monkeypatch) -> None:
     parity = _load_parity_module()
     calls: list[str] = []
 
-    def fake_validate(bundle_paths, sha, require_manifest=False, allow_partial=False):
+    def fake_validate(bundle_paths, sha, require_manifest=False, allow_partial=False, trust_internal_source=False):
         calls.append(sha)
         if sha == "merge" * 8:
             return 0, "merge ok"
@@ -273,6 +273,26 @@ def test_head_vs_merge_divergence_fails(monkeypatch) -> None:
     assert rc == 1
     assert "diverged" in message
     assert calls == ["merge" * 8, "head0" * 8]
+
+
+def test_internal_source_trust_reaches_both_parity_payloads(monkeypatch) -> None:
+    parity = _load_parity_module()
+    calls = []
+
+    def validate(paths, sha, **kwargs):
+        calls.append((sha, kwargs["trust_internal_source"]))
+        return 0, "ok"
+
+    monkeypatch.setattr(parity, "_run_validation_on_payload", validate)
+    rc, _ = parity.compare_head_merge_outcomes(["bundle.json"], "merge", "head", trust_internal_source=True)
+    assert rc == 0
+    assert calls == [("merge", True), ("head", True)]
+
+
+def test_ci_internal_trust_is_owner_only_and_never_applies_to_forks() -> None:
+    workflow = (SCRIPT.parents[2] / ".github/workflows/validate-submission.yml").read_text()
+    assert '[ "${BASE_REF:-}" = "develop" ] && [ "$IS_FORK" = "false" ] && [ "$PR_AUTHOR" = "joeharris76" ]' in workflow
+    assert workflow.count("$TRUST_INTERNAL_SOURCE") == 2
 
 
 def test_head_vs_merge_both_fail(monkeypatch) -> None:

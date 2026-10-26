@@ -354,6 +354,10 @@ jobs:
           set -euo pipefail
           REQUIRE_MANIFEST="--require-manifest"
           ALLOW_PARTIAL_VALIDATION=""
+          TRUST_INTERNAL_SOURCE=""
+          if [ "${BASE_REF:-}" = "develop" ] && [ "$IS_FORK" = "false" ] && [ "$PR_AUTHOR" = "joeharris76" ]; then
+            TRUST_INTERNAL_SOURCE="--trust-internal-source"
+          fi
           if [ "${BASE_REF:-}" = "published-results" ] && [ "$IS_FORK" = "false" ] && [ "$PR_AUTHOR" = "github-actions[bot]" ]; then
             case "$HEAD_REF" in
               auto/results-mirror-*)
@@ -370,9 +374,9 @@ jobs:
           if [ -f "$_CORPUS_FILE" ]; then
             CORPUS_ARG="--corpus-changed-paths $_CORPUS_FILE"
           fi
-          xargs -d '\n' uv run -- python scripts/validate_submission.py $REQUIRE_MANIFEST $ALLOW_PARTIAL_VALIDATION $CORPUS_ARG --pr-comment /tmp/pr_comment.md < /tmp/changed_bundles.txt \
+          xargs -d '\n' uv run -- python scripts/validate_submission.py $REQUIRE_MANIFEST $ALLOW_PARTIAL_VALIDATION $TRUST_INTERNAL_SOURCE $CORPUS_ARG --pr-comment /tmp/pr_comment.md < /tmp/changed_bundles.txt \
             | tee /tmp/validation_output.txt
-          uv run -- python scripts/publication/validator_parity.py --base-sha "$_BASE_SHA" --merge-sha "$_MERGE_SHA" --head-sha "$_HEAD_SHA" --corpus-changed-paths "$_CORPUS_FILE" $REQUIRE_MANIFEST $ALLOW_PARTIAL_VALIDATION
+          uv run -- python scripts/publication/validator_parity.py --base-sha "$_BASE_SHA" --merge-sha "$_MERGE_SHA" --head-sha "$_HEAD_SHA" --corpus-changed-paths "$_CORPUS_FILE" $REQUIRE_MANIFEST $ALLOW_PARTIAL_VALIDATION $TRUST_INTERNAL_SOURCE
 
       - name: Check override approvals
         if: steps.validate.outcome == 'success'

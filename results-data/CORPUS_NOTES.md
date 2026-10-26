@@ -757,9 +757,10 @@ publishing the ClickHouse bundle without these two queries.
 The rule lives in `DOCUMENTED_PLATFORM_QUERY_EXCLUSIONS`
 (`benchbox/core/results/query_status.py`): benchmark `tpcds_obt` on platform
 `clickhouse-local`, driver (chDB) version `4.1.6` only, query ids `41` and `44`
-only. Submission validation accepts a `partial` summary for a bundle whose only
-failed measurements are those ids and whose summary query counts match its
-per-query rows; the other clean-bundle consistency checks still run. Any other
+only. With `--trust-internal-source` and an internal-source manifest, submission
+validation accepts a `partial` summary for a bundle whose only failed measurements
+are those ids and whose summary query counts match its per-query rows; the other
+clean-bundle consistency checks still run. Community admission stays strict. Any other
 failure, platform, driver version or query id, or any summary count that
 disagrees with the rows, keeps the bundle rejected.
 
