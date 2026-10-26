@@ -9066,12 +9066,17 @@
       "title": "Fix oracle reviewer crash on non-UTF-8 PR diffs"
     },
     "docs-mig-site-baseline-build": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T11:25:36Z",
+        "generation": "ef8f652201ad4f55a82b997270ab28b3",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "docs-mig-core-freeze"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Capture reproducible pre-migration site evidence"
     },
     "docs-mig-site-bundle-schema4": {
