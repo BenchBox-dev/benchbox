@@ -96,13 +96,16 @@ class TestQueriesMatchGeneratorInputs:
     def test_tsbs_sql_matches_generator_regardless_of_render_order(self, monkeypatch, export_first):
         from benchbox.core import query_catalog
 
-        for name in ("_benchmark_instance", "_query_dict", "_raw_query_keys"):
-            monkeypatch.setattr(query_catalog, name, cache(getattr(query_catalog, name).__wrapped__))
+        def reset_catalog():
+            for name in ("_benchmark_instance", "_query_dict", "_raw_query_keys"):
+                monkeypatch.setattr(query_catalog, name, cache(getattr(query_catalog, name).__wrapped__))
 
         def export():
+            reset_catalog()
             return exporter.export_queries({"tsbs_devops"})["benchmarks"][0]["queries"]
 
         def generate():
+            reset_catalog()
             return gqd.render_all({"tsbs_devops"})
 
         if export_first:
