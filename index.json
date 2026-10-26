@@ -2858,17 +2858,12 @@
       "title": "Fix chronic test_generate_data 60s timeout flake in medium shards"
     },
     "ci-arm-reads-duration-verdict-20261025": {
-      "claim": {
-        "expires_at": "2026-10-27T08:19:05Z",
-        "generation": "0a897d242a9b4c6aaf510d5056cc050c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [
         "ci-verify-fast-duration-report-only-20261025"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Refuse to arm a PR whose duration check warned unless the PR updates the baseline"
     },
     "ci-autouse-fixture-allowlist-20261025": {
