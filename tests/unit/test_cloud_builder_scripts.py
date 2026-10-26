@@ -370,7 +370,7 @@ def test_gateway_joins_userspace_verifies_and_installs_omp_without_printing_secr
     try:
         result = _run(GATEWAY, cwd=repo, env=env)
 
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == 0, result.stdout + result.stderr
         assert "gateway reachable" in result.stdout
         assert "gateway=reachable" in _status(repo)
         assert "gateway_proxy=http://127.0.0.1:1055" in _status(repo)
@@ -473,7 +473,7 @@ def test_bootstrap_does_not_record_omp_installed_when_the_install_fails(tmp_path
     try:
         result = _run(BOOTSTRAP, cwd=repo, env=env)
 
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == 0, result.stdout + result.stderr
         assert "omp=installed" not in result.stdout
         assert "omp=not-installed" in result.stdout
     finally:
@@ -492,7 +492,7 @@ def test_gateway_ignores_a_stored_pid_that_belongs_to_another_process(tmp_path: 
 
         result = _run(GATEWAY, cwd=repo, env=env)
 
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == 0, result.stdout + result.stderr
         assert len(_stub_lines(tmp_path, "tailscaled.log")) == 1
         assert bystander.poll() is None
         _stop(repo, env)
@@ -528,7 +528,7 @@ def test_gateway_socket_path_stays_short_for_a_long_git_dir(tmp_path: Path) -> N
     try:
         result = _run(GATEWAY, cwd=repo, env=env)
 
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == 0, result.stdout + result.stderr
         assert "gateway=reachable" in _status(repo)
         daemon_args = _stub_lines(tmp_path, "tailscaled.log")[0].split()
         socket_arg = next(a for a in daemon_args if a.startswith("--socket=")).split("=", 1)[1]
@@ -538,6 +538,21 @@ def test_gateway_socket_path_stays_short_for_a_long_git_dir(tmp_path: Path) -> N
     finally:
         _stop(repo, env)
     assert not Path(socket_arg).exists()
+
+
+@pytest.mark.parametrize("temp_root", ["unset", "long"])
+def test_gateway_socket_root_falls_back_to_tmp_when_the_temp_dir_is_unusable(tmp_path: Path, temp_root: str) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path, TMPDIR=None if temp_root == "unset" else "/tmp/" + "x" * 80)
+    try:
+        result = _run(GATEWAY, cwd=repo, env=env)
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "gateway=reachable" in _status(repo)
+        daemon_args = _stub_lines(tmp_path, "tailscaled.log")[0].split()
+        assert next(a for a in daemon_args if a.startswith("--socket=")).startswith("--socket=/tmp/bbcg-")
+    finally:
+        _stop(repo, env)
 
 
 def test_gateway_uses_a_separate_socket_per_checkout(tmp_path: Path) -> None:
@@ -578,7 +593,7 @@ def test_bootstrap_without_credentials_still_succeeds_and_reports_the_gateway(tm
 
     result = _run(BOOTSTRAP, cwd=repo, env=env)
 
-    assert result.returncode == 0, result.stderr
+    assert result.returncode == 0, result.stdout + result.stderr
     assert "cloud-bootstrap: OK" in result.stdout
     assert "gateway=unavailable" in result.stdout
 
@@ -591,7 +606,7 @@ def test_bootstrap_with_credentials_records_the_gateway_in_the_marker(tmp_path: 
     try:
         result = _run(BOOTSTRAP, cwd=repo, env=env)
 
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == 0, result.stdout + result.stderr
         assert "gateway=reachable" in result.stdout
         assert "omp=installed" in result.stdout
         _assert_no_secrets(result.stdout, result.stderr)
@@ -607,6 +622,6 @@ def test_bootstrap_survives_a_failed_gateway_setup(tmp_path: Path) -> None:
 
     result = _run(BOOTSTRAP, cwd=repo, env=env)
 
-    assert result.returncode == 0, result.stderr
+    assert result.returncode == 0, result.stdout + result.stderr
     assert "the oracle gateway setup reported a problem" in result.stderr
     assert "gateway=unavailable" in result.stdout

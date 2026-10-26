@@ -35,14 +35,22 @@ short_socket_dir() {
 socket_dir=$(short_socket_dir)
 socket="$socket_dir/ts.sock"
 
+proc_args() {
+  if [ -r "/proc/$1/cmdline" ]; then
+    tr '\0' ' ' <"/proc/$1/cmdline"
+  else
+    ps -p "$1" -o args= 2>/dev/null
+  fi
+}
+
 daemon_alive() {
   [ -f "$pid_file" ] || return 1
   pid=$(cat "$pid_file")
   [ -n "$pid" ] || return 1
   kill -0 "$pid" 2>/dev/null || return 1
-  args=$(ps -p "$pid" -o args= 2>/dev/null) || return 1
+  args=$(proc_args "$pid") || return 1
   case "$args" in
-    *tailscaled*"--socket=$socket"*) return 0 ;;
+    *"--socket=$socket"*) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -217,6 +225,12 @@ up() {
 
   if ! bring_up; then
     completed=1
+    if [ -f "$pid_file" ]; then
+      say "daemon process: $(proc_args "$(cat "$pid_file")" | cut -c1-300)"
+    fi
+    if [ -f "$state_dir/tailscaled.log" ]; then
+      tail -n 20 "$state_dir/tailscaled.log" | sed 's/^/cloud-gateway: daemon log: /'
+    fi
     finish_failed "tailscaled did not start"
     return 1
   fi
