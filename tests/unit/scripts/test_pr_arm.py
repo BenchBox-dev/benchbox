@@ -68,6 +68,7 @@ class FakeGh:
         self.calls: list[list[str]] = []
         self.rules = kwargs.get("rules", ["core"])
         self.statuses = kwargs.get("statuses", {})
+        self.status_descriptions = kwargs.get("status_descriptions", {})
         self.extra_runs = kwargs.get("extra_runs", [])
 
     def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
@@ -89,7 +90,9 @@ class FakeGh:
         if cmd[:2] == ["gh", "api"] and cmd[-1] == f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/status":
             return self.status_code, self.gate_state + "\n" if self.status_code == 0 else "gh: HTTP 502"
         if cmd[:2] == ["gh", "api"] and f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/statuses?" in cmd[-1]:
-            lines = [f"{name} {state}" for name, state in self.statuses.items()]
+            lines = [
+                f"{name} {state} {self.status_descriptions.get(name, '')}" for name, state in self.statuses.items()
+            ]
             return 0, "\n".join(lines)
         if cmd[:2] == ["gh", "api"] and "/actions/artifacts?" in cmd[-1]:
             assert cmd[-1].startswith(f"repos/{pr_arm.REPOSITORY}/actions/artifacts?name=fast-duration-verdict-7-")
@@ -690,3 +693,29 @@ def test_pending_required_status_still_arms() -> None:
     gh = FakeGh(statuses={"oracle-gate": "pending"}, rules=["core", "oracle-gate"])
     assert _arm(gh) == 0
     assert len(gh.merged()) == 1
+
+
+def test_waiting_oracle_failure_status_refreshes_and_arms() -> None:
+    gh = FakeGh(
+        statuses={"oracle-gate": "failure"},
+        status_descriptions={
+            "oracle-gate": f"oracle-review: waiting for the oracle's review of {HEAD}, or a stand-in attestation"
+        },
+        rules=["core", "oracle-gate"],
+        gate_state="failure",
+    )
+    assert _arm(gh) == 0
+    assert gh.dispatched() == [DISPATCH]
+    assert len(gh.merged()) == 1
+
+
+def test_waiting_oracle_description_for_another_head_does_not_mask_failure() -> None:
+    gh = FakeGh(
+        statuses={"oracle-gate": "failure"},
+        status_descriptions={
+            "oracle-gate": f"oracle-review: waiting for the oracle's review of {'b' * 40}, or a stand-in attestation"
+        },
+        rules=["core", "oracle-gate"],
+    )
+    assert _arm(gh) == 2
+    assert gh.merged() == []

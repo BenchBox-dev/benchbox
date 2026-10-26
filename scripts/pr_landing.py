@@ -61,11 +61,8 @@ REQUIRED_CONTEXTS: tuple[str, ...] = (
     "docs",
     "tooling",
 )
-TERMINAL_CHECK_FAILURES = frozenset(
-    {"failure", "cancelled", "timed_out", "action_required", "startup_failure", "stale"}
-)
 TERMINAL_STATUS_FAILURES = frozenset({"failure", "error"})
-STATUS_CONTEXTS_JQ = r'.[] | "\(.context) \(.state)"'
+STATUS_CONTEXTS_JQ = r'.[] | "\(.context) \(.state) \(.description // "")"'
 REQUIRED_BATCH_TOOLS = frozenset({"register_batch", "prepare", "bind_batch_pr", "abort_batch"})
 MAX_RERUNS_PER_JOB = 1
 MAX_REENTRIES_PER_HEAD = 1
@@ -607,9 +604,17 @@ def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, st
         raise LandingError(f"live status verification failed for {head[:12]}")
     statuses: dict[str, str] = {}
     for line in out.splitlines():
-        parts = line.strip().split(None, 1)
-        if len(parts) == 2 and parts[0] not in statuses:
-            statuses[parts[0]] = parts[1]
+        parts = line.strip().split(None, 2)
+        if len(parts) >= 2 and parts[0] not in statuses:
+            name, state = parts[:2]
+            description = parts[2] if len(parts) == 3 else ""
+            if (
+                name == "oracle-gate"
+                and state == "failure"
+                and description.startswith(f"oracle-review: waiting for the oracle's review of {head},")
+            ):
+                state = "pending"
+            statuses[name] = state
     return statuses
 
 

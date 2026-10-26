@@ -162,6 +162,7 @@ class FakeGitHub:
         self.verdict_download = (0, None)
         self.changed_files: list[str] = []
         self.statuses: dict[str, str] = {}
+        self.status_descriptions: dict[str, str] = {}
 
     def _duration_verdict_reply(self, cmd: list[str]) -> tuple[int, str] | None:
         if cmd[:2] == ["gh", "api"] and "/actions/artifacts?name=fast-duration-verdict-" in cmd[-1]:
@@ -267,7 +268,9 @@ class FakeGitHub:
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/status"):
             return 0, self.gate_state + "\n"
         if cmd[:2] == ["gh", "api"] and "/statuses?" in cmd[-1]:
-            lines = [f"{name} {state}" for name, state in self.statuses.items()]
+            lines = [
+                f"{name} {state} {self.status_descriptions.get(name, '')}" for name, state in self.statuses.items()
+            ]
             return 0, "\n".join(lines)
         if cmd[:3] == ["gh", "workflow", "run"]:
             return self.dispatch_code, "" if self.dispatch_code == 0 else "gh: HTTP 403"
@@ -750,6 +753,17 @@ def test_refuses_a_failed_required_status(
 def test_pending_required_status_still_arms(world: World, ready_pr: FakeGitHub) -> None:
     ready_pr.statuses["oracle-gate"] = "pending"
     assert arm(world, ready_pr) == 0
+    assert ready_pr.arms() == [merge_command(world.head)]
+
+
+def test_waiting_oracle_failure_status_refreshes_and_arms(world: World, ready_pr: FakeGitHub) -> None:
+    ready_pr.statuses["oracle-gate"] = "failure"
+    ready_pr.status_descriptions["oracle-gate"] = (
+        f"oracle-review: waiting for the oracle's review of {world.head}, or a stand-in attestation"
+    )
+    ready_pr.gate_state = "failure"
+    assert arm(world, ready_pr) == 0
+    assert len(ready_pr.dispatches()) == 1
     assert ready_pr.arms() == [merge_command(world.head)]
 
 
