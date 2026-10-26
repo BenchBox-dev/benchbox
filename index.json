@@ -16469,6 +16469,15 @@
       "status": "open",
       "title": "Oracle read evidence still accepts reads that show none of the head file's content"
     },
+    "oracle-redaction-marker-and-summary-20261026": {
+      "claim": null,
+      "needs": [
+        "oracle-verdict-oauth-tailnet-join-20261026"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Redact the oracle protocol marker and the job step summary, not only the plain review text"
+    },
     "oracle-response-absence-retry-20261021": {
       "claim": null,
       "needs": [],
