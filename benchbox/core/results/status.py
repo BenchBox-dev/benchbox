@@ -3,12 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from benchbox.core.results.query_status import (
-    bundle_failed_query_count,
-    documented_exclusions_cover_failures,
-    has_failed_query_validation,
-    int_or_none,
-)
+from benchbox.core.results.query_status import bundle_failed_query_count, has_failed_query_validation, int_or_none
 
 NON_CLEAN_VALIDATION_STATUSES: frozenset[str] = frozenset(
     {"failed", "interrupted", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
@@ -133,10 +128,7 @@ def _bundle_validation_status(data: dict[str, Any]) -> str | None:
     summary = data.get("summary")
     if not isinstance(summary, dict):
         return None
-    status = normalize_validation_status(summary.get("validation"))
-    if status == "partial" and documented_exclusions_cover_failures(data):
-        return "passed"
-    return status
+    return normalize_validation_status(summary.get("validation"))
 
 
 def _bundle_translation_status(data: dict[str, Any]) -> str | None:

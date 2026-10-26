@@ -57,8 +57,6 @@ def documented_exclusions_cover_failures(data: dict[str, Any]) -> bool:
 
 
 def bundle_failed_query_count(data: dict[str, Any]) -> int:
-    if documented_exclusions_cover_failures(data):
-        return 0
     summary = data.get("summary")
     if isinstance(summary, dict):
         queries = summary.get("queries")

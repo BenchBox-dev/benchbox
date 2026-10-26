@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from benchbox.core.results.query_status import documented_exclusions_cover_failures
 from benchbox.core.results.status import (
     CLI_FAILURE_VALIDATION_STATUSES,
     NON_CLEAN_VALIDATION_STATUSES,
@@ -230,30 +231,32 @@ def _obt_bundle(platform: str, failed_ids: list[str], driver_version: str = "4.1
     }
 
 
-def test_documented_clickhouse_obt_exclusions_are_not_failures():
-    bundle = _obt_bundle("ClickHouse Local", ["41", "44"])
-    assert bundle_failed_query_count(bundle) == 0
-    assert bundle_is_clean_pass(bundle)
+def test_documented_exclusions_cover_only_the_evidenced_failures():
+    assert documented_exclusions_cover_failures(_obt_bundle("ClickHouse Local", ["41", "44"]))
+    assert documented_exclusions_cover_failures(_obt_bundle("ClickHouse Local", ["44"]))
 
 
 @pytest.mark.parametrize(
-    ("platform", "failed_ids"),
-    [("ClickHouse Local", ["41", "45"]), ("DuckDB", ["41", "44"]), ("ClickHouse Local", ["44", "46"])],
+    ("platform", "failed_ids", "driver_version"),
+    [
+        ("ClickHouse Local", ["41", "45"], "4.1.6"),
+        ("DuckDB", ["41", "44"], "4.1.6"),
+        ("ClickHouse Local", [], "4.1.6"),
+        ("ClickHouse Local", ["41", "44"], "4.2.0"),
+    ],
 )
-def test_undocumented_obt_failures_still_count(platform, failed_ids):
-    bundle = _obt_bundle(platform, failed_ids)
-    assert bundle_failed_query_count(bundle) == len(failed_ids)
-    assert not bundle_is_clean_pass(bundle)
-
-
-def test_documented_exclusions_are_scoped_to_the_evidenced_driver_version():
-    bundle = _obt_bundle("ClickHouse Local", ["41", "44"], driver_version="4.2.0")
-    assert bundle_failed_query_count(bundle) == 2
-    assert not bundle_is_clean_pass(bundle)
+def test_documented_exclusions_reject_everything_else(platform, failed_ids, driver_version):
+    assert not documented_exclusions_cover_failures(_obt_bundle(platform, failed_ids, driver_version))
 
 
 @pytest.mark.parametrize("field", ["failed", "total"])
 def test_documented_exclusions_require_consistent_summary_counts(field):
     bundle = _obt_bundle("ClickHouse Local", ["41", "44"])
     bundle["summary"]["queries"][field] += 3
+    assert not documented_exclusions_cover_failures(bundle)
+
+
+def test_documented_exclusions_do_not_hide_failed_queries():
+    bundle = _obt_bundle("ClickHouse Local", ["41", "44"])
+    assert bundle_failed_query_count(bundle) == 2
     assert not bundle_is_clean_pass(bundle)

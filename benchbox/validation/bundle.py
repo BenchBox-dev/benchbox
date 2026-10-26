@@ -2083,12 +2083,11 @@ def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) 
     if not isinstance(summary, dict):
         return
     status = _normalize_status(summary.get("validation"))
-    if status == "partial" and documented_exclusions_cover_failures(data):
-        status = PUBLIC_CLEAN_VALIDATION_STATUS
-    if status != PUBLIC_CLEAN_VALIDATION_STATUS:
+    documented = status == "partial" and documented_exclusions_cover_failures(data)
+    if status != PUBLIC_CLEAN_VALIDATION_STATUS and not documented:
         return
 
-    failed = bundle_failed_query_count(data)
+    failed = 0 if documented else bundle_failed_query_count(data)
     if failed > 0:
         noun = "query" if failed == 1 else "queries"
         vr.error(f"summary.validation='passed' contradicts {failed} failed measurement {noun}")

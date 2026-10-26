@@ -757,12 +757,17 @@ publishing the ClickHouse bundle without these two queries.
 The rule lives in `DOCUMENTED_PLATFORM_QUERY_EXCLUSIONS`
 (`benchbox/core/results/query_status.py`): benchmark `tpcds_obt` on platform
 `clickhouse-local`, driver (chDB) version `4.1.6` only, query ids `41` and `44`
-only. A bundle whose only failed measurements are those ids, and whose summary
-query counts match its per-query rows, is treated as `passed`: submission
-validation, the corpus validator and the Explorer all read the same rule. Any
-other failure, platform, driver version or query id, or any summary count that
-disagrees with the rows, keeps the bundle `partial`. The two
-queries remain recorded as `FAILED` in the bundle; the rule does not rewrite
-results. Its summary timings cover 91 query ids, so the ClickHouse Local
-geometric mean and total time are not like-for-like with the 93-id DuckDB and
-DataFusion bundles.
+only. Submission validation accepts a `partial` summary for a bundle whose only
+failed measurements are those ids and whose summary query counts match its
+per-query rows; the other clean-bundle consistency checks still run. Any other
+failure, platform, driver version or query id, or any summary count that
+disagrees with the rows, keeps the bundle rejected.
+
+The rule does not rewrite results or counts. The bundle records Q41 and Q44 as
+`FAILED`, the Explorer reports it as `partial` with 6 failed measurements, and
+like every other bundle with failed queries it is excluded from rankings. Its
+summary timings cover 91 query ids, so they are not like-for-like with the
+93-id DuckDB and DataFusion bundles. With ClickHouse Local unranked, the
+`tpcds_obt` SF1 cohort has two comparison identities (DataFusion and DuckDB);
+it is listed in `DOCUMENTED_SHALLOW_COHORTS` in `validate_corpus.py` beside the
+known-defective bundles of the same platforms.
