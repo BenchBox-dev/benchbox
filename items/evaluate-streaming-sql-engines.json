@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Document architectural requirements, client protocols, and ingestion models for Flink SQL, ksqlDB, Feldera, Arroyo, Timeplus, and Epsio.",
+    "Identify gaps between BenchBox's batch execution harness and the requirements of streaming benchmarks (watermarks, event generators, latency vs throughput).",
+    "Define a phased platform adapter strategy prioritizing systems with existing protocol overlap (Postgres wire or ClickHouse family)."
+  ],
+  "description": "Evaluate architectural feasibility and benchmarking support for pure streaming SQL and incremental view engines:\n\nTarget systems:\n- Apache Flink SQL: Industry reference streaming baseline; foundation for most managed cloud streaming services.\n- ksqlDB (Confluent): Kafka-native streaming SQL engine for stream processing and materialized table state.\n- Feldera (DBSP): Differential/incremental-computation engine for continuous analytics over changing data.\n- Arroyo: Rust-based distributed streaming SQL engine; architectural peer to modern Rust streaming runtimes.\n- Timeplus: Streaming SQL built over a ClickHouse-family core; natural extension to BenchBox's existing ClickHouse support.\n- Epsio: Incremental materialized view engine presenting a PostgreSQL-compatible wire protocol.\n\nEvaluation scope & design challenges:\n- Benchmark workload model: BenchBox's current harness is batch-oriented (generate -> load -> timed query loop). Streaming engines require sustained streaming event generators, event-time watermarks, windowed aggregations, stateful streaming joins, and event-to-sink latency measurements.\n- Source/sink infrastructure: Source integration requirements (Kafka/Redpanda topics, CDC streams, HTTP ingestion) and containerized local UAT harnesses.\n- Wire protocol / client SDK matrix: PostgreSQL wire protocol (Epsio, Timeplus PG endpoint) vs SQL REST APIs (Flink Gateway, ksqlDB REST, Arroyo API) vs native Python clients.",
+  "links": [
+    "docs/platforms/comparison-matrix.md",
+    "docs/development/roadmap.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:62614ac85e873be898cd9168",
+      "at": "2026-10-26T20:01:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "02cdc645d0b848bf9df832feef278130",
+      "session_id": "9490a432c44b4de48d85d9ea412db20f"
+    }
+  ]
+}

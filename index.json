@@ -9886,6 +9886,13 @@
       "status": "done",
       "title": "Schedule a checkpoint to evaluate extracting results-data/ to its own repo"
     },
+    "evaluate-streaming-sql-engines": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Evaluate streaming SQL engines (Flink, ksqlDB, Feldera, Arroyo, Timeplus, Epsio)"
+    },
     "exact-refresh-eligibility-penalises-staying-current": {
       "claim": null,
       "needs": [
