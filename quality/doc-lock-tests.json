@@ -44,8 +44,8 @@
       "site_reads": [
         "docs/linkcheck_ignore.txt"
       ],
-      "reason": "The placeholder and ignore policy moves to the site link checker, which applies the exported patterns.",
-      "cutover_action": "Delete from core; the site keeps the pattern tests against its .lychee.toml."
+      "reason": "Core tests the ignore patterns in retained docs/linkcheck_ignore.txt; the site link checker applies the exported patterns against its own .lychee.toml.",
+      "cutover_action": "Retained in core against the retained ignore file."
     },
     {
       "id": "publication-architecture-internal-authority",
@@ -75,7 +75,7 @@
         "docs/reference/threat-model.md"
       ],
       "reason": "Mixed: the assertions on docs/internal ADR, contract and runbooks are governance and stay; the assertions that quote sentences of the site-owned hosted-results contract and public-id ADR are source-text wording.",
-      "cutover_action": "Split the test: keep the docs/internal and threat-model assertions; delete the hosted-contract and ADR wording assertions rather than porting them."
+      "cutover_action": "Split done: the test keeps docs/internal and retained threat-model assertions; the relocated hosted-contract and ADR wording assertions were deleted, not ported."
     },
     {
       "id": "readme-quickstart-extras",
@@ -116,8 +116,8 @@
         "/tuning/aliases"
       ],
       "site_reads": [],
-      "reason": "The site renders the matrix from exported capability facts and checks coverage and the verifiable-platform set from them.",
-      "cutover_action": "Deleted with the tuning support matrix generator."
+      "reason": "Soundness guard retained in core: the verifiable-platform set is derived from the tuning capability registry and the introspector probe in scripts/docs_data_sources.py. The site renders the matrix from the exported capability facts and checks coverage from them.",
+      "cutover_action": "Retained in core against the registry and introspector probe; site docs-contracts/counts.ts checks coverage and the verifiable-platform set from exported facts."
     },
     {
       "id": "benchmark-support-status-matrix",
@@ -132,8 +132,8 @@
         "/benchmarks/supports_dataframe"
       ],
       "site_reads": [],
-      "reason": "Per-benchmark status, query count and DataFrame capability are exported instead of re-derived from rationale text.",
-      "cutover_action": "Delete the page-parsing helpers; the site check parses its own table."
+      "reason": "Parser helpers are exercised against synthetic inline tables, not the relocated page; per-benchmark status, query count and DataFrame capability are exported for the site.",
+      "cutover_action": "Retained in core against synthetic fixtures; the site check parses its own status table from exported facts."
     },
     {
       "id": "benchmark-count-claims",
@@ -147,8 +147,8 @@
         "/benchmarks/spec_ids"
       ],
       "site_reads": [],
-      "reason": "Count claims are checked by the site from exported public and spec-covered benchmark ids.",
-      "cutover_action": "Delete from core."
+      "reason": "Claim-matcher logic is exercised against synthetic text, not relocated pages; count claims are checked by the site from exported public and spec-covered benchmark ids.",
+      "cutover_action": "Retained in core against synthetic fixtures; the site checks counts from exported ids."
     },
     {
       "id": "execution-vocabulary-runtime",
@@ -190,16 +190,11 @@
       "tests": [
         "test_security_scoped_omissions_are_never_promotable"
       ],
-      "classification": "contract-field",
-      "contract_fields": [
-        "/mcp/tools",
-        "/mcp/remote_only_tools",
-        "/mcp/run_surface",
-        "/cli/commands"
-      ],
+      "classification": "runtime-stays",
+      "contract_fields": [],
       "site_reads": [],
-      "reason": "Tool inventory, parameter schemas, omission ledger tiers and tool-to-CLI mapping are exported; ratified tiers live in quality/mcp-run-surface.json, shared by the exporter and the retained tests.",
-      "cutover_action": "Delete the page-parsing tests; the site check reads /mcp."
+      "reason": "Security guard retained in core: security-scoped MCP omissions can never be promoted, checked against the CLI surface registry and the ratified tiers in quality/mcp-run-surface.json. The site also reads the exported tool inventory.",
+      "cutover_action": "Retained in core; no page is read."
     },
     {
       "id": "mcp-implementation-boundary",
@@ -226,7 +221,7 @@
       ],
       "site_reads": [],
       "reason": "DuckDB being an optional extra and benchbox.experimental being unexported are facts the site checks its pages against.",
-      "cutover_action": "Remove the doc-reading halves; test_duckdb_is_optional_in_pyproject and test_experimental_not_in_benchbox_all stay."
+      "cutover_action": "Done: doc-reading halves removed; test_duckdb_is_optional_in_pyproject and test_experimental_not_in_benchbox_all stay."
     },
     {
       "id": "beta-release-surface-status-wording",
@@ -240,7 +235,7 @@
       ],
       "site_reads": [],
       "reason": "Regex over page wording; the exported Development Status classifier is the fact. The README half stays checked in core.",
-      "cutover_action": "Dropped the deleted usage FAQ from STATUS_DOCS."
+      "cutover_action": "Done: the deleted usage FAQ was dropped from STATUS_DOCS; the README half stays checked in core."
     },
     {
       "id": "release-infrastructure-runtime",
@@ -302,8 +297,8 @@
       ],
       "classification": "governance-stays",
       "site_reads": [],
-      "reason": "Merge-gate local equivalents must be discoverable in the Makefiles or the documented hosted-only guard inventory; the inventory page is site-owned.",
-      "cutover_action": "Drop the page fallback so equivalents must be discoverable in Make targets, or relocate the hosted-only guard inventory under docs/internal first."
+      "reason": "Merge-gate local equivalents must be discoverable in the Makefiles; hosted-only guards that cannot run locally are recorded as documented exemptions in the test.",
+      "cutover_action": "Done: the retired docs page fallback is removed; curated release-tree and other hosted-only steps are explicit exemptions."
     },
     {
       "id": "soundness-public-record-negatives",
@@ -341,8 +336,8 @@
         "/result_schema_version"
       ],
       "site_reads": [],
-      "reason": "Compares source-derived registry claims with the public-contracts page; the same claims are checked in the site from exported fields. Also guards README count claims, which stay in core.",
-      "cutover_action": "Keep the README count guard; drop the public-contracts.md half and the matching inline guard in ci.yml."
+      "reason": "The core script guards README registry count claims, which stay in core; the same source-derived counts are checked by the site from exported fields.",
+      "cutover_action": "Done: the public-contracts.md half and the matching inline guard in ci.yml were dropped; the README guard is kept."
     }
   ]
 }
