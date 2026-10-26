@@ -4,24 +4,20 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import posixpath
 import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import tomllib
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-DEFAULT_PROFILE = "schema4"
+DEFAULT_PROFILE = "schema5"
 PARENT_SOURCES = ("bundle", "dispatch", "local")
-GENERATED_QUERIES = Path("docs/benchmarks/queries")
 
 
 def run(*cmd: str, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
@@ -70,7 +66,8 @@ MEMBERS_BY_SCHEMA: dict[int, tuple[str, ...]] = {
     4: REQUIRED_MEMBERS + CONTRACT_MEMBERS,
     5: tuple(name for name in REQUIRED_MEMBERS if name not in ("docs", "downloads")) + CONTRACT_MEMBERS,
 }
-PROFILE_SCHEMAS = {"exact3": 3, "schema4": 4, "candidate4": 4, "candidate5": 5}
+PROFILE_SCHEMAS = {"exact3": 3, "schema4": 4, "schema5": 5, "candidate4": 4, "candidate5": 5}
+RELOCATED_MEMBERS = ("docs", "downloads")
 CANDIDATE_PROFILES = ("candidate4", "candidate5")
 CANDIDATE_CERTIFIER = "candidate"
 RUN_ID = re.compile(r"[0-9]+")
@@ -104,28 +101,6 @@ def member_digest(root: Path) -> str:
 def package_version() -> str:
     with open(ROOT / "pyproject.toml", "rb") as handle:
         return str(tomllib.load(handle)["project"]["version"])
-
-
-def build_docs(out_docs: Path) -> None:
-    must_run("uv", "run", "--", "python", "scripts/generate_query_docs.py")
-    must_run("uv", "run", "--", "python", "scripts/generate_compat_docs.py")
-    wanted: set[str] = set()
-    for path in git_ls_files():
-        if not path.startswith("docs/"):
-            continue
-        if path.startswith("docs/blog/") or path == "docs/CNAME":
-            continue
-        wanted.add(path)
-    queries = ROOT / GENERATED_QUERIES
-    if queries.is_dir():
-        for path in sorted(queries.rglob("*")):
-            if path.is_file():
-                wanted.add(str(path.relative_to(ROOT)))
-    for rel in sorted(wanted):
-        src = ROOT / rel
-        dst = out_docs / Path(rel).relative_to("docs")
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
 
 
 def build_repo_files(out: Path, core_sha: str) -> None:
@@ -213,55 +188,6 @@ def build_parity(out_parity: Path) -> None:
     out_parity.mkdir(parents=True, exist_ok=True)
     for fixture in sorted(src.glob("*.json")):
         shutil.copy2(fixture, out_parity / fixture.name)
-
-
-LINK_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
-INLINE_LINK = re.compile(r"\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
-REFERENCE_LINK = re.compile(r"^\s*\[[^\]]+\]:\s*<?([^\s>]+)>?", re.MULTILINE)
-AUTOLINK = re.compile(r"<(\.{1,2}/[^>\s]+)>")
-
-
-def link_targets(text: str) -> list[str]:
-    targets = dict.fromkeys(INLINE_LINK.findall(text) + REFERENCE_LINK.findall(text) + AUTOLINK.findall(text))
-    return [
-        target for target in targets if target and not target.startswith(("#", "/")) and not LINK_SCHEME.match(target)
-    ]
-
-
-def referenced_downloads(docs_dir: Path, tracked: list[str]) -> list[str]:
-    files = set(tracked)
-    found: set[str] = set()
-    for source in sorted(docs_dir.rglob("*.md")):
-        page = "docs/" + source.relative_to(docs_dir).as_posix()
-        text = source.read_text(encoding="utf-8", errors="replace")
-        for target in link_targets(text):
-            clean = unquote(target.split("#", 1)[0].split("?", 1)[0])
-            if not clean:
-                continue
-            resolved = posixpath.normpath(posixpath.join(posixpath.dirname(page), clean))
-            if resolved.startswith(("docs/", "../")) or resolved in ("docs", ".", ".."):
-                continue
-            if resolved in files and not resolved.endswith((".md", ".rst")):
-                found.add(resolved)
-                if resolved.startswith("_sources/tpc-ds/query_templates/") and resolved.endswith(".tpl"):
-                    sidecar = "_sources/tpc-ds/EULA.txt"
-                    if sidecar in files:
-                        found.add(sidecar)
-                elif resolved.startswith("benchbox/_binaries/tpc-h/templates/queries/") and resolved.endswith(".sql"):
-                    sidecar = "_sources/tpc-h/EULA.txt"
-                    if sidecar in files:
-                        found.add(sidecar)
-    return sorted(found)
-
-
-def build_downloads(out_downloads: Path, docs_dir: Path) -> list[str]:
-    out_downloads.mkdir(parents=True, exist_ok=True)
-    paths = referenced_downloads(docs_dir, git_ls_files())
-    for rel in paths:
-        target = out_downloads / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROOT / rel, target)
-    return paths
 
 
 def build_prompt_catalog(out: Path) -> None:
@@ -460,6 +386,12 @@ def cmd_build(args: argparse.Namespace) -> int:
         if problems:
             raise RuntimeError(problems[0])
     wanted = MEMBERS_BY_SCHEMA[schema]
+    relocated = [name for name in RELOCATED_MEMBERS if name in wanted]
+    if relocated:
+        raise RuntimeError(
+            f"profile {args.profile} (schema {schema}) needs the {', '.join(relocated)} members, whose sources moved "
+            "to the benchbox-site repository; build it from a core revision before the docs removal"
+        )
     head = must_run("git", "-C", str(ROOT), "rev-parse", "HEAD").strip()
     core_sha = args.core_sha or head
     if head != core_sha:
@@ -475,32 +407,17 @@ def cmd_build(args: argparse.Namespace) -> int:
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
-    with tempfile.TemporaryDirectory() as scratch_root:
-        scratch = Path(scratch_root)
-        docs_dir = out / "docs" if "docs" in wanted else scratch / "docs"
-        downloads_dir = out / "downloads" if "downloads" in wanted else scratch / "downloads"
-        build_docs(docs_dir)
-        regenerated = [
-            line
-            for line in must_run("git", "-C", str(ROOT), "status", "--porcelain").splitlines()
-            if not line.startswith("??")
-        ]
-        if regenerated:
-            raise RuntimeError(f"docs generation dirtied the tree at {core_sha}: {regenerated[:5]}")
-        build_repo_files(out / "repo-files.json", core_sha)
-        build_explorer_snapshot(out / "explorer")
-        build_contract(out / "explorer/contract.json")
-        build_fixtures(out / "explorer/fixtures")
-        build_parity(out / "explorer/parity")
-        (out / "landing").mkdir(parents=True, exist_ok=True)
-        build_prompt_catalog(out / "landing/prompt-catalog.json")
-        shutil.copy2(ROOT / "_project/design/api-public-symbols.json", out / "api-public-symbols.json")
-        build_downloads(downloads_dir, docs_dir)
-        if "docs-data" in wanted:
-            build_docs_data(out / "docs-data")
-        if "doc-contracts.json" in wanted:
-            build_doc_contracts(out / "doc-contracts.json")
-        build_attestations(out / "attestations.json", out, core_sha, parent_sha)
+    build_repo_files(out / "repo-files.json", core_sha)
+    build_explorer_snapshot(out / "explorer")
+    build_contract(out / "explorer/contract.json")
+    build_fixtures(out / "explorer/fixtures")
+    build_parity(out / "explorer/parity")
+    (out / "landing").mkdir(parents=True, exist_ok=True)
+    build_prompt_catalog(out / "landing/prompt-catalog.json")
+    shutil.copy2(ROOT / "_project/design/api-public-symbols.json", out / "api-public-symbols.json")
+    build_docs_data(out / "docs-data")
+    build_doc_contracts(out / "doc-contracts.json")
+    build_attestations(out / "attestations.json", out, core_sha, parent_sha)
     members = {name: member_digest(out / name) for name in wanted}
     manifest = {
         "schema": schema,
