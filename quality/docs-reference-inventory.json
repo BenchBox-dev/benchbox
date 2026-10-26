@@ -3146,22 +3146,6 @@
     "file": 1
    },
    "occurrences": 1,
-   "path": "tests/unit/core/tpcds_obt/test_tpcds_obt_model.py",
-   "rule": "lock-tests-core",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/benchmarks/tpc-ds-obt-lineage.md"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
    "path": "tests/unit/docs/test_linkcheck_ignore_policy.py",
    "rule": "lock-tests-docs-directory",
    "target_count": 1,
@@ -4398,23 +4382,23 @@
    "fixture-data": 44,
    "governance-stays": 8,
    "historical-record": 112,
-   "lock-test": 12,
+   "lock-test": 11,
    "prose-link-pinned": 15,
    "site-pipeline-cutover": 4,
    "wiring-updated": 30
   },
-  "files": 232,
+  "files": 231,
   "kinds": {
    "built-url": 29042,
    "dir": 167,
    "extra": 31,
-   "file": 1416,
+   "file": 1415,
    "generated": 3,
    "pattern": 316,
    "root": 195,
    "unresolved": 2047
   },
-  "references": 33217,
+  "references": 33216,
   "unclassified": 0
  }
 }

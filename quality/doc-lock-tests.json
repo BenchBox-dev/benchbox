@@ -315,12 +315,12 @@
     {
       "id": "tpcds-obt-lineage-page",
       "file": "tests/unit/core/tpcds_obt/test_tpcds_obt_model.py",
-      "tests": ["test_lineage_page_is_generated_from_the_model"],
-      "classification": "generated-page-cutover",
+      "tests": ["test_lineage_markdown_renders_the_whole_model_deterministically"],
+      "classification": "governance-stays",
       "contract_fields": [],
       "site_reads": [],
-      "reason": "Compares a committed site-owned page with benchbox.core.tpcds_obt.lineage.render_lineage_markdown. The export has no field for the OBT model, so the page cannot yet be rendered or checked by the site from exported facts.",
-      "cutover_action": "Open item: export the OBT lineage model with the docs data so the site renders the page, then delete this test and the markdown renderer; until then the page and the test stay together in core."
+      "reason": "The site holds the lineage page; core keeps the renderer and checks that it covers every fact column, dimension role and channel of the OBT model. The export has no field for the OBT model, so the site cannot yet render the page from exported facts.",
+      "cutover_action": "Open item: export the OBT lineage model with the docs data so the site renders the page, then delete this test and the markdown renderer."
     },
     {
       "id": "public-contract-drift-script",
