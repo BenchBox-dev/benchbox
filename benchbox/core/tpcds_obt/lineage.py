@@ -17,7 +17,8 @@ HEADER = f"""# TPC-DS OBT column lineage
 
 This page is generated from `benchbox/core/tpcds_obt/model.yaml`, the declarative model that drives the ETL, the
 `CREATE TABLE` statement and this page. Regenerate it with
-`uv run -- python -m benchbox.core.tpcds_obt.lineage > docs/benchmarks/tpc-ds-obt-lineage.md`.
+`uv run -- python -m benchbox.core.tpcds_obt.lineage`; the site publishes the output at
+https://benchbox.dev/docs/benchmarks/tpc-ds-obt-lineage.html.
 
 `{OBT_TABLE_NAME}` has {len(get_obt_columns())} columns at `dimension_mode=full`. Each channel contributes the rows of its
 sales table, left-joined to the matching row of its returns table on the order or ticket number and the item.

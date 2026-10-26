@@ -13,7 +13,8 @@ commit.
   `site-owned` at the input commit, plus the earlier names those paths had
   (rename lineage taken from `git log -M`).
 - Drops everything else at every revision: `core-only` and `core-generated`
-  paths, `docs/benchmarks/queries/`, `docs/blog/`, `docs/CNAME`, and any
+  paths, the generated per-query pages directory (`QUERY_ROOT` in
+  `scripts/docs_history_filter.py`), `docs/blog/`, `docs/CNAME`, and any
   `*.py`, `*.pyi`, `*.pem`, `pyproject.toml` or `uv.lock` path.
 - Keeps original authors, committers, dates, commit messages and
   `Co-Authored-By` trailers. Commit hashes cited in messages are left as

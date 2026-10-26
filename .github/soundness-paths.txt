@@ -82,7 +82,6 @@ file	_project/scripts/explorer_publish.py
 file	scripts/generate_corpus_inventory.py
 file	scripts/validate_submission.py
 file	scripts/site_inputs.py
-file	scripts/check_docs_freeze.py
 file	scripts/docs_history_filter.py
 file	make/site-inputs.mk
 file	.github/workflows/validate-submission.yml

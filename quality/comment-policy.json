@@ -16017,30 +16017,6 @@
       "count": 1
     },
     {
-      "path": "scripts/check_doc_relative_links.py",
-      "symbol": "",
-      "text": "# Copyright 2026 Joe Harris / BenchBox Project",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "The repository contribution rule in COPYRIGHT.md requires appropriate copyright headers. Retain this existing authored notice payload unchanged in a source header.",
-      "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
-      "owner": "comment-cleanup-operational-tooling",
-      "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
-      "path": "scripts/check_doc_relative_links.py",
-      "symbol": "",
-      "text": "# Licensed under the MIT License.",
-      "kind": "notice",
-      "consumer": "LICENSE",
-      "necessity": "Preserve the existing per-file MIT-license reference conservatively while individual-file notice obligations are adjudicated. LICENSE requires copyright and permission notices in distributed copies; no claim is made that this abbreviated reference is legally required.",
-      "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
-      "owner": "comment-cleanup-operational-tooling",
-      "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
       "path": "scripts/check_example_syntax.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
@@ -27237,30 +27213,6 @@
       "count": 1
     },
     {
-      "path": "tests/unit/test_generate_query_docs.py",
-      "symbol": "",
-      "text": "# Copyright 2026 Joe Harris / BenchBox Project",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "The repository contribution rule in COPYRIGHT.md requires appropriate copyright headers. Retain this existing authored notice payload unchanged in a source header.",
-      "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
-      "owner": "comment-cleanup-core-catalogs",
-      "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
-      "path": "tests/unit/test_generate_query_docs.py",
-      "symbol": "",
-      "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
-      "kind": "notice",
-      "consumer": "LICENSE",
-      "necessity": "Preserve the existing per-file MIT-license reference conservatively while individual-file notice obligations are adjudicated. LICENSE requires copyright and permission notices in distributed copies; no claim is made that this abbreviated reference is legally required.",
-      "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
-      "owner": "comment-cleanup-core-catalogs",
-      "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
       "path": "tests/unit/test_init.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
@@ -31517,17 +31469,6 @@
       "necessity": "This optimizer hint is part of the query text; the engine reads it to choose a broadcast join, so the query plan depends on it.",
       "alternative": "Configure the join strategy through session settings instead of an inline hint.",
       "owner": "comment-cleanup-read-primitives",
-      "removal": "Remove when the query no longer needs the hinted join strategy."
-    },
-    {
-      "path": "docs/benchmarks/amplab.md",
-      "symbol": "block:15:",
-      "text": "/*+ BROADCAST(r) */",
-      "kind": "directive",
-      "consumer": "docs/benchmarks/amplab.md",
-      "necessity": "This optimizer hint is part of the query text; the engine reads it to choose a broadcast join, so the query plan depends on it.",
-      "alternative": "Configure the join strategy through session settings instead of an inline hint.",
-      "owner": "comment-cleanup-documentation-samples",
       "removal": "Remove when the query no longer needs the hinted join strategy."
     },
     {

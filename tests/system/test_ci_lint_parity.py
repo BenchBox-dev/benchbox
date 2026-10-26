@@ -82,8 +82,6 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
         "Check bundled SQLGlot carries no published advisory",
     ): "sqlglot-advisory-check",
     ("test.yml", "test-package", "Build package"): "test-package",
-    ("ci.yml", "dist-artifact", "Verify source bundled binary manifest"): "scripts/bundled_binary_manifest.py",
-    ("ci.yml", "dist-artifact", "Build wheel and sdist"): "scripts/verify_distribution_binaries.py",
     ("ci.yml", "ci-paths", "Check release content"): "release-check",
     ("ci.yml", "ci-paths", "Check changelog fragments"): "changelog-check",
     (
@@ -98,7 +96,6 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "content-guard", "Validate YAML hygiene"): "pr-content-guard",
     ("ci.yml", "content-guard", "Validate artifact hygiene"): "pr-content-guard",
     ("ci.yml", "content-guard", "Validate markdown hygiene"): "pr-content-guard",
-    ("ci.yml", "content-guard", "Validate public contract drift guard"): "pr-content-guard",
     ("ci.yml", "skill-integrity", "Validate skill config, receipt, and tool pin"): "skill-integrity-check",
     ("ci.yml", "skill-integrity", "Validate tracked artifact hygiene"): "skill-integrity-check",
     ("ci.yml", "skill-integrity", "Enforce untracked mirror boundary"): "ci-lint",
@@ -133,10 +130,14 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "parity-check", "Verify parity fixtures match Python source"): "parity-check",
     ("ci.yml", "example-validation", "Validate examples and docs references"): "docs-validate",
     ("ci.yml", "example-validation", "Generate documentation inputs"): "docs-generate",
-    ("ci.yml", "example-validation", "Enforce the site-owned documentation freeze"): "docs-freeze-check",
 }
 
 MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
+    ("ci.yml", "code-test", "Run changed tests on the curated release tree"): (
+        "The curated release-tree selector runs hosted against the PR base ref; no "
+        "standalone Make target invokes scripts/release_curation_dry_run.py, and "
+        "its logic is pinned by tests/unit/scripts/test_release_curation_dry_run.py."
+    ),
     ("ci.yml", "ci-paths", "Validate TODO JSON/Git state contract"): (
         "Hosted classifier bootstrap; it runs before dependency installation and "
         "has no standalone Make target. The local preflight consumes the same "
@@ -466,18 +467,12 @@ def test_non_lint_merge_gate_guards_have_local_equivalent_or_documented_exemptio
 
 
 def test_merge_gate_local_equivalents_and_exemptions_are_documented() -> None:
-    docs = (REPO_ROOT / "docs" / "operations" / "ci-local-parity.md").read_text(encoding="utf-8")
     makefile = "\n".join(
         path.read_text(encoding="utf-8") for path in [MAKEFILE, *sorted((REPO_ROOT / "make").glob("*.mk"))]
     )
-    assert "Hosted-only guard inventory" in docs
 
     for key, target in MERGE_GATE_LOCAL_EQUIVALENTS.items():
-        workflow_name, job_name, step_name = key
-        if workflow_name == "publication-lane-docs.yml" and step_name == "Verify lane isolation":
-            assert target in makefile, f"{key} no longer names a Make target"
-        elif target not in makefile and target not in docs:
-            raise AssertionError(f"{key} local equivalent {target!r} is not discoverable")
+        assert target in makefile, f"{key} local equivalent {target!r} is not discoverable in a Make target"
 
     assert all(reason.strip() for reason in MERGE_GATE_EXEMPTIONS.values())
 

@@ -132,6 +132,6 @@ detected behavior in five buckets:
 | `unregistered_detected_behavior` | Source inspection found CREATE TABLE rewrite behavior with no rule or exemption; CI fails. |
 | `unknown_uninspectable_behavior` | Source inspection could not safely inspect a platform file; CI fails rather than claiming clean. |
 
-`make compat-docs-check` runs the generated compatibility-doc drift check and
+`make compat-inventory-check` runs
 `uv run -- python -m benchbox.sql_compat.inventory --check-ddl-drift`, and the
 PR workflow runs that target in the code lint job.

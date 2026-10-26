@@ -448,94 +448,6 @@ jobs:
           fi
           uv run -- pre-commit run markdownlint --files "${existing_markdown_paths[@]}"
 
-      - name: Validate public contract drift guard
-        shell: bash
-        run: |
-          if [ ! -s .ci-paths/docs.txt ] && [ ! -s .ci-paths/markdown.txt ]; then
-            echo "No docs or markdown paths changed."
-            exit 0
-          fi
-          uv run -- python - <<'PY'
-          from pathlib import Path
-
-          contract = Path("docs/reference/public-contracts.md").read_text(encoding="utf-8")
-          readme = Path("README.md").read_text(encoding="utf-8")
-
-          forbidden_readme_count_claims = [
-              "Twenty-Two Benchmarks",
-              "SQL Platforms (",
-              "DataFrame Platforms (",
-          ]
-          offenders = [phrase for phrase in forbidden_readme_count_claims if phrase in readme]
-          if offenders:
-              raise SystemExit(
-                  "README.md has exact hand-maintained count claims; use registry-derived checks "
-                  f"or mark them non-authoritative: {offenders}"
-              )
-
-          required_surfaces = [
-              "CLI commands and documented options",
-              "Top-level Python wrapper facades",
-              "`benchbox.base.BaseBenchmark`",
-              "`BaseBenchmark.run_with_platform`",
-              "Adapter subclassing hooks and base mixins",
-              "Platform registry metadata",
-              "MCP tools",
-              "Result JSON bundles",
-              "Explorer read model and generated browser inputs",
-              "Public submission validator behavior",
-              "SQL compatibility rule catalog",
-              "Generated compatibility docs",
-              "`benchbox.experimental` namespace",
-              "`_project` scripts, audits, and analysis artifacts",
-              "TODO, DONE, and ADR/future-state docs",
-          ]
-          missing_surfaces = [surface for surface in required_surfaces if surface not in contract]
-          if missing_surfaces:
-              raise SystemExit(f"public-contracts.md missing required surfaces: {missing_surfaces}")
-
-          required_statuses = [
-              "`stable`",
-              "`beta`",
-              "`experimental`",
-              "`repo_only`",
-              "`deprecated`",
-              "`document_only`",
-          ]
-          missing_statuses = [status for status in required_statuses if status not in contract]
-          if missing_statuses:
-              raise SystemExit(f"public-contracts.md missing support_status values: {missing_statuses}")
-
-          from benchbox.core.benchmark_registry import list_benchmark_ids, list_loader_benchmark_ids
-          from benchbox.core.platform_registry import PlatformRegistry
-          from benchbox.core.results.schema import SCHEMA_VERSION
-
-          platforms = PlatformRegistry.get_all_platform_metadata()
-          sql_capable = sum(1 for item in platforms.values() if item.get("capabilities", {}).get("supports_sql"))
-          dataframe_capable = sum(
-              1 for item in platforms.values() if item.get("capabilities", {}).get("supports_dataframe")
-          )
-          dual_mode = sum(
-              1
-              for item in platforms.values()
-              if item.get("capabilities", {}).get("supports_sql")
-              and item.get("capabilities", {}).get("supports_dataframe")
-          )
-
-          source_fragments = [
-              f"{len(list_benchmark_ids())} benchmark metadata entries",
-              f"{len(list_loader_benchmark_ids())} loader-resolved IDs",
-              f"{len(platforms)} platform metadata entries",
-              f"{sql_capable} SQL-capable",
-              f"{dataframe_capable} DataFrame-capable",
-              f"{dual_mode} dual-mode",
-              f"Current result schema version: `{SCHEMA_VERSION}`",
-          ]
-          missing_fragments = [fragment for fragment in source_fragments if fragment not in contract]
-          if missing_fragments:
-              raise SystemExit(f"public-contracts.md source-derived claims are stale: {missing_fragments}")
-          PY
-
   skill-integrity:
     name: skill-integrity
     needs: ci-paths
@@ -764,9 +676,9 @@ jobs:
         run: uv run --project _project/scripts --no-sync -- python _project/scripts/uat_loc_table.py --check
 
       - name: Compatibility governance drift check
-        id: guard-compat-docs
+        id: guard-compat-inventory
         continue-on-error: true
-        run: make compat-docs-check
+        run: make compat-inventory-check
 
       - name: Platform manifest drift check
         id: guard-platform-manifest
@@ -1729,23 +1641,6 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.11"
-
-      - name: Enforce the site-owned documentation freeze
-        if: ${{ github.event_name == 'pull_request' }}
-        env:
-          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -euo pipefail
-          [[ "$EVENT_BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid event base SHA" >&2; exit 1; }
-          if ! git cat-file -e "$EVENT_BASE_SHA:scripts/check_docs_freeze.py" 2>/dev/null; then
-            echo "The base revision carries no documentation freeze gate."
-            exit 0
-          fi
-          trusted="$RUNNER_TEMP/trusted-docs-freeze"
-          mkdir -p "$trusted"
-          git show "$EVENT_BASE_SHA:scripts/check_docs_freeze.py" > "$trusted/check_docs_freeze.py"
-          git show "$EVENT_BASE_SHA:scripts/docs_history_filter.py" > "$trusted/docs_history_filter.py"
-          python -I "$trusted/check_docs_freeze.py" --root "$PWD" --base "$EVENT_BASE_SHA" --head HEAD
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78

@@ -52,9 +52,6 @@ def build_plan(name: str, kind: PlatformKind) -> ScaffoldPlan:
     common_files = (
         "benchbox/core/platform_manifest.py",
         "pyproject.toml",
-        f"docs/platforms/{cli_name}.md",
-        "docs/platforms/comparison-matrix.md",
-        "docs/platforms/support-status.md",
     )
 
     if kind == "sql":
@@ -62,7 +59,6 @@ def build_plan(name: str, kind: PlatformKind) -> ScaffoldPlan:
             f"benchbox/platforms/{slug}.py",
             *common_files,
             f"tests/unit/platforms/test_{slug}_adapter.py",
-            "docs/development/new-platform-acceptance-checklist.md",
         )
         checklist = (
             "Add adapter with lazy/guarded SDK imports.",
@@ -81,8 +77,6 @@ def build_plan(name: str, kind: PlatformKind) -> ScaffoldPlan:
             "benchbox/platforms/adapter_factory.py",
             *common_files,
             f"tests/unit/platforms/dataframe/test_{slug}_df.py",
-            f"docs/platforms/{cli_name}-dataframe.md",
-            "docs/development/new-platform-acceptance-checklist.md",
         )
         checklist = (
             "Choose expression, pandas, Spark, or new DataFrame family.",

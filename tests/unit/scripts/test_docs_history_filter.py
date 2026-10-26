@@ -69,15 +69,18 @@ def test_strip_message_is_identity_without_session_metadata(tool):
         "docs/key.pem",
         "docs/blog/post.md",
         "docs/CNAME",
-        "docs/benchmarks/queries/q1.md",
     ],
 )
 def test_prohibited_paths(tool, path):
     assert tool.is_prohibited(path)
 
 
+def test_generated_query_root_stays_prohibited(tool):
+    assert tool.is_prohibited(tool.QUERY_ROOT + "q1.md")
+
+
 def test_site_owned_markdown_is_not_prohibited(tool):
-    assert not tool.is_prohibited("docs/platforms/duckdb.md")
+    assert not tool.is_prohibited("docs/guides/page.md")
 
 
 def test_privacy_rules_are_read_from_policy_text(tool):
@@ -164,11 +167,11 @@ def test_verify_lineage_detects_lost_rename_history(tool, tmp_path):
 def test_split_ownership_excludes_generated_outputs(tool):
     manifest = {
         "files": {"docs/a.md": "site-owned", "docs/b.md": "core-only", "docs/c.md": "core-generated"},
-        "generated": [{"path": "docs/benchmarks/queries/"}],
+        "generated": [{"path": "docs/generated/queries/"}],
     }
     owned, excluded = tool.split_ownership(manifest)
     assert owned == {"docs/a.md"}
-    assert excluded == {"docs/b.md", "docs/c.md", "docs/benchmarks/queries/"}
+    assert excluded == {"docs/b.md", "docs/c.md", "docs/generated/queries/"}
 
 
 @pytest.mark.skipif(shutil.which("git-filter-repo") is None, reason="git-filter-repo not installed")

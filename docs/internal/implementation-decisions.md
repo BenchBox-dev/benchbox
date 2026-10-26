@@ -1,6 +1,6 @@
 # Implementation decisions behind the public contracts
 
-Maintainer notes split out of `docs/reference/public-contracts.md`: where
+Maintainer notes split out of the [public contracts page](https://benchbox.dev/docs/reference/public-contracts.html): where
 behaviour lives in the code and how the SQL compatibility catalog is governed.
 
 ## SQL Compatibility Governance Decision

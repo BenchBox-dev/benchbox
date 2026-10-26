@@ -7,7 +7,7 @@
 
 Related TODOs: `arch-ssb-family-plugin-seam-pilot`, `benchmark-api-and-core-boundary-cleanup`
 
-Composition prerequisite: [`Core Kernel and Runtime Composition Boundary`](../../../development/adr/adr-runtime-composition-boundary.md).
+Composition prerequisite: [`Core Kernel and Runtime Composition Boundary`](https://benchbox.dev/docs/development/adr/adr-runtime-composition-boundary.html).
 The plugin seam must use the selected core-kernel boundary; it must not create
 `benchbox.runtime` or a second generic execution helper.
 

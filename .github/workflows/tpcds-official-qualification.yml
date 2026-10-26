@@ -47,7 +47,7 @@ jobs:
         env:
           REPORT_OUTCOME: ${{ steps.report.outcome }}
         run: |
-          echo "TPC-DS SF1 qualification outcome: ${REPORT_OUTCOME}. The job fails on a DataFrame-to-SQL divergence, an unclassified printed-answer mismatch or error, or an empty result for a statement that is empty at SF 0.01. Classified differences are listed in docs/development/tpcds-dataframe-parity.md; strict results stay in the artifacts. This report does not certify TPC compliance." >> "$GITHUB_STEP_SUMMARY"
+          echo "TPC-DS SF1 qualification outcome: ${REPORT_OUTCOME}. The job fails on a DataFrame-to-SQL divergence, an unclassified printed-answer mismatch or error, or an empty result for a statement that is empty at SF 0.01. Classified differences are listed in https://benchbox.dev/docs/development/tpcds-dataframe-parity.html; strict results stay in the artifacts. This report does not certify TPC compliance." >> "$GITHUB_STEP_SUMMARY"
           uv run -- python -m benchbox.core.tpcds.qualification.summary "${{ runner.temp }}/tpcds-qualification" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload qualification evidence
         if: always()

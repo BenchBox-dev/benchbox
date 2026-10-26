@@ -47,7 +47,6 @@ tests/unit/scripts/test_build_joinorder_data.py
 tests/unit/scripts/test_check_api_contract_symbols.py
 tests/unit/scripts/test_check_complexity.py
 tests/unit/scripts/test_check_dependency_bounds.py
-tests/unit/scripts/test_check_doc_relative_links.py
 tests/unit/scripts/test_check_duplicate_code.py
 tests/unit/scripts/test_check_makefile_inventory.py
 tests/unit/scripts/test_check_project_references.py

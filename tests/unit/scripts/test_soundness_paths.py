@@ -88,7 +88,6 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
         "scripts/generate_corpus_inventory.py",
         "scripts/validate_submission.py",
         "scripts/site_inputs.py",
-        "scripts/check_docs_freeze.py",
         "scripts/docs_history_filter.py",
         "make/site-inputs.mk",
         "_project/scripts/soundness_merge_digest.py",
@@ -119,13 +118,13 @@ def test_soundness_predicate_matches_review_required_paths(path: str) -> None:
         "benchbox/core/query_plans/comparison.py",
         "_project/decisions/independent-publication-a0-freeze-2026-08-31.md",
         "docs/internal/adr/adr-independent-publication-authorities.md",
-        "docs/development/adr/adr-public-result-id-permanence.md",
+        "docs/internal/adr/adr-duckdb-datasketches-vendoring.md",
         "docs/internal/adr/adr-published-results-slim-corpus-branch.md",
         "docs/internal/independent-publication-threat-model.md",
         "docs/internal/independent-publication-contract.md",
         "docs/internal/results-phase-2-runbook.md",
         "docs/internal/results-phase-3-runbook.md",
-        "docs/reference/hosted-results-contract.md",
+        "docs/internal/site-deploy.md",
         "docs/reference/threat-model.md",
         "tests/unit/scripts/test_soundness_paths.py",
         "AGENTS.md",
@@ -214,7 +213,7 @@ def test_tuning_trust_glob_covers_nested_introspection_modules() -> None:
 
 
 def test_any_soundness_path_recognises_tuning_trust_paths() -> None:
-    assert soundness.any_soundness_path(["docs/index.md", *TUNING_TRUST_FILES[:1]]) is True
+    assert soundness.any_soundness_path(["docs/internal/nightly-t3.md", *TUNING_TRUST_FILES[:1]]) is True
     assert soundness.any_soundness_path(["benchbox/platforms/duckdb_introspection.py"]) is True
     assert soundness.any_soundness_path(["benchbox/platforms/base/adapter.py", "benchbox/platforms/duckdb.py"]) is False
 

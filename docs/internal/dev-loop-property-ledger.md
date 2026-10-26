@@ -160,7 +160,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_check_api_contract_symbols.py` | product-safety |
 | `test_check_complexity.py` | tooling |
 | `test_check_dependency_bounds.py` | product-safety |
-| `test_check_doc_relative_links.py` | tooling |
 | `test_check_duplicate_code.py` | tooling |
 | `test_check_makefile_inventory.py` | tooling |
 | `test_check_project_references.py` | product-safety |
@@ -317,7 +316,6 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `generate_landing_quickstarts.py` | product-safety | Landing quickstart generation |
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |
 | `site_inputs_parent.py` | product-safety | Site-inputs parent resolution by SHA |
-| `check_doc_relative_links.py` | tooling | Docs hygiene |
 | `check_duplicate_code.py` | tooling | Hygiene |
 | `check_windows_antipatterns.py` | tooling | Hygiene |
 | `path_filter_decision.py` | tooling | Path classifier shared with ci.yml units |

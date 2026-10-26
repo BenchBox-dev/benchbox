@@ -233,7 +233,6 @@ HANDBACK_LINES = [
         "CONTRIBUTING.md",
         ".claude/commands/pr.md",
         "docs/agent/review-protocol.md",
-        "docs/development/development.md",
     ],
 )
 def test_handback_wording_fails_in_every_scanned_location(tmp_path: Path, line: str, target: str) -> None:

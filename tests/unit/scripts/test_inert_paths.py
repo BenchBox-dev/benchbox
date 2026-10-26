@@ -28,8 +28,6 @@ MACHINE_READ_SAMPLE = [
     "docs/agent/batch-feature-delivery.md",
     "docs/internal/repo-admin-settings.md",
     "docs/internal/dev-loop-worktrees.md",
-    "docs/operations/ci-local-parity.md",
-    "docs/reference/public-contracts.md",
     "docs/publish-allowlist.txt",
     "docs/publish-exclusions.txt",
     "docs/linkcheck_ignore.txt",
@@ -44,7 +42,6 @@ MACHINE_READ_SAMPLE = [
 INERT_SAMPLE = [
     "docs/internal/branch-rename-runbook.md",
     "_project/todo-db-export/index.md",
-    "docs/index.md",
 ]
 
 
@@ -120,8 +117,8 @@ def test_resolves_joined_path_chains() -> None:
 
 
 def test_resolves_os_path_join() -> None:
-    source = 'import os.path\np = os.path.join("docs", "operations", "ci-local-parity.md")\n'
-    assert "docs/operations/ci-local-parity.md" in _candidates(source)
+    source = 'import os.path\np = os.path.join("docs", "internal", "nightly-t3.md")\n'
+    assert "docs/internal/nightly-t3.md" in _candidates(source)
 
 
 def test_resolves_file_relative_constants() -> None:
@@ -159,7 +156,7 @@ def test_resolves_path_literal_sinks() -> None:
 
 
 def test_ignores_bare_mentions_and_tmp_paths() -> None:
-    source = 'OTHER = ["README.md", "docs/index.md"]\nchangelog = tmp_path / "CHANGELOG.md"\n'
+    source = 'OTHER = ["README.md", "docs/some-guide.md"]\nchangelog = tmp_path / "CHANGELOG.md"\n'
     assert _candidates(source) == set()
 
 
@@ -204,10 +201,9 @@ def test_guard_reports_no_unexcepted_inert_references(inert_scan: dict[str, list
 def test_guard_resolves_the_joined_path_consumers(inert_scan: dict[str, list[str]]) -> None:
     refs = inert_scan
     assert "docs/internal/repo-admin-settings.md" in refs["scripts/ruleset_drift_check.py"]
-    assert "docs/operations/ci-local-parity.md" in refs["tests/system/test_ci_lint_parity.py"]
     assert "README.md" in refs["benchbox/utils/version.py"]
-    assert "docs/publish-exclusions.txt" in refs["scripts/check_doc_external_links.py"]
-    assert "docs/linkcheck_ignore.txt" in refs["scripts/check_doc_external_links.py"]
+    assert "docs/publish-exclusions.txt" in refs["scripts/doc_contracts.py"]
+    assert "docs/linkcheck_ignore.txt" in refs["scripts/doc_contracts.py"]
     assert "_project/scripts/prompts/pr_review_followup.md" in refs["_project/scripts/pr_review_followups.py"]
 
 

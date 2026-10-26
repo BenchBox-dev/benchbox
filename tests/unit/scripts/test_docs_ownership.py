@@ -24,42 +24,44 @@ def git(root: Path, *args: str) -> None:
     subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=True)
 
 
+def _generated(reference: dict[str, Any]) -> list[dict[str, str]]:
+    return [dict(record) for record in reference["generated"]]
+
+
+def _transitions(reference: dict[str, Any]) -> dict[str, Any]:
+    return json.loads(json.dumps(reference["transitions"]))
+
+
 @pytest.fixture
 def ownership_repo(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
     root = tmp_path / "repo"
     root.mkdir()
     git(root, "init", "--quiet")
     reference = json.loads((ROOT / "quality/docs-ownership.json").read_text(encoding="utf-8"))
+    generated = _generated(reference)
+    file_outputs = sorted(record["path"] for record in generated if not record["path"].endswith("/"))
     files = {
         "docs/README.md": "core-only",
-        "docs/guides/README.md": "site-owned",
-        "docs/guides/public.md": "site-owned",
-        "docs/benchmarks/overview.md": "site-owned",
-        "docs/internal/private.md": "core-only",
-        "docs/agent/private.md": "core-only",
-        "docs/development/private.md": "core-only",
+        "docs/internal/kept.md": "core-only",
+        "docs/operations/local-platform-provisioning.tsv": "core-only",
+        "docs/publish-allowlist.txt": "core-only",
+        "docs/publish-exclusions.txt": "core-only",
+        "docs/linkcheck_ignore.txt": "core-only",
+        "docs/guides/moved.md": "site-owned",
+        file_outputs[0]: "core-generated",
     }
-    for transition in reference["transitions"].values():
-        for source in transition["sources"]:
-            files[source] = "core-only"
-    for record in reference["generated"]:
-        write_file(root, record["generator"])
-        if not record["path"].endswith("/"):
-            files[record["path"]] = "core-generated"
     for source in files:
         write_file(root, source)
-    write_file(root, "docs/development/public.md")
-    files["docs/development/public.md"] = "site-owned"
-    write_file(root, "docs/publish-allowlist.txt", "development/public.md\n")
-    write_file(root, "docs/publish-exclusions.txt", "internal/\nagent/\n")
-    write_file(root, ".gitignore", "docs/benchmarks/queries/\n")
+    sql_destination = reference["transitions"]["sql_contract"]["core_destination"]
+    write_file(root, sql_destination, "CREATE TABLE test;\n")
     write_file(root, "scripts/update_version.py", "DOC_RELEASE_PATTERN = 'fixture'\n")
-    generators = sorted({record["generator"] for record in reference["generated"]})
-    git(root, "add", ".gitignore", "scripts/update_version.py", *sorted(files), *generators)
+    tracked = [source for source, owner in files.items() if owner == "core-only"]
+    git(root, "add", *sorted(tracked), sql_destination, "scripts/update_version.py")
     manifest = {
         "schema": 1,
         "files": dict(sorted(files.items())),
-        **{key: reference[key] for key in ("generated", "transitions")},
+        "generated": generated,
+        "transitions": _transitions(reference),
     }
     return root, manifest
 
@@ -81,12 +83,16 @@ def assert_failure(result: subprocess.CompletedProcess[str], *fragments: str) ->
         assert fragment in error
 
 
+def directory_output(manifest: dict[str, Any]) -> dict[str, str]:
+    return next(record for record in manifest["generated"] if record["path"].endswith("/"))
+
+
 @pytest.mark.parametrize("custom_path", [False, True])
 def test_cli_accepts_complete_manifest_and_reports_measured_counts(
     ownership_repo: tuple[Path, dict[str, Any]], custom_path: bool
 ) -> None:
     root, manifest = ownership_repo
-    write_file(root, "docs/benchmarks/queries/tpch/1.md")
+    write_file(root, directory_output(manifest)["path"] + "untracked.md")
     write_file(root, "docs/guides/untracked.md")
     result = run_cli(root, manifest, custom_path)
     assert result.returncode == 0, result.stderr
@@ -100,13 +106,11 @@ def test_cli_accepts_complete_manifest_and_reports_measured_counts(
 @pytest.mark.parametrize(
     "case,fragments",
     [
-        ("missing", ("coverage mismatch", "docs/guides/public.md")),
-        ("stale", ("coverage mismatch", "docs/guides/stale.md")),
-        ("owner", ("unknown owner", "docs/guides/public.md")),
-        ("published", ("ownership mismatch", "docs/guides/public.md")),
-        ("private", ("ownership mismatch", "docs/internal/private.md")),
-        ("generated", ("ownership mismatch", "docs/compat/capability-matrix.md")),
-        ("landing-widened", ("ownership mismatch", "docs/README.md")),
+        ("missing", ("missing, untracked or unsafe source", "docs/internal/kept.md")),
+        ("stale", ("coverage mismatch", "docs/internal/kept.md")),
+        ("owner", ("unknown owner", "docs/guides/moved.md")),
+        ("generated", ("ownership mismatch", "expected 'core-generated'")),
+        ("landing-widened", ("is still tracked", "docs/README.md")),
     ],
 )
 def test_cli_rejects_incomplete_or_misclassified_ownership(
@@ -115,20 +119,31 @@ def test_cli_rejects_incomplete_or_misclassified_ownership(
     root, manifest = ownership_repo
     files = manifest["files"]
     if case == "missing":
-        del files["docs/guides/public.md"]
+        (root / "docs/internal/kept.md").unlink()
     elif case == "stale":
-        files["docs/guides/stale.md"] = "site-owned"
+        del files["docs/internal/kept.md"]
     elif case == "owner":
-        files["docs/guides/public.md"] = "unknown"
-    elif case == "published":
-        files["docs/guides/public.md"] = "core-only"
-    elif case == "private":
-        files["docs/internal/private.md"] = "site-owned"
+        files["docs/guides/moved.md"] = "unknown"
     elif case == "generated":
-        files["docs/compat/capability-matrix.md"] = "site-owned"
+        generated_path = next(path for path, owner in files.items() if owner == "core-generated")
+        files[generated_path] = "site-owned"
     else:
         files["docs/README.md"] = "site-owned"
     assert_failure(run_cli(root, manifest), *fragments)
+
+
+def test_cli_rejects_site_owned_page_left_in_the_tree(ownership_repo: tuple[Path, dict[str, Any]]) -> None:
+    root, manifest = ownership_repo
+    git(root, "add", "docs/guides/moved.md")
+    assert_failure(run_cli(root, manifest), "site-owned path", "must be absent from the core tree")
+
+
+def test_cli_rejects_relocated_source_left_in_the_tree(ownership_repo: tuple[Path, dict[str, Any]]) -> None:
+    root, manifest = ownership_repo
+    source = manifest["transitions"]["sql_contract"]["sources"][0]
+    write_file(root, source)
+    git(root, "add", source)
+    assert_failure(run_cli(root, manifest), "is still tracked", source)
 
 
 @pytest.mark.parametrize(
@@ -143,14 +158,14 @@ def test_cli_rejects_incomplete_or_misclassified_ownership(
 )
 def test_cli_rejects_unsafe_paths(ownership_repo: tuple[Path, dict[str, Any]], path: str, fragment: str) -> None:
     root, manifest = ownership_repo
-    manifest["files"][path] = manifest["files"].pop("docs/guides/public.md")
+    manifest["files"][path] = manifest["files"].pop("docs/guides/moved.md")
     assert_failure(run_cli(root, manifest), fragment, path if "\\" not in path else "docs")
 
 
 @pytest.mark.parametrize(
     "case,fragments",
     [
-        ("duplicate-file", ("duplicate JSON key", "docs/guides/public.md")),
+        ("duplicate-file", ("duplicate JSON key", "docs/guides/moved.md")),
         ("duplicate-top-level", ("duplicate JSON key", "schema")),
         ("unknown-field", ("must contain exactly",)),
         ("schema", ("unsupported ownership schema",)),
@@ -163,8 +178,8 @@ def test_cli_rejects_open_or_ambiguous_schema(
     root, manifest = ownership_repo
     if case == "duplicate-file":
         text = json.dumps(manifest).replace(
-            '"docs/guides/public.md": "site-owned"',
-            '"docs/guides/public.md": "core-only", "docs/guides/public.md": "site-owned"',
+            '"docs/guides/moved.md": "site-owned"',
+            '"docs/guides/moved.md": "core-only", "docs/guides/moved.md": "site-owned"',
         )
     elif case == "duplicate-top-level":
         text = json.dumps(manifest).replace('"schema": 1', '"schema": 1, "schema": 1')
@@ -179,32 +194,15 @@ def test_cli_rejects_open_or_ambiguous_schema(
     assert_failure(run_cli(root, text), *fragments)
 
 
-@pytest.mark.parametrize("case", ["missing-doc", "missing-generator", "untracked-generator", "escaped-source"])
-def test_cli_rejects_missing_or_unsafe_sources(ownership_repo: tuple[Path, dict[str, Any]], case: str) -> None:
-    root, manifest = ownership_repo
-    if case == "missing-doc":
-        (root / "docs/guides/public.md").unlink()
-    elif case == "missing-generator":
-        (root / "scripts/generate_query_docs.py").unlink()
-    elif case == "untracked-generator":
-        git(root, "rm", "--cached", "scripts/generate_query_docs.py")
-    else:
-        source = root / "docs/guides/public.md"
-        source.unlink()
-        outside = write_file(root.parent, "outside.md")
-        source.symlink_to(outside)
-    assert_failure(run_cli(root, manifest), "missing, untracked or unsafe source")
-
-
 @pytest.mark.parametrize(
     "case,fragments",
     [
-        ("broadened-root", ("contains tracked authored source", "docs/benchmarks/")),
-        ("wrong-generator", ("must map", "docs/benchmarks/queries/")),
+        ("tracked-generator", ("must be absent from the core tree",)),
+        ("tracked-output", ("must be absent from the core tree", "tracked")),
         ("duplicate", ("duplicate generated output",)),
         ("extra-field", ("exactly path and generator",)),
-        ("tracked-query", ("contains tracked authored source", "docs/benchmarks/queries/authored.md")),
-        ("unignored-query", ("must be git-ignored",)),
+        ("overlap", ("generated outputs overlap",)),
+        ("no-directory", ("must catalogue the relocated generated directory",)),
         ("unsafe-generator", ("unsafe repository path",)),
     ],
 )
@@ -212,22 +210,25 @@ def test_cli_rejects_invalid_generated_boundaries(
     ownership_repo: tuple[Path, dict[str, Any]], case: str, fragments: tuple[str, ...]
 ) -> None:
     root, manifest = ownership_repo
-    query = next(record for record in manifest["generated"] if record["path"].endswith("/"))
-    if case == "broadened-root":
-        query["path"] = "docs/benchmarks/"
-    elif case == "wrong-generator":
-        query["generator"] = "scripts/generate_compat_docs.py"
+    query = directory_output(manifest)
+    if case == "tracked-generator":
+        write_file(root, query["generator"])
+        git(root, "add", query["generator"])
+    elif case == "tracked-output":
+        output = query["path"] + "authored.md"
+        write_file(root, output)
+        git(root, "add", "--force", output)
     elif case == "duplicate":
         manifest["generated"].append(dict(query))
     elif case == "extra-field":
-        query["sources"] = ["docs/guides/public.md"]
-    elif case == "tracked-query":
-        path = "docs/benchmarks/queries/authored.md"
-        write_file(root, path)
-        git(root, "add", "--force", path)
-        manifest["files"][path] = "core-generated"
-    elif case == "unignored-query":
-        write_file(root, ".gitignore", "")
+        query["sources"] = ["docs/guides/moved.md"]
+    elif case == "overlap":
+        file_record = next(record for record in manifest["generated"] if not record["path"].endswith("/"))
+        file_record["path"] = query["path"] + "nested.md"
+    elif case == "no-directory":
+        for record in manifest["generated"]:
+            if record["path"].endswith("/"):
+                record["path"] = record["path"] + "index.md"
     else:
         query["generator"] = "scripts/../outside.py"
     assert_failure(run_cli(root, manifest), *fragments)
@@ -252,18 +253,30 @@ def test_cli_rejects_stale_marker_selector(
     assert_failure(run_cli(root, manifest), *fragments)
 
 
+@pytest.mark.parametrize(
+    "case,fragments",
+    [
+        ("missing-file", ("missing, untracked or unsafe source", "docs/operations/missing.tsv")),
+        ("empty-directory", ("holds no tracked files", "docs/operations/empty/")),
+    ],
+)
+def test_cli_rejects_missing_core_destination(
+    ownership_repo: tuple[Path, dict[str, Any]], case: str, fragments: tuple[str, ...]
+) -> None:
+    root, manifest = ownership_repo
+    if case == "missing-file":
+        manifest["transitions"]["operations_inventory"]["core_destination"] = "docs/operations/missing.tsv"
+    else:
+        manifest["transitions"]["operations_inventory"]["core_destination"] = "docs/operations/empty/"
+    assert_failure(run_cli(root, manifest), *fragments)
+
+
 def test_cli_handles_completed_contract_relocation(ownership_repo: tuple[Path, dict[str, Any]]) -> None:
     root, manifest = ownership_repo
-    sql_source = "docs/development/browser-duckdb-schema.sql"
-    sql_dest = "_project/design/browser-duckdb-schema.sql"
-    write_file(root, sql_dest, "CREATE TABLE test;\n")
-    git(root, "add", sql_dest)
-    git(root, "rm", "-f", sql_source)
-    del manifest["files"][sql_source]
+    transition = manifest["transitions"]["sql_contract"]
     result = run_cli(root, manifest)
     assert result.returncode == 0, result.stderr
 
-    write_file(root, sql_source, "stale source\n")
-    git(root, "add", sql_source)
-    manifest["files"][sql_source] = "core-only"
-    assert_failure(run_cli(root, manifest), "exists but source is still tracked")
+    write_file(root, transition["sources"][0], "stale source\n")
+    git(root, "add", transition["sources"][0])
+    assert_failure(run_cli(root, manifest), "is still tracked", transition["sources"][0])

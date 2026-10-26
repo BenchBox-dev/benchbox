@@ -286,7 +286,7 @@ def _check_local_platforms(
                 checked,
                 tuple(attempted),
                 f"local platform {platform!r} is unreachable and has no automated UAT bring-up; "
-                "see docs/operations/uat-local-provisioning.md",
+                "see https://benchbox.dev/docs/operations/uat-local-provisioning.html",
                 tuple(warnings),
             )
         attempted.append(platform)
