@@ -36,6 +36,7 @@ from benchbox.core.metadata_primitives.schema import (
     get_table_names as get_base_table_names,
 )
 from benchbox.core.query_catalog_base import TranslatableQueryMixin
+from benchbox.utils.dialect_utils import SQLTranslationError
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +210,7 @@ class MetadataPrimitivesBenchmark(TranslatableQueryMixin, BaseBenchmark):
 
         try:
             sql = self._resolve_query_sql(query_id, dialect)
-        except ValueError as e:
+        except (ValueError, SQLTranslationError) as e:
             return MetadataQueryResult(
                 query_id=query_id,
                 category=category,

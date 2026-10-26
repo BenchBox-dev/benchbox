@@ -261,6 +261,20 @@ class TestMetadataPrimitivesBenchmark:
         result = benchmark.generate_data()
         assert result == {}
 
+    def test_execute_query_reports_translation_failure(self, monkeypatch):
+        from benchbox.utils.dialect_utils import SQLTranslationError
+
+        benchmark = MetadataPrimitivesBenchmark()
+
+        def fail(query_id, dialect):
+            raise SQLTranslationError("cannot translate", None)
+
+        monkeypatch.setattr(benchmark, "_resolve_query_sql", fail)
+        result = benchmark.execute_query("schema_list_schemata", object(), dialect="postgres")
+
+        assert result.success is False
+        assert "cannot translate" in result.error
+
     def test_get_query(self):
 
         benchmark = MetadataPrimitivesBenchmark()
