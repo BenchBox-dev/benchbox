@@ -24777,15 +24777,10 @@
       "title": "Give the MySQL SQLGlot workaround retirement check real execution evidence"
     },
     "sqlglot-overlay-vacuous-guard": {
-      "claim": {
-        "expires_at": "2026-10-27T16:08:47Z",
-        "generation": "11be48fc10534a3ba70cad1b6600824e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Guard against SQLGlot version overlays that the vendored runtime ignores"
     },
     "sqlglot-refresh-one-command-benchbox-adoption": {
