@@ -16277,7 +16277,9 @@
     },
     "oracle-hunk-headingless-and-repeated-heading-collisions-20261024": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-carry-byte-identical-20261026"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Stop a relocated first hunk from keeping its SHIP when it has no function heading or a repeated heading"
