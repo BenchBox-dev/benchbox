@@ -48,11 +48,34 @@ def _cancel_step(job: dict[str, Any]) -> dict[str, Any]:
     return matches[0]
 
 
+EXPECTED_IF = "${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}"
+
+
 @pytest.mark.parametrize("name", AGGREGATE_JOBS)
 def test_aggregate_still_reports_on_every_outcome(name: str) -> None:
     job = _job(name)
-    assert job["if"] == "${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}"
+    assert job["if"] == EXPECTED_IF
     assert "scripts/ci_unit_result.py" in _aggregate_step(job)["run"]
+
+
+@pytest.mark.parametrize("name", AGGREGATE_JOBS)
+def test_aggregate_skips_a_cancelled_run_without_a_runner(name: str) -> None:
+    condition = "".join(str(_job(name)["if"]).split())
+    assert "!cancelled()" in condition
+
+
+@pytest.mark.parametrize("name", AGGREGATE_JOBS)
+def test_aggregate_still_reports_a_failed_run(name: str) -> None:
+    condition = "".join(str(_job(name)["if"]).split())
+    assert "always()" in condition
+    assert "failure()" not in condition
+
+
+@pytest.mark.parametrize("name", AGGREGATE_JOBS)
+def test_aggregate_never_masks_a_failure_as_success(name: str) -> None:
+    job = _job(name)
+    assert "continue-on-error" not in job
+    assert "continue-on-error" not in _aggregate_step(job)
 
 
 @pytest.mark.parametrize("name", AGGREGATE_JOBS)
