@@ -26847,18 +26847,13 @@
       "title": "Expand TPC-DS OBT Query Coverage to 93 Queries"
     },
     "tpcds-obt-rerun-defective-sf1-bundles-20261017": {
-      "claim": {
-        "expires_at": "2026-10-27T19:32:44Z",
-        "generation": "53a507ce1219423ca72b4a5cdb361305",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [
         "tpcds-obt-empty-queries-conversion-20261017",
         "local-rerun-bundles-fail-submission-validation-20261025"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Rerun the six published TPC-DS OBT SF1 results with correct queries and restore their rankings"
     },
     "tpcds-obt-static-query-catalog": {
