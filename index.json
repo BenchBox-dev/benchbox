@@ -17509,10 +17509,15 @@
       "title": "Build Shared Infrastructure for Benchmarking PostgreSQL Extensions"
     },
     "postgres-obt-alias-and-round-double-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T03:34:18Z",
+        "generation": "35415550bb7c4d8498398856d0ab8615",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "PostgreSQL: OBT Q36/Q70/Q86 alias in ORDER BY expression and Q2/Q78 round(double, int) fail"
     },
     "postgres-partitioning-date-domain-20261017": {
