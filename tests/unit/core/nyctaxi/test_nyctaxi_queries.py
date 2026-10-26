@@ -173,6 +173,23 @@ class TestQueryParameterGeneration:
         query2 = manager2.get_query("trips-per-hour")
         assert query1 == query2
 
+    def test_repeated_renders_on_one_instance_are_identical(self, start_date, end_date):
+        manager = NYCTaxiQueryManager(start_date=start_date, end_date=end_date, seed=42)
+        first = manager.get_queries()
+        manager.get_query("zone-detail")
+        assert manager.get_queries() == first
+
+    def test_unseeded_instance_renders_are_stable(self, start_date, end_date):
+        manager = NYCTaxiQueryManager(start_date=start_date, end_date=end_date)
+        assert manager.get_queries() == manager.get_queries()
+
+    def test_render_is_independent_of_call_order(self, start_date, end_date):
+        forward = NYCTaxiQueryManager(start_date=start_date, end_date=end_date, seed=7)
+        backward = NYCTaxiQueryManager(start_date=start_date, end_date=end_date, seed=7)
+        ids = list(forward.get_queries())
+        expected = {qid: forward.get_query(qid) for qid in ids}
+        assert {qid: backward.get_query(qid) for qid in reversed(ids)} == expected
+
 
 class TestQuerySQLValidity:
     @pytest.fixture
