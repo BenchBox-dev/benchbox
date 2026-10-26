@@ -14,9 +14,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-BINARY_ENV = "ORACLE_OMP_BINARY"
 CACHE_ENV = "BENCHBOX_OMP_CACHE"
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?")
@@ -68,6 +65,8 @@ def parse_pin(data: Any) -> Pin:
 
 
 def pin_from_text(text: str) -> Pin:
+    import yaml
+
     try:
         data = yaml.safe_load(text)
     except yaml.YAMLError as exc:
@@ -156,18 +155,6 @@ def install(pin: Pin, target: str | None = None, root: Path | None = None, fetch
         os.replace(candidate, binary)
     finally:
         candidate.unlink(missing_ok=True)
-    return binary
-
-
-def configured_binary() -> Path | None:
-    value = os.environ.get(BINARY_ENV, "")
-    return Path(value) if value else None
-
-
-def required_binary() -> Path:
-    binary = configured_binary()
-    if binary is None or not binary.is_file() or not os.access(binary, os.X_OK):
-        raise PinError(f"the pinned omp is not installed; {BINARY_ENV} does not name an executable")
     return binary
 
 

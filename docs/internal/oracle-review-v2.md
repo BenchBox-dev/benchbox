@@ -679,7 +679,9 @@ posts nothing to GitHub.
   token.
 - **Harness pin.** The `omp:` section of `.github/oracle-reviewers.yml` pins
   the version and each platform's URL and SHA-256. CI reads that section from
-  its trusted checkout through `cli.py install-omp`. The shared `omp_pin.py`
+  its trusted checkout through `cli.py install-omp`, running under isolated
+  `uv` with `pyyaml==6.0.3`. YAML is imported only when parsing the policy;
+  the other bare-Python CLI commands do not require PyYAML. The shared `omp_pin.py`
   installer downloads into `~/.cache/benchbox/omp/<version>/<platform>/omp`
   (`BENCHBOX_OMP_CACHE` overrides the cache root), verifies SHA-256 before
   making the download executable, and verifies its reported version before

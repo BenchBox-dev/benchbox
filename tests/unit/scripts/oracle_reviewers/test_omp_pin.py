@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -142,21 +144,6 @@ def test_the_cache_root_defaults_under_home_and_honours_the_override(
     assert omp_pin.cache_root() == tmp_path / "elsewhere"
 
 
-def test_required_binary_never_falls_back_to_path_omp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    decoy = tmp_path / "omp"
-    decoy.write_text("#!/bin/sh\n", encoding="utf-8")
-    decoy.chmod(0o755)
-    monkeypatch.setenv("PATH", str(tmp_path))
-    monkeypatch.delenv(omp_pin.BINARY_ENV, raising=False)
-    with pytest.raises(omp_pin.PinError, match="pinned omp is not installed"):
-        omp_pin.required_binary()
-    monkeypatch.setenv(omp_pin.BINARY_ENV, str(tmp_path / "missing"))
-    with pytest.raises(omp_pin.PinError):
-        omp_pin.required_binary()
-    monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
-    assert omp_pin.required_binary() == Path(sys.executable)
-
-
 def test_the_install_command_prints_the_binary_path_for_ci(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -213,3 +200,48 @@ def test_the_matching_legacy_pin_is_accepted(monkeypatch: pytest.MonkeyPatch) ->
     for key, value in zip(("OMP_URL", "OMP_SHA256", "OMP_VERSION"), (build.url, build.sha256, pin.version)):
         monkeypatch.setenv(key, value)
     omp_pin.check_legacy_pin(pin)
+
+
+@pytest.mark.parametrize("command", ["select", "scan-disk", "attempts", "finalize"])
+def test_bare_python_cli_imports_without_pyyaml(command: str) -> None:
+    root = POLICY_PATH.parents[1]
+    env = {**os.environ, "PYTHONPATH": str(root)}
+    probe = subprocess.run(
+        [sys.executable, "-S", "-c", "import importlib.util; assert importlib.util.find_spec('yaml') is None"],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert probe.returncode == 0, probe.stderr
+    result = subprocess.run(
+        [sys.executable, "-S", "-m", "_project.scripts.oracle_reviewers.cli", command, "--help"],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "usage:" in result.stdout
+
+
+def test_bare_python_disk_scan_runs_without_pyyaml(tmp_path: Path) -> None:
+    root = POLICY_PATH.parents[1]
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            "-m",
+            "_project.scripts.oracle_reviewers.cli",
+            "scan-disk",
+            "--root",
+            str(tmp_path),
+            "--env",
+            "NONEXISTENT_ORACLE_SMOKE_SECRET",
+        ],
+        cwd=root,
+        env={**os.environ, "PYTHONPATH": str(root)},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr

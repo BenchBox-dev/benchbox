@@ -406,7 +406,10 @@ def test_omp_is_installed_once_pinned_and_checked() -> None:
     assert linux["sha256"] == "16181401e616d7d895bae31fa97476f1513d4080807d60d3a1a04006191a1bb3"
     assert install["working-directory"] == "trusted"
     lines = install["run"].splitlines()
-    command = "python3 -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml"
+    command = (
+        "uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- "
+        "python -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml"
+    )
     assert lines[0] == f"binary=$({command})"
     assert lines[1] == '"$binary" --version | tee -a "$GITHUB_STEP_SUMMARY"'
     assert lines[2] == 'dirname "$binary" >> "$GITHUB_PATH"'
