@@ -16170,6 +16170,15 @@
       "status": "open",
       "title": "Post oracle-gate from the verdict run and leave thread resolution to the ruleset"
     },
+    "oracle-gate-hardening-lows-20261026": {
+      "claim": null,
+      "needs": [
+        "retire-oracle-review-workflow-20261021"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Validate oracle-gate dispatch inputs and ignore oracle-gate statuses not posted by the App"
+    },
     "oracle-gate-policy-change-refresh-20261025": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Tests that fail on develop and pass after: a bogus-PR dispatch posts nothing on a foreign head; a success posted by a non-App creator is ignored by each consumer.",
+    "The consumer list from gate 1 is recorded in context.",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "OWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q13 include low items. The force-back stale-green case is handled by oracle-gate-from-verdict-job-20261026 (pending on head change).",
+  "description": "Problem: a gate dispatch naming a bogus PR posts failure on an arbitrary head SHA (_project/scripts/oracle_gate.py:189-198), painting another PR red until its next event. pr-arm and landing tools read the newest oracle-gate status without checking who posted it (scripts/pr_arm.py:105-115); any writer with statuses access can post a success that suppresses a refresh or misleads tooling.\n\nOutcome: the gate posts only on a head that belongs to the named PR (verified against the PR's commits or current head); every remaining consumer of the oracle-gate status checks that the creator is the oracle App. If retirement of the pr-arm refresh already removed a consumer, record that it is moot.\n\nDecision gates:\n1. Enumerate every consumer of the oracle-gate status at implementation time (LSP references and grep across scripts and _project/scripts); fix each or record why it is moot.\n\nItem guardrails: the gate still fails closed; no change to decide().\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, then make agent-write-preflight; the primary clone is read-only. Never use git stash (refs/stash is shared across worktrees). Commit as Joe Harris <joeharris76@gmail.com>, staging explicit paths only; no git add -A, no --no-verify, no SKIP, no agent trailers. Durable text (commits, PR bodies, docs, code) carries no tracker ids, session labels or plan references. Maintained code has no explanatory comments or docstrings (make comment-policy-check). Before publishing run make docs-reference-inventory-check, make doc-contracts-guard and make pr-preflight, and self-review with the code review action, fixing every Critical and Required finding. Publish only with make pr-open: never gh pr create, a raw push-and-open, or a PR-body override line; if make pr-open refuses, stop and report the exact refusal instead of routing around it. Until oracle-omp-pin-single-source-20261026 merges, make pr-open may run only with PATH prefixed by the darwin-arm64 omp 18.12.1 build whose SHA-256 that item records, verified with shasum immediately before use; never any other side-loaded omp. Close out only with oracle SHIP on the exact head, every oracle thread answered (reply naming the fixing SHA, then resolve) and make pr-arm; never raw gh pr merge, a stand-in, an adjudication, or a ruleset or settings change. Never print tokens, keys, or the gateway URL or hostname; never spend model quota outside the review harness. Owner decisions are recorded in context and in the decisions file; a step that would contradict one stops and asks the owner.",
+  "links": [
+    "_project/scripts/oracle_gate.py",
+    "scripts/pr_arm.py",
+    "scripts/pr_landing.py",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevGateControls.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T15:00:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ed6446761276462daeb0830a6ef0bf30",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
