@@ -21778,10 +21778,15 @@
       "title": "Rotate credentials that passed through TLS clients trusting the compromised eMudhra CAs"
     },
     "ruleset-break-glass-procedure-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T02:11:12Z",
+        "generation": "9b4a38a7fc4e45d5a8bba51f28c611fb",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Document and verify the one-context ruleset relaxation used to recover a wedged develop"
     },
     "ruleset-drift-check-home-20261009": {
