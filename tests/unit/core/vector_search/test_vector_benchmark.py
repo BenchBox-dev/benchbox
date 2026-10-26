@@ -268,11 +268,11 @@ class TestVectorSearchQueryManager:
             desc = mgr.get_description(qid)
             assert isinstance(desc, str) and desc
 
-    def test_supported_dialects_includes_known_platforms(self):
+    def test_variant_dialects_includes_known_platforms(self):
         from benchbox.core.vector_search.queries import VectorSearchQueryManager
 
         mgr = VectorSearchQueryManager()
-        dialects = mgr.supported_dialects()
+        dialects = mgr.variant_dialects()
         assert "spark" in dialects
         assert "starrocks" in dialects
         assert "doris" in dialects

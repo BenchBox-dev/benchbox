@@ -55,25 +55,26 @@ class BaseQueryCatalogMixin:
         return dialect.lower().strip() in entry.variants
 
 
-CLOUD_TRANSLATED_DIALECTS: tuple[str, ...] = ("bigquery", "snowflake", "databricks", "spark")
+def is_native_dialect(source_dialect: str, target_dialect: str) -> bool:
+    from benchbox.utils.dialect_utils import resolve_sql_dialect
+
+    return resolve_sql_dialect(source_dialect) == resolve_sql_dialect(target_dialect)
 
 
 class TranslatableQueryMixin:
     _source_dialect: str = "netezza"
-
-    _translated_dialects: tuple[str, ...] | None = None
+    _native_source_passthrough: bool = False
 
     def translate_for_dialect(self, query_text: str, dialect: str | None) -> str:
         if not dialect:
-            return query_text
-        d = dialect.lower()
-        if self._translated_dialects is not None and not any(p in d for p in self._translated_dialects):
             return query_text
         return self.translate_query_text(query_text, dialect)
 
     def translate_query_text(self, query_text: str, target_dialect: str) -> str:
         from benchbox.utils.dialect_utils import translate_sql_query
 
+        if self._native_source_passthrough and is_native_dialect(self._source_dialect, target_dialect):
+            return query_text
         return translate_sql_query(
             query=query_text,
             target_dialect=target_dialect,
@@ -82,9 +83,9 @@ class TranslatableQueryMixin:
 
 
 __all__ = [
-    "CLOUD_TRANSLATED_DIALECTS",
     "BaseQueryCatalogMixin",
     "CatalogEntry",
     "QuerySkippedError",
     "TranslatableQueryMixin",
+    "is_native_dialect",
 ]

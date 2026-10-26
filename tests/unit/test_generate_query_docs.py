@@ -125,6 +125,23 @@ class TestRenderAll:
     def test_tpc_derived_pages_carry_the_trademark_notice(self, rendered):
         assert "Transaction Processing Performance Council" in rendered["datavault/index.md"]
 
+    def test_datavault_pages_render_translated_sql(self, rendered):
+        from benchbox.utils.dialect_utils import translate_sql_query
+
+        page = rendered["datavault/q1.md"]
+        assert "Rendered for **DataFusion** with default parameters." in page
+        assert "no dialect translation available" not in page
+        raw = gqd.get_sql_render("datavault", "1", dialect=None, bulk=True).sql
+        expected = translate_sql_query(
+            translate_sql_query(raw, "datafusion", source_dialect="duckdb"),
+            "datafusion",
+            source_dialect="datafusion",
+            identify=False,
+            strict=False,
+            pretty=True,
+        )
+        assert expected in page
+
     def test_no_page_leaks_raw_template_tokens(self, rendered):
         offenders = [p for p, text in rendered.items() if "Parameter placeholders are shown literally" in text]
         assert offenders == [], offenders

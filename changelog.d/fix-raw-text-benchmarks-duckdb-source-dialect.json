@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "TSBS DevOps, Data Vault, NYC Taxi, Flight Data, Vector Search, Read Primitives, Write Primitives and Metadata Primitives declare `duckdb` as their source dialect and route their SQL through `translate_sql_query` for every target platform, instead of handing engines raw DuckDB-flavoured text (TSBS and Data Vault translated only for cloud dialects, NYC Taxi and Flight Data for a few, Write and Metadata Primitives never). NULL ordering and other dialect semantics now follow the translation rules on every platform. Hand-written per-platform variants stay verbatim and are recorded with the reason translation cannot express them in the translation-bypass allowlist test, which pins that no benchmark reaches an engine without translation otherwise. The generated query docs for these benchmarks show the translated, pretty-printed DataFusion SQL instead of the authored text."
+    }
+  ]
+}

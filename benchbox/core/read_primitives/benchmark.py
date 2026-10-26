@@ -26,6 +26,9 @@ from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
 
 class ReadPrimitivesBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, DataGenerationMixin, BaseBenchmark):
+    _source_dialect = "netezza"
+    _native_source_passthrough = False
+
     def __init__(
         self,
         scale_factor: float = 1.0,

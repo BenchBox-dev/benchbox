@@ -28,6 +28,7 @@ from benchbox.core.primitives_benchmark_utils import (
     summarize_validation_failures,
     table_exists,
 )
+from benchbox.core.query_catalog_base import TranslatableQueryMixin
 from benchbox.core.transactional.benchmark_base import TransactionalBenchmarkBase
 from benchbox.core.write_primitives.generator import WritePrimitivesDataGenerator
 from benchbox.core.write_primitives.operations import WriteOperationsManager
@@ -145,7 +146,9 @@ def _resolve_validation_sql(
 _SINGLE_STATEMENT_SETUP_DIALECTS = frozenset({"sqlite", "databricks"})
 
 
-class WritePrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult"]):
+class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBase["OperationResult"]):
+    _source_dialect = "duckdb"
+    _native_source_passthrough = True
     _benchmark_label = "Write Primitives"
     _staging_tables = STAGING_TABLES
     DATAFRAME_WORKLOAD_USES_PLATFORM_ENGINE = False
@@ -262,6 +265,12 @@ class WritePrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult"]):
             return f"`{escaped}`"
         return quote_identifier_for_dialect(identifier, self._setup_dialect)
 
+    def _dialect_base_write_sql(self, operation: Any, platform_key: str | None) -> str:
+        sql = operation.write_sql
+        if not platform_key or self._rewrite_transactional_sql_for_platform(sql, platform_key) != sql:
+            return sql
+        return self.translate_query_text(sql, platform_key)
+
     def _get_effective_write_sql(
         self,
         operation: Any,
@@ -309,7 +318,7 @@ class WritePrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult"]):
         elif platform_override_sql is not None:
             effective_sql = platform_override_sql
         else:
-            effective_sql = operation.write_sql
+            effective_sql = self._dialect_base_write_sql(operation, platform_key or platform_fallback_key)
 
         if (platform_key or "").lower() == "duckdb" or (platform_fallback_key or "").lower() == "duckdb":
             duckdb_skip_reason = duckdb_write_primitive_skip_reason(operation, effective_sql)
@@ -774,13 +783,17 @@ class WritePrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult"]):
         }
 
     def get_queries(self, dialect: Optional[str] = None) -> dict[str, str]:
-        _ = dialect
         operations = self.operations_manager.get_all_operations()
-        return {
-            op_id: op.write_sql
-            for op_id, op in operations.items()
-            if op.aggregate_state is None and op.category.lower() != "sketch"
-        }
+        queries: dict[str, str] = {}
+        for op_id, op in operations.items():
+            if op.aggregate_state is not None or op.category.lower() == "sketch":
+                continue
+            found, override = self._lookup_platform_override(getattr(op, "platform_overrides", None), dialect)
+            if found and isinstance(override, str):
+                queries[op_id] = override
+            else:
+                queries[op_id] = self._dialect_base_write_sql(op, dialect)
+        return queries
 
     def get_queries_by_category(self, category: str) -> dict[str, str]:
         operations = self.operations_manager.get_operations_by_category(category)

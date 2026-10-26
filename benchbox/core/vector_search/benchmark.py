@@ -25,6 +25,9 @@ DEFAULT_DIMENSIONS = 128
 
 
 class VectorSearchBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, DataGenerationMixin, BaseBenchmark):
+    _source_dialect = "duckdb"
+    _native_source_passthrough = True
+
     def __init__(
         self,
         scale_factor: float = 1.0,
@@ -100,9 +103,6 @@ class VectorSearchBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, Dat
         platform_version: str | None = None,
     ) -> dict[str, str]:
         return self.query_manager.get_all_queries(dialect=dialect, platform_version=platform_version)
-
-    def supported_dialects(self) -> list[str]:
-        return self.query_manager.supported_dialects()
 
     def validate_query_result(self, query_id: Union[int, str], rows: Sequence[Sequence[object]]) -> None:
         validate_search_result(str(query_id), rows)
