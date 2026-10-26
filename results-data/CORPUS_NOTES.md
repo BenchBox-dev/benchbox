@@ -1,5 +1,24 @@
 # Corpus Generation Notes - 2026-04-03
 
+## Fork 30.24.0.17 published-impact audit (2026-10-26)
+
+- Spark and Databricks (fork #73): `DATE_TRUNC('DAY', x)` was written
+  `TRUNC(x, 'DAY')`, which returns NULL. No shipped query changes text; the only
+  DAY truncation is NYC Taxi `trips-per-day`, which already translated to
+  `DATE_TRUNC` and recorded 365 rows at SF 0.1, 1 and 10 on Databricks. No
+  sidecar changed.
+- QuestDB (fork #74): TPC-DS Q16, Q94 and Q95 and eleven other TPC-DS and
+  TPC-H queries now lower EXISTS, NOT EXISTS and IN subqueries to joins. No
+  QuestDB bundle exists, so no sidecar changed.
+- SQLite (fork #75): CREATE INDEX no longer carries NULLS FIRST or NULLS LAST.
+  Only Write Primitives creates indexes through translation, and no published
+  SQLite bundle ran it, so no sidecar changed.
+- Raw-text benchmarks (TSBS DevOps, Data Vault, NYC Taxi, Flight Data, Vector
+  Search, Write Primitives, Metadata Primitives) now translate from DuckDB on
+  every platform. The executed comparison on DuckDB, SQLite, DataFusion and
+  PostgreSQL found no changed result, so no recorded row was wrong and no
+  `known_defects` id was added.
+
 ## Fork 30.24.0.15 published-impact audit (2026-10-25)
 
 - QuestDB unpadded date literals: QuestDB read `CAST('1999-5-01' AS DATE)` as
