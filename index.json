@@ -9152,17 +9152,12 @@
       "title": "Verify TPC notices before removing query downloads"
     },
     "docs-mig-ts-parity-gate": {
-      "claim": {
-        "expires_at": "2026-10-27T07:05:21Z",
-        "generation": "da0db06bcffc47979a34f7da55a9afdf",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
-      },
+      "claim": null,
       "needs": [
         "docs-mig-site-ts-generators"
       ],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "Prove TypeScript output matches Python-generated documentation"
     },
     "docs-move-internal-to-internal-root": {
