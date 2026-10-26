@@ -6,7 +6,7 @@
     "VERIFY: PR #3548 is rebased onto `develop` (containing #3551 and the `fcntl` fix), `windows-tests` and `core` pass in CI on the PR head, and `windows-tests` wall time is recorded in the PR body (guardrail: <= 4 min wall time so it stays well inside `code-test`)",
     "GUARDRAIL: Do not bypass the local test lock; merge cleanly with #3551's `medium-shards` changes in `ci.yml`; land with `Decision: **SHIP**` on the exact head"
   ],
-  "context": "Source: 2026-10-26 adversarial review of PR #3548 (worktree `/Users/joe/Developer/BenchBox.wt-windows-pr-leg`, branch `ci/windows-pr-leg`).",
+  "context": "Source: 2026-10-26 adversarial review of PR #3548 (branch `ci/windows-pr-leg`).",
   "description": "Objective: make PR #3548 (`ci/windows-pr-leg`) shippable without cross-PR blast radius, Windows CLI length limits, or collection errors. Review findings on #3548 (`535ebdfd0`): (1) High: `windows-targets` passes explicit file paths to `pytest`, which causes pytest to ignore `collect_ignore` in `tests/unit/scripts/oracle_reviewers/conftest.py:30` and fail collecting `test_local_review.py` on Windows (`ModuleNotFoundError: fcntl` in job 121669748570). (2) Medium: `windows_test_files` in `scripts/coverage_test_selection.py` unions `payload['develop_changed_tests']` (70/78, 17/18, and 23/24 of the targets in sampled runs), so one Windows-broken test on `develop` fails required `core` on every unrelated Python PR until the coverage map advances. (3) Low/latent: passing file paths on the Windows command line hits the 32,767-char `CreateProcess` cap around ~600 files; passing `@file` avoids the cliff. (4) L3 boundary: POSIX-only repo-tooling test paths (`tests/unit/scripts/oracle_reviewers/**`, `_project/sql-translation-ml/**`) should be excluded from `windows_test_files` so Linux-only developer tooling does not run on Windows. Prior art: modifies PR #3548 (`scripts/coverage_test_selection.py`, `.github/workflows/ci.yml`, `tests/unit/workflows/test_ci_windows_pr_leg.py`) and merges cleanly with PR #3551 (`7b4969792`).",
   "links": [
     "scripts/coverage_test_selection.py",
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "234fe9d713404fa8a4b4c9928a41c0f8",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-26T19:05:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b80e53b3022542bfb18e4305488d6290",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
