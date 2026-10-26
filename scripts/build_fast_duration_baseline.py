@@ -362,6 +362,144 @@ def drift_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+VERIFY_RATIO_THRESHOLD = 0.15
+VERIFY_DELTA_SECONDS = 60.0
+VERIFY_NEW_TEST_ALLOWANCE_SECONDS = 0.5
+
+
+def normalized_pr_samples(run_dir: Path, baseline: dict[str, object]) -> tuple[dict[str, float], float, float]:
+    best, _metadata = read_calibration_best(run_dir)
+    reference = baseline.get("reference_calibration_best_seconds")
+    if isinstance(reference, bool) or not isinstance(reference, (int, float)) or reference <= 0:
+        raise BaselineError("baseline has no usable reference_calibration_best_seconds")
+    factor = float(reference) / best
+    samples = read_run_samples(run_dir)
+    tests = {nodeid: _percentile([raw * factor for raw in values], 50) for nodeid, values in samples.items()}
+    return tests, factor, best
+
+
+def read_collection_max(run_dir: Path) -> float | None:
+    try:
+        payload = json.loads((run_dir / "calibration.json").read_text(encoding="utf-8"))
+        value = payload["collection"]["max_seconds"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+def verify_durations(
+    baseline_tests: dict[str, float],
+    pr_tests: dict[str, float],
+    *,
+    ratio_threshold: float = VERIFY_RATIO_THRESHOLD,
+    delta_seconds: float = VERIFY_DELTA_SECONDS,
+    new_test_allowance: float = VERIFY_NEW_TEST_ALLOWANCE_SECONDS,
+) -> dict[str, object]:
+    shared = sorted(set(baseline_tests) & set(pr_tests))
+    new_ids = sorted(set(pr_tests) - set(baseline_tests))
+    missing_ids = sorted(set(baseline_tests) - set(pr_tests))
+    baseline_sum = float(sum(baseline_tests[nodeid] for nodeid in shared))
+    pr_sum = float(sum(pr_tests[nodeid] for nodeid in shared))
+    new_sum = float(sum(pr_tests[nodeid] for nodeid in new_ids))
+    new_excess = max(0.0, new_sum - new_test_allowance * len(new_ids))
+    effective_sum = pr_sum + new_excess
+    delta = effective_sum - baseline_sum
+    ratio = effective_sum / baseline_sum if baseline_sum > 0 else None
+    per_test = [pr_tests[nodeid] / baseline_tests[nodeid] for nodeid in shared if baseline_tests[nodeid] > 0]
+    median_ratio = float(statistics.median(per_test)) if per_test else None
+    coverage = len(shared) / len(baseline_tests) if baseline_tests else None
+    slower = ratio is not None and ratio > 1 + ratio_threshold and delta > delta_seconds
+    return {
+        "verdict": "would-block" if slower else "pass",
+        "baseline_sum_seconds": baseline_sum,
+        "pr_sum_seconds": pr_sum,
+        "new_test_count": len(new_ids),
+        "new_test_seconds": new_sum,
+        "new_test_excess_seconds": new_excess,
+        "effective_sum_seconds": effective_sum,
+        "delta_seconds": delta,
+        "sum_ratio": ratio,
+        "median_test_ratio": median_ratio,
+        "shared_test_count": len(shared),
+        "baseline_test_count": len(baseline_tests),
+        "missing_test_count": len(missing_ids),
+        "coverage": coverage,
+        "coverage_warning": coverage is not None and coverage < GATE_COVERAGE_MINIMUM,
+        "ratio_threshold": ratio_threshold,
+        "delta_threshold_seconds": delta_seconds,
+    }
+
+
+def verify_run(baseline_dir: Path, run_dir: Path) -> dict[str, object]:
+    try:
+        baseline = read_sharded_baseline(baseline_dir)
+        baseline_tests = baseline_tests_map(baseline)
+    except BaselineError as exc:
+        return {"verdict": "neutral", "reason": f"no usable committed baseline: {exc}"}
+    try:
+        pr_tests, factor, best = normalized_pr_samples(run_dir, baseline)
+    except BaselineError as exc:
+        return {"verdict": "rejected", "reason": str(exc)}
+    report = verify_durations(baseline_tests, pr_tests)
+    report["speed_factor"] = factor
+    report["calibration_best_seconds"] = best
+    report["collection_max_seconds"] = read_collection_max(run_dir)
+    return report
+
+
+def verify_markdown(report: dict[str, object]) -> str:
+    verdict = str(report["verdict"])
+    lines = ["### verify-fast-duration (report only)", "", f"Verdict: **{verdict}**", ""]
+    if "reason" in report:
+        lines.append(f"Reason: {report['reason']}")
+        return "\n".join(lines) + "\n"
+
+    def fmt(value: object, spec: str) -> str:
+        return "n/a" if value is None else format(value, spec)
+
+    lines += [
+        "| Metric | Value |",
+        "| --- | --- |",
+        f"| Baseline summed time over shared tests (normalized) | {fmt(report['baseline_sum_seconds'], '.1f')} s |",
+        f"| PR summed time over shared tests (normalized) | {fmt(report['pr_sum_seconds'], '.1f')} s |",
+        f"| New tests | {report['new_test_count']} ({fmt(report['new_test_seconds'], '.1f')} s, "
+        f"{fmt(report['new_test_excess_seconds'], '.1f')} s over allowance) |",
+        f"| Delta | {fmt(report['delta_seconds'], '+.1f')} s |",
+        f"| Summed-time ratio | {fmt(report['sum_ratio'], '.3f')} |",
+        f"| Median per-test ratio | {fmt(report['median_test_ratio'], '.3f')} |",
+        f"| Coverage of baseline ids | {fmt(report['coverage'], '.1%')} |",
+        f"| Runner speed factor | {fmt(report['speed_factor'], '.3f')} |",
+        f"| Pytest collection time (max) | {fmt(report['collection_max_seconds'], '.1f')} s |",
+        "",
+        f"Would block when the ratio exceeds {1 + float(report['ratio_threshold']):.2f} and the delta exceeds "
+        f"{float(report['delta_threshold_seconds']):.0f} s (provisional thresholds; job wall time is not a metric).",
+    ]
+    if report["coverage_warning"]:
+        lines.append(f"Warning: coverage is under {GATE_COVERAGE_MINIMUM:.0%} of baseline ids.")
+    return "\n".join(lines) + "\n"
+
+
+def verify_command(args: argparse.Namespace) -> int:
+    report = verify_run(Path(args.baseline), Path(args.run_dir))
+    text = verify_markdown(report)
+    if args.summary:
+        with Path(args.summary).open("a", encoding="utf-8") as handle:
+            handle.write(text)
+    if args.report_out:
+        Path(args.report_out).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(text)
+    verdict = report["verdict"]
+    if verdict == "would-block":
+        print(
+            "::warning title=verify-fast-duration::fast-tier time would be blocked by the duration gate (report only)"
+        )
+    elif verdict == "rejected":
+        print(f"::warning title=verify-fast-duration::run rejected: {report['reason']}")
+    return 0
+
+
 def build_command(args: argparse.Namespace) -> int:
     generated_at = args.generated_at or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     baseline, _rejected = build_baseline(load_manifest(Path(args.manifest)), generated_at)
@@ -417,6 +555,12 @@ def main(argv: list[str] | None = None) -> int:
     drift_parser.add_argument("--shard", action="append", default=[])
     drift_parser.add_argument("--report-out", default=None)
     drift_parser.set_defaults(handler=medium_drift_command)
+    verify_parser = subparsers.add_parser("verify", help="Report a PR fast-tier run against the committed baseline.")
+    verify_parser.add_argument("--baseline", required=True)
+    verify_parser.add_argument("--run-dir", required=True)
+    verify_parser.add_argument("--summary", default=None)
+    verify_parser.add_argument("--report-out", default=None)
+    verify_parser.set_defaults(handler=verify_command)
     args = parser.parse_args(argv)
     try:
         return int(args.handler(args))
