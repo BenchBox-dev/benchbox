@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "generated_at": "2026-10-26T00:40:00Z",
+  "generated_at": "2026-10-26T05:28:25Z",
   "generator": "scripts/build_fast_duration_baseline.py",
   "config": {
     "coverage": true,
     "xdist": "auto",
     "marker_expression": "fast and not (slow or stress or resource_heavy or live_integration)"
   },
-  "reference_calibration_best_seconds": 1.5060598944999697,
-  "run_count": 16,
+  "reference_calibration_best_seconds": 1.5187587089999965,
+  "run_count": 20,
   "rejected_count": 0,
   "runs": [
     {
@@ -17,7 +17,7 @@
       "sha": "08782f21a2144fb37e568c272b5710171bd87c7a",
       "artifact_id": 12613249993,
       "calibration_best_seconds": 1.541637823999963,
-      "speed_factor": 0.9769219923472803,
+      "speed_factor": 0.9851592153203637,
       "test_count": 34177,
       "python": "3.14.8",
       "cpu_count": 4
@@ -28,7 +28,7 @@
       "sha": "618ca24c5f3d5444a3ad8a459b42560252b1825a",
       "artifact_id": 12613514010,
       "calibration_best_seconds": 1.5782222499999534,
-      "speed_factor": 0.9542761765651283,
+      "speed_factor": 0.962322454267795,
       "test_count": 34187,
       "python": "3.14.8",
       "cpu_count": 4
@@ -39,7 +39,7 @@
       "sha": "b40e6fd4babdcd10347657d764bcb9b6c94fac82",
       "artifact_id": 12614627314,
       "calibration_best_seconds": 0.8287777439999218,
-      "speed_factor": 1.8172060065600795,
+      "speed_factor": 1.8325283467073168,
       "test_count": 34191,
       "python": "3.14.8",
       "cpu_count": 4
@@ -50,7 +50,7 @@
       "sha": "84b684a0e91e16a0f0cf65fb2ec0eeb92a6148b2",
       "artifact_id": 12614629015,
       "calibration_best_seconds": 1.5214826880001056,
-      "speed_factor": 0.9898633131866862,
+      "speed_factor": 0.9982096549493511,
       "test_count": 34187,
       "python": "3.14.8",
       "cpu_count": 4
@@ -61,7 +61,7 @@
       "sha": "17bc06a5105634db7ef75a1e14ce02e65383636a",
       "artifact_id": 12614269805,
       "calibration_best_seconds": 1.5420144079998863,
-      "speed_factor": 0.9766834127402529,
+      "speed_factor": 0.9849186240548464,
       "test_count": 34200,
       "python": "3.14.8",
       "cpu_count": 4
@@ -72,7 +72,7 @@
       "sha": "30b09bb7091c1e6f7ca8602a74dd4e4817182337",
       "artifact_id": 12615360691,
       "calibration_best_seconds": 0.8046141800000441,
-      "speed_factor": 1.8717789618123397,
+      "speed_factor": 1.8875614508806111,
       "test_count": 34187,
       "python": "3.14.8",
       "cpu_count": 4
@@ -83,7 +83,7 @@
       "sha": "34324f939b1501a61e1ebd00a95cd0e3fcd700ae",
       "artifact_id": 12614224995,
       "calibration_best_seconds": 1.262407914999926,
-      "speed_factor": 1.1930057445022102,
+      "speed_factor": 1.2030649451370758,
       "test_count": 34186,
       "python": "3.14.8",
       "cpu_count": 4
@@ -94,7 +94,7 @@
       "sha": "78b6cf0ad4af8962aefe51b11f65c6cfbf0eaf3b",
       "artifact_id": 12615168434,
       "calibration_best_seconds": 0.797881072999985,
-      "speed_factor": 1.8875744085986084,
+      "speed_factor": 1.9034900819110232,
       "test_count": 34187,
       "python": "3.14.8",
       "cpu_count": 4
@@ -105,7 +105,7 @@
       "sha": "5183fd85d1098a45d91695f21299c426490f98e3",
       "artifact_id": 12616876042,
       "calibration_best_seconds": 1.520682840999939,
-      "speed_factor": 0.9903839603461602,
+      "speed_factor": 0.9987346921080026,
       "test_count": 34186,
       "python": "3.14.8",
       "cpu_count": 4
@@ -116,7 +116,7 @@
       "sha": "2af599ee846787caa817cca479217d081721a5ca",
       "artifact_id": 12616480335,
       "calibration_best_seconds": 1.494788506999953,
-      "speed_factor": 1.0075404563570256,
+      "speed_factor": 1.0160358484747465,
       "test_count": 34236,
       "python": "3.14.8",
       "cpu_count": 4
@@ -127,7 +127,7 @@
       "sha": "b7a6fec55ddcef2d54fbf78c06d91dd2a3e67abd",
       "artifact_id": 12616316649,
       "calibration_best_seconds": 1.3759505450000233,
-      "speed_factor": 1.094559611879033,
+      "speed_factor": 1.1037887331916938,
       "test_count": 34199,
       "python": "3.14.8",
       "cpu_count": 4
@@ -138,7 +138,7 @@
       "sha": "090193ba2366473eb6d5319b4774e623b1ba569c",
       "artifact_id": 12616316483,
       "calibration_best_seconds": 1.5322255380000342,
-      "speed_factor": 0.9829231122630825,
+      "speed_factor": 0.9912109355535116,
       "test_count": 34228,
       "python": "3.14.8",
       "cpu_count": 4
@@ -149,7 +149,7 @@
       "sha": "c68f7ba7997925394de5482e7ceacf217b8d9095",
       "artifact_id": 12616153468,
       "calibration_best_seconds": 1.2471185349999132,
-      "speed_factor": 1.2076317144144397,
+      "speed_factor": 1.217814238483836,
       "test_count": 34203,
       "python": "3.14.8",
       "cpu_count": 4
@@ -160,7 +160,7 @@
       "sha": "042106002ce52ab99387890c713948ea756757ab",
       "artifact_id": 12617520750,
       "calibration_best_seconds": 1.5173312819999865,
-      "speed_factor": 0.9925715711303599,
+      "speed_factor": 1.0009407484159483,
       "test_count": 34233,
       "python": "3.14.8",
       "cpu_count": 4
@@ -171,7 +171,7 @@
       "sha": "8fdff239fe3bb438b446393f26bf6edd51113962",
       "artifact_id": 12618375910,
       "calibration_best_seconds": 0.8147890599999528,
-      "speed_factor": 1.848404658869692,
+      "speed_factor": 1.8639900602004702,
       "test_count": 34237,
       "python": "3.14.8",
       "cpu_count": 4
@@ -182,8 +182,52 @@
       "sha": "153593a74a08dd3586093dfe804a0147dd8db705",
       "artifact_id": 12618403738,
       "calibration_best_seconds": 1.5201861360000066,
-      "speed_factor": 0.9907075579986496,
+      "speed_factor": 0.9990610182751922,
       "test_count": 34256,
+      "python": "3.14.8",
+      "cpu_count": 4
+    },
+    {
+      "run_id": 40251519524,
+      "pr": 3516,
+      "sha": "c604191a2a3b8214b8d22c0c25b5467d99b8eb07",
+      "artifact_id": 12622550090,
+      "calibration_best_seconds": 1.5677309259999674,
+      "speed_factor": 0.9687623582671023,
+      "test_count": 34336,
+      "python": "3.14.8",
+      "cpu_count": 4
+    },
+    {
+      "run_id": 40252866949,
+      "pr": 3517,
+      "sha": "8b44212b23b55be351fec80a0707fc08349b7c4f",
+      "artifact_id": 12622201990,
+      "calibration_best_seconds": 1.555151961999968,
+      "speed_factor": 0.9765982657069932,
+      "test_count": 34314,
+      "python": "3.14.8",
+      "cpu_count": 4
+    },
+    {
+      "run_id": 40254594856,
+      "pr": 3519,
+      "sha": "053063c69d22de6433e1d6ce57e8e9009cbb0c40",
+      "artifact_id": 12622183931,
+      "calibration_best_seconds": 1.6371487850000221,
+      "speed_factor": 0.9276852066930349,
+      "test_count": 34413,
+      "python": "3.14.8",
+      "cpu_count": 4
+    },
+    {
+      "run_id": 40258316930,
+      "pr": 3523,
+      "sha": "c14353791f4e930363a2125afd52385caa6ca354",
+      "artifact_id": 12624075919,
+      "calibration_best_seconds": 1.5167527879999625,
+      "speed_factor": 1.00132251017826,
+      "test_count": 34442,
       "python": "3.14.8",
       "cpu_count": 4
     }
