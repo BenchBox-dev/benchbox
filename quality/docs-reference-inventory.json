@@ -2495,22 +2495,6 @@
     "file": 1
    },
    "occurrences": 1,
-   "path": "benchbox/core/gateway.py",
-   "rule": "runtime-and-example-links",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/platforms/snowflake.md"
-    }
-   ]
-  },
-  {
-   "disposition": "runtime-link-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
    "path": "benchbox/core/tpcds_obt/lineage.py",
    "rule": "runtime-and-example-links",
    "target_count": 1,
@@ -5311,22 +5295,22 @@
    "historical-record": 112,
    "lock-test": 26,
    "prose-link-pinned": 19,
-   "runtime-link-updated": 8,
+   "runtime-link-updated": 7,
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 264,
+  "files": 263,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
    "extra": 71,
-   "file": 1566,
+   "file": 1565,
    "generated": 15,
    "pattern": 287,
    "root": 215,
    "unresolved": 2003
   },
-  "references": 33373,
+  "references": 33372,
   "unclassified": 0
  }
 }

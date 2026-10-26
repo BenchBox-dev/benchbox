@@ -267,7 +267,8 @@ def enforce_greybeam_lifecycle(
             raise ConfigurationError(
                 f"The greybeam gateway cannot run the {phases} phase inline: Greybeam queries an Iceberg replica "
                 "kept in sync by CDC, so loading through the gateway leaves the replica empty or stale. Load native, "
-                "wait for CDC quiescence (see docs/platforms/snowflake.md), then run only query phases "
+                "wait for CDC quiescence (see https://benchbox.dev/docs/platforms/snowflake.html), then run only "
+                "query phases "
                 "(for example --phases power). To override, pass --allow-greybeam-inline-load and set "
                 f"{GREYBEAM_LOAD_ENV}=1; results from that run are invalid data."
             )
