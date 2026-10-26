@@ -16869,10 +16869,8 @@
     },
     "oracle-sweep-stateless-retry-backoff-reset-20261026": {
       "claim": null,
-      "needs": [
-        "oracle-same-head-rerun-returns-verdict-20261026"
-      ],
-      "priority": "medium-high",
+      "needs": [],
+      "priority": "high",
       "status": "open",
       "title": "Retry verdict runs that failed without posting state, harden the sweep, and add an owner backoff reset"
     },
