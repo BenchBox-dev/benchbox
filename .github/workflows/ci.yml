@@ -229,7 +229,7 @@ jobs:
           echo "api-contract-changed=$api" >> "$GITHUB_OUTPUT"
           if grep -qE '^(benchbox/core/tuning/|benchbox/cli/tuning|benchbox/platforms/base/(adapter|ddl_helpers|sorted_ingestion|tuning|tuning_config|tuning_trust)\.py|benchbox/platforms/(duckdb|sqlite|datafusion|polars)|benchbox/platforms/clickhouse/|benchbox/platforms/dataframe/polars|tests/integration/tuning/|tests/fixtures/tuning/|examples/tunings/)' .ci-paths/changed.txt; then tuning=true; fi
           echo "tuning-paths-changed=$tuning" >> "$GITHUB_OUTPUT"
-          if grep -qE '^(benchbox/_vendor/|benchbox/utils/dialect_utils\.py|benchbox/sql_compat/|benchbox/core/(tpch|tpcds)/|benchbox/platforms/(sqlite|duckdb|datafusion|postgresql)|scripts/sql_execution_gate/|tests/unit/scripts/test_sql_execution_gate\.py)' .ci-paths/changed.txt; then sql_evidence=true; fi
+          if grep -qE '^(benchbox/_vendor/|benchbox/utils/dialect_utils\.py|benchbox/sql_compat/|benchbox/core/(tpch|tpcds|tpchavoc|tpcds_obt)/|benchbox/platforms/(sqlite|duckdb|datafusion|postgresql)|scripts/sql_execution_gate/|tests/unit/scripts/test_sql_execution_gate\.py)' .ci-paths/changed.txt; then sql_evidence=true; fi
           trunk_plain=false
           trunk_coverage=false
           git diff --name-only --no-renames --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > .ci-paths/trunk-lane-changed.txt

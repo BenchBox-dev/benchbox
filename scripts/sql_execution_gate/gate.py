@@ -2,23 +2,38 @@ from __future__ import annotations
 
 import argparse
 import json
+import multiprocessing
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from scripts.sql_execution_gate import augmentation
 from scripts.sql_execution_gate.engines import Dataset, QueryTimeout, available_engines
+from scripts.sql_execution_gate.obt import OBT_AUGMENTED, OBT_BENCHMARK, build_obt_dataset
 from scripts.sql_execution_gate.rows import first_difference, is_vacuous, vacuity_detail
 
 ROOT = Path(__file__).resolve().parents[2]
 EMIT = Path(__file__).with_name("emit.py")
 EXPECTED = Path(__file__).with_name("expected_differences.json")
-CHECKS = ("error", "row-count", "reference", "vacuous", "baseline")
+CHECKS = ("error", "row-count", "reference", "vacuous", "baseline", "base-equivalence", "missing")
+PARTS = "tpcds-parts"
+DATASET_OF = {"tpchavoc": "tpch", PARTS: "tpcds"}
+
+
+def _augmentation_pairs() -> tuple[tuple[str, str], ...]:
+    return ((augmentation.BASE, augmentation.AUGMENTED), (OBT_BENCHMARK, OBT_AUGMENTED))
+
+
+def _base_of(benchmark: str) -> str | None:
+    return {OBT_BENCHMARK: augmentation.BASE, OBT_AUGMENTED: augmentation.AUGMENTED}.get(benchmark)
+
+
 TPCDS_MULTI_PART = {"14": "14a", "23": "23a", "24": "24a", "39": "39a"}
 REFERENCE_ENGINE = "duckdb"
 
@@ -50,6 +65,7 @@ class Report:
     explained: list[Finding] = field(default_factory=list)
     stale: list[dict] = field(default_factory=list)
     compared: dict[str, int] = field(default_factory=dict)
+    cells: dict[tuple[str, str], int] = field(default_factory=dict)
     proven: list[Finding] = field(default_factory=list)
     evidence: dict[str, str] = field(default_factory=dict)
     reasons: dict[tuple[str, str, str, str], str] = field(default_factory=dict)
@@ -135,7 +151,7 @@ def emit_queries(ref: str | None, scale: float, benchmarks: str, scratch: Path, 
 
 def generate_datasets(scale: float, benchmarks: list[str], scratch: Path) -> dict[str, Dataset]:
     datasets: dict[str, Dataset] = {}
-    if "tpch" in benchmarks:
+    if {"tpch", "tpchavoc"} & set(benchmarks):
         from benchbox.core.tpch.benchmark import TPCHBenchmark
         from benchbox.core.tpch.schema import TABLES, get_create_all_tables_sql
 
@@ -146,7 +162,7 @@ def generate_datasets(scale: float, benchmarks: list[str], scratch: Path) -> dic
             get_create_all_tables_sql(enable_primary_keys=False, enable_foreign_keys=False),
             {table.name: directory / f"{table.name}.tbl" for table in TABLES},
         )
-    if "tpcds" in benchmarks:
+    if {"tpcds", OBT_BENCHMARK} & set(benchmarks):
         from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
         from benchbox.core.tpcds.schema import TABLES, get_create_all_tables_sql
 
@@ -157,6 +173,8 @@ def generate_datasets(scale: float, benchmarks: list[str], scratch: Path) -> dic
             get_create_all_tables_sql(enable_primary_keys=False, enable_foreign_keys=False),
             {table.name: directory / f"{table.name}.dat" for table in TABLES},
         )
+    if OBT_BENCHMARK in benchmarks:
+        datasets[OBT_BENCHMARK] = build_obt_dataset(OBT_BENCHMARK, datasets["tpcds"], scale, scratch)
     return datasets
 
 
@@ -176,6 +194,12 @@ def expected_row_counts(scale: float) -> dict[str, dict[str, int]]:
             for query in map(str, range(1, 100))
             if TPCDS_MULTI_PART.get(query, query) in tpcds
         }
+        lettered = {query: rows for query, rows in tpcds.items() if not query.isdigit()}
+        counts[PARTS] = lettered
+        counts[OBT_BENCHMARK] = {
+            **{query: tpcds[query] for query in map(str, range(1, 100)) if query in tpcds},
+            **lettered,
+        }
     return counts
 
 
@@ -190,43 +214,84 @@ def _execute(engine, sql: str) -> Outcome:
         return Outcome(error=f"{type(error).__name__}: {str(error).splitlines()[0][:200] if str(error) else ''}")
 
 
+def _run_unit(
+    engine_class, dataset_name: str, dataset: Dataset, sides: dict[str, dict], timeout: float, scratch: Path
+) -> tuple[dict, str, float]:
+    results: dict[tuple[str, str, str, str], Outcome] = {}
+    started = time.monotonic()
+    engine = engine_class(timeout)
+    parquet_dir = scratch / f"parquet-{dataset_name}"
+    parquet_dir.mkdir(exist_ok=True)
+    engine.open(dataset, parquet_dir)
+    version = engine.version
+    try:
+        cache: dict[str, Outcome] = {}
+        for side, emitted in sides.items():
+            for benchmark, queries in emitted["queries"].items():
+                if DATASET_OF.get(benchmark, benchmark) != dataset_name:
+                    continue
+                for query, per_dialect in queries.items():
+                    sql = per_dialect[engine.dialect]
+                    outcome = cache.get(sql)
+                    if outcome is None:
+                        outcome = cache[sql] = _execute(engine, sql)
+                    results[(engine.name, benchmark, query, side)] = outcome
+    finally:
+        engine.close()
+    return results, version, time.monotonic() - started
+
+
+def _query_count(sides: dict[str, dict], dataset_name: str) -> int:
+    return sum(
+        len(queries)
+        for emitted in sides.values()
+        for benchmark, queries in emitted["queries"].items()
+        if DATASET_OF.get(benchmark, benchmark) == dataset_name
+    )
+
+
+def _worker_count(units: int) -> int:
+    return min(units, max(2, (os.cpu_count() or 2) - 1))
+
+
 def run_engines(
     engine_classes, datasets: dict[str, Dataset], sides: dict[str, dict], timeout: float, scratch: Path
 ) -> tuple[dict, dict[str, str], dict[str, float]]:
     results: dict[tuple[str, str, str, str], Outcome] = {}
     versions: dict[str, str] = {}
     seconds: dict[str, float] = {}
+
+    def collect(engine_class, outcome: tuple[dict, str, float]) -> None:
+        results.update(outcome[0])
+        versions[engine_class.name] = outcome[1]
+        seconds[engine_class.name] = seconds.get(engine_class.name, 0.0) + outcome[2]
+
     for engine_class in engine_classes:
-        started = time.monotonic()
-        for benchmark, dataset in datasets.items():
-            engine = engine_class(timeout)
-            parquet_dir = scratch / f"parquet-{benchmark}"
-            parquet_dir.mkdir(exist_ok=True)
-            if engine.name != REFERENCE_ENGINE and not any(parquet_dir.glob("*.parquet")):
-                _materialise_parquet(dataset, parquet_dir, timeout)
-            engine.open(dataset, parquet_dir)
-            versions[engine.name] = engine.version
-            try:
-                cache: dict[tuple[str, str], Outcome] = {}
-                for side, emitted in sides.items():
-                    for query, per_dialect in emitted["queries"].get(benchmark, {}).items():
-                        sql = per_dialect[engine.dialect]
-                        outcome = cache.get((query, sql))
-                        if outcome is None:
-                            outcome = cache[(query, sql)] = _execute(engine, sql)
-                        results[(engine.name, benchmark, query, side)] = outcome
-            finally:
-                engine.close()
-        seconds[engine_class.name] = time.monotonic() - started
-    return results, versions, seconds
+        if engine_class.name == REFERENCE_ENGINE:
+            for name, dataset in datasets.items():
+                collect(engine_class, _run_unit(engine_class, name, dataset, sides, timeout, scratch))
+    ordered = sorted(datasets.items(), key=lambda item: -_query_count(sides, item[0]))
+    units = [
+        (engine_class, name, dataset)
+        for name, dataset in ordered
+        for engine_class in engine_classes
+        if engine_class.name != REFERENCE_ENGINE
+    ]
+    if units:
+        with ProcessPoolExecutor(
+            max_workers=_worker_count(len(units)), mp_context=multiprocessing.get_context("spawn")
+        ) as pool:
+            futures = [
+                (unit[0], pool.submit(_run_unit, unit[0], unit[1], unit[2], sides, timeout, scratch)) for unit in units
+            ]
+            for engine_class, future in futures:
+                collect(engine_class, future.result())
+    return results, {name: versions[name] for name in sorted(versions, key=_engine_order(engine_classes))}, seconds
 
 
-def _materialise_parquet(dataset: Dataset, parquet_dir: Path, timeout: float) -> None:
-    from scripts.sql_execution_gate.engines import DuckdbEngine
-
-    loader = DuckdbEngine(timeout)
-    loader.open(dataset, parquet_dir)
-    loader.close()
+def _engine_order(engine_classes):
+    order = {engine.name: index for index, engine in enumerate(engine_classes)}
+    return order.__getitem__
 
 
 def evaluate(
@@ -242,11 +307,12 @@ def evaluate(
             reference = results.get((REFERENCE_ENGINE, benchmark, query, "candidate"))
             for engine in engines:
                 _evaluate_cell(report, results, benchmark, query, engine, reference, counts)
-    _apply_augmented_proof(report, sides["candidate"]["queries"], engines)
-    for query in sides["candidate"]["queries"].get(augmentation.AUGMENTED, {}):
-        reference_result = results.get((REFERENCE_ENGINE, augmentation.AUGMENTED, query, "candidate"))
-        if reference_result is not None and reference_result.rows is not None:
-            report.evidence[f"tpcds q{query} {REFERENCE_ENGINE}"] = repr(reference_result.rows)
+    for base, augmented in _augmentation_pairs():
+        _apply_augmented_proof(report, sides["candidate"]["queries"], engines, base, augmented)
+        for query in sides["candidate"]["queries"].get(augmented, {}):
+            reference_result = results.get((REFERENCE_ENGINE, augmented, query, "candidate"))
+            if reference_result is not None and reference_result.rows is not None:
+                report.evidence[f"{base} q{query} {REFERENCE_ENGINE}"] = repr(reference_result.rows)
     matched: set[int] = set()
     for finding in report.findings:
         index = next((i for i, entry in enumerate(expected) if _explains(entry, finding)), None)
@@ -271,35 +337,45 @@ def _explains(entry: dict, finding: Finding) -> bool:
     ] in finding.detail
 
 
-def _apply_augmented_proof(report: Report, scope: dict, engines: list[str]) -> None:
-    covered = {
-        (engine, augmentation.base_query(query))
-        for query in scope.get(augmentation.AUGMENTED, {})
-        for engine in engines
-    }
-    failing = {
-        (f.engine, augmentation.base_query(f.query)) for f in report.findings if f.benchmark == augmentation.AUGMENTED
-    }
+def _apply_augmented_proof(report: Report, scope: dict, engines: list[str], base: str, augmented: str) -> None:
+    covered = {(engine, augmentation.base_query(query)) for query in scope.get(augmented, {}) for engine in engines}
+    failing = {(f.engine, augmentation.base_query(f.query)) for f in report.findings if f.benchmark == augmented}
     proven = covered - failing
     kept = []
     for finding in report.findings:
-        if (
-            finding.check == "vacuous"
-            and finding.benchmark == augmentation.BASE
-            and (finding.engine, finding.query) in proven
-        ):
+        if finding.check == "vacuous" and finding.benchmark == base and (finding.engine, finding.query) in proven:
             report.proven.append(finding)
         else:
             kept.append(finding)
     report.findings = kept
 
 
+def _base_difference(results: dict, benchmark: str, query: str, engine: str, candidate: Outcome) -> str | None:
+    base_benchmark = _base_of(benchmark)
+    if base_benchmark is None:
+        return None
+    if base_benchmark == augmentation.BASE and not augmentation.base_query(query).isdigit():
+        base_benchmark = PARTS
+    base = results.get((engine, base_benchmark, query, "candidate"))
+    if base is None:
+        return f"{base_benchmark} q{query} on {engine} was not executed"
+    if base.error is not None:
+        return f"{base_benchmark} q{query} on {engine} failed: {base.error}"
+    if base.rows is None:
+        return f"{base_benchmark} q{query} on {engine} returned no outcome"
+    return first_difference(candidate.rows, base.rows)
+
+
 def _evaluate_cell(report, results, benchmark, query, engine, reference, counts) -> None:
     candidate = results.get((engine, benchmark, query, "candidate"))
     baseline = results.get((engine, benchmark, query, "baseline"))
     if candidate is None:
+        report.findings.append(
+            Finding(benchmark, query, engine, "missing", "no result was executed for this emitted query")
+        )
         return
     report.compared[engine] = report.compared.get(engine, 0) + 1
+    report.cells[(benchmark, engine)] = report.cells.get((benchmark, engine), 0) + 1
 
     def add(check: str, detail: str, into=report.findings) -> None:
         into.append(Finding(benchmark, query, engine, check, detail))
@@ -315,6 +391,9 @@ def _evaluate_cell(report, results, benchmark, query, engine, reference, counts)
         reference_difference = first_difference(candidate.rows, reference.rows)
         if reference_difference:
             add("reference", f"differs from DuckDB: {reference_difference}")
+    base_difference = _base_difference(results, benchmark, query, engine, candidate)
+    if base_difference:
+        add("base-equivalence", f"differs from the TPC-DS result: {base_difference}")
     reference_rows = reference.rows if reference is not None else None
     if is_vacuous(candidate.rows) and (
         engine == REFERENCE_ENGINE or reference_rows is None or is_vacuous(reference_rows)
@@ -339,6 +418,22 @@ def _evaluate_cell(report, results, benchmark, query, engine, reference, counts)
         add("baseline", f"differs from baseline: {baseline_difference}")
 
 
+def coverage(report: Report) -> dict[str, dict[str, int]]:
+    table: dict[str, dict[str, int]] = {}
+    for (benchmark, engine), compared in sorted(report.cells.items()):
+        mine = [f for f in (*report.explained, *report.unexplained) if (f.benchmark, f.engine) == (benchmark, engine)]
+        table[f"{benchmark}/{engine}"] = {
+            "compared": compared,
+            "errors": sum(1 for f in mine if f.check == "error"),
+            "vacuous_unproven": sum(1 for f in mine if f.check == "vacuous"),
+            "expected_differences": sum(
+                1 for f in report.explained if (f.benchmark, f.engine) == (benchmark, engine) and f.check != "vacuous"
+            ),
+            "unexplained": sum(1 for f in report.unexplained if (f.benchmark, f.engine) == (benchmark, engine)),
+        }
+    return table
+
+
 def render(report: Report, versions: dict[str, str], seconds: dict[str, float], sides: dict[str, dict]) -> str:
     lines = ["SQL execution evidence gate"]
     for side, payload in sides.items():
@@ -346,6 +441,12 @@ def render(report: Report, versions: dict[str, str], seconds: dict[str, float], 
         lines.append(f"  {side}: {payload['ref']} sqlglot runtime {pin.get('version', 'unknown')}")
     for engine, version in versions.items():
         lines.append(f"  {engine} {version}: {report.compared.get(engine, 0)} cells in {seconds.get(engine, 0.0):.1f}s")
+    lines.append("coverage per benchmark and engine:")
+    lines.extend(
+        f"  {name}: {row['compared']} compared, {row['errors']} errors, {row['vacuous_unproven']} vacuous (unproven), "
+        f"{row['expected_differences']} expected differences, {row['unexplained']} unexplained"
+        for name, row in coverage(report).items()
+    )
     unproven = [f for f in (*report.explained, *report.unexplained) if f.check == "vacuous"]
     lines.append(f"vacuous comparisons proven by gate-only augmented data: {len(report.proven)}")
     lines.extend(
@@ -435,6 +536,10 @@ def run(args: argparse.Namespace) -> int:
             datasets[augmentation.AUGMENTED] = augmentation.augment(
                 datasets[augmentation.BASE], augmented_queries, scratch
             )
+            if OBT_BENCHMARK in datasets and sides["candidate"]["queries"].get(OBT_AUGMENTED):
+                datasets[OBT_AUGMENTED] = build_obt_dataset(
+                    OBT_AUGMENTED, datasets[augmentation.AUGMENTED], args.scale, scratch
+                )
         results, versions, seconds = run_engines(engine_classes, datasets, sides, args.timeout, scratch)
         selected = [
             engine.name for engine in engine_classes if not args.engines or engine.name in args.engines.split(",")
@@ -448,6 +553,7 @@ def run(args: argparse.Namespace) -> int:
                         "passed": report.passed,
                         "versions": versions,
                         "seconds": seconds,
+                        "coverage": coverage(report),
                         "unexplained": [vars(f) for f in report.unexplained],
                         "explained": [vars(f) for f in report.explained],
                         "improvements": [vars(f) for f in report.improvements],
@@ -472,7 +578,7 @@ def run(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scale", type=float, default=0.01)
-    parser.add_argument("--benchmarks", default="tpch,tpcds")
+    parser.add_argument("--benchmarks", default="tpch,tpcds,tpchavoc")
     parser.add_argument("--engines", default="", help="comma-separated subset of sqlite,duckdb,datafusion,postgres")
     parser.add_argument("--candidate-ref", default="working-tree")
     parser.add_argument(

@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "The SQL execution gate now also executes the 220 TPC-Havoc variants and the 90 TPC-DS OBT queries (lettered statements compared part by part against TPC-DS) on every gate engine, and runs the engines concurrently"
+}

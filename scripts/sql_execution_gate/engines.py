@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import itertools
 import os
 import sqlite3
 import threading
-import time
 from dataclasses import dataclass
 from pathlib import Path
+
+_SCHEMA_IDS = itertools.count()
 
 
 @dataclass(frozen=True)
@@ -62,8 +64,8 @@ class SqliteEngine:
 
     def execute(self, sql: str) -> list[tuple]:
         assert self.connection is not None
-        deadline = time.monotonic() + self.timeout
-        self.connection.set_progress_handler(lambda: 1 if time.monotonic() > deadline else 0, 10000)
+        timer = threading.Timer(self.timeout, self.connection.interrupt)
+        timer.start()
         rows: list[tuple] = []
         produced = False
         try:
@@ -78,7 +80,7 @@ class SqliteEngine:
                 raise QueryTimeout(f"exceeded {self.timeout:g}s") from error
             raise
         finally:
-            self.connection.set_progress_handler(None, 0)
+            timer.cancel()
         return rows
 
     def close(self) -> None:
@@ -195,7 +197,7 @@ class PostgresEngine:
     def __init__(self, timeout: float):
         self.timeout = timeout
         self.connection = None
-        self.schema = f"sql_gate_{os.getpid()}"
+        self.schema = f"sql_gate_{os.getpid()}_{next(_SCHEMA_IDS)}"
 
     @property
     def version(self) -> str:
