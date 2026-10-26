@@ -3,6 +3,7 @@
     "Each of Q16/Q94/Q95 either runs on QuestDB and matches DuckDB on non-vacuous data (augmented second warehouse) or is a registered QuestDB skip with reason.",
     "Corpus diff of changed QuestDB queries; fork CI questdb job green."
   ],
+  "context": "DONE: fork #74 (56662010) lowers correlated EXISTS/IN subqueries and HAVING for QuestDB; Q16/Q94/Q95 run on QuestDB 10.0.1 and match DuckDB (3/3/2 orders); fork questdb CI job green. Corpus: 14 emitted queries change (TPC-DS Q14/16/23/33/56/58/60/70/83/94/95, TPC-H Q18/20/21); cornered Q21 keeps its NOT EXISTS unlowered by design. Golden recorded/area_questdb.json regenerated (24 golden tests pass). Adopted by #3544 (30.24.0.17). No QuestDB bundle exists.",
   "description": "Found while verifying the unpadded-date fix (#3501). QuestDB rejects the emitted TPC-DS Q16 and Q94 (correlated EXISTS: 'constant expected'; no HAVING) and likely Q95 (IN (subquery)), independent of dates. A hand-built join equivalent with the generator's date bounds matched DuckDB on 5 of 6 seed/query cases (Q95 seed 1001 ran out of QuestDB heap). No QuestDB TPC-DS bundle is published.\nDECISION GATE: (G1) lower these constructs in the fork's QuestDB generator (decorrelate EXISTS/IN into joins, HAVING into a filtered subquery) with executed QuestDB tests, or register explicit QuestDB skips with reasons. Recommended: lowering if every rewrite is semantics-preserving and verified on QuestDB; otherwise registered skips.\nGUARDRAILS: benchmark text unchanged; fork tests in the questdb CI job; no silent skips.",
   "sessions": [
     {
@@ -20,6 +21,14 @@
       "generation": "a57756d9d37247e9ae8d1a3c4bfc9492",
       "op": "take",
       "op_id": "22d5b10f4e694d47ab4e02e2751c8a7f",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-26T15:08:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fd7e7b46eb5a4ce1a0abf8061f971d66",
       "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
