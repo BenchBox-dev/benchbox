@@ -16730,10 +16730,15 @@
       "title": "Oracle reviews, status and workflow are still named \"oracle-review-shadow\" after it became the required reviewer"
     },
     "oracle-verdict-single-job-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T02:44:32Z",
+        "generation": "b3a68e79d5aa4ed09ea77602c9a9a994",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Run each oracle verdict as one GitHub Actions job instead of a chain of up to twelve"
     },
     "oracle-verdict-workflow-not-soundness-path-20261009": {
