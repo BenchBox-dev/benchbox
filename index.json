@@ -3252,12 +3252,17 @@
       "title": "One repeatable report of CI queue time, time-to-green and runner-minutes per workflow"
     },
     "ci-verify-fast-duration-report-only-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T20:03:53Z",
+        "generation": "bc60405f565b40c9a8c444bb50e2fb25",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [
         "ci-fast-duration-baseline-20261025"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Add a report-only verify-fast-duration step to core that compares PR fast-tier time with the baseline"
     },
     "ci-visual-baseline-queue-follower-gap": {
