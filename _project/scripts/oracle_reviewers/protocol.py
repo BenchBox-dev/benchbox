@@ -13,7 +13,19 @@ from typing import Any
 
 from .evidence import withdrawal_cited
 from .policy import SEVERITIES
-from .verdict import COMPLETE, DO_NOT_SHIP, FIXED, NOT_FIXED, SHIP, SHIP_WITH_FIXES, WITHDRAWN, Finding, Verdict
+from .verdict import (
+    COMPLETE,
+    DO_NOT_SHIP,
+    FIXED,
+    MAX_CLAIM,
+    NOT_FIXED,
+    SHIP,
+    SHIP_WITH_FIXES,
+    WITHDRAWN,
+    Finding,
+    Verdict,
+    sanitize,
+)
 
 DO_NOT_SHIP_SUMMARY = 1500
 REFUSED = "REFUSED"
@@ -468,7 +480,126 @@ def judge_planned(verdict: Verdict, plan: Mapping[str, Any]) -> Judgement:
     return judge(verdict, int(plan["max_defects"]), rules.get("prior", ()), changed, bool(rules.get("forced")))
 
 
+THREAD_MARKER = re.compile(r"<!--\s*oracle-defect:\s*c([0-9]+)-(D[1-9][0-9]{0,3})\s*-->")
+MARKER_LINE = re.compile(r"^\s*(?:<!--\s*oracle-[\s\S]*?-->\s*|oracle-defect\s*:.*)$")
+REPLY_LIMIT = 1000
+
+
+def thread_finding(body: str) -> tuple[int, str] | None:
+    matches = THREAD_MARKER.findall(body or "")
+    if not matches:
+        return None
+    cycle, defect_id = matches[-1]
+    return int(cycle), defect_id
+
+
+def thread_finding_id(body: str) -> str | None:
+    found = thread_finding(body)
+    return found[1] if found is not None else None
+
+
+def strip_marker_lines(text: str) -> str:
+    return "\n".join(line for line in (text or "").splitlines() if not MARKER_LINE.match(line))
+
+
+def normalize_claim(text: str) -> str:
+    return " ".join((text or "").split()).casefold()
+
+
+def canonical_claim(text: str) -> str:
+    return sanitize(text or "", MAX_CLAIM)
+
+
+def claim_hash(text: str) -> str:
+    return hashlib.sha256(normalize_claim(text or "").encode("utf-8")).hexdigest()
+
+
+def dispute_claim(text: str) -> str:
+    return strip_marker_lines(text)[:REPLY_LIMIT]
+
+
+def disputed_claims(plan: Mapping[str, Any]) -> dict[str, list[str]]:
+    rules = plan.get("protocol") or {}
+    prior_ids = {item.get("id") for item in rules.get("prior") or () if isinstance(item, Mapping) and item.get("id")}
+    if not prior_ids:
+        return {}
+    cycle = rules.get("cycle")
+    claims: dict[str, list[str]] = {}
+    for item in plan.get("disputes") or ():
+        if not isinstance(item, Mapping) or not item.get("id") or not item.get("claim_hashes"):
+            continue
+        if item["id"] not in prior_ids:
+            continue
+        if cycle is not None and item.get("cycle") is not None and item["cycle"] != cycle:
+            continue
+        claims.setdefault(item["id"], []).extend(
+            [
+                known
+                for known in item["claim_hashes"]
+                if isinstance(known, str) and known not in claims.get(item["id"], [])
+            ]
+        )
+    return claims
+
+
+def live_disputes(disputes: Any, latest: Any) -> list[dict[str, Any]]:
+    if not isinstance(latest, Mapping):
+        return []
+    open_ids = {
+        item.get("id") for item in latest.get("open_defects") or () if isinstance(item, Mapping) and item.get("id")
+    }
+    cycle = latest.get("cycle")
+    return [
+        item
+        for item in disputes or ()
+        if isinstance(item, Mapping)
+        and item.get("id") in open_ids
+        and (cycle is None or item.get("cycle") is None or item.get("cycle") == cycle)
+    ]
+
+
+def bound_disputes(plan: Mapping[str, Any]) -> list[dict[str, Any]]:
+    allowed = disputed_claims(plan)
+    cycle = (plan.get("protocol") or {}).get("cycle")
+    return [
+        item
+        for item in plan.get("disputes") or ()
+        if isinstance(item, Mapping)
+        and item.get("id") in allowed
+        and (cycle is None or item.get("cycle") is None or item.get("cycle") == cycle)
+    ]
+
+
+def dispute_problem(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
+    claims = disputed_claims(plan)
+    if verdict.status != COMPLETE or not claims:
+        return None
+    entries = {item.id: item for item in verdict.prior_defects}
+    for defect_id in sorted(claims):
+        entry = entries.get(defect_id)
+        if entry is None:
+            return f"disputed finding {defect_id} has no disposition, so the verdict is invalid"
+        if not isinstance(entry.concedes, bool):
+            return f"disputed finding {defect_id} has no concedes boolean, so the verdict is invalid"
+        demoted = entry.demoted in ("withdrawal", "fixed")
+        if entry.status == NOT_FIXED and entry.concedes and not demoted:
+            return f"disputed finding {defect_id} concedes the rebuttal yet stays not fixed, so the verdict is invalid"
+        if entry.status == WITHDRAWN and not entry.concedes:
+            return (
+                f"disputed finding {defect_id} is withdrawn without conceding the rebuttal, so the verdict is invalid"
+            )
+        if entry.status in (NOT_FIXED, WITHDRAWN) and not demoted:
+            if not entry.claim.strip() or all(claim_hash(entry.claim) != known for known in claims[defect_id]):
+                return f"disputed finding {defect_id} does not restate one of its rebuttal replies, so the verdict is invalid"
+        if entry.status == FIXED and not (entry.evidence or "").strip():
+            return f"disputed finding {defect_id} is marked fixed without evidence, so the verdict is invalid"
+    return None
+
+
 def contradiction(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
+    problem = dispute_problem(verdict, plan)
+    if problem is not None:
+        return problem
     if verdict.status != COMPLETE or judge_planned(verdict, plan).decision != SHIP:
         return None
     if verdict.incomplete_reason.strip():

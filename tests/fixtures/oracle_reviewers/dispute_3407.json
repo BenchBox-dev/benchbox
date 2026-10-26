@@ -1,0 +1,48 @@
+{
+  "mode": "invalid",
+  "dispute": {
+    "id": "D1",
+    "cycle": 1,
+    "path": "pkg/scan.py",
+    "title": "Unchecked bound",
+    "replies": [
+      {
+        "author": "joe",
+        "body": "Dispute: the bound check at pkg/scan.py:40 already covers this input, so D1 is wrong."
+      }
+    ],
+    "claim_hashes": [
+      "fa52fe957111fe5293c22dd8703ee14904fc6e1cea1cc79fe8548ff1b5032d9e"
+    ]
+  },
+  "prior": [
+    {
+      "id": "D1",
+      "severity": "High",
+      "file": "pkg/scan.py",
+      "line": 40,
+      "end_line": null,
+      "title": "Unchecked bound"
+    }
+  ],
+  "verdict": {
+    "status": "complete",
+    "incomplete_reason": "",
+    "decision": "SHIP_WITH_FIXES",
+    "summary": "s",
+    "files_examined": [
+      "pkg/scan.py"
+    ],
+    "defects": [],
+    "prior_defects": [
+      {
+        "id": "D1",
+        "status": "not_fixed",
+        "evidence": "The dispute holds: pkg/scan.py:40 covers the input. D1 stays open regardless.",
+        "claim": "Dispute: the bound check at pkg/scan.py:40 already covers this input, so D1 is wrong.",
+        "concedes": true
+      }
+    ]
+  },
+  "expected_problem": "concedes"
+}
