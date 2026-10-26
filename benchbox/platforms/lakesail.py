@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import subprocess
 from typing import Any
 
@@ -366,7 +367,7 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
 
         if self.sail_mode == "local":
             try:
-                import pysail  # noqa: F401
+                importlib.import_module("pysail")
             except ImportError:
                 raise RuntimeError(
                     f"Cannot connect to LakeSail Sail at {self.endpoint} and 'pysail' is not installed. "

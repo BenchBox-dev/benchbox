@@ -258,7 +258,7 @@
         "scripts/generate_changelog_entry.py",
         "scripts/release_cut_abort.sh",
         "scripts/worktree_lifecycle.sh",
-        "tests/fixtures/oracle_reviewers/pr3222_replay.json",
+        "tests/fixtures/oracle_reviewers/pr3222_replay.json", "tests/fixtures/trunk_red_20261024.json",
         "tests/integration/worktree/test_worktree_lifecycle_metadata.py",
         "tests/unit/release/test_ruleset_drift_review_coverage.py",
         "tests/unit/scripts/oracle_reviewers/test_classifier.py",

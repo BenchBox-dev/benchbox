@@ -52,10 +52,10 @@ def test_generated_impl_names_survive_star_import() -> None:
 
 def test_unknown_generated_name_raises_attribute_error() -> None:
     with pytest.raises(AttributeError):
-        rp.totally_missing_query_impl  # noqa: B018
+        _ = rp.totally_missing_query_impl
     with pytest.raises(AttributeError):
-        jo.totally_missing_query_impl  # noqa: B018
+        _ = jo.totally_missing_query_impl
     from benchbox.core.tpcds.dataframe_queries import queries as tpcds
 
     with pytest.raises(AttributeError):
-        tpcds.totally_missing_query_impl  # noqa: B018
+        _ = tpcds.totally_missing_query_impl

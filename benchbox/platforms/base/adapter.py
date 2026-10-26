@@ -27,14 +27,14 @@ from benchbox.platforms.base.client_region import discover_client_region
 from benchbox.platforms.base.connection_lifecycle import ConnectionLifecycleMixin
 from benchbox.platforms.base.connection_wrappers import (
     DriverIsolationCapability,
-    PlatformAdapterConnection,  # noqa: F401
-    PlatformAdapterCursor,  # noqa: F401
+    PlatformAdapterConnection as PlatformAdapterConnection,
+    PlatformAdapterCursor as PlatformAdapterCursor,
     StreamConnectionCapability,
     _make_stream_cursor,
-    _NoCloseProxy,  # noqa: F401
-    check_isolation_capability,  # noqa: F401
-    require_throughput_stream_capability,  # noqa: F401
-    resolve_stream_connection_capability,  # noqa: F401
+    _NoCloseProxy as _NoCloseProxy,
+    check_isolation_capability as check_isolation_capability,
+    require_throughput_stream_capability as require_throughput_stream_capability,
+    resolve_stream_connection_capability,
 )
 from benchbox.platforms.base.data_loading import SchemaHelpersMixin
 from benchbox.platforms.base.dialect_translation import DialectTranslationMixin
@@ -46,7 +46,7 @@ from benchbox.platforms.base.models import (
 )
 from benchbox.platforms.base.phase_tracking import (
     PhaseTrackingMixin,
-    _extract_table_names,  # noqa: F401
+    _extract_table_names as _extract_table_names,
     _resolve_benchmark_table_names,
     reused_tables,
 )

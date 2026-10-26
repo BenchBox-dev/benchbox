@@ -214,7 +214,7 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
                 native_cols.append(c)
 
         if platform == "PySpark":
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.struct(*native_cols))
 
@@ -247,7 +247,7 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
             native_col = column
 
         if platform == "PySpark":
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.map_from_entries(native_col))
 
@@ -270,7 +270,7 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         platform = self._adapter.platform_name
 
         if platform == "PySpark":
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             if column:
                 return UnifiedExpr(F.count(column))
@@ -293,7 +293,7 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         platform = self._adapter.platform_name
 
         if platform == "PySpark":
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.count(F.lit(1)))
 
@@ -310,7 +310,7 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         platform = self._adapter.platform_name
 
         if platform == "PySpark":
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.sum(column))
 
@@ -327,7 +327,7 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         platform = self._adapter.platform_name
 
         if platform == "PySpark":
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.avg(column))
 
@@ -344,7 +344,7 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         platform = self._adapter.platform_name
 
         if platform == "PySpark":
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.stddev(column))
 
@@ -361,7 +361,7 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
         platform = self._adapter.platform_name
 
         if platform == "PySpark":
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.max(column))
 
@@ -384,7 +384,7 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
                 unwrapped.append(e._expr)
             elif isinstance(e, str):
                 if platform == "PySpark":
-                    from pyspark.sql import functions as F  # noqa: N812
+                    from pyspark.sql import functions as F
 
                     unwrapped.append(F.col(e))
                 elif platform == "DataFusion":
@@ -399,7 +399,7 @@ class ExpressionFamilyContext(DataFrameContextImpl[DF], Generic[DF, Expr]):
                 unwrapped.append(e)
 
         if platform == "PySpark":
-            from pyspark.sql import functions as F  # noqa: N812
+            from pyspark.sql import functions as F
 
             return UnifiedExpr(F.coalesce(*unwrapped))
 

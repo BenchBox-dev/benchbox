@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import importlib
 import inspect
 import logging
 import re
@@ -240,7 +241,7 @@ def _make_sql_render(sql: str, dialect: str) -> SqlRender:
 
 
 def _dataframe_registry(benchmark_id: str) -> list[Any]:
-    import benchbox.core.dataframe  # noqa: F401
+    importlib.import_module("benchbox.core.dataframe")
     from benchbox.core.dataframe.query_resolution import registry_dataframe_queries
 
     try:

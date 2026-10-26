@@ -4,6 +4,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import importlib
 import re
 import time
 from dataclasses import dataclass
@@ -57,7 +58,7 @@ _OPTIONAL_WHEN_SOURCE_MISSING = {
 
 
 def _pk_lock_bypass_required(dialect: str) -> bool:
-    import benchbox.sql_compat.rules.schema_emit.pk_capability  # noqa: F401
+    importlib.import_module("benchbox.sql_compat.rules.schema_emit.pk_capability")
     from benchbox.sql_compat.actions import CompatAction
     from benchbox.sql_compat.context import CompatibilityContext, Phase
     from benchbox.sql_compat.registry import REGISTRY

@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import importlib
 import re
 from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
@@ -525,7 +526,7 @@ def run_datafusion_sample() -> int:
     from benchbox.sql_compat.rules.execution_filter.datafusion_tpchavoc import DATAFUSION_TPCHAVOC_SKIPS
 
     try:
-        import datafusion  # noqa: F401
+        importlib.import_module("datafusion")
     except ImportError as exc:
         print(f"DataFusion equivalence sample SKIPPED - DataFusion not installed: {exc}")
         return 0
@@ -619,7 +620,7 @@ def run_clickhouse_sample() -> int:
 
     original_cwd = os.getcwd()
     try:
-        import chdb  # noqa: F401
+        importlib.import_module("chdb")
     except ImportError as exc:
         os.chdir(original_cwd)
         print(f"ClickHouse equivalence sample SKIPPED - chDB (clickhouse-local) not installed: {exc}")

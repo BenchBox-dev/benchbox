@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import importlib
+
 from benchbox.core.query_catalog_base import QuerySkippedError
 
 _QUERIES: dict[str, str] = {
@@ -431,7 +433,7 @@ class VectorSearchQueryManager:
             if legacy_sql is None:
                 legacy_sql = self._queries[key]
 
-            import benchbox.sql_compat.rules.query_source.vector_search_variants  # noqa: F401
+            importlib.import_module("benchbox.sql_compat.rules.query_source.vector_search_variants")
             from benchbox.sql_compat.actions import CompatAction
             from benchbox.sql_compat.context import CompatibilityContext, Phase
             from benchbox.sql_compat.registry import REGISTRY

@@ -604,10 +604,10 @@ class PlatformRegistry:
             for name, spec in caps.get("gateways", {}).items()
         }
 
-        import benchbox.sql_compat.rules.benchmark_gate.clickhouse_local_gate  # noqa: F401
-        import benchbox.sql_compat.rules.benchmark_gate.lakesail_gate  # noqa: F401
-        import benchbox.sql_compat.rules.benchmark_gate.pg_family_gate  # noqa: F401
-        import benchbox.sql_compat.rules.benchmark_gate.questdb_gate  # noqa: F401
+        importlib.import_module("benchbox.sql_compat.rules.benchmark_gate.clickhouse_local_gate")
+        importlib.import_module("benchbox.sql_compat.rules.benchmark_gate.lakesail_gate")
+        importlib.import_module("benchbox.sql_compat.rules.benchmark_gate.pg_family_gate")
+        importlib.import_module("benchbox.sql_compat.rules.benchmark_gate.questdb_gate")
         from benchbox.sql_compat.actions import CompatAction
         from benchbox.sql_compat.context import Phase
         from benchbox.sql_compat.registry import REGISTRY

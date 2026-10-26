@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from unittest.mock import MagicMock
 
 import pytest
@@ -394,7 +395,7 @@ class TestFilteredAggregation:
         ).lazy()
         udf = ULF(df, adapter)
 
-        cond = UnifExpr(pl.col("flag")) == True  # noqa: E712
+        cond = operator.eq(UnifExpr(pl.col("flag")), True)
         expr = UnifExpr(pl.col("val")).filter(cond).mean().alias("flagged_mean")
         result = udf.select(expr).collect()
 

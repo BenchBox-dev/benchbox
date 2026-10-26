@@ -1,1 +1,1 @@
-from textcharts.stacked_bar import *  # noqa: F403
+from textcharts.stacked_bar import *

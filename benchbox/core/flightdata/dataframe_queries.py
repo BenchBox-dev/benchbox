@@ -1083,7 +1083,23 @@ def _pandas() -> Any:
 
 _DAY_NAMES = {1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday"}
 _MONTH_NAMES = dict(
-    enumerate("January February March April May June July August September October November December".split(), 1)  # noqa: SIM905
+    enumerate(
+        [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ],
+        1,
+    )
 )
 
 

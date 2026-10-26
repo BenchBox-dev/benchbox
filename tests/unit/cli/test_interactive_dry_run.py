@@ -3,6 +3,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 from io import StringIO
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -259,12 +260,7 @@ class TestGenerateCLICommand:
 class TestDisplayInteractivePreview:
     def _create_mock_database_config(self, platform_type="duckdb", execution_mode="sql"):
 
-        class MockDatabaseConfig:  # noqa: B903
-            def __init__(self):
-                self.type = platform_type
-                self.execution_mode = execution_mode
-
-        return MockDatabaseConfig()
+        return SimpleNamespace(type=platform_type, execution_mode=execution_mode)
 
     def _create_mock_benchmark_config(
         self,

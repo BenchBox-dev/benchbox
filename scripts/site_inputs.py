@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-SCHEMA = 3
+DEFAULT_PROFILE = "schema4"
 PARENT_SOURCES = ("bundle", "dispatch", "local")
 GENERATED_QUERIES = Path("docs/benchmarks/queries")
 
@@ -70,8 +70,10 @@ MEMBERS_BY_SCHEMA: dict[int, tuple[str, ...]] = {
     4: REQUIRED_MEMBERS + CONTRACT_MEMBERS,
     5: tuple(name for name in REQUIRED_MEMBERS if name not in ("docs", "downloads")) + CONTRACT_MEMBERS,
 }
-PROFILE_SCHEMAS = {"exact3": 3, "candidate4": 4, "candidate5": 5}
+PROFILE_SCHEMAS = {"exact3": 3, "schema4": 4, "candidate4": 4, "candidate5": 5}
+CANDIDATE_PROFILES = ("candidate4", "candidate5")
 CANDIDATE_CERTIFIER = "candidate"
+RUN_ID = re.compile(r"[0-9]+")
 DOCS_DATA_FILE = "docs-data.json"
 DOCS_DATA_SCHEMA = ROOT / "quality/docs-data.schema.json"
 DOC_CONTRACTS_SCHEMA = ROOT / "quality/doc-contracts.schema.json"
@@ -437,11 +439,26 @@ def schema_errors(instance: object, schema_path: Path) -> list[str]:
     )
 
 
+def certifier_errors(schema: int, certified_by: object) -> list[str]:
+    if schema == 3:
+        return []
+    if certified_by == CANDIDATE_CERTIFIER:
+        return []
+    if schema == 4 and isinstance(certified_by, str) and RUN_ID.fullmatch(certified_by):
+        return []
+    wanted = "candidate or a run id" if schema == 4 else CANDIDATE_CERTIFIER
+    return [f"schema {schema} requires certified_by {wanted}, got {certified_by!r}"]
+
+
 def cmd_build(args: argparse.Namespace) -> int:
     out = Path(args.out)
     schema = PROFILE_SCHEMAS[args.profile]
-    if schema != SCHEMA and args.certified_by:
+    if args.profile in CANDIDATE_PROFILES and args.certified_by:
         raise RuntimeError(f"profile {args.profile} is a candidate build and cannot carry a certifier")
+    if args.certified_by:
+        problems = certifier_errors(schema, args.certified_by)
+        if problems:
+            raise RuntimeError(problems[0])
     wanted = MEMBERS_BY_SCHEMA[schema]
     head = must_run("git", "-C", str(ROOT), "rev-parse", "HEAD").strip()
     core_sha = args.core_sha or head
@@ -489,7 +506,7 @@ def cmd_build(args: argparse.Namespace) -> int:
         "schema": schema,
         "core_sha": core_sha,
         "package_version": package_version(),
-        "certified_by": args.certified_by or ("local" if schema == SCHEMA else CANDIDATE_CERTIFIER),
+        "certified_by": args.certified_by or default_certifier(args.profile),
         "corpus_sha": tree_sha(core_sha, "results-data"),
         "parent_core_sha": parent_sha,
         "parent_source": args.parent_source,
@@ -501,10 +518,12 @@ def cmd_build(args: argparse.Namespace) -> int:
     return 0
 
 
-def candidate_errors(out: Path, manifest: dict) -> list[str]:
+def default_certifier(profile: str) -> str:
+    return "local" if profile == "exact3" else CANDIDATE_CERTIFIER
+
+
+def contract_errors(out: Path) -> list[str]:
     problems: list[str] = []
-    if manifest.get("certified_by") != CANDIDATE_CERTIFIER:
-        problems.append(f"certified_by must be {CANDIDATE_CERTIFIER!r}, got {manifest.get('certified_by')!r}")
     docs_data = json.loads((out / "docs-data" / DOCS_DATA_FILE).read_text(encoding="utf-8"))
     problems += [f"docs-data: {e}" for e in schema_errors(docs_data, DOCS_DATA_SCHEMA)]
     contracts = json.loads((out / "doc-contracts.json").read_text(encoding="utf-8"))
@@ -535,10 +554,10 @@ def cmd_verify(out: Path) -> int:
     if bad:
         print(f"digest mismatch: {', '.join(bad)}")
         return 1
-    if schema != SCHEMA:
-        problems = candidate_errors(out, manifest)
+    if schema != 3:
+        problems = certifier_errors(schema, manifest.get("certified_by")) + contract_errors(out)
         if problems:
-            print(f"candidate schema {schema} invalid: {'; '.join(problems[:5])}")
+            print(f"schema {schema} invalid: {'; '.join(problems[:5])}")
             return 1
     attestations = json.loads((out / "attestations.json").read_text(encoding="utf-8"))
     if not attestations:
@@ -610,7 +629,7 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--parent-core-sha", default=None)
     build.add_argument("--parent-source", choices=PARENT_SOURCES, default="local")
     build.add_argument("--certified-by", default=None)
-    build.add_argument("--profile", choices=sorted(PROFILE_SCHEMAS), default="exact3")
+    build.add_argument("--profile", choices=sorted(PROFILE_SCHEMAS), default=DEFAULT_PROFILE)
     verify = sub.add_parser("verify")
     verify.add_argument("dir", type=Path)
     args = parser.parse_args(argv)

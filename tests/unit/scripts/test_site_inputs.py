@@ -572,7 +572,6 @@ def test_build_downloads_copies_each_file_at_its_repo_path(tmp_path: Path, monke
 
 
 def test_bundle_schema_three_requires_downloads_and_result_bundles() -> None:
-    assert site_inputs.SCHEMA == 3
     assert "downloads" in site_inputs.REQUIRED_MEMBERS
     assert "explorer/bundles" in site_inputs.REQUIRED_MEMBERS
 
@@ -628,11 +627,13 @@ def test_member_sets_per_schema_are_exact() -> None:
     assert set(site_inputs.MEMBERS_BY_SCHEMA[3]) == base
     assert set(site_inputs.MEMBERS_BY_SCHEMA[4]) == base | {"docs-data", "doc-contracts.json"}
     assert set(site_inputs.MEMBERS_BY_SCHEMA[5]) == (base - {"docs", "downloads"}) | {"docs-data", "doc-contracts.json"}
-    assert site_inputs.SCHEMA == 3
     assert site_inputs.PROFILE_SCHEMAS["exact3"] == 3
+    assert site_inputs.PROFILE_SCHEMAS["schema4"] == 4
+    assert site_inputs.PROFILE_SCHEMAS["candidate4"] == 4
+    assert site_inputs.PROFILE_SCHEMAS["candidate5"] == 5
 
 
-def test_default_profile_is_exact3() -> None:
+def test_default_profile_is_the_published_schema4() -> None:
     parser_args = []
 
     def capture(args: argparse.Namespace) -> int:
@@ -645,7 +646,9 @@ def test_default_profile_is_exact3() -> None:
         site_inputs.main(["build", "--out", "x"])
     finally:
         site_inputs.cmd_build = original
-    assert parser_args[0].profile == "exact3"
+    assert parser_args[0].profile == "schema4"
+    assert site_inputs.PROFILE_SCHEMAS[parser_args[0].profile] == 4
+    assert parser_args[0].certified_by is None
 
 
 @pytest.mark.parametrize("schema", [4, 5])
@@ -681,12 +684,82 @@ def test_schema4_rejects_missing_member(tmp_path: Path, monkeypatch: pytest.Monk
     assert site_inputs.cmd_verify(out) == 1
 
 
-def test_candidate_rejects_publication_certifier(
+def test_schema4_verify_accepts_a_run_id_certifier(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    out = _candidate(tmp_path, monkeypatch, 4, certified_by="123456")
+    out = _candidate(tmp_path, monkeypatch, 4, certified_by="38216829987")
+    assert site_inputs.cmd_verify(out) == 0
+    assert "schema 4" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("certified_by", ["local", "", "12a", "-1", "1 ", "\u0663", "latest"])
+def test_schema4_verify_rejects_other_certifiers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], certified_by: str
+) -> None:
+    out = _candidate(tmp_path, monkeypatch, 4, certified_by=certified_by)
     assert site_inputs.cmd_verify(out) == 1
     assert "certified_by" in capsys.readouterr().out
+
+
+def test_schema4_verify_rejects_a_numeric_certifier_stored_as_a_number(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = _candidate(tmp_path, monkeypatch, 4)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest["certified_by"] = 123456
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    assert site_inputs.cmd_verify(out) == 1
+
+
+@pytest.mark.parametrize("certified_by", ["123456", "local"])
+def test_schema5_verify_rejects_publication_certifiers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], certified_by: str
+) -> None:
+    out = _candidate(tmp_path, monkeypatch, 5, certified_by=certified_by)
+    assert site_inputs.cmd_verify(out) == 1
+    assert "certified_by" in capsys.readouterr().out
+
+
+def test_schema3_verify_ignores_the_certifier(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    out = _bundle(tmp_path)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest["certified_by"] = "local"
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    assert site_inputs.cmd_verify(out) == 0
+    assert "schema 3" in capsys.readouterr().out
+
+
+def test_schema4_tampered_contract_fails_its_digest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _candidate(tmp_path, monkeypatch, 4, certified_by="123456")
+    _write(out / "doc-contracts.json", '{"schema_version": 2}\n')
+    assert site_inputs.cmd_verify(out) == 1
+
+
+def test_schema4_rejects_an_extra_member(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _candidate(tmp_path, monkeypatch, 4, certified_by="123456")
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    _write(out / "extra.json", "{}\n")
+    manifest["members"]["extra.json"] = site_inputs.member_digest(out / "extra.json")
+    _write(out / "manifest.json", json.dumps(manifest) + "\n")
+    assert site_inputs.cmd_verify(out) == 1
+
+
+def test_certifier_rules_match_the_site_verifier() -> None:
+    assert site_inputs.certifier_errors(3, "local") == []
+    assert site_inputs.certifier_errors(4, "candidate") == []
+    assert site_inputs.certifier_errors(4, "42") == []
+    assert site_inputs.certifier_errors(4, "local")
+    assert site_inputs.certifier_errors(5, "candidate") == []
+    assert site_inputs.certifier_errors(5, "42")
+
+
+def test_default_certifier_is_never_local_for_schema4() -> None:
+    assert site_inputs.default_certifier("exact3") == "local"
+    for profile in ("schema4", "candidate4", "candidate5"):
+        assert (
+            site_inputs.certifier_errors(site_inputs.PROFILE_SCHEMAS[profile], site_inputs.default_certifier(profile))
+            == []
+        )
 
 
 def test_candidate_rejects_schema_invalid_docs_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -707,7 +780,14 @@ def test_candidate_rejects_extra_docs_data_entry(tmp_path: Path, monkeypatch: py
     assert site_inputs.cmd_verify(out) == 1
 
 
-def test_candidate_build_refuses_a_certifier() -> None:
-    args = argparse.Namespace(profile="candidate4", certified_by="123", out="unused")
+@pytest.mark.parametrize("profile", ["candidate4", "candidate5"])
+def test_candidate_build_refuses_a_certifier(profile: str) -> None:
+    args = argparse.Namespace(profile=profile, certified_by="123", out="unused")
     with pytest.raises(RuntimeError, match="cannot carry a certifier"):
+        site_inputs.cmd_build(args)
+
+
+def test_published_schema4_build_refuses_the_local_certifier() -> None:
+    args = argparse.Namespace(profile="schema4", certified_by="local", out="unused")
+    with pytest.raises(RuntimeError, match="certified_by candidate or a run id"):
         site_inputs.cmd_build(args)

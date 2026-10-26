@@ -9,3 +9,11 @@ cupy:
 cuml:
   reason: "CUDA ML library; used in RAPIDS paths. Not declared in pyproject.toml; pulled transitively via cudf."
   extras_group: "extras:cudf"
+
+chdb:
+  reason: "Embedded ClickHouse engine; probed with importlib.import_module in benchbox/core/tpchavoc/equivalence.py so a missing or unloadable wheel is reported as unavailable."
+  extras_group: "extras:clickhouse-local"
+
+torch:
+  reason: "Optional AI-primitives dependency; probed with importlib.import_module in benchbox/core/ai_primitives/dataframe_operations.py before the torch-backed queries run."
+  extras_group: "extras:ai-primitives"

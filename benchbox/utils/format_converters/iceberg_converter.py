@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import os
 import shutil
 import tempfile
@@ -180,7 +181,7 @@ class IcebergConverter(BaseFormatConverter):
         progress_callback: Callable[[str, float], None] | None = None,
     ) -> ConversionResult:
         try:
-            import pyiceberg.catalog.sql  # noqa: F401
+            importlib.import_module("pyiceberg.catalog.sql")
         except ImportError as e:
             raise ConversionError(
                 "Iceberg support requires the 'pyiceberg' package. "

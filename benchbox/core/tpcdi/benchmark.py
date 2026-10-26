@@ -6,6 +6,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import csv
+import importlib
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -235,7 +236,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         *,
         params: Optional[dict[str, Any]] = None,
     ) -> str:
-        import benchbox.sql_compat.rules.query_source.tpcdi_variants  # noqa: F401
+        importlib.import_module("benchbox.sql_compat.rules.query_source.tpcdi_variants")
         from benchbox.sql_compat.actions import CompatAction
         from benchbox.sql_compat.context import CompatibilityContext, Phase
         from benchbox.sql_compat.registry import REGISTRY

@@ -1,1 +1,1 @@
-from textcharts.cdf_chart import *  # noqa: F403
+from textcharts.cdf_chart import *

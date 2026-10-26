@@ -2,6 +2,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import importlib
 import os
 from typing import Optional, Union
 
@@ -204,7 +205,7 @@ def validate_athena_credentials(
         return False, f"pyathena not installed. Run: {get_install_command('athena')}"
 
     try:
-        import boto3  # noqa: F401
+        importlib.import_module("boto3")
     except ImportError:
         from benchbox.utils.dependencies import get_install_command
 

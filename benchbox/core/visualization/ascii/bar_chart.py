@@ -1,1 +1,1 @@
-from textcharts.bar_chart import *  # noqa: F403
+from textcharts.bar_chart import *

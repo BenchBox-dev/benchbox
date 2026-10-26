@@ -4,7 +4,7 @@ from benchbox.core.hooks.platform_hooks import (
     PlatformHookRegistry,
     PlatformOptionError,
     PlatformOptionSpec,
-    parse_bool,  # noqa: F401
+    parse_bool as parse_bool,
 )
 
 __all__ = [

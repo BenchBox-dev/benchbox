@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import csv
+import importlib
 import logging
 import re
 from datetime import datetime
@@ -291,7 +292,7 @@ class NYCTaxiBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseBenc
         return query_text
 
     def get_queries(self, dialect: str | None = None) -> dict[str, str]:
-        import benchbox.sql_compat.rules.query_source.nyctaxi_variants  # noqa: F401
+        importlib.import_module("benchbox.sql_compat.rules.query_source.nyctaxi_variants")
         from benchbox.sql_compat.actions import CompatAction
         from benchbox.sql_compat.context import CompatibilityContext, Phase
         from benchbox.sql_compat.registry import REGISTRY

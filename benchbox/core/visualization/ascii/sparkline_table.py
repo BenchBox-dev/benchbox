@@ -1,1 +1,1 @@
-from textcharts.sparkline_table import *  # noqa: F403
+from textcharts.sparkline_table import *

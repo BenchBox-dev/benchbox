@@ -21,7 +21,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from required_lane import (
     REQUIRED_CHECK_NAMES,
     _parse_iso,
-    is_check_run_success,  # noqa: F401
+    is_check_run_success as is_check_run_success,
     is_required_lane_green,
     latest_check_run,
 )

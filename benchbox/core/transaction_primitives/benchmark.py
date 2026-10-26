@@ -5,6 +5,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import datetime
+import importlib
 import shutil
 import tempfile
 import time
@@ -48,7 +49,7 @@ from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
 
 def _pk_lock_bypass_required(dialect: str) -> bool:
-    import benchbox.sql_compat.rules.schema_emit.pk_capability_txn  # noqa: F401
+    importlib.import_module("benchbox.sql_compat.rules.schema_emit.pk_capability_txn")
     from benchbox.sql_compat.actions import CompatAction
     from benchbox.sql_compat.context import CompatibilityContext, Phase
     from benchbox.sql_compat.registry import REGISTRY

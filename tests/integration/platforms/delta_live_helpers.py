@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import importlib
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -12,8 +13,8 @@ from typing import Any
 @lru_cache(maxsize=1)
 def delta_live_skip_reason() -> str | None:
     try:
-        import delta  # noqa: F401
-        import pyspark  # noqa: F401
+        importlib.import_module("delta")
+        importlib.import_module("pyspark")
     except ImportError as exc:
         return f"PySpark + Delta Lake runtime not installed: {exc}"
 

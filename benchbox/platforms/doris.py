@@ -24,7 +24,7 @@ from ..utils.file_format import get_data_extension
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.data_loading import (
     CsvDialect,
-    DataSourceResolver,  # noqa: F401
+    DataSourceResolver as DataSourceResolver,
     FileFormatRegistry,
     GzipHandler,
     NoCompressionHandler,
@@ -56,21 +56,21 @@ _DEFAULT_STREAM_LOAD_MAX_FILTER_RATIO = "0"
 
 _DEFAULT_BUCKETS = 10
 
-_TPCDS_DECIMAL_NULL_POSITIONS: dict[str, list[int]] = dict(  # noqa: C408
-    call_center=[29, 30],
-    catalog_returns=list(range(18, 27)),
-    catalog_sales=list(range(19, 34)),
-    customer_address=[11],
-    item=[5, 6],
-    promotion=[5],
-    store=[27, 28],
-    store_returns=list(range(11, 20)),
-    store_sales=list(range(11, 22)),
-    warehouse=[13],
-    web_returns=list(range(15, 24)),
-    web_sales=list(range(19, 34)),
-    web_site=[24, 25],
-)
+_TPCDS_DECIMAL_NULL_POSITIONS: dict[str, list[int]] = {
+    "call_center": [29, 30],
+    "catalog_returns": list(range(18, 27)),
+    "catalog_sales": list(range(19, 34)),
+    "customer_address": [11],
+    "item": [5, 6],
+    "promotion": [5],
+    "store": [27, 28],
+    "store_returns": list(range(11, 20)),
+    "store_sales": list(range(11, 22)),
+    "warehouse": [13],
+    "web_returns": list(range(15, 24)),
+    "web_sales": list(range(19, 34)),
+    "web_site": [24, 25],
+}
 
 
 def _fix_tpcds_decimal_nulls(line: str, delimiter: str, positions: list[int]) -> str:
@@ -92,22 +92,22 @@ def _format_filter_ratio(value: Any) -> str:
 
 _DORIS_ENGINE_VERSION_RE = re.compile(r"doris[-\s]v?(\d+\.\d+\.\d+(?:-[A-Za-z0-9]+)?)", re.IGNORECASE)
 
-_TPCH_TABLE_KEYS: dict[str, list[str]] = dict(  # noqa: C408
-    lineitem=["l_orderkey", "l_linenumber"],
-    orders=["o_orderkey"],
-    customer=["c_custkey"],
-    part=["p_partkey"],
-    supplier=["s_suppkey"],
-    partsupp=["ps_partkey", "ps_suppkey"],
-    nation=["n_nationkey"],
-    region=["r_regionkey"],
-)
+_TPCH_TABLE_KEYS: dict[str, list[str]] = {
+    "lineitem": ["l_orderkey", "l_linenumber"],
+    "orders": ["o_orderkey"],
+    "customer": ["c_custkey"],
+    "part": ["p_partkey"],
+    "supplier": ["s_suppkey"],
+    "partsupp": ["ps_partkey", "ps_suppkey"],
+    "nation": ["n_nationkey"],
+    "region": ["r_regionkey"],
+}
 
 _TPCH_DISTRIBUTION_KEYS: dict[str, str] = {
     table: keys[0] for table, keys in _TPCH_TABLE_KEYS.items() if table != "partsupp"
 } | {"partsupp": "ps_partkey"}
 
-_TPCH_PARTITION_TABLES: dict[str, str] = dict(lineitem="l_shipdate", orders="o_orderdate")  # noqa: C408
+_TPCH_PARTITION_TABLES: dict[str, str] = {"lineitem": "l_shipdate", "orders": "o_orderdate"}
 
 _TPCH_YEAR_PARTITIONS = [(f"p{year}", f"{year}-01-01", f"{year + 1}-01-01") for year in range(1992, 1999)]
 _TPCH_PARTITION_RANGES: dict[str, list[tuple[str, str, str]]] = {
@@ -119,9 +119,11 @@ _TPCH_BLOOM_FILTER_COLUMNS: dict[str, list[str]] = {
     table: [key] for table, key in _TPCH_DISTRIBUTION_KEYS.items() if table not in {"nation", "region"}
 }
 
-_TPCH_BITMAP_COLUMNS: dict[str, list[str]] = dict(  # noqa: C408
-    lineitem=["l_returnflag", "l_linestatus"], orders=["o_orderstatus"], part=["p_type"]
-)
+_TPCH_BITMAP_COLUMNS: dict[str, list[str]] = {
+    "lineitem": ["l_returnflag", "l_linestatus"],
+    "orders": ["o_orderstatus"],
+    "part": ["p_type"],
+}
 
 
 def _normalize_doris_engine_version(
