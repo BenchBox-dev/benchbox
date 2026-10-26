@@ -9034,12 +9034,17 @@
       "title": "Verify production migration and release source ownership freeze"
     },
     "docs-mig-history-filter": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T09:09:33Z",
+        "generation": "c76ac52fdd7f4407b3d87132a0afe3dc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "docs-mig-adr-ownership"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Archive filtered documentation history without forbidden content"
     },
     "docs-mig-legacy-downloads-redirects": {
