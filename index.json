@@ -15964,7 +15964,9 @@
     },
     "oracle-absence-quota-pattern-anchoring-20261022": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-absence-json-error-events-20261026"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Stop quoted text in reviewer output from classifying a failed run as quota-exhausted"
