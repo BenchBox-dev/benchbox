@@ -96,13 +96,16 @@ def _write_bundle(
 
 
 KNOWN_DEFECTIVE_SHALLOW_COHORTS = {
-    ("coffeeshop", "0.01"): {"duckdb"},
-    ("tpch", "0.01"): {"datafusion", "duckdb"},
-    ("tpch", "0.1"): {"datafusion", "duckdb"},
-    ("tpch", "1.0"): {"duckdb"},
-    ("tpcdi", "0.01"): {"duckdb"},
     ("clickbench", "0.1"): {"bigquery", "snowflake"},
+    ("datavault", "0.01"): {"clickhouse-local^container"},
+    ("datavault", "0.1"): {"clickhouse-local^container"},
+    ("read_primitives", "0.01"): {"clickhouse-local^container", "datafusion"},
+    ("read_primitives", "0.1"): {"clickhouse-local^container", "datafusion"},
     ("tpcds_obt", "1.0"): {"datafusion", "duckdb"},
+    ("tpch", "1.0"): {"duckdb"},
+    ("tpchavoc", "0.01"): {"datafusion"},
+    ("tpchavoc", "0.1"): {"datafusion"},
+    ("tpchavoc", "1.0"): {"datafusion"},
 }
 
 
@@ -321,7 +324,7 @@ def test_validator_and_explorer_agree_on_the_tpch_sf01_cohort() -> None:
 
     assert defective > 0
     assert validator.cohort_platforms(bundles) == {("tpch", "0.1"): explorer_identities}
-    assert explorer_identities == {"datafusion", "duckdb"}
+    assert explorer_identities == {"clickhouse-local^container", "datafusion", "duckdb", "sqlite"}
 
 
 def test_requested_engine_without_variant_string_matches_pipeline(tmp_path: Path) -> None:

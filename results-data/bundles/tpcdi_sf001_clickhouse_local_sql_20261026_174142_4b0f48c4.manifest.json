@@ -1,0 +1,11 @@
+{
+  "bundle_file": "tpcdi_sf001_clickhouse_local_sql_20261026_174142_4b0f48c4.json",
+  "bundle_hash": "b03b80ec6fe8a1689cc82486cf436e7898281c8e1188d37df971a6c985470d7d",
+  "container_host_os": "macOS",
+  "execution_class": "container",
+  "execution_class_evidence": "Bundle records a Linux kernel on an Apple CPU vendor: a Linux guest on Apple silicon, not the native macOS host.",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}

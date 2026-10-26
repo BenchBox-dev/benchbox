@@ -900,3 +900,119 @@ summary timings cover 91 query ids, so they are not like-for-like with the
 `tpcds_obt` SF1 cohort has two comparison identities (DataFusion and DuckDB);
 it is listed in `DOCUMENTED_SHALLOW_COHORTS` in `validate_corpus.py` beside the
 known-defective bundles of the same platforms.
+
+
+## Local reruns for published results computed with superseded SQL translations (2026-10-26)
+
+Fifty-eight replacement local bundles (`result_source: internal`) replace the
+flagged local bundles computed with superseded SQL translations across ClickHouse
+Local, DataFusion, and SQLite. Every bundle was generated with bundled SQLGlot
+fork 30.24.0.17 and raw-text DuckDB source dialect routing (#3544), under the
+SQLite database helper-index restoration path (#3563).
+
+Defective predecessors keep their manifest sidecar entries (`defective-superseded-sql-translation`,
+`defective-macdbgen-addresses`, `defective-tpchavoc-variant-divergence`,
+`defective-sqlite-clickbench-row-counts`) as unranked comparison history.
+
+### Hardware environment and container execution
+
+The DataFusion and SQLite replacement bundles ran natively on the Darwin Apple M4
+host (10 CPUs, 16 GB RAM), matching the DuckDB baseline.
+
+ClickHouse Local replacement bundles (26 bundles) ran in the Linux container
+lane (`benchbox-agent`, Linux 6.18.15 aarch64, 4 vCPUs, 10 GB RAM) using chDB
+4.1.6, because published chDB 4.1.6 macOS wheels fail to load on macOS 27
+(mis-aligned LINKEDIT string pool loader error), matching the container runner
+precedent established in the TPC-DS OBT SF1 reruns (#3550). Consequently,
+ClickHouse Local timings reflect the containerized virtualized execution
+environment and 4-vCPU allocation rather than the bare-metal Darwin Apple M4
+host. These bundles rank under the separate comparison identity
+`clickhouse-local^container` (`published_variant_id`, #3618) and carry the label
+`ClickHouse Local (Linux container on macOS)`; the execution class is recorded in
+their manifest sidecars by `scripts/annotate_execution_class.py`, and the bundle
+JSON is unchanged. Container timings are never ranked against Darwin host runs
+under one identity.
+
+### Coverage and validation
+
+- ClickHouse Local (26 bundles): covers TPC-H (SF0.01, SF0.1, SF1), TPC-H Skew
+  (SF0.01, SF0.1, SF1), TPC-DS (SF1), TPC-Havoc (SF0.01, SF0.1, SF1), and the
+  CH-4 group (CoffeeShop SF0.01/0.1/1, DataVault SF0.01/0.1, FlightData SF0.01/0.1/1,
+  NYCTaxi SF0.01/0.1/1, Read Primitives SF0.01/0.1, TPC-DI SF0.01/0.1/1).
+  TPC-Havoc variant divergence persists on ClickHouse Local and continues to carry
+  `defective-tpchavoc-variant-divergence` in its manifest sidecars.
+- DataFusion (20 bundles): covers TPC-DI (SF0.01, SF0.1, SF1), TPC-DS (SF1, SF10),
+  CoffeeShop (SF0.01, SF0.1, SF1), TPC-H (SF0.01, SF0.1, SF1), Read Primitives
+  (SF0.01, SF0.1), TPC-H Skew (SF0.01, SF0.1, SF1), TPC-Havoc (SF0.01, SF0.1, SF1),
+  and ClickBench (SF1).
+- SQLite (12 bundles): covers TPC-H (SF0.01, SF0.1, SF1), TPC-H Skew (SF0.01, SF0.1, SF1),
+  CoffeeShop (SF0.01, SF0.1, SF1), Read Primitives (SF0.01, SF0.1), and ClickBench (SF1).
+  TPC-H SF0.1 executes with restored helper indexes in 10.6s (Q21 warm 89ms) and
+  SF0.01 in 2.1s (Q21 warm 15ms), resolving the indexless-reuse plan regression.
+  Read Primitives bundles record `partial` summary status due to unsupported complex
+  collection operations, matching predecessor behavior.
+
+All 58 bundles pass `scripts/validate_submission.py --require-manifest --trust-internal-source --allow-partial-validation`
+with zero errors.
+
+### Documented shallow cohorts and ranking status
+
+Ingesting these replacements raises TPC-H SF0.01, TPC-H SF0.1, CoffeeShop SF0.01,
+and TPC-DI SF0.01 to >=3 comparison identities, restoring their platform floors.
+Three cohort groups become newly shallow in `DOCUMENTED_SHALLOW_COHORTS`
+(`results-data/validate_corpus.py`):
+- `datavault` SF0.01 and SF0.1 (`clickhouse-local^container` only, 1 identity);
+- `read_primitives` SF0.01 and SF0.1 (`clickhouse-local^container` and DataFusion,
+  2 identities);
+- `tpchavoc` SF0.01, SF0.1, and SF1.0 (DataFusion only, 1 rankable identity, as ClickHouse
+  Local remains excluded from ranking via `defective-tpchavoc-variant-divergence`).
+
+Replacement TPC-H SF1 (ClickHouse Local, DataFusion, SQLite) and TPC-DS SF1/SF10
+(ClickHouse Local, DataFusion) bundles carry compliance_class 'unofficial_nonstandard'
+(internal test type power with default parameters), preserving unranked comparison evidence.
+
+### Audit tail: json_extract_simple and TPC-Havoc text edits
+
+Census command: `git archive origin/develop results-data/bundles | tar -x`, then a
+Python pass over every bundle JSON including subdirectories. At origin/develop
+e4401a0ed it found 422 bundles with queries, 64 of them in subdirectories.
+
+- `json_extract_simple`: two historical bundles (3465d4f3, c1aeca88; chDB 4.1.6,
+  Darwin) ran the earlier SQL. Their replacements 9f79ff77 and 3f5c94e9 already use
+  the fixed `JSONExtractRaw` SQL; the text is identical on SQLGlot wheels 30.24.0.17
+  and 30.25.0.1 and the recorded 1000 rows with SUCCESS are identical. No rerun is
+  needed.
+- TPC-Havoc 14_v1, 14_v7 and 8_v7 now wrap empty filtered numerators in COALESCE
+  (#3118), and 18_v9 uses row_number with ORDER BY/LIMIT 100 (#3145). The 18 bundles
+  published before 2026-10-17 ran the earlier text. Their recorded row counts are the
+  same under both texts. Only 8_v7 at SF0.01 returned NULL market shares where the
+  current text returns 0.0. Bundles record no result values, so no recorded field is
+  affected. Note only; no new defect id.
+
+### Wheel consistency
+
+The 58 bundles ran on SQLGlot fork 30.24.0.17; later reruns use 30.25.0.1 and earlier
+valid bundles are kept. The #3587 comparison translated 72,483 queries across both
+wheels and changed 9 outputs, all with a DuckDB target, none of which is a target of
+these bundles.
+
+### Pseudonym salt exception
+
+The 58 bundles were staged with an empty pseudonym salt, so their machine pseudonyms
+(including `database_5d7b725135a6`) are hashes of the empty-salt input, whose hashed
+value is the word `benchbox`. The maintainer salt (`BENCHBOX_MACHINE_ID_SALT`, held as
+a CI secret) was not available to the staging session, so the bundles were not
+re-staged. Exposure is negligible. Bundle JSON is not modified; this note is the
+record of the exception.
+
+### Submission validation refusal path
+
+Without `--trust-internal-source`, `scripts/validate_submission.py --require-manifest`
+refuses 17 of the 58 bundles: 12 for a non-official `benchmark.compliance_class`
+(`unofficial_subscale` or `unofficial_nonstandard`), 3 ClickHouse Local TPC-Havoc
+bundles for inconsistent per-variant row counts (the documented
+`defective-tpchavoc-variant-divergence`), and 2 SQLite Read Primitives bundles with
+`summary.validation` of `partial`. These are internal-source bundles, so the supported path is
+`--require-manifest --trust-internal-source --allow-partial-validation`, under which
+all 58 pass with zero errors. The internal-source trust path for these classes is
+tracked by `flagged-local-bundles-compliance-class-gate-20261025`.

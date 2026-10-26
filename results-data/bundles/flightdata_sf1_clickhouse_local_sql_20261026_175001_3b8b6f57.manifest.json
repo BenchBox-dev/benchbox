@@ -1,0 +1,11 @@
+{
+  "bundle_file": "flightdata_sf1_clickhouse_local_sql_20261026_175001_3b8b6f57.json",
+  "bundle_hash": "0c7e30ff9cfe1d2f877fda8ed176a89418d2864c6065606b44c67c89878a6213",
+  "container_host_os": "macOS",
+  "execution_class": "container",
+  "execution_class_evidence": "Bundle records a Linux kernel on an Apple CPU vendor: a Linux guest on Apple silicon, not the native macOS host.",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}
