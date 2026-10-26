@@ -328,10 +328,10 @@ def mark_citations(verdict: Verdict, workspace: Path, disputed: Iterable[str] = 
     for prior in verdict.prior_defects:
         if prior.status == WITHDRAWN and not _withdrawal_verified(prior.evidence, workspace, examined):
             note = f"{prior.evidence} {UNVERIFIED_WITHDRAWAL}".strip()
-            prior = replace(prior, status=NOT_FIXED, evidence=note)
+            prior = replace(prior, status=NOT_FIXED, evidence=note, demoted="withdrawal")
         if prior.status == FIXED and prior.id in wanted and not maintain_verified(prior.evidence, workspace, examined):
             note = f"{prior.evidence} {DEMOTED_FIXED}".strip()
-            prior = replace(prior, status=NOT_FIXED, evidence=note)
+            prior = replace(prior, status=NOT_FIXED, evidence=note, demoted="fixed")
         if (
             prior.status == NOT_FIXED
             and prior.id in wanted

@@ -36,7 +36,8 @@ PRIOR_STATUSES = (FIXED, NOT_FIXED, WITHDRAWN)
 FINDING_KEYS = ("severity", "file", "line", "end_line", "title", "detail")
 OPTIONAL_FINDING_KEYS = frozenset({"end_line"})
 PRIOR_KEYS = ("id", "status", "evidence")
-PRIOR_OPTIONAL_KEYS = ("claim", "concedes")
+PRIOR_OPTIONAL_KEYS = ("claim", "concedes", "demoted")
+DEMOTED_STATUSES = ("withdrawal", "fixed")
 MAX_CLAIM = 8000
 VERDICT_KEYS = ("status", "incomplete_reason", "decision", "summary", "files_examined", "defects", "prior_defects")
 RESPONSE_PLACEHOLDERS = {
@@ -114,6 +115,7 @@ class PriorDefect:
     evidence: str
     claim: str = ""
     concedes: bool | None = None
+    demoted: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -122,6 +124,7 @@ class PriorDefect:
             "evidence": self.evidence,
             "claim": self.claim,
             "concedes": self.concedes,
+            "demoted": self.demoted,
         }
 
 
@@ -352,7 +355,7 @@ def _finding(data: Any) -> Finding:
     return Finding(severity, path, line, sanitize(title, MAX_TITLE), sanitize(detail, MAX_DETAIL), span_end)
 
 
-def _prior(data: Any) -> PriorDefect:
+def _prior(data: Any, *, trusted: bool = False) -> PriorDefect:
     _require(
         isinstance(data, dict) and set(PRIOR_KEYS) <= set(data) <= set(PRIOR_KEYS) | set(PRIOR_OPTIONAL_KEYS),
         f"each prior defect must have the keys {PRIOR_KEYS} and may add {PRIOR_OPTIONAL_KEYS}",
@@ -368,8 +371,18 @@ def _prior(data: Any) -> PriorDefect:
     _require(isinstance(claim, str), "prior defect claim must be a string")
     concedes = data.get("concedes")
     _require(concedes is None or isinstance(concedes, bool), "prior defect concedes must be a boolean")
+    demoted = data.get("demoted")
+    _require(
+        demoted is None or (trusted and demoted in DEMOTED_STATUSES),
+        "prior defect demoted is set by the oracle, not the reviewer",
+    )
     return PriorDefect(
-        identifier, data["status"], sanitize(data["evidence"], MAX_EVIDENCE), sanitize(claim, MAX_CLAIM), concedes
+        identifier,
+        data["status"],
+        sanitize(data["evidence"], MAX_EVIDENCE),
+        sanitize(claim, MAX_CLAIM),
+        concedes,
+        demoted,
     )
 
 
@@ -399,7 +412,7 @@ def validate(data: Any, *, trusted: bool = False) -> Verdict:
     _require(isinstance(count, int) and not isinstance(count, bool) and count >= 0, "defect_count must be >= 0")
     _require(count >= len(data["defects"]), "defect_count is below the listed defects")
     defects = tuple(_finding(item) for item in data["defects"][:MAX_LISTED])
-    priors = tuple(_prior(item) for item in data["prior_defects"][:MAX_LISTED])
+    priors = tuple(_prior(item, trusted=trusted) for item in data["prior_defects"][:MAX_LISTED])
     _require(len({prior.id for prior in priors}) == len(priors), "a prior defect id repeats")
     return Verdict(
         status=data["status"],

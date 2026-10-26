@@ -102,6 +102,7 @@ def test_valid_verdict_round_trips() -> None:
         "evidence": "line 12 now compares both sides",
         "claim": "the row is dropped",
         "concedes": False,
+        "demoted": None,
     }
     verdict = validate(_verdict(_finding(), _finding(severity="Low", line=99), prior_defects=[prior]))
     assert [finding.severity for finding in verdict.defects] == ["High", "Low"]
@@ -125,8 +126,9 @@ def test_valid_verdict_round_trips() -> None:
         _verdict(files_examined=[3]),
         _verdict(prior_defects=[{"id": "D1", "status": "open", "evidence": ""}]),
         _verdict(prior_defects=[{"id": "D1", "status": "fixed"}]),
+        _verdict(prior_defects=[{"id": "D1", "status": "fixed", "evidence": "", "demoted": "bogus"}]),
+        _verdict(prior_defects=[{"id": "D1", "status": "fixed", "evidence": "", "demoted": "withdrawal"}]),
         _verdict(prior_defects=[{"id": "<!--x-->", "status": "fixed", "evidence": ""}]),
-        _verdict(prior_defects=[{"id": "D1", "status": "fixed", "evidence": ""}] * 2),
         _verdict(defect_count=3),
         _verdict(_finding(severity="critical")),
         _verdict(_finding(severity="Blocker")),

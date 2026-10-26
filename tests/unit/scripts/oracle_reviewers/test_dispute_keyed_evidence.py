@@ -195,6 +195,7 @@ def test_a_demoted_withdrawal_stays_open_with_its_gap_published(policy: Policy, 
     verdict = validate(_verdict_dict(_disposition("withdrawn", evidence_text="never a defect: pkg/a.py:99")))
     marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
     assert marked.prior_defects[0].status == "not_fixed"
+    assert marked.prior_defects[0].demoted == "withdrawal"
     assert evidence.UNVERIFIED_MAINTAIN in marked.prior_defects[0].evidence
     assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
 
@@ -235,8 +236,22 @@ def test_a_disputed_fixed_without_a_verified_citation_is_demoted(policy: Policy,
     verdict = validate(_verdict_dict(_disposition("fixed", evidence_text="reworked the loop")))
     marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
     assert marked.prior_defects[0].status == "not_fixed"
+    assert marked.prior_defects[0].demoted == "fixed"
     assert evidence.UNVERIFIED_MAINTAIN in marked.prior_defects[0].evidence
     assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
+
+
+def test_a_demoted_flag_survives_storage_truncation(policy: Policy, tmp_path: Path) -> None:
+    body = "y" * 950 + " never a defect: pkg/missing.py:5"
+    verdict = validate(_verdict_dict(_disposition("withdrawn", evidence_text=body, concedes=True)))
+    marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
+    assert marked.prior_defects[0].status == "not_fixed"
+    assert marked.prior_defects[0].demoted == "withdrawal"
+    reloaded = validate(marked.to_json(), trusted=True)
+    assert len(reloaded.prior_defects[0].evidence) <= 1000
+    assert "counts as not fixed" not in reloaded.prior_defects[0].evidence
+    assert reloaded.prior_defects[0].demoted == "withdrawal"
+    assert protocol.dispute_problem(reloaded, _plan_with_dispute(policy, _dispute())) is None
 
 
 def test_a_disputed_fixed_with_a_verified_citation_closes(policy: Policy, tmp_path: Path) -> None:
