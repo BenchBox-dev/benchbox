@@ -3,6 +3,7 @@
     "6_v2 and 14_v2 execute on sqlite3 and match DuckDB at SF0.01 with non-vacuous results (or the gate's augmentation).",
     "Fork test in CI; gate allowlist entry removed; sql-execution-gate PASS."
   ],
+  "context": "DONE: fork #71 (b9e7725a) + release #72 30.24.0.16, adopted by #3524 (1326cae28). SQLite drops GROUP BY () on global aggregates and writes global HAVING as a subquery filter (pre-3.39 SQLite, ubuntu-22.04 CI). Gate allowlist entries for sqlite 6_v2/14_v2 removed; sql-execution-gate PASS 0 unexplained. GitHub #3513.",
   "description": "Found by extending sql-execution-gate to TPC-Havoc (item sql-execution-gate-cover-tpchavoc-obt-20261025). The SQLite translation of 6_v2 and 14_v2 emits `GROUP BY ()`, which SQLite rejects (`near \")\": syntax error`). The fork carries empty-group-by-generator for other targets. GUARDRAILS: fix in the SQLGlot fork with real-engine tests (fork CI) and adopt via a wheel cut under the batch wheel mutex; benchmark text unchanged; when fixed, remove the matching sql-execution-gate allowlist entry (the gate fails on stale entries); list affected published bundles and flag only if recorded rows were wrong; no cloud spend.",
   "sessions": [
     {
@@ -20,6 +21,14 @@
       "generation": "bf1a33ad4df84cb8864f2e44df4593cd",
       "op": "take",
       "op_id": "ef99683497ed46df84705e3708c4d772",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-26T03:34:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a18fc861a47c49868467761248185af7",
       "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
