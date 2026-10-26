@@ -83,12 +83,24 @@ voids it. The authorization lifts only the red-trunk refusal: required checks,
 must still be marked ready before it can be armed. `docs/agent/merge-authority.md`
 says when an agent may post it.
 
-Bound:
-
-- **Already armed PRs still merge.** Disabling auto-merge on open PRs when a
-  trunk run fails needs a job in `.github/workflows/`, a soundness path that
-  requires oracle review, so it is not done here. The window is PRs armed
-  before the red run completed.
+- **Already armed PRs are disarmed on red, within a bound.** When a `trunk.yml`
+  run on `develop` completes, `.github/workflows/trunk-red-disarm.yml` (with
+  `pull-requests: write`, `actions: read`, `contents: read` and no secrets)
+  computes the red streak and its culprit once, then evaluates every open PR
+  against `develop` that still has auto-merge enabled with the same decision
+  `scripts/trunk_revert.py arm-gate` would make. Each PR the gate would refuse
+  is disarmed through the GraphQL `disablePullRequestAutoMerge` mutation and
+  logged with the PR number, the culprit, and the run URL. The genuine revert
+  PR is never disarmed. Nothing is ever armed, labelled, closed, commented on,
+  rebased, re-run, and no ruleset is edited. A green completion disarms
+  nothing. If the streak lookup itself fails, the run fails and disarms
+  nothing; a PR whose own evaluation fails is disarmed fail-closed. A rerun
+  touches no PR twice because disarmed PRs are no longer armed.
+- **Remaining bound after disarm.** Merges placed through the GitHub UI or raw
+  git ignore auto-merge state entirely, and a PR armed after the disarm run but
+  before `develop` is green again still merges. Arming stays refused while the
+  red streak stands, so closing that window is a matter of not arming until
+  green; the next red completion disarms again.
 - **Bypass.** The gate lives in the repository's make targets. Arming from the
   GitHub UI or `gh pr merge --auto`, or calling `scripts/pr_arm.py` directly,
   skips it. A required check or ruleset would close this; both are owner
@@ -142,10 +154,12 @@ them together with their tests.
 
 ## What we deliberately did not do
 
-- **No extra push-adjacent spam** (`pull_request`, `workflow_run`,
-  `repository_dispatch`, and so on) to force more events. That papers over the
+- **No extra push-adjacent spam** (`pull_request`, `repository_dispatch`, and
+  so on) to force more events. That papers over the
   class without bounding exposure cleanly and burns runners on every related
-  event.
+  event. The one `workflow_run` listener is `.github/workflows/trunk-red-disarm.yml`,
+  which fires only on a completed `trunk.yml` run for a `develop` push, mutates
+  only auto-merge state, and never opens, closes, or comments on anything.
 - **No replacement of the push trigger.** Push stays the primary trigger for
   workflows that record state on a develop commit; recovery is dispatch.
 - **No mutation jobs on schedule.** Anything that opens or closes GitHub
