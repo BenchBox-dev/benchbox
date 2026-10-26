@@ -2202,7 +2202,7 @@
    "kinds": {
     "file": 1
    },
-   "occurrences": 28,
+   "occurrences": 14,
    "path": "quality/comment-policy.json",
    "rule": "comment-policy-registries",
    "target_count": 1,
@@ -4392,13 +4392,13 @@
    "built-url": 29042,
    "dir": 167,
    "extra": 31,
-   "file": 1415,
+   "file": 1401,
    "generated": 3,
    "pattern": 316,
    "root": 195,
    "unresolved": 2047
   },
-  "references": 33216,
+  "references": 33202,
   "unclassified": 0
  }
 }
