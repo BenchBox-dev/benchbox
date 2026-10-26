@@ -326,7 +326,7 @@ jobs:
 
       - name: Decide whether a failed run is surfaced
         id: surface
-        if: ${{ failure() && steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true' && steps.status.outcome != 'success' }}
+        if: ${{ failure() && steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true' && steps.status.outcome != 'success' && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') }}
         working-directory: trusted
         env:
           GH_TOKEN: ${{ github.token }}
@@ -338,7 +338,7 @@ jobs:
 
       - name: Mint the App token for the failure status
         id: failure_app
-        if: ${{ failure() && steps.surface.outputs.post == 'true' && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') && steps.scan_after.outcome != 'failure' && steps.redact.outcome != 'failure' }}
+        if: ${{ failure() && steps.surface.outputs.post == 'true' && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') && steps.scan_after.outcome == 'success' && steps.redact.outcome == 'success' }}
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
           app-id: ${{ secrets.ORACLE_APP_ID }}

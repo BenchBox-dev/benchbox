@@ -163,6 +163,7 @@ def _base_plan(policy: Policy, repo: str, pr: int | None, run_id: str) -> dict[s
         "max_attempts": policy.max_attempts,
         "pool_blocked_until": {},
         "manual": False,
+        "backoff_reset_at": None,
         "created_at": _now().isoformat(),
     }
 
@@ -287,14 +288,31 @@ def command_plan_entry(args: argparse.Namespace) -> int:
     return command_plan(args)
 
 
-def _backoff_reset(repo: str, pr: int, head_sha: str, manual: bool, previous: retry.State | None) -> datetime | None:
+def _backoff_reset(
+    repo: str, pr: int, head_sha: str, run_id: int, manual: bool, previous: retry.State | None
+) -> datetime | None:
     if not manual or previous is None or previous.head_sha != head_sha:
         return None
     try:
-        return github.backoff_reset_at(repo, pr, head_sha)
+        reset_at = github.backoff_reset_at(repo, pr, head_sha)
     except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
         _summary(f"oracle-verdict: the owner's backoff reset could not be read, so none applies: {exc}")
         return None
+    if not retry.reset_applies(previous, head_sha, reset_at):
+        return reset_at
+    try:
+        later = [
+            run
+            for run in sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, reset_at)).get(pr, ())
+            if run.id != run_id and run.created_at > reset_at
+        ]
+    except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
+        _summary(f"oracle-verdict: the owner's backoff reset could not be confirmed unused: {exc}")
+        return None
+    if later:
+        _summary("oracle-verdict: the owner's backoff reset was already used by a later run")
+        return None
+    return reset_at
 
 
 def command_plan(args: argparse.Namespace) -> int:
@@ -355,7 +373,7 @@ def command_plan(args: argparse.Namespace) -> int:
             return _finish_plan(out_dir, plan)
         previous = None
     now = _now()
-    reset_at = _backoff_reset(repo, pr, plan["head_sha"], manual, previous)
+    reset_at = _backoff_reset(repo, pr, plan["head_sha"], int(plan["run_id"]), manual, previous)
     rerun = retry.decide_rerun(
         manual=manual,
         new_diff=new_diff,

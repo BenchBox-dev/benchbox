@@ -222,7 +222,7 @@ permanent, not a one-time inspection:
 | C7 token scope | The job's permissions are exactly `actions: write`, `contents: read`, `pull-requests: read` and `id-token: write`. `github.token` appears only in the `env:` of steps that run before or after the loop step, and both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus a setup allowance, under 360; the harness timeout still fires first and becomes an absence. A workflow test recomputes the number from the policy. |
 | C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs queue behind a run in flight. Every posting step has the default success condition, so a cancelled run posts nothing. |
-| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by two steps, both after the loop and the second disk scan: the posting mint, and the failure-status mint, which also never runs when the loop could not confirm that the reviewer's processes exited. |
+| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by two steps, both after the loop: the posting mint, and the failure-status mint, which runs only when the loop confirmed the reviewer's processes exited and the second disk scan and the redaction check both succeeded. |
 
 The OIDC request token is in the loop step's environment, as the gateway token
 is, and is accepted on the same terms: GitHub documents it as valid only while

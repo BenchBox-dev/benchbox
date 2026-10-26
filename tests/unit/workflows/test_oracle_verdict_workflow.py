@@ -691,8 +691,8 @@ def test_the_failure_status_is_decided_with_the_job_token_and_posted_with_the_ap
 def test_the_app_token_for_the_failure_status_is_not_minted_while_the_reviewer_may_still_run() -> None:
     condition = _step_if("Mint the App token for the failure status")
     assert "steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false'" in condition
-    assert "steps.scan_after.outcome != 'failure'" in condition
-    assert "steps.redact.outcome != 'failure'" in condition
+    assert "steps.scan_after.outcome == 'success'" in condition
+    assert "steps.redact.outcome == 'success'" in condition
     assert "steps.surface.outputs.post == 'true'" in condition
 
 
@@ -702,3 +702,6 @@ def test_a_result_that_was_posted_or_already_existed_is_never_overwritten_by_a_f
     assert "steps.guard.outputs.skip != 'true'" in condition
     assert "steps.plan.outputs.post == 'true'" in condition
     assert "env.HAS_APP == 'true'" in condition
+    assert "steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false'" in _step_if(
+        "Decide whether a failed run is surfaced"
+    )

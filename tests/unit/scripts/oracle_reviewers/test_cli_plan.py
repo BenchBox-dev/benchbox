@@ -685,6 +685,20 @@ def test_an_owner_reset_covers_one_run_then_expires_on_a_failure_without_a_resul
     assert reset.dispatched == []
 
 
+def test_an_owner_reset_is_spent_by_the_first_later_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    first = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    first.comments = _reset_comments()
+    _, values, _ = _plan(monkeypatch, tmp_path, first, event_name="issue_comment", event=event)
+    assert values["decision"] == "review"
+    second = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    second.comments = _reset_comments()
+    second.runs = [_verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(minutes=10))]
+    _, values, plan = _plan(monkeypatch, tmp_path, second, event_name="issue_comment", event=event)
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+    assert plan["backoff_reset_at"] is None
+
+
 def _reset_comments(head: str = HEAD, *, edited: bool = False) -> list[dict[str, Any]]:
     start = datetime.now(UTC) - timedelta(minutes=30)
     owner = {"login": "joeharris76", "type": "User"}
