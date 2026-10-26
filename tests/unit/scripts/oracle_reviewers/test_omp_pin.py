@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import io
 import os
 import subprocess
 import sys
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -132,6 +135,25 @@ def test_install_reports_a_failed_download(tmp_path: Path) -> None:
 
     with pytest.raises(omp_pin.PinError, match="download failed"):
         omp_pin.install(_pin(), "linux-x64", tmp_path, fetch)
+
+
+def test_the_download_sends_an_explicit_user_agent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[urllib.request.Request] = []
+
+    def fake_urlopen(
+        request: urllib.request.Request, timeout: float | None = None
+    ) -> contextlib.AbstractContextManager[io.BytesIO]:
+        seen.append(request)
+        return contextlib.closing(io.BytesIO(b"binary-bytes"))
+
+    monkeypatch.setattr(omp_pin.urllib.request, "urlopen", fake_urlopen)
+    destination = tmp_path / "omp"
+    omp_pin.download("https://downloads.example.invalid/omp-linux-x64", destination)
+    assert destination.read_bytes() == b"binary-bytes"
+    assert len(seen) == 1
+    user_agent = seen[0].get_header("User-agent") or seen[0].get_header("User-Agent")
+    assert user_agent == omp_pin.USER_AGENT
+    assert "Python-urllib" not in user_agent
 
 
 def test_the_cache_root_defaults_under_home_and_honours_the_override(
