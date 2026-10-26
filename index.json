@@ -12725,6 +12725,13 @@
       "status": "done",
       "title": "Include TPC Metrics (Power@Size, Throughput@Size, QphH/QphDS@Size) in All Result Outputs"
     },
+    "incremental-analytics-streaming-and-warehouse-mvs": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Support incremental analytics: streaming engines (RisingWave, Materialize) and warehouse-native views"
+    },
     "independent-production-deployer-and-retirement": {
       "claim": null,
       "needs": [

@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Document architectural evaluation and workload requirements for streaming incremental engines vs warehouse-native incremental views.",
+    "Define an incremental or continuous-refresh benchmark pattern compatible with BenchBox's execution model.",
+    "Determine adapter requirements for RisingWave/Materialize (PG wire) and warehouse-native incremental options (Snowflake Dynamic Tables, Databricks DLT, BigQuery continuous MVs)."
+  ],
+  "description": "Evaluate and support incremental analytics workloads and engines across two primary architectural tiers:\n\n1. Dedicated streaming SQL engines: RisingWave and Materialize (incremental materialized views, Kafka/Redpanda sources, Postgres wire compatibility).\n2. Warehouse-native incremental features: Snowflake Dynamic Tables, Databricks Delta Live Tables (DLT) / Structured Streaming, and BigQuery continuous queries + materialized views.\n\nKey design needs & constraints:\n- Benchmark fit: Standard batch TPC-H/TPC-DS power runs evaluate cold query execution rather than continuous view maintenance, data freshness latency, or stream-to-view update throughput.\n- Workload adaptation: Design or adapt an incremental benchmarking workload (e.g., continuous event ingestion with concurrent read queries, or TPC-H refresh/maintenance extensions).\n- Adapter interfaces: Wire protocol integration for PG-compatible streaming DBs vs feature flags / DDL extensions for existing cloud warehouse adapters.",
+  "links": [
+    "docs/platforms/comparison-matrix.md",
+    "docs/development/roadmap.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:62614ac85e873be898cd9168",
+      "at": "2026-10-26T20:01:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0fb35cd6bea744cabca2528a0dddeee2",
+      "session_id": "9490a432c44b4de48d85d9ea412db20f"
+    }
+  ]
+}
