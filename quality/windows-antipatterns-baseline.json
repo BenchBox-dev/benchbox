@@ -201,9 +201,6 @@
     "tests/unit/generators/test_scale_factor_harmonization_resource_heavy.py": {
       "WA003": 2
     },
-    "tests/unit/generators/test_sf1_measurement.py": {
-      "WA003": 1
-    },
     "tests/unit/generators/test_ssb_manifest.py": {
       "WA003": 1
     },
@@ -315,9 +312,6 @@
       "WA003": 8
     },
     "tests/unit/scripts/test_todo_state_workflow.py": {
-      "WA003": 1
-    },
-    "tests/unit/test_cli_documentation.py": {
       "WA003": 1
     },
     "tests/unit/test_coffeeshop.py": {
