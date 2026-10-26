@@ -2,6 +2,7 @@
   "mode": "invalid",
   "dispute": {
     "id": "D1",
+    "cycle": 1,
     "path": "pkg/scan.py",
     "title": "Unchecked bound",
     "replies": [

@@ -302,12 +302,15 @@ def withdrawal_cited(evidence_text: str | None) -> bool:
 
 
 def _repro_verified(evidence: str, workspace: Path, examined: frozenset[str]) -> bool:
+    root = os.path.realpath(workspace)
     for match in _REPRO_CITATION.finditer(evidence or ""):
         cited = match.group("path").removeprefix("./")
         if cited not in examined:
             continue
-        if os.path.exists(os.path.join(os.path.realpath(workspace), cited)):
-            return True
+        target = os.path.realpath(os.path.join(root, cited))
+        if not target.startswith(root + os.sep) or not os.path.isfile(target):
+            continue
+        return True
     return False
 
 
@@ -327,16 +330,15 @@ def mark_citations(verdict: Verdict, workspace: Path, disputed: Iterable[str] = 
     for prior in verdict.prior_defects:
         if prior.status == WITHDRAWN and not _withdrawal_verified(prior.evidence, workspace, examined):
             note = f"{prior.evidence} {UNVERIFIED_WITHDRAWAL}".strip()
-            priors.append(replace(prior, status=NOT_FIXED, evidence=note))
-        elif (
+            prior = replace(prior, status=NOT_FIXED, evidence=note)
+        if (
             prior.status == NOT_FIXED
             and prior.id in wanted
             and not maintain_verified(prior.evidence, workspace, examined)
         ):
             note = f"{prior.evidence} {UNVERIFIED_MAINTAIN}".strip()
-            priors.append(replace(prior, evidence=note))
-        else:
-            priors.append(prior)
+            prior = replace(prior, evidence=note)
+        priors.append(prior)
     return replace(verdict, defects=tuple(marked), prior_defects=tuple(priors))
 
 

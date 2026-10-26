@@ -208,13 +208,13 @@ def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dic
         if not replies:
             continue
         title = (thread.get("body") or "").splitlines()
-        defect_id = protocol.thread_finding_id(thread.get("body") or "")
-        claim_hash = (
-            protocol.claim_hash("\n".join(reply["body"] for reply in replies)) if defect_id is not None else None
-        )
+        found = protocol.thread_finding(thread.get("body") or "")
+        claim_text = "\n".join(reply["body"] for reply in replies)
+        claim_hash = protocol.claim_hash(protocol.canonical_claim(claim_text)) if found is not None else None
         disputes.append(
             {
-                "id": defect_id,
+                "id": found[1] if found is not None else None,
+                "cycle": found[0] if found is not None else None,
                 "path": thread.get("path") or "",
                 "title": title[0][:300] if title else "",
                 "replies": replies,

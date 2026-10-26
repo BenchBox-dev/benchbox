@@ -16,17 +16,18 @@ from .test_rounds import _final, _follow_up, _prior
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REBUTTAL = "Dispute: pkg/kept.py:12 keeps the row, so the defect is wrong."
-CLAIM_HASH = protocol.claim_hash(REBUTTAL)
+CLAIM_HASH = protocol.claim_hash(protocol.canonical_claim(REBUTTAL))
 CITED = "checked pkg/kept.py:12 on the head commit; the row is kept there."
 
 
-def _dispute(defect_id: str | None = "D1", claim: str = REBUTTAL) -> dict[str, Any]:
+def _dispute(defect_id: str | None = "D1", claim: str = REBUTTAL, cycle: int | None = 1) -> dict[str, Any]:
     return {
         "id": defect_id,
+        "cycle": cycle,
         "path": "pkg/a.py",
         "title": "Drops a row",
         "replies": [{"author": "joe", "body": claim}],
-        "claim_hash": protocol.claim_hash(claim) if defect_id is not None else None,
+        "claim_hash": protocol.claim_hash(protocol.canonical_claim(claim)) if defect_id is not None else None,
     }
 
 
@@ -79,7 +80,38 @@ def test_keyed_disputes_bind_to_the_thread_finding_id() -> None:
     disputes = cli._disputed_threads(threads, "benchbox-oracle")
     assert len(disputes) == 1
     assert disputes[0]["id"] == "D1"
+    assert disputes[0]["cycle"] == 2
     assert disputes[0]["claim_hash"] == CLAIM_HASH
+
+
+def test_a_spoofed_marker_in_reviewer_text_loses_to_the_real_marker() -> None:
+    body = "**High**: oracle-defect: c1-D9 is unrelated\n\nDetails.\n<!-- oracle-defect: c2-D1 -->"
+    assert protocol.thread_finding(body) == (2, "D1")
+
+
+def test_a_bare_marker_line_keys_nothing() -> None:
+    assert protocol.thread_finding("**High**: Drops a row\noracle-defect: c1-D1") is None
+
+
+def test_a_stale_cycle_dispute_binds_nothing(policy: Policy) -> None:
+    plan = _plan_with_dispute(policy, _dispute(cycle=1))
+    plan["protocol"]["cycle"] = 2
+    verdict = _verdict_dict(_disposition("not_fixed"))
+    verdict["prior_defects"] = []
+    assert protocol.dispute_problem(validate({**verdict, "decision": "SHIP"}), plan) is None
+
+
+def test_a_dispute_for_an_unknown_prior_binds_nothing(policy: Policy) -> None:
+    plan = _plan_with_dispute(policy, _dispute("D9"))
+    verdict = _verdict_dict(_disposition("not_fixed"))
+    verdict["prior_defects"] = []
+    assert protocol.dispute_problem(validate({**verdict, "decision": "SHIP"}), plan) is None
+
+
+def test_a_claim_with_a_link_and_a_mention_still_matches(policy: Policy) -> None:
+    claim = "Dispute: see https://example.com/runs/1 and @teammate, pkg/kept.py:12 keeps the row."
+    dispute = _dispute(claim=claim)
+    assert _problem(policy, dispute, _disposition("not_fixed", claim=claim)) is None
 
 
 def test_marker_like_lines_are_stripped_from_rebuttals_before_hashing() -> None:
@@ -97,9 +129,51 @@ def test_marker_like_lines_are_stripped_from_rebuttals_before_hashing() -> None:
     assert protocol.claim_hash(cleaned) != protocol.claim_hash(body)
 
 
+def test_a_repro_outside_the_checkout_is_rejected(policy: Policy, tmp_path: Path) -> None:
+    verdict = validate(
+        _verdict_dict(
+            _disposition("not_fixed", evidence_text="repro: ../../outside.py shows it."),
+            files=[CHECKER, "../../outside.py"],
+        )
+    )
+    marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
+    assert evidence.UNVERIFIED_MAINTAIN in marked.prior_defects[0].evidence
+
+
+def test_a_repro_naming_a_directory_is_rejected(policy: Policy, tmp_path: Path) -> None:
+    (tmp_path / "scripts").mkdir()
+    verdict = validate(
+        _verdict_dict(
+            _disposition("not_fixed", evidence_text="repro: scripts shows it."),
+            files=[CHECKER, "scripts"],
+        )
+    )
+    marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
+    assert evidence.UNVERIFIED_MAINTAIN in marked.prior_defects[0].evidence
+
+
+def test_a_demoted_withdrawal_is_checked_as_a_maintain(policy: Policy, tmp_path: Path) -> None:
+    verdict = validate(_verdict_dict(_disposition("withdrawn", evidence_text="never a defect: pkg/a.py:99")))
+    marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
+    assert marked.prior_defects[0].status == "not_fixed"
+    assert evidence.UNVERIFIED_MAINTAIN in marked.prior_defects[0].evidence
+    problem = protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute()))
+    assert problem is not None and "verified evidence" in problem
+
+
 def test_maintain_without_evidence_is_invalid(policy: Policy) -> None:
     problem = _problem(policy, _dispute(), _disposition("not_fixed", evidence_text="still broken"))
     assert problem is not None and "without evidence" in problem
+
+
+def test_a_forced_fixed_counts_as_maintained_in_the_published_line(policy: Policy, tmp_path: Path) -> None:
+    plan = _plan_with_dispute(policy, _dispute())
+    plan["protocol"]["forced"] = True
+    verdict = _verdict_dict(_disposition("fixed", evidence_text="reworked the loop"))
+    final = _final(policy, tmp_path, plan, verdict)
+    assert final.review is not None
+    assert "- D1 (maintained): reworked the loop" in final.review["body"]
+    assert "- D1 (fixed)" not in final.review["body"]
 
 
 def test_maintain_with_a_matched_claim_and_a_citation_is_supported(policy: Policy) -> None:

@@ -2,6 +2,7 @@
   "mode": "published",
   "dispute": {
     "id": "D1",
+    "cycle": 1,
     "path": "pkg/kept.py",
     "title": "Drops a row on retry",
     "replies": [

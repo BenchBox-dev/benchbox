@@ -13,7 +13,19 @@ from typing import Any
 
 from .evidence import UNVERIFIED_MAINTAIN, maintain_cited, withdrawal_cited
 from .policy import SEVERITIES
-from .verdict import COMPLETE, DO_NOT_SHIP, FIXED, NOT_FIXED, SHIP, SHIP_WITH_FIXES, WITHDRAWN, Finding, Verdict
+from .verdict import (
+    COMPLETE,
+    DO_NOT_SHIP,
+    FIXED,
+    MAX_CLAIM,
+    NOT_FIXED,
+    SHIP,
+    SHIP_WITH_FIXES,
+    WITHDRAWN,
+    Finding,
+    Verdict,
+    sanitize,
+)
 
 DO_NOT_SHIP_SUMMARY = 1500
 REFUSED = "REFUSED"
@@ -468,14 +480,22 @@ def judge_planned(verdict: Verdict, plan: Mapping[str, Any]) -> Judgement:
     return judge(verdict, int(plan["max_defects"]), rules.get("prior", ()), changed, bool(rules.get("forced")))
 
 
-THREAD_MARKER = re.compile(r"oracle-defect:\s*c[0-9]+-(D[1-9][0-9]{0,3})")
+THREAD_MARKER = re.compile(r"<!--\s*oracle-defect:\s*c([0-9]+)-(D[1-9][0-9]{0,3})\s*-->")
 MARKER_LINE = re.compile(r"^\s*(?:<!--\s*oracle-[\s\S]*?-->\s*|oracle-defect\s*:.*)$")
 REPLY_LIMIT = 1000
 
 
+def thread_finding(body: str) -> tuple[int, str] | None:
+    matches = THREAD_MARKER.findall(body or "")
+    if not matches:
+        return None
+    cycle, defect_id = matches[-1]
+    return int(cycle), defect_id
+
+
 def thread_finding_id(body: str) -> str | None:
-    match = THREAD_MARKER.search(body or "")
-    return match.group(1) if match else None
+    found = thread_finding(body)
+    return found[1] if found is not None else None
 
 
 def strip_marker_lines(text: str) -> str:
@@ -486,8 +506,12 @@ def normalize_claim(text: str) -> str:
     return " ".join((text or "").split()).casefold()
 
 
+def canonical_claim(text: str) -> str:
+    return sanitize(text or "", MAX_CLAIM)
+
+
 def claim_hash(text: str) -> str:
-    return hashlib.sha256(normalize_claim(text).encode("utf-8")).hexdigest()
+    return hashlib.sha256(normalize_claim(text or "").encode("utf-8")).hexdigest()
 
 
 def dispute_claim(text: str) -> str:
@@ -495,11 +519,18 @@ def dispute_claim(text: str) -> str:
 
 
 def disputed_claims(plan: Mapping[str, Any]) -> dict[str, str]:
-    disputes = plan.get("disputes") or ()
+    rules = plan.get("protocol") or {}
+    prior_ids = {item.get("id") for item in rules.get("prior") or () if isinstance(item, Mapping) and item.get("id")}
+    cycle = rules.get("cycle")
     claims = {}
-    for item in disputes:
-        if isinstance(item, Mapping) and item.get("id") and item.get("claim_hash"):
-            claims[item["id"]] = item["claim_hash"]
+    for item in plan.get("disputes") or ():
+        if not isinstance(item, Mapping) or not item.get("id") or not item.get("claim_hash"):
+            continue
+        if prior_ids and item["id"] not in prior_ids:
+            continue
+        if cycle is not None and item.get("cycle") is not None and item["cycle"] != cycle:
+            continue
+        claims[item["id"]] = item["claim_hash"]
     return claims
 
 

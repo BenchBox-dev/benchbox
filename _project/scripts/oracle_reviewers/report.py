@@ -12,6 +12,7 @@ from .verdict import (
     MAX_EVIDENCE,
     Finding,
     Placement,
+    PriorDefect,
     Verdict,
     comment_span,
     display_path,
@@ -279,6 +280,15 @@ def _disposition_label(status: str) -> str:
     return {"not_fixed": "maintained", "withdrawn": "withdrawn", "fixed": "fixed"}.get(status, status)
 
 
+def _effective_status(plan: Mapping[str, Any], entry: PriorDefect) -> str:
+    forced = bool((plan.get("protocol") or {}).get("forced"))
+    if forced and entry.status == protocol.FIXED:
+        return protocol.NOT_FIXED
+    if forced and entry.status == protocol.WITHDRAWN and not protocol.withdrawal_cited(entry.evidence):
+        return protocol.NOT_FIXED
+    return entry.status
+
+
 def _dispositions(plan: Mapping[str, Any], verdict: Verdict | None, evidence_cap: int | None) -> list[str]:
     disputes = [item for item in plan.get("disputes", []) if isinstance(item, Mapping) and item.get("id")]
     if not disputes or verdict is None:
@@ -292,7 +302,7 @@ def _dispositions(plan: Mapping[str, Any], verdict: Verdict | None, evidence_cap
         else:
             shown = entry.evidence if evidence_cap is None else _cut(entry.evidence, evidence_cap)
             suffix = f": {shown}" if shown else ""
-            lines.append(f"- {dispute['id']} ({_disposition_label(entry.status)}){suffix}")
+            lines.append(f"- {dispute['id']} ({_disposition_label(_effective_status(plan, entry))}){suffix}")
     return _section("Dispute dispositions", lines)
 
 
