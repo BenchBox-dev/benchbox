@@ -16277,10 +16277,15 @@
       "title": "Shorten the delay between an oracle SHIP verdict and the oracle-gate status on the PR head"
     },
     "oracle-gateway-client-quota-revoke-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T17:48:58Z",
+        "generation": "07f98f96bf90406b8779760d24baa537",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Bound each named gateway client and make revoking one need no broker and no branch rebuild"
     },
     "oracle-gateway-cloud-builder-access-20261025": {
