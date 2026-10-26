@@ -101,19 +101,26 @@ class _TpchBenchmarkStub:
     _name = "TPC-H Benchmark"
 
 
+class _JoinOrderBenchmarkStub:
+    _name = "JoinOrder Benchmark"
+
+
 class _OtherBenchmarkStub:
     _name = "Other Benchmark"
 
 
 def _create_minimal_tpch_tables(connection):
-    connection.execute("CREATE TABLE customer (c_custkey INTEGER)")
+    connection.execute("CREATE TABLE customer (c_custkey INTEGER, c_nationkey INTEGER)")
     connection.execute(
-        "CREATE TABLE lineitem (l_orderkey INTEGER, l_suppkey INTEGER, l_receiptdate TEXT, l_commitdate TEXT)"
+        "CREATE TABLE lineitem (l_orderkey INTEGER, l_suppkey INTEGER, l_receiptdate TEXT, l_commitdate TEXT, "
+        "l_partkey INTEGER, l_shipdate TEXT, l_quantity REAL)"
     )
     connection.execute("CREATE TABLE nation (n_name TEXT, n_nationkey INTEGER)")
-    connection.execute("CREATE TABLE orders (o_orderstatus TEXT, o_orderkey INTEGER)")
+    connection.execute(
+        "CREATE TABLE orders (o_orderstatus TEXT, o_orderkey INTEGER, o_orderdate TEXT, o_custkey INTEGER)"
+    )
     connection.execute("CREATE TABLE part (p_partkey INTEGER)")
-    connection.execute("CREATE TABLE partsupp (ps_partkey INTEGER)")
+    connection.execute("CREATE TABLE partsupp (ps_partkey INTEGER, ps_suppkey INTEGER, ps_supplycost REAL)")
     connection.execute("CREATE TABLE region (r_regionkey INTEGER)")
     connection.execute("CREATE TABLE supplier (s_nationkey INTEGER, s_suppkey INTEGER)")
     connection.commit()
@@ -145,3 +152,69 @@ def test_tpch_helper_indexes_do_not_apply_to_other_benchmarks(adapter, connectio
 
     assert elapsed == 0.0
     assert _index_names(connection) == set()
+
+
+def test_reused_tpch_database_restores_helper_indexes_without_reloading(adapter, connection, monkeypatch):
+    _create_minimal_tpch_tables(connection)
+    connection.execute("INSERT INTO orders VALUES ('F', 1, '1995-01-01', 2)")
+    connection.commit()
+    monkeypatch.setattr(adapter, "load_data", lambda *args: pytest.fail("Reused data must not be loaded again"))
+    assert _index_names(connection) == set()
+
+    for _ in range(2):
+        phases = adapter._setup_reused_database_phases(_TpchBenchmarkStub(), connection)
+        assert len(_index_names(connection)) == 9
+        assert connection.execute("SELECT * FROM orders").fetchall() == [("F", 1, "1995-01-01", 2)]
+        assert phases[0] == phases[2] == 0.0
+
+
+def test_reused_tpch_database_rejects_failed_helper_index_restoration(adapter, connection):
+    _create_minimal_tpch_tables(connection)
+    connection.execute("PRAGMA query_only = true")
+
+    with pytest.raises(RuntimeError, match="Cannot restore SQLite TPC-H helper indexes"):
+        adapter._setup_reused_database_phases(_TpchBenchmarkStub(), connection)
+
+
+def test_reused_other_benchmark_does_not_receive_tpch_helper_indexes(adapter, connection):
+    _create_minimal_tpch_tables(connection)
+
+    adapter._setup_reused_database_phases(_OtherBenchmarkStub(), connection)
+
+    assert _index_names(connection) == set()
+
+
+def test_reused_joinorder_database_skips_analyze_without_repairs(adapter, connection, monkeypatch):
+    for statement in (
+        "CREATE TABLE title (production_year INTEGER, kind_id INTEGER, id INTEGER)",
+        "CREATE TABLE movie_info (info_type_id INTEGER, movie_id INTEGER)",
+    ):
+        connection.execute(statement)
+    connection.commit()
+
+    joinorder = _JoinOrderBenchmarkStub()
+    from benchbox.platforms import sqlite as sqlite_platform
+
+    statements = [
+        statement
+        for statement in sqlite_platform._JOINORDER_HELPER_INDEXES
+        if " ON title (" in statement or " ON movie_info (movie_id," in statement
+    ]
+    monkeypatch.setattr(sqlite_platform, "_JOINORDER_HELPER_INDEXES", tuple(statements))
+    monkeypatch.setattr(sqlite_platform, "_JOINORDER_TABLES", frozenset({"title", "movie_info"}))
+    executed = []
+    adapter._setup_reused_database_phases(joinorder, connection)
+    connection.set_trace_callback(executed.append)
+    try:
+        adapter._setup_reused_database_phases(joinorder, connection)
+    finally:
+        connection.set_trace_callback(None)
+    assert "ANALYZE" not in executed
+    connection.execute("DROP INDEX idx_bb_job_title_year_kind_id")
+    executed.clear()
+    connection.set_trace_callback(executed.append)
+    try:
+        adapter._setup_reused_database_phases(joinorder, connection)
+    finally:
+        connection.set_trace_callback(None)
+    assert "ANALYZE" in executed

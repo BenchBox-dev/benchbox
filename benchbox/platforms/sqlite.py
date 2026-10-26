@@ -488,7 +488,12 @@ class SQLiteAdapter(PlatformAdapter):
         helper_index_time = self._apply_benchmark_helper_indexes(benchmark, connection)
         return table_stats, loading_time + helper_index_time, None
 
-    def _apply_benchmark_helper_indexes(self, benchmark: Any, connection: Any) -> float:
+    def _setup_reused_database_phases(self, benchmark, connection: Any) -> tuple:
+        if self.table_mode != "external":
+            self._apply_benchmark_helper_indexes(benchmark, connection, required=True)
+        return super()._setup_reused_database_phases(benchmark, connection)
+
+    def _apply_benchmark_helper_indexes(self, benchmark: Any, connection: Any, *, required: bool = False) -> float:
         if _is_tpch_benchmark(benchmark):
             return self._apply_helper_index_set(
                 benchmark_name="TPC-H",
@@ -496,6 +501,7 @@ class SQLiteAdapter(PlatformAdapter):
                 statements=_TPCH_HELPER_INDEXES,
                 connection=connection,
                 analyze=False,
+                required=required,
             )
         if _is_joinorder_benchmark(benchmark):
             return self._apply_helper_index_set(
@@ -504,9 +510,21 @@ class SQLiteAdapter(PlatformAdapter):
                 statements=_JOINORDER_HELPER_INDEXES,
                 connection=connection,
                 analyze=True,
+                required=required,
             )
 
         return 0.0
+
+    def _get_existing_indexes(self, connection: Any) -> set[str]:
+        try:
+            return {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'index'")}
+        except TypeError:
+            return set()
+
+    @staticmethod
+    def _helper_index_name(statement: str) -> str | None:
+        name = statement.removeprefix("CREATE INDEX IF NOT EXISTS").strip().split(" ON ", 1)[0].strip()
+        return name.strip('"[]`') or None
 
     def _apply_helper_index_set(
         self,
@@ -516,22 +534,29 @@ class SQLiteAdapter(PlatformAdapter):
         statements: tuple[str, ...],
         connection: Any,
         analyze: bool,
+        required: bool = False,
     ) -> float:
         existing_tables = set(self._get_existing_tables(connection))
         if not required_tables.issubset(existing_tables):
             missing = ", ".join(sorted(required_tables - existing_tables))
+            if required:
+                raise RuntimeError(f"Cannot restore SQLite {benchmark_name} helper indexes; missing tables: {missing}")
             self.log_very_verbose(f"Skipping SQLite {benchmark_name} helper indexes; missing tables: {missing}")
             return 0.0
-
         start_time = mono_time()
+        existing_indexes = self._get_existing_indexes(connection) if required else set()
         created = 0
         for statement in statements:
+            name = self._helper_index_name(statement)
+            if name and name in existing_indexes:
+                continue
             try:
                 connection.execute(statement)
                 created += 1
             except Exception as exc:
+                if required:
+                    raise RuntimeError(f"Cannot restore SQLite {benchmark_name} helper indexes: {exc}") from exc
                 self.logger.warning("SQLite helper index creation failed: %s", exc)
-
         if created and analyze:
             try:
                 connection.execute("ANALYZE")
