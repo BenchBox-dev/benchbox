@@ -634,6 +634,79 @@ reviewed: every reviewer is skipped and the result is pending with the cause
 ways forward are to split the pull request or ask the owner for a stand-in. The
 same head is not retried; a new push plans again.
 
+## Local pre-PR review
+
+`make pr-open` reviews the committed `HEAD` before it pushes, so a Critical or
+High defect is caught before a pull request exists. The command is
+`cli.py local-review`; `make trunk-revert` opens its pull request through
+`gh pr create` and does not run it. The review is advisory: its output is
+labelled a local advisory review that may differ from the CI oracle, and it
+posts nothing to GitHub.
+
+- **What it reviews.** `cli.py plan --local` builds the plan from git: the
+  merge base of `origin/develop` and the pinned head as the base and head
+  SHAs, no pull request number, no prior reviews and no retry state.
+  Uncommitted and untracked changes are never reviewed: the reviewer works in
+  a clean clone checked out at that head. The policy
+  (`.github/oracle-reviewers.yml`), the soundness manifest
+  (`.github/soundness-paths.txt`) and the workflow pin are read from
+  `origin/develop`, as the hosted job reads them from the base branch, so a
+  branch cannot widen its own exempt paths. The reviewer code and templates
+  are those of the checked-out tree. Soundness scope, reviewer chain, brief
+  and templates are the CI ones (the template names the change "unopened"),
+  and the review runs the same `cli.py attempts` loop as the `review` job,
+  with the same redaction pass over the result. The hosted job's Linux
+  isolation check and disk scans do not run locally.
+- **Classifier key.** `TYPESAFE_API_KEY` comes from the environment or, on
+  macOS, from the keychain service `TYPESAFE_API_KEY`. The owner adds it once:
+  `security add-generic-password -s TYPESAFE_API_KEY -a "$USER" -w` (the
+  command prompts for the value). Without a key, including in a cloud session,
+  the review uses a fixed default and prints that it did: the policy's
+  `medium` bucket reviewer with the `standard` template, or the `gate`
+  template when review-machinery files change.
+- **Credentials.** A local session uses the `oracle-local` gateway client at
+  `http://127.0.0.1:4000` with the token in
+  `~/.omp/oracle-gateway/local-client.token`. A cloud session (the
+  environment sets `ORACLE_CLOUD_GATEWAY_TOKEN` or
+  `BENCHBOX_EPHEMERAL_CLONE=1`) uses the `oracle-cloud` client from
+  `ORACLE_GATEWAY_URL` and `ORACLE_CLOUD_GATEWAY_TOKEN`, and refuses when
+  either is missing. The loop writes the reviewer home with that gateway, and
+  `write_reviewer_home` accepts `http://` on a loopback host only when the
+  local review asks; the CI loop still requires `https://`. Token, key
+  and URL values are never printed: every line goes through the redaction
+  that also covers the stored result. The accepted risk of the hosted job
+  applies: the reviewer can read files the user can read, including that
+  token.
+- **Harness pin.** The `Install omp` step pins `OMP_VERSION` beside the
+  download URL and checks that the binary reports it. The local review runs
+  only when `omp --version` reports that version, and otherwise refuses with
+  the mismatch. Bump `OMP_URL`, `OMP_SHA256` and `OMP_VERSION` together.
+  Like the policy, the pin is read from `origin/develop`, not from the branch
+  or the working tree.
+- **Blocking.** A Critical or High finding, or a reviewer decision of DO NOT
+  SHIP, makes `pr-open` refuse before any push (exit 1). A
+  `Local oracle override: <reason>` line with a non-empty reason in the PR
+  body file (`PR_BODY_FILE`) lets it proceed and stays in the body. An empty
+  reason, a `<placeholder>` reason, and a line inside an HTML comment or code
+  fence are refused. Nothing else supplies an override: a commit message does
+  not. A gateway that is unreachable, a timeout, quota exhaustion, a reviewer
+  that produced no verdict, a missing credential or an `omp` version mismatch
+  also refuses (exit 2), and the override does not cover it.
+- **Pinned head.** `pr-open` records `HEAD` before the review, passes it as
+  `--head`, and refuses before pushing if `HEAD` moved while the review ran
+  or waited for the lock, so the pushed head is the reviewed one.
+- **Cache and lock.** The result is cached under
+  `~/.cache/benchbox/local-oracle` (`BENCHBOX_LOCAL_ORACLE_DIR` overrides it)
+  by the patch digest, the base commit, the head tree, the policy hash and the
+  `omp` version, so an
+  unchanged patch reuses it, including after the findings were overridden. The
+  key also holds whether a classifier key was present and a hash of the review
+  machinery (the `oracle_reviewers` package, its templates and the OMP
+  config), so a keyless default result is not reused once a key exists, and a
+  change to the machinery is reviewed again. Only reviews that produced a
+  verdict are cached. One lock in the same directory allows one local review
+  at a time per machine; a second waits up to an hour, then refuses.
+
 ## Calibration
 
 These checks must pass before the cut-over that makes the context required.

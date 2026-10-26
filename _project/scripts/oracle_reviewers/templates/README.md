@@ -26,7 +26,7 @@ by code, never a path, so author-chosen file names stay inside the fences.
 
 The renderer rejects unknown or missing slots, over-byte values, a
 `template_name` that does not match the rendered file, a `size_bucket` or
-`capability` outside the enums, non-integer `pr` / `max_defects` /
+`capability` outside the enums, non-integer `pr` (other than `unopened`) / `max_defects` /
 `template_version`, non-sha `base` / `head`, a `repo` outside `owner/name`
 shape, non-numeric `confidence`, and a `response_template` that is not JSON, does
 not hold exactly the seven verdict keys, carries a prior id outside the
@@ -44,7 +44,7 @@ instruction prose of the template itself.
 | `template_name` | identifier | 16 | `standard`, `deep`, or `gate`; must match the file |
 | `template_version` | integer | 4 | template version, currently `2` |
 | `repo` | `owner/name` | 128 | repository under review |
-| `pr` | integer | 8 | pull request number |
+| `pr` | integer, or `unopened` for a local pre-PR review | 8 | pull request number |
 | `base` | hex sha | 40 | base commit |
 | `head` | hex sha | 40 | reviewed head commit |
 | `size_bucket` | identifier | 8 | Jev size call: `trivial` … `max` |

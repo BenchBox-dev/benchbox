@@ -106,6 +106,12 @@ The canonical loop is **branch → edit → preflight → `make pr-open` → arm
    missing or in progress fails at once instead of waiting; the check is re-run automatically when that full run
    completes.
 
+   Before it pushes, `make pr-open` runs a local oracle review of the committed `HEAD` and refuses on a Critical
+   or High finding. A `Local oracle override: <reason>` line in the `PR_BODY_FILE` lets a finding through; an
+   unreachable gateway, a quota or reviewer absence, or an `omp` that does not match the CI pin refuses
+   regardless. The review is advisory, may differ from the CI oracle, and posts nothing to GitHub. See
+   `docs/internal/oracle-review-v2.md`, Local pre-PR review.
+
 5. **Arm it and monitor until it merges:**
 
    ```bash

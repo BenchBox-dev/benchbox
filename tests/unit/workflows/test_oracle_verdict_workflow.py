@@ -399,8 +399,12 @@ def test_omp_is_installed_once_pinned_and_checked() -> None:
     lines = install["run"].splitlines()
     check = 'echo "$OMP_SHA256  $RUNNER_TEMP/omp" | sha256sum --check --strict'
     assert lines.index(check) < lines.index('chmod +x "$RUNNER_TEMP/omp"')
-    assert set(install["env"]) == {"OMP_URL", "OMP_SHA256"}
+    assert set(install["env"]) == {"OMP_URL", "OMP_SHA256", "OMP_VERSION"}
     assert text.count("OMP_SHA256: ") == 1
+    assert text.count("OMP_VERSION: ") == 1
+    version_check = '"$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY" | grep -Fwq "$OMP_VERSION"'
+    assert lines.index('chmod +x "$RUNNER_TEMP/omp"') < lines.index(version_check)
+    assert lines.index(version_check) < lines.index('echo "$RUNNER_TEMP" >> "$GITHUB_PATH"')
     curl = "curl -fsSL --proto '=https' --tlsv1.2 \"$OMP_URL\""
     assert "curl " not in text.replace(curl, "")
     assert "--dangerously" not in text and "--yolo" not in text
