@@ -16597,6 +16597,21 @@
       "status": "done",
       "title": "oracle-review has no fallback when Codex connector hits usage limits"
     },
+    "oracle-review-driver-ci-20261026": {
+      "claim": null,
+      "needs": [
+        "oracle-omp-pin-single-source-20261026",
+        "oracle-verdict-oauth-tailnet-join-20261026",
+        "oracle-redaction-marker-and-summary-20261026",
+        "oracle-dispute-keyed-published-evidence-20261026",
+        "oracle-plan-head-base-rechecks-20261026",
+        "oracle-absence-json-error-events-20261026",
+        "oracle-gateway-client-quota-revoke-20261026"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Run the CI oracle review through one review driver called by a thin workflow"
+    },
     "oracle-review-notify-only-20261025": {
       "claim": null,
       "needs": [],
