@@ -51,6 +51,15 @@ def comment_policy_matches(path: str, scope: str) -> bool:
     return path.startswith(scope) if scope.endswith("/") else path == scope
 
 
+def directive_suppresses(text: str) -> bool:
+    return bool(
+        re.search(
+            r"noqa|type: ignore|pragma: no|fmt: (?:off|skip)|disable=|@ts-(?:expect-error|ignore|nocheck)",
+            text,
+        )
+    )
+
+
 def load_comment_policy(raw: bytes) -> dict:
     policy = json.loads(raw)
     if set(policy) - {"enforcement"} != {"version", "external", "exceptions"} or policy["version"] != 1:
@@ -92,11 +101,7 @@ def load_comment_policy(raw: bytes) -> dict:
         if entry["kind"] == "directive":
             if not any(re.fullmatch(pattern, entry["text"]) for pattern in COMMENT_POLICY_DIRECTIVES):
                 raise ValueError("directive must match an exact registered grammar without explanatory suffixes")
-            suppression = re.search(
-                r"noqa|type: ignore|pragma: no|fmt: (?:off|skip)|disable=|@ts-(?:expect-error|ignore|nocheck)",
-                entry["text"],
-            )
-            if suppression and "expires" not in entry:
+            if directive_suppresses(entry["text"]) and "expires" not in entry:
                 raise ValueError("directive exception needs an unexpired review date")
         identity = (
             entry["path"],

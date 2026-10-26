@@ -26,6 +26,7 @@ from check_comment_cleanup_scope import (
     _parse_version,
     check_ratchet,
     comment_policy_matches as matches,
+    directive_suppresses,
     immutable_external_ownership,
     is_wheel_bump as _is_wheel_bump,
     load_comment_policy as load_policy,
@@ -161,13 +162,35 @@ def require_local_staged_check(args: argparse.Namespace) -> None:
         raise ValueError("same-commit fixture acceptance is not available in CI")
 
 
+def expiry_only_change(entry: dict, baseline: dict) -> bool:
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return False
+    identity = exception_identity(entry)
+    for base in baseline["exceptions"]:
+        if exception_identity(base) != identity:
+            continue
+        if {k: v for k, v in base.items() if k != "expires"} != {k: v for k, v in entry.items() if k != "expires"}:
+            return False
+        if "expires" not in entry:
+            return entry["kind"] == "directive" and not directive_suppresses(entry["text"])
+        if "expires" not in base:
+            return False
+        try:
+            return date.fromisoformat(entry["expires"]) > date.fromisoformat(base["expires"])
+        except ValueError:
+            return False
+    return False
+
+
 def counted_exceptions(
     policy: dict, baseline: dict, reviewed: bool, same_commit: bool, changed: set[str]
 ) -> list[dict]:
     return [
         e
         for e in policy["exceptions"]
-        if e in baseline["exceptions"] or reviewed or (same_commit and same_commit_fixture(e, changed))
+        if e in baseline["exceptions"]
+        or reviewed
+        or (same_commit and (same_commit_fixture(e, changed) or expiry_only_change(e, baseline)))
     ]
 
 

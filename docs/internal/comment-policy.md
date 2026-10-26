@@ -126,7 +126,15 @@ an entry whose suppression is gone, or move its `expires` date forward in a
 pull request that gets the same successful oracle verdict as a new exception.
 The `owner` field in an entry is a routing hint for who fixes the code, not who
 renews it. A date-only change is a new policy entry, so it does not count until
-that verdict covers the registry head. Keep the renewed dates spread across at
+that verdict covers the registry head.
+
+The local pre-commit check (`--accept-same-commit-fixtures`, never in CI) counts
+an entry that differs from the base entry only in `expires` when the candidate
+removes `expires` from a directive that suppresses nothing, or sets a valid
+date later than the base date. Any other field difference, an entry absent from
+the base, or a date that is not later does not count locally. CI never applies
+this acceptance, so the PR check still needs the oracle verdict on the exact
+head before the entry counts. Keep the renewed dates spread across at
 least ten dates, or at most one date per entry when fewer than ten dated
 directives remain.
 
