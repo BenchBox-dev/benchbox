@@ -98,6 +98,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `todo-state-validate.yml` | tooling | Tracker state validation |
 | `trunk-coverage.yml` | product-safety | Scheduled (six a day) and dispatched instrumented four-shard medium tier, v2 coverage map combine, published-map self-fetch, and a map-staleness issue on its own daily cron; never consulted by arming |
 | `trunk.yml` | product-safety | Develop-push fast lane, uninstrumented four-shard medium tier, correctness gate, required-local-cases and verified release artifact; retains pending runs with queue:max |
+| `trunk-red-disarm.yml` | product-safety | Completed develop Trunk run disables auto-merge on armed PRs the arm gate would refuse |
 | `upload-answers.yml` | product-safety | Answer file publication |
 | `trunk-duration-trend.yml` | tooling | Daily comparison of Trunk job p50 durations with the prior week; opens or closes one issue assigned to the repository owner; read-only actions access plus issue writes |
 | `validate-release-pr.yml` | product-safety | Release PR base validation |
@@ -124,6 +125,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_comment_policy_nightly_workflow.py` | tooling | Nightly comment-policy workflow triggers, develop checkout, read-only permissions, whole-tree launcher call and shared action pins |
 | `test_trunk_coverage_workflow.py` | product-safety | Coverage workflow triggers, instrumented shards, map combine with self-fetch, schedule-only staleness issue |
 | `test_trunk_workflow.py` | product-safety | Develop-push triggers, uninstrumented medium tier, retained pending runs and read-only test permissions |
+| `test_trunk_red_disarm_workflow.py` | product-safety | Red-trunk disarm trigger, develop-push filter, exact permissions, workflow token and full-history checkout |
 | `test_published_results_base_ci.py` | product-safety | Published corpus CI |
 | `test_release_canary_shard_evidence.py` | product-safety | Release canary evidence |
 | `test_release_uat_charter_guard.py` | product-safety | Release charter guard |
@@ -217,6 +219,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `test_pr_ready_make.py` | pure-process |
 | `test_pr_landing.py` | pure-process |
 | `test_trunk_revert.py` | pure-process |
+| `test_trunk_red_disarm.py` | pure-process |
 | `test_pytest_shard_evidence.py` | product-safety | Real serial and distributed test selection and execution conservation |
 | `test_required_case_evidence.py` | product-safety | A required local-engine case that skips, is deselected, fails or is expected to fail fails the required-case check |
 | `test_pr_refresh_certification.py` | pure-process |
@@ -319,6 +322,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `pytest_shard_evidence.py` | product-safety | Exact assigned, collected, and executed medium test evidence |
 | `pr_landing.py` | pure-process | PR-loop mechanics |
 | `trunk_revert.py` | pure-process | Revert of a merged PR and the red-trunk gate on `make pr-open` |
+| `trunk_red_disarm.py` | pure-process | Disables auto-merge on armed PRs the arm gate would refuse when a develop Trunk run is red |
 | `pr_refresh_certification.py` | pure-process | Refresh mechanics |
 | `pr_refresh_replay.py` | pure-process | Refresh mechanics |
 | `post_merge_signature.py` | pure-process | Post-merge mechanics |
