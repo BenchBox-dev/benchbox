@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Each named call decodes with encoding=\"utf-8\" (errors handling stated); no other WA007 hits touched",
+    "make windows-antipatterns-check passes and the baseline count drops by exactly the fixed hits (baseline regenerated via the checker, never hand-raised)",
+    "A regression test or checker test covers a non-ASCII path through at least one fixed call, failing before and passing after",
+    "PR merged with CI and oracle verdict green on its final head"
+  ],
+  "context": "Verify line numbers against current develop before editing; they are leads, not facts. If a named call already has encoding=, report it and fix only the remainder.",
+  "description": "PR #3549 baselines 215 WA007 hits (git subprocess text=True without encoding). Owner decision 2026-10-26: fix only the three calls that decode git -z path output, where a non-ASCII filename garbles under a non-UTF-8 locale (the scripts/sqlglot_fork_diff.py bug class fixed by #3481): scripts/doc_reference_inventory.py:47 (ls-files -z), _project/scripts/inert_paths.py:322 (ls-files -z), scripts/heavy_tier_needed.py:73 (ls-tree -z, plus its git show content reads at :73-90 if the same call). The remaining ~212 hits stay baselined; the ratchet only shrinks. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-26T19:28:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "72c2ffce9ecc40a0a9f13cbb337fc35b",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}

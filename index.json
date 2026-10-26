@@ -29639,6 +29639,13 @@
       "status": "done",
       "title": "Throughput UAT: verify Docker Postgres cell on first live nightly run"
     },
+    "wa007-git-z-encoding-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decode git -z path output as UTF-8 in the three inventory and selection scripts"
+    },
     "webkit-smoke-fix-or-demote": {
       "claim": null,
       "needs": [],
