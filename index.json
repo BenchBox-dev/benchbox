@@ -16922,7 +16922,9 @@
     },
     "oracle-verdict-oauth-tailnet-join-20261026": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-omp-pin-single-source-20261026"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Join the tailnet with a step-scoped OAuth secret and drop id-token: write from the oracle verdict job"
