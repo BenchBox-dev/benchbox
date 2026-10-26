@@ -88,6 +88,8 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
         "scripts/generate_corpus_inventory.py",
         "scripts/validate_submission.py",
         "scripts/site_inputs.py",
+        "scripts/check_docs_freeze.py",
+        "scripts/docs_history_filter.py",
         "make/site-inputs.mk",
         "_project/scripts/soundness_merge_digest.py",
         ".github/workflows/soundness-merge-digest.yml",

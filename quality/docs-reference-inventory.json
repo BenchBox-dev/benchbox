@@ -2846,6 +2846,22 @@
   {
    "disposition": "site-pipeline-cutover",
    "kinds": {
+    "extra": 1
+   },
+   "occurrences": 1,
+   "path": "scripts/check_docs_freeze.py",
+   "rule": "site-input-pipeline",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
+    }
+   ]
+  },
+  {
+   "disposition": "site-pipeline-cutover",
+   "kinds": {
     "extra": 2,
     "file": 1,
     "generated": 1,
@@ -4816,6 +4832,68 @@
    ]
   },
   {
+   "disposition": "site-pipeline-cutover",
+   "kinds": {
+    "extra": 3,
+    "generated": 2,
+    "unresolved": 7
+   },
+   "occurrences": 32,
+   "path": "tests/unit/scripts/test_docs_freeze.py",
+   "rule": "site-input-pipeline",
+   "target_count": 12,
+   "targets": [
+    {
+     "kind": "generated",
+     "target": "docs/benchmarks/queries/"
+    },
+    {
+     "kind": "generated",
+     "target": "docs/benchmarks/queries/q1.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/compat/matrix.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/guides/moved.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/guides/new.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/guides/other.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/guides/public.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/internal/new.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/internal/private.md"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
+    },
+    {
+     "kind": "extra",
+     "target": "scripts/generate_compat_docs.py"
+    },
+    {
+     "kind": "extra",
+     "target": "scripts/generate_query_docs.py"
+    }
+   ]
+  },
+  {
    "disposition": "contract-tooling",
    "kinds": {
     "extra": 1,
@@ -5698,21 +5776,21 @@
    "lock-test": 26,
    "prose-link-pinned": 19,
    "runtime-link-updated": 7,
-   "site-pipeline-cutover": 10,
+   "site-pipeline-cutover": 12,
    "wiring-updated": 35
   },
-  "files": 274,
+  "files": 276,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
-   "extra": 74,
+   "extra": 78,
    "file": 1581,
-   "generated": 19,
+   "generated": 22,
    "pattern": 313,
    "root": 219,
-   "unresolved": 2045
+   "unresolved": 2071
   },
-  "references": 33467,
+  "references": 33500,
   "unclassified": 0
  }
 }
