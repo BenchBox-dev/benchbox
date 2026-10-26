@@ -47,6 +47,7 @@ transformer), executes it on generated SF0.01 data and checks:
 | `vacuous` | The compared result carries no signal: zero rows, or every cell of every row is NULL or 0 (an aggregate over an empty set), and the reference engine agrees. Equality of two such results proves nothing about the translation. |
 | `base-equivalence` | An OBT statement (`tpcds_obt`, `tpcds_obt-augmented`) returns rows that differ from the matching TPC-DS statement on the same engine: `tpcds` for a whole query, `tpcds-parts` for a lettered statement, `tpcds-augmented` for the augmented queries. Multi-part OBT queries are compared part by part. |
 | `baseline` | The rows differ from the baseline checkout's rows and the difference is not a verified improvement. |
+| `missing` | An emitted query has no executed result for a selected engine, for example because its dataset was never built. A cell with no result never passes silently, and an augmented query without a result cannot prove a vacuous base query. |
 
 Engines: SQLite and DuckDB always, DataFusion when installed, PostgreSQL when
 `BENCHBOX_POSTGRES_DSN` is set (the CI job provides a service container). PostgreSQL tables are

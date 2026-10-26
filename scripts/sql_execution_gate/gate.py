@@ -21,7 +21,7 @@ from scripts.sql_execution_gate.rows import first_difference, is_vacuous, vacuit
 ROOT = Path(__file__).resolve().parents[2]
 EMIT = Path(__file__).with_name("emit.py")
 EXPECTED = Path(__file__).with_name("expected_differences.json")
-CHECKS = ("error", "row-count", "reference", "vacuous", "baseline", "base-equivalence")
+CHECKS = ("error", "row-count", "reference", "vacuous", "baseline", "base-equivalence", "missing")
 PARTS = "tpcds-parts"
 DATASET_OF = {"tpchavoc": "tpch", PARTS: "tpcds"}
 
@@ -370,6 +370,9 @@ def _evaluate_cell(report, results, benchmark, query, engine, reference, counts)
     candidate = results.get((engine, benchmark, query, "candidate"))
     baseline = results.get((engine, benchmark, query, "baseline"))
     if candidate is None:
+        report.findings.append(
+            Finding(benchmark, query, engine, "missing", "no result was executed for this emitted query")
+        )
         return
     report.compared[engine] = report.compared.get(engine, 0) + 1
     report.cells[(benchmark, engine)] = report.cells.get((benchmark, engine), 0) + 1

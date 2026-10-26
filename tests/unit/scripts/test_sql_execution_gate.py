@@ -346,6 +346,29 @@ def test_augmented_translation_defect_leaves_the_base_query_unproven(tiny_with_a
     assert {f.engine for f in report.proven} == {"duckdb"}
 
 
+def test_emitted_query_without_a_result_is_a_blocking_finding(tiny, tmp_path):
+    sides = {"candidate": _side("candidate", FIXED)}
+    results, _, _ = gate.run_engines([DuckdbEngine, SqliteEngine], tiny, sides, 30.0, tmp_path)
+    del results[("sqlite", "tiny", "ratio", "candidate")]
+    report = gate.evaluate(results, sides, {}, [], ["duckdb", "sqlite"])
+    assert not report.passed
+    assert [(f.engine, f.query, f.check) for f in report.unexplained] == [("sqlite", "ratio", "missing")]
+
+
+def test_augmented_query_without_a_result_proves_nothing(tiny_with_augmented, tmp_path):
+    probe = "SELECT COUNT(*), SUM(l_orderkey) FROM lineitem WHERE l_orderkey > 98"
+    sides = {"candidate": _augmented_side({"zero.default": (probe, probe)}, {"zero": (probe, probe)})}
+    results, _, _ = gate.run_engines([DuckdbEngine, SqliteEngine], tiny_with_augmented, sides, 30.0, tmp_path)
+    del results[("sqlite", augmentation.AUGMENTED, "zero.default", "candidate")]
+    report = gate.evaluate(results, sides, {}, [], ["duckdb", "sqlite"])
+    assert not report.passed
+    assert {f.engine for f in report.proven} == {"duckdb"}
+    assert ("sqlite", augmentation.AUGMENTED, "missing") in {
+        (f.engine, f.benchmark, f.check) for f in report.unexplained
+    }
+    assert ("sqlite", "tiny", "vacuous") in {(f.engine, f.benchmark, f.check) for f in report.unexplained}
+
+
 def test_render_lists_proven_and_not_proven_sections(tiny, tmp_path):
     report = _evaluate(tiny, tmp_path, _side("candidate", VACUOUS_BOTH))
     text = gate.render(report, {"duckdb": "1", "sqlite": "3"}, {}, {"candidate": _side("candidate", VACUOUS_BOTH)})
