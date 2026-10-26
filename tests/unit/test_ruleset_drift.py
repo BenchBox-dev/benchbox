@@ -372,3 +372,148 @@ def test_develop_ruleset_drift_is_blocking(mutate, expected_text: str) -> None:
 
     assert any(expected_text in finding for finding in findings)
     assert ruleset_drift_check.blocking_findings(findings)
+
+
+CAPTURE_FIXTURE = REPO_ROOT / "tests" / "fixtures" / "ruleset-develop-squash-only.json"
+
+
+def _capture() -> dict:
+    return json.loads(CAPTURE_FIXTURE.read_text(encoding="utf-8"))
+
+
+def _required_checks(ruleset: dict) -> list[dict]:
+    return next(rule for rule in ruleset["rules"] if rule["type"] == "required_status_checks")["parameters"][
+        "required_status_checks"
+    ]
+
+
+def _check(ruleset: dict, context: str) -> dict:
+    return next(check for check in _required_checks(ruleset) if check["context"] == context)
+
+
+def test_capture_comparison_ignores_only_volatile_fields() -> None:
+    live = _capture()
+    live["updated_at"] = "2026-10-25T10:00:00.000-04:00"
+    live["_links"] = {"self": {"href": "https://example.invalid/other"}}
+    live["current_user_can_bypass"] = "always"
+
+    assert ruleset_drift_check.capture_comparison_findings(_capture(), live) == []
+
+
+def _drop_tooling(live: dict) -> None:
+    checks = _required_checks(live)
+    checks[:] = [check for check in checks if check["context"] != "tooling"]
+
+
+def _set_integration(context: str, value: int | None):
+    def mutate(live: dict) -> None:
+        _check(live, context)["integration_id"] = value
+
+    return mutate
+
+
+@pytest.mark.parametrize(
+    "mutate, expected_text",
+    [
+        (_drop_tooling, "tooling"),
+        (_set_integration("core", 15368), "core"),
+        (_set_integration("core", 1), "integration_id"),
+        (_set_integration("oracle-gate", None), "oracle-gate"),
+        (_set_integration("oracle-gate", 15368), "oracle-gate"),
+        (
+            lambda live: live["bypass_actors"].append({"actor_id": 5, "actor_type": "RepositoryRole"}),
+            "bypass_actors",
+        ),
+        (lambda live: live.__setitem__("enforcement", "evaluate"), "enforcement"),
+        (
+            lambda live: live["rules"][0]["parameters"].__setitem__("required_review_thread_resolution", False),
+            "required_review_thread_resolution",
+        ),
+        (
+            lambda live: next(r for r in live["rules"] if r["type"] == "required_status_checks")[
+                "parameters"
+            ].__setitem__("strict_required_status_checks_policy", True),
+            "strict_required_status_checks_policy",
+        ),
+    ],
+)
+def test_capture_comparison_reports_each_substantive_difference(mutate, expected_text: str) -> None:
+    live = _capture()
+    mutate(live)
+
+    findings = ruleset_drift_check.capture_comparison_findings(_capture(), live)
+
+    assert any(expected_text in finding for finding in findings)
+
+
+@pytest.mark.parametrize("hidden_in", [("capture", "live"), ("capture",), ("live",)])
+def test_capture_comparison_fails_when_bypass_actors_are_hidden(hidden_in: tuple[str, ...]) -> None:
+    documents = {"capture": _capture(), "live": _capture()}
+    for name in hidden_in:
+        documents[name].pop("bypass_actors")
+
+    findings = ruleset_drift_check.capture_comparison_findings(documents["capture"], documents["live"])
+
+    assert any("bypass_actors" in finding for finding in findings)
+
+
+@pytest.mark.parametrize("enforcement", ["evaluate", "disabled"])
+def test_capture_comparison_fails_unless_live_enforcement_is_active(enforcement: str) -> None:
+    capture = _capture()
+    capture["enforcement"] = enforcement
+    live = _capture()
+    live["enforcement"] = enforcement
+
+    findings = ruleset_drift_check.capture_comparison_findings(capture, live)
+
+    assert any("enforcement" in finding and "active" in finding for finding in findings)
+
+
+def test_capture_comparison_distinguishes_null_from_numeric_integration_id() -> None:
+    capture = _capture()
+    live = _capture()
+    _check(live, "core")["integration_id"] = None
+    _check(capture, "core")["integration_id"] = 15368
+
+    findings = ruleset_drift_check.capture_comparison_findings(capture, live)
+
+    assert any("core" in finding and "15368" in finding and "None" in finding for finding in findings)
+
+
+def test_capture_comparison_treats_absent_integration_id_as_null() -> None:
+    live = _capture()
+    _check(live, "core")["integration_id"] = None
+
+    assert ruleset_drift_check.capture_comparison_findings(_capture(), live) == []
+
+
+def test_compare_capture_command_exit_codes(monkeypatch, capsys, tmp_path: Path) -> None:
+    live = _capture()
+    monkeypatch.setattr(ruleset_drift_check, "_api_json", lambda url, token: live)
+    arguments = ["--compare-capture", str(CAPTURE_FIXTURE), "--token", "token"]
+
+    assert ruleset_drift_check.main(arguments) == 0
+
+    _drop_tooling(live)
+    assert ruleset_drift_check.main(arguments) == 1
+    assert "tooling" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("duplicate_in", ["capture", "live"])
+def test_capture_comparison_detects_context_multiplicity(duplicate_in: str) -> None:
+    documents = {"capture": _capture(), "live": _capture()}
+    document = documents[duplicate_in]
+    _required_checks(document).append(dict(_check(document, "core")))
+
+    findings = ruleset_drift_check.capture_comparison_findings(documents["capture"], documents["live"])
+
+    assert any("core" in finding for finding in findings)
+
+
+def test_capture_comparison_allows_reordered_duplicate_contexts() -> None:
+    capture = _capture()
+    _required_checks(capture).append(dict(_check(capture, "core")))
+    live = json.loads(json.dumps(capture))
+    _required_checks(live).reverse()
+
+    assert ruleset_drift_check.capture_comparison_findings(capture, live) == []
