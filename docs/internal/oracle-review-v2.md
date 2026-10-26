@@ -463,9 +463,8 @@ The code, not the model, decides, and the stricter outcome wins:
 Severity orders the list and never gates: any listed defect, even Low, makes
 SHIP WITH FIXES. SHIP posts `success`; SHIP WITH FIXES and DO NOT SHIP post
 `failure`. The body opens `### oracle-verdict: <state> for <sha>`, then a
-`Decision:` line. Reviews before 2026-10-09 open with `###
-oracle-review-shadow:`; the required check still reads that on open PRs, and the
-merge digest reads both permanently since it reads merged history. More than 10
+`Decision:` line. Reviews before 2026-10-09 opened with `### oracle-review-shadow:`; the merge
+digest reads both permanently since it reads merged history. More than 10
 defects is not an invalid verdict, because every reviewer would then fail in
 turn and leave the PR pending.
 
@@ -628,9 +627,7 @@ dispatch and scheduled reruns share a per-PR daily budget
 (`retry.daily_budget`), with backoff starting at one hour and doubling. Retry
 state is the `oracle-verdict-state-<number>` artifact of this workflow's latest
 run whose commit is on `develop`; other workflows' and branches' artifacts are
-ignored. Without one, `plan` reads the `oracle-review-shadow-state-<number>`
-artifact from runs of the former `.github/workflows/oracle-review-shadow.yml`,
-so strikes, budget and backoff survive the rename.
+ignored.
 
 A PR whose brief exceeds the size cap even without the diff (its file list alone
 is too long) cannot be reviewed: every reviewer is skipped and the result is
