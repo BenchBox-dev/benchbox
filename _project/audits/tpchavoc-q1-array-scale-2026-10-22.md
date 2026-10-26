@@ -1,7 +1,7 @@
 ---
-develop_sha: 9a184b6195702bfde8c049712e400c67ad213890
-checked_sha: 62ad33caf5c96ed49886ed1c443fe9ac1ff01be2
-measured_at_sha: 62ad33caf5c96ed49886ed1c443fe9ac1ff01be2
+develop_sha: 6d406a6fca8ddfbd4b45e739145b0361f5a0c9da
+checked_sha: 50147781465c2305b812c0789c2ce3e2f9ab03a7
+measured_at_sha: 50147781465c2305b812c0789c2ce3e2f9ab03a7
 ---
 
 # TPC-Havoc Q1 `1_v7` list-aggregate rewrite at scale on Trino
@@ -10,9 +10,10 @@ Question: does the Presto-family `1_v7` text run at TPC-H scale factor 1 and
 above without exceeding Trino's memory limits, and where does it stop?
 
 Answer: it returns the canonical Q1 result at SF1 to SF5. Under Trino's default
-per-node limit it passes at SF1 and SF2 and fails from SF3. Memory grows
-linearly with scale factor, at about 0.8 GiB per scale factor, so no scale is
-safe without a larger per-node limit. The canonical Q1 needs 16 MiB or less.
+per-node limit on a 6 GiB heap it passes at SF1 and SF2 and fails from SF3.
+Memory grows linearly with scale factor, at about 0.8 GiB per scale factor, so
+every scale factor from SF3 up needs a larger per-node limit. The canonical Q1
+needs 16 MiB or less.
 
 ## What was measured
 
@@ -34,7 +35,7 @@ relative tolerance of 1e-8 and reads each query's peak user memory from
 `/v1/query/{id}` (`queryStats.peakUserMemoryReservation`).
 
 - Trino 484 (Homebrew) on Java 27, one node acting as coordinator and worker,
-  macOS arm64, bundled SQLGlot runtime 30.24.0.13, tree clean at `62ad33caf`.
+  macOS arm64, bundled SQLGlot runtime 30.24.0.16, tree clean at `50147781`.
 - Start the server by invoking `java -cp '<libexec>/lib/*'` directly with
   `--add-modules=jdk.incubator.vector`, `--enable-native-access=ALL-UNNAMED`,
   `-Dconfig=<config.properties>`, `plugin.dir` and `catalog.config-dir` set, and
@@ -53,36 +54,37 @@ uv run -- python _project/scripts/tpchavoc_trino_q1_scale_check.py \
 
 | SF | `lineitem` rows | `1_v7` result | Peak user memory per run (MiB) | Max relative difference from canonical |
 |---|---|---|---|---|
-| 1 | 6,001,215 | PASS, 4 groups | 823, 823, 831 (about 45% of the limit) | 3.9e-12 |
-| 2 | 11,997,996 | PASS, 4 groups | 1595, 1595, 1560 (about 87% of the limit) | 3.3e-12 |
-| 3 | 17,996,609 | FAIL `EXCEEDED_LOCAL_MEMORY_LIMIT` | 1.75 GB allocated at abort | n/a |
-| 10 | 59,986,052 | FAIL `EXCEEDED_LOCAL_MEMORY_LIMIT` | 1.76 GB allocated at abort | n/a |
+| 1 | 6,001,215 | PASS, 4 groups | 812, 820, 795 (at most 45% of the limit) | 3.9e-12 |
+| 2 | 11,997,996 | PASS, 4 groups | 1590, 1595, 1595 (at most 87% of the limit) | 3.3e-12 |
+| 3 | 17,996,609 | FAIL `EXCEEDED_LOCAL_MEMORY_LIMIT` | 1.70 GB allocated at abort | n/a |
+| 10 | 59,986,052 | FAIL `EXCEEDED_LOCAL_MEMORY_LIMIT` | 1.70 GB allocated at abort | n/a |
 
-Both failures name `HashAggregationOperator` as the top consumer (1.65 GB),
+Both failures name `HashAggregationOperator` as the top consumer (1.63 GB),
 which holds the `ARRAY_AGG` states. The canonical query passed at every scale.
 
 ## Raised limits: 8 GiB heap, `query.max-memory-per-node` = 6 GB
 
-| SF | Peak user memory per run (MiB) | Max relative difference |
-|---|---|---|
-| 1 | 799, 799, 816 | 3.9e-12 |
-| 2 | 1560, 1592, 1595 | 3.3e-12 |
-| 3 | 2393, 2481, 2339 | 3.0e-11 |
-| 5 | 3897, 3897, 3897 | 5.3e-11 |
+| SF | Peak user memory per run (MiB) | `1_v7` wall seconds per run | Max relative difference |
+|---|---|---|---|
+| 1 | 823, 833, 823 | 12.4, 10.3, 7.7 | 3.9e-12 |
+| 2 | 1595, 1522, 1595 | 10.1, 13.1, 14.3 | 3.3e-12 |
+| 3 | 2393, 2393, 2393 | 21.3, 21.8, 17.3 | 3.0e-11 |
+| 5 | 3897, 3897, 3897 | 30.0, 40.5, 41.6 | 5.3e-11 |
 
 All scales returned the same four groups as the canonical query. Peak memory per
-scale factor is 780 to 830 MiB at SF1 to SF5, so it is linear in `lineitem` rows.
-With the stock limit that puts the failure between SF2 (87% of the limit) and SF3.
+scale factor is 760 to 835 MiB at SF1 to SF5, so it is linear in `lineitem` rows.
+With the stock limit that puts the failure between SF2 (at most 87% of the
+limit) and SF3.
 
 ## Limits of this evidence
 
 - Peaks of queries that finish in about a second or less can read 0.0 MiB
-  (canonical Q1 at SF1 on stock limits). Trino updates reservations on a poll of
-  about one second. Only `1_v7` peaks are used above; they come from queries that
-  ran for several seconds. Canonical peaks reached at most 14.8 MiB.
-- Wall time is recorded by the harness but is not reported here. Two other Trino
-  servers were running on the machine, and the runs for `1_v7` at SF3 and SF5
-  ranged from 57 to 127 seconds. Treat time as uncontrolled.
+  (canonical Q1 at SF1 and SF2 on raised limits). Trino updates reservations on
+  a poll of about one second. Only `1_v7` peaks are used above; they come from
+  queries that ran for several seconds. Canonical peaks reached at most 15.6 MiB.
+- Wall times are uncontrolled. Two other Trino servers were running on the
+  machine. An earlier run of this harness on the same tree content took 57 to 127
+  seconds for `1_v7` at SF3 and SF5, against 17 to 42 seconds here.
 - This is Trino, not Presto. The current text reduces with `REDUCE`, and Presto
   C++ workers are reported to cap `REDUCE` input at 100,000 elements, which a
   group of millions of rows exceeds. That cap was not tested here. The pull
