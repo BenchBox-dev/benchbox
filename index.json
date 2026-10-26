@@ -29888,6 +29888,13 @@
       "status": "dropped",
       "title": "Windows nightly: 49 of 62 failures are untracked"
     },
+    "windows-nightly-timeout-diagnosis-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Diagnose the next nightly Windows fast-unit job: hung test or slow runner"
+    },
     "windows-no-cli-surface-git-output-utf8-v2": {
       "claim": null,
       "needs": [],
