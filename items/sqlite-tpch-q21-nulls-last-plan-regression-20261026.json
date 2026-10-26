@@ -4,6 +4,7 @@
     "Q21 on the reused SF0.1 DB runs in ~100-250 ms with rows equal to the freshly loaded DB.",
     "Fresh-load behaviour unchanged; sql-execution-gate PASS; affected rerun cell (tpch/sqlite/sf0.1) completes via a fresh load."
   ],
+  "context": "DONE: PR #3563 merged. SQLite adapter overrides _setup_reused_database_phases: on reuse it idempotently applies the existing 9 helper indexes (reuse-path-only existence check, fail-closed), so a reused DB is indistinguishable from a fresh load. Evidence: same SF0.1 DB + indexes restores Q21 to 229.7 ms cold / 114.2 ms warm (indexless aborts at 3 s; full run hung 15+ min); rows equal DuckDB (SF0.01 1 row, SF0.1 47 rows). No translation change: .13 vs .17 Q21 SQL byte-identical. Timing-only impact on 6 published SQLite tpch/tpch_skew bundles; none modified.",
   "description": "Re-scoped after investigation (history://SqliteNullsPlan). The original NULLS LAST theory is disproven: wheel .13 and .17 emit byte-identical Q21 SQL for Netezza and DuckDB sources, and every SQL variant gives the same plan on the same DB. Root cause: the rerun's SF0.1 SQLite DB has zero indexes and no sqlite_stat1. SQLiteAdapter creates nine TPC-H helper indexes only inside load_data; when a run reuses an existing database path, reuse validation accepts the indexless DB and load_data never runs. Adding the 9 helper indexes to a private copy of the same DB (no ANALYZE) restores Q21 from >3 s (interrupted) to 229.7 ms cold / 114.2 ms warm with identical SQL, interpreter and row counts (lineitem 600572, orders 150000). Evidence /tmp/sqlite-plan-index-state.log. A normal fresh run does invoke load_data; no evidence the fresh path fails.\nFIX: on reuse, ensure the adapter's helper indexes exist (idempotent CREATE INDEX IF NOT EXISTS) or make reuse validation reject a database missing them. Most-correct: a reused DB must be indistinguishable from a freshly loaded one for query plans.\nGUARDRAILS: no translation change; no benchmark text change; index creation stays in the adapter's established set; tests must cover the reuse path.",
   "sessions": [
     {
@@ -29,6 +30,14 @@
       "generation": "f56f8d626f7a42ac9be023251e54cf09",
       "op": "take",
       "op_id": "f21a8a38be8743699e9020031779447f",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-26T19:56:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "945b38fceb02459fa1c074a4e0d42465",
       "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
