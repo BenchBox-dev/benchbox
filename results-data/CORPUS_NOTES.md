@@ -756,10 +756,12 @@ publishing the ClickHouse bundle without these two queries.
 
 The rule lives in `DOCUMENTED_PLATFORM_QUERY_EXCLUSIONS`
 (`benchbox/core/results/query_status.py`): benchmark `tpcds_obt` on platform
-`clickhouse-local`, query ids `41` and `44` only. A bundle whose only failed
-measurements are those ids is treated as `passed`: submission validation, the
-corpus validator and the Explorer all read the same rule. Any other failure, any
-other platform, or any other query id keeps the bundle `partial`. The two
+`clickhouse-local`, driver (chDB) version `4.1.6` only, query ids `41` and `44`
+only. A bundle whose only failed measurements are those ids, and whose summary
+query counts match its per-query rows, is treated as `passed`: submission
+validation, the corpus validator and the Explorer all read the same rule. Any
+other failure, platform, driver version or query id, or any summary count that
+disagrees with the rows, keeps the bundle `partial`. The two
 queries remain recorded as `FAILED` in the bundle; the rule does not rewrite
 results. Its summary timings cover 91 query ids, so the ClickHouse Local
 geometric mean and total time are not like-for-like with the 93-id DuckDB and

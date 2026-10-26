@@ -615,6 +615,7 @@ class TestValidateBundle:
         data["benchmark"]["id"] = "tpcds_obt"
         data["platform"]["name"] = platform
         data["summary"]["validation"] = "partial"
+        data.setdefault("execution", {})["driver_version_actual"] = "4.1.6"
         rows = [{"id": str(i), "ms": 100 + i, "status": "SUCCESS"} for i in range(1, 6)]
         rows += [{"id": qid, "ms": 0, "status": "FAILED"} for qid in failed_ids]
         data["queries"] = rows
@@ -625,6 +626,16 @@ class TestValidateBundle:
         vr = ValidationResult("test")
         _validate_bundle(self._obt_bundle("ClickHouse Local", ["41", "44"]), vr)
         assert not any("summary.validation" in e for e in vr.errors), vr.errors
+
+    def test_documented_platform_query_exclusions_reject_other_driver_versions_and_summary_drift(self):
+        other_driver = self._obt_bundle("ClickHouse Local", ["41", "44"])
+        other_driver["execution"]["driver_version_actual"] = "4.2.0"
+        drifted = self._obt_bundle("ClickHouse Local", ["41", "44"])
+        drifted["summary"]["queries"]["failed"] = 5
+        for data in (other_driver, drifted):
+            vr = ValidationResult("test")
+            _validate_bundle(data, vr)
+            assert any("summary.validation must be 'passed'" in e for e in vr.errors)
 
     def test_documented_platform_query_exclusions_still_run_clean_bundle_checks(self):
         data = self._obt_bundle("ClickHouse Local", ["41", "44"])
