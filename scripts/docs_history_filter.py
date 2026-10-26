@@ -12,7 +12,7 @@ from typing import Any
 
 OWNERSHIP_PATH = "quality/docs-ownership.json"
 QUERY_ROOT = "docs/benchmarks/queries/"
-RENAME_LIMIT = 100000
+RENAME_LIMIT = 0
 PROHIBITED = re.compile(
     r"(^|/)(pyproject\.toml|uv\.lock|CNAME)$|\.(py|pyi|pem)$|^docs/blog/|^docs/CNAME$",
 )
