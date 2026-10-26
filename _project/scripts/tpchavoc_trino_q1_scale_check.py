@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
@@ -106,6 +107,26 @@ def create_views(client: TrinoClient, scale: float, schema: str) -> str:
     return target
 
 
+NON_FINITE_TEXT = frozenset({"NaN", "Infinity", "-Infinity"})
+
+
+def is_non_finite(value: Any) -> bool:
+    if isinstance(value, float):
+        return not math.isfinite(value)
+    return isinstance(value, str) and value in NON_FINITE_TEXT
+
+
+def cell_difference(left: Any, right: Any) -> float:
+    if is_non_finite(left) or is_non_finite(right):
+        return math.inf
+    if isinstance(left, int) and isinstance(right, int):
+        return 0.0 if left == right else math.inf
+    if all(isinstance(cell, (int, float)) and not isinstance(cell, bool) for cell in (left, right)):
+        scale = max(abs(left), abs(right), 1e-300)
+        return abs(left - right) / scale
+    return 0.0 if left == right else math.inf
+
+
 def max_relative_difference(canonical: list[list[Any]], variant: list[list[Any]]) -> float:
     if len(canonical) != len(variant):
         return math.inf
@@ -114,11 +135,7 @@ def max_relative_difference(canonical: list[list[Any]], variant: list[list[Any]]
         if len(left_row) != len(right_row):
             return math.inf
         for left, right in zip(left_row, right_row):
-            if isinstance(left, (int, float)) and isinstance(right, (int, float)):
-                scale = max(abs(left), abs(right), 1e-300)
-                worst = max(worst, abs(left - right) / scale)
-            elif left != right:
-                return math.inf
+            worst = max(worst, cell_difference(left, right))
     return worst
 
 
@@ -146,16 +163,24 @@ def measure(client: TrinoClient, sql: str, schema: str, repeats: int) -> dict[st
     }
 
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+
+
+def git_output(*args: str) -> str | None:
+    try:
+        completed = subprocess.run(["git", *args], capture_output=True, text=True, check=False, cwd=REPOSITORY_ROOT)
+    except OSError:
+        return None
+    return completed.stdout.strip() if completed.returncode == 0 else None
+
+
 def repository_revision() -> str:
-    completed = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False)
-    return completed.stdout.strip() or "unknown"
+    return git_output("rev-parse", "HEAD") or "unknown"
 
 
-def repository_dirty() -> bool:
-    completed = subprocess.run(
-        ["git", "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True, check=False
-    )
-    return bool(completed.stdout.strip())
+def repository_dirty() -> bool | None:
+    status = git_output("status", "--porcelain", "--untracked-files=no")
+    return None if status is None else bool(status)
 
 
 def run_scale(client: TrinoClient, benchmark: TPCHavocBenchmark, scale: float, repeats: int) -> dict[str, Any]:
