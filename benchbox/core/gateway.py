@@ -289,5 +289,5 @@ def raise_greybeam_maintenance_unsupported() -> None:
     raise ConfigurationError(
         "The greybeam gateway does not support maintenance (TPC-H RF1/RF2, TPC-DS maintenance streams): "
         "refresh writes through the gateway are not reflected in the CDC-fed Iceberg replica. Remove the "
-        "maintenance phase from --phases."
+        "maintenance phase from --phases and do not enable tpch_refresh_functions."
     )

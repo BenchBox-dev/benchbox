@@ -153,3 +153,83 @@ def test_native_runs_maintenance(harness) -> None:
 def test_standalone_maintenance_fails_fast() -> None:
     with pytest.raises(ConfigurationError):
         _Driver("greybeam")._execute_maintenance_test(object(), object(), {})
+
+
+def _greybeam_adapter():
+    return types.SimpleNamespace(
+        platform_name="snowflake",
+        supports_refresh_functions=True,
+        gateway_endpoint=types.SimpleNamespace(name="greybeam"),
+        get_target_dialect=lambda: "snowflake",
+    )
+
+
+def test_refresh_support_check_rejects_greybeam() -> None:
+    from benchbox.core.tpch.refresh import refresh_unsupported_reason, require_refresh_support
+
+    adapter = _greybeam_adapter()
+    assert "greybeam" in refresh_unsupported_reason(adapter)
+    with pytest.raises(ConfigurationError, match="tpch_refresh_functions"):
+        require_refresh_support(adapter)
+    adapter.gateway_endpoint = None
+    assert refresh_unsupported_reason(adapter) is None
+    adapter.gateway_endpoint = types.SimpleNamespace(name="espresso")
+    assert refresh_unsupported_reason(adapter) is None
+
+
+def test_power_phase_refresh_fails_before_any_refresh_executes(monkeypatch) -> None:
+    from benchbox.core.tpch import power_test as power_test_module, refresh as refresh_module
+    from benchbox.core.tpch.platform_power import execute_tpch_power_test
+
+    generated = Mock()
+    power = Mock()
+    rf = Mock()
+    monkeypatch.setattr(refresh_module, "generate_refresh_update_sets", generated)
+    monkeypatch.setattr(power_test_module, "TPCHPowerTest", power)
+    monkeypatch.setattr(power_test_module, "apply_rf1", rf)
+    monkeypatch.setattr(power_test_module, "apply_rf2", rf)
+    factory = Mock()
+
+    rows = execute_tpch_power_test(
+        _greybeam_adapter(),
+        Mock(),
+        object(),
+        {"scale_factor": 0.01, "tpch_refresh_functions": True, "iterations": 1, "warm_up_iterations": 0},
+        make_connection_adapter=Mock(),
+        make_refresh_connection_adapter=factory,
+        console=types.SimpleNamespace(print=lambda *a, **k: None),
+    )
+    assert rows[0]["status"] == "FAILED"
+    assert "greybeam" in rows[0]["error"]
+    generated.assert_not_called()
+    power.assert_not_called()
+    rf.assert_not_called()
+    factory.assert_not_called()
+
+
+def test_throughput_phase_refresh_fails_before_any_refresh_executes(monkeypatch) -> None:
+    from benchbox.core.tpch import refresh as refresh_module, throughput_test as throughput_module
+    from benchbox.platforms.base import execution as execution_module
+
+    generated = Mock()
+    runner = Mock()
+    rf = Mock()
+    monkeypatch.setattr(refresh_module, "generate_refresh_update_sets", generated)
+    monkeypatch.setattr(throughput_module, "TPCHThroughputTest", runner)
+    monkeypatch.setattr(throughput_module, "apply_rf1", rf)
+    monkeypatch.setattr(throughput_module, "apply_rf2", rf)
+    monkeypatch.setattr(execution_module, "require_throughput_stream_capability", lambda *a, **k: None)
+
+    class Driver(TestDriversMixin):
+        platform_name = "snowflake"
+        supports_refresh_functions = True
+        gateway_endpoint = types.SimpleNamespace(name="greybeam")
+
+    rows = Driver()._execute_tpch_throughput_test(
+        Mock(), object(), {"scale_factor": 0.01, "tpch_refresh_functions": True, "streams": 2}
+    )
+    assert rows[0]["status"] == "FAILED"
+    assert "greybeam" in rows[0]["error"]
+    generated.assert_not_called()
+    runner.assert_not_called()
+    rf.assert_not_called()

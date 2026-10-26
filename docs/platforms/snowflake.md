@@ -152,6 +152,8 @@ BenchBox enforces these runtime restrictions:
   maintenance test type is selected. When the maintenance phase is only implied (a combined run without `--phases`), it
   is skipped with a loud warning and a `maintenance_skipped: true` row with status `SKIPPED` in the query results.
   The escape hatch does not cover maintenance.
+  TPC-H refresh functions enabled inside the power or throughput phase (`tpch_refresh_functions`) also fail closed
+  before any refresh set is generated or applied; the phase reports a `FAILED` row naming the greybeam gateway.
 
 Quiescence runbook, to run after every native load or refresh and before the first gateway query:
 
