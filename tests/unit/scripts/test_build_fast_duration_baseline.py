@@ -235,6 +235,25 @@ def test_medium_refresh_takes_p95_across_runs_and_round_trips(tmp_path: Path) ->
     assert baseline.read_medium_recorded(output) == {"tests/test_sample.py::TestSample::test_alpha": 2.9}
 
 
+def test_medium_refresh_rejects_a_run_without_junit(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    shard_dir = tmp_path / "run0" / "t2-medium-shard-0-abc"
+    shard_dir.mkdir(parents=True)
+    (shard_dir / "shard-0-junit.xml").write_text(
+        '<testsuite><testcase classname="tests.test_sample.TestSample" file="tests/test_sample.py" '
+        'name="test_alpha" time="1.0"/></testsuite>',
+        encoding="utf-8",
+    )
+    (tmp_path / "empty").mkdir()
+    output = tmp_path / "durations.json"
+    argv = ["medium-refresh", "--output", str(output), "--source", "x"]
+    argv += ["--run-dir", str(tmp_path / "run0"), "--run-dir", str(tmp_path / "empty")]
+
+    assert baseline.main(argv) == 1
+
+    assert "run 1 has no usable testcase samples" in capsys.readouterr().err
+    assert not output.exists()
+
+
 def test_build_command_round_trips_through_subprocess(tmp_path: Path) -> None:
     manifest, _runs = build_fixture(tmp_path)
     output = tmp_path / "baseline"

@@ -345,7 +345,9 @@ def medium_drift_report(recorded: dict[str, float], measured: dict[str, dict[str
 
 def build_medium_durations(runs: list[dict[str, dict[str, float]]], generated_at: str, source: str) -> dict[str, Any]:
     samples: dict[str, list[float]] = {}
-    for run in runs:
+    for index, run in enumerate(runs):
+        if not any(run.values()):
+            raise BaselineError(f"run {index} has no usable testcase samples in medium shard junit")
         for shard_tests in run.values():
             for nodeid, amount in shard_tests.items():
                 samples.setdefault(nodeid, []).append(amount)
