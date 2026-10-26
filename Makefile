@@ -24,7 +24,7 @@ JOINORDER_REFERENCE ?= _project/joinorder/reference_cardinalities.json
 DEVELOPMENT_TREE_ONLY_TARGETS := \
 	correctness-gate-digests-regen ledger-seed-gates ledger-seed-recut tpch-subscale-row-counts-regen \
 	cross-surface-baseline-autodetect \
-	oracle-coverage-map oracle-coverage-map-check cross-surface-applicability-report \
+	oracle-coverage-map oracle-coverage-map-check oracle-backoff-reset cross-surface-applicability-report \
 	joinorder-verify-reference-results complexity-check complexity-report \
 	quality-governance-typecheck uv-lock-revision-check sqlglot-repro-retirement-check audit-deps audit-raw audit-raw-check \
 	audit-sha-check artifact-hygiene agent-instructions-check agent-identity-check security-audit \
@@ -294,6 +294,11 @@ oracle-coverage-map:
 .PHONY: oracle-coverage-map-check
 oracle-coverage-map-check:
 	uv run -- python _project/scripts/generate_oracle_coverage_map.py --check
+
+.PHONY: oracle-backoff-reset
+oracle-backoff-reset:
+	@test -n "$(PR)" -a -n "$(HEAD)" -a -n "$(REASON)" || { echo "Usage: make oracle-backoff-reset PR=<number> HEAD=<40-character head SHA> REASON='<why>'" >&2; exit 1; }
+	uv run -- python -m _project.scripts.oracle_reviewers.cli reset-backoff --pr "$$PR" --head "$$HEAD" --reason "$$REASON"
 
 .PHONY: cross-surface-applicability-report
 cross-surface-applicability-report:

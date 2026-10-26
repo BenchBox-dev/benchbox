@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import cli, github, protocol, render
+from _project.scripts.oracle_reviewers import cli, github, protocol, render, sweep
 from _project.scripts.oracle_reviewers.dedup import fingerprint
 from _project.scripts.oracle_reviewers.retry import State
 
@@ -92,10 +92,18 @@ class FakeGitHub:
         self.dispatched: list[int] = []
         self.base_tag = ""
         self.merge_base: str | None = MERGE_BASE
+        self.reasons: list[str | None] = []
+        self.contents: dict[str, str] = {}
         self.reviews: list[dict[str, Any]] | None = []
         self.reread_sha: str | None = None
         self._pull_reads = 0
-        self.runs: dict[str, list[str]] = {}
+        self.runs: list[dict[str, Any]] = []
+        self.committed = datetime.now(UTC) - timedelta(days=1)
+        self.comments: list[dict[str, Any]] = []
+        self.failing_prs: set[int] = set()
+        self.failed: dict[int, list[str]] = {}
+        self.statuses: list[dict[str, Any]] = []
+        self.posted: list[tuple[int, dict[str, Any]]] = []
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(github, "get_json", self._json)
@@ -103,10 +111,24 @@ class FakeGitHub:
         monkeypatch.setattr(github, "get_diff", self._diff)
         monkeypatch.setattr(github, "review_threads", self._threads)
         monkeypatch.setattr(github, "latest_state", lambda repo, pr: self.state)
-        monkeypatch.setattr(github, "dispatch", lambda repo, workflow, pr: self.dispatched.append(pr))
+        monkeypatch.setattr(github, "dispatch", self._dispatch)
+        monkeypatch.setattr(github, "verdict_runs", lambda repo, workflow, since: list(self.runs))
+        monkeypatch.setattr(github, "committed_at", lambda repo, sha: self.committed)
+        monkeypatch.setattr(github, "failed_steps", lambda repo, run_id: list(self.failed.get(run_id, [])))
+        monkeypatch.setattr(github, "commit_statuses", lambda repo, sha: list(self.statuses))
+        monkeypatch.setattr(github, "post_status", self._post)
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
         monkeypatch.setattr(github, "merge_base", lambda repo, base, head: self.merge_base)
         monkeypatch.setattr(github, "tree_blobs", self._tree)
+
+    def _post(self, repo: str, head_sha: str, payload: dict[str, Any], token: str) -> None:
+        self.posted.append((len(self.posted), {"head_sha": head_sha, **payload, "token": token}))
+
+    def _dispatch(self, repo: str, workflow: str, pr: int, reason: str | None = None) -> None:
+        if pr in self.failing_prs:
+            raise github.GitHubError(f"could not dispatch {workflow} for #{pr}")
+        self.dispatched.append(pr)
+        self.reasons.append(reason)
 
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.reviews is None:
@@ -114,9 +136,6 @@ class FakeGitHub:
         return self.reviews
 
     def _json(self, path: str) -> dict[str, Any]:
-        listing = re.search(r"/actions/workflows/oracle-verdict\.yml/runs\?status=(\w+)&", path)
-        if listing:
-            return {"workflow_runs": [{"display_title": title} for title in self.runs.get(listing.group(1), [])]}
         if path == f"repos/{REPO}/pulls/7":
             self._pull_reads += 1
             if self._pull_reads > 1 and self.reread_sha is not None:
@@ -140,6 +159,8 @@ class FakeGitHub:
         return None
 
     def _paginated(self, path: str) -> list[dict[str, Any]]:
+        if "/issues/" in path and path.split("?")[0].endswith("/comments"):
+            return self.comments
         if path.startswith(f"repos/{REPO}/pulls?"):
             return [self.pull]
         return [{**item, "sha": _head_entry(self.diff, item["filename"])[1]} for item in self.files]
@@ -382,7 +403,7 @@ def test_sweep_dispatches_only_due_pending_prs(monkeypatch: pytest.MonkeyPatch, 
     fake.install(monkeypatch)
     _env(monkeypatch, tmp_path, "schedule", {}, "refs/heads/develop")
     assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
-    assert fake.dispatched == [7]
+    assert fake.dispatched == [7] and fake.reasons == [None]
     fresh = FakeGitHub(_pull(), SOUNDNESS, State(7, HEAD, "pending", datetime.now(UTC), pending_cause="all-absent"))
     fresh.install(monkeypatch)
     assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
@@ -393,16 +414,48 @@ def _due_state() -> State:
     return State(7, HEAD, "pending", datetime.now(UTC) - timedelta(hours=2), pending_cause="all-absent")
 
 
-@pytest.mark.parametrize("status", ["queued", "in_progress"])
+_RUN_IDS = iter(range(1000, 100000))
+
+
+def _verdict_run(
+    pr: int | str,
+    *,
+    status: str = "completed",
+    conclusion: str | None = "success",
+    event: str = "workflow_dispatch",
+    age: timedelta = timedelta(hours=1),
+) -> dict[str, Any]:
+    return {
+        "id": next(_RUN_IDS),
+        "display_title": f"oracle-verdict ({event} pr={pr})",
+        "event": event,
+        "status": status,
+        "conclusion": conclusion,
+        "created_at": (datetime.now(UTC) - age).isoformat(),
+    }
+
+
+def _sweep(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake: FakeGitHub, event: str = "schedule") -> int:
+    fake.install(monkeypatch)
+    _env(monkeypatch, tmp_path, event, {}, "refs/heads/develop")
+    return cli.main(["sweep", "--policy", str(POLICY_PATH)])
+
+
+@pytest.mark.parametrize("status", ["queued", "in_progress", "waiting", "pending", "requested"])
 @pytest.mark.parametrize("event", ["workflow_dispatch", "pull_request_target", "issue_comment"])
 def test_sweep_does_not_dispatch_over_a_run_still_in_flight(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, status: str, event: str
 ) -> None:
     fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
-    fake.runs[status] = [f"oracle-verdict ({event} pr=7)"]
-    fake.install(monkeypatch)
-    _env(monkeypatch, tmp_path, "push", {}, "refs/heads/develop")
-    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
+    fake.runs = [_verdict_run(7, status=status, conclusion=None, event=event)]
+    assert _sweep(monkeypatch, tmp_path, fake, "push") == 0
+    assert fake.dispatched == []
+
+
+def test_sweep_treats_a_run_started_moments_ago_as_in_flight(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.runs = [_verdict_run(7, age=timedelta(seconds=20))]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
     assert fake.dispatched == []
 
 
@@ -410,12 +463,575 @@ def test_sweep_dispatches_once_when_only_other_runs_are_in_flight(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
-    fake.runs["queued"] = ["oracle-verdict (workflow_dispatch pr=70)", "oracle-verdict (push pr=sweep)"]
-    fake.runs["in_progress"] = ["oracle-verdict (schedule pr=sweep)", "oracle-verdict (workflow_dispatch pr=17)"]
-    fake.install(monkeypatch)
-    _env(monkeypatch, tmp_path, "push", {}, "refs/heads/develop")
-    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
+    fake.runs = [
+        _verdict_run(70, status="queued", conclusion=None),
+        _verdict_run("sweep", status="queued", conclusion=None, event="push"),
+        _verdict_run("sweep", status="in_progress", conclusion=None, event="schedule"),
+        _verdict_run(17, status="in_progress", conclusion=None),
+    ]
+    assert _sweep(monkeypatch, tmp_path, fake, "push") == 0
     assert fake.dispatched == [7]
+
+
+def test_sweep_reads_every_page_of_runs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.runs = [_verdict_run(900 + index) for index in range(250)] + [
+        _verdict_run(7, status="in_progress", conclusion=None, age=timedelta(days=3))
+    ]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+
+
+def test_the_run_listing_follows_every_page(monkeypatch: pytest.MonkeyPatch) -> None:
+    pages = [{"workflow_runs": [{"id": index}]} for index in range(3)]
+    seen: list[tuple[str, ...]] = []
+
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        seen.append(args)
+        return json.dumps(pages)
+
+    monkeypatch.setattr(github, "_gh", fake_gh)
+    assert github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC)) == [
+        {"id": 0},
+        {"id": 1},
+        {"id": 2},
+    ]
+    assert seen[0][:2] == ("--paginate", "--slurp")
+    assert "created=%3E%3D2026-10-19T00%3A00%3A00Z" in seen[0][2]
+
+
+def _stateless_fake(*runs: dict[str, Any]) -> FakeGitHub:
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.runs = list(runs)
+    return fake
+
+
+def test_a_head_whose_run_failed_without_state_is_redispatched_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    failed = _verdict_run(7, conclusion="failure", event="pull_request_target", age=timedelta(hours=3))
+    fake = _stateless_fake(failed)
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7] and fake.reasons == ["stateless-retry"]
+    second = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=2))
+    again = _stateless_fake(second, failed)
+    assert _sweep(monkeypatch, tmp_path, again) == 0
+    assert again.dispatched == []
+
+
+def test_a_failure_before_the_head_was_committed_is_not_retried(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(days=3)))
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "timed_out", "cancelled"])
+def test_every_unfinished_conclusion_counts_as_a_failure_without_state(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, conclusion: str
+) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion=conclusion))
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7]
+
+
+@pytest.mark.parametrize("conclusion", ["success"])
+def test_a_run_that_finished_is_not_retried(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, conclusion: str) -> None:
+    fake = _stateless_fake(
+        _verdict_run(7, conclusion=conclusion, age=timedelta(minutes=30)), _verdict_run(7, conclusion="failure")
+    )
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+
+
+def test_a_failed_run_on_a_head_with_a_decisive_state_is_not_retried(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, State(7, HEAD, "success", datetime.now(UTC) - timedelta(hours=3)))
+    fake.runs = [_verdict_run(7, conclusion="failure")]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+
+
+def test_stateless_redispatch_is_bounded_by_the_daily_budget(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    policy_budget = cli.load_policy(POLICY_PATH).retry.daily_budget
+    dispatches = [
+        _verdict_run(7, conclusion="success", age=timedelta(hours=2 + index)) for index in range(policy_budget)
+    ]
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", event="pull_request_target"), *dispatches)
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+
+
+def test_the_sweep_never_dispatches_more_than_its_cap(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    cap = cli.load_policy(POLICY_PATH).retry.sweep_max_dispatches
+    pulls = [
+        _pull(number=number, head={"sha": HEAD, "repo": {"full_name": REPO}}) for number in range(20, 20 + cap + 3)
+    ]
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.runs = [_verdict_run(pull["number"], conclusion="failure") for pull in pulls]
+    fake._paginated = lambda path: pulls if path.startswith(f"repos/{REPO}/pulls?") else []
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert len(fake.dispatched) == cap
+
+
+def test_one_pull_requests_error_does_not_stop_the_others(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pulls = [_pull(number=number) for number in (21, 22, 23)]
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.runs = [_verdict_run(pull["number"], conclusion="failure") for pull in pulls]
+    fake.failing_prs = {22}
+    fake._paginated = lambda path: pulls if path.startswith(f"repos/{REPO}/pulls?") else []
+    assert _sweep(monkeypatch, tmp_path, fake) == 1
+    assert fake.dispatched == [21, 23]
+    captured = capsys.readouterr()
+    assert "#22" in captured.out
+    assert "could not handle 1 pull request" in captured.err
+
+
+def test_a_state_that_cannot_be_read_isolates_to_its_pull_request(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pulls = [_pull(number=number) for number in (21, 22)]
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.runs = [_verdict_run(pull["number"], conclusion="failure") for pull in pulls]
+    fake._paginated = lambda path: pulls if path.startswith(f"repos/{REPO}/pulls?") else []
+    fake.install(monkeypatch)
+
+    def latest(repo: str, pr: int) -> State | None:
+        if pr == 21:
+            raise github.GitHubError("artifact unreadable")
+        return None
+
+    monkeypatch.setattr(github, "latest_state", latest)
+    _env(monkeypatch, tmp_path, "schedule", {}, "refs/heads/develop")
+    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 1
+    assert fake.dispatched == [22]
+
+
+def _surfaced_sweep(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake: FakeGitHub, token: str | None = "surface-token"
+) -> int:
+    fake.install(monkeypatch)
+    if token is None:
+        monkeypatch.delenv("SURFACE_TOKEN", raising=False)
+    else:
+        monkeypatch.setenv("SURFACE_TOKEN", token)
+    _env(monkeypatch, tmp_path, "schedule", {}, "refs/heads/develop")
+    return cli.main(["sweep", "--policy", str(POLICY_PATH)])
+
+
+def test_a_timeout_run_counts_as_a_failure_without_a_result(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    first = _verdict_run(7, conclusion="timed_out", event="pull_request_target", age=timedelta(hours=2))
+    second = _verdict_run(7, conclusion="timed_out", event="workflow_dispatch", age=timedelta(hours=1))
+    fake = _stateless_fake(second, first)
+    fake.failed = {second["id"]: ["Run the attempt loop"]}
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    posted = fake.posted[0][1]
+    assert posted["head_sha"] == HEAD and posted["state"] == "pending" and posted["context"] == "oracle-verdict"
+    assert "Run the attempt loop" in posted["description"]
+    assert len(posted["description"]) <= 140
+    assert posted["target_url"].endswith(f"/actions/runs/{second['id']}")
+    assert posted["token"] == "surface-token"
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Verify Linux process isolation",
+        "Scan the disk for secret values after the reviewer exits",
+        "Redact every secret value held by the job from the results",
+    ],
+)
+def test_an_isolation_scan_or_redaction_failure_is_surfaced_by_the_sweep(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, step: str
+) -> None:
+    first = _verdict_run(7, conclusion="failure", event="pull_request_target", age=timedelta(hours=3))
+    second = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=2))
+    fake = _stateless_fake(second, first)
+    fake.failed = {second["id"]: [step]}
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    assert step in fake.posted[0][1]["description"]
+
+
+def test_a_second_failure_with_no_step_listed_still_posts_a_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _stateless_fake(
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+    )
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    assert "an earlier step" in fake.posted[0][1]["description"]
+
+
+APP = {"login": "benchbox-oracle[bot]", "type": "Bot"}
+
+
+def _twice_failed() -> tuple[dict[str, Any], dict[str, Any]]:
+    return (
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+    )
+
+
+def _expected(second: dict[str, Any], steps: list[str]) -> dict[str, Any]:
+    description = sweep.surface_description(steps)
+    return {
+        "context": "oracle-verdict",
+        "state": "pending",
+        "description": description,
+        "target_url": f"https://github.com/{REPO}/actions/runs/{second['id']}",
+        "creator": dict(APP),
+        "updated_at": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
+    }
+
+
+def test_an_in_progress_claim_is_replaced_with_the_failed_step_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    fake.failed = {second["id"]: ["Verify Linux process isolation"]}
+    fake.statuses = [
+        {
+            "context": "oracle-verdict",
+            "state": "pending",
+            "description": "verdict in progress",
+            "target_url": f"https://github.com/{REPO}/actions/runs/1",
+            "creator": dict(APP),
+            "updated_at": (datetime.now(UTC) - timedelta(minutes=10)).isoformat(),
+        }
+    ]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    assert fake.posted[0][1]["description"] == sweep.surface_description(["Verify Linux process isolation"])
+    assert fake.posted[0][1]["target_url"] == f"https://github.com/{REPO}/actions/runs/{second['id']}"
+
+
+def test_a_non_app_pending_status_cannot_suppress_the_failure_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    fake.statuses = [
+        {
+            "context": "oracle-verdict",
+            "state": "pending",
+            "description": "oracle-verdict failed twice without a result at: an earlier step. Rerun",
+            "target_url": f"https://github.com/{REPO}/actions/runs/{second['id']}",
+            "creator": {"login": "someone", "type": "User"},
+        }
+    ]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and len(fake.posted) == 1
+
+
+def test_an_identical_surfacing_is_not_reposted(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    fake.statuses = [_expected(second, [])]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
+
+
+def test_a_recorded_verdict_is_never_overwritten_by_the_failure_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    expected = _expected(second, [])
+    fake.statuses = [{**expected, "state": "success", "description": "oracle-verdict: success"}]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
+
+
+def test_a_second_failure_without_an_app_token_is_reported_but_not_an_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fake = _stateless_fake(
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+    )
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake, token=None) == 0
+    assert fake.dispatched == [] and fake.posted == []
+    assert "not configured to surface it" in capsys.readouterr().out
+
+
+def test_a_failure_after_a_finished_run_is_a_first_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    finished = _verdict_run(7, conclusion="success", age=timedelta(hours=1))
+    older = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    fake = _stateless_fake(finished, older)
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
+
+
+def test_a_skipped_review_run_neither_dispatches_nor_hides_a_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    failed = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    skipped = _verdict_run(7, conclusion="skipped", age=timedelta(hours=1))
+    fresh = _stateless_fake(skipped, failed)
+    assert _sweep(monkeypatch, tmp_path, fresh) == 0
+    assert fresh.dispatched == [7]
+    only = _stateless_fake(skipped)
+    assert _sweep(monkeypatch, tmp_path, only) == 0
+    assert only.dispatched == []
+
+
+def test_a_skipped_run_between_two_failures_stops_the_second_dispatch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    runs = _stateless_fake(
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="skipped", age=timedelta(hours=2)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=3)),
+    )
+    assert _sweep(monkeypatch, tmp_path, runs) == 0
+    assert runs.dispatched == []
+
+
+def test_an_owner_reset_covers_one_run_then_expires_on_a_failure_without_a_result(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    reset = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    reset.comments = _reset_comments()
+    reset.runs = [_verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(minutes=10))]
+    assert _sweep(monkeypatch, tmp_path, reset) == 0
+    assert reset.dispatched == []
+
+
+def test_an_owner_reset_is_spent_by_the_first_later_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    first = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    first.comments = _reset_comments()
+    _, values, _ = _plan(monkeypatch, tmp_path, first, event_name="issue_comment", event=event)
+    assert values["decision"] == "review"
+    second = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    second.comments = _reset_comments()
+    second.runs = [_verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(minutes=10))]
+    _, values, plan = _plan(monkeypatch, tmp_path, second, event_name="issue_comment", event=event)
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+    assert "reset" not in plan["decision_reason"]
+
+
+def test_a_skipped_run_after_the_reset_does_not_spend_it(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    fake = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    fake.comments = _reset_comments()
+    fake.runs = [_verdict_run(7, conclusion="skipped", age=timedelta(minutes=10))]
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "review"
+    assert "reset by the owner" in plan["decision_reason"]
+
+
+def _decisive_state(outcome: str = "success") -> State:
+    return State(7, HEAD, outcome, datetime.now(UTC) - timedelta(minutes=10))
+
+
+def test_an_owner_reset_never_rerolls_a_decisive_head(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    fake = FakeGitHub(_pull(), SOUNDNESS, _decisive_state())
+    fake.comments = _reset_comments()
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+    assert "reset" not in plan["decision_reason"]
+
+
+def _marked_dispatch(*runs: dict[str, Any]) -> FakeGitHub:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    fake.runs = list(runs)
+    return fake
+
+
+def test_a_marked_stateless_retry_reviews_despite_backoff(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    failed = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=2))
+    fake = _marked_dispatch(failed)
+    code, values, plan = _plan(
+        monkeypatch,
+        tmp_path,
+        fake,
+        event_name="workflow_dispatch",
+        event={"inputs": {"reason": "stateless-retry"}},
+        ref="refs/heads/develop",
+    )
+    assert code == 0
+    assert values["decision"] == "review"
+    assert "failed without a result" in plan["decision_reason"]
+
+
+@pytest.mark.parametrize(
+    "previous_runs",
+    [
+        [],
+        [
+            _verdict_run(7, conclusion="failure", age=timedelta(hours=3)),
+            _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+        ],
+    ],
+    ids=["no-failure", "two-failures"],
+)
+def test_a_marked_retry_without_exactly_one_prior_failure_follows_normal_rules(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, previous_runs: list[dict[str, Any]]
+) -> None:
+    fake = _marked_dispatch(*previous_runs)
+    _, values, plan = _plan(
+        monkeypatch,
+        tmp_path,
+        fake,
+        event_name="workflow_dispatch",
+        event={"inputs": {"reason": "stateless-retry"}},
+        ref="refs/heads/develop",
+    )
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+
+
+def test_a_marked_retry_never_rerolls_a_decisive_head(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    failed = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    fake = FakeGitHub(_pull(), SOUNDNESS, _decisive_state("failure"))
+    fake.runs = [failed]
+    _, values, plan = _plan(
+        monkeypatch,
+        tmp_path,
+        fake,
+        event_name="workflow_dispatch",
+        event={"inputs": {"reason": "stateless-retry"}},
+        ref="refs/heads/develop",
+    )
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
+
+
+USER = {"login": "someone", "type": "User"}
+
+
+def _verdict_status(state: str, creator: dict[str, Any] = APP, description: str = "d") -> dict[str, Any]:
+    return {
+        "context": "oracle-verdict",
+        "state": state,
+        "description": description,
+        "target_url": "u",
+        "creator": dict(creator),
+        "updated_at": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
+    }
+
+
+@pytest.mark.parametrize("state", ["success", "failure"])
+def test_a_posted_decisive_status_blocks_the_stateless_redispatch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, state: str
+) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(hours=1)))
+    fake.statuses = [_verdict_status(state)]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
+
+
+def test_a_non_app_decisive_status_does_not_block_the_stateless_retry(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(hours=1)))
+    fake.statuses = [_verdict_status("failure", USER)]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7] and fake.reasons == ["stateless-retry"]
+
+
+def test_a_pending_claim_does_not_block_the_stateless_retry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="failure", age=timedelta(hours=1)))
+    fake.statuses = [_verdict_status("pending", APP, "verdict in progress")]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7] and fake.reasons == ["stateless-retry"]
+
+
+def _parsed(*runs: dict[str, Any]) -> tuple[sweep.Run, ...]:
+    return sweep.parse_runs(runs).get(7, ())
+
+
+def test_the_surfaced_description_keeps_the_shared_prefix_intact() -> None:
+    assert len(github.SWEEP_FAILURE_SURFACE_PREFIX) < sweep.STATUS_DESCRIPTION_LIMIT
+    assert sweep.surface_description([]).startswith(github.SWEEP_FAILURE_SURFACE_PREFIX)
+    assert sweep.surface_description(["x" * 500]).startswith(github.SWEEP_FAILURE_SURFACE_PREFIX)
+
+
+def test_reset_spent_counts_only_runs_that_could_have_used_the_reset() -> None:
+    reset_at = datetime.now(UTC) - timedelta(minutes=30)
+    before = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    after = _verdict_run(7, conclusion="failure", age=timedelta(minutes=10))
+    skipped = _verdict_run(7, conclusion="skipped", age=timedelta(minutes=10))
+    assert not sweep.reset_spent(_parsed(), reset_at)
+    assert not sweep.reset_spent(_parsed(before), reset_at)
+    assert not sweep.reset_spent(_parsed(skipped), reset_at)
+    assert sweep.reset_spent(_parsed(after), reset_at)
+    assert not sweep.reset_spent(_parsed(after), reset_at, exclude=after["id"])
+    in_flight = _verdict_run(7, status="in_progress", conclusion=None, age=timedelta(minutes=10))
+    assert sweep.reset_spent(_parsed(in_flight), reset_at)
+
+
+def _reset_comments(head: str = HEAD, *, edited: bool = False) -> list[dict[str, Any]]:
+    start = datetime.now(UTC) - timedelta(minutes=30)
+    owner = {"login": "joeharris76", "type": "User"}
+    return [
+        {
+            "user": owner,
+            "body": f"Owner instruction: reset the backoff on {head}",
+            "created_at": start.isoformat(),
+            "updated_at": start.isoformat(),
+        },
+        {
+            "user": owner,
+            "body": f"Oracle backoff reset: {head}\nReason: the gateway was down",
+            "created_at": (start + timedelta(minutes=5)).isoformat(),
+            "updated_at": (start + timedelta(minutes=9 if edited else 5)).isoformat(),
+        },
+    ]
+
+
+def _backed_off() -> State:
+    now = datetime.now(UTC)
+    return State(
+        7, HEAD, "pending", now - timedelta(minutes=40), (now - timedelta(minutes=40),), pending_cause="all-absent"
+    )
+
+
+def test_the_sweep_dispatches_a_pending_head_after_the_owner_resets_its_backoff(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    waiting = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    assert _sweep(monkeypatch, tmp_path, waiting) == 0
+    assert waiting.dispatched == []
+    reset = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    reset.comments = _reset_comments()
+    assert _sweep(monkeypatch, tmp_path, reset) == 0
+    assert reset.dispatched == [7] and reset.reasons == [None]
+    edited = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    edited.comments = _reset_comments(edited=True)
+    assert _sweep(monkeypatch, tmp_path, edited) == 0
+    assert edited.dispatched == []
+
+
+def test_a_manual_retry_inside_backoff_runs_once_after_the_owner_reset(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    fake = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    fake.comments = _reset_comments()
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "review"
+    assert "reset by the owner" in plan["decision_reason"]
+    consumed = tmp_path / "consumed"
+    consumed.mkdir()
+    after = datetime.now(UTC)
+    fake = FakeGitHub(_pull(), SOUNDNESS, State(7, HEAD, "pending", after, (after,), pending_cause="all-absent"))
+    fake.comments = _reset_comments()
+    _, values, plan = _plan(monkeypatch, consumed, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "skip" and "backoff" in plan["decision_reason"]
 
 
 @pytest.mark.parametrize(

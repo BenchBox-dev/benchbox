@@ -68,7 +68,10 @@ points the providers `anthropic`, `openai-codex`, `muse-code` and
 refuses an empty URL or one that is not `https://`.
 
 Reviews reach the gateway only while the Mac is awake and online; otherwise
-attempts are absent and the next sweep retries (see the triggers below).
+attempts are absent and the next sweep retries (see the triggers below). A run that
+fails without posting a result is re-dispatched once by the sweep; when two runs on the same
+head have failed without a result, the sweep posts a pending `oracle-verdict`
+status that names the failed step.
 
 **Accepted risk.** The reviewer is not confined to files. It can read any file
 the runner user can read, and it can read its own client token, for example
@@ -189,8 +192,8 @@ Steps, in order:
    result for the slot.
 9. Disk scan again (C4), finalize, then the redaction check (C5).
 10. Mint the App token, run the guard and post the status, comment and
-    review, upload the retry state and the attempt artifacts, and dispatch
-    `oracle-gate`.
+    review, upload the retry state (only when the status was posted) and the
+    attempt artifacts, and dispatch `oracle-gate`.
 
 The reviewer is an untrusted model inside a trusted harness with read-only
 tools. It can read what the runner user can read while it runs and can leak it
@@ -217,8 +220,8 @@ permanent, not a one-time inspection:
 | C6 fresh `HOME` | Every attempt gets a new directory from `mkdtemp`; the previous one is deleted before the next attempt starts, and the checkout is reset. |
 | C7 token scope | The job's permissions are exactly `actions: write`, `contents: read`, `pull-requests: read` and `id-token: write`. `github.token` appears only in the `env:` of steps that run before or after the loop step, and both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus a setup allowance, under 360; the harness timeout still fires first and becomes an absence. A workflow test recomputes the number from the policy. |
-| C9 cancellation | The top-level concurrency group and `cancel-in-progress` are unchanged, and every posting step has the default success condition, so a cancelled run posts nothing. |
-| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by one step, which runs after the loop, the second disk scan and the redaction check. |
+| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs queue behind a run in flight. Every posting step has the default success condition, so a cancelled run posts nothing. |
+| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, which runs after the loop, the second disk scan and the redaction check, and by the sweep job's failure-status mint. The sweep job never runs a reviewer, so its mint cannot leak to one. |
 
 The OIDC request token is in the loop step's environment, as the gateway token
 is, and is accepted on the same terms: GitHub documents it as valid only while
@@ -363,8 +366,8 @@ Before it posts, the `review` job reads the review list again and posts nothing
 if the head already has a marker, so two runs for one head cannot both post.
 It tries the read three times, about two seconds apart. If every try fails, it
 posts anyway and says in the job summary that the post was not confirmed: the
-retry state is already uploaded by then, so skipping would leave the head
-recorded as decided with no review.
+skipping would leave the head with no review. A run that skips posting, or
+whose status post failed, uploads no retry state, so it adds no strike.
 
 Before posting, `post` drops any finding that matches an open review thread
 from this App, by file and normalized title, unless the new finding is more
@@ -627,9 +630,31 @@ cancels a run in flight and a cancelled run posts nothing.
   due is the usual trigger. The target is a dispatch within 25 minutes of that
   push, or at the next scheduled sweep when no push comes. Push and
   schedule sweeps share one concurrency group that never cancels a running
-  sweep. The sweep skips a pull request that has a queued or in-progress
-  `oracle-verdict` run, so it never cancels a retry in flight. The daily
-  budget, backoff and attempt limits are unchanged.
+  sweep. The sweep lists the last seven days of `oracle-verdict` runs, all
+  pages, and skips a pull request that has a run that is queued, in progress,
+  waiting, pending or requested, or started in the last two minutes, so it
+  never cancels a retry in flight. Beyond due pending heads, it re-dispatches
+  a head whose latest run failed, timed out or was cancelled without leaving a
+  retry state, unless the head already carries a decisive App verdict status.
+  The stateless dispatch carries a marker the plan verifies against the head's
+  failed runs, so the redispatched run reviews instead of skipping on backoff. That happens once: when the two latest runs on the head both
+  failed without a result (runs that never reviewed the head, such as a
+  skipped run from a plain comment, are ignored), the sweep stops dispatching
+  and posts a pending `oracle-verdict` status naming the failed step, using an
+  App token minted in the reviewer-free sweep job. A status that is already
+  pending on the head is left in place, and a sweep without the App configured
+  reports the gap instead of failing. A failure inside one pull
+  request's lookup, dispatch or surfacing is reported and the sweep continues with the
+  others, then fails the job. The daily budget, backoff and attempt limits are
+  unchanged.
+- `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the
+  owner clear the backoff and retry window of one pull request head once. It
+  needs an `Owner instruction` comment from an attester that names the head,
+  posted first, as for a stand-in. It posts `Oracle backoff reset: <sha>` and
+  the reason, which `plan` and the sweep honour only from an attester, unedited,
+  after that instruction, until the next verdict run that reviews the head spends it.
+  The reset applies only when the head's recorded result is a pending reviewer-outage
+  result; it never re-rolls a decisive verdict and never restores budget.
 
 A rerun on the same head needs a previous run in which every attempted
 reviewer was absent. A run that stayed pending because its artifacts failed

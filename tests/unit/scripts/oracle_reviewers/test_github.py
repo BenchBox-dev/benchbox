@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -587,3 +588,89 @@ def test_tree_blobs_is_none_when_the_tree_cannot_be_read(monkeypatch: pytest.Mon
 
     monkeypatch.setattr(github, "get_json", get_json)
     assert github.tree_blobs(REPO, "c" * 40) is None
+
+
+def test_failed_steps_names_every_step_that_failed_timed_out_or_was_cancelled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    listing = {
+        "jobs": [
+            {
+                "steps": [
+                    {"name": "Plan the review", "conclusion": "success"},
+                    {"name": "Verify Linux process isolation", "conclusion": "failure"},
+                    {"name": "Run the attempt loop", "conclusion": "timed_out"},
+                    {"name": "Late checkout", "conclusion": "cancelled"},
+                    {"name": "Skipped post", "conclusion": "skipped"},
+                    {"name": "Surface", "conclusion": None},
+                ]
+            }
+        ]
+    }
+    monkeypatch.setattr(github, "get_json", lambda path: listing)
+    assert github.failed_steps(REPO, 5) == [
+        "Verify Linux process isolation",
+        "Run the attempt loop",
+        "Late checkout",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("creator", "expected"),
+    [
+        ({"login": "benchbox-oracle[bot]", "type": "Bot"}, True),
+        ({"login": "benchbox-oracle", "type": "Bot"}, True),
+        ({"login": "benchbox-oracle[bot]", "type": "User"}, False),
+        ({"login": "someone", "type": "User"}, False),
+        ("benchbox-oracle[bot]", False),
+        ({}, False),
+        (None, False),
+    ],
+)
+def test_only_the_oracle_app_marks_a_status_as_its_own(creator: Any, expected: bool) -> None:
+    assert github.is_app_status({"creator": creator}, "benchbox-oracle") is expected
+
+
+def test_commit_statuses_lists_paginated_statuses_with_creator_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entries: list[Any] = [
+        {
+            "context": "oracle-verdict",
+            "state": "pending",
+            "description": "verdict in progress",
+            "target_url": "https://github.com/BenchBox-dev/benchbox/actions/runs/1",
+            "creator": {"login": "benchbox-oracle[bot]", "type": "Bot"},
+            "created_at": "2026-10-26T17:35:11Z",
+            "updated_at": "2026-10-26T17:35:11Z",
+        },
+        "not-a-status",
+        {"context": "ci", "state": "success", "creator": {"login": "someone", "type": "User"}},
+    ]
+    seen: list[str] = []
+    monkeypatch.setattr(github, "get_paginated", lambda path: (seen.append(path), entries)[1])
+    assert github.commit_statuses(REPO, SHA) == [entries[0], entries[2]]
+    assert seen == [f"repos/{REPO}/commits/{SHA}/statuses?per_page=100"]
+
+
+def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[list[str], dict[str, str]]] = []
+    environment = dict(os.environ)
+
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append((argv, kwargs["env"]))
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(github.subprocess, "run", fake_run)
+    payload = {"state": "pending", "context": "oracle-verdict", "description": "d", "target_url": "u"}
+    github.post_status(REPO, SHA, payload, "app-token")
+    assert len(calls) == 1
+    argv, env = calls[0]
+    assert argv[:4] == ["gh", "api", "--method", "POST"] and f"repos/{REPO}/statuses/{SHA}" in argv
+    assert env["GH_TOKEN"] == "app-token" and environment.get("GH_TOKEN") != "app-token"
+
+
+def test_committed_at_reads_the_committer_date(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = {"commit": {"committer": {"date": "2026-10-25T08:30:00Z"}}}
+    monkeypatch.setattr(github, "get_json", lambda path: payload)
+    assert github.committed_at(REPO, SHA) == datetime(2026, 10, 25, 8, 30, tzinfo=UTC)
