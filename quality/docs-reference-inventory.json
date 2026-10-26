@@ -3648,6 +3648,107 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "pattern": 7,
+    "unresolved": 15
+   },
+   "occurrences": 22,
+   "path": "tests/fixtures/medium_shard_durations.json",
+   "rule": "test-sample-data",
+   "target_count": 22,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/CNAME-example.org"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/README.md-v1.2.3-v1.2.4-docs/README.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/README.md]"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/review-protocol.md-A"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/review-protocol.md-Auto-merge"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/review-protocol.md-Do"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/review-protocol.md-Mark"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/review-protocol.md-Run"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/review-protocol.md-The"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/review-protocol.md-Then"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/agent/review-protocol.md]"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-A"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-Auto-merge"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-Do"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-Mark"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-Run"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-The"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/development/development.md-Then"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/comment-policy.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/pr-triage.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/repo-admin-settings.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/operations/key.pem]"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "unresolved": 1
    },
    "occurrences": 3,
@@ -5769,7 +5870,7 @@
   "dispositions": {
    "contract-replaced": 3,
    "contract-tooling": 7,
-   "fixture-data": 43,
+   "fixture-data": 44,
    "generator-deleted": 5,
    "governance-stays": 7,
    "historical-record": 112,
@@ -5779,18 +5880,18 @@
    "site-pipeline-cutover": 12,
    "wiring-updated": 35
   },
-  "files": 276,
+  "files": 277,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
    "extra": 78,
    "file": 1581,
    "generated": 22,
-   "pattern": 313,
+   "pattern": 320,
    "root": 219,
-   "unresolved": 2071
+   "unresolved": 2086
   },
-  "references": 33500,
+  "references": 33522,
   "unclassified": 0
  }
 }

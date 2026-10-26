@@ -270,6 +270,7 @@
    "tests/fixtures/fast_tier_baseline/tests-05.json",
    "tests/fixtures/fast_tier_baseline/tests-06.json",
    "tests/fixtures/fast_tier_baseline/tests-07.json",
+   "tests/fixtures/medium_shard_durations.json",
    "tests/fixtures/oracle_reviewers/pr3222_replay.json",
         "tests/fixtures/ruleset-develop-squash-only.json",
         "tests/fixtures/trunk_red_20261024.json",
