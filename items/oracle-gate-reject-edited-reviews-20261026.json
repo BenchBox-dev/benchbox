@@ -1,0 +1,32 @@
+{
+  "acceptance": [
+    "Gate 1 evidence (status context, creator login, state mapping on two live heads) is recorded in context before the first edit.",
+    "Tests that fail on develop and pass after: an edited SHIP-shaped body does not pass; deleting a later DO NOT SHIP that leaves an earlier SHIP does not pass; an unedited SHIP with a matching App status passes; a status from a non-App creator is ignored; a shadow-header review does not pass.",
+    "Replay: decide() over read-only live data of three merged PRs still passes their final heads.",
+    "Workflow test: the gate and sweep App tokens request pull-requests: read and statuses: write only.",
+    "Drift check test: a fixture widening the oracle environment's deployment branch policy fails the check.",
+    "Live after merge: five gate runs on real PRs post the state the replay predicts (record run ids).",
+    "oracle-checker-drop-legacy-first-line-20261023 context records that this PR resolves it.",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "OWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q13 include low items. Advisor adjudication 2026-10-26 raised R3 to Critical once the permission was confirmed live (viewerCanUpdate/viewerCanDelete true for the owner account on benchbox-oracle reviews of PR #3530).",
+  "description": "Problem: oracle_review_check.decide reads SHIP from the body of the oracle App's latest review over REST with no edit detection (_project/scripts/oracle_review_check.py:104-110,269-280); stand-ins are checked for edits, reviews are not. A live GraphQL query on 2026-10-26 showed the owner account, which every agent uses, has viewerCanUpdate and viewerCanDelete true on benchbox-oracle reviews. Editing a DO NOT SHIP body to the success header, or deleting a later DO NOT SHIP so an earlier SHIP for the same head becomes latest, turns oracle-gate green with no audit (the merge digest links only stand-ins). Related gaps: the gate also accepts legacy oracle-review-shadow headers and shadow-mode advisory bodies; the gate and sweep App tokens are minted with pull-requests: write though they only read; scripts/ruleset_drift_check.py does not check the oracle environment's deployment branch policy, so widening it would let another branch mint the App token undetected.\n\nOutcome: a review counts only if it is unedited (GraphQL lastEditedAt null and includesCreatedEdit false) and its decision agrees with the commit status the verdict job posts with the App token for that exact head (report.py builds it with context plan status_context); commit statuses cannot be edited or deleted, so deleting a later review cannot revive an earlier SHIP. Disagreement never passes. Shadow headers are rejected. Gate and sweep tokens request pull-requests: read. The drift check verifies the oracle environment's branch policy.\n\nDecision gates:\n1. Before relying on it, confirm on live heads (read-only API) the verdict status context, its state mapping and that its creator is the oracle App; if a status cannot be tied to the App identity, stop and report.\n2. Review and status disagree, or the status is missing for a review posted after this change: WAITING with a message naming the conflict; never PASS.\n3. Stand-in checks stay exactly as strict as today.\n\nItem guardrails: no change to the ruleset, the App binding (integration 5201041) or the decision rule beyond rejecting tampered evidence; read errors still fail closed; review and thread pagination keep parity.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, then make agent-write-preflight; the primary clone is read-only. Never use git stash (refs/stash is shared across worktrees). Commit as Joe Harris <joeharris76@gmail.com>, staging explicit paths only; no git add -A, no --no-verify, no SKIP, no agent trailers. Durable text (commits, PR bodies, docs, code) carries no tracker ids, session labels or plan references. Maintained code has no explanatory comments or docstrings (make comment-policy-check). Before publishing run make docs-reference-inventory-check, make doc-contracts-guard and make pr-preflight, and self-review with the code review action, fixing every Critical and Required finding. Publish only with make pr-open: never gh pr create, a raw push-and-open, or a PR-body override line; if make pr-open refuses, stop and report the exact refusal instead of routing around it. Until oracle-omp-pin-single-source-20261026 merges, make pr-open may run only with PATH prefixed by the darwin-arm64 omp 18.12.1 build whose SHA-256 that item records, verified with shasum immediately before use; never any other side-loaded omp. Close out only with oracle SHIP on the exact head, every oracle thread answered (reply naming the fixing SHA, then resolve) and make pr-arm; never raw gh pr merge, a stand-in, an adjudication, or a ruleset or settings change. Never print tokens, keys, or the gateway URL or hostname; never spend model quota outside the review harness. Owner decisions are recorded in context and in the decisions file; a step that would contradict one stops and asks the owner.",
+  "links": [
+    "_project/scripts/oracle_review_check.py",
+    "_project/scripts/oracle_gate.py",
+    ".github/workflows/oracle-gate.yml",
+    "scripts/ruleset_drift_check.py",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/advisor.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevGateControls.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T14:59:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a032492533f24fbc97576bf8ea2c4694",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}

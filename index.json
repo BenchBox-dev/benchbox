@@ -16127,6 +16127,13 @@
       "status": "done",
       "title": "Run the oracle-gate sweep when develop changes the oracle review policy or gate code"
     },
+    "oracle-gate-reject-edited-reviews-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Stop oracle-gate trusting an edited or deleted oracle review, and narrow the gate's App token"
+    },
     "oracle-gate-run-name-says-sweep-for-single-pr-20261023": {
       "claim": null,
       "needs": [],
