@@ -9813,7 +9813,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Cover benchbox/_binaries EULA and NOTICE files in the notice-entry test after the owner pins the TPC-H query EULA"
     },
     "evaluate-mutation-testing-on-dialect-result-model-core": {
