@@ -8990,12 +8990,7 @@
       "title": "Export generated documentation data without rendering Markdown"
     },
     "docs-mig-core-freeze": {
-      "claim": {
-        "expires_at": "2026-10-27T09:29:55Z",
-        "generation": "52b512bc56c34e59b04b0fe109112360",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
-      },
+      "claim": null,
       "needs": [
         "docs-mig-adr-ownership",
         "docs-mig-core-doc-paths-to-urls",
@@ -9006,7 +9001,7 @@
         "docs-mig-activate-schema4"
       ],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "Freeze source ownership and pin the cutover snapshot"
     },
     "docs-mig-core-relocate-contract-sql": {
