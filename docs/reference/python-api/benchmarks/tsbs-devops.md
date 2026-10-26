@@ -154,7 +154,7 @@ The ids and their categories:
 | `lastpoint` | `lastpoint` |
 | `tags` | `by-region`, `by-service` |
 
-Host names and time windows in the SQL are chosen at random from the configured hosts and time range. Each call to `get_query()` or `get_queries()` can return different text for the same id. With a `seed`, two instances built with the same arguments return the same sequence of texts.
+Host names, regions and time windows are selected from the configured hosts and time range using the instance seed and query id. Repeated calls and different retrieval orders return identical SQL for a given id. Two instances with the same seed and configuration return identical query catalogs. Without an explicit seed, parameters remain stable within each instance but may differ between instances. Explicit `params` overrides still take precedence and do not change subsequent default retrievals. The parameter selection differs from earlier releases; retain rendered parameters when comparing historical runs.
 
 ### get_query(query_id, \*, params=None)
 
