@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import importlib
 
-from benchbox.core.query_catalog_base import QuerySkippedError
+from benchbox.core.query_catalog_base import QuerySkippedError, is_native_dialect
+from benchbox.utils.dialect_utils import translate_sql_query
 
 _QUERIES: dict[str, str] = {
     "Q1": """
@@ -430,8 +431,6 @@ class VectorSearchQueryManager:
         if dialect:
             dialect_lower = dialect.lower()
             legacy_sql = QUERY_VARIANTS.get(dialect_lower, {}).get(key)
-            if legacy_sql is None:
-                legacy_sql = self._queries[key]
 
             importlib.import_module("benchbox.sql_compat.rules.query_source.vector_search_variants")
             from benchbox.sql_compat.actions import CompatAction
@@ -458,7 +457,11 @@ class VectorSearchQueryManager:
                         f"for platform version '{platform_version or 'unknown'}': {reason}"
                     )
 
-            return legacy_sql
+            if legacy_sql is not None:
+                return legacy_sql
+            if is_native_dialect("duckdb", dialect):
+                return self._queries[key]
+            return translate_sql_query(self._queries[key], dialect, source_dialect="duckdb")
 
         return self._queries[key]
 
@@ -474,5 +477,5 @@ class VectorSearchQueryManager:
     def get_description(self, query_id: str) -> str:
         return self.DESCRIPTIONS.get(str(query_id).upper(), "Unknown query")
 
-    def supported_dialects(self) -> list[str]:
+    def variant_dialects(self) -> list[str]:
         return list(QUERY_VARIANTS.keys())

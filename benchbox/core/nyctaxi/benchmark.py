@@ -44,19 +44,11 @@ _NYCTAXI_SF_EPOCH_RE = re.compile(
     re.IGNORECASE,
 )
 
-_NYCTAXI_TRANSLATED_DIALECTS = ("bigquery", "snowflake", "databricks", "spark")
-
-_NYCTAXI_SUPPORTED_DIALECTS = (
-    "postgres",
-    "postgresql",
-    "duckdb",
-    *_NYCTAXI_TRANSLATED_DIALECTS,
-    "clickhouse",
-    "starrocks",
-)
-
 
 class NYCTaxiBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseBenchmark):
+    _source_dialect = "duckdb"
+    _native_source_passthrough = True
+
     AVAILABLE_YEARS = list(range(2019, 2026))
 
     OUTPUT_DIR_GENERATOR_ATTRS = ("downloader", "green_downloader", "hvfhv_downloader", "fhv_downloader")
@@ -273,9 +265,6 @@ class NYCTaxiBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseBenc
 
         manifest.write()
 
-    def supported_dialects(self) -> list[str]:
-        return list(_NYCTAXI_SUPPORTED_DIALECTS)
-
     def translate_query_text(self, query_text: str, target_dialect: str) -> str:
         d = target_dialect.lower()
         if "bigquery" in d:
@@ -314,8 +303,7 @@ class NYCTaxiBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseBenc
             return queries
 
         d = dialect.lower()
-        if any(platform in d for platform in _NYCTAXI_TRANSLATED_DIALECTS):
-            queries = {qid: self.translate_query_text(sql, dialect) for qid, sql in queries.items()}
+        queries = {qid: self.translate_query_text(sql, dialect) for qid, sql in queries.items()}
         qm = self.query_manager
         _variants: dict[str, dict[str, str]] = {
             "starrocks": {

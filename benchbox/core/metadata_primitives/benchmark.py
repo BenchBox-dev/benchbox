@@ -35,6 +35,8 @@ from benchbox.core.metadata_primitives.schema import (
     get_schema as get_base_schema,
     get_table_names as get_base_table_names,
 )
+from benchbox.core.query_catalog_base import TranslatableQueryMixin
+from benchbox.utils.dialect_utils import SQLTranslationError
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +129,9 @@ class AclBenchmarkResult:
         }
 
 
-class MetadataPrimitivesBenchmark(BaseBenchmark):
+class MetadataPrimitivesBenchmark(TranslatableQueryMixin, BaseBenchmark):
+    _source_dialect = "duckdb"
+    _native_source_passthrough = True
     SKIP_DATA_LOADING = True
 
     def __init__(
@@ -175,9 +179,18 @@ class MetadataPrimitivesBenchmark(BaseBenchmark):
             raise ValueError("Metadata Primitives queries are static and don't accept parameters")
         return self.query_manager.get_query(str(query_id))
 
+    def _resolve_query_sql(self, query_id: str, dialect: str | None) -> str:
+        sql = self.query_manager.get_query(query_id, dialect=dialect)
+        if dialect and not self.query_manager.has_variant(query_id, dialect):
+            return self.translate_query_text(sql, dialect)
+        return sql
+
     def get_queries(self, dialect: str | None = None) -> dict[str, str]:
         if dialect:
-            return self.query_manager.get_queries_for_dialect(dialect)
+            return {
+                query_id: self._resolve_query_sql(query_id, dialect)
+                for query_id in self.query_manager.get_queries_for_dialect(dialect)
+            }
         return self.query_manager.get_all_queries()
 
     def get_queries_by_category(self, category: str) -> dict[str, str]:
@@ -196,8 +209,8 @@ class MetadataPrimitivesBenchmark(BaseBenchmark):
         category = entry.category
 
         try:
-            sql = self.query_manager.get_query(query_id, dialect=dialect)
-        except ValueError as e:
+            sql = self._resolve_query_sql(query_id, dialect)
+        except (ValueError, SQLTranslationError) as e:
             return MetadataQueryResult(
                 query_id=query_id,
                 category=category,

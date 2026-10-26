@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Union
 
 from benchbox.base import BaseBenchmark, GeneratorOutputDirMixin
-from benchbox.core.query_catalog_base import CLOUD_TRANSLATED_DIALECTS, TranslatableQueryMixin
+from benchbox.core.query_catalog_base import TranslatableQueryMixin
 from benchbox.core.tsbs_devops.generator import TSBSDevOpsDataGenerator
 from benchbox.core.tsbs_devops.queries import TSBSDevOpsQueryManager
 from benchbox.core.tsbs_devops.schema import (
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 class TSBSDevOpsBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseBenchmark):
     _source_dialect = "duckdb"
-    _translated_dialects = CLOUD_TRANSLATED_DIALECTS
+    _native_source_passthrough = True
 
     def __init__(
         self,
@@ -105,9 +105,6 @@ class TSBSDevOpsBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseB
             self.logger.info(f"Generated {stats['total_rows']} total rows")
 
         return list(self.tables.values())
-
-    def supported_dialects(self) -> list[str]:
-        return ["duckdb", *self._translated_dialects]
 
     def get_queries(self, dialect: str | None = None) -> dict[str, str]:
         return {qid: self.translate_for_dialect(sql, dialect) for qid, sql in self.query_manager.get_queries().items()}

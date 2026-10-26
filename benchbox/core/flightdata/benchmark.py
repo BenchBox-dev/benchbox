@@ -14,6 +14,7 @@ from benchbox.base import BaseBenchmark, GeneratorOutputDirMixin
 from benchbox.core.flightdata.downloader import LAST_AVAILABLE_YEAR, FlightDataDownloader
 from benchbox.core.flightdata.queries import FlightDataQueryManager
 from benchbox.core.flightdata.schema import FLIGHT_SCHEMA, get_create_tables_sql
+from benchbox.core.query_catalog_base import TranslatableQueryMixin
 from benchbox.utils.compression_mixin import extract_compression_kwargs
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
@@ -22,7 +23,9 @@ if TYPE_CHECKING:
     from benchbox.core.dataframe.query import QueryRegistry
 
 
-class FlightDataBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
+class FlightDataBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseBenchmark):
+    _source_dialect = "duckdb"
+    _native_source_passthrough = True
     OUTPUT_DIR_GENERATOR_ATTRS = ("downloader",)
 
     def __init__(

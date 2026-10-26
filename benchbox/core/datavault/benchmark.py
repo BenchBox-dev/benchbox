@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from benchbox.base import BaseBenchmark
-from benchbox.core.query_catalog_base import CLOUD_TRANSLATED_DIALECTS, TranslatableQueryMixin
+from benchbox.core.query_catalog_base import TranslatableQueryMixin
 
 if TYPE_CHECKING:
     from cloudpathlib import CloudPath
@@ -34,7 +34,7 @@ class DataVaultBenchmark(TranslatableQueryMixin, BaseBenchmark):
     SUPPORTED_HASH_ALGORITHMS = ("md5", "sha256")
 
     _source_dialect = "duckdb"
-    _translated_dialects = CLOUD_TRANSLATED_DIALECTS
+    _native_source_passthrough = True
 
     def __init__(
         self,
@@ -218,9 +218,6 @@ class DataVaultBenchmark(TranslatableQueryMixin, BaseBenchmark):
 
         self.tables = dv_files
         return dv_files
-
-    def supported_dialects(self) -> list[str]:
-        return ["duckdb", *self._translated_dialects]
 
     def get_query(self, query_id: Union[int, str], dialect: Optional[str] = None) -> str:
         return self.translate_for_dialect(self.query_manager.get_query(query_id), dialect)

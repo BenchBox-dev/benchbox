@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from benchbox.core.query_catalog_base import is_native_dialect
 from benchbox.core.static_query_catalog import load_static_query_catalog
 from benchbox.sql_compat.local_exemptions import compat_local
 from benchbox.utils.dialect_utils import translate_sql_query
@@ -57,15 +58,17 @@ class FlightDataQueryManager:
                 f"Query {query_key!r} requires parameter {exc} not found in: {list(effective_params)}"
             ) from exc
 
-        if dialect in {"postgres", "postgresql"}:
-            return translate_sql_query(
-                rendered,
-                "postgres",
-                source_dialect="duckdb",
-                rewrites=[("round_inputs_to_decimal", {})],
-                strict=True,
-            )
-        return rendered
+        if not dialect or is_native_dialect("duckdb", dialect):
+            return rendered
+
+        rewrites = [("round_inputs_to_decimal", {})] if dialect in {"postgres", "postgresql"} else None
+        return translate_sql_query(
+            rendered,
+            "postgres" if rewrites else dialect,
+            source_dialect="duckdb",
+            rewrites=rewrites,
+            strict=True,
+        )
 
     def get_queries(self, dialect: str | None = None) -> dict[str, str]:
         return {key: self.get_query(key, dialect=dialect) for key in QUERIES}
