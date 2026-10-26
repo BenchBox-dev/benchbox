@@ -26230,10 +26230,15 @@
       "title": "todo wrapper silently falls back to a stale local database when no backend is selected"
     },
     "tpc-bundles-missing-generation-and-power-stream-identity-20261013": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T07:04:41Z",
+        "generation": "03a7e710499e4418ac5962dc67630b47",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Record data-generation version and power-stream policy in TPC result bundles so comparisons detect incompatible runs"
     },
     "tpc-di-data-generator-compression-support": {
