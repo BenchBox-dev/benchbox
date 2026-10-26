@@ -142,11 +142,11 @@ bring_up() {
   echo "$!" >"$pid_file"
   waited=0
   while [ ! -e "$socket" ] && [ "$waited" -lt 100 ]; do
-    daemon_alive || return 1
+    kill -0 "$(cat "$pid_file")" 2>/dev/null || return 1
     sleep 0.2
     waited=$((waited + 1))
   done
-  [ -e "$socket" ]
+  [ -e "$socket" ] && daemon_alive
 }
 
 join_tailnet() {
