@@ -9113,7 +9113,12 @@
       "title": "Enforce code-documentation contracts in site CI"
     },
     "docs-mig-site-import": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T14:02:51Z",
+        "generation": "72a5980d956f4444a4a3f6eba43f24b3",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "docs-mig-site-baseline-build",
         "docs-mig-legacy-downloads-redirects",
@@ -9122,7 +9127,7 @@
         "docs-mig-core-freeze"
       ],
       "priority": "critical",
-      "status": "open",
+      "status": "active",
       "title": "Import and publish all site-owned documentation in one cutover"
     },
     "docs-mig-site-ts-generators": {
