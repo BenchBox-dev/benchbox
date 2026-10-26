@@ -221,7 +221,7 @@ def test_rehearsal_follows_renames_and_strips_forbidden_content(tool, tmp_path):
             "--skip-gitleaks",
         ]
     )
-    receipt = json.loads((work / "receipt.json").read_text())
+    receipt = json.loads((work / "receipt.json").read_text(encoding="utf-8"))
     clone = work / "repo"
 
     assert code == 0
