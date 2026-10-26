@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
-
-pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -205,3 +205,31 @@ def test_no_rule_pattern_is_a_bare_single_star_over_a_whole_directory_tree() -> 
     rules = inventory.read_json(inventory.RULES_PATH)["rules"]
     broad = [pattern for rule in rules for pattern in rule["match"] if pattern in {"tests/*", "scripts/*", "*"}]
     assert broad == []
+
+
+def _windows_locale_run(real_run: Any) -> Any:
+    def run(*args: Any, **kwargs: Any) -> Any:
+        if kwargs.get("text") and "encoding" not in kwargs:
+            kwargs["encoding"] = "cp1252"
+        return real_run(*args, **kwargs)
+
+    return run
+
+
+def test_tracked_files_decode_smart_quote_names(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    quoted = "notes/right" + chr(0x201D) + "quote.md"
+    subprocess.run(["git", "-C", str(repo), "init", "-b", "main"], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo), "config", "core.quotepath", "false"], check=True, capture_output=True)
+    target = repo / quoted
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("page\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.com", "add", "."],
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.setattr(inventory, "ROOT", repo)
+    monkeypatch.setattr(inventory, "subprocess", SimpleNamespace(run=_windows_locale_run(subprocess.run)))
+    assert quoted in inventory.tracked_files()

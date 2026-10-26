@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import fcntl
 import hashlib
 import io
 import json
@@ -103,7 +102,12 @@ def _git(root: Path, *args: str) -> str:
 
 def _repository(root: Path) -> str:
     result = subprocess.run(
-        ["git", "-C", str(root), "remote", "get-url", "origin"], capture_output=True, text=True, check=False
+        ["git", "-C", str(root), "remote", "get-url", "origin"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
     )
     match = REMOTE_SLUG.search(result.stdout.strip()) if result.returncode == 0 else None
     return match.group(1) if match else DEFAULT_REPOSITORY
@@ -287,6 +291,8 @@ def state_dir() -> Path:
 
 @contextlib.contextmanager
 def exclusive(directory: Path, reporter: Reporter) -> Iterator[None]:
+    import fcntl
+
     directory.mkdir(parents=True, exist_ok=True)
     deadline = time.monotonic() + LOCK_WAIT_SECONDS
     announced = False

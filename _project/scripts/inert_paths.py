@@ -323,6 +323,8 @@ def tracked_files(repo_root: str | Path) -> set[str]:
         ["git", "-C", str(repo_root), "ls-files", "-z"],
         check=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         timeout=120,
     )
@@ -420,6 +422,8 @@ def tracked_symlink_entries(repo_root: str | Path) -> list[tuple[str, str]]:
         ["git", "-C", str(repo_root), "ls-files", "-s"],
         check=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         timeout=120,
     )

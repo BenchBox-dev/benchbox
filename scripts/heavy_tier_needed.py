@@ -68,6 +68,8 @@ def _read_base_copy(base_ref: str, repo_root: Path) -> dict[str, str]:
         commit = subprocess.check_output(
             ["git", "--no-replace-objects", "-C", str(repo_root), "rev-parse", "--verify", f"{base_ref}^{{commit}}"],
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stderr=subprocess.DEVNULL,
         ).strip()
         present = subprocess.check_output(
@@ -84,12 +86,16 @@ def _read_base_copy(base_ref: str, repo_root: Path) -> dict[str, str]:
                 *POLICY_PATHS,
             ],
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stderr=subprocess.DEVNULL,
         ).split("\0")
         return {
             path: subprocess.check_output(
                 ["git", "--no-replace-objects", "-C", str(repo_root), "show", f"{commit}:{path}"],
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 stderr=subprocess.DEVNULL,
             )
             for path in POLICY_PATHS
