@@ -247,11 +247,7 @@ def _validate_corpus_changed_paths(corpus_file: Path | None, base_sha: str, merg
 
 
 def _run_validation_on_payload(
-    bundle_paths: list[str],
-    merge_sha: str,
-    require_manifest: bool = False,
-    allow_partial: bool = False,
-    trust_internal_source: bool = False,
+    bundle_paths: list[str], merge_sha: str, require_manifest: bool = False, allow_partial: bool = False
 ) -> tuple[int, str]:
     if not bundle_paths:
         return 0, "No bundles changed"
@@ -286,10 +282,7 @@ def _run_validation_on_payload(
             )
             return 1, "No bundles extracted"
         results = validate_bundles(
-            local_bundles,
-            require_manifest=require_manifest,
-            allow_partial_validation=allow_partial,
-            trust_internal_source=trust_internal_source,
+            local_bundles, require_manifest=require_manifest, allow_partial_validation=allow_partial
         )
         ok = all(r.ok for r in results)
         summary = "\n".join(f"{r.path}: {'OK' if r.ok else 'FAIL: ' + '; '.join(r.errors)}" for r in results)
@@ -323,7 +316,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--allow-partial-validation", action="store_true", help="Allow partial validation for trusted mirrors"
     )
-    parser.add_argument("--trust-internal-source", action="store_true")
     parser.add_argument(
         "--payload-dir",
         dest="payload_dir",
@@ -345,21 +337,18 @@ def compare_head_merge_outcomes(
     *,
     require_manifest: bool = False,
     allow_partial: bool = False,
-    trust_internal_source: bool = False,
 ) -> tuple[int, str]:
     merge_rc, merge_summary = _run_validation_on_payload(
         changed_bundles,
         merge_sha,
         require_manifest=require_manifest,
         allow_partial=allow_partial,
-        trust_internal_source=trust_internal_source,
     )
     head_rc, head_summary = _run_validation_on_payload(
         changed_bundles,
         head_sha,
         require_manifest=require_manifest,
         allow_partial=allow_partial,
-        trust_internal_source=trust_internal_source,
     )
     print("--- Validation summary (MERGE_SHA payload) ---")
     print(merge_summary)
@@ -431,7 +420,6 @@ def main(argv: list[str] | None = None) -> int:
         head_sha,
         require_manifest=args.require_manifest,
         allow_partial=args.allow_partial_validation,
-        trust_internal_source=args.trust_internal_source,
     )
     if rc != 0:
         return rc
