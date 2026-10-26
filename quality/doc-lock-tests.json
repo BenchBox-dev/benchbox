@@ -2,6 +2,20 @@
   "schema": 1,
   "lock_tests": [
     {
+      "id": "publish-policy",
+      "file": "tests/unit/docs/test_publish_policy.py",
+      "tests": [
+        "test_every_gated_page_is_published_or_excluded",
+        "test_lists_have_no_duplicates_and_do_not_overlap",
+        "test_allowlist_names_catalogued_pages_in_gated_directories",
+        "test_excluded_directories_are_top_level_and_excluded_files_are_catalogued"
+      ],
+      "classification": "governance-stays",
+      "site_reads": ["docs/publish-allowlist.txt", "docs/publish-exclusions.txt"],
+      "reason": "Core retains publication list invariants against the ownership catalogue, including mandatory exclusions. Site boundary checks enforce the lists against actual published pages.",
+      "cutover_action": "Keep list governance in core; published-page selection and synthetic publication fixtures are covered by site docs-contracts/checks/boundary.ts and website/tests/sources.test.ts."
+    },
+    {
       "id": "architecture-decision-surfaces",
       "file": "tests/unit/docs/test_architecture_decision_surfaces.py",
       "tests": ["test_ssb_pilot_stop_is_reflected_in_future_state_surfaces"],
