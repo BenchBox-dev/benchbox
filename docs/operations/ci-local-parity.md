@@ -141,7 +141,7 @@ The `medium-test` job installs the locked TypeScript parser used by
 `tests/unit/scripts/test_comment_policy.py`; `make test-medium` runs the same
 reviewed-JavaScript flow test locally.
 
-The local equivalent of the `medium-test` shard 0 step that runs changed tests on the
+The local equivalent of the `code-test` step that runs changed tests on the
 curated release tree is
 `uv run -- python scripts/release_curation_dry_run.py --changed-since origin/develop`.
 With no arguments it runs the full fast selection on that tree.

@@ -58,9 +58,3 @@ The `medium-test` job in `.github/workflows/ci.yml` splits the medium tier
 across four Linux runners. Its `timeout-minutes` (25 minutes) is a hard cancel
 that backstops a hung tier, not a policy check. `make test-medium` runs the
 full medium suite locally.
-
-On pull requests that do not need the heavy tier, the same job runs on Python
-3.14 and runs only the coverage-selected medium tests, partitioned across the
-four shards by the recorded durations. Shard 0 also runs the changed-test check
-on the curated release tree, always on Python 3.14. When nothing was selected,
-only shard 0 runs. `code-test` no longer runs either of these steps.
