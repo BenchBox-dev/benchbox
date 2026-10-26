@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "DECISION GATE: Auto-merge is disabled on PR #3548 (`535ebdfd0`) and PR #3549 (`fedd9e024`) while their heads are red, verified via `gh pr view 3548/3549 --json autoMergeRequest` returning `null` before rework pushes begin",
+    "VERIFY: `scripts/pr_arm.py` and `scripts/remote_closeout.py` refuse to arm when any required check-run or status context on the target head has completed with `failure`, `cancelled`, `timed_out`, or `action_required`, naming the failing required context(s) in the refusal message",
+    "VERIFY: Unit tests in `tests/unit/scripts/test_pr_arm.py` and `tests/unit/scripts/test_remote_closeout.py` fail on the old code and pass on the new code for: (a) visible failed `core` check-run with no hidden suite failure refuses arming; (b) pending required checks still arm (auto-merge waits for pending checks by design); (c) non-required failing check does not refuse arming",
+    "GUARDRAIL: Never block arming when required checks are merely `in_progress`/`queued` (that is the purpose of auto-merge); preserve existing `hidden_failure_reasons` and `duration_verdict_refusals` checks; PR merges with `Decision: **SHIP**` on the exact head"
+  ],
+  "context": "Source: 2026-10-26 adversarial review of PRs #3548 and #3549, both armed at 15:58:05Z after their required `core` check had already failed.",
+  "description": "Objective: close the arm-gate soundness gap where `scripts/pr_arm.py` and `scripts/remote_closeout.py` only check `check_suites.hidden_failure_reasons` and therefore allow arming auto-merge on a PR head whose required checks (`core`, `docs`, `explorer`, `results-data`, `tooling`, `hold`, `oracle-gate`) have already concluded `failure`, `cancelled`, or `timed_out`. On 2026-10-26 both PR #3548 (`535ebdfd0`) and PR #3549 (`fedd9e024`) were armed after `core` had already failed (by 9 s and 7 min respectively). While GitHub branch protection prevents merging a red head, leaving auto-merge armed on a red head means any partial push that turns checks green merges immediately before cross-PR defects are verified, and operator status reports falsely claim the PR is ready to land. Prior art: extends `scripts/pr_arm.py:213-226` (`hidden_failure_reasons` + `duration_verdict_refusals`) and `scripts/remote_closeout.py`.",
+  "links": [
+    "scripts/pr_arm.py",
+    "scripts/remote_closeout.py",
+    "tests/unit/scripts/test_pr_arm.py",
+    "tests/unit/scripts/test_remote_closeout.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-26T19:04:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a1dcbfb6b13f4eafa8e51dee1a0d858c",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
