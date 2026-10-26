@@ -24,7 +24,7 @@ OMP_SHA = re.compile(r"^[0-9a-f]{64}$")
 DISPATCH_STEP = "Dispatch the gate for the reviewed head"
 SETUP_ALLOWANCE_MINUTES = 30
 JOB_TIMEOUT_CEILING_MINUTES = 360
-UNCHANGED_PREFIX_SHA256 = "8e6956a8b101cf0b51537981ea2140277a7a2a655e9c45e5ea76efbd553058c5"
+UNCHANGED_PREFIX_SHA256 = "5ad430293960468696e1b9773adbdc9d788fc61acf9908051a0e761477d65ae1"
 REVIEW_CONDITION = (
     "github.event_name == 'workflow_dispatch' ||"
     " (github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) ||"
@@ -55,6 +55,9 @@ STEP_ORDER = [
     "Post the findings review",
     "Upload the retry state",
     *[f"Upload attempt {slot}" for slot in range(1, POLICY.max_attempts + 1)],
+    "Decide whether a failed run is surfaced",
+    "Mint the App token for the failure status",
+    "Post the failure status",
     DISPATCH_STEP,
 ]
 LOOP_STEP = "Run the attempt loop"
@@ -148,7 +151,7 @@ def test_the_review_condition_admits_exactly_what_the_plan_job_did() -> None:
     assert _jobs()["sweep"]["if"] == "github.event_name == 'schedule' || github.event_name == 'push'"
 
 
-def test_the_sweep_the_triggers_and_the_concurrency_are_byte_identical_to_develop() -> None:
+def test_the_sweep_and_the_triggers_and_the_concurrency_keep_their_reviewed_text() -> None:
     text = _text_of_workflow()
     prefix = text[: text.index("\n  review:\n") + 1]
     assert hashlib.sha256(prefix.encode("utf-8")).hexdigest() == UNCHANGED_PREFIX_SHA256
@@ -286,15 +289,16 @@ def test_only_the_scans_the_classifier_and_the_redaction_step_hold_the_judgment_
         assert names.index(name) != loop
 
 
-def test_the_only_step_referencing_the_app_key_mints_after_the_loop_and_the_redaction() -> None:
-    assert _steps_referencing("ORACLE_APP_PRIVATE_KEY") == ["Mint the App token"]
+def test_the_only_steps_referencing_the_app_key_mint_after_the_loop_and_the_redaction() -> None:
+    minters = ["Mint the App token", "Mint the App token for the failure status"]
+    assert _steps_referencing("ORACLE_APP_PRIVATE_KEY") == minters
     names = _names()
-    mint = names.index("Mint the App token")
-    assert mint > names.index(LOOP_STEP)
-    assert mint > names.index(REDACT_STEP)
-    assert mint > names.index(SCAN_STEPS[1])
+    for minter in minters:
+        assert names.index(minter) > names.index(LOOP_STEP)
+        assert names.index(minter) > names.index(REDACT_STEP)
+        assert names.index(minter) > names.index(SCAN_STEPS[1])
     assert "ORACLE_APP_PRIVATE_KEY" not in _text(_review()["env"])
-    assert _text_of_workflow().count("ORACLE_APP_PRIVATE_KEY") == 1
+    assert _text_of_workflow().count("ORACLE_APP_PRIVATE_KEY") == len(minters)
 
 
 def test_every_secret_is_referenced_only_where_it_is_needed() -> None:
@@ -303,7 +307,7 @@ def test_every_secret_is_referenced_only_where_it_is_needed() -> None:
         "ORACLE_GATEWAY_URL": {LOOP_STEP, REDACT_STEP},
         "TS_OAUTH_CLIENT_ID": {"Join the tailnet to reach the credential gateway", REDACT_STEP},
         "TS_AUDIENCE": {"Join the tailnet to reach the credential gateway", REDACT_STEP},
-        "ORACLE_APP_ID": {"Mint the App token"},
+        "ORACLE_APP_ID": {"Mint the App token", "Mint the App token for the failure status"},
     }
     for secret, steps in allowed.items():
         assert set(_steps_referencing(secret)) == steps, secret
@@ -464,6 +468,8 @@ def test_attempt_and_retry_state_artifacts_keep_their_names_and_retention() -> N
     assert state["with"]["retention-days"] == 7
     assert names.index(state["name"]) > posts
     assert "always()" not in state["if"]
+    assert state["if"] == "steps.status.outcome == 'success' && steps.finalize.outputs.has_state == 'true'"
+    assert _step("Post the commit status")["id"] == "status"
 
 
 def test_the_attempt_loop_and_redaction_steps_have_the_ids_the_uploads_read() -> None:
@@ -615,8 +621,31 @@ def test_push_and_schedule_sweeps_share_one_group_that_never_cancels() -> None:
     assert pushed not in pull_groups
     assert _cancels("push") is False
     assert _cancels("schedule") is False
-    assert _cancels("workflow_dispatch") is True
-    assert _cancels("pull_request_target") is True
+
+
+@pytest.mark.parametrize(
+    ("event_name", "cancels"),
+    [
+        ("pull_request_target", True),
+        ("workflow_dispatch", False),
+        ("issue_comment", False),
+        ("schedule", False),
+        ("push", False),
+    ],
+)
+def test_only_a_pull_request_event_cancels_a_run_in_flight(event_name: str, cancels: bool) -> None:
+    assert _cancels(event_name) is cancels
+
+
+def test_a_dispatch_run_queues_in_the_pull_request_group_instead_of_cancelling() -> None:
+    group = _load()["concurrency"]["group"]
+    pull = {"action": "synchronize", "pull_request": {"number": 7}}
+    groups = {
+        render(group, _context("workflow_dispatch", inputs={"pr": "7"})),
+        render(group, _context("pull_request_target", pull)),
+    }
+    assert groups == {"oracle-verdict-pr-7"}
+    assert _cancels("workflow_dispatch") is False
 
 
 def test_pull_request_groups_keep_one_group_per_number() -> None:
@@ -624,3 +653,47 @@ def test_pull_request_groups_keep_one_group_per_number() -> None:
     assert render(group, _context("workflow_dispatch", inputs={"pr": "7"})) == "oracle-verdict-pr-7"
     event = {"action": "synchronize", "pull_request": {"number": 7}}
     assert render(group, _context("pull_request_target", event)) == "oracle-verdict-pr-7"
+
+
+FAILURE_STEPS = (
+    "Decide whether a failed run is surfaced",
+    "Mint the App token for the failure status",
+    "Post the failure status",
+)
+
+
+def _step_if(name: str) -> str:
+    return " ".join(str(_step(name)["if"]).removeprefix("${{").removesuffix("}}").split())
+
+
+def test_the_failure_status_steps_run_only_on_failure_after_the_loop_and_before_the_gate_dispatch() -> None:
+    names = _names()
+    for name in FAILURE_STEPS:
+        assert "failure()" in _step_if(name)
+        assert names.index(name) > names.index(LOOP_STEP)
+        assert names.index(name) < names.index(DISPATCH_STEP)
+    assert [names.index(name) for name in FAILURE_STEPS] == sorted(names.index(name) for name in FAILURE_STEPS)
+
+
+def test_the_failure_status_is_decided_with_the_job_token_and_posted_with_the_app_token() -> None:
+    decide, mint, post = (_step(name) for name in FAILURE_STEPS)
+    assert decide["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert "surface-failure" in decide["run"]
+    assert _secrets(decide) == set()
+    assert "permission-statuses" in mint["with"] and "permission-pull-requests" not in mint["with"]
+    assert post["env"]["GH_TOKEN"] == "${{ steps.failure_app.outputs.token }}"
+    assert "statuses/$HEAD_SHA" in post["run"]
+
+
+def test_the_app_token_for_the_failure_status_is_not_minted_while_the_reviewer_may_still_run() -> None:
+    condition = _step_if("Mint the App token for the failure status")
+    assert "steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false'" in condition
+    assert "steps.surface.outputs.post == 'true'" in condition
+
+
+def test_a_result_that_was_posted_or_already_existed_is_never_overwritten_by_a_failure_status() -> None:
+    condition = _step_if("Decide whether a failed run is surfaced")
+    assert "steps.status.outcome != 'success'" in condition
+    assert "steps.guard.outputs.skip != 'true'" in condition
+    assert "steps.plan.outputs.post == 'true'" in condition
+    assert "env.HAS_APP == 'true'" in condition

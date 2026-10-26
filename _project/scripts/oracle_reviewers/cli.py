@@ -27,9 +27,11 @@ from . import (
     protocol,
     redaction_check,
     report,
+    reset,
     retry,
     runner,
     selection,
+    sweep,
 )
 from .absence import ERROR, Absence
 from .brief import write_private
@@ -37,7 +39,7 @@ from .classifier import ChangedFile, matching, soundness_scope
 from .classify import Classification, classify_diff
 from .diff import commentable_lines, select_files
 from .jev import JevError, JevSession
-from .policy import SIZE_BUCKETS, Policy, Reviewer, load_policy
+from .policy import SIZE_BUCKETS, Policy, RetryRules, Reviewer, load_policy
 from .render import (
     UNOPENED_PR,
     OversizeError,
@@ -285,6 +287,16 @@ def command_plan_entry(args: argparse.Namespace) -> int:
     return command_plan(args)
 
 
+def _backoff_reset(repo: str, pr: int, head_sha: str, manual: bool, previous: retry.State | None) -> datetime | None:
+    if not manual or previous is None or previous.head_sha != head_sha:
+        return None
+    try:
+        return github.backoff_reset_at(repo, pr, head_sha)
+    except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
+        _summary(f"oracle-verdict: the owner's backoff reset could not be read, so none applies: {exc}")
+        return None
+
+
 def command_plan(args: argparse.Namespace) -> int:
     policy = load_policy(Path(args.policy))
     repo = os.environ["GITHUB_REPOSITORY"]
@@ -343,8 +355,15 @@ def command_plan(args: argparse.Namespace) -> int:
             return _finish_plan(out_dir, plan)
         previous = None
     now = _now()
+    reset_at = _backoff_reset(repo, pr, plan["head_sha"], manual, previous)
     rerun = retry.decide_rerun(
-        manual=manual, new_diff=new_diff, head_sha=plan["head_sha"], previous=previous, now=now, rules=policy.retry
+        manual=manual,
+        new_diff=new_diff,
+        head_sha=plan["head_sha"],
+        previous=previous,
+        now=now,
+        rules=policy.retry,
+        reset_at=reset_at,
     )
     if not rerun.allowed:
         plan["decision_reason"] = rerun.reason
@@ -353,6 +372,8 @@ def command_plan(args: argparse.Namespace) -> int:
     scoped = _scoped_files(files, in_scope, policy)
     plan["manual"] = manual
     plan["previous_state"] = previous.to_json() if previous else None
+    applied = reset_at if retry.reset_applies(previous, plan["head_sha"], reset_at) else None
+    plan["backoff_reset_at"] = applied.isoformat() if applied else None
     try:
         found = protocol.history(github.oracle_reviews(repo, pr), policy.bot_login)
     except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
@@ -779,6 +800,11 @@ def command_ensure_attempt(args: argparse.Namespace) -> int:
     return 0
 
 
+def _reset_at(plan: Mapping[str, Any]) -> datetime | None:
+    value = plan.get("backoff_reset_at")
+    return datetime.fromisoformat(value) if value else None
+
+
 def command_finalize(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
     out_dir = Path(args.out_dir)
@@ -806,6 +832,7 @@ def command_finalize(args: argparse.Namespace) -> int:
             now=now,
             pool_blocked_until=previous.pool_blocked_until if previous else {},
             strikes=final.strikes,
+            reset_at=_reset_at(plan),
         )
         _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     else:
@@ -827,6 +854,7 @@ def command_finalize(args: argparse.Namespace) -> int:
             pool_blocked_until=selection.pool_resets(selection_input, loaded.attempts),
             pending_cause=final.pending_cause,
             strikes=final.strikes,
+            reset_at=_reset_at(plan),
         )
         _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     _write_json(out_dir / "status.json", report.status_payload(plan, final, run_url))
@@ -886,29 +914,121 @@ def command_guard(args: argparse.Namespace) -> int:
     return 0
 
 
+STATELESS_FAILURE = "its last run failed without a result"
+FAILURE_DESCRIPTION_LIMIT = 140
+
+
+def _retry_reason(
+    repo: str, pull: Mapping[str, Any], runs: tuple[sweep.Run, ...], rules: RetryRules, now: datetime
+) -> str | None:
+    number = pull["number"]
+    head = pull["head"]["sha"]
+    state = github.latest_state(repo, number)
+    if state is not None and state.head_sha == head:
+        if retry.due_for_retry(state, head, now, rules):
+            return "its retry is due"
+        if state.outcome == retry.PENDING and state.pending_cause == retry.ALL_ABSENT:
+            reset_at = github.backoff_reset_at(repo, number, head)
+            if retry.due_for_retry(state, head, now, rules, reset_at):
+                return "the owner reset its backoff"
+        return None
+    if not sweep.newest_failed(runs):
+        return None
+    failures = sweep.stateless_failures(runs, github.committed_at(repo, head))
+    if failures == 0:
+        return None
+    if failures > 1:
+        _summary(f"retry not dispatched for #{number}: two runs on the current head failed without a result")
+        return None
+    if sweep.recent_dispatches(runs, now) >= rules.daily_budget:
+        _summary(f"retry not dispatched for #{number}: the daily budget of {rules.daily_budget} is used")
+        return None
+    return STATELESS_FAILURE
+
+
 def command_sweep(args: argparse.Namespace) -> int:
     policy = load_policy(Path(args.policy))
     repo = os.environ["GITHUB_REPOSITORY"]
     now = _now()
+    runs = sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.RUN_WINDOW))
+    busy = sweep.in_flight(runs, now)
     dispatched = 0
-    in_flight: frozenset[int] | None = None
+    errors: list[str] = []
     for pull in github.get_paginated(f"repos/{repo}/pulls?state=open&base=develop&per_page=100"):
         if dispatched >= policy.retry.sweep_max_dispatches:
             break
         if pull.get("draft") or (pull["head"].get("repo") or {}).get("full_name") != repo:
             continue
-        state = github.latest_state(repo, pull["number"])
-        if state is None or not retry.due_for_retry(state, pull["head"]["sha"], now, policy.retry):
+        number = pull["number"]
+        try:
+            reason = _retry_reason(repo, pull, runs.get(number, ()), policy.retry, now)
+            if reason is None:
+                continue
+            if number in busy:
+                _summary(f"retry skipped for #{number}: a run is still in flight")
+                continue
+            github.dispatch(repo, WORKFLOW_FILE, number)
+        except (github.GitHubError, KeyError, TypeError, ValueError, OSError) as exc:
+            errors.append(f"#{number}: {exc}")
+            _summary(f"retry failed for #{number}: {exc}")
             continue
-        if in_flight is None:
-            in_flight = github.in_flight_pulls(repo, WORKFLOW_FILE)
-        if pull["number"] in in_flight:
-            _summary(f"retry skipped for #{pull['number']}: a run is still in flight")
-            continue
-        github.dispatch(repo, WORKFLOW_FILE, pull["number"])
         dispatched += 1
-        _summary(f"retry dispatched for #{pull['number']}")
+        _summary(f"retry dispatched for #{number}: {reason}")
     _summary(f"oracle-verdict sweep dispatched {dispatched} retr{'y' if dispatched == 1 else 'ies'}")
+    if errors:
+        print(f"oracle-verdict: error: the sweep could not handle {len(errors)} pull request(s)", file=sys.stderr)
+        return 1
+    return 0
+
+
+def command_surface_failure(args: argparse.Namespace) -> int:
+    policy = load_policy(Path(args.policy))
+    repo = os.environ["GITHUB_REPOSITORY"]
+    run_id = int(os.environ["GITHUB_RUN_ID"])
+    pr = _pr_number(args.pr)
+    if not re.fullmatch(r"[0-9a-f]{40}", args.head_sha or ""):
+        raise SystemExit("oracle-verdict: invalid head commit")
+    now = _now()
+    runs = sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.RUN_WINDOW)).get(pr, ())
+    earlier = sweep.stateless_failures(runs, github.committed_at(repo, args.head_sha), exclude=run_id)
+    if earlier == 0:
+        _output({"post": "false"})
+        _summary(f"oracle-verdict #{pr}: this run failed without a result; the sweep re-dispatches it once")
+        return 0
+    steps = github.failed_steps(repo, run_id)
+    named = "; ".join(steps) if steps else "an earlier step"
+    description = f"oracle-verdict failed twice without a result at: {named}. Rerun with /oracle-review or push a fix"
+    if len(description) > FAILURE_DESCRIPTION_LIMIT:
+        description = description[: FAILURE_DESCRIPTION_LIMIT - 1] + "…"
+    run_url = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{repo}/actions/runs/{run_id}"
+    _write_json(
+        Path(args.out),
+        {"state": retry.PENDING, "context": policy.status_context, "description": description, "target_url": run_url},
+    )
+    _output({"post": "true"})
+    _summary(f"oracle-verdict #{pr} {args.head_sha}: {description}")
+    return 0
+
+
+def command_reset_backoff(args: argparse.Namespace) -> int:
+    pr = _pr_number(args.pr)
+    head = args.head or ""
+    if not re.fullmatch(r"[0-9a-f]{40}", head):
+        raise SystemExit("oracle-verdict: the head must be the full 40-character commit")
+    if not reset.valid_reason(args.reason or ""):
+        raise SystemExit(f"oracle-verdict: the reason must be one line of at most {reset.REASON_LIMIT} characters")
+    repo = args.repo or os.environ.get("GITHUB_REPOSITORY") or github.current_repository()
+    login = github.current_login()
+    if login not in reset.ATTESTERS:
+        raise SystemExit(f"oracle-verdict: {login} is not an owner account that may reset a backoff")
+    pull = github.get_json(f"repos/{repo}/pulls/{pr}")
+    if pull["state"] != "open" or pull["head"]["sha"] != head:
+        raise SystemExit(f"oracle-verdict: #{pr} is not open at head {head}")
+    comments = github.get_paginated(f"repos/{repo}/issues/{pr}/comments?per_page=100")
+    if not reset.has_owner_instruction(comments, head):
+        raise SystemExit(f"oracle-verdict: post an 'Owner instruction' comment on #{pr} that names head {head} first")
+    github.post_comment(repo, pr, reset.reset_body(head, args.reason))
+    _summary(f"oracle-verdict #{pr} {head}: the retry backoff is reset once: {args.reason}")
     return 0
 
 
@@ -995,6 +1115,7 @@ def command_attempts(args: argparse.Namespace) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     classification = _read_classification(Path(args.classification))
     ran = 0
+    leaked = False
     adopting = processes.become_subreaper()
     try:
         if processes.IS_LINUX and not adopting:
@@ -1011,10 +1132,11 @@ def command_attempts(args: argparse.Namespace) -> int:
                 break
             ran = slot
             if _run_slot(args, plan, slot, chosen):
+                leaked = True
                 return 1
     finally:
         processes.release_subreaper()
-        _output({"attempts": str(ran)})
+        _output({"attempts": str(ran), "leaked": "true" if leaked else "false"})
     return 0
 
 
@@ -1171,9 +1293,21 @@ def _parser() -> argparse.ArgumentParser:
     guard = commands.add_parser("guard")
     guard.add_argument("--plan", required=True)
     guard.set_defaults(handler=command_guard)
-    sweep = commands.add_parser("sweep")
-    sweep.add_argument("--policy", required=True)
-    sweep.set_defaults(handler=command_sweep)
+    sweeper = commands.add_parser("sweep")
+    sweeper.add_argument("--policy", required=True)
+    sweeper.set_defaults(handler=command_sweep)
+    surface = commands.add_parser("surface-failure")
+    surface.add_argument("--policy", required=True)
+    surface.add_argument("--pr", required=True)
+    surface.add_argument("--head-sha", required=True)
+    surface.add_argument("--out", required=True)
+    surface.set_defaults(handler=command_surface_failure)
+    reset_backoff = commands.add_parser("reset-backoff")
+    reset_backoff.add_argument("--pr", required=True)
+    reset_backoff.add_argument("--head", required=True)
+    reset_backoff.add_argument("--reason", required=True)
+    reset_backoff.add_argument("--repo")
+    reset_backoff.set_defaults(handler=command_reset_backoff)
     home = commands.add_parser("reviewer-home")
     home.add_argument("--home", required=True)
     home.add_argument("--gateway-url", required=True)

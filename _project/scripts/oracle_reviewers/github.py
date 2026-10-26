@@ -11,12 +11,11 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
+from . import reset
 from .retry import State
 
 STATE_ARTIFACT_PREFIX = "oracle-verdict-state-"
 LEGACY_STATE_ARTIFACT_PREFIX = "oracle-review-shadow-state-"
-IN_FLIGHT_STATUSES = ("queued", "in_progress")
-RUN_TITLE_PULL = re.compile(r"\bpr=(\d+)\)$")
 STATE_FILE = "state.json"
 
 
@@ -298,15 +297,53 @@ def _latest_state(repo: str, pr: int, name: str, workflow_path: str) -> State | 
     return None
 
 
-def in_flight_pulls(repo: str, workflow: str) -> frozenset[int]:
-    running: set[int] = set()
-    for status in IN_FLIGHT_STATUSES:
-        listing = get_json(f"repos/{repo}/actions/workflows/{workflow}/runs?status={status}&per_page=100")
-        for run in listing.get("workflow_runs", []):
-            match = RUN_TITLE_PULL.search(run.get("display_title") or "")
-            if match:
-                running.add(int(match.group(1)))
-    return frozenset(running)
+def verdict_runs(repo: str, workflow: str, since: datetime) -> list[dict[str, Any]]:
+    created = quote(f">={since.strftime('%Y-%m-%dT%H:%M:%SZ')}", safe="")
+    pages = json.loads(
+        _gh("--paginate", "--slurp", f"repos/{repo}/actions/workflows/{workflow}/runs?per_page=100&created={created}")
+    )
+    return [run for page in pages for run in page.get("workflow_runs", [])]
+
+
+def committed_at(repo: str, sha: str) -> datetime:
+    moment = _parse_time(get_json(f"repos/{repo}/commits/{sha}")["commit"]["committer"]["date"])
+    if moment is None:
+        raise GitHubError(f"commit {sha} has no readable commit time")
+    return moment
+
+
+def failed_steps(repo: str, run_id: int) -> list[str]:
+    listing = get_json(f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100")
+    return [
+        str(step["name"])
+        for job in listing.get("jobs", [])
+        for step in job.get("steps", [])
+        if step.get("conclusion") == "failure"
+    ]
+
+
+def backoff_reset_at(repo: str, pr: int, head_sha: str) -> datetime | None:
+    return reset.reset_moment(get_paginated(f"repos/{repo}/issues/{pr}/comments?per_page=100"), head_sha)
+
+
+def current_login() -> str:
+    return _gh("user", "--jq", ".login").strip()
+
+
+def current_repository() -> str:
+    result = subprocess.run(
+        ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        raise GitHubError(f"could not resolve the repository: {result.stderr.strip()[:500]}")
+    return result.stdout.strip()
+
+
+def post_comment(repo: str, pr: int, body: str) -> None:
+    _gh("--method", "POST", f"repos/{repo}/issues/{pr}/comments", "-f", f"body={body}")
 
 
 def dispatch(repo: str, workflow: str, pr: int) -> None:

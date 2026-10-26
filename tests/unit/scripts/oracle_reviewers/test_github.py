@@ -587,3 +587,31 @@ def test_tree_blobs_is_none_when_the_tree_cannot_be_read(monkeypatch: pytest.Mon
 
     monkeypatch.setattr(github, "get_json", get_json)
     assert github.tree_blobs(REPO, "c" * 40) is None
+    monkeypatch.setattr(github.subprocess, "run", fake_run)
+    assert github.get_file(REPO, "src/a b.py", "abc") == b"def f():\n"
+    assert calls[0][-1] == f"repos/{REPO}/contents/src/a%20b.py?ref=abc"
+    assert "Accept: application/vnd.github.raw+json" in calls[0]
+    assert github.get_file(REPO, "missing.py", "abc") is None
+
+
+def test_failed_steps_names_every_step_that_failed(monkeypatch: pytest.MonkeyPatch) -> None:
+    listing = {
+        "jobs": [
+            {
+                "steps": [
+                    {"name": "Plan the review", "conclusion": "success"},
+                    {"name": "Verify Linux process isolation", "conclusion": "failure"},
+                    {"name": "Run the attempt loop", "conclusion": "skipped"},
+                    {"name": "Surface", "conclusion": None},
+                ]
+            }
+        ]
+    }
+    monkeypatch.setattr(github, "get_json", lambda path: listing)
+    assert github.failed_steps(REPO, 5) == ["Verify Linux process isolation"]
+
+
+def test_committed_at_reads_the_committer_date(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = {"commit": {"committer": {"date": "2026-10-25T08:30:00Z"}}}
+    monkeypatch.setattr(github, "get_json", lambda path: payload)
+    assert github.committed_at(REPO, SHA) == datetime(2026, 10, 25, 8, 30, tzinfo=UTC)

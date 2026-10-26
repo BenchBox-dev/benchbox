@@ -22,7 +22,7 @@ permissions: {}
 
 concurrency:
   group: oracle-verdict-${{ ((github.event_name == 'schedule' || github.event_name == 'push') && 'sweep') || (((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/oracle-review') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id)) }}
-  cancel-in-progress: ${{ github.event_name != 'push' && github.event_name != 'schedule' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
 
 jobs:
   sweep:
@@ -248,6 +248,7 @@ jobs:
         run: python3 -m _project.scripts.oracle_reviewers.cli guard --plan "$RUNNER_TEMP/oracle-plan/plan.json"
 
       - name: Post the commit status
+        id: status
         if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
@@ -269,7 +270,7 @@ jobs:
         run: gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$RUNNER_TEMP/oracle-final/review.json"
 
       - name: Upload the retry state
-        if: steps.finalize.outputs.has_state == 'true'
+        if: steps.status.outcome == 'success' && steps.finalize.outputs.has_state == 'true'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: oracle-verdict-state-${{ steps.plan.outputs.pr }}
@@ -321,6 +322,34 @@ jobs:
           path: ${{ runner.temp }}/oracle-attempts/attempt-5.json
           if-no-files-found: error
           retention-days: 7
+
+      - name: Decide whether a failed run is surfaced
+        id: surface
+        if: ${{ failure() && steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true' && steps.status.outcome != 'success' }}
+        working-directory: trusted
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.plan.outputs.pr }}
+          HEAD_SHA: ${{ steps.plan.outputs.head_sha }}
+        run: >-
+          python3 -m _project.scripts.oracle_reviewers.cli surface-failure --policy .github/oracle-reviewers.yml
+          --pr "$PR_NUMBER" --head-sha "$HEAD_SHA" --out "$RUNNER_TEMP/oracle-failure/status.json"
+
+      - name: Mint the App token for the failure status
+        id: failure_app
+        if: ${{ failure() && steps.surface.outputs.post == 'true' && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ secrets.ORACLE_APP_ID }}
+          private-key: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
+          permission-statuses: write
+
+      - name: Post the failure status
+        if: ${{ failure() && steps.surface.outputs.post == 'true' && steps.failure_app.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ steps.failure_app.outputs.token }}
+          HEAD_SHA: ${{ steps.plan.outputs.head_sha }}
+        run: gh api --method POST "repos/$REPO/statuses/$HEAD_SHA" --input "$RUNNER_TEMP/oracle-failure/status.json"
 
       - name: Dispatch the gate for the reviewed head
         if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'

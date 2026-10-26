@@ -176,3 +176,41 @@ def test_strikes_survive_pending_runs_and_never_go_down() -> None:
     assert State.from_json(higher.to_json()) == higher
     legacy = {key: value for key, value in higher.to_json().items() if key != "strikes"}
     assert State.from_json({**legacy, "reviewed": {"head_sha": OTHER}}).strikes == 0
+
+
+def test_the_owner_reset_lifts_backoff_and_budget_once(policy: Policy) -> None:
+    inside = _state("pending", age=timedelta(minutes=10), retries=policy.retry.daily_budget)
+    assert not _decide(policy, inside).allowed
+    reset_at = NOW - timedelta(minutes=5)
+    reset = decide_rerun(
+        manual=True, new_diff=False, head_sha=HEAD, previous=inside, now=NOW, rules=policy.retry, reset_at=reset_at
+    )
+    assert reset.allowed and "reset by the owner" in reset.reason
+    assert due_for_retry(inside, HEAD, NOW, policy.retry, reset_at)
+    recorded = next_state(
+        previous=inside,
+        pr=7,
+        head_sha=HEAD,
+        outcome="pending",
+        manual=True,
+        now=NOW,
+        pool_blocked_until={},
+        pending_cause=ALL_ABSENT,
+        reset_at=reset_at,
+    )
+    assert recorded.retries == (NOW,)
+    spent = decide_rerun(
+        manual=True, new_diff=False, head_sha=HEAD, previous=recorded, now=NOW, rules=policy.retry, reset_at=reset_at
+    )
+    assert not spent.allowed and "backoff" in spent.reason
+    assert not due_for_retry(recorded, HEAD, NOW, policy.retry, reset_at)
+
+
+def test_an_owner_reset_for_another_head_or_before_the_state_changes_nothing(policy: Policy) -> None:
+    inside = _state("pending", age=timedelta(minutes=10))
+    older = NOW - timedelta(minutes=30)
+    assert not due_for_retry(inside, HEAD, NOW, policy.retry, older)
+    other = decide_rerun(
+        manual=True, new_diff=False, head_sha=HEAD, previous=_state("pending", head=OTHER), now=NOW, rules=policy.retry
+    )
+    assert other.allowed and "reset" not in other.reason
