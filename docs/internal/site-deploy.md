@@ -49,3 +49,59 @@ succeeded, so a locally built bundle never deploys.
 The consumer must accept a schema before core emits it: a site that predates
 schema 4 rejects the default bundle, so deploy the site first and roll core
 back to `exact3` if a deployed site ever needs it.
+
+## Documentation source freeze
+
+Moving the documentation sources to the site repository needs the site-owned
+Markdown to stay identical between the pinned snapshot and the import. While the
+move is pending, `scripts/check_docs_freeze.py` rejects any pull request that
+adds, edits or deletes a site-owned source. It is temporary and is retired by
+the migration removal pull request.
+
+**What is frozen.** The `site-owned` entries of `quality/docs-ownership.json`,
+split by `split_ownership` in `scripts/docs_history_filter.py`, so the gate, the
+history filter and the site bundle read the same ownership. `core-only` and
+`core-generated` entries, the generated outputs the manifest lists
+(`docs/benchmarks/queries/`, the compat and tuning matrices) and everything
+outside `docs/` are not frozen. Core-only documents stay editable, and a new
+`core-only` entry may be added to the manifest. A change to the manifest that
+alters the frozen set or the generated list (re-owning a site-owned path, adding
+a site-owned path, or deleting the manifest) fails too, so the freeze cannot be
+dissolved by editing the map it reads.
+
+**Where it runs.** The gate is a step of the `example-validation` job in
+`.github/workflows/ci.yml`, which the required `docs` context aggregates
+(`needs: [ci-paths, example-validation, spellcheck]`). A skipped or failed
+`example-validation` fails `docs`, so the existing required context enforces the
+freeze with no change to hosted settings or check names. Every frozen path lives
+under `docs/`, which always routes the change to the docs unit. The step runs on
+`pull_request` events from a copy of the script and of
+`scripts/docs_history_filter.py` taken from the PR base revision, so a pull
+request cannot weaken the gate it is judged by. It diffs `base...HEAD`; if the
+base has no gate, it exits successfully, which is what lets the pull request that
+introduces the gate and the pull request that removes it merge. Locally, run
+`make docs-freeze-check BASE_REF=origin/develop`.
+
+**Snapshot S.** S is the full `develop` head after the pull request that adds
+this gate merges. The query-links change merged before the gate, so S contains
+it. Record S and the ownership-map digest only then; any later frozen-path
+change is rejected, so S stays equal to the site-owned projection until the
+import.
+
+**Retirement.** The migration removal pull request deletes
+`scripts/check_docs_freeze.py`, the `ci.yml` step and the `docs-freeze-check`
+target, deletes the frozen sources and transitions the ownership entries, all in
+one pull request. The gate judges that pull request from the base copy, and
+treats it as the reviewed removal only when the head tree has no
+`scripts/check_docs_freeze.py` and neither `.github/workflows/ci.yml` nor
+`make/documentation.mk` mentions the gate. In a removal, deleting frozen
+sources and rewriting the ownership manifest are allowed. Adding or editing a
+frozen source still fails, and a pull request that keeps any part of the
+registration gets no exemption. Because `ci.yml` and the gate are protected
+paths, the removal needs the oracle review.
+
+**After S.** The history filter runs through S as described in
+`docs/internal/docs-history-filter-runbook.md`, and the filtered history is
+archived on the site repository as `history/docs-through-<S>`. The import pull
+request then squashes the snapshot. The freeze stays in place until the removal
+merges.

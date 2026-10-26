@@ -2,6 +2,10 @@
 docs-linkcheck: query-docs
 	@uv run -- python scripts/check_doc_external_links.py
 
+.PHONY: docs-freeze-check
+docs-freeze-check:
+	@uv run -- python scripts/check_docs_freeze.py --base "$(or $(BASE_REF),origin/develop)"
+
 .PHONY: docs-validate
 docs-validate:
 	@uv run -- python scripts/check_docs_ownership.py

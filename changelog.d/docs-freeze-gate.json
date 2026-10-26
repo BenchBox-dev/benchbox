@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Temporary pull-request gate on the docs CI path that rejects edits, additions and deletions of site-owned documentation sources while their ownership moves to the site repository; no user-visible behavior changes."
+}

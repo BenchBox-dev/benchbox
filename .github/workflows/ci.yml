@@ -1597,11 +1597,30 @@ jobs:
 
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.11"
+
+      - name: Enforce the site-owned documentation freeze
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EVENT_BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid event base SHA" >&2; exit 1; }
+          if ! git cat-file -e "$EVENT_BASE_SHA:scripts/check_docs_freeze.py" 2>/dev/null; then
+            echo "The base revision carries no documentation freeze gate."
+            exit 0
+          fi
+          trusted="$RUNNER_TEMP/trusted-docs-freeze"
+          mkdir -p "$trusted"
+          git show "$EVENT_BASE_SHA:scripts/check_docs_freeze.py" > "$trusted/check_docs_freeze.py"
+          git show "$EVENT_BASE_SHA:scripts/docs_history_filter.py" > "$trusted/docs_history_filter.py"
+          python -I "$trusted/check_docs_freeze.py" --root "$PWD" --base "$EVENT_BASE_SHA" --head HEAD
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
