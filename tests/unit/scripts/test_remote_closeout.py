@@ -161,6 +161,7 @@ class FakeGitHub:
         self.verdict_bound_head: str | None = None
         self.verdict_download = (0, None)
         self.changed_files: list[str] = []
+        self.statuses: dict[str, str] = {}
 
     def _duration_verdict_reply(self, cmd: list[str]) -> tuple[int, str] | None:
         if cmd[:2] == ["gh", "api"] and "/actions/artifacts?name=fast-duration-verdict-" in cmd[-1]:
@@ -236,7 +237,7 @@ class FakeGitHub:
         if gate is not None:
             return gate
         if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
-            return 0, "\n".join([*pr_landing.REQUIRED_CONTEXTS, "oracle-review"])
+            return 0, "\n".join([*pr_landing.REQUIRED_CONTEXTS, "hold", "oracle-gate", "oracle-review"])
         if cmd[:2] == ["gh", "api"] and "/check-runs" in cmd[-1]:
             head = cmd[-1].split("/commits/")[1].split("/")[0]
             runs = [
@@ -264,6 +265,9 @@ class FakeGitHub:
 
     def _gate(self, cmd: list[str]) -> tuple[int, str] | None:
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/status"):
+            if "--jq" in cmd and "oracle-gate" not in cmd[cmd.index("--jq") + 1]:
+                entries = [{"context": name, "state": state} for name, state in self.statuses.items()]
+                return 0, json.dumps(entries)
             return 0, self.gate_state + "\n"
         if cmd[:3] == ["gh", "workflow", "run"]:
             return self.dispatch_code, "" if self.dispatch_code == 0 else "gh: HTTP 403"
@@ -711,6 +715,42 @@ def test_refuses_a_failing_required_check_but_not_a_pending_one(
     assert arm(world, ready_pr) == (2 if refused else 0)
     expected = f"condition 6: required check 'core' failed with conclusion {conclusion!r}"
     assert (expected in capsys.readouterr().err) is refused
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "cancelled", "timed_out", "action_required"])
+def test_refuses_a_visible_failure_of_a_ruleset_required_check(
+    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str], conclusion: str
+) -> None:
+    ready_pr.conclusions["hold"] = conclusion
+    err = _refusal(world, ready_pr, capsys)
+    assert f"condition 6: required check 'hold' failed with conclusion {conclusion!r}" in err
+
+
+def test_pending_ruleset_required_check_still_arms(world: World, ready_pr: FakeGitHub) -> None:
+    ready_pr.conclusions["hold"] = None
+    assert arm(world, ready_pr) == 0
+    assert ready_pr.arms() == [merge_command(world.head)]
+
+
+def test_non_required_failing_check_does_not_refuse_arming(world: World, ready_pr: FakeGitHub) -> None:
+    ready_pr.conclusions["flaky-thing"] = "failure"
+    assert arm(world, ready_pr) == 0
+    assert ready_pr.arms() == [merge_command(world.head)]
+
+
+@pytest.mark.parametrize("state", ["failure", "error"])
+def test_refuses_a_failed_required_status(
+    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str], state: str
+) -> None:
+    ready_pr.statuses["oracle-gate"] = state
+    err = _refusal(world, ready_pr, capsys)
+    assert f"condition 6: required status 'oracle-gate' failed with state {state!r}" in err
+
+
+def test_pending_required_status_still_arms(world: World, ready_pr: FakeGitHub) -> None:
+    ready_pr.statuses["oracle-gate"] = "pending"
+    assert arm(world, ready_pr) == 0
+    assert ready_pr.arms() == [merge_command(world.head)]
 
 
 def test_refuses_a_changed_observation_unless_the_owner_explained_it(

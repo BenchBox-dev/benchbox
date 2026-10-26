@@ -34,7 +34,6 @@ OBSERVED_FIELDS = ("labels", "draft", "threads")
 DISPOSITIONS = ("approve", "changes-requested")
 FINDING_FIELDS = ("location", "reasoning", "severity")
 REVIEWER_FIELDS = ("model", "run_id")
-PASSING_CONCLUSIONS = frozenset({"success", "neutral", "skipped"})
 PR_RE = re.compile(r"[1-9][0-9]*")
 DIGEST_RE = re.compile(r"[0-9a-f]{64}")
 BRANCH_RE = re.compile(r"[A-Za-z0-9._/-]+")
@@ -444,17 +443,29 @@ def _builder_refusals(record: dict | None, view: dict, head: str) -> list[str]:
     return []
 
 
-def failing_required_checks(verdicts: Mapping[str, dict]) -> list[tuple[str, str]]:
-    failing: list[tuple[str, str]] = []
-    for name in pr_landing.REQUIRED_CONTEXTS:
+def failing_required_checks(
+    verdicts: Mapping[str, dict], required: Sequence[str], statuses: Mapping[str, str]
+) -> list[str]:
+    reasons: list[str] = []
+    for name in required:
         conclusion = (verdicts.get(name) or {}).get("conclusion")
-        if conclusion and conclusion not in PASSING_CONCLUSIONS:
-            failing.append((name, str(conclusion)))
-    return failing
+        if conclusion in pr_landing.TERMINAL_CHECK_FAILURES:
+            reasons.append(
+                f"required check {name!r} failed with conclusion {conclusion!r}; pending checks do not block arming"
+            )
+        state = statuses.get(name)
+        if state in pr_landing.TERMINAL_STATUS_FAILURES:
+            reasons.append(f"required status {name!r} failed with state {state!r}; pending checks do not block arming")
+    return reasons
 
 
 def _readiness_refusals(
-    view: dict, observation: dict, verdicts: Mapping[str, dict], hidden_failures: Sequence[str] = ()
+    view: dict,
+    observation: dict,
+    verdicts: Mapping[str, dict],
+    hidden_failures: Sequence[str] = (),
+    required: Sequence[str] = (),
+    statuses: Mapping[str, str] | None = None,
 ) -> list[str]:
     reasons: list[str] = []
     if view.get("state") != "OPEN":
@@ -469,11 +480,7 @@ def _readiness_refusals(
         reasons.append("condition 6: a reviewer requested changes")
     if any(not thread["resolved"] and not thread["outdated"] for thread in observation["threads"]):
         reasons.append("condition 6: an unresolved, non-outdated review thread is open")
-    reasons.extend(
-        f"condition 6: required check {name!r} failed with conclusion {conclusion!r}; "
-        "pending checks do not block arming"
-        for name, conclusion in failing_required_checks(verdicts)
-    )
+    reasons.extend(f"condition 6: {reason}" for reason in failing_required_checks(verdicts, required, statuses or {}))
     reasons.extend(f"condition 6: {reason}" for reason in hidden_failures)
     return reasons
 
@@ -521,6 +528,8 @@ def evaluate(
                 *pr_landing.hidden_failed_suites(run, repo, BASE_BRANCH, head),
                 *pr_arm.duration_verdict_refusals(run, repo, number, head, "pr-arm-remote"),
             ],
+            pr_landing.ruleset_required_contexts(run, repo, BASE_BRANCH),
+            pr_landing.live_commit_statuses(run, repo, head),
         ),
     ]
     if changes and not explained:

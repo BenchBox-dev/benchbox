@@ -61,6 +61,9 @@ REQUIRED_CONTEXTS: tuple[str, ...] = (
     "docs",
     "tooling",
 )
+TERMINAL_CHECK_FAILURES = frozenset({"failure", "cancelled", "timed_out", "action_required"})
+TERMINAL_STATUS_FAILURES = frozenset({"failure", "error"})
+STATUS_CONTEXTS_JQ = "[.statuses[] | {context: .context, state: .state}]"
 REQUIRED_BATCH_TOOLS = frozenset({"register_batch", "prepare", "bind_batch_pr", "abort_batch"})
 MAX_RERUNS_PER_JOB = 1
 MAX_REENTRIES_PER_HEAD = 1
@@ -585,6 +588,52 @@ def _hidden_failures(run: Runner, repo_full: str, branch: str, records: list[dic
 
 def hidden_failed_suites(run: Runner, repo_full: str, branch: str, head: str) -> list[str]:
     return _hidden_failures(run, repo_full, branch, live_check_runs(run, repo_full, head))
+
+
+def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, str]:
+    rc, out = run(
+        [
+            "gh",
+            "api",
+            "--jq",
+            STATUS_CONTEXTS_JQ,
+            f"repos/{repo_full}/commits/{head}/status",
+        ]
+    )
+    if rc != 0:
+        raise LandingError(f"live status verification failed for {head[:12]}")
+    try:
+        entries = json.loads(out)
+    except ValueError as exc:
+        raise LandingError(f"unparseable live status payload: {exc}") from exc
+    if not isinstance(entries, list) or any(not isinstance(entry, dict) for entry in entries):
+        raise LandingError("unparseable live status payload: expected a list of status entries")
+    return {
+        str(entry.get("context") or ""): str(entry.get("state") or "")
+        for entry in entries
+        if str(entry.get("context") or "")
+    }
+
+
+def visible_required_failure_reasons(run: Runner, repo_full: str, branch: str, head: str) -> list[str]:
+    required = ruleset_required_contexts(run, repo_full, branch)
+    evaluations = check_suites.evaluate(live_check_runs(run, repo_full, head), required, check_suites.NON_BLOCKING)
+    statuses = live_commit_statuses(run, repo_full, head)
+    reasons: list[str] = []
+    for name in required:
+        suites = evaluations[name].suites
+        if suites and suites[0].completed and suites[0].conclusion in TERMINAL_CHECK_FAILURES:
+            reasons.append(
+                f"required check {name!r} completed with conclusion {suites[0].conclusion!r} "
+                f"on {head[:9]}; pending checks do not block arming"
+            )
+        state = statuses.get(name)
+        if state in TERMINAL_STATUS_FAILURES:
+            reasons.append(
+                f"required status {name!r} completed with state {state!r} "
+                f"on {head[:9]}; pending checks do not block arming"
+            )
+    return reasons
 
 
 def verify_evidence_live(run: Runner, repo_full: str, pr: dict, evidence: ReadyEvidence) -> None:

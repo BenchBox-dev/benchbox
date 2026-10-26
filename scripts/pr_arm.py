@@ -203,6 +203,7 @@ def arm(
     threads: Callable[[Runner, str, int], bool] = pr_landing.unresolved_review_threads,
     suites: Callable[[Runner, str, str, str], list[str]] = pr_landing.hidden_failed_suites,
     duration: Callable[[Runner, str, int, str], list[str]] = duration_verdict_refusals,
+    visible: Callable[[Runner, str, str, str], list[str]] = pr_landing.visible_required_failure_reasons,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         print(f"pr-arm: refusing: --repo must be owner/name, got {repo!r}", file=sys.stderr)
@@ -236,6 +237,7 @@ def arm(
             hidden_failures=[
                 *suites(run, repo, BASE_BRANCH, local_head),
                 *(duration(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
+                *visible(run, repo, BASE_BRANCH, local_head),
             ],
         )
         if reasons:
