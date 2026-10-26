@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Repeated renders of one TSBS instance are identical and call-order independent, with unit tests mirroring the NYCTaxi ones.",
+    "test_query_catalog determinism passes for tsbs_devops repeatedly.",
+    "Executed rows equal before/after for fixed parameters; sql-execution-gate PASS; affected bundles listed in the PR body."
+  ],
+  "description": "Found while fixing the trunk failure at #3544. NYCTaxiQueryManager drew query parameters from one shared stateful RNG, so renders depended on call order (fixed in #3554 by deriving parameters per query from (instance seed, query id)). TSBSDevOpsQueryManager uses the same pattern, so repeated renders of one instance can differ and TSBS DevOps bundles may have used different windows across runs.\nGUARDRAILS: same per-query derivation as #3554; do not weaken determinism tests; executed comparison on DuckDB/DataFusion must show identical rows for fixed parameters; list affected published TSBS bundles (values not wrong; no flag unless recorded rows were wrong).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-26T15:50:09Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0751b6d44cfb4060a7ecedce08f0503e",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    }
+  ]
+}
