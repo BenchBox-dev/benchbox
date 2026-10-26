@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -90,6 +91,33 @@ class TestQueriesMatchGeneratorInputs:
             ids = list_query_ids(benchmark_id)
             assert [q["id"] for q in record["queries"]] == ids
             assert record["query_count"] == len(ids)
+
+    @pytest.mark.parametrize("export_first", [False, True])
+    def test_tsbs_sql_matches_generator_regardless_of_render_order(self, monkeypatch, export_first):
+        from benchbox.core import query_catalog
+
+        for name in ("_benchmark_instance", "_query_dict", "_raw_query_keys"):
+            monkeypatch.setattr(query_catalog, name, cache(getattr(query_catalog, name).__wrapped__))
+
+        def export():
+            return exporter.export_queries({"tsbs_devops"})["benchmarks"][0]["queries"]
+
+        def generate():
+            return gqd.render_all({"tsbs_devops"})
+
+        if export_first:
+            records, pages = export(), generate()
+        else:
+            pages, records = generate(), export()
+
+        assert len(records) == 18
+        for record in records:
+            page = pages[f"tsbs_devops/{record['slug']}.md"]
+            sql = page.split("```sql\n", 1)[1].split("\n```", 1)[0]
+            assert record["sql"]["pretty_sql"] == sql, record["id"]
+            again = exporter._query_record(gqd, "tsbs_devops", "TSBS DevOps", record["id"], {})
+            assert again["sql"] == record["sql"]
+        assert export() == records
 
     def test_every_query_page_prints_the_exported_facts(self, data, pages):
         for benchmark in data["queries"]["benchmarks"]:
