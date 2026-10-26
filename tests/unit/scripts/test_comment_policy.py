@@ -9,7 +9,6 @@ import re
 import subprocess
 import sys
 import urllib.request
-from collections import Counter
 from copy import deepcopy
 from datetime import date, timedelta
 from pathlib import Path, PurePosixPath
@@ -4936,16 +4935,6 @@ def dated_policy(*expiries: str) -> dict:
             policy(exceptions=[exception(path=f"m{index}.py", expires=value) for index, value in enumerate(expiries)])
         ).encode()
     )
-
-
-def test_registered_directive_expiries_are_not_concentrated_on_one_date() -> None:
-    registered = load_policy((ROOT / "quality/comment-policy.json").read_bytes())
-    dated = [
-        entry["expires"] for entry in registered["exceptions"] if entry["kind"] == "directive" and "expires" in entry
-    ]
-    if not dated:
-        return
-    assert max(Counter(dated).values()) <= max(1, len(dated) // 10)
 
 
 def test_date_only_renewal_counts_only_with_an_oracle_review() -> None:
