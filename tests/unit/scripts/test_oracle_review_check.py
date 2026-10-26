@@ -31,19 +31,50 @@ AFTER_RETARGET = "2026-10-01T15:00:00Z"
 ORACLE = "benchbox-oracle[bot]"
 LATER = "2026-10-01T14:00:00Z"
 LATEST = "2026-10-01T15:00:00Z"
+TEST_RUN_UUID = "1" * 32
+
+
+def _marked_body(run_uuid: str | None = TEST_RUN_UUID, state: str = "success") -> str:
+    from _project.scripts.oracle_reviewers import protocol
+
+    record = {
+        "v": protocol.MARKER_VERSION,
+        "cycle": 1,
+        "round": 1,
+        "kind": protocol.FIRST,
+        "decision": protocol.SHIP,
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "large",
+        "tier": "large",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 1,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+    }
+    if run_uuid is not None:
+        record["run_uuid"] = run_uuid
+    return f"### oracle-verdict: {state} for `{HEAD}`\n\nDecision: **SHIP**.\n\n{protocol.encode_marker(record)}"
 
 
 def _verdict(state: str = "success", created_at: str = AFTER_HEAD, **over: Any) -> dict[str, Any]:
+    description = f"large: {state} [run {TEST_RUN_UUID}]" if state == "success" else f"large: {state}"
     status = {
         "id": 1,
         "context": "oracle-verdict",
         "state": state,
-        "description": f"large: {state}",
+        "description": description,
         "login": ORACLE,
         "user_type": "Bot",
         "created_at": created_at,
     }
     return {**status, **over}
+
+
+def _unbound_status(state: str = "success", created_at: str = AFTER_HEAD, **over: Any) -> dict[str, Any]:
+    return _verdict(state=state, created_at=created_at, description=f"large: {state}", **over)
 
 
 def _thread(resolved: bool, author: str = "benchbox-oracle", author_type: str = "Bot") -> dict[str, Any]:
@@ -57,11 +88,15 @@ def _receipt_review(**over: Any) -> dict[str, Any]:
         "commit_id": HEAD,
         "state": "COMMENTED",
         "submitted_at": HEAD_DATE,
-        "body": f"### oracle-verdict: success for `{HEAD}`\n\nDetails.",
+        "body": _marked_body(),
         "last_edited_at": None,
         "includes_created_edit": False,
     }
     return {**review, **over}
+
+
+def _unmarked_receipt(**over: Any) -> dict[str, Any]:
+    return _receipt_review(body=f"### oracle-verdict: success for `{HEAD}`\n\nDetails.", **over)
 
 
 def _oracle(**kwargs: Any) -> tuple[int, str]:
@@ -342,15 +377,19 @@ def test_a_receipt_from_another_run_does_not_count() -> None:
 
 
 def test_a_status_run_without_a_marked_receipt_does_not_count() -> None:
-    assert _oracle(statuses=[_uuid_status("a" * 32)], reviews=[_receipt_review()])[0] == 1
+    assert _oracle(statuses=[_uuid_status("a" * 32)], reviews=[_unmarked_receipt()])[0] == 1
 
 
 def test_a_marked_receipt_with_an_unbound_status_does_not_count() -> None:
-    assert _oracle(statuses=[_verdict()], reviews=[_marked_receipt("a" * 32)])[0] == 1
+    assert _oracle(statuses=[_unbound_status()], reviews=[_marked_receipt("a" * 32)])[0] == 1
 
 
 def test_an_unmarked_receipt_with_a_bound_status_does_not_count() -> None:
-    assert _oracle(statuses=[_uuid_status("a" * 32)], reviews=[_receipt_review()])[0] == 1
+    assert _oracle(statuses=[_uuid_status("a" * 32)], reviews=[_unmarked_receipt()])[0] == 1
+
+
+def test_an_unbound_status_with_an_unmarked_receipt_does_not_count() -> None:
+    assert _oracle(statuses=[_unbound_status()], reviews=[_unmarked_receipt()])[0] == 1
 
 
 def test_an_exempt_status_keeps_its_meaning_with_a_run_suffix() -> None:
@@ -689,7 +728,7 @@ def test_main_requires_an_oracle_decision_for_verdict_workflow_only(
     assert oracle_review_check.main(["--repo", "o/r", "--pr", "7"]) == expected_status
 
 
-SHIP_BODY = f"### oracle-verdict: success for `{HEAD}`\n\nDecision: **SHIP**.\n"
+SHIP_BODY = _marked_body()
 EDITED_REVIEW = _review(SHIP_BODY, last_edited_at="2026-10-02T09:00:00Z", includes_created_edit=True, node_id=None)
 
 

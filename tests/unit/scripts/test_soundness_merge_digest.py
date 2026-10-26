@@ -1128,12 +1128,33 @@ TIMELINES = {
 
 def gate_accepts(verdicts, standin_at, base_change):
     checker = sys.modules["oracle_review_check"]
+    run_uuid = "1" * 32
+    from _project.scripts.oracle_reviewers import protocol
+
+    record = {
+        "v": protocol.MARKER_VERSION,
+        "cycle": 1,
+        "round": 1,
+        "kind": protocol.FIRST,
+        "decision": protocol.SHIP,
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "large",
+        "tier": "large",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 1,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+        "run_uuid": run_uuid,
+    }
     statuses = [
         {
             "id": index,
             "context": "oracle-verdict",
             "state": state,
-            "description": "",
+            "description": f"large: {state} [run {run_uuid}]" if state == "success" else "",
             "login": ORACLE_BOT,
             "user_type": "Bot",
             "created_at": at,
@@ -1157,7 +1178,7 @@ def gate_accepts(verdicts, standin_at, base_change):
         "commit_id": HEAD,
         "state": "COMMENTED",
         "submitted_at": T_A,
-        "body": oracle_verdict(HEAD, "success"),
+        "body": f"{oracle_verdict(HEAD, 'success')}\n\n{protocol.encode_marker(record)}",
         "last_edited_at": None,
         "includes_created_edit": False,
     }

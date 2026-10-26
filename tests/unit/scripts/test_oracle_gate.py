@@ -37,12 +37,39 @@ def sleeps(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     return recorded
 
 
+RUN_UUID = "1" * 32
+
+
+def _receipt_body(run_uuid: str = RUN_UUID) -> str:
+    from _project.scripts.oracle_reviewers import protocol
+
+    record = {
+        "v": protocol.MARKER_VERSION,
+        "cycle": 1,
+        "round": 1,
+        "kind": protocol.FIRST,
+        "decision": protocol.SHIP,
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "large",
+        "tier": "large",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 1,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+        "run_uuid": run_uuid,
+    }
+    return f"### oracle-verdict: success for `{HEAD}`\n\n{protocol.encode_marker(record)}"
+
+
 def _success_status(**over: Any) -> dict[str, Any]:
     status = {
         "id": 1,
         "context": "oracle-verdict",
         "state": "success",
-        "description": "large: SHIP",
+        "description": f"large: SHIP [run {RUN_UUID}]",
         "login": "benchbox-oracle[bot]",
         "user_type": "Bot",
         "created_at": AFTER_HEAD,
@@ -57,7 +84,7 @@ def _receipt(**over: Any) -> dict[str, Any]:
         "commit_id": HEAD,
         "state": "COMMENTED",
         "submitted_at": AFTER_HEAD,
-        "body": f"### oracle-verdict: success for `{HEAD}`",
+        "body": _receipt_body(),
         "last_edited_at": None,
         "includes_created_edit": False,
     }

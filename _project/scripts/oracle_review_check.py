@@ -148,16 +148,16 @@ def _receipt_run_uuid(receipt: dict[str, Any]) -> str | None:
 
 def _receipt_agrees(receipt: dict[str, Any], head_sha: str, status_uuid: str | None) -> bool:
     if (
-        "last_edited_at" not in receipt
+        status_uuid is None
+        or "last_edited_at" not in receipt
         or "includes_created_edit" not in receipt
         or receipt.get("last_edited_at") is not None
         or receipt.get("includes_created_edit")
         or verdict_state(receipt.get("body"), head_sha, _ORACLE_VERDICT) != "success"
     ):
         return False
-    if status_uuid is None:
-        return _receipt_run_uuid(receipt) is None
-    return _receipt_run_uuid(receipt) == status_uuid
+    receipt_uuid = _receipt_run_uuid(receipt)
+    return receipt_uuid is not None and receipt_uuid == status_uuid
 
 
 def _verdict_statuses(statuses: Iterable[dict[str, Any]], base_time: datetime | None) -> list[dict[str, Any]]:

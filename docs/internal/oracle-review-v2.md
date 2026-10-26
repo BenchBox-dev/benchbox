@@ -844,10 +844,11 @@ oracle review of that head whose marker carries the same run uuid and whose
 header agrees with the status. Unedited is verified through the review API;
 a receipt whose edit state cannot be verified never authorizes. A status left
 by another pull request at the same head, or by an earlier policy, never
-authorizes this pull request: an open pull request whose head carries only an
-unbound status must get a fresh verdict run first. Only evidence with a run
-uuid on neither side keeps the previous unedited-plus-agreement rule, so
-merged history is unaffected. The oracle signal needs `findings_delivery:
+authorizes this pull request: any success status without a run uuid fails closed
+(waiting for a fresh verdict run), so an unbound status can never authorize an
+open pull request. Evidence predating the run uuid requirement carries no uuid
+and fails closed (waiting for a fresh verdict run); merged pull requests predate
+this cutover and never re-run the gate. The oracle signal needs `findings_delivery:
 review`, under which every run that reaches a result, including a pending
 one, posts a review and then a status in the same state.
 
