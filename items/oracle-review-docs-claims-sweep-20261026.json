@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "The PR body tables each claim with its path:line before and after and the code evidence.",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "OWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q13 close every gap.",
+  "description": "Problem: the adversarial review found doc claims that the code contradicted, including:\n- docs/agent/cloud-builder.md: builders 'do without oracle reviews' without the variables; the cloud review reaches the gateway.\n- docs/internal/oracle-review-v2.md: 'a branch cannot widen its own exempt paths'; 'the pushed head is the reviewed one'; 'an empty reason or a line in a comment or fence is refused'; 'a hollow answer never passes' (contradicted by its own lines 545-552; the evidence gate is an exposure check); 'the next sweep retries'; C5 'fails if a value remains'; the retry state 'already uploaded'.\n- The single-job decision record's redaction acceptance.\n\nOutcome: after the batch's code items merge, each listed claim is re-checked against the code at develop's head and corrected or removed; the evidence gate is described as an exposure check.\n\nDecision gates:\n1. Re-read each doc's current text first; claims already fixed by earlier items are recorded as verified, not re-edited.\n\nItem guardrails: docs and decision records only.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, then make agent-write-preflight; the primary clone is read-only. Never use git stash (refs/stash is shared across worktrees). Commit as Joe Harris <joeharris76@gmail.com>, staging explicit paths only; no git add -A, no --no-verify, no SKIP, no agent trailers. Durable text (commits, PR bodies, docs, code) carries no tracker ids, session labels or plan references. Maintained code has no explanatory comments or docstrings (make comment-policy-check). Before publishing run make docs-reference-inventory-check, make doc-contracts-guard and make pr-preflight, and self-review with the code review action, fixing every Critical and Required finding. Publish only with make pr-open: never gh pr create, a raw push-and-open, or a PR-body override line; if make pr-open refuses, stop and report the exact refusal instead of routing around it. Until oracle-omp-pin-single-source-20261026 merges, make pr-open may run only with PATH prefixed by the darwin-arm64 omp 18.12.1 build whose SHA-256 that item records, verified with shasum immediately before use; never any other side-loaded omp. Close out only with oracle SHIP on the exact head, every oracle thread answered (reply naming the fixing SHA, then resolve) and make pr-arm; never raw gh pr merge, a stand-in, an adjudication, or a ruleset or settings change. Never print tokens, keys, or the gateway URL or hostname; never spend model quota outside the review harness. Owner decisions are recorded in context and in the decisions file; a step that would contradict one stops and asks the owner.",
+  "links": [
+    "docs/internal/oracle-review-v2.md",
+    "docs/agent/cloud-builder.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevGatewayLocal.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevDesignFit.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevVerdictJob.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T15:00:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c0ea2cc0145c4908af617640be845453",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}

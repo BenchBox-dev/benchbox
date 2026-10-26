@@ -16636,6 +16636,21 @@
       "status": "done",
       "title": "oracle-review has no fallback when Codex connector hits usage limits"
     },
+    "oracle-review-docs-claims-sweep-20261026": {
+      "claim": null,
+      "needs": [
+        "oracle-local-findings-record-disputes-20261026",
+        "oracle-gateway-cloud-builder-access-20261025",
+        "oracle-gate-hardening-lows-20261026",
+        "oracle-sweep-stateless-retry-backoff-reset-20261026",
+        "merge-authority-docs-reconcile-20261026",
+        "pr-arm-waits-fast-duration-verdict-20261026",
+        "oracle-absence-json-error-events-20261026"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Verify every oracle documentation claim the 2026-10-26 review found false is now true or removed"
+    },
     "oracle-review-driver-ci-20261026": {
       "claim": null,
       "needs": [
