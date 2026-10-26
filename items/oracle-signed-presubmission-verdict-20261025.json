@@ -3,7 +3,7 @@
     "The 30-day round-trip measurement is recorded.",
     "An owner-approved decision record exists before any implementation, or the item is dropped with the measurement as the reason."
   ],
-  "context": "Re-homed from the deferred signed-verdict option of the 2026-10-25 proposal.",
+  "context": "2026-10-26: owner decision Q4: local findings, rebuttals and dispositions carry into CI as claims only (oracle-local-findings-record-disputes-20261026); a local result never counts towards oracle-gate. This item's question (a signed pre-submission verdict that counts) remains open and unchanged.\n\nRe-homed from the deferred signed-verdict option of the 2026-10-25 proposal.",
   "description": "Deferred from the 2026-10-25 oracle proposal (second Advisor review, option b1). A trusted service on the gateway host could review an exact patch before a PR exists and sign a verdict bound to the patch digest and file list; oracle-gate would then accept it the way it accepts a stand-in attestation for an exact head. That changes what the required gate trusts and adds an always-on, authenticated service on a home machine.\n\nDecision gate: consider only if, 30 days after oracle-local-prepr-review-20261025 lands, NO-SHIP or SHIP WITH FIXES round trips on opened PRs remain the main cause of merge latency. Record the measurement, then write a decision record and get the owner's approval before any build.\n\nGuardrails: no change to oracle-gate's trust without that decision record and owner approval; a verdict must bind to the exact patch digest and file list; an asleep host means pending, never a pass.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "c28c23cab0ab45f48f88d5cb087515a3",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T15:03:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "142b66066af64863ad9305fc7c6ae349",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
