@@ -3313,6 +3313,13 @@
       "status": "done",
       "title": "Pilot SQL dialect generator on the existing sqlglot-upstream harness"
     },
+    "ci-windows-fcntl-and-git-utf8-fixes-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Fix Windows fcntl import in oracle-reviewers local.py and UTF-8 git decoding in four scripts"
+    },
     "ci-workflow-fanout-oracle-text-edit-20261025": {
       "claim": null,
       "needs": [

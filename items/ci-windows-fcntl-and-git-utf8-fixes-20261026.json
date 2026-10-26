@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "DECISION GATE: `_project/scripts/oracle_reviewers/local.py` imports `fcntl` only inside POSIX locking helpers (or guarded by `sys.platform != 'win32'`), and `tests/unit/scripts/oracle_reviewers/test_local_review.py` calls `pytest.importorskip('fcntl')` at module level so explicit-path `pytest tests/unit/scripts/oracle_reviewers/test_local_review.py` skips cleanly when `fcntl` is unavailable",
+    "VERIFY: A unit test imports `_project.scripts.oracle_reviewers.local` with `sys.modules['fcntl'] = None` and succeeds; running pytest on `test_local_review.py` as an explicit CLI argument when `fcntl` is blocked exits 0 (skipped), not collection error",
+    "VERIFY: `scripts/doc_reference_inventory.py`, `_project/scripts/inert_paths.py`, `scripts/heavy_tier_needed.py`, and `_project/scripts/oracle_reviewers/local.py` pass `encoding='utf-8'` (with `errors='replace'` where appropriate for diff/show payloads) on their `git` `text=True` subprocess calls, pinned by unit tests feeding byte 0x9d (UTF-8 U+201D)",
+    "GUARDRAIL: Zero changes to `.github/workflows/oracle-*.yml` (oracle workflow files are out of scope); `make pr-preflight` and `make comment-policy-check` pass; PR merges with `Decision: **SHIP**` on the exact head"
+  ],
+  "context": "Source: 2026-10-26 adversarial review of cross-session CI changes. Also log the low-severity #3418 observation (`oracle-verdict.yml` moving retry-state upload after POST may not record a strike on deterministic 422) on `oracle-external-review-findings-20261026` without touching oracle workflows.",
+  "description": "Objective: remove the concrete Windows runtime failures behind nightly t3:windows (#2568/#2964) and PR #3548's collection error without adding baseline debt. PR #3543 moved `import fcntl` out of `tests/unit/scripts/oracle_reviewers/test_local_review.py`, but line 12 still imports `_project/scripts/oracle_reviewers/local.py`, which runs `import fcntl` at module top level (line 5). When `test_local_review.py` is passed as an explicit path (or collected on Windows), collection fails with `ModuleNotFoundError: No module named 'fcntl'`. Separately, four scripts decode `git -z` or `git show` output with `text=True` and no `encoding`, using the locale encoding (cp1252 on Windows, where byte 0x9d from UTF-8 smart quotes raises `UnicodeDecodeError`): `scripts/doc_reference_inventory.py:47`, `_project/scripts/inert_paths.py:322`, `scripts/heavy_tier_needed.py:73-92`, and `_project/scripts/oracle_reviewers/local.py:105`. Prior art: extends `scripts/sqlglot_fork_diff.py` (#3481, `encoding='utf-8'`) and `#3543`'s lazy POSIX import pattern.",
+  "links": [
+    "_project/scripts/oracle_reviewers/local.py",
+    "tests/unit/scripts/oracle_reviewers/test_local_review.py",
+    "scripts/doc_reference_inventory.py",
+    "_project/scripts/inert_paths.py",
+    "scripts/heavy_tier_needed.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-26T19:04:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1f44cf79455046d8ac7dcbe9db05b2c0",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
