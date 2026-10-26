@@ -357,8 +357,12 @@ def _base_difference(results: dict, benchmark: str, query: str, engine: str, can
     if base_benchmark == augmentation.BASE and not augmentation.base_query(query).isdigit():
         base_benchmark = PARTS
     base = results.get((engine, base_benchmark, query, "candidate"))
-    if base is None or base.rows is None:
-        return None
+    if base is None:
+        return f"{base_benchmark} q{query} on {engine} was not executed"
+    if base.error is not None:
+        return f"{base_benchmark} q{query} on {engine} failed: {base.error}"
+    if base.rows is None:
+        return f"{base_benchmark} q{query} on {engine} returned no outcome"
     return first_difference(candidate.rows, base.rows)
 
 

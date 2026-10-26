@@ -555,3 +555,15 @@ def test_sqlite_engine_interrupts_a_runaway_query_at_the_budget(tmp_path):
         engine.execute("WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c) SELECT COUNT(*) FROM c")
     assert engine.execute("SELECT 1") == [(1,)]
     engine.close()
+
+
+@pytest.mark.parametrize("base", [None, gate.Outcome(error="timeout"), gate.Outcome()])
+def test_obt_base_equivalence_fails_closed_without_base_rows(base):
+    candidate = gate.Outcome(rows=[(1,)])
+    results = {("duckdb", "tpcds_obt", "1", "candidate"): candidate}
+    if base is not None:
+        results[("duckdb", "tpcds", "1", "candidate")] = base
+    side = {"queries": {"tpcds_obt": {"1": {"duckdb": "SELECT 1"}}}}
+    report = gate.evaluate(results, {"candidate": side}, {}, [], ["duckdb"])
+    assert not report.passed
+    assert [(f.benchmark, f.check) for f in report.unexplained] == [("tpcds_obt", "base-equivalence")]

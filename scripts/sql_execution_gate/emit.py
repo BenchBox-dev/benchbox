@@ -84,8 +84,7 @@ def main(argv: list[str] | None = None) -> int:
         from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
 
         base = TPCDSBenchmark(scale_factor=args.scale, output_dir=scratch / "tpcds")
-        if "tpcds" in wanted:
-            queries["tpcds"] = _emit("tpcds", base, range(1, 100), TPCDS_SEED, dialects)
+        queries["tpcds"] = _emit("tpcds", base, range(1, 100), TPCDS_SEED, dialects)
         augmented = _augmented("tpcds", base, ids, seeds, dialects)
         if augmented:
             queries["tpcds-augmented"] = augmented
