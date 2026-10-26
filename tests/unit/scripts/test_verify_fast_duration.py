@@ -281,3 +281,29 @@ def test_committed_baseline_verifies_against_itself_as_pass() -> None:
 
     assert report["verdict"] == "pass"
     assert report["coverage"] == 1.0
+
+
+def test_new_test_allowance_is_applied_per_test() -> None:
+    base = {"tests/test_sample.py::test_base": 100.0}
+    current = dict(base)
+    current["tests/test_new.py::test_slow"] = 100.0
+    current.update({f"tests/test_new.py::test_cheap_{index}": 0.0 for index in range(199)})
+
+    report = baseline.verify_durations(base, current)
+
+    assert report["new_test_excess_seconds"] == pytest.approx(99.5)
+    assert report["verdict"] == "would-block"
+
+
+def test_disjoint_ids_are_neutral_not_pass() -> None:
+    report = baseline.verify_durations({"tests/a.py::test_a": 5.0}, {"tests/b.py::test_b": 5.0})
+
+    assert report["verdict"] == "neutral"
+    assert "reason" in report
+    assert "Verdict: **neutral**" in baseline.verify_markdown(report)
+
+
+def test_zero_baseline_sum_is_neutral() -> None:
+    report = baseline.verify_durations({"tests/a.py::test_a": 0.0}, {"tests/a.py::test_a": 5.0})
+
+    assert report["verdict"] == "neutral"

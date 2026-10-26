@@ -403,7 +403,7 @@ def verify_durations(
     baseline_sum = float(sum(baseline_tests[nodeid] for nodeid in shared))
     pr_sum = float(sum(pr_tests[nodeid] for nodeid in shared))
     new_sum = float(sum(pr_tests[nodeid] for nodeid in new_ids))
-    new_excess = max(0.0, new_sum - new_test_allowance * len(new_ids))
+    new_excess = float(sum(max(0.0, pr_tests[nodeid] - new_test_allowance) for nodeid in new_ids))
     effective_sum = pr_sum + new_excess
     delta = effective_sum - baseline_sum
     ratio = effective_sum / baseline_sum if baseline_sum > 0 else None
@@ -412,7 +412,12 @@ def verify_durations(
     coverage = len(shared) / len(baseline_tests) if baseline_tests else None
     slower = ratio is not None and ratio > 1 + ratio_threshold and delta > delta_seconds
     return {
-        "verdict": "would-block" if slower else "pass",
+        "verdict": "would-block" if slower else ("pass" if ratio is not None else "neutral"),
+        **(
+            {}
+            if ratio is not None
+            else {"reason": "no baseline tests with a positive summed time were present in the run"}
+        ),
         "baseline_sum_seconds": baseline_sum,
         "pr_sum_seconds": pr_sum,
         "new_test_count": len(new_ids),
