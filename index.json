@@ -9102,14 +9102,19 @@
       "title": "Finish compatibility cleanup and documentation link checking"
     },
     "docs-mig-site-contract-checks": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T07:47:50Z",
+        "generation": "7dc9b8d94a3442e9a95b4b6218c40aa0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "docs-mig-site-bundle-schema4",
         "docs-mig-core-doc-contracts-export",
         "docs-mig-activate-schema4"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Enforce code-documentation contracts in site CI"
     },
     "docs-mig-site-import": {
