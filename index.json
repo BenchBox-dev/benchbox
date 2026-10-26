@@ -15941,7 +15941,9 @@
     },
     "oracle-absence-auth-pattern-matches-diff-text-20261023": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-absence-json-error-events-20261026"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "The oracle records an attempt as an auth absence when the reviewed diff contains \"401\""
