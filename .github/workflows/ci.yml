@@ -1110,22 +1110,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.ci-paths.outputs.heavy-needed == 'true' && '3.12' || '3.14' }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
       - name: Install dependencies
         run: uv sync --group dev
-
-      - name: Run changed tests on the curated release tree
-        if: ${{ matrix.shard_index == 0 && needs.ci-paths.outputs.code-tests-needed == 'true' }}
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: uv run -- python scripts/release_curation_dry_run.py --changed-since "$BASE_SHA"
 
       - name: Download coverage selection
         if: needs.ci-paths.outputs.heavy-needed != 'true'
@@ -1238,6 +1232,13 @@ jobs:
         run: |
           free -m
           sudo dmesg -T 2>/dev/null | grep -iE 'out of memory|oom-kill|killed process' | tail -20 || true
+
+      - name: Run changed tests on the curated release tree
+        if: ${{ !cancelled() && matrix.shard_index == 0 && needs.ci-paths.outputs.code-tests-needed == 'true' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          UV_PYTHON: '3.14'
+        run: uv run -- python scripts/release_curation_dry_run.py --changed-since "$BASE_SHA"
 
       - name: Upload medium shard evidence
         if: ${{ always() && needs.ci-paths.outputs.heavy-needed == 'true' }}

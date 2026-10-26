@@ -165,9 +165,13 @@ def test_release_tree_check_runs_once_in_the_first_shard() -> None:
     medium = _jobs("ci.yml")["medium-test"]
     steps = _steps_by_name(medium)
     step = steps["Run changed tests on the curated release tree"]
-    assert step["if"] == "${{ matrix.shard_index == 0 && needs.ci-paths.outputs.code-tests-needed == 'true' }}"
-    assert step["env"] == {"BASE_SHA": "${{ github.event.pull_request.base.sha }}"}
+    assert step["if"] == (
+        "${{ !cancelled() && matrix.shard_index == 0 && needs.ci-paths.outputs.code-tests-needed == 'true' }}"
+    )
+    assert step["env"] == {"BASE_SHA": "${{ github.event.pull_request.base.sha }}", "UV_PYTHON": "3.14"}
     assert step["run"] == 'uv run -- python scripts/release_curation_dry_run.py --changed-since "$BASE_SHA"'
+    setup = next(s for s in medium["steps"] if s.get("uses", "").startswith("actions/setup-python@"))
+    assert setup["with"]["python-version"] == "${{ needs.ci-paths.outputs.heavy-needed == 'true' && '3.12' || '3.14' }}"
     checkout = next(s for s in medium["steps"] if s.get("uses", "").startswith("actions/checkout@"))
     assert checkout["with"] == {"fetch-depth": 0}
 
