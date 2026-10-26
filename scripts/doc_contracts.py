@@ -315,12 +315,12 @@ def _tuning() -> dict[str, Any]:
         is_not_rendered_at_execution,
     )
 
-    matrix = _load_script("generate_tuning_support_matrix")
+    sources = _load_script("docs_data_sources")
     platforms: dict[str, Any] = {}
     for platform in sorted(PLATFORM_TUNING_CAPABILITIES.keys() | SESSION_CONFIG_CAPABILITIES.keys()):
         capabilities = PLATFORM_TUNING_CAPABILITIES.get(platform, {})
         applied = sorted(t.value for t, c in capabilities.items() if not is_not_rendered_at_execution(c))
-        introspector = matrix._adapter_has_introspector(platform)
+        introspector = sources._adapter_has_introspector(platform)
         platforms[platform] = {
             "applied_types": applied,
             "not_applied_types": sorted(t.value for t, c in capabilities.items() if is_not_rendered_at_execution(c)),
@@ -508,12 +508,11 @@ def _write_primitives() -> dict[str, Any]:
 
 
 def _publication() -> dict[str, Any]:
-    docs = ROOT / "docs"
+    catalogued = _read_json(OWNERSHIP)["files"]
     gated = sorted(
-        page.relative_to(docs).as_posix()
-        for root in PUBLISH_LIST_ROOTS
-        for suffix in ("*.md", "*.rst")
-        for page in (docs / root).rglob(suffix)
+        path.removeprefix("docs/")
+        for path in catalogued
+        if path.endswith((".md", ".rst")) and path.startswith(tuple(f"docs/{root}/" for root in PUBLISH_LIST_ROOTS))
     )
     exclusions = _read_list(PUBLISH_EXCLUSIONS)
     return {
