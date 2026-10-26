@@ -182,6 +182,18 @@ def expiry_only_change(entry: dict, baseline: dict) -> bool:
     return False
 
 
+def consumer_only_repoint(entry: dict, baseline: dict) -> bool:
+    if os.environ.get("GITHUB_ACTIONS") == "true" or entry["kind"] != "notice":
+        return False
+    rest = {k: v for k, v in entry.items() if k != "consumer"}
+    matches = [
+        base
+        for base in baseline["exceptions"]
+        if base["consumer"] != entry["consumer"] and {k: v for k, v in base.items() if k != "consumer"} == rest
+    ]
+    return len(matches) == 1
+
+
 def counted_exceptions(
     policy: dict, baseline: dict, reviewed: bool, same_commit: bool, changed: set[str]
 ) -> list[dict]:
@@ -190,7 +202,12 @@ def counted_exceptions(
         for e in policy["exceptions"]
         if e in baseline["exceptions"]
         or reviewed
-        or (same_commit and (same_commit_fixture(e, changed) or expiry_only_change(e, baseline)))
+        or (
+            same_commit
+            and (
+                same_commit_fixture(e, changed) or expiry_only_change(e, baseline) or consumer_only_repoint(e, baseline)
+            )
+        )
     ]
 
 
