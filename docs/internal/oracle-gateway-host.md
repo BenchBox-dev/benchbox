@@ -17,14 +17,16 @@ scratch. The design and its accepted risks are in
 | --- | --- |
 | Credential broker | launchd agent `dev.omp.auth-broker`: `omp auth-broker serve --bind=127.0.0.1:8765 --trust-proxy-headers`. Provider logins live in `~/.omp/agent/agent.db`; its bearer token is `~/.omp/auth-broker.token`. Log: `~/.omp/logs/auth-broker.log`. |
 | Gateway | launchd agent `dev.omp.auth-gateway`, which runs `~/.omp/oracle-gateway/run.sh`: `omp auth-gateway serve --bind=127.0.0.1:4000 --clients=~/.omp/oracle-gateway/clients.json`, with `HOME=~/.omp/oracle-gateway/home` and the broker's URL and token. Log: `~/.omp/logs/auth-gateway.log`. |
-| Client scope | `~/.omp/oracle-gateway/clients.json` (0600) admits `oracle-ci` and one client per [named client](#named-clients) token file. Each entry holds the SHA-256 of that client's token, every model `.github/oracle-omp-config.yml` lets a reviewer request, and every broker account logged in for those providers; `oracle-ci`'s token is `client.token`. `accounts` is also an allow-list: stored or environment API keys are never used for those providers. The gateway re-reads the file every 10 seconds. |
+| Client scope | `~/.omp/oracle-gateway/clients.json` (0600) admits `oracle-ci` and one client per [named client](#named-clients) token file. Each entry holds the SHA-256 of that client's token, every model `.github/oracle-omp-config.yml` on `origin/develop` lets a reviewer request, and every broker account logged in for those providers; `oracle-ci`'s token is `client.token`. `accounts` is also an allow-list: stored or environment API keys are never used for those providers. The gateway re-reads the file every 10 seconds. |
 | Gateway admin token | The gateway creates `~/.omp/oracle-gateway/home/.omp/auth-gateway.token` (0600) on first start. It is not scoped by `clients.json`. Never copy it off the host. |
 | Tailnet | `tailscale serve --bg --https=4000 http://127.0.0.1:4000`, reachable only inside the tailnet. |
 | GitHub | `oracle` environment secrets `ORACLE_GATEWAY_TOKEN` (the contents of `client.token`) and `ORACLE_GATEWAY_URL` (`https://<host>.<tailnet>.ts.net:4000`). |
 
 `_project/scripts/oracle_gateway_host.sh` builds and checks all of this. A
 rerun restarts an agent only when its plist or `run.sh` changed; a new
-`clients.json` needs no restart.
+`clients.json` needs no restart. `gateway` fetches `origin/develop` and
+generates `clients.json` from that export, never from the branch the host
+checkout happens to be on.
 
 ## Account-level setup
 
@@ -91,10 +93,9 @@ Then:
    - Sign `gh` in as a repository admin: `gh auth login`.
    - Install `omp` 18.12.6 or later, which has `auth-gateway serve --clients`.
      Put it on `PATH`, or set `OMP=/path/to/omp` for every script run.
-2. Clone this repository and stay on an up-to-date `develop`
-   (`git switch develop && git pull`). The client is scoped to that
-   checkout's `.github/oracle-omp-config.yml`; the script warns on any other
-   branch.
+2. Clone this repository. The host checkout may be on any branch: `gateway`
+   fetches `origin/develop` and scopes every client to that branch's
+   `.github/oracle-omp-config.yml`.
 3. Start the broker: `_project/scripts/oracle_gateway_host.sh broker`.
 4. Log in to each reviewer provider with the account the oracle should spend:
    `omp auth-broker login anthropic`, then `openai-codex`, `muse-code` and
@@ -135,8 +136,8 @@ Then:
 ## Routine changes
 
 - **Reviewer models changed** in `.github/oracle-omp-config.yml`: after the
-  change merges, pull `develop` and run `gateway` again so the client is
-  allowed the new models.
+  change merges, run `gateway` again so every client is allowed the new
+  models.
 - **Rotate the client token:** `rm ~/.omp/oracle-gateway/client.token`, then
   run `gateway` and `secrets`. The old token stops working within 10 seconds.
 - **Rotate the broker token:** `omp auth-broker token --regenerate >/dev/null`,
@@ -159,6 +160,19 @@ local pre-PR reviews use, has `~/.omp/oracle-gateway/local-client.token`.
 Every client gets the same models and pinned accounts as `oracle-ci` and its own
 `tokenSha256`.
 
+**No per-client limits.** `omp auth-gateway` accepts exactly three fields per
+client in `clients.json`: `tokenSha256`, `models` and `accounts`; any other
+field makes it reject the file. It has no per-client rate, concurrency or
+quota setting, so every client draws on the same pinned broker accounts and a
+leaked `oracle-local` or `oracle-cloud` token can spend the quota that
+`oracle-ci` depends on. Limiting a client's `models` would only stop it doing
+its job, so all clients stay identical and `check` fails if they differ. The
+controls are the tailnet policy (only `tag:oracle-ci` and `tag:oracle-cloud`
+nodes and the owner's devices reach the gateway), per-client tokens, and fast
+revocation, which needs neither the broker nor a rebuild of the other clients.
+Watch the providers' own usage pages for unexpected spend. No proxy is built
+in front of the gateway to add limits.
+
 - **Add a client:** create the token file with at least 32 random bytes, mode
   0600, and without printing it, then run `gateway`:
 
@@ -173,9 +187,13 @@ Every client gets the same models and pinned accounts as `oracle-ci` and its own
 - **Rotate a client:** replace its token file with a new one as above, run
   `gateway`, then update the caller's copy. The old token stops working within
   10 seconds. Other clients are unaffected.
-- **Revoke a client:** `rm ~/.omp/oracle-gateway/local-client.token`, then run
-  `gateway`. The entry leaves `clients.json` and the token stops working within
-  10 seconds.
+- **Revoke a client:** `_project/scripts/oracle_gateway_host.sh revoke
+  oracle-local`. It removes that client's entry from `clients.json` with one
+  atomic file replacement and then deletes its token file. It does not call the
+  broker, restart the gateway or rewrite any other entry, so it works with the
+  broker down or a provider logged out and leaves `oracle-ci` untouched. The
+  token stops working within 10 seconds; run `check` to confirm the remaining
+  clients. `revoke` refuses `oracle-ci`: rotate that token instead.
 - **Check:** `check` prints each client's model count and fails if a client's
   `clients.json` models or its live `/v1/models` list differ from `oracle-ci`'s,
   if a client's `/v1/usage` is not refused with a 403, or if `clients.json` and
@@ -201,8 +219,8 @@ three values by name only: `ORACLE_CLOUD_GATEWAY_TOKEN` (the contents of
   [named clients](#named-clients), run `gateway`, then set the new value as
   `ORACLE_CLOUD_GATEWAY_TOKEN` in each cloud environment. The old token stops
   working within 10 seconds; `oracle-ci` and `oracle-local` keep working.
-- **Revoke cloud access:** `rm ~/.omp/oracle-gateway/cloud-client.token`, then
-  run `gateway`. To stop sessions from joining the tailnet at all, also
+- **Revoke cloud access:** `_project/scripts/oracle_gateway_host.sh revoke
+  oracle-cloud`. To stop sessions from joining the tailnet at all, also
   revoke the `tag:oracle-cloud` auth key (below).
 - **Rotate or revoke the Tailscale credential:** in the Tailscale admin
   console, Settings, Keys, revoke the auth key behind `TS_AUTHKEY`, generate a
@@ -239,7 +257,7 @@ rm ~/Library/LaunchAgents/dev.omp.auth-broker.plist
 | Attempts end absent with connection errors | The Mac is asleep, offline or logged out, or an agent is down. Run `check`. |
 | Attempts end absent with `exit code 1` after about two minutes while `check` passes | The tailnet policy does not let `tag:oracle-ci` reach the host on port 4000. Add the port to that tag's grant. While the review job is on the tailnet, `tailscale debug netmap \| jq -r '.PacketFilterRules[].DstPorts[] \| select(.Ports.Last < 65535) \| "\(.IP):\(.Ports.First)"'` on the host lists the ports open to it; with no tagged node online it prints nothing. |
 | Gateway answers 401 | `ORACLE_GATEWAY_TOKEN` does not match `client.token`. Run `secrets`. |
-| Gateway answers 403 for a model | The model is not in `clients.json`. Pull `develop` and run `gateway`. |
+| Gateway answers 403 for a model | The model is not in `clients.json`. Run `gateway`. |
 | `check` reports fewer models than `clients.json` | The gateway has not loaded the file. Run `gateway`. |
 | `tokenSha256` is not 64 hex characters | The clients file was written by hand. Run `gateway`, which generates it. |
 | `launchctl bootstrap` fails with error 5 | The previous instance had not finished unloading. The script waits for it; when loading by hand, wait until `launchctl print` no longer finds the label. |

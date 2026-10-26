@@ -21,7 +21,7 @@ GATEWAY_LABEL=dev.omp.auth-gateway
 GATEWAY_PROVIDERS=(anthropic openai-codex muse-code google-antigravity)
 
 usage() {
-  echo "usage: $(basename "$0") broker|gateway|secrets|check" >&2
+  echo "usage: $(basename "$0") broker|gateway|secrets|check|revoke <client>" >&2
   exit 2
 }
 
@@ -200,12 +200,12 @@ check_gateway_scope() {
   done < <(client_token_files)
 }
 
-warn_unless_develop() {
-  local branch
-  branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null) || branch=unknown
-  if [ "$branch" != develop ]; then
-    echo "warning: $REPO_ROOT is on '$branch', not develop; the client is scoped to that checkout's reviewer models" >&2
-  fi
+export_develop() {
+  local destination=$1
+  git -C "$REPO_ROOT" fetch --quiet origin +refs/heads/develop:refs/remotes/origin/develop \
+    || fail "cannot fetch origin/develop in $REPO_ROOT"
+  git -C "$REPO_ROOT" archive origin/develop _project/scripts .github \
+    | tar -x -C "$destination" || fail "cannot export origin/develop from $REPO_ROOT"
 }
 
 cmd_broker() {
@@ -235,7 +235,6 @@ cmd_gateway() {
   local missing
   missing=$(missing_logins)
   [ -z "$missing" ] || fail "no broker login for: $(printf '%s\n' "$missing" | paste -sd ' ' -)"
-  warn_unless_develop
   mkdir -p "$GATEWAY_DIR/home"
   chmod 700 "$GATEWAY_DIR" "$GATEWAY_DIR/home"
   if [ ! -s "$CLIENT_TOKEN_FILE" ]; then
@@ -248,9 +247,12 @@ cmd_gateway() {
     chmod 600 "$token_file"
     named_clients+=(--client "$name=$token_file")
   done < <(client_token_files)
-  trap 'rm -f "$ACCOUNTS_FILE"' EXIT
+  local develop_dir
+  develop_dir=$(mktemp -d)
+  trap "rm -rf '$ACCOUNTS_FILE' '$develop_dir'" EXIT
+  export_develop "$develop_dir"
   broker_omp usage accounts --json > "$ACCOUNTS_FILE"
-  (cd "$REPO_ROOT" && uv run --quiet --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- \
+  (cd "$develop_dir" && uv run --quiet --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- \
     python -m _project.scripts.oracle_reviewers.cli gateway-clients \
     --token-file "$CLIENT_TOKEN_FILE" ${named_clients[@]+"${named_clients[@]}"} \
     --accounts "$ACCOUNTS_FILE" --out "$CLIENTS_FILE")
@@ -282,6 +284,26 @@ EOF
   echo "gateway: published at $url"
 }
 
+cmd_revoke() {
+  local name=${1:-} token_file staged
+  [ "$name" != oracle-ci ] \
+    || fail "oracle-ci is the review client; rotate its token with '$(basename "$0") gateway' instead"
+  [[ $name =~ ^oracle-[a-z0-9]+(-[a-z0-9]+)*$ ]] \
+    || fail "name a client like oracle-local; usage: $(basename "$0") revoke <client>"
+  token_file=$GATEWAY_DIR/${name#oracle-}-client.token
+  jq -e --arg name "$name" 'has($name)' "$CLIENTS_FILE" >/dev/null 2>&1 || [ -e "$token_file" ] \
+    || fail "$name is neither in $CLIENTS_FILE nor has a token file"
+  staged=$(mktemp "$GATEWAY_DIR/.clients.XXXXXX")
+  if ! jq --indent 2 --arg name "$name" 'del(.[$name])' "$CLIENTS_FILE" > "$staged"; then
+    rm -f "$staged"
+    fail "cannot read $CLIENTS_FILE"
+  fi
+  chmod 600 "$staged"
+  mv "$staged" "$CLIENTS_FILE"
+  rm -f "$token_file"
+  echo "revoked: $name leaves $CLIENTS_FILE and its token file is removed; the gateway stops accepting it within 10 seconds"
+}
+
 cmd_secrets() {
   [ -s "$CLIENT_TOKEN_FILE" ] || fail "no client token; run '$(basename "$0") gateway' first"
   local url
@@ -310,11 +332,20 @@ cmd_check() {
   echo "secrets: ORACLE_GATEWAY_TOKEN and ORACLE_GATEWAY_URL are set"
 }
 
-[ $# -eq 1 ] || usage
-case $1 in
-  broker) cmd_broker ;;
-  gateway) cmd_gateway ;;
-  secrets) cmd_secrets ;;
-  check) cmd_check ;;
-  *) usage ;;
-esac
+main() {
+  [ $# -ge 1 ] || usage
+  case $1 in
+    broker | gateway | secrets | check) [ $# -eq 1 ] || usage ;;
+    revoke) [ $# -eq 2 ] || usage ;;
+  esac
+  case $1 in
+    broker) cmd_broker ;;
+    gateway) cmd_gateway ;;
+    secrets) cmd_secrets ;;
+    check) cmd_check ;;
+    revoke) cmd_revoke "$2" ;;
+    *) usage ;;
+  esac
+}
+
+(return 0 2>/dev/null) || main "$@"
