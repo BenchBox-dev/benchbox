@@ -14931,6 +14931,13 @@
       "status": "dropped",
       "title": "Apply behavioral contract v7 and wire --contract v7"
     },
+    "merge-authority-docs-reconcile-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Reconcile the stand-in and ruleset-relaxation rules across agent docs and correct the relaxation records"
+    },
     "merge-queue-01-decision-and-governance-spec": {
       "claim": null,
       "needs": [],
