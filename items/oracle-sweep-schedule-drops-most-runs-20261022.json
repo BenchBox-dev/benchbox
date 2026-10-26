@@ -8,7 +8,7 @@
     "item:oracle-gate-sweep-cadence-20261025",
     ".github/workflows/oracle-verdict.yml"
   ],
-  "not_before": "2026-10-28T17:30:00Z",
+  "not_before": "2026-10-26T15:51:48Z",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:84d44895758d50f08bed311d",
@@ -56,6 +56,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "d8ee8d45897d48ad8cdfd158f5fc8526",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T15:49:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "991504f8699a4a41b75593875fafa68f",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
