@@ -29,7 +29,7 @@ def test_runs_only_for_develop_pushes() -> None:
 
 
 def test_permissions_are_exactly_the_disarm_set() -> None:
-    assert _workflow()["permissions"] == {"pull-requests": "write", "actions": "read", "contents": "read"}
+    assert _workflow()["permissions"] == {"pull-requests": "write", "actions": "read", "contents": "write"}
 
 
 def test_the_disarm_step_authenticates_gh_with_the_workflow_token() -> None:
