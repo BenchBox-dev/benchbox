@@ -922,7 +922,43 @@ def test_cli_finalize_after_a_failed_install_posts_a_distinct_pending_status_wit
     assert status["description"] == "the pinned omp build could not be installed; no reviewer ran"
     state = json.loads((final_dir / "state" / "state.json").read_text(encoding="utf-8"))
     assert state["outcome"] == "pending" and state["pending_cause"] == "omp-install"
+    assert not (final_dir / "attempt").exists()
     assert not (tmp_path / "no-attempts").exists()
+
+
+def test_a_manual_rerun_after_an_install_failure_keeps_the_head_non_retryable_until_the_status_posts(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _plan(policy, ("small",))
+    plan["manual"] = True
+    plan["previous_state"] = {
+        "pr": plan["pr"],
+        "head_sha": plan["head_sha"],
+        "outcome": "pending",
+        "updated_at": NOW.isoformat(),
+        "retries": [],
+        "pending_cause": "omp-install",
+        "strikes": 0,
+    }
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    final_dir = tmp_path / "final"
+    _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_path),
+        "--attempts-dir",
+        str(tmp_path / "no-attempts"),
+        "--out-dir",
+        str(final_dir),
+        "--omp-install",
+        "failed",
+    )
+    attempt = retry.State.from_json(json.loads((final_dir / "attempt" / "state.json").read_text(encoding="utf-8")))
+    assert attempt.outcome == "pending" and attempt.pending_cause == "omp-install" and len(attempt.retries) == 1
+    assert not retry.due_for_retry(attempt, plan["head_sha"], NOW + timedelta(days=2), policy.retry)
 
 
 def test_cli_finalize_without_the_install_flag_still_decides_from_attempts(

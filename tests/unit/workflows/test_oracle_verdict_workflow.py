@@ -56,6 +56,7 @@ STEP_ORDER = [
     "Log the result when the App is not configured",
     "Mint the App token",
     "Skip a result this head already has",
+    "Record the retry attempt",
     "Post the commit status",
     "Post the findings comment",
     "Post the findings review",
@@ -671,6 +672,25 @@ def test_the_retry_state_is_stored_only_after_every_review_post_succeeds() -> No
     upload = names.index("Upload the retry state")
     for name in ("Post the commit status", "Post the findings comment", "Post the findings review"):
         assert names.index(name) < upload, name
+
+
+def test_the_retry_attempt_is_recorded_before_any_post_without_the_strike() -> None:
+    names = _names()
+    record = _step("Record the retry attempt")
+    for name in ("Post the commit status", "Post the findings comment", "Post the findings review"):
+        assert names.index("Record the retry attempt") < names.index(name), name
+    assert record["with"]["path"].endswith("oracle-final/attempt/state.json")
+    assert record["with"]["name"] == _step("Upload the retry state")["with"]["name"]
+    assert "steps.guard.outputs.skip != 'true'" in record["if"]
+    assert "HAS_APP" not in record["if"]
+    assert record["with"]["overwrite"] is True and record["with"]["if-no-files-found"] == "ignore"
+
+
+def test_the_strike_state_replaces_the_attempt_state_and_needs_a_posted_status() -> None:
+    state = _step("Upload the retry state")
+    assert "steps.status.outcome == 'success'" in state["if"]
+    assert state["with"]["overwrite"] is True
+    assert state["with"]["path"].endswith("oracle-final/state/state.json")
 
 
 def test_only_sweep_and_review_hold_actions_write() -> None:

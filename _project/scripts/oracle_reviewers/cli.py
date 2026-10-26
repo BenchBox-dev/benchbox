@@ -1010,6 +1010,15 @@ def command_ensure_attempt(args: argparse.Namespace) -> int:
     return 0
 
 
+def _write_states(out_dir: Path, *, strikes: int | None = None, **fields: Any) -> None:
+    published = retry.next_state(strikes=strikes, **fields)
+    previous = fields["previous"]
+    if previous is not None and fields["manual"]:
+        attempted = replace(previous, retries=published.retries)
+        _write_json(out_dir / "attempt" / github.STATE_FILE, attempted.to_json())
+    _write_json(out_dir / "state" / github.STATE_FILE, published.to_json())
+
+
 def command_finalize(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
     out_dir = Path(args.out_dir)
@@ -1028,7 +1037,8 @@ def command_finalize(args: argparse.Namespace) -> int:
     elif plan["decision"] == REVIEW and getattr(args, "omp_install", OMP_INSTALLED) == OMP_INSTALL_FAILED:
         previous = retry.State.from_json(plan["previous_state"]) if plan.get("previous_state") else None
         final = report.omp_install_failed()
-        state = retry.next_state(
+        _write_states(
+            out_dir,
             previous=previous,
             pr=plan["pr"],
             head_sha=plan["head_sha"],
@@ -1038,11 +1048,11 @@ def command_finalize(args: argparse.Namespace) -> int:
             pool_blocked_until=_carried_blocks(previous, plan["head_sha"], now, False),
             pending_cause=final.pending_cause,
         )
-        _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     elif plan["decision"] in (CARRY, REFUSED):
         previous = retry.State.from_json(plan["previous_state"]) if plan.get("previous_state") else None
         final = report.carried(plan) if plan["decision"] == CARRY else report.refused(plan)
-        state = retry.next_state(
+        _write_states(
+            out_dir,
             previous=previous,
             pr=plan["pr"],
             head_sha=plan["head_sha"],
@@ -1052,7 +1062,6 @@ def command_finalize(args: argparse.Namespace) -> int:
             pool_blocked_until=_carried_blocks(previous, plan["head_sha"], now, False),
             strikes=final.strikes,
         )
-        _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     else:
         classification = _read_classification(Path(args.classification)) if args.classification else None
         selection_input = _selection(plan, classification)
@@ -1063,7 +1072,8 @@ def command_finalize(args: argparse.Namespace) -> int:
         commentable = commentable_lines(diff_path.read_bytes().decode("utf-8")) if diff_path.is_file() else {}
         final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable, workspace=ws)
         previous = plan.get("previous_state")
-        state = retry.next_state(
+        _write_states(
+            out_dir,
             previous=retry.State.from_json(previous) if previous else None,
             pr=plan["pr"],
             head_sha=plan["head_sha"],
@@ -1074,7 +1084,6 @@ def command_finalize(args: argparse.Namespace) -> int:
             pending_cause=final.pending_cause,
             strikes=final.strikes,
         )
-        _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     _write_json(out_dir / "status.json", report.status_payload(plan, final, run_url))
     if final.body and (plan["findings_delivery"] == "comment" or final.review is None):
         _write_json(out_dir / "comment.json", {"body": final.body})
