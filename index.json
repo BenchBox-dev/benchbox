@@ -16063,6 +16063,15 @@
       "status": "done",
       "title": "Check the oracle diff parser for the same control-character line splitting"
     },
+    "oracle-dispute-keyed-published-evidence-20261026": {
+      "claim": null,
+      "needs": [
+        "oracle-carry-byte-identical-20261026"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Bind each oracle dispute to its finding id, require evidence to maintain it, and publish every disposition"
+    },
     "oracle-duplicate-findings-collapse-to-same-id-20261024": {
       "claim": null,
       "needs": [],

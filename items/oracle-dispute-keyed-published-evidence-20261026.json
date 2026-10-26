@@ -1,0 +1,30 @@
+{
+  "acceptance": [
+    "Tests that fail on develop and pass after: a dispute is keyed to its D<n>; maintain without evidence makes the attempt invalid; maintain with a matched claim and a verified citation is accepted and published; withdrawal rules unchanged; a missing disposition is invalid; a 'dispute holds' narrative with not_fixed status is rejected as a contradiction; marker-like rebuttal text is stripped; the merge digest lists withdrawals.",
+    "Replay fixtures built from #3465 and #3407 produce published dispositions.",
+    "Live: the first real dispute after merge shows its published disposition (record PR and thread); if none occurs before the batch ends, context records the pending live check.",
+    "docs/internal/oracle-review-v2.md dispute section matches the code.",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "OWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q1 local findings block with dispute plus owner adjudication; Q5 dispute rounds budget-exempt with escalation (separate item). Research: DisputeProtocol report sections A-D.",
+  "description": "Problem: CI disputation is half-built (25 disputes on 16 PRs in 14 days; 60% maintained, 32% withdrawn). A Dispute: reply is collected without the finding id (_project/scripts/oracle_reviewers/cli.py:191-212). Withdrawal must cite an examined head file:line (evidence.py:277-309), but maintaining needs nothing: a missing entry defaults to NOT_FIXED (protocol.py:488). The reviewer's disposition evidence is never published (report.py:259-263), so the author sees only 'Still open' even when the reviewer answered the rebuttal (PR #3465, run 40233057703). One sampled disposition concluded 'The dispute holds' yet stayed not_fixed (#3407). The merge digest's withdrawal audit scans for a 'Withdrawn:' heading the oracle never emits (soundness_merge_digest.py:84,455-476). Rebuttal text is not stripped of oracle marker grammar.\n\nOutcome: disputes are keyed by the thread's oracle-defect marker id. For every disputed finding the verdict must give an explicit disposition: withdraw (existing verified-citation rule) or maintain (restating the rebuttal's claim, matched to the stored claim hash, and citing a verified examined file:line or a reproduction). A missing, unsupported or self-contradicting disposition makes the attempt invalid (existing invalid-verdict path, so it retries) and is never a silent maintain. Each disposition and its evidence is published under its finding in the review body (redacted). Marker-like lines are stripped from rebuttal bodies before they reach the brief. The merge digest parses the heading the oracle actually emits. This is shared code, so the local review inherits it once it runs the driver.\n\nDecision gates:\n1. Define the claim match mechanically (the plan stores a normalised hash per rebuttal; the verdict echoes it) and prove an injected instruction in a rebuttal cannot satisfy it.\n2. Publication stays under the review body cap (#3488): overflow truncates details but never drops a disposition line.\n3. An unkeyed rebuttal (no marker) is shown as data and forces nothing.\n\nItem guardrails: no change to budgets, triggers or escalation (separate item); no gate change.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, then make agent-write-preflight; the primary clone is read-only. Never use git stash (refs/stash is shared across worktrees). Commit as Joe Harris <joeharris76@gmail.com>, staging explicit paths only; no git add -A, no --no-verify, no SKIP, no agent trailers. Durable text (commits, PR bodies, docs, code) carries no tracker ids, session labels or plan references. Maintained code has no explanatory comments or docstrings (make comment-policy-check). Before publishing run make docs-reference-inventory-check, make doc-contracts-guard and make pr-preflight, and self-review with the code review action, fixing every Critical and Required finding. Publish only with make pr-open: never gh pr create, a raw push-and-open, or a PR-body override line; if make pr-open refuses, stop and report the exact refusal instead of routing around it. Until oracle-omp-pin-single-source-20261026 merges, make pr-open may run only with PATH prefixed by the darwin-arm64 omp 18.12.1 build whose SHA-256 that item records, verified with shasum immediately before use; never any other side-loaded omp. Close out only with oracle SHIP on the exact head, every oracle thread answered (reply naming the fixing SHA, then resolve) and make pr-arm; never raw gh pr merge, a stand-in, an adjudication, or a ruleset or settings change. Never print tokens, keys, or the gateway URL or hostname; never spend model quota outside the review harness. Owner decisions are recorded in context and in the decisions file; a step that would contradict one stops and asks the owner.",
+  "links": [
+    "_project/scripts/oracle_reviewers/cli.py",
+    "_project/scripts/oracle_reviewers/protocol.py",
+    "_project/scripts/oracle_reviewers/evidence.py",
+    "_project/scripts/oracle_reviewers/render.py",
+    "_project/scripts/oracle_reviewers/report.py",
+    "_project/scripts/soundness_merge_digest.py",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/DisputeProtocol.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T14:59:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1cfd79f336d948528ebf5384d8e19db5",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
