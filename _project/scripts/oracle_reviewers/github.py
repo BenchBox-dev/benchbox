@@ -53,11 +53,25 @@ def get_diff(repo: str, pr: int) -> bytes | None:
         return None
 
 
-def get_file(repo: str, path: str, ref: str) -> bytes | None:
+def merge_base(repo: str, base: str, head: str) -> str | None:
     try:
-        return _gh_bytes(f"repos/{repo}/contents/{quote(path)}?ref={ref}", accept="application/vnd.github.raw+json")
-    except GitHubError:
+        sha = (get_json(f"repos/{repo}/compare/{base}...{head}?per_page=1").get("merge_base_commit") or {}).get("sha")
+    except (GitHubError, ValueError):
         return None
+    return sha if isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{40}", sha) else None
+
+
+def tree_blobs(repo: str, sha: str) -> dict[str, tuple[str, str]] | None:
+    try:
+        data = get_json(f"repos/{repo}/git/trees/{sha}?recursive=1")
+    except (GitHubError, ValueError):
+        return None
+    entries = data.get("tree")
+    if data.get("truncated") or not isinstance(entries, list):
+        return None
+    return {
+        entry["path"]: (entry["mode"], entry["sha"]) for entry in entries if entry.get("type") in ("blob", "commit")
+    }
 
 
 _THREADS_QUERY = """

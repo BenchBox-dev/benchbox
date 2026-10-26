@@ -266,9 +266,9 @@ sanitised model text, which cannot contain an HTML comment; defect file paths
 are escaped the same way. It records the
 cycle and round, the kind of round, the decision, the head, the base branch,
 the reviewer, the size bucket (in the marker's `tier` field), the strike count, the open defects with their ids, and
-a hash of each changed file's patch (an 8-hex path hash and a 16-hex patch hash;
+a hash of each changed file's identity (an 8-hex path hash and a 16-hex identity hash;
 a marker over 4 KB keeps only the aggregate digest, which is computed from the
-full-length patch hashes). The per-file map fits for about 200 changed files
+full-length identity hashes). The per-file map fits for about 200 changed files
 when 10 defects are open, and about 210 when none are. Without the map, every
 file counts as changed, so a larger pull request gets a follow-up on every
 file after each push instead of one on the files that changed. `plan` reads
@@ -276,9 +276,18 @@ every review from the App's Bot account, page by page, and ignores dismissed rev
 reviews without a marker. A review with more than one marker, or a marker that
 does not decode, holds the result pending, as does a review list that cannot be
 read. Pending results write no marker.
-A file's patch hash ignores the `index` line and hunk line numbers, except for
-binary files, so a rebase that leaves the pull request's changes alone keeps
-every hash. Prose files outside the review scope are left out.
+A file's identity is its old path, new path, old and new mode, and the full
+merge-base and head blob ids. In CI the files API supplies the paths and the
+head blob id, and the recursive git trees of the merge base and the head
+supply the modes and blob ids; locally `git diff --raw --full-index
+--no-abbrev` against the merge base supplies the same six fields, so one pull
+request has one digest in both places. A file added or removed has an absent
+mode (`000000`) and blob id (forty zeros) on the missing side. The patch digest
+covers every changed file, prose included, and is the one digest that keys
+carry, strikes and forced re-review budgets. If any field cannot be read (a
+truncated file list, a truncated tree, a head blob id that disagrees with the
+tree, a merge base that cannot be resolved) the digest is `unread-<head>` and
+nothing carries.
 
 | Situation | Action |
 |---|---|
@@ -286,16 +295,24 @@ every hash. Prose files outside the review scope are left out.
 | Three DO NOT SHIP decisions | refused: one review per head, no reviewer runs |
 | The latest decision is on this head | nothing runs |
 | Base branch changed | new cycle with a full review; strikes are kept |
-| Patch unchanged (a rebase or a prose-only change) | the decision is carried to the new head |
+| Patch digest unchanged (the merge-base diff is byte-identical) | the decision is carried to the new head |
 | Latest SHIP or SHIP WITH FIXES, patch changed | follow-up on the changed files |
 | Latest DO NOT SHIP, patch changed | new cycle with a full review that quotes the previous summary |
 | Author rebuttal (`/oracle-review` comment, or a push after a `Dispute:` thread reply), head unchanged | forced follow-up that rejudges the disputed defects, at most twice per patch |
-A move of the base commit alone does not restart a cycle. A diff that cannot be
-read, a file list that is truncated, or a file missing from the diff never
-carries a decision, and neither does a file leaving the pull request: each
-gives a follow-up on every file instead. A decision carries only when the
-full-length digest matches; when it differs but the stored per-file hashes do
-not show which file changed, the follow-up covers every file.
+A move of the base commit alone does not restart a cycle. A file list that is
+truncated, or a file whose blob ids cannot be read, never carries a decision,
+and neither does a file leaving the pull request: each gives a follow-up on
+every file instead. A decision carries only when the full-length digest
+matches, so a rebase that changes any file the pull request touches, a hunk
+that moves, or a mode, rename or binary change gets a fresh review; when the
+digest differs but the stored per-file hashes do not show which file changed,
+the follow-up covers every file.
+
+Because the digest keys strikes and forced re-review budgets as well, a rebase
+onto a develop that changed one of the pull request's files is a new digest: it
+can add a strike when that patch is reviewed and refused, and it starts a new
+forced re-review allowance. A rebase that leaves the merge-base diff
+byte-identical keeps the digest, the strike count and the allowance.
 
 A follow-up brief lists the earlier defects with their ids (D1, D2, ...,
 numbered by code within a cycle) and asks the reviewer to mark each one fixed,
@@ -325,7 +342,7 @@ acknowledgement such as `done` is not a dispute.
 A forced re-review runs only after a SHIP or SHIP WITH FIXES decision, never
 after DO NOT SHIP. The third forced re-review of one patch is refused with a
 message to change the patch or ask the owner for a stand-in: empty commits and
-rebases keep the patch digest, so they share the patch's budget instead of
+byte-identical rebases keep the patch digest, so they share the patch's budget instead of
 resetting it. Ordinary follow-ups never consume this budget, and a push that
 disputes nothing is still carried, not rejudged.
 

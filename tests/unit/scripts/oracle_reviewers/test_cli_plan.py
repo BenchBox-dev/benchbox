@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import stat
@@ -38,7 +39,40 @@ def _pull(**over: Any) -> dict[str, Any]:
     return pull
 
 
-UNRELATED = "unrelated\n"
+MERGE_BASE = "d" * 40
+
+
+def _blob(text: str) -> str:
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()
+
+
+def _sections(diff: str | None) -> dict[str, tuple[str, str, str]]:
+    found = {}
+    for section in re.split(r"(?m)^(?=diff --git )", diff or ""):
+        header = re.match(r"diff --git a/(\S+) b/(\S+)\n", section)
+        if header is None:
+            continue
+        old = re.search(r"(?m)^old mode (\d+)$", section)
+        new = re.search(r"(?m)^new mode (\d+)$", section)
+        found[header.group(2)] = (old.group(1) if old else MODE, new.group(1) if new else MODE, _blob(section))
+    return found
+
+
+def _head_entry(diff: str | None, path: str) -> tuple[str, str]:
+    _, mode, blob = _sections(diff).get(path, (MODE, MODE, _blob(f"head:{path}")))
+    return mode, blob
+
+
+def _base_entry(diff: str | None, path: str, tag: str = "") -> tuple[str, str]:
+    mode = _sections(diff).get(path, (MODE, MODE, ""))[0]
+    return mode, _blob(f"base:{tag}:{path}")
+
+
+def _states(diff: str, tag: str = "") -> list[protocol.FileState]:
+    return [
+        protocol.file_state(path, None, _base_entry(diff, path, tag), _head_entry(diff, path))
+        for path in _sections(diff)
+    ]
 
 
 class FakeGitHub:
@@ -56,7 +90,8 @@ class FakeGitHub:
         self.threads = None if threads is None else list(threads)
         self.diff = diff
         self.dispatched: list[int] = []
-        self.contents: dict[str, str] = {}
+        self.base_tag = ""
+        self.merge_base: str | None = MERGE_BASE
         self.reviews: list[dict[str, Any]] | None = []
         self.reread_sha: str | None = None
         self._pull_reads = 0
@@ -70,11 +105,8 @@ class FakeGitHub:
         monkeypatch.setattr(github, "latest_state", lambda repo, pr: self.state)
         monkeypatch.setattr(github, "dispatch", lambda repo, workflow, pr: self.dispatched.append(pr))
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
-        monkeypatch.setattr(
-            github,
-            "get_file",
-            lambda repo, path, ref: self.contents.get(path, UNRELATED).encode("utf-8"),
-        )
+        monkeypatch.setattr(github, "merge_base", lambda repo, base, head: self.merge_base)
+        monkeypatch.setattr(github, "tree_blobs", self._tree)
 
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.reviews is None:
@@ -99,8 +131,18 @@ class FakeGitHub:
     def _diff(self, repo: str, pr: int) -> bytes | None:
         return None if self.diff is None else self.diff.encode("utf-8")
 
+    def _tree(self, repo: str, sha: str) -> dict[str, tuple[str, str]] | None:
+        paths = [(item.get("previous_filename") or item["filename"], item["filename"]) for item in self.files]
+        if sha == self.merge_base:
+            return {old: _base_entry(self.diff, new, self.base_tag) for old, new in paths}
+        if sha == HEAD:
+            return {new: _head_entry(self.diff, new) for _, new in paths}
+        return None
+
     def _paginated(self, path: str) -> list[dict[str, Any]]:
-        return [self.pull] if path.startswith(f"repos/{REPO}/pulls?") else self.files
+        if path.startswith(f"repos/{REPO}/pulls?"):
+            return [self.pull]
+        return [{**item, "sha": _head_entry(self.diff, item["filename"])[1]} for item in self.files]
 
 
 def _env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, event_name: str, event: dict[str, Any], ref: str) -> Path:
@@ -406,9 +448,9 @@ OLD_HEAD = "c" * 40
 
 def _record(diff: str, decision: str, **over: Any) -> dict[str, Any]:
     paths = over.pop("paths", None)
-    patches = protocol.file_patches(diff, lambda path: UNRELATED)
-    chosen = paths if paths is not None else sorted(patches)
-    current = protocol.patch_map(patches, chosen)
+    prints = protocol.fingerprints(_states(diff, over.pop("tag", "")))
+    chosen = paths if paths is not None else sorted(prints)
+    current = protocol.patch_map(prints, chosen)
     record = {
         "v": 1,
         "cycle": 1,
@@ -422,7 +464,7 @@ def _record(diff: str, decision: str, **over: Any) -> dict[str, Any]:
         "strikes_after": 1 if decision == "DO_NOT_SHIP" else 0,
         "open_defects": [],
         "next_id": 1,
-        "patch_digest": protocol.patch_digest(patches, chosen) or f"unread-{OLD_HEAD}",
+        "patch_digest": protocol.patch_digest(prints) if prints else f"unread-{OLD_HEAD}",
         "carried": False,
         "summary": "",
         **over,
@@ -474,24 +516,98 @@ def test_no_review_history_gives_a_first_full_review(monkeypatch: pytest.MonkeyP
     assert (tmp_path / "plan" / "diff.patch").read_text(encoding="utf-8") == TWO_FILE_DIFF
 
 
-@pytest.mark.parametrize("diff", [TWO_FILE_DIFF, REBASED], ids=["identical", "rebased"])
+NOTES_FILE = {"filename": "docs/notes.md", "additions": 1, "deletions": 0}
+NOTES_SECTION = (
+    "diff --git a/docs/notes.md b/docs/notes.md\n--- a/docs/notes.md\n+++ b/docs/notes.md\n@@ -1 +1 @@\n-a\n+b\n"
+)
+
+
 @pytest.mark.parametrize("decision", ["SHIP", "SHIP_WITH_FIXES", "DO_NOT_SHIP"])
-def test_an_unchanged_patch_carries_the_decision_without_a_reviewer(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, diff: str, decision: str
+def test_a_byte_identical_diff_carries_the_decision_without_a_reviewer(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, decision: str
 ) -> None:
-    files = [*TWO_FILES, {"filename": "docs/notes.md", "additions": 1, "deletions": 0, "sha": "9" * 40}]
-    notes = (
-        diff
-        + "diff --git a/docs/notes.md b/docs/notes.md\n--- a/docs/notes.md\n+++ b/docs/notes.md\n@@ -1 +1 @@\n-a\n+b\n"
-    )
+    diff = TWO_FILE_DIFF + NOTES_SECTION
     fake = _fake(
-        _review(_record(TWO_FILE_DIFF, decision)), files=files, diff=notes, base={"ref": "develop", "sha": "f" * 40}
+        _review(_record(diff, decision)),
+        files=[*TWO_FILES, NOTES_FILE],
+        diff=diff,
+        base={"ref": "develop", "sha": "f" * 40},
     )
     _, values, plan = _plan(monkeypatch, tmp_path, fake)
     assert values["decision"] == "carry" and values["post"] == "true"
     assert plan["reviewed_head"] == OLD_HEAD and plan["chain"] == []
     assert plan["protocol"]["kind"] == "carry" and plan["protocol"]["previous"]["decision"] == decision
     assert not (tmp_path / "plan" / "diff.patch").exists()
+
+
+@pytest.mark.parametrize(
+    "change",
+    ["relocated", "prose", "mode", "base-blob", "merge-base-missing"],
+)
+def test_any_difference_in_the_merge_base_diff_is_reviewed_again(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, change: str
+) -> None:
+    diff = TWO_FILE_DIFF + NOTES_SECTION
+    record = _record(diff, "SHIP")
+    current = {
+        "relocated": diff.replace("@@ -1,1 +1,2 @@", "@@ -7,1 +7,2 @@"),
+        "prose": diff.replace("+b\n", "+c\n"),
+        "mode": diff.replace(f"--- a/{CAPTURE}", f"old mode 100644\nnew mode 100755\n--- a/{CAPTURE}"),
+    }.get(change, diff)
+    fake = _fake(_review(record), files=[*TWO_FILES, NOTES_FILE], diff=current)
+    if change == "base-blob":
+        fake.base_tag = "moved"
+    if change == "merge-base-missing":
+        fake.merge_base = None
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "review" and plan["protocol"]["kind"] == "follow-up"
+    if change == "merge-base-missing":
+        assert plan["protocol"]["patch_digest"] == f"unread-{HEAD}"
+
+
+def test_a_file_without_an_api_blob_id_takes_its_head_blob_from_the_head_tree(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _fake(_review(_record(TWO_FILE_DIFF, "SHIP")))
+    fake._paginated = lambda path: (
+        [fake.pull] if path.startswith(f"repos/{REPO}/pulls?") else [{**item, "sha": ""} for item in TWO_FILES]
+    )
+    _, values, _ = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "carry"
+
+
+def test_a_missing_blob_id_for_one_file_carries_nothing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP")
+    fake = _fake(_review(record))
+    whole = fake._tree
+    fake._tree = lambda repo, sha: {path: entry for path, entry in (whole(repo, sha) or {}).items() if path == CHECKER}
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "review"
+    assert plan["protocol"]["patch_digest"] == f"unread-{HEAD}"
+
+
+BINARY = "assets/blob.bin"
+BASE_BLOB = "c" * 40
+REVIEWED_BLOB = "1234567890" + "a" * 30
+FORGED_BLOB = "1234567890" + "b" * 30
+
+
+@pytest.mark.parametrize(("head_blob", "decision"), [(REVIEWED_BLOB, "carry"), (FORGED_BLOB, "review")])
+def test_a_binary_file_with_the_same_abbreviated_id_but_a_different_full_id_does_not_carry(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, head_blob: str, decision: str
+) -> None:
+    files = [{"filename": BINARY, "additions": 0, "deletions": 0, "status": "modified"}]
+    record = _record(TWO_FILE_DIFF, "SHIP")
+    record["patch_digest"] = protocol.patch_digest(
+        protocol.fingerprints([protocol.file_state(BINARY, None, (MODE, BASE_BLOB), (MODE, REVIEWED_BLOB))])
+    )
+    fake = _fake(_review(record), files=files)
+    fake._tree = lambda repo, sha: {BINARY: (MODE, head_blob if sha == HEAD else BASE_BLOB)}
+    fake._paginated = lambda path: (
+        [fake.pull] if path.startswith(f"repos/{REPO}/pulls?") else [{**files[0], "sha": head_blob}]
+    )
+    _, values, _ = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == decision
 
 
 def test_a_code_change_outside_soundness_paths_is_followed_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -738,216 +854,6 @@ def test_a_mode_only_change_is_a_changed_patch(monkeypatch: pytest.MonkeyPatch, 
     record = _record(TWO_FILE_DIFF, "SHIP")
     _, values, plan = _plan(monkeypatch, tmp_path, _fake(_review(record), diff=moded))
     assert values["decision"] == "review" and plan["protocol"]["changed"] == [CAPTURE]
-
-
-def test_a_binary_change_is_never_mistaken_for_an_unchanged_patch() -> None:
-    def binary(blob: str) -> str:
-        return f"diff --git a/a.bin b/a.bin\nindex 111..{blob} 100644\nBinary files a/a.bin and b/a.bin differ\n"
-
-    assert protocol.file_patches(binary("222")) != protocol.file_patches(binary("333"))
-    text = "diff --git a/a.py b/a.py\nindex 111..{0} 100644\n--- a/a.py\n+++ b/a.py\n@@ -{1},1 +{1},2 @@\n a\n+b\n"
-    assert protocol.file_patches(text.format("222", 1)) == protocol.file_patches(text.format("333", 9))
-
-
-def _file_diff(*hunks: str) -> str:
-    return "diff --git a/a.py b/a.py\nindex 111..222 100644\n--- a/a.py\n+++ b/a.py\n" + "".join(hunks)
-
-
-GUARDED = "@@ -{0},3 +{0},4 @@ def {1}(user):\n a\n+require_admin(user)\n b\n c\n"
-MOVE_OUT = "@@ -{0},4 +{0},3 @@\n a\n-require_admin(user)\n b\n c\n"
-MOVE_IN = "@@ -{0},3 +{0},4 @@\n a\n+require_admin(user)\n b\n c\n"
-
-
-def test_the_same_added_line_in_a_different_function_is_a_different_patch() -> None:
-    guarded = protocol.file_patches(_file_diff(GUARDED.format(10, "guarded_write")))
-    public = protocol.file_patches(_file_diff(GUARDED.format(40, "public_read")))
-    assert guarded != public
-
-
-def test_a_line_moved_to_another_place_is_a_different_patch() -> None:
-    near = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(20)))
-    far = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(50)))
-    assert near != far
-
-
-def test_a_rebase_that_shifts_every_hunk_equally_keeps_the_patch() -> None:
-    before = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(20)))
-    after = protocol.file_patches(_file_diff(MOVE_OUT.format(18), MOVE_IN.format(28)))
-    assert before == after
-
-
-def test_reordered_hunks_are_a_different_patch() -> None:
-    one = MOVE_OUT.format(10)
-    two = MOVE_IN.format(20)
-    assert protocol.file_patches(_file_diff(one, two)) != protocol.file_patches(_file_diff(two, one))
-
-
-def test_a_hunk_added_above_shifts_the_later_hunk_and_changes_the_patch() -> None:
-    alone = protocol.file_patches(_file_diff(MOVE_IN.format(30)))
-    above = protocol.file_patches(_file_diff(MOVE_OUT.format(10), MOVE_IN.format(30)))
-    assert alone != above
-
-
-def _added(*lines: str, count: int) -> str:
-    body = "".join(f"+{line}\n" for line in lines)
-    return _file_diff(f"@@ -0,0 +1,{count} @@\n{body}")
-
-
-def test_a_form_feed_inside_an_added_line_is_not_a_line_break() -> None:
-    scope = {"READ": 1, "WRITE": 2}
-    assert eval("READ", scope) == 1
-    assert eval("READ\f+WRITE", scope) == 3
-    two_lines = _added("permissions = READ", "WRITE", count=2)
-    one_line = _added("permissions = READ\f+WRITE", count=1)
-    assert protocol.file_patches(two_lines) != protocol.file_patches(one_line)
-
-
-@pytest.mark.parametrize("separator", ["\f", "\v", "\u2028", "\u0085", "\x1c", "\r"])
-def test_a_control_character_inside_an_added_line_differs_from_splitting_there(separator: str) -> None:
-    inside = _added(f"first{separator}+second", "third", count=2)
-    split = _added("first", "second", "third", count=3)
-    same_header = _added("first", "second", "third", count=2)
-    assert protocol.file_patches(inside) != protocol.file_patches(split)
-    assert protocol.file_patches(inside) != protocol.file_patches(same_header)
-
-
-def test_hunk_line_counts_are_part_of_the_patch() -> None:
-    fewer = _file_diff("@@ -1,1 +1,1 @@\n+a\n")
-    more = _file_diff("@@ -1,1 +1,2 @@\n+a\n")
-    assert protocol.file_patches(fewer) != protocol.file_patches(more)
-
-
-def _function(pad: int = 0) -> str:
-    body = ["def guarded(user):"]
-    for _ in range(3):
-        body += ["a", "b", "c", "", ""]
-    return "\n".join(["# pad"] * pad + body) + "\n"
-
-
-def _removal(block: int, pad: int = 0, path: str = "a.py") -> str:
-    start = pad + 2 + block * 5
-    hunk = f"@@ -{start},4 +{start},3 @@ def guarded(user):\n a\n-require_admin(user)\n b\n c\n"
-    return _file_diff(hunk).replace("a.py", path)
-
-
-def _read_patches(diff: str, content: str) -> dict[str, str]:
-    return protocol.file_patches(diff, lambda path: content)
-
-
-def test_the_same_removal_at_two_places_in_one_function_is_a_different_patch() -> None:
-    assert protocol.file_patches(_removal(0)) == protocol.file_patches(_removal(2))
-    assert _read_patches(_removal(0), _function()) != _read_patches(_removal(2), _function())
-
-
-def test_a_rebase_that_shifts_a_function_keeps_its_first_hunk_patch() -> None:
-    assert _read_patches(_removal(2), _function()) == _read_patches(_removal(2, pad=8), _function(pad=8))
-
-
-def test_an_unreadable_file_binds_the_first_hunk_to_its_line_number() -> None:
-    assert protocol.file_patches(_removal(0), lambda path: None) != protocol.file_patches(
-        _removal(0, pad=8), lambda path: None
-    )
-
-
-def test_a_heading_missing_from_the_file_binds_the_first_hunk_to_its_line_number() -> None:
-    assert _read_patches(_removal(0), "x\n" * 40) != _read_patches(_removal(0, pad=8), "x\n" * 40)
-
-
-def test_a_relocated_first_hunk_is_reviewed_again_and_a_rebase_is_carried(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    stored = _removal(0, path=CHECKER)
-    patches = _read_patches(stored, _function())
-    record = _record(stored, "SHIP", paths=[CHECKER])
-    record["patch_map"] = protocol.patch_map(patches, [CHECKER])
-    record["patch_digest"] = protocol.patch_digest(patches, [CHECKER])
-    files = [{"filename": CHECKER, "additions": 0, "deletions": 1, "sha": "1" * 40}]
-    outcomes = []
-    for name, diff, content in (
-        ("relocated", _removal(2, path=CHECKER), _function()),
-        ("rebased", _removal(0, pad=8, path=CHECKER), _function(pad=8)),
-    ):
-        fake = _fake(_review(record), files=files, diff=diff)
-        fake.contents = {CHECKER: content}
-        (tmp_path / name).mkdir()
-        _, values, _ = _plan(monkeypatch, tmp_path / name, fake)
-        outcomes.append(values["decision"])
-    assert outcomes == ["review", "carry"]
-
-
-def _repeated_blocks(removed: int | None = None, pad: int = 0) -> str:
-    rows = ["# pad"] * pad
-    for block in range(3):
-        rows += ["a", "b"] + ([] if block == removed else ["c"]) + ["requires_auth", "d"]
-    return "\n".join(rows + ["tail"]) + "\n"
-
-
-def _headingless(block: int, pad: int = 0) -> str:
-    start = pad + 1 + block * 5
-    hunk = f"@@ -{start},4 +{start},3 @@\n a\n b\n-c\n requires_auth\n"
-    return _file_diff(hunk)
-
-
-def test_a_headingless_hunk_relocated_to_an_identical_block_is_a_different_patch() -> None:
-    first = _read_patches(_headingless(0), _repeated_blocks(removed=0))
-    second = _read_patches(_headingless(1), _repeated_blocks(removed=1))
-    assert first != second
-
-
-def test_a_rebase_that_shifts_a_headingless_hunk_keeps_its_patch() -> None:
-    assert _read_patches(_headingless(1), _repeated_blocks(removed=1)) == _read_patches(
-        _headingless(1, pad=8), _repeated_blocks(removed=1, pad=8)
-    )
-
-
-def test_an_unreadable_file_binds_a_headingless_hunk_to_its_line_number() -> None:
-    assert protocol.file_patches(_headingless(0), lambda path: None) != protocol.file_patches(
-        _headingless(0, pad=8), lambda path: None
-    )
-    assert protocol.file_patches(_headingless(1), lambda path: None) != protocol.file_patches(
-        _headingless(0), lambda path: None
-    )
-
-
-def _periodic(pad: int = 0) -> str:
-    return "\n".join(["# pad"] * pad + ["0"] * 10) + "\n"
-
-
-def _inserted_zero(row: int, pad: int = 0) -> str:
-    start = pad + row
-    return _file_diff(f"@@ -{start},3 +{start},4 @@\n 0\n 0\n+0\n 0\n")
-
-
-def test_an_insertion_moved_one_row_in_periodic_text_is_a_different_patch() -> None:
-    first = _read_patches(_inserted_zero(1), _periodic())
-    second = _read_patches(_inserted_zero(2), _periodic())
-    assert first != second
-
-
-def test_a_rebase_that_shifts_an_insertion_in_periodic_text_keeps_its_patch() -> None:
-    assert _read_patches(_inserted_zero(3), _periodic()) == _read_patches(_inserted_zero(3, pad=8), _periodic(pad=8))
-
-
-def _twin_functions(pad: int = 0) -> str:
-    function = ["def guarded(user):", "a", "b", "c", "", ""]
-    return "\n".join(["# pad"] * pad + function * 2) + "\n"
-
-
-def _twin_removal(function: int, pad: int = 0) -> str:
-    start = pad + 2 + function * 6
-    return _file_diff(f"@@ -{start},4 +{start},3 @@ def guarded(user):\n a\n-b\n c\n \n")
-
-
-def test_a_hunk_relocated_to_a_function_with_a_repeated_heading_is_a_different_patch() -> None:
-    first = _read_patches(_twin_removal(0), _twin_functions())
-    second = _read_patches(_twin_removal(1), _twin_functions())
-    assert first != second
-
-
-def test_a_rebase_that_shifts_a_repeated_heading_keeps_its_patch() -> None:
-    assert _read_patches(_twin_removal(1), _twin_functions()) == _read_patches(
-        _twin_removal(1, pad=8), _twin_functions(pad=8)
-    )
 
 
 def test_prose_is_untracked_apart_from_a_scoped_follow_up(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -1231,3 +1137,47 @@ def test_unreadable_base_change_history_carries_a_decided_head_whose_patch_is_un
     fake = _fake(_review(_decided_head()))
     _, values, _ = _plan(monkeypatch, tmp_path, fake, event={"action": "edited", "changes": {"base": {}}})
     assert values["decision"] == "carry"
+
+
+def _round(records: list[dict[str, Any]], tag: str = "", **kwargs: Any) -> protocol.Round:
+    prints = protocol.fingerprints(_states(TWO_FILE_DIFF, tag))
+    return protocol.plan_round(
+        protocol.History(records),
+        head_sha=HEAD,
+        base_ref="develop",
+        digest=protocol.patch_digest(prints),
+        patches=protocol.patch_map(prints, sorted(prints)),
+        paths=sorted(prints),
+        strike_count=protocol.strikes(records),
+        max_do_not_ship=3,
+        **kwargs,
+    )
+
+
+def test_a_byte_identical_rebase_keeps_the_strike_count_and_the_forced_round_allowance() -> None:
+    struck = _record(TWO_FILE_DIFF, "DO_NOT_SHIP")
+    carried = _round([struck])
+    assert carried.kind == protocol.CARRY
+    records = [struck, _record(TWO_FILE_DIFF, "DO_NOT_SHIP", kind="carry", carried=True, head_sha=HEAD)]
+    assert protocol.strikes(records) == 1
+
+    forced = {"kind": "follow-up", "forced": True, "round": 2}
+    spent = [_record(TWO_FILE_DIFF, "SHIP"), *(_record(TWO_FILE_DIFF, "SHIP", **forced) for _ in range(2))]
+    refused = _round(spent, force=True)
+    assert refused.kind == protocol.SKIP and "already had 2 forced re-reviews" in refused.reason
+
+
+def test_a_rebase_onto_changed_files_is_a_new_digest_with_its_own_strike_and_forced_allowance() -> None:
+    first = _record(TWO_FILE_DIFF, "DO_NOT_SHIP")
+    rebased = _record(TWO_FILE_DIFF, "DO_NOT_SHIP", tag="moved", head_sha=HEAD)
+    assert first["patch_digest"] != rebased["patch_digest"]
+    assert _round([first], "moved").kind == protocol.FIRST
+    assert protocol.strikes([first, rebased]) == 2
+
+    forced = {"kind": "follow-up", "forced": True, "round": 2}
+    spent = [_record(TWO_FILE_DIFF, "SHIP"), *(_record(TWO_FILE_DIFF, "SHIP", **forced) for _ in range(2))]
+    fresh = _round(spent, "moved", force=True)
+    assert fresh.kind == protocol.FOLLOW_UP and fresh.forced is False
+    reviewed = [*spent, _record(TWO_FILE_DIFF, "SHIP", tag="moved")]
+    allowed = _round(reviewed, "moved", force=True)
+    assert allowed.kind == protocol.FOLLOW_UP and allowed.forced is True

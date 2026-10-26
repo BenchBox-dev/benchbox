@@ -217,8 +217,7 @@ def _dispute_step(
     policy: Policy,
     found: protocol.History,
     scoped: list[ChangedFile],
-    raw_diff: bytes | None,
-    complete: bool,
+    states: list[protocol.FileState] | None,
     strike_count: int,
     step: protocol.Round,
     manual: bool,
@@ -241,7 +240,7 @@ def _dispute_step(
             policy,
             found,
             scoped,
-            raw_diff if complete else None,
+            states,
             strike_count,
             force=True,
             base_changed_at=base_changed_at,
@@ -364,6 +363,7 @@ def command_plan(args: argparse.Namespace) -> int:
     raw_diff = github.get_diff(repo, pr)
     full_diff = None if raw_diff is None else raw_diff.decode("utf-8", errors="replace")
     complete = full_diff is not None and len(files) >= int(pull.get("changed_files") or 0)
+    states = _file_states(plan, files) if complete else None
     strike_count = max(protocol.strikes(found.records), previous.strikes if previous else 0)
     base_changed_at, base_change_unreadable = _base_changed_at(repo, pr)
     step = _protocol_round(
@@ -371,7 +371,7 @@ def command_plan(args: argparse.Namespace) -> int:
         policy,
         found,
         scoped,
-        raw_diff if complete else None,
+        states,
         strike_count,
         base_changed_at=base_changed_at,
         base_change_unreadable=base_change_unreadable,
@@ -381,8 +381,7 @@ def command_plan(args: argparse.Namespace) -> int:
         policy,
         found,
         scoped,
-        raw_diff,
-        complete,
+        states,
         strike_count,
         step,
         manual,
@@ -410,29 +409,42 @@ def command_plan(args: argparse.Namespace) -> int:
     return _finish_plan(out_dir, plan)
 
 
+def _file_states(plan: dict[str, Any], files: list[ChangedFile]) -> list[protocol.FileState] | None:
+    repo = plan["repo"]
+    merge_base = github.merge_base(repo, plan["base_sha"], plan["head_sha"])
+    if merge_base is None:
+        return None
+    before = github.tree_blobs(repo, merge_base)
+    after = github.tree_blobs(repo, plan["head_sha"])
+    if before is None or after is None:
+        return None
+    states = []
+    for item in files:
+        old = None if item.status == "added" else before.get(item.previous_path or item.path)
+        new = None if item.removed else after.get(item.path)
+        if (old is None and item.status != "added") or (new is None and not item.removed):
+            return None
+        if new is not None and item.sha and new[1] != item.sha:
+            return None
+        states.append(protocol.file_state(item.path, item.previous_path, old, new))
+    return states
+
+
 def _protocol_round(
     plan: dict[str, Any],
     policy: Policy,
     found: protocol.History,
     scoped: list[ChangedFile],
-    raw_diff: bytes | None,
+    states: list[protocol.FileState] | None,
     strike_count: int,
     force: bool = False,
     base_changed_at: datetime | None = None,
     base_change_unreadable: bool = False,
 ) -> protocol.Round:
     paths = sorted(item.path for item in scoped)
-    scope = frozenset(paths)
-
-    def read(path: str) -> str | None:
-        data = github.get_file(plan["repo"], path, plan["head_sha"]) if path in scope else None
-        return None if data is None else protocol.exact_text(data)
-
-    patches = protocol.file_patches(protocol.exact_text(raw_diff or b""), read)
-    current = protocol.patch_map(patches, paths)
-    digest = (
-        protocol.patch_digest(patches, paths) if raw_diff is not None else None
-    ) or f"{protocol.UNREAD_DIGEST}{plan['head_sha']}"
+    prints = protocol.fingerprints(states or ())
+    current = protocol.patch_map(prints, paths)
+    digest = protocol.patch_digest(prints) if states is not None else f"{protocol.UNREAD_DIGEST}{plan['head_sha']}"
     base_ref = plan["base_ref"]
     step = protocol.plan_round(
         found,
