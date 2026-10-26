@@ -27138,10 +27138,15 @@
       "title": "Move per-test coverage to its own trunk workflow and make the coverage map smaller, statement-aware and failure-tolerant"
     },
     "trunk-dist-artifact-producer-check-flake-20261022": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T11:49:12Z",
+        "generation": "34e4d45f20ef4eaaa15e930cd488b681",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Trunk's dist-artifact producer check fails intermittently with 'producer job is not unique and running'"
     },
     "trunk-failed-shard-timing-evidence-20261025": {
