@@ -332,6 +332,13 @@ def commit_statuses(repo: str, sha: str) -> list[dict[str, Any]]:
     return [status for status in statuses if isinstance(status, dict)]
 
 
+def is_app_status(status: Mapping[str, Any], bot_login: str) -> bool:
+    creator = status.get("creator") or {}
+    if not isinstance(creator, Mapping):
+        return False
+    return (creator.get("login") or "").removesuffix("[bot]") == bot_login and creator.get("type") == "Bot"
+
+
 def post_status(repo: str, head_sha: str, payload: Mapping[str, Any], token: str) -> None:
     env = dict(os.environ)
     env["GH_TOKEN"] = token

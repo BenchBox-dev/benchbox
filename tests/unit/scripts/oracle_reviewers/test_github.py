@@ -620,6 +620,22 @@ def test_failed_steps_names_every_step_that_failed_timed_out_or_was_cancelled(
     ]
 
 
+@pytest.mark.parametrize(
+    ("creator", "expected"),
+    [
+        ({"login": "benchbox-oracle[bot]", "type": "Bot"}, True),
+        ({"login": "benchbox-oracle", "type": "Bot"}, True),
+        ({"login": "benchbox-oracle[bot]", "type": "User"}, False),
+        ({"login": "someone", "type": "User"}, False),
+        ("benchbox-oracle[bot]", False),
+        ({}, False),
+        (None, False),
+    ],
+)
+def test_only_the_oracle_app_marks_a_status_as_its_own(creator: Any, expected: bool) -> None:
+    assert github.is_app_status({"creator": creator}, "benchbox-oracle") is expected
+
+
 def test_commit_statuses_lists_the_combined_status(monkeypatch: pytest.MonkeyPatch) -> None:
     combined = {"statuses": [{"context": "oracle-verdict", "state": "pending"}, "not-a-status", {"context": "ci"}]}
     seen: list[str] = []

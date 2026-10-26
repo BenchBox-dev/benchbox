@@ -942,25 +942,32 @@ def _surface_twice_failed(
     head: str,
     runs: tuple[sweep.Run, ...],
     status_context: str,
+    bot_login: str,
     token: str | None,
 ) -> None:
     latest = next(run for run in runs if run.status == sweep.COMPLETED and run.conclusion not in sweep.NEUTRAL)
     description = sweep.surface_description(github.failed_steps(repo, latest.id))
-    surfaced = [
+    run_url = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{repo}/actions/runs/{latest.id}"
+    app_statuses = [
         status
         for status in github.commit_statuses(repo, head)
-        if status.get("context") == status_context and status.get("state") == "pending"
+        if status.get("context") == status_context and github.is_app_status(status, bot_login)
     ]
-    if surfaced:
+    if any(status.get("state") in ("success", "failure", "error") for status in app_statuses):
         _summary(f"retry not dispatched for #{number}: two runs on the current head failed without a result")
         return
+    pending = [status for status in app_statuses if status.get("state") == "pending"]
+    if pending:
+        newest = max(pending, key=lambda status: status.get("updated_at") or status.get("created_at") or "")
+        if newest.get("target_url") == run_url and newest.get("description") == description:
+            _summary(f"retry not dispatched for #{number}: the failure is already surfaced as pending")
+            return
     if token is None:
         _summary(
             f"retry not dispatched for #{number}: two runs on the current head failed without a result, "
             "and the App is not configured to surface it"
         )
         return
-    run_url = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{repo}/actions/runs/{latest.id}"
     github.post_status(
         repo,
         head,
@@ -977,6 +984,7 @@ def _retry_reason(
     rules: RetryRules,
     now: datetime,
     status_context: str,
+    bot_login: str,
     token: str | None,
 ) -> str | None:
     number = pull["number"]
@@ -1005,7 +1013,13 @@ def _retry_reason(
         return None
     if failures > 1:
         _surface_twice_failed(
-            repo=repo, number=number, head=head, runs=runs, status_context=status_context, token=token
+            repo=repo,
+            number=number,
+            head=head,
+            runs=runs,
+            status_context=status_context,
+            bot_login=bot_login,
+            token=token,
         )
         return None
     if sweep.recent_dispatches(runs, now) >= rules.daily_budget:
@@ -1030,7 +1044,9 @@ def command_sweep(args: argparse.Namespace) -> int:
             continue
         number = pull["number"]
         try:
-            reason = _retry_reason(repo, pull, runs.get(number, ()), policy.retry, now, policy.status_context, token)
+            reason = _retry_reason(
+                repo, pull, runs.get(number, ()), policy.retry, now, policy.status_context, policy.bot_login, token
+            )
             if reason is None:
                 continue
             if number in busy:

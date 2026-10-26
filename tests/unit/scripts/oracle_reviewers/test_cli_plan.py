@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import cli, github, protocol, render
+from _project.scripts.oracle_reviewers import cli, github, protocol, render, sweep
 from _project.scripts.oracle_reviewers.dedup import fingerprint
 from _project.scripts.oracle_reviewers.retry import State
 
@@ -670,14 +670,84 @@ def test_a_second_failure_with_no_step_listed_still_posts_a_status(
     assert "an earlier step" in fake.posted[0][1]["description"]
 
 
-def test_a_pending_status_that_is_already_surfaced_is_not_reposted(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    fake = _stateless_fake(
+APP = {"login": "benchbox-oracle[bot]", "type": "Bot"}
+
+
+def _twice_failed() -> tuple[dict[str, Any], dict[str, Any]]:
+    return (
         _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
         _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
     )
-    fake.statuses = [{"context": "oracle-verdict", "state": "pending", "description": "older"}]
+
+
+def _expected(second: dict[str, Any], steps: list[str]) -> dict[str, Any]:
+    description = sweep.surface_description(steps)
+    return {
+        "context": "oracle-verdict",
+        "state": "pending",
+        "description": description,
+        "target_url": f"https://github.com/{REPO}/actions/runs/{second['id']}",
+        "creator": dict(APP),
+        "updated_at": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
+    }
+
+
+def test_an_in_progress_claim_is_replaced_with_the_failed_step_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    fake.failed = {second["id"]: ["Verify Linux process isolation"]}
+    fake.statuses = [
+        {
+            "context": "oracle-verdict",
+            "state": "pending",
+            "description": "verdict in progress",
+            "target_url": f"https://github.com/{REPO}/actions/runs/1",
+            "creator": dict(APP),
+            "updated_at": (datetime.now(UTC) - timedelta(minutes=10)).isoformat(),
+        }
+    ]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    assert fake.posted[0][1]["description"] == sweep.surface_description(["Verify Linux process isolation"])
+    assert fake.posted[0][1]["target_url"] == f"https://github.com/{REPO}/actions/runs/{second['id']}"
+
+
+def test_a_non_app_pending_status_cannot_suppress_the_failure_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    fake.statuses = [
+        {
+            "context": "oracle-verdict",
+            "state": "pending",
+            "description": "oracle-verdict failed twice without a result at: an earlier step. Rerun",
+            "target_url": f"https://github.com/{REPO}/actions/runs/{second['id']}",
+            "creator": {"login": "someone", "type": "User"},
+        }
+    ]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and len(fake.posted) == 1
+
+
+def test_an_identical_surfacing_is_not_reposted(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    fake.statuses = [_expected(second, [])]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
+
+
+def test_a_recorded_verdict_is_never_overwritten_by_the_failure_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    second, first = _twice_failed()
+    fake = _stateless_fake(second, first)
+    expected = _expected(second, [])
+    fake.statuses = [{**expected, "state": "success", "description": "oracle-verdict: success"}]
     assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
     assert fake.dispatched == [] and fake.posted == []
 
