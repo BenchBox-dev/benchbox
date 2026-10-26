@@ -4946,6 +4946,122 @@ def test_date_only_renewal_counts_only_with_an_oracle_review() -> None:
     assert counted_exceptions(renewed, base, reviewed=True, same_commit=False, changed=set()) == renewed["exceptions"]
 
 
+def local_registry(*entries: dict) -> dict:
+    return load_policy(json.dumps(policy(exceptions=list(entries))).encode())
+
+
+def counts_locally(candidate: dict, *base: dict) -> bool:
+    return counted_exceptions(
+        local_registry(candidate), local_registry(*base), reviewed=False, same_commit=True, changed=set()
+    ) == [candidate]
+
+
+@pytest.fixture
+def local_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+
+def test_local_check_counts_expiry_removal_for_a_directive_that_suppresses_nothing(local_env: None) -> None:
+    hint = "/*+ BROADCAST(t) */"
+    assert counts_locally(without_expiry(exception(hint, path="q.sql")), exception(hint, path="q.sql"))
+
+
+def without_expiry(entry: dict) -> dict:
+    return {key: value for key, value in entry.items() if key != "expires"}
+
+
+def test_local_check_refuses_expiry_removal_for_a_suppression(local_env: None) -> None:
+    base = exception()
+    candidate = without_expiry(base)
+    assert not counted_exceptions(
+        {"exceptions": [candidate]}, {"exceptions": [base]}, reviewed=False, same_commit=True, changed=set()
+    )
+
+
+def test_local_check_counts_a_later_expiry_date(local_env: None) -> None:
+    assert counts_locally(exception(expires="2027-05-17"), exception(expires="2027-01-04"))
+
+
+@pytest.mark.parametrize("candidate", ["2026-12-31", "not-a-date"])
+def test_local_check_refuses_an_expiry_that_is_not_later(local_env: None, candidate: str) -> None:
+    base = exception(expires="2027-01-04")
+    assert not counted_exceptions(
+        {"exceptions": [exception(expires=candidate)]},
+        {"exceptions": [base]},
+        reviewed=False,
+        same_commit=True,
+        changed=set(),
+    )
+
+
+def test_local_check_refuses_adding_an_expiry_to_an_undated_entry(local_env: None) -> None:
+    base = without_expiry(exception("/*+ BROADCAST(t) */", path="q.sql"))
+    candidate = exception("/*+ BROADCAST(t) */", path="q.sql", expires="2027-05-17")
+    assert not counted_exceptions(
+        {"exceptions": [candidate]}, {"exceptions": [base]}, reviewed=False, same_commit=True, changed=set()
+    )
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("path", "b.py"),
+        ("text", "# noqa: E501"),
+        ("kind", "fixture"),
+        ("count", 2),
+        ("owner", "someone-else"),
+        ("consumer", "Makefile"),
+    ],
+)
+def test_local_check_refuses_any_other_field_change_alongside_the_expiry(
+    local_env: None, field: str, value: object
+) -> None:
+    base = exception(expires="2027-01-04")
+    candidate = {**base, "expires": "2027-05-17", field: value}
+    assert not counted_exceptions(
+        {"exceptions": [candidate]}, {"exceptions": [base]}, reviewed=False, same_commit=True, changed=set()
+    )
+
+
+def test_local_check_does_not_count_a_new_entry(local_env: None) -> None:
+    assert not counted_exceptions(
+        {"exceptions": [exception(path="new.py")]},
+        {"exceptions": [exception()]},
+        reviewed=False,
+        same_commit=True,
+        changed=set(),
+    )
+
+
+def test_expiry_acceptance_is_off_without_the_local_flag(local_env: None) -> None:
+    assert not counted_exceptions(
+        {"exceptions": [exception(expires="2027-05-17")]},
+        {"exceptions": [exception(expires="2027-01-04")]},
+        reviewed=False,
+        same_commit=False,
+        changed=set(),
+    )
+
+
+def test_expiry_acceptance_is_refused_in_ci(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    hint = "/*+ BROADCAST(t) */"
+    assert not counted_exceptions(
+        {"exceptions": [exception(expires="2027-05-17")]},
+        {"exceptions": [exception(expires="2027-01-04")]},
+        reviewed=False,
+        same_commit=True,
+        changed=set(),
+    )
+    assert not counted_exceptions(
+        {"exceptions": [without_expiry(exception(hint, path="q.sql"))]},
+        {"exceptions": [exception(hint, path="q.sql")]},
+        reviewed=False,
+        same_commit=True,
+        changed=set(),
+    )
+
+
 def test_expiry_warning_starts_thirty_days_before_the_expiry_date() -> None:
     expiry = date(2027, 1, 4)
     registered = dated_policy(expiry.isoformat())
