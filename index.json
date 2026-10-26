@@ -27185,12 +27185,17 @@
       "title": "Classify every failed post-merge Trunk run from 2026-10-10 to 2026-10-24"
     },
     "trunk-red-stops-further-merges": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T00:18:12Z",
+        "generation": "ffd1fcc7f5124f23bf0f926d042bdbfa",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [
         "trunk-fix-forward-admission-20261025"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Disarm auto-merge on armed PRs when a Trunk run on develop goes red"
     },
     "trunk-red-translate-query-called-twice-after-3185": {
