@@ -16213,10 +16213,15 @@
       "title": "Run the oracle-gate sweep when develop changes the oracle review policy or gate code"
     },
     "oracle-gate-reject-edited-reviews-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T15:58:22Z",
+        "generation": "05d1273fb1f641e6ba4f2851eb730347",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "critical",
-      "status": "open",
+      "status": "active",
       "title": "Stop oracle-gate trusting an edited or deleted oracle review, and narrow the gate's App token"
     },
     "oracle-gate-run-name-says-sweep-for-single-pr-20261023": {
