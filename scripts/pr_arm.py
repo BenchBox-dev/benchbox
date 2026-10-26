@@ -42,9 +42,13 @@ def _core_state(run: Runner, repo: str, number: int, head: str) -> str:
             f"the {PRODUCER_CHECK} job that records it has not finished for {head[:9]}; "
             f"arm again once {PRODUCER_CHECK} completes"
         )
+    conclusion = core.get("conclusion")
+    remedy = f"rerun it with make pr-rerun PR={number}"
+    if conclusion not in pr_landing.check_suites.RERUN_FAILED | pr_landing.check_suites.RERUN_ALL:
+        remedy += " (or push a new head if it refuses)"
     return (
-        f"the {PRODUCER_CHECK} job ended {core.get('conclusion') or 'without a conclusion'} for {head[:9]} and no "
-        f"verdict will arrive; rerun it with make pr-rerun PR={number}, or push a new head, then arm again"
+        f"the {PRODUCER_CHECK} job ended {conclusion or 'without a conclusion'} for {head[:9]} and no verdict "
+        f"will arrive; {remedy}, then arm again"
     )
 
 

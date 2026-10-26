@@ -610,6 +610,7 @@ def test_a_missing_verdict_refuses_with_the_rerun_step_when_the_producing_job_fi
     err = capsys.readouterr().err
     assert f"ended {conclusion}" in err
     assert "make pr-rerun PR=7" in err
+    assert ("push a new head" in err) == (conclusion in {"skipped", "success"})
 
 
 def test_a_missing_verdict_with_no_producing_job_refuses() -> None:

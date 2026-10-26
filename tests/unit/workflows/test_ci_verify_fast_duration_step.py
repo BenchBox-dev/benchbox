@@ -57,7 +57,7 @@ def test_verdict_artifact_is_bound_to_the_pr_head_and_cannot_change_the_core_res
 def test_a_verdict_is_uploaded_even_when_no_fast_tier_tests_ran() -> None:
     record = named("Record fast-duration verdict not applicable")
     assert record["continue-on-error"] is True
-    assert "code-tests-needed != 'true'" in record["if"]
+    assert "code-tests-needed == 'false'" in record["if"]
     assert '"verdict": "not-applicable"' in record["run"]
     assert "fast-duration-verdict.json" in record["run"]
     assert "code-tests-needed" not in named("Upload fast-duration verdict")["if"]
