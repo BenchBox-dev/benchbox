@@ -1,0 +1,8 @@
+{
+  "bundle_file": "tpcds_obt_sf1_clickhouse_local_sql_20261026_132451_e8646728.json",
+  "bundle_hash": "e899de37f91a2f6edc4063c8610643d5352cc039350bcdd9e25d41bedcbea6d6",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer"
+}

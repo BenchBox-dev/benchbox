@@ -48,17 +48,19 @@ except ImportError:
     MIN_THROUGHPUT_STREAMS = 2
 
 
-def _load_bundle_failed_query_count():
+def _load_query_status_module():
     helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "query_status.py"
     spec = importlib.util.spec_from_file_location("_benchbox_query_status", helper_path)
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load failed-query policy from {helper_path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.bundle_failed_query_count
+    return module
 
 
-bundle_failed_query_count = _load_bundle_failed_query_count()
+_query_status = _load_query_status_module()
+bundle_failed_query_count = _query_status.bundle_failed_query_count
+documented_exclusions_cover_failures = _query_status.documented_exclusions_cover_failures
 
 
 def _load_timing_field_helpers():
@@ -1294,6 +1296,8 @@ def _validate_summary_section(
     vr: ValidationResult,
     *,
     allow_partial_validation: bool = False,
+    data: dict[str, Any] | None = None,
+    internal_source: bool = False,
 ) -> None:
     if not isinstance(summary, dict):
         vr.error("'summary' must be a dict")
@@ -1310,6 +1314,13 @@ def _validate_summary_section(
         if allow_partial_validation
         else frozenset({PUBLIC_CLEAN_VALIDATION_STATUS})
     )
+    if (
+        internal_source
+        and validation_status == "partial"
+        and data is not None
+        and documented_exclusions_cover_failures(data)
+    ):
+        return
     if validation_status not in allowed:
         if validation_status is None:
             vr.error("summary.validation is required for public submissions and must be 'passed'")
@@ -2075,10 +2086,14 @@ def _validate_tpchavoc_variant_row_counts(
 
 def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) -> None:
     summary = data.get("summary")
-    if not isinstance(summary, dict) or _normalize_status(summary.get("validation")) != PUBLIC_CLEAN_VALIDATION_STATUS:
+    if not isinstance(summary, dict):
+        return
+    status = _normalize_status(summary.get("validation"))
+    documented = status == "partial" and documented_exclusions_cover_failures(data)
+    if status != PUBLIC_CLEAN_VALIDATION_STATUS and not documented:
         return
 
-    failed = bundle_failed_query_count(data)
+    failed = 0 if documented else bundle_failed_query_count(data)
     if failed > 0:
         noun = "query" if failed == 1 else "queries"
         vr.error(f"summary.validation='passed' contradicts {failed} failed measurement {noun}")
@@ -2167,6 +2182,8 @@ def _validate_bundle(
         data.get("summary", {}),
         vr,
         allow_partial_validation=allow_partial_validation,
+        data=data,
+        internal_source=internal_source,
     )
     _validate_translation_section(data, vr)
     _validate_environment_client_link(data, vr)

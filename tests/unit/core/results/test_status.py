@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from benchbox.core.results.query_status import documented_exclusions_cover_failures
 from benchbox.core.results.status import (
     CLI_FAILURE_VALIDATION_STATUSES,
     NON_CLEAN_VALIDATION_STATUSES,
@@ -216,3 +217,46 @@ def test_warmup_without_failed_validation_preserves_clean_measurements(status):
     )
     assert result_is_clean_pass(result)
     assert result_cli_failure_reason(result) is None
+
+
+def _obt_bundle(platform: str, failed_ids: list[str], driver_version: str = "4.1.6") -> dict:
+    rows = [{"id": str(i), "status": "SUCCESS", "run_type": "measurement"} for i in range(1, 4)]
+    rows += [{"id": qid, "status": "FAILED", "run_type": "measurement"} for qid in failed_ids]
+    return {
+        "benchmark": {"id": "tpcds_obt"},
+        "platform": {"name": platform},
+        "execution": {"driver_version_actual": driver_version},
+        "summary": {"validation": "partial", "queries": {"total": len(rows), "passed": 3, "failed": len(failed_ids)}},
+        "queries": rows,
+    }
+
+
+def test_documented_exclusions_cover_only_the_evidenced_failures():
+    assert documented_exclusions_cover_failures(_obt_bundle("ClickHouse Local", ["41", "44"]))
+    assert documented_exclusions_cover_failures(_obt_bundle("ClickHouse Local", ["44"]))
+
+
+@pytest.mark.parametrize(
+    ("platform", "failed_ids", "driver_version"),
+    [
+        ("ClickHouse Local", ["41", "45"], "4.1.6"),
+        ("DuckDB", ["41", "44"], "4.1.6"),
+        ("ClickHouse Local", [], "4.1.6"),
+        ("ClickHouse Local", ["41", "44"], "4.2.0"),
+    ],
+)
+def test_documented_exclusions_reject_everything_else(platform, failed_ids, driver_version):
+    assert not documented_exclusions_cover_failures(_obt_bundle(platform, failed_ids, driver_version))
+
+
+@pytest.mark.parametrize("field", ["failed", "total"])
+def test_documented_exclusions_require_consistent_summary_counts(field):
+    bundle = _obt_bundle("ClickHouse Local", ["41", "44"])
+    bundle["summary"]["queries"][field] += 3
+    assert not documented_exclusions_cover_failures(bundle)
+
+
+def test_documented_exclusions_do_not_hide_failed_queries():
+    bundle = _obt_bundle("ClickHouse Local", ["41", "44"])
+    assert bundle_failed_query_count(bundle) == 2
+    assert not bundle_is_clean_pass(bundle)

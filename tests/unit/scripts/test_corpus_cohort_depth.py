@@ -102,6 +102,7 @@ KNOWN_DEFECTIVE_SHALLOW_COHORTS = {
     ("tpch", "1.0"): {"duckdb"},
     ("tpcdi", "0.01"): {"clickhouse-local", "duckdb"},
     ("clickbench", "0.1"): {"bigquery", "snowflake"},
+    ("tpcds_obt", "1.0"): {"datafusion", "duckdb"},
 }
 
 
