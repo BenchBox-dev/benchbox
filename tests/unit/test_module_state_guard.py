@@ -44,7 +44,7 @@ def _run_synthetic_modules(tmp_path: Path, sources: dict[str, str]) -> subproces
     config = tmp_path / "empty.ini"
     config.write_text("[pytest]\n", encoding="utf-8")
     environment = {"PYTHONPATH": str(REPO_ROOT), "PATH": "/usr/bin:/bin"}
-    for inherited in ("SYSTEMROOT", "SystemRoot", "WINDIR"):
+    for inherited in ("SYSTEMROOT", "SystemRoot", "WINDIR", "USERPROFILE", "HOMEDRIVE", "HOMEPATH"):
         if inherited in os.environ:
             environment[inherited] = os.environ[inherited]
     return subprocess.run(

@@ -4797,7 +4797,7 @@
    "kinds": {
     "unresolved": 1
    },
-   "occurrences": 3,
+   "occurrences": 4,
    "path": "tests/unit/scripts/test_coverage_test_selection.py",
    "rule": "test-sample-data",
    "target_count": 1,
@@ -5889,9 +5889,9 @@
    "generated": 22,
    "pattern": 320,
    "root": 219,
-   "unresolved": 2086
+   "unresolved": 2087
   },
-  "references": 33522,
+  "references": 33523,
   "unclassified": 0
  }
 }

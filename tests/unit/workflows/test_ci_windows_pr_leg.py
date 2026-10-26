@@ -80,7 +80,7 @@ def test_windows_leg_trigger_covers_tests_scripts_project_scripts_and_benchbox_p
         "benchbox/core/runner.py",
     ):
         assert trigger.search(path), path
-    for path in ("docs/index.md", "tests/fixtures/data.json", "examples/run.py", ".github/workflows/ci.yml"):
+    for path in ("README.md", "tests/fixtures/data.json", "examples/run.py", ".github/workflows/ci.yml"):
         assert not trigger.search(path), path
 
 
