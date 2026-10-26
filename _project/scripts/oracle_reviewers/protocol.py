@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from .evidence import UNVERIFIED_MAINTAIN, maintain_cited, withdrawal_cited
+from .evidence import withdrawal_cited
 from .policy import SEVERITIES
 from .verdict import (
     COMPLETE,
@@ -590,10 +590,6 @@ def dispute_problem(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
         if entry.status in (NOT_FIXED, WITHDRAWN):
             if not entry.claim.strip() or all(claim_hash(entry.claim) != known for known in claims[defect_id]):
                 return f"disputed finding {defect_id} does not restate one of its rebuttal replies, so the verdict is invalid"
-        if entry.status == NOT_FIXED and not maintain_cited(entry.evidence):
-            return f"disputed finding {defect_id} is maintained without evidence, so the verdict is invalid"
-        if entry.status == NOT_FIXED and UNVERIFIED_MAINTAIN in (entry.evidence or ""):
-            return f"disputed finding {defect_id} is maintained without verified evidence, so the verdict is invalid"
         if entry.status == FIXED and not (entry.evidence or "").strip():
             return f"disputed finding {defect_id} is marked fixed without evidence, so the verdict is invalid"
     return None

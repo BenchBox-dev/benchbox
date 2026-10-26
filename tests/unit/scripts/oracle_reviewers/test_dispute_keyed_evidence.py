@@ -191,18 +191,17 @@ def test_a_repro_naming_a_directory_is_rejected(policy: Policy, tmp_path: Path) 
     assert evidence.UNVERIFIED_MAINTAIN in marked.prior_defects[0].evidence
 
 
-def test_a_demoted_withdrawal_is_checked_as_a_maintain(policy: Policy, tmp_path: Path) -> None:
+def test_a_demoted_withdrawal_stays_open_with_its_gap_published(policy: Policy, tmp_path: Path) -> None:
     verdict = validate(_verdict_dict(_disposition("withdrawn", evidence_text="never a defect: pkg/a.py:99")))
     marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
     assert marked.prior_defects[0].status == "not_fixed"
     assert evidence.UNVERIFIED_MAINTAIN in marked.prior_defects[0].evidence
-    problem = protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute()))
-    assert problem is not None and "verified evidence" in problem
+    assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
 
 
-def test_maintain_without_evidence_is_invalid(policy: Policy) -> None:
+def test_maintain_without_verified_evidence_stays_open(policy: Policy) -> None:
     problem = _problem(policy, _dispute(), _disposition("not_fixed", evidence_text="still broken"))
-    assert problem is not None and "without evidence" in problem
+    assert problem is None
 
 
 def test_a_forced_fixed_counts_as_maintained_in_the_published_line(policy: Policy, tmp_path: Path) -> None:
@@ -215,8 +214,41 @@ def test_a_forced_fixed_counts_as_maintained_in_the_published_line(policy: Polic
     assert "- D1 (fixed)" not in final.review["body"]
 
 
+def test_a_disputed_fixed_without_a_verified_citation_is_demoted(policy: Policy, tmp_path: Path) -> None:
+    verdict = validate(_verdict_dict(_disposition("fixed", evidence_text="reworked the loop")))
+    marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
+    assert marked.prior_defects[0].status == "not_fixed"
+    assert evidence.UNVERIFIED_MAINTAIN in marked.prior_defects[0].evidence
+    assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
+
+
+def test_a_disputed_fixed_with_a_verified_citation_closes(policy: Policy, tmp_path: Path) -> None:
+    target = tmp_path / "pkg" / "kept.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("\n".join([f"line {index}" for index in range(20)]), encoding="utf-8")
+    verdict = validate(
+        _verdict_dict(
+            _disposition("fixed", evidence_text="reworked at pkg/kept.py:12"),
+            files=["pkg/kept.py"],
+        )
+    )
+    marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
+    assert marked.prior_defects[0].status == "fixed"
+    assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
+
+
 def test_maintain_with_a_matched_claim_and_a_citation_is_supported(policy: Policy) -> None:
     assert _problem(policy, _dispute(), _disposition("not_fixed")) is None
+
+
+def test_an_unverified_maintain_publishes_its_evidence_gap(policy: Policy, tmp_path: Path) -> None:
+    verdict = validate(_verdict_dict(_disposition("not_fixed", evidence_text="still broken")))
+    marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
+    assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
+    final = _final(policy, tmp_path, _plan_with_dispute(policy, _dispute()), marked.to_json())
+    assert final.review is not None
+    assert "- D1 (maintained): " in final.review["body"]
+    assert evidence.UNVERIFIED_MAINTAIN in final.review["body"]
 
 
 def test_a_missing_disposition_is_invalid(policy: Policy) -> None:
@@ -270,12 +302,11 @@ def test_withdrawal_with_a_verified_citation_is_still_accepted(policy: Policy, t
     assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
 
 
-def test_a_disputed_withdrawal_without_a_citation_cannot_silently_maintain(policy: Policy, tmp_path: Path) -> None:
+def test_a_disputed_withdrawal_without_a_citation_stays_open(policy: Policy, tmp_path: Path) -> None:
     verdict = validate(_verdict_dict(_disposition("withdrawn", evidence_text="never a defect")))
     marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
     assert marked.prior_defects[0].status == "not_fixed"
-    problem = protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute()))
-    assert problem is not None
+    assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
 
 
 def test_a_reproduction_reference_satisfies_maintain(policy: Policy, tmp_path: Path) -> None:

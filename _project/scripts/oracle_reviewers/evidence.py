@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from .verdict import NOT_FIXED, WITHDRAWN, Finding, Verdict, display_path, sanitize
+from .verdict import FIXED, NOT_FIXED, WITHDRAWN, Finding, Verdict, display_path, sanitize
 
 INLINE = "inline"
 _LINE_SUFFIX = re.compile(r":\d+(?:-\d+)?$")
@@ -292,11 +292,6 @@ def _withdrawal_verified(evidence: str, workspace: Path, examined: frozenset[str
     return False
 
 
-def maintain_cited(evidence_text: str | None) -> bool:
-    text = evidence_text or ""
-    return _WITHDRAWAL_CITATION.search(text) is not None or _REPRO_CITATION.search(text) is not None
-
-
 def withdrawal_cited(evidence_text: str | None) -> bool:
     return _WITHDRAWAL_CITATION.search(evidence_text or "") is not None
 
@@ -330,6 +325,9 @@ def mark_citations(verdict: Verdict, workspace: Path, disputed: Iterable[str] = 
     for prior in verdict.prior_defects:
         if prior.status == WITHDRAWN and not _withdrawal_verified(prior.evidence, workspace, examined):
             note = f"{prior.evidence} {UNVERIFIED_WITHDRAWAL}".strip()
+            prior = replace(prior, status=NOT_FIXED, evidence=note)
+        if prior.status == FIXED and prior.id in wanted and not maintain_verified(prior.evidence, workspace, examined):
+            note = f"{prior.evidence} {UNVERIFIED_MAINTAIN}".strip()
             prior = replace(prior, status=NOT_FIXED, evidence=note)
         if (
             prior.status == NOT_FIXED
