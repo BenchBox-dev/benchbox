@@ -8,7 +8,27 @@ sub-few-minutes suite every develop PR runs in `code-test`
 ## No test-count ceiling
 
 There is no limit on how many tests the fast lane may collect. The
-`code-test` job's `timeout-minutes` cap bounds the lane's cost directly.
+`code-test` job's `timeout-minutes` cap is a hard cancel, not a detection
+mechanism; it does not notice a slowdown that stays under the cap.
+
+## Fast-tier duration report
+
+The `core` job runs a report-only `verify-fast-duration (report only)` step
+on pull requests. It downloads the PR's `fast-junit` artifact and compares it
+with the committed baseline in `tests/fixtures/fast_tier_baseline`
+(`python -m scripts.build_fast_duration_baseline verify`). Each run's test
+times are scaled by the runner-speed factor from its calibration record, so a
+slow hosted runner is not mistaken for a slowdown. A run without a calibration
+record is rejected, and a missing baseline gives a neutral verdict.
+
+The job summary shows the normalized summed time over tests present in both
+runs, the delta, the summed-time ratio, the median per-test ratio, coverage of
+the baseline ids, the runner speed factor and the pytest collection time. The
+verdict is `would-block` when the ratio exceeds 1.15 and the delta exceeds 60
+seconds (provisional thresholds). Tests missing from the baseline are allowed
+0.5 seconds each; time beyond that counts toward the delta. Job wall time is
+not a metric. The step has `continue-on-error` and never changes the `core`
+result.
 
 ## Marker and path guards
 

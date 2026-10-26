@@ -1,0 +1,1 @@
+{"internal": "The required core job now reports, without ever failing, how the PR's fast-tier test time compares with the committed speed-normalized baseline.", "schema": 1}
