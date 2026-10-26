@@ -16850,7 +16850,9 @@
     },
     "oracle-sweep-schedule-drops-most-runs-20261022": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-sweep-stateless-retry-backoff-reset-20261026"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "The oracle-verdict retry sweep runs every 2 to 6 hours instead of hourly, so pending verdicts wait hours after they become due"
