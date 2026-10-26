@@ -15965,10 +15965,15 @@
       "title": "Oracle absence details are not redacted, newer quota messages get no reset time, and the muse quota table is empty"
     },
     "oracle-absence-json-error-events-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T17:14:53Z",
+        "generation": "d133b0746d29498ca46de86377dd3761",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Classify reviewer quota and auth absences from omp's own JSON error events"
     },
     "oracle-absence-quota-pattern-anchoring-20261022": {
