@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Each scheduled run is listed with run id, head SHA and conclusion from a live read",
+    "Every failing domain is named with its failing job; new failures get a follow-up item or an owner report",
+    "The item closes only on that recorded evidence, not on a validator pass"
+  ],
+  "context": "The 2026-10-26 nightly already ran at 14:25 UTC (40339587542): t3:drift corpus failed (see corpus-sync-dispatch-20261026), t3:windows timed out (see windows-nightly-timeout-diagnosis-20261026). This item confirms the following scheduled runs.",
+  "description": "Standing confirmation held until 2026-10-27: the Monday 2026-10-26 scheduled runs (nightly-v2, legacy nightly, release canary) must be read live and compared against the fixes merged on 2026-10-25/26 (#3481 Windows locale, #3482 canary, corpus sync). Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
+  "not_before": "2026-10-27T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-26T19:28:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a6587e543ff248c6917503cebdf1bd5f",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}
