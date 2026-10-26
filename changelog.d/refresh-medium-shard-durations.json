@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Refresh the recorded medium-tier test durations used to balance CI shards and add a medium-refresh command to the duration baseline tool; no user-visible behavior changes."
-}
