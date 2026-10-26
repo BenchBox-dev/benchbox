@@ -259,6 +259,13 @@ def test_select_prior_rule_adds_the_dispute_rule_only_with_disputes() -> None:
     assert "Disputed findings" not in select_prior_rule(None, "head", 10, True)
 
 
+def test_select_prior_rule_guards_unkeyed_replies_even_without_keyed_disputes() -> None:
+    prior: list[dict[str, object]] = [{"id": "D1"}]
+    assert "unkeyed rebuttal" in select_prior_rule(prior, None, 10, False, True)
+    assert "unkeyed rebuttal" not in select_prior_rule(prior, None, 10, True, False)
+    assert "unkeyed rebuttal" not in select_prior_rule(prior, None, 10)
+
+
 _FENCE_NONCE = re.compile(r"([0-9a-f]{16})-BEGIN FILE PRIORITY")
 
 
@@ -275,7 +282,7 @@ def _populated(template: dict[str, object]) -> dict[str, object]:
         {"severity": "High", "file": "a.py", "line": 3, "end_line": None, "title": "t", "detail": "d"}
     ]
     for entry in populated["prior_defects"]:
-        entry.update(status="fixed", evidence="a.py:3 fixes it")
+        entry.update(status="fixed", evidence="a.py:3 fixes it", claim="the bound is unchecked", concedes=False)
     return populated
 
 
@@ -316,7 +323,14 @@ def test_a_populated_template_is_accepted_and_an_untouched_or_partial_one_is_rej
         validate(template)
     populated = _populated(template)
     assert validate(populated).prior_defects[0].id == "D2"
-    for path in (("summary",), ("defects", 0, "title"), ("files_examined", 0), ("prior_defects", 0, "evidence")):
+    for path in (
+        ("summary",),
+        ("defects", 0, "title"),
+        ("files_examined", 0),
+        ("prior_defects", 0, "evidence"),
+        ("prior_defects", 0, "claim"),
+        ("prior_defects", 0, "concedes"),
+    ):
         partial = json.loads(json.dumps(populated))
         holder = partial
         for step in path[:-1]:

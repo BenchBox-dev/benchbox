@@ -1862,10 +1862,16 @@ WITHDRAWN_BODY = "\n".join(
         "",
         "Decision: **SHIP WITH FIXES**.",
         "",
-        "Withdrawn:",
+        "Withdrawn as never defects: D1, D2. Resolve their review threads.",
         "",
-        "- D1: scaled timeouts are covered by the canary",
-        "- D2: docs-only head needs no re-review",
+        "**Still open from earlier reviews**",
+        "",
+        "- **Medium** `a.py:1`: D3: open",
+        "",
+        "**Dispute dispositions**",
+        "",
+        "- D1 (withdrawn): scaled timeouts are covered by the canary: a.py:2",
+        "- D2 (maintained): the bound is still unchecked: a.py:3",
     ]
 )
 
@@ -1874,13 +1880,10 @@ def test_withdrawals_list_the_marked_findings():
     pull = evidence(reviews=(failure_review(body=WITHDRAWN_BODY.replace("HEAD", HEAD)),))
     withdrawal = digest.withdrawn_findings([pull])[0]
     assert withdrawal.number == 7
-    assert withdrawal.items == (
-        "D1: scaled timeouts are covered by the canary",
-        "D2: docs-only head needs no re-review",
-    )
+    assert withdrawal.items == ("D1, D2. Resolve their review threads.",)
     text = digest.render_withdrawals([withdrawal])
     assert f"- #7 (`{HEAD[:9]}`):" in text
-    assert "D1: scaled timeouts are covered" in text
+    assert "D1, D2. Resolve their review threads." in text
 
 
 def test_withdrawals_are_skipped_when_no_review_marks_any():
