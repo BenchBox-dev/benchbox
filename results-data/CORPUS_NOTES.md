@@ -735,3 +735,59 @@ Reproduce with:
 
     uv run -- python _project/scripts/results_explorer_cpu_attestation_backfill.py
     # add --write to apply
+
+## TPC-DS OBT SF1 reruns on the lettered catalog (2026-10-26)
+
+Three TPC-DS OBT SF1 bundles (`result_source: internal`) replace the
+defective-parameter local bundles of the same platforms, which stay flagged
+`defective-tpcds-obt-parameters` as comparison-only history:
+
+- DuckDB `tpcds_obt_sf1_duckdb_sql_20261026_090851_b4cd9b9e`: 93 served
+  queries, 279 measured executions, 0 failures, fresh data generation, load of
+  5,041,336 rows in 148.6 s.
+- DataFusion `tpcds_obt_sf1_datafusion_sql_20261026_091037_b6577a1e`: 93
+  served queries, 0 failures, same 5,041,336 rows.
+- ClickHouse Local `tpcds_obt_sf1_clickhouse_local_sql_20261026_132451_e8646728`:
+  chDB 4.1.6 (engine 26.1) run in a Linux container, 93 served queries, 5,041,336
+  rows loaded in 579.2 s. Q41 and Q44 fail on this engine (see below).
+
+OBT Q14, Q23 and Q24 run as the lettered statements `14a`/`14b`, `23a`/`23b`
+and `24a`/`24b`, matching base TPC-DS, so these bundles record 93 ids where the
+older bundles record 90 under `14`, `23` and `24`. Every id returns the same
+row count on DataFusion and on DuckDB, and on ClickHouse for every id except Q41
+and Q44. ClickHouse Q16, Q94 and Q95 return the same non-empty aggregates as
+DuckDB (141 / 655,918.84 / -89,198.97, 22 / 28,582.64 / -5,127.54 and
+91 / 142,930.93 / -24,381.00 order count, shipping cost and net profit).
+
+Seven ids return no rows at SF1 with the default parameter draw on DuckDB and
+DataFusion (Q23b, Q24a, Q24b, Q25, Q29, Q41, Q58); ClickHouse returns no rows
+for the same ids except Q41, which fails. The plain TPC-DS queries return no
+rows for the same draw on the same DuckDB database.
+
+### Documented ClickHouse Local exclusions: Q41 and Q44
+
+chDB 26.1 raises `NOT_IMPLEMENTED` for both queries: Q41 ("Cannot check
+Distinct plan step for correlated expressions") and Q44 ("can't find correlated
+column ... in current header"). The failure reproduces outside BenchBox with
+a correlated subquery over a `DISTINCT` subselect, with
+`allow_experimental_correlated_subqueries` set or unset. The owner approved
+publishing the ClickHouse bundle without these two queries.
+
+The rule lives in `DOCUMENTED_PLATFORM_QUERY_EXCLUSIONS`
+(`benchbox/core/results/query_status.py`): benchmark `tpcds_obt` on platform
+`clickhouse-local`, driver (chDB) version `4.1.6` only, query ids `41` and `44`
+only. With `--trust-internal-source` and an internal-source manifest, submission
+validation accepts a `partial` summary for a bundle whose only failed measurements
+are those ids and whose summary query counts match its per-query rows; the other
+clean-bundle consistency checks still run. Community admission stays strict. Any other
+failure, platform, driver version or query id, or any summary count that
+disagrees with the rows, keeps the bundle rejected.
+
+The rule does not rewrite results or counts. The bundle records Q41 and Q44 as
+`FAILED`, the Explorer reports it as `partial` with 6 failed measurements, and
+like every other bundle with failed queries it is excluded from rankings. Its
+summary timings cover 91 query ids, so they are not like-for-like with the
+93-id DuckDB and DataFusion bundles. With ClickHouse Local unranked, the
+`tpcds_obt` SF1 cohort has two comparison identities (DataFusion and DuckDB);
+it is listed in `DOCUMENTED_SHALLOW_COHORTS` in `validate_corpus.py` beside the
+known-defective bundles of the same platforms.

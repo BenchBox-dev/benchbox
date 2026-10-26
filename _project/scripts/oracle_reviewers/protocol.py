@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 import zlib
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -33,13 +33,12 @@ MARKER_LIMIT = 4096
 MARKER_TRIMS = ((120, 120), (80, 80), (50, 60), (32, 40), (24, 24))
 MARKER_OPEN = "<!-- oracle-protocol:"
 _MARKER = re.compile(r"<!-- oracle-protocol: v1 (?P<data>[A-Za-z0-9_-]+) -->\s*\Z")
-_HUNK = re.compile(
-    r"^@@ -(?P<start>\d+)(?:,(?P<count>\d+))? \+(?P<new_start>\d+)(?:,(?P<new_count>\d+))? @@(?P<section>.*)$"
-)
 DEFECT_ID = re.compile(r"D([1-9][0-9]{0,3})")
 NOT_COUNTED_LIMIT = 5
 PATCH_HEX = 16
 MISSING = "missing"
+ABSENT_MODE = "000000"
+ABSENT_ID = "0" * 40
 RECORD_KEYS = frozenset(
     {
         "v",
@@ -97,6 +96,19 @@ class Round:
     forced: bool = False
 
 
+@dataclass(frozen=True)
+class FileState:
+    old_path: str
+    new_path: str
+    old_mode: str
+    new_mode: str
+    old_id: str
+    new_id: str
+
+    def fields(self) -> list[str]:
+        return [self.old_path, self.new_path, self.old_mode, self.new_mode, self.old_id, self.new_id]
+
+
 @dataclass
 class History:
     records: list[dict[str, Any]] = field(default_factory=list)
@@ -121,94 +133,38 @@ def _short(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]
 
 
-def _heading_gap(section: str, new_start: int, new_count: int, content: str | None, old_start: int) -> str:
-    heading = section.strip()
-    if content is None or not heading:
-        return f"at{old_start}"
-    lines = content.split("\n")
-    begin = new_start + (1 if new_count == 0 else 0)
-    for index in range(min(begin - 2, len(lines) - 1), -1, -1):
-        if lines[index].strip().startswith(heading):
-            earlier = sum(1 for line in lines[:index] if line.strip().startswith(heading))
-            return f"fn{begin - 1 - index}n{earlier}"
-    return f"at{old_start}"
+def _fingerprint(entry: FileState) -> str:
+    return hashlib.sha256(json.dumps(entry.fields(), separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
-def _block_gap(block: list[str], start: int, content: str | None, old_start: int) -> str:
-    if content is None or not block:
-        return f"at{old_start}"
-    prefix = content.split("\n")[:start]
-    text = [*prefix, *block]
-    size = len(block)
-    earlier = sum(1 for index in range(len(prefix)) if text[index : index + size] == block)
-    return f"blk{earlier}"
+def file_state(
+    path: str,
+    previous_path: str | None,
+    old: tuple[str, str] | None,
+    new: tuple[str, str] | None,
+) -> FileState:
+    return FileState(
+        old_path=previous_path or path,
+        new_path=path,
+        old_mode=old[0] if old else ABSENT_MODE,
+        new_mode=new[0] if new else ABSENT_MODE,
+        old_id=old[1] if old else ABSENT_ID,
+        new_id=new[1] if new else ABSENT_ID,
+    )
 
 
-def exact_text(data: bytes) -> str:
-    return data.decode("utf-8", errors="surrogateescape")
+def fingerprints(states: Iterable[FileState]) -> dict[str, str]:
+    return {state.new_path: _fingerprint(state) for state in states}
 
 
-def file_patches(diff_text: str, read: Callable[[str], str | None] | None = None) -> dict[str, str]:
-    patches: dict[str, str] = {}
-    for section in re.split(r"(?m)^(?=diff --git )", diff_text):
-        header, _, body = section.partition("\n")
-        match = re.fullmatch(r"diff --git a/(?P<old>.+) b/(?P<new>.+)", header)
-        if match is None:
-            continue
-        binary = "\nBinary files " in f"\n{body}" or "\nGIT binary patch" in f"\n{body}"
-        deleted = "\ndeleted file mode " in f"\n{body}"
-        kept = []
-        previous_end: int | None = None
-        lines = body.split("\n")
-        if lines[-1] == "":
-            lines.pop()
-        for position, line in enumerate(lines):
-            if not binary and line.startswith("index "):
-                continue
-            hunk = _HUNK.match(line)
-            if hunk is None:
-                kept.append(line)
-                continue
-            count = 1 if hunk["count"] is None else int(hunk["count"])
-            new_count = 1 if hunk["new_count"] is None else int(hunk["new_count"])
-            first = int(hunk["start"]) + (1 if count == 0 else 0)
-            if previous_end is not None:
-                gap = str(first - previous_end)
-            elif read is None or deleted:
-                gap = "first"
-            elif not hunk["section"].strip():
-                block = []
-                for body_line in lines[position + 1 :]:
-                    if _HUNK.match(body_line):
-                        break
-                    if body_line[:1] in (" ", "-"):
-                        block.append(body_line[1:])
-                start = int(hunk["new_start"]) - 1 + (1 if new_count == 0 else 0)
-                gap = _block_gap(block[:count], start, read(match.group("new")), int(hunk["start"]))
-            else:
-                gap = _heading_gap(
-                    hunk["section"], int(hunk["new_start"]), new_count, read(match.group("new")), int(hunk["start"])
-                )
-            previous_end = first + count
-            kept.append(f"@@ gap={gap} old={count} new={new_count}{hunk['section']}")
-        patches[match.group("new")] = hashlib.sha256(
-            "\n".join(kept).encode("utf-8", errors="surrogateescape")
-        ).hexdigest()
-    return patches
-
-
-def patch_map(patches: Mapping[str, str], paths: Iterable[str]) -> dict[str, str]:
+def patch_map(prints: Mapping[str, str], paths: Iterable[str]) -> dict[str, str]:
     wanted = sorted(set(paths))
     collided = len({_short(path) for path in wanted}) < len(wanted)
-    return {_short(path): MISSING if collided or path not in patches else patches[path][:PATCH_HEX] for path in wanted}
+    return {_short(path): MISSING if collided or path not in prints else prints[path][:PATCH_HEX] for path in wanted}
 
 
-def patch_digest(patches: Mapping[str, str], paths: Iterable[str]) -> str | None:
-    wanted = sorted(set(paths))
-    if any(path not in patches for path in wanted):
-        return None
-    full = {path: patches[path] for path in wanted}
-    return hashlib.sha256(json.dumps(full, sort_keys=True).encode("utf-8")).hexdigest()[:32]
+def patch_digest(prints: Mapping[str, str]) -> str:
+    return hashlib.sha256(json.dumps(prints, sort_keys=True).encode("utf-8")).hexdigest()[:32]
 
 
 def changed_paths(previous: Mapping[str, str] | None, current: Mapping[str, str], paths: Iterable[str]) -> frozenset:

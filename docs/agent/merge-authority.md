@@ -74,6 +74,23 @@ evidence, such as deleting a stand-in comment: leave the PR unarmed, withdraw
 the evidence, dispatch the gate, and observe the new result on the current head
 before treating the PR as ready.
 
+## Retry backoff reset
+
+A reviewer outage plus the doubling retry backoff can hold a verdict for hours,
+and a manual `/oracle-review` is refused inside it. The owner can clear it for
+one pull request head with `make oracle-backoff-reset PR=<number>
+HEAD=<40-character head SHA> REASON='<why>'`. Run it only when the owner names
+the PR and its head in the current request. Post a separate `Owner instruction`
+comment that names the head first, as for a stand-in; the target refuses
+without it, refuses when the head is not the PR's current head, and refuses any
+account that is not an attester. It posts `Oracle backoff reset: <head SHA>`
+and the reason on the PR. The next retry on that head ignores the backoff and
+the daily retry budget once, and only when the head's recorded result is a
+pending reviewer-outage result; a decisive verdict is never re-rolled by a
+reset, and the recorded retries stay counted so no extra budget is granted.
+That run spends the reset whether or not it records a result. To
+withdraw the reset, edit or delete the comment.
+
 ## Fix-forward authorization
 
 While `develop` is red and its culprit is not reverted, `make pr-arm` refuses every
@@ -132,6 +149,12 @@ happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
   live verification and `make pr-landing-remote-*` report the failed suite
   instead of the newest result for that name. The green-but-unmerged sweep
   lists these PRs in its digest and never counts them as green.
+- `make pr-arm` and `make pr-arm-remote` refuse until the `core` job has uploaded
+  the fast-duration verdict for the exact head. A missing verdict names the
+  pending job; if `core` already ended without one, the refusal names
+  `make pr-rerun PR=<n>`. A failed lookup or download, an unreadable verdict and
+  a verdict not bound to the head also refuse. PRs where no fast-tier tests ran
+  upload a `not-applicable` verdict.
 - `make pr-rerun` re-runs the failed jobs of the newest CI run and of every
   Actions run behind a failed required suite (a cancelled suite re-runs the
   whole run). Pending suites are left alone. It refuses a conclusion it cannot

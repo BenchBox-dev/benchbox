@@ -345,7 +345,7 @@ class NYCTaxiBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseBenc
                 else:
                     variant_template = legacy_sql
                 query_def = qm._active_queries[query_id]
-                params = qm._generate_params(query_def)
+                params = qm._generate_params(query_def, None, query_id)
                 queries[query_id] = variant_template.format(**params)
         return queries
 

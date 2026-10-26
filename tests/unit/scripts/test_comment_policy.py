@@ -5034,6 +5034,109 @@ def test_local_check_refuses_any_other_field_change_alongside_the_expiry(
     )
 
 
+def notice_entry(**changes: object) -> dict:
+    return {
+        "path": "a.py",
+        "symbol": "",
+        "text": "# Derived from Apache Impala.",
+        "kind": "notice",
+        "consumer": "old.md",
+        "necessity": "Attribution the upstream license requires.",
+        "alternative": "None; the notice is required.",
+        "owner": "maintainers",
+        "removal": "Remove when the derived code is removed.",
+        **changes,
+    }
+
+
+def repoint_commit(tmp_path: Path, candidate: dict, consumer_files: dict[str, str]) -> str:
+    base_entry = notice_entry()
+    git_repo(tmp_path, "x = 1  # Derived from Apache Impala.\n")
+    (tmp_path / "old.md").write_text("old\n", encoding="utf-8")
+    (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy(exceptions=[base_entry])), encoding="utf-8")
+    git_run(tmp_path, "add", ".")
+    git_run(tmp_path, "commit", "-qm", "with notice")
+    base = git_run(tmp_path, "rev-parse", "HEAD")
+    (tmp_path / "quality/comment-policy.json").write_text(json.dumps(policy(exceptions=[candidate])), encoding="utf-8")
+    for name, content in consumer_files.items():
+        (tmp_path / name).write_text(content, encoding="utf-8")
+    git_run(tmp_path, "add", "quality/comment-policy.json", *consumer_files)
+    return base
+
+
+def test_local_check_counts_a_notice_repointed_to_a_staged_consumer(tmp_path: Path, local_env: None) -> None:
+    base = repoint_commit(tmp_path, notice_entry(consumer="COPYRIGHT.md"), {"COPYRIGHT.md": "c\n"})
+    assert main(staged_args(tmp_path, base)) == 1
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 0
+
+
+def test_local_check_counts_a_notice_repointed_to_a_consumer_in_the_base_tree(tmp_path: Path, local_env: None) -> None:
+    base = repoint_commit(tmp_path, notice_entry(consumer="a.py"), {})
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 0
+
+
+def test_local_check_refuses_a_notice_repoint_to_a_missing_path(tmp_path: Path, local_env: None) -> None:
+    base = repoint_commit(tmp_path, notice_entry(consumer="MISSING.md"), {})
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 2
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("text", "# Derived from Apache Impala (changed)."),
+        ("necessity", "Different necessity."),
+        ("alternative", "Different alternative."),
+        ("owner", "someone-else"),
+        ("removal", "Different removal."),
+        ("count", 2),
+    ],
+)
+def test_local_check_refuses_a_notice_repoint_with_another_field_change(
+    tmp_path: Path, local_env: None, field: str, value: object
+) -> None:
+    base = repoint_commit(tmp_path, notice_entry(consumer="COPYRIGHT.md", **{field: value}), {"COPYRIGHT.md": "c\n"})
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 1
+
+
+def test_local_check_refuses_a_notice_repoint_in_ci(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    base = repoint_commit(tmp_path, notice_entry(consumer="COPYRIGHT.md"), {"COPYRIGHT.md": "c\n"})
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    assert main(staged_args(tmp_path, base, ACCEPT)) == 2
+    registry = load_policy(json.dumps(policy(exceptions=[notice_entry(consumer="COPYRIGHT.md")])).encode())
+    assert not counted_exceptions(
+        registry,
+        load_policy(json.dumps(policy(exceptions=[notice_entry()])).encode()),
+        reviewed=False,
+        same_commit=True,
+        changed=set(),
+    )
+
+
+def test_local_check_refuses_a_directive_consumer_repoint(local_env: None) -> None:
+    base = exception()
+    assert not counted_exceptions(
+        local_registry(exception(consumer="Makefile")),
+        local_registry(base),
+        reviewed=False,
+        same_commit=True,
+        changed=set(),
+    )
+
+
+def test_local_check_refuses_a_notice_repoint_without_the_local_flag(local_env: None) -> None:
+    assert not counted_exceptions(
+        local_registry(notice_entry(consumer="COPYRIGHT.md")),
+        local_registry(notice_entry()),
+        reviewed=False,
+        same_commit=False,
+        changed=set(),
+    )
+
+
+def test_local_check_counts_an_unchanged_notice_with_the_flag(local_env: None) -> None:
+    assert counts_locally(notice_entry(), notice_entry())
+
+
 def test_local_check_does_not_count_a_new_entry(local_env: None) -> None:
     assert not counted_exceptions(
         {"exceptions": [exception(path="new.py")]},

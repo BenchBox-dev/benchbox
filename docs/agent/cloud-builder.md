@@ -57,8 +57,13 @@ all set, `make cloud-bootstrap` runs `scripts/cloud_gateway.sh`, which:
 1. downloads the OMP build that CI reviewers use, checks its SHA-256 and
    installs it as `~/.local/bin/omp` (override with `BENCHBOX_OMP_INSTALL_DIR`).
    The URL and checksum are read from `OMP_URL` and `OMP_SHA256` in
-   `.github/workflows/oracle-verdict.yml`, the only place they are written. A
-   checksum mismatch refuses the install. The download goes straight to the
+   `.github/workflows/oracle-verdict.yml`. These legacy values remain for
+   cloud and local consumers during their migration; CI installs from the
+   `omp:` section of `.github/oracle-reviewers.yml` into the versioned cache
+   `~/.cache/benchbox/omp/<version>/<platform>/omp` through the shared installer,
+   and rejects a mismatch with the legacy values. Cloud bootstrap still uses
+   the branch workflow until it migrates to the policy pin on `origin/develop`.
+   A checksum mismatch refuses the install. The download goes straight to the
    host in `OMP_URL`, so the environment network allowlist needs that host;
 2. starts `tailscaled` in userspace-networking mode with in-memory state, so
    nothing touches disk and no TUN device or root is needed. The tailnet DNS

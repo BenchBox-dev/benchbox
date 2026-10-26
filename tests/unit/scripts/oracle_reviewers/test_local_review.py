@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
+pytest.importorskip("fcntl")
+
 import yaml
 
 from _project.scripts.oracle_reviewers import cli, local, runner
