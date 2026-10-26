@@ -304,7 +304,7 @@ def _backoff_reset(
         later = [
             run
             for run in sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, reset_at)).get(pr, ())
-            if run.id != run_id and run.created_at > reset_at
+            if run.id != run_id and run.created_at > reset_at and run.conclusion not in sweep.NEUTRAL
         ]
     except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
         _summary(f"oracle-verdict: the owner's backoff reset could not be confirmed unused: {exc}")

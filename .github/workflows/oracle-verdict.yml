@@ -190,7 +190,7 @@ jobs:
 
       - name: Scan the disk for secret values after the reviewer exits
         id: scan_after
-        if: steps.plan.outputs.decision == 'review'
+        if: ${{ steps.plan.outputs.decision == 'review' && !cancelled() && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') }}
         working-directory: trusted
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
@@ -210,7 +210,7 @@ jobs:
 
       - name: Redact every secret value held by the job from the results
         id: redact
-        if: steps.plan.outputs.post == 'true'
+        if: ${{ steps.plan.outputs.post == 'true' && !cancelled() && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') }}
         working-directory: trusted
         env:
           OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}

@@ -648,7 +648,7 @@ cancels a run in flight and a cancelled run posts nothing.
   needs an `Owner instruction` comment from an attester that names the head,
   posted first, as for a stand-in. It posts `Oracle backoff reset: <sha>` and
   the reason, which `plan` and the sweep honour only from an attester, unedited,
-  after that instruction, until a later result is recorded on the head.
+  after that instruction, until the next verdict run that reviews the head spends it.
 
 A rerun on the same head needs a previous run in which every attempted
 reviewer was absent. A run that stayed pending because its artifacts failed

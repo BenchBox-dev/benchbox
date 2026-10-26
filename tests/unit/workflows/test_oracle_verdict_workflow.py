@@ -326,7 +326,10 @@ def test_the_redaction_step_holds_every_secret_value_the_job_held() -> None:
     names = _names()
     assert names.index(LOOP_STEP) < names.index("Validate this run's attempts and decide") < names.index(step["name"])
     assert names.index(step["name"]) < names.index("Mint the App token")
-    assert step["if"] == "steps.plan.outputs.post == 'true'"
+    assert step["if"] == (
+        "${{ steps.plan.outputs.post == 'true' && !cancelled() && "
+        "(steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') }}"
+    )
 
 
 def test_the_disk_scans_bracket_the_reviewer_and_cover_the_declared_scratch_roots() -> None:
@@ -435,7 +438,21 @@ def test_the_security_checks_and_the_loop_fail_the_job_closed() -> None:
         step = _step(name)
         assert "continue-on-error" not in step, name
         assert "always()" not in step.get("if", ""), name
-        assert "cancelled()" not in step.get("if", ""), name
+        assert "cancelled()" not in step.get("if", "") or "!cancelled()" in step.get("if", ""), name
+
+
+RECOVERING_STEPS = (
+    "Scan the disk for secret values after the reviewer exits",
+    "Redact every secret value held by the job from the results",
+)
+
+
+def test_the_post_loop_checks_also_run_after_a_crash_without_a_leak() -> None:
+    for name in RECOVERING_STEPS:
+        condition = _step_if(name)
+        assert "!cancelled()" in condition, name
+        assert "always()" not in condition, name
+        assert "steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false'" in condition, name
 
 
 def test_linux_isolation_runs_immediately_before_the_loop_and_fails_closed() -> None:

@@ -85,7 +85,7 @@ comment that names the head first, as for a stand-in; the target refuses
 without it, refuses when the head is not the PR's current head, and refuses any
 account that is not an attester. It posts `Oracle backoff reset: <head SHA>`
 and the reason on the PR. The next retry on that head ignores the backoff and
-the daily retry budget once; the result it records starts the backoff again. To
+the daily retry budget once; that run spends the reset whether or not it records a result. To
 withdraw the reset, edit or delete the comment.
 
 ## Fix-forward authorization

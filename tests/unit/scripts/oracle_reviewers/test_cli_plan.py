@@ -699,6 +699,16 @@ def test_an_owner_reset_is_spent_by_the_first_later_run(monkeypatch: pytest.Monk
     assert plan["backoff_reset_at"] is None
 
 
+def test_a_skipped_run_after_the_reset_does_not_spend_it(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    fake = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    fake.comments = _reset_comments()
+    fake.runs = [_verdict_run(7, conclusion="skipped", age=timedelta(minutes=10))]
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "review"
+    assert "reset by the owner" in plan["decision_reason"]
+
+
 def _reset_comments(head: str = HEAD, *, edited: bool = False) -> list[dict[str, Any]]:
     start = datetime.now(UTC) - timedelta(minutes=30)
     owner = {"login": "joeharris76", "type": "User"}
