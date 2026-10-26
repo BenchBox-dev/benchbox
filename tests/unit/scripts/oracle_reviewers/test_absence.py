@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from datetime import UTC, datetime, timedelta
 
@@ -223,3 +224,33 @@ def test_reset_text_in_stdout_does_not_set_a_quota_reset() -> None:
 
 def test_four_hundred_one_inside_a_longer_number_is_not_auth() -> None:
     assert _classify("omp", 1, stderr="processed 14015 files then crashed").kind == absence.ERROR
+
+
+def _terminal(error: str, status: int | None = None, text: str = "") -> str:
+    message: dict = {"role": "assistant", "content": [{"type": "text", "text": text}], "stopReason": "error"}
+    message["errorMessage"] = error
+    if status is not None:
+        message["errorStatus"] = status
+    return json.dumps({"type": "message_end", "message": message}) + "\n"
+
+
+def test_json_terminal_quota_event_is_quota_with_reset() -> None:
+    stdout = _terminal("rate_limit_error: 429 Too Many Requests. Resets in 2h.")
+    result = _classify("omp", 1, stdout=stdout)
+    assert result.kind == absence.QUOTA
+    assert result.reset_at == NOW + timedelta(hours=2)
+
+
+def test_json_terminal_401_event_is_auth() -> None:
+    stdout = _terminal("401 Unauthorized\nUnauthorized (type=authentication_error)", 401)
+    assert _classify("omp", 1, stdout=stdout).kind == absence.AUTH
+
+
+def test_quoted_signal_in_assistant_content_stays_an_error() -> None:
+    stdout = _terminal("stream disconnected", None, "+| 401 | rate_limit_error Unauthorized invalid_grant")
+    assert _classify("omp", 1, stdout=stdout).kind == absence.ERROR
+
+
+def test_an_earlier_error_message_does_not_classify_a_later_failure() -> None:
+    later = json.dumps({"type": "message_end", "message": {"role": "assistant", "content": []}}) + "\n"
+    assert _classify("omp", 1, stdout=_terminal("rate_limit_error") + later).kind == absence.ERROR

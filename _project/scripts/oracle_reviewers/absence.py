@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from . import credentials
-from .verdict import sanitize
+from .verdict import omp_terminal_error, sanitize
 
 OK = "ok"
 QUOTA = "quota"
@@ -144,15 +144,16 @@ def classify(
     timed_out: bool,
     now: datetime,
 ) -> Absence:
+    signal = f"{stderr}\n{omp_terminal_error(stdout)}" if harness == "omp" else stderr
     if timed_out:
         return Absence(TIMEOUT, "the reviewer did not finish within its timeout")
     if _first(CALIBRATED_EMPTY_PATTERNS.get(harness, ()), stderr) is not None:
         return Absence(EMPTY, "the reviewer produced no output because tool use was denied")
     failed = exit_code not in (0, None)
-    quota = _first(CALIBRATED_QUOTA_PATTERNS.get(harness, ()), stderr) if failed else None
+    quota = _first(CALIBRATED_QUOTA_PATTERNS.get(harness, ()), signal) if failed else None
     if quota is not None:
-        return Absence(QUOTA, redact_detail(quota.group(0)), parse_reset(stderr, now))
-    auth = _first(CALIBRATED_AUTH_PATTERNS.get(harness, ()), stderr) if failed else None
+        return Absence(QUOTA, redact_detail(quota.group(0)), parse_reset(signal, now))
+    auth = _first(CALIBRATED_AUTH_PATTERNS.get(harness, ()), signal) if failed else None
     if auth is not None:
         return Absence(AUTH, redact_detail(auth.group(0)))
     if exit_code is None:
