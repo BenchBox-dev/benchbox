@@ -1429,6 +1429,18 @@
       "match": "timeout",
       "optional": true,
       "justification": "SQLite without indexes runs OBT Q35 in 5.7 seconds on the maintainer host, so it can exceed the 15 second per-query budget on a slower or busier runner. The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on the unindexed 715-column OBT, not a translation difference."
+    },
+    {
+      "engine": "sqlite",
+      "benchmark": "tpcds_obt",
+      "check": "base-equivalence",
+      "queries": [
+        13,
+        48
+      ],
+      "match": "timeout",
+      "optional": true,
+      "justification": "SQLite without indexes does not finish the base TPC-DS Q13 and Q48 inside the per-query budget at SF0.01 (allowlisted base timeouts), so the OBT base-equivalence comparison has no base result on this engine. The outcome depends on wall-clock speed, so the entry is optional. Performance limit of the engine on unindexed TPC-DS, not a translation difference."
     }
   ]
 }
