@@ -4,6 +4,7 @@
     "Every SQL platform either translates 1_v7 or carries a documented reason; corpus diff listed.",
     "Fork tests in CI; gate allowlist entries removed; sql-execution-gate PASS."
   ],
+  "context": "DONE: fork #71 reduce_list_aggregates handles 1_v7 on PostgreSQL (multi-argument UNNEST) and DataFusion; postgres+datafusion added to LIST_AGGREGATE_DIALECTS; 11 platforms without a list translation and pg-duckdb/pg-mooncake carry documented 1_v7 skips (alias table shared by runtime and bundle validation). Havoc equivalence PostgreSQL 214/214, DataFusion 207 + 2 classified. Allowlist entries removed; gate PASS. #3524 (1326cae28). GitHub #3514.",
   "description": "Found by extending sql-execution-gate to TPC-Havoc. Havoc 1_v7 uses DuckDB LIST(...); benchbox/core/tpchavoc/dialect_compat.py LIST_AGGREGATE_DIALECTS covers only sqlite and cloud dialects, so PostgreSQL fails (`function list(numeric) does not exist`) and DataFusion fails (`Invalid function 'list'`). Add the targets to the dispatch data and make the fork's reduce_list_aggregates/order_list_aggregates produce valid PostgreSQL (array_agg) and DataFusion (array_agg) forms. Check every other target platform for the same gap. GUARDRAILS: fix in the SQLGlot fork with real-engine tests (fork CI) and adopt via a wheel cut under the batch wheel mutex; benchmark text unchanged; when fixed, remove the matching sql-execution-gate allowlist entry (the gate fails on stale entries); list affected published bundles and flag only if recorded rows were wrong; no cloud spend.",
   "sessions": [
     {
@@ -21,6 +22,14 @@
       "generation": "cf07819633a64d22a917bd9e00a8d66c",
       "op": "take",
       "op_id": "f7baf82135dc4a7695c359b8ddd231d3",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-26T03:34:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9f82d057cfe74cff97e1e9fd164de319",
       "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
