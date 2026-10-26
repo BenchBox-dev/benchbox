@@ -123,7 +123,7 @@ def test_contended_lock_prevents_home_setup(tmp_path: Path) -> None:
 
 
 def test_session_finish_restores_caller_environment(tmp_path: Path) -> None:
-    env = dict(os.environ, PYTHONPATH=str(REPO_ROOT))
+    env = dict(os.environ, PYTHONPATH=str(REPO_ROOT), BENCHBOX_TEST_LOCK_DIR=str(tmp_path / "lock"))
     script = (
         "import os\nfrom pathlib import Path\nfrom tests.utilities import session_isolation as isolation\n"
         "before = dict(os.environ)\n"

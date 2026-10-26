@@ -61,9 +61,11 @@ REQUIRED_CONTEXTS: tuple[str, ...] = (
     "docs",
     "tooling",
 )
-TERMINAL_CHECK_FAILURES = frozenset({"failure", "cancelled", "timed_out", "action_required"})
+TERMINAL_CHECK_FAILURES = frozenset(
+    {"failure", "cancelled", "timed_out", "action_required", "startup_failure", "stale"}
+)
 TERMINAL_STATUS_FAILURES = frozenset({"failure", "error"})
-STATUS_CONTEXTS_JQ = "[.statuses[] | {context: .context, state: .state}]"
+STATUS_CONTEXTS_JQ = r'.[] | "\(.context) \(.state)"'
 REQUIRED_BATCH_TOOLS = frozenset({"register_batch", "prepare", "bind_batch_pr", "abort_batch"})
 MAX_RERUNS_PER_JOB = 1
 MAX_REENTRIES_PER_HEAD = 1
@@ -595,24 +597,20 @@ def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, st
         [
             "gh",
             "api",
+            "--paginate",
             "--jq",
             STATUS_CONTEXTS_JQ,
-            f"repos/{repo_full}/commits/{head}/status",
+            f"repos/{repo_full}/commits/{head}/statuses?per_page=100",
         ]
     )
     if rc != 0:
         raise LandingError(f"live status verification failed for {head[:12]}")
-    try:
-        entries = json.loads(out)
-    except ValueError as exc:
-        raise LandingError(f"unparseable live status payload: {exc}") from exc
-    if not isinstance(entries, list) or any(not isinstance(entry, dict) for entry in entries):
-        raise LandingError("unparseable live status payload: expected a list of status entries")
-    return {
-        str(entry.get("context") or ""): str(entry.get("state") or "")
-        for entry in entries
-        if str(entry.get("context") or "")
-    }
+    statuses: dict[str, str] = {}
+    for line in out.splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) == 2 and parts[0] not in statuses:
+            statuses[parts[0]] = parts[1]
+    return statuses
 
 
 def visible_required_failure_reasons(run: Runner, repo_full: str, branch: str, head: str) -> list[str]:
@@ -622,7 +620,7 @@ def visible_required_failure_reasons(run: Runner, repo_full: str, branch: str, h
     reasons: list[str] = []
     for name in required:
         suites = evaluations[name].suites
-        if suites and suites[0].completed and suites[0].conclusion in TERMINAL_CHECK_FAILURES:
+        if suites and suites[0].completed and suites[0].conclusion not in check_suites.NON_BLOCKING:
             reasons.append(
                 f"required check {name!r} completed with conclusion {suites[0].conclusion!r} "
                 f"on {head[:9]}; pending checks do not block arming"

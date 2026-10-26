@@ -449,7 +449,7 @@ def failing_required_checks(
     reasons: list[str] = []
     for name in required:
         conclusion = (verdicts.get(name) or {}).get("conclusion")
-        if conclusion in pr_landing.TERMINAL_CHECK_FAILURES:
+        if conclusion and conclusion not in pr_landing.check_suites.NON_BLOCKING:
             reasons.append(
                 f"required check {name!r} failed with conclusion {conclusion!r}; pending checks do not block arming"
             )

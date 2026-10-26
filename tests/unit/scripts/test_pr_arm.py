@@ -87,10 +87,10 @@ class FakeGh:
         if cmd[:3] == ["gh", "pr", "merge"]:
             return self.merge_code, "queued"
         if cmd[:2] == ["gh", "api"] and cmd[-1] == f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/status":
-            if "--jq" in cmd and "oracle-gate" not in cmd[cmd.index("--jq") + 1]:
-                entries = [{"context": name, "state": state} for name, state in self.statuses.items()]
-                return 0, json.dumps(entries)
             return self.status_code, self.gate_state + "\n" if self.status_code == 0 else "gh: HTTP 502"
+        if cmd[:2] == ["gh", "api"] and f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/statuses?" in cmd[-1]:
+            lines = [f"{name} {state}" for name, state in self.statuses.items()]
+            return 0, "\n".join(lines)
         if cmd[:2] == ["gh", "api"] and "/actions/artifacts?" in cmd[-1]:
             assert cmd[-1].startswith(f"repos/{pr_arm.REPOSITORY}/actions/artifacts?name=fast-duration-verdict-7-")
             if self.lookup_code != 0:

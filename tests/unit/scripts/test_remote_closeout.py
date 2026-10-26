@@ -265,10 +265,10 @@ class FakeGitHub:
 
     def _gate(self, cmd: list[str]) -> tuple[int, str] | None:
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/status"):
-            if "--jq" in cmd and "oracle-gate" not in cmd[cmd.index("--jq") + 1]:
-                entries = [{"context": name, "state": state} for name, state in self.statuses.items()]
-                return 0, json.dumps(entries)
             return 0, self.gate_state + "\n"
+        if cmd[:2] == ["gh", "api"] and "/statuses?" in cmd[-1]:
+            lines = [f"{name} {state}" for name, state in self.statuses.items()]
+            return 0, "\n".join(lines)
         if cmd[:3] == ["gh", "workflow", "run"]:
             return self.dispatch_code, "" if self.dispatch_code == 0 else "gh: HTTP 403"
         return None
