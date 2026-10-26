@@ -91,7 +91,7 @@ def _is_placeholder(ref: str) -> bool:
 def find_stale() -> list[str]:
     stale: list[str] = []
     for tracked in _tracked_files():
-        if tracked.startswith("_project/"):
+        if tracked.startswith(("_project/", "tests/fixtures/fast_tier_baseline/")):
             continue
         if Path(tracked).suffix.lower() in _SKIP_SUFFIXES:
             continue

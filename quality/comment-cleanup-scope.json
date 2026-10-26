@@ -2546,7 +2546,7 @@
       "id": "root-test-tier-policy",
       "owner": "comment-cleanup-shared-infrastructure",
       "state": "blocked",
-      "blocking_disposition": "tests/duration_policy.py is the collection-time policy for test tier budgets and quarantine markers, so it is root test configuration with the shared-infrastructure owner. Its consumers are tests/conftest.py (test-support, which follows this owner), _project/scripts/update_test_durations.py (project-tooling), tests/unit/test_duration_policy.py, tests/unit/test_marker_strategy.py and tests/unit/workflows/test_nightly_t3_workflow.py (which copies the file into a temporary tree); each is migrated or confirmed before any edit.",
+      "blocking_disposition": "tests/duration_policy.py is the collection-time policy for test tier budgets and quarantine markers, so it is root test configuration with the shared-infrastructure owner. Its consumers are scripts/build_fast_duration_baseline.py (the fast-tier baseline builder), tests/conftest.py (test-support, which follows this owner), _project/scripts/update_test_durations.py (project-tooling), tests/unit/test_duration_policy.py, tests/unit/test_marker_strategy.py and tests/unit/workflows/test_nightly_t3_workflow.py (which copies the file into a temporary tree); each is migrated or confirmed before any edit.",
       "priority": 30,
       "selectors": [
         {

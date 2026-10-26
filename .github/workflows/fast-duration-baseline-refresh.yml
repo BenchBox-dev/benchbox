@@ -1,0 +1,212 @@
+name: Fast duration baseline refresh
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fast-duration-baseline-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Regenerate the fast-tier duration baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Fetch recent merged-PR fast-junit artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAX_RUNS_SCAN: "60"
+          MAX_SOURCE_RUNS: "20"
+          API_CALL_BUDGET: "120"
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p fast-refresh/runs
+          : > fast-refresh/api-calls.log
+          calls=0
+          api_call() {
+            calls=$((calls + 1))
+            echo "call $calls: $*" >> fast-refresh/api-calls.log
+            if [ "$calls" -gt "$API_CALL_BUDGET" ]; then
+              echo "API call budget $API_CALL_BUDGET exceeded" >&2
+              exit 1
+            fi
+          }
+          api_call "run list --workflow ci.yml --limit $MAX_RUNS_SCAN"
+          gh run list --workflow ci.yml --limit "$MAX_RUNS_SCAN" \
+            --json databaseId,status,conclusion > fast-refresh/ci-runs.json
+          python3 - <<'PY' > fast-refresh/run-ids.txt
+          import json
+          runs = json.load(open("fast-refresh/ci-runs.json"))
+          for run in runs:
+              if run["status"] == "completed" and run.get("conclusion") == "success":
+                  print(run["databaseId"])
+          PY
+          : > fast-refresh/manifest.json
+          echo "[" > fast-refresh/manifest.json
+          first=1
+          kept=0
+          declare -A seen_pr=()
+          while read -r run_id; do
+            [ "$kept" -ge "$MAX_SOURCE_RUNS" ] && break
+            api_call "run $run_id artifacts"
+            names=$(gh api "repos/${{ github.repository }}/actions/runs/$run_id/artifacts?per_page=100" \
+              -q '.artifacts[] | select(.name | startswith("fast-junit-")) | "\(.id) \(.name) \(.expired)"')
+            [ -z "$names" ] && continue
+            while read -r artifact_id name expired; do
+              [ "$kept" -ge "$MAX_SOURCE_RUNS" ] && break
+              [ "$expired" = "true" ] && continue
+              case "$name" in fast-junit-trunk-*) continue;; esac
+              case "$name" in fast-junit-[0-9]*-*) ;;
+                *) continue;;
+              esac
+              pr_number="${name#fast-junit-}"
+              pr_number="${pr_number%%-*}"
+              case "$pr_number" in ''|*[!0-9]*) continue;; esac
+              [ -n "${seen_pr[$pr_number]:-}" ] && continue
+              api_call "pr $pr_number state"
+              state=$(gh pr view "$pr_number" --json state -q .state 2>/dev/null || echo UNKNOWN)
+              echo "run $run_id artifact $artifact_id pr $pr_number state $state" >> fast-refresh/api-calls.log
+              [ "$state" = "MERGED" ] || continue
+              sha="${name##*-}"
+              if [ "$first" -eq 1 ]; then first=0; else echo "," >> fast-refresh/manifest.json; fi
+              printf '  {"run_id": %s, "pr": %s, "sha": "%s", "artifact_id": %s, "dir": "fast-refresh/runs/run-%s"}' \
+                "$run_id" "$pr_number" "$sha" "$artifact_id" "$run_id" >> fast-refresh/manifest.json
+              api_call "run $run_id download $name"
+              gh run download "$run_id" -n "$name" -D "fast-refresh/runs/run-$run_id" >> fast-refresh/api-calls.log 2>&1
+              seen_pr[$pr_number]=1
+              kept=$((kept + 1))
+            done <<< "$names"
+          done < fast-refresh/run-ids.txt
+          echo "" >> fast-refresh/manifest.json
+          echo "]" >> fast-refresh/manifest.json
+          echo "kept=$kept" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Source runs"
+            echo ""
+            echo "Kept $kept merged-PR fast-junit artifacts (budget $API_CALL_BUDGET calls, used $calls)."
+            echo ""
+          } > fast-refresh/source-runs.md
+
+      - name: Build the refreshed baseline
+        run: |
+          uv run -- python -m scripts.build_fast_duration_baseline build \
+            --manifest fast-refresh/manifest.json \
+            --output tests/fixtures/fast_tier_baseline
+
+      - name: Collect the current fast tier
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run -- python -m pytest --collect-only -q -p no:cacheprovider -n 0 --assert=plain \
+            -m "fast and not (slow or stress or resource_heavy or live_integration)" tests/ \
+            | grep -E "^tests/.*::" | sort -u > fast-refresh/collected-ids.txt
+          wc -l fast-refresh/collected-ids.txt
+
+      - name: Gate-check the refreshed baseline
+        run: |
+          uv run -- python -m scripts.build_fast_duration_baseline check \
+            --baseline tests/fixtures/fast_tier_baseline \
+            --manifest fast-refresh/manifest.json \
+            --collected-ids fast-refresh/collected-ids.txt \
+            --report-out fast-refresh/gate-report.json
+
+      - name: Report medium-shard drift
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id=$(gh run list --workflow trunk.yml --limit 5 \
+            --json databaseId,status,conclusion \
+            -q '[.[] | select(.status == "completed" and .conclusion == "success")][0].databaseId')
+          test -n "$run_id"
+          mkdir -p fast-refresh/medium
+          for shard in 0 1 2 3; do
+            sha=$(gh api "repos/${{ github.repository }}/actions/runs/$run_id/artifacts?per_page=100" \
+              -q '.artifacts[] | select(.name | startswith("t2-medium-shard-'"$shard"'-")) | .name' | head -1)
+            test -n "$sha"
+            gh run download "$run_id" -n "$sha" -D "fast-refresh/medium/shard-$shard"
+          done
+          uv run -- python -m scripts.build_fast_duration_baseline medium-drift \
+            --recorded tests/fixtures/medium_shard_durations.json \
+            --shard fast-refresh/medium/shard-0/shard-0-junit.xml \
+            --shard fast-refresh/medium/shard-1/shard-1-junit.xml \
+            --shard fast-refresh/medium/shard-2/shard-2-junit.xml \
+            --shard fast-refresh/medium/shard-3/shard-3-junit.xml \
+            --report-out fast-refresh/drift-report.json \
+            | tee fast-refresh/drift.md
+
+      - name: Check for baseline changes
+        id: check
+        shell: bash
+        run: |
+          if git diff --quiet -- tests/fixtures/fast_tier_baseline; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create refresh PR
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH="chore/fast-baseline-$(date -u +%Y%m%d)-${{ github.run_number }}"
+          git config user.name "benchbox-bot"
+          git config user.email "bot@benchbox.dev"
+          git checkout -b "$BRANCH"
+          git add tests/fixtures/fast_tier_baseline
+          git commit -m "chore(ci): refresh the fast-tier duration baseline (run ${{ github.run_number }})"
+          git push origin "$BRANCH"
+          BODY_FILE="$(mktemp)"
+          {
+            echo "## Fast-tier duration baseline refresh"
+            echo ""
+            echo "Automated refresh from workflow run ${{ github.run_number }}."
+            cat fast-refresh/source-runs.md
+            echo ""
+            echo "### Gate check"
+            echo ""
+            echo '```json'
+            cat fast-refresh/gate-report.json
+            echo '```'
+            echo ""
+            cat fast-refresh/drift.md
+            echo ""
+            echo "### API usage"
+            echo ""
+            echo '```'
+            cat fast-refresh/api-calls.log
+            echo '```'
+          } > "$BODY_FILE"
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number -q '.[].number')" ]; then
+            gh pr create --title "chore(ci): refresh the fast-tier duration baseline" \
+              --body-file "$BODY_FILE" --base develop --head "$BRANCH"
+          fi

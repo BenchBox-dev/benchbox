@@ -3338,6 +3338,270 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "file": 1,
+    "pattern": 1
+   },
+   "occurrences": 3,
+   "path": "tests/fixtures/fast_tier_baseline/tests-00.json",
+   "rule": "test-sample-data",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/reference/threat-model.md]"
+    },
+    {
+     "kind": "file",
+     "target": "docs/usage/getting-started.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "extra": 1,
+    "file": 1,
+    "pattern": 5
+   },
+   "occurrences": 9,
+   "path": "tests/fixtures/fast_tier_baseline/tests-01.json",
+   "rule": "test-sample-data",
+   "target_count": 7,
+   "targets": [
+    {
+     "kind": "extra",
+     "target": "_project/design/api-public-symbols.json"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/agent/attribution-surfaces.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/changelog.d/x.json]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/comment-policy.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/independent-publication-contract.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/publish-allowlist.txt]"
+    },
+    {
+     "kind": "file",
+     "target": "docs/usage/getting-started.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "file": 1,
+    "pattern": 5,
+    "unresolved": 1
+   },
+   "occurrences": 8,
+   "path": "tests/fixtures/fast_tier_baseline/tests-02.json",
+   "rule": "test-sample-data",
+   "target_count": 7,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/agent/identity-instruction-boundary.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/agent/review-protocol.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/guides/intro.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/results-phase-3-runbook.md]"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/page.md-unsafe"
+    },
+    {
+     "kind": "file",
+     "target": "docs/usage/getting-started.md"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/usage/getting-started.md]"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "file": 1,
+    "pattern": 5,
+    "unresolved": 1
+   },
+   "occurrences": 9,
+   "path": "tests/fixtures/fast_tier_baseline/tests-03.json",
+   "rule": "test-sample-data",
+   "target_count": 7,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs//page.md-unsafe"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/development/adr/adr-public-result-id-permanence.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/independent-publication-threat-model.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/release-guide.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/publish-exclusions.txt]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/reference/hosted-results-contract.md]"
+    },
+    {
+     "kind": "file",
+     "target": "docs/usage/getting-started.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "file": 1
+   },
+   "occurrences": 1,
+   "path": "tests/fixtures/fast_tier_baseline/tests-04.json",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "file",
+     "target": "docs/usage/getting-started.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "file": 1,
+    "pattern": 2,
+    "unresolved": 1
+   },
+   "occurrences": 5,
+   "path": "tests/fixtures/fast_tier_baseline/tests-05.json",
+   "rule": "test-sample-data",
+   "target_count": 4,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/../outside.md-unsafe"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/release-guide.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/results-phase-2-runbook.md]"
+    },
+    {
+     "kind": "file",
+     "target": "docs/usage/getting-started.md"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "file": 1,
+    "pattern": 4
+   },
+   "occurrences": 5,
+   "path": "tests/fixtures/fast_tier_baseline/tests-06.json",
+   "rule": "test-sample-data",
+   "target_count": 5,
+   "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/development/testing.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/snowflake-trial-exit-adversarial-review-handoff.md]"
+    },
+    {
+     "kind": "file",
+     "target": "docs/usage/getting-started.md"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/usage/getting-started.md.bak]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/usage/getting-started.md]"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "file": 1,
+    "pattern": 4,
+    "unresolved": 1
+   },
+   "occurrences": 6,
+   "path": "tests/fixtures/fast_tier_baseline/tests-07.json",
+   "rule": "test-sample-data",
+   "target_count": 6,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/./page.md-unsafe"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/agent/review-protocol.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/adr/adr-independent-publication-authorities.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/adr/adr-published-results-slim-corpus-branch.md]"
+    },
+    {
+     "kind": "file",
+     "target": "docs/usage/getting-started.md"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/usage/other-page.md]"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "unresolved": 1
    },
    "occurrences": 3,
@@ -5305,7 +5569,7 @@
   "dispositions": {
    "contract-replaced": 3,
    "contract-tooling": 5,
-   "fixture-data": 35,
+   "fixture-data": 43,
    "generator-deleted": 5,
    "governance-stays": 7,
    "historical-record": 112,
@@ -5315,18 +5579,18 @@
    "site-pipeline-cutover": 10,
    "wiring-updated": 35
   },
-  "files": 264,
+  "files": 272,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
-   "extra": 71,
-   "file": 1565,
+   "extra": 72,
+   "file": 1580,
    "generated": 15,
-   "pattern": 287,
+   "pattern": 313,
    "root": 216,
-   "unresolved": 2003
+   "unresolved": 2007
   },
-  "references": 33373,
+  "references": 33419,
   "unclassified": 0
  }
 }
