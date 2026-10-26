@@ -23048,6 +23048,13 @@
       "status": "open",
       "title": "Enforce a comment and docstring policy on the site repo's source"
     },
+    "site-contract-bump-sequencing-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Sequence the site contract bump after the 2026-11-18 dependency window"
+    },
     "site-docs-broken-fragments-20261009": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Live state of the site contract (versions, open PRs, last deploy) is recorded from live reads on or after 2026-11-18",
+    "The sequencing decision (bump now, defer, or drop) is recorded with evidence for the owner"
+  ],
+  "context": "Do not start implementation under this item before its date; it exists so the batch cannot silently lose the hold.",
+  "description": "Date-held standing item: the site contract bump must not start before 2026-11-18. On or after that date, re-read the live contract state in BenchBox-dev/benchbox and benchbox-site before proposing any change. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
+  "not_before": "2026-11-18T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-26T19:29:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "80d709dbaf3d4cfab59f86c28ddcd0b0",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}
