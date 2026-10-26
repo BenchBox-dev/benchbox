@@ -132,7 +132,62 @@ def _extract_payload(merge_sha: str, paths: list[str], dest: Path) -> list[Path]
     return extracted
 
 
-def _discover_changed_bundles(base_sha: str, merge_sha: str) -> list[str]:  # noqa: C901
+_BUNDLE_SKIP_SUFFIXES = (
+    ".plans.json",
+    ".tuning.json",
+    ".applied.json",
+    ".manifest.json",
+    ".override.json",
+    "corpus-inventory.json",
+    "submission-manifest.json",
+)
+_COMPANION_SUFFIXES = (".plans.json", ".tuning.json", ".override.json")
+
+
+def _stem_to_bundle(merge_files: list[str], stem: str) -> str | None:
+    target_lower = f"{stem.lower()}.json"
+    for candidate in merge_files:
+        if candidate.lower() == target_lower:
+            return candidate
+    for candidate in merge_files:
+        lower = candidate.lower()
+        if lower.endswith(".json") and lower[:-5] == stem.lower():
+            return candidate
+    return None
+
+
+def _diff_bundle_json_all(base_sha: str, merge_sha: str) -> list[str]:
+    return _diff_name_only(
+        base_sha,
+        merge_sha,
+        ":(icase,glob)results-data/bundles/*.json",
+        ":(icase,glob)results-data/bundles/**/*.json",
+        diff_filter="ACMRD",
+    )
+
+
+def _add_bundle_for_stem(stem: str, merge_files: list[str], filtered: list[str]) -> None:
+    bundle = _stem_to_bundle(merge_files, stem)
+    if bundle and bundle not in filtered and bundle in merge_files:
+        filtered.append(bundle)
+
+
+def _add_companion_bundles(companions: list[str], merge_files: list[str], filtered: list[str]) -> None:
+    for companion in companions:
+        lower = companion.lower()
+        suffix = next((s for s in _COMPANION_SUFFIXES if lower.endswith(s)), None)
+        if suffix is None:
+            continue
+        stem = companion[: -len(suffix)]
+        if _stem_to_bundle(merge_files, stem) is None:
+            if companion in merge_files:
+                print(f"::error::Live companion has no primary bundle at {stem}.json", file=sys.stderr)
+                raise SystemExit(1)
+            continue
+        _add_bundle_for_stem(stem, merge_files, filtered)
+
+
+def _discover_changed_bundles(base_sha: str, merge_sha: str) -> list[str]:
     changed = _diff_name_only(
         base_sha,
         merge_sha,
@@ -140,95 +195,20 @@ def _discover_changed_bundles(base_sha: str, merge_sha: str) -> list[str]:  # no
         ":(icase,glob)results-data/bundles/**/*.json",
         diff_filter="ACMR",
     )
-    filtered: list[str] = []
-    for path in changed:
-        lower = path.lower()
-        if (
-            lower.endswith(".plans.json")
-            or lower.endswith(".tuning.json")
-            or lower.endswith(".applied.json")
-            or lower.endswith(".manifest.json")
-            or lower.endswith(".override.json")
-            or lower.endswith("corpus-inventory.json")
-            or lower.endswith("submission-manifest.json")
-        ):
-            continue
-        filtered.append(path)
+    filtered = [p for p in changed if not p.lower().endswith(_BUNDLE_SKIP_SUFFIXES)]
 
     merge_files = _ls_tree_at(merge_sha, "results-data/bundles")
 
-    def _stem_to_bundle(stem: str) -> str | None:
-        target_lower = f"{stem.lower()}.json"
-        for candidate in merge_files:
-            if candidate.lower() == target_lower:
-                return candidate
-        for candidate in merge_files:
-            lower = candidate.lower()
-            if lower.endswith(".json") and lower[:-5] == stem.lower():
-                return candidate
-        return None
+    manifests = [p for p in _diff_bundle_json_all(base_sha, merge_sha) if p.lower().endswith(".manifest.json")]
+    for manifest in manifests:
+        _add_bundle_for_stem(manifest[:-14], merge_files, filtered)
 
-    changed_manifests = _diff_name_only(
-        base_sha,
-        merge_sha,
-        ":(icase,glob)results-data/bundles/*.json",
-        ":(icase,glob)results-data/bundles/**/*.json",
-        diff_filter="ACMRD",
-    )
-    changed_manifests = [p for p in changed_manifests if p.lower().endswith(".manifest.json")]
-    for manifest in changed_manifests:
-        stem = manifest[:-14]
-        bundle = _stem_to_bundle(stem)
-        if bundle and bundle not in filtered:
-            if bundle in merge_files:
-                filtered.append(bundle)
+    applied_paths = [p for p in _diff_bundle_json_all(base_sha, merge_sha) if p.lower().endswith(".applied.json")]
+    for applied in applied_paths:
+        _add_bundle_for_stem(applied[:-13], merge_files, filtered)
 
-    changed_applied_raw = _diff_name_only(
-        base_sha,
-        merge_sha,
-        ":(icase,glob)results-data/bundles/*.json",
-        ":(icase,glob)results-data/bundles/**/*.json",
-        diff_filter="ACMRD",
-    )
-    changed_applied = [p for p in changed_applied_raw if p.lower().endswith(".applied.json")]
-    for applied in changed_applied:
-        stem = applied[:-13]
-        bundle = _stem_to_bundle(stem)
-        if bundle and bundle not in filtered and bundle in merge_files:
-            filtered.append(bundle)
-
-    changed_companions_raw = _diff_name_only(
-        base_sha,
-        merge_sha,
-        ":(icase,glob)results-data/bundles/*.json",
-        ":(icase,glob)results-data/bundles/**/*.json",
-        diff_filter="ACMRD",
-    )
-    changed_companions = [
-        p
-        for p in changed_companions_raw
-        if p.lower().endswith(".plans.json")
-        or p.lower().endswith(".tuning.json")
-        or p.lower().endswith(".override.json")
-    ]
-    for companion in changed_companions:
-        lower = companion.lower()
-        if lower.endswith(".plans.json"):
-            stem = companion[:-11]
-        elif lower.endswith(".tuning.json"):
-            stem = companion[:-12]
-        elif lower.endswith(".override.json"):
-            stem = companion[:-14]
-        else:
-            continue
-        bundle = _stem_to_bundle(stem)
-        if bundle is None:
-            if companion in merge_files:
-                print(f"::error::Live companion has no primary bundle at {stem}.json", file=sys.stderr)
-                raise SystemExit(1)
-            continue
-        if bundle not in filtered and bundle in merge_files:
-            filtered.append(bundle)
+    companions = [p for p in _diff_bundle_json_all(base_sha, merge_sha) if p.lower().endswith(_COMPANION_SUFFIXES)]
+    _add_companion_bundles(companions, merge_files, filtered)
 
     return sorted(set(filtered))
 
