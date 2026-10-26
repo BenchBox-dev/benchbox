@@ -10,13 +10,17 @@ evidence; the corpus remains a secondary view of output text.
 ## Benchmarks
 
 `--benchmarks` is a comma-separated list; the default is `tpch,tpcds,tpchavoc`.
+`tpcds_obt` is not in the default: it adds about 3 minutes of CI wall time
+(measured below), so it runs in the nightly `sql-execution-gate-obt` job
+(`.github/workflows/nightly-v2.yml`) with the same GHCR Postgres service as
+the PR job, and not in the PR tier.
 
-| Name | Queries | Data |
-|---|---|---|
-| `tpch` | 1 to 22 | TPC-H SF0.01 |
-| `tpcds` | 1 to 99 | TPC-DS SF0.01, seed 1001 |
-| `tpchavoc` | every id of `TPCHavocBenchmark.get_queries()` (220 variants, `1_v1` onward) | the TPC-H dataset |
-| `tpcds_obt` | every statement of the OBT catalog (90 queries; Q14, Q23 and Q24 run as lettered statements `14a`, `14b`, ...) | the OBT built by `TPCDSOBTTransformer` from the gate's TPC-DS data (715 columns) |
+| Name | Queries | Data | Tier |
+|---|---|---|---|
+| `tpch` | 1 to 22 | TPC-H SF0.01 | PR |
+| `tpcds` | 1 to 99 | TPC-DS SF0.01, seed 1001 | PR |
+| `tpchavoc` | every id of `TPCHavocBenchmark.get_queries()` (220 variants, `1_v1` onward) | the TPC-H dataset | PR |
+| `tpcds_obt` | every statement of the OBT catalog (90 queries; Q14, Q23 and Q24 run as lettered statements `14a`, `14b`, ...) | the OBT built by `TPCDSOBTTransformer` from the gate's TPC-DS data (715 columns) | nightly |
 
 Q8, Q54, Q84 and the inventory queries are recorded OBT exclusions, so `tpcds_obt`
 has no cell for them. Requesting `tpcds_obt` also emits the base lettered
@@ -120,15 +124,24 @@ make sql-execution-gate SQL_EXECUTION_GATE_ARGS="--candidate-ref <commit> --base
 ```
 
 DuckDB (the reference, which also writes the Parquet files DataFusion reads) runs
-first; every other engine then runs each dataset as its own unit on a thread
-pool sized to the CPU count, so the slowest unit rather than the sum of the
-engines sets the wall time. Each unit opens its own connection (PostgreSQL uses a
-schema per unit).
+first; every other engine then runs each dataset as its own unit in a separate
+process (spawn context, at most CPU count minus one workers), so the slowest
+units rather than the sum of the engines set the wall time. Each unit opens its
+own connection (PostgreSQL uses a schema per unit). SQLite enforces the
+per-query budget with a timer thread that interrupts the connection instead of
+a progress handler, so concurrent units do not starve it of the GIL.
 
-Runtime at SF0.01 with all four benchmarks and a baseline: PLACEHOLDER_RUNTIME CI runs the
+Runtime at SF0.01 on CI with a baseline: about 2.5 minutes before this change
+(gate step 2m22s at #3475), 1m39s with the default `tpch,tpcds,tpchavoc` scope
+(job https://github.com/BenchBox-dev/benchbox/actions/runs/40245215977/job/121326081501),
+and 4m55s with `tpcds_obt` added
+(job https://github.com/BenchBox-dev/benchbox/actions/runs/40244114464/job/121322714024).
+The OBT delta is 3m16s, over the 3 minute PR-tier allowance the owner set, so
+OBT stays in the nightly `sql-execution-gate-obt` job and out of the default
+scope. CI runs the
 `sql-execution-evidence` job only when the runtime pin, the wrapper, the
-SQL-compat package, the TPC-H and TPC-DS query code, the local engine adapters
-or the gate itself change.
+SQL-compat package, the TPC-H, TPC-DS, TPC-Havoc and TPC-DS OBT query code, the
+local engine adapters or the gate itself change.
 
 ## Adoption evidence
 

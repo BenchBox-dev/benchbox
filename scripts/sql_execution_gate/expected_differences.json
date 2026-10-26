@@ -604,7 +604,7 @@
         "14_v2"
       ],
       "match": "near \")\"",
-      "tracker": "sqlite-havoc-empty-group-by-20261025",
+      "tracker": "https://github.com/BenchBox-dev/benchbox/issues/3513",
       "justification": "Open defect: the SQLite translation keeps the empty grouping `GROUP BY ()` that SQLite rejects with `near \")\": syntax error`; DuckDB accepts it. Tracked in sqlite-havoc-empty-group-by-20261025; remove this entry when the translation is fixed."
     },
     {
@@ -656,7 +656,7 @@
         "1_v7"
       ],
       "match": "function list(numeric) does not exist",
-      "tracker": "postgres-datafusion-havoc-list-aggregate-20261025",
+      "tracker": "https://github.com/BenchBox-dev/benchbox/issues/3514",
       "justification": "Open defect: the PostgreSQL translation of variant 1_v7 keeps the DuckDB LIST aggregate, which PostgreSQL does not have (`function list(numeric) does not exist`); the list-aggregate rewrite runs only for SQLite and the cloud dialects. Tracked in postgres-datafusion-havoc-list-aggregate-20261025; remove this entry when the translation is fixed."
     },
     {
@@ -667,7 +667,7 @@
         "1_v7"
       ],
       "match": "Invalid function 'list'",
-      "tracker": "postgres-datafusion-havoc-list-aggregate-20261025",
+      "tracker": "https://github.com/BenchBox-dev/benchbox/issues/3514",
       "justification": "Open defect: the DataFusion translation of variant 1_v7 keeps the DuckDB LIST aggregate, which DataFusion 54.0.0 does not have (`Error during planning: Invalid function 'list'`); the list-aggregate rewrite runs only for SQLite and the cloud dialects. Tracked in postgres-datafusion-havoc-list-aggregate-20261025; remove this entry when the translation is fixed."
     },
     {
@@ -725,7 +725,7 @@
         78
       ],
       "match": "round(double precision, integer) does not exist",
-      "tracker": "postgres-obt-alias-and-round-double-20261025",
+      "tracker": "https://github.com/BenchBox-dev/benchbox/issues/3515",
       "justification": "Open defect: the PostgreSQL translation of the OBT query rounds a DOUBLE PRECISION expression with ROUND(x, n), which PostgreSQL only defines for NUMERIC (`function round(double precision, integer) does not exist`); the base TPC-DS query computes the same expression in DECIMAL. Tracked in postgres-obt-alias-and-round-double-20261025; remove this entry when the translation is fixed."
     },
     {
@@ -738,7 +738,7 @@
         86
       ],
       "match": "column \"lochierarchy\" does not exist",
-      "tracker": "postgres-obt-alias-and-round-double-20261025",
+      "tracker": "https://github.com/BenchBox-dev/benchbox/issues/3515",
       "justification": "Open defect: the PostgreSQL translation of the OBT query uses the output alias lochierarchy inside an ORDER BY or PARTITION BY expression, which PostgreSQL resolves only for a bare alias (`column \"lochierarchy\" does not exist`); the base TPC-DS query carries a fork rewrite for this. Tracked in postgres-obt-alias-and-round-double-20261025; remove this entry when the translation is fixed."
     },
     {
@@ -750,7 +750,7 @@
         60
       ],
       "match": "statement timeout",
-      "tracker": "postgres-obt-alias-and-round-double-20261025",
+      "tracker": "https://github.com/BenchBox-dev/benchbox/issues/3515",
       "optional": true,
       "justification": "PostgreSQL without indexes does not finish OBT Q58 inside the per-query budget at SF0.01 and Q60 runs 15 seconds against the 15 second budget; both run the 715-column OBT through correlated aggregates over the whole table. The outcome depends on wall-clock speed, so the entry is optional. Q58 is part of the PostgreSQL OBT translation defects tracked in postgres-obt-alias-and-round-double-20261025."
     },
