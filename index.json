@@ -27462,13 +27462,18 @@
       "title": "Make Trunk culprit naming and site-inputs safe for Trunk runs that finish out of commit order"
     },
     "trunk-coverage-scheduled-not-per-push-20261024": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T20:01:01Z",
+        "generation": "7024b99a27d4441eb166b3e206801fc0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [
         "coverage-map-missing-comment-policy-ids-20261023",
         "ci-usage-metrics-report-20261024"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Run Trunk coverage on a schedule instead of on every develop push"
     },
     "trunk-coverage-workflow-map-v2-20261021": {
