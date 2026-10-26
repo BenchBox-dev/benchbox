@@ -719,12 +719,27 @@ posts nothing to GitHub.
   that also covers the stored result. The accepted risk of the hosted job
   applies: the reviewer can read files the user can read, including that
   token.
-- **Harness pin.** The `Install omp` step pins `OMP_VERSION` beside the
-  download URL and checks that the binary reports it. The local review runs
-  only when `omp --version` reports that version, and otherwise refuses with
-  the mismatch. Bump `OMP_URL`, `OMP_SHA256` and `OMP_VERSION` together.
-  Like the policy, the pin is read from `origin/develop`, not from the branch
-  or the working tree.
+- **Harness pin.** The `omp:` section of `.github/oracle-reviewers.yml` pins
+  the version and each platform's URL and SHA-256. CI reads that section from
+  its trusted checkout through `cli.py install-omp`, running under isolated
+  `uv` with `pyyaml==6.0.3`. YAML is imported only when parsing the policy;
+  the other bare-Python CLI commands do not require PyYAML. The shared `omp_pin.py`
+  installer downloads into `~/.cache/benchbox/omp/<version>/<platform>/omp`
+  (`BENCHBOX_OMP_CACHE` overrides the cache root), verifies SHA-256 before
+  making the download executable, and verifies its reported version before
+  publishing it in the cache. Unpinned platforms refuse by name. The build
+  host publishes no checksum files; these hashes were computed from fresh
+  TLS downloads, as was the original linux-x64 workflow pin. The darwin-arm64
+  download matches the existing cached build and reports `omp/18.12.1`.
+  During the consumer migration, CI adds the verified cache directory to its
+  job PATH. Local review still checks PATH omp against the workflow's
+  `OMP_VERSION` read from `origin/develop`; cloud bootstrap still reads
+  `OMP_URL` and `OMP_SHA256` from the branch workflow. Those legacy values
+  remain solely for these consumers. CI's installer refuses if any legacy
+  value differs from the policy pin, and the workflow test enforces equality.
+  Change both sets together until local and cloud consume the policy pin.
+  That cutover removes the legacy values and equality check and invokes the
+  cached binary by explicit path rather than through PATH.
 - **Blocking.** A Critical or High finding, or a reviewer decision of DO NOT
   SHIP, makes `pr-open` refuse before any push (exit 1). A
   `Local oracle override: <reason>` line with a non-empty reason in the PR

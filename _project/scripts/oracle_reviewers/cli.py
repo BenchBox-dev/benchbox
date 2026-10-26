@@ -23,6 +23,7 @@ from . import (
     dedup,
     disk_scan,
     github,
+    omp_pin,
     processes,
     protocol,
     redaction_check,
@@ -1421,6 +1422,9 @@ def _parser() -> argparse.ArgumentParser:
     local_review.add_argument("--head", default="HEAD")
     local_review.add_argument("--body-file", default="")
     local_review.set_defaults(handler=command_local_review)
+    install_omp = commands.add_parser("install-omp")
+    install_omp.add_argument("--policy", required=True)
+    install_omp.set_defaults(handler=omp_pin.command_install)
     return parser
 
 
