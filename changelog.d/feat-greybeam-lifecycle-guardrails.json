@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "lead": "Greybeam lifecycle guardrails",
+      "text": "Runs routed through the greybeam gateway now fail before any work when they would generate or load data inline, or run TPC-H/TPC-DS maintenance, because the CDC-fed replica would be empty or stale; --allow-greybeam-inline-load plus BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD=1 overrides the load check (invalid data), and an implied maintenance phase is skipped with a warning. Includes a quiescence runbook in the Snowflake platform docs.",
+      "details": ["Query-only runs also refuse implicit reload/recreation of a missing, empty, or incompatible replica and fail before database management when force-recreate is requested."],
+      "platforms": [
+        "snowflake"
+      ]
+    }
+  ]
+}

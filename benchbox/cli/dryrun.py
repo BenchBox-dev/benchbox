@@ -64,6 +64,7 @@ def generate_cli_command(
     client_cloud: str | None = None,
     no_link_probe: bool = False,
     gateway: str | None = None,
+    allow_greybeam_inline_load: bool = False,
 ) -> str:
     parts = ["benchbox run"]
     parts.append(f"--platform {platform}")
@@ -124,6 +125,7 @@ def generate_cli_command(
         (global_cache, "--global-cache"),
         (publish, "--publish"),
         (no_link_probe, "--no-link-probe"),
+        (allow_greybeam_inline_load, "--allow-greybeam-inline-load"),
     ]
     for flag_value, flag in _BOOL_PARAMS:
         if flag_value:

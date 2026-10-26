@@ -1289,6 +1289,11 @@ def _configure_lifecycle_adapter(
         adapter.benchmark_instance = benchmark
         adapter.scale_factor = benchmark_config.scale_factor
 
+    if adapter is not None and hasattr(adapter, "allow_greybeam_inline_load"):
+        adapter.allow_greybeam_inline_load = bool(
+            (benchmark_config.options or {}).get("allow_greybeam_inline_load", False)
+        )
+
     if adapter is not None and validation_opts.enable_postload_validation and hasattr(adapter, "enable_validation"):
         adapter.enable_validation = True
 
@@ -1368,6 +1373,28 @@ def _finalize_lifecycle_result(
     return result_with_validation
 
 
+def _enforce_gateway_lifecycle(
+    benchmark_config: BenchmarkConfig,
+    database_config: DatabaseConfig | None,
+    platform_adapter: Any | None,
+    phases: LifecyclePhases,
+) -> None:
+    from benchbox.core.gateway import GREYBEAM_INLINE_LOAD_OPTION, enforce_greybeam_lifecycle
+
+    gateway = getattr(database_config, "gateway", None)
+    if not gateway:
+        gateway = getattr(getattr(platform_adapter, "gateway_endpoint", None), "name", None)
+    options = getattr(benchmark_config, "options", None) or {}
+    test_type = getattr(benchmark_config, "test_execution_type", "standard")
+    enforce_greybeam_lifecycle(
+        gateway,
+        generate=phases.generate or test_type == "data_only",
+        load=phases.load or test_type == "load_only",
+        maintenance_requested="maintenance" in (options.get("requested_phases") or []) or test_type == "maintenance",
+        allow_inline_load=bool(options.get(GREYBEAM_INLINE_LOAD_OPTION)),
+    )
+
+
 def run_benchmark_lifecycle(
     benchmark_config: BenchmarkConfig,
     database_config: DatabaseConfig | None,
@@ -1386,6 +1413,7 @@ def run_benchmark_lifecycle(
 ) -> BenchmarkResults:
     phases = phases or LifecyclePhases()
     validation_opts = validation_opts or ValidationOptions()
+    _enforce_gateway_lifecycle(benchmark_config, database_config, platform_adapter, phases)
 
     monitor, resource_monitor = _setup_lifecycle_monitor(
         monitor, enable_resource_monitoring, benchmark_config, database_config
