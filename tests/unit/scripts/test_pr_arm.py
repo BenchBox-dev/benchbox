@@ -59,6 +59,9 @@ class FakeGh:
         self.gate_state = kwargs.get("gate_state", "success")
         self.status_code = kwargs.get("status_code", 0)
         self.dispatch_code = kwargs.get("dispatch_code", 0)
+        self.verdict = kwargs.get("verdict")
+        self.verdict_head = kwargs.get("verdict_head", self.local_head)
+        self.changed_files = kwargs.get("changed_files", ["scripts/x.py"])
         self.calls: list[list[str]] = []
 
     def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
@@ -79,6 +82,16 @@ class FakeGh:
             return self.merge_code, "queued"
         if cmd[:2] == ["gh", "api"] and cmd[-1] == f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/status":
             return self.status_code, self.gate_state + "\n" if self.status_code == 0 else "gh: HTTP 502"
+        if cmd[:2] == ["gh", "api"] and "/actions/artifacts?" in cmd[-1]:
+            assert cmd[-1].startswith(f"repos/{pr_arm.REPOSITORY}/actions/artifacts?name=fast-duration-verdict-7-")
+            return 0, "" if self.verdict is None else f"555 {self.verdict_head}\n"
+        if cmd[:3] == ["gh", "run", "download"]:
+            Path(cmd[cmd.index("-D") + 1], "fast-duration-verdict.json").write_text(
+                json.dumps(self.verdict), encoding="utf-8"
+            )
+            return 0, ""
+        if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/pulls/7/files"):
+            return 0, "\n".join(self.changed_files)
         if cmd[:3] == ["gh", "workflow", "run"]:
             return self.dispatch_code, "" if self.dispatch_code == 0 else "gh: HTTP 403"
         raise AssertionError(f"unexpected command {cmd}")
@@ -484,3 +497,77 @@ def test_an_unreadable_gate_status_is_reported_and_arming_proceeds(capsys: pytes
     assert gh.dispatched() == []
     assert len(gh.merged()) == 1
     assert "could not read the oracle-gate status" in capsys.readouterr().out
+
+
+WOULD_BLOCK = {"verdict": "would-block", "sum_ratio": 1.4567, "median_test_ratio": 1.2345}
+BASELINE_FILE = "tests/fixtures/fast_tier_baseline/tests-00.json"
+
+
+def test_a_would_block_verdict_refuses_with_the_ratios_and_the_baseline_route(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh(verdict=WOULD_BLOCK)
+    assert _arm(gh) == 2
+    assert gh.merged() == []
+    err = capsys.readouterr().err
+    for expected in (
+        "would-block",
+        "summed-time ratio 1.457",
+        "median per-test ratio 1.234",
+        "report-only measurement (ci-verify-fast-duration-report-only-20261025)",
+        "scripts/build_fast_duration_baseline.py",
+        "tests/fixtures/fast_tier_baseline",
+    ):
+        assert expected in err
+
+
+def test_a_would_block_verdict_arms_when_the_pr_updates_the_baseline() -> None:
+    gh = FakeGh(verdict=WOULD_BLOCK, changed_files=["scripts/x.py", BASELINE_FILE])
+    assert _arm(gh) == 0
+    assert len(gh.merged()) == 1
+
+
+def test_a_would_block_verdict_refuses_when_the_changed_files_cannot_be_listed(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    class Broken(FakeGh):
+        def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
+            if list(cmd)[:2] == ["gh", "api"] and list(cmd)[-1].endswith("/pulls/7/files"):
+                return 1, "gh: HTTP 502"
+            return super().__call__(cmd)
+
+    gh = Broken(verdict=WOULD_BLOCK)
+    assert _arm(gh) == 1
+    assert gh.merged() == []
+    assert "live state could not be verified" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "verdict",
+    [
+        {"verdict": "pass", "sum_ratio": 1.01, "median_test_ratio": 1.0},
+        {"verdict": "neutral", "reason": "no baseline"},
+        {"verdict": "rejected", "reason": "calibration missing"},
+        None,
+    ],
+)
+def test_pass_neutral_rejected_and_missing_verdicts_arm_normally(verdict: dict | None) -> None:
+    gh = FakeGh(verdict=verdict)
+    assert _arm(gh) == 0
+    assert len(gh.merged()) == 1
+    assert not any(call[-1].endswith("/pulls/7/files") for call in gh.calls)
+
+
+def test_a_verdict_bound_to_a_superseded_head_is_ignored(capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh(verdict=WOULD_BLOCK, verdict_head="c" * 40)
+    assert _arm(gh) == 0
+    assert len(gh.merged()) == 1
+    assert not any(call[:3] == ["gh", "run", "download"] for call in gh.calls)
+    assert "not bound to" in capsys.readouterr().out
+
+
+def test_the_verdict_is_looked_up_for_the_current_head_only() -> None:
+    gh = FakeGh(verdict=WOULD_BLOCK, changed_files=[BASELINE_FILE])
+    _arm(gh)
+    lookup = next(call for call in gh.calls if "/actions/artifacts?" in call[-1])
+    assert lookup[-1].endswith(f"name=fast-duration-verdict-7-{HEAD}&per_page=5")

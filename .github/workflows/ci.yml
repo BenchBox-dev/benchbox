@@ -1728,7 +1728,20 @@ jobs:
           python -m scripts.build_fast_duration_baseline verify \
             --baseline tests/fixtures/fast_tier_baseline \
             --run-dir fast-junit \
-            --summary "$GITHUB_STEP_SUMMARY"
+            --summary "$GITHUB_STEP_SUMMARY" \
+            --report-out fast-duration-verdict.json
+
+      - name: Upload fast-duration verdict
+        if: ${{ always() && github.event_name == 'pull_request' && needs.ci-paths.outputs.code-tests-needed == 'true' }}
+        continue-on-error: true
+        timeout-minutes: 2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: fast-duration-verdict-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: fast-duration-verdict.json
+          if-no-files-found: ignore
+          retention-days: 14
+          overwrite: true
 
       - name: Aggregate core result
         id: aggregate

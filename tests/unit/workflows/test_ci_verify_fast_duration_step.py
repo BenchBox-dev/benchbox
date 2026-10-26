@@ -42,6 +42,18 @@ def test_verify_step_reads_the_pr_artifact_and_writes_the_job_summary() -> None:
     assert download["path"] == "fast-junit"
 
 
+def test_verdict_artifact_is_bound_to_the_pr_head_and_cannot_change_the_core_result() -> None:
+    assert "--report-out fast-duration-verdict.json" in named(STEP_NAME)["run"]
+    upload = named("Upload fast-duration verdict")
+    assert upload["continue-on-error"] is True
+    assert "always()" in upload["if"]
+    assert upload["with"]["name"] == (
+        "fast-duration-verdict-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}"
+    )
+    assert upload["with"]["path"] == "fast-duration-verdict.json"
+    assert upload["with"]["overwrite"] is True
+
+
 def test_verify_steps_run_before_the_aggregate_and_do_not_feed_it() -> None:
     names = [item.get("name") for item in core()["steps"]]
     assert names.index(DOWNLOAD_NAME) < names.index(STEP_NAME) < names.index("Aggregate core result")
