@@ -16612,6 +16612,15 @@
       "status": "open",
       "title": "Run the CI oracle review through one review driver called by a thin workflow"
     },
+    "oracle-review-driver-local-20261026": {
+      "claim": null,
+      "needs": [
+        "oracle-review-driver-ci-20261026"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Make make pr-open run the same review driver from a trusted develop copy and delete the parallel local implementation"
+    },
     "oracle-review-notify-only-20261025": {
       "claim": null,
       "needs": [],
