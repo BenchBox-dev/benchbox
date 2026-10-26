@@ -327,21 +327,8 @@ than 10 open defects in total give DO NOT SHIP. The previous reviewer is tried
 first unless the follow-up's own bucket names a larger reviewer, as it does for
 a push that touches review machinery. A follow-up runs for every size bucket.
 
-A forced follow-up rejudges rather than skips: its brief adds the disputed
-threads under "Disputed findings", with each reply quoted as data, and tells
-the reviewer to confirm each disputed defect as not fixed or withdraw it with
-an examined head-commit file and line that refutes it. A withdrawal without
-such a citation counts as not fixed, and a defect the reviewer marks fixed on
-an unchanged patch counts as not fixed too, so only evidenced withdrawals
-leave the open list, and they are reported separately as never defects. On a
-forced round the judge counts a withdrawal without a file-and-line citation
-as not fixed; the head-commit existence check still happens when citations
-are marked.
-A thread reply counts as a dispute only when a reply from an owner, member or
-collaborator of the repository, other than the oracle bot, contains a line
-starting with `Dispute:` that states the case against the defect. Replies from
-other accounts never reach the brief and never force a re-review. A plain
-acknowledgement such as `done` is not a dispute.
+A forced follow-up rejudges rather than skips: its brief lists each disputed thread under "Disputed findings", keyed by the finding id from the thread's hidden marker, with each reply quoted as data. For every keyed disputed finding the verdict must give an explicit disposition: withdraw it with an examined head-commit file and line that refutes it, or maintain it as not fixed by restating the rebuttal's claim exactly as shown, saying in concedes whether the rebuttal holds, and citing an examined head-commit file and line that answers it or an examined reproduction script as `repro: path`. Agreeing with the rebuttal yet keeping the defect not fixed is invalid, as is a missing or unsupported disposition: the attempt is retried instead of silently maintaining. A withdrawal without a verified citation counts as not fixed, and a defect the reviewer marks fixed on an unchanged patch counts as not fixed too, so only evidenced dispositions leave the open list, and withdrawals are reported separately as never defects. Every disposition and its evidence is published under its finding in the review body; when the body would exceed the cap, finding details shrink first and no disposition line is ever dropped. On a forced round the judge counts a withdrawal without a file-and-line citation as not fixed; the head-commit existence check still happens when citations are marked.
+A thread reply counts as a keyed dispute only when a reply from an owner, member or collaborator of the repository, other than the oracle bot, contains a line starting with `Dispute:` that states the case against the defect, and the thread carries the hidden finding marker. Replies from other accounts never reach the brief and never force a re-review. A `Dispute:` reply on a thread without a marker is shown as data and forces no re-review. A plain acknowledgement such as `done` is not a dispute.
 A forced re-review runs only after a SHIP or SHIP WITH FIXES decision, never
 after DO NOT SHIP. The third forced re-review of one patch is refused with a
 message to change the patch or ask the owner for a stand-in: empty commits and
@@ -618,9 +605,9 @@ cancels a run in flight and a cancelled run posts nothing.
   doubling backoff, so an author can dispute a finding with a `Dispute:` reply
   on its thread without a new commit. A manual rerun with no `Dispute:` reply
   leaves the head's decision in place instead of forcing another re-review.
-  The new brief carries unresolved thread replies as disputed findings and
-  asks the reviewer to confirm or withdraw each disputed defect with a reason,
-  checking any claimed grammar or documented behaviour.
+  The new brief carries unresolved thread replies as disputed findings keyed by finding id and
+  asks the reviewer to withdraw or maintain each keyed disputed defect with an explicit disposition
+  and its evidence, published under the finding, checking any claimed grammar or documented behaviour.
 - `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>`
   does the same. A dispatch from any other ref is refused.
 - A sweep retries pull requests whose last result on the current head is

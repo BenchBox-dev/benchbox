@@ -36,6 +36,8 @@ PRIOR_STATUSES = (FIXED, NOT_FIXED, WITHDRAWN)
 FINDING_KEYS = ("severity", "file", "line", "end_line", "title", "detail")
 OPTIONAL_FINDING_KEYS = frozenset({"end_line"})
 PRIOR_KEYS = ("id", "status", "evidence")
+PRIOR_OPTIONAL_KEYS = ("claim", "concedes")
+MAX_CLAIM = 8000
 VERDICT_KEYS = ("status", "incomplete_reason", "decision", "summary", "files_examined", "defects", "prior_defects")
 RESPONSE_PLACEHOLDERS = {
     "status": "<status>",
@@ -49,6 +51,8 @@ RESPONSE_PLACEHOLDERS = {
     "detail": "<detail>",
     "prior_status": "<prior_status>",
     "evidence": "<evidence>",
+    "claim": "<claim>",
+    "concedes": "<concedes>",
 }
 FINDING_METADATA = frozenset({"line_note", "end_line_note", "detail_extra"})
 _KEY_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,39}")
@@ -108,9 +112,17 @@ class PriorDefect:
     id: str
     status: str
     evidence: str
+    claim: str = ""
+    concedes: bool | None = None
 
     def to_json(self) -> dict[str, Any]:
-        return {"id": self.id, "status": self.status, "evidence": self.evidence}
+        return {
+            "id": self.id,
+            "status": self.status,
+            "evidence": self.evidence,
+            "claim": self.claim,
+            "concedes": self.concedes,
+        }
 
 
 @dataclass(frozen=True)
@@ -342,7 +354,8 @@ def _finding(data: Any) -> Finding:
 
 def _prior(data: Any) -> PriorDefect:
     _require(
-        isinstance(data, dict) and set(data) == set(PRIOR_KEYS), f"each prior defect must have the keys {PRIOR_KEYS}"
+        isinstance(data, dict) and set(PRIOR_KEYS) <= set(data) <= set(PRIOR_KEYS) | set(PRIOR_OPTIONAL_KEYS),
+        f"each prior defect must have the keys {PRIOR_KEYS} and may add {PRIOR_OPTIONAL_KEYS}",
     )
     identifier = data["id"].removeprefix("#") if isinstance(data["id"], str) else data["id"]
     _require(
@@ -351,7 +364,13 @@ def _prior(data: Any) -> PriorDefect:
     )
     _require(data["status"] in PRIOR_STATUSES, f"prior defect status must be one of {PRIOR_STATUSES}")
     _require(isinstance(data["evidence"], str), "prior defect evidence must be a string")
-    return PriorDefect(identifier, data["status"], sanitize(data["evidence"], MAX_EVIDENCE))
+    claim = data.get("claim", "")
+    _require(isinstance(claim, str), "prior defect claim must be a string")
+    concedes = data.get("concedes")
+    _require(concedes is None or isinstance(concedes, bool), "prior defect concedes must be a boolean")
+    return PriorDefect(
+        identifier, data["status"], sanitize(data["evidence"], MAX_EVIDENCE), sanitize(claim, MAX_CLAIM), concedes
+    )
 
 
 def validate(data: Any, *, trusted: bool = False) -> Verdict:

@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from .evidence import withdrawal_cited
+from .evidence import UNVERIFIED_MAINTAIN, maintain_cited, withdrawal_cited
 from .policy import SEVERITIES
 from .verdict import COMPLETE, DO_NOT_SHIP, FIXED, NOT_FIXED, SHIP, SHIP_WITH_FIXES, WITHDRAWN, Finding, Verdict
 
@@ -468,7 +468,70 @@ def judge_planned(verdict: Verdict, plan: Mapping[str, Any]) -> Judgement:
     return judge(verdict, int(plan["max_defects"]), rules.get("prior", ()), changed, bool(rules.get("forced")))
 
 
+THREAD_MARKER = re.compile(r"oracle-defect:\s*c[0-9]+-(D[1-9][0-9]{0,3})")
+MARKER_LINE = re.compile(r"^\s*(?:<!--\s*oracle-[\s\S]*?-->\s*|oracle-defect\s*:.*)$")
+REPLY_LIMIT = 1000
+
+
+def thread_finding_id(body: str) -> str | None:
+    match = THREAD_MARKER.search(body or "")
+    return match.group(1) if match else None
+
+
+def strip_marker_lines(text: str) -> str:
+    return "\n".join(line for line in (text or "").splitlines() if not MARKER_LINE.match(line))
+
+
+def normalize_claim(text: str) -> str:
+    return " ".join((text or "").split()).casefold()
+
+
+def claim_hash(text: str) -> str:
+    return hashlib.sha256(normalize_claim(text).encode("utf-8")).hexdigest()
+
+
+def dispute_claim(text: str) -> str:
+    return strip_marker_lines(text)[:REPLY_LIMIT]
+
+
+def disputed_claims(plan: Mapping[str, Any]) -> dict[str, str]:
+    disputes = plan.get("disputes") or ()
+    claims = {}
+    for item in disputes:
+        if isinstance(item, Mapping) and item.get("id") and item.get("claim_hash"):
+            claims[item["id"]] = item["claim_hash"]
+    return claims
+
+
+def dispute_problem(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
+    claims = disputed_claims(plan)
+    if verdict.status != COMPLETE or not claims:
+        return None
+    entries = {item.id: item for item in verdict.prior_defects}
+    for defect_id in sorted(claims):
+        entry = entries.get(defect_id)
+        if entry is None:
+            return f"disputed finding {defect_id} has no disposition, so the verdict is invalid"
+        if not isinstance(entry.concedes, bool):
+            return f"disputed finding {defect_id} has no concedes boolean, so the verdict is invalid"
+        if entry.status == NOT_FIXED and entry.concedes:
+            return f"disputed finding {defect_id} concedes the rebuttal yet stays not fixed, so the verdict is invalid"
+        if entry.status in (NOT_FIXED, WITHDRAWN):
+            if not entry.claim.strip() or claim_hash(entry.claim) != claims[defect_id]:
+                return f"disputed finding {defect_id} does not restate its rebuttal claim, so the verdict is invalid"
+        if entry.status == NOT_FIXED and not maintain_cited(entry.evidence):
+            return f"disputed finding {defect_id} is maintained without evidence, so the verdict is invalid"
+        if entry.status == NOT_FIXED and UNVERIFIED_MAINTAIN in (entry.evidence or ""):
+            return f"disputed finding {defect_id} is maintained without verified evidence, so the verdict is invalid"
+        if entry.status == FIXED and not (entry.evidence or "").strip():
+            return f"disputed finding {defect_id} is marked fixed without evidence, so the verdict is invalid"
+    return None
+
+
 def contradiction(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
+    problem = dispute_problem(verdict, plan)
+    if problem is not None:
+        return problem
     if verdict.status != COMPLETE or judge_planned(verdict, plan).decision != SHIP:
         return None
     if verdict.incomplete_reason.strip():

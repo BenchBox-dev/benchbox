@@ -198,7 +198,7 @@ def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dic
         if (thread.get("author") or "").removesuffix("[bot]") != bot_login:
             continue
         replies = [
-            {"author": reply.get("author"), "body": reply.get("body") or ""}
+            {"author": reply.get("author"), "body": protocol.dispute_claim(reply.get("body") or "")}
             for reply in thread.get("replies", [])
             if isinstance(reply, dict)
             and reply.get("author_type") != "Bot"
@@ -208,10 +208,24 @@ def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dic
         if not replies:
             continue
         title = (thread.get("body") or "").splitlines()
+        defect_id = protocol.thread_finding_id(thread.get("body") or "")
+        claim_hash = (
+            protocol.claim_hash("\n".join(reply["body"] for reply in replies)) if defect_id is not None else None
+        )
         disputes.append(
-            {"path": thread.get("path") or "", "title": title[0][:300] if title else "", "replies": replies}
+            {
+                "id": defect_id,
+                "path": thread.get("path") or "",
+                "title": title[0][:300] if title else "",
+                "replies": replies,
+                "claim_hash": claim_hash,
+            }
         )
     return disputes
+
+
+def _keyed_disputes(threads: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    return [item for item in threads or [] if isinstance(item, dict) and item.get("id")]
 
 
 def _dispute_step(
@@ -236,7 +250,7 @@ def _dispute_step(
     except (github.GitHubError, KeyError, ValueError) as exc:
         _summary(f"oracle-verdict: open review threads could not be read: {exc}")
         return None, step
-    if threads is not None and _disputed_threads(threads, policy.bot_login):
+    if threads is not None and _keyed_disputes(_disputed_threads(threads, policy.bot_login)):
         step = _protocol_round(
             plan,
             policy,
@@ -746,6 +760,7 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
         )
     prior = plan["protocol"]["prior"]
     disputes = [item for item in plan.get("disputes", []) if isinstance(item, dict)] if prior else []
+    keyed = [item for item in disputes if item.get("id")]
     prior_block = f"\nEarlier defects:\n{prior_listing(prior)}\n" if prior else ""
     if disputes:
         prior_block += f"\nDisputed findings:\n{dispute_listing(disputes)}\n"
@@ -766,9 +781,7 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
         base_sha=plan["base_sha"],
         head_sha=plan["head_sha"],
         max_defects=int(plan["max_defects"]),
-        prior_rule=select_prior_rule(
-            prior or None, plan.get("reviewed_head"), int(plan["max_defects"]), bool(disputes)
-        ),
+        prior_rule=select_prior_rule(prior or None, plan.get("reviewed_head"), int(plan["max_defects"]), bool(keyed)),
         prior_block=prior_block,
         prior_ids=[item["id"] for item in prior],
         files_block=files_block,

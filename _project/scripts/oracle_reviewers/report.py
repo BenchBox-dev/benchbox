@@ -9,6 +9,7 @@ from .retry import ALL_ABSENT, FAILURE, INTEGRITY, MARKER_LIMIT, OVERSIZE, PENDI
 from .selection import Attempt, Step
 from .verdict import (
     MAX_DETAIL,
+    MAX_EVIDENCE,
     Finding,
     Placement,
     Verdict,
@@ -75,14 +76,25 @@ def _size_notice(listed: list[Finding], cap: int) -> str:
     )
 
 
-def _fit(render: Callable[[int | None], str]) -> str:
-    body = render(None)
+def _fit(render: Callable[[int | None, int | None], str]) -> str:
+    body = render(None, None)
     if len(body) <= BODY_LIMIT:
         return body
-    low, high, best = 0, MAX_DETAIL, render(0)
+    low, high, best = 0, MAX_DETAIL, render(0, None)
     while low <= high:
         mid = (low + high) // 2
-        candidate = render(mid)
+        candidate = render(mid, None)
+        if len(candidate) <= BODY_LIMIT:
+            best, low = candidate, mid + 1
+        else:
+            high = mid - 1
+    if len(best) <= BODY_LIMIT:
+        return best
+    low, high = 0, MAX_EVIDENCE
+    best = render(0, 0)
+    while low <= high:
+        mid = (low + high) // 2
+        candidate = render(0, mid)
         if len(candidate) <= BODY_LIMIT:
             best, low = candidate, mid + 1
         else:
@@ -263,6 +275,27 @@ def _judgement_notes(judgement: protocol.Judgement | None) -> list[str]:
     return lines + _section("Still open from earlier reviews", [_entry_line(entry) for entry in judgement.carried])
 
 
+def _disposition_label(status: str) -> str:
+    return {"not_fixed": "maintained", "withdrawn": "withdrawn", "fixed": "fixed"}.get(status, status)
+
+
+def _dispositions(plan: Mapping[str, Any], verdict: Verdict | None, evidence_cap: int | None) -> list[str]:
+    disputes = [item for item in plan.get("disputes", []) if isinstance(item, Mapping) and item.get("id")]
+    if not disputes or verdict is None:
+        return []
+    entries = {item.id: item for item in verdict.prior_defects}
+    lines = []
+    for dispute in disputes:
+        entry = entries.get(dispute["id"])
+        if entry is None:
+            lines.append(f"- {dispute['id']}: no disposition recorded")
+        else:
+            shown = entry.evidence if evidence_cap is None else _cut(entry.evidence, evidence_cap)
+            suffix = f": {shown}" if shown else ""
+            lines.append(f"- {dispute['id']} ({_disposition_label(entry.status)}){suffix}")
+    return _section("Dispute dispositions", lines)
+
+
 def finalize(
     plan: Mapping[str, Any],
     step: Step,
@@ -314,7 +347,7 @@ def finalize(
     delivery = plan.get("findings_delivery", "comment")
     listed = [*placement.inline, *placement.summary, *(judgement.not_counted if judgement is not None else ())]
 
-    def render(cap: int | None) -> str:
+    def render(cap: int | None, evidence_cap: int | None = None) -> str:
         active = MAX_DETAIL if cap is None else cap
         findings_lines = [_finding_line(finding, ids.get(finding), active) for finding in placement.inline]
         other_lines = [_finding_line(finding, ids.get(finding), active) for finding in placement.summary]
@@ -329,6 +362,7 @@ def finalize(
         if cap is not None:
             lines += [_size_notice(listed, cap), ""]
         lines += _judgement_notes(judgement)
+        lines += _dispositions(plan, verdict, evidence_cap)
         if delivery == "comment":
             lines += _section("Defects on diff lines", findings_lines)
         lines += _section(

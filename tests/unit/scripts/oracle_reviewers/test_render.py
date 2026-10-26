@@ -275,7 +275,7 @@ def _populated(template: dict[str, object]) -> dict[str, object]:
         {"severity": "High", "file": "a.py", "line": 3, "end_line": None, "title": "t", "detail": "d"}
     ]
     for entry in populated["prior_defects"]:
-        entry.update(status="fixed", evidence="a.py:3 fixes it")
+        entry.update(status="fixed", evidence="a.py:3 fixes it", claim="the bound is unchecked", concedes=False)
     return populated
 
 
@@ -316,7 +316,14 @@ def test_a_populated_template_is_accepted_and_an_untouched_or_partial_one_is_rej
         validate(template)
     populated = _populated(template)
     assert validate(populated).prior_defects[0].id == "D2"
-    for path in (("summary",), ("defects", 0, "title"), ("files_examined", 0), ("prior_defects", 0, "evidence")):
+    for path in (
+        ("summary",),
+        ("defects", 0, "title"),
+        ("files_examined", 0),
+        ("prior_defects", 0, "evidence"),
+        ("prior_defects", 0, "claim"),
+        ("prior_defects", 0, "concedes"),
+    ):
         partial = json.loads(json.dumps(populated))
         holder = partial
         for step in path[:-1]:

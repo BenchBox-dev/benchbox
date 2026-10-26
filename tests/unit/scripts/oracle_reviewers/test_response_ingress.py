@@ -147,6 +147,8 @@ def test_dictionary_priors_keep_the_key_and_status(embedded: str | None) -> None
         "id": "D2",
         "status": "not_fixed",
         "evidence": "Still present",
+        "claim": "",
+        "concedes": None,
     }
 
 

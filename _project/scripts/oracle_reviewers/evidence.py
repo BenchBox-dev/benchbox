@@ -32,8 +32,12 @@ _TRACE_LIMIT = 700
 OMP_NO_MATCHES = "No matches found"
 CITATION_PREFIX = "Citation not found in the head commit"
 _WITHDRAWAL_CITATION = re.compile(r"(?P<path>[A-Za-z0-9_][A-Za-z0-9_./-]*\.[A-Za-z0-9]+):(?P<line>\d+)")
+_REPRO_CITATION = re.compile(r"(?i)\brepro\s*:\s*(?P<path>[A-Za-z0-9_][A-Za-z0-9_./-]*\.[A-Za-z0-9]+)")
 UNVERIFIED_WITHDRAWAL = (
     "the withdrawal names no examined head-commit file and line that refutes it, so it counts as not fixed"
+)
+UNVERIFIED_MAINTAIN = (
+    "the maintain names no examined head-commit file and line or reproduction, so the disposition is unsupported"
 )
 
 
@@ -288,22 +292,49 @@ def _withdrawal_verified(evidence: str, workspace: Path, examined: frozenset[str
     return False
 
 
+def maintain_cited(evidence_text: str | None) -> bool:
+    text = evidence_text or ""
+    return _WITHDRAWAL_CITATION.search(text) is not None or _REPRO_CITATION.search(text) is not None
+
+
 def withdrawal_cited(evidence_text: str | None) -> bool:
     return _WITHDRAWAL_CITATION.search(evidence_text or "") is not None
 
 
-def mark_citations(verdict: Verdict, workspace: Path) -> Verdict:
+def _repro_verified(evidence: str, workspace: Path, examined: frozenset[str]) -> bool:
+    for match in _REPRO_CITATION.finditer(evidence or ""):
+        cited = match.group("path").removeprefix("./")
+        if cited not in examined:
+            continue
+        if os.path.exists(os.path.join(os.path.realpath(workspace), cited)):
+            return True
+    return False
+
+
+def maintain_verified(evidence: str, workspace: Path, examined: frozenset[str]) -> bool:
+    return _withdrawal_verified(evidence, workspace, examined) or _repro_verified(evidence, workspace, examined)
+
+
+def mark_citations(verdict: Verdict, workspace: Path, disputed: Iterable[str] = ()) -> Verdict:
     marked = []
     for finding in verdict.defects:
         error = _citation_error(finding, workspace)
         detail = f"{CITATION_PREFIX}: {error}. {finding.detail}".rstrip() if error else finding.detail
         marked.append(replace(finding, detail=detail))
     examined = frozenset(verdict.files_examined)
+    wanted = set(disputed)
     priors = []
     for prior in verdict.prior_defects:
         if prior.status == WITHDRAWN and not _withdrawal_verified(prior.evidence, workspace, examined):
             note = f"{prior.evidence} {UNVERIFIED_WITHDRAWAL}".strip()
             priors.append(replace(prior, status=NOT_FIXED, evidence=note))
+        elif (
+            prior.status == NOT_FIXED
+            and prior.id in wanted
+            and not maintain_verified(prior.evidence, workspace, examined)
+        ):
+            note = f"{prior.evidence} {UNVERIFIED_MAINTAIN}".strip()
+            priors.append(replace(prior, evidence=note))
         else:
             priors.append(prior)
     return replace(verdict, defects=tuple(marked), prior_defects=tuple(priors))

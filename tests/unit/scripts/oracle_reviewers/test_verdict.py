@@ -96,7 +96,13 @@ def test_invalid_end_lines_are_rejected(end_line: Any) -> None:
 
 
 def test_valid_verdict_round_trips() -> None:
-    prior = {"id": "D1", "status": "fixed", "evidence": "line 12 now compares both sides"}
+    prior = {
+        "id": "D1",
+        "status": "fixed",
+        "evidence": "line 12 now compares both sides",
+        "claim": "the row is dropped",
+        "concedes": False,
+    }
     verdict = validate(_verdict(_finding(), _finding(severity="Low", line=99), prior_defects=[prior]))
     assert [finding.severity for finding in verdict.defects] == ["High", "Low"]
     assert [item.to_json() for item in verdict.prior_defects] == [prior]

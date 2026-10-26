@@ -97,7 +97,7 @@ what you actually read:
 - The finding object under defects and the path under files_examined are prototypes: repeat each once per defect
   and once per file you read, or remove the prototype and leave [] only when that list is genuinely empty.
 - line is the real line number of the defect; end_line is the last line of a span, or null.
-- Each prior_defects entry carries an earlier defect id. Keep every id as shown, replace its status and evidence,
-  and add none. An empty prior_defects means there are no earlier defects to judge.
+- Each prior_defects entry carries an earlier defect id. Keep every id as shown, replace its status, evidence, claim and concedes,
+  and add none. For a disputed defect, restate its rebuttal in claim and say in concedes whether it holds. An empty prior_defects means there are no earlier defects to judge.
 
 {response_template}

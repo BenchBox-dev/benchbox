@@ -1,0 +1,47 @@
+{
+  "mode": "published",
+  "dispute": {
+    "id": "D1",
+    "path": "pkg/kept.py",
+    "title": "Drops a row on retry",
+    "replies": [
+      {
+        "author": "joe",
+        "body": "Dispute: pkg/kept.py:12 keeps the row on retry, so D1 is wrong. See run 40233057703."
+      }
+    ],
+    "claim_hash": "725c663bd96ed42012bfdc9d83857047620dee181a2ff6f5eec47080e14d2391"
+  },
+  "prior": [
+    {
+      "id": "D1",
+      "severity": "High",
+      "file": "pkg/kept.py",
+      "line": 12,
+      "end_line": null,
+      "title": "Drops a row on retry"
+    }
+  ],
+  "verdict": {
+    "status": "complete",
+    "incomplete_reason": "",
+    "decision": "SHIP_WITH_FIXES",
+    "summary": "s",
+    "files_examined": [
+      "pkg/kept.py"
+    ],
+    "defects": [],
+    "prior_defects": [
+      {
+        "id": "D1",
+        "status": "not_fixed",
+        "evidence": "The reply concedes that no signal separates owner from agent, but pkg/kept.py:12 keeps the row on the head commit, so D1 stands.",
+        "claim": "Dispute: pkg/kept.py:12 keeps the row on retry, so D1 is wrong. See run 40233057703.",
+        "concedes": false
+      }
+    ]
+  },
+  "expected_lines": [
+    "- D1 (maintained): The reply concedes that no signal separates owner from agent, but pkg/kept.py:12 keeps the row on the head commit, so D1 stands."
+  ]
+}
