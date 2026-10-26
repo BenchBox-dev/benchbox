@@ -1084,6 +1084,7 @@ def _build_benchmark_config(
         **({"client_region": s.client_region} if getattr(s, "client_region", None) is not None else {}),
         **({"client_cloud": s.client_cloud} if getattr(s, "client_cloud", None) is not None else {}),
         **({"link_probe": not s.no_link_probe} if getattr(s, "no_link_probe", None) is not None else {}),
+        **({"allow_greybeam_inline_load": True} if getattr(s, "allow_greybeam_inline_load", False) else {}),
     }
     return BenchmarkConfig(
         name=plan.benchmark,
@@ -2253,6 +2254,8 @@ def _finalize_normal_interactive_plan(s: types.SimpleNamespace) -> None:
         s.benchmark_config.options["client_cloud"] = s.client_cloud
     if getattr(s, "no_link_probe", None) is not None:
         s.benchmark_config.options["link_probe"] = not s.no_link_probe
+    if getattr(s, "allow_greybeam_inline_load", False):
+        s.benchmark_config.options["allow_greybeam_inline_load"] = True
     if plan.seed is None:
         s.benchmark_config.options.pop("seed", None)
     else:
@@ -2723,6 +2726,16 @@ def _interactive_handle_result(s: types.SimpleNamespace, result: Any, orchestrat
         "platforms that support them (Snowflake) and fail before work starts elsewhere."
     ),
 )
+@advanced_option(
+    "--allow-greybeam-inline-load",
+    "allow_greybeam_inline_load",
+    is_flag=True,
+    default=False,
+    help=(
+        "Allow generate/load phases through the greybeam gateway. Also requires BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD=1; "
+        "results from such a run are invalid data."
+    ),
+)
 @advanced_option("--seed", type=int, help="RNG seed for query parameter generation")
 @advanced_option(
     "--streams",
@@ -2857,6 +2870,7 @@ def run(
     client_cloud: str | None = None,
     no_link_probe: bool = False,
     polars_streaming: bool = False,
+    allow_greybeam_inline_load: bool = False,
 ) -> None:
     from benchbox.core.run_service import apply_polars_streaming_flag, begin_run
 
@@ -2917,6 +2931,7 @@ def run(
         client_cloud=client_cloud,
         no_link_probe=no_link_probe,
         polars_streaming=polars_streaming,
+        allow_greybeam_inline_load=allow_greybeam_inline_load,
     )
     _prepare_run_state(s)
 

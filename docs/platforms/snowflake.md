@@ -132,6 +132,42 @@ log a warning. Gateway options are not available through MCP. A gateway-routed r
 suppressed and publish, submit, bundle validation, the results database and metrics readiness all refuse it as
 non-official. A stored result that claims `official` while `platform.gateway.routed` is true is treated the same way.
 
+#### Greybeam lifecycle guardrails
+
+Greybeam queries an Iceberg replica that CDC keeps in sync with the native Snowflake tables. Loading or refreshing
+through the gateway therefore leaves the replica empty or stale, and queries against it return wrong answers.
+BenchBox enforces these runtime restrictions:
+
+- **Generate and load phases** raise `ConfigurationError`. Pass explicit query phases (for example
+  `--phases power,throughput`) after loading natively. Query-only runs also refuse automatic database recreation or
+  loading when the database is missing, empty, or incompatible. `--force-recreate` fails before database management.
+  The SQL adapter checks before database reset/drop, fresh setup, schema creation, and data loading, so a missing or
+  stale replica cannot trigger writes as a side effect of a query-only run. Fix the native dataset and wait for CDC
+  quiescence rather than recreating it through the gateway.
+  Read-only validation connections and dry-run database checks do not decide whether the database needs recreation;
+  they remain available without the inline-load override. Mutation entrypoints still enforce the guard independently.
+  The escape hatch needs both `--allow-greybeam-inline-load` and `BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD=1`; it also covers
+  automatic reload/recreation, and results from such a run are invalid data.
+- **TPC-H RF1/RF2 and TPC-DS maintenance streams** fail fast when `maintenance` is named in `--phases` or the
+  maintenance test type is selected. When the maintenance phase is only implied (a combined run without `--phases`), it
+  is skipped with a loud warning and a `maintenance_skipped: true` row with status `SKIPPED` in the query results.
+  The escape hatch does not cover maintenance.
+  TPC-H refresh functions enabled inside the power or throughput phase (`tpch_refresh_functions`) also fail closed
+  before any refresh set is generated or applied; the phase reports a `FAILED` row naming the greybeam gateway.
+
+Quiescence runbook, to run after every native load or refresh and before the first gateway query:
+
+1. **Row-count parity.** For every benchmark table, compare `SELECT COUNT(*)` through the native endpoint with the same
+   count through the gateway. Any difference means the replica has not caught up.
+2. **Lag threshold.** Repeat the parity check at a fixed interval (for example 60 seconds). Treat the replica as
+   quiescent only after parity holds on three consecutive checks with no source writes in between. Replication lag
+   itself comes from the vendor's own monitoring; BenchBox does not read it.
+3. **Abort criteria.** Abort the run without recording results if parity is not reached within the time budget you set
+   before the load (size it to the data volume), if row counts ever move backwards, or if a gateway query returns zero
+   rows for a table that is non-empty natively.
+
+Only after step 3 passes run `benchbox run --platform snowflake --gateway greybeam ... --phases power`.
+
 ## Authentication Methods
 
 ### Password Authentication

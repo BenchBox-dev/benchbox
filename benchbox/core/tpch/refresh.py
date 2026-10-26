@@ -24,7 +24,15 @@ class TPCHRefreshUpdateSet:
     delete_path: Path
 
 
+def _greybeam_routed(adapter: Any) -> bool:
+    from benchbox.core.gateway import is_greybeam_gateway
+
+    return is_greybeam_gateway(getattr(getattr(adapter, "gateway_endpoint", None), "name", None))
+
+
 def refresh_unsupported_reason(adapter: Any) -> str | None:
+    if _greybeam_routed(adapter):
+        return "TPC-H refresh functions are not supported through the greybeam gateway"
     if getattr(adapter, "supports_refresh_functions", False) is True:
         return None
     platform_name = getattr(adapter, "platform_name", type(adapter).__name__)
@@ -32,6 +40,10 @@ def refresh_unsupported_reason(adapter: Any) -> str | None:
 
 
 def require_refresh_support(adapter: Any) -> None:
+    if _greybeam_routed(adapter):
+        from benchbox.core.gateway import raise_greybeam_maintenance_unsupported
+
+        raise_greybeam_maintenance_unsupported()
     reason = refresh_unsupported_reason(adapter)
     if reason is not None:
         raise NotImplementedError(reason)

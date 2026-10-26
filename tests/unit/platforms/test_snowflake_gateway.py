@@ -317,3 +317,205 @@ def test_native_stats_lookup_uses_legacy_tag() -> None:
     cursor.fetchone.return_value = None
     adapter._get_query_statistics(connection, "Q7")
     assert "WHERE QUERY_TAG = 'BenchBox_Q7'" in cursor.execute.call_args.args[0]
+
+
+@pytest.mark.parametrize("force_recreate", [False, True])
+def test_greybeam_query_only_missing_database_never_writes(snowflake_dependencies, force_recreate) -> None:
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com", force_recreate=force_recreate)
+    with (
+        patch.object(adapter, "check_database_exists", return_value=False),
+        patch.object(adapter, "_create_admin_connection") as admin,
+        patch.object(adapter, "create_schema") as schema,
+        patch.object(adapter, "load_data") as load,
+        pytest.raises(ConfigurationError, match="replica"),
+    ):
+        adapter.run_benchmark(Mock(), test_execution_type="power", options={"requested_phases": ["power"]})
+    admin.assert_not_called()
+    schema.assert_not_called()
+    load.assert_not_called()
+    snowflake_dependencies.connector.connect.assert_not_called()
+
+
+@pytest.mark.parametrize("reason", ["Missing tables: LINEITEM", "Row count mismatch", "Database empty"])
+def test_greybeam_incompatible_database_never_resets(reason, snowflake_dependencies) -> None:
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com")
+    validation = Mock(
+        is_valid=False, can_reuse=False, warnings=[], issues=[reason], database_empty=True, foreign_tables=()
+    )
+    with (
+        patch.object(adapter, "check_database_exists", return_value=True),
+        patch.object(adapter, "_validate_database_compatibility", return_value=validation),
+        patch.object(adapter, "reset_database_in_place") as reset,
+        patch.object(adapter, "drop_database") as drop,
+        pytest.raises(ConfigurationError, match="replica"),
+    ):
+        adapter.create_connection()
+    reset.assert_not_called()
+    drop.assert_not_called()
+    snowflake_dependencies.connector.connect.assert_not_called()
+
+
+def test_greybeam_force_recreate_refused_before_database_checks(snowflake_dependencies) -> None:
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com", force_recreate=True)
+    with (
+        patch.object(adapter, "check_database_exists") as exists,
+        pytest.raises(ConfigurationError, match="replica"),
+    ):
+        adapter.create_connection()
+    exists.assert_not_called()
+    snowflake_dependencies.connector.connect.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "operation", ["drop_database", "reset_database_in_place", "create_schema", "load_data", "fresh"]
+)
+def test_greybeam_mutation_entrypoints_fail_before_sql(operation) -> None:
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com")
+    connection = Mock()
+    with patch.object(adapter, "_create_admin_connection") as admin, pytest.raises(ConfigurationError):
+        if operation == "create_schema":
+            adapter.create_schema(Mock(), connection)
+        elif operation == "load_data":
+            adapter.load_data(Mock(), connection, Path("/tmp/data"))
+        elif operation == "fresh":
+            adapter._setup_fresh_database_phases(Mock(), connection, None)
+        else:
+            getattr(adapter, operation)()
+    admin.assert_not_called()
+    connection.cursor.assert_not_called()
+
+
+def test_greybeam_compatible_database_can_connect(snowflake_dependencies) -> None:
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com")
+    validation = Mock(is_valid=True, warnings=[], issues=[])
+    with (
+        patch.object(adapter, "check_database_exists", return_value=True),
+        patch.object(adapter, "_validate_database_compatibility", return_value=validation),
+    ):
+        adapter.create_connection()
+    assert adapter.database_was_reused is True
+    snowflake_dependencies.connector.connect.assert_called_once()
+
+
+@pytest.mark.parametrize("flag,env,allowed", [(False, "1", False), (True, "", False), (True, "1", True)])
+def test_greybeam_runtime_write_guard_requires_both_gates(monkeypatch, flag, env, allowed) -> None:
+    monkeypatch.setenv("BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD", env)
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com", allow_greybeam_inline_load=flag)
+    if allowed:
+        adapter._guard_greybeam_database_write()
+    else:
+        with pytest.raises(ConfigurationError):
+            adapter._guard_greybeam_database_write()
+
+
+def test_greybeam_double_gated_override_allows_missing_database_connection(monkeypatch, snowflake_dependencies) -> None:
+    monkeypatch.setenv("BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD", "1")
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com", allow_greybeam_inline_load=True)
+    with patch.object(adapter, "check_database_exists", return_value=False):
+        adapter.create_connection()
+    assert adapter.database_was_reused is False
+    snowflake_dependencies.connector.connect.assert_called_once()
+
+
+def test_lifecycle_propagates_and_resets_inline_load_permission() -> None:
+    from benchbox.core.runner.runner import ValidationOptions, _configure_lifecycle_adapter
+    from benchbox.core.schemas import BenchmarkConfig
+    from benchbox.utils.verbosity import VerbositySettings
+
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com")
+    config = BenchmarkConfig(
+        name="tpch", display_name="TPC-H", scale_factor=1, options={"allow_greybeam_inline_load": True}
+    )
+    _configure_lifecycle_adapter(
+        adapter, None, None, Mock(), config, ValidationOptions(), VerbositySettings(), "native"
+    )
+    assert adapter.allow_greybeam_inline_load is True
+    config.options.clear()
+    _configure_lifecycle_adapter(
+        adapter, None, None, Mock(), config, ValidationOptions(), VerbositySettings(), "native"
+    )
+    assert adapter.allow_greybeam_inline_load is False
+
+
+@pytest.mark.parametrize("context_flag", ["_validating_database", "dry_run", "dry_run_mode"])
+@pytest.mark.parametrize("force_recreate", [False, True])
+def test_greybeam_read_only_context_does_not_decide_reuse(context_flag, force_recreate) -> None:
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com", force_recreate=force_recreate)
+    setattr(adapter, context_flag, True)
+    with patch.object(adapter, "check_database_exists") as exists:
+        adapter.handle_existing_database()
+    exists.assert_not_called()
+    assert adapter.database_was_reused is False
+    assert not getattr(adapter, "_existing_db_decided", False)
+    with pytest.raises(ConfigurationError):
+        adapter._setup_fresh_database_phases(Mock(), Mock(), None)
+    with pytest.raises(ConfigurationError):
+        adapter._remove_database(False, "")
+
+
+class _TPCHSmokeBenchmark:
+    def get_schema(self):
+        return {"orders": {"columns": []}}
+
+
+@pytest.mark.parametrize("allow_inline_load,row_count", [(False, 1_500_000), (True, 1_500_000), (False, 0)])
+def test_greybeam_query_only_real_validation_smoke(
+    snowflake_dependencies, monkeypatch, allow_inline_load, row_count
+) -> None:
+    monkeypatch.setenv("BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD", "1" if allow_inline_load else "")
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com", allow_greybeam_inline_load=allow_inline_load)
+    adapter.benchmark_instance = _TPCHSmokeBenchmark()
+    adapter.scale_factor = 1
+    statements = []
+    validation_connections = []
+
+    def connect(**kwargs):
+        validation_connections.append(getattr(adapter, "_validating_database", False))
+        connection = Mock(spec=["cursor", "close"])
+        cursor = Mock(spec=["execute", "fetchone", "fetchall", "close"])
+        connection.cursor.return_value = cursor
+
+        def execute(sql, *args):
+            normalized = " ".join(sql.upper().split())
+            statements.append(normalized)
+            if "BENCHBOX_TUNING_METADATA" in normalized:
+                raise RuntimeError("BENCHBOX_TUNING_METADATA does not exist")
+            if normalized == "SHOW DATABASES":
+                rows = [(None, "DB")]
+            elif normalized == "SHOW TABLES":
+                rows = [(None, "ORDERS")]
+            elif normalized == "SELECT CURRENT_VERSION()":
+                rows = [("mock-version",)]
+            elif normalized == "SELECT COUNT(*) FROM ORDERS":
+                rows = [(row_count,)]
+            elif normalized.startswith("ALTER SESSION SET QUERY_TAG") or "QUERY_HISTORY" in normalized:
+                rows = []
+            else:
+                raise AssertionError(f"Unexpected SQL in query-only smoke: {sql}")
+            cursor.fetchone.return_value = rows[0] if rows else None
+            cursor.fetchall.return_value = rows
+            return cursor
+
+        cursor.execute.side_effect = execute
+        return connection
+
+    snowflake_dependencies.connector.connect.side_effect = connect
+    with patch.object(adapter, "reset_database_in_place") as reset, patch.object(adapter, "drop_database") as drop:
+        if row_count:
+            connection = adapter.create_connection()
+            assert adapter.database_was_reused is True
+            result = adapter.execute_query(connection, "SELECT COUNT(*) FROM orders", "smoke")
+            assert result["status"] == "SUCCESS"
+            assert result["first_row"] == (row_count,)
+            adapter.close_connection(connection)
+        else:
+            with pytest.raises(ConfigurationError, match="replica"):
+                adapter.create_connection()
+        reset.assert_not_called()
+        drop.assert_not_called()
+    assert validation_connections.count(True) == 2
+    assert "SHOW TABLES" in statements
+    assert "SELECT COUNT(*) FROM ORDERS" in statements
+    assert not any(
+        sql.startswith(("CREATE ", "DROP ", "TRUNCATE ", "INSERT ", "UPDATE ", "DELETE ")) for sql in statements
+    )
