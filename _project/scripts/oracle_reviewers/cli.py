@@ -209,8 +209,11 @@ def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dic
             continue
         title = (thread.get("body") or "").splitlines()
         found = protocol.thread_finding(thread.get("body") or "")
-        claim_text = "\n".join(reply["body"] for reply in replies)
-        claim_hash = protocol.claim_hash(protocol.canonical_claim(claim_text)) if found is not None else None
+        hashes = (
+            [protocol.claim_hash(protocol.canonical_claim(reply["body"])) for reply in replies]
+            if found is not None
+            else []
+        )
         disputes.append(
             {
                 "id": found[1] if found is not None else None,
@@ -218,7 +221,7 @@ def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dic
                 "path": thread.get("path") or "",
                 "title": title[0][:300] if title else "",
                 "replies": replies,
-                "claim_hash": claim_hash,
+                "claim_hashes": hashes,
             }
         )
     return disputes
@@ -759,6 +762,7 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
     bound = {(item.get("id"), item.get("cycle")) for item in protocol.bound_disputes(plan)}
     shown = [item for item in disputes if not item.get("id") or (item.get("id"), item.get("cycle")) in bound]
     keyed = [item for item in shown if item.get("id")]
+    unkeyed = any(not item.get("id") for item in shown)
     prior_block = f"\nEarlier defects:\n{prior_listing(prior)}\n" if prior else ""
     if shown:
         prior_block += f"\nDisputed findings:\n{dispute_listing(shown)}\n"
@@ -779,7 +783,9 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
         base_sha=plan["base_sha"],
         head_sha=plan["head_sha"],
         max_defects=int(plan["max_defects"]),
-        prior_rule=select_prior_rule(prior or None, plan.get("reviewed_head"), int(plan["max_defects"]), bool(keyed)),
+        prior_rule=select_prior_rule(
+            prior or None, plan.get("reviewed_head"), int(plan["max_defects"]), bool(keyed), unkeyed
+        ),
         prior_block=prior_block,
         prior_ids=[item["id"] for item in prior],
         files_block=files_block,

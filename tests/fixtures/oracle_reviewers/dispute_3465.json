@@ -11,7 +11,9 @@
         "body": "Dispute: pkg/kept.py:12 keeps the row on retry, so D1 is wrong. See run 40233057703."
       }
     ],
-    "claim_hash": "725c663bd96ed42012bfdc9d83857047620dee181a2ff6f5eec47080e14d2391"
+    "claim_hashes": [
+      "725c663bd96ed42012bfdc9d83857047620dee181a2ff6f5eec47080e14d2391"
+    ]
   },
   "prior": [
     {

@@ -11,7 +11,9 @@
         "body": "Dispute: the bound check at pkg/scan.py:40 already covers this input, so D1 is wrong."
       }
     ],
-    "claim_hash": "fa52fe957111fe5293c22dd8703ee14904fc6e1cea1cc79fe8548ff1b5032d9e"
+    "claim_hashes": [
+      "fa52fe957111fe5293c22dd8703ee14904fc6e1cea1cc79fe8548ff1b5032d9e"
+    ]
   },
   "prior": [
     {

@@ -518,21 +518,27 @@ def dispute_claim(text: str) -> str:
     return strip_marker_lines(text)[:REPLY_LIMIT]
 
 
-def disputed_claims(plan: Mapping[str, Any]) -> dict[str, str]:
+def disputed_claims(plan: Mapping[str, Any]) -> dict[str, list[str]]:
     rules = plan.get("protocol") or {}
     prior_ids = {item.get("id") for item in rules.get("prior") or () if isinstance(item, Mapping) and item.get("id")}
     if not prior_ids:
         return {}
     cycle = rules.get("cycle")
-    claims = {}
+    claims: dict[str, list[str]] = {}
     for item in plan.get("disputes") or ():
-        if not isinstance(item, Mapping) or not item.get("id") or not item.get("claim_hash"):
+        if not isinstance(item, Mapping) or not item.get("id") or not item.get("claim_hashes"):
             continue
         if item["id"] not in prior_ids:
             continue
         if cycle is not None and item.get("cycle") is not None and item["cycle"] != cycle:
             continue
-        claims[item["id"]] = item["claim_hash"]
+        claims.setdefault(item["id"], []).extend(
+            [
+                known
+                for known in item["claim_hashes"]
+                if isinstance(known, str) and known not in claims.get(item["id"], [])
+            ]
+        )
     return claims
 
 
@@ -582,8 +588,8 @@ def dispute_problem(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
                 f"disputed finding {defect_id} is withdrawn without conceding the rebuttal, so the verdict is invalid"
             )
         if entry.status in (NOT_FIXED, WITHDRAWN):
-            if not entry.claim.strip() or claim_hash(entry.claim) != claims[defect_id]:
-                return f"disputed finding {defect_id} does not restate its rebuttal claim, so the verdict is invalid"
+            if not entry.claim.strip() or all(claim_hash(entry.claim) != known for known in claims[defect_id]):
+                return f"disputed finding {defect_id} does not restate one of its rebuttal replies, so the verdict is invalid"
         if entry.status == NOT_FIXED and not maintain_cited(entry.evidence):
             return f"disputed finding {defect_id} is maintained without evidence, so the verdict is invalid"
         if entry.status == NOT_FIXED and UNVERIFIED_MAINTAIN in (entry.evidence or ""):

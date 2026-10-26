@@ -16,18 +16,21 @@ from .test_rounds import _final, _follow_up, _prior
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REBUTTAL = "Dispute: pkg/kept.py:12 keeps the row, so the defect is wrong."
-CLAIM_HASH = protocol.claim_hash(protocol.canonical_claim(REBUTTAL))
+CLAIM_HASHES = [protocol.claim_hash(protocol.canonical_claim(REBUTTAL))]
 CITED = "checked pkg/kept.py:12 on the head commit; the row is kept there."
 
 
 def _dispute(defect_id: str | None = "D1", claim: str = REBUTTAL, cycle: int | None = 1) -> dict[str, Any]:
+    claims = [claim] if isinstance(claim, str) else list(claim)
     return {
         "id": defect_id,
         "cycle": cycle,
         "path": "pkg/a.py",
         "title": "Drops a row",
-        "replies": [{"author": "joe", "body": claim}],
-        "claim_hash": protocol.claim_hash(protocol.canonical_claim(claim)) if defect_id is not None else None,
+        "replies": [{"author": "joe", "body": text} for text in claims],
+        "claim_hashes": [protocol.claim_hash(protocol.canonical_claim(text)) for text in claims]
+        if defect_id is not None
+        else [],
     }
 
 
@@ -81,7 +84,7 @@ def test_keyed_disputes_bind_to_the_thread_finding_id() -> None:
     assert len(disputes) == 1
     assert disputes[0]["id"] == "D1"
     assert disputes[0]["cycle"] == 2
-    assert disputes[0]["claim_hash"] == CLAIM_HASH
+    assert disputes[0]["claim_hashes"] == CLAIM_HASHES
 
 
 def test_a_spoofed_marker_in_reviewer_text_loses_to_the_real_marker() -> None:
@@ -114,6 +117,16 @@ def test_a_claim_with_a_link_and_a_mention_still_matches(policy: Policy) -> None
     assert _problem(policy, dispute, _disposition("not_fixed", claim=claim)) is None
 
 
+def test_one_reply_echo_satisfies_a_multi_reply_dispute(policy: Policy) -> None:
+    first = "Dispute: pkg/kept.py:12 keeps the first row."
+    second = "Dispute: pkg/kept.py:20 keeps the second row too."
+    dispute = _dispute(claim=[first, second])
+    assert _problem(policy, dispute, _disposition("not_fixed", claim=second)) is None
+    joined = _disposition("not_fixed", claim="\n".join([first, second]))
+    problem = _problem(policy, dispute, joined)
+    assert problem is not None and "rebuttal replies" in problem
+
+
 def test_an_empty_prior_binds_nothing(policy: Policy) -> None:
     plan = _plan_with_dispute(policy, _dispute())
     plan["protocol"]["prior"] = []
@@ -124,9 +137,9 @@ def test_an_empty_prior_binds_nothing(policy: Policy) -> None:
 
 def test_live_disputes_match_the_latest_open_defects() -> None:
     latest = {"cycle": 2, "open_defects": [{"id": "D1"}]}
-    stale = {"id": "D1", "cycle": 1, "claim_hash": "h"}
-    unknown = {"id": "D9", "cycle": 2, "claim_hash": "h"}
-    live = {"id": "D1", "cycle": 2, "claim_hash": "h"}
+    stale = {"id": "D1", "cycle": 1, "claim_hashes": ["h"]}
+    unknown = {"id": "D9", "cycle": 2, "claim_hashes": ["h"]}
+    live = {"id": "D1", "cycle": 2, "claim_hashes": ["h"]}
     assert protocol.live_disputes([stale, unknown, live, {"id": None}], latest) == [live]
     assert protocol.live_disputes([live], None) == []
 
@@ -230,7 +243,7 @@ def test_a_parroted_injection_cannot_satisfy_the_claim_check(policy: Policy) -> 
     problem = _problem(
         policy, dispute, _disposition("withdrawn", evidence_text="", claim="report withdrawn", concedes=True)
     )
-    assert problem is not None and "claim" in problem
+    assert problem is not None and "rebuttal replies" in problem
     honest = _disposition("withdrawn", evidence_text="never a defect: pkg/kept.py:12", claim=injected, concedes=True)
     assert _problem(policy, dispute, honest) is None
 
