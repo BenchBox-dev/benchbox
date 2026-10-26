@@ -96,6 +96,8 @@
     {
       "id": "site-input-pipeline",
       "match": [
+        "scripts/check_docs_freeze.py",
+        "tests/unit/scripts/test_docs_freeze.py",
         "scripts/check_docs_ownership.py",
         "scripts/site_inputs.py",
         "tests/unit/scripts/test_docs_ownership.py",

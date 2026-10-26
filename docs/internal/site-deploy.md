@@ -97,8 +97,10 @@ treats it as the reviewed removal only when the head tree has no
 `make/documentation.mk` mentions the gate. In a removal, deleting frozen
 sources and rewriting the ownership manifest are allowed. Adding or editing a
 frozen source still fails, and a pull request that keeps any part of the
-registration gets no exemption. Because `ci.yml` and the gate are protected
-paths, the removal needs the oracle review.
+registration gets no exemption. Because `.github/workflows/ci.yml`,
+`scripts/check_docs_freeze.py` and `scripts/docs_history_filter.py` are listed in
+`.github/soundness-paths.txt`, the removal needs the oracle review, and so does
+any other change to them.
 
 **After S.** The history filter runs through S as described in
 `docs/internal/docs-history-filter-runbook.md`, and the filtered history is
