@@ -129,6 +129,7 @@ def test_valid_verdict_round_trips() -> None:
         _verdict(prior_defects=[{"id": "D1", "status": "fixed", "evidence": "", "demoted": "bogus"}]),
         _verdict(prior_defects=[{"id": "D1", "status": "fixed", "evidence": "", "demoted": "withdrawal"}]),
         _verdict(prior_defects=[{"id": "<!--x-->", "status": "fixed", "evidence": ""}]),
+        _verdict(prior_defects=[{"id": "D1", "status": "fixed", "evidence": ""}] * 2),
         _verdict(defect_count=3),
         _verdict(_finding(severity="critical")),
         _verdict(_finding(severity="Blocker")),
