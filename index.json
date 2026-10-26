@@ -3055,10 +3055,15 @@
       "title": "CI `test (ubuntu-latest, 3.12)` hits its 45-minute timeout while the same suite takes about 6.5 minutes locally"
     },
     "ci-fast-tier-junit-emit-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T08:19:19Z",
+        "generation": "06e0ad598088489cbb94bbb57e336bb2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Emit per-test junit from the PR and Trunk fast-tier jobs as artifacts"
     },
     "ci-heavy-tier-runs-on-escalation-20261021": {
