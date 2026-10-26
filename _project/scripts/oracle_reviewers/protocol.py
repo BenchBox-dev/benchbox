@@ -521,17 +521,47 @@ def dispute_claim(text: str) -> str:
 def disputed_claims(plan: Mapping[str, Any]) -> dict[str, str]:
     rules = plan.get("protocol") or {}
     prior_ids = {item.get("id") for item in rules.get("prior") or () if isinstance(item, Mapping) and item.get("id")}
+    if not prior_ids:
+        return {}
     cycle = rules.get("cycle")
     claims = {}
     for item in plan.get("disputes") or ():
         if not isinstance(item, Mapping) or not item.get("id") or not item.get("claim_hash"):
             continue
-        if prior_ids and item["id"] not in prior_ids:
+        if item["id"] not in prior_ids:
             continue
         if cycle is not None and item.get("cycle") is not None and item["cycle"] != cycle:
             continue
         claims[item["id"]] = item["claim_hash"]
     return claims
+
+
+def live_disputes(disputes: Any, latest: Any) -> list[dict[str, Any]]:
+    if not isinstance(latest, Mapping):
+        return []
+    open_ids = {
+        item.get("id") for item in latest.get("open_defects") or () if isinstance(item, Mapping) and item.get("id")
+    }
+    cycle = latest.get("cycle")
+    return [
+        item
+        for item in disputes or ()
+        if isinstance(item, Mapping)
+        and item.get("id") in open_ids
+        and (cycle is None or item.get("cycle") is None or item.get("cycle") == cycle)
+    ]
+
+
+def bound_disputes(plan: Mapping[str, Any]) -> list[dict[str, Any]]:
+    allowed = disputed_claims(plan)
+    cycle = (plan.get("protocol") or {}).get("cycle")
+    return [
+        item
+        for item in plan.get("disputes") or ()
+        if isinstance(item, Mapping)
+        and item.get("id") in allowed
+        and (cycle is None or item.get("cycle") is None or item.get("cycle") == cycle)
+    ]
 
 
 def dispute_problem(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
@@ -547,6 +577,10 @@ def dispute_problem(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
             return f"disputed finding {defect_id} has no concedes boolean, so the verdict is invalid"
         if entry.status == NOT_FIXED and entry.concedes:
             return f"disputed finding {defect_id} concedes the rebuttal yet stays not fixed, so the verdict is invalid"
+        if entry.status == WITHDRAWN and not entry.concedes:
+            return (
+                f"disputed finding {defect_id} is withdrawn without conceding the rebuttal, so the verdict is invalid"
+            )
         if entry.status in (NOT_FIXED, WITHDRAWN):
             if not entry.claim.strip() or claim_hash(entry.claim) != claims[defect_id]:
                 return f"disputed finding {defect_id} does not restate its rebuttal claim, so the verdict is invalid"

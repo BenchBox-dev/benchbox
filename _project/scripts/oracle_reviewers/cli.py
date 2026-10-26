@@ -224,10 +224,6 @@ def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dic
     return disputes
 
 
-def _keyed_disputes(threads: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
-    return [item for item in threads or [] if isinstance(item, dict) and item.get("id")]
-
-
 def _dispute_step(
     plan: dict[str, Any],
     policy: Policy,
@@ -250,7 +246,7 @@ def _dispute_step(
     except (github.GitHubError, KeyError, ValueError) as exc:
         _summary(f"oracle-verdict: open review threads could not be read: {exc}")
         return None, step
-    if threads is not None and _keyed_disputes(_disputed_threads(threads, policy.bot_login)):
+    if threads is not None and protocol.live_disputes(_disputed_threads(threads, policy.bot_login), found.latest):
         step = _protocol_round(
             plan,
             policy,
@@ -760,10 +756,12 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
         )
     prior = plan["protocol"]["prior"]
     disputes = [item for item in plan.get("disputes", []) if isinstance(item, dict)] if prior else []
-    keyed = [item for item in disputes if item.get("id")]
+    bound = {(item.get("id"), item.get("cycle")) for item in protocol.bound_disputes(plan)}
+    shown = [item for item in disputes if not item.get("id") or (item.get("id"), item.get("cycle")) in bound]
+    keyed = [item for item in shown if item.get("id")]
     prior_block = f"\nEarlier defects:\n{prior_listing(prior)}\n" if prior else ""
-    if disputes:
-        prior_block += f"\nDisputed findings:\n{dispute_listing(disputes)}\n"
+    if shown:
+        prior_block += f"\nDisputed findings:\n{dispute_listing(shown)}\n"
     staged = None
     if plan.get("diff_inline"):
         diff_text: str | None = plan["diff_inline"]

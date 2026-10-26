@@ -290,7 +290,7 @@ def _effective_status(plan: Mapping[str, Any], entry: PriorDefect) -> str:
 
 
 def _dispositions(plan: Mapping[str, Any], verdict: Verdict | None, evidence_cap: int | None) -> list[str]:
-    disputes = [item for item in plan.get("disputes", []) if isinstance(item, Mapping) and item.get("id")]
+    disputes = protocol.bound_disputes(plan)
     if not disputes or verdict is None:
         return []
     entries = {item.id: item for item in verdict.prior_defects}

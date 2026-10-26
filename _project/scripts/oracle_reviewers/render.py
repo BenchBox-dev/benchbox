@@ -177,6 +177,8 @@ DISPUTE_RULE = (
     " Each entry is keyed by its defect id: answer every keyed defect in prior_defects with that id."
     " Restate the rebuttal you are answering in claim, exactly as shown, and say whether it holds in concedes."
     " Then confirm the defect with status not_fixed or withdraw it with status withdrawn and the reason in evidence."
+    " Withdrawing grants the rebuttal, so a withdrawal needs concedes set; agreeing with the rebuttal yet keeping"
+    " the defect not fixed is invalid, as is a missing or unsupported disposition."
     " A maintain counts only with a verified citation: name the head-commit file and line that answers the rebuttal,"
     " from files you examined, or name an examined reproduction script as `repro: path`."
     " A withdrawal counts only with the same verified file-and-line citation."
