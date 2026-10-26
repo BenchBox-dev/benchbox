@@ -70,7 +70,11 @@ class FakeGitHub:
         monkeypatch.setattr(github, "latest_state", lambda repo, pr: self.state)
         monkeypatch.setattr(github, "dispatch", lambda repo, workflow, pr: self.dispatched.append(pr))
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
-        monkeypatch.setattr(github, "get_file", lambda repo, path, ref: self.contents.get(path, UNRELATED))
+        monkeypatch.setattr(
+            github,
+            "get_file",
+            lambda repo, path, ref: self.contents.get(path, UNRELATED).encode("utf-8"),
+        )
 
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.reviews is None:
@@ -92,8 +96,8 @@ class FakeGitHub:
             raise github.GitHubError("threads unavailable")
         return self.threads
 
-    def _diff(self, repo: str, pr: int) -> str | None:
-        return self.diff
+    def _diff(self, repo: str, pr: int) -> bytes | None:
+        return None if self.diff is None else self.diff.encode("utf-8")
 
     def _paginated(self, path: str) -> list[dict[str, Any]]:
         return [self.pull] if path.startswith(f"repos/{REPO}/pulls?") else self.files

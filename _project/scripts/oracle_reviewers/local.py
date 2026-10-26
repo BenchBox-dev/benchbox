@@ -85,6 +85,13 @@ class Reporter:
         print(credentials.redact(text, self.secrets), file=sys.stderr if error else sys.stdout)
 
 
+def _git_bytes(root: Path, *args: str) -> bytes:
+    result = subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=False)
+    if result.returncode != 0:
+        raise Unavailable(f"git {args[0]} failed: {result.stderr.decode('utf-8', errors='replace').strip()[:300]}")
+    return result.stdout
+
+
 def _git(root: Path, *args: str) -> str:
     result = subprocess.run(
         ["git", "-C", str(root), *args], capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
@@ -169,7 +176,8 @@ def build_plan(
         plan["decision"] = cli.SUCCESS
         plan["decision_reason"] = "only exempt paths changed"
         return plan
-    full_diff = _git(root, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M", base, head)
+    raw_diff = _git_bytes(root, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M", base, head)
+    full_diff = raw_diff.decode("utf-8", errors="replace")
     in_scope = set(scope.paths)
     scoped = cli._scoped_files(files, in_scope, policy, predicate)
     reason = "local review of the committed change"
@@ -184,7 +192,7 @@ def build_plan(
         "round": 1,
         "base_ref": plan["base_ref"],
         "patch_map": {},
-        "patch_digest": hashlib.sha256(full_diff.encode("utf-8")).hexdigest()[:32],
+        "patch_digest": hashlib.sha256(raw_diff).hexdigest()[:32],
         "strikes": 0,
         "struck_digests": [],
         "max_do_not_ship": policy.protocol.max_do_not_ship,

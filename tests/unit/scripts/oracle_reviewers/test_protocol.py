@@ -130,3 +130,50 @@ def test_judge_keeps_a_cited_withdrawal_on_a_forced_round() -> None:
 def test_judge_merges_identical_defects_and_counts_them_once() -> None:
     judgement = judge(_verdict("SHIP_WITH_FIXES", [_defect(1), _defect(1), _defect(2)]), 10)
     assert len(judgement.defects) == 2 and judgement.merged == 1
+
+
+def _latin1_git_patch(tmp_path: Any, name: str, byte: bytes) -> bytes:
+    import subprocess
+
+    repo = tmp_path / name
+    repo.mkdir()
+
+    def git(*args: str) -> bytes:
+        return subprocess.run(
+            ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+            capture_output=True,
+            check=True,
+        ).stdout
+
+    git("init", "--quiet", "--initial-branch=main")
+    (repo / "mod.py").write_bytes(b"# -*- coding: latin-1 -*-\nx = 1\n")
+    git("add", "mod.py")
+    git("commit", "--quiet", "-m", "seed")
+    (repo / "mod.py").write_bytes(b"# -*- coding: latin-1 -*-\nx = 1\nname = '" + byte + b"'\n")
+    git("add", "mod.py")
+    git("commit", "--quiet", "-m", "change")
+    return git("diff", "--no-color", "--no-ext-diff", "HEAD~1", "HEAD")
+
+
+def test_patches_differing_only_in_invalid_utf8_bytes_keep_distinct_identity(tmp_path: Any) -> None:
+    from _project.scripts.oracle_reviewers import protocol
+
+    first = _latin1_git_patch(tmp_path, "a", b"\xe9")
+    second = _latin1_git_patch(tmp_path, "b", b"\xf1")
+    assert first != second
+    left = protocol.file_patches(protocol.exact_text(first))
+    right = protocol.file_patches(protocol.exact_text(second))
+    assert left.keys() == right.keys() == {"mod.py"}
+    assert left != right
+    assert protocol.patch_digest(left, ["mod.py"]) != protocol.patch_digest(right, ["mod.py"])
+    lossy_left = protocol.file_patches(first.decode("utf-8", errors="replace"))
+    lossy_right = protocol.file_patches(second.decode("utf-8", errors="replace"))
+    assert lossy_left == lossy_right
+
+
+def test_file_content_read_keeps_invalid_bytes_distinct_for_gap_anchors(tmp_path: Any) -> None:
+    from _project.scripts.oracle_reviewers import protocol
+
+    diff = protocol.exact_text(_latin1_git_patch(tmp_path, "c", b"\xe9"))
+    assert protocol.exact_text(b"a\xe9\xf1") != protocol.exact_text(b"a\xf1\xe9")
+    assert protocol.file_patches(diff, lambda path: protocol.exact_text(b"x = 1\nname = '\xe9'\n"))

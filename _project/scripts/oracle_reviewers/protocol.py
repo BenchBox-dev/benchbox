@@ -144,6 +144,10 @@ def _block_gap(block: list[str], start: int, content: str | None, old_start: int
     return f"blk{earlier}"
 
 
+def exact_text(data: bytes) -> str:
+    return data.decode("utf-8", errors="surrogateescape")
+
+
 def file_patches(diff_text: str, read: Callable[[str], str | None] | None = None) -> dict[str, str]:
     patches: dict[str, str] = {}
     for section in re.split(r"(?m)^(?=diff --git )", diff_text):
@@ -187,7 +191,9 @@ def file_patches(diff_text: str, read: Callable[[str], str | None] | None = None
                 )
             previous_end = first + count
             kept.append(f"@@ gap={gap} old={count} new={new_count}{hunk['section']}")
-        patches[match.group("new")] = hashlib.sha256("\n".join(kept).encode("utf-8")).hexdigest()
+        patches[match.group("new")] = hashlib.sha256(
+            "\n".join(kept).encode("utf-8", errors="surrogateescape")
+        ).hexdigest()
     return patches
 
 
