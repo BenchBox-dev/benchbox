@@ -29909,6 +29909,13 @@
       "status": "done",
       "title": "Make POSIX shell test helpers fail closed on POSIX CI"
     },
+    "windows-pr-ci-leg-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Land the Windows PR test leg so POSIX-only tests fail before merge"
+    },
     "windows-pr-followups-fake-codex-shim": {
       "claim": null,
       "needs": [],

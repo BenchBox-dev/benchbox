@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "PR #3548 merged with CI green on its final head, including a windows-tests job that ran and passed",
+    "The windows-tests job is shown selecting the changed test files of its own PR",
+    "Residual risk recorded: medium-only tests are not covered; the nightly remains the backstop"
+  ],
+  "context": "If the oracle returns findings, read the threads, fix, and resolve addressed threads only after verifying the fix at the head. If the Windows leg proves flaky, report evidence rather than weakening it.",
+  "description": "PR #3548 (branch ci/windows-pr-leg, head 535ebdfd0, auto-merge armed) adds a windows-tests PR job running coverage-selected tests plus changed test files on windows-latest py3.12, gated through the required core check. It also completes #3543 (conftest ignores test_local_review.py on Windows; guard tests pass USERPROFILE/HOMEDRIVE/HOMEPATH). Its first run caught 4 real Windows failures plus a collection error. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-26T19:28:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "33d91490353648d1aff0de5ecf79a3ed",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}
