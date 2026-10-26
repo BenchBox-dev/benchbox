@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "Tests that fail on develop and pass after: a stateless failure gets exactly one re-dispatch; waiting and pending runs count as in flight; more than 100 runs are paginated; one PR's error does not stop the others; a sweep never cancels an in-flight review; a guard-skipped run uploads no state; the backoff reset clears backoff once and records the reason.",
+    "Live: one sweep run after merge (record the run id).",
+    "oracle-sweep-schedule-drops-most-runs-20261022 is re-baselined to measure 3 days after this merges (context and not_before updated).",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "OWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q2 keep block-until-it-can-run (so recovery speed matters); Q13 include the sweep low items.",
+  "description": "Problem:\n- R5: a run that fails closed (isolation, scan hit, leftover process, redaction failure, timeout) uploads no retry state, so the sweep never retries it and the PR waits silently.\n- M1 and the sweep lookup: the in-flight lookup ignores waiting, pending and requested runs, reads one page of 100, tolerates no dispatch delay, and one PR's state or dispatch error aborts the whole sweep (github.py:283-291, cli.py:875-898); a sweep dispatch shares the pr-N cancel-in-progress group and can cancel a nearly finished review.\n- Retry state is uploaded even when the guard skips posting, adding a phantom strike (oracle-verdict.yml upload condition).\n- R6: with block-until-it-can-run kept (owner #8), an outage plus backoff can delay verdicts about 15 hours, with manual reruns refused; no reset exists.\n\nOutcome: the sweep finds the latest verdict run per open PR head and re-dispatches a head whose last run failed without state, bounded by sweep_max_dispatches and the daily budget; in-flight covers waiting, pending and requested, with pagination; per-PR errors are isolated and reported; a sweep never cancels an in-flight run (it skips); retry state is recorded only when a result was posted; an owner-only make target resets backoff for one PR, with a recorded reason, using the attester identity and audit trail of stand-ins.\n\nDecision gates:\n1. Re-dispatch must not loop: a head re-dispatched once that fails again without state waits for the normal schedule; prove with a test.\n2. The reset is owner-only under the same rule as stand-ins (owner names the PR in the current request).\n\nItem guardrails: no change to budgets other than the reset; no change to decisions.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, then make agent-write-preflight; the primary clone is read-only. Never use git stash (refs/stash is shared across worktrees). Commit as Joe Harris <joeharris76@gmail.com>, staging explicit paths only; no git add -A, no --no-verify, no SKIP, no agent trailers. Durable text (commits, PR bodies, docs, code) carries no tracker ids, session labels or plan references. Maintained code has no explanatory comments or docstrings (make comment-policy-check). Before publishing run make docs-reference-inventory-check, make doc-contracts-guard and make pr-preflight, and self-review with the code review action, fixing every Critical and Required finding. Publish only with make pr-open: never gh pr create, a raw push-and-open, or a PR-body override line; if make pr-open refuses, stop and report the exact refusal instead of routing around it. Until oracle-omp-pin-single-source-20261026 merges, make pr-open may run only with PATH prefixed by the darwin-arm64 omp 18.12.1 build whose SHA-256 that item records, verified with shasum immediately before use; never any other side-loaded omp. Close out only with oracle SHIP on the exact head, every oracle thread answered (reply naming the fixing SHA, then resolve) and make pr-arm; never raw gh pr merge, a stand-in, an adjudication, or a ruleset or settings change. Never print tokens, keys, or the gateway URL or hostname; never spend model quota outside the review harness. Owner decisions are recorded in context and in the decisions file; a step that would contradict one stops and asks the owner.",
+  "links": [
+    "_project/scripts/oracle_reviewers/cli.py",
+    "_project/scripts/oracle_reviewers/github.py",
+    "_project/scripts/oracle_reviewers/retry.py",
+    ".github/workflows/oracle-verdict.yml",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevVerdictJob.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevDesignFit.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T15:00:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "849081a068854d079c1404c069f151d5",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
