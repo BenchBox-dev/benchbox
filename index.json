@@ -16746,6 +16746,15 @@
       "status": "done",
       "title": "An author cannot get the oracle to reconsider a disputed finding without pushing a new commit"
     },
+    "oracle-same-head-rerun-returns-verdict-20261026": {
+      "claim": null,
+      "needs": [
+        "oracle-dispute-trigger-budget-escalation-20261026"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Return the existing verdict for a same-head /oracle-review with no open dispute"
+    },
     "oracle-self-attested-file-list-reviewers-20261008": {
       "claim": null,
       "needs": [],

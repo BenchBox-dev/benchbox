@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Tests that fail on develop and pass after: a decided head with no dispute runs no attempts and re-posts the existing decision; an open dispute takes the dispute path; a pending or absent head reruns normally.",
+    "Live: one same-head rerun returns without attempts (record the run).",
+    "Rerun guidance in docs updated (AGENTS.md only with owner-approved wording).",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "OWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q6 return the existing verdict.",
+  "description": "Problem: about 162 of 286 /oracle-review comments in 14 days re-rolled an unchanged, already-judged head with no open dispute, burning budget and reviewer attempts; AGENTS.md and docs recommend reflexive reruns.\n\nOutcome (owner Q6): a manual rerun on a head that already has a decisive verdict and no open dispute runs no reviewer. It re-posts the existing decision (verdict status and oracle-gate) and replies with how to get a re-judgement: push a change or dispute a finding. Pending or absent heads still rerun under the existing budget.\n\nDecision gates:\n1. If AGENTS.md text must change to stop recommending reruns, propose the wording with its byte count and stop to ask the owner; docs/ and CONTRIBUTING.md may change freely.\n\nItem guardrails: no change to dispute-triggered runs (previous item) or to the sweep.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, then make agent-write-preflight; the primary clone is read-only. Never use git stash (refs/stash is shared across worktrees). Commit as Joe Harris <joeharris76@gmail.com>, staging explicit paths only; no git add -A, no --no-verify, no SKIP, no agent trailers. Durable text (commits, PR bodies, docs, code) carries no tracker ids, session labels or plan references. Maintained code has no explanatory comments or docstrings (make comment-policy-check). Before publishing run make docs-reference-inventory-check, make doc-contracts-guard and make pr-preflight, and self-review with the code review action, fixing every Critical and Required finding. Publish only with make pr-open: never gh pr create, a raw push-and-open, or a PR-body override line; if make pr-open refuses, stop and report the exact refusal instead of routing around it. Until oracle-omp-pin-single-source-20261026 merges, make pr-open may run only with PATH prefixed by the darwin-arm64 omp 18.12.1 build whose SHA-256 that item records, verified with shasum immediately before use; never any other side-loaded omp. Close out only with oracle SHIP on the exact head, every oracle thread answered (reply naming the fixing SHA, then resolve) and make pr-arm; never raw gh pr merge, a stand-in, an adjudication, or a ruleset or settings change. Never print tokens, keys, or the gateway URL or hostname; never spend model quota outside the review harness. Owner decisions are recorded in context and in the decisions file; a step that would contradict one stops and asks the owner.",
+  "links": [
+    "_project/scripts/oracle_reviewers/cli.py",
+    "_project/scripts/oracle_reviewers/retry.py",
+    "AGENTS.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/DisputeProtocol.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevDesignFit.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T15:00:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "57aa56faad2c496e9522596d495b76a6",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
