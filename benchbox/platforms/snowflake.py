@@ -676,6 +676,9 @@ class SnowflakeAdapter(PlatformAdapter):
         )
 
     def handle_existing_database(self, **connection_config) -> None:
+        if self.dry_run or getattr(self, "dry_run_mode", False) or getattr(self, "_validating_database", False):
+            super().handle_existing_database(**connection_config)
+            return
         if self.force_recreate:
             self._guard_greybeam_database_write()
         super().handle_existing_database(**connection_config)

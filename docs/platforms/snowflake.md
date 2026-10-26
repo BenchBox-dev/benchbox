@@ -144,6 +144,8 @@ BenchBox enforces these runtime restrictions:
   The SQL adapter checks before database reset/drop, fresh setup, schema creation, and data loading, so a missing or
   stale replica cannot trigger writes as a side effect of a query-only run. Fix the native dataset and wait for CDC
   quiescence rather than recreating it through the gateway.
+  Read-only validation connections and dry-run database checks do not decide whether the database needs recreation;
+  they remain available without the inline-load override. Mutation entrypoints still enforce the guard independently.
   The escape hatch needs both `--allow-greybeam-inline-load` and `BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD=1`; it also covers
   automatic reload/recreation, and results from such a run are invalid data.
 - **TPC-H RF1/RF2 and TPC-DS maintenance streams** fail fast when `maintenance` is named in `--phases` or the

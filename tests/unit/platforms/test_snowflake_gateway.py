@@ -435,3 +435,87 @@ def test_lifecycle_propagates_and_resets_inline_load_permission() -> None:
         adapter, None, None, Mock(), config, ValidationOptions(), VerbositySettings(), "native"
     )
     assert adapter.allow_greybeam_inline_load is False
+
+
+@pytest.mark.parametrize("context_flag", ["_validating_database", "dry_run", "dry_run_mode"])
+@pytest.mark.parametrize("force_recreate", [False, True])
+def test_greybeam_read_only_context_does_not_decide_reuse(context_flag, force_recreate) -> None:
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com", force_recreate=force_recreate)
+    setattr(adapter, context_flag, True)
+    with patch.object(adapter, "check_database_exists") as exists:
+        adapter.handle_existing_database()
+    exists.assert_not_called()
+    assert adapter.database_was_reused is False
+    assert not getattr(adapter, "_existing_db_decided", False)
+    with pytest.raises(ConfigurationError):
+        adapter._setup_fresh_database_phases(Mock(), Mock(), None)
+    with pytest.raises(ConfigurationError):
+        adapter._remove_database(False, "")
+
+
+class _TPCHSmokeBenchmark:
+    def get_schema(self):
+        return {"orders": {"columns": []}}
+
+
+@pytest.mark.parametrize("allow_inline_load,row_count", [(False, 1_500_000), (True, 1_500_000), (False, 0)])
+def test_greybeam_query_only_real_validation_smoke(
+    snowflake_dependencies, monkeypatch, allow_inline_load, row_count
+) -> None:
+    monkeypatch.setenv("BENCHBOX_I_UNDERSTAND_GREYBEAM_LOAD", "1" if allow_inline_load else "")
+    adapter = _adapter(gateway="greybeam", gateway_host="gw.example.com", allow_greybeam_inline_load=allow_inline_load)
+    adapter.benchmark_instance = _TPCHSmokeBenchmark()
+    adapter.scale_factor = 1
+    statements = []
+    validation_connections = []
+
+    def connect(**kwargs):
+        validation_connections.append(getattr(adapter, "_validating_database", False))
+        connection = Mock(spec=["cursor", "close"])
+        cursor = Mock(spec=["execute", "fetchone", "fetchall", "close"])
+        connection.cursor.return_value = cursor
+
+        def execute(sql, *args):
+            normalized = " ".join(sql.upper().split())
+            statements.append(normalized)
+            if "BENCHBOX_TUNING_METADATA" in normalized:
+                raise RuntimeError("BENCHBOX_TUNING_METADATA does not exist")
+            if normalized == "SHOW DATABASES":
+                rows = [(None, "DB")]
+            elif normalized == "SHOW TABLES":
+                rows = [(None, "ORDERS")]
+            elif normalized == "SELECT CURRENT_VERSION()":
+                rows = [("mock-version",)]
+            elif normalized == "SELECT COUNT(*) FROM ORDERS":
+                rows = [(row_count,)]
+            elif normalized.startswith("ALTER SESSION SET QUERY_TAG") or "QUERY_HISTORY" in normalized:
+                rows = []
+            else:
+                raise AssertionError(f"Unexpected SQL in query-only smoke: {sql}")
+            cursor.fetchone.return_value = rows[0] if rows else None
+            cursor.fetchall.return_value = rows
+            return cursor
+
+        cursor.execute.side_effect = execute
+        return connection
+
+    snowflake_dependencies.connector.connect.side_effect = connect
+    with patch.object(adapter, "reset_database_in_place") as reset, patch.object(adapter, "drop_database") as drop:
+        if row_count:
+            connection = adapter.create_connection()
+            assert adapter.database_was_reused is True
+            result = adapter.execute_query(connection, "SELECT COUNT(*) FROM orders", "smoke")
+            assert result["status"] == "SUCCESS"
+            assert result["first_row"] == (row_count,)
+            adapter.close_connection(connection)
+        else:
+            with pytest.raises(ConfigurationError, match="replica"):
+                adapter.create_connection()
+        reset.assert_not_called()
+        drop.assert_not_called()
+    assert validation_connections.count(True) == 2
+    assert "SHOW TABLES" in statements
+    assert "SELECT COUNT(*) FROM ORDERS" in statements
+    assert not any(
+        sql.startswith(("CREATE ", "DROP ", "TRUNCATE ", "INSERT ", "UPDATE ", "DELETE ")) for sql in statements
+    )
