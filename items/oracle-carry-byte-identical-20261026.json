@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Tests that fail on develop and pass after: a relocated identical hunk does not carry; a headingless relocation does not carry; a binary file with the same abbreviated id but a different full id does not carry; a mode-change-only difference does not carry; a byte-identical rebase carries.",
+    "Dead normalisation code removed with no remaining references (duplicate and unused checks pass).",
+    "oracle-hunk-headingless-and-repeated-heading-collisions-20261024 context records the evidence that this resolves it.",
+    "Live: the next carried review in CI shows a byte-identical diff (record the run), or the context records that none occurred within a week.",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "OWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q12 simplify carry now; Q13 include the binary blob-id finding.",
+  "description": "Problem: the patch-hash carry (_project/scripts/oracle_reviewers/protocol.py:124-211,383-461) normalises per-file hunks, function headings and occurrence counts to reuse a prior decision across rebases. In the 2026-10-24..26 window it carried 4.4% of reviews and needed two fix PRs (#3420 headingless and relocated hunks, #3354 retarget). Binary patches hash the abbreviated 10-hex index line, so about 2^40 work forges a carried SHIP onto a different binary. Open item oracle-hunk-headingless-and-repeated-heading-collisions-20261024 tracks a remaining relocated-hunk SHIP hole.\n\nOutcome (owner Q12): a decision carries only when the merge-base-to-head diff is byte-identical to the reviewed one, computed with full blob ids (files API sha, or git --full-index locally), including mode changes, renames and binary files; anything else gets a fresh review. Delete the normalisation code that becomes dead.\n\nDecision gates:\n1. Confirm the CI change source supplies a full blob id for every file; where it cannot (for example truncated file lists), do not carry.\n2. Base-change and retarget invalidation (#3354) keep working; existing retarget tests stay green.\n\nItem guardrails: carry may only become stricter; no change to verdict computation or gate rules.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, then make agent-write-preflight; the primary clone is read-only. Never use git stash (refs/stash is shared across worktrees). Commit as Joe Harris <joeharris76@gmail.com>, staging explicit paths only; no git add -A, no --no-verify, no SKIP, no agent trailers. Durable text (commits, PR bodies, docs, code) carries no tracker ids, session labels or plan references. Maintained code has no explanatory comments or docstrings (make comment-policy-check). Before publishing run make docs-reference-inventory-check, make doc-contracts-guard and make pr-preflight, and self-review with the code review action, fixing every Critical and Required finding. Publish only with make pr-open: never gh pr create, a raw push-and-open, or a PR-body override line; if make pr-open refuses, stop and report the exact refusal instead of routing around it. Until oracle-omp-pin-single-source-20261026 merges, make pr-open may run only with PATH prefixed by the darwin-arm64 omp 18.12.1 build whose SHA-256 that item records, verified with shasum immediately before use; never any other side-loaded omp. Close out only with oracle SHIP on the exact head, every oracle thread answered (reply naming the fixing SHA, then resolve) and make pr-arm; never raw gh pr merge, a stand-in, an adjudication, or a ruleset or settings change. Never print tokens, keys, or the gateway URL or hostname; never spend model quota outside the review harness. Owner decisions are recorded in context and in the decisions file; a step that would contradict one stops and asks the owner.",
+  "links": [
+    "_project/scripts/oracle_reviewers/protocol.py",
+    "_project/scripts/oracle_reviewers/cli.py",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevVerdictLogic.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevDesignFit.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T14:59:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "79e2f03944194a61a48e855400a3a0e3",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
