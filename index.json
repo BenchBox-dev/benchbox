@@ -16685,7 +16685,10 @@
         "oracle-absence-json-error-events-20261026",
         "retire-oracle-review-workflow-20261021",
         "oracle-same-head-rerun-returns-verdict-20261026",
-        "oracle-gate-from-verdict-job-20261026"
+        "oracle-gate-from-verdict-job-20261026",
+        "oracle-scope-path-canonical-20261026",
+        "oracle-evidence-exempt-binary-prose-20261026",
+        "pr-open-stacked-draft-base-20261026"
       ],
       "priority": "medium",
       "status": "open",
