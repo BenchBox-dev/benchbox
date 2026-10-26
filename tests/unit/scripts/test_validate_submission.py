@@ -1923,10 +1923,15 @@ class TestSubmissionDeterministicGates:
         from benchbox.sql_compat.rules.execution_filter.cloud_tpchavoc import CLOUD_TPCHAVOC_SKIPS
         from benchbox.sql_compat.rules.execution_filter.datafusion_tpchavoc import DATAFUSION_TPCHAVOC_SKIPS
         from benchbox.sql_compat.rules.execution_filter.lakesail_tpchavoc import LAKESAIL_TPCHAVOC_SKIPS
+        from benchbox.sql_compat.rules.execution_filter.list_aggregate_tpchavoc import (
+            LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES,
+            LIST_AGGREGATE_TPCHAVOC_SKIPS,
+        )
         from benchbox.sql_compat.rules.execution_filter.postgres_tpchavoc import POSTGRES_TPCHAVOC_SKIPS
         from benchbox.validation.bundle import (
             TPCHAVOC_CANONICAL_VARIANTS,
             TPCHAVOC_DOCUMENTED_SKIPS,
+            TPCHAVOC_LIST_AGGREGATE_SKIP_PLATFORMS,
             _tpchavoc_documented_skips,
         )
 
@@ -1942,6 +1947,10 @@ class TestSubmissionDeterministicGates:
             "databricks": frozenset(CLOUD_TPCHAVOC_SKIPS["databricks"]),
             "bigquery": frozenset(CLOUD_TPCHAVOC_SKIPS["bigquery"]),
         } == TPCHAVOC_DOCUMENTED_SKIPS
+        assert frozenset(LIST_AGGREGATE_TPCHAVOC_SKIPS) == TPCHAVOC_LIST_AGGREGATE_SKIP_PLATFORMS
+        from benchbox.validation.bundle import TPCHAVOC_LIST_AGGREGATE_PLATFORM_ALIASES
+
+        assert TPCHAVOC_LIST_AGGREGATE_PLATFORM_ALIASES == LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES
         benchmark = object.__new__(TPCHavocBenchmark)
         for platform in (
             "DataFusion",
@@ -1949,7 +1958,19 @@ class TestSubmissionDeterministicGates:
             "ClickHouse (Local)",
             "ClickHouse Cloud",
             "PG-DuckDB",
+            "PG-Mooncake",
+            "Apache Doris",
+            "Azure Synapse",
+            "Fabric Warehouse",
+            "SnowparkConnectAdapter",
             "TimescaleDB",
+            "PostgreSQL",
+            "ClickHouse",
+            "Redshift",
+            "Synapse",
+            "Fabric DW",
+            "StarRocks",
+            "Snowpark Connect",
             "DuckDB",
             "Snowflake",
             "Databricks",

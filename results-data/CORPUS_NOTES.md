@@ -145,6 +145,7 @@ Other issues found while checking, outside these PRs:
   there. No published SQLite bundle is affected: the only SQLite TPC-DS bundle
   (`tpcds_sf1_sqlite_sql_20260824_083944_c6745a86`) ran query 1 alone, and there
   is no SQLite `tpcds_obt` or `tpchavoc` bundle. No sidecar changed.
+- SQLite `GROUP BY ()`, PostgreSQL and DataFusion TPC-Havoc `1_v7`, and PostgreSQL TPC-DS OBT Q2, Q36, Q70, Q78 and Q86 (fork 30.24.0.16): these failed on the engines with syntax or function errors. No published bundle is affected: there are no PostgreSQL bundles and no SQLite `tpchavoc` or `tpcds_obt` bundle, and the DataFusion TPC-Havoc bundles skipped `1_v7`, so they recorded no wrong rows. No sidecar changed.
 - ClickHouse DataVault Q6 was wrong because the Q6 bound fold applied only to
   the `lineitem` table, so `sat_lineitem` kept `BETWEEN 0.06 - 0.01 AND
   0.06 + 0.01`. Fork 30.24.0.12 folds every table and column, so rerunning

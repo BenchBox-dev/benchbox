@@ -262,6 +262,42 @@ def test_spark_dialect_translates_space_containing_aliases() -> None:
     assert "AS `order count`" in query
 
 
+@pytest.mark.parametrize("query_id", [36, 70, 86])
+def test_postgres_rollup_queries_inline_the_alias_used_in_an_order_by_expression(query_id: int) -> None:
+    benchmark = TPCDSOBTBenchmark(scale_factor=1.0)
+
+    postgres = benchmark.get_query(query_id, dialect="postgres")
+    duckdb = benchmark.get_query(query_id, dialect="duckdb")
+
+    order_by = postgres.rsplit(" ORDER BY ", 1)[1]
+    assert re.search(r"CASE WHEN lochierarchy\b", order_by) is None
+    assert re.search(r"CASE WHEN \(?GROUPING\(", order_by)
+    assert order_by.startswith("lochierarchy DESC")
+    assert re.search(r"CASE WHEN lochierarchy\b", duckdb.rsplit("ORDER BY", 1)[1])
+    assert benchmark.get_queries(dialect="postgres")[str(query_id)] == postgres
+
+
+@pytest.mark.parametrize("query_id", [2, 78])
+def test_postgres_round_queries_cast_the_rounded_double_to_decimal(query_id: int) -> None:
+    benchmark = TPCDSOBTBenchmark(scale_factor=1.0)
+
+    postgres = benchmark.get_query(query_id, dialect="postgres")
+
+    rounds = re.findall(r"ROUND\(CAST\(.*? AS DECIMAL\), \d\)", postgres)
+    assert len(rounds) == postgres.count("ROUND(") > 0
+    assert benchmark.get_queries(dialect="postgres")[str(query_id)] == postgres
+
+
+def test_other_dialects_do_not_get_the_postgres_only_rewrites() -> None:
+    benchmark = TPCDSOBTBenchmark(scale_factor=1.0)
+
+    for dialect in ("duckdb", "sqlite", "datafusion"):
+        assert " AS DECIMAL), 2)" not in benchmark.get_query(2, dialect=dialect)
+    assert re.search(
+        r'CASE WHEN "?lochierarchy"? = 0', benchmark.get_query(36, dialect="sqlite").rsplit("ORDER BY", 1)[1]
+    )
+
+
 @pytest.mark.parametrize("query_id", [47, 57])
 def test_clickhouse_monthly_queries_alias_qualified_projections(query_id: int) -> None:
     benchmark = TPCDSOBTBenchmark(scale_factor=1.0)

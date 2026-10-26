@@ -30,10 +30,12 @@ POSTGRES_KNOWN_DIVERGENCES: dict[str, str] = {}
 
 DATAFUSION_KNOWN_DIVERGENCES: dict[str, str] = {
     "1_v4": "decimal-avg-scale-rounding",
+    "1_v7": "decimal-avg-scale-rounding",
 }
 
 DATAFUSION_KNOWN_DIVERGENCES_REVIEW_BY: dict[str, date] = {
     "1_v4": date(2027, 1, 24),
+    "1_v7": date(2027, 1, 24),
 }
 
 _TRAILING_LIMIT = re.compile(r"(?is)\s+limit\s+\d+\s*;?\s*$")

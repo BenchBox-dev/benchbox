@@ -6,7 +6,6 @@ from benchbox.sql_compat.decision import CompatibilityDecision, FailureMode, Ski
 from benchbox.sql_compat.registry import REGISTRY
 
 DATAFUSION_TPCHAVOC_SKIPS: dict[str, str] = {
-    "1_v7": "DataFusion has no `LIST` aggregate used by this variant (`Invalid function 'list'`).",
     "4_v7": "DataFusion physical planning does not support EXISTS in this variant shape.",
     "4_v10": "DataFusion physical planning does not support EXISTS in this variant shape.",
     "7_v1": "DataFusion physical planning does not support the scalar sub-query in this variant shape.",

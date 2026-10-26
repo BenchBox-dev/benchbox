@@ -205,7 +205,6 @@ TPCHAVOC_DOCUMENTED_SKIPS: dict[str, frozenset[str]] = {
             "16_v7",
             "17_v10",
             "17_v7",
-            "1_v7",
             "4_v10",
             "4_v7",
             "7_v1",
@@ -272,7 +271,6 @@ TPCHAVOC_DOCUMENTED_SKIPS: dict[str, frozenset[str]] = {
             "10_v9",
             "11_v9",
             "13_v9",
-            "1_v7",
             "5_v9",
             "7_v9",
             "9_v9",
@@ -298,15 +296,48 @@ TPCHAVOC_DOCUMENTED_SKIPS: dict[str, frozenset[str]] = {
 }
 
 
+TPCHAVOC_LIST_AGGREGATE_PLATFORM_ALIASES = {
+    "apache-doris": "doris",
+    "azure-synapse": "synapse",
+    "fabric-warehouse": "fabric-dw",
+    "snowpark-connect-for-spark": "snowpark-connect",
+    "snowparkconnectadapter": "snowpark-connect",
+}
+
+
+TPCHAVOC_LIST_AGGREGATE_SKIP_PLATFORMS = frozenset(
+    {
+        "databend",
+        "doris",
+        "fabric-dw",
+        "fabric-lakehouse",
+        "questdb",
+        "redshift",
+        "singlestore",
+        "snowpark-connect",
+        "starrocks",
+        "synapse",
+    }
+)
+
+
 def _tpchavoc_documented_skips(platform_name: Any) -> frozenset[str]:
     if not isinstance(platform_name, str):
         return frozenset()
     platform = re.sub(r"[^a-z0-9]+", "-", platform_name.lower()).strip("-")
     if platform in {"clickhouse-local", "clickhouse-server", "clickhouse-cloud"}:
         return TPCHAVOC_DOCUMENTED_SKIPS["clickhouse"]
-    if platform in {"pg-duckdb", "pg-mooncake", "timescaledb"}:
+    if platform in {"pg-duckdb", "pg-mooncake"}:
+        return TPCHAVOC_DOCUMENTED_SKIPS["postgres"] | {"1_v7"}
+    if platform == "timescaledb":
         return TPCHAVOC_DOCUMENTED_SKIPS["postgres"]
-    return TPCHAVOC_DOCUMENTED_SKIPS.get(platform, frozenset())
+    documented = TPCHAVOC_DOCUMENTED_SKIPS.get(platform)
+    if documented is not None:
+        return documented
+    platform = TPCHAVOC_LIST_AGGREGATE_PLATFORM_ALIASES.get(platform, platform)
+    if platform in TPCHAVOC_LIST_AGGREGATE_SKIP_PLATFORMS:
+        return frozenset({"1_v7"})
+    return frozenset()
 
 
 def _tpchavoc_variant_has_usable_timing(query: dict) -> bool:

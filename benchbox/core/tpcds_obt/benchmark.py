@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 _DERIVED_TABLE_ALIAS_DIALECTS = frozenset({"doris", "starrocks"})
+_POSTGRES_ALIAS_ORDER_QUERY_IDS = frozenset({36, 70, 86})
+_POSTGRES_ROUND_QUERY_IDS = frozenset({2, 78})
 
 _CLICKHOUSE_OBT_REWRITES = {
     47: "alias_qualified_projections",
@@ -232,6 +234,24 @@ class TPCDSOBTBenchmark(BaseBenchmark):
 
         return apply_rewrite(rewrite_name, query_text, "clickhouse")
 
+    @staticmethod
+    def _translation_rewrites(target: str, query_id: int | None) -> list[tuple[str, dict[str, Any]]]:
+        if target in _DERIVED_TABLE_ALIAS_DIALECTS:
+            return [("add_derived_table_aliases", {})]
+        from benchbox.utils.dialect_utils import UnknownSqlDialectError, resolve_sql_dialect
+
+        try:
+            resolved = resolve_sql_dialect(target)
+        except UnknownSqlDialectError:
+            return []
+        rewrites: list[tuple[str, dict[str, Any]]] = []
+        if resolved == "postgres":
+            if query_id in _POSTGRES_ALIAS_ORDER_QUERY_IDS:
+                rewrites.append(("inline_order_by_aliases", {}))
+            if query_id in _POSTGRES_ROUND_QUERY_IDS:
+                rewrites.append(("round_inputs_to_decimal", {}))
+        return rewrites
+
     def translate_query_text(self, query_text: str, target_dialect: str, *, query_id: int | None = None) -> str:
         target = target_dialect.lower()
         if target not in {"duckdb", "standard", "ansi"}:
@@ -243,7 +263,7 @@ class TPCDSOBTBenchmark(BaseBenchmark):
                 target_dialect=translation_target,
                 source_dialect="duckdb",
                 identify=True,
-                rewrites=[("add_derived_table_aliases", {})] if target in _DERIVED_TABLE_ALIAS_DIALECTS else None,
+                rewrites=self._translation_rewrites(target, query_id) or None,
             )
 
         if target in {"clickhouse", "clickhouse-local"} and query_id is not None:

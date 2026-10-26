@@ -23,7 +23,15 @@ from benchbox.sql_compat.rules.execution_filter.clickhouse_tpchavoc import CLICK
 from benchbox.sql_compat.rules.execution_filter.cloud_tpchavoc import CLOUD_TPCHAVOC_SKIPS
 from benchbox.sql_compat.rules.execution_filter.datafusion_tpchavoc import DATAFUSION_TPCHAVOC_SKIPS
 from benchbox.sql_compat.rules.execution_filter.lakesail_tpchavoc import LAKESAIL_TPCHAVOC_SKIPS
-from benchbox.sql_compat.rules.execution_filter.postgres_tpchavoc import POSTGRES_TPCHAVOC_SKIPS
+from benchbox.sql_compat.rules.execution_filter.list_aggregate_tpchavoc import (
+    LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES,
+    LIST_AGGREGATE_TPCHAVOC_QUERY_ID,
+    LIST_AGGREGATE_TPCHAVOC_SKIPS,
+)
+from benchbox.sql_compat.rules.execution_filter.postgres_tpchavoc import (
+    POSTGRES_DUCKDB_BACKED_TPCHAVOC_SKIPS,
+    POSTGRES_TPCHAVOC_SKIPS,
+)
 
 
 class TPCHavocBenchmark(TPCHBenchmark):
@@ -57,12 +65,17 @@ class TPCHavocBenchmark(TPCHBenchmark):
             return list(LAKESAIL_TPCHAVOC_SKIPS)
         if platform == "datafusion":
             return list(DATAFUSION_TPCHAVOC_SKIPS)
-        if platform in {"clickhouse-local", "clickhouse-server", "clickhouse-cloud"}:
+        if platform in {"clickhouse", "clickhouse-local", "clickhouse-server", "clickhouse-cloud"}:
             return list(CLICKHOUSE_TPCHAVOC_SKIPS)
-        if platform in {"pg-duckdb", "pg-mooncake", "timescaledb"}:
+        if platform in {"pg-duckdb", "pg-mooncake"}:
+            return list({**POSTGRES_TPCHAVOC_SKIPS, **POSTGRES_DUCKDB_BACKED_TPCHAVOC_SKIPS})
+        if platform == "timescaledb":
             return list(POSTGRES_TPCHAVOC_SKIPS)
         if platform in CLOUD_TPCHAVOC_SKIPS:
             return list(CLOUD_TPCHAVOC_SKIPS[platform])
+        platform = LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES.get(platform, platform)
+        if platform in LIST_AGGREGATE_TPCHAVOC_SKIPS:
+            return [LIST_AGGREGATE_TPCHAVOC_QUERY_ID]
         return []
 
     def get_queries(self, dialect: str | None = None, base_dialect: str | None = None) -> dict[str, str]:
