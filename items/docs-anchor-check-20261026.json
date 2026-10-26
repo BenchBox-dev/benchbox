@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The check fails on a deliberately broken anchor (demonstrated) and passes on the current tree; any pre-existing dead anchors found are fixed in the same PR or listed with evidence",
+    "The check runs on PRs that change Markdown (existing lint/CI wiring), with unit tests for slug edge cases (duplicate headings, punctuation, case)",
+    "Runtime over the tracked Markdown set is measured and reported; it adds no network access",
+    "PR merged with CI and oracle verdict green on its final head"
+  ],
+  "context": "The site converter reported exactly one dead anchor at the time, already fixed. If the checker finds many pre-existing failures, stop and report the count before fixing them all.",
+  "description": "Issue #3448 was a dead docs anchor: #3435 renamed a heading in guides/tpc/tpc-h-official-guide.md and docs/advanced/power-run-concurrent-queries.md:490 kept the old anchor; only the site build caught it (fixed by #3480). Owner decision 2026-10-26: add a core-side check. Scope: links from tracked Markdown files to anchors in other tracked Markdown files (and same-file anchors if cheap); resolve GitHub-style heading slugs; ignore external URLs, code spans and generated files the repo already excludes elsewhere. Extend an existing checker/CI lint step if one fits rather than adding a new workflow job. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-26T19:28:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a1504ed149e74f24a38a003d42d26b02",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}

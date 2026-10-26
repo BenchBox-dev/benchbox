@@ -8877,6 +8877,13 @@
       "status": "done",
       "title": "Fix wrong install extras, options and stale claims in platform guides"
     },
+    "docs-anchor-check-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Fail core CI on unresolved Markdown anchors between tracked docs"
+    },
     "docs-backend-exception-redaction-followup": {
       "claim": null,
       "needs": [],
