@@ -2,6 +2,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import zlib
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -30,7 +31,7 @@ class NYCTaxiQueryManager:
     ) -> None:
         self.start_date = start_date or datetime(2019, 1, 1)
         self.end_date = end_date or datetime(2019, 12, 31)
-        self.rng = np.random.default_rng(seed)
+        self.seed = int(seed) if seed is not None else int(np.random.SeedSequence().generate_state(1)[0])
 
         self.popular_zones = [132, 138, 161, 162, 163, 164, 186, 230, 234, 236, 237, 239, 261, 262, 263]
 
@@ -55,7 +56,7 @@ class NYCTaxiQueryManager:
         query_def = self._active_queries[query_id]
         sql = query_def["sql"].strip()
 
-        query_params = self._generate_params(query_def, params)
+        query_params = self._generate_params(query_def, params, query_id)
 
         return sql.format(**query_params)
 
@@ -63,8 +64,10 @@ class NYCTaxiQueryManager:
         self,
         query_def: dict[str, Any],
         overrides: Optional[dict[str, Any]] = None,
+        query_id: Optional[str] = None,
     ) -> dict[str, Any]:
         params = {}
+        rng = np.random.default_rng([self.seed, zlib.crc32((query_id or "").encode("utf-8"))])
         query_params = query_def.get("params", {})
         overrides = overrides or {}
 
@@ -72,7 +75,7 @@ class NYCTaxiQueryManager:
 
         dataset_days = (self.end_date - self.start_date).days
         max_offset = max(1, dataset_days - duration_days)
-        offset_days = int(self.rng.integers(0, max_offset))
+        offset_days = int(rng.integers(0, max_offset))
 
         start = self.start_date + timedelta(days=offset_days)
         end = start + timedelta(days=duration_days)
@@ -82,7 +85,7 @@ class NYCTaxiQueryManager:
 
         params["zone_id"] = overrides.get(
             "zone_id",
-            self.popular_zones[int(self.rng.integers(0, len(self.popular_zones)))],
+            self.popular_zones[int(rng.integers(0, len(self.popular_zones)))],
         )
 
         params.update(overrides)
