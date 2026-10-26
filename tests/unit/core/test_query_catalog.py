@@ -64,9 +64,14 @@ class TestGetSqlRender:
         assert render.dialect == "default"
 
     def test_benchmark_without_translation_is_labelled_default(self):
-        render = get_sql_render("datavault", "1")
+        render = get_sql_render("ai_primitives", list_query_ids("ai_primitives")[0])
         assert render is not None
         assert render.dialect == "default"
+
+    def test_duckdb_source_benchmark_renders_reference_dialect(self):
+        render = get_sql_render("datavault", "1")
+        assert render is not None
+        assert render.dialect == REFERENCE_DIALECT
 
     def test_clickbench_q_prefixed_key(self):
         render = get_sql_render("clickbench", "Q1")
@@ -80,10 +85,10 @@ class TestGetSqlRender:
         assert with_prefix.sql == without_prefix.sql
         assert without_prefix.dialect == "snowflake"
 
-    def test_vector_search_unsupported_dialect_falls_back_to_default(self):
+    def test_vector_search_translates_for_datafusion(self):
         render = get_sql_render("vector_search", "Q1", dialect="datafusion")
         assert render is not None
-        assert render.dialect == "default"
+        assert render.dialect == "datafusion"
 
     def test_vector_search_supported_dialect_returns_dialect(self):
         render = get_sql_render("vector_search", "Q1", dialect="postgresql")
@@ -192,29 +197,31 @@ class TestSupportsDialectTranslation:
     def test_translating_and_non_translating_benchmarks(self):
         assert supports_dialect_translation("tpch") is True
         assert supports_dialect_translation("clickbench") is True
-        assert supports_dialect_translation("flightdata") is False
+        assert supports_dialect_translation("flightdata") is True
+        assert supports_dialect_translation("ai_primitives") is False
+        assert supports_dialect_translation("transaction_primitives") is False
 
-    def test_duckdb_source_benchmarks_advertise_cloud_dialects(self):
-        for benchmark_id in ("datavault", "tsbs_devops"):
-            for dialect in ("duckdb", "snowflake", "bigquery", "databricks"):
+    def test_duckdb_source_benchmarks_advertise_every_dialect(self):
+        for benchmark_id in ("datavault", "tsbs_devops", "flightdata"):
+            for dialect in ("duckdb", "snowflake", "bigquery", "databricks", "datafusion", "mysql"):
                 assert supports_dialect_translation(benchmark_id, dialect) is True
-            assert supports_dialect_translation(benchmark_id, "datafusion") is False
 
     def test_dialect_specific_support(self):
         assert supports_dialect_translation("vector_search", "postgresql") is True
-        assert supports_dialect_translation("vector_search", "datafusion") is False
+        assert supports_dialect_translation("vector_search", "datafusion") is True
+        assert supports_dialect_translation("ai_primitives", "postgresql") is False
         assert supports_dialect_translation("tpch", "duckdb") is True
 
-    def test_nyctaxi_advertises_only_rendered_dialects(self):
+    def test_nyctaxi_advertises_every_rendered_dialect(self):
         assert supports_dialect_translation("nyctaxi", "snowflake") is True
         assert supports_dialect_translation("nyctaxi", "bigquery") is True
         assert supports_dialect_translation("nyctaxi", "duckdb") is True
         assert supports_dialect_translation("nyctaxi", "postgres") is True
         assert supports_dialect_translation("nyctaxi", "clickhouse") is True
-        assert supports_dialect_translation("nyctaxi", "mysql") is False
-        assert supports_dialect_translation("nyctaxi", "datafusion") is False
+        assert supports_dialect_translation("nyctaxi", "mysql") is True
+        assert supports_dialect_translation("nyctaxi", "datafusion") is True
         query_id = list_query_ids("nyctaxi")[0]
-        assert get_sql_render("nyctaxi", query_id, dialect="mysql").dialect == "default"
+        assert get_sql_render("nyctaxi", query_id, dialect="mysql").dialect == "mysql"
         assert get_sql_render("nyctaxi", query_id, dialect="snowflake").dialect == "snowflake"
 
 
