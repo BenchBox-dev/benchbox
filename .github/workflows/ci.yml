@@ -1636,7 +1636,7 @@ jobs:
   core:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
     needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, sql-execution-evidence, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
-    if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
+    if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -1749,7 +1749,7 @@ jobs:
   explorer:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'explorer (text edit)' || 'explorer' }}
     needs: [ci-paths, parity-check]
-    if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
+    if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -1794,7 +1794,7 @@ jobs:
   results-data:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'results-data (text edit)' || 'results-data' }}
     needs: [ci-paths, results-data-check]
-    if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
+    if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -1839,7 +1839,7 @@ jobs:
   docs:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'docs (text edit)' || 'docs' }}
     needs: [ci-paths, example-validation, spellcheck]
-    if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
+    if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -1885,7 +1885,7 @@ jobs:
   tooling:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'tooling (text edit)' || 'tooling' }}
     needs: [ci-paths, content-guard, skill-integrity, audit-sha, comment-policy]
-    if: ${{ always() && !(github.event.action == 'edited' && !github.event.changes.base) }}
+    if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

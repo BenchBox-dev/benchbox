@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "A superseded CI run's required summary jobs skip instead of waiting for a runner, so the next run for the same PR starts without delay; no shipped behavior changes."
+}
