@@ -111,6 +111,7 @@ jobs:
       unit-docs: ${{ steps.units.outputs.unit-docs }}
       unit-tooling: ${{ steps.units.outputs.unit-tooling }}
       code-tests-needed: ${{ steps.units.outputs.code-tests-needed }}
+      medium-shards: ${{ steps.medium-shards.outputs.medium-shards }}
     steps:
       - name: Check base branch
         env:
@@ -306,6 +307,23 @@ jobs:
             --selection-in coverage-selection.json \
             --github-output "$GITHUB_OUTPUT" \
             --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Decide medium shards
+        id: medium-shards
+        run: |
+          set -euo pipefail
+          selected=$(grep -c . coverage-nodeids.txt || true)
+          if [ "${{ steps.heavy.outputs.heavy-needed }}" = "true" ]; then
+            shards='[0,1,2,3]'
+          elif [ "${{ steps.units.outputs.code-tests-needed }}" != "true" ]; then
+            shards='[]'
+          elif [ "$selected" -gt 0 ]; then
+            shards='[0,1,2,3]'
+          else
+            shards='[0]'
+          fi
+          echo "medium-shards=$shards" >> "$GITHUB_OUTPUT"
+          echo "Medium shards: $shards (coverage-selected node IDs: $selected)" >> "$GITHUB_STEP_SUMMARY"
 
   tpch-binary-framing:
     name: TPC-H binary framing (${{ matrix.os }})
@@ -926,11 +944,6 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: python make/interface_summary.py --base-ref "$BASE_REF" --summary "$GITHUB_STEP_SUMMARY"
 
-      - name: Run changed tests on the curated release tree
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: uv run -- python scripts/release_curation_dry_run.py --changed-since "$BASE_SHA"
-
       - name: Pre-build the assertion-rewrite cache
         run: |
           find tests \( -name 'test_*.py' -o -name '*_test.py' \) -not -path '*/__pycache__/*' | sort \
@@ -1009,43 +1022,6 @@ jobs:
           retention-days: 14
           overwrite: true
 
-      - name: Download coverage selection
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          name: coverage-selection-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-          path: coverage-selection
-
-      - name: Run medium tests for changed paths
-        run: |
-          set -euo pipefail
-          targets="coverage-selection/coverage-nodeids.txt"
-          test -f "$targets"
-          mapfile -t node_ids < "$targets" || true
-          if [ "${#node_ids[@]}" -gt 0 ]; then
-            collected="coverage-selection/collected.txt"
-            BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q "${node_ids[@]}" \
-              > "$collected" 2>/dev/null || true
-            runnable="coverage-selection/runnable-nodeids.txt"
-            uv run -- python scripts/coverage_test_selection.py prune \
-              --nodeids-in "$targets" \
-              --collected-in "$collected" \
-              --nodeids-out "$runnable"
-            mapfile -t node_ids < "$runnable"
-          fi
-          if [ "${#node_ids[@]}" -eq 0 ]; then
-            echo "No tests selected for the changed paths."
-            exit 0
-          fi
-          echo "Medium tests selected by coverage impact: ${#node_ids[@]}"
-          printf '%s\n' "${node_ids[@]:0:50}"
-          status=0
-          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest "${node_ids[@]}" \
-            -m "medium and not (slow or stress or resource_heavy or live_integration)" \
-            --tb=short --timeout=60 -q || status=$?
-          if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
-            exit "$status"
-          fi
-
       - name: Upload xdist failure trace
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
@@ -1121,13 +1097,13 @@ jobs:
   medium-test:
     name: medium-test (shard ${{ matrix.shard_index }})
     needs: [ci-paths, medium-collect]
-    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) && needs.medium-collect.result == 'success' && needs.ci-paths.outputs.heavy-needed == 'true' }}
+    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) && needs.ci-paths.result == 'success' && needs.ci-paths.outputs.medium-shards != '[]' && (needs.ci-paths.outputs.heavy-needed != 'true' || needs.medium-collect.result == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        shard_index: [0, 1, 2, 3]
+        shard_index: ${{ fromJSON(needs.ci-paths.outputs.medium-shards) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -1145,13 +1121,77 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Run changed tests on the curated release tree
+        if: ${{ matrix.shard_index == 0 && needs.ci-paths.outputs.code-tests-needed == 'true' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: uv run -- python scripts/release_curation_dry_run.py --changed-since "$BASE_SHA"
+
+      - name: Download coverage selection
+        if: needs.ci-paths.outputs.heavy-needed != 'true'
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: coverage-selection-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: coverage-selection
+
+      - name: Run medium tests for changed paths
+        if: needs.ci-paths.outputs.heavy-needed != 'true'
+        shell: bash
+        env:
+          SHARD_INDEX: ${{ matrix.shard_index }}
+        run: |
+          set -euo pipefail
+          targets="coverage-selection/coverage-nodeids.txt"
+          test -f "$targets"
+          mapfile -t node_ids < "$targets" || true
+          if [ "${#node_ids[@]}" -gt 0 ]; then
+            collected="coverage-selection/collected.txt"
+            BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest --collect-only -q "${node_ids[@]}" \
+              > "$collected" 2>/dev/null || true
+            runnable="coverage-selection/runnable-nodeids.txt"
+            uv run -- python scripts/coverage_test_selection.py prune \
+              --nodeids-in "$targets" \
+              --collected-in "$collected" \
+              --nodeids-out "$runnable"
+            mapfile -t node_ids < "$runnable"
+          fi
+          if [ "${#node_ids[@]}" -eq 0 ]; then
+            echo "No tests selected for the changed paths."
+            exit 0
+          fi
+          echo "Medium tests selected by coverage impact: ${#node_ids[@]}"
+          uv run -- python scripts/release_canary_sharding.py shard \
+            --input "$runnable" \
+            --nodeids-output "coverage-selection/shard-${SHARD_INDEX}-nodeids.txt" \
+            --summary-output "coverage-selection/shard-${SHARD_INDEX}-summary.json" \
+            --shard-index "$SHARD_INDEX" --shard-count 4 \
+            --workflow ci.yml --job medium-test \
+            --marker-expression "medium and not (slow or stress or resource_heavy or live_integration)" \
+            --durations tests/fixtures/medium_shard_durations.json
+          mapfile -t node_ids < "coverage-selection/shard-${SHARD_INDEX}-nodeids.txt"
+          if [ "${#node_ids[@]}" -eq 0 ]; then
+            echo "No selected tests assigned to shard ${SHARD_INDEX}."
+            exit 0
+          fi
+          echo "Selected tests assigned to shard ${SHARD_INDEX}: ${#node_ids[@]}"
+          printf '%s\n' "${node_ids[@]:0:50}"
+          status=0
+          BENCHBOX_TEST_TIER=t2 uv run -- python -m pytest "${node_ids[@]}" \
+            -m "medium and not (slow or stress or resource_heavy or live_integration)" \
+            --tb=short --timeout=60 -q || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+            exit "$status"
+          fi
+
       - name: Download medium collection evidence
+        if: needs.ci-paths.outputs.heavy-needed == 'true'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           name: t2-medium-nodeids-${{ github.sha }}
           path: t2-artifacts
 
       - name: Partition the complete medium tier
+        if: needs.ci-paths.outputs.heavy-needed == 'true'
         env:
           SHARD_INDEX: ${{ matrix.shard_index }}
         run: |
@@ -1166,6 +1206,7 @@ jobs:
             --durations tests/fixtures/medium_shard_durations.json
 
       - name: Run medium speed tier
+        if: needs.ci-paths.outputs.heavy-needed == 'true'
         shell: bash
         env:
           SHARD_INDEX: ${{ matrix.shard_index }}
@@ -1199,7 +1240,7 @@ jobs:
           sudo dmesg -T 2>/dev/null | grep -iE 'out of memory|oom-kill|killed process' | tail -20 || true
 
       - name: Upload medium shard evidence
-        if: always()
+        if: ${{ always() && needs.ci-paths.outputs.heavy-needed == 'true' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: t2-medium-shard-${{ matrix.shard_index }}-${{ github.sha }}
@@ -1775,7 +1816,7 @@ jobs:
             --expect code-lint=${{ needs.ci-paths.outputs.code-tests-needed == 'true' }} \
             --expect code-test=${{ needs.ci-paths.outputs.code-tests-needed == 'true' }} \
             --expect medium-collect=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
-            --expect medium-test=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
+            --expect medium-test=${{ needs.ci-paths.outputs.medium-shards != '[]' }} \
             --expect correctness-gate=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
             --expect tpch-binary-framing=${{ needs.ci-paths.outputs.heavy-needed == 'true' || needs.ci-paths.outputs.framing-needed == 'true' }} \
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
