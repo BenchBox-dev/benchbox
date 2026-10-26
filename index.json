@@ -3229,12 +3229,17 @@
       "title": "Text-edit CI runs report required checks as failed when the full CI run is still queued, blocking auto-merge"
     },
     "ci-trunk-duration-trend-alarm-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-27T11:45:30Z",
+        "generation": "b2e80f113c144f078de79ec8b090a65b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [
         "ci-fast-tier-junit-emit-20261025"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Alarm daily when Trunk job durations rise more than 15% over the prior week"
     },
     "ci-usage-metrics-report-20261024": {
