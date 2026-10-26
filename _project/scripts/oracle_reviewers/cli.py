@@ -258,9 +258,11 @@ def _base_changed_at(repo: str, pr: int) -> tuple[datetime | None, bool]:
         return None, True
 
 
-def _scoped_files(files: list[ChangedFile], in_scope: set[str], policy: Policy) -> list[ChangedFile]:
+def _scoped_files(
+    files: list[ChangedFile], in_scope: set[str], policy: Policy, is_soundness: Any = None
+) -> list[ChangedFile]:
     gate_paths = policy.classifier.gate_paths
-    is_soundness = _soundness_predicate()
+    is_soundness = is_soundness or _soundness_predicate()
     return [
         item
         for item in files
@@ -896,14 +898,16 @@ def command_sweep(args: argparse.Namespace) -> int:
     return 0
 
 
-def write_reviewer_home(home: Path, gateway_url: str) -> None:
+def write_reviewer_home(home: Path, gateway_url: str, allow_loopback_http: bool = False) -> None:
     url = gateway_url.strip()
     if not url:
         raise SystemExit("oracle-verdict: error: the gateway URL is empty; set the ORACLE_GATEWAY_URL secret")
     parsed = urlparse(url)
-    secure = parsed.scheme == "https" or (parsed.scheme == "http" and parsed.hostname in LOOPBACK_HOSTS)
+    secure = parsed.scheme == "https" or (
+        allow_loopback_http and parsed.scheme == "http" and parsed.hostname in LOOPBACK_HOSTS
+    )
     if not secure or not parsed.hostname:
-        raise SystemExit("oracle-verdict: error: the gateway URL must be an https:// URL, or http:// on loopback")
+        raise SystemExit("oracle-verdict: error: the gateway URL must be an https:// URL")
     agent_dir = home / ".omp" / "agent"
     agent_dir.mkdir(parents=True, exist_ok=True)
     (agent_dir / "config.yml").write_text(OMP_CONFIG_SOURCE.read_text(encoding="utf-8"), encoding="utf-8")
@@ -944,7 +948,9 @@ def _run_slot(args: argparse.Namespace, plan: Mapping[str, Any], slot: int, revi
     detail = selection.JOB_FAILURE_DETAIL
     try:
         with _scratch_environment(home):
-            write_reviewer_home(home, os.environ.get("ORACLE_GATEWAY_URL", ""))
+            write_reviewer_home(
+                home, os.environ.get("ORACLE_GATEWAY_URL", ""), bool(getattr(args, "allow_loopback_http", False))
+            )
             command_review(
                 argparse.Namespace(
                     plan=args.plan,

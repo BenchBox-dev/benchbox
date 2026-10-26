@@ -41,6 +41,7 @@ CLOUD_TOKEN_ENV = "ORACLE_CLOUD_GATEWAY_TOKEN"
 CLOUD_SESSION_ENV = "BENCHBOX_EPHEMERAL_CLONE"
 STATE_DIR_ENV = "BENCHBOX_LOCAL_ORACLE_DIR"
 WORKFLOW_FILE = ".github/workflows/oracle-verdict.yml"
+SOUNDNESS_MANIFEST = ".github/soundness-paths.txt"
 HIDDEN_TEXT = re.compile(r"<!--.*?-->|^[ \t]*(```|~~~).*?^[ \t]*\1[^\n]*$", re.DOTALL | re.MULTILINE)
 PLACEHOLDER = re.compile(r"<.*>")
 OMP_VERSION_PIN = re.compile(r"^[ \t]*OMP_VERSION:[ \t]*\"?([0-9][^\s\"]*)", re.MULTILINE)
@@ -148,15 +149,19 @@ def changed_files(root: Path, base: str, head: str) -> list[ChangedFile]:
     ]
 
 
-def build_plan(policy: Policy, root: Path, base_ref: str, head: str, out_dir: Path) -> dict[str, Any]:
+def build_plan(
+    policy: Policy, root: Path, base_ref: str, head: str, out_dir: Path, manifest: str | None = None
+) -> dict[str, Any]:
     base = _git(root, "merge-base", base_ref, head).strip()
     plan = cli._base_plan(policy, _repository(root), None, uuid.uuid4().hex)
     plan.update({"base_sha": base, "base_ref": base_ref.removeprefix("origin/"), "head_sha": head})
+    plan["head_tree"] = _git(root, "rev-parse", f"{head}^{{tree}}").strip()
     files = changed_files(root, base, head)
+    predicate = trusted_predicate(root, base_ref) if manifest is None else soundness_predicate(manifest)
     if not files:
         plan["decision_reason"] = f"no committed changes against {base_ref}"
         return plan
-    scope = soundness_scope(files, policy.classifier, cli._soundness_predicate())
+    scope = soundness_scope(files, policy.classifier, predicate)
     plan["scope_paths"] = list(scope.paths)
     plan["gate_paths"] = list(scope.gate_paths)
     plan["scope_reasons"] = list(scope.reasons)
@@ -166,7 +171,7 @@ def build_plan(policy: Policy, root: Path, base_ref: str, head: str, out_dir: Pa
         return plan
     full_diff = _git(root, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M", base, head)
     in_scope = set(scope.paths)
-    scoped = cli._scoped_files(files, in_scope, policy)
+    scoped = cli._scoped_files(files, in_scope, policy, predicate)
     reason = "local review of the committed change"
     plan["manual"] = False
     plan["previous_state"] = None
@@ -205,6 +210,37 @@ def build_plan(policy: Policy, root: Path, base_ref: str, head: str, out_dir: Pa
     )
     plan["decision_reason"] = reason
     return plan
+
+
+def soundness_predicate(manifest: str) -> Any:
+    from _project.scripts import soundness_paths
+
+    with tempfile.TemporaryDirectory() as scratch:
+        path = Path(scratch) / "soundness-paths.txt"
+        path.write_text(manifest, encoding="utf-8")
+        try:
+            rules = soundness_paths._load_rules(path)
+        except ValueError as exc:
+            raise Unavailable(f"the soundness manifest is invalid: {exc}") from exc
+    regexes = tuple(re.compile(rule.pattern) for rule in rules if rule.kind == "regex")
+    globs = tuple(rule.pattern for rule in rules if rule.kind == "glob")
+    files = frozenset(rule.pattern for rule in rules if rule.kind in {"file", "glob"})
+    prefixes = tuple(rule.pattern for rule in rules if rule.kind == "prefix")
+
+    def is_soundness(path: str) -> bool:
+        normalized = soundness_paths.normalize_path(path)
+        return bool(normalized) and (
+            any(regex.match(normalized) is not None for regex in regexes)
+            or any(soundness_paths._glob_matches(normalized, pattern) for pattern in globs)
+            or normalized in files
+            or normalized.startswith(prefixes)
+        )
+
+    return is_soundness
+
+
+def trusted_predicate(root: Path, base_ref: str) -> Any:
+    return soundness_predicate(trusted_text(root, base_ref, SOUNDNESS_MANIFEST))
 
 
 def command_plan(args: argparse.Namespace) -> int:
@@ -369,7 +405,16 @@ def machinery_digest() -> str:
 
 def _cache_path(directory: Path, plan: Mapping[str, Any], policy_text: str, version: str, keyed: bool) -> Path:
     policy_hash = hashlib.sha256(policy_text.encode("utf-8")).hexdigest()
-    parts = (plan["protocol"]["patch_digest"], policy_hash, version, f"keyed={keyed}", machinery_digest(), CACHE_SCHEMA)
+    parts = (
+        plan["protocol"]["patch_digest"],
+        plan["base_sha"],
+        plan["head_tree"],
+        policy_hash,
+        version,
+        f"keyed={keyed}",
+        machinery_digest(),
+        CACHE_SCHEMA,
+    )
     key = hashlib.sha256("\0".join(map(str, parts)).encode("utf-8")).hexdigest()
     return directory / "cache" / f"{key}.json"
 
@@ -411,6 +456,7 @@ def _run_attempts(plan_path: Path, work: Path, classification_path: Path, report
                     classification=str(classification_path),
                     workspace=str(work / "workspace"),
                     home_root=str(work / "homes"),
+                    allow_loopback_http=True,
                 )
             )
     finally:

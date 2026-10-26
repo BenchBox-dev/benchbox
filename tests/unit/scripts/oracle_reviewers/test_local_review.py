@@ -29,6 +29,7 @@ GATE_FILE = ".github/oracle-reviewers.yml"
 POLICY_RELATIVE = ".github/oracle-reviewers.yml"
 POLICY_TEXT = POLICY_PATH.read_text(encoding="utf-8")
 WORKFLOW_TEXT = (REPO_ROOT / local.WORKFLOW_FILE).read_text(encoding="utf-8")
+MANIFEST_TEXT = (REPO_ROOT / local.SOUNDNESS_MANIFEST).read_text(encoding="utf-8")
 SECRET_NAMES = (
     "OMP_GATEWAY_TOKEN",
     "ORACLE_GATEWAY_URL",
@@ -52,7 +53,11 @@ def _git(path: Path, *args: str) -> str:
 def _make_repo(path: Path, changed: str = CHECKER) -> Path:
     path.mkdir()
     _git(path, "init", "--quiet", "--initial-branch=develop")
-    for relative, text in ((POLICY_RELATIVE, POLICY_TEXT), (local.WORKFLOW_FILE, WORKFLOW_TEXT)):
+    for relative, text in (
+        (POLICY_RELATIVE, POLICY_TEXT),
+        (local.WORKFLOW_FILE, WORKFLOW_TEXT),
+        (local.SOUNDNESS_MANIFEST, MANIFEST_TEXT),
+    ):
         seeded = path / relative
         seeded.parent.mkdir(parents=True, exist_ok=True)
         seeded.write_text(text, encoding="utf-8")
@@ -508,9 +513,45 @@ def test_a_change_with_only_exempt_paths_needs_no_review(
     assert env.reviews == []
 
 
-def test_the_reviewer_home_accepts_http_only_on_loopback(tmp_path: Path) -> None:
-    cli.write_reviewer_home(tmp_path / "ok", "http://127.0.0.1:4000")
+def test_the_reviewer_home_accepts_http_loopback_only_when_the_local_review_asks(tmp_path: Path) -> None:
+    cli.write_reviewer_home(tmp_path / "ok", "http://127.0.0.1:4000", True)
     assert "http://127.0.0.1:4000" in (tmp_path / "ok" / ".omp" / "agent" / "models.yml").read_text(encoding="utf-8")
+    with pytest.raises(SystemExit, match="gateway URL"):
+        cli.write_reviewer_home(tmp_path / "ci", "http://127.0.0.1:4000")
+    with pytest.raises(SystemExit, match="gateway URL"):
+        cli.main(["reviewer-home", "--home", str(tmp_path / "cli"), "--gateway-url", "http://127.0.0.1:4000"])
     for url in ("http://gateway.example.ts.net:4000", "http://127.0.0.1.evil.example:4000"):
         with pytest.raises(SystemExit, match="gateway URL"):
-            cli.write_reviewer_home(tmp_path / "bad", url)
+            cli.write_reviewer_home(tmp_path / "bad", url, True)
+
+
+def test_the_attempt_loop_without_the_local_flag_refuses_a_plaintext_gateway(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(local, "LOCAL_GATEWAY_URL", "http://127.0.0.1:4000")
+    original = cli.command_attempts
+    monkeypatch.setattr(
+        cli,
+        "command_attempts",
+        lambda args: original(__import__("argparse").Namespace(**{**vars(args), "allow_loopback_http": False})),
+    )
+    assert env.run() == local.EXIT_UNAVAILABLE
+    assert env.reviews == []
+
+
+def test_soundness_scope_comes_from_the_base_ref_manifest(env: Env) -> None:
+    (env.repo / local.SOUNDNESS_MANIFEST).write_text("file\tunrelated.txt\n", encoding="utf-8")
+    _git(env.repo, "commit", "--quiet", "-am", "feat: shrink my own scope")
+    assert local.trusted_predicate(env.repo, "develop")(CHECKER)
+    assert not local.soundness_predicate("file\tunrelated.txt\n")(CHECKER)
+
+
+def test_a_rebase_onto_a_new_base_invalidates_the_cache_for_an_identical_patch(env: Env) -> None:
+    assert env.run() == local.EXIT_PROCEED
+    _git(env.repo, "switch", "--quiet", "develop")
+    (env.repo / "README.md").write_text("moved\n", encoding="utf-8")
+    _git(env.repo, "commit", "--quiet", "-am", "develop moves")
+    _git(env.repo, "switch", "--quiet", "feat/x")
+    _git(env.repo, "rebase", "--quiet", "develop")
+    assert env.run() == local.EXIT_PROCEED
+    assert len(env.reviews) == 2

@@ -648,7 +648,8 @@ posts nothing to GitHub.
   SHAs, no pull request number, no prior reviews and no retry state.
   Uncommitted and untracked changes are never reviewed: the reviewer works in
   a clean clone checked out at that head. The policy
-  (`.github/oracle-reviewers.yml`) and the workflow pin are read from
+  (`.github/oracle-reviewers.yml`), the soundness manifest
+  (`.github/soundness-paths.txt`) and the workflow pin are read from
   `origin/develop`, as the hosted job reads them from the base branch, so a
   branch cannot widen its own exempt paths. The reviewer code and templates
   are those of the checked-out tree. Soundness scope, reviewer chain, brief
@@ -670,7 +671,8 @@ posts nothing to GitHub.
   `BENCHBOX_EPHEMERAL_CLONE=1`) uses the `oracle-cloud` client from
   `ORACLE_GATEWAY_URL` and `ORACLE_CLOUD_GATEWAY_TOKEN`, and refuses when
   either is missing. The loop writes the reviewer home with that gateway, and
-  `write_reviewer_home` accepts `http://` only on a loopback host. Token, key
+  `write_reviewer_home` accepts `http://` on a loopback host only when the
+  local review asks; the CI loop still requires `https://`. Token, key
   and URL values are never printed: every line goes through the redaction
   that also covers the stored result. The accepted risk of the hosted job
   applies: the reviewer can read files the user can read, including that
@@ -695,7 +697,8 @@ posts nothing to GitHub.
   or waited for the lock, so the pushed head is the reviewed one.
 - **Cache and lock.** The result is cached under
   `~/.cache/benchbox/local-oracle` (`BENCHBOX_LOCAL_ORACLE_DIR` overrides it)
-  by the patch digest, the policy hash and the `omp` version, so an
+  by the patch digest, the base commit, the head tree, the policy hash and the
+  `omp` version, so an
   unchanged patch reuses it, including after the findings were overridden. The
   key also holds whether a classifier key was present and a hash of the review
   machinery (the `oracle_reviewers` package, its templates and the OMP
