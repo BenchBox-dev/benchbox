@@ -16821,6 +16821,15 @@
       "status": "open",
       "title": "Return the existing verdict for a same-head /oracle-review with no open dispute"
     },
+    "oracle-scope-path-canonical-20261026": {
+      "claim": null,
+      "needs": [
+        "oracle-dispute-keyed-published-evidence-20261026"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Match oracle finding paths to changed files canonically when judging scope"
+    },
     "oracle-self-attested-file-list-reviewers-20261008": {
       "claim": null,
       "needs": [],
