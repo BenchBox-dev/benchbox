@@ -16091,11 +16091,13 @@
       "claim": null,
       "needs": [
         "oracle-dispute-keyed-published-evidence-20261026",
-        "oracle-gate-from-verdict-job-20261026"
+        "oracle-gate-from-verdict-job-20261026",
+        "merge-authority-docs-reconcile-20261026",
+        "oracle-sweep-stateless-retry-backoff-reset-20261026"
       ],
       "priority": "high",
       "status": "open",
-      "title": "Re-judge a dispute when it is posted, exempt dispute rounds from the budget, and escalate twice-maintained findings to owner adjudication"
+      "title": "Re-judge disputes on a same-head rerun or sweep, exempt dispute rounds from the budget, and escalate twice-maintained findings to owner adjudication"
     },
     "oracle-duplicate-findings-collapse-to-same-id-20261024": {
       "claim": null,
