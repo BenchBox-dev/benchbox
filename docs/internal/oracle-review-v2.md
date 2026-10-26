@@ -41,8 +41,8 @@ absent, pending or failed oracle decision does not pass on its own.
 4. Keep provider credentials, `CLAUDE_CODE_OAUTH_TOKEN` included, out of
    repository secrets: same-repository PR workflows can read those.
 
-The `review` job installs a pinned OMP Linux build once and checks its SHA-256
-before running it.
+The `review` job installs the pinned OMP build for its platform once and checks
+its SHA-256 before running it.
 
 ### Credential gateway
 
@@ -675,25 +675,30 @@ to GitHub.
   never printed: every line passes the redaction that covers the stored result.
   The hosted accepted risk applies: the reviewer can read the user's files,
   including that token.
-- **Harness pin.** The `omp:` section of `.github/oracle-reviewers.yml` pins the
-  version and each platform's URL and SHA-256. CI reads it from its trusted
-  checkout via `cli.py install-omp` under isolated `uv` with `pyyaml==6.0.3`;
-  YAML is imported only to parse the policy, so other bare-Python CLI commands
-  need no PyYAML. The shared `omp_pin.py` installer downloads into
+- **Harness pin.** The `omp:` section of `.github/oracle-reviewers.yml` holds the
+  one pin: the version and, per platform (`linux-x64`, `linux-arm64`,
+  `darwin-arm64`), the download URL and SHA-256. One installer (`omp_pin.py`,
+  `cli.py install-omp`, run under isolated `uv` with `pyyaml==6.0.3`; YAML is
+  imported only to parse the policy) downloads the platform build into
   `~/.cache/benchbox/omp/<version>/<platform>/omp` (`BENCHBOX_OMP_CACHE`
-  overrides the root), checks SHA-256 before making it executable and its
-  reported version before caching. Unpinned platforms refuse by name. The
-  workflow's legacy `OMP_URL`, `OMP_SHA256` and `OMP_VERSION` values must equal
-  the policy pin: CI's installer refuses otherwise, and the workflow test
-  enforces it.
+  overrides the root), checks the SHA-256 before the file is marked executable,
+  then checks the binary reports the pinned version. The CI `Install omp` step,
+  `scripts/cloud_gateway.sh` and the local review all use it, and the reviewer
+  runs the installed binary by its path (`ORACLE_OMP_BINARY`), never the `omp` on
+  `PATH`. A platform with no pin refuses, naming the platform. Like the policy,
+  the pin is read from `origin/develop`, not from the branch or working tree. The
+  build host publishes no checksum file, so each SHA-256 was computed from a TLS
+  download of the published artifact, the method that established the original
+  linux-x64 pin. To bump the build, change the version and every platform's URL
+  and SHA-256 together.
 - **Blocking.** A Critical or High finding, or DO NOT SHIP, makes `pr-open`
   refuse before pushing (exit 1). A `Local oracle override: <reason>` line with
   a non-empty reason in the PR body file (`PR_BODY_FILE`) lets it proceed and
   stays in the body; an empty or `<placeholder>` reason, or a line inside an
   HTML comment or code fence, is refused. Nothing else overrides, not even a
   commit message. An unreachable gateway, timeout, quota exhaustion, no verdict,
-  missing credential or `omp` version mismatch also refuses (exit 2), and the
-  override does not apply.
+  missing credential, or an `omp` build that fails its checksum or has no pin for
+  this platform also refuses (exit 2), and the override does not apply.
 - **Pinned head.** `pr-open` records `HEAD` before the review, passes it as
   `--head`, and refuses to push if `HEAD` moved during the review or lock wait,
   so the pushed head is the reviewed one.

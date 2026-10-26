@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from _project.scripts.oracle_reviewers import runner
+from _project.scripts.oracle_reviewers import omp_pin, runner
 from _project.scripts.oracle_reviewers.commands import Invocation
 
 from .test_attempt_loop import Loop, loop
@@ -27,7 +27,7 @@ def test_real_execute_survives_deleted_cached_tempdir_across_slots(loop: Loop, m
         return Invocation((sys.executable, "-c", "print('not a verdict')"), scratch, None, dict(os.environ))
 
     monkeypatch.setattr(runner, "build", build)
-    monkeypatch.setattr(runner.shutil, "which", lambda name: sys.executable)
+    monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
     assert loop.run() == 0
     assert len(homes) == 2 and homes[0] != homes[1]
     for slot in (1, 2):

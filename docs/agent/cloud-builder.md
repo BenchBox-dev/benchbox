@@ -22,7 +22,7 @@ Configure each cloud environment once:
 | `BENCHBOX_GIT_NAME` | The human commit author's name |
 | `BENCHBOX_GIT_EMAIL` | The human commit author's email |
 | Setup script | Install `uv` if the image lacks it, put a `node` that satisfies `^22.22.2`, `^24.15.0`, or `>=26` first on `PATH`, then run `make cloud-bootstrap` |
-| Network | GitHub and the Python package index; add Docker registries for container checks. For the [oracle gateway](#oracle-gateway-access), also the OMP download host named in `OMP_URL` in `.github/workflows/oracle-verdict.yml`, and the Tailscale control plane |
+| Network | GitHub and the Python package index; add Docker registries for container checks. For the [oracle gateway](#oracle-gateway-access), also the OMP download host named in the `omp:` section of `.github/oracle-reviewers.yml`, and the Tailscale control plane |
 | `TS_AUTHKEY` | Optional. A Tailscale auth key for `tag:oracle-cloud` nodes (reusable, ephemeral, pre-approved, tagged) |
 | `ORACLE_GATEWAY_URL` | Optional. The gateway's tailnet URL |
 | `ORACLE_CLOUD_GATEWAY_TOKEN` | Optional. The token of the `oracle-cloud` gateway client |
@@ -55,16 +55,13 @@ When `TS_AUTHKEY`, `ORACLE_GATEWAY_URL` and `ORACLE_CLOUD_GATEWAY_TOKEN` are
 all set, `make cloud-bootstrap` runs `scripts/cloud_gateway.sh`, which:
 
 1. downloads the OMP build that CI reviewers use, checks its SHA-256 and
-   installs it as `~/.local/bin/omp` (override with `BENCHBOX_OMP_INSTALL_DIR`).
-   The URL and checksum are read from `OMP_URL` and `OMP_SHA256` in
-   `.github/workflows/oracle-verdict.yml`. These legacy values remain for
-   cloud and local consumers during their migration; CI installs from the
-   `omp:` section of `.github/oracle-reviewers.yml` into the versioned cache
-   `~/.cache/benchbox/omp/<version>/<platform>/omp` through the shared installer,
-   and rejects a mismatch with the legacy values. Cloud bootstrap still uses
-   the branch workflow until it migrates to the policy pin on `origin/develop`.
-   A checksum mismatch refuses the install. The download goes straight to the
-   host in `OMP_URL`, so the environment network allowlist needs that host;
+1. downloads the OMP build that CI reviewers use, checks its SHA-256 and
+   installs it into the versioned cache `~/.cache/benchbox/omp/<version>/<platform>/omp`.
+   The version, URL and checksum per platform are read from the `omp:` section
+   of `.github/oracle-reviewers.yml` on `origin/develop` (fetched first), not
+   from the branch. A checksum mismatch, or a platform with no pinned build,
+   refuses the install. The download goes straight to the host in the pin, so
+   the environment network allowlist needs that host;
 2. starts `tailscaled` in userspace-networking mode with in-memory state, so
    nothing touches disk and no TUN device or root is needed. The tailnet DNS
    and routes are unavailable outside it, so the join goes through the

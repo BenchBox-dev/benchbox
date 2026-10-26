@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import sys
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from _project.scripts.oracle_reviewers import omp_pin
 from _project.scripts.oracle_reviewers.commands import build
 from _project.scripts.oracle_reviewers.policy import Policy
 
@@ -14,9 +16,15 @@ WS = Path("/work/space")
 PROMPT = "review this"
 
 
+@pytest.fixture(autouse=True)
+def pinned_binary(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
+
+
 def test_build_dispatches_omp_reviewer_with_selector_and_empty_effort(policy: Policy, tmp_path: Path) -> None:
     reviewer = policy.reviewers["small"]
     invocation = build(reviewer, WS, PROMPT, tmp_path)
+    assert invocation.argv[0] == sys.executable
     assert invocation.argv[invocation.argv.index("--model") + 1] == reviewer.model
     assert "--thinking" not in invocation.argv
     assert invocation.argv[-1] == PROMPT
