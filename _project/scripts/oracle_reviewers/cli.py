@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from time import sleep
 from typing import Any
+from urllib.parse import urlparse
 
 from . import (
     attempts as attempt_files,
@@ -37,7 +38,15 @@ from .classify import Classification, classify_diff
 from .diff import commentable_lines, select_files
 from .jev import JevError, JevSession
 from .policy import SIZE_BUCKETS, Policy, Reviewer, load_policy
-from .render import OversizeError, dispute_listing, file_listing, prior_listing, render_review, select_prior_rule
+from .render import (
+    UNOPENED_PR,
+    OversizeError,
+    dispute_listing,
+    file_listing,
+    prior_listing,
+    render_review,
+    select_prior_rule,
+)
 from .selection import SelectionInput
 from .verdict import DO_NOT_SHIP
 
@@ -61,6 +70,7 @@ GATEWAY_CLIENT = "oracle-ci"
 GATEWAY_TOKEN_MIN_LENGTH = 32
 DEVELOP_REF = "refs/heads/develop"
 NEW_DIFF_ACTIONS = ("opened", "synchronize")
+LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
 REVIEW = "review"
 SUCCESS = "success"
 FORK = "fork"
@@ -121,7 +131,7 @@ def _soundness_predicate() -> Any:
     return is_soundness_path
 
 
-def _base_plan(policy: Policy, repo: str, pr: int, run_id: str) -> dict[str, Any]:
+def _base_plan(policy: Policy, repo: str, pr: int | None, run_id: str) -> dict[str, Any]:
     return {
         "schema": 1,
         "mode": policy.mode,
@@ -157,16 +167,17 @@ def _base_plan(policy: Policy, repo: str, pr: int, run_id: str) -> dict[str, Any
 
 def _finish_plan(out_dir: Path, plan: dict[str, Any]) -> int:
     _write_json(out_dir / PLAN_FILE, plan)
-    post = plan["decision"] in (REVIEW, SUCCESS, FORK, CARRY, REFUSED, HOLD)
+    post = plan["pr"] is not None and plan["decision"] in (REVIEW, SUCCESS, FORK, CARRY, REFUSED, HOLD)
     _output(
         {
             "decision": plan["decision"],
             "post": "true" if post else "false",
-            "pr": str(plan["pr"]),
+            "pr": "" if plan["pr"] is None else str(plan["pr"]),
             "head_sha": plan["head_sha"],
         }
     )
-    _summary(f"oracle-verdict plan for #{plan['pr']}: {plan['decision']} ({plan['decision_reason']})")
+    subject = "the local change" if plan["pr"] is None else f"#{plan['pr']}"
+    _summary(f"oracle-verdict plan for {subject}: {plan['decision']} ({plan['decision_reason']})")
     return 0
 
 
@@ -247,6 +258,32 @@ def _base_changed_at(repo: str, pr: int) -> tuple[datetime | None, bool]:
         return None, True
 
 
+def _scoped_files(files: list[ChangedFile], in_scope: set[str], policy: Policy) -> list[ChangedFile]:
+    gate_paths = policy.classifier.gate_paths
+    is_soundness = _soundness_predicate()
+    return [
+        item
+        for item in files
+        if any(
+            path in in_scope
+            or is_soundness(path)
+            or matching([path], gate_paths) != []
+            or not path.endswith(PROSE_SUFFIXES)
+            for path in item.paths
+        )
+    ]
+
+
+def command_plan_entry(args: argparse.Namespace) -> int:
+    if args.local:
+        from . import local
+
+        return local.command_plan(args)
+    if not args.pr:
+        raise SystemExit("oracle-verdict: error: plan needs --pr or --local")
+    return command_plan(args)
+
+
 def command_plan(args: argparse.Namespace) -> int:
     policy = load_policy(Path(args.policy))
     repo = os.environ["GITHUB_REPOSITORY"]
@@ -312,19 +349,7 @@ def command_plan(args: argparse.Namespace) -> int:
         plan["decision_reason"] = rerun.reason
         return _finish_plan(out_dir, plan)
     in_scope = set(scope.paths)
-    gate_paths = policy.classifier.gate_paths
-    is_soundness = _soundness_predicate()
-    scoped = [
-        item
-        for item in files
-        if any(
-            path in in_scope
-            or is_soundness(path)
-            or matching([path], gate_paths) != []
-            or not path.endswith(PROSE_SUFFIXES)
-            for path in item.paths
-        )
-    ]
+    scoped = _scoped_files(files, in_scope, policy)
     plan["manual"] = manual
     plan["previous_state"] = previous.to_json() if previous else None
     try:
@@ -555,7 +580,7 @@ def _classify_plan(plan: dict[str, Any]) -> Classification:
         return classify_diff(
             session,
             repo=plan["repo"],
-            pr=int(plan["pr"]),
+            pr=plan["pr"],
             base_sha=plan["base_sha"],
             head_sha=plan["head_sha"],
             stats=stats,
@@ -656,7 +681,7 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
         template_name=classification.template,
         classification=classification,
         repo=plan["repo"],
-        pr=int(plan["pr"]),
+        pr=UNOPENED_PR if plan["pr"] is None else int(plan["pr"]),
         base_sha=plan["base_sha"],
         head_sha=plan["head_sha"],
         max_defects=int(plan["max_defects"]),
@@ -875,8 +900,10 @@ def write_reviewer_home(home: Path, gateway_url: str) -> None:
     url = gateway_url.strip()
     if not url:
         raise SystemExit("oracle-verdict: error: the gateway URL is empty; set the ORACLE_GATEWAY_URL secret")
-    if not url.startswith("https://") or len(url) == len("https://"):
-        raise SystemExit("oracle-verdict: error: the gateway URL must be an https:// URL")
+    parsed = urlparse(url)
+    secure = parsed.scheme == "https" or (parsed.scheme == "http" and parsed.hostname in LOOPBACK_HOSTS)
+    if not secure or not parsed.hostname:
+        raise SystemExit("oracle-verdict: error: the gateway URL must be an https:// URL, or http:// on loopback")
     agent_dir = home / ".omp" / "agent"
     agent_dir.mkdir(parents=True, exist_ok=True)
     (agent_dir / "config.yml").write_text(OMP_CONFIG_SOURCE.read_text(encoding="utf-8"), encoding="utf-8")
@@ -1077,14 +1104,22 @@ def command_gateway_clients(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_local_review(args: argparse.Namespace) -> int:
+    from . import local
+
+    return local.command_review(args)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="oracle-verdict")
     commands = parser.add_subparsers(dest="command", required=True)
     plan = commands.add_parser("plan")
     plan.add_argument("--policy", required=True)
-    plan.add_argument("--pr", required=True)
+    plan.add_argument("--pr")
+    plan.add_argument("--local", action="store_true")
+    plan.add_argument("--base-ref", default="origin/develop")
     plan.add_argument("--out", required=True)
-    plan.set_defaults(handler=command_plan)
+    plan.set_defaults(handler=command_plan_entry)
     select = commands.add_parser("select")
     select.add_argument("--plan", required=True)
     select.add_argument("--attempts-dir", required=True)
@@ -1144,6 +1179,12 @@ def _parser() -> argparse.ArgumentParser:
     clients.add_argument("--client", action="append", default=[], metavar="NAME=TOKEN_FILE")
     clients.add_argument("--out", required=True)
     clients.set_defaults(handler=command_gateway_clients)
+    local_review = commands.add_parser("local-review")
+    local_review.add_argument("--policy", required=True)
+    local_review.add_argument("--base-ref", default="origin/develop")
+    local_review.add_argument("--head", default="HEAD")
+    local_review.add_argument("--body-file", default="")
+    local_review.set_defaults(handler=command_local_review)
     return parser
 
 

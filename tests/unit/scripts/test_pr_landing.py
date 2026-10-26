@@ -1616,20 +1616,27 @@ _RECORDER = """#!{python}
 import json, os, sys
 with open(os.environ["CALLS"], "a", encoding="utf-8") as handle:
     handle.write(json.dumps([os.path.basename(sys.argv[0]), sys.argv[1:]]) + "\\n")
+if "local-review" in sys.argv:
+    sys.exit(int(os.environ["LOCAL_REVIEW_EXIT"]))
 if "scripts/pr_open_rest.py" in sys.argv:
     print(os.environ["PUBLISH"], 7, "https://github.com/BenchBox-dev/BenchBox/pull/7")
 """
 _GIT = """#!/bin/sh
+[ -z "$GIT_LOG" ] || echo "$*" >> "$GIT_LOG"
 case "$1 $2" in
   "branch --show-current") echo feat/x ;;
   "remote get-url") echo git@github.com:BenchBox-dev/BenchBox.git ;;
-  "rev-parse HEAD") echo 1111111111111111111111111111111111111111 ;;
+  "rev-parse HEAD")
+    if [ -n "$HEAD_MOVES" ] && [ -f "$GIT_LOG.seen" ]; then echo 2222222222222222222222222222222222222222
+    else : > "$GIT_LOG.seen"; echo 1111111111111111111111111111111111111111; fi ;;
 esac
 exit 0
 """
 
 
-def _run_pr_open(tmp_path: Path, publish: str, *variables: str) -> list[list[object]]:
+def _run_pr_open_result(
+    tmp_path: Path, publish: str, local_review_exit: int, *variables: str, head_moves: bool = False
+) -> tuple[subprocess.CompletedProcess[bytes], list[list[object]], list[str]]:
     stubs = tmp_path / "bin"
     work = tmp_path / "work"
     stubs.mkdir(parents=True)
@@ -1645,15 +1652,36 @@ def _run_pr_open(tmp_path: Path, publish: str, *variables: str) -> list[list[obj
     start = makefile.index(".PHONY: pr-open\n")
     (work / "Makefile").write_text(makefile[start : makefile.index("\n\n", start)] + "\n", encoding="utf-8")
     calls = tmp_path / "calls.jsonl"
-    env = {**os.environ, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}", "CALLS": str(calls), "PUBLISH": publish}
-    subprocess.run(
+    git_log = tmp_path / "git.log"
+    env = {
+        **os.environ,
+        "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}",
+        "CALLS": str(calls),
+        "GIT_LOG": str(git_log),
+        "PUBLISH": publish,
+        "LOCAL_REVIEW_EXIT": str(local_review_exit),
+        "HEAD_MOVES": "1" if head_moves else "",
+    }
+    result = subprocess.run(
         ["make", "-s", "pr-open", f"MAKE={stubs / 'fake-make'}", *variables],
         cwd=work,
         env=env,
-        check=True,
+        check=False,
         capture_output=True,
     )
-    return [json.loads(line) for line in calls.read_text(encoding="utf-8").splitlines()]
+    recorded = [json.loads(line) for line in calls.read_text(encoding="utf-8").splitlines()] if calls.exists() else []
+    pushes = (
+        [line for line in git_log.read_text(encoding="utf-8").splitlines() if line.startswith("push")]
+        if git_log.exists()
+        else []
+    )
+    return result, recorded, pushes
+
+
+def _run_pr_open(tmp_path: Path, publish: str, *variables: str) -> list[list[object]]:
+    result, recorded, _ = _run_pr_open_result(tmp_path, publish, 0, *variables)
+    result.check_returncode()
+    return recorded
 
 
 def _makes(calls: list[list[object]]) -> list[list[str]]:
@@ -1700,3 +1728,46 @@ def test_makefile_has_separate_bounded_all_open_status_view() -> None:
     assert "ALL_OPEN" in status
     assert "PR_STATUS_ALL_OPEN_LIMIT" in status
     assert "All open develop PRs" in status
+
+
+@requires_posix_make
+def test_pr_open_runs_the_local_oracle_review_before_any_push_with_the_body_file(tmp_path: Path) -> None:
+    body = tmp_path / "body.md"
+    body.write_text("body\n", encoding="utf-8")
+    result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, f"PR_BODY_FILE={body}")
+
+    assert result.returncode == 0
+    review_index = next(index for index, (name, args) in enumerate(calls) if name == "uv" and "local-review" in args)
+    publish_index = next(index for index, (_, args) in enumerate(calls) if "scripts/pr_open_rest.py" in args)
+    assert review_index < publish_index
+    review = calls[review_index][1]
+    assert {
+        ("--policy", ".github/oracle-reviewers.yml"),
+        ("--base-ref", "origin/develop"),
+        ("--body-file", str(body)),
+    } <= set(zip(review, review[1:], strict=False))
+    assert ("--head", "1111111111111111111111111111111111111111") in set(zip(review, review[1:], strict=False))
+    assert len(pushes) == 1
+
+
+@requires_posix_make
+@pytest.mark.parametrize("exit_code", [1, 2])
+def test_pr_open_refuses_before_any_push_when_the_local_oracle_review_does_not_clear(
+    tmp_path: Path, exit_code: int
+) -> None:
+    result, calls, pushes = _run_pr_open_result(tmp_path, "created", exit_code)
+
+    assert result.returncode != 0
+    assert "local oracle review did not clear this head" in result.stderr.decode()
+    assert pushes == []
+    assert not [args for _, args in calls if "scripts/pr_open_rest.py" in args]
+
+
+@requires_posix_make
+def test_pr_open_refuses_before_any_push_when_head_moves_during_the_local_oracle_review(tmp_path: Path) -> None:
+    result, calls, pushes = _run_pr_open_result(tmp_path, "created", 0, head_moves=True)
+
+    assert result.returncode != 0
+    assert "HEAD moved during the local oracle review" in result.stderr.decode()
+    assert pushes == []
+    assert not [args for _, args in calls if "scripts/pr_open_rest.py" in args]

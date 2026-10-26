@@ -113,6 +113,16 @@ cost the whole session, so the builder checks them first.
    closer and the owner. After reporting, push again only when the closer
    hands back a review finding or CI failure, after disabling auto-merge.
 
+   `make pr-open` first runs a local oracle review of the committed `HEAD`
+   (see `docs/internal/oracle-review-v2.md`, Local pre-PR review) and refuses
+   before any push on a Critical or High finding, an unreachable gateway, a
+   missing `oracle-cloud` client (`ORACLE_GATEWAY_URL` and
+   `ORACLE_CLOUD_GATEWAY_TOKEN`), or an `omp` that is not the CI-pinned
+   version. Fix a finding and recommit. A finding that is a false positive
+   may go ahead with a `Local oracle override: <reason>` line in `PR_BODY_FILE`;
+   an unavailable review cannot be overridden, so report that blocker
+   instead. Never print the token or the gateway URL.
+
 ## Builder report
 
 Return this report to the closer and record it in the item's tracker context
