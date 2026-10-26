@@ -44,12 +44,18 @@ sync_seconds=$(($(date +%s) - sync_started))
 uv run -- pre-commit install --install-hooks
 make agent-write-preflight
 
+gateway_rc=0
+sh scripts/cloud_gateway.sh up || gateway_rc=$?
+[ "$gateway_rc" -eq 0 ] ||
+  printf 'cloud-bootstrap: warning: the oracle gateway setup reported a problem; bootstrap continues without it\n' >&2
+
 {
   printf 'head=%s\n' "$(git rev-parse HEAD)"
   printf 'node=%s\n' "$node_version"
   printf 'author=%s\n' "$(git var GIT_AUTHOR_IDENT | sed 's/ [0-9]* [-+][0-9]*$//')"
   printf 'uv_sync_seconds=%s\n' "$sync_seconds"
   printf 'total_seconds=%s\n' "$(($(date +%s) - started))"
+  cat "$git_dir/benchbox-cloud-gateway.status" 2>/dev/null || printf 'gateway=unavailable\n'
 } >"$marker"
 
 printf 'cloud-bootstrap: OK\n'

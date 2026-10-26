@@ -212,3 +212,305 @@ def test_verify_refuses_a_base_ref_that_is_not_a_commit(tmp_path: Path) -> None:
     assert result.returncode == 1
     assert "cannot find a merge base between BASE_REF origin/no-such-branch" in result.stderr
     assert not make_log.exists()
+
+
+GATEWAY = REPO_ROOT / "scripts" / "cloud_gateway.sh"
+WORKFLOW = REPO_ROOT / ".github" / "workflows" / "oracle-verdict.yml"
+
+FAKE_KEY = "tskey-auth-FAKEKEY0000"
+FAKE_TOKEN = "fake-cloud-token-0000"
+FAKE_URL = "https://gateway-fake.example.invalid:4000"
+FAKE_OMP = "fake omp binary\n"
+
+STUB_TAILSCALED = """#!{python}
+import os, sys, time
+sock = [a.split("=", 1)[1] for a in sys.argv if a.startswith("--socket=")][0]
+with open(os.environ["STUB_DIR"] + "/tailscaled.log", "a") as log:
+    log.write(" ".join(sys.argv[1:]) + "\\n")
+open(sock, "w").close()
+time.sleep(600)
+"""
+
+STUB_TAILSCALE = """#!/bin/sh
+printf '%s\\n' "$*" >>"$STUB_DIR/tailscale.log"
+case " $* " in
+  *" status "*)
+    if [ -f "$STUB_DIR/joined" ]; then echo '{"BackendState": "Running"}'; else echo '{"BackendState": "NeedsLogin"}'; fi
+    ;;
+  *" up "*)
+    for arg in "$@"; do
+      case "$arg" in --auth-key=file:*) keyfile=${arg#--auth-key=file:} ;; esac
+    done
+    [ "$(cat "$keyfile")" = "$FAKE_KEY" ] && echo key-ok >>"$STUB_DIR/tailscale.log"
+    [ "${STUB_JOIN_FAILS:-0}" = 1 ] && exit 1
+    touch "$STUB_DIR/joined"
+    ;;
+esac
+"""
+
+STUB_CURL = """#!/bin/sh
+printf '%s\\n' "$*" >>"$STUB_DIR/curl.log"
+out=""
+url=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o) out=$2; shift ;;
+    -K) cat >/dev/null; shift ;;
+    http*) url=$1 ;;
+  esac
+  shift
+done
+case "$url" in
+  */healthz) printf '%s' "${STUB_HEALTH:-200}" ;;
+  */v1/models) printf '%s' "${STUB_MODELS:-200}" ;;
+  *) printf '%s' "$STUB_OMP_CONTENT" >"$out" ;;
+esac
+"""
+
+STUB_UNAME = """#!/bin/sh
+case "$1" in -m) echo x86_64 ;; *) echo Linux ;; esac
+"""
+
+STUB_MAKE = "#!/bin/sh\nexit 0\n"
+STUB_NODE = "#!/bin/sh\necho v24.15.0\n"
+STUB_UV = "#!/bin/sh\nexit 0\n"
+
+
+def _gateway_clone(tmp_path: Path, *, workflow_text: str | None = None) -> Path:
+    repo = _clone(tmp_path)
+    workflows = repo / ".github" / "workflows"
+    workflows.mkdir(parents=True)
+    if workflow_text is None:
+        import hashlib
+
+        digest = hashlib.sha256(FAKE_OMP.encode()).hexdigest()
+        workflow_text = (
+            "steps:\n  - env:\n      OMP_URL: https://downloads.example.invalid/omp-linux-x64\n"
+            f"      OMP_SHA256: {digest}\n"
+        )
+    (workflows / "oracle-verdict.yml").write_text(workflow_text, encoding="utf-8")
+    return repo
+
+
+def _gateway_stubs(tmp_path: Path) -> tuple[str, Path]:
+    stub_dir = tmp_path / "stubs"
+    bin_dir = stub_dir / "bin"
+    bin_dir.mkdir(parents=True)
+    bodies = {
+        "tailscaled": STUB_TAILSCALED.format(python=sys.executable),
+        "tailscale": STUB_TAILSCALE,
+        "curl": STUB_CURL,
+        "uname": STUB_UNAME,
+        "make": STUB_MAKE,
+        "node": STUB_NODE,
+        "uv": STUB_UV,
+    }
+    for name, body in bodies.items():
+        stub = bin_dir / name
+        stub.write_text(body, encoding="utf-8")
+        stub.chmod(0o755)
+    return f"{bin_dir}{os.pathsep}{os.environ['PATH']}", stub_dir
+
+
+def _gateway_env(tmp_path: Path, *, credentials: bool = True, **overrides: str | None) -> dict[str, str]:
+    path, stub_dir = _gateway_stubs(tmp_path) if not (tmp_path / "stubs").exists() else (None, tmp_path / "stubs")
+    if path is None:
+        path = f"{stub_dir / 'bin'}{os.pathsep}{os.environ['PATH']}"
+    values: dict[str, str | None] = {
+        "PATH": path,
+        "STUB_DIR": str(stub_dir),
+        "STUB_OMP_CONTENT": FAKE_OMP,
+        "FAKE_KEY": FAKE_KEY,
+        "HOME": str(tmp_path / "home"),
+        "BENCHBOX_OMP_INSTALL_DIR": str(tmp_path / "omp-bin"),
+        "BENCHBOX_GATEWAY_PROXY_PORT": "1055",
+        "TS_AUTHKEY": FAKE_KEY if credentials else None,
+        "ORACLE_GATEWAY_URL": FAKE_URL if credentials else None,
+        "ORACLE_CLOUD_GATEWAY_TOKEN": FAKE_TOKEN if credentials else None,
+    }
+    values.update(overrides)
+    return _env(**values)
+
+
+def _stop(repo: Path, env: dict[str, str]) -> None:
+    _run(GATEWAY, "stop", cwd=repo, env=env)
+
+
+def _stub_lines(tmp_path: Path, name: str) -> list[str]:
+    log = tmp_path / "stubs" / name
+    return log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+
+
+def _assert_no_secrets(*texts: str) -> None:
+    for text in texts:
+        for secret in (FAKE_KEY, FAKE_TOKEN, FAKE_URL, "gateway-fake.example.invalid"):
+            assert secret not in text
+
+
+def _status(repo: Path) -> str:
+    return (repo / ".git" / "benchbox-cloud-gateway.status").read_text(encoding="utf-8")
+
+
+def test_gateway_without_credentials_reports_unavailable_and_succeeds(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path, credentials=False)
+
+    result = _run(GATEWAY, cwd=repo, env=env)
+
+    assert result.returncode == 0
+    assert "gateway unavailable" in result.stdout
+    assert "gateway=unavailable" in _status(repo)
+    assert _stub_lines(tmp_path, "tailscale.log") == []
+    assert not (tmp_path / "omp-bin" / "omp").exists()
+
+
+def test_gateway_joins_userspace_verifies_and_installs_omp_without_printing_secrets(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path)
+    try:
+        result = _run(GATEWAY, cwd=repo, env=env)
+
+        assert result.returncode == 0, result.stderr
+        assert "gateway reachable" in result.stdout
+        assert "gateway=reachable" in _status(repo)
+        assert "gateway_proxy=http://127.0.0.1:1055" in _status(repo)
+        daemon_args = _stub_lines(tmp_path, "tailscaled.log")
+        assert len(daemon_args) == 1
+        assert "--tun=userspace-networking" in daemon_args[0]
+        assert "--state=mem:" in daemon_args[0]
+        assert "--outbound-http-proxy-listen=127.0.0.1:1055" in daemon_args[0]
+        tailscale_log = _stub_lines(tmp_path, "tailscale.log")
+        assert any(" up " in f" {line} " for line in tailscale_log)
+        assert "key-ok" in tailscale_log
+        assert (tmp_path / "omp-bin" / "omp").read_text(encoding="utf-8") == FAKE_OMP
+        assert os.access(tmp_path / "omp-bin" / "omp", os.X_OK)
+        assert "omp=installed" in _status(repo)
+        _assert_no_secrets(result.stdout, result.stderr)
+        assert FAKE_TOKEN not in "\n".join(_stub_lines(tmp_path, "curl.log"))
+        _assert_no_secrets(_status(repo), "\n".join(tailscale_log))
+    finally:
+        _stop(repo, env)
+
+
+def test_gateway_records_unreachable_gateway_and_leaves_no_daemon(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path, STUB_MODELS="401")
+
+    result = _run(GATEWAY, cwd=repo, env=env)
+
+    assert result.returncode == 0
+    assert "gateway unavailable" in result.stdout
+    assert "gateway=unavailable" in _status(repo)
+    assert not (repo / ".git" / "benchbox-cloud-gateway").exists()
+    _assert_no_secrets(result.stdout, result.stderr, _status(repo))
+
+
+def test_gateway_failed_join_cleans_up_the_daemon(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path, STUB_JOIN_FAILS="1")
+
+    result = _run(GATEWAY, cwd=repo, env=env)
+
+    assert result.returncode == 1
+    assert "gateway=unavailable" in _status(repo)
+    assert not (repo / ".git" / "benchbox-cloud-gateway").exists()
+    _assert_no_secrets(result.stdout, result.stderr)
+
+
+def test_gateway_refuses_an_omp_download_with_a_bad_checksum(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path, STUB_OMP_CONTENT="tampered\n")
+    try:
+        result = _run(GATEWAY, cwd=repo, env=env)
+
+        assert result.returncode == 1
+        assert "checksum mismatch; refusing to install" in result.stdout
+        assert not (tmp_path / "omp-bin" / "omp").exists()
+        assert "omp=not-installed" in _status(repo)
+    finally:
+        _stop(repo, env)
+
+
+def test_gateway_reads_the_pin_from_the_real_oracle_workflow(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path, workflow_text=WORKFLOW.read_text(encoding="utf-8"))
+    env = _gateway_env(tmp_path)
+    try:
+        result = _run(GATEWAY, cwd=repo, env=env)
+
+        assert "checksum mismatch; refusing to install" in result.stdout
+        assert "unreadable" not in result.stdout
+        assert any("https://" in line and "omp" in line for line in _stub_lines(tmp_path, "curl.log"))
+    finally:
+        _stop(repo, env)
+
+
+def test_gateway_second_run_reuses_the_daemon_and_the_install(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path)
+    try:
+        first = _run(GATEWAY, cwd=repo, env=env)
+        downloads = [line for line in _stub_lines(tmp_path, "curl.log") if "omp-linux-x64" in line]
+        second = _run(GATEWAY, cwd=repo, env=env)
+
+        assert first.returncode == second.returncode == 0
+        assert len(_stub_lines(tmp_path, "tailscaled.log")) == 1
+        assert len([line for line in _stub_lines(tmp_path, "tailscale.log") if " up " in f" {line} "]) == 1
+        assert len([line for line in _stub_lines(tmp_path, "curl.log") if "omp-linux-x64" in line]) == len(downloads)
+        assert "already installed and verified" in second.stdout
+    finally:
+        _stop(repo, env)
+
+
+def test_gateway_stop_ends_the_daemon(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path)
+    _run(GATEWAY, cwd=repo, env=env)
+    pid = int((repo / ".git" / "benchbox-cloud-gateway" / "tailscaled.pid").read_text(encoding="utf-8"))
+
+    _stop(repo, env)
+
+    assert not (repo / ".git" / "benchbox-cloud-gateway").exists()
+    with pytest.raises(ProcessLookupError):
+        os.kill(pid, 0)
+
+
+def test_bootstrap_without_credentials_still_succeeds_and_reports_the_gateway(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    (repo / "scripts").mkdir()
+    (repo / "scripts" / "cloud_gateway.sh").write_text(GATEWAY.read_text(encoding="utf-8"), encoding="utf-8")
+    env = _gateway_env(tmp_path, credentials=False)
+
+    result = _run(BOOTSTRAP, cwd=repo, env=env)
+
+    assert result.returncode == 0, result.stderr
+    assert "cloud-bootstrap: OK" in result.stdout
+    assert "gateway=unavailable" in result.stdout
+
+
+def test_bootstrap_with_credentials_records_the_gateway_in_the_marker(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    (repo / "scripts").mkdir()
+    (repo / "scripts" / "cloud_gateway.sh").write_text(GATEWAY.read_text(encoding="utf-8"), encoding="utf-8")
+    env = _gateway_env(tmp_path)
+    try:
+        result = _run(BOOTSTRAP, cwd=repo, env=env)
+
+        assert result.returncode == 0, result.stderr
+        assert "gateway=reachable" in result.stdout
+        assert "omp=installed" in result.stdout
+        _assert_no_secrets(result.stdout, result.stderr)
+    finally:
+        _stop(repo, env)
+
+
+def test_bootstrap_survives_a_failed_gateway_setup(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    (repo / "scripts").mkdir()
+    (repo / "scripts" / "cloud_gateway.sh").write_text(GATEWAY.read_text(encoding="utf-8"), encoding="utf-8")
+    env = _gateway_env(tmp_path, STUB_JOIN_FAILS="1")
+
+    result = _run(BOOTSTRAP, cwd=repo, env=env)
+
+    assert result.returncode == 0, result.stderr
+    assert "the oracle gateway setup reported a problem" in result.stderr
+    assert "gateway=unavailable" in result.stdout

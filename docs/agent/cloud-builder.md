@@ -22,11 +22,16 @@ Configure each cloud environment once:
 | `BENCHBOX_GIT_NAME` | The human commit author's name |
 | `BENCHBOX_GIT_EMAIL` | The human commit author's email |
 | Setup script | Install `uv` if the image lacks it, put a `node` that satisfies `^22.22.2`, `^24.15.0`, or `>=26` first on `PATH`, then run `make cloud-bootstrap` |
-| Network | GitHub and the Python package index; add Docker registries for container checks |
+| Network | GitHub and the Python package index; add Docker registries for container checks. For the [oracle gateway](#oracle-gateway-access), also the OMP download host named in `OMP_URL` in `.github/workflows/oracle-verdict.yml`, and the Tailscale control plane |
+| `TS_AUTHKEY` | Optional. A Tailscale auth key for `tag:oracle-cloud` nodes (reusable, ephemeral, pre-approved, tagged) |
+| `ORACLE_GATEWAY_URL` | Optional. The gateway's tailnet URL |
+| `ORACLE_CLOUD_GATEWAY_TOKEN` | Optional. The token of the `oracle-cloud` gateway client |
 | Repository access | `BenchBox-dev/BenchBox` with push access |
 
-Set these as environment variables, not secrets, so they stay visible to
-every command and Git hook in the session.
+Set the `BENCHBOX_*` rows as environment variables, not secrets, so they stay
+visible to every command and Git hook in the session. `TS_AUTHKEY`,
+`ORACLE_GATEWAY_URL` and `ORACLE_CLOUD_GATEWAY_TOKEN` are credentials: never
+print, log, commit or paste their values anywhere.
 
 The `node` range comes from a dependency of the markdownlint pre-commit hook;
 an older `node` makes that hook fail to install. `make cloud-bootstrap` refuses
@@ -43,6 +48,54 @@ for the repository. A session uploaded from a local checkout may have no
 `origin` remote, and a session without push access gets
 `403 ... not in this session's authorized repository set` on push. Both cases
 cost the whole session, so the builder checks them first.
+
+## Oracle gateway access
+
+When `TS_AUTHKEY`, `ORACLE_GATEWAY_URL` and `ORACLE_CLOUD_GATEWAY_TOKEN` are
+all set, `make cloud-bootstrap` runs `scripts/cloud_gateway.sh`, which:
+
+1. downloads the OMP build that CI reviewers use, checks its SHA-256 and
+   installs it as `~/.local/bin/omp` (override with `BENCHBOX_OMP_INSTALL_DIR`).
+   The URL and checksum are read from `OMP_URL` and `OMP_SHA256` in
+   `.github/workflows/oracle-verdict.yml`, the only place they are written. A
+   checksum mismatch refuses the install. The download goes straight to the
+   host in `OMP_URL`, so the environment network allowlist needs that host;
+2. starts `tailscaled` in userspace-networking mode with in-memory state, so
+   nothing touches disk and no TUN device or root is needed. The tailnet DNS
+   and routes are unavailable outside it, so the join goes through the
+   platform's HTTPS proxy and the gateway is reached only through the local
+   outbound HTTP proxy the daemon listens on, `127.0.0.1:1055` (override with
+   `BENCHBOX_GATEWAY_PROXY_PORT`);
+3. joins the tailnet with `TS_AUTHKEY` as an ephemeral `tag:oracle-cloud`
+   node, which the tailnet policy allows to reach only the gateway host on
+   port 4000;
+4. checks `/healthz` and an authenticated `/v1/models` call through that
+   proxy, printing only the status codes.
+
+Tailscale (`tailscale` and `tailscaled`) must already be installed in the
+environment image or setup script. The marker file records `gateway=reachable`
+with `gateway_proxy=...`, or `gateway=unavailable` with the reason, and
+`omp=installed` or `omp=not-installed`.
+
+Without the three variables, or when Tailscale is missing or the join or check
+fails, bootstrap still succeeds, stops any daemon it started, and records the
+gateway as unavailable. Builders must then do without oracle reviews.
+
+Use the gateway per command, never as a session-wide proxy, because the proxy
+reaches only the tailnet and would break GitHub and package access:
+
+```bash
+HTTPS_PROXY=http://127.0.0.1:1055 omp ...
+```
+
+`make cloud-gateway` repeats the setup idempotently: a live daemon and a
+verified install are reused, never duplicated. Run it when a later session step
+finds the proxy gone. `make cloud-gateway ACTION=stop` stops the daemon and
+`ACTION=status` prints the recorded state.
+
+Codex Cloud is not yet enabled for the gateway: the same variables are set on
+its environments, but the path has not been tested there and the owner has
+deferred it. Only Claude Code on the web is verified.
 
 ## Builder procedure
 
