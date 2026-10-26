@@ -394,19 +394,23 @@ def test_omp_is_installed_once_pinned_and_checked() -> None:
     assert "CODEX_HOME" not in text
     assert "AGY_CLI_DISABLE_AUTO_UPDATE" not in text
     install = _step("Install omp")
-    assert install["env"]["OMP_URL"].startswith("https://build.stencil.so/d/omp/")
-    assert OMP_SHA.match(install["env"]["OMP_SHA256"])
+    pin = yaml.safe_load((REPO_ROOT / ".github/oracle-reviewers.yml").read_text(encoding="utf-8"))["omp"]
+    linux = pin["builds"]["linux-x64"]
+    assert install["env"] == {
+        "OMP_URL": linux["url"],
+        "OMP_SHA256": linux["sha256"],
+        "OMP_VERSION": pin["version"],
+    }
+    assert pin["version"] == "18.12.1"
+    assert linux["url"] == "https://build.stencil.so/d/omp/20261017-231446-291e055/omp-linux-x64"
+    assert linux["sha256"] == "16181401e616d7d895bae31fa97476f1513d4080807d60d3a1a04006191a1bb3"
+    assert install["working-directory"] == "trusted"
     lines = install["run"].splitlines()
-    check = 'echo "$OMP_SHA256  $RUNNER_TEMP/omp" | sha256sum --check --strict'
-    assert lines.index(check) < lines.index('chmod +x "$RUNNER_TEMP/omp"')
-    assert set(install["env"]) == {"OMP_URL", "OMP_SHA256", "OMP_VERSION"}
-    assert text.count("OMP_SHA256: ") == 1
-    assert text.count("OMP_VERSION: ") == 1
-    version_check = '"$RUNNER_TEMP/omp" --version | tee -a "$GITHUB_STEP_SUMMARY" | grep -Fwq "$OMP_VERSION"'
-    assert lines.index('chmod +x "$RUNNER_TEMP/omp"') < lines.index(version_check)
-    assert lines.index(version_check) < lines.index('echo "$RUNNER_TEMP" >> "$GITHUB_PATH"')
-    curl = "curl -fsSL --proto '=https' --tlsv1.2 \"$OMP_URL\""
-    assert "curl " not in text.replace(curl, "")
+    command = "python3 -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml"
+    assert lines[0] == f"binary=$({command})"
+    assert lines[1] == '"$binary" --version | tee -a "$GITHUB_STEP_SUMMARY"'
+    assert lines[2] == 'dirname "$binary" >> "$GITHUB_PATH"'
+    assert "curl " not in text
     assert "--dangerously" not in text and "--yolo" not in text
 
 
