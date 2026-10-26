@@ -14940,7 +14940,9 @@
     },
     "merge-authority-docs-reconcile-20261026": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-gate-reject-edited-reviews-20261026"
+      ],
       "priority": "medium-high",
       "status": "open",
       "title": "Reconcile the stand-in and ruleset-relaxation rules across agent docs and correct the relaxation records"
