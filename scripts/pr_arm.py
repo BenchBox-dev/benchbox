@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
@@ -25,7 +26,80 @@ GATE_CONTEXT = "oracle-gate"
 GATE_WORKFLOW = "oracle-gate.yml"
 GATE_OK_STATE = "success"
 
+BASELINE_DIRECTORY = "tests/fixtures/fast_tier_baseline"
+VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
+VERDICT_FILE = "fast-duration-verdict.json"
+MEASUREMENT_ITEM = "ci-verify-fast-duration-report-only-20261025"
+
 Runner = Callable[[list[str]], tuple[int, str]]
+
+
+def _read_duration_verdict(run: Runner, repo: str, number: int, head: str, label: str) -> dict | None:
+    name = f"{VERDICT_ARTIFACT_PREFIX}-{number}-{head}"
+    code, out = run(
+        [
+            "gh",
+            "api",
+            "--jq",
+            r'[.artifacts[] | select(.expired | not)][0] | if . == null then "" '
+            r'else "\(.workflow_run.id) \(.workflow_run.head_sha)" end',
+            f"repos/{repo}/actions/artifacts?name={name}&per_page=5",
+        ]
+    )
+    if code != 0:
+        print(f"{label}: could not look up the verify-fast-duration verdict of {head[:9]}: {out.strip()[:200]}")
+        return None
+    fields = out.split()
+    if not fields:
+        print(f"{label}: no verify-fast-duration verdict is recorded for {head[:9]}; arming is not held")
+        return None
+    if len(fields) != 2 or not fields[0].isdigit() or fields[1] != head:
+        print(f"{label}: ignoring a verify-fast-duration verdict that is not bound to {head[:9]}")
+        return None
+    with tempfile.TemporaryDirectory(prefix="pr-arm-verdict-") as scratch:
+        code, out = run(["gh", "run", "download", fields[0], "--repo", repo, "-n", name, "-D", scratch])
+        path = Path(scratch) / VERDICT_FILE
+        if code != 0 or not path.is_file():
+            print(f"{label}: could not download the verify-fast-duration verdict of {head[:9]}: {out.strip()[:200]}")
+            return None
+        try:
+            report = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            print(f"{label}: the verify-fast-duration verdict of {head[:9]} is unreadable; arming is not held")
+            return None
+    return report if isinstance(report, dict) else None
+
+
+def _changes_baseline(run: Runner, repo: str, number: int) -> bool:
+    code, out = run(["gh", "api", "--paginate", "--jq", ".[].filename", f"repos/{repo}/pulls/{number}/files"])
+    if code != 0:
+        raise pr_landing.LandingError(f"cannot list the files changed by PR #{number}: {out.strip()[:200]}")
+    return any(line.startswith(f"{BASELINE_DIRECTORY}/") for line in out.splitlines())
+
+
+def _ratio(value: object) -> str:
+    return "n/a" if not isinstance(value, (int, float)) else f"{value:.3f}"
+
+
+def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> list[str]:
+    report = _read_duration_verdict(run, repo, number, head, label)
+    if report is None:
+        return []
+    verdict = report.get("verdict")
+    if verdict != "would-block":
+        print(f"{label}: verify-fast-duration verdict for {head[:9]} is {verdict}; arming is not held")
+        return []
+    if _changes_baseline(run, repo, number):
+        print(f"{label}: verify-fast-duration would block {head[:9]}, but the PR updates {BASELINE_DIRECTORY}")
+        return []
+    return [
+        f"verify-fast-duration reported would-block for {head[:9]}: normalized summed-time ratio "
+        f"{_ratio(report.get('sum_ratio'))}, median per-test ratio {_ratio(report.get('median_test_ratio'))}. "
+        f"The duration gate is in report-only measurement ({MEASUREMENT_ITEM}) but arming still refuses a "
+        f"would-block head unless the PR changes {BASELINE_DIRECTORY}: remove the slowdown, or regenerate the "
+        f"baseline with scripts/build_fast_duration_baseline.py (python -m scripts.build_fast_duration_baseline "
+        f"build --manifest <manifest> --output {BASELINE_DIRECTORY}) and justify the change in the PR"
+    ]
 
 
 def refresh_oracle_gate(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> None:
@@ -110,6 +184,7 @@ def arm(
     unpublished: Callable[[Path], list[str]] = pr_landing.unpublished_work,
     threads: Callable[[Runner, str, int], bool] = pr_landing.unresolved_review_threads,
     suites: Callable[[Runner, str, str, str], list[str]] = pr_landing.hidden_failed_suites,
+    duration: Callable[[Runner, str, int, str], list[str]] = duration_verdict_refusals,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         print(f"pr-arm: refusing: --repo must be owner/name, got {repo!r}", file=sys.stderr)
@@ -140,7 +215,10 @@ def arm(
             local_head,
             unpublished=unpublished(checkout),
             unresolved_threads=threads(run, repo, int(view["number"])),
-            hidden_failures=suites(run, repo, BASE_BRANCH, local_head),
+            hidden_failures=[
+                *suites(run, repo, BASE_BRANCH, local_head),
+                *(duration(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
+            ],
         )
         if reasons:
             for reason in reasons:

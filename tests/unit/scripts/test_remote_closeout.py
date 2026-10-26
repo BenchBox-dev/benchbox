@@ -156,6 +156,28 @@ class FakeGitHub:
         self.deleted: set[str] = set()
         self.gate_state = "success"
         self.dispatch_code = 0
+        self.verdict: dict | None = None
+        self.changed_files: list[str] = []
+
+    def _duration_verdict_reply(self, cmd: list[str]) -> tuple[int, str] | None:
+        if cmd[:2] == ["gh", "api"] and "/actions/artifacts?name=fast-duration-verdict-" in cmd[-1]:
+            return 0, "" if self.verdict is None else f"555 {self.view['headRefOid']}"
+        if cmd[:3] == ["gh", "run", "download"]:
+            Path(cmd[cmd.index("-D") + 1], "fast-duration-verdict.json").write_text(
+                json.dumps(self.verdict), encoding="utf-8"
+            )
+            return 0, ""
+        if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/pulls/7/files"):
+            return 0, "\n".join(self.changed_files)
+        return None
+
+    def _todo_state_reply(self, cmd: list[str]) -> tuple[int, str] | None:
+        if cmd[:2] == ["gh", "api"] and "contents/index.json?ref=todo-state" in cmd[-1]:
+            return 0, json.dumps(self.index)
+        if cmd[:2] == ["gh", "api"] and "contents/items/" in cmd[-1]:
+            name = cmd[-1].split("contents/items/")[1].removesuffix(".json?ref=todo-state")
+            return (0, json.dumps(self.items[name])) if name in self.items else (1, "gh: Not Found (HTTP 404)")
+        return None
 
     def set_head(self, head: str) -> None:
         self.view["headRefOid"] = head
@@ -222,11 +244,9 @@ class FakeGitHub:
             ]
             runs += [{**stale, "head_sha": head} for stale in self.stale_suites]
             return 0, "\n".join(json.dumps(run) for run in runs)
-        if cmd[:2] == ["gh", "api"] and "contents/index.json?ref=todo-state" in cmd[-1]:
-            return 0, json.dumps(self.index)
-        if cmd[:2] == ["gh", "api"] and "contents/items/" in cmd[-1]:
-            name = cmd[-1].split("contents/items/")[1].removesuffix(".json?ref=todo-state")
-            return (0, json.dumps(self.items[name])) if name in self.items else (1, "gh: Not Found (HTTP 404)")
+        side_reply = self._duration_verdict_reply(cmd) or self._todo_state_reply(cmd)
+        if side_reply is not None:
+            return side_reply
         raise AssertionError(f"unexpected command {cmd}")
 
     def arms(self) -> list[list[str]]:
@@ -470,6 +490,16 @@ def test_fails_closed_when_a_worktree_on_the_branch_has_an_unreadable_config(
 def test_refuses_a_pr_from_a_fork(world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]) -> None:
     ready_pr.view["isCrossRepository"] = True
     assert "condition 1: fork PR" in _refusal(world, ready_pr, capsys)
+
+
+def test_refuses_a_would_block_duration_verdict_unless_the_baseline_changes(
+    world: World, ready_pr: FakeGitHub, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ready_pr.verdict = {"verdict": "would-block", "sum_ratio": 1.5, "median_test_ratio": 1.25}
+    err = _refusal(world, ready_pr, capsys)
+    assert "summed-time ratio 1.500" in err
+    assert "median per-test ratio 1.250" in err
+    assert "scripts/build_fast_duration_baseline.py" in err
 
 
 def test_refuses_without_a_binding(tmp_path: Path, world: World, capsys: pytest.CaptureFixture[str]) -> None:

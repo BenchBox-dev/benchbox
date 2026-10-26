@@ -517,7 +517,10 @@ def evaluate(
             view,
             observation,
             pr_landing.live_check_verdicts(run, repo, head),
-            pr_landing.hidden_failed_suites(run, repo, BASE_BRANCH, head),
+            [
+                *pr_landing.hidden_failed_suites(run, repo, BASE_BRANCH, head),
+                *pr_arm.duration_verdict_refusals(run, repo, number, head, "pr-arm-remote"),
+            ],
         ),
     ]
     if changes and not explained:
