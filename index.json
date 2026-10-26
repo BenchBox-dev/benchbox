@@ -16745,6 +16745,13 @@
       "status": "done",
       "title": "Oracle reviews, status and workflow are still named \"oracle-review-shadow\" after it became the required reviewer"
     },
+    "oracle-verdict-oauth-tailnet-join-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Join the tailnet with a step-scoped OAuth secret and drop id-token: write from the oracle verdict job"
+    },
     "oracle-verdict-single-job-20261025": {
       "claim": null,
       "needs": [],
