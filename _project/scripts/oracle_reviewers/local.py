@@ -139,6 +139,23 @@ def _numstat(root: Path, base: str, head: str) -> dict[str, tuple[int, int]]:
     return counts
 
 
+def file_states(root: Path, base: str, head: str) -> list[protocol.FileState]:
+    tokens = _git(
+        root, "diff", "--raw", "-z", "--full-index", "--no-abbrev", "--no-ext-diff", "--no-textconv", "-M", base, head
+    ).split("\0")
+    states: list[protocol.FileState] = []
+    index = 0
+    while index < len(tokens) and tokens[index]:
+        old_mode, new_mode, old_id, new_id, code = tokens[index].removeprefix(":").split(" ")
+        renamed = code[0] in "RC"
+        previous, path = (tokens[index + 1], tokens[index + 2]) if renamed else (None, tokens[index + 1])
+        old = None if code[0] == "A" else (old_mode, old_id)
+        new = None if code[0] == "D" else (new_mode, new_id)
+        states.append(protocol.file_state(path, previous, old, new))
+        index += 3 if renamed else 2
+    return states
+
+
 STATUS_NAMES = {"A": "added", "C": "added", "D": "removed", "R": "renamed"}
 
 
@@ -192,7 +209,7 @@ def build_plan(
         "round": 1,
         "base_ref": plan["base_ref"],
         "patch_map": {},
-        "patch_digest": hashlib.sha256(raw_diff).hexdigest()[:32],
+        "patch_digest": protocol.patch_digest(protocol.fingerprints(file_states(root, base, head))),
         "strikes": 0,
         "struck_digests": [],
         "max_do_not_ship": policy.protocol.max_do_not_ship,
