@@ -86,7 +86,7 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
         "text-edit-verdict",
         "Re-check the changelog entry against the edited title",
     ): "changelog-check",
-    ("ci.yml", "code-test", "Run changed tests on the curated release tree"): "scripts/release_curation_dry_run.py",
+    ("ci.yml", "medium-test", "Run changed tests on the curated release tree"): "scripts/release_curation_dry_run.py",
     ("ci.yml", "comment-policy", "Enforce comment and docstring policy"): "comment-policy-check",
     ("ci.yml", "comment-policy", "Enforce pinned notice drift"): "comment-policy-check",
     ("ci.yml", "api-contract-check", "Verify public API symbols against the released wheel"): "api-contract-check",
@@ -140,6 +140,10 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "ci-paths", "Flag changed paths read by later jobs"): (
         "Hosted job-output step; it turns the classifier's changed-path list into "
         "booleans so later jobs do not receive the full list, and has no local gate."
+    ),
+    ("ci.yml", "ci-paths", "Decide medium shards"): (
+        "Hosted job-output step; it turns the heavy-tier decision and the coverage selection into the shard "
+        "matrix for the medium-test job, and has no local gate."
     ),
     ("ci.yml", "ci-paths", "Fetch coverage test map"): (
         "Hosted artifact download; it fetches the coverage map through the Actions "
@@ -229,7 +233,7 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "code-test", "Record fast-tier runner calibration"): (
         "Non-blocking hosted measurement of runner speed for the fast-tier junit artifact; it has no local equivalent."
     ),
-    ("ci.yml", "code-test", "Run medium tests for changed paths"): (
+    ("ci.yml", "medium-test", "Run medium tests for changed paths"): (
         "Runs the medium tests that `pr-preflight` maps from the changed paths; covered locally by `pr-preflight`."
     ),
     ("test.yml", "medium-collect", "Collect the complete medium tier"): (
