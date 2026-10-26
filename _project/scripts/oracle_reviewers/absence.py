@@ -24,6 +24,7 @@ CALIBRATED_QUOTA_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
         re.compile(r"rate_limit_error"),
         re.compile(r"would exceed your account's rate limit"),
         re.compile(r"429 Too Many Requests"),
+        re.compile(r"(?m)^429\b[^\n]{0,80}"),
         re.compile(r"retry-after-ms=\d+"),
     ),
 }

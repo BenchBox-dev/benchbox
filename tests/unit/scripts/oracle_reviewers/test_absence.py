@@ -254,3 +254,7 @@ def test_quoted_signal_in_assistant_content_stays_an_error() -> None:
 def test_an_earlier_error_message_does_not_classify_a_later_failure() -> None:
     later = json.dumps({"type": "message_end", "message": {"role": "assistant", "content": []}}) + "\n"
     assert _classify("omp", 1, stdout=_terminal("rate_limit_error") + later).kind == absence.ERROR
+
+
+def test_json_terminal_429_status_is_quota_even_when_the_message_has_no_known_phrase() -> None:
+    assert _classify("omp", 1, stdout=_terminal("Too many requests, slow down", 429)).kind == absence.QUOTA
