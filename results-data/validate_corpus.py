@@ -100,6 +100,7 @@ def _load_repo_module(name: str, relative_path: str):
 
 
 SUBSCALE_POLICY = _load_repo_module("_benchbox_subscale_policy", "benchbox/core/results/subscale_policy.py")
+QUERY_STATUS = _load_repo_module("_benchbox_query_status", "benchbox/core/results/query_status.py")
 
 
 def _load_export_anonymized_errors():
@@ -320,6 +321,8 @@ def _query_row_failed(query: object) -> bool:
 
 
 def failed_query_count(payload: dict) -> int:
+    if QUERY_STATUS.documented_exclusions_cover_failures(payload):
+        return 0
     summary = payload.get("summary")
     if isinstance(summary, dict):
         queries = summary.get("queries")
@@ -372,6 +375,8 @@ def bundle_validation_status(payload: dict) -> str | None:
     if not isinstance(recorded, (str, dict)):
         return "partial" if failed else None
     status = _status_text(recorded)
+    if status == "partial" and QUERY_STATUS.documented_exclusions_cover_failures(payload):
+        status = "passed"
     if status in {None, "passed"}:
         if failed:
             return "partial"

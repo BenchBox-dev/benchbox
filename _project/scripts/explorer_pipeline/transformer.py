@@ -48,6 +48,7 @@ from benchbox.core.cost.pricing import (
 from benchbox.core.results.anonymization import AnonymizationManager, find_public_path_leaks
 from benchbox.core.results.canonical_json import canonical_json_bytes
 from benchbox.core.results.execution_variant import published_variant_id, read_requested_variant
+from benchbox.core.results.query_status import documented_exclusions_cover_failures
 from benchbox.core.results.schema_policy import EXPLORER_INPUT_SCHEMA_POLICY, result_schema_version_value
 from benchbox.core.results.status import bundle_failed_query_count, bundle_non_clean_reason, normalize_validation_status
 from benchbox.core.results.subscale_policy import (
@@ -752,6 +753,12 @@ def _test_type(bundle: BundleDocument) -> str | None:
     return None
 
 
+def _documented_clean(status: str | None, raw: dict[str, Any]) -> str | None:
+    if status == "partial" and documented_exclusions_cover_failures(raw):
+        return "passed"
+    return status
+
+
 def _validation_status(bundle: BundleDocument, raw: dict[str, Any]) -> str | None:
     val = bundle.summary.validation
     failed_queries = bundle_failed_query_count(raw)
@@ -759,7 +766,7 @@ def _validation_status(bundle: BundleDocument, raw: dict[str, Any]) -> str | Non
     if raw_summary is not None and not isinstance(raw_summary, dict):
         return None
     if isinstance(val, str):
-        normalized = normalize_validation_status(val)
+        normalized = _documented_clean(normalize_validation_status(val), raw)
         if failed_queries and normalized in {None, "passed"}:
             return "partial"
         if _translation_uncertain(raw, normalized):
@@ -767,7 +774,7 @@ def _validation_status(bundle: BundleDocument, raw: dict[str, Any]) -> str | Non
         return normalized
     if isinstance(val, dict):
         s = val.get("status")
-        normalized = normalize_validation_status(s)
+        normalized = _documented_clean(normalize_validation_status(s), raw)
         if failed_queries and normalized in {None, "passed"}:
             return "partial"
         if _translation_uncertain(raw, normalized):

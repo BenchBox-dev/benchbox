@@ -216,3 +216,30 @@ def test_warmup_without_failed_validation_preserves_clean_measurements(status):
     )
     assert result_is_clean_pass(result)
     assert result_cli_failure_reason(result) is None
+
+
+def _obt_bundle(platform: str, failed_ids: list[str]) -> dict:
+    rows = [{"id": str(i), "status": "SUCCESS", "run_type": "measurement"} for i in range(1, 4)]
+    rows += [{"id": qid, "status": "FAILED", "run_type": "measurement"} for qid in failed_ids]
+    return {
+        "benchmark": {"id": "tpcds_obt"},
+        "platform": {"name": platform},
+        "summary": {"validation": "partial", "queries": {"total": len(rows), "passed": 3, "failed": len(failed_ids)}},
+        "queries": rows,
+    }
+
+
+def test_documented_clickhouse_obt_exclusions_are_not_failures():
+    bundle = _obt_bundle("ClickHouse Local", ["41", "44"])
+    assert bundle_failed_query_count(bundle) == 0
+    assert bundle_is_clean_pass(bundle)
+
+
+@pytest.mark.parametrize(
+    ("platform", "failed_ids"),
+    [("ClickHouse Local", ["41", "45"]), ("DuckDB", ["41", "44"]), ("ClickHouse Local", ["44", "46"])],
+)
+def test_undocumented_obt_failures_still_count(platform, failed_ids):
+    bundle = _obt_bundle(platform, failed_ids)
+    assert bundle_failed_query_count(bundle) == len(failed_ids)
+    assert not bundle_is_clean_pass(bundle)

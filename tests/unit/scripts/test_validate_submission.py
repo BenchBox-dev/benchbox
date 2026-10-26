@@ -609,6 +609,39 @@ class TestValidateBundle:
         _validate_bundle(data_failed, failed, allow_partial_validation=True)
         assert not failed.ok
 
+    @staticmethod
+    def _obt_bundle(platform: str, failed_ids: list[str]) -> dict:
+        data = _minimal_bundle()
+        data["benchmark"]["id"] = "tpcds_obt"
+        data["platform"]["name"] = platform
+        data["summary"]["validation"] = "partial"
+        rows = [{"id": str(i), "ms": 100 + i, "status": "SUCCESS"} for i in range(1, 6)]
+        rows += [{"id": qid, "ms": 0, "status": "FAILED"} for qid in failed_ids]
+        data["queries"] = rows
+        data["summary"]["queries"] = {"total": len(rows), "passed": 5, "failed": len(failed_ids)}
+        return data
+
+    def test_documented_platform_query_exclusions_accept_partial_summary(self):
+        vr = ValidationResult("test")
+        _validate_bundle(self._obt_bundle("ClickHouse Local", ["41", "44"]), vr)
+        assert not any("summary.validation" in e for e in vr.errors), vr.errors
+
+    def test_documented_platform_query_exclusions_still_run_clean_bundle_checks(self):
+        data = self._obt_bundle("ClickHouse Local", ["41", "44"])
+        data["queries"][0]["row_count_validation"] = {"status": "FAILED"}
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert any("row_count_validation.status" in e for e in vr.errors), vr.errors
+
+    @pytest.mark.parametrize(
+        ("platform", "failed_ids"),
+        [("ClickHouse Local", ["41", "45"]), ("DuckDB", ["41", "44"]), ("ClickHouse Local", [])],
+    )
+    def test_undocumented_failures_keep_partial_summary_rejected(self, platform: str, failed_ids: list[str]):
+        vr = ValidationResult("test")
+        _validate_bundle(self._obt_bundle(platform, failed_ids), vr)
+        assert any("summary.validation must be 'passed'" in e for e in vr.errors)
+
     def test_not_run_validation_allowed_only_for_trusted_mirror(self):
         data = _minimal_bundle()
         data["summary"]["validation"] = "not_run"
