@@ -9,7 +9,6 @@ import time
 import urllib.request
 from typing import Any
 
-from benchbox._vendor import sqlglot
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
 
 LINEITEM_COLUMNS = (
@@ -205,7 +204,6 @@ def main(argv: list[str] | None = None) -> int:
         "trino_version": info["nodeVersion"]["version"],
         "benchbox_revision": repository_revision(),
         "benchbox_tree_dirty": repository_dirty(),
-        "sqlglot_runtime": sqlglot.__version__,
         "relative_tolerance": RELATIVE_TOLERANCE,
         "repeats": args.repeats,
         "results": [run_scale(client, benchmark, scale, args.repeats) for scale in args.scales],
