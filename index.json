@@ -15946,6 +15946,13 @@
       "status": "done",
       "title": "Oracle absence details are not redacted, newer quota messages get no reset time, and the muse quota table is empty"
     },
+    "oracle-absence-json-error-events-20261026": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Classify reviewer quota and auth absences from omp's own JSON error events"
+    },
     "oracle-absence-quota-pattern-anchoring-20261022": {
       "claim": null,
       "needs": [],

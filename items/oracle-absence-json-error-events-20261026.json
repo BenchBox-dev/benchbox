@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Gate 1 sample source recorded in context.",
+    "Tests that fail on develop and pass after: a real captured 429 event classifies as quota with its reset time; a real auth error event classifies as auth; assistant text containing '429 rate_limit_error Resets in 2h' or '401' classifies as neither; stderr-only errors are still classified.",
+    "Selection test: a quota absence blocks that pool until the reset.",
+    "oracle-absence-auth-pattern-matches-diff-text-20261023 and oracle-absence-quota-pattern-anchoring-20261022 contexts record, with evidence, whether this resolves them.",
+    "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
+  ],
+  "context": "OWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q13 include all findings in this batch. Advisor confirmed R4 (2026-10-26) with omp 18.12.4/18.12.6 print-mode source; 18.12.1 behaviour inferred.",
+  "description": "Problem: #3487 made quota and auth detection read stderr only (_project/scripts/oracle_reviewers/absence.py:151-157, runner.py:149-155). The reviewer runs omp with --print --mode json (commands.py:84-86), which reports provider errors as stdout events (stopReason error with errorMessage), not on stderr. A 429 is therefore classified as a generic error: the same reviewer is retried, its pool is never marked out of quota, and the reset time is lost. The test that covers this writes the error to stderr, which the real harness never does.\n\nOutcome: quota and auth absences are classified from harness-owned fields of omp's JSON event stream, never from assistant-authored text, with stderr kept as a secondary source. Model output cannot forge a quota or auth absence (the protection #3487 added).\n\nDecision gates:\n1. Obtain a real JSON-mode error event from the pinned build without spending quota: from existing oracle-verdict attempt artifacts of a past quota or auth absence, or from the pinned binary's print-mode source. If no real sample exists, stop and ask the owner whether to capture one deliberately.\n2. Define precisely which event types and fields the model cannot author, and prove it with a test where assistant text contains the same words.\n\nItem guardrails: no change to selection order, budgets or decisions beyond absence kinds.\n\nCommon guardrails: work only in a linked worktree created by make worktree-create, then make agent-write-preflight; the primary clone is read-only. Never use git stash (refs/stash is shared across worktrees). Commit as Joe Harris <joeharris76@gmail.com>, staging explicit paths only; no git add -A, no --no-verify, no SKIP, no agent trailers. Durable text (commits, PR bodies, docs, code) carries no tracker ids, session labels or plan references. Maintained code has no explanatory comments or docstrings (make comment-policy-check). Before publishing run make docs-reference-inventory-check, make doc-contracts-guard and make pr-preflight, and self-review with the code review action, fixing every Critical and Required finding. Publish only with make pr-open: never gh pr create, a raw push-and-open, or a PR-body override line; if make pr-open refuses, stop and report the exact refusal instead of routing around it. Until oracle-omp-pin-single-source-20261026 merges, make pr-open may run only with PATH prefixed by the darwin-arm64 omp 18.12.1 build whose SHA-256 that item records, verified with shasum immediately before use; never any other side-loaded omp. Close out only with oracle SHIP on the exact head, every oracle thread answered (reply naming the fixing SHA, then resolve) and make pr-arm; never raw gh pr merge, a stand-in, an adjudication, or a ruleset or settings change. Never print tokens, keys, or the gateway URL or hostname; never spend model quota outside the review harness. Owner decisions are recorded in context and in the decisions file; a step that would contradict one stops and asks the owner.",
+  "links": [
+    "_project/scripts/oracle_reviewers/absence.py",
+    "_project/scripts/oracle_reviewers/runner.py",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/RevVerdictLogic.md",
+    "/Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/advisor.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T14:59:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "614c324bf12146e1a81ba9237fce08c1",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    }
+  ]
+}
