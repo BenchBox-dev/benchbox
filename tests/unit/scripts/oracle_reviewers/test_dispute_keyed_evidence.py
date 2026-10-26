@@ -199,6 +199,23 @@ def test_a_demoted_withdrawal_stays_open_with_its_gap_published(policy: Policy, 
     assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
 
 
+def test_a_demoted_withdrawal_with_concedes_true_stays_open(policy: Policy, tmp_path: Path) -> None:
+    verdict = validate(
+        _verdict_dict(_disposition("withdrawn", evidence_text="never a defect: pkg/a.py:99", concedes=True))
+    )
+    marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
+    assert marked.prior_defects[0].status == "not_fixed"
+    assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
+
+
+def test_a_demoted_fixed_with_an_empty_claim_stays_open(policy: Policy, tmp_path: Path) -> None:
+    verdict = validate(_verdict_dict(_disposition("fixed", evidence_text="reworked the loop", claim="")))
+    marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
+    assert marked.prior_defects[0].status == "not_fixed"
+    assert evidence.DEMOTED_FIXED in marked.prior_defects[0].evidence
+    assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
+
+
 def test_maintain_without_verified_evidence_stays_open(policy: Policy) -> None:
     problem = _problem(policy, _dispute(), _disposition("not_fixed", evidence_text="still broken"))
     assert problem is None

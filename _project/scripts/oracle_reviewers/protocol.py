@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from .evidence import withdrawal_cited
+from .evidence import DEMOTED_FIXED, UNVERIFIED_WITHDRAWAL, withdrawal_cited
 from .policy import SEVERITIES
 from .verdict import (
     COMPLETE,
@@ -581,13 +581,14 @@ def dispute_problem(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
             return f"disputed finding {defect_id} has no disposition, so the verdict is invalid"
         if not isinstance(entry.concedes, bool):
             return f"disputed finding {defect_id} has no concedes boolean, so the verdict is invalid"
-        if entry.status == NOT_FIXED and entry.concedes:
+        demoted = UNVERIFIED_WITHDRAWAL in (entry.evidence or "") or DEMOTED_FIXED in (entry.evidence or "")
+        if entry.status == NOT_FIXED and entry.concedes and not demoted:
             return f"disputed finding {defect_id} concedes the rebuttal yet stays not fixed, so the verdict is invalid"
         if entry.status == WITHDRAWN and not entry.concedes:
             return (
                 f"disputed finding {defect_id} is withdrawn without conceding the rebuttal, so the verdict is invalid"
             )
-        if entry.status in (NOT_FIXED, WITHDRAWN):
+        if entry.status in (NOT_FIXED, WITHDRAWN) and not demoted:
             if not entry.claim.strip() or all(claim_hash(entry.claim) != known for known in claims[defect_id]):
                 return f"disputed finding {defect_id} does not restate one of its rebuttal replies, so the verdict is invalid"
         if entry.status == FIXED and not (entry.evidence or "").strip():

@@ -39,6 +39,9 @@ UNVERIFIED_WITHDRAWAL = (
 UNVERIFIED_MAINTAIN = (
     "the maintain names no examined head-commit file and line or reproduction, so the disposition is unsupported"
 )
+DEMOTED_FIXED = (
+    "the fix names no verified examined head-commit file and line or reproduction, so it counts as not fixed"
+)
 
 
 @dataclass(frozen=True)
@@ -327,7 +330,7 @@ def mark_citations(verdict: Verdict, workspace: Path, disputed: Iterable[str] = 
             note = f"{prior.evidence} {UNVERIFIED_WITHDRAWAL}".strip()
             prior = replace(prior, status=NOT_FIXED, evidence=note)
         if prior.status == FIXED and prior.id in wanted and not maintain_verified(prior.evidence, workspace, examined):
-            note = f"{prior.evidence} {UNVERIFIED_MAINTAIN}".strip()
+            note = f"{prior.evidence} {DEMOTED_FIXED}".strip()
             prior = replace(prior, status=NOT_FIXED, evidence=note)
         if (
             prior.status == NOT_FIXED
