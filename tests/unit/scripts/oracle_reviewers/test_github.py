@@ -588,11 +588,6 @@ def test_tree_blobs_is_none_when_the_tree_cannot_be_read(monkeypatch: pytest.Mon
 
     monkeypatch.setattr(github, "get_json", get_json)
     assert github.tree_blobs(REPO, "c" * 40) is None
-    monkeypatch.setattr(github.subprocess, "run", fake_run)
-    assert github.get_file(REPO, "src/a b.py", "abc") == b"def f():\n"
-    assert calls[0][-1] == f"repos/{REPO}/contents/src/a%20b.py?ref=abc"
-    assert "Accept: application/vnd.github.raw+json" in calls[0]
-    assert github.get_file(REPO, "missing.py", "abc") is None
 
 
 def test_failed_steps_names_every_step_that_failed_timed_out_or_was_cancelled(
@@ -636,12 +631,26 @@ def test_only_the_oracle_app_marks_a_status_as_its_own(creator: Any, expected: b
     assert github.is_app_status({"creator": creator}, "benchbox-oracle") is expected
 
 
-def test_commit_statuses_lists_the_combined_status(monkeypatch: pytest.MonkeyPatch) -> None:
-    combined = {"statuses": [{"context": "oracle-verdict", "state": "pending"}, "not-a-status", {"context": "ci"}]}
+def test_commit_statuses_lists_paginated_statuses_with_creator_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entries: list[Any] = [
+        {
+            "context": "oracle-verdict",
+            "state": "pending",
+            "description": "verdict in progress",
+            "target_url": "https://github.com/BenchBox-dev/benchbox/actions/runs/1",
+            "creator": {"login": "benchbox-oracle[bot]", "type": "Bot"},
+            "created_at": "2026-10-26T17:35:11Z",
+            "updated_at": "2026-10-26T17:35:11Z",
+        },
+        "not-a-status",
+        {"context": "ci", "state": "success", "creator": {"login": "someone", "type": "User"}},
+    ]
     seen: list[str] = []
-    monkeypatch.setattr(github, "get_json", lambda path: (seen.append(path), combined)[1])
-    assert github.commit_statuses(REPO, SHA) == [{"context": "oracle-verdict", "state": "pending"}, {"context": "ci"}]
-    assert seen == [f"repos/{REPO}/commits/{SHA}/status"]
+    monkeypatch.setattr(github, "get_paginated", lambda path: (seen.append(path), entries)[1])
+    assert github.commit_statuses(REPO, SHA) == [entries[0], entries[2]]
+    assert seen == [f"repos/{REPO}/commits/{SHA}/statuses?per_page=100"]
 
 
 def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch) -> None:

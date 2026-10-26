@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
+from .github import SWEEP_FAILURE_SURFACE_PREFIX
+
 RUN_TITLE_PULL = re.compile(r"\bpr=(\d+)\)$")
 COMPLETED = "completed"
 FAILED = frozenset({"failure", "timed_out", "cancelled"})
@@ -82,7 +84,7 @@ def recent_dispatches(runs: Iterable[Run], now: datetime) -> int:
 
 def surface_description(steps: Iterable[str]) -> str:
     named = "; ".join(steps) if steps else "an earlier step"
-    description = f"oracle-verdict failed twice without a result at: {named}. Rerun with /oracle-review or push a fix"
+    description = f"{SWEEP_FAILURE_SURFACE_PREFIX}{named}. Rerun with /oracle-review or push a fix"
     if len(description) > STATUS_DESCRIPTION_LIMIT:
         description = description[: STATUS_DESCRIPTION_LIMIT - 1] + "…"
     return description

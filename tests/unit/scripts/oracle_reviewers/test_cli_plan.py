@@ -954,6 +954,12 @@ def _parsed(*runs: dict[str, Any]) -> tuple[sweep.Run, ...]:
     return sweep.parse_runs(runs).get(7, ())
 
 
+def test_the_surfaced_description_keeps_the_shared_prefix_intact() -> None:
+    assert len(github.SWEEP_FAILURE_SURFACE_PREFIX) < sweep.STATUS_DESCRIPTION_LIMIT
+    assert sweep.surface_description([]).startswith(github.SWEEP_FAILURE_SURFACE_PREFIX)
+    assert sweep.surface_description(["x" * 500]).startswith(github.SWEEP_FAILURE_SURFACE_PREFIX)
+
+
 def test_reset_spent_counts_only_runs_that_could_have_used_the_reset() -> None:
     reset_at = datetime.now(UTC) - timedelta(minutes=30)
     before = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))

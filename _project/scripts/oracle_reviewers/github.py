@@ -326,9 +326,11 @@ def failed_steps(repo: str, run_id: int) -> list[str]:
     ]
 
 
+SWEEP_FAILURE_SURFACE_PREFIX = "oracle-verdict failed twice without a result at: "
+
+
 def commit_statuses(repo: str, sha: str) -> list[dict[str, Any]]:
-    combined = get_json(f"repos/{repo}/commits/{sha}/status")
-    statuses = combined.get("statuses", [])
+    statuses = get_paginated(f"repos/{repo}/commits/{sha}/statuses?per_page=100")
     return [status for status in statuses if isinstance(status, dict)]
 
 
