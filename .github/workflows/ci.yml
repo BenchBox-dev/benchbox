@@ -1792,8 +1792,14 @@ jobs:
             --summary "$GITHUB_STEP_SUMMARY" \
             --report-out fast-duration-verdict.json
 
+      - name: Record fast-duration verdict not applicable
+        if: ${{ always() && github.event_name == 'pull_request' && needs.ci-paths.outputs.code-tests-needed == 'false' }}
+        continue-on-error: true
+        run: |
+          printf '%s\n' '{"verdict": "not-applicable", "reason": "no fast-tier tests ran for this head"}' > fast-duration-verdict.json
+
       - name: Upload fast-duration verdict
-        if: ${{ always() && github.event_name == 'pull_request' && needs.ci-paths.outputs.code-tests-needed == 'true' }}
+        if: ${{ always() && github.event_name == 'pull_request' }}
         continue-on-error: true
         timeout-minutes: 2
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f

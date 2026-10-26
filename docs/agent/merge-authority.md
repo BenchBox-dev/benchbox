@@ -132,6 +132,12 @@ happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
   live verification and `make pr-landing-remote-*` report the failed suite
   instead of the newest result for that name. The green-but-unmerged sweep
   lists these PRs in its digest and never counts them as green.
+- `make pr-arm` and `make pr-arm-remote` refuse until the `core` job has uploaded
+  the fast-duration verdict for the exact head. A missing verdict names the
+  pending job; if `core` already ended without one, the refusal names
+  `make pr-rerun PR=<n>`. A failed lookup or download, an unreadable verdict and
+  a verdict not bound to the head also refuse. PRs where no fast-tier tests ran
+  upload a `not-applicable` verdict.
 - `make pr-rerun` re-runs the failed jobs of the newest CI run and of every
   Actions run behind a failed required suite (a cancelled suite re-runs the
   whole run). Pending suites are left alone. It refuses a conclusion it cannot
