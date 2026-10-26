@@ -53,16 +53,30 @@ jobs:
             echo "trunk-disarm: nothing to disarm."
             exit 0
           fi
+          failed=""
           while IFS= read -r pr; do
             [ -n "$pr" ] || continue
             echo "trunk-disarm: disabling auto-merge on PR #${pr} (trunk run ${RUN_URL})."
-            gh pr merge --repo "$REPO" --disable-auto "$pr"
+            if ! gh pr merge --repo "$REPO" --disable-auto "$pr"; then
+              echo "trunk-disarm: disable failed on PR #${pr}; the verify pass below decides." >&2
+            fi
           done < selected.txt
           while IFS= read -r pr; do
             [ -n "$pr" ] || continue
-            if [ "$(gh pr view --repo "$REPO" "$pr" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
-              echo "trunk-disarm: auto-merge still armed on PR #${pr} after disable." >&2
-              exit 1
+            if state="$(gh pr view --repo "$REPO" "$pr" --json autoMergeRequest --jq '.autoMergeRequest != null')"; then
+              if [ "$state" = "true" ]; then
+                echo "trunk-disarm: auto-merge still armed on PR #${pr} after disable." >&2
+                failed="${failed} ${pr}"
+                continue
+              fi
+            else
+              echo "trunk-disarm: could not verify PR #${pr} after disable." >&2
+              failed="${failed} ${pr}"
+              continue
             fi
             echo "trunk-disarm: auto-merge off on PR #${pr} (trunk run ${RUN_URL})."
           done < selected.txt
+          if [ -n "$failed" ]; then
+            echo "trunk-disarm: failed to disarm:${failed}." >&2
+            exit 1
+          fi

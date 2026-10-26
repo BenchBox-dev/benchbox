@@ -104,3 +104,10 @@ def test_the_job_only_disables_and_reverifies() -> None:
     ):
         assert forbidden not in runs
     assert "gh pr view" in runs
+
+
+def test_the_job_disarms_every_selected_pr_before_failing() -> None:
+    runs = _runs()
+    assert "if ! gh pr merge" in runs
+    assert runs.count("done < selected.txt") == 2
+    assert 'failed="${failed} ${pr}"' in runs
