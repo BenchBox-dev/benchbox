@@ -343,6 +343,32 @@ def medium_drift_report(recorded: dict[str, float], measured: dict[str, dict[str
     }
 
 
+def build_medium_durations(runs: list[dict[str, dict[str, float]]], generated_at: str, source: str) -> dict[str, Any]:
+    samples: dict[str, list[float]] = {}
+    for run in runs:
+        for shard_tests in run.values():
+            for nodeid, amount in shard_tests.items():
+                samples.setdefault(nodeid, []).append(amount)
+    if not samples:
+        raise BaselineError("no usable testcase samples in medium shard junit")
+    p95 = {nodeid: round(_percentile(values, 95), 5) for nodeid, values in samples.items()}
+    return {
+        "schema_version": 1,
+        "generated_at": generated_at,
+        "source": source,
+        "default_seconds": round(float(statistics.median(p95.values())), 5),
+        "tests": {nodeid: {"p95_seconds": p95[nodeid]} for nodeid in sorted(p95)},
+    }
+
+
+def medium_refresh_command(args: argparse.Namespace) -> int:
+    runs = [read_shard_measured(sorted(Path(run_dir).glob("*/shard-*-junit.xml"))) for run_dir in args.run_dir]
+    generated_at = args.generated_at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    payload = build_medium_durations(runs, generated_at, args.source)
+    Path(args.output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return 0
+
+
 def drift_markdown(report: dict[str, Any]) -> str:
     lines = [
         "### Medium-shard drift",
@@ -560,6 +586,14 @@ def main(argv: list[str] | None = None) -> int:
     drift_parser.add_argument("--shard", action="append", default=[])
     drift_parser.add_argument("--report-out", default=None)
     drift_parser.set_defaults(handler=medium_drift_command)
+    refresh_parser = subparsers.add_parser(
+        "medium-refresh", help="Rebuild the medium shard durations from shard junit."
+    )
+    refresh_parser.add_argument("--run-dir", action="append", required=True)
+    refresh_parser.add_argument("--output", required=True)
+    refresh_parser.add_argument("--source", required=True)
+    refresh_parser.add_argument("--generated-at", default=None)
+    refresh_parser.set_defaults(handler=medium_refresh_command)
     verify_parser = subparsers.add_parser("verify", help="Report a PR fast-tier run against the committed baseline.")
     verify_parser.add_argument("--baseline", required=True)
     verify_parser.add_argument("--run-dir", required=True)

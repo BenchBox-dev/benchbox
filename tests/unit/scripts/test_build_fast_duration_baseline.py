@@ -209,6 +209,32 @@ def test_medium_drift_stays_quiet_within_threshold() -> None:
     assert report["recommends_refresh"] is False
 
 
+def test_medium_refresh_takes_p95_across_runs_and_round_trips(tmp_path: Path) -> None:
+    run_dirs = []
+    for run_index, duration in enumerate((1.0, 3.0)):
+        shard_dir = tmp_path / f"run{run_index}" / "t2-medium-shard-0-abc"
+        shard_dir.mkdir(parents=True)
+        (shard_dir / "shard-0-junit.xml").write_text(
+            '<testsuite><testcase classname="tests.test_sample.TestSample" file="tests/test_sample.py" '
+            f'name="test_alpha" time="{duration}"/></testsuite>',
+            encoding="utf-8",
+        )
+        run_dirs.append(str(tmp_path / f"run{run_index}"))
+    output = tmp_path / "durations.json"
+    argv = ["medium-refresh", "--output", str(output), "--source", "two runs", "--generated-at", GENERATED_AT]
+    for run_dir in run_dirs:
+        argv += ["--run-dir", run_dir]
+
+    assert baseline.main(argv) == 0
+
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["source"] == "two runs"
+    assert payload["tests"] == {"tests/test_sample.py::TestSample::test_alpha": {"p95_seconds": 2.9}}
+    assert payload["default_seconds"] == pytest.approx(2.9)
+    assert baseline.read_medium_recorded(output) == {"tests/test_sample.py::TestSample::test_alpha": 2.9}
+
+
 def test_build_command_round_trips_through_subprocess(tmp_path: Path) -> None:
     manifest, _runs = build_fixture(tmp_path)
     output = tmp_path / "baseline"
