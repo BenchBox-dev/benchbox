@@ -15,6 +15,7 @@ RUN_WINDOW = timedelta(days=7)
 DISPATCH_GRACE = timedelta(minutes=2)
 DISPATCH_WINDOW = timedelta(hours=24)
 DISPATCH_EVENT = "workflow_dispatch"
+STATUS_DESCRIPTION_LIMIT = 140
 
 
 @dataclass(frozen=True)
@@ -61,12 +62,12 @@ def in_flight(runs_by_pr: Mapping[int, tuple[Run, ...]], now: datetime) -> froze
     )
 
 
-def stateless_failures(runs: Iterable[Run], head_committed_at: datetime, exclude: int | None = None) -> int:
+def stateless_failures(runs: Iterable[Run], head_committed_at: datetime) -> int:
     count = 0
     for run in runs:
         if run.created_at < head_committed_at:
             break
-        if run.id == exclude or run.status != COMPLETED or run.conclusion in NEUTRAL:
+        if run.status != COMPLETED or run.conclusion in NEUTRAL:
             continue
         if run.conclusion not in FAILED:
             break
@@ -76,6 +77,14 @@ def stateless_failures(runs: Iterable[Run], head_committed_at: datetime, exclude
 
 def recent_dispatches(runs: Iterable[Run], now: datetime) -> int:
     return sum(1 for run in runs if run.event == DISPATCH_EVENT and now - run.created_at < DISPATCH_WINDOW)
+
+
+def surface_description(steps: Iterable[str]) -> str:
+    named = "; ".join(steps) if steps else "an earlier step"
+    description = f"oracle-verdict failed twice without a result at: {named}. Rerun with /oracle-review or push a fix"
+    if len(description) > STATUS_DESCRIPTION_LIMIT:
+        description = description[: STATUS_DESCRIPTION_LIMIT - 1] + "…"
+    return description
 
 
 def newest_failed(runs: tuple[Run, ...]) -> bool:

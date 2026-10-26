@@ -95,10 +95,6 @@ class Loop:
         values = dict(line.split("=", 1) for line in self.output.read_text(encoding="utf-8").splitlines())
         return values["attempts"]
 
-    def leaked(self) -> str:
-        values = dict(line.split("=", 1) for line in self.output.read_text(encoding="utf-8").splitlines())
-        return values["leaked"]
-
 
 @pytest.fixture
 def loop(tmp_path: Path, policy: Policy, monkeypatch: pytest.MonkeyPatch) -> Loop:
@@ -201,7 +197,6 @@ def test_a_reviewer_that_leaves_a_child_running_fails_the_review_closed_and_the_
     assert data["absence"]["detail"] == cli.LEAK_DETAIL
     assert not (loop.attempts / attempts.artifact_name(2)).exists()
     assert loop.ran() == "1"
-    assert loop.leaked() == "true"
 
 
 def test_a_reviewer_that_exits_cleanly_leaves_nothing_to_kill(tmp_path: Path) -> None:
@@ -262,7 +257,6 @@ def test_the_loop_stops_when_the_classification_is_unreadable(loop: Loop, monkey
     monkeypatch.setattr(runner, "review", lambda *args, **kwargs: pytest.fail("no reviewer may run"))
     assert loop.run() == 0
     assert loop.ran() == "0"
-    assert loop.leaked() == "false"
     assert not loop.attempts.joinpath(attempts.artifact_name(1)).exists()
 
 

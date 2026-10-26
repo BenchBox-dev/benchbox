@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import tempfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -312,14 +313,51 @@ def committed_at(repo: str, sha: str) -> datetime:
     return moment
 
 
+FAILED_STEP_CONCLUSIONS = frozenset({"failure", "timed_out", "cancelled"})
+
+
 def failed_steps(repo: str, run_id: int) -> list[str]:
     listing = get_json(f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100")
     return [
         str(step["name"])
         for job in listing.get("jobs", [])
         for step in job.get("steps", [])
-        if step.get("conclusion") == "failure"
+        if step.get("conclusion") in FAILED_STEP_CONCLUSIONS
     ]
+
+
+def commit_statuses(repo: str, sha: str) -> list[dict[str, Any]]:
+    combined = get_json(f"repos/{repo}/commits/{sha}/status")
+    statuses = combined.get("statuses", [])
+    return [status for status in statuses if isinstance(status, dict)]
+
+
+def post_status(repo: str, head_sha: str, payload: Mapping[str, Any], token: str) -> None:
+    env = dict(os.environ)
+    env["GH_TOKEN"] = token
+    result = subprocess.run(
+        [
+            "gh",
+            "api",
+            "--method",
+            "POST",
+            f"repos/{repo}/statuses/{head_sha}",
+            "-f",
+            f"state={payload['state']}",
+            "-f",
+            f"context={payload['context']}",
+            "-f",
+            f"description={payload['description']}",
+            "-f",
+            f"target_url={payload['target_url']}",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    if result.returncode != 0:
+        raise GitHubError(f"could not post a status on {head_sha}: {result.stderr.strip()[:500]}")
 
 
 def backoff_reset_at(repo: str, pr: int, head_sha: str) -> datetime | None:

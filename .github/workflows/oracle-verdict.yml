@@ -30,10 +30,13 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: oracle
     permissions:
       actions: write
       contents: read
       pull-requests: read
+    env:
+      HAS_APP: ${{ secrets.ORACLE_APP_ID != '' }}
     steps:
       - name: Check out the trusted develop copy
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -52,9 +55,19 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
+      - name: Mint the App token for failure statuses
+        id: app
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ secrets.ORACLE_APP_ID }}
+          private-key: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
+          permission-statuses: write
+
       - name: Dispatch due retries
         env:
           GH_TOKEN: ${{ github.token }}
+          SURFACE_TOKEN: ${{ steps.app.outputs.token }}
         run: uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli sweep --policy .github/oracle-reviewers.yml
 
   review:
@@ -189,8 +202,7 @@ jobs:
           --workspace "$GITHUB_WORKSPACE/workspace" --home-root "$RUNNER_TEMP"
 
       - name: Scan the disk for secret values after the reviewer exits
-        id: scan_after
-        if: ${{ steps.plan.outputs.decision == 'review' && !cancelled() && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') }}
+        if: steps.plan.outputs.decision == 'review'
         working-directory: trusted
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
@@ -210,7 +222,7 @@ jobs:
 
       - name: Redact every secret value held by the job from the results
         id: redact
-        if: ${{ steps.plan.outputs.post == 'true' && !cancelled() && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') }}
+        if: steps.plan.outputs.post == 'true'
         working-directory: trusted
         env:
           OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
@@ -323,34 +335,6 @@ jobs:
           path: ${{ runner.temp }}/oracle-attempts/attempt-5.json
           if-no-files-found: error
           retention-days: 7
-
-      - name: Decide whether a failed run is surfaced
-        id: surface
-        if: ${{ failure() && steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true' && steps.status.outcome != 'success' && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') }}
-        working-directory: trusted
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ steps.plan.outputs.pr }}
-          HEAD_SHA: ${{ steps.plan.outputs.head_sha }}
-        run: >-
-          uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli
-          surface-failure --policy .github/oracle-reviewers.yml --pr "$PR_NUMBER" --head-sha "$HEAD_SHA" --out "$RUNNER_TEMP/oracle-failure/status.json"
-
-      - name: Mint the App token for the failure status
-        id: failure_app
-        if: ${{ failure() && steps.surface.outputs.post == 'true' && (steps.loop.outcome != 'failure' || steps.loop.outputs.leaked == 'false') && steps.scan_after.outcome == 'success' && steps.redact.outcome == 'success' }}
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
-        with:
-          app-id: ${{ secrets.ORACLE_APP_ID }}
-          private-key: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
-          permission-statuses: write
-
-      - name: Post the failure status
-        if: ${{ failure() && steps.surface.outputs.post == 'true' && steps.failure_app.outcome == 'success' }}
-        env:
-          GH_TOKEN: ${{ steps.failure_app.outputs.token }}
-          HEAD_SHA: ${{ steps.plan.outputs.head_sha }}
-        run: gh api --method POST "repos/$REPO/statuses/$HEAD_SHA" --input "$RUNNER_TEMP/oracle-failure/status.json"
 
       - name: Dispatch the gate for the reviewed head
         if: steps.plan.outputs.post == 'true' && env.HAS_APP == 'true' && steps.guard.outputs.skip != 'true'

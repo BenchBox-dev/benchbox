@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -594,21 +595,54 @@ def test_tree_blobs_is_none_when_the_tree_cannot_be_read(monkeypatch: pytest.Mon
     assert github.get_file(REPO, "missing.py", "abc") is None
 
 
-def test_failed_steps_names_every_step_that_failed(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_failed_steps_names_every_step_that_failed_timed_out_or_was_cancelled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     listing = {
         "jobs": [
             {
                 "steps": [
                     {"name": "Plan the review", "conclusion": "success"},
                     {"name": "Verify Linux process isolation", "conclusion": "failure"},
-                    {"name": "Run the attempt loop", "conclusion": "skipped"},
+                    {"name": "Run the attempt loop", "conclusion": "timed_out"},
+                    {"name": "Late checkout", "conclusion": "cancelled"},
+                    {"name": "Skipped post", "conclusion": "skipped"},
                     {"name": "Surface", "conclusion": None},
                 ]
             }
         ]
     }
     monkeypatch.setattr(github, "get_json", lambda path: listing)
-    assert github.failed_steps(REPO, 5) == ["Verify Linux process isolation"]
+    assert github.failed_steps(REPO, 5) == [
+        "Verify Linux process isolation",
+        "Run the attempt loop",
+        "Late checkout",
+    ]
+
+
+def test_commit_statuses_lists_the_combined_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    combined = {"statuses": [{"context": "oracle-verdict", "state": "pending"}, "not-a-status", {"context": "ci"}]}
+    seen: list[str] = []
+    monkeypatch.setattr(github, "get_json", lambda path: (seen.append(path), combined)[1])
+    assert github.commit_statuses(REPO, SHA) == [{"context": "oracle-verdict", "state": "pending"}, {"context": "ci"}]
+    assert seen == [f"repos/{REPO}/commits/{SHA}/status"]
+
+
+def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[list[str], dict[str, str]]] = []
+    environment = dict(os.environ)
+
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append((argv, kwargs["env"]))
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(github.subprocess, "run", fake_run)
+    payload = {"state": "pending", "context": "oracle-verdict", "description": "d", "target_url": "u"}
+    github.post_status(REPO, SHA, payload, "app-token")
+    assert len(calls) == 1
+    argv, env = calls[0]
+    assert argv[:4] == ["gh", "api", "--method", "POST"] and f"repos/{REPO}/statuses/{SHA}" in argv
+    assert env["GH_TOKEN"] == "app-token" and environment.get("GH_TOKEN") != "app-token"
 
 
 def test_committed_at_reads_the_committer_date(monkeypatch: pytest.MonkeyPatch) -> None:

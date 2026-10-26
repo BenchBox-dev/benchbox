@@ -69,8 +69,9 @@ refuses an empty URL or one that is not `https://`.
 
 Reviews reach the gateway only while the Mac is awake and online; otherwise
 attempts are absent and the next sweep retries (see the triggers below). A run that
-fails without posting a result is re-dispatched once by the sweep; a second such failure on the same
-head posts a pending `oracle-verdict` status that names the failed step.
+fails without posting a result is re-dispatched once by the sweep; when two runs on the same
+head have failed without a result, the sweep posts a pending `oracle-verdict`
+status that names the failed step.
 
 **Accepted risk.** The reviewer is not confined to files. It can read any file
 the runner user can read, and it can read its own client token, for example
@@ -192,9 +193,7 @@ Steps, in order:
 9. Disk scan again (C4), finalize, then the redaction check (C5).
 10. Mint the App token, run the guard and post the status, comment and
     review, upload the retry state (only when the status was posted) and the
-    attempt artifacts, and dispatch `oracle-gate`. A run that fails before
-    posting decides, after the loop, whether this is the second failure on the
-    head and posts the status that names the failed step.
+    attempt artifacts, and dispatch `oracle-gate`.
 
 The reviewer is an untrusted model inside a trusted harness with read-only
 tools. It can read what the runner user can read while it runs and can leak it
@@ -222,7 +221,7 @@ permanent, not a one-time inspection:
 | C7 token scope | The job's permissions are exactly `actions: write`, `contents: read`, `pull-requests: read` and `id-token: write`. `github.token` appears only in the `env:` of steps that run before or after the loop step, and both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus a setup allowance, under 360; the harness timeout still fires first and becomes an absence. A workflow test recomputes the number from the policy. |
 | C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs queue behind a run in flight. Every posting step has the default success condition, so a cancelled run posts nothing. |
-| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by two steps, both after the loop: the posting mint, and the failure-status mint, which runs only when the loop confirmed the reviewer's processes exited and the second disk scan and the redaction check both succeeded. |
+| C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, which runs after the loop, the second disk scan and the redaction check, and by the sweep job's failure-status mint. The sweep job never runs a reviewer, so its mint cannot leak to one. |
 
 The OIDC request token is in the loop step's environment, as the gateway token
 is, and is accepted on the same terms: GitHub documents it as valid only while
@@ -638,9 +637,12 @@ cancels a run in flight and a cancelled run posts nothing.
   a head whose latest run failed, timed out or was cancelled without leaving a
   retry state. That happens once: when the two latest runs on the head both
   failed without a result (runs that never reviewed the head, such as a
-  skipped run from a plain comment, are ignored), the sweep stops and the failed run posts a pending
-  `oracle-verdict` status naming the failed step. A failure inside one pull
-  request's lookup or dispatch is reported and the sweep continues with the
+  skipped run from a plain comment, are ignored), the sweep stops dispatching
+  and posts a pending `oracle-verdict` status naming the failed step, using an
+  App token minted in the reviewer-free sweep job. A status that is already
+  pending on the head is left in place, and a sweep without the App configured
+  reports the gap instead of failing. A failure inside one pull
+  request's lookup, dispatch or surfacing is reported and the sweep continues with the
   others, then fails the job. The daily budget, backoff and attempt limits are
   unchanged.
 - `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the

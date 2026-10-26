@@ -933,11 +933,51 @@ def command_guard(args: argparse.Namespace) -> int:
 
 
 STATELESS_FAILURE = "its last run failed without a result"
-FAILURE_DESCRIPTION_LIMIT = 140
+
+
+def _surface_twice_failed(
+    *,
+    repo: str,
+    number: int,
+    head: str,
+    runs: tuple[sweep.Run, ...],
+    status_context: str,
+    token: str | None,
+) -> None:
+    latest = next(run for run in runs if run.status == sweep.COMPLETED and run.conclusion not in sweep.NEUTRAL)
+    description = sweep.surface_description(github.failed_steps(repo, latest.id))
+    surfaced = [
+        status
+        for status in github.commit_statuses(repo, head)
+        if status.get("context") == status_context and status.get("state") == "pending"
+    ]
+    if surfaced:
+        _summary(f"retry not dispatched for #{number}: two runs on the current head failed without a result")
+        return
+    if token is None:
+        _summary(
+            f"retry not dispatched for #{number}: two runs on the current head failed without a result, "
+            "and the App is not configured to surface it"
+        )
+        return
+    run_url = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{repo}/actions/runs/{latest.id}"
+    github.post_status(
+        repo,
+        head,
+        {"state": "pending", "context": status_context, "description": description, "target_url": run_url},
+        token,
+    )
+    _summary(f"oracle-verdict #{number} {head}: {description}")
 
 
 def _retry_reason(
-    repo: str, pull: Mapping[str, Any], runs: tuple[sweep.Run, ...], rules: RetryRules, now: datetime
+    repo: str,
+    pull: Mapping[str, Any],
+    runs: tuple[sweep.Run, ...],
+    rules: RetryRules,
+    now: datetime,
+    status_context: str,
+    token: str | None,
 ) -> str | None:
     number = pull["number"]
     head = pull["head"]["sha"]
@@ -959,11 +999,14 @@ def _retry_reason(
         return None
     if not sweep.newest_failed(runs):
         return None
-    failures = sweep.stateless_failures(runs, github.committed_at(repo, head))
+    committed = github.committed_at(repo, head)
+    failures = sweep.stateless_failures(runs, committed)
     if failures == 0:
         return None
     if failures > 1:
-        _summary(f"retry not dispatched for #{number}: two runs on the current head failed without a result")
+        _surface_twice_failed(
+            repo=repo, number=number, head=head, runs=runs, status_context=status_context, token=token
+        )
         return None
     if sweep.recent_dispatches(runs, now) >= rules.daily_budget:
         _summary(f"retry not dispatched for #{number}: the daily budget of {rules.daily_budget} is used")
@@ -975,6 +1018,7 @@ def command_sweep(args: argparse.Namespace) -> int:
     policy = load_policy(Path(args.policy))
     repo = os.environ["GITHUB_REPOSITORY"]
     now = _now()
+    token = os.environ.get("SURFACE_TOKEN") or None
     runs = sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.RUN_WINDOW))
     busy = sweep.in_flight(runs, now)
     dispatched = 0
@@ -986,7 +1030,7 @@ def command_sweep(args: argparse.Namespace) -> int:
             continue
         number = pull["number"]
         try:
-            reason = _retry_reason(repo, pull, runs.get(number, ()), policy.retry, now)
+            reason = _retry_reason(repo, pull, runs.get(number, ()), policy.retry, now, policy.status_context, token)
             if reason is None:
                 continue
             if number in busy:
@@ -1003,35 +1047,6 @@ def command_sweep(args: argparse.Namespace) -> int:
     if errors:
         print(f"oracle-verdict: error: the sweep could not handle {len(errors)} pull request(s)", file=sys.stderr)
         return 1
-    return 0
-
-
-def command_surface_failure(args: argparse.Namespace) -> int:
-    policy = load_policy(Path(args.policy))
-    repo = os.environ["GITHUB_REPOSITORY"]
-    run_id = int(os.environ["GITHUB_RUN_ID"])
-    pr = _pr_number(args.pr)
-    if not re.fullmatch(r"[0-9a-f]{40}", args.head_sha or ""):
-        raise SystemExit("oracle-verdict: invalid head commit")
-    now = _now()
-    runs = sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.RUN_WINDOW)).get(pr, ())
-    earlier = sweep.stateless_failures(runs, github.committed_at(repo, args.head_sha), exclude=run_id)
-    if earlier == 0:
-        _output({"post": "false"})
-        _summary(f"oracle-verdict #{pr}: this run failed without a result; the sweep re-dispatches it once")
-        return 0
-    steps = github.failed_steps(repo, run_id)
-    named = "; ".join(steps) if steps else "an earlier step"
-    description = f"oracle-verdict failed twice without a result at: {named}. Rerun with /oracle-review or push a fix"
-    if len(description) > FAILURE_DESCRIPTION_LIMIT:
-        description = description[: FAILURE_DESCRIPTION_LIMIT - 1] + "…"
-    run_url = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{repo}/actions/runs/{run_id}"
-    _write_json(
-        Path(args.out),
-        {"state": retry.PENDING, "context": policy.status_context, "description": description, "target_url": run_url},
-    )
-    _output({"post": "true"})
-    _summary(f"oracle-verdict #{pr} {args.head_sha}: {description}")
     return 0
 
 
@@ -1140,7 +1155,6 @@ def command_attempts(args: argparse.Namespace) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     classification = _read_classification(Path(args.classification))
     ran = 0
-    leaked = False
     adopting = processes.become_subreaper()
     try:
         if processes.IS_LINUX and not adopting:
@@ -1157,11 +1171,10 @@ def command_attempts(args: argparse.Namespace) -> int:
                 break
             ran = slot
             if _run_slot(args, plan, slot, chosen):
-                leaked = True
                 return 1
     finally:
         processes.release_subreaper()
-        _output({"attempts": str(ran), "leaked": "true" if leaked else "false"})
+        _output({"attempts": str(ran)})
     return 0
 
 
@@ -1321,12 +1334,6 @@ def _parser() -> argparse.ArgumentParser:
     sweeper = commands.add_parser("sweep")
     sweeper.add_argument("--policy", required=True)
     sweeper.set_defaults(handler=command_sweep)
-    surface = commands.add_parser("surface-failure")
-    surface.add_argument("--policy", required=True)
-    surface.add_argument("--pr", required=True)
-    surface.add_argument("--head-sha", required=True)
-    surface.add_argument("--out", required=True)
-    surface.set_defaults(handler=command_surface_failure)
     reset_backoff = commands.add_parser("reset-backoff")
     reset_backoff.add_argument("--pr", required=True)
     reset_backoff.add_argument("--head", required=True)

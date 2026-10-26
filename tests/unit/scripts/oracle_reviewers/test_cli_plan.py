@@ -99,6 +99,9 @@ class FakeGitHub:
         self.committed = datetime.now(UTC) - timedelta(days=1)
         self.comments: list[dict[str, Any]] = []
         self.failing_prs: set[int] = set()
+        self.failed: dict[int, list[str]] = {}
+        self.statuses: list[dict[str, Any]] = []
+        self.posted: list[tuple[int, dict[str, Any]]] = []
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(github, "get_json", self._json)
@@ -109,9 +112,15 @@ class FakeGitHub:
         monkeypatch.setattr(github, "dispatch", self._dispatch)
         monkeypatch.setattr(github, "verdict_runs", lambda repo, workflow, since: list(self.runs))
         monkeypatch.setattr(github, "committed_at", lambda repo, sha: self.committed)
+        monkeypatch.setattr(github, "failed_steps", lambda repo, run_id: list(self.failed.get(run_id, [])))
+        monkeypatch.setattr(github, "commit_statuses", lambda repo, sha: list(self.statuses))
+        monkeypatch.setattr(github, "post_status", self._post)
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
         monkeypatch.setattr(github, "merge_base", lambda repo, base, head: self.merge_base)
         monkeypatch.setattr(github, "tree_blobs", self._tree)
+
+    def _post(self, repo: str, head_sha: str, payload: dict[str, Any], token: str) -> None:
+        self.posted.append((len(self.posted), {"head_sha": head_sha, **payload, "token": token}))
 
     def _dispatch(self, repo: str, workflow: str, pr: int) -> None:
         if pr in self.failing_prs:
@@ -599,55 +608,98 @@ def test_a_state_that_cannot_be_read_isolates_to_its_pull_request(
     assert fake.dispatched == [22]
 
 
-def _surface(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake: FakeGitHub, steps: list[str]
-) -> tuple[int, dict[str, Any] | None, str]:
+def _surfaced_sweep(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake: FakeGitHub, token: str | None = "surface-token"
+) -> int:
     fake.install(monkeypatch)
-    monkeypatch.setattr(github, "failed_steps", lambda repo, run_id: steps)
-    output = _env(monkeypatch, tmp_path, "pull_request_target", {}, "refs/heads/develop")
-    out = tmp_path / "failure" / "status.json"
-    code = cli.main(
-        ["surface-failure", "--policy", str(POLICY_PATH), "--pr", "7", "--head-sha", HEAD, "--out", str(out)]
-    )
-    status = json.loads(out.read_text(encoding="utf-8")) if out.exists() else None
-    return code, status, output.read_text(encoding="utf-8")
+    if token is None:
+        monkeypatch.delenv("SURFACE_TOKEN", raising=False)
+    else:
+        monkeypatch.setenv("SURFACE_TOKEN", token)
+    _env(monkeypatch, tmp_path, "schedule", {}, "refs/heads/develop")
+    return cli.main(["sweep", "--policy", str(POLICY_PATH)])
 
 
-def test_a_first_failure_without_a_result_posts_no_status(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    fake = _stateless_fake(_verdict_run(7, status="in_progress", conclusion=None, event="pull_request_target"))
-    code, status, output = _surface(monkeypatch, tmp_path, fake, ["Run the attempt loop"])
-    assert code == 0 and status is None
-    assert "post=false" in output
+def test_a_timeout_run_counts_as_a_failure_without_a_result(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    first = _verdict_run(7, conclusion="timed_out", event="pull_request_target", age=timedelta(hours=2))
+    second = _verdict_run(7, conclusion="timed_out", event="workflow_dispatch", age=timedelta(hours=1))
+    fake = _stateless_fake(second, first)
+    fake.failed = {second["id"]: ["Run the attempt loop"]}
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    posted = fake.posted[0][1]
+    assert posted["head_sha"] == HEAD and posted["state"] == "pending" and posted["context"] == "oracle-verdict"
+    assert "Run the attempt loop" in posted["description"]
+    assert len(posted["description"]) <= 140
+    assert posted["target_url"].endswith(f"/actions/runs/{second['id']}")
+    assert posted["token"] == "surface-token"
 
 
-def test_a_second_failure_without_a_result_posts_a_status_naming_the_failed_step(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Verify Linux process isolation",
+        "Scan the disk for secret values after the reviewer exits",
+        "Redact every secret value held by the job from the results",
+    ],
+)
+def test_an_isolation_scan_or_redaction_failure_is_surfaced_by_the_sweep(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, step: str
 ) -> None:
-    earlier = _verdict_run(7, conclusion="failure", event="pull_request_target", age=timedelta(hours=2))
-    fake = _stateless_fake(_verdict_run(99, status="in_progress", conclusion=None), earlier)
-    steps = ["Scan the disk for secret values after the reviewer exits"]
-    code, status, output = _surface(monkeypatch, tmp_path, fake, steps)
-    assert code == 0 and "post=true" in output
-    assert status is not None
-    assert status["state"] == "pending" and status["context"] == "oracle-verdict"
-    assert "Scan the disk for secret values after the reviewer exits" in status["description"]
-    assert len(status["description"]) <= 140
-    assert status["target_url"].endswith("/actions/runs/99")
-
-
-def test_a_failure_after_a_finished_run_is_a_first_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    finished = _verdict_run(7, conclusion="success", age=timedelta(hours=1))
-    older = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
-    code, status, _ = _surface(monkeypatch, tmp_path, _stateless_fake(finished, older), ["Plan the review"])
-    assert code == 0 and status is None
+    first = _verdict_run(7, conclusion="failure", event="pull_request_target", age=timedelta(hours=3))
+    second = _verdict_run(7, conclusion="failure", event="workflow_dispatch", age=timedelta(hours=2))
+    fake = _stateless_fake(second, first)
+    fake.failed = {second["id"]: [step]}
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    assert step in fake.posted[0][1]["description"]
 
 
 def test_a_second_failure_with_no_step_listed_still_posts_a_status(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    fake = _stateless_fake(_verdict_run(7, conclusion="failure"))
-    _, status, _ = _surface(monkeypatch, tmp_path, fake, [])
-    assert status is not None and "an earlier step" in status["description"]
+    fake = _stateless_fake(
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+    )
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
+    assert len(fake.posted) == 1
+    assert "an earlier step" in fake.posted[0][1]["description"]
+
+
+def test_a_pending_status_that_is_already_surfaced_is_not_reposted(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _stateless_fake(
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+    )
+    fake.statuses = [{"context": "oracle-verdict", "state": "pending", "description": "older"}]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
+
+
+def test_a_second_failure_without_an_app_token_is_reported_but_not_an_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fake = _stateless_fake(
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=1)),
+        _verdict_run(7, conclusion="failure", age=timedelta(hours=2)),
+    )
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake, token=None) == 0
+    assert fake.dispatched == [] and fake.posted == []
+    assert "not configured to surface it" in capsys.readouterr().out
+
+
+def test_a_failure_after_a_finished_run_is_a_first_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    finished = _verdict_run(7, conclusion="success", age=timedelta(hours=1))
+    older = _verdict_run(7, conclusion="failure", age=timedelta(hours=2))
+    fake = _stateless_fake(finished, older)
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []
 
 
 def test_a_skipped_review_run_neither_dispatches_nor_hides_a_failure(
