@@ -4,6 +4,7 @@
     "OBT Q58 on PostgreSQL either completes within the gate timeout or carries a reasoned optional entry.",
     "Fork tests in CI; gate allowlist entries removed; sql-execution-gate PASS."
   ],
+  "context": "DONE: OBT applies the PostgreSQL inline_order_by_aliases and round_inputs_to_decimal rewrites to Q36/Q70/Q86 and Q2/Q78 (fork engine tests on PostgreSQL); allowlist entries removed; OBT gate PASS 0 unexplained. Q58 keeps an optional timeout entry: no translation cause (planner estimates 1 row vs 27,608 on the denormalized self-join, nested-loop semi join; enable_nestloop=off finishes in 0.2 s). #3524 (1326cae28). GitHub #3515.",
   "description": "Found by extending sql-execution-gate to TPC-DS OBT. On PostgreSQL, OBT Q36, Q70 and Q86 fail with `column \"lochierarchy\" does not exist` (an output alias used inside an ORDER BY expression, which PostgreSQL does not resolve), and OBT Q2 and Q78 fail with `function round(double precision, integer) does not exist` because OBT columns are DOUBLE. Check how base TPC-DS Q36/Q70/Q86 and Q2/Q78 pass on PostgreSQL (the fork's postgres-round-inputs rewrite, alias handling) and make the OBT translation equivalent. OBT Q58 times out on PostgreSQL: diagnose (statistics, plan) and fix or record as an optional timeout with reason. GUARDRAILS: fix in the SQLGlot fork with real-engine tests (fork CI) and adopt via a wheel cut under the batch wheel mutex; benchmark text unchanged; when fixed, remove the matching sql-execution-gate allowlist entry (the gate fails on stale entries); list affected published bundles and flag only if recorded rows were wrong; no cloud spend.",
   "sessions": [
     {
@@ -21,6 +22,14 @@
       "generation": "35415550bb7c4d8498398856d0ab8615",
       "op": "take",
       "op_id": "8379fdc37db04c0a9f209e04f49e6222",
+      "session_id": "346ab30aded748589ff1183f3938406d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe",
+      "at": "2026-10-26T03:34:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3d760071e05f4b248a7ebbab1ee301d5",
       "session_id": "346ab30aded748589ff1183f3938406d"
     }
   ]
