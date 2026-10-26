@@ -27152,15 +27152,10 @@
       "title": "Keep per-test timing and runner load for failed Trunk shards so one-off timeouts can be classified"
     },
     "trunk-fix-forward-admission-20261025": {
-      "claim": {
-        "expires_at": "2026-10-27T00:15:33Z",
-        "generation": "d36f23e26f934d35bf4c491b5fc87fe4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Let an owner-authorized fix-forward PR be armed while Trunk is red, without a revert"
     },
     "trunk-lane-changes-run-before-merge-20261025": {
