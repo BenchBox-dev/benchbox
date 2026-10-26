@@ -65,4 +65,4 @@ environment variable instead of hiding a replacement keyring token behind it.
 ## Related
 
 - [submit](submit.md) - Upload or package benchmark results
-- [results](results.md#cli-results) - Show hosted submission history
+- [results](results.md#results) - Show hosted submission history
