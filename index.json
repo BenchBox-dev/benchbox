@@ -15997,7 +15997,9 @@
     },
     "oracle-checker-drop-legacy-first-line-20261023": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-gate-reject-edited-reviews-20261026"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Stop accepting the old `### oracle-review-shadow:` first line in the required oracle check"

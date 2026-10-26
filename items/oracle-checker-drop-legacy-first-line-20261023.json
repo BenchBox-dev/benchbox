@@ -7,7 +7,7 @@
     "oracle-review-v2.md no longer says the check reads the old line",
     "Merged through the normal PR flow with an oracle success review of the merged head"
   ],
-  "context": "Filed when the oracle-verdict rename merged (#2843). not_before is 14 days after that merge.\n\n2026-10-09 tracker review: the scope now owns all the rename leftovers listed in the description. Open PRs with a legacy first line on 2026-10-09: #2829, #2822, #2821, #2817. The not_before date is kept.",
+  "context": "2026-10-26: oracle-gate-reject-edited-reviews-20261026 removes shadow-header acceptance in the gate; finish when it merges, with its evidence.\n\nFiled when the oracle-verdict rename merged (#2843). not_before is 14 days after that merge.\n\n2026-10-09 tracker review: the scope now owns all the rename leftovers listed in the description. Open PRs with a legacy first line on 2026-10-09: #2829, #2822, #2821, #2817. The not_before date is kept.",
   "description": "Since #2843 (merged 2026-10-09 20:16 UTC) the oracle posts reviews that open with `### oracle-verdict: <state> for <sha>`. The required checker `_project/scripts/oracle_review_check.py` also accepts the old line through `LEGACY_ORACLE_CONTEXT`, so an open pull request whose latest oracle review predates the rename keeps its result.\n\nRemoval condition. Remove the old line from the checker only when no open pull request's latest `benchbox-oracle[bot]` review opens with `### oracle-review-shadow:`. Check it with the GitHub API over every open PR to develop (each PR's reviews, latest by submitted_at). If any still do, re-run the oracle on those PRs (a `/oracle-review` comment or a new push) or wait, and re-check. On 2026-10-09 the open PRs with a legacy first line are #2829, #2822, #2821 and #2817.\n\nRequired change. Drop `LEGACY_ORACLE_CONTEXT` from `_ORACLE_VERDICT` in the checker and update test_oracle_review_check.py: the legacy case must now fail. Update docs/operations/oracle-review-v2.md (Decisions and Cut-over) to stop saying the check reads the old line.\n\nRename leftovers, in scope under the same \"no open PR depends on it\" guardrail:\n- .github/oracle-reviewers.yml:116: the `gate_paths` entry for the deleted workflow `.github/workflows/oracle-review-shadow.yml`;\n- _project/scripts/oracle_reviewers/github.py:113 `LEGACY_WORKFLOW_PATH` and :16 `LEGACY_STATE_ARTIFACT_PREFIX` (used by `STATE_SOURCES` at :114 for the retry-state fallback);\n- docs/operations/oracle-review-v2.md:187, 257-258 and 294, which describe the old first line and the old state artifacts.\n\nGuardrails.\n- The soundness merge digest keeps accepting both lines permanently (`ORACLE_VERDICT_LINE` in soundness_merge_digest.py): it reads merged history. Do not touch it.\n- The retry-state fallback to `oracle-review-shadow-state-<n>` artifacts in github.py may be removed in the same change only if no open PR still depends on it (its newest state is under the new prefix); otherwise leave it.\n- Never weaken the required check otherwise; very-high tier; normal oracle PR flow.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/2843",
@@ -32,6 +32,14 @@
       "op": "update",
       "op_id": "683cb634b53747259ee8af8c71fa22dd",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-26T15:02:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a275bb57edb2414081f1b3f95eec5857",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
 }
