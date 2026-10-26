@@ -611,7 +611,10 @@ cancels a run in flight, which then posts nothing.
   the reviewer-free sweep job. An existing pending status is left alone; without
   the App the sweep reports the gap instead of failing. A failure in one PR's
   lookup, dispatch or surfacing is reported, the others continue, then the job
-  fails. Daily budget, backoff and attempt limits are unchanged.
+  fails. If the week-long runs listing fails twice, the sweep degrades instead of
+  failing: it dispatches only due retries, using a bounded queued/in-progress
+  lookup for the in-flight check, and says so in the summary. Daily budget,
+  backoff and attempt limits are unchanged.
 - `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the
   owner clear one PR head's backoff and retry window once. It needs a prior
   `Owner instruction` comment from an attester naming the head, as for a

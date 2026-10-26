@@ -108,6 +108,9 @@ class FakeGitHub:
         self.edit_states: dict[str, tuple[Any, bool]] | Exception | None = None
         self.derive_verdict_statuses = True
         self.posted: list[tuple[int, dict[str, Any]]] = []
+        self.runs_error: Exception | None = None
+        self.busy_fallback: set[int] = set()
+        self.fallback_error: Exception | None = None
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(github, "get_json", self._json)
@@ -116,7 +119,8 @@ class FakeGitHub:
         monkeypatch.setattr(github, "review_threads", self._threads)
         monkeypatch.setattr(github, "latest_state", lambda repo, pr: self.state)
         monkeypatch.setattr(github, "dispatch", self._dispatch)
-        monkeypatch.setattr(github, "verdict_runs", lambda repo, workflow, since: list(self.runs))
+        monkeypatch.setattr(github, "verdict_runs", self._verdict_runs)
+        monkeypatch.setattr(github, "in_flight_pulls", self._in_flight)
         monkeypatch.setattr(github, "committed_at", lambda repo, sha: self.committed)
         monkeypatch.setattr(github, "failed_steps", lambda repo, run_id: list(self.failed.get(run_id, [])))
         monkeypatch.setattr(github, "commit_statuses", self._statuses)
@@ -128,6 +132,16 @@ class FakeGitHub:
 
     def _post(self, repo: str, head_sha: str, payload: dict[str, Any], token: str) -> None:
         self.posted.append((len(self.posted), {"head_sha": head_sha, **payload, "token": token}))
+
+    def _verdict_runs(self, repo: str, workflow: str, since: object) -> list[dict[str, Any]]:
+        if self.runs_error is not None:
+            raise self.runs_error
+        return list(self.runs)
+
+    def _in_flight(self, repo: str, workflow: str) -> frozenset[int]:
+        if self.fallback_error is not None:
+            raise self.fallback_error
+        return frozenset(self.busy_fallback)
 
     def _dispatch(self, repo: str, workflow: str, pr: int, reason: str | None = None) -> None:
         if pr in self.failing_prs:
@@ -1065,6 +1079,52 @@ def test_reset_spent_counts_only_runs_that_could_have_used_the_reset() -> None:
     assert not sweep.reset_spent(_parsed(after), reset_at, exclude=after["id"])
     in_flight = _verdict_run(7, status="in_progress", conclusion=None, age=timedelta(minutes=10))
     assert sweep.reset_spent(_parsed(in_flight), reset_at)
+
+
+def _degraded(fake: FakeGitHub) -> FakeGitHub:
+    fake.runs_error = github.GitHubError("gh api failed: Bad Gateway")
+    return fake
+
+
+def test_sweep_degrades_to_due_only_when_the_runs_listing_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pulls = [_pull(number=number) for number in (31, 32)]
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.runs = [_verdict_run(pull["number"], conclusion="failure") for pull in pulls]
+    fake._paginated = lambda path: pulls if path.startswith(f"repos/{REPO}/pulls?") else []
+    fake.install(monkeypatch)
+
+    def latest(repo: str, pr: int) -> State | None:
+        if pr == 31:
+            return State(31, HEAD, "pending", datetime.now(UTC) - timedelta(hours=2), pending_cause="all-absent")
+        return None
+
+    monkeypatch.setattr(github, "latest_state", latest)
+    _degraded(fake)
+    _env(monkeypatch, tmp_path, "schedule", {}, "refs/heads/develop")
+    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
+    assert fake.dispatched == [31] and fake.posted == []
+    assert "skips stateless retries" in capsys.readouterr().out
+
+
+def test_sweep_dispatches_due_retries_when_the_fallback_lookup_also_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.fallback_error = github.GitHubError("gh api failed: Bad Gateway")
+    _degraded(fake)
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7]
+    assert "fallback in-flight lookup also failed" in capsys.readouterr().out
+
+
+def test_sweep_uses_the_fallback_busy_set_in_degraded_mode(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.busy_fallback = {7}
+    _degraded(fake)
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []
 
 
 def _reset_comments(head: str = HEAD, *, edited: bool = False) -> list[dict[str, Any]]:
