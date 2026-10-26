@@ -385,6 +385,7 @@ jobs:
 
   comment-policy-scan:
     name: comment-policy-scan
+    if: ${{ !inputs.medium-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -129,7 +129,8 @@ def test_medium_tier_keeps_duration_sharding_without_a_coverage_map_job() -> Non
 def test_whole_tree_comment_policy_scan_runs_as_its_own_job_after_each_push() -> None:
     job = _workflow()["jobs"]["comment-policy-scan"]
     assert job["runs-on"] == "ubuntu-latest"
-    assert "needs" not in job and "if" not in job and "strategy" not in job and "permissions" not in job
+    assert job["if"] == "${{ !inputs.medium-only }}"
+    assert "needs" not in job and "strategy" not in job and "permissions" not in job
     assert not job.get("continue-on-error")
     assert not any(step.get("continue-on-error") for step in job["steps"])
     checkout = next(step for step in job["steps"] if step.get("uses", "").startswith("actions/checkout@"))
