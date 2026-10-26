@@ -1148,7 +1148,8 @@ def test_sql_execution_gate_obt_runs_the_obt_gate_against_ghcr_postgres() -> Non
     }
     assert job["permissions"]["packages"] == "read"
     assert "--benchmarks tpcds_obt" in _run_text(job)
-    assert "BENCHBOX_POSTGRES_DSN" in _run_text(job)
+    gate_step = next(step for step in job["steps"] if "--benchmarks tpcds_obt" in str(step.get("run", "")))
+    assert gate_step["env"]["BENCHBOX_POSTGRES_DSN"].startswith("postgresql://benchbox:benchbox@")
 
 
 QUESTDB_DIGEST = "sha256:67eaed863ebb2383227919ea9a5499a4a39ceca3862c20b974c84a10e11cdf89"
