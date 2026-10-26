@@ -23856,17 +23856,12 @@
       "title": "SQL Cross-Platform Benchmark Suite"
     },
     "sql-execution-gate-cover-tpchavoc-obt-20261025": {
-      "claim": {
-        "expires_at": "2026-10-27T03:33:49Z",
-        "generation": "ec9f995b4beb450fb6a839522f3e3fcf",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:58145b54d60e258267451afe"
-      },
+      "claim": null,
       "needs": [
         "sql-execution-gate-vacuous-empty-results-20261025"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Extend the SQL execution gate to TPC-Havoc (220 variants) and TPC-DS OBT (90 queries) on every gate engine"
     },
     "sql-execution-gate-vacuous-empty-results-20261025": {
