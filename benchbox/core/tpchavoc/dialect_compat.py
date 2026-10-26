@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import contextlib
+
 from benchbox.core.tpchavoc.cloud_compat import rewrite_cloud_variant
-from benchbox.utils.dialect_utils import resolve_sql_dialect, translate_sql_query
+from benchbox.utils.dialect_utils import UnknownSqlDialectError, resolve_sql_dialect, translate_sql_query
 
 POSTGRES_ALIAS_VARIANT_IDS = frozenset({"3_v7", "4_v7", "5_v7", "7_v7", "9_v7", "10_v7", "11_v7"})
 POSTGRES_QUALIFIED_COLUMNS: dict[str, dict[str, str]] = {
@@ -14,7 +16,9 @@ DATAFUSION_EMPTY_GROUP_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
 PRESTO_ALIAS_VARIANT_IDS = POSTGRES_ALIAS_VARIANT_IDS
 PRESTO_WINDOW_FILTER_VARIANT_IDS = frozenset({"2_v7"})
 LIST_AGGREGATE_VARIANT_IDS = frozenset({"1_v7"})
-LIST_AGGREGATE_DIALECTS = frozenset({"presto", "trino", "athena", "bigquery", "spark", "databricks", "sqlite"})
+LIST_AGGREGATE_DIALECTS = frozenset(
+    {"presto", "trino", "athena", "bigquery", "spark", "databricks", "sqlite", "postgres", "datafusion"}
+)
 LIST_AGGREGATE_ORDER = ("l_orderkey", "l_linenumber")
 SCALAR_GROUP_BY_VARIANT_IDS = frozenset({"1_v1", "3_v1", "7_v1", "8_v1", "9_v1", "10_v1", "12_v1", "16_v1"})
 GROUP_BY_EMPTY_VARIANT_IDS = frozenset({"6_v2", "14_v2"})
@@ -98,6 +102,8 @@ def list_aggregate_variant_rewrites(target_dialect: str) -> list[Rewrite]:
 
 def translate_list_aggregate_variant(query_id: str, duckdb_query: str, target_dialect: str) -> str | None:
     target = target_dialect.lower()
+    with contextlib.suppress(UnknownSqlDialectError):
+        target = resolve_sql_dialect(target)
     if query_id not in LIST_AGGREGATE_VARIANT_IDS or target not in LIST_AGGREGATE_DIALECTS:
         return None
     return translate_sql_query(

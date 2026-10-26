@@ -30,9 +30,11 @@ def test_benchmark_exposes_variant_helpers(tmp_path):
 def test_postgres_family_platform_skips_unsupported_variants(tmp_path):
     benchmark = TPCHavocBenchmark(output_dir=tmp_path)
 
-    assert set(benchmark.get_platform_skip_queries("pg-duckdb")) == set(POSTGRES_TPCHAVOC_SKIPS)
-    assert set(benchmark.get_platform_skip_queries("pg_duckdb")) == set(POSTGRES_TPCHAVOC_SKIPS)
-    assert set(benchmark.get_platform_skip_queries("pg-mooncake")) == set(POSTGRES_TPCHAVOC_SKIPS)
-    assert set(benchmark.get_platform_skip_queries("pg_mooncake")) == set(POSTGRES_TPCHAVOC_SKIPS)
+    duckdb_backed = set(POSTGRES_TPCHAVOC_SKIPS) | {"1_v7"}
+    assert set(benchmark.get_platform_skip_queries("pg-duckdb")) == duckdb_backed
+    assert set(benchmark.get_platform_skip_queries("pg_duckdb")) == duckdb_backed
+    assert set(benchmark.get_platform_skip_queries("pg-mooncake")) == duckdb_backed
+    assert set(benchmark.get_platform_skip_queries("pg_mooncake")) == duckdb_backed
     assert set(benchmark.get_platform_skip_queries("timescaledb")) == set(POSTGRES_TPCHAVOC_SKIPS)
+    assert "1_v7" not in benchmark.get_platform_skip_queries("postgresql")
     assert benchmark.get_platform_skip_queries("duckdb") == []
