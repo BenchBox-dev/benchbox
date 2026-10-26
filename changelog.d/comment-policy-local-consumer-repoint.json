@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "The local comment-policy pre-commit check now counts a notice entry whose only change is its consumer path, so a notice can be repointed without skipping hooks; CI behavior is unchanged and still needs the oracle verdict."
+}
