@@ -16,7 +16,6 @@ LIST_AGGREGATE_TPCHAVOC_PLATFORM_ALIASES = {
 }
 
 LIST_AGGREGATE_TPCHAVOC_SKIPS: dict[str, str] = {
-    "clickhouse": "The ClickHouse translation keeps DuckDB's `LIST` aggregate and `list_transform`/`list_zip` lambdas, which ClickHouse does not accept.",
     "databend": "No Databend form of the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses exists in the translator (the Snowflake-dialect translation leaves them in place).",
     "doris": "No Doris form of the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses exists in the translator.",
     "fabric-dw": "T-SQL has no array type, so the DuckDB `LIST` aggregate and `list_*` lambda functions this variant uses cannot be translated.",

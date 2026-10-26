@@ -307,7 +307,6 @@ TPCHAVOC_LIST_AGGREGATE_PLATFORM_ALIASES = {
 
 TPCHAVOC_LIST_AGGREGATE_SKIP_PLATFORMS = frozenset(
     {
-        "clickhouse",
         "databend",
         "doris",
         "fabric-dw",
@@ -332,10 +331,13 @@ def _tpchavoc_documented_skips(platform_name: Any) -> frozenset[str]:
         return TPCHAVOC_DOCUMENTED_SKIPS["postgres"] | {"1_v7"}
     if platform == "timescaledb":
         return TPCHAVOC_DOCUMENTED_SKIPS["postgres"]
+    documented = TPCHAVOC_DOCUMENTED_SKIPS.get(platform)
+    if documented is not None:
+        return documented
     platform = TPCHAVOC_LIST_AGGREGATE_PLATFORM_ALIASES.get(platform, platform)
     if platform in TPCHAVOC_LIST_AGGREGATE_SKIP_PLATFORMS:
         return frozenset({"1_v7"})
-    return TPCHAVOC_DOCUMENTED_SKIPS.get(platform, frozenset())
+    return frozenset()
 
 
 def _tpchavoc_variant_has_usable_timing(query: dict) -> bool:

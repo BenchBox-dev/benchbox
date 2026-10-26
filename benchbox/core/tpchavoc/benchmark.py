@@ -65,7 +65,7 @@ class TPCHavocBenchmark(TPCHBenchmark):
             return list(LAKESAIL_TPCHAVOC_SKIPS)
         if platform == "datafusion":
             return list(DATAFUSION_TPCHAVOC_SKIPS)
-        if platform in {"clickhouse-local", "clickhouse-server", "clickhouse-cloud"}:
+        if platform in {"clickhouse", "clickhouse-local", "clickhouse-server", "clickhouse-cloud"}:
             return list(CLICKHOUSE_TPCHAVOC_SKIPS)
         if platform in {"pg-duckdb", "pg-mooncake"}:
             return list({**POSTGRES_TPCHAVOC_SKIPS, **POSTGRES_DUCKDB_BACKED_TPCHAVOC_SKIPS})

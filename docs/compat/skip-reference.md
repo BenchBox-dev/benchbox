@@ -4,9 +4,9 @@
 
 Rules the registry applies to queries, benchmarks, and DDL statements. Split into two sections based on whether the outcome is user-visible in result counts. Each entry names the platform, the scope the rule applies to, the registered reason, and the rule_id you can grep for in `benchbox/sql_compat/rules/`.
 
-**Total rules:** 348
+**Total rules:** 347
 
-**Platforms with rules:** 30
+**Platforms with rules:** 29
 
 ## Will not run
 
@@ -24,12 +24,6 @@ Queries or benchmarks that are **omitted from the result set** - either because 
 | SKIPPED_QUERY | benchmark=transaction_primitives, query=transaction_isolation_serializable | execution_filter | BigQuery rejects SET TRANSACTION ISOLATION LEVEL. | `execution_filter.bigquery.transaction_primitives.transaction_isolation_serializable` |
 | SKIPPED_QUERY | benchmark=transaction_primitives, query=transaction_savepoint_deep_nesting | execution_filter | BigQuery has no SAVEPOINT statement. | `execution_filter.bigquery.transaction_primitives.transaction_savepoint_deep_nesting` |
 | SKIPPED_QUERY | benchmark=transaction_primitives, query=transaction_savepoint_nested | execution_filter | BigQuery has no SAVEPOINT statement. | `execution_filter.bigquery.transaction_primitives.transaction_savepoint_nested` |
-
-### clickhouse
-
-| support | scope | phase | reason | rule_id |
-|---|---|---|---|---|
-| SKIPPED_QUERY | benchmark=tpchavoc, query=1_v7 | execution_filter | The ClickHouse translation keeps DuckDB's `LIST` aggregate and `list_transform`/`list_zip` lambdas, which ClickHouse does not accept. | `execution_filter.clickhouse.tpchavoc.1_v7` |
 
 ### clickhouse-cloud
 

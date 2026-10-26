@@ -4,7 +4,7 @@
 
 Every rule registered in `benchbox.sql_compat` is listed below. The registry is the authoritative source of compatibility policy; this document is regenerated from it. See [adr-sql-compat-phase-aware-pipeline.md](../development/adr/adr-sql-compat-phase-aware-pipeline.md) for the design.
 
-**Total registered rules:** 595
+**Total registered rules:** 594
 
 **Platforms covered:** 37
 
@@ -14,7 +14,7 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 |---|---|---|---|---|---|---|---|---|
 | athena | - | - | - | 9 | 2 | 1 | - | 12 |
 | bigquery | - | 2 | - | 25 | 2 | 1 | 8 | 38 |
-| clickhouse | - | 19 | 1 | 3 | 4 | 1 | 1 | 29 |
+| clickhouse | - | 19 | 1 | 3 | 4 | 1 | - | 28 |
 | clickhouse-cloud | - | - | - | 2 | - | - | 21 | 23 |
 | clickhouse-local | 1 | - | - | 2 | - | - | 21 | 24 |
 | clickhouse-server | - | - | - | 2 | - | - | 21 | 23 |
@@ -144,7 +144,6 @@ Every rule registered in `benchbox.sql_compat` is listed below. The registry is 
 | schema_emit | benchmark=tsbs_devops | rewrite_ddl | REWRITTEN | SYNTAX_ERROR | `schema_emit.clickhouse.tsbs_devops.all.mergetree_ddl` |
 | schema_emit | benchmark=write_primitives | rewrite_ddl | REWRITTEN | UNSUPPORTED_FEATURE | `schema_emit.clickhouse.write_primitives.pk_lock_table_unsupported` |
 | ddl_optimize | platform-wide | rewrite_ddl | REWRITTEN | SYNTAX_ERROR | `ddl_optimize.clickhouse.all.optimize_table_definition` |
-| execution_filter | benchmark=tpchavoc, query=1_v7 | skip_query | SKIPPED_QUERY | UNSUPPORTED_FEATURE | `execution_filter.clickhouse.tpchavoc.1_v7` |
 
 ### clickhouse-cloud
 
