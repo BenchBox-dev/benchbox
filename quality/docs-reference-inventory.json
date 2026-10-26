@@ -2200,6 +2200,22 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
+    "file": 1
+   },
+   "occurrences": 28,
+   "path": "quality/comment-policy.json",
+   "rule": "comment-policy-registries",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "file",
+     "target": "docs/benchmarks/read-primitives.md"
+    }
+   ]
+  },
+  {
+   "disposition": "wiring-updated",
+   "kinds": {
     "root": 1
    },
    "occurrences": 1,
@@ -4385,20 +4401,20 @@
    "lock-test": 12,
    "prose-link-pinned": 15,
    "site-pipeline-cutover": 4,
-   "wiring-updated": 29
+   "wiring-updated": 30
   },
-  "files": 231,
+  "files": 232,
   "kinds": {
    "built-url": 29042,
    "dir": 167,
    "extra": 31,
-   "file": 1388,
+   "file": 1416,
    "generated": 3,
    "pattern": 316,
    "root": 195,
    "unresolved": 2047
   },
-  "references": 33189,
+  "references": 33217,
   "unclassified": 0
  }
 }
