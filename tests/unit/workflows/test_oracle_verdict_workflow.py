@@ -513,6 +513,17 @@ def test_the_attempt_loop_and_redaction_steps_have_the_ids_the_uploads_read() ->
     assert _step("Validate this run's attempts and decide")["id"] == "finalize"
 
 
+def test_the_capture_upload_waits_for_the_redaction_step_and_keeps_its_name_and_retention() -> None:
+    upload = _step("Upload the captured reviewer event streams")
+    assert upload["with"]["name"] == "oracle-verdict-capture"
+    assert upload["with"]["path"] == "${{ runner.temp }}/oracle-attempts/captures/"
+    assert upload["with"]["retention-days"] == 30
+    assert _names().index(upload["name"]) > _names().index(REDACT_STEP)
+    assert upload["if"].startswith("${{ always()")
+    assert "steps.redact.outcome == 'success'" in upload["if"]
+    assert "steps.loop.outputs.attempts >= 1" in upload["if"]
+
+
 def test_the_post_steps_mint_the_app_token_and_tolerate_missing_secrets() -> None:
     env = _review()["env"]
     assert env["HAS_APP"] == "${{ secrets.ORACLE_APP_ID != '' }}"
