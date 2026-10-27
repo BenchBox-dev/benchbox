@@ -434,7 +434,8 @@ def test_omp_is_installed_once_pinned_and_checked() -> None:
         "python -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml"
     )
     assert f"binary=$({command})" in install["run"]
-    assert '"$binary" --version | tee -a "$GITHUB_STEP_SUMMARY"' in install["run"]
+    assert 'version=$("$binary" --version)' in install["run"]
+    assert 'echo "$version" | tee -a "$GITHUB_STEP_SUMMARY"' in install["run"]
     assert 'echo "ORACLE_OMP_BINARY=$binary" >> "$GITHUB_ENV"' in install["run"]
     assert "curl " not in text
     assert "OMP_URL" not in text and "OMP_SHA256" not in text and "OMP_VERSION" not in text
@@ -474,7 +475,8 @@ def _run_install_step(tmp_path: Path, uv_body: str) -> tuple[subprocess.Complete
     for path in (github_output, github_env):
         path.write_text("", encoding="utf-8")
     result = subprocess.run(
-        ["bash", "-eo", "pipefail", "-c", _step("Install omp")["run"]],
+        ["bash", "-e", "-s"],
+        input=_step("Install omp")["run"],
         cwd=tmp_path,
         env={
             **os.environ,
