@@ -7,7 +7,6 @@ import json
 import math
 import subprocess
 import sys
-import time
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -15,6 +14,7 @@ from typing import Any
 from _project.scripts.tpchavoc_trino_q1_scale_check import RELATIVE_TOLERANCE, cell_difference
 from benchbox.core.tpchavoc.benchmark import TPCHavocBenchmark
 from benchbox.core.tpchavoc.variant_sets import VARIANT_REGISTRY
+from benchbox.utils.clock import elapsed_seconds, mono_time
 
 TPCH_TABLES = ("region", "nation", "supplier", "customer", "part", "partsupp", "orders", "lineitem")
 DUCKDB_TYPES = {
@@ -65,7 +65,7 @@ class PrestoClient:
         }
 
     def execute(self, sql: str, schema: str | None = None) -> dict[str, Any]:
-        started = time.monotonic()
+        started = mono_time()
         payload = self._request(f"{self.server}/v1/statement", sql.encode("utf-8"), schema)
         rows: list[list[Any]] = []
         columns: list[dict[str, Any]] = []
@@ -78,7 +78,7 @@ class PrestoClient:
                     "error_message": error.get("message"),
                     "query_id": payload.get("id"),
                     "peak_memory": self.peak_memory_bytes(payload["id"]),
-                    "wall_seconds": time.monotonic() - started,
+                    "wall_seconds": elapsed_seconds(started),
                 }
             if "columns" in payload and not columns:
                 columns = payload["columns"]
@@ -93,7 +93,7 @@ class PrestoClient:
             "columns": columns,
             "rows": rows,
             "peak_memory": self.peak_memory_bytes(payload["id"]),
-            "wall_seconds": time.monotonic() - started,
+            "wall_seconds": elapsed_seconds(started),
         }
 
 
@@ -188,6 +188,53 @@ def cells_equal(left: Any, right: Any) -> float:
     return cell_difference(left, right)
 
 
+def row_difference(left_row: list[Any], right_row: list[Any]) -> float:
+    return max((cells_equal(a, b) for a, b in zip(left_row, right_row)), default=0.0)
+
+
+def worst_difference(
+    left_rows: list[list[Any]], right_rows: list[list[Any]], tolerance: float
+) -> tuple[float, int | None]:
+    largest = 0.0
+    first: int | None = None
+    for position, (left_row, right_row) in enumerate(zip(left_rows, right_rows)):
+        difference = row_difference(left_row, right_row)
+        if difference > tolerance and first is None:
+            first = position
+        largest = max(largest, difference)
+    return largest, first
+
+
+def sorted_worst_difference(
+    left_rows: list[list[Any]], right_rows: list[list[Any]], tolerance: float
+) -> tuple[float, int | None]:
+    largest, first = worst_difference(sorted(left_rows, key=sort_key), sorted(right_rows, key=sort_key), tolerance)
+    if first is None:
+        return largest, None
+    left_groups: dict[tuple, list[list[Any]]] = {}
+    right_groups: dict[tuple, list[list[Any]]] = {}
+    for rows, groups in ((left_rows, left_groups), (right_rows, right_groups)):
+        for row in rows:
+            groups.setdefault(sort_key(row), []).append(row)
+    left_sizes = {key: len(rows) for key, rows in left_groups.items()}
+    right_sizes = {key: len(rows) for key, rows in right_groups.items()}
+    if left_sizes != right_sizes:
+        return largest, first
+    matched = 0.0
+    for key, group in left_groups.items():
+        remaining = list(right_groups[key])
+        for row in group:
+            index, difference = min(
+                ((position, row_difference(row, other)) for position, other in enumerate(remaining)),
+                key=lambda pair: pair[1],
+            )
+            if difference > tolerance:
+                return largest, first
+            matched = max(matched, difference)
+            remaining.pop(index)
+    return matched, None
+
+
 def compare_results(
     reference: list[list[Any]], candidate: list[list[Any]], ordered: bool, tolerance: float = RELATIVE_TOLERANCE
 ) -> dict[str, Any]:
@@ -201,21 +248,11 @@ def compare_results(
     if reference_columns != candidate_columns:
         return {**outcome, "status": "MISMATCH", "reason": "column count differs", "max_relative_difference": math.inf}
 
-    def worst(left_rows: list[list[Any]], right_rows: list[list[Any]]) -> tuple[float, int | None]:
-        largest = 0.0
-        first: int | None = None
-        for position, (left_row, right_row) in enumerate(zip(left_rows, right_rows)):
-            difference = max((cells_equal(a, b) for a, b in zip(left_row, right_row)), default=0.0)
-            if difference > tolerance and first is None:
-                first = position
-            largest = max(largest, difference)
-        return largest, first
-
     if ordered:
-        largest, first = worst(reference, candidate)
+        largest, first = worst_difference(reference, candidate, tolerance)
         if first is None:
             return {**outcome, "status": "PASS", "compare": "ordered", "max_relative_difference": largest}
-        sorted_largest, sorted_first = worst(sorted(reference, key=sort_key), sorted(candidate, key=sort_key))
+        sorted_largest, sorted_first = sorted_worst_difference(reference, candidate, tolerance)
         if sorted_first is None:
             return {
                 **outcome,
@@ -233,7 +270,7 @@ def compare_results(
             "first_difference_row": first,
             "max_relative_difference": largest,
         }
-    largest, first = worst(sorted(reference, key=sort_key), sorted(candidate, key=sort_key))
+    largest, first = sorted_worst_difference(reference, candidate, tolerance)
     if first is None:
         return {**outcome, "status": "PASS", "compare": "unordered", "max_relative_difference": largest}
     return {

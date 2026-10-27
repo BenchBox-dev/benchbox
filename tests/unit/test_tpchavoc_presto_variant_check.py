@@ -65,6 +65,20 @@ def test_row_order_is_ignored_only_when_the_query_has_no_order_by():
     assert compare_results(REFERENCE, shuffled, ordered=True)["status"] == "ORDER_DIFFERS"
 
 
+def test_distinct_integers_that_share_a_rounded_sort_key_still_match_as_a_multiset():
+    reference = [[150_000_000], [149_999_999]]
+    reversed_rows = [[149_999_999], [150_000_000]]
+
+    assert compare_results(reference, reversed_rows, ordered=False)["status"] == "PASS"
+    assert compare_results(reference, reversed_rows, ordered=True)["status"] == "ORDER_DIFFERS"
+
+
+def test_a_value_missing_from_a_group_of_shared_sort_keys_is_still_a_mismatch():
+    assert compare_results([[150_000_000], [149_999_999]], [[150_000_000], [150_000_001]], ordered=False)["status"] == (
+        "MISMATCH"
+    )
+
+
 def test_top_level_order_by_detection_ignores_window_and_subquery_clauses():
     assert has_top_level_order_by("select a from t order by a")
     assert not has_top_level_order_by("select sum(a) over (order by b) from t")
