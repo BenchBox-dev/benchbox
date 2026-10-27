@@ -16623,7 +16623,8 @@
       "claim": null,
       "needs": [
         "oracle-carry-byte-identical-20261026",
-        "oracle-dispute-keyed-published-evidence-20261026"
+        "oracle-dispute-keyed-published-evidence-20261026",
+        "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "medium",
       "status": "open",
