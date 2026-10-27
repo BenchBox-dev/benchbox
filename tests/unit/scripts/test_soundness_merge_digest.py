@@ -2240,7 +2240,7 @@ def test_the_severity_of_an_edited_app_first_comment_is_unverifiable(monkeypatch
     monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([node]))
     (thread,) = digest.collect_threads("o/r", 7)
     assert thread.severity == "" and "edited" in thread.unverifiable
-    assert not digest.is_overridden_finding(thread)
+    assert digest.is_overridden_finding(thread)
     assert digest.open_finding_severities(evidence(threads=(thread,))) == ()
     assert evidence(threads=(thread,)).unverifiable == (f"review thread: {thread.unverifiable}",)
 
@@ -2329,3 +2329,11 @@ def test_an_edited_finding_thread_on_a_non_content_commit_is_flagged():
     thread = digest.Thread(False, "benchbox-oracle", OLD, "", "an oracle finding was edited after posting")
     pull = refreshed(threads=(thread,), comments=(standin(HEAD, at=STANDIN_AT),))
     assert digest.unverifiable_oracle_evidence(pull)
+
+
+def test_a_resolved_edited_oracle_thread_stays_an_override_in_the_gap_class():
+    thread = digest.Thread(True, "benchbox-oracle", HEAD, "", "an oracle finding was edited after posting")
+    assert (
+        digest.CLASS_OVERRIDE
+        in digest.classify("f" * 40, "change", ["AGENTS.md"], evidence(threads=(thread,))).reason_classes
+    )

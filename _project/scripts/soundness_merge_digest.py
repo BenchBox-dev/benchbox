@@ -402,7 +402,9 @@ def unreviewed_thread_count(evidence: PullEvidence) -> int:
 
 
 def is_overridden_finding(thread: Thread) -> bool:
-    return thread.started_by.removesuffix("[bot]") == ORACLE_LOGIN and thread.severity in OVERRIDDEN_SEVERITIES
+    return thread.started_by.removesuffix("[bot]") == ORACLE_LOGIN and (
+        thread.severity in OVERRIDDEN_SEVERITIES or bool(thread.unverifiable)
+    )
 
 
 def still_open_severities(body: str) -> list[str]:
