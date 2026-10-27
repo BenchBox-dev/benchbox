@@ -24890,6 +24890,15 @@
       "status": "done",
       "title": "Fork: refresh onto upstream v30.24.0, reworking conflicting carried patches"
     },
+    "sqlglot-fork-refresh-v30-25-0": {
+      "claim": null,
+      "needs": [
+        "sqlglot-freshness-waiver-v30-25-0"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Fork: refresh onto upstream v30.25.0 and adopt the wheel in BenchBox"
+    },
     "sqlglot-fork-review-h1-governance": {
       "claim": null,
       "needs": [],

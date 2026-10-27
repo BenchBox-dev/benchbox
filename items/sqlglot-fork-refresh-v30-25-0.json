@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Fork refresh onto v30.25.0 is merged with the carried patches retained or each retirement justified by execution evidence; fork make check, make benchbox-dist and make benchbox-check pass; downstream/patches.json records v30.25.0 and its commit.",
+    "BenchBox adoption PR merged: pin, hash and runtime baseline identity updated, make sqlglot-repro-retirement-check and the advisory check pass, and the v30.25.0 waiver is removed.",
+    "scripts/check_sqlglot_upstream_freshness.py and scripts/check_sqlglot_advisories.py pass on develop without a waiver.",
+    "Fork maintainer effort (conflicts, time) is recorded in the fork PR."
+  ],
+  "description": "Upstream tagged v30.25.0 (2026-10-27, commit 9d2966ed3f8a7f0d370846dbae1579b40ddc2924). The bundled fork is based on v30.24.0 (benchbox/_vendor/sqlglot.json, version 30.24.0.13). Refresh the fork per downstream/MAINTAINING.md in https://github.com/BenchBox-dev/benchbox-sqlglot (candidate, then integrate on a descendant branch), build a verified wheel, then adopt it in BenchBox with make sqlglot-adopt-wheel.",
+  "links": [
+    "benchbox/_vendor/sqlglot.json",
+    "scripts/adopt_sqlglot_wheel.py",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729",
+      "at": "2026-10-27T12:57:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a160f2084ba34527ae8d34c5a3be9591",
+      "session_id": "dcc6105a05964c618dfd87771db72de4"
+    }
+  ]
+}
