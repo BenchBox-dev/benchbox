@@ -53,7 +53,7 @@ require_omp() {
   PINNED_SHA=$(file_sha256 "$OMP")
   PINNED_VERSION=$(binary_version "$OMP")
   [ -n "$PINNED_VERSION" ] || fail "the pinned omp at $OMP reports no version"
-  "$OMP" auth-gateway --help 2>&1 | grep -q -e '--clients' \
+  "$OMP" auth-gateway serve --help 2>&1 | grep -q -e '--clients' \
     || fail "the pinned omp $PINNED_VERSION has no auth-gateway serve --clients, which scopes each reviewer client"
   echo "omp pin: $PINNED_VERSION sha256=$PINNED_SHA"
 }

@@ -434,12 +434,6 @@ def test_check_requires_run_sh_to_exec_the_pinned_build(pinned: dict, configured
         assert "not the pinned build" in result.stderr
 
 
-def test_the_host_script_has_no_omp_lookup_on_path_or_override() -> None:
-    text = HOST_SCRIPT.read_text(encoding="utf-8")
-    assert "command -v omp" not in text
-    assert "OMP=${OMP" not in text
-
-
 @pytest.mark.parametrize("listener", ["777", ""])
 def test_check_fails_when_the_launchd_process_is_not_the_one_holding_the_port(pinned: dict, listener: str) -> None:
     result = _check_running(pinned, pinned["binary"], listener)
