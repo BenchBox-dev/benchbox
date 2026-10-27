@@ -16964,6 +16964,16 @@
       "status": "done",
       "title": "The oracle's retry-state strike count rises on every DO NOT SHIP, not once per distinct patch"
     },
+    "oracle-sweep-liveness-cluster-20261027": {
+      "claim": null,
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027",
+        "oracle-sweep-runs-listing-resilience-20261027"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Bound sweep re-dispatch for heads with retry state and make the sweep and plan apply one retry budget"
+    },
     "oracle-sweep-runs-listing-resilience-20261027": {
       "claim": null,
       "needs": [
