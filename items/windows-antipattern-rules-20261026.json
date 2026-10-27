@@ -4,7 +4,7 @@
     "make windows-antipatterns-check passes on develop after merge and the pre-commit hook fires on a staged violation (demonstrated or unit-tested)",
     "Any rebase over #3545 keeps both changes and the baseline count never increases"
   ],
-  "context": "Driving the 215 baselined WA007 hits down is out of scope except the three -z calls in wa007-git-z-encoding-20261026.",
+  "context": "2026-10-27: PR #3549 MERGED 2026-10-27T13:29:28Z at head 12b3362d3. WA004-WA007 enforced; WA007 restored (decision on record: ~212 hits stay baselined). Baseline 512 entries: WA001 4, WA002 18, WA003 277, WA006 1, WA007 212 (develop had 299 with no WA004-007). 19 WA007 hits in _project and 2 in check_docs_ownership.py fixed with encoding=utf-8. Residual local-oracle Mediums unaddressed: hard-coded _DEFAULT_EXCLUDES hides WA codes for reviewer machinery/sql-translation-ml; WA006 treats any **name spread as safe.",
   "description": "PR #3549 (branch fix/windows-antipattern-posix-rules, head fedd9e024, auto-merge armed) adds AST rules WA004-WA007 to scripts/check_windows_antipatterns.py (/dev/null literal, module-level POSIX-only imports, env= dicts dropping SYSTEMROOT, git text=True without encoding), a pre-commit hook and a dev-loop ledger row. Baseline seeded at 517 via a one-off script because --write-baseline refuses to raise counts. It conflicts textually with PR #3545 in the baseline file. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "ef1993ddd65a4666a58291c0ba943704",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T13:31:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "68bd555fecaf40c893f1cff8408f6fac",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
