@@ -150,7 +150,11 @@ do first).
    the `oracle-gate` binding untouched. If `oracle-gate` itself is the broken
    context (a broken checker or workflow on `develop` that fails all PRs
    including its repair), the owner may remove `oracle-gate` for exactly that
-   one merge.
+   one merge, but only when independent review evidence for the named head is
+   already recorded on the pull request: the stand-in approval from a reviewer
+   other than the author, or an owner review of the full diff at that head SHA.
+   `oracle-gate` is the only required review, so without that evidence it stays
+   bound.
 5. Merge the named pull request at the named head.
 6. Restore the context immediately, whether the merge succeeded or failed,
    before retrying, starting other work, or recording notes. If `oracle-gate`
