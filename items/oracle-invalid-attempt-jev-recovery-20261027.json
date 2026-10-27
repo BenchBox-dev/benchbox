@@ -4,6 +4,7 @@
     "Tests that fail on develop and pass after: a stop answer ends the run pending without trying another reviewer; escalate moves to the next reviewer; retry repeats the same reviewer and becomes escalate after its cap; an unavailable Jev, an out-of-label answer and a low-confidence answer each retry once then stop, never escalate; replay rejects an attempt that contradicts the recorded recovery; the Jev request carries no raw reply text.",
     "Decision record amended; docs/internal/oracle-review-v2.md (Rounds, absence) describe the rule.",
     "Live: one CI run where an invalid attempt was classified, with the recorded answer (or a dispatch on a test PR whose brief forces an invalid reply), run id recorded.",
+    "Adds or updates the matching scenario in the oracle end-to-end harness (oracle-e2e-scenario-harness-and-mutation-gate-20261027) once that harness exists, proven to fail with this item's defect reintroduced.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "2026-10-27: split out of the concedes fix (#3585) after the local review flagged that stopping all escalation reverses the 2026-10-23 decision; owner chose Jev classification.",
@@ -30,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "4aad98a7d97f471585e44760a82089f4",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T14:09:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "30253631bccc49eab22939e871ae9bf3",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
