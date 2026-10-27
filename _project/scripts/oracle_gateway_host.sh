@@ -65,14 +65,36 @@ running_pid() {
   echo "$pid"
 }
 
+etime_seconds() {
+  local value=$1 days=0 first second third hours=0 minutes seconds
+  case $value in
+    *-*) days=${value%%-*}; value=${value#*-} ;;
+  esac
+  IFS=: read -r first second third <<< "$value"
+  if [ -n "$third" ]; then
+    hours=$first minutes=$second seconds=$third
+  else
+    minutes=$first seconds=$second
+  fi
+  echo $(( (10#$days * 24 + 10#$hours) * 3600 + 10#$minutes * 60 + 10#$seconds ))
+}
+
+file_mtime() {
+  stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"
+}
+
 check_running_build() {
-  local label=$1 port=$2 pid listener binary sha version
+  local label=$1 port=$2 pid listener binary sha version elapsed started
   pid=$(running_pid "$label") || exit 1
   listener=$(lsof -nP "-iTCP:$port" -sTCP:LISTEN -t 2>/dev/null | head -n 1)
   [ "$listener" = "$pid" ] \
     || fail "$label is process $pid but port $port is held by '${listener:-nothing}'; see its log in $LOG_DIR"
   binary=$(ps -o comm= -p "$pid" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
   [ -n "$binary" ] && [ -x "$binary" ] || fail "$label runs '$binary', which is not an executable file"
+  elapsed=$(etime_seconds "$(ps -o etime= -p "$pid" | tr -d '[:space:]')")
+  started=$(( $(date +%s) - elapsed ))
+  [ $(( started + 1 )) -ge "$(file_mtime "$binary")" ] \
+    || fail "$label started before $binary was last written, so it may run an older build; run '$(basename "$0") broker' and '$(basename "$0") gateway'"
   sha=$(file_sha256 "$binary")
   version=$(binary_version "$binary")
   echo "$label: omp $version sha256=$sha"
@@ -85,6 +107,12 @@ check_run_file_build() {
   configured=$(sed -n 's/^exec "\([^"]*\)" auth-gateway serve.*/\1/p' "$RUN_FILE" 2>/dev/null)
   [ "$configured" = "$OMP" ] \
     || fail "$RUN_FILE runs '${configured:-nothing}', not the pinned build at $OMP; run '$(basename "$0") gateway'"
+}
+
+check_builds() {
+  check_running_build "$BROKER_LABEL" "$BROKER_PORT"
+  check_run_file_build
+  check_running_build "$GATEWAY_LABEL" "$GATEWAY_PORT"
 }
 
 xml_escape() {
@@ -386,9 +414,7 @@ cmd_check() {
   require_omp
   broker_ok || fail "the broker is not running"
   echo "broker: ok on 127.0.0.1:$BROKER_PORT"
-  check_running_build "$BROKER_LABEL" "$BROKER_PORT"
-  check_run_file_build
-  check_running_build "$GATEWAY_LABEL" "$GATEWAY_PORT"
+  check_builds
   local missing url secrets name
   missing=$(missing_logins)
   [ -z "$missing" ] || fail "no broker login for: $(printf '%s\n' "$missing" | paste -sd ' ' -)"

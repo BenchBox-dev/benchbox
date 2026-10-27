@@ -134,9 +134,10 @@ Then:
 
    `check` fails when the broker or the gateway is running an omp whose
    SHA-256 or version differs from the pin, when the process launchd runs for
-   either agent is not the one holding its port, or when `run.sh` names another
-   binary. The comparison is of the executable file the process was started
-   from, as `ps` reports it. `models` must equal the model count in `clients.json`, and `/v1/usage`
+   either agent is not the one holding its port, when a process started before its
+   binary file was last written (a same-path re-pin that was not restarted), or
+   when `run.sh` names another binary. The comparison is of the executable file
+   the process was started from, as `ps` reports it. `models` must equal the model count in `clients.json`, and `/v1/usage`
    must be refused with a 403. With [named clients](#named-clients), each
    one gets its own line and must list the same models as `oracle-ci`.
 9. Run one review through it:
@@ -152,7 +153,7 @@ Then:
   models.
 - **Rotate the client token:** `rm ~/.omp/oracle-gateway/client.token`, then
   run `gateway` and `secrets`. The old token stops working within 10 seconds.
-- **Rotate the broker token:** `omp auth-broker token --regenerate >/dev/null`,
+- **Rotate the broker token:** `<pinned omp> auth-broker token --regenerate >/dev/null`,
   then restart both agents, because `run.sh` reads the broker token when it
   starts:
   `launchctl kickstart -k gui/$(id -u)/dev.omp.auth-broker` and
@@ -161,7 +162,7 @@ Then:
   merges, run `broker` and `gateway` at a quiet moment. Each installs the new
   pinned build and restarts its agent because the plist and `run.sh` name the
   new path; a restart interrupts reviews in flight. Then run `check`.
-- **Provider login changed:** log in again with `omp auth-broker login
+- **Provider login changed:** log in again with `<pinned omp> auth-broker login
   <provider>`, then run `gateway` so the pinned accounts match.
 
 Restarting the gateway fails any review attempt in flight; the next retry sweep
