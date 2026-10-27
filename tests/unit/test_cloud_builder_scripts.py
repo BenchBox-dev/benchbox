@@ -310,6 +310,8 @@ def _current_platform() -> str:
 
 
 def _policy_text(url: str = FAKE_OMP_URL, content: str = FAKE_OMP) -> str:
+    if not (REPO_ROOT / "_project").exists():
+        pytest.skip("_project scripts are not in this checkout (release tree)")
     import hashlib
 
     import yaml
@@ -326,6 +328,8 @@ def _git_in(repo: Path, *args: str) -> None:
 
 
 def _gateway_clone(tmp_path: Path, *, develop_policy: str | None = None, branch_policy: str | None = None) -> Path:
+    if not (REPO_ROOT / "_project").exists():
+        pytest.skip("_project scripts are not in this checkout (release tree)")
     repo = _clone(tmp_path)
     policy = repo / POLICY_FILE
     policy.parent.mkdir(parents=True)
