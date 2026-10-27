@@ -3790,15 +3790,10 @@
       "title": "Find why TPC-DS Q10 exceeds the 5.25 GiB envelope on ClickHouse server at SF1"
     },
     "clickhouse-session-policy-link-sqlglot-ast-gap-issue": {
-      "claim": {
-        "expires_at": "2026-10-28T14:14:28Z",
-        "generation": "eb9c94d656ac4c05b26a45a0bdf58b17",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Link the GitHub issue that documents the sqlglot AST gap behind the ClickHouse joined-subquery session policy"
     },
     "clickhouse-sort-key-and-pk-strip-hardening-20261005": {
