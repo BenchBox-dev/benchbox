@@ -6,6 +6,7 @@
     "Ancestor-environment leak test (gate 2) passes.",
     "Live after PR 2 merges: five consecutive pull_request_target verdict runs post the same decision a replay with develop's previous code gives (record run ids and replay outputs), and one sweep run dispatches correctly.",
     "docs/internal/oracle-review-v2.md job-structure section describes the driver phases and adapters.",
+    "Adds or updates the matching scenario in the oracle end-to-end harness (oracle-e2e-scenario-harness-and-mutation-gate-20261027) once that harness exists, proven to fail with this item's defect reintroduced.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "2026-10-27: OWNER DECISIONS 2026-10-27 (choice dialog, joeharris76): freeze all oracle-gated merges until oracle-history-edited-review-fail-closed-20261027 merges; Critical fix = GraphQL edit-state check now, HMAC marker later; pr-arm proceeds on fast-duration pass or neutral only. Merge freeze (owner 2026-10-27, scope: oracle-code PRs): no PR that changes oracle reviewer or gate code merges, and no make pr-arm runs on one, until oracle-history-edited-review-fail-closed-20261027 is merged. In scope: #3565, #3572, #3573, #3574, #3576, the unopened scope-path, evidence-exempt and redaction branches, and any other PR touching _project/scripts/oracle_reviewers/, _project/scripts/oracle_review_check.py, _project/scripts/soundness_merge_digest.py, scripts/pr_arm.py or .github/workflows/oracle-*.yml. Excepted: the edited-review fix's own PR and #3585 (owner exemption 2026-10-27). PRs may be opened and reviewed meanwhile. Never edit, delete, dismiss or minimise an oracle review, review comment or commit status, including on test PRs; edit-detection proofs use unit fixtures and read-only GraphQL reads of existing reviews. The driver must carry the edited-review fail-closed behaviour and the sweep-liveness fixes forward.\n\nFollow-up owner decisions 2026-10-26 (after the plan review): CI gateway residual accepted (gate 2); phase-scoped steps replace the single invocation (a single process would expose the App token and classifier key to the reviewer's ancestors); two-PR shadow then cutover per Q10.\n\nOWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Owner requirement: local and CI must be actually the same code, not functionally identical; Q10 acknowledged rewriting the CI caller; Q11 split-ready, separate project later. Parity audit LocalCiParity section D is the design input.",
@@ -81,6 +82,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "f66e6f1bb27740b7a826d7b4792ece29",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T14:10:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5f2da246ed2b4e978de994f38799f0b5",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
