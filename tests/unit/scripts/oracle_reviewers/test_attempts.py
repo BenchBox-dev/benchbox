@@ -452,7 +452,7 @@ def test_a_finalized_exempt_success_never_satisfies_a_gate_whose_rules_require_a
     rules = gate.path_matcher(2, 2, *gate._review_rules())
     code, message = gate.decide(HEAD, [CHECKER], [posted], [], rules)
     assert code == gate.WAITING and "reports only exempt paths changed" in message
-    assert gate.decide(HEAD, ["docs/index.md"], [posted], [], rules) == (
+    assert gate.decide(HEAD, ["notes.md"], [posted], [], rules) == (
         gate.PASS,
         "oracle-review: only exempt paths changed",
     )
