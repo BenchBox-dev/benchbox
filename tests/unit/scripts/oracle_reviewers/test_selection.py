@@ -5,19 +5,29 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+import yaml
 
-from _project.scripts.oracle_reviewers.policy import Reviewer
+from _project.scripts.oracle_reviewers.policy import Reviewer, load_policy
 from _project.scripts.oracle_reviewers.selection import (
     ABSENT,
     FAIL,
     PASS,
     PENDING,
+    POOL_PROVIDERS,
+    PRIMARY_BLOCK_CAP,
+    QUOTA_BACKOFF,
     REVIEW,
     Attempt,
+    PoolBlock,
     SelectionInput,
+    active_blocks,
     next_step,
     pool_resets,
 )
+
+from .conftest import POLICY_PATH
+
+OMP_CONFIG = POLICY_PATH.parent / "oracle-omp-config.yml"
 
 RETRYABLE = ("invalid", "incomplete", "empty", "error")
 
@@ -150,53 +160,106 @@ def test_quota_absence_skips_whole_pool() -> None:
     assert step.reviewer is not None and step.reviewer.name == "c"
 
 
-def test_quota_pool_pending_reasons() -> None:
+def test_quota_pool_pending_reasons_name_the_provider() -> None:
     chain = [_reviewer("a", pool="pool-a"), _reviewer("b", pool="pool-a")]
-    attempts = [Attempt(1, "a", ABSENT, "quota")]
+    attempts = [Attempt(1, "a", ABSENT, "quota", provider="google-antigravity")]
     step = next_step(_input(chain), attempts)
     assert step.kind == PENDING
-    assert step.reasons == ("a: absent (quota)", "b: skipped: pool-a pool out of quota in this run")
+    assert step.reasons == (
+        "a: absent (quota)",
+        "b: skipped: pool-a pool blocked in this run, google-antigravity returned a quota error",
+    )
 
 
 def test_backoff_skip_until_block_expires() -> None:
-    until = NOW + timedelta(hours=2)
+    block = PoolBlock(NOW + timedelta(minutes=50), "google-antigravity", NOW - timedelta(minutes=5))
     chain = [_reviewer("a", pool="pool-a"), _reviewer("b", pool="pool-b")]
-    blocked = _input(chain, pool_blocked_until={"pool-a": until})
-    step = next_step(blocked, [])
+    step = next_step(_input(chain, pool_blocked_until={"pool-a": block}), [])
     assert step.kind == REVIEW
     assert step.reviewer is not None and step.reviewer.name == "b"
-    expired = _input(chain, pool_blocked_until={"pool-a": NOW - timedelta(minutes=1)})
-    later = next_step(expired, [])
+    expired = PoolBlock(NOW - timedelta(minutes=1), "google-antigravity", NOW - timedelta(minutes=30))
+    later = next_step(_input(chain, pool_blocked_until={"pool-a": expired}), [])
     assert later.kind == REVIEW
     assert later.reviewer is not None and later.reviewer.name == "a"
 
 
-def test_backoff_reason_names_reset_time() -> None:
-    until = NOW + timedelta(hours=2)
-    step = next_step(_input([_reviewer("a", pool="pool-a")], pool_blocked_until={"pool-a": until}), [])
+def test_backoff_reason_names_the_provider_and_when_the_block_was_recorded() -> None:
+    recorded = NOW - timedelta(minutes=10)
+    block = PoolBlock(NOW + timedelta(minutes=30), "google-antigravity", recorded)
+    step = next_step(_input([_reviewer("a", pool="pool-a")], pool_blocked_until={"pool-a": block}), [])
     assert step.kind == PENDING
-    assert step.reasons == (f"a: skipped: pool-a pool out of quota until {until.isoformat()}",)
+    assert step.reasons == (
+        f"a: skipped: pool-a pool blocked until {block.until.isoformat()}, "
+        f"google-antigravity returned a quota error at {recorded.isoformat()}",
+    )
+    unknown = PoolBlock(NOW + timedelta(minutes=30), "", recorded)
+    reasons = next_step(_input([_reviewer("a", pool="pool-a")], pool_blocked_until={"pool-a": unknown}), []).reasons
+    assert "an unknown provider returned a quota error" in reasons[0]
 
 
-def test_pool_resets_carry_quota_reset_times() -> None:
+def test_a_carried_block_older_than_the_cap_is_ignored() -> None:
+    chain = [_reviewer("a", pool="claude")]
+    stale = PoolBlock(NOW + timedelta(days=6), "anthropic", NOW - PRIMARY_BLOCK_CAP - timedelta(minutes=1))
+    step = next_step(_input(chain, pool_blocked_until={"claude": stale}), [])
+    assert step.kind == REVIEW
+    assert pool_resets(_input(chain, pool_blocked_until={"claude": stale}), []) == {}
+    fresh = PoolBlock(NOW + timedelta(days=6), "anthropic", NOW - timedelta(hours=1))
+    assert next_step(_input(chain, pool_blocked_until={"claude": fresh}), []).kind == PENDING
+
+
+def test_a_fallback_block_never_outlives_the_one_hour_backoff() -> None:
+    chain = [_reviewer("a", pool="claude")]
+    recorded = NOW - QUOTA_BACKOFF - timedelta(minutes=1)
+    block = PoolBlock(NOW + timedelta(days=6), "google-antigravity", recorded)
+    assert next_step(_input(chain, pool_blocked_until={"claude": block}), []).kind == REVIEW
+
+
+def test_pool_resets_from_the_primary_provider_keep_a_parsed_reset_up_to_the_cap() -> None:
+    chain = [_reviewer("a", pool="claude")]
     reset = NOW + timedelta(hours=3)
-    chain = [_reviewer("a", pool="pool-a"), _reviewer("b", pool="pool-b")]
-    selection = _input(chain)
-    resets = pool_resets(selection, [Attempt(1, "a", ABSENT, "quota", reset_at=reset)])
-    assert resets == {"pool-a": reset}
+    resets = pool_resets(_input(chain), [Attempt(1, "a", ABSENT, "quota", reset_at=reset, provider="anthropic")])
+    assert resets == {"claude": PoolBlock(reset, "anthropic", NOW)}
+    far = NOW + timedelta(days=6)
+    resets = pool_resets(_input(chain), [Attempt(1, "a", ABSENT, "quota", reset_at=far, provider="anthropic")])
+    assert resets == {"claude": PoolBlock(NOW + PRIMARY_BLOCK_CAP, "anthropic", NOW)}
 
 
-def test_pool_resets_default_backoff_without_reported_time() -> None:
-    chain = [_reviewer("a", pool="pool-a")]
-    resets = pool_resets(_input(chain), [Attempt(1, "a", ABSENT, "quota")])
-    assert resets == {"pool-a": NOW + timedelta(hours=1)}
+def test_pool_resets_from_a_fallback_provider_ignore_the_reset_and_last_one_hour() -> None:
+    chain = [_reviewer("a", pool="claude")]
+    far = NOW + timedelta(days=6)
+    resets = pool_resets(_input(chain), [Attempt(1, "a", ABSENT, "quota", reset_at=far, provider="google-antigravity")])
+    assert resets == {"claude": PoolBlock(NOW + QUOTA_BACKOFF, "google-antigravity", NOW)}
+
+
+def test_pool_resets_default_backoff_without_reported_provider() -> None:
+    chain = [_reviewer("a", pool="claude")]
+    far = NOW + timedelta(days=6)
+    resets = pool_resets(_input(chain), [Attempt(1, "a", ABSENT, "quota", reset_at=far)])
+    assert resets == {"claude": PoolBlock(NOW + QUOTA_BACKOFF, "", NOW)}
 
 
 def test_pool_resets_keep_future_blocks() -> None:
-    until = NOW + timedelta(hours=2)
+    block = PoolBlock(NOW + timedelta(minutes=40), "google-antigravity", NOW - timedelta(minutes=20))
     chain = [_reviewer("a", pool="pool-a")]
-    resets = pool_resets(_input(chain, pool_blocked_until={"pool-a": until}), [])
-    assert resets == {"pool-a": until}
+    resets = pool_resets(_input(chain, pool_blocked_until={"pool-a": block}), [])
+    assert resets == {"pool-a": block}
+
+
+def test_active_blocks_on_a_new_head_keep_only_primary_provider_blocks() -> None:
+    primary = PoolBlock(NOW + timedelta(hours=3), "anthropic", NOW)
+    fallback = PoolBlock(NOW + timedelta(minutes=30), "google-antigravity", NOW)
+    blocks = {"claude": primary, "codex": fallback}
+    assert active_blocks(blocks, NOW, same_head=False) == {"claude": primary}
+    assert active_blocks(blocks, NOW, same_head=True) == blocks
+
+
+def test_pool_providers_match_the_reviewer_roles_in_the_omp_config() -> None:
+    roles = yaml.safe_load(OMP_CONFIG.read_text(encoding="utf-8"))["modelRoles"]
+    policy = load_policy(POLICY_PATH)
+    for reviewer in policy.reviewers.values():
+        provider = roles[reviewer.model.removeprefix("@")].split("/", 1)[0]
+        assert POOL_PROVIDERS[reviewer.pool] == provider
+    assert set(POOL_PROVIDERS) == set(policy.pools)
 
 
 def test_oversize_brief_skips_everything() -> None:
@@ -253,13 +316,13 @@ def test_from_plan_builds_without_family_keys() -> None:
         "chain": [first.to_json(), second.to_json()],
         "brief_mode": "inline",
         "max_attempts": 3,
-        "pool_blocked_until": {"other": until.isoformat()},
+        "pool_blocked_until": {"other": PoolBlock(until, "", NOW).to_json()},
     }
     selection = SelectionInput.from_plan(plan, NOW)
     assert [reviewer.name for reviewer in selection.chain] == ["r1", "r2"]
     assert selection.brief_mode == "inline"
     assert selection.max_attempts == 3
-    assert selection.pool_blocked_until == {"other": until}
+    assert selection.pool_blocked_until == {"other": PoolBlock(until, "", NOW)}
     step = next_step(selection, [])
     assert step.kind == REVIEW
     assert step.reviewer is not None and step.reviewer.name == "r1"

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from .policy import RetryRules
+from .selection import PoolBlock
 
 SUCCESS = "success"
 FAILURE = "failure"
@@ -20,6 +21,12 @@ PENDING_CAUSES = (ALL_ABSENT, INTEGRITY, UNREPORTED, OVERSIZE, MARKER_LIMIT)
 WINDOW = timedelta(hours=24)
 
 
+def _pool_block(value: Any, updated_at: datetime) -> PoolBlock:
+    if isinstance(value, str):
+        return PoolBlock(datetime.fromisoformat(value), "", updated_at)
+    return PoolBlock.from_json(value)
+
+
 @dataclass(frozen=True)
 class State:
     pr: int
@@ -27,7 +34,7 @@ class State:
     outcome: str
     updated_at: datetime
     retries: tuple[datetime, ...] = ()
-    pool_blocked_until: Mapping[str, datetime] = field(default_factory=dict)
+    pool_blocked_until: Mapping[str, PoolBlock] = field(default_factory=dict)
     pending_cause: str | None = None
     strikes: int = 0
 
@@ -38,21 +45,22 @@ class State:
             "outcome": self.outcome,
             "updated_at": self.updated_at.isoformat(),
             "retries": [moment.isoformat() for moment in self.retries],
-            "pool_blocked_until": {pool: moment.isoformat() for pool, moment in self.pool_blocked_until.items()},
+            "pool_blocked_until": {pool: block.to_json() for pool, block in self.pool_blocked_until.items()},
             "pending_cause": self.pending_cause,
             "strikes": self.strikes,
         }
 
     @classmethod
     def from_json(cls, data: Mapping[str, Any]) -> State:
+        updated_at = datetime.fromisoformat(data["updated_at"])
         return cls(
             pr=int(data["pr"]),
             head_sha=str(data["head_sha"]),
             outcome=str(data["outcome"]),
-            updated_at=datetime.fromisoformat(data["updated_at"]),
+            updated_at=updated_at,
             retries=tuple(datetime.fromisoformat(item) for item in data.get("retries", [])),
             pool_blocked_until={
-                pool: datetime.fromisoformat(value) for pool, value in data.get("pool_blocked_until", {}).items()
+                pool: _pool_block(value, updated_at) for pool, value in data.get("pool_blocked_until", {}).items()
             },
             pending_cause=data.get("pending_cause"),
             strikes=int(data.get("strikes") or 0),
@@ -129,7 +137,7 @@ def next_state(
     outcome: str,
     manual: bool,
     now: datetime,
-    pool_blocked_until: Mapping[str, datetime],
+    pool_blocked_until: Mapping[str, PoolBlock],
     pending_cause: str | None = None,
     strikes: int | None = None,
 ) -> State:

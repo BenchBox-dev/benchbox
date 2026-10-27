@@ -234,8 +234,7 @@ def build_plan(
         scoped,
         in_scope,
         full_diff,
-        None,
-        cli._now(),
+        {},
     )
     plan["decision_reason"] = reason
     return plan
