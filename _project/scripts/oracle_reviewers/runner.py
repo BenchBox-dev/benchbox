@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import signal
 import subprocess
 import tempfile
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import absence, credentials, evidence, omp_pin, processes, protocol
+from . import absence, credentials, evidence, omp_pin, processes, protocol, redaction_check
 from .commands import Invocation, build
 from .policy import Reviewer
 from .verdict import (
@@ -21,10 +22,13 @@ from .verdict import (
     extract_omp_text,
     normalize_reviewer,
     omp_stream_without_answer,
+    omp_terminal_error,
     parse_output,
     shape_fingerprint,
     validate,
 )
+
+CAPTURE_SCHEMA = 1
 
 
 @dataclass(frozen=True)
@@ -40,6 +44,7 @@ class ReviewOutcome:
     verdict: dict[str, Any] | None
     missing: absence.Absence | None
     diagnostic: str
+    capture: dict[str, Any] | None = None
 
 
 def _git(workspace: Path, *args: str) -> str:
@@ -131,6 +136,32 @@ def _unparsed(harness: str, output: str, fallback: str) -> str:
     return absence.unparsed(text, _credentials()) if text.strip() else fallback
 
 
+def _event(line: str) -> Any:
+    try:
+        return json.loads(line)
+    except ValueError:
+        return line
+
+
+def capture(reviewer: Reviewer, result: RunResult) -> dict[str, Any]:
+    secrets = _credentials()
+    stdout = result.stdout if reviewer.harness == "omp" else ""
+    return redaction_check.redact(
+        {
+            "schema": CAPTURE_SCHEMA,
+            "reviewer": reviewer.name,
+            "harness": reviewer.harness,
+            "model": reviewer.model,
+            "exit_code": result.exit_code,
+            "timed_out": result.timed_out,
+            "terminal_error": absence.redact_detail(omp_terminal_error(stdout), secrets),
+            "stderr_excerpt": absence.excerpt("", result.stderr, secrets),
+            "events": [_event(line) for line in stdout.splitlines() if line.strip()],
+        },
+        secrets,
+    )
+
+
 def _with_trace(diagnostic: str, harness: str, stdout: str, plan: Mapping[str, Any], workspace: Path) -> str:
     if harness not in evidence.TRACED:
         return diagnostic
@@ -160,6 +191,20 @@ def review(
     invocation = build(reviewer, workspace, prompt, scratch)
     staged_before = _digest(workspace / STAGED_DIFF_NAME)
     result = execute(invocation, reviewer.timeout_minutes * 60)
+    outcome = _judge(reviewer, invocation, result, workspace=workspace, staged_before=staged_before, now=now, plan=plan)
+    return replace(outcome, capture=capture(reviewer, result))
+
+
+def _judge(
+    reviewer: Reviewer,
+    invocation: Invocation,
+    result: RunResult,
+    *,
+    workspace: Path,
+    staged_before: str | None,
+    now: datetime,
+    plan: Mapping[str, Any],
+) -> ReviewOutcome:
     output = result.stdout
     if invocation.output_file is not None:
         output = invocation.output_file.read_text(encoding="utf-8") if invocation.output_file.is_file() else ""

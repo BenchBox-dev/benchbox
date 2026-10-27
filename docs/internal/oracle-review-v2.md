@@ -140,8 +140,9 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
 8. Disk scan (C4); finalize, which re-validates this run's artifacts and replays
    selection; redaction check (C5).
 9. **Post.** Mint the App token, run the guard, post the status and findings,
-   upload the retry state (only if the status posted) and attempt artifacts, and
-   dispatch `oracle-gate`. `findings_delivery` in `.github/oracle-reviewers.yml`
+   upload the retry state (only if the status posted), the attempt artifacts and
+   the captured event streams, and dispatch `oracle-gate`. `findings_delivery` in
+   `.github/oracle-reviewers.yml`
    chooses the findings form:
    - `comment`: one PR comment, so findings never block a merge.
    - `review` (the policy value, required by the oracle signal): one PR review
@@ -765,6 +766,10 @@ to GitHub.
   checks scoped to its own process group, atomic cache writes), and CI already
   reviews different PRs concurrently on the same gateway, so a machine-wide lock
   only made one slow review block every other PR without saving quota.
+- **Captures.** Every reviewer attempt that ran also keeps its captured event
+  stream, as described under P4, in a `captures/<time>-<head>` directory of
+  the same cache directory, with the local client token and gateway URL
+  redacted.
 
 ## Calibration
 
@@ -775,8 +780,20 @@ cannot is set `enabled: false` with a `disabled_reason`.
 Capture each reviewer's quota, authentication and outage output from real runs.
 The attempt artifact's `diagnostic` holds one redacted output line of at most
 300 characters or, for an invalid verdict, the last 2,000 characters of the
-final message, both stripped of credentials and long tokens; raw output is never
-uploaded. For OMP only stderr is excerpted, never stdout. A `trace:` line of at
+final message, both stripped of credentials and long tokens. For OMP only
+stderr is excerpted, never stdout. Every attempt whose reviewer ran also writes
+`captures/capture-<slot>.json` beside its result: the OMP JSON event stream
+(one entry per stdout line, without the streaming `*_update` delta events, whose
+fragments could split a secret past redaction; the completed messages carry the
+same content), the terminal error event, a stderr excerpt, the exit code and the
+attempt's absence. Tool output and thinking are withheld (each replaced by its
+length), since the reviewer reads author-controlled content and runs beside the
+gateway token; every known credential value is redacted and every run of 32 or
+more letters, digits, `_` or `-` in an event replaced, so encoded forms of a
+secret are removed too. The redaction check covers it like the attempt
+artifacts, and the `oracle-verdict-capture` artifact keeps it for 30 days so
+real outputs can be curated into the scenario harness fixtures under
+`tests/integration/oracle/`. A `trace:` line of at
 most 700 characters follows every outcome that reached verdict parsing (valid,
 invalid, incomplete or failed evidence); its paths are redacted by known value
 and secret pattern, not the generic long-token filter. Add the messages to the

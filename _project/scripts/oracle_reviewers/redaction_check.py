@@ -24,13 +24,13 @@ def _keys(value: Any) -> Iterator[str]:
             yield from _keys(item)
 
 
-def _redact(value: Any, extra: tuple[str, ...]) -> Any:
+def redact(value: Any, extra: tuple[str, ...]) -> Any:
     if isinstance(value, str):
         return credentials.redact(value, extra)
     if isinstance(value, list):
-        return [_redact(item, extra) for item in value]
+        return [redact(item, extra) for item in value]
     if isinstance(value, dict):
-        return {key: _redact(item, extra) for key, item in value.items()}
+        return {key: redact(item, extra) for key, item in value.items()}
     return value
 
 
@@ -61,7 +61,7 @@ def sanitize(path: Path, extra: tuple[str, ...]) -> bool:
         data = json.loads(original)
     except ValueError as exc:
         raise Unredactable(path) from exc
-    cleaned = _redact(data, extra)
+    cleaned = redact(data, extra)
     text = json.dumps(cleaned, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     remaining = (*_keys(cleaned), *_strings(cleaned), text)
     if any(credentials.contains(item, extra) for item in remaining):
