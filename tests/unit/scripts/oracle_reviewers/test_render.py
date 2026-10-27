@@ -340,6 +340,67 @@ def test_a_populated_template_is_accepted_and_an_untouched_or_partial_one_is_rej
             validate(partial)
 
 
+MODEL_FILLS = {
+    "status": "complete",
+    "incomplete_reason": "",
+    "decision": "SHIP_WITH_FIXES",
+    "summary": "Checked the change.",
+    "files_examined": "x.py",
+    "file": "x.py",
+    "severity": "High",
+    "title": "The bound is unchecked",
+    "detail": "x.py:1 drops the row.",
+    "prior_status": "fixed",
+    "evidence": "x.py:1 now checks the bound.",
+    "claim": "The bound is checked.",
+}
+
+
+def _as_a_model_fills(node: Any) -> Any:
+    keys = {value: key for key, value in RESPONSE_PLACEHOLDERS.items()}
+    if isinstance(node, str) and node in keys:
+        return MODEL_FILLS.get(keys[node], "a real value")
+    if isinstance(node, dict):
+        return {key: 1 if key == "line" and value == 0 else _as_a_model_fills(value) for key, value in node.items()}
+    if isinstance(node, list):
+        return [_as_a_model_fills(item) for item in node]
+    return node
+
+
+def test_every_placeholder_is_a_slot_a_model_fills_with_a_string() -> None:
+    assert set(MODEL_FILLS) == set(RESPONSE_PLACEHOLDERS)
+    assert all(isinstance(value, str) for value in MODEL_FILLS.values())
+
+
+@pytest.mark.parametrize("template_name", ["standard", "deep", "gate"])
+@pytest.mark.parametrize("prior_ids", [(), ("D1", "D12")])
+def test_the_rendered_template_filled_as_instructed_is_a_valid_reply(
+    template_name: str, prior_ids: tuple[str, ...]
+) -> None:
+    text = render_review(
+        template_name=template_name,
+        classification=Classification("small", "deep", template_name, 0.9, (), ()),
+        repo="o/n",
+        pr=1,
+        base_sha="a" * 40,
+        head_sha="b" * 40,
+        max_defects=10,
+        prior_rule="Leave prior_defects empty.",
+        prior_block="",
+        prior_ids=prior_ids,
+        files_block="Changed files:\nx.py (+1/-0, modified)\n",
+        diff_text="diff",
+        diff_path=None,
+        max_bytes=200_000,
+    )
+    reply = _as_a_model_fills(_response_json(text))
+    verdict = validate(json.loads(json.dumps(reply)))
+    assert verdict.decision == "SHIP_WITH_FIXES" and len(verdict.defects) == 1
+    assert [(item.id, item.status, item.concedes) for item in verdict.prior_defects] == [
+        (item, "fixed", None) for item in prior_ids
+    ]
+
+
 def test_the_template_has_no_default_verdict_and_unfilled_line() -> None:
     template = json.loads(response_template())
     assert template["decision"] in RESPONSE_PLACEHOLDERS.values()
