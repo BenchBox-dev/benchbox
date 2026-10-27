@@ -3321,13 +3321,18 @@
       "title": "Pilot SQL dialect generator on the existing sqlglot-upstream harness"
     },
     "ci-windows-antipatterns-rework-3549-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-28T20:31:26Z",
+        "generation": "dba7e4a12f444056a0001f887b654718",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [
         "ci-windows-fcntl-and-git-utf8-fixes-20261026",
         "ci-pr-arm-disarm-red-and-refuse-visible-failures-20261026"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Rework PR #3549: include _project/, fix WA004/WA006 precision, drop 215-entry WA007 baseline, scan staged files only"
     },
     "ci-windows-fcntl-and-git-utf8-fixes-20261026": {
