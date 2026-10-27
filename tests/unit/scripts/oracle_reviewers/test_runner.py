@@ -4,6 +4,7 @@ import json
 import re
 import subprocess
 import sys
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -951,3 +952,16 @@ def test_the_omp_event_stream_is_never_excerpted_into_the_diagnostic(
     assert outcome.verdict is not None
     assert outcome.diagnostic.startswith("trace: reads=0 greps=0")
     assert "tool output must stay out" not in outcome.diagnostic
+
+
+def test_capture_redacts_a_token_split_across_text_blocks(monkeypatch: pytest.MonkeyPatch, policy: Policy) -> None:
+    token = "tok-" + "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH"
+    monkeypatch.setenv("OMP_GATEWAY_TOKEN", token)
+    blocks = [{"type": "text", "text": token[i : i + 16]} for i in range(0, len(token), 16)]
+    event = {"type": "message_end", "message": {"role": "assistant", "content": blocks}}
+    result = runner.RunResult(0, json.dumps(event) + "\n", "", False)
+    captured = runner.capture(replace(policy.reviewers["small"], harness="omp"), result)
+    message = captured["events"][0]["message"]
+    assert token not in "".join(block["text"] for block in message["content"])
+    assert token not in json.dumps(captured)
+    assert "[redacted]" in json.dumps(captured)
