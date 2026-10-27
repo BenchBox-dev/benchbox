@@ -107,7 +107,6 @@ classifier:
     - .github/soundness-paths.txt
     - .github/workflows/oracle-review.yml
     - .github/workflows/oracle-verdict.yml
-    - .github/workflows/oracle-review-shadow.yml
     - .github/workflows/soundness-merge-digest.yml
     - _project/scripts/oracle_review_check.py
     - _project/scripts/oracle_reviewers/*

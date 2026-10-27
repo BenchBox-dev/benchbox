@@ -17,7 +17,6 @@ from . import edits, reset
 from .retry import State
 
 STATE_ARTIFACT_PREFIX = "oracle-verdict-state-"
-LEGACY_STATE_ARTIFACT_PREFIX = "oracle-review-shadow-state-"
 STATE_FILE = "state.json"
 
 
@@ -170,8 +169,6 @@ def state_artifact_name(pr: int, prefix: str = STATE_ARTIFACT_PREFIX) -> str:
 
 
 WORKFLOW_PATH = ".github/workflows/oracle-verdict.yml"
-LEGACY_WORKFLOW_PATH = ".github/workflows/oracle-review-shadow.yml"
-STATE_SOURCES = ((STATE_ARTIFACT_PREFIX, WORKFLOW_PATH), (LEGACY_STATE_ARTIFACT_PREFIX, LEGACY_WORKFLOW_PATH))
 TRUSTED_EVENTS = frozenset({"pull_request_target", "issue_comment", "schedule", "workflow_dispatch"})
 TRUSTED_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
 
@@ -281,11 +278,7 @@ def trusted_run(
 
 
 def latest_state(repo: str, pr: int) -> State | None:
-    for prefix, workflow_path in STATE_SOURCES:
-        state = _latest_state(repo, pr, state_artifact_name(pr, prefix), workflow_path)
-        if state is not None:
-            return state
-    return None
+    return _latest_state(repo, pr, state_artifact_name(pr), WORKFLOW_PATH)
 
 
 def _latest_state(repo: str, pr: int, name: str, workflow_path: str) -> State | None:

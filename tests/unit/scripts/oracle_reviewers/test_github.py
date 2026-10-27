@@ -586,8 +586,7 @@ def _state_sources(
     def fake_run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
         name = argv[argv.index("-n") + 1]
         downloaded.append(name)
-        strikes = 2 if name.startswith(github.LEGACY_STATE_ARTIFACT_PREFIX) else 1
-        state = State(7, "a" * 40, "failure", datetime(2026, 10, 5, tzinfo=UTC), strikes=strikes)
+        state = State(7, "a" * 40, "failure", datetime(2026, 10, 5, tzinfo=UTC), strikes=1)
         (Path(argv[argv.index("-D") + 1]) / github.STATE_FILE).write_text(json.dumps(state.to_json()), "utf-8")
         return subprocess.CompletedProcess(argv, 0, "", "")
 
@@ -601,36 +600,17 @@ def _artifact(run_id: int) -> dict[str, Any]:
     return {"created_at": "2026-10-05T12:00:00Z", "workflow_run": {"id": run_id}, "expired": False}
 
 
-def test_latest_state_falls_back_to_the_legacy_artifact_and_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
-    legacy = github.state_artifact_name(7, github.LEGACY_STATE_ARTIFACT_PREFIX)
-    runs = {"1": _run(path=github.LEGACY_WORKFLOW_PATH)}
-    downloaded = _state_sources(monkeypatch, {legacy: [_artifact(1)]}, runs)
-    state = github.latest_state(REPO, 7)
-    assert state is not None and state.strikes == 2
-    assert downloaded == ["oracle-review-shadow-state-7"]
-
-
-def test_latest_state_prefers_the_current_artifact(monkeypatch: pytest.MonkeyPatch) -> None:
-    legacy = github.state_artifact_name(7, github.LEGACY_STATE_ARTIFACT_PREFIX)
-    runs = {"1": _run(path=github.LEGACY_WORKFLOW_PATH), "2": _run()}
-    downloaded = _state_sources(monkeypatch, {"oracle-verdict-state-7": [_artifact(2)], legacy: [_artifact(1)]}, runs)
+def test_latest_state_downloads_matching_verdict_artifact(monkeypatch: pytest.MonkeyPatch) -> None:
+    name = github.state_artifact_name(7, github.STATE_ARTIFACT_PREFIX)
+    downloaded = _state_sources(monkeypatch, {name: [_artifact(1)]}, {"1": _run(path=github.WORKFLOW_PATH)})
     state = github.latest_state(REPO, 7)
     assert state is not None and state.strikes == 1
-    assert downloaded == ["oracle-verdict-state-7"]
+    assert downloaded == [name]
 
 
-@pytest.mark.parametrize(
-    ("name", "path"),
-    [
-        ("oracle-verdict-state-7", github.LEGACY_WORKFLOW_PATH),
-        ("oracle-review-shadow-state-7", github.WORKFLOW_PATH),
-    ],
-    ids=["current-artifact-from-legacy-workflow", "legacy-artifact-from-current-workflow"],
-)
-def test_latest_state_pairs_each_artifact_name_with_its_own_workflow(
-    monkeypatch: pytest.MonkeyPatch, name: str, path: str
-) -> None:
-    downloaded = _state_sources(monkeypatch, {name: [_artifact(1)]}, {"1": _run(path=path)})
+def test_latest_state_ignores_artifacts_from_another_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
+    name = github.state_artifact_name(7, github.STATE_ARTIFACT_PREFIX)
+    downloaded = _state_sources(monkeypatch, {name: [_artifact(1)]}, {"1": _run(path=".github/workflows/other.yml")})
     assert github.latest_state(REPO, 7) is None
     assert downloaded == []
 
