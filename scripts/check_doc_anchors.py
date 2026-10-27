@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 from collections import Counter
+from collections.abc import Iterator
 from pathlib import Path
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
@@ -45,7 +46,7 @@ BASELINE_PATH = "quality/doc-anchor-baseline.json"
 
 _LINK_RE = re.compile(r"(?<!!)\[(?:[^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 _INLINE_CODE_RE = re.compile(r"`[^`]*`")
-_FENCE_RE = re.compile(r"^\s*(```|~~~)")
+_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
 _SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 _HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$")
 _MYST_TARGET_RE = re.compile(r"^\s*\(([^()\s]+)\)=\s*$")
@@ -56,7 +57,7 @@ _LINK_TEXT_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 _EMPHASIS_RE = re.compile(r"[*~]+|(?<!\w)_+|_+(?!\w)")
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _NON_SLUG_RE = re.compile(r"[^\w\s-]", flags=re.UNICODE)
-_WHITESPACE_RE = re.compile(r"[\s]+")
+_WHITESPACE_RE = re.compile(r"\s")
 
 
 def tracked_markdown_files() -> list[str]:
@@ -76,26 +77,40 @@ def tracked_markdown_files() -> list[str]:
 
 
 def slugify_heading(text: str) -> str:
-    text = _INLINE_CODE_RE.sub(lambda match: match.group(0)[1:-1], text)
-    text = _IMAGE_RE.sub(r"\1", text)
-    text = _LINK_TEXT_RE.sub(r"\1", text)
-    text = _EMPHASIS_RE.sub("", text)
-    text = _HTML_TAG_RE.sub("", text)
-    text = html.unescape(text).lower().strip()
+    parts = re.split(r"(`[^`]*`)", text)
+    pieces: list[str] = []
+    for part in parts:
+        if part.startswith("`") and part.endswith("`") and len(part) > 1:
+            pieces.append(part[1:-1])
+            continue
+        part = _IMAGE_RE.sub(r"\1", part)
+        part = _LINK_TEXT_RE.sub(r"\1", part)
+        part = _EMPHASIS_RE.sub("", part)
+        pieces.append(_HTML_TAG_RE.sub("", part))
+    text = html.unescape("".join(pieces)).lower().strip()
     text = _NON_SLUG_RE.sub("", text)
     return _WHITESPACE_RE.sub("-", text)
+
+
+def prose_lines(content: str) -> Iterator[tuple[int, str]]:
+    stack: list[tuple[str, int, bool]] = []
+    for line_num, line in enumerate(content.splitlines(), 1):
+        fence = _FENCE_RE.match(line)
+        if fence is not None:
+            marker, info = fence.group(1), fence.group(2).strip()
+            if stack and marker[0] == stack[-1][0] and len(marker) >= stack[-1][1] and not info:
+                stack.pop()
+            elif not stack or not stack[-1][2]:
+                stack.append((marker[0], len(marker), not info.startswith("{")))
+            continue
+        if not stack or not stack[-1][2]:
+            yield line_num, line
 
 
 def collect_anchors(content: str) -> set[str]:
     anchors: set[str] = set()
     slug_counts: dict[str, int] = {}
-    in_fence = False
-    for line in content.splitlines():
-        if _FENCE_RE.match(line):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
+    for _, line in prose_lines(content):
         heading = _HEADING_RE.match(line)
         if heading is not None:
             base = slugify_heading(heading.group(1))
@@ -112,13 +127,7 @@ def collect_anchors(content: str) -> set[str]:
 
 def extract_anchor_links(content: str) -> list[tuple[int, str]]:
     results: list[tuple[int, str]] = []
-    in_fence = False
-    for line_num, line in enumerate(content.splitlines(), 1):
-        if _FENCE_RE.match(line):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
+    for line_num, line in prose_lines(content):
         stripped = _INLINE_CODE_RE.sub("", line)
         for match in _LINK_RE.finditer(stripped):
             target = match.group(1).strip()

@@ -22,6 +22,39 @@ def test_slug_keeps_intra_word_underscores_and_drops_emphasis_delimiters() -> No
     assert checker.slugify_heading("_emphasised_ and __strong__ text") == "emphasised-and-strong-text"
 
 
+@pytest.mark.parametrize(
+    ("heading", "slug"),
+    [
+        ("Versioning & Releases", "versioning--releases"),
+        ("Hybrid Platforms (SQL + DataFrame)", "hybrid-platforms-sql--dataframe"),
+        ("`_project/scripts/`", "_projectscripts"),
+        ("`<result>.manifest.json` fields", "resultmanifestjson-fields"),
+    ],
+)
+def test_slug_matches_github_for_spaced_punctuation_and_code_spans(heading: str, slug: str) -> None:
+    assert checker.slugify_heading(heading) == slug
+
+
+def test_directive_bodies_are_checked_but_code_fences_are_not() -> None:
+    content = (
+        "# Top\n"
+        "\n"
+        "````{note}\n"
+        "See [other](#missing).\n"
+        "## Inside Directive\n"
+        "```python\n"
+        "[code](#hidden)\n"
+        "```\n"
+        "````\n"
+        "\n"
+        "```\n"
+        "[plain](#also-hidden)\n"
+        "```\n"
+    )
+    assert [target for _, target in checker.extract_anchor_links(content)] == ["#missing"]
+    assert checker.collect_anchors(content) == {"top", "inside-directive"}
+
+
 def test_slug_strips_markup_and_keeps_unicode() -> None:
     assert checker.slugify_heading("`tuning init` - Create Tuning Configuration") == (
         "tuning-init---create-tuning-configuration"
