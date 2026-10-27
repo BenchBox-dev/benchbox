@@ -18,6 +18,7 @@ from oracle_review_check import (
     PASS,
     WAITING,
     CheckError,
+    annotate_receipt,
     changed_paths,
     decide,
     fetch_base_change_date,
@@ -26,6 +27,7 @@ from oracle_review_check import (
     fetch_head_oid,
     fetch_pull,
     fetch_reviews,
+    fetch_statuses,
     fetch_threads,
     path_matcher,
 )
@@ -133,11 +135,13 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
         items = fetch_files(token, repo, pr)
         files = changed_paths(items)
         matcher = path_matcher(len(items), pull["changed_files"], *load_policy_rules())
-        reviews = fetch_reviews(token, repo, pr)
+        statuses = fetch_statuses(token, repo, head_sha)
         threads = fetch_threads(token, repo, pr)
         base_date = fetch_base_change_date(token, repo, pr)
         comments = fetch_comments(token, repo, pr)
-        status, message = decide(head_sha, files, reviews, threads, matcher, base_date, comments)
+        reviews = fetch_reviews(token, repo, pr)
+        annotate_receipt(token, reviews, head_sha, base_date)
+        status, message = decide(head_sha, files, statuses, threads, matcher, base_date, comments, reviews=reviews)
     except Exception as exc:
         raise EvaluationFailed(head_sha, exc) from exc
     return head_sha, status, message

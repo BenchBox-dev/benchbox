@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers.protocol import DO_NOT_SHIP_SUMMARY, judge
+from _project.scripts.oracle_reviewers.protocol import DO_NOT_SHIP_SUMMARY, decode_marker, encode_marker, judge
 from _project.scripts.oracle_reviewers.verdict import validate
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -130,3 +130,43 @@ def test_judge_keeps_a_cited_withdrawal_on_a_forced_round() -> None:
 def test_judge_merges_identical_defects_and_counts_them_once() -> None:
     judgement = judge(_verdict("SHIP_WITH_FIXES", [_defect(1), _defect(1), _defect(2)]), 10)
     assert len(judgement.defects) == 2 and judgement.merged == 1
+
+
+def _marker_record(**over: Any) -> dict[str, Any]:
+    record = {
+        "v": 1,
+        "cycle": 1,
+        "round": 1,
+        "kind": "first",
+        "decision": "SHIP",
+        "head_sha": "a" * 40,
+        "base_ref": "develop",
+        "reviewer": "large",
+        "tier": "large",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 1,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+        **over,
+    }
+    return record
+
+
+def test_a_marker_round_trips_an_optional_run_uuid() -> None:
+    body = f"line\n{encode_marker(_marker_record(run_uuid='a' * 32))}"
+    assert decode_marker(body)["run_uuid"] == "a" * 32
+
+
+def test_a_marker_without_a_run_uuid_stays_valid() -> None:
+    body = f"line\n{encode_marker(_marker_record())}"
+    assert decode_marker(body).get("run_uuid") is None
+
+
+def test_a_marker_rejects_a_malformed_run_uuid() -> None:
+    from _project.scripts.oracle_reviewers.protocol import MarkerError
+
+    body = f"line\n{encode_marker(_marker_record(run_uuid='xyz'))}"
+    with pytest.raises(MarkerError):
+        decode_marker(body)
