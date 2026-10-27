@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import http.server
 import os
 import shlex
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -223,21 +225,6 @@ FAKE_URL = "https://gateway-fake.example.invalid:4000"
 FAKE_OMP = "#!/bin/sh\necho omp/1.2.3\n"
 FAKE_OMP_URL = "https://downloads.example.invalid/omp"
 
-STUB_SITECUSTOMIZE = """
-import contextlib
-import io
-import os
-import urllib.request
-
-def _urlopen(url, timeout=None):
-    target = url.full_url if hasattr(url, 'full_url') else str(url)
-    with open(os.environ["STUB_DIR"] + "/downloads.log", "a") as log:
-        log.write(target + "\\n")
-    return contextlib.closing(io.BytesIO(os.environ["STUB_OMP_CONTENT"].encode()))
-
-urllib.request.urlopen = _urlopen
-"""
-
 STUB_TAILSCALED = """#!{python}
 import os, sys, time
 sock = [a.split("=", 1)[1] for a in sys.argv if a.startswith("--socket=")][0]
@@ -364,9 +351,54 @@ def _gateway_stubs(tmp_path: Path) -> tuple[str, Path]:
         stub = bin_dir / name
         stub.write_text(body, encoding="utf-8")
         stub.chmod(0o755)
-    (stub_dir / "site").mkdir()
-    (stub_dir / "site" / "sitecustomize.py").write_text(STUB_SITECUSTOMIZE, encoding="utf-8")
     return f"{bin_dir}{os.pathsep}{os.environ['PATH']}", stub_dir
+
+
+class _OmpServer:
+    def __init__(self, log: Path, content: str) -> None:
+        self.content = content
+        owner = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                with log.open("a", encoding="utf-8") as handle:
+                    handle.write(self.path + "\n")
+                body = owner.content.encode() if self.path == "/omp" else b""
+                self.send_response(200 if self.path == "/omp" else 404)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args: object) -> None:
+                return
+
+        self.httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.httpd.daemon_threads = True
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+
+    @property
+    def origin(self) -> str:
+        return f"http://127.0.0.1:{self.httpd.server_port}"
+
+
+_OMP_SERVERS: dict[Path, _OmpServer] = {}
+
+
+@pytest.fixture(autouse=True)
+def _close_omp_servers():
+    yield
+    for server in _OMP_SERVERS.values():
+        server.httpd.shutdown()
+        server.httpd.server_close()
+    _OMP_SERVERS.clear()
+
+
+def _omp_server(tmp_path: Path, content: str) -> _OmpServer:
+    server = _OMP_SERVERS.get(tmp_path)
+    if server is None:
+        server = _OMP_SERVERS[tmp_path] = _OmpServer(tmp_path / "stubs" / "downloads.log", content)
+    server.content = content
+    return server
 
 
 def _gateway_env(tmp_path: Path, *, credentials: bool = True, **overrides: str | None) -> dict[str, str]:
@@ -379,7 +411,8 @@ def _gateway_env(tmp_path: Path, *, credentials: bool = True, **overrides: str |
         "STUB_OMP_CONTENT": FAKE_OMP,
         "FAKE_KEY": FAKE_KEY,
         "HOME": str(tmp_path / "home"),
-        "PYTHONPATH": f"{stub_dir / 'site'}{os.pathsep}{REPO_ROOT}",
+        "PYTHONPATH": str(REPO_ROOT),
+        "BENCHBOX_OMP_DOWNLOAD_MIRROR": _omp_server(tmp_path, overrides.get("STUB_OMP_CONTENT") or FAKE_OMP).origin,
         "BENCHBOX_GATEWAY_PROXY_PORT": "1055",
         "TS_AUTHKEY": FAKE_KEY if credentials else None,
         "ORACLE_GATEWAY_URL": FAKE_URL if credentials else None,
@@ -445,7 +478,7 @@ def test_gateway_joins_userspace_verifies_and_installs_omp_without_printing_secr
         assert "key-ok" in tailscale_log
         assert _installed_omp(tmp_path).read_text(encoding="utf-8") == FAKE_OMP
         assert _installed_omp(tmp_path).stat().st_mode & 0o111
-        assert _stub_lines(tmp_path, "downloads.log") == [FAKE_OMP_URL]
+        assert _stub_lines(tmp_path, "downloads.log") == ["/omp"]
         assert "omp=installed" in _status(repo)
         record = repo / ".git" / "benchbox-cloud-gateway" / "omp-binary"
         assert record.read_text(encoding="utf-8").strip() == str(_installed_omp(tmp_path))
@@ -533,13 +566,13 @@ def test_gateway_refuses_an_omp_download_with_a_bad_checksum(tmp_path: Path) -> 
 
 
 def test_gateway_reads_the_pin_from_origin_develop_not_from_the_branch(tmp_path: Path) -> None:
-    repo = _gateway_clone(tmp_path, branch_policy=_policy_text(url="https://branch.example.invalid/omp"))
+    repo = _gateway_clone(tmp_path, branch_policy=_policy_text(url="https://branch.example.invalid/branch-omp"))
     env = _gateway_env(tmp_path)
     try:
         result = _run(GATEWAY, cwd=repo, env=env)
 
         assert result.returncode == 0, result.stdout + result.stderr
-        assert _stub_lines(tmp_path, "downloads.log") == [FAKE_OMP_URL]
+        assert _stub_lines(tmp_path, "downloads.log") == ["/omp"]
         assert "omp=installed" in _status(repo)
     finally:
         _stop(repo, env)
@@ -645,7 +678,7 @@ def test_gateway_second_run_reuses_the_daemon_and_the_install(tmp_path: Path) ->
         assert first.returncode == second.returncode == 0
         assert len(_stub_lines(tmp_path, "tailscaled.log")) == 1
         assert len([line for line in _stub_lines(tmp_path, "tailscale.log") if " up " in f" {line} "]) == 1
-        assert downloads == [FAKE_OMP_URL]
+        assert downloads == ["/omp"]
         assert _stub_lines(tmp_path, "downloads.log") == downloads
     finally:
         _stop(repo, env)

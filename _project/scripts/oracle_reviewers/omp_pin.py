@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -18,6 +19,8 @@ from typing import Any
 
 BINARY_ENV = "ORACLE_OMP_BINARY"
 CACHE_ENV = "BENCHBOX_OMP_CACHE"
+MIRROR_ENV = "BENCHBOX_OMP_DOWNLOAD_MIRROR"
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?")
 CHUNK_BYTES = 1 << 20
@@ -104,17 +107,38 @@ def sha256_of(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _loopback(url: str) -> bool:
+    parts = urllib.parse.urlsplit(url)
+    return parts.scheme in ("http", "https") and parts.hostname in LOOPBACK_HOSTS
+
+
+def mirror() -> str | None:
+    value = os.environ.get(MIRROR_ENV, "")
+    if not value:
+        return None
+    if not _loopback(value):
+        raise PinError(f"{MIRROR_ENV} must name a loopback http(s) origin")
+    return value.rstrip("/")
+
+
 class HttpsOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def __init__(self, allow_loopback: bool = False) -> None:
+        super().__init__()
+        self.allow_loopback = allow_loopback
+
     def redirect_request(
         self, req: urllib.request.Request, fp: Any, code: int, msg: str, headers: Any, newurl: str
     ) -> urllib.request.Request | None:
-        if not newurl.lower().startswith("https://"):
+        permitted = newurl.lower().startswith("https://") or (self.allow_loopback and _loopback(newurl))
+        if not permitted:
             raise urllib.error.URLError(f"the omp download redirected to a non-https url ({code})")
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def build_opener() -> urllib.request.OpenerDirector:
-    return urllib.request.build_opener(HttpsOnlyRedirectHandler)
+    if mirror() is None:
+        return urllib.request.build_opener(HttpsOnlyRedirectHandler())
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}), HttpsOnlyRedirectHandler(allow_loopback=True))
 
 
 def _open(request: urllib.request.Request, timeout: float) -> Any:
@@ -138,6 +162,10 @@ def _stream(
 def download(url: str, destination: Path) -> None:
     if not url.startswith("https://"):
         raise PinError("omp is downloaded over https only")
+    origin = mirror()
+    if origin is not None:
+        parts = urllib.parse.urlsplit(url)
+        url = origin + urllib.parse.urlunsplit(("", "", parts.path, parts.query, ""))
     _stream(urllib.request.Request(url, headers={"User-Agent": USER_AGENT}), destination)
 
 
