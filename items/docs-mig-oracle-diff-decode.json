@@ -5,7 +5,7 @@
     "Existing oracle-reviewer unit tests and workflow tests pass; the fix PR under test receives a normal oracle review (clean UTF-8 diff) and merges.",
     "After the fix lands, the oracle-verdict workflow successfully plans a review of PR 3168 instead of crashing."
   ],
-  "context": "Unblocks docs-mig-tpc-adjacent-eulas (PR 3168), whose diff contains canonical Windows-1252 EULA.txt files that must stay byte-identical. The oracle-verdict plan step crashed in `_project/scripts/oracle_reviewers/github.py:get_diff` because `subprocess.run(..., text=True)` strictly decodes stdout as UTF-8. This fix changes nothing about review criteria: it only replaces undecodable bytes with U+FFFD so review proceeds on the decodable remainder. The fix PR itself carries no binary files, so the oracle reviews it normally. Guardrails G1-G11 and stop conditions from the batch apply; soundness-prefix change requires oracle review (G6).",
+  "context": "2026-10-27 (from another session): Merge freeze (owner 2026-10-27, scope: oracle-code PRs): no PR that changes oracle reviewer or gate code merges, and no make pr-arm runs on one, until oracle-history-edited-review-fail-closed-20261027 is merged. In scope: #3565, #3572, #3573, #3574, #3576, the unopened scope-path, evidence-exempt and redaction branches, and any other PR touching _project/scripts/oracle_reviewers/, _project/scripts/oracle_review_check.py, _project/scripts/soundness_merge_digest.py, scripts/pr_arm.py or .github/workflows/oracle-*.yml. Excepted: the edited-review fix's own PR and #3585 (owner exemption 2026-10-27). PRs may be opened and reviewed meanwhile. Never edit, delete, dismiss or minimise an oracle review, review comment or commit status, including on test PRs; edit-detection proofs use unit fixtures and read-only GraphQL reads of existing reviews.\n\nUnblocks docs-mig-tpc-adjacent-eulas (PR 3168), whose diff contains canonical Windows-1252 EULA.txt files that must stay byte-identical. The oracle-verdict plan step crashed in `_project/scripts/oracle_reviewers/github.py:get_diff` because `subprocess.run(..., text=True)` strictly decodes stdout as UTF-8. This fix changes nothing about review criteria: it only replaces undecodable bytes with U+FFFD so review proceeds on the decodable remainder. The fix PR itself carries no binary files, so the oracle reviews it normally. Guardrails G1-G11 and stop conditions from the batch apply; soundness-prefix change requires oracle review (G6).",
   "description": "Fix a crash in the oracle reviewers GitHub API helper: `_gh` in `_project/scripts/oracle_reviewers/github.py` runs `gh api` with `text=True`, so any response containing non-UTF-8 bytes (for example a PR diff touching the canonical Windows-1252 TPC EULA files) raises UnicodeDecodeError and fails the oracle-verdict workflow instead of producing a review. Capture bytes and decode with errors=replace for both stdout and the stderr detail in the GitHubError path. Add a regression test with non-UTF-8 fixture bytes. No change to review selection, verdict logic, or required checks.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox"
@@ -27,6 +27,14 @@
       "op": "take",
       "op_id": "26998d21de844fd89778abcba02b9e17",
       "session_id": "d66556e19a274eaea3762c21d3e37dd7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T13:01:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a7470dfa81e34da7b9530afb1e87f74d",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
 }
