@@ -19,7 +19,7 @@ This guide helps diagnose and resolve common issues when running BenchBox benchm
 | "permission denied" | Access rights | [Permission Errors](#permission-errors) |
 | "timeout" | Slow query/network | [Timeouts](#query-timeouts) |
 | "out of memory" | Scale too large | [Memory Issues](#memory-issues) |
-| "ImportError" | Missing package | [Dependencies](#missing-dependencies) |
+| "ImportError" | Missing package | [Dependencies](#missing-platform-dependencies) |
 | "file not found" | Data loading | [Data Loading](#data-loading-issues) |
 | "command not found: benchbox" | PATH issue | [Installation Issues](#installation-issues) |
 

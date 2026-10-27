@@ -121,4 +121,4 @@ DataFrame execution is driven through the CLI (`benchbox run --platform polars-d
 
 - [DataFrame Platform Guide](../platforms/dataframe.md) - Detailed configuration
 - [DataFrame Migration Guide](../guides/dataframe-migration.md) - Adopting DataFrame mode
-- [Tuning Reference](../platforms/dataframe.md#tuning-system) - Performance optimization
+- [Tuning Reference](../platforms/dataframe.md#dataframe-tuning) - Performance optimization
