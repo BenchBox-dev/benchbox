@@ -5,7 +5,7 @@
     "Runtime over the tracked Markdown set is measured and reported; it adds no network access",
     "PR merged with CI and oracle verdict green on its final head"
   ],
-  "context": "2026-10-27 owner chose Exact shrinking baseline via choice dialog: preserve frozen site-owned sources, continue scanning all tracked Markdown, allow only recorded existing broken links, fail on new failures and stale baseline entries. PR #3571 remains open; resuming implementation inline after worker quota exhaustion. Never bypass shared test lock or run parallel local test streams.",
+  "context": "2026-10-27 owner selected Exact shrinking baseline via choice dialog. Implemented and committed 0ac4d4704719c69a75bca509500839f75af74977 in BenchBox.wt-markdown-anchor-check. All 21 existing broken-link occurrences originate in frozen site-owned sources; preserve freeze, scan all tracked Markdown, fail on new/replaced/extra occurrences and stale entries. --write-baseline refuses growth. Real checker smoke: 867 files, 161 fragment links, 21 exact baseline occurrences, 0.2s; 39 focused tests passed under shared xdist lock, ruff/format/inventory/comment policy/preflight pass, committed-head docs-freeze passes. Public branch still old head until make pr-open finishes local oracle; background bg_299 waiting for machine local-review lock. No test-lock bypass or concurrent local test streams. Needs publication, final-head hosted review/CI, arm and merge before finish.",
   "description": "Issue #3448 was a dead docs anchor: #3435 renamed a heading in guides/tpc/tpc-h-official-guide.md and docs/advanced/power-run-concurrent-queries.md:490 kept the old anchor; only the site build caught it (fixed by #3480). Owner decision 2026-10-26: add a core-side check. Scope: links from tracked Markdown files to anchors in other tracked Markdown files (and same-file anchors if cheap); resolve GitHub-style heading slugs; ignore external URLs, code spans and generated files the repo already excludes elsewhere. Extend an existing checker/CI lint step if one fits rather than adding a new workflow job. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "dd88a96fca8d4fb78e772172182a23ee",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T11:45:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "fa5bf1d5b3fe46cdb0de699acf3fcb7c",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
