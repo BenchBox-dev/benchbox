@@ -61,9 +61,10 @@ a smooth scroll still in flight at capture; the capture spec now waits for it.
 | Visual comparison as a merge gate in queue groups | Advisory. The job still runs and uploads its report. It becomes a gate again when the public site is in production. |
 | Heavy tier run only in the queue | The four-shard medium tier, correctness gate and required-local-cases run in `trunk.yml` on pushes to `develop`; soundness and packaging carve-outs retain required PR coverage. |
 
-Trunk runs use `concurrency.queue: max` and do not cancel running work, so a
-later merge does not replace an earlier pending run. They can still wait for
-runner capacity. This preserves runs for delivered events; it cannot prove
+Trunk runs do not cancel running work, so a later merge does not replace an
+earlier run. Amended 2026-10-27: each commit runs in its own concurrency group
+rather than behind `concurrency.queue: max` (see
+`trunk-per-commit-runs-2026-10-27.md`). Runs can still wait for runner capacity. This preserves runs for delivered events; it cannot prove
 that GitHub delivered every push event. The fast-lane test-count ceiling and
 growth baseline are retired; marker and forbidden-path checks remain.
 

@@ -34,8 +34,9 @@ lane, four-shard medium tier, correctness gate and required-local-cases. It also
 runs the whole-tree comment-policy scan and builds the verified release
 distribution artifact. A failing trunk run leads to a revert
 (`make trunk-revert PR=<n>`), except for an invalid-base-policy scan failure
-described below. Its `concurrency.queue: max` retains
-pending runs instead of replacing them when merges arrive together.
+described below. Each commit runs in its own
+`trunk-<sha>` concurrency group, so merges that arrive together are all tested
+in parallel instead of replacing one another.
 
 This closes the concurrency-replacement gap for delivered events, not the
 event-delivery gap. A push that GitHub never delivers produces no run for that
