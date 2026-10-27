@@ -324,6 +324,26 @@
    ]
   },
   {
+   "disposition": "wiring-updated",
+   "kinds": {
+    "extra": 2
+   },
+   "occurrences": 2,
+   "path": ".github/soundness-paths.txt",
+   "rule": "ci-path-classification",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
+    },
+    {
+     "kind": "extra",
+     "target": "scripts/check_docs_ownership.py"
+    }
+   ]
+  },
+  {
    "disposition": "contract-replaced",
    "kinds": {
     "extra": 1,
@@ -4199,6 +4219,26 @@
    ]
   },
   {
+   "disposition": "lock-test",
+   "kinds": {
+    "extra": 2
+   },
+   "occurrences": 2,
+   "path": "tests/unit/scripts/test_soundness_paths.py",
+   "rule": "lock-tests-core",
+   "target_count": 2,
+   "targets": [
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
+    },
+    {
+     "kind": "extra",
+     "target": "scripts/check_docs_ownership.py"
+    }
+   ]
+  },
+  {
    "disposition": "fixture-data",
    "kinds": {
     "root": 1
@@ -4352,23 +4392,23 @@
    "fixture-data": 44,
    "governance-stays": 8,
    "historical-record": 112,
-   "lock-test": 7,
+   "lock-test": 8,
    "prose-link-pinned": 15,
    "site-pipeline-cutover": 4,
-   "wiring-updated": 30
+   "wiring-updated": 31
   },
-  "files": 227,
+  "files": 229,
   "kinds": {
    "built-url": 29042,
    "dir": 165,
-   "extra": 32,
+   "extra": 36,
    "file": 1397,
    "generated": 3,
    "pattern": 323,
    "root": 197,
    "unresolved": 2047
   },
-  "references": 33206,
+  "references": 33210,
   "unclassified": 0
  }
 }

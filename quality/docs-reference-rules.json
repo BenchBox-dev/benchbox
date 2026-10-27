@@ -136,6 +136,7 @@
       "match": [
         ".github/ci-units.yml",
         ".github/inert-paths.txt",
+        ".github/soundness-paths.txt",
         ".github/path-filters.yml",
         ".pre-commit-config.yaml",
         "scripts/canary_impact.py",
@@ -149,10 +150,11 @@
         "tests/unit/test_canary_impact.py",
         "tests/unit/scripts/test_ci_units.py",
         "tests/unit/scripts/test_inert_paths.py",
+        "tests/unit/scripts/test_soundness_paths.py",
         "tests/unit/scripts/test_path_filter_decision.py"
       ],
       "disposition": "wiring-updated",
-      "reason": "Path filters, inert-path rules (including the public-record exceptions) and CI unit selection treat docs/ as a path class; entries for moved pages change at cutover."
+      "reason": "Path filters, inert-path and soundness-path rules (including the public-record exceptions) and CI unit selection treat docs/ as a path class; entries for moved pages change at cutover."
     },
     {
       "id": "agent-and-contributor-prose",

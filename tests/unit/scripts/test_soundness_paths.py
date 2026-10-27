@@ -89,6 +89,8 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
         "scripts/validate_submission.py",
         "scripts/site_inputs.py",
         "scripts/docs_history_filter.py",
+        "scripts/check_docs_ownership.py",
+        "quality/docs-ownership.json",
         "make/site-inputs.mk",
         "_project/scripts/soundness_merge_digest.py",
         ".github/workflows/soundness-merge-digest.yml",
