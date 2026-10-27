@@ -4,7 +4,7 @@
     "The review body for that plan is under a stated size",
     "Merged through the normal PR flow with an oracle success review"
   ],
-  "context": "Observed 2026-10-09 on oversize canary #2847 (oracle-verdict run 37989093375).\n\n2026-10-09 tracker review: corrected which list is long. It is the logic-path reason (classifier.py:84,94), not each soundness file. Evidence: #2847 review 5475225810 was 128,906 characters.",
+  "context": "2026-10-27: Merge freeze (owner 2026-10-27, scope: oracle-code PRs): no PR that changes oracle reviewer or gate code merges, and no make pr-arm runs on one, until oracle-history-edited-review-fail-closed-20261027 is merged. In scope: #3565, #3572, #3573, #3574, #3576, the unopened scope-path, evidence-exempt and redaction branches, and any other PR touching _project/scripts/oracle_reviewers/, _project/scripts/oracle_review_check.py, _project/scripts/soundness_merge_digest.py, scripts/pr_arm.py or .github/workflows/oracle-*.yml. Excepted: the edited-review fix's own PR and #3585 (owner exemption 2026-10-27). PRs may be opened and reviewed meanwhile. Never edit, delete, dismiss or minimise an oracle review, review comment or commit status, including on test PRs; edit-detection proofs use unit fixtures and read-only GraphQL reads of existing reviews.\n\nObserved 2026-10-09 on oversize canary #2847 (oracle-verdict run 37989093375).\n\n2026-10-09 tracker review: corrected which list is long. It is the logic-path reason (classifier.py:84,94), not each soundness file. Evidence: #2847 review 5475225810 was 128,906 characters.",
   "description": "The `Tier: <tier> (<reasons>)` line in every oracle review joins `tier_reasons` (report.py:99). The logic-path reason, \"changes comparison, validation or result logic: \", lists every matching logic file (classifier.py:84,94). It is not the soundness files that are listed. On oversize canary #2847 (640 files, closed unmerged) the posted review 5475225810 was 128,906 characters, almost all of it this line. GitHub accepted it, but a body that size buries the decision, the note and the reviewer list, and it risks hitting GitHub's body limits on a larger PR.\n\nRequired change: cap the file list in the tier reason (for example, the first few paths and \"and N more\"), keeping the reason text, with a test on a many-file plan. Cap it where the reason is built (classifier.py:88 for the gate reason and :94 for the logic reason) or where it is joined (report.py:99). The plan JSON may keep the full list. Check that the status description, already cut to 140 characters, is unaffected.\n\nGuardrails. No change to how the tier is chosen. Very-high tier (reviewer package); normal oracle PR flow.",
   "links": [
     "_project/scripts/oracle_reviewers/report.py",
@@ -33,6 +33,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "492898e0244141f4a530e1a026719b23",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T12:58:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8184ac27493442cfb0d5b8016a9636f6",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
