@@ -179,6 +179,10 @@ def _same_lower(legacy: str, fork: str) -> bool:
     return legacy.lower() == fork.lower()
 
 
+def _postgres_using_format(legacy: str, fork: str) -> bool:
+    return fork == "CREATE TABLE t(a INT) USING 'PARQUET'" and "format='parquet'" in legacy.lower().replace(" ", "")
+
+
 def _comment_prefix(legacy: str, fork: str) -> bool:
     return re.sub(r"^/\*.*?\*/ ", "", fork) == legacy and fork != legacy
 
@@ -376,6 +380,14 @@ CLASSIFICATIONS: list[tuple[str, str, str, _Check]] = [
         "equivalent",
         "Only the case of the property name differs (format vs FORMAT).",
         _same_lower,
+    ),
+    (
+        r"(helper_strip_primary_keys|postgresql_strip_foreign_keys):with_properties",
+        "equivalent",
+        "The upstream PostgreSQL generator now writes the Trino format property as USING 'PARQUET' instead of "
+        "WITH(FORMAT='PARQUET'); PostgreSQL rejects both (unrecognized parameter before, a syntax error now), and "
+        "the strip_with_properties option removes it either way.",
+        _postgres_using_format,
     ),
     (
         r"(lakesail_parquet|spark_delta|spark_orc|spark_parquet):comment_prefix",
