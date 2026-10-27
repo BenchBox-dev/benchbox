@@ -5,6 +5,7 @@
     "Rerun guidance updated in docs and in AGENTS.md (owner-approved replacement, within budget).",
     "Tests: a same-head plan whose latest record lacks a run id and is manual or sweep yields CARRY, and the posted status carries '[run <id>]'; an edited such record HOLDs.",
     "Live: one stuck legacy PR (e.g. #3549 or #3542 if still open) recovers via /oracle-review without a push (record run), or record that none remains open.",
+    "Adds or updates the matching scenario in the oracle end-to-end harness (oracle-e2e-scenario-harness-and-mutation-gate-20261027) once that harness exists, proven to fail with this item's defect reintroduced.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "Follow-up owner decisions 2026-10-26 (after the plan review): AGENTS.md rerun hint edit approved (gate 1).\n\nOWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q6 return the existing verdict.",
@@ -57,6 +58,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "112f53b26b5048818d88e9f289c597a8",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T14:09:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2dabbda020d34afabb79980463182f38",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
