@@ -325,8 +325,10 @@ def _runs_git(node: ast.Call) -> bool:
     if not node.args:
         return False
     cmd = node.args[0]
-    if isinstance(cmd, (ast.List, ast.Tuple)) and cmd.elts:
-        cmd = cmd.elts[0]
+    while isinstance(cmd, ast.BinOp) and isinstance(cmd.op, ast.Add):
+        cmd = cmd.left
+    if isinstance(cmd, (ast.List, ast.Tuple)):
+        cmd = next((e for e in cmd.elts if not isinstance(e, ast.Starred)), None)
     return isinstance(cmd, ast.Constant) and cmd.value in {"git", "git.exe"}
 
 

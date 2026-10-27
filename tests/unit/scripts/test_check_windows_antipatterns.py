@@ -384,6 +384,12 @@ def test_wa007_non_git_command_is_clean(tmp_path: Path) -> None:
     assert _codes(tmp_path, "import subprocess\nsubprocess.run(['ls'], text=True)\n") == []
 
 
+@pytest.mark.parametrize("command", ["['git'] + args", "[*prefix, 'git', 'log']", "('git', *args)"])
+def test_wa007_git_command_shapes(tmp_path: Path, command: str) -> None:
+    src = f"import subprocess\nsubprocess.run({command}, text=True)\n"
+    assert _codes(tmp_path, src) == ["WA007"]
+
+
 @pytest.mark.parametrize(
     "source",
     [

@@ -533,7 +533,9 @@ def gap_issue_body(entry: Entry) -> str:
 
 def run(args: Sequence[str], *, input_text: str | None = None, cwd: Path | None = None) -> str:
     try:
-        result = subprocess.run(list(args), input=input_text, capture_output=True, text=True, check=False, cwd=cwd)
+        result = subprocess.run(
+            list(args), input=input_text, capture_output=True, text=True, encoding="utf-8", check=False, cwd=cwd
+        )
     except OSError as exc:
         raise ReadError(f"{args[0]} could not run: {exc}") from exc
     if result.returncode != 0:
