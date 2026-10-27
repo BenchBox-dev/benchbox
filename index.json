@@ -17143,7 +17143,6 @@
     "oracle-sweep-liveness-cluster-20261027": {
       "claim": null,
       "needs": [
-        "oracle-history-edited-review-fail-closed-20261027",
         "oracle-sweep-runs-listing-resilience-20261027"
       ],
       "priority": "high",
