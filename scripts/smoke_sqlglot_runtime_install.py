@@ -58,7 +58,7 @@ def smoke(wheel: Path) -> None:
         root = Path(scratch)
         environment = root / "venv"
         _run("uv", "venv", environment, cwd=root)
-        python = environment / ("Scripts" if sys.platform == "win32" else "bin") / "python"
+        python = environment / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
         _run("uv", "pip", "install", "--python", python, "sqlglot", wheel, cwd=root)
         _run(python, "-c", CHECK, cwd=root)
         _run("uv", "pip", "uninstall", "--python", python, "benchbox", cwd=root)
