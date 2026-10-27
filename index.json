@@ -17110,7 +17110,9 @@
     },
     "oracle-tier-reason-lists-every-file-20261009": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "low",
       "status": "open",
       "title": "The oracle's review header lists every changed logic file in its tier reason, so a large PR gets a review body of over 128,000 characters"
