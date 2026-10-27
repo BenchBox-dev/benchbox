@@ -211,6 +211,27 @@ def test_missing_declared_path_is_malformed_even_when_fork_covered(guarded_repos
         check(guarded_repository, "HEAD")
 
 
+def test_mysql_pass_without_execution_cannot_be_acknowledged(guarded_repository: Path) -> None:
+    def alter(data):
+        case = next(case for case in data["cases"] if case["id"] == "mysql-percentile-decorator")
+        case["expected"] = {"outcome": "pass", "native_percentile": True}
+
+    change_baseline(guarded_repository, alter)
+    with pytest.raises(ValueError, match="retire the MySQL workaround manually"):
+        check(guarded_repository, "HEAD")
+
+
+def test_mysql_executor_bypasses_manual_guard_and_observation_is_still_compared(guarded_repository: Path) -> None:
+    def alter(data):
+        case = next(case for case in data["cases"] if case["id"] == "mysql-percentile-decorator")
+        case["expected"] = {"outcome": "pass", "rows": [[1]]}
+        case["workaround"] = {"decision": "fork-covered", "reason": "Covered under MySQL execution."}
+
+    change_baseline(guarded_repository, alter)
+    with pytest.raises(ValueError, match="mysql-percentile-decorator"):
+        check(guarded_repository, "HEAD", {**EXECUTORS, "mysql": lambda sql: [[1]]})
+
+
 def test_mysql_workaround_path_names_real_code() -> None:
     path = baseline_case("mysql-percentile-decorator")["workaround"]["path"]
     assert "PERCENTILE_CONT" in (REPO_ROOT / path).read_text(encoding="utf-8")

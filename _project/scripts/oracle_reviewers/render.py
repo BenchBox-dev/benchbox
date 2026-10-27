@@ -111,7 +111,7 @@ def response_template(prior_ids: Sequence[str] = ()) -> str:
                 "status": marks["prior_status"],
                 "evidence": marks["evidence"],
                 "claim": marks["claim"],
-                "concedes": marks["concedes"],
+                "concedes": None,
             }
             for item in ids
         ],
@@ -176,7 +176,7 @@ DISPUTE_RULE = (
     'Thread replies under "Disputed findings" below dispute earlier defects.'
     " Each entry is keyed by its defect id: answer every keyed defect in prior_defects with that id."
     " Restate one of the rebuttal replies shown for the defect in claim, exactly as shown,"
-    " and say whether it holds in concedes."
+    " and set concedes to true when it holds or false when it does not."
     " Then confirm the defect with status not_fixed, withdraw it with status withdrawn, or mark it fixed,"
     " with the reason in evidence. A missing disposition, a claim that matches no shown reply,"
     " agreeing with the rebuttal yet keeping the defect not fixed, and withdrawing without conceding are invalid:"

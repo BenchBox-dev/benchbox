@@ -690,11 +690,6 @@ jobs:
       - name: Type check with ty
         id: guard-ty
         continue-on-error: true
-        run: uv run ty check
-
-      - name: Type check with the bundled SQLGlot runtime
-        id: guard-bundled-runtime-typecheck
-        continue-on-error: true
         run: make typecheck
 
       - name: Strict type check for quality-governance island

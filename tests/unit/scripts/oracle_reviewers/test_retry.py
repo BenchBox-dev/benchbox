@@ -14,6 +14,7 @@ from _project.scripts.oracle_reviewers.retry import (
     due_for_retry,
     next_state,
 )
+from _project.scripts.oracle_reviewers.selection import QUOTA_BACKOFF, PoolBlock, effective_until
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -251,3 +252,24 @@ def test_an_owner_reset_for_another_head_or_before_the_state_changes_nothing(pol
         manual=True, new_diff=False, head_sha=HEAD, previous=_state("pending", head=OTHER), now=NOW, rules=policy.retry
     )
     assert other.allowed and "reset" not in other.reason
+
+
+def test_pool_blocks_round_trip_through_the_state_json() -> None:
+    block = PoolBlock(NOW + timedelta(hours=2), "anthropic", NOW - timedelta(minutes=5))
+    state = State(7, HEAD, "pending", NOW, (), {"claude": block}, ALL_ABSENT)
+    assert State.from_json(state.to_json()) == state
+    assert state.to_json()["pool_blocked_until"] == {"claude": block.to_json()}
+
+
+def test_a_legacy_pool_block_loads_with_an_unknown_provider() -> None:
+    until = NOW + timedelta(days=6)
+    data = {
+        "pr": 7,
+        "head_sha": HEAD,
+        "outcome": "pending",
+        "updated_at": NOW.isoformat(),
+        "pool_blocked_until": {"claude": until.isoformat()},
+    }
+    block = State.from_json(data).pool_blocked_until["claude"]
+    assert block == PoolBlock(until, "", NOW)
+    assert effective_until("claude", block) == NOW + QUOTA_BACKOFF

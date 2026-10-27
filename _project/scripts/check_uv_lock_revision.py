@@ -54,6 +54,7 @@ def _committed_lock_text(repo_root: Path, ref: str = "HEAD") -> str | None:
         cwd=repo_root,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     if result.returncode != 0:

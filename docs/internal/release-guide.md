@@ -486,6 +486,19 @@ its `trunk.yml` push run is green, because the workflow publishes that run's
 and tag `v0.5.0rc1` for a TestPyPI rehearsal, then `VERSION=0.5.0` and tag
 `v0.5.0` for PyPI. See `release-artifacts.md` for the gates it runs.
 
+The `install-matrix` job of `release-v2.yml` installs the admitted wheel on
+Ubuntu, macOS and Windows and runs `scripts/smoke_sqlglot_runtime_install.py`
+against it. That script installs the wheel beside public `sqlglot`, checks that
+`benchbox._vendor.sqlglot` loads from the bundled zip, translates SQL, stays
+separate from the public `sqlglot`, and leaves the public package intact after
+`benchbox` is uninstalled. Dispatch `windows-fast.yml` on a branch to run the same
+script on `windows-latest` before tagging.
+
+Windows verification of the zip-loaded runtime: the script passed on
+`windows-latest` with Python 3.12 in `windows-fast.yml` run 40504950564
+(installed wheel, bundled import from the zip, translation, coexistence with
+public `sqlglot`, uninstall). No path-separator or zipimport change was needed.
+
 ```bash
 make release-prep VERSION=X.Y.Z
 make release-check VERSION=X.Y.Z [BASE_REF=<immutable-predecessor-sha>] [RELEASE_PRE_TAG=1]
@@ -525,6 +538,16 @@ problem it finds. It verifies that:
   `SKIP_UPSTREAM_FRESHNESS=1` so an upstream SQLGlot release cannot block
   unrelated merges. The release workflows and `release-readiness` still run
   the check unconditionally.
+- the bundled SQLGlot runtime carries no published security advisory
+  (`scripts/check_sqlglot_advisories.py`, `make sqlglot-advisory-check`).
+  `pip-audit` and other package scanners only see declared requirements, and
+  SQLGlot ships inside `benchbox/_vendor`, so this check derives the upstream
+  version from `benchbox/_vendor/sqlglot.json` (`<upstream X.Y.Z>.<fork
+  revision>`) and queries the OSV database for it. A matching advisory, or an
+  unreachable database, fails the check. The release owner acts on a failure:
+  refresh the fork onto an upstream release that fixes the advisory and adopt
+  the new wheel; there is no waiver. It runs wherever the freshness check
+  runs: `make release-check`, the `sqlglot-upstream-freshness` job in `release.yml` (which gates `build` and publish), and the `release-readiness` job in `test.yml`. `SKIP_UPSTREAM_FRESHNESS=1` skips both checks in `make release-check` because both need network access. A pull request that edits `benchbox/_vendor/sqlglot.json` or the advisory check re-runs it.
 - with `RELEASE_PRE_TAG=1` (`release_flow.py check --pre-tag`), no
   `changelog.d/*.json` fragment is pending. The pull request check passes it
   only when the pull request changes the release identity: a version marker,
@@ -541,6 +564,17 @@ problem it finds. It verifies that:
   removes `changelog.d` from the release branch and `--require-prepared`
   refuses to cut while fragments are pending. A default `release-check` passes
   while fragments are pending.
+
+To adopt a refreshed fork wheel, run
+`make sqlglot-adopt-wheel WHEEL=<path> SHA256=<digest>` (or put the digest in
+`<wheel>.sha256` beside it; add `DRY_RUN=1` to only verify). The wheel must be
+the verified, clean, pure-Python release artifact and strictly newer than the
+pinned runtime. The command installs it, rewrites `benchbox/_vendor/sqlglot.json`
+and the identity in `scripts/sqlglot_runtime_baseline.json`, runs the runtime pin
+and retirement/baseline checks, and restores the previous files if either fails.
+It publishes nothing; add a `changelog.d` fragment, review any changed baseline
+outcome, then open the pull request. The retirement check executes a QuestDB
+case, so `BENCHBOX_QUESTDB_DSN` must point at a running QuestDB.
 
 Both targets need the full development tree, because the lock-revision check
 lives under `_project/`.

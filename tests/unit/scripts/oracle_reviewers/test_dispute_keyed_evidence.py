@@ -312,6 +312,13 @@ def test_a_parroted_injection_cannot_satisfy_the_claim_check(policy: Policy) -> 
     assert _problem(policy, dispute, honest) is None
 
 
+def test_a_disputed_defect_left_with_the_template_null_concedes_is_invalid(policy: Policy) -> None:
+    problem = _problem(
+        policy, _dispute(), _disposition("fixed", evidence_text="fixed at pkg/kept.py:12", concedes=None)
+    )
+    assert problem is not None and "concedes boolean" in problem
+
+
 def test_a_withdrawal_without_concedes_is_invalid(policy: Policy) -> None:
     problem = _problem(
         policy, _dispute(), _disposition("withdrawn", evidence_text="never a defect: pkg/kept.py:12", concedes=False)

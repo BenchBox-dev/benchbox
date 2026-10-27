@@ -143,7 +143,7 @@ class TestMakefileWiring:
         for command in (
             "uv run ruff check .",
             "uv run ruff format --check .",
-            "uv run ty check",
+            "$(MAKE) typecheck",
             "$(MAKE) artifact-hygiene",
             "$(MAKE) agent-instructions-check",
             "$(MAKE) agent-commit-range-check",
@@ -159,6 +159,14 @@ class TestMakefileWiring:
             "a differing count means the general mechanism was abandoned for a per-member one-off, "
             "or a guard was gated that should not be"
         )
+
+    def test_ci_lint_runs_one_type_check_through_the_bundled_runtime_wrapper(self) -> None:
+        body = _ci_lint_recipe_text()
+        assert body.count("$(MAKE) typecheck;") == 1
+        assert "uv run ty check;" not in body
+        workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        assert workflow.count("run: make typecheck") == 1
+        assert "run: uv run ty check\n" not in workflow
 
 
 class TestGateFailsClosed:

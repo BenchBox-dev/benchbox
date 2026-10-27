@@ -105,7 +105,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `validate-release-pr.yml` | product-safety | Release PR base validation |
 | `validate-submission.yml` | product-safety | Submission validation |
 | `validate-submission-comment.yml` | product-safety | Submission validation comment |
-| `windows-fast.yml` | product-safety | Dispatch-only Windows fast unit suite, the same command as the nightly `t3:windows` domain |
+| `windows-fast.yml` | product-safety | Dispatch-only Windows fast unit suite, the same command as the nightly `t3:windows` domain, preceded by the installed-wheel bundled SQLGlot runtime smoke |
 | `tpcds-official-qualification.yml` | product-safety | Weekly SF 1 TPC-DS qualification; fails on DataFrame-to-SQL divergence or an unclassified printed-answer difference |
 | `tpcds-platform-identity.yml` | product-safety | Bundled TPC-DS generators agree across platforms (data checksums and dsqgen parameters) |
 | `tpch-dbgen-intel-macos.yml` | product-safety | Bundled darwin-x86_64 TPC-H dbgen is executed on an Intel macOS runner and emits the canonical supplier and customer rows |
@@ -313,6 +313,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `check_release_curation.py` | product-safety | Release curation |
 | `changelog_fragments.py` | tooling | Changelog fragment validation, rendering, required-entry decision and Unreleased guard |
 | `check_sqlglot_upstream_freshness.py` | product-safety | Bundled SQLGlot freshness release gate |
+| `check_sqlglot_advisories.py` | product-safety | Bundled SQLGlot published-advisory release gate |
 | `generate_landing_quickstarts.py` | product-safety | Landing quickstart generation |
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |
 | `site_inputs_parent.py` | product-safety | Site-inputs parent resolution by SHA |
@@ -371,6 +372,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `uat-loc-table` | tooling | UAT table hygiene |
 | `timing-policy-check` | product-safety | Monotonic-clock policy |
 | `comment-policy` | tooling | Comments, docstrings, parser coverage and whole-tree enforcement |
+| `windows-antipatterns` | tooling | Windows antipattern ratchet (WA004-WA007): `/dev/null`, POSIX-only imports, `env=` without `SYSTEMROOT`, git `text=True` without `encoding=` |
 | `audit-raw` | tooling | Dependency inventory drift against `dependency-audit-raw.md` |
 | `timing-policy-fast-lane` | pure-process | Fast-lane mechanics |
 | `pr-preflight` | pure-process | PR-loop mechanics |

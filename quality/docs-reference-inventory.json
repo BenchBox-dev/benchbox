@@ -1713,6 +1713,17 @@
   {
    "disposition": "historical-record",
    "kinds": {
+    "file": 1
+   },
+   "occurrences": 1,
+   "path": "_project/decisions/sqlglot-maintenance-decision-record.md",
+   "rule": "project-records",
+   "target_count": 1,
+   "targets_sha256": "629ef4f911b1d1201c6eb379b296eb3ee0705b38c73eae657ad950b76be6d7b7"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
     "file": 2
    },
    "occurrences": 2,
@@ -3407,12 +3418,12 @@
    "kinds": {
     "extra": 1,
     "file": 1,
-    "pattern": 5
+    "pattern": 6
    },
-   "occurrences": 9,
+   "occurrences": 10,
    "path": "tests/fixtures/fast_tier_baseline/tests-01.json",
    "rule": "test-sample-data",
-   "target_count": 7,
+   "target_count": 8,
    "targets": [
     {
      "kind": "extra",
@@ -3436,6 +3447,10 @@
     },
     {
      "kind": "pattern",
+     "target": "docs/key.pem]"
+    },
+    {
+     "kind": "pattern",
      "target": "docs/publish-allowlist.txt]"
     },
     {
@@ -3448,14 +3463,18 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 5,
+    "pattern": 6,
     "unresolved": 1
    },
-   "occurrences": 8,
+   "occurrences": 9,
    "path": "tests/fixtures/fast_tier_baseline/tests-02.json",
    "rule": "test-sample-data",
-   "target_count": 7,
+   "target_count": 8,
    "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/a.py]"
+    },
     {
      "kind": "pattern",
      "target": "docs/agent/identity-instruction-boundary.md]"
@@ -3490,17 +3509,21 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 5,
+    "pattern": 7,
     "unresolved": 1
    },
-   "occurrences": 9,
+   "occurrences": 11,
    "path": "tests/fixtures/fast_tier_baseline/tests-03.json",
    "rule": "test-sample-data",
-   "target_count": 7,
+   "target_count": 9,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs//page.md-unsafe"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/benchmarks/queries/q1.md]"
     },
     {
      "kind": "pattern",
@@ -3525,19 +3548,32 @@
     {
      "kind": "file",
      "target": "docs/usage/getting-started.md"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/uv.lock]"
     }
    ]
   },
   {
    "disposition": "fixture-data",
    "kinds": {
-    "file": 1
+    "file": 1,
+    "pattern": 2
    },
-   "occurrences": 1,
+   "occurrences": 3,
    "path": "tests/fixtures/fast_tier_baseline/tests-04.json",
    "rule": "test-sample-data",
-   "target_count": 1,
+   "target_count": 3,
    "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/blog/post.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/pyproject.toml]"
+    },
     {
      "kind": "file",
      "target": "docs/usage/getting-started.md"
@@ -3578,13 +3614,17 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 4
+    "pattern": 5
    },
-   "occurrences": 5,
+   "occurrences": 6,
    "path": "tests/fixtures/fast_tier_baseline/tests-06.json",
    "rule": "test-sample-data",
-   "target_count": 5,
+   "target_count": 6,
    "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/CNAME]"
+    },
     {
      "kind": "pattern",
      "target": "docs/development/testing.md]"
@@ -5873,25 +5913,25 @@
    "fixture-data": 44,
    "generator-deleted": 5,
    "governance-stays": 7,
-   "historical-record": 112,
+   "historical-record": 113,
    "lock-test": 26,
    "prose-link-pinned": 19,
    "runtime-link-updated": 7,
    "site-pipeline-cutover": 12,
    "wiring-updated": 35
   },
-  "files": 277,
+  "files": 278,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
    "extra": 78,
-   "file": 1581,
+   "file": 1582,
    "generated": 22,
-   "pattern": 320,
+   "pattern": 327,
    "root": 219,
    "unresolved": 2086
   },
-  "references": 33522,
+  "references": 33530,
   "unclassified": 0
  }
 }

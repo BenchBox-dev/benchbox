@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -190,8 +191,10 @@ def test_run_checks_can_skip_the_network_dependent_freshness_check(tree: Path) -
 
     release_flow.run_checks(tree, VERSION, runner, skip_upstream_freshness=True)
     assert not any("check_sqlglot_upstream_freshness" in call for call in seen)
+    assert not any("check_sqlglot_advisories" in call for call in seen)
     release_flow.run_checks(tree, VERSION, runner)
     assert any("check_sqlglot_upstream_freshness" in call for call in seen)
+    assert any("check_sqlglot_advisories" in call for call in seen)
 
 
 def test_check_pins_an_explicit_lock_baseline(tree: Path) -> None:
@@ -231,6 +234,7 @@ def test_lock_baseline_cannot_be_replaced_to_hide_a_committed_downgrade(tree: Pa
         "scripts/check_release_curation.py",
         "scripts/check_dependency_bounds.py",
         "scripts/check_sqlglot_upstream_freshness.py",
+        "scripts/check_sqlglot_advisories.py",
         "scripts/sqlglot_refresh_waiver.json",
         "_project/scripts/check_uv_lock_revision.py",
         "_project/decisions/single-repo-migration.md",
@@ -310,6 +314,7 @@ def test_invalid_fragment_aborts_preparation_before_any_marker_or_changelog_writ
         ("check_release_curation.py", "release curation"),
         ("check_dependency_bounds.py", "dependency bounds"),
         ("check_sqlglot_upstream_freshness.py", "sqlglot upstream freshness"),
+        ("check_sqlglot_advisories.py", "sqlglot advisories"),
     ],
 )
 def test_check_fails_when_a_delegated_check_fails(tree: Path, script_name: str, label: str) -> None:
@@ -593,7 +598,15 @@ def test_candidate_selection_includes_committed_enforcement_changes(
     assert release_flow.select_candidate(root, base) == (True, VERSION, False, False)
 
 
-@pytest.mark.parametrize("path", ["scripts/check_sqlglot_upstream_freshness.py", "scripts/sqlglot_refresh_waiver.json"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "scripts/check_sqlglot_upstream_freshness.py",
+        "scripts/check_sqlglot_advisories.py",
+        "scripts/sqlglot_refresh_waiver.json",
+        "benchbox/_vendor/sqlglot.json",
+    ],
+)
 def test_candidate_selection_requires_freshness_when_the_gate_itself_changes(
     candidate_tree: tuple[Path, str], path: str
 ) -> None:
@@ -629,6 +642,7 @@ def test_ci_release_check_step_passes_skip_and_pre_tag_from_the_selection_output
     fake.chmod(0o755)
     calls = tmp_path / "calls.txt"
     env = {
+        "SYSTEMROOT": os.environ.get("SYSTEMROOT", ""),
         "PATH": f"{bin_dir}:/usr/bin:/bin",
         "CALLS": str(calls),
         "RELEASE_VERSION": VERSION,
@@ -716,6 +730,20 @@ def test_candidate_check_is_required_on_pull_requests_without_changing_legacy_pu
     aggregate = next(step for step in core["steps"] if step.get("id") == "aggregate")
     assert "--always ci-paths" in aggregate["run"]
     assert "origin/release" in (REPO_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+
+
+def test_publish_and_release_branch_workflows_run_the_advisory_check() -> None:
+    import yaml
+
+    release = yaml.safe_load((REPO_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8"))
+    job = release["jobs"]["sqlglot-upstream-freshness"]
+    assert any("scripts/check_sqlglot_advisories.py" in step.get("run", "") for step in job["steps"])
+    assert "sqlglot-upstream-freshness" in release["jobs"]["build"]["needs"]
+
+    test = yaml.safe_load((REPO_ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"))
+    runs = [step.get("run", "") for step in test["jobs"]["release-readiness"]["steps"]]
+    assert any("scripts/check_sqlglot_advisories.py" in run for run in runs)
+    assert any("scripts/check_sqlglot_upstream_freshness.py" in run for run in runs)
 
 
 def test_make_targets_exist_and_legacy_release_targets_are_kept() -> None:

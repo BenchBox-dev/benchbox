@@ -40,6 +40,12 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Verify the installed wheel loads the bundled SQLGlot runtime
+        shell: bash
+        run: |
+          uv build --wheel
+          uv run -- python scripts/smoke_sqlglot_runtime_install.py dist/*.whl
+
       - name: Run fast tests
         shell: bash
         env:

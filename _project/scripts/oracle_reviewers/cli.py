@@ -22,6 +22,7 @@ from . import (
     credentials,
     dedup,
     disk_scan,
+    edits,
     github,
     omp_pin,
     processes,
@@ -195,7 +196,7 @@ def _is_dispute(body: str) -> bool:
 def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dict[str, Any]]:
     disputes = []
     for thread in threads:
-        if thread.get("resolved") or thread.get("author_type") != "Bot":
+        if thread.get("resolved") or thread.get("edited") or thread.get("author_type") != "Bot":
             continue
         if (thread.get("author") or "").removesuffix("[bot]") != bot_login:
             continue
@@ -434,9 +435,10 @@ def command_plan(args: argparse.Namespace) -> int:
     plan["manual"] = manual
     plan["previous_state"] = previous.to_json() if previous else None
     try:
-        found = protocol.history(github.oracle_reviews(repo, pr), policy.bot_login)
-    except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
-        found = protocol.History([], f"the oracle's review history could not be read: {exc}")
+        found = _plan_history(repo, pr, policy.bot_login)
+    except edits.EditStateError as exc:
+        print(f"oracle-verdict: error: {exc}", file=sys.stderr)
+        return 2
     if found.error is not None:
         plan.update({"decision": HOLD, "decision_reason": found.error})
         return _finish_plan(out_dir, plan)
@@ -476,17 +478,90 @@ def command_plan(args: argparse.Namespace) -> int:
         plan.update({"decision": REFUSED, "decision_reason": step.reason})
         return _finish_plan(out_dir, plan)
     if step.kind == protocol.CARRY:
-        plan.update({"decision": CARRY, "decision_reason": step.reason, "reviewed_head": step.previous["head_sha"]})
-        return _finish_plan(out_dir, plan)
+        return _plan_carry(out_dir, plan, policy.bot_login, step, found.latest_at)
     try:
         threads = github.review_threads(repo, pr) if threads is None else threads
         plan["open_findings"] = dedup.open_fingerprints(threads, policy.bot_login)
         plan["disputes"] = _disputed_threads(threads, policy.bot_login)
     except (github.GitHubError, KeyError, ValueError) as exc:
         _summary(f"oracle-verdict: open review threads could not be read, so none are suppressed: {exc}")
-    _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, previous, now)
+    owner_reset = retry.reset_applies(previous, plan["head_sha"], reset_at)
+    pool_blocks = _carried_blocks(previous, plan["head_sha"], now, owner_reset)
+    _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, pool_blocks)
     plan["decision_reason"] = f"{step.reason}; {rerun.reason}"
     return _finish_plan(out_dir, plan)
+
+
+def _oracle_history(repo: str, pr: int, bot_login: str) -> protocol.History:
+    reviews = github.oracle_reviews(repo, pr)
+    marked = [review for review in reviews if protocol.is_app_review(review, bot_login)]
+    node_ids = [review.get("node_id") for review in marked]
+    if not all(isinstance(node_id, str) and node_id for node_id in node_ids):
+        raise edits.EditStateError("an oracle review carries no node id, so its edit state cannot be read")
+    states = github.review_edit_states(node_ids) if node_ids else {}
+    if any(node_id not in states for node_id in node_ids):
+        raise edits.EditStateError("the edit state of an oracle review was not returned")
+    return protocol.history(
+        [
+            {
+                **review,
+                "last_edited_at": states[review["node_id"]][0],
+                "includes_created_edit": states[review["node_id"]][1],
+            }
+            if protocol.is_app_review(review, bot_login)
+            else review
+            for review in reviews
+        ],
+        bot_login,
+    )
+
+
+def _plan_history(repo: str, pr: int, bot_login: str) -> protocol.History:
+    try:
+        return _oracle_history(repo, pr, bot_login)
+    except edits.EditStateError:
+        raise
+    except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
+        return protocol.History([], f"the oracle's review history could not be read: {exc}")
+
+
+def _plan_carry(
+    out_dir: Path, plan: dict[str, Any], bot_login: str, step: protocol.Round, near: datetime | None
+) -> int:
+    previous = step.previous
+    try:
+        disagreement = _carry_disagreement(plan, bot_login, previous, near)
+    except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
+        print(
+            f"oracle-verdict: error: the status of head {previous['head_sha']} could not be read: {exc}",
+            file=sys.stderr,
+        )
+        return 2
+    if disagreement is not None:
+        plan.update({"decision": HOLD, "decision_reason": disagreement})
+    else:
+        plan.update({"decision": CARRY, "decision_reason": step.reason, "reviewed_head": previous["head_sha"]})
+    return _finish_plan(out_dir, plan)
+
+
+def _carry_disagreement(
+    plan: Mapping[str, Any], bot_login: str, previous: Mapping[str, Any], near: datetime | None
+) -> str | None:
+    statuses = github.commit_statuses(plan["repo"], previous["head_sha"])
+    if edits.status_agrees(statuses, plan["status_context"], bot_login, previous, near):
+        return None
+    return (
+        f"the recorded {protocol.LABELS[previous['decision']]} decision on head {previous['head_sha']} "
+        "does not match the oracle's own status for that head"
+    )
+
+
+def _carried_blocks(
+    previous: retry.State | None, head_sha: str, now: datetime, cleared: bool
+) -> dict[str, selection.PoolBlock]:
+    if previous is None or cleared:
+        return {}
+    return selection.active_blocks(previous.pool_blocked_until, now, same_head=previous.head_sha == head_sha)
 
 
 def _file_states(plan: dict[str, Any], files: list[ChangedFile]) -> list[protocol.FileState] | None:
@@ -571,8 +646,7 @@ def _plan_review(
     scoped: list[ChangedFile],
     in_scope: set[str],
     full_diff: str | None,
-    previous: retry.State | None,
-    now: datetime,
+    pool_blocks: Mapping[str, selection.PoolBlock],
 ) -> None:
     latest = step.previous or {}
     follow_up = step.kind == protocol.FOLLOW_UP
@@ -630,11 +704,7 @@ def _plan_review(
             "scope": "changed" if partial else "full",
             "reviewed_head": latest["head_sha"] if partial else None,
             "gate_path_list": list(policy.classifier.gate_paths),
-            "pool_blocked_until": {
-                pool: moment.isoformat()
-                for pool, moment in (previous.pool_blocked_until.items() if previous else ())
-                if moment > now
-            },
+            "pool_blocked_until": {pool: block.to_json() for pool, block in pool_blocks.items()},
         }
     )
 
@@ -888,7 +958,7 @@ def command_finalize(args: argparse.Namespace) -> int:
             outcome=final.state,
             manual=bool(plan["manual"]),
             now=now,
-            pool_blocked_until=previous.pool_blocked_until if previous else {},
+            pool_blocked_until=_carried_blocks(previous, plan["head_sha"], now, False),
             strikes=final.strikes,
         )
         _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
@@ -932,25 +1002,37 @@ def command_finalize(args: argparse.Namespace) -> int:
     return 0
 
 
+class HistoryUnreadable(RuntimeError):
+    pass
+
+
 def _reread_history(plan: Mapping[str, Any]) -> protocol.History:
     error: Exception | None = None
     for attempt in range(GUARD_ATTEMPTS):
         if attempt:
             sleep(GUARD_PAUSE_SECONDS)
         try:
-            return protocol.history(github.oracle_reviews(plan["repo"], plan["pr"]), plan["bot_login"])
-        except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
+            return _oracle_history(plan["repo"], plan["pr"], plan["bot_login"])
+        except (edits.EditStateError, github.GitHubError, KeyError, TypeError, ValueError) as exc:
             error = exc
-    _summary(
-        f"oracle-verdict: posting without confirming that head {plan['head_sha']} has no decision yet; "
-        f"the review list could not be re-read after {GUARD_ATTEMPTS} attempts: {error}"
+    raise HistoryUnreadable(
+        f"the review list or its edit state could not be re-read after {GUARD_ATTEMPTS} attempts: {error}"
     )
-    return protocol.History()
 
 
 def command_guard(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
-    found = _reread_history(plan)
+    try:
+        found = _reread_history(plan)
+    except HistoryUnreadable as exc:
+        print(f"oracle-verdict: error: {exc}; nothing is posted for head {plan['head_sha']}", file=sys.stderr)
+        return 2
+    if found.error is not None:
+        if plan.get("decision") == HOLD:
+            _output({"skip": "false"})
+            return 0
+        print(f"oracle-verdict: error: {found.error}; nothing is posted for head {plan['head_sha']}", file=sys.stderr)
+        return 2
     latest = found.latest
     rules = plan.get("protocol") or {}
     planned = (int(rules.get("cycle", 0)), int(rules.get("round", 0)))
