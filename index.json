@@ -16544,7 +16544,8 @@
         "oracle-gateway-cloud-builder-access-20261025",
         "oracle-review-driver-local-20261026",
         "oracle-local-findings-record-disputes-20261026",
-        "oracle-review-docs-claims-sweep-20261026"
+        "oracle-review-docs-claims-sweep-20261026",
+        "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "medium-high",
       "status": "open",
