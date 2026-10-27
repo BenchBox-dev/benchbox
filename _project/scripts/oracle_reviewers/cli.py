@@ -485,7 +485,9 @@ def command_plan(args: argparse.Namespace) -> int:
         plan["disputes"] = _disputed_threads(threads, policy.bot_login)
     except (github.GitHubError, KeyError, ValueError) as exc:
         _summary(f"oracle-verdict: open review threads could not be read, so none are suppressed: {exc}")
-    _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, previous, now)
+    owner_reset = retry.reset_applies(previous, plan["head_sha"], reset_at)
+    pool_blocks = _carried_blocks(previous, plan["head_sha"], now, owner_reset)
+    _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, pool_blocks)
     plan["decision_reason"] = f"{step.reason}; {rerun.reason}"
     return _finish_plan(out_dir, plan)
 
@@ -552,6 +554,14 @@ def _carry_disagreement(
         f"the recorded {protocol.LABELS[previous['decision']]} decision on head {previous['head_sha']} "
         "does not match the oracle's own status for that head"
     )
+
+
+def _carried_blocks(
+    previous: retry.State | None, head_sha: str, now: datetime, cleared: bool
+) -> dict[str, selection.PoolBlock]:
+    if previous is None or cleared:
+        return {}
+    return selection.active_blocks(previous.pool_blocked_until, now, same_head=previous.head_sha == head_sha)
 
 
 def _file_states(plan: dict[str, Any], files: list[ChangedFile]) -> list[protocol.FileState] | None:
@@ -636,8 +646,7 @@ def _plan_review(
     scoped: list[ChangedFile],
     in_scope: set[str],
     full_diff: str | None,
-    previous: retry.State | None,
-    now: datetime,
+    pool_blocks: Mapping[str, selection.PoolBlock],
 ) -> None:
     latest = step.previous or {}
     follow_up = step.kind == protocol.FOLLOW_UP
@@ -695,11 +704,7 @@ def _plan_review(
             "scope": "changed" if partial else "full",
             "reviewed_head": latest["head_sha"] if partial else None,
             "gate_path_list": list(policy.classifier.gate_paths),
-            "pool_blocked_until": {
-                pool: moment.isoformat()
-                for pool, moment in (previous.pool_blocked_until.items() if previous else ())
-                if moment > now
-            },
+            "pool_blocked_until": {pool: block.to_json() for pool, block in pool_blocks.items()},
         }
     )
 
@@ -953,7 +958,7 @@ def command_finalize(args: argparse.Namespace) -> int:
             outcome=final.state,
             manual=bool(plan["manual"]),
             now=now,
-            pool_blocked_until=previous.pool_blocked_until if previous else {},
+            pool_blocked_until=_carried_blocks(previous, plan["head_sha"], now, False),
             strikes=final.strikes,
         )
         _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
