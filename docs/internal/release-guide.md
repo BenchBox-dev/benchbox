@@ -494,6 +494,11 @@ separate from the public `sqlglot`, and leaves the public package intact after
 `benchbox` is uninstalled. Dispatch `windows-fast.yml` on a branch to run the same
 script on `windows-latest` before tagging.
 
+Windows verification of the zip-loaded runtime: the script passed on
+`windows-latest` with Python 3.12 in `windows-fast.yml` run 40500006874
+(installed wheel, bundled import from the zip, translation, coexistence with
+public `sqlglot`, uninstall). No path-separator or zipimport change was needed.
+
 ```bash
 make release-prep VERSION=X.Y.Z
 make release-check VERSION=X.Y.Z [BASE_REF=<immutable-predecessor-sha>] [RELEASE_PRE_TAG=1]
