@@ -353,7 +353,11 @@ def _latest_state(repo: str, pr: int, name: str, workflow_path: str) -> State | 
 RUN_LIST_ATTEMPTS = 2
 RUN_LIST_PAUSE_SECONDS = 10
 IN_FLIGHT_STATUSES = ("pending", "waiting", "requested", "queued", "in_progress")
-RUN_TITLE_PULL = re.compile(r"\bpr=(\d+)\)$")
+RUN_TITLE_PULL = re.compile(r"\bpr=(\d+)(?: head=([0-9a-f]{40}))?\)$")
+
+
+class RunListingCapped(GitHubError):
+    pass
 
 
 def verdict_runs(repo: str, workflow: str, since: datetime) -> list[dict[str, Any]]:
@@ -365,7 +369,15 @@ def verdict_runs(repo: str, workflow: str, since: datetime) -> list[dict[str, An
             sleep(RUN_LIST_PAUSE_SECONDS)
         try:
             pages = json.loads(_gh("--paginate", "--slurp", query))
-            return [run for page in pages for run in page.get("workflow_runs", [])]
+            runs = [run for page in pages for run in page.get("workflow_runs", [])]
+            total = pages[0].get("total_count") if pages else 0
+            if not isinstance(total, int):
+                raise RunListingCapped(f"gh api {query} did not report a total run count")
+            if len(runs) < total:
+                raise RunListingCapped(f"gh api {query} returned {len(runs)} of {total} runs; narrow the window")
+            return runs
+        except RunListingCapped:
+            raise
         except (GitHubError, json.JSONDecodeError) as exc:
             error = exc
     assert error is not None
@@ -389,13 +401,6 @@ def in_flight_pulls(repo: str, workflow: str) -> frozenset[int]:
     return frozenset(running)
 
 
-def committed_at(repo: str, sha: str) -> datetime:
-    moment = _parse_time(get_json(f"repos/{repo}/commits/{sha}")["commit"]["committer"]["date"])
-    if moment is None:
-        raise GitHubError(f"commit {sha} has no readable commit time")
-    return moment
-
-
 FAILED_STEP_CONCLUSIONS = frozenset({"failure", "timed_out", "cancelled"})
 
 
@@ -407,6 +412,20 @@ def failed_steps(repo: str, run_id: int) -> list[str]:
         for step in job.get("steps", [])
         if step.get("conclusion") in FAILED_STEP_CONCLUSIONS
     ]
+
+
+TIMEOUT_ANNOTATION = "has exceeded the maximum execution time"
+
+
+def run_timed_out(repo: str, run_id: int) -> bool:
+    listing = get_json(f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100")
+    for job in listing.get("jobs", []):
+        if job.get("conclusion") != "cancelled":
+            continue
+        annotations = get_json(f"repos/{repo}/check-runs/{job['id']}/annotations?per_page=100")
+        if any(TIMEOUT_ANNOTATION in str(item.get("message") or "") for item in annotations):
+            return True
+    return False
 
 
 SWEEP_FAILURE_SURFACE_PREFIX = "oracle-verdict failed twice without a result at: "
@@ -476,8 +495,8 @@ def post_comment(repo: str, pr: int, body: str) -> None:
     _gh("--method", "POST", f"repos/{repo}/issues/{pr}/comments", "-f", f"body={body}")
 
 
-def dispatch(repo: str, workflow: str, pr: int, reason: str | None = None) -> None:
-    fields = ["-f", f"pr={pr}"] + (["-f", f"reason={reason}"] if reason else [])
+def dispatch(repo: str, workflow: str, pr: int, head: str, reason: str | None = None) -> None:
+    fields = ["-f", f"pr={pr}", "-f", f"head={head}"] + (["-f", f"reason={reason}"] if reason else [])
     result = subprocess.run(
         ["gh", "workflow", "run", workflow, "--ref", "develop", *fields, "-R", repo],
         capture_output=True,

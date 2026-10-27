@@ -13,6 +13,7 @@ from _project.scripts.oracle_reviewers.retry import (
     decide_rerun,
     due_for_retry,
     next_state,
+    recent_retries,
 )
 from _project.scripts.oracle_reviewers.selection import QUOTA_BACKOFF, PoolBlock, effective_until
 
@@ -47,7 +48,6 @@ def _decide(
     *,
     manual: bool = True,
     new_diff: bool = False,
-    stateless_retry: bool = False,
 ):
     return decide_rerun(
         manual=manual,
@@ -56,7 +56,6 @@ def _decide(
         previous=previous,
         now=NOW,
         rules=policy.retry,
-        stateless_retry=stateless_retry,
     )
 
 
@@ -233,15 +232,30 @@ def test_the_owner_reset_never_rerolls_a_decisive_result(policy: Policy, outcome
     assert not due_for_retry(decided, HEAD, NOW, policy.retry, reset_at)
 
 
-def test_a_marked_stateless_retry_skips_only_the_backoff(policy: Policy) -> None:
-    inside = _state("pending", age=timedelta(minutes=10))
-    assert not _decide(policy, inside).allowed
-    marked = _decide(policy, inside, stateless_retry=True)
-    assert marked.allowed and "failed without a result" in marked.reason
-    over_budget = _state("pending", age=timedelta(minutes=10), retries=policy.retry.daily_budget)
-    refused = _decide(policy, over_budget, stateless_retry=True)
-    assert not refused.allowed and "budget" in refused.reason
-    assert not _decide(policy, _state("success", age=timedelta(minutes=10)), stateless_retry=True).allowed
+def test_a_pending_earlier_heads_retries_do_not_refuse_the_new_heads_retry(policy: Policy) -> None:
+    spent_elsewhere = _state("pending", head=OTHER, age=timedelta(minutes=10), retries=policy.retry.daily_budget)
+    assert _decide(policy, spent_elsewhere).allowed
+
+
+@pytest.mark.parametrize("outcome", ["success", "failure"])
+def test_a_decisive_earlier_heads_spent_budget_still_refuses_a_manual_rerun_on_a_new_head(
+    policy: Policy, outcome: str
+) -> None:
+    spent = _state(outcome, head=OTHER, age=timedelta(minutes=10), retries=policy.retry.daily_budget)
+    decision = _decide(policy, spent)
+    assert not decision.allowed
+    assert "daily retry budget" in decision.reason
+    assert _decide(policy, spent, manual=False).allowed
+
+
+@pytest.mark.parametrize("outcome", ["success", "failure"])
+def test_a_new_head_carries_the_decisive_earlier_heads_retries_forward(policy: Policy, outcome: str) -> None:
+    old = _state(outcome, head=OTHER, retries=3)
+    pushed = next_state(
+        previous=old, pr=7, head_sha=HEAD, outcome="pending", manual=False, now=NOW, pool_blocked_until={}
+    )
+    assert pushed.retries == old.retries
+    assert recent_retries(None, NOW) == ()
 
 
 def test_an_owner_reset_for_another_head_or_before_the_state_changes_nothing(policy: Policy) -> None:

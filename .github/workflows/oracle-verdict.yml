@@ -1,6 +1,6 @@
 name: oracle-verdict
 
-run-name: oracle-verdict (${{ github.event_name }} pr=${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || 'sweep' }})
+run-name: oracle-verdict (${{ github.event_name }} pr=${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || 'sweep' }}${{ (github.event.pull_request.head.sha || inputs.head) && format(' head={0}', github.event.pull_request.head.sha || inputs.head) || '' }})
 
 on:
   push:
@@ -14,6 +14,10 @@ on:
       pr:
         description: Pull request number to review
         required: true
+        type: string
+      head:
+        description: Head commit the dispatch targets; a different current head skips the run
+        required: false
         type: string
       reason:
         description: Why this dispatch was requested
