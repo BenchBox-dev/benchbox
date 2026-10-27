@@ -115,6 +115,7 @@ docs:
   - "scripts/check_doc_relative_links.py"
   - "scripts/check_doc_anchors.py"
   - "tests/unit/scripts/test_check_doc_anchors.py"
+  - "quality/doc-anchor-baseline.json"
   - "scripts/validate_example_references.py"
   - "scripts/check_example_syntax.py"
   - "examples/**"
