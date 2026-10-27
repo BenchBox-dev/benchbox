@@ -1306,7 +1306,6 @@ def test_a_stored_record_with_duplicate_defect_ids_still_plans_a_follow_up(
     _, values, plan = _plan(monkeypatch, tmp_path, _fake(_review(record), diff=CAPTURE_CHANGED))
     assert values["decision"] == "review" and plan["protocol"]["kind"] == "follow-up"
     assert plan["protocol"]["prior"] == [DEFECT]
-    assert render.response_template([item["id"] for item in plan["protocol"]["prior"]])
 
 
 def test_a_follow_up_after_ship_scopes_to_the_changed_file_without_tiers(

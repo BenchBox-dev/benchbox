@@ -73,6 +73,6 @@ from `verdict.RESPONSE_PLACEHOLDERS`, `line` 0 and `end_line` null. In a
 follow-up, `prior_defects` lists the actual prior ids from
 `plan.protocol.prior`, each revalidated against the defect id grammar
 (`protocol.DEFECT_ID`) by `render.response_template`, with unfilled `status`,
-`evidence`, `claim` and `concedes`. The slot never carries prior titles, paths or author text.
+`evidence` and `claim` strings and `concedes` null, which a disputed defect's reply sets to a boolean. The slot never carries prior titles, paths or author text.
 Ingress rejects any reply that leaves a placeholder in place. Callers pass the
 ids to `render_review(prior_ids=...)`; the renderer does not parse `prior_block`.
