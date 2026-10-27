@@ -17105,9 +17105,7 @@
     },
     "oracle-stale-pool-block-from-fallback-quota-20261027": {
       "claim": null,
-      "needs": [
-        "oracle-history-edited-review-fail-closed-20261027"
-      ],
+      "needs": [],
       "priority": "critical",
       "status": "open",
       "title": "Stop one fallback provider's quota reset from blocking a reviewer pool on a PR for days"
