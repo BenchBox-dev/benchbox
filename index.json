@@ -16859,7 +16859,9 @@
     "oracle-review-driver-local-20261026": {
       "claim": null,
       "needs": [
-        "oracle-review-driver-ci-20261026"
+        "oracle-review-driver-ci-20261026",
+        "oracle-cloud-review-reachability-20261027",
+        "oracle-local-review-lock-per-patch-20261027"
       ],
       "priority": "high",
       "status": "open",
