@@ -26,7 +26,7 @@ MANIFEST_SUFFIX = ".manifest.json"
 _MANIFEST_ENVIRONMENT_KEYS = ("execution_class", "container_runtime", "container_host_os", "execution_class_evidence")
 
 
-class ExecutionClassError(ValueError):
+class ExecutionClassError(Exception):
     pass
 
 

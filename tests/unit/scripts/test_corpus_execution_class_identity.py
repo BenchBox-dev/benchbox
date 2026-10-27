@@ -91,7 +91,7 @@ def test_manifest_sidecar_attestation_separates_an_unrecorded_container_bundle(t
     entry = BundleTransformer().to_manifest_entry(container)
 
     assert validator_ids == explorer_ids == {"clickhouse-local", "clickhouse-local^container"}
-    assert entry.variant_label == "ClickHouse Local (Linux container)"
+    assert entry.variant_label == "ClickHouse Local (Linux container on macOS)"
     assert BundleTransformer().to_detail_result(container, "r1").environment.container_host_os == "macOS"
 
 

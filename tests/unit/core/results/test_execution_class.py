@@ -106,6 +106,10 @@ def test_sidecar_with_an_unknown_class_is_refused(tmp_path: Path) -> None:
         published_variant_id(_bundle(), "clickhouse-local", path)
 
 
+def test_class_conflicts_are_not_value_errors_the_pipeline_would_swallow() -> None:
+    assert not issubclass(ExecutionClassError, ValueError)
+
+
 def test_sidecar_cannot_override_a_recorded_class(tmp_path: Path) -> None:
     path = tmp_path / "run.json"
     path.write_text("{}", encoding="utf-8")
@@ -159,11 +163,24 @@ def test_runs_in_different_execution_classes_are_not_comparable() -> None:
             {"variant_id": "clickhouse-local^container", "container_os": "Linux"},
             "ClickHouse Local (Linux container)",
         ),
+        (
+            {"variant_id": "clickhouse-local^container", "container_os": "Linux", "container_host_os": "macOS"},
+            "ClickHouse Local (Linux container on macOS)",
+        ),
         ({"variant_id": "clickhouse-local^container"}, "ClickHouse Local (container)"),
         ({"variant_id": "clickhouse-local"}, "ClickHouse Local"),
         (
             {"variant_id": "clickhouse-local+x^container", "requested_execution_engine": "x", "container_os": "Linux"},
             "ClickHouse Local (x, Linux container)",
+        ),
+        (
+            {
+                "variant_id": "clickhouse-local+x^container",
+                "requested_execution_engine": "x",
+                "container_os": "Linux",
+                "container_host_os": "macOS",
+            },
+            "ClickHouse Local (x, Linux container on macOS)",
         ),
         (
             {

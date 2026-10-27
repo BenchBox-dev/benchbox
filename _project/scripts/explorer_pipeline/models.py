@@ -71,8 +71,9 @@ def _split_execution_class(variant_id: str) -> tuple[str, str | None]:
     return base, (execution_class or None) if separator else None
 
 
-def _execution_class_label(execution_class: str, container_os: str | None) -> str:
-    return f"{container_os} {execution_class}" if container_os else execution_class
+def _execution_class_label(execution_class: str, container_os: str | None, host_os: str | None) -> str:
+    qualifier = f"{container_os} {execution_class}" if container_os else execution_class
+    return f"{qualifier} on {host_os}" if host_os else qualifier
 
 
 def variant_label(
@@ -83,6 +84,7 @@ def variant_label(
     gateway_name: str | None = None,
     gateway_routed: bool = False,
     container_os: str | None = None,
+    container_host_os: str | None = None,
 ) -> str:
     variant_base, execution_class = _split_execution_class(variant_id)
     if gateway_routed and gateway_name:
@@ -95,7 +97,7 @@ def variant_label(
         label = platform
     if not execution_class:
         return label
-    qualifier = _execution_class_label(execution_class, container_os)
+    qualifier = _execution_class_label(execution_class, container_os, container_host_os)
     return f"{label[:-1]}, {qualifier})" if label.endswith(")") else f"{label} ({qualifier})"
 
 

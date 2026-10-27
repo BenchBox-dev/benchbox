@@ -303,7 +303,7 @@ Where a run executed changes its hardware, so a ranking identity also carries th
 execution class: `native` (a host or a cloud VM) or `container` (a Linux container,
 including one on a Mac). A `container` bundle gets a `^container` suffix after the
 engine and gateway suffixes (`clickhouse-local^container`) and its Explorer label reads
-`ClickHouse Local (Linux container)`. A `native` bundle, and every bundle that records
+`ClickHouse Local (Linux container on macOS)` (without `on macOS` when the host OS is unknown). A `native` bundle, and every bundle that records
 no class, keeps the plain identity, so no historical identity or cohort count moves.
 
 - New runs record `execution_class` (plus `container_runtime`, `container_host_os` and
@@ -315,7 +315,8 @@ no class, keeps the plain identity, so no historical identity or cohort count mo
   host with neither is recorded as `native` with source `inferred`, because absence of a
   marker does not prove bare metal; a non-Linux host is `native` with source `observed`.
   `BENCHBOX_CONTAINER_HOST_OS` overrides the host OS. Cloud and other VMs are not told
-  apart from bare metal and stay `native`.
+  apart from bare metal and stay `native`. Detection runs in the BenchBox client, so a
+  server engine in Docker on a Mac driven from a native macOS client records `native`.
 - A bundle that predates the field can be attested in its `.manifest.json` sidecar with
   `execution_class`, `execution_class_evidence` (required) and optionally
   `container_runtime` and `container_host_os`. The sidecar only fills a bundle that

@@ -550,6 +550,7 @@ def _variant_info(
         gateway_name=gateway_name,
         gateway_routed=routed,
         container_os=_container_os(bundle),
+        container_host_os=read_execution_environment(bundle_data, bundle_path).get("container_host_os"),
     )
     return variant_id, label, requested, gateway_name, routed
 
