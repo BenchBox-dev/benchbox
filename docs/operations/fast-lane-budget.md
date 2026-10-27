@@ -21,7 +21,7 @@ the mode is set back to `report`, which is the rollback. The step downloads
 only the PR head's `fast-junit` artifact and compares it with that head's committed
 baseline in `tests/fixtures/fast_tier_baseline`. Calibration scales test times
 to a reference CPU speed; it does not establish that runner noise is removed.
-A missing calibration is rejected and a missing baseline is neutral.
+A missing calibration or an unusable committed baseline is rejected.
 
 The job summary shows the normalized summed time over tests present in both
 runs, the delta, the summed-time ratio, the median per-test ratio, coverage of
@@ -30,8 +30,8 @@ verdict is `would-block` when the ratio exceeds 1.30 and the delta exceeds 360
 seconds, both strictly (provisional thresholds). New tests receive 0.5 seconds
 each; only excess time counts toward the comparison. Job wall time is not a
 metric. In report mode the command returns success; in block mode a
-`would-block` or `rejected` verdict (for example missing calibration) fails
-`core` at the duration step, while a missing baseline is neutral. The
+`would-block` or `rejected` verdict (for example missing calibration or
+baseline) fails `core` at the duration step. The
 comparison uses the baseline committed in the PR head, so a PR that refreshes
 that baseline is compared with its own refresh; the refresh is visible in the
 PR diff and is the review control. The required status contexts do not change.

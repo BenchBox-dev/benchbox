@@ -471,7 +471,7 @@ def verify_run(baseline_dir: Path, run_dir: Path) -> dict[str, object]:
         baseline = read_sharded_baseline(baseline_dir)
         baseline_tests = baseline_tests_map(baseline)
     except BaselineError as exc:
-        return {"verdict": "neutral", "reason": f"no usable committed baseline: {exc}"}
+        return {"verdict": "rejected", "reason": f"no usable committed baseline: {exc}"}
     try:
         pr_tests, factor, best = normalized_pr_samples(run_dir, baseline)
     except BaselineError as exc:

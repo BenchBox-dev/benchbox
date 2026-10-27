@@ -228,12 +228,12 @@ def test_missing_junit_is_rejected(tmp_path: Path) -> None:
     assert baseline.verify_run(baseline_dir, run)["verdict"] == "rejected"
 
 
-def test_missing_baseline_is_a_neutral_verdict(tmp_path: Path) -> None:
+def test_missing_baseline_is_a_rejected_verdict(tmp_path: Path) -> None:
     run = write_run(tmp_path, "run", cases(5, 2.0))
 
     report = baseline.verify_run(tmp_path / "absent", run)
 
-    assert report["verdict"] == "neutral"
+    assert report["verdict"] == "rejected"
     assert "baseline" in str(report["reason"])
 
 
@@ -435,12 +435,12 @@ def test_report_mode_rollback_allows_slowdown(
     assert "(report only)" in out
 
 
-def test_cli_exits_zero_for_missing_baseline(tmp_path: Path) -> None:
+def test_cli_fails_a_missing_baseline_in_block_mode_only(tmp_path: Path) -> None:
     run = write_run(tmp_path, "run", cases(5, 2.0))
+    arguments = ["verify", "--baseline", str(tmp_path / "absent"), "--run-dir", str(run)]
 
-    status = baseline.main(["verify", "--baseline", str(tmp_path / "absent"), "--run-dir", str(run)])
-
-    assert status == 0
+    assert baseline.main([*arguments, "--mode", "block"]) == 1
+    assert baseline.main([*arguments, "--mode", "report"]) == 0
 
 
 def test_block_mode_fails_a_rejected_run_and_report_mode_does_not(tmp_path: Path) -> None:
