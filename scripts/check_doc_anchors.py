@@ -53,7 +53,7 @@ _HTML_ID_RE = re.compile(r"<(?:span|a|h[1-6]|div|section)\b[^>]*?\b(?:id|name)\s
 _ATTR_ANCHOR_RE = re.compile(r"\{#([A-Za-z0-9_-]+)\}")
 _IMAGE_RE = re.compile(r"!\[([^\]]*)\]\([^)]*\)")
 _LINK_TEXT_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
-_EMPHASIS_RE = re.compile(r"[*_~]+")
+_EMPHASIS_RE = re.compile(r"[*~]+|(?<!\w)_+|_+(?!\w)")
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _NON_SLUG_RE = re.compile(r"[^\w\s-]", flags=re.UNICODE)
 _WHITESPACE_RE = re.compile(r"[\s]+")

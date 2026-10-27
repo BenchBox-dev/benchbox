@@ -16,6 +16,12 @@ def test_slug_punctuation_case_and_entities() -> None:
     assert checker.slugify_heading("QphH@Size") == "qphhsize"
 
 
+def test_slug_keeps_intra_word_underscores_and_drops_emphasis_delimiters() -> None:
+    assert checker.slugify_heading("taxi_zones Table Structure") == "taxi_zones-table-structure"
+    assert checker.slugify_heading("BULK_LOAD (36 operations)") == "bulk_load-36-operations"
+    assert checker.slugify_heading("_emphasised_ and __strong__ text") == "emphasised-and-strong-text"
+
+
 def test_slug_strips_markup_and_keeps_unicode() -> None:
     assert checker.slugify_heading("`tuning init` - Create Tuning Configuration") == (
         "tuning-init---create-tuning-configuration"
