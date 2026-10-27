@@ -16577,7 +16577,9 @@
     },
     "oracle-omp-pin-single-source-20261026": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Pin the reviewer omp build per platform in one file and install it verified for CI, local and cloud reviews"
