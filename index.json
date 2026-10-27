@@ -3146,9 +3146,7 @@
     },
     "ci-oracle-reviewer-availability-and-head-race": {
       "claim": null,
-      "needs": [
-        "oracle-history-edited-review-fail-closed-20261027"
-      ],
+      "needs": [],
       "priority": "medium",
       "status": "open",
       "title": "Oracle reviewers error/absent and review dispatches race PR snapshots"
