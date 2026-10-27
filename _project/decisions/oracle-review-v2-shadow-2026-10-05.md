@@ -148,3 +148,9 @@ also reads the old `### oracle-review-shadow:` line until no open pull
 request's latest oracle review uses it; the merge digest reads both lines for
 good. `plan` falls back to the old state artifact and workflow path when no
 new state exists. This record keeps the old name where it describes history.
+
+2026-10-27: the compatibility reads above are retired. The required check no
+longer reads the `### oracle-review-shadow:` line, and `plan` no longer falls
+back to the old state artifact or workflow path; the merge digest still reads
+both lines because it reads merged history. The workflow file
+`.github/workflows/oracle-review-shadow.yml` and its gate path entry are gone.

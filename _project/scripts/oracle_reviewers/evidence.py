@@ -281,13 +281,13 @@ def _citation_error(finding: Finding, workspace: Path) -> str | None:
     return None
 
 
-def _withdrawal_verified(evidence: str, workspace: Path, examined: frozenset[str]) -> bool:
+def _withdrawal_verified(evidence: str, workspace: Path, read: frozenset[str]) -> bool:
     for match in _WITHDRAWAL_CITATION.finditer(evidence or ""):
         line = int(match.group("line"))
         if line < 1:
             continue
         cited = match.group("path").removeprefix("./")
-        if cited not in examined:
+        if cited not in read:
             continue
         count = _line_count(workspace, cited)
         if count is not None and line <= count:
@@ -299,11 +299,11 @@ def withdrawal_cited(evidence_text: str | None) -> bool:
     return _WITHDRAWAL_CITATION.search(evidence_text or "") is not None
 
 
-def _repro_verified(evidence: str, workspace: Path, examined: frozenset[str]) -> bool:
+def _repro_verified(evidence: str, workspace: Path, read: frozenset[str]) -> bool:
     root = os.path.realpath(workspace)
     for match in _REPRO_CITATION.finditer(evidence or ""):
         cited = match.group("path").removeprefix("./")
-        if cited not in examined:
+        if cited not in read:
             continue
         target = os.path.realpath(os.path.join(root, cited))
         if not target.startswith(root + os.sep) or not os.path.isfile(target):
@@ -312,31 +312,28 @@ def _repro_verified(evidence: str, workspace: Path, examined: frozenset[str]) ->
     return False
 
 
-def maintain_verified(evidence: str, workspace: Path, examined: frozenset[str]) -> bool:
-    return _withdrawal_verified(evidence, workspace, examined) or _repro_verified(evidence, workspace, examined)
+def maintain_verified(evidence: str, workspace: Path, read: frozenset[str]) -> bool:
+    return _withdrawal_verified(evidence, workspace, read) or _repro_verified(evidence, workspace, read)
 
 
-def mark_citations(verdict: Verdict, workspace: Path, disputed: Iterable[str] = ()) -> Verdict:
+def mark_citations(
+    verdict: Verdict, workspace: Path, disputed: Iterable[str] = (), read: frozenset[str] = frozenset()
+) -> Verdict:
     marked = []
     for finding in verdict.defects:
         error = _citation_error(finding, workspace)
         detail = f"{CITATION_PREFIX}: {error}. {finding.detail}".rstrip() if error else finding.detail
         marked.append(replace(finding, detail=detail))
-    examined = frozenset(verdict.files_examined)
     wanted = set(disputed)
     priors = []
     for prior in verdict.prior_defects:
-        if prior.status == WITHDRAWN and not _withdrawal_verified(prior.evidence, workspace, examined):
+        if prior.status == WITHDRAWN and not _withdrawal_verified(prior.evidence, workspace, read):
             note = f"{prior.evidence} {UNVERIFIED_WITHDRAWAL}".strip()
             prior = replace(prior, status=NOT_FIXED, evidence=note, demoted="withdrawal")
-        if prior.status == FIXED and prior.id in wanted and not maintain_verified(prior.evidence, workspace, examined):
+        if prior.status == FIXED and prior.id in wanted and not maintain_verified(prior.evidence, workspace, read):
             note = f"{prior.evidence} {DEMOTED_FIXED}".strip()
             prior = replace(prior, status=NOT_FIXED, evidence=note, demoted="fixed")
-        if (
-            prior.status == NOT_FIXED
-            and prior.id in wanted
-            and not maintain_verified(prior.evidence, workspace, examined)
-        ):
+        if prior.status == NOT_FIXED and prior.id in wanted and not maintain_verified(prior.evidence, workspace, read):
             note = f"{prior.evidence} {UNVERIFIED_MAINTAIN}".strip()
             prior = replace(prior, evidence=note)
         priors.append(prior)
@@ -345,6 +342,12 @@ def mark_citations(verdict: Verdict, workspace: Path, disputed: Iterable[str] = 
 
 def _shown(paths: list[str]) -> str:
     return ", ".join(paths[:5]) + (f" and {len(paths) - 5} more" if len(paths) > 5 else "")
+
+
+@dataclass(frozen=True)
+class Gap:
+    reason: str
+    files: tuple[str, ...]
 
 
 def check(
@@ -356,18 +359,18 @@ def check(
     workspace: Path,
     required: Iterable[str],
     run: Trace,
-) -> str | None:
+) -> Gap | None:
     if brief_mode == INLINE or not ships:
         return None
     needed = sorted(set(required))
     if harness in TRACED:
         if not run.reads and not run.greps:
-            return "the verdict would ship but its trace shows no successful file read"
+            return Gap("the verdict would ship but its trace shows no successful file read", tuple(needed))
         missing = unread(harness, needed, run, workspace)
         if missing:
-            return f"the verdict would ship but its trace shows no read of {_shown(missing)}"
+            return Gap(f"the verdict would ship but its trace shows no read of {_shown(missing)}", tuple(missing))
     examined = {relative(path, workspace) for path in verdict.files_examined}
     missing = [path for path in needed if path not in examined]
     if missing:
-        return f"the verdict would ship but did not examine {_shown(missing)}"
+        return Gap(f"the verdict would ship but did not examine {_shown(missing)}", tuple(missing))
     return None

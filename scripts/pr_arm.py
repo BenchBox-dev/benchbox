@@ -29,8 +29,8 @@ GATE_OK_STATE = "success"
 BASELINE_DIRECTORY = "tests/fixtures/fast_tier_baseline"
 VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
 VERDICT_FILE = "fast-duration-verdict.json"
+PROCEEDING_VERDICTS = frozenset({"pass", "neutral", "not-applicable"})
 PRODUCER_CHECK = "core"
-MEASUREMENT_ITEM = "ci-verify-fast-duration-report-only-20261025"
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
@@ -104,17 +104,23 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
     if report is None:
         return [refusal] if refusal else []
     verdict = report.get("verdict")
-    if verdict != "would-block":
+    if verdict in PROCEEDING_VERDICTS:
         print(f"{label}: verify-fast-duration verdict for {head[:9]} is {verdict}; arming is not held")
         return []
+    if verdict != "would-block":
+        return [
+            f"verify-fast-duration verdict for {head[:9]} is {verdict if isinstance(verdict, str) else 'missing'}, "
+            f"not one of {', '.join(sorted(PROCEEDING_VERDICTS))}: {str(report.get('reason') or 'no reason recorded')[:200]}. "
+            "Fix the cause and re-run the core job with make pr-rerun, or push a new head"
+        ]
     if _changes_baseline(run, repo, number):
         print(f"{label}: verify-fast-duration would block {head[:9]}, but the PR updates {BASELINE_DIRECTORY}")
         return []
     return [
         f"verify-fast-duration reported would-block for {head[:9]}: normalized summed-time ratio "
         f"{_ratio(report.get('sum_ratio'))}, median per-test ratio {_ratio(report.get('median_test_ratio'))}. "
-        f"The duration gate is in report-only measurement ({MEASUREMENT_ITEM}) but arming still refuses a "
-        f"would-block head unless the PR changes {BASELINE_DIRECTORY}: remove the slowdown, or regenerate the "
+        f"The duration gate blocks `core` on a would-block verdict, and arming refuses it unless the PR changes "
+        f"{BASELINE_DIRECTORY}: remove the slowdown, or regenerate the "
         f"baseline with scripts/build_fast_duration_baseline.py (python -m scripts.build_fast_duration_baseline "
         f"build --manifest <manifest> --output {BASELINE_DIRECTORY}) and justify the change in the PR"
     ]
@@ -203,6 +209,7 @@ def arm(
     threads: Callable[[Runner, str, int], bool] = pr_landing.unresolved_review_threads,
     suites: Callable[[Runner, str, str, str], list[str]] = pr_landing.hidden_failed_suites,
     duration: Callable[[Runner, str, int, str], list[str]] = duration_verdict_refusals,
+    visible: Callable[[Runner, str, str, str], list[str]] = pr_landing.visible_required_failure_reasons,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         print(f"pr-arm: refusing: --repo must be owner/name, got {repo!r}", file=sys.stderr)
@@ -236,6 +243,7 @@ def arm(
             hidden_failures=[
                 *suites(run, repo, BASE_BRANCH, local_head),
                 *(duration(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
+                *visible(run, repo, BASE_BRANCH, local_head),
             ],
         )
         if reasons:

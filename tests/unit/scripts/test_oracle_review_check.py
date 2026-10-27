@@ -140,6 +140,25 @@ def test_exempt_docs_are_skipped() -> None:
     assert _decide(files=["docs/foo.md"]) == (0, "oracle-review: only exempt paths changed")
 
 
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        {"statuses": [_verdict()], "reviews": []},
+        {"statuses": [_verdict()], "reviews": [_receipt_review(last_edited_at=HEAD_DATE)]},
+        {"statuses": [_verdict(description="only exempt paths changed")], "reviews": []},
+    ],
+)
+def test_a_success_status_without_a_bound_unedited_receipt_names_the_recovery_not_a_verdict_run(
+    scenario: dict[str, Any],
+) -> None:
+    status, message = _oracle(**scenario)
+    assert status == oracle_review_check.WAITING
+    assert "push a new head" in message
+    assert "a byte-identical rebase is enough" in message
+    assert "owner stand-in" in message
+    assert "run the verdict" not in message
+
+
 def test_the_exempt_success_marker_matches_the_report_builder() -> None:
     from _project.scripts.oracle_reviewers import report, retry
 

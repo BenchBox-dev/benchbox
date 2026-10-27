@@ -153,8 +153,10 @@ happened to #3264 and #3319 (`oracle-review` runs from `synchronize` and
   the fast-duration verdict for the exact head. A missing verdict names the
   pending job; if `core` already ended without one, the refusal names
   `make pr-rerun PR=<n>`. A failed lookup or download, an unreadable verdict and
-  a verdict not bound to the head also refuse. PRs where no fast-tier tests ran
-  upload a `not-applicable` verdict.
+  a verdict not bound to the head also refuse. Only a `pass`, `neutral` or
+  `not-applicable` verdict arms; a `rejected`, unknown or field-less verdict
+  refuses, and a `would-block` verdict refuses unless the PR updates the
+  baseline. PRs where no fast-tier tests ran upload a `not-applicable` verdict.
 - `make pr-rerun` re-runs the failed jobs of the newest CI run and of every
   Actions run behind a failed required suite (a cancelled suite re-runs the
   whole run). Pending suites are left alone. It refuses a conclusion it cannot

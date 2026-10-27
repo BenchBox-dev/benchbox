@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import omp_pin
 from .credentials import GATEWAY_ENV
 from .policy import OMP_THINKING_LEVELS, Reviewer
 
@@ -76,7 +77,7 @@ def build_omp(*, selector: str, effort: str, workspace: Path, scratch: Path, pro
     overlay = write_overlay(scratch)
     thinking: tuple[str, ...] = ("--thinking", effort) if effort else ()
     argv = (
-        "omp",
+        str(omp_pin.required_binary()),
         "--cwd",
         str(review_cwd),
         "--add-dir",

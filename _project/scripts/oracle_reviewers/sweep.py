@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from .github import SWEEP_FAILURE_SURFACE_PREFIX
+from .github import RUN_TITLE_PULL, SWEEP_FAILURE_SURFACE_PREFIX
 
-RUN_TITLE_PULL = re.compile(r"\bpr=(\d+)\)$")
 COMPLETED = "completed"
 FAILED = frozenset({"failure", "timed_out", "cancelled"})
 NEUTRAL = frozenset({"skipped"})

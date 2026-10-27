@@ -82,12 +82,21 @@ Markdown routes to the `docs` unit alone unless a test or audit reads it. `.gith
 
 | Context | Runs for | Jobs it requires |
 | --- | --- | --- |
-| `core` | `benchbox/`, `tests/`, packaging, executable docs code; framing also on test infrastructure or bundled binary changes | lint, unit tests, the coverage-impact medium selection on every PR (changes to paths listed as inert by `.github/inert-paths.txt` are inert; any other fail-closed escalation runs the heavy tier instead), and when heavy inputs change the medium tests, correctness gate, required local-engine cases, plan-capture gate and DataFusion integration; macOS/Windows TPC-H binary framing on heavy or framing inputs; package smoke and dependency audit on packaging changes |
+| `core` | `benchbox/`, `tests/`, packaging, executable docs code; framing also on test infrastructure or bundled binary changes | lint, unit tests, the coverage-impact medium selection on every PR (changes to paths listed as inert by `.github/inert-paths.txt` are inert; any other fail-closed escalation runs the heavy tier instead), and when heavy inputs change the medium tests, correctness gate, required local-engine cases, plan-capture gate and DataFusion integration; macOS/Windows TPC-H binary framing on heavy or framing inputs; when a change touches Python under `tests/`, `scripts/`, `_project/scripts/` or `benchbox/`, the `windows-tests` job runs the fast tier of the test files the coverage selection picks plus every changed test file on `windows-latest` with Python 3.12 (`ci-paths` publishes them as `windows-test-files.txt`; the nightly `t3:windows` domain stays the full-suite backstop); package smoke and dependency audit on packaging changes |
 | `explorer` | explorer pipeline, parity fixtures, `benchbox/core/results/`, `results-data/` | CLI-versus-explorer parity fixtures |
 | `results-data` | `results-data/`, submission validator, `benchbox/core/results/` | corpus inventory and validation, submission validator sync, corpus and explorer-pipeline contract tests |
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
 | `oracle-gate` | every PR, from `develop` code on trusted triggers | `benchbox-oracle` success `oracle-verdict` status on the current head, or the stand-in approval, with oracle threads resolved; inert-only changes report success. Posted by the `benchbox-oracle` App, so it needs `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` in the `oracle` environment, else nothing is posted and the head cannot merge |
+
+The Windows PR selection excludes tests changed only on `develop` unless the PR changes them or the
+coverage, importer or reader selection reaches them. POSIX-only repository
+tooling is excluded unless the PR changes its tests; changed tooling tests must
+skip unsupported platforms cleanly. Targets are loaded inside Python so their
+paths do not expand the Windows process command line. The leg only runs when the target list is
+non-empty, so an empty or missing target file fails the job with an error and
+a run summary. If selected files contain no eligible fast-tier tests,
+the job emits a notice and records that outcome in the run summary.
 
 The public site is built, compared and deployed in `BenchBox-dev/benchbox-site`.
 

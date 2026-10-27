@@ -31,6 +31,7 @@ class Attempt:
     detail: str = ""
     reset_at: datetime | None = None
     provider: str = ""
+    unread: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -111,6 +112,15 @@ def _may_retry(history: Sequence[Attempt]) -> bool:
         and history[-1].absence in RETRYABLE_ABSENCES
         and history[-1].detail != JOB_FAILURE_DETAIL
     )
+
+
+def retry_unread(attempts: Sequence[Attempt], reviewer: str, slot: int) -> tuple[str, ...]:
+    history = sorted(
+        (item for item in attempts if item.reviewer == reviewer and item.slot < slot), key=lambda a: a.slot
+    )
+    if not history or not _may_retry(history):
+        return ()
+    return history[-1].unread if history[-1].absence == INCOMPLETE else ()
 
 
 def _skip_reason(

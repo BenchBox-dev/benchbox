@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from _project.scripts.oracle_reviewers import absence, cli, runner
+from _project.scripts.oracle_reviewers import absence, cli, omp_pin, runner
 from _project.scripts.oracle_reviewers.commands import Invocation
 from _project.scripts.oracle_reviewers.policy import Policy
 from _project.scripts.oracle_reviewers.verdict import RESPONSE_PLACEHOLDERS
@@ -55,6 +55,7 @@ def _fake_omp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> Non
     script.write_text(f"#!{sys.executable}\nimport sys\n{body}\n", encoding="utf-8")
     script.chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
+    monkeypatch.setenv(omp_pin.BINARY_ENV, str(script))
 
 
 def _envelope(payload: object) -> str:
@@ -147,11 +148,16 @@ def test_truncated_or_empty_brief_is_absent(policy: Policy, tmp_path: Path, monk
 
 
 @skip_on_windows
-def test_missing_cli_is_an_error_absence(policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_missing_pinned_binary_is_an_error_absence_even_with_omp_on_path(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     workspace, head = _workspace(tmp_path)
-    monkeypatch.setenv("PATH", "/usr/bin:/bin")
+    _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(_envelope(json.dumps(VERDICT)))})")
+    monkeypatch.delenv(omp_pin.BINARY_ENV)
     outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.verdict is None
     assert outcome.missing is not None and outcome.missing.kind == absence.ERROR
+    assert "pinned omp is not installed" in outcome.missing.detail
 
 
 @skip_on_windows
@@ -665,7 +671,9 @@ def test_a_file_list_ship_must_examine_every_required_file(
     ).stdout.strip()
     _omp_says(tmp_path, monkeypatch, reads=("a.txt", "b.txt"), files_examined=["a.txt"])
     short = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
-    assert short.missing == absence.Absence(absence.INCOMPLETE, "the verdict would ship but did not examine b.txt")
+    assert short.missing == absence.Absence(
+        absence.INCOMPLETE, "the verdict would ship but did not examine b.txt", unread=("b.txt",)
+    )
     inline = _review(policy, tmp_path, workspace, head, brief_mode="inline", required=("a.txt", "b.txt"))
     assert inline.missing is None
 
@@ -678,12 +686,14 @@ def test_a_file_list_ship_must_have_read_every_file_it_claims(
     _omp_says(tmp_path, monkeypatch, reads=("a.txt:1-5",), files_examined=["a.txt", "b.txt"])
     outcome = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
     assert outcome.missing == absence.Absence(
-        absence.INCOMPLETE, "the verdict would ship but its trace shows no read of b.txt"
+        absence.INCOMPLETE, "the verdict would ship but its trace shows no read of b.txt", unread=("b.txt",)
     )
     _omp_says(tmp_path, monkeypatch, files_examined=["a.txt", "b.txt"])
     unread = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
     assert unread.missing == absence.Absence(
-        absence.INCOMPLETE, "the verdict would ship but its trace shows no successful file read"
+        absence.INCOMPLETE,
+        "the verdict would ship but its trace shows no successful file read",
+        unread=("a.txt", "b.txt"),
     )
 
 
@@ -832,7 +842,7 @@ def test_a_follow_up_ship_with_an_unchanged_file_defect_must_list_the_changed_fi
         assert _judged(outcome, FOLLOW_UP).decision == "SHIP"
     else:
         assert outcome.missing == absence.Absence(
-            absence.INCOMPLETE, "the verdict would ship but did not examine a.txt"
+            absence.INCOMPLETE, "the verdict would ship but did not examine a.txt", unread=("a.txt",)
         )
 
 

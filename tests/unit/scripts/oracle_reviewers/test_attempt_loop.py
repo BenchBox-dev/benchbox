@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import attempts, cli, credentials, disk_scan, processes, runner
+from _project.scripts.oracle_reviewers import attempts, cli, credentials, disk_scan, omp_pin, processes, runner
 from _project.scripts.oracle_reviewers.absence import ERROR, INVALID, TIMEOUT, Absence
 from _project.scripts.oracle_reviewers.commands import OMP_BASE_ENV, Invocation, omp_env
 from _project.scripts.oracle_reviewers.policy import Policy, Reviewer
@@ -110,7 +110,7 @@ def _script_invocation(tmp_path: Path, script: str) -> Any:
 
 def _use_script_reviewer(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, script: str) -> None:
     monkeypatch.setattr(runner, "build", _script_invocation(tmp_path, script))
-    monkeypatch.setattr(runner.shutil, "which", lambda name: sys.executable)
+    monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
 
 
 def _gone(pid: int) -> bool:

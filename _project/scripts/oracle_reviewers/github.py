@@ -9,6 +9,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 from typing import Any
 from urllib.parse import quote
 
@@ -16,7 +17,6 @@ from . import edits, reset
 from .retry import State
 
 STATE_ARTIFACT_PREFIX = "oracle-verdict-state-"
-LEGACY_STATE_ARTIFACT_PREFIX = "oracle-review-shadow-state-"
 STATE_FILE = "state.json"
 
 
@@ -81,9 +81,13 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
       reviewThreads(first: 100, after: $after) {
         pageInfo { hasNextPage endCursor }
         nodes {
+          id
           isResolved
           path
-          comments(first: 50) { nodes { author { __typename login } authorAssociation body lastEditedAt includesCreatedEdit } }
+          comments(first: 50) {
+            pageInfo { hasNextPage endCursor }
+            nodes { author { __typename login } authorAssociation body lastEditedAt includesCreatedEdit }
+          }
         }
       }
     }
@@ -91,20 +95,54 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
 }
 """
 
+_THREAD_COMMENTS_QUERY = """
+query($thread: ID!, $after: String!) {
+  node(id: $thread) {
+    ... on PullRequestReviewThread {
+      comments(first: 100, after: $after) {
+        pageInfo { hasNextPage endCursor }
+        nodes { author { __typename login } authorAssociation body }
+      }
+    }
+  }
+}
+"""
+
+
+def _graphql(*args: str) -> Any:
+    payload = json.loads(_gh("graphql", *args))
+    if payload.get("errors"):
+        raise GitHubError(f"GitHub GraphQL returned errors: {payload['errors']}")
+    return payload["data"]
+
+
+def _thread_comments(node: Mapping[str, Any]) -> list[dict[str, Any]]:
+    connection = node["comments"]
+    comments = list(connection["nodes"] or [])
+    while connection["pageInfo"]["hasNextPage"]:
+        data = _graphql(
+            "-f",
+            f"query={_THREAD_COMMENTS_QUERY}",
+            "-f",
+            f"thread={node['id']}",
+            "-f",
+            f"after={connection['pageInfo']['endCursor']}",
+        )
+        connection = data["node"]["comments"]
+        comments.extend(connection["nodes"] or [])
+    return comments
+
 
 def review_threads(repo: str, pr: int) -> list[dict[str, Any]]:
     owner, name = repo.split("/", 1)
     threads: list[dict[str, Any]] = []
     after: str | None = None
     while True:
-        args = ["graphql", "-f", f"query={_THREADS_QUERY}", "-f", f"owner={owner}", "-f", f"name={name}"]
+        args = ["-f", f"query={_THREADS_QUERY}", "-f", f"owner={owner}", "-f", f"name={name}"]
         args += ["-F", f"number={pr}", *(("-f", f"after={after}") if after else ())]
-        payload = json.loads(_gh(*args))
-        if payload.get("errors"):
-            raise GitHubError(f"GitHub GraphQL returned errors: {payload['errors']}")
-        connection = payload["data"]["repository"]["pullRequest"]["reviewThreads"]
+        connection = _graphql(*args)["repository"]["pullRequest"]["reviewThreads"]
         for node in connection["nodes"]:
-            comments = node["comments"]["nodes"] or [{}]
+            comments = _thread_comments(node) or [{}]
             first = comments[0]
             try:
                 edited = edits.node_edited(first) if node["comments"]["nodes"] else False
@@ -169,8 +207,6 @@ def state_artifact_name(pr: int, prefix: str = STATE_ARTIFACT_PREFIX) -> str:
 
 
 WORKFLOW_PATH = ".github/workflows/oracle-verdict.yml"
-LEGACY_WORKFLOW_PATH = ".github/workflows/oracle-review-shadow.yml"
-STATE_SOURCES = ((STATE_ARTIFACT_PREFIX, WORKFLOW_PATH), (LEGACY_STATE_ARTIFACT_PREFIX, LEGACY_WORKFLOW_PATH))
 TRUSTED_EVENTS = frozenset({"pull_request_target", "issue_comment", "schedule", "workflow_dispatch"})
 TRUSTED_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
 
@@ -280,11 +316,7 @@ def trusted_run(
 
 
 def latest_state(repo: str, pr: int) -> State | None:
-    for prefix, workflow_path in STATE_SOURCES:
-        state = _latest_state(repo, pr, state_artifact_name(pr, prefix), workflow_path)
-        if state is not None:
-            return state
-    return None
+    return _latest_state(repo, pr, state_artifact_name(pr), WORKFLOW_PATH)
 
 
 def _latest_state(repo: str, pr: int, name: str, workflow_path: str) -> State | None:
@@ -318,12 +350,43 @@ def _latest_state(repo: str, pr: int, name: str, workflow_path: str) -> State | 
     return None
 
 
+RUN_LIST_ATTEMPTS = 2
+RUN_LIST_PAUSE_SECONDS = 10
+IN_FLIGHT_STATUSES = ("pending", "waiting", "requested", "queued", "in_progress")
+RUN_TITLE_PULL = re.compile(r"\bpr=(\d+)\)$")
+
+
 def verdict_runs(repo: str, workflow: str, since: datetime) -> list[dict[str, Any]]:
     created = quote(f">={since.strftime('%Y-%m-%dT%H:%M:%SZ')}", safe="")
-    pages = json.loads(
-        _gh("--paginate", "--slurp", f"repos/{repo}/actions/workflows/{workflow}/runs?per_page=100&created={created}")
-    )
-    return [run for page in pages for run in page.get("workflow_runs", [])]
+    query = f"repos/{repo}/actions/workflows/{workflow}/runs?per_page=100&created={created}"
+    error: GitHubError | None = None
+    for attempt in range(RUN_LIST_ATTEMPTS):
+        if attempt:
+            sleep(RUN_LIST_PAUSE_SECONDS)
+        try:
+            pages = json.loads(_gh("--paginate", "--slurp", query))
+            return [run for page in pages for run in page.get("workflow_runs", [])]
+        except (GitHubError, json.JSONDecodeError) as exc:
+            error = exc
+    assert error is not None
+    if isinstance(error, GitHubError):
+        raise error
+    raise GitHubError(f"gh api {query} returned invalid JSON: {error}") from error
+
+
+def in_flight_pulls(repo: str, workflow: str) -> frozenset[int]:
+    running: set[int] = set()
+    for status in IN_FLIGHT_STATUSES:
+        path = f"repos/{repo}/actions/workflows/{workflow}/runs?status={status}&per_page=100"
+        try:
+            listing = get_json(path)
+        except json.JSONDecodeError as exc:
+            raise GitHubError(f"gh api {path} returned invalid JSON: {exc}") from exc
+        for run in listing.get("workflow_runs", []):
+            match = RUN_TITLE_PULL.search(run.get("display_title") or "")
+            if match:
+                running.add(int(match.group(1)))
+    return frozenset(running)
 
 
 def committed_at(repo: str, sha: str) -> datetime:

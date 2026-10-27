@@ -672,6 +672,40 @@ def prune_missing_nodeids(repo: Path, node_ids: list[str], collected: list[str])
     return pruned
 
 
+POSIX_ONLY_TEST_PREFIXES = (
+    "tests/unit/scripts/oracle_reviewers/",
+    "_project/sql-translation-ml/",
+)
+
+
+def windows_test_files(repo: Path, payload: dict, changed_paths: list[str]) -> list[str]:
+    pr_changed = {
+        str(entry).replace("\\", "/").split("::", 1)[0] for entry in [*payload.get("changed_tests", []), *changed_paths]
+    }
+    develop_changed = {
+        str(entry).replace("\\", "/").split("::", 1)[0] for entry in payload.get("develop_changed_tests", [])
+    }
+    reached = {
+        str(entry).replace("\\", "/").split("::", 1)[0]
+        for key in ("coverage_tests", "importer_tests", "reader_tests")
+        for entry in payload.get(key, [])
+    }
+    files: set[str] = set()
+    for entry in payload.get("selected", []):
+        path = str(entry).replace("\\", "/").split("::", 1)[0]
+        if not (_is_test_file(path) and (repo / path).is_file()):
+            continue
+        if path in develop_changed and path not in pr_changed and path not in reached:
+            continue
+        if any(path.startswith(prefix) for prefix in POSIX_ONLY_TEST_PREFIXES) and path not in pr_changed:
+            continue
+        files.add(path)
+    for path in pr_changed:
+        if _is_test_file(path) and (repo / path).is_file():
+            files.add(path)
+    return sorted(files)
+
+
 def _apply_develop_overlap(
     repo: Path, mapping: dict | None, map_sha: str | None, base_sha: str, files: list[ChangedFile]
 ) -> tuple[list[ChangedFile], str | None, list[str]]:
@@ -1286,6 +1320,24 @@ def _cmd_prune(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_windows_targets(args: argparse.Namespace) -> int:
+    try:
+        payload = json.loads(args.selection_in.read_text(encoding="utf-8"))
+        changed = args.changed_in.read_text(encoding="utf-8").splitlines() if args.changed_in is not None else []
+    except (OSError, ValueError) as exc:
+        print(f"cannot read windows target inputs: {exc}", file=sys.stderr)
+        return 1
+    if not isinstance(payload, dict):
+        print(f"selection {args.selection_in} is not a JSON object", file=sys.stderr)
+        return 1
+    files = windows_test_files(args.repo_root, payload, [line for line in changed if line])
+    args.targets_out.parent.mkdir(parents=True, exist_ok=True)
+    args.targets_out.write_text("".join(f"{path}\n" for path in files), encoding="utf-8")
+    _write_github_output(args.github_output, {"windows-test-files": str(len(files))})
+    print(f"{len(files)} test files selected for the Windows leg")
+    return 0
+
+
 def failed_node_ids(paths: list[Path], repo: Path) -> tuple[list[str], int, list[str]]:
     failed: set[str] = set()
     parsed = 0
@@ -1445,6 +1497,13 @@ def build_parser() -> argparse.ArgumentParser:
     prune_parser.add_argument("--nodeids-out", type=Path, required=True)
     prune_parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     prune_parser.set_defaults(func=_cmd_prune)
+    windows_parser = sub.add_parser("windows-targets")
+    windows_parser.add_argument("--selection-in", type=Path, required=True)
+    windows_parser.add_argument("--changed-in", type=Path, default=None)
+    windows_parser.add_argument("--targets-out", type=Path, required=True)
+    windows_parser.add_argument("--github-output", type=Path, default=None)
+    windows_parser.add_argument("--repo-root", type=Path, default=Path.cwd())
+    windows_parser.set_defaults(func=_cmd_windows_targets)
     misses_parser = sub.add_parser("misses")
     misses_parser.add_argument("--selection-in", type=Path, default=None)
     misses_parser.add_argument("--junit", type=Path, action="append", default=None)

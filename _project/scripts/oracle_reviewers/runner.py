@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import shutil
 import signal
 import subprocess
 import tempfile
@@ -12,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import absence, credentials, evidence, processes, protocol
+from . import absence, credentials, evidence, omp_pin, processes, protocol
 from .commands import Invocation, build
 from .policy import Reviewer
 from .verdict import (
@@ -152,8 +151,10 @@ def review(
         return ReviewOutcome(None, absence.Absence(absence.ERROR, "the workspace is not at the reviewed head"), "")
     if not prompt:
         return ReviewOutcome(None, absence.Absence(absence.INVALID, "the brief is empty or truncated"), "")
-    if shutil.which(reviewer.harness) is None:
-        return ReviewOutcome(None, absence.Absence(absence.ERROR, f"{reviewer.harness} is not installed"), "")
+    try:
+        omp_pin.required_binary()
+    except omp_pin.PinError as exc:
+        return ReviewOutcome(None, absence.Absence(absence.ERROR, str(exc)), "")
     scratch.mkdir(parents=True, exist_ok=True)
     invocation = build(reviewer, workspace, prompt, scratch)
     staged_before = _digest(workspace / STAGED_DIFF_NAME)
@@ -205,19 +206,22 @@ def review(
     if verdict.status == INCOMPLETE:
         reason = verdict.incomplete_reason or "the reviewer reported its review incomplete"
         return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, reason), traced)
-    verdict = evidence.mark_citations(verdict, workspace, protocol.disputed_claims(plan))
-    problem = protocol.contradiction(verdict, plan)
+    run = evidence.trace(reviewer.harness, result.stdout)
+    verdict = evidence.mark_citations(
+        verdict, workspace, protocol.disputed_claims(plan), evidence.credited(run, workspace)
+    )
+    problem = protocol.contradiction(verdict, plan, workspace=workspace)
     if problem is not None:
         return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), traced)
-    problem = evidence.check(
+    gap = evidence.check(
         verdict,
-        ships=protocol.judge_planned(verdict, plan).decision == SHIP,
+        ships=protocol.judge_planned(verdict, plan, workspace=workspace).decision == SHIP,
         harness=reviewer.harness,
         brief_mode=plan["brief_mode"],
         workspace=workspace,
         required=tuple(plan.get("evidence_files", ())),
-        run=evidence.trace(reviewer.harness, result.stdout),
+        run=run,
     )
-    if problem is not None:
-        return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, problem), traced)
+    if gap is not None:
+        return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, gap.reason, unread=gap.files), traced)
     return ReviewOutcome(verdict.to_json(), None, traced)

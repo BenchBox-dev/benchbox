@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
+import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +15,7 @@ pytest.importorskip("fcntl")
 
 import yaml
 
-from _project.scripts.oracle_reviewers import cli, local, runner
+from _project.scripts.oracle_reviewers import cli, local, omp_pin, runner
 from _project.scripts.oracle_reviewers.classify import Classification
 from _project.scripts.oracle_reviewers.policy import Policy, Reviewer
 
@@ -30,7 +33,9 @@ OVERRIDE_BODY = "Summary\n\nLocal oracle override: the finding is a known false 
 GATE_FILE = ".github/oracle-reviewers.yml"
 POLICY_RELATIVE = ".github/oracle-reviewers.yml"
 POLICY_TEXT = POLICY_PATH.read_text(encoding="utf-8")
-WORKFLOW_TEXT = (REPO_ROOT / local.WORKFLOW_FILE).read_text(encoding="utf-8")
+FAKE_OMP = "#!/bin/sh\necho omp/18.12.1\n"
+FAKE_OMP_SHA = hashlib.sha256(FAKE_OMP.encode()).hexdigest()
+FAKE_OMP_URL = "https://downloads.example.invalid/omp"
 MANIFEST_TEXT = (REPO_ROOT / local.SOUNDNESS_MANIFEST).read_text(encoding="utf-8")
 SECRET_NAMES = (
     "OMP_GATEWAY_TOKEN",
@@ -52,12 +57,17 @@ def _git(path: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def _pinned_policy_text() -> str:
+    data = yaml.safe_load(POLICY_TEXT)
+    data["omp"]["builds"][omp_pin.current_platform()] = {"url": FAKE_OMP_URL, "sha256": FAKE_OMP_SHA}
+    return yaml.safe_dump(data, sort_keys=False)
+
+
 def _make_repo(path: Path, changed: str = CHECKER) -> Path:
     path.mkdir()
     _git(path, "init", "--quiet", "--initial-branch=develop")
     for relative, text in (
-        (POLICY_RELATIVE, POLICY_TEXT),
-        (local.WORKFLOW_FILE, WORKFLOW_TEXT),
+        (POLICY_RELATIVE, _pinned_policy_text()),
         (local.SOUNDNESS_MANIFEST, MANIFEST_TEXT),
     ):
         seeded = path / relative
@@ -92,18 +102,27 @@ class Env:
         monkeypatch.setenv(local.STATE_DIR_ENV, str(tmp_path / "state"))
         monkeypatch.chdir(self.repo)
         monkeypatch.setattr(local, "reachable", lambda url: True)
-        monkeypatch.setattr(local, "installed_omp_version", lambda: local.pinned_omp_version(WORKFLOW_TEXT))
+        monkeypatch.setenv(omp_pin.CACHE_ENV, str(tmp_path / "omp-cache"))
+        monkeypatch.delenv(omp_pin.BINARY_ENV, raising=False)
+        self.downloads: list[str] = []
+        self.omp_content = FAKE_OMP
+        monkeypatch.setattr(omp_pin, "download", self._download)
         monkeypatch.setattr(local, "keychain_key", lambda: "")
         self.reviews: list[dict[str, Any]] = []
         self.verdict: dict[str, Any] = _v()
         self.diagnostic = ""
         monkeypatch.setattr(runner, "review", self._review)
 
+    def _download(self, url: str, destination: Path) -> None:
+        self.downloads.append(url)
+        destination.write_text(self.omp_content, encoding="utf-8")
+
     def _review(self, reviewer: Reviewer, **kwargs: Any) -> runner.ReviewOutcome:
         self.reviews.append(
             {
                 "reviewer": reviewer.name,
                 "head": kwargs["head_sha"],
+                "binary": os.environ.get(omp_pin.BINARY_ENV),
                 "token": os.environ.get("OMP_GATEWAY_TOKEN"),
                 "url": os.environ.get("ORACLE_GATEWAY_URL"),
                 "models": (Path(os.environ["HOME"]) / ".omp" / "agent" / "models.yml").read_text(encoding="utf-8"),
@@ -235,6 +254,19 @@ def test_an_override_in_a_commit_body_does_not_apply_without_a_body_file(env: En
         "<!--\nLocal oracle override: hidden\n-->\n",
         "```\nLocal oracle override: fenced\n```\n",
         "Local oracle override: <reason>\n",
+        "```\nLocal oracle override: never closed\n",
+        "~~~\nLocal oracle override: never closed\n",
+        "<!--\nLocal oracle override: never closed\n",
+        "    Local oracle override: indented code\n",
+        "\tLocal oracle override: tab code\n",
+        "  Local oracle override: indented\n",
+        "````\nx\n```\nLocal oracle override: inside the longer fence\n````\n",
+        "~~~~\nx\n~~~\nLocal oracle override: inside the longer fence\n~~~~\n",
+        "```\nx\n~~~\nLocal oracle override: wrong closing character\n```\n",
+        "```\nx\n    ```\nLocal oracle override: after an indented closer\n```\n",
+        "~~~\nx\n\t~~~\nLocal oracle override: after a tab-indented closer\n~~~\n",
+        "<details>\nLocal oracle override: folded\n</details>\n",
+        "<details><summary>x</summary>\n\nLocal oracle override: folded\n",
     ],
 )
 def test_an_invisible_or_placeholder_override_is_refused(env: Env, body: str) -> None:
@@ -345,31 +377,61 @@ def test_a_missing_local_client_token_refuses(env: Env, capsys: pytest.CaptureFi
     assert "oracle-local" in capsys.readouterr().err
 
 
-def test_omp_version_mismatch_refuses_and_an_override_does_not_apply(
+def test_the_review_runs_the_cached_pinned_binary_while_another_omp_is_first_on_path(
+    env: Env, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    other = tmp_path / "path-bin"
+    other.mkdir()
+    decoy = other / "omp"
+    decoy.write_text("#!/bin/sh\necho omp/18.12.6\n", encoding="utf-8")
+    decoy.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{other}{os.pathsep}{os.environ['PATH']}")
+    assert env.run() == local.EXIT_PROCEED
+    expected = tmp_path / "omp-cache" / "18.12.1" / omp_pin.current_platform() / "omp"
+    assert [review["binary"] for review in env.reviews] == [str(expected)]
+    assert env.downloads == [FAKE_OMP_URL]
+    assert os.environ.get(omp_pin.BINARY_ENV) is None
+
+
+def test_a_cached_verified_binary_is_not_downloaded_again(env: Env) -> None:
+    assert env.run() == local.EXIT_PROCEED
+    env.verdict = _high()
+    env.run(head=_git(env.repo, "rev-parse", "HEAD"))
+    assert env.downloads == [FAKE_OMP_URL]
+
+
+def test_a_platform_without_a_pin_refuses_by_name_and_never_falls_back_to_path_omp(
     env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(local, "installed_omp_version", lambda: "0.0.1")
-    env.verdict = _high()
+    monkeypatch.setattr(omp_pin, "current_platform", lambda: "plan9-mips")
     assert env.run(OVERRIDE_BODY) == local.EXIT_UNAVAILABLE
     err = capsys.readouterr().err
-    assert "omp version mismatch" in err and "installed 0.0.1" in err
-    assert env.reviews == []
+    assert "no omp build is pinned for plan9-mips" in err
+    assert env.reviews == [] and env.downloads == []
 
 
-def test_the_omp_pin_is_read_from_the_ci_workflow() -> None:
-    assert local.pinned_omp_version(WORKFLOW_TEXT) == "18.12.1"
-    assert WORKFLOW_TEXT.count("OMP_VERSION: ") == 1
-    with pytest.raises(local.Unavailable, match="missing"):
-        local.pinned_omp_version("name: x\n")
-
-
-def test_a_missing_omp_binary_refuses(
-    env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+def test_a_download_that_does_not_match_the_pinned_checksum_refuses_and_leaves_no_binary(
+    env: Env, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.undo()
-    monkeypatch.setenv("PATH", str(env.tmp_path))
-    with pytest.raises(local.Unavailable, match="omp is not installed"):
-        local.installed_omp_version()
+    env.omp_content = "#!/bin/sh\necho omp/18.12.1\n# tampered\n"
+    assert env.run() == local.EXIT_UNAVAILABLE
+    assert "does not match the pinned sha256" in capsys.readouterr().err
+    assert env.reviews == []
+    assert list((tmp_path / "omp-cache").rglob("*")) == [
+        tmp_path / "omp-cache" / "18.12.1",
+        tmp_path / "omp-cache" / "18.12.1" / omp_pin.current_platform(),
+    ]
+
+
+def test_a_branch_that_removes_the_pin_section_does_not_change_the_pinned_binary(
+    env: Env, capsys: pytest.CaptureFixture[str]
+) -> None:
+    edited = yaml.safe_load(_pinned_policy_text())
+    del edited["omp"]
+    (env.repo / POLICY_RELATIVE).write_text(yaml.safe_dump(edited), encoding="utf-8")
+    _git(env.repo, "commit", "--quiet", "-am", "feat: drop the pin")
+    assert env.run() == local.EXIT_PROCEED
+    assert env.downloads == [FAKE_OMP_URL]
 
 
 def test_a_second_run_on_an_unchanged_patch_reuses_the_cached_review(
@@ -397,7 +459,7 @@ def test_a_changed_patch_is_reviewed_again(env: Env) -> None:
 def test_a_changed_policy_is_reviewed_again(env: Env) -> None:
     assert env.run() == local.EXIT_PROCEED
     _git(env.repo, "switch", "--quiet", "develop")
-    (env.repo / POLICY_RELATIVE).write_text(POLICY_TEXT + "\n# edited\n", encoding="utf-8")
+    (env.repo / POLICY_RELATIVE).write_text(_pinned_policy_text() + "\n# edited\n", encoding="utf-8")
     _git(env.repo, "commit", "--quiet", "-am", "edit policy")
     _git(env.repo, "switch", "--quiet", "feat/x")
     assert env.run() == local.EXIT_PROCEED
@@ -436,15 +498,16 @@ def test_the_policy_comes_from_the_base_ref_not_the_working_tree(env: Env) -> No
     assert len(env.reviews) == 1
 
 
-def test_the_omp_pin_comes_from_the_base_ref_not_the_branch(
-    env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    workflow = env.repo / local.WORKFLOW_FILE
-    workflow.write_text(WORKFLOW_TEXT.replace("OMP_VERSION: 18.12.1", "OMP_VERSION: 0.0.1"), encoding="utf-8")
+def test_the_omp_pin_comes_from_the_base_ref_not_the_branch(env: Env) -> None:
+    edited = yaml.safe_load(_pinned_policy_text())
+    edited["omp"]["builds"][omp_pin.current_platform()] = {
+        "url": "https://branch.example.invalid/omp",
+        "sha256": "0" * 64,
+    }
+    (env.repo / POLICY_RELATIVE).write_text(yaml.safe_dump(edited), encoding="utf-8")
     _git(env.repo, "commit", "--quiet", "-am", "feat: move the pin")
-    monkeypatch.setattr(local, "installed_omp_version", lambda: "0.0.1")
-    assert env.run() == local.EXIT_UNAVAILABLE
-    assert "CI pins 18.12.1" in capsys.readouterr().err
+    assert env.run() == local.EXIT_PROCEED
+    assert env.downloads == [FAKE_OMP_URL]
 
 
 def test_an_unavailable_review_is_never_cached(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -489,21 +552,114 @@ def test_planted_cloud_values_never_appear_in_the_output(
     assert CLOUD_URL not in captured.out + captured.err
 
 
-def test_a_second_review_waits_for_the_machine_lock_then_refuses(
+def test_a_second_review_of_the_same_patch_waits_for_its_lock_then_refuses(
     env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     import fcntl
 
     monkeypatch.setattr(local, "LOCK_WAIT_SECONDS", 0.3)
     monkeypatch.setattr(local, "LOCK_POLL_SECONDS", 0.05)
-    directory = local.state_dir()
-    directory.mkdir(parents=True)
-    with open(directory / "review.lock", "a+", encoding="utf-8") as held:
+    seen: list[Path] = []
+    real = local._cache_path
+
+    def recording(*args: Any, **kwargs: Any) -> Path:
+        path = real(*args, **kwargs)
+        seen.append(path)
+        return path
+
+    monkeypatch.setattr(local, "_cache_path", recording)
+    assert env.run() == local.EXIT_PROCEED
+    cache = seen[0]
+    cache.unlink()
+    with open(cache.with_suffix(".lock"), "a+", encoding="utf-8") as held:
         fcntl.flock(held, fcntl.LOCK_EX)
         assert env.run() == local.EXIT_UNAVAILABLE
-    assert "another local oracle review" in capsys.readouterr().err
-    assert env.reviews == []
+    assert "another local oracle review of this patch" in capsys.readouterr().err
+    assert len(env.reviews) == 1
     assert env.run() == local.EXIT_PROCEED
+
+
+def test_a_lock_held_for_another_patch_does_not_delay_this_review(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    import fcntl
+
+    monkeypatch.setattr(local, "LOCK_WAIT_SECONDS", 0.3)
+    directory = local.state_dir() / "cache"
+    directory.mkdir(parents=True)
+    with open(directory / ("0" * 64 + ".lock"), "a+", encoding="utf-8") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        assert env.run() == local.EXIT_PROCEED
+    assert len(env.reviews) == 1
+
+
+def _spawn(repo: Path, tmp_path: Path, name: str, seconds: float) -> tuple[subprocess.Popen[str], Path]:
+    log = tmp_path / f"{name}.log"
+    env = {
+        **os.environ,
+        "HOME": str(tmp_path / "home"),
+        local.STATE_DIR_ENV: str(tmp_path / "state"),
+        "PYTHONPATH": str(REPO_ROOT),
+    }
+    for secret in SECRET_NAMES:
+        env.pop(secret, None)
+    process = subprocess.Popen(
+        [sys.executable, "-m", "tests.unit.scripts.oracle_reviewers.local_review_process", str(log), str(seconds)],
+        cwd=repo,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    return process, log
+
+
+def _wait_for(path: Path, text: str) -> None:
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        if path.exists() and text in path.read_text(encoding="utf-8"):
+            return
+        time.sleep(0.05)
+    raise AssertionError(f"{text!r} never appeared in {path}")
+
+
+def _seed_home(tmp_path: Path) -> None:
+    token = tmp_path / "home" / local.LOCAL_TOKEN_PATH
+    token.parent.mkdir(parents=True)
+    token.write_text(LOCAL_TOKEN + "\n", encoding="utf-8")
+
+
+def test_reviews_of_different_patches_run_at_the_same_time_in_separate_processes(tmp_path: Path) -> None:
+    _seed_home(tmp_path)
+    first_repo = _make_repo(tmp_path / "first")
+    second_repo = _make_repo(tmp_path / "second", "benchbox/core/equivalence/other.py")
+    slow, slow_log = _spawn(first_repo, tmp_path, "slow", 8)
+    try:
+        _wait_for(slow_log, "start")
+        fast, _ = _spawn(second_repo, tmp_path, "fast", 0)
+        fast_output, _ = fast.communicate(timeout=60)
+        assert fast.returncode == local.EXIT_PROCEED, fast_output
+        assert slow.poll() is None
+        assert "Waiting for another" not in fast_output
+    finally:
+        slow.communicate(timeout=60)
+    assert slow.returncode == local.EXIT_PROCEED
+
+
+def test_a_second_process_reviewing_the_same_patch_waits_and_reuses_the_result(tmp_path: Path) -> None:
+    _seed_home(tmp_path)
+    repo = _make_repo(tmp_path / "repo")
+    first, first_log = _spawn(repo, tmp_path, "first", 4)
+    try:
+        _wait_for(first_log, "start")
+        second, second_log = _spawn(repo, tmp_path, "second", 4)
+        second_output, _ = second.communicate(timeout=120)
+    finally:
+        first.communicate(timeout=120)
+    assert first.returncode == local.EXIT_PROCEED
+    assert second.returncode == local.EXIT_PROCEED, second_output
+    assert "Waiting for another local oracle review of this patch" in second_output
+    assert "Reusing the cached local review" in second_output
+    assert not second_log.exists()
+    assert first_log.read_text(encoding="utf-8").count("start") == 1
 
 
 def test_a_change_with_only_exempt_paths_needs_no_review(

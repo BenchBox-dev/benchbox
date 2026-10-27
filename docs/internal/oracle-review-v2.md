@@ -41,8 +41,8 @@ absent, pending or failed oracle decision does not pass on its own.
 4. Keep provider credentials, `CLAUDE_CODE_OAUTH_TOKEN` included, out of
    repository secrets: same-repository PR workflows can read those.
 
-The `review` job installs a pinned OMP Linux build once and checks its SHA-256
-before running it.
+The `review` job installs the pinned OMP build for its platform once and checks
+its SHA-256 before running it.
 
 ### Credential gateway
 
@@ -301,6 +301,15 @@ open defects give DO NOT SHIP. The previous reviewer goes first unless the
 follow-up's own bucket names a larger one, as for a push touching review
 machinery. Follow-ups run for every size bucket.
 
+Follow-up scope preserves every exact changed-path match and additionally
+compares Unicode NFC forms and symlink aliases resolved inside the head checkout.
+A case-only citation matching one changed path uses that path, unless the cited
+path exists in the head checkout as its own file, which is never folded; an ambiguous
+case-only match still counts against the decision rather than disappearing.
+Canonical matching can only bring findings into scope. Findings on genuinely
+unchanged files remain not counted, and aliases resolving outside the checkout
+do not establish a match.
+
 A forced follow-up rejudges rather than skips. Its brief lists each disputed
 thread under "Disputed findings", keyed by the finding id from the thread's
 hidden marker, with replies quoted as data. Only disputes bound to a
@@ -463,9 +472,8 @@ The code, not the model, decides, and the stricter outcome wins:
 Severity orders the list and never gates: any listed defect, even Low, makes
 SHIP WITH FIXES. SHIP posts `success`; SHIP WITH FIXES and DO NOT SHIP post
 `failure`. The body opens `### oracle-verdict: <state> for <sha>`, then a
-`Decision:` line. Reviews before 2026-10-09 open with `###
-oracle-review-shadow:`; the required check still reads that on open PRs, and the
-merge digest reads both permanently since it reads merged history. More than 10
+`Decision:` line. Reviews before 2026-10-09 opened with `### oracle-review-shadow:`; the merge
+digest reads both permanently since it reads merged history. More than 10
 defects is not an invalid verdict, because every reviewer would then fail in
 turn and leave the PR pending.
 
@@ -499,14 +507,25 @@ fallback over family exclusion.
 
 A defect-free verdict can be hollow: a reviewer that could not read the files
 may still answer. The job checks each verdict against the head checkout before
-recording it; a failure records the reviewer absent (`incomplete`), so it runs
-once more before the chain advances, and with no verdict the run stays pending.
-A hollow answer never passes.
+recording it; a failure records the reviewer absent (`incomplete`) and the
+required files it left unread on the attempt artifact (`absence.unread`). The
+same reviewer then runs once more. Its brief marks those files in the fenced
+"Required reads" list, taken from the plan's required list intersected with the
+recorded list, never from reviewer text, and carries a fixed "Earlier attempt
+feedback" note that holds only their count, so author-chosen file names stay
+inside the data fences. If the retry also fails the check, the chain advances
+and the next reviewer's brief carries neither mark nor note. With no verdict the
+run stays pending. A hollow answer never passes.
 
 - Every defect must cite a head-commit file and a line within it. One that does
   not is kept, noted as citation not found, so it still fails the change;
   discarding the verdict would hand the change to a reviewer that might pass it.
-- In `file-list` mode (the brief lists files instead of the diff), a verdict
+- In `file-list` mode (the brief lists files instead of the diff), the brief
+  names the required reads explicitly: the plan's `evidence_files`, each with its
+  line counts, under "Required reads". Every other changed file (inert, exempt or
+  deleted) is listed under "Not required reads". The brief says each required
+  file needs its own direct read, that reading the staged pull request diff does
+  not count, and that one-line and low-priority files are included. A verdict
   that would be SHIP must name in `files_examined` every soundness-path file
   under review still present at the head (in a follow-up, those changed since
   the last review), and OMP's event stream must show a successful `read` of each
@@ -611,7 +630,11 @@ cancels a run in flight, which then posts nothing.
   the reviewer-free sweep job. An existing pending status is left alone; without
   the App the sweep reports the gap instead of failing. A failure in one PR's
   lookup, dispatch or surfacing is reported, the others continue, then the job
-  fails. Daily budget, backoff and attempt limits are unchanged.
+  fails. If the week-long runs listing fails twice, the sweep degrades: it
+  dispatches only due retries, using a bounded lookup of every non-completed run
+  status for the in-flight check, and says so in the summary. If that lookup also
+  fails it dispatches nothing. A degraded sweep exits 1 after dispatching what it
+  safely can. Daily budget, backoff and attempt limits are unchanged.
 - `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the
   owner clear one PR head's backoff and retry window once. It needs a prior
   `Owner instruction` comment from an attester naming the head, as for a
@@ -628,9 +651,7 @@ dispatch and scheduled reruns share a per-PR daily budget
 (`retry.daily_budget`), with backoff starting at one hour and doubling. Retry
 state is the `oracle-verdict-state-<number>` artifact of this workflow's latest
 run whose commit is on `develop`; other workflows' and branches' artifacts are
-ignored. Without one, `plan` reads the `oracle-review-shadow-state-<number>`
-artifact from runs of the former `.github/workflows/oracle-review-shadow.yml`,
-so strikes, budget and backoff survive the rename.
+ignored.
 
 A PR whose brief exceeds the size cap even without the diff (its file list alone
 is too long) cannot be reviewed: every reviewer is skipped and the result is
@@ -675,25 +696,30 @@ to GitHub.
   never printed: every line passes the redaction that covers the stored result.
   The hosted accepted risk applies: the reviewer can read the user's files,
   including that token.
-- **Harness pin.** The `omp:` section of `.github/oracle-reviewers.yml` pins the
-  version and each platform's URL and SHA-256. CI reads it from its trusted
-  checkout via `cli.py install-omp` under isolated `uv` with `pyyaml==6.0.3`;
-  YAML is imported only to parse the policy, so other bare-Python CLI commands
-  need no PyYAML. The shared `omp_pin.py` installer downloads into
+- **Harness pin.** The `omp:` section of `.github/oracle-reviewers.yml` holds the
+  one pin: the version and, per platform (`linux-x64`, `linux-arm64`,
+  `darwin-arm64`), the download URL and SHA-256. One installer (`omp_pin.py`,
+  `cli.py install-omp`, run under isolated `uv` with `pyyaml==6.0.3`; YAML is
+  imported only to parse the policy) downloads the platform build into
   `~/.cache/benchbox/omp/<version>/<platform>/omp` (`BENCHBOX_OMP_CACHE`
-  overrides the root), checks SHA-256 before making it executable and its
-  reported version before caching. Unpinned platforms refuse by name. The
-  workflow's legacy `OMP_URL`, `OMP_SHA256` and `OMP_VERSION` values must equal
-  the policy pin: CI's installer refuses otherwise, and the workflow test
-  enforces it.
+  overrides the root), checks the SHA-256 before the file is marked executable,
+  then checks the binary reports the pinned version. The CI `Install omp` step,
+  `scripts/cloud_gateway.sh` and the local review all use it, and the reviewer
+  runs the installed binary by its path (`ORACLE_OMP_BINARY`), never the `omp` on
+  `PATH`. A platform with no pin refuses, naming the platform. Like the policy,
+  the pin is read from `origin/develop`, not from the branch or working tree. The
+  build host publishes no checksum file, so each SHA-256 was computed from a TLS
+  download of the published artifact, the method that established the original
+  linux-x64 pin. To bump the build, change the version and every platform's URL
+  and SHA-256 together.
 - **Blocking.** A Critical or High finding, or DO NOT SHIP, makes `pr-open`
   refuse before pushing (exit 1). A `Local oracle override: <reason>` line with
   a non-empty reason in the PR body file (`PR_BODY_FILE`) lets it proceed and
   stays in the body; an empty or `<placeholder>` reason, or a line inside an
   HTML comment or code fence, is refused. Nothing else overrides, not even a
   commit message. An unreachable gateway, timeout, quota exhaustion, no verdict,
-  missing credential or `omp` version mismatch also refuses (exit 2), and the
-  override does not apply.
+  missing credential, or an `omp` build that fails its checksum or has no pin for
+  this platform also refuses (exit 2), and the override does not apply.
 - **Pinned head.** `pr-open` records `HEAD` before the review, passes it as
   `--head`, and refuses to push if `HEAD` moved during the review or lock wait,
   so the pushed head is the reviewed one.
@@ -703,9 +729,16 @@ to GitHub.
   and a hash of the review machinery (the `oracle_reviewers` package, its
   templates, the OMP config). An unchanged patch reuses the result, even after
   an override; a keyless default result is not reused once a key exists, and
-  machinery changes are reviewed again. Only verdicts are cached. A lock in the
-  same directory allows one local review per machine; a second waits up to an
-  hour, then refuses.
+  machinery changes are reviewed again. Only verdicts are cached. The lock is per
+  patch: each cache key has its own lock file (`cache/<key>.lock`), so reviews
+  of different patches run in parallel, and a second review of the same patch
+  waits for the first (up to an hour per key, then it refuses), re-checks the
+  cache under the lock and reuses the result without running the reviewers. A
+  review's state is
+  private (its own work directory, reviewer homes and workspace clone, survivor
+  checks scoped to its own process group, atomic cache writes), and CI already
+  reviews different PRs concurrently on the same gateway, so a machine-wide lock
+  only made one slow review block every other PR without saving quota.
 
 ## Calibration
 

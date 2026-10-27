@@ -8,17 +8,21 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+BINARY_ENV = "ORACLE_OMP_BINARY"
 CACHE_ENV = "BENCHBOX_OMP_CACHE"
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?")
 CHUNK_BYTES = 1 << 20
 DOWNLOAD_SECONDS = 600
+DOWNLOAD_READ_SECONDS = 30
 USER_AGENT = "benchbox-oracle/1.0"
 VERSION_SECONDS = 60
 SYSTEMS = {"darwin": "darwin", "linux": "linux"}
@@ -100,13 +104,41 @@ def sha256_of(path: Path) -> str:
     return digest.hexdigest()
 
 
+class HttpsOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(
+        self, req: urllib.request.Request, fp: Any, code: int, msg: str, headers: Any, newurl: str
+    ) -> urllib.request.Request | None:
+        if not newurl.lower().startswith("https://"):
+            raise urllib.error.URLError(f"the omp download redirected to a non-https url ({code})")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def build_opener() -> urllib.request.OpenerDirector:
+    return urllib.request.build_opener(HttpsOnlyRedirectHandler)
+
+
+def _open(request: urllib.request.Request, timeout: float) -> Any:
+    return build_opener().open(request, timeout=timeout)
+
+
+def _stream(
+    request: urllib.request.Request,
+    destination: Path,
+    deadline_seconds: float = DOWNLOAD_SECONDS,
+    read_seconds: float = DOWNLOAD_READ_SECONDS,
+) -> None:
+    deadline = time.monotonic() + deadline_seconds
+    with _open(request, read_seconds) as response, destination.open("wb") as handle:
+        while chunk := response.read1(CHUNK_BYTES):
+            handle.write(chunk)
+            if time.monotonic() > deadline:
+                raise TimeoutError(f"the omp download exceeded {deadline_seconds:g} seconds")
+
+
 def download(url: str, destination: Path) -> None:
     if not url.startswith("https://"):
         raise PinError("omp is downloaded over https only")
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(request, timeout=DOWNLOAD_SECONDS) as response, destination.open("wb") as handle:
-        while chunk := response.read(CHUNK_BYTES):
-            handle.write(chunk)
+    _stream(urllib.request.Request(url, headers={"User-Agent": USER_AGENT}), destination)
 
 
 def reported_version(binary: Path) -> str:
@@ -160,22 +192,22 @@ def install(pin: Pin, target: str | None = None, root: Path | None = None, fetch
     return binary
 
 
-def check_legacy_pin(pin: Pin) -> None:
-    names = ("OMP_URL", "OMP_SHA256", "OMP_VERSION")
-    if not any(name in os.environ for name in names):
-        return
-    build = select_build(pin, "linux-x64")
-    expected = (build.url, build.sha256, pin.version)
-    if tuple(os.environ.get(name) for name in names) != expected:
-        raise PinError("the legacy workflow omp pin differs from the reviewer policy pin")
+def configured_binary() -> Path | None:
+    value = os.environ.get(BINARY_ENV, "")
+    return Path(value) if value else None
+
+
+def required_binary() -> Path:
+    binary = configured_binary()
+    if binary is None or not binary.is_file() or not os.access(binary, os.X_OK):
+        raise PinError(f"the pinned omp is not installed; {BINARY_ENV} does not name an executable")
+    return binary
 
 
 def command_install(args: argparse.Namespace) -> int:
     try:
         text = sys.stdin.read() if args.policy == "-" else Path(args.policy).read_text(encoding="utf-8")
-        pin = pin_from_text(text)
-        check_legacy_pin(pin)
-        binary = install(pin)
+        binary = install(pin_from_text(text))
     except (OSError, PinError) as exc:
         print(f"oracle-verdict: error: {exc}", file=sys.stderr)
         return 1

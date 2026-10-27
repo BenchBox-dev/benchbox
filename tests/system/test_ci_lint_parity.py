@@ -158,6 +158,13 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "Hosted selection against the downloaded map for the PR base SHA; it needs "
         "the Actions artifact and the hosted path decision, so no Make target runs it."
     ),
+    ("ci.yml", "ci-paths", "Select tests for the Windows leg"): (
+        "Hosted reduction of the coverage selection to test files for the Windows runner; "
+        "it reads the hosted selection artifact and path decision, so no Make target runs it."
+    ),
+    ("ci.yml", "windows-tests", "Run the selected and changed test files on Windows"): (
+        "Windows-runner execution of the selected test files; the local macOS checkout has no Windows runner equivalent."
+    ),
     ("ci.yml", "tpch-binary-framing", "Verify bundled dbgen binaries emit clean framing"): (
         "Cross-platform macOS/Windows binary smoke; the local macOS checkout has no Windows runner equivalent."
     ),

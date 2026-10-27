@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -122,7 +123,7 @@ def test_contended_lock_prevents_home_setup(tmp_path: Path) -> None:
 
 
 def test_session_finish_restores_caller_environment(tmp_path: Path) -> None:
-    env = dict(os.environ, PYTHONPATH=str(REPO_ROOT))
+    env = dict(os.environ, PYTHONPATH=str(REPO_ROOT), BENCHBOX_TEST_LOCK_DIR=str(tmp_path / "lock"))
     script = (
         "import os\nfrom pathlib import Path\nfrom tests.utilities import session_isolation as isolation\n"
         "before = dict(os.environ)\n"
@@ -462,3 +463,85 @@ def test_only_a_parallel_controller_takes_the_lock(
     next(hook)
     hook.close()
     assert calls == [expected_lock]
+
+
+def _bypass_probe_env(tmp_path: Path, extra: dict[str, str] | None = None) -> tuple[dict[str, str], Path]:
+    caller_home = tmp_path / "caller-home"
+    caller_home.mkdir(exist_ok=True)
+    env = dict(
+        os.environ,
+        HOME=str(caller_home),
+        USERPROFILE=str(caller_home),
+        PYTHONPATH=str(REPO_ROOT),
+        **(extra or {}),
+    )
+    for name in (
+        "BENCHBOX_TEST_SESSION_OWNER",
+        "BENCHBOX_SKIP_TEST_LOCK",
+        "BENCHBOX_TEST_LOCK_DIR",
+        "BENCHBOX_OUTPUT_DIR",
+        "BENCHBOX_TEST_SESSION_OUTPUT_DIR",
+        *[key for key in env if key.startswith("PYTEST_XDIST_")],
+    ):
+        env.pop(name, None)
+    env.update(extra or {})
+    return env, caller_home
+
+
+def test_top_level_skip_bypass_emits_a_visible_warning(tmp_path: Path) -> None:
+    env, _ = _bypass_probe_env(tmp_path, {"BENCHBOX_SKIP_TEST_LOCK": "1"})
+    script = "from tests.utilities import session_isolation as isolation\nisolation.start(acquire_lock=False)\n"
+    result = subprocess.run(
+        [sys.executable, "-c", script], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=60
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "[benchbox] WARNING: test lock bypass active via BENCHBOX_SKIP_TEST_LOCK" in result.stderr
+    assert re.search(r"pid=\d+", result.stderr) is not None
+    assert str(tmp_path) in result.stderr
+
+
+def test_custom_lock_dir_bypass_names_the_variable(tmp_path: Path) -> None:
+    custom = tmp_path / "custom-lock-dir"
+    custom.mkdir()
+    env, _ = _bypass_probe_env(tmp_path, {"BENCHBOX_TEST_LOCK_DIR": str(custom)})
+    script = "from tests.utilities import session_isolation as isolation\nisolation.start(acquire_lock=False)\n"
+    result = subprocess.run(
+        [sys.executable, "-c", script], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=60
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "[benchbox] WARNING: test lock bypass active via BENCHBOX_TEST_LOCK_DIR" in result.stderr
+    assert re.search(r"pid=\d+", result.stderr) is not None
+    assert str(tmp_path) in result.stderr
+
+
+@pytest.mark.parametrize("extra", [{"PYTEST_XDIST_WORKER": "gw0"}, {"BENCHBOX_TEST_SESSION_OWNER": "424242"}])
+def test_worker_or_inherited_child_bypass_stays_silent(tmp_path: Path, extra: dict[str, str]) -> None:
+    env, _ = _bypass_probe_env(tmp_path, {"BENCHBOX_SKIP_TEST_LOCK": "1", **extra})
+    script = "from tests.utilities import session_isolation as isolation\nisolation.start(acquire_lock=False)\n"
+    result = subprocess.run(
+        [sys.executable, "-c", script], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=60
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "[benchbox] WARNING: test lock bypass active" not in result.stderr
+
+
+def test_conftest_warns_when_the_top_level_session_skips_the_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from tests import conftest as benchbox_conftest
+
+    class _TopLevelConfig:
+        def getini(self, name: str) -> int:
+            return 0
+
+    monkeypatch.setattr(benchbox_conftest, "isolated_session_active", lambda: False)
+    monkeypatch.setenv("BENCHBOX_SKIP_TEST_LOCK", "1")
+    monkeypatch.delenv("BENCHBOX_TEST_LOCK_DIR", raising=False)
+    monkeypatch.delenv("PYTEST_XDIST_WORKER", raising=False)
+    monkeypatch.delenv("BENCHBOX_TEST_SESSION_OWNER", raising=False)
+    monkeypatch.chdir(tmp_path)
+    benchbox_conftest.pytest_configure(_TopLevelConfig())
+    err = capsys.readouterr().err
+    assert "[benchbox] WARNING: test lock bypass active via BENCHBOX_SKIP_TEST_LOCK" in err
+    assert re.search(r"pid=\d+", err) is not None
+    assert str(tmp_path) in err

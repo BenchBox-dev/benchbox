@@ -5,21 +5,11 @@ top=$(git rev-parse --show-toplevel)
 git_dir=$(git rev-parse --absolute-git-dir)
 state_dir="$git_dir/benchbox-cloud-gateway"
 status_file="$git_dir/benchbox-cloud-gateway.status"
-workflow="$top/.github/workflows/oracle-verdict.yml"
 proxy_port=${BENCHBOX_GATEWAY_PROXY_PORT:-1055}
-install_dir=${BENCHBOX_OMP_INSTALL_DIR:-${HOME:-/tmp}/.local/bin}
 pid_file="$state_dir/tailscaled.pid"
 
 say() {
   printf 'cloud-gateway: %s\n' "$1"
-}
-
-sha256_of() {
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$1" | awk '{print $1}'
-  else
-    shasum -a 256 "$1" | awk '{print $1}'
-  fi
 }
 
 short_socket_dir() {
@@ -68,7 +58,10 @@ stop_daemon() {
       kill -9 "$pid" 2>/dev/null || true
     fi
   fi
-  rm -rf "$state_dir" "$socket_dir"
+  rm -rf "$socket_dir"
+  if [ -d "$state_dir" ]; then
+    find "$state_dir" -mindepth 1 -maxdepth 1 ! -name omp-binary ! -name omp-install.log -exec rm -rf {} +
+  fi
 }
 
 record() {
@@ -94,58 +87,30 @@ http_status() {
   fi
 }
 
-omp_pin() {
-  [ -f "$workflow" ] || return 1
-  omp_url=$(sed -n 's/^[[:space:]]*OMP_URL:[[:space:]]*//p' "$workflow" | sed -n '1p' | tr -d ' \r')
-  omp_sha=$(sed -n 's/^[[:space:]]*OMP_SHA256:[[:space:]]*//p' "$workflow" | sed -n '1p' | tr -d ' \r')
-  case "$omp_url" in https://*) ;; *) return 1 ;; esac
-  printf '%s' "$omp_sha" | grep -Eq '^[0-9a-f]{64}$'
-}
-
 install_omp() {
   omp_state=not-installed
-  if ! omp_pin; then
-    say "OMP pin in .github/workflows/oracle-verdict.yml is unreadable; not installing OMP"
+  mkdir -p "$state_dir"
+  rm -f "$state_dir/omp-binary"
+  if ! git -C "$top" fetch --quiet origin develop >/dev/null 2>&1; then
+    say "cannot fetch origin/develop; not installing OMP"
     return 1
   fi
-  if [ "$(uname -s)" != Linux ] || { [ "$(uname -m)" != x86_64 ] && [ "$(uname -m)" != amd64 ]; }; then
-    say "the pinned OMP build is linux-x64; skipping install on $(uname -s) $(uname -m)"
-    return 0
+  if ! policy=$(git -C "$top" show origin/develop:.github/oracle-reviewers.yml 2>/dev/null); then
+    say "the OMP pin in origin/develop:.github/oracle-reviewers.yml is unreadable; not installing OMP"
+    return 1
   fi
-  target="$install_dir/omp"
-  if [ -x "$target" ] && [ "$(sha256_of "$target")" = "$omp_sha" ]; then
+  log="$state_dir/omp-install.log"
+  if printf '%s\n' "$policy" |
+    (cd "$top" && uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- \
+      python -m _project.scripts.oracle_reviewers.cli install-omp --policy -) >"$state_dir/omp-binary" 2>"$log"; then
     omp_state=installed
-    say "OMP already installed and verified"
+    say "OMP installed and verified"
     return 0
   fi
-  if ! mkdir -p "$install_dir" "$state_dir"; then
-    say "cannot create the OMP install directory"
-    return 1
-  fi
-  candidate="$state_dir/omp.download"
-  rm -f "$candidate"
-  if ! curl -fsSL --proto '=https' --tlsv1.2 "$omp_url" -o "$candidate"; then
-    rm -f "$candidate"
-    say "OMP download failed; the environment network allowlist needs the OMP download host"
-    return 1
-  fi
-  if [ "$(sha256_of "$candidate")" != "$omp_sha" ]; then
-    rm -f "$candidate"
-    say "OMP checksum mismatch; refusing to install"
-    return 1
-  fi
-  if ! chmod +x "$candidate"; then
-    rm -f "$candidate"
-    say "cannot mark OMP executable; refusing to install"
-    return 1
-  fi
-  if ! mv -f "$candidate" "$target"; then
-    rm -f "$candidate"
-    say "cannot move OMP into place; refusing to install"
-    return 1
-  fi
-  omp_state=installed
-  say "OMP installed and verified"
+  rm -f "$state_dir/omp-binary"
+  sed 's/^/cloud-gateway: omp: /' "$log" | tail -n 5
+  say "OMP not installed; the environment network allowlist needs the OMP download host named in the pin"
+  return 1
 }
 
 bring_up() {
@@ -206,6 +171,7 @@ up() {
   omp_state=not-installed
   if [ -z "${TS_AUTHKEY:-}" ] || [ -z "${ORACLE_GATEWAY_URL:-}" ] || [ -z "${ORACLE_CLOUD_GATEWAY_TOKEN:-}" ]; then
     stop_daemon
+    rm -f "$state_dir/omp-binary" "$state_dir/omp-install.log"
     record unavailable "TS_AUTHKEY, ORACLE_GATEWAY_URL and ORACLE_CLOUD_GATEWAY_TOKEN are not all set"
     say "gateway unavailable: TS_AUTHKEY, ORACLE_GATEWAY_URL and ORACLE_CLOUD_GATEWAY_TOKEN are not all set"
     return 0
@@ -254,6 +220,7 @@ case "${1:-up}" in
   up) up ;;
   stop)
     stop_daemon
+    rm -rf "$state_dir"
     rm -f "$status_file"
     say "stopped"
     ;;

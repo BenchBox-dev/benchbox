@@ -28,7 +28,8 @@ The renderer rejects unknown or missing slots, over-byte values, a
 `template_name` that does not match the rendered file, a `size_bucket` or
 `capability` outside the enums, non-integer `pr` (other than `unopened`) / `max_defects` /
 `template_version`, non-sha `base` / `head`, a `repo` outside `owner/name`
-shape, non-numeric `confidence`, and a `response_template` that is not JSON, does
+shape, non-numeric `confidence`, a `retry_note` that is neither `none` nor the fixed retry note
+around a count, and a `response_template` that is not JSON, does
 not hold exactly the seven verdict keys, carries a prior id outside the
 defect id grammar, or differs from the unpopulated template built for those ids. A compromised or
 buggy caller cannot smuggle prose through a trusted slot.
@@ -54,7 +55,8 @@ instruction prose of the template itself.
 | `file_priority` | table | 8192 | `path \| score \| impact` rows, score descending, cut to fit, or `none`; fenced |
 | `max_defects` | integer | 4 | protocol defect cap from policy |
 | `prior_rule` | prose | 2048 | first / ship / follow-up prior-defect rule |
-| `change_data` | prose+diff | 100000 | file list, then inline diff or read instructions per brief mode; fenced |
+| `retry_note` | prose | 512 | `none`, or the fixed note carrying only the count of required files an earlier attempt of the same reviewer left unread; the files themselves are marked inside the fenced `change_data` |
+| `change_data` | prose+diff | 100000 | file list, then inline diff or read instructions per brief mode; in file-list mode the list names the required reads and marks every other file not required; fenced |
 | `response_template` | JSON | 16384 | JSON template to populate, rendered after `change_data`; see below |
 
 Rendered briefs must fit `brief_max_bytes` (policy, currently 100000).

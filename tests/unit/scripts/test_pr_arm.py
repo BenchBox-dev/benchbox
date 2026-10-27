@@ -66,6 +66,10 @@ class FakeGh:
         self.verdict_head = kwargs.get("verdict_head", self.local_head)
         self.changed_files = kwargs.get("changed_files", ["scripts/x.py"])
         self.calls: list[list[str]] = []
+        self.rules = kwargs.get("rules", ["core"])
+        self.statuses = kwargs.get("statuses", {})
+        self.status_descriptions = kwargs.get("status_descriptions", {})
+        self.extra_runs = kwargs.get("extra_runs", [])
 
     def __call__(self, cmd: Sequence[str]) -> tuple[int, str]:
         cmd = list(cmd)
@@ -85,6 +89,11 @@ class FakeGh:
             return self.merge_code, "queued"
         if cmd[:2] == ["gh", "api"] and cmd[-1] == f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/status":
             return self.status_code, self.gate_state + "\n" if self.status_code == 0 else "gh: HTTP 502"
+        if cmd[:2] == ["gh", "api"] and f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/statuses?" in cmd[-1]:
+            lines = [
+                f"{name}\t{state}\t{self.status_descriptions.get(name, '')}" for name, state in self.statuses.items()
+            ]
+            return 0, "\n".join(lines)
         if cmd[:2] == ["gh", "api"] and "/actions/artifacts?" in cmd[-1]:
             assert cmd[-1].startswith(f"repos/{pr_arm.REPOSITORY}/actions/artifacts?name=fast-duration-verdict-7-")
             if self.lookup_code != 0:
@@ -98,10 +107,16 @@ class FakeGh:
                 text if text is not None else json.dumps(self.verdict), encoding="utf-8"
             )
             return 0, ""
+        if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
+            return 0, "\n".join(self.rules)
         if cmd[:3] == ["gh", "api", "--paginate"] and "/check-runs?" in cmd[-1]:
-            status, conclusion = self.core
-            record = {"id": 1, "name": "core", "status": status, "conclusion": conclusion, "head_sha": self.local_head}
-            return 0, json.dumps({**record, "check_suite": {"id": 9}})
+            runs = [("core", *self.core)] + list(self.extra_runs)
+            lines = []
+            for index, (name, status, conclusion) in enumerate(runs, 1):
+                record = {"id": index, "name": name, "status": status, "conclusion": conclusion}
+                record["head_sha"] = self.local_head
+                lines.append(json.dumps({**record, "check_suite": {"id": 9}}))
+            return 0, "\n".join(lines)
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/pulls/7/files"):
             return 0, "\n".join(self.changed_files)
         if cmd[:3] == ["gh", "workflow", "run"]:
@@ -526,7 +541,7 @@ def test_a_would_block_verdict_refuses_with_the_ratios_and_the_baseline_route(
         "would-block",
         "summed-time ratio 1.457",
         "median per-test ratio 1.234",
-        "report-only measurement (ci-verify-fast-duration-report-only-20261025)",
+        "The duration gate blocks `core` on a would-block verdict",
         "scripts/build_fast_duration_baseline.py",
         "tests/fixtures/fast_tier_baseline",
     ):
@@ -559,15 +574,31 @@ def test_a_would_block_verdict_refuses_when_the_changed_files_cannot_be_listed(
     [
         {"verdict": "pass", "sum_ratio": 1.01, "median_test_ratio": 1.0},
         {"verdict": "neutral", "reason": "no baseline"},
-        {"verdict": "rejected", "reason": "calibration missing"},
         {"verdict": "not-applicable", "reason": "no fast-tier tests ran for this head"},
     ],
 )
-def test_pass_neutral_rejected_and_not_applicable_verdicts_arm_normally(verdict: dict | None) -> None:
+def test_pass_neutral_and_not_applicable_verdicts_arm_normally(verdict: dict | None) -> None:
     gh = FakeGh(verdict=verdict)
     assert _arm(gh) == 0
     assert len(gh.merged()) == 1
     assert not any(call[-1].endswith("/pulls/7/files") for call in gh.calls)
+
+
+@pytest.mark.parametrize(
+    "verdict",
+    [
+        {"verdict": "rejected", "reason": "calibration missing"},
+        {"verdict": "mystery"},
+        {"reason": "no verdict field"},
+        {"verdict": None},
+    ],
+)
+def test_rejected_and_unknown_duration_verdicts_hold_arming(verdict: dict, capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh(verdict=verdict, changed_files=[BASELINE_FILE])
+    assert _arm(gh) == 2
+    assert gh.merged() == []
+    err = capsys.readouterr().err
+    assert "verify-fast-duration verdict" in err and "not one of" in err
 
 
 def test_a_verdict_bound_to_a_superseded_head_refuses(capsys: pytest.CaptureFixture[str]) -> None:
@@ -641,3 +672,66 @@ def test_an_untrustworthy_verdict_refuses_instead_of_arming(
     assert _arm(gh) == 2
     assert gh.merged() == []
     assert expected in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "cancelled", "timed_out", "action_required"])
+def test_visible_terminal_required_check_conclusion_refuses_arming(
+    conclusion: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh(core=("completed", conclusion))
+    assert _arm(gh) == 2
+    assert gh.merged() == []
+    assert f"required check 'core' completed with conclusion {conclusion!r}" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("status", ["in_progress", "queued"])
+def test_pending_required_checks_still_arm(status: str) -> None:
+    gh = FakeGh(core=(status, None))
+    assert _arm(gh) == 0
+    assert len(gh.merged()) == 1
+
+
+def test_non_required_failing_check_does_not_refuse_arming() -> None:
+    gh = FakeGh(extra_runs=[("flaky-thing", "completed", "failure")])
+    assert _arm(gh) == 0
+    assert len(gh.merged()) == 1
+
+
+@pytest.mark.parametrize("state", ["failure", "error"])
+def test_visible_failed_required_status_refuses_arming(state: str, capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh(statuses={"oracle-gate": state}, rules=["core", "oracle-gate"])
+    assert _arm(gh) == 2
+    assert gh.merged() == []
+    assert f"required status 'oracle-gate' completed with state {state!r}" in capsys.readouterr().err
+
+
+def test_pending_required_status_still_arms() -> None:
+    gh = FakeGh(statuses={"oracle-gate": "pending"}, rules=["core", "oracle-gate"])
+    assert _arm(gh) == 0
+    assert len(gh.merged()) == 1
+
+
+def test_waiting_oracle_failure_status_refreshes_and_arms() -> None:
+    gh = FakeGh(
+        statuses={"oracle-gate": "failure"},
+        status_descriptions={
+            "oracle-gate": f"oracle-review: waiting for the oracle's verdict on {HEAD}, or a stand-in attestation"
+        },
+        rules=["core", "oracle-gate"],
+        gate_state="failure",
+    )
+    assert _arm(gh) == 0
+    assert gh.dispatched() == [DISPATCH]
+    assert len(gh.merged()) == 1
+
+
+def test_waiting_oracle_description_for_another_head_does_not_mask_failure() -> None:
+    gh = FakeGh(
+        statuses={"oracle-gate": "failure"},
+        status_descriptions={
+            "oracle-gate": f"oracle-review: waiting for the oracle's verdict on {'b' * 40}, or a stand-in attestation"
+        },
+        rules=["core", "oracle-gate"],
+    )
+    assert _arm(gh) == 2
+    assert gh.merged() == []

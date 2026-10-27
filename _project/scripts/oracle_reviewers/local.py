@@ -22,7 +22,7 @@ from typing import Any
 
 import yaml
 
-from . import attempts as attempt_files, cli, credentials, protocol, redaction_check, selection
+from . import attempts as attempt_files, cli, credentials, omp_pin, protocol, redaction_check, selection
 from .classifier import ChangedFile, matching, soundness_scope
 from .classify import Classification
 from .jev import JevError
@@ -30,7 +30,7 @@ from .policy import Policy, load_policy, parse_policy
 from .verdict import DO_NOT_SHIP
 
 BLOCKING_SEVERITIES = ("Critical", "High")
-OVERRIDE_PATTERN = re.compile(r"^[ \t]*Local oracle override:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
+OVERRIDE_PATTERN = re.compile(r"^Local oracle override:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
 KEYCHAIN_SERVICE = "TYPESAFE_API_KEY"
 LOCAL_CLIENT = "oracle-local"
 CLOUD_CLIENT = "oracle-cloud"
@@ -39,12 +39,16 @@ LOCAL_TOKEN_PATH = Path(".omp") / "oracle-gateway" / "local-client.token"
 CLOUD_TOKEN_ENV = "ORACLE_CLOUD_GATEWAY_TOKEN"
 CLOUD_SESSION_ENV = "BENCHBOX_EPHEMERAL_CLONE"
 STATE_DIR_ENV = "BENCHBOX_LOCAL_ORACLE_DIR"
-WORKFLOW_FILE = ".github/workflows/oracle-verdict.yml"
 SOUNDNESS_MANIFEST = ".github/soundness-paths.txt"
-HIDDEN_TEXT = re.compile(r"<!--.*?-->|^[ \t]*(```|~~~).*?^[ \t]*\1[^\n]*$", re.DOTALL | re.MULTILINE)
+HIDDEN_TEXT = re.compile(
+    r"<!--.*?(?:-->|\Z)"
+    r"|^[ \t]*(`{3,}+)[^\n]*\n.*?(?:^ {0,3}\1`*[ \t]*$|\Z)"
+    r"|^[ \t]*(~{3,}+)[^\n]*\n.*?(?:^ {0,3}\2~*[ \t]*$|\Z)"
+    r"|<details\b.*?(?:</details>|\Z)"
+    r"|^(?: {4}|\t)[^\n]*$",
+    re.DOTALL | re.IGNORECASE | re.MULTILINE,
+)
 PLACEHOLDER = re.compile(r"<.*>")
-OMP_VERSION_PIN = re.compile(r"^[ \t]*OMP_VERSION:[ \t]*\"?([0-9][^\s\"]*)", re.MULTILINE)
-OMP_VERSION_OUTPUT = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+[^\s]*")
 REMOTE_SLUG = re.compile(r"github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$")
 DEFAULT_REPOSITORY = "BenchBox-dev/BenchBox"
 CACHE_SCHEMA = 1
@@ -289,22 +293,22 @@ def state_dir() -> Path:
 
 
 @contextlib.contextmanager
-def exclusive(directory: Path, reporter: Reporter) -> Iterator[None]:
+def exclusive(lock_path: Path, reporter: Reporter) -> Iterator[None]:
     import fcntl
 
-    directory.mkdir(parents=True, exist_ok=True)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
     deadline = time.monotonic() + LOCK_WAIT_SECONDS
     announced = False
-    with open(directory / "review.lock", "a+", encoding="utf-8") as handle:
+    with open(lock_path, "a+", encoding="utf-8") as handle:
         while True:
             try:
                 fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except OSError:
                 if time.monotonic() >= deadline:
-                    raise Unavailable("another local oracle review kept running on this machine") from None
+                    raise Unavailable("another local oracle review of this patch kept running") from None
                 if not announced:
-                    reporter.say("Waiting for another local oracle review on this machine to finish.")
+                    reporter.say("Waiting for another local oracle review of this patch to finish.")
                     announced = True
                 time.sleep(LOCK_POLL_SECONDS)
         try:
@@ -317,33 +321,12 @@ def trusted_text(root: Path, base_ref: str, path: str) -> str:
     return _git(root, "show", f"{base_ref}:{path}")
 
 
-def pinned_omp_version(workflow_text: str) -> str:
-    match = OMP_VERSION_PIN.search(workflow_text)
-    if match is None:
-        raise Unavailable("the CI omp pin (OMP_VERSION in oracle-verdict.yml) is missing")
-    return match.group(1)
-
-
-def installed_omp_version() -> str:
-    binary = shutil.which("omp")
-    if binary is None:
-        raise Unavailable("omp is not installed")
+def pinned_omp(policy_text: str) -> tuple[str, Path]:
     try:
-        result = subprocess.run([binary, "--version"], capture_output=True, text=True, check=False, timeout=60)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise Unavailable(f"omp --version failed: {type(exc).__name__}") from exc
-    match = OMP_VERSION_OUTPUT.search(result.stdout + result.stderr)
-    if result.returncode != 0 or match is None:
-        raise Unavailable("omp --version gave no version")
-    return match.group(0)
-
-
-def check_harness(workflow_text: str) -> str:
-    installed = installed_omp_version()
-    pinned = pinned_omp_version(workflow_text)
-    if installed != pinned:
-        raise Unavailable(f"omp version mismatch: installed {installed}, CI pins {pinned}; install the pinned build")
-    return installed
+        pin = omp_pin.pin_from_text(policy_text)
+        return pin.version, omp_pin.install(pin)
+    except omp_pin.PinError as exc:
+        raise Unavailable(str(exc)) from exc
 
 
 def resolve_credentials(environ: Mapping[str, str] | None = None) -> Credentials:
@@ -499,7 +482,7 @@ def _run_attempts(plan_path: Path, work: Path, classification_path: Path, report
 
 def _result(plan: dict[str, Any], classification: Classification, work: Path) -> dict[str, Any]:
     run_id = plan["run_id"]
-    loaded = attempt_files.load(work / "attempts", plan, run_id)
+    loaded = attempt_files.load(work / "attempts", plan, run_id, workspace=work / "workspace")
     step, errors = attempt_files.decide(cli._selection(plan, classification), loaded)
     if errors:
         raise Unavailable("; ".join(errors))
@@ -585,17 +568,16 @@ def _reviewed(
     head: str,
     args: argparse.Namespace,
     policy: Policy,
-    texts: tuple[str, str],
+    policy_text: str,
     work: Path,
     reporter: Reporter,
 ) -> dict[str, Any] | None:
-    policy_text, workflow_text = texts
     plan_dir = work / "plan"
     plan = build_plan(policy, root, args.base_ref, head, plan_dir)
     if plan["decision"] != cli.REVIEW:
         reporter.say(f"{ADVISORY}: no review needed ({plan['decision_reason']}).")
         return None
-    version = check_harness(workflow_text)
+    version, omp_binary = pinned_omp(policy_text)
     key = os.environ.get("TYPESAFE_API_KEY", "") or keychain_key()
     reporter.hide(key)
     cache = _cache_path(state_dir(), plan, policy_text, version, bool(key))
@@ -603,6 +585,19 @@ def _reviewed(
     if cached is not None:
         reporter.say("Reusing the cached local review of this unchanged patch.")
         return cached
+    with exclusive(cache.with_suffix(".lock"), reporter):
+        cached = _load_cached(cache)
+        if cached is not None:
+            reporter.say("Reusing the cached local review of this unchanged patch.")
+            return cached
+        result = _fresh_review(root, plan, plan_dir, work, key, omp_binary, reporter)
+        _store(cache, result, reporter.secrets)
+    return result
+
+
+def _fresh_review(
+    root: Path, plan: dict[str, Any], plan_dir: Path, work: Path, key: str, omp_binary: Path, reporter: Reporter
+) -> dict[str, Any]:
     access = resolve_credentials()
     reporter.hide(access.token, access.url)
     if not reachable(access.url):
@@ -611,6 +606,7 @@ def _reviewed(
         "OMP_GATEWAY_TOKEN": access.token,
         "ORACLE_GATEWAY_URL": access.url,
         "GITHUB_RUN_ID": plan["run_id"],
+        omp_pin.BINARY_ENV: str(omp_binary),
         **({"TYPESAFE_API_KEY": key} if key else {}),
     }
     with _environment(updates):
@@ -627,9 +623,7 @@ def _reviewed(
                 redaction_check.sanitize(path, ())
             except redaction_check.Unredactable as exc:
                 raise Unavailable(str(exc)) from exc
-        result = _result(plan, classification, work)
-    _store(cache, result, reporter.secrets)
-    return result
+        return _result(plan, classification, work)
 
 
 def _review(args: argparse.Namespace, reporter: Reporter) -> int:
@@ -637,14 +631,12 @@ def _review(args: argparse.Namespace, reporter: Reporter) -> int:
     head = _git(root, "rev-parse", args.head).strip()
     body = override_body(args.body_file)
     policy_text = trusted_text(root, args.base_ref, args.policy)
-    workflow_text = trusted_text(root, args.base_ref, WORKFLOW_FILE)
     policy = parse_policy(yaml.safe_load(policy_text))
-    with exclusive(state_dir(), reporter):
-        work = Path(tempfile.mkdtemp(prefix="oracle-local-"))
-        try:
-            result = _reviewed(root, head, args, policy, (policy_text, workflow_text), work, reporter)
-        finally:
-            shutil.rmtree(work, ignore_errors=True)
+    work = Path(tempfile.mkdtemp(prefix="oracle-local-"))
+    try:
+        result = _reviewed(root, head, args, policy, policy_text, work, reporter)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
     if result is None:
         return EXIT_PROCEED
     _show(result, reporter)
