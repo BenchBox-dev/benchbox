@@ -53,7 +53,6 @@ RESPONSE_PLACEHOLDERS = {
     "prior_status": "<prior_status>",
     "evidence": "<evidence>",
     "claim": "<claim>",
-    "concedes": "<concedes>",
 }
 FINDING_METADATA = frozenset({"line_note", "end_line_note", "detail_extra"})
 _KEY_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,39}")

@@ -18,6 +18,7 @@ QUOTA_BACKOFF = timedelta(hours=1)
 JOB_FAILURE_DETAIL = "the reviewer job did not finish"
 RETRYABLE_ABSENCES = frozenset({INVALID, INCOMPLETE, EMPTY, ERROR})
 MAX_ATTEMPTS_PER_REVIEWER = 2
+INVALID_STOP = "not tried: an invalid reply is a contract failure, not a capacity limit"
 
 
 @dataclass(frozen=True)
@@ -108,8 +109,12 @@ def next_step(selection: SelectionInput, attempts: Sequence[Attempt]) -> Step:
         if attempt.absence == "quota" and attempt.reviewer in by_name
     }
     reasons: list[str] = []
+    invalid = next((attempt for attempt in ordered if attempt.outcome == ABSENT and attempt.absence == INVALID), None)
     for reviewer in selection.chain:
-        reason = _skip_reason(reviewer, selection, attempted, quota_pools)
+        if invalid is not None and reviewer.name not in attempted:
+            reason: str | None = INVALID_STOP
+        else:
+            reason = _skip_reason(reviewer, selection, attempted, quota_pools)
         if reason is None and len(ordered) >= selection.max_attempts:
             reason = "skipped: no attempt slot left in this run"
         if reason is not None:

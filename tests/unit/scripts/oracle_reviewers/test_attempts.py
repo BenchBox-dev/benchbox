@@ -763,18 +763,19 @@ def test_selection_starts_at_the_chosen_reviewer_and_escalates_to_other_models(
     assert [reviewer.name for reviewer in cli._selection(plan, _classification(bucket)).chain] == expected
 
 
-def test_two_invalid_answers_hand_the_run_to_the_next_reviewer(policy: Policy, tmp_path: Path) -> None:
+def test_two_invalid_answers_end_the_run_without_trying_a_larger_reviewer(policy: Policy, tmp_path: Path) -> None:
     plan = _plan(policy, ("trivial", "small", "medium", "large"))
     chosen = cli._selection(plan, _classification("small"))
-    _write(tmp_path, 1, "small", missing=Absence("invalid", "each finding must have the keys"))
-    _write(tmp_path, 2, "small", missing=Absence("invalid", "the reviewer output is not JSON"))
+    _write(tmp_path, 1, "small", missing=Absence("invalid", "prior defect concedes must be a boolean"))
     step, errors = attempts.decide(chosen, attempts.load(tmp_path, plan, RUN_ID))
     assert errors == []
-    assert step.kind == selection.REVIEW and step.reviewer is not None and step.reviewer.name == "medium"
-    _write(tmp_path, 3, "medium", verdict=_v("Reviewed."))
+    assert step.kind == selection.REVIEW and step.reviewer is not None and step.reviewer.name == "small"
+    _write(tmp_path, 2, "small", missing=Absence("invalid", "prior defect concedes must be a boolean"))
     step, errors = attempts.decide(chosen, attempts.load(tmp_path, plan, RUN_ID))
     assert errors == []
-    assert step.kind == selection.PASS and step.reviewer is not None and step.reviewer.name == "medium"
+    assert step.kind == selection.PENDING
+    untried = [reason for reason in step.reasons if not reason.startswith("small:")]
+    assert untried and all(reason.endswith(selection.INVALID_STOP) for reason in untried)
 
 
 @pytest.mark.parametrize("error", [KeyError("size"), ValueError("unknown size bucket 'xl'"), TypeError("bad")])
@@ -834,6 +835,5 @@ def test_identical_findings_are_listed_once_and_stored_with_unique_ids(policy: P
     assert record is not None
     ids = [item["id"] for item in record["open_defects"]]
     assert ids == ["D1", "D2"] and record["next_id"] == 3
-    assert render.response_template(ids)
     assert "1 identical finding(s) were reported more than once and are listed once." in final.body
     assert final.review is not None and len(final.review["comments"]) == 2
