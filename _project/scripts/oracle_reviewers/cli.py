@@ -9,13 +9,15 @@ import re
 import shutil
 import sys
 import tempfile
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from time import sleep
 from typing import Any
 from urllib.parse import urlparse
+
+from _project.scripts.inert_paths import is_machine_read_doc
 
 from . import (
     attempts as attempt_files,
@@ -39,7 +41,8 @@ from .absence import ERROR, Absence
 from .brief import write_private
 from .classifier import ChangedFile, matching, soundness_scope
 from .classify import Classification, classify_diff
-from .diff import commentable_lines, select_files
+from .diff import binary_files, binary_notice_count, commentable_lines, select_files
+from .evidence import is_binary_candidate
 from .jev import JevError, JevSession
 from .policy import SIZE_BUCKETS, Policy, RetryRules, Reviewer, load_policy
 from .render import (
@@ -158,6 +161,9 @@ def _base_plan(policy: Policy, repo: str, pr: int | None, run_id: str) -> dict[s
         "max_defects": policy.protocol.max_defects,
         "brief_max_bytes": policy.brief_max_bytes,
         "evidence_files": [],
+        "evidence_exempt_paths": list(policy.evidence.exempt_paths),
+        "evidence_protected_files": [],
+        "binary_files": [],
         "chain": [],
         "scope_paths": [],
         "gate_paths": [],
@@ -500,7 +506,7 @@ def command_plan(args: argparse.Namespace) -> int:
         _summary(f"oracle-verdict: open review threads could not be read, so none are suppressed: {exc}")
     owner_reset = retry.reset_applies(previous, plan["head_sha"], reset_at)
     pool_blocks = _carried_blocks(previous, plan["head_sha"], now, owner_reset)
-    _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, pool_blocks)
+    _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, pool_blocks, _soundness_predicate())
     plan["decision_reason"] = f"{step.reason}; {rerun.reason}"
     return _finish_plan(out_dir, plan)
 
@@ -650,6 +656,11 @@ def _protocol_round(
     return step
 
 
+def _opaque_in_diff(diff_text: str) -> bool:
+    named = binary_files(diff_text)
+    return binary_notice_count(diff_text) != len(named) or any(not is_binary_candidate(path) for path in named)
+
+
 def _plan_review(
     plan: dict[str, Any],
     out_dir: Path,
@@ -660,6 +671,8 @@ def _plan_review(
     in_scope: set[str],
     full_diff: str | None,
     pool_blocks: Mapping[str, selection.PoolBlock],
+    is_soundness: Callable[[str], bool],
+    is_machine_read: Callable[[str], bool] = is_machine_read_doc,
 ) -> None:
     latest = step.previous or {}
     follow_up = step.kind == protocol.FOLLOW_UP
@@ -689,16 +702,33 @@ def _plan_review(
     diff_bytes = len((diff_text or "").encode("utf-8"))
     if listing_bytes > policy.brief_max_bytes:
         brief_mode = "oversize"
-    elif diff_bytes <= policy.brief_max_bytes - DIFF_HEADROOM_BYTES:
+    elif (
+        diff_text is not None
+        and diff_bytes <= policy.brief_max_bytes - DIFF_HEADROOM_BYTES
+        and not _opaque_in_diff(diff_text)
+    ):
         brief_mode = "inline"
     elif len(file_list_block(changed, evidence_files, evidence_files).encode("utf-8")) > policy.brief_max_bytes:
         brief_mode = "oversize"
     else:
         brief_mode = "file-list"
+    evidence_set = set(evidence_files)
+    held = (*policy.classifier.gate_paths, *policy.classifier.logic_paths, *policy.classifier.data_paths)
+
+    def _protected(path: str) -> bool:
+        return is_soundness(path) or is_machine_read(path) or bool(matching([path], held))
+
     plan.update(
         {
             "decision": REVIEW,
             "evidence_files": evidence_files,
+            "evidence_protected_files": sorted(
+                item.path
+                for item in reviewed_now
+                if item.path in evidence_set and any(_protected(path) for path in item.paths)
+            ),
+            "evidence_exempt_paths": list(policy.evidence.exempt_paths),
+            "binary_files": sorted(binary_files(full_diff or "")),
             "chain": [reviewer.to_json() for reviewer in chain],
             "buckets": dict(policy.buckets),
             "follow_up_reviewer": follow_up_reviewer,

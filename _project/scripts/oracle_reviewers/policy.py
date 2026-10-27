@@ -91,6 +91,11 @@ class RetryRules:
 
 
 @dataclass(frozen=True)
+class EvidenceRules:
+    exempt_paths: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class Policy:
     mode: str
     status_context: str
@@ -105,6 +110,7 @@ class Policy:
     buckets: Mapping[str, str]
     classifier: ClassifierRules
     omp_sha256: Mapping[str, str] = field(default_factory=dict)
+    evidence: EvidenceRules = EvidenceRules()
 
     def chain(self, bucket: str) -> list[Reviewer]:
         return [self.reviewers[self.buckets[bucket]]]
@@ -181,6 +187,7 @@ def parse_policy(data: Mapping[str, Any]) -> Policy:
             omp_sha256 = {name: build.sha256 for name, build in omp_pin.parse_pin(data).builds.items()}
         except omp_pin.PinError as exc:
             raise PolicyError(str(exc)) from exc
+    evidence = data.get("evidence") or {}
     policy = Policy(
         mode=data.get("mode", ""),
         status_context=data.get("status_context", ""),
@@ -207,6 +214,9 @@ def parse_policy(data: Mapping[str, Any]) -> Policy:
             exempt_paths=_str_tuple(classifier.get("exempt_paths") or [], "classifier exempt_paths"),
         ),
         omp_sha256=omp_sha256,
+        evidence=EvidenceRules(
+            exempt_paths=_str_tuple(evidence.get("exempt_paths") or [], "evidence exempt_paths"),
+        ),
     )
     _require(policy.mode in ("shadow", "enforce"), "mode must be shadow or enforce")
     _require(bool(policy.status_context), "status_context is required")

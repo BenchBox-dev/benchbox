@@ -546,10 +546,34 @@ run stays pending. A hollow answer never passes.
   extension, inside the checkout) credits only the archive; a member path never
   credits a repository file. An error, binary-entry notice, `?q=` or `..`
   member, no match, directory, `;`-joined read including an archive member,
-  sibling or outside path credits nothing. Binary and unreviewable content,
-  out-of-bounds line reads and notice-only reads stay with
-  `oracle-verdict-labels-unreviewed-bytes` and
-  `oracle-read-evidence-tightening-20261008`; no file is exempted.
+  sibling or outside path credits nothing. Out-of-bounds line reads and
+  notice-only reads stay with `oracle-verdict-labels-unreviewed-bytes` and
+  `oracle-read-evidence-tightening-20261008`.
+- The evidence check is an exposure check: it confirms that changed files were
+  exposed to the reviewer, not whole-file or semantic proof of review. Two classes
+  of files are exempt from the per-file read requirement while staying in the
+  reviewed diff and in scope for findings:
+  1. Binary files: a diff `Binary files ... differ` or `GIT binary patch` notice, taken from the
+     plan's diff, only nominates a file. The exemption applies only to font files (`.eot`, `.otf`,
+     `.ttf`, `.woff`, `.woff2`), which the harness cannot read, when the head checkout holds a
+     regular file inside the workspace for them and its first 8000 bytes contain a NUL byte.
+     Archives, images, PDFs and every text or unknown type (sql, csv, json, yaml, md, py, txt,
+     no extension), a `.gitattributes` `-diff` rule and a bare notice never exempt; an archive
+     listing read credits the container. A deleted file has no head content and is never a
+     required read.
+  2. Prose files: matched by the exemption list in `develop`'s trusted `.github/oracle-reviewers.yml`
+     (`evidence.exempt_paths`: `README*.md` and `CHANGELOG*.md` at any depth, and `docs/*.md`).
+  Protected files are never exempt, even when they match the prose list or hold NUL bytes: soundness
+  paths (including every `.gitattributes`), gate, logic and data paths, and machine-read docs. A
+  rename is protected when either its old or new path is. The plan records them in
+  `evidence_protected_files` using the trusted `develop` soundness manifest, inert-path manifest and
+  policy (the local runner reads all three from the base ref), so a branch edit of
+  `.github/soundness-paths.txt` or `.github/inert-paths.txt` cannot widen the exemptions in CI or in
+  the local runner. A plan without that list treats every required file as protected.
+  Exemptions never waive the baseline: a verdict that ships still needs at least one successful read
+  or grep in its trace.
+  A diff with a "Binary files" notice for any non-font path, a notice whose path cannot be parsed
+  (for example a quoted header), or no diff at all is never briefed inline, so the read check applies.
 - Partial reads keep credit: exposure, not whole-file or semantic proof. The
   overlay sets `read.summarize.enabled: false` so a large file's plain read is
   not replaced by a structural summary; the trace records each credited read's
