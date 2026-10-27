@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -427,14 +429,13 @@ def test_omp_is_installed_once_pinned_and_checked() -> None:
     assert linux["url"] == "https://build.stencil.so/d/omp/20261017-231446-291e055/omp-linux-x64"
     assert linux["sha256"] == "16181401e616d7d895bae31fa97476f1513d4080807d60d3a1a04006191a1bb3"
     assert install["working-directory"] == "trusted"
-    lines = install["run"].splitlines()
     command = (
         "uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- "
         "python -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml"
     )
-    assert lines[0] == f"binary=$({command})"
-    assert lines[1] == '"$binary" --version | tee -a "$GITHUB_STEP_SUMMARY"'
-    assert lines[2] == 'echo "ORACLE_OMP_BINARY=$binary" >> "$GITHUB_ENV"'
+    assert f"binary=$({command})" in install["run"]
+    assert '"$binary" --version | tee -a "$GITHUB_STEP_SUMMARY"' in install["run"]
+    assert 'echo "ORACLE_OMP_BINARY=$binary" >> "$GITHUB_ENV"' in install["run"]
     assert "curl " not in text
     assert "OMP_URL" not in text and "OMP_SHA256" not in text and "OMP_VERSION" not in text
     assert "--dangerously" not in text and "--yolo" not in text
@@ -450,7 +451,6 @@ def test_the_pin_file_keeps_the_linux_build_the_workflow_used_to_install() -> No
 TOLERATED_FAILURES = (
     "Check out the pull request head for reading only",
     "Classify the change and select the reviewer for attempt 1",
-    "Install omp",
     "Join the tailnet to reach the credential gateway",
 )
 FAIL_CLOSED_STEPS = (*SCAN_STEPS, LOOP_STEP, REDACT_STEP, "Validate this run's attempts and decide")
@@ -461,6 +461,75 @@ def test_setup_failures_become_absences_instead_of_ending_the_review() -> None:
         assert _step(name)["continue-on-error"] is True, name
     assert "if" in _step(LOOP_STEP) and "always()" not in _step(LOOP_STEP)["if"]
     assert "cancelled()" not in _step(LOOP_STEP)["if"]
+
+
+def _run_install_step(tmp_path: Path, uv_body: str) -> tuple[subprocess.CompletedProcess[str], str, str]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    uv = bin_dir / "uv"
+    uv.write_text(f"#!/bin/sh\n{uv_body}\n", encoding="utf-8")
+    uv.chmod(0o755)
+    github_output = tmp_path / "github-output"
+    github_env = tmp_path / "github-env"
+    for path in (github_output, github_env):
+        path.write_text("", encoding="utf-8")
+    result = subprocess.run(
+        ["bash", "-eo", "pipefail", "-c", _step("Install omp")["run"]],
+        cwd=tmp_path,
+        env={
+            **os.environ,
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "GITHUB_OUTPUT": str(github_output),
+            "GITHUB_ENV": str(github_env),
+            "GITHUB_STEP_SUMMARY": str(tmp_path / "summary"),
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result, github_output.read_text(encoding="utf-8"), github_env.read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the step is a POSIX shell script")
+def test_a_failed_install_reports_its_state_and_exports_no_binary(tmp_path: Path) -> None:
+    body = "echo 'oracle-verdict: error: the omp download failed: HTTPError' >&2\nexit 1"
+    result, output, env = _run_install_step(tmp_path, body)
+    assert result.returncode == 0
+    assert output == "state=failed\n"
+    assert env == ""
+    assert "the omp download failed: HTTPError" in result.stderr
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the step is a POSIX shell script")
+def test_a_binary_that_installs_but_does_not_run_counts_as_a_failed_install(tmp_path: Path) -> None:
+    broken = tmp_path / "omp"
+    broken.write_text("#!/bin/sh\nexit 3\n", encoding="utf-8")
+    broken.chmod(0o755)
+    result, output, env = _run_install_step(tmp_path, f"echo {broken}")
+    assert result.returncode == 0
+    assert output == "state=failed\n"
+    assert env == ""
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the step is a POSIX shell script")
+def test_a_working_install_exports_the_binary_and_reports_installed(tmp_path: Path) -> None:
+    working = tmp_path / "omp"
+    working.write_text("#!/bin/sh\necho 18.12.1\n", encoding="utf-8")
+    working.chmod(0o755)
+    result, output, env = _run_install_step(tmp_path, f"echo {working}")
+    assert result.returncode == 0
+    assert output == "state=installed\n"
+    assert env == f"ORACLE_OMP_BINARY={working}\n"
+
+
+def test_a_failed_install_stops_the_run_before_any_attempt_and_is_reported_to_finalize() -> None:
+    install = _step("Install omp")
+    assert install["id"] == "omp"
+    assert "continue-on-error" not in install
+    assert "steps.omp.outputs.state == 'installed'" in _step(LOOP_STEP)["if"]
+    finalize = _step("Validate this run's attempts and decide")
+    assert finalize["env"]["OMP_INSTALL_STATE"] == "${{ steps.omp.outputs.state }}"
+    assert '--omp-install "${OMP_INSTALL_STATE:-installed}"' in finalize["run"]
 
 
 def test_the_security_checks_and_the_loop_fail_the_job_closed() -> None:

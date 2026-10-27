@@ -166,13 +166,17 @@ jobs:
           --env TYPESAFE_API_KEY --env JOB_TOKEN
 
       - name: Install omp
+        id: omp
         if: steps.plan.outputs.decision == 'review'
-        continue-on-error: true
         working-directory: trusted
         run: |
-          binary=$(uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml)
-          "$binary" --version | tee -a "$GITHUB_STEP_SUMMARY"
-          echo "ORACLE_OMP_BINARY=$binary" >> "$GITHUB_ENV"
+          if binary=$(uv run --isolated --no-project --python 3.12 --with pyyaml==6.0.3 -- python -m _project.scripts.oracle_reviewers.cli install-omp --policy .github/oracle-reviewers.yml) && "$binary" --version | tee -a "$GITHUB_STEP_SUMMARY"; then
+            echo "ORACLE_OMP_BINARY=$binary" >> "$GITHUB_ENV"
+            echo "state=installed" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::the pinned omp build could not be installed; no reviewer will run"
+            echo "state=failed" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Join the tailnet to reach the credential gateway
         if: steps.plan.outputs.decision == 'review' && env.HAS_TAILNET == 'true'
@@ -190,7 +194,7 @@ jobs:
 
       - name: Run the attempt loop
         id: loop
-        if: steps.plan.outputs.decision == 'review'
+        if: steps.plan.outputs.decision == 'review' && steps.omp.outputs.state == 'installed'
         working-directory: trusted
         env:
           OMP_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
@@ -215,10 +219,12 @@ jobs:
         id: finalize
         if: steps.plan.outputs.post == 'true'
         working-directory: trusted
+        env:
+          OMP_INSTALL_STATE: ${{ steps.omp.outputs.state }}
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli finalize --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
           --out-dir "$RUNNER_TEMP/oracle-final" --classification "$RUNNER_TEMP/oracle-classification/classification.json"
-          --workspace "$GITHUB_WORKSPACE/workspace"
+          --workspace "$GITHUB_WORKSPACE/workspace" --omp-install "${OMP_INSTALL_STATE:-installed}"
 
       - name: Redact every secret value held by the job from the results
         id: redact

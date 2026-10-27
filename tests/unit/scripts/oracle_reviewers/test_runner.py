@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -86,7 +87,15 @@ def _review(
     required: tuple[str, ...] = (),
     rules: dict | None = None,
 ):
-    plan = {"brief_mode": brief_mode, "evidence_files": list(required), "max_defects": 10, "protocol": rules or {}}
+    plan = {
+        "brief_mode": brief_mode,
+        "evidence_files": list(required),
+        "max_defects": 10,
+        "protocol": rules or {},
+        "omp_sha256": omp_pin.sha256_of(Path(os.environ[omp_pin.BINARY_ENV]))
+        if os.environ.get(omp_pin.BINARY_ENV)
+        else "",
+    }
     return runner.review(
         policy.reviewers[reviewer],
         workspace=workspace,
@@ -158,6 +167,57 @@ def test_missing_pinned_binary_is_an_error_absence_even_with_omp_on_path(
     assert outcome.verdict is None
     assert outcome.missing is not None and outcome.missing.kind == absence.ERROR
     assert "pinned omp is not installed" in outcome.missing.detail
+
+
+@skip_on_windows
+def test_a_swapped_binary_is_refused_before_the_reviewer_runs(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    marker = tmp_path / "ran"
+    _fake_omp(
+        tmp_path,
+        monkeypatch,
+        f"open({str(marker)!r}, 'w').close()\nprint({json.dumps(_envelope(json.dumps(VERDICT)))})",
+    )
+    pinned = omp_pin.sha256_of(Path(os.environ[omp_pin.BINARY_ENV]))
+    swapped = Path(os.environ[omp_pin.BINARY_ENV])
+    swapped.write_text(swapped.read_text(encoding="utf-8") + "# swapped\n", encoding="utf-8")
+    plan = {"brief_mode": "inline", "evidence_files": [], "max_defects": 10, "protocol": {}, "omp_sha256": pinned}
+    outcome = runner.review(
+        policy.reviewers["small"],
+        workspace=workspace,
+        head_sha=head,
+        prompt="brief",
+        scratch=tmp_path / "s",
+        now=NOW,
+        plan=plan,
+    )
+    assert outcome.verdict is None
+    assert outcome.missing is not None and outcome.missing.kind == absence.ERROR
+    assert "does not match the pinned sha256" in outcome.missing.detail
+    assert not marker.exists()
+
+
+@skip_on_windows
+def test_a_plan_without_the_pinned_hash_refuses_to_run_the_reviewer(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    marker = tmp_path / "ran"
+    _fake_omp(tmp_path, monkeypatch, f"open({str(marker)!r}, 'w').close()")
+    plan = {"brief_mode": "inline", "evidence_files": [], "max_defects": 10, "protocol": {}}
+    outcome = runner.review(
+        policy.reviewers["small"],
+        workspace=workspace,
+        head_sha=head,
+        prompt="brief",
+        scratch=tmp_path / "s",
+        now=NOW,
+        plan=plan,
+    )
+    assert outcome.missing is not None and "no pinned omp sha256" in outcome.missing.detail
+    assert not marker.exists()
 
 
 @skip_on_windows
@@ -494,6 +554,9 @@ def _run_review(
 ) -> dict:
     monkeypatch.setenv("GITHUB_RUN_ID", "99")
     monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "out.txt"))
+    recorded = json.loads(plan_path.read_text(encoding="utf-8"))
+    recorded["omp_sha256"] = omp_pin.sha256_of(Path(os.environ[omp_pin.BINARY_ENV]))
+    plan_path.write_text(json.dumps(recorded), encoding="utf-8")
     cli.main(
         [
             "review",
