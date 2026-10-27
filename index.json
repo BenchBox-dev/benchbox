@@ -18001,7 +18001,8 @@
       "claim": null,
       "needs": [
         "oracle-verdict-single-job-20261025",
-        "retire-oracle-review-workflow-20261021"
+        "retire-oracle-review-workflow-20261021",
+        "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "low",
       "status": "open",
