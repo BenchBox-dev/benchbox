@@ -18032,6 +18032,13 @@
       "status": "open",
       "title": "Have make pr-arm dispatch an oracle verdict when the exact head has none"
     },
+    "pr-arm-rerun-contradictory-guidance-20261027": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Make pr-arm and pr-rerun agree on what to do while a head's full CI run is still in progress"
+    },
     "pr-arm-stale-remote-race": {
       "claim": null,
       "needs": [],
