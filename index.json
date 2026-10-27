@@ -27649,10 +27649,15 @@
       "title": "Run the whole-tree comment-policy scan on each develop push so a bad policy entry is caught at the commit that added it"
     },
     "trunk-concurrent-runs-prerequisites-20261025": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-28T22:02:58Z",
+        "generation": "50c057e3d525447e897acb7c9f1db2d9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Make Trunk culprit naming and site-inputs safe for Trunk runs that finish out of commit order"
     },
     "trunk-coverage-scheduled-not-per-push-20261024": {
