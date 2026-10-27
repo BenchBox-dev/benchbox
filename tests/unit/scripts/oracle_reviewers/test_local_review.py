@@ -19,7 +19,7 @@ import yaml
 
 from _project.scripts.oracle_reviewers import cli, local, omp_pin, runner
 from _project.scripts.oracle_reviewers.classify import Classification
-from _project.scripts.oracle_reviewers.commands import GATEWAY_PROXY_ENV, omp_env
+from _project.scripts.oracle_reviewers.commands import gateway_proxy, omp_env
 from _project.scripts.oracle_reviewers.policy import Policy, Reviewer
 
 from .conftest import POLICY_PATH, REPO_ROOT
@@ -47,7 +47,8 @@ SECRET_NAMES = (
     "TYPESAFE_API_KEY",
     "BENCHBOX_EPHEMERAL_CLONE",
     "GITHUB_RUN_ID",
-    GATEWAY_PROXY_ENV,
+    "NO_PROXY",
+    "no_proxy",
 )
 
 
@@ -771,6 +772,8 @@ def _write_status(repo: Path, proxy: str) -> None:
 
 def test_reachable_goes_through_the_gateway_proxy_and_fails_without_it(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(local, "REACHABILITY_SECONDS", 3)
+    monkeypatch.setenv("NO_PROXY", "127.0.0.1")
+    monkeypatch.setenv("no_proxy", "127.0.0.1")
     unreachable = "http://127.0.0.1:1"
     with _ProxyServer() as proxy:
         assert REAL_REACHABLE(unreachable, proxy.url) is True
@@ -830,3 +833,13 @@ def test_local_review_passes_no_proxy_variables_even_when_the_session_has_them(
     assert env.run() == local.EXIT_PROCEED
     (review,) = env.reviews
     assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} & set(review["omp_env"])
+
+
+def test_a_session_cannot_inject_a_reviewer_proxy_through_its_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ORACLE_GATEWAY_PROXY", "http://evil.example:8080")
+    assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} & set(omp_env())
+    with gateway_proxy("http://evil.example:8080"):
+        assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} & set(omp_env())
+    with gateway_proxy("http://127.0.0.1:1055"):
+        assert omp_env()["HTTPS_PROXY"] == "http://127.0.0.1:1055"
+    assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} & set(omp_env())

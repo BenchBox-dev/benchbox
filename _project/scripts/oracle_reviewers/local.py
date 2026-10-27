@@ -25,7 +25,7 @@ import yaml
 from . import attempts as attempt_files, cli, credentials, omp_pin, protocol, redaction_check, selection
 from .classifier import ChangedFile, matching, soundness_scope
 from .classify import Classification
-from .commands import GATEWAY_PROXY_ENV
+from .commands import LOOPBACK_PROXY, gateway_proxy
 from .jev import JevError
 from .policy import Policy, load_policy, parse_policy
 from .verdict import DO_NOT_SHIP
@@ -40,7 +40,6 @@ LOCAL_TOKEN_PATH = Path(".omp") / "oracle-gateway" / "local-client.token"
 CLOUD_TOKEN_ENV = "ORACLE_CLOUD_GATEWAY_TOKEN"
 CLOUD_SESSION_ENV = "BENCHBOX_EPHEMERAL_CLONE"
 CLOUD_STATUS_FILE = "benchbox-cloud-gateway.status"
-CLOUD_PROXY = re.compile(r"http://127\.0\.0\.1:\d{1,5}")
 STATE_DIR_ENV = "BENCHBOX_LOCAL_ORACLE_DIR"
 SOUNDNESS_MANIFEST = ".github/soundness-paths.txt"
 HIDDEN_TEXT = re.compile(
@@ -341,7 +340,7 @@ def cloud_gateway_proxy() -> str:
         return ""
     for line in lines:
         name, _, value = line.partition("=")
-        if name == "gateway_proxy" and CLOUD_PROXY.fullmatch(value.strip()):
+        if name == "gateway_proxy" and LOOPBACK_PROXY.fullmatch(value.strip()):
             return value.strip()
     return ""
 
@@ -364,11 +363,22 @@ def resolve_credentials(environ: Mapping[str, str] | None = None) -> Credentials
     return Credentials(LOCAL_CLIENT, LOCAL_GATEWAY_URL, token)
 
 
+class _ForcedProxy(urllib.request.BaseHandler):
+    handler_order = 50
+
+    def __init__(self, proxy: str) -> None:
+        self.proxy = proxy.removeprefix("http://")
+
+    def _route(self, request: urllib.request.Request) -> urllib.request.Request:
+        request.set_proxy(self.proxy, request.type)
+        return request
+
+    http_request = https_request = _route
+
+
 def reachable(url: str, proxy: str = "") -> bool:
     request = urllib.request.Request(f"{url.rstrip('/')}/healthz", method="GET")
-    opener = (
-        urllib.request.build_opener(urllib.request.ProxyHandler({"http": proxy, "https": proxy})) if proxy else None
-    )
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _ForcedProxy(proxy)) if proxy else None
     try:
         with (opener.open if opener else urllib.request.urlopen)(request, timeout=REACHABILITY_SECONDS):
             return True
@@ -626,12 +636,11 @@ def _fresh_review(
     updates = {
         "OMP_GATEWAY_TOKEN": access.token,
         "ORACLE_GATEWAY_URL": access.url,
-        GATEWAY_PROXY_ENV: access.proxy,
         "GITHUB_RUN_ID": plan["run_id"],
         omp_pin.BINARY_ENV: str(omp_binary),
         **({"TYPESAFE_API_KEY": key} if key else {}),
     }
-    with _environment(updates):
+    with _environment(updates), gateway_proxy(access.proxy):
         classification = classify(plan, reporter, bool(key))
         classification_path = plan_dir / cli.CLASSIFICATION_FILE
         cli._write_json(classification_path, classification.to_json())
