@@ -2,6 +2,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import zlib
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -23,7 +24,7 @@ class TSBSDevOpsQueryManager:
         self.num_hosts = num_hosts
         self.start_time = start_time or datetime(2024, 1, 1)
         self.duration_days = duration_days
-        self.rng = np.random.default_rng(seed)
+        self.seed = int(seed) if seed is not None else int(np.random.SeedSequence().generate_state(1)[0])
 
         self.hostnames = [f"host_{i}" for i in range(num_hosts)]
         self.regions = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
@@ -39,7 +40,7 @@ class TSBSDevOpsQueryManager:
         query_def = QUERIES[query_id]
         sql = query_def["sql"].strip()
 
-        query_params = self._generate_params(query_def, params)
+        query_params = self._generate_params(query_def, params, query_id)
 
         return sql.format(**query_params)
 
@@ -47,8 +48,11 @@ class TSBSDevOpsQueryManager:
         self,
         query_def: dict[str, Any],
         overrides: Optional[dict[str, Any]] = None,
+        query_id: Optional[str] = None,
     ) -> dict[str, Any]:
+        rng = np.random.default_rng([self.seed, zlib.crc32((query_id or "").encode("utf-8"))])
         params = {}
+        rng = np.random.default_rng([self.seed, zlib.crc32((query_id or "").encode("utf-8"))])
         query_params = query_def.get("params", {})
         overrides = overrides or {}
 
@@ -57,7 +61,7 @@ class TSBSDevOpsQueryManager:
 
         total_dataset_hours = self.duration_days * 24
         max_offset_hours = max(1, total_dataset_hours - duration_hours)
-        offset_hours = int(self.rng.integers(0, max_offset_hours))
+        offset_hours = int(rng.integers(0, max_offset_hours))
 
         start = self.start_time + timedelta(hours=offset_hours)
         end = start + timedelta(minutes=duration_minutes)
@@ -67,12 +71,12 @@ class TSBSDevOpsQueryManager:
 
         params["hostname"] = overrides.get(
             "hostname",
-            self.hostnames[int(self.rng.integers(0, len(self.hostnames)))],
+            self.hostnames[int(rng.integers(0, len(self.hostnames)))],
         )
 
         params["region"] = overrides.get(
             "region",
-            self.regions[int(self.rng.integers(0, len(self.regions)))],
+            self.regions[int(rng.integers(0, len(self.regions)))],
         )
 
         params.update(overrides)

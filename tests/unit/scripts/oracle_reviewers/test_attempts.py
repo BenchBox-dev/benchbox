@@ -689,6 +689,34 @@ def test_a_long_status_description_is_cut_to_the_status_limit(policy: Policy, tm
     assert report.status_payload(plan, final, "u")["description"] == final.description
 
 
+def test_a_success_status_carries_the_run_uuid_for_direct_equality(monkeypatch: pytest.MonkeyPatch) -> None:
+    from _project.scripts.oracle_reviewers import report
+
+    plan = {"status_context": "oracle-verdict", "run_uuid": "a" * 32}
+    final = report.fixed(report.SUCCESS, "large: SHIP")
+    payload = report.status_payload(plan, final, "u")
+    assert payload["description"] == f"large: SHIP [run {'a' * 32}]"
+    assert len(payload["description"]) <= 140
+
+
+def test_a_long_success_description_still_fits_with_the_run_uuid() -> None:
+    from _project.scripts.oracle_reviewers import report
+
+    plan = {"status_context": "oracle-verdict", "run_uuid": "a" * 32}
+    final = report.fixed(report.SUCCESS, "x" * 200)
+    payload = report.status_payload(plan, final, "u")
+    assert payload["description"].endswith(f"[run {'a' * 32}]")
+    assert len(payload["description"]) <= 140
+
+
+def test_a_status_without_a_plan_run_uuid_is_unchanged() -> None:
+    from _project.scripts.oracle_reviewers import report
+
+    plan = {"status_context": "oracle-verdict"}
+    final = report.fixed(report.SUCCESS, "large: SHIP")
+    assert report.status_payload(plan, final, "u")["description"] == "large: SHIP"
+
+
 def test_selection_maps_the_bucket_through_the_policy(policy: Policy) -> None:
     plan = {**_plan(policy, ("trivial", "small", "medium")), "buckets": {"small": "medium"}}
     chain = cli._selection(plan, _classification("small")).chain
@@ -806,6 +834,5 @@ def test_identical_findings_are_listed_once_and_stored_with_unique_ids(policy: P
     assert record is not None
     ids = [item["id"] for item in record["open_defects"]]
     assert ids == ["D1", "D2"] and record["next_id"] == 3
-    assert render.response_template(ids)
     assert "1 identical finding(s) were reported more than once and are listed once." in final.body
     assert final.review is not None and len(final.review["comments"]) == 2

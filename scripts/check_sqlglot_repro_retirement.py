@@ -110,7 +110,7 @@ def case_platform(case: dict[str, Any]) -> str:
 def result_shape(case: dict[str, Any], executors: dict[str, Callable[[str], list[list[Any]]]]) -> str:
     if case_platform(case) in executors:
         return "rows"
-    return "native_percentile" if case["target"] == "mysql" else "dialect_available"
+    return "dialect_available"
 
 
 def load_baseline(
@@ -145,6 +145,8 @@ def load_baseline(
             or not workaround["reason"]
         ):
             raise ValueError(f"Malformed runtime baseline case: {case.get('id')}")
+        if case["target"] == "mysql" and case_platform(case) not in executors and case["expected"]["outcome"] == "pass":
+            raise ValueError("A MySQL pass has no execution evidence; retire the MySQL workaround manually")
         if case["expected"]["outcome"] == "pass":
             shape = result_shape(case, executors)
             if shape not in case["expected"] or (shape == "rows" and not isinstance(case["expected"]["rows"], list)):

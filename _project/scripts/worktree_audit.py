@@ -101,7 +101,9 @@ class GitCollectionError(RuntimeError):
 
 def _run_git(args: List[str], cwd: Path, timeout: float = 30.0) -> Tuple[int, str, str]:
     try:
-        proc = subprocess.run(["git", *args], capture_output=True, text=True, cwd=cwd, timeout=timeout)
+        proc = subprocess.run(
+            ["git", *args], capture_output=True, text=True, encoding="utf-8", cwd=cwd, timeout=timeout
+        )
         return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
     except subprocess.TimeoutExpired as exc:
         raise GitCollectionError(f"git command timed out after {timeout}s: git {' '.join(args)}") from exc

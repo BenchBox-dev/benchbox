@@ -30,7 +30,7 @@ class LedgerRow:
 
 
 def _git(*args: str) -> str:
-    return subprocess.check_output(["git", *args], text=True, stderr=subprocess.DEVNULL)
+    return subprocess.check_output(["git", *args], text=True, encoding="utf-8", stderr=subprocess.DEVNULL)
 
 
 def _frontmatter(text: str, path: str) -> dict[str, Any] | None:

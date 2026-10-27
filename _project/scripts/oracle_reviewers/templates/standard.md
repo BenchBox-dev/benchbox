@@ -79,7 +79,7 @@ what you actually read:
 - The finding object under defects and the path under files_examined are prototypes: repeat each once per defect
   and once per file you read, or remove the prototype and leave [] only when that list is genuinely empty.
 - line is the real line number of the defect; end_line is the last line of a span, or null.
-- Each prior_defects entry carries an earlier defect id. Keep every id as shown, replace its status and evidence,
-  and add none. An empty prior_defects means there are no earlier defects to judge.
+- Each prior_defects entry carries an earlier defect id. Keep every id as shown, replace its status, evidence and claim,
+  and add none. concedes is a JSON boolean, never a string: for a disputed defect, restate one rebuttal reply shown for it in claim and set concedes to true when it holds or false when it does not; otherwise leave concedes null. An empty prior_defects means there are no earlier defects to judge.
 
 {response_template}

@@ -37,20 +37,58 @@ def sleeps(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     return recorded
 
 
-def _review(body: str, **over: Any) -> dict[str, Any]:
+RUN_UUID = "1" * 32
+
+
+def _receipt_body(run_uuid: str = RUN_UUID) -> str:
+    from _project.scripts.oracle_reviewers import protocol
+
+    record = {
+        "v": protocol.MARKER_VERSION,
+        "cycle": 1,
+        "round": 1,
+        "kind": protocol.FIRST,
+        "decision": protocol.SHIP,
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "large",
+        "tier": "large",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 1,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+        "run_uuid": run_uuid,
+    }
+    return f"### oracle-verdict: success for `{HEAD}`\n\n{protocol.encode_marker(record)}"
+
+
+def _success_status(**over: Any) -> dict[str, Any]:
+    status = {
+        "id": 1,
+        "context": "oracle-verdict",
+        "state": "success",
+        "description": f"large: SHIP [run {RUN_UUID}]",
+        "login": "benchbox-oracle[bot]",
+        "user_type": "Bot",
+        "created_at": AFTER_HEAD,
+    }
+    return {**status, **over}
+
+
+def _receipt(**over: Any) -> dict[str, Any]:
     review = {
         "login": "benchbox-oracle[bot]",
         "user_type": "Bot",
         "commit_id": HEAD,
         "state": "COMMENTED",
         "submitted_at": AFTER_HEAD,
-        "body": body,
+        "body": _receipt_body(),
+        "last_edited_at": None,
+        "includes_created_edit": False,
     }
     return {**review, **over}
-
-
-def _success_review(**over: Any) -> dict[str, Any]:
-    return _review(f"### oracle-verdict: success for `{HEAD}`", **over)
 
 
 def _thread(resolved: bool) -> dict[str, Any]:
@@ -108,18 +146,31 @@ def test_exempt_only_change_passes() -> None:
 
 
 def test_ship_without_unresolved_threads_passes() -> None:
-    reviews = [_success_review()]
-    expected = oracle_review_check.decide(HEAD, SOUNDNESS_FILES, reviews, [], _matcher())
+    statuses = [_success_status()]
+    expected = oracle_review_check.decide(HEAD, SOUNDNESS_FILES, statuses, [], _matcher(), reviews=[_receipt()])
     assert expected[0] == oracle_review_check.PASS
-    assert oracle_gate.decide(HEAD, SOUNDNESS_FILES, reviews, [], _matcher()) == expected
+    assert oracle_gate.decide(HEAD, SOUNDNESS_FILES, statuses, [], _matcher(), reviews=[_receipt()]) == expected
+
+
+def test_ship_without_a_same_pr_receipt_waits() -> None:
+    statuses = [_success_status()]
+    expected = oracle_review_check.decide(HEAD, SOUNDNESS_FILES, statuses, [], _matcher())
+    assert expected[0] == oracle_review_check.WAITING
+    assert "no unedited oracle review" in expected[1]
+    assert oracle_gate.decide(HEAD, SOUNDNESS_FILES, statuses, [], _matcher()) == expected
 
 
 def test_ship_with_an_unresolved_oracle_thread_waits() -> None:
-    reviews = [_success_review()]
-    expected = oracle_review_check.decide(HEAD, SOUNDNESS_FILES, reviews, [_thread(False)], _matcher())
+    statuses = [_success_status()]
+    expected = oracle_review_check.decide(
+        HEAD, SOUNDNESS_FILES, statuses, [_thread(False)], _matcher(), reviews=[_receipt()]
+    )
     assert expected[0] == oracle_review_check.WAITING
     assert "unresolved oracle review thread" in expected[1]
-    assert oracle_gate.decide(HEAD, SOUNDNESS_FILES, reviews, [_thread(False)], _matcher()) == expected
+    assert (
+        oracle_gate.decide(HEAD, SOUNDNESS_FILES, statuses, [_thread(False)], _matcher(), reviews=[_receipt()])
+        == expected
+    )
 
 
 def test_exact_standin_for_the_head_passes() -> None:
@@ -137,7 +188,7 @@ def test_standin_with_extra_text_waits() -> None:
     assert oracle_gate.decide(HEAD, SOUNDNESS_FILES, [], [], _matcher(), None, comments) == expected
 
 
-def test_absent_review_waits() -> None:
+def test_absent_verdict_waits() -> None:
     expected = oracle_review_check.decide(HEAD, SOUNDNESS_FILES, [], [], _matcher())
     assert expected[0] == oracle_review_check.WAITING
     assert oracle_gate.decide(HEAD, SOUNDNESS_FILES, [], [], _matcher()) == expected
@@ -151,11 +202,11 @@ def test_gate_state_maps_pass_to_success_and_everything_else_to_failure() -> Non
 
 def test_status_payload_posts_the_gate_context() -> None:
     assert oracle_gate.GATE_CONTEXT == "oracle-gate"
-    payload = oracle_gate.status_payload(oracle_gate.PASS, "oracle-review: pass (oracle review of " + HEAD + ")")
+    payload = oracle_gate.status_payload(oracle_gate.PASS, "oracle-review: pass (oracle verdict for " + HEAD + ")")
     assert payload == {
         "state": "success",
         "context": "oracle-gate",
-        "description": "oracle-review: pass (oracle review of " + HEAD + ")",
+        "description": "oracle-review: pass (oracle verdict for " + HEAD + ")",
     }
 
 
@@ -304,14 +355,14 @@ def test_main_posts_failure_when_evaluation_errors_after_the_head_is_known(monke
     assert "no policy" in message and len(oracle_gate.gate_description(message)) <= oracle_gate.DESCRIPTION_LIMIT
 
 
-def test_main_posts_failure_when_a_review_fetch_raises_a_key_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_main_posts_failure_when_a_status_fetch_raises_a_key_error(monkeypatch: pytest.MonkeyPatch) -> None:
     _stub_pull(monkeypatch)
     monkeypatch.setattr(oracle_gate, "load_policy_rules", lambda: ((), ()))
 
     def broken(repo: str, pr: int, token: str) -> Any:
         raise KeyError("data")
 
-    monkeypatch.setattr(oracle_gate, "fetch_reviews", broken)
+    monkeypatch.setattr(oracle_gate, "fetch_statuses", broken)
     posts = _record_posts(monkeypatch)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.ERROR
     assert [head for head, _, _ in posts] == [HEAD]
@@ -393,7 +444,7 @@ def test_main_posts_nothing_for_a_pull_request_that_does_not_target_develop(monk
     def forbidden(*args: Any, **kwargs: Any) -> None:
         raise AssertionError("must not evaluate or post")
 
-    for name in ("fetch_files", "fetch_reviews", "fetch_threads", "post_status"):
+    for name in ("fetch_files", "fetch_statuses", "fetch_threads", "fetch_reviews", "annotate_receipt"):
         monkeypatch.setattr(oracle_gate, name, forbidden)
     assert oracle_gate.main(["--repo", "o/r", "--pr", "7"]) == oracle_gate.PASS
 
@@ -457,10 +508,12 @@ def _stub_unreadable_pull(monkeypatch: pytest.MonkeyPatch, failures: int) -> lis
 
     monkeypatch.setattr(oracle_gate, "fetch_pull", flaky)
     monkeypatch.setattr(oracle_gate, "fetch_files", lambda repo, pr, token: [{"filename": "x"}])
-    monkeypatch.setattr(oracle_gate, "fetch_reviews", lambda repo, pr, token: [])
+    monkeypatch.setattr(oracle_gate, "fetch_statuses", lambda repo, pr, token: [])
     monkeypatch.setattr(oracle_gate, "fetch_threads", lambda repo, pr, token: [])
     monkeypatch.setattr(oracle_gate, "fetch_base_change_date", lambda repo, pr, token: None)
     monkeypatch.setattr(oracle_gate, "fetch_comments", lambda repo, pr, token: [])
+    monkeypatch.setattr(oracle_gate, "fetch_reviews", lambda repo, pr, token: [])
+    monkeypatch.setattr(oracle_gate, "annotate_receipt", lambda token, reviews, head_sha, base_date=None: None)
     return calls
 
 
@@ -472,7 +525,7 @@ def test_main_posts_failure_for_any_exception_after_the_head_is_known(
 ) -> None:
     _stub_pull(monkeypatch)
     monkeypatch.setattr(oracle_gate, "load_policy_rules", lambda: ((), ()))
-    monkeypatch.setattr(oracle_gate, "fetch_reviews", lambda repo, pr, token: [])
+    monkeypatch.setattr(oracle_gate, "fetch_statuses", lambda repo, pr, token: [])
 
     def broken(repo: str, pr: int, token: str) -> Any:
         raise error
@@ -488,9 +541,11 @@ def test_main_posts_failure_when_the_fresh_reevaluation_raises_an_arbitrary_exce
 ) -> None:
     _stub_pull(monkeypatch)
     monkeypatch.setattr(oracle_gate, "load_policy_rules", lambda: ((), ()))
-    monkeypatch.setattr(oracle_gate, "fetch_reviews", lambda repo, pr, token: [])
+    monkeypatch.setattr(oracle_gate, "fetch_statuses", lambda repo, pr, token: [])
     monkeypatch.setattr(oracle_gate, "fetch_base_change_date", lambda repo, pr, token: None)
     monkeypatch.setattr(oracle_gate, "fetch_comments", lambda repo, pr, token: [])
+    monkeypatch.setattr(oracle_gate, "fetch_reviews", lambda repo, pr, token: [])
+    monkeypatch.setattr(oracle_gate, "annotate_receipt", lambda token, reviews, head_sha, base_date=None: None)
     calls: list[int] = []
 
     def threads(repo: str, pr: int, token: str) -> list[Any]:
