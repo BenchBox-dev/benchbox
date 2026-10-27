@@ -179,7 +179,7 @@ one-time inspection:
 | C6 fresh `HOME` | Each attempt gets a new `mkdtemp` directory; the previous one is deleted first and the checkout reset. |
 | C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`, `id-token: write`. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. A workflow test recomputes it from the policy. |
-| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs queue behind a run in flight. Posting steps keep the default success condition, so a cancelled run posts nothing. |
+| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`; comment, dispatch and sweep runs wait behind a run in flight, one waiting run per concurrency group, and a newer waiting run replaces the older one, which GitHub cancels. Posting steps keep the default success condition, so a cancelled run posts nothing. |
 | C10 App mint last | `ORACLE_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, second disk scan and redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
 
 The OIDC request token shares the gateway token's terms in the loop environment:
@@ -610,31 +610,41 @@ cancels a run in flight, which then posts nothing.
   findings keyed by finding id (see Rounds), and the reviewer checks any claimed
   grammar or documented behaviour.
 - `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>` does the
-  same; other refs are refused.
+  same; other refs are refused. The optional `-f head=<sha>` names the head the
+  dispatch targets: the run title records it, and a run whose pull request has
+  since moved to another head reviews nothing. The sweep always sets it.
 - The sweep retries PRs whose last result on the current head is pending and
   due. It runs on every push to `develop` and hourly; because GitHub starts the
   schedule irregularly, the first push after a head becomes due is the usual
   trigger. The target is a dispatch within 25 minutes of that push, or at the
   next scheduled sweep without one. Push and schedule sweeps share one
-  concurrency group that never cancels a running sweep. It lists seven days of
-  `oracle-verdict` runs, all pages, and skips a PR with a run queued, in
-  progress, waiting, pending or requested, or started in the last two minutes,
-  so it never cancels a retry in flight. It also re-dispatches a head whose
-  latest run failed, timed out or was cancelled without leaving retry state,
-  unless the head has a decisive App verdict status; the dispatch carries a
-  marker the plan verifies against the head's failed runs, so it reviews instead
-  of skipping on backoff. This happens once: when the two latest runs on the
-  head failed without a result (ignoring runs that never reviewed it, such as a
-  skipped plain-comment run), the sweep stops dispatching and posts a pending
-  `oracle-verdict` status naming the failed step, with an App token minted in
-  the reviewer-free sweep job. An existing pending status is left alone; without
-  the App the sweep reports the gap instead of failing. A failure in one PR's
-  lookup, dispatch or surfacing is reported, the others continue, then the job
-  fails. If the week-long runs listing fails twice, the sweep degrades: it
-  dispatches only due retries, using a bounded lookup of every non-completed run
-  status for the in-flight check, and says so in the summary. If that lookup also
-  fails it dispatches nothing. A degraded sweep exits 1 after dispatching what it
-  safely can. Daily budget, backoff and attempt limits are unchanged.
+  concurrency group that never cancels a running sweep. It lists 48 hours of
+  `oracle-verdict` runs, all pages, and fails the listing, so the sweep
+  degrades, when GitHub's result cap leaves fewer runs than its reported total.
+  It skips a PR with a run queued, in progress, waiting, pending or requested,
+  or started in the last two minutes, so it never cancels a retry in flight.
+  Each run is tied to a head by the `head=<sha>` its title records, never by
+  commit dates, which an author controls; a run with no recorded head (a
+  comment run, a dispatch without `head`) belongs to no head, so it counts as
+  neither a failure nor a success. A cancelled run is not a failure. A head
+  whose latest runs failed or timed out without leaving retry state is
+  re-dispatched, unless the head has a decisive App verdict status; the
+  dispatch carries a marker, and a marked retry the plan refuses, or whose
+  retry state it cannot read, fails its run so the next sweep counts it. A head
+  with a due pending state is bounded the
+  same way: failures after the state was recorded count. This happens once:
+  when two runs on the head failed without a result (ignoring runs that never
+  reviewed it, such as a skipped plain-comment run), the sweep stops
+  dispatching and posts a pending `oracle-verdict` status naming the failed
+  step, with an App token minted in the reviewer-free sweep job. An existing
+  pending status is left alone; without the App the sweep reports the gap
+  instead of failing. A failure in one PR's lookup, dispatch or surfacing is
+  reported, the others continue, then the job fails. If the runs listing fails
+  twice or is capped, the sweep degrades: it dispatches only due retries, using
+  a bounded lookup of every non-completed run status for the in-flight check,
+  and says so in the summary. If that lookup also fails it dispatches nothing.
+  A degraded sweep exits 1 after dispatching what it safely can. Daily budget,
+  backoff and attempt limits are unchanged.
 - `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the
   owner clear one PR head's backoff and retry window once. It needs a prior
   `Owner instruction` comment from an attester naming the head, as for a
@@ -647,11 +657,14 @@ cancels a run in flight, which then posts nothing.
 A same-head rerun needs a previous run where every attempted reviewer was
 absent. A run pending because its artifacts failed validation, or a selected
 reviewer never reported, is not rerun on that head; push a new one. Comment,
-dispatch and scheduled reruns share a per-PR daily budget
-(`retry.daily_budget`), with backoff starting at one hour and doubling. Retry
-state is the `oracle-verdict-state-<number>` artifact of this workflow's latest
-run whose commit is on `develop`; other workflows' and branches' artifacts are
-ignored.
+dispatch and scheduled reruns share a per-head daily budget
+(`retry.daily_budget`), with backoff starting at one hour and doubling; a new
+head starts with none spent. The plan counts the retries recorded in the head's
+state and the sweep counts the dispatches recorded in the run titles, and both
+apply the owner reset the same way: it ignores the backoff and the budget once.
+Retry state is the `oracle-verdict-state-<number>` artifact of this workflow's
+latest run whose commit is on `develop`; other workflows' and branches'
+artifacts are ignored.
 
 A PR whose brief exceeds the size cap even without the diff (its file list alone
 is too long) cannot be reviewed: every reviewer is skipped and the result is

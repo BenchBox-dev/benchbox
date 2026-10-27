@@ -12,6 +12,7 @@ from workflow_expressions import evaluate, render
 
 from _project.scripts.oracle_reviewers import omp_pin
 from _project.scripts.oracle_reviewers.commands import build
+from _project.scripts.oracle_reviewers.github import RUN_TITLE_PULL
 from _project.scripts.oracle_reviewers.omp_pin import pin_from_text
 from _project.scripts.oracle_reviewers.policy import SIZE_BUCKETS, load_policy
 
@@ -27,7 +28,7 @@ OMP_SHA = re.compile(r"^[0-9a-f]{64}$")
 DISPATCH_STEP = "Dispatch the gate for the reviewed head"
 SETUP_ALLOWANCE_MINUTES = 30
 JOB_TIMEOUT_CEILING_MINUTES = 360
-UNCHANGED_PREFIX_SHA256 = "afca918ff33a3553a202821c8589308cce23b1c0730ac3ff65dc61bfff82a47d"
+UNCHANGED_PREFIX_SHA256 = "0bf8d42d70c7a72d213b971e2e7bb51ea01caea70190e089c43deb3114a7e73e"
 REVIEW_CONDITION = (
     "github.event_name == 'workflow_dispatch' ||"
     " (github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) ||"
@@ -684,9 +685,42 @@ def test_a_dispatch_run_queues_in_the_pull_request_group_instead_of_cancelling()
 
 def test_the_dispatch_reason_input_is_optional_and_unset_by_default() -> None:
     inputs = _load()[True]["workflow_dispatch"]["inputs"]
-    assert set(inputs) == {"pr", "reason"}
+    assert set(inputs) == {"pr", "head", "reason"}
     assert inputs["pr"]["required"] is True
+    assert inputs["head"]["required"] is False
     assert inputs["reason"]["required"] is False
+
+
+def _run_title(event_name: str, event: dict[str, Any] | None = None, inputs: dict[str, Any] | None = None) -> str:
+    context = _context(event_name, event, inputs)
+    return re.sub(r"\$\{\{(.*?)\}\}", lambda match: str(evaluate(match.group(1), context) or ""), _load()["run-name"])
+
+
+SHA = "c" * 40
+
+
+@pytest.mark.parametrize(
+    ("event_name", "event", "inputs", "title"),
+    [
+        ("workflow_dispatch", {}, {"pr": "7", "head": SHA}, f"oracle-verdict (workflow_dispatch pr=7 head={SHA})"),
+        ("workflow_dispatch", {}, {"pr": "7"}, "oracle-verdict (workflow_dispatch pr=7)"),
+        (
+            "pull_request_target",
+            {"pull_request": {"number": 9, "head": {"sha": SHA}}},
+            None,
+            f"oracle-verdict (pull_request_target pr=9 head={SHA})",
+        ),
+        ("issue_comment", {"issue": {"number": 10}}, None, "oracle-verdict (issue_comment pr=10)"),
+        ("schedule", {}, None, "oracle-verdict (schedule pr=sweep)"),
+    ],
+)
+def test_the_run_title_records_the_head_the_run_targets(
+    event_name: str, event: dict[str, Any], inputs: dict[str, Any] | None, title: str
+) -> None:
+    rendered = _run_title(event_name, event, inputs)
+    assert rendered == title
+    match = RUN_TITLE_PULL.search(rendered)
+    assert (match is not None) == (event_name != "schedule")
 
 
 def test_pull_request_groups_keep_one_group_per_number() -> None:

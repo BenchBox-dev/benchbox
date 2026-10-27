@@ -73,8 +73,8 @@ class RerunDecision:
     reason: str
 
 
-def recent_retries(state: State | None, now: datetime) -> tuple[datetime, ...]:
-    if state is None:
+def recent_retries(state: State | None, head_sha: str, now: datetime) -> tuple[datetime, ...]:
+    if state is None or state.head_sha != head_sha:
         return ()
     return tuple(moment for moment in state.retries if now - moment < WINDOW)
 
@@ -99,7 +99,6 @@ def decide_rerun(
     now: datetime,
     rules: RetryRules,
     reset_at: datetime | None = None,
-    stateless_retry: bool = False,
 ) -> RerunDecision:
     same_head = previous is not None and previous.head_sha == head_sha
     if same_head and previous is not None and previous.outcome in DECISIVE and not new_diff and not manual:
@@ -114,15 +113,13 @@ def decide_rerun(
         return RerunDecision(True, "pull request event")
     if reset_applies(previous, head_sha, reset_at):
         return RerunDecision(True, "retry backoff reset by the owner")
-    retries = recent_retries(previous, now)
+    retries = recent_retries(previous, head_sha, now)
     if len(retries) >= rules.daily_budget:
         return RerunDecision(False, f"the daily retry budget of {rules.daily_budget} is used")
     if same_head and previous is not None:
         wait = timedelta(minutes=rules.backoff_start_minutes * 2 ** len(retries))
         ready_at = previous.updated_at + wait
         if now < ready_at:
-            if stateless_retry and previous.outcome == PENDING:
-                return RerunDecision(True, "stateless retry of a run that failed without a result")
             return RerunDecision(False, f"backoff: the next retry is allowed after {ready_at.isoformat()}")
         if previous.outcome in DECISIVE:
             return RerunDecision(True, "manual same-head re-review within budget")
@@ -141,7 +138,7 @@ def next_state(
     pending_cause: str | None = None,
     strikes: int | None = None,
 ) -> State:
-    retries = recent_retries(previous, now) + ((now,) if manual else ())
+    retries = recent_retries(previous, head_sha, now) + ((now,) if manual else ())
     cause = pending_cause if outcome == PENDING else None
     kept = max(strikes or 0, previous.strikes if previous else 0)
     return State(pr, head_sha, outcome, now, retries, dict(pool_blocked_until), cause, kept)
