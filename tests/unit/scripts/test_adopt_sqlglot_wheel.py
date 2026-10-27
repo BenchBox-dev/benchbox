@@ -74,13 +74,13 @@ def test_adoption_updates_pin_baseline_and_runs_checks(repo: Path, tmp_path: Pat
     manifest = adopt(wheel, digest(wheel), root=repo, checks=calls.append)
     runtime = repo / "benchbox" / "_vendor"
     assert calls == [repo]
-    assert json.loads((runtime / "sqlglot.json").read_text()) == manifest
+    assert json.loads((runtime / "sqlglot.json").read_text(encoding="utf-8")) == manifest
     assert sorted(p.name for p in runtime.iterdir()) == [
         "SQLGLOT_LICENSE.txt",
         "benchbox_sqlglot-30.23.0.3-py3-none-any.whl.zip",
         "sqlglot.json",
     ]
-    baseline = json.loads((repo / "scripts" / "sqlglot_runtime_baseline.json").read_text())
+    baseline = json.loads((repo / "scripts" / "sqlglot_runtime_baseline.json").read_text(encoding="utf-8"))
     assert baseline["identity"] == manifest
     assert baseline["cases"] == []
 

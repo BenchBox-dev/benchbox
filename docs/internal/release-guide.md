@@ -549,8 +549,9 @@ the verified, clean, pure-Python release artifact and strictly newer than the
 pinned runtime. The command installs it, rewrites `benchbox/_vendor/sqlglot.json`
 and the identity in `scripts/sqlglot_runtime_baseline.json`, runs the runtime pin
 and retirement/baseline checks, and restores the previous files if either fails.
-It publishes nothing; add the changelog fragment, review any changed baseline
-outcome, then open the pull request.
+It publishes nothing; add a `changelog.d` fragment, review any changed baseline
+outcome, then open the pull request. The retirement check executes a QuestDB
+case, so `BENCHBOX_QUESTDB_DSN` must point at a running QuestDB.
 
 Both targets need the full development tree, because the lock-revision check
 lives under `_project/`.

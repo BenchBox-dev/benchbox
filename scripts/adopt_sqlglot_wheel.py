@@ -110,8 +110,8 @@ def adopt(
         restore(root, saved)
         raise
     print(
-        "Adopted. Remaining manual steps: add a CHANGELOG.md entry, review any case whose outcome changed in "
-        f"{BASELINE}, then run make pr-preflight and open the PR. Nothing was published."
+        "Adopted. Remaining manual steps: add a changelog.d fragment (make changelog-entry), review any case "
+        f"whose outcome changed in {BASELINE}, then run make pr-preflight and open the PR. Nothing was published."
     )
     return manifest
 
