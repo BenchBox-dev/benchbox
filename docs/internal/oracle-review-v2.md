@@ -809,27 +809,43 @@ policy or the attempt loop must also:
 The cut-over is done: `.github/oracle-reviewers.yml` sets `mode: enforce`, and
 the checker (`_project/scripts/oracle_review_check.py`), whose decision the
 required `oracle-gate` check reports, accepts only the oracle signal. It
-requires, from the `benchbox-oracle` App's Bot account:
+requires:
 
-- a review of the head, not pending or dismissed, submitted after any retarget,
-  whose latest one opens with `### oracle-verdict: success for` (or, before
-  2026-10-09, `### oracle-review-shadow: success for`) the head SHA, because
-  the oracle posts every verdict as a comment review and a defect outside the
-  diff has no thread;
+- a latest `oracle-verdict` commit status on the head, created by the
+  `benchbox-oracle` App's Bot account, in state `success`, posted after any
+  retarget;
 - no unresolved review thread from the App.
 
-The verdict is read from the pull request's own review, not from the commit
-status, which any pull request with the same head commit could set. The
-oracle signal needs `findings_delivery: review`, under which every run that
-reaches a result, including a pending one, posts a review, so the latest
-review is the latest result.
+The verdict is read from the App's commit status, not from review bodies. A
+review can be edited or deleted by the account every agent uses, while a
+commit status cannot be edited or deleted and records its creator, so the
+gate ignores a status from any other account and any other context, including
+the legacy `oracle-review-shadow` context, and never reads a review body for
+its decision. A commit status belongs to a head commit, not to a pull
+request, so the gate also binds the verdict to this pull request with an
+explicit same-run binding: every verdict run mints a run uuid that it writes
+into the review marker and appends to the success status description
+(`[run <uuid>]`, capped to the 140-character status limit), and the gate
+passes on a success status only when this pull request has its own unedited
+oracle review of that head whose marker carries the same run uuid and whose
+header agrees with the status. Unedited is verified through the review API;
+a receipt whose edit state cannot be verified never authorizes. A status left
+by another pull request at the same head, or by an earlier policy, never
+authorizes this pull request: any success status without a run uuid fails closed
+(waiting for a fresh verdict run), so an unbound status can never authorize an
+open pull request. Evidence predating the run uuid requirement carries no uuid
+and fails closed (waiting for a fresh verdict run); merged pull requests predate
+this cutover and never re-run the gate. The oracle signal needs `findings_delivery:
+review`, under which every run that reaches a result, including a pending
+one, posts a review and then a status in the same state.
 
 The `oracle-review` workflow is a review-event notification, not a check. It
 triggers only on `pull_request_review` submitted, edited and dismissed, holds no
 token permissions, and runs one `review-event` job with a single no-op step: no
 checkout, no secrets and no API calls. It produces no check run named
-`oracle-review`. The `edited` type is included because the gate reads the
-current review body, so an edited oracle review can change the decision.
+`oracle-review`. The `edited` type keeps edits to oracle reviews visible in the run history; the
+gate does not read review bodies for its decision, but it rejects edited receipts when binding
+a status to this pull request.
 
 Because `pull_request_review` runs the pull request's own workflow file, the
 notification is controlled by the pull request and can be deleted or altered by

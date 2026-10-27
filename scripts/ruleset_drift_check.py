@@ -40,9 +40,11 @@ PYPI_REQUIRED_REVIEWERS = (("User", 57046, "joeharris76"),)
 PYPI_CAN_ADMINS_BYPASS = True
 PYPI_PREVENT_SELF_REVIEW = False
 TEST_PYPI_ENVIRONMENT = "test-pypi"
+ORACLE_ENVIRONMENT = "oracle"
 ENVIRONMENT_DEPLOYMENT_POLICIES = {
     PYPI_ENVIRONMENT: (("tag", "v*"),),
     TEST_PYPI_ENVIRONMENT: (("branch", "develop"), ("branch", "release"), ("tag", "v*")),
+    ORACLE_ENVIRONMENT: (("branch", "develop"),),
 }
 
 
@@ -444,6 +446,7 @@ def render_summary(findings: list[str], expected: dict[str, ExpectedRuleset]) ->
         lines.append("- pypi environment: required reviewer joeharris76 (User id 57046)")
         lines.append("- pypi environment: deployments only from tag v*")
         lines.append("- test-pypi environment: deployments only from tag v* and branches develop and release")
+        lines.append("- oracle environment: deployments only from branch develop")
     if warnings:
         lines += ["", "## Non-blocking warnings", "", *[f"- {finding}" for finding in warnings]]
     return "\n".join(lines) + "\n"

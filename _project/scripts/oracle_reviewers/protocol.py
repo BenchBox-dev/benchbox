@@ -70,6 +70,7 @@ RECORD_KEYS = frozenset(
         "summary",
     }
 )
+OPTIONAL_RECORD_KEYS = frozenset({"patch_map", "forced", "run_uuid"})
 DEFECT_KEYS = ("id", "severity", "file", "line", "end_line", "title")
 
 
@@ -242,7 +243,7 @@ def _valid_patches(patches: Any) -> bool:
 
 
 def _valid_record(record: Any) -> bool:
-    if not isinstance(record, dict) or not RECORD_KEYS <= set(record) <= RECORD_KEYS | {"patch_map", "forced"}:
+    if not isinstance(record, dict) or not RECORD_KEYS <= set(record) <= RECORD_KEYS | OPTIONAL_RECORD_KEYS:
         return False
     return (
         record["v"] == MARKER_VERSION
@@ -254,6 +255,7 @@ def _valid_record(record: Any) -> bool:
         and all(isinstance(record[key], str) for key in ("base_ref", "reviewer", "tier", "patch_digest", "summary"))
         and isinstance(record["carried"], bool)
         and ("forced" not in record or isinstance(record["forced"], bool))
+        and ("run_uuid" not in record or re.fullmatch(r"[0-9a-f]{32}|[0-9]+", str(record["run_uuid"])) is not None)
         and isinstance(record["open_defects"], list)
         and all(_valid_defect(item) for item in record["open_defects"])
         and (record.get("patch_map") is None or _valid_patches(record["patch_map"]))

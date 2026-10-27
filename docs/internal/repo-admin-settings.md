@@ -87,7 +87,7 @@ Markdown routes to the `docs` unit alone unless a test or audit reads it. `.gith
 | `results-data` | `results-data/`, submission validator, `benchbox/core/results/` | corpus inventory and validation, submission validator sync, corpus and explorer-pipeline contract tests |
 | `docs` | `docs/`, examples, the prompt catalog, CLI and registries | example and docs reference validation, docs generators, spell check |
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
-| `oracle-gate` | every PR, from `develop` code on trusted triggers | `benchbox-oracle` success review of the current head, or the stand-in approval, with oracle threads resolved; inert-only changes report success. Posted by the `benchbox-oracle` App, so it needs `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` in the `oracle` environment, else nothing is posted and the head cannot merge |
+| `oracle-gate` | every PR, from `develop` code on trusted triggers | `benchbox-oracle` success `oracle-verdict` status on the current head, or the stand-in approval, with oracle threads resolved; inert-only changes report success. Posted by the `benchbox-oracle` App, so it needs `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` in the `oracle` environment, else nothing is posted and the head cannot merge |
 
 The public site is built, compared and deployed in `BenchBox-dev/benchbox-site`.
 
@@ -232,11 +232,14 @@ The required `oracle-gate` check (`.github/workflows/oracle-gate.yml`) passes
 when any of these holds:
 
 - The change touches only inert paths (see Inert-path manifest in `docs/internal/oracle-review-v2.md`).
-- The `benchbox-oracle` App's latest review of the current head, submitted after
-  any retarget, reports success, and none of its review threads is unresolved.
+- The latest `oracle-verdict` commit status on the current head, created by the
+  `benchbox-oracle` App after any retarget, is success, and none of the App's
+  review threads is unresolved. Review bodies are not read, so editing or
+  deleting a review cannot change the result; statuses from any other creator
+  and the legacy `oracle-review-shadow` context are ignored.
 - An account in `STANDIN_ATTESTERS` (`_project/scripts/oracle_review_check.py`)
   posted `Stand-in oracle review: APPROVE <full head SHA>` for the exact head,
-  after any retarget and after the oracle's latest review of that head. The
+  after any retarget and after the oracle's latest verdict status on that head. The
   comment is unedited and no oracle thread is unresolved.
 
 A plain owner comment does not count. See [soundness drain](soundness-drain.md).
@@ -263,8 +266,8 @@ context, but a same-repo pull request with `statuses: write` could still post
 a status with that name, so the workflow alone is not the enforcement; the
 integration-ID binding is (see the residual-risk note below). It applies the
 checker's rule unchanged: success when only exempt paths changed, when the
-App's latest review of the head reports success with no unresolved oracle
-thread, or when a valid stand-in covers the exact head, and failure otherwise.
+App's latest `oracle-verdict` status on the head is success with no unresolved
+oracle thread, or when a valid stand-in covers the exact head, and failure otherwise.
 
 The workflow posts the context only when `ORACLE_APP_ID` and
 `ORACLE_APP_PRIVATE_KEY` are set as secrets in the `oracle` environment; when
@@ -273,6 +276,25 @@ required, a head that never receives the context cannot merge. Check that both
 names exist with
 `gh api repos/BenchBox-dev/benchbox/environments/oracle/secrets --jq '.secrets[].name'`
 (names only; never read values).
+
+The `oracle` environment deploys only from the `develop` branch (custom branch
+policies with one `develop` entry). `scripts/ruleset_drift_check.py` fails when
+that policy widens, because any branch allowed to deploy there can mint the App
+token.
+
+Read it with
+`gh api repos/BenchBox-dev/benchbox/environments/oracle --jq .deployment_branch_policy`
+(expect `{"custom_branch_policies":true,"protected_branches":false}`) and
+`gh api repos/BenchBox-dev/benchbox/environments/oracle/deployment-branch-policies --jq '.branch_policies[]|[.type,.name]'`
+(expect only `["branch","develop"]`). Verified on 2026-10-26. To restore it:
+
+```bash
+gh api -X PUT repos/BenchBox-dev/benchbox/environments/oracle \
+  -F 'deployment_branch_policy[protected_branches]=false' \
+  -F 'deployment_branch_policy[custom_branch_policies]=true'
+gh api -X POST repos/BenchBox-dev/benchbox/environments/oracle/deployment-branch-policies \
+  -f name=develop -f type=branch
+```
 
 ### Soundness-path review enforcement
 
