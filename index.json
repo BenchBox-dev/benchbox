@@ -25049,10 +25049,15 @@
       "title": "Guard against SQLGlot version overlays that the vendored runtime ignores"
     },
     "sqlglot-refresh-one-command-benchbox-adoption": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-28T14:14:41Z",
+        "generation": "0d9076c2a3f04b20ac6418bae0f64954",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Script the BenchBox side of an upstream SQLGlot refresh"
     },
     "sqlglot-repro-harness-wrapper-call-shape": {
