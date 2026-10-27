@@ -702,7 +702,7 @@ to GitHub.
   `cli.py install-omp`, run under isolated `uv` with `pyyaml==6.0.3`; YAML is
   imported only to parse the policy) downloads the platform build into
   `~/.cache/benchbox/omp/<version>/<platform>/omp` (`BENCHBOX_OMP_CACHE`
-  overrides the root), checks the SHA-256 before the file is marked executable,
+  overrides the root; `BENCHBOX_OMP_DOWNLOAD_MIRROR` swaps the pinned URL's origin for a loopback one so tests can serve a build locally, and is refused if it names any other host), checks the SHA-256 before the file is marked executable,
   then checks the binary reports the pinned version. The CI `Install omp` step,
   `scripts/cloud_gateway.sh` and the local review all use it, and the reviewer
   runs the installed binary by its path (`ORACLE_OMP_BINARY`), never the `omp` on
