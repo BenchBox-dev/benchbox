@@ -33,5 +33,5 @@ def _install_guard():
         module.install()
 
 
-_chain_next_sitecustomize()
 _install_guard()
+_chain_next_sitecustomize()

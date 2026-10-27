@@ -536,7 +536,7 @@ binds the test to how the code happens to fetch today; a refactor of the
 fetch mechanism silently bypasses the fake and the test reaches the real
 network.
 
-Unit and medium tests cannot reach non-loopback networks. The guard is
+Unit and medium tests cannot reach non-loopback networks through Python sockets or name resolution (native-code clients that open their own sockets are outside the guard). The guard is
 `tests/utilities/network_guard.py`, activated per test by the autouse fixture
 in `tests/utilities/network_guard_plugin.py`. It blocks `connect`,
 `connect_ex`, `sendto`, `getaddrinfo`, and `gethostbyname*` to anything but
