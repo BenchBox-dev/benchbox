@@ -16325,8 +16325,7 @@
     "oracle-gate-run-name-says-sweep-for-single-pr-20261023": {
       "claim": null,
       "needs": [
-        "retire-oracle-review-workflow-20261021",
-        "oracle-history-edited-review-fail-closed-20261027"
+        "retire-oracle-review-workflow-20261021"
       ],
       "priority": "low",
       "status": "open",
