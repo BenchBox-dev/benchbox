@@ -461,6 +461,11 @@ uv-lock-revision-check:
 sqlglot-upstream-freshness-check:
 	uv run -- python scripts/check_sqlglot_upstream_freshness.py
 
+.PHONY: sqlglot-adopt-wheel
+sqlglot-adopt-wheel:
+	@test -n "$(WHEEL)" || { echo "usage: make sqlglot-adopt-wheel WHEEL=path/to/benchbox_sqlglot-X.whl [SHA256=<digest>] [DRY_RUN=1]"; exit 2; }
+	uv run -- python -m scripts.adopt_sqlglot_wheel --wheel "$(WHEEL)" $(if $(SHA256),--sha256 "$(SHA256)",) $(if $(DRY_RUN),--dry-run,)
+
 .PHONY: sqlglot-fork-diff
 sqlglot-fork-diff:
 	uv run -- python -m scripts.sqlglot_fork_diff $(if $(OLD),--old "$(OLD)",) $(if $(NEW),--new "$(NEW)",) $(if $(BASE_REF),--base-ref "$(BASE_REF)",) $(if $(OUT),--output "$(OUT)",)
