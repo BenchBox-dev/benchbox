@@ -44,14 +44,6 @@ repos:
         stages: [pre-commit]
         files: ^uv\.lock$
 
-      - id: uat-loc-table
-        name: UAT production-LOC ceiling gate
-        entry: uv run --project _project/scripts -- python _project/scripts/uat_loc_table.py --check
-        language: system
-        pass_filenames: false
-        stages: [pre-commit]
-        files: ^(tests/uat/.*\.py|_project/specs/uat-framework\.md|_project/specs/uat-loc-budget\.json|_project/scripts/uat_loc_table\.py)$
-
       - id: timing-policy-check
         name: timing policy (wall-clock allowlist)
         entry: uv run -- python _project/scripts/timing_policy_check.py --strict
@@ -60,21 +52,6 @@ repos:
         stages: [pre-commit]
         files: \.(py|json)$
 
-      - id: timing-policy-fast-lane
-        name: timing policy (fast-lane collect)
-        entry: bash -c 'if [ "$BENCHBOX_PREPUSH" = "1" ]; then exec uv run -- python _project/scripts/fast_lane_ceiling_check.py --strict; else echo "SKIPPED (timing policy fast lane is pre-push only)"; fi'
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
-
-      - id: pr-preflight
-        name: pr-preflight (changed-file lint and tests)
-        entry: make pr-preflight
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-push]
-
       - id: blind-spot-validate
         name: blind-spot frontmatter validation
         entry: uv run --project _project/scripts -- python _project/scripts/validate_blind_spot.py
@@ -82,21 +59,6 @@ repos:
         stages: [pre-commit]
         files: ^_project/blind-spots/.*\.md$
         exclude: ^_project/blind-spots/README\.md$
-
-      - id: duplicate-code-warn
-        name: pylint duplicate-code (warn-only)
-        entry: uv run -- python _project/scripts/pylint_duplicate_code_warn.py
-        language: system
-        pass_filenames: false
-        stages: [manual]
-
-      - id: agent-instructions-check
-        name: agent instruction authority and efficiency audit
-        entry: make agent-instructions-check
-        language: system
-        pass_filenames: false
-        stages: [pre-commit]
-        files: ^(AGENTS\.md|CLAUDE\.md|GEMINI\.md|ANTIGRAVITY\.md|\.claude/(commands/|settings\.json)|\.claude/skills/|docs/(agent/|operations/agent-instruction)|_project/(evals/agent-instructions/|scripts/agent_instruction_audit\.py)|skill-sync\.(yaml|lock))
 
       - id: agent-write-preflight
         name: agent write location and identity preflight

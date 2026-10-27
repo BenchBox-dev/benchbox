@@ -1010,32 +1010,6 @@ class TestReleaseInfrastructure:
         assert "pr-open" not in preflight
         assert "pr-arm-auto-merge" not in preflight
 
-    @pytest.mark.skipif(
-        sys.platform == "win32", reason="the fake make is a POSIX shebang script and PATH is colon-joined"
-    )
-    def test_pre_push_hook_runs_the_targeted_preflight(self, tmp_path: Path):
-        config = yaml.safe_load((REPO_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8"))
-        hooks = [
-            hook for repo in config["repos"] for hook in repo.get("hooks", []) if "pre-push" in hook.get("stages", [])
-        ]
-        preflight_hooks = [hook for hook in hooks if hook["id"] == "pr-preflight"]
-        assert len(preflight_hooks) == 1
-        assert all(hook["id"] != "pr-preflight-fast-tests" for hook in hooks)
-        entry = preflight_hooks[0]["entry"]
-
-        bin_dir = tmp_path / "bin"
-        bin_dir.mkdir()
-        trace = tmp_path / "make.trace"
-        fake_make = bin_dir / "make"
-        fake_make.write_text('#!/bin/sh\nprintf \'%s\\n\' "$*" > "$HOOK_TRACE"\n', encoding="utf-8")
-        fake_make.chmod(0o755)
-        env = os.environ.copy()
-        env.pop("BENCHBOX_PREPUSH", None)
-        env.update({"HOOK_TRACE": str(trace), "PATH": f"{bin_dir}:{env['PATH']}"})
-        result = subprocess.run(shlex.split(entry), cwd=REPO_ROOT, capture_output=True, text=True, env=env)
-        assert result.returncode == 0, result.stderr
-        assert trace.read_text(encoding="utf-8").split() == ["pr-preflight"]
-
     def test_issue_templates_exist(self):
         templates_dir = REPO_ROOT / ".github" / "ISSUE_TEMPLATE"
         assert templates_dir.exists(), "Issue templates directory must exist"

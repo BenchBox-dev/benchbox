@@ -32,16 +32,17 @@ This document provides guidelines and instructions for contributing.
 
    `make develop` is equivalent to `uv sync --group dev`.
 
-3. Install the pre-commit + pre-push hooks:
+3. Install the git hooks:
 
    ```bash
    pre-commit install
    ```
 
-   This installs two hooks (configured in `.pre-commit-config.yaml`):
-   - **pre-commit**: ruff format/check, codespell, YAML / markdown lint, timing-policy check.
-   - **pre-push**: `pr-preflight` — runs `make pr-preflight` (ruff on the changed Python files and the tests mapped from them) before each push.
-   Existing clones that installed hooks before the pre-push stage was added should re-run `pre-commit install` once.
+   This installs the hooks configured in `.pre-commit-config.yaml`:
+   - **pre-commit**: ruff format/check, codespell, YAML / markdown lint, comment policy, Windows antipattern ratchet, timing-policy check, and the agent write-location, handoff, and identity guards.
+   - **commit-msg**: rejects agent `Co-Authored-By` and session trailers.
+
+   Run `make pr-preflight` before pushing; it lints the changed Python files and runs the tests mapped from them. Nothing runs automatically on push.
 
    If `pre-commit install` errors with `Cowardly refusing to install hooks with core.hooksPath set` and points at the default `.git/hooks` location, run `git config --unset-all core.hooksPath` and try again — that's a redundant override left over from earlier tooling.
 
