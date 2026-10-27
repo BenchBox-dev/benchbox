@@ -18247,9 +18247,7 @@
     },
     "pr-stale-base-inflates-oracle-tier": {
       "claim": null,
-      "needs": [
-        "oracle-history-edited-review-fail-closed-20261027"
-      ],
+      "needs": [],
       "priority": "medium",
       "status": "open",
       "title": "A PR compared against a stale base is reviewed at the wrong oracle tier"
