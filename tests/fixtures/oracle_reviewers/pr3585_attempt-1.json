@@ -1,0 +1,16 @@
+{
+  "absence": {
+    "detail": "the verdict would ship but its trace shows no read of _project/scripts/oracle_reviewers/templates/README.md, _project/scripts/oracle_reviewers/templates/deep.md, _project/scripts/oracle_reviewers/templates/gate.md, _project/scripts/oracle_reviewers/templates/standard.md, tests/unit/scripts/oracle_reviewers/test_attempts.py and 1 more",
+    "kind": "incomplete",
+    "reset_at": null
+  },
+  "diagnostic": "trace: reads=8 greps=11 failed=0 credited=[.github/inert-paths.txt, .oracle-pull-request.diff, _project/scripts/oracle_reviewers/protocol.py, _project/scripts/oracle_reviewers/render.py, _project/scripts/oracle_reviewers/verdict.py and 4 more] required=10 missing=[_project/scripts/oracle_reviewers/templates/README.md, _project/scripts/oracle_reviewers/templates/deep.md, _project/scripts/oracle_reviewers/templates/gate.md, _project/scripts/oracle_reviewers/templates/standard.md, tests/unit/scripts/oracle_reviewers/test_attempts.py and 1 more] elided_reads=0 elided_spans=0 elided_lines=0",
+  "head_sha": "cac6c9cfcaab940db75a6ce7d10eea03c1cae38e",
+  "outcome": "absent",
+  "pr": 3585,
+  "reviewer": "large",
+  "run_id": "40515355448",
+  "schema": 2,
+  "slot": 1,
+  "verdict": null
+}

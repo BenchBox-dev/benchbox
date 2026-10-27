@@ -9,6 +9,7 @@ from _project.scripts.oracle_reviewers.evidence import (
     CITATION_PREFIX,
     INLINE,
     UNVERIFIED_WITHDRAWAL,
+    Gap,
     Trace,
     check,
     describe,
@@ -213,7 +214,7 @@ def test_check_reports_examined_gap_without_trace_gate(tmp_path: Path) -> None:
         required=["pkg/a.py"],
         run=Trace(),
     )
-    assert problem == "the verdict would ship but did not examine pkg/a.py"
+    assert problem == Gap("the verdict would ship but did not examine pkg/a.py", ("pkg/a.py",))
 
 
 @pytest.mark.parametrize(
@@ -237,7 +238,7 @@ def test_check_requires_an_omp_read_of_every_required_file(
         required=["pkg/a.py", "pkg/b.py"],
         run=Trace(reads),
     )
-    assert found == problem
+    assert (found.reason if found else None) == problem
 
 
 def test_check_accepts_a_single_file_grep_for_each_required_file(tmp_path: Path) -> None:
@@ -245,18 +246,16 @@ def test_check_accepts_a_single_file_grep_for_each_required_file(tmp_path: Path)
     target.parent.mkdir(parents=True)
     target.write_text("x = 1\n", encoding="utf-8")
     verdict = _verdict(examined=("pkg/a.py", "pkg/b.py"))
-    assert (
-        check(
-            verdict,
-            ships=True,
-            harness="omp",
-            brief_mode="summary",
-            workspace=tmp_path,
-            required=["pkg/a.py", "pkg/b.py"],
-            run=Trace((), ("pkg/a.py", "pkg/a.py;pkg/b.py", "pkg")),
-        )
-        == "the verdict would ship but its trace shows no read of pkg/b.py"
+    found = check(
+        verdict,
+        ships=True,
+        harness="omp",
+        brief_mode="summary",
+        workspace=tmp_path,
+        required=["pkg/a.py", "pkg/b.py"],
+        run=Trace((), ("pkg/a.py", "pkg/a.py;pkg/b.py", "pkg")),
     )
+    assert found == Gap("the verdict would ship but its trace shows no read of pkg/b.py", ("pkg/b.py",))
 
 
 def test_check_skips_inline_and_non_shipping_verdicts(tmp_path: Path) -> None:
@@ -322,8 +321,9 @@ def test_check_truncates_long_missing_lists(tmp_path: Path) -> None:
         run=Trace(tuple(required)),
     )
     assert problem is not None
-    assert problem.endswith("and 2 more")
-    assert "pkg/g.py" not in problem
+    assert problem.reason.endswith("and 2 more")
+    assert "pkg/g.py" not in problem.reason
+    assert problem.files == tuple(required)
 
 
 def _withdrawn_verdict(evidence: str, examined: tuple[str, ...] = ("pkg/a.py",)) -> Verdict:

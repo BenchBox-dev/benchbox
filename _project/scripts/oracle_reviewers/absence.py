@@ -89,6 +89,7 @@ class Absence:
     detail: str = ""
     reset_at: datetime | None = None
     provider: str = ""
+    unread: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "detail", credentials.redact(self.detail))

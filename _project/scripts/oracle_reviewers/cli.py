@@ -9,7 +9,7 @@ import re
 import shutil
 import sys
 import tempfile
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -46,10 +46,13 @@ from .render import (
     UNOPENED_PR,
     OversizeError,
     dispute_listing,
+    file_list_block,
     file_listing,
     prior_listing,
     render_review,
+    retry_note,
     select_prior_rule,
+    unread_required,
 )
 from .selection import SelectionInput
 from .verdict import DO_NOT_SHIP
@@ -688,18 +691,21 @@ def _plan_review(
             chain.append(reviewer)
     names = {reviewer.name for reviewer in chain}
     follow_up_reviewer = latest.get("reviewer") if follow_up and latest.get("reviewer") in names else None
+    evidence_files = sorted(item.path for item in reviewed_now if item.path in in_scope and not item.removed)
     listing_bytes = len(file_listing(changed).encode("utf-8"))
     diff_bytes = len((diff_text or "").encode("utf-8"))
     if listing_bytes > policy.brief_max_bytes:
         brief_mode = "oversize"
     elif diff_bytes <= policy.brief_max_bytes - DIFF_HEADROOM_BYTES:
         brief_mode = "inline"
+    elif len(file_list_block(changed, evidence_files, evidence_files).encode("utf-8")) > policy.brief_max_bytes:
+        brief_mode = "oversize"
     else:
         brief_mode = "file-list"
     plan.update(
         {
             "decision": REVIEW,
-            "evidence_files": sorted(item.path for item in reviewed_now if item.path in in_scope and not item.removed),
+            "evidence_files": evidence_files,
             "chain": [reviewer.to_json() for reviewer in chain],
             "buckets": dict(policy.buckets),
             "follow_up_reviewer": follow_up_reviewer,
@@ -816,7 +822,13 @@ def _chain_reviewer(plan: Mapping[str, Any], name: str) -> Reviewer:
     raise SystemExit(f"oracle-verdict: {name!r} is not in this run's reviewer chain")
 
 
-def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Classification, workspace: Path) -> str:
+def _assemble_prompt(
+    plan: Mapping[str, Any],
+    plan_dir: Path,
+    classification: Classification,
+    workspace: Path,
+    unread: Sequence[str] = (),
+) -> str:
     reviewed = [
         ChangedFile(
             path=item["path"],
@@ -827,7 +839,13 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
         )
         for item in plan.get("reviewed_files", [])
     ]
-    files_block = f"Changed files:\n{file_listing(reviewed)}\n"
+    file_list = plan["brief_mode"] == "file-list"
+    marked = unread_required(unread, plan.get("evidence_files", [])) if file_list else []
+    files_block = (
+        f"Changed files:\n{file_list_block(reviewed, plan.get('evidence_files', []), marked)}"
+        if file_list
+        else f"Changed files:\n{file_listing(reviewed)}\n"
+    )
     if plan.get("scope") == "changed":
         unchanged = "\n".join(plan.get("unchanged_files", []))
         files_block += (
@@ -867,6 +885,7 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
             raise DiffNotStagedError(DIFF_NOT_STAGED_DETAIL)
     return render_review(
         template_name=classification.template,
+        retry_note=retry_note(len(marked)),
         classification=classification,
         repo=plan["repo"],
         pr=UNOPENED_PR if plan["pr"] is None else int(plan["pr"]),
@@ -897,7 +916,10 @@ def command_review(args: argparse.Namespace) -> int:
         raise SystemExit(f"oracle-verdict: classification unreadable: {exc}") from exc
     workspace = Path(args.workspace)
     try:
-        prompt: str | None = _assemble_prompt(plan, plan_path.parent, classification, workspace)
+        unread = selection.retry_unread(
+            attempt_files.load(Path(args.out_dir), plan, os.environ["GITHUB_RUN_ID"]).attempts, reviewer.name, args.slot
+        )
+        prompt: str | None = _assemble_prompt(plan, plan_path.parent, classification, workspace, unread)
     except DiffNotStagedError as exc:
         prompt = None
         outcome = runner.ReviewOutcome(None, Absence(ERROR, str(exc)), str(exc))

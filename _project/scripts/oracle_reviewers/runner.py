@@ -209,7 +209,7 @@ def review(
     problem = protocol.contradiction(verdict, plan, workspace=workspace)
     if problem is not None:
         return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), traced)
-    problem = evidence.check(
+    gap = evidence.check(
         verdict,
         ships=protocol.judge_planned(verdict, plan, workspace=workspace).decision == SHIP,
         harness=reviewer.harness,
@@ -218,6 +218,6 @@ def review(
         required=tuple(plan.get("evidence_files", ())),
         run=evidence.trace(reviewer.harness, result.stdout),
     )
-    if problem is not None:
-        return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, problem), traced)
+    if gap is not None:
+        return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, gap.reason, unread=gap.files), traced)
     return ReviewOutcome(verdict.to_json(), None, traced)

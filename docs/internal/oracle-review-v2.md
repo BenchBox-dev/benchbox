@@ -507,14 +507,25 @@ fallback over family exclusion.
 
 A defect-free verdict can be hollow: a reviewer that could not read the files
 may still answer. The job checks each verdict against the head checkout before
-recording it; a failure records the reviewer absent (`incomplete`), so it runs
-once more before the chain advances, and with no verdict the run stays pending.
-A hollow answer never passes.
+recording it; a failure records the reviewer absent (`incomplete`) and the
+required files it left unread on the attempt artifact (`absence.unread`). The
+same reviewer then runs once more. Its brief marks those files in the fenced
+"Required reads" list, taken from the plan's required list intersected with the
+recorded list, never from reviewer text, and carries a fixed "Earlier attempt
+feedback" note that holds only their count, so author-chosen file names stay
+inside the data fences. If the retry also fails the check, the chain advances
+and the next reviewer's brief carries neither mark nor note. With no verdict the
+run stays pending. A hollow answer never passes.
 
 - Every defect must cite a head-commit file and a line within it. One that does
   not is kept, noted as citation not found, so it still fails the change;
   discarding the verdict would hand the change to a reviewer that might pass it.
-- In `file-list` mode (the brief lists files instead of the diff), a verdict
+- In `file-list` mode (the brief lists files instead of the diff), the brief
+  names the required reads explicitly: the plan's `evidence_files`, each with its
+  line counts, under "Required reads". Every other changed file (inert, exempt or
+  deleted) is listed under "Not required reads". The brief says each required
+  file needs its own direct read, that reading the staged pull request diff does
+  not count, and that one-line and low-priority files are included. A verdict
   that would be SHIP must name in `files_examined` every soundness-path file
   under review still present at the head (in a follow-up, those changed since
   the last review), and OMP's event stream must show a successful `read` of each
