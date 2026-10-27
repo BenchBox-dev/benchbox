@@ -25035,15 +25035,10 @@
       "title": "Unblock PRs: record a reviewed freshness waiver for upstream SQLGlot v30.25.0"
     },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
-      "claim": {
-        "expires_at": "2026-10-28T14:15:02Z",
-        "generation": "2fa380f93a6a4d239db98e26a41bd185",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Give the MySQL SQLGlot workaround retirement check real execution evidence"
     },
     "sqlglot-overlay-vacuous-guard": {
