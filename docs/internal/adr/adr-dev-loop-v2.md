@@ -246,8 +246,9 @@ once corresponding preconditions and backups (per Guardrail G5) are satisfied:
    - Delete merged `auto-revert/*` branches and merged feature/fix branches.
 
 3. **Labels and environments:**
-   - Delete legacy incident labels (`incident:develop-red`, `incident:develop-red-revert-conflict`,
-     `incident:release-canary-red`). Keep `no-auto-merge` (amendment of 2026-10-15).
+   - Delete legacy incident labels (`incident:develop-red`, `incident:develop-red-revert-conflict`); both were
+     deleted on 2026-10-27. Keep `incident:release-canary-red` (owner decision of 2026-10-27) and `no-auto-merge`
+     (amendment of 2026-10-15).
    - Create `quarantine` and `t3:*` labels.
    - Delete the `publication-attestation` environment after site deployment cutover.
 

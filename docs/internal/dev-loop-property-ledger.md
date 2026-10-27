@@ -53,6 +53,11 @@ Owner decisions of 2026-10-27:
 - GizmoSQL stays in the release rehearsal candidate.
 - Deleting the `release` branch and its ruleset is an owner-run step after the dlv2-52 publication; no agent deletes
   them.
+- The merge-queue and auto-revert branch namespaces were purged on 2026-10-27: 105 remote branches were deleted
+  (6 `gh-readonly-queue`, 8 `auto-revert`, 46 closed-PR `auto/results-mirror`, 45 other closed or merged pull
+  request branches), with their tips archived in the tracker. The `release`, `develop`, `published-results` and
+  `todo-state` branches, open-pull-request branches and the `no-auto-merge` and `incident:release-canary-red`
+  labels were not touched.
 
 ## Safety properties
 
