@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 import yaml
 
+from _project.scripts.oracle_reviewers import omp_pin
 from _project.scripts.oracle_reviewers.commands import (
     FORBIDDEN_FLAGS,
     build,
@@ -22,6 +23,11 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 WS = Path("/work/space")
 PROMPT = "review this"
 SELECTOR = "anthropic/claude-opus-5-5"
+
+
+@pytest.fixture(autouse=True)
+def pinned_binary(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
 
 
 def _reviewer(**overrides: Any) -> Reviewer:
@@ -45,7 +51,7 @@ def _reviewer(**overrides: Any) -> Reviewer:
 def test_omp_argv_is_locked_down_reviewer(tmp_path: Path) -> None:
     invocation = build(_reviewer(), WS, PROMPT, tmp_path)
     argv = invocation.argv
-    assert argv[0] == "omp"
+    assert argv[0] == sys.executable
     assert "--print" in argv and argv[argv.index("--mode") + 1] == "json"
     assert argv[argv.index("--model") + 1] == SELECTOR
     assert argv[argv.index("--thinking") + 1] == "medium"

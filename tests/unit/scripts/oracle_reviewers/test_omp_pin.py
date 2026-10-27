@@ -200,28 +200,19 @@ def test_the_install_command_fails_with_the_refusal_when_the_platform_is_not_pin
     assert "no omp build is pinned for plan9-mips" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("name", ["OMP_URL", "OMP_SHA256", "OMP_VERSION"])
-def test_the_install_command_refuses_a_legacy_pin_mismatch_before_download(
-    name: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    pin = omp_pin.pin_from_text(POLICY_PATH.read_text(encoding="utf-8"))
-    build = pin.builds["linux-x64"]
-    for key, value in zip(("OMP_URL", "OMP_SHA256", "OMP_VERSION"), (build.url, build.sha256, pin.version)):
-        monkeypatch.setenv(key, value)
-    monkeypatch.setenv(name, "different")
-    fetch = Fetcher()
-    monkeypatch.setattr(omp_pin, "download", fetch)
-    assert cli.main(["install-omp", "--policy", str(POLICY_PATH)]) == 1
-    assert "legacy workflow omp pin differs" in capsys.readouterr().err
-    assert fetch.urls == []
-
-
-def test_the_matching_legacy_pin_is_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
-    pin = omp_pin.pin_from_text(POLICY_PATH.read_text(encoding="utf-8"))
-    build = pin.builds["linux-x64"]
-    for key, value in zip(("OMP_URL", "OMP_SHA256", "OMP_VERSION"), (build.url, build.sha256, pin.version)):
-        monkeypatch.setenv(key, value)
-    omp_pin.check_legacy_pin(pin)
+def test_required_binary_never_falls_back_to_path_omp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    decoy = tmp_path / "omp"
+    decoy.write_text("#!/bin/sh\n", encoding="utf-8")
+    decoy.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.delenv(omp_pin.BINARY_ENV, raising=False)
+    with pytest.raises(omp_pin.PinError, match="pinned omp is not installed"):
+        omp_pin.required_binary()
+    monkeypatch.setenv(omp_pin.BINARY_ENV, str(tmp_path / "missing"))
+    with pytest.raises(omp_pin.PinError):
+        omp_pin.required_binary()
+    monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
+    assert omp_pin.required_binary() == Path(sys.executable)
 
 
 @pytest.mark.parametrize("command", ["select", "scan-disk", "attempts", "finalize"])

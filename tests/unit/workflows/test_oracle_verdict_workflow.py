@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -9,7 +10,9 @@ import pytest
 import yaml
 from workflow_expressions import evaluate, render
 
+from _project.scripts.oracle_reviewers import omp_pin
 from _project.scripts.oracle_reviewers.commands import build
+from _project.scripts.oracle_reviewers.omp_pin import pin_from_text
 from _project.scripts.oracle_reviewers.policy import SIZE_BUCKETS, load_policy
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -419,11 +422,7 @@ def test_omp_is_installed_once_pinned_and_checked() -> None:
     install = _step("Install omp")
     pin = yaml.safe_load((REPO_ROOT / ".github/oracle-reviewers.yml").read_text(encoding="utf-8"))["omp"]
     linux = pin["builds"]["linux-x64"]
-    assert install["env"] == {
-        "OMP_URL": linux["url"],
-        "OMP_SHA256": linux["sha256"],
-        "OMP_VERSION": pin["version"],
-    }
+    assert "env" not in install
     assert pin["version"] == "18.12.1"
     assert linux["url"] == "https://build.stencil.so/d/omp/20261017-231446-291e055/omp-linux-x64"
     assert linux["sha256"] == "16181401e616d7d895bae31fa97476f1513d4080807d60d3a1a04006191a1bb3"
@@ -435,9 +434,17 @@ def test_omp_is_installed_once_pinned_and_checked() -> None:
     )
     assert lines[0] == f"binary=$({command})"
     assert lines[1] == '"$binary" --version | tee -a "$GITHUB_STEP_SUMMARY"'
-    assert lines[2] == 'dirname "$binary" >> "$GITHUB_PATH"'
+    assert lines[2] == 'echo "ORACLE_OMP_BINARY=$binary" >> "$GITHUB_ENV"'
     assert "curl " not in text
+    assert "OMP_URL" not in text and "OMP_SHA256" not in text and "OMP_VERSION" not in text
     assert "--dangerously" not in text and "--yolo" not in text
+
+
+def test_the_pin_file_keeps_the_linux_build_the_workflow_used_to_install() -> None:
+    pin = pin_from_text((REPO_ROOT / ".github" / "oracle-reviewers.yml").read_text(encoding="utf-8"))
+    assert pin.version == "18.12.1"
+    assert pin.builds["linux-x64"].url == "https://build.stencil.so/d/omp/20261017-231446-291e055/omp-linux-x64"
+    assert pin.builds["linux-x64"].sha256 == "16181401e616d7d895bae31fa97476f1513d4080807d60d3a1a04006191a1bb3"
 
 
 TOLERATED_FAILURES = (
@@ -553,7 +560,8 @@ def test_workflow_has_no_comments() -> None:
     assert not any(line.lstrip().startswith("#") for line in _text_of_workflow().splitlines())
 
 
-def test_reviewer_commands_keep_read_only_flags(tmp_path: Path) -> None:
+def test_reviewer_commands_keep_read_only_flags(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
     for name, reviewer in POLICY.reviewers.items():
         argv = build(reviewer, tmp_path, "prompt", tmp_path).argv
         assert argv[argv.index("--tools") + 1] == "read,grep,glob", name

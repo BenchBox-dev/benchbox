@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import shutil
 import signal
 import subprocess
 import tempfile
@@ -12,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import absence, credentials, evidence, processes, protocol
+from . import absence, credentials, evidence, omp_pin, processes, protocol
 from .commands import Invocation, build
 from .policy import Reviewer
 from .verdict import (
@@ -152,8 +151,10 @@ def review(
         return ReviewOutcome(None, absence.Absence(absence.ERROR, "the workspace is not at the reviewed head"), "")
     if not prompt:
         return ReviewOutcome(None, absence.Absence(absence.INVALID, "the brief is empty or truncated"), "")
-    if shutil.which(reviewer.harness) is None:
-        return ReviewOutcome(None, absence.Absence(absence.ERROR, f"{reviewer.harness} is not installed"), "")
+    try:
+        omp_pin.required_binary()
+    except omp_pin.PinError as exc:
+        return ReviewOutcome(None, absence.Absence(absence.ERROR, str(exc)), "")
     scratch.mkdir(parents=True, exist_ok=True)
     invocation = build(reviewer, workspace, prompt, scratch)
     staged_before = _digest(workspace / STAGED_DIFF_NAME)

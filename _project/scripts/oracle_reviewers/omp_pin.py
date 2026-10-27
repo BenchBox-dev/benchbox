@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+BINARY_ENV = "ORACLE_OMP_BINARY"
 CACHE_ENV = "BENCHBOX_OMP_CACHE"
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?")
@@ -160,22 +161,22 @@ def install(pin: Pin, target: str | None = None, root: Path | None = None, fetch
     return binary
 
 
-def check_legacy_pin(pin: Pin) -> None:
-    names = ("OMP_URL", "OMP_SHA256", "OMP_VERSION")
-    if not any(name in os.environ for name in names):
-        return
-    build = select_build(pin, "linux-x64")
-    expected = (build.url, build.sha256, pin.version)
-    if tuple(os.environ.get(name) for name in names) != expected:
-        raise PinError("the legacy workflow omp pin differs from the reviewer policy pin")
+def configured_binary() -> Path | None:
+    value = os.environ.get(BINARY_ENV, "")
+    return Path(value) if value else None
+
+
+def required_binary() -> Path:
+    binary = configured_binary()
+    if binary is None or not binary.is_file() or not os.access(binary, os.X_OK):
+        raise PinError(f"the pinned omp is not installed; {BINARY_ENV} does not name an executable")
+    return binary
 
 
 def command_install(args: argparse.Namespace) -> int:
     try:
         text = sys.stdin.read() if args.policy == "-" else Path(args.policy).read_text(encoding="utf-8")
-        pin = pin_from_text(text)
-        check_legacy_pin(pin)
-        binary = install(pin)
+        binary = install(pin_from_text(text))
     except (OSError, PinError) as exc:
         print(f"oracle-verdict: error: {exc}", file=sys.stderr)
         return 1
