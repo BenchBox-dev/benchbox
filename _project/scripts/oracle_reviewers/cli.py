@@ -1023,6 +1023,9 @@ def command_guard(args: argparse.Namespace) -> int:
         print(f"oracle-verdict: error: {exc}; nothing is posted for head {plan['head_sha']}", file=sys.stderr)
         return 2
     if found.error is not None:
+        if plan.get("decision") == HOLD:
+            _output({"skip": "false"})
+            return 0
         print(f"oracle-verdict: error: {found.error}; nothing is posted for head {plan['head_sha']}", file=sys.stderr)
         return 2
     latest = found.latest

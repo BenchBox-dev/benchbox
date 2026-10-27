@@ -1108,3 +1108,15 @@ def test_an_unreadable_base_change_history_does_not_carry_a_refusal() -> None:
     refused = {**_decided(HEAD, protocol.REFUSED), "kind": protocol.REFUSAL}
     history = protocol.history([_review_at(refused, "2026-10-23T10:00:00Z")], "benchbox-oracle")
     assert _plan_same_head(history, base_change_unreadable=True).kind == protocol.SKIP
+
+
+def test_the_post_guard_lets_a_planned_hold_post_its_pending_status_despite_an_edit(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(
+        json.dumps({**_protocol_plan(policy), "bot_login": "benchbox-oracle", "decision": "hold"}), encoding="utf-8"
+    )
+    monkeypatch.setattr(github, "oracle_reviews", lambda repo, pr: [_guard_review(HEAD)])
+    monkeypatch.setattr(github, "review_edit_states", lambda ids: dict.fromkeys(ids, (None, True)))
+    assert _run_cli(monkeypatch, tmp_path, "guard", "--plan", str(plan_path)) == {"skip": "false"}
