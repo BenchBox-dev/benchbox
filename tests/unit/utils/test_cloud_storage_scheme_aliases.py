@@ -127,16 +127,20 @@ class TestCredentialValidationHandlesAliases:
 
         built: list[str] = []
 
-        def build_offline(path, provider, cloud_path_cls):
-            built.append(path)
-            return SimpleNamespace(exists=lambda: True)
+        class OfflineCloudPath:
+            def __init__(self, path, client=None):
+                built.append(path)
 
-        monkeypatch.setattr(cs, "_build_cloud_path_for_validation", build_offline)
+            def exists(self):
+                return True
+
+        monkeypatch.setattr(cs, "_load_cloudpathlib", lambda: (OfflineCloudPath, Exception))
 
         alias_result = validate_cloud_credentials(alias)
         canonical_result = validate_cloud_credentials(canonical)
 
-        assert built == [alias, canonical]
+        assert built[0] == built[1]
+        assert built[0].split("://")[0] == canonical.split("://")[0]
         assert alias_result["valid"] == canonical_result["valid"]
         assert "does not begin with a known prefix" not in str(alias_result["error"])
 

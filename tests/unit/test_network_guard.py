@@ -17,18 +17,18 @@ PUBLIC_IP = "203.0.113.7"
 
 
 def test_public_ip_connect_is_blocked(expect_network_block):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    with expect_network_block(PUBLIC_IP), socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         with pytest.raises(network_guard.NetworkAccessBlocked, match="network guard"):
             sock.connect((PUBLIC_IP, 80))
 
 
 def test_create_connection_to_public_host_is_blocked(expect_network_block):
-    with pytest.raises(network_guard.NetworkAccessBlocked, match="non-loopback"):
+    with expect_network_block("example.com"), pytest.raises(network_guard.NetworkAccessBlocked, match="non-loopback"):
         socket.create_connection(("example.com", 443), timeout=1)
 
 
 def test_dns_resolution_of_public_name_is_blocked(expect_network_block):
-    with pytest.raises(network_guard.NetworkAccessBlocked):
+    with expect_network_block("example.com"), pytest.raises(network_guard.NetworkAccessBlocked):
         socket.getaddrinfo("example.com", 443)
 
 
@@ -49,13 +49,13 @@ def test_every_fetch_mechanism_is_blocked(mechanism, expect_network_block):
         attempt = lambda: ssl.create_default_context().wrap_socket(
             socket.create_connection((PUBLIC_IP, 443), timeout=1), server_hostname="example.com"
         )
-    with pytest.raises(Exception) as caught:
+    with expect_network_block(PUBLIC_IP), pytest.raises(Exception) as caught:
         attempt()
     assert "BenchBox network guard" in str(caught.value) or "BenchBox network guard" in str(caught.value.__cause__)
 
 
 def test_udp_sendto_public_host_is_blocked(expect_network_block):
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+    with expect_network_block(PUBLIC_IP), socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         with pytest.raises(network_guard.NetworkAccessBlocked):
             sock.sendto(b"x", (PUBLIC_IP, 53))
 
@@ -104,9 +104,10 @@ def test_subprocess_inherits_guard(tmp_path):
 
 
 def test_subprocess_violation_is_recorded_for_the_spawning_test(network_guard_log, expect_network_block):
-    result = _run(PUBLIC_IP, 80, None)
-    assert result.returncode != 0
-    assert "BenchBox network guard" in network_guard_log.read_text(encoding="utf-8")
+    with expect_network_block(PUBLIC_IP):
+        result = _run(PUBLIC_IP, 80, None)
+        assert result.returncode != 0
+        assert "BenchBox network guard" in network_guard_log.read_text(encoding="utf-8")
 
 
 def test_subprocess_loopback_connect_is_allowed(tmp_path):
@@ -218,7 +219,23 @@ def test_allow_network_with_a_reason_collects(tmp_path):
 def test_expect_network_block_fails_when_nothing_was_blocked(tmp_path):
     result = _run_inner_pytest(
         tmp_path,
-        "import pytest\npytestmark = pytest.mark.unit\ndef test_x(expect_network_block):\n    pass\n",
+        "import pytest\npytestmark = pytest.mark.unit\n"
+        "def test_x(expect_network_block):\n    with expect_network_block('203.0.113.7'):\n        pass\n",
     )
     assert result.returncode != 0
     assert "blocked nothing" in result.stdout
+
+
+def test_expect_network_block_does_not_excuse_other_targets(tmp_path):
+    result = _run_inner_pytest(
+        tmp_path,
+        "import socket\nimport pytest\npytestmark = pytest.mark.unit\n"
+        "def test_x(expect_network_block):\n"
+        "    with expect_network_block('203.0.113.7'):\n"
+        "        try:\n            socket.create_connection(('203.0.113.7', 80), timeout=1)\n"
+        "        except Exception:\n            pass\n"
+        "    try:\n        socket.create_connection(('198.51.100.9', 80), timeout=1)\n"
+        "    except Exception:\n        pass\n",
+    )
+    assert result.returncode != 0
+    assert "198.51.100.9" in result.stdout

@@ -112,6 +112,18 @@ def uninstall() -> None:
     _originals.clear()
 
 
+def peek_violations() -> list[str]:
+    with _lock:
+        return list(_violations)
+
+
+def discard_violations(lines: list[str]) -> None:
+    with _lock:
+        for line in lines:
+            if line in _violations:
+                _violations.remove(line)
+
+
 def take_violations() -> list[str]:
     with _lock:
         taken = list(_violations)

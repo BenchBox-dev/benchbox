@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -80,16 +81,32 @@ def network_guard_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.fixture
-def expect_network_block(network_guard_log: Path) -> Iterator[None]:
-    yield
-    violations = network_guard.take_violations()
-    log_name = str(network_guard_log)
-    if os.path.exists(log_name):
-        with open(log_name, encoding="utf-8") as handle:
-            violations.extend(line for line in handle if line.strip())
-        os.unlink(log_name)
-    if not violations:
-        pytest.fail("expect_network_block was requested but the guard blocked nothing", pytrace=False)
+def expect_network_block(network_guard_log: Path) -> Iterator[Callable[[str], contextlib.AbstractContextManager[None]]]:
+    @contextlib.contextmanager
+    def expect(target: str) -> Iterator[None]:
+        before = len(network_guard.peek_violations())
+        log_name = str(network_guard_log)
+        before_log = _read_lines(log_name)
+        yield
+        in_process = network_guard.peek_violations()[before:]
+        from_log = _read_lines(log_name)[len(before_log) :]
+        matching = [line for line in [*in_process, *from_log] if repr(target) in line or target in line]
+        if not matching:
+            pytest.fail(f"expected the network guard to block {target!r}, but it blocked nothing for it", pytrace=False)
+        network_guard.discard_violations(matching)
+        kept = [line for line in _read_lines(log_name) if line not in matching]
+        if os.path.exists(log_name):
+            with open(log_name, "w", encoding="utf-8") as handle:
+                handle.write("".join(f"{line}\n" for line in kept))
+
+    yield expect
+
+
+def _read_lines(path: str) -> list[str]:
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as handle:
+        return [line.rstrip("\n") for line in handle if line.strip()]
 
 
 @pytest.fixture(autouse=True)
