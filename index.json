@@ -26027,7 +26027,9 @@
     },
     "test-oracle-guard-global-sleep-patch": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Confirm or fix suspected global time.sleep patch flakiness in test_rounds post-guard test"
