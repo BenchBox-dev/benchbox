@@ -737,7 +737,10 @@ to GitHub.
   build host publishes no checksum file, so each SHA-256 was computed from a TLS
   download of the published artifact, the method that established the original
   linux-x64 pin. To bump the build, change the version and every platform's URL
-  and SHA-256 together.
+  and SHA-256 together. The gateway host runs the same `darwin-arm64` build from
+  the same cache (`oracle-gateway-host.md`), so a bump reaches the serving half
+  when the owner re-runs `broker` and `gateway`; `check` fails while either
+  agent runs anything else.
 - **Blocking.** A Critical or High finding, or DO NOT SHIP, makes `pr-open`
   refuse before pushing (exit 1). A `Local oracle override: <reason>` line with
   a non-empty reason in the PR body file (`PR_BODY_FILE`) lets it proceed and

@@ -15,8 +15,9 @@ scratch. The design and its accepted risks are in
 
 | Piece | Detail |
 | --- | --- |
-| Credential broker | launchd agent `dev.omp.auth-broker`: `omp auth-broker serve --bind=127.0.0.1:8765 --trust-proxy-headers`. Provider logins live in `~/.omp/agent/agent.db`; its bearer token is `~/.omp/auth-broker.token`. Log: `~/.omp/logs/auth-broker.log`. |
-| Gateway | launchd agent `dev.omp.auth-gateway`, which runs `~/.omp/oracle-gateway/run.sh`: `omp auth-gateway serve --bind=127.0.0.1:4000 --clients=~/.omp/oracle-gateway/clients.json`, with `HOME=~/.omp/oracle-gateway/home` and the broker's URL and token. Log: `~/.omp/logs/auth-gateway.log`. |
+| omp build | The pinned `darwin-arm64` build from the `omp:` section of `.github/oracle-reviewers.yml` on `origin/develop`, installed by `cli.py install-omp` into `~/.cache/benchbox/omp/<version>/darwin-arm64/omp` after its SHA-256 and version check, the same cache local reviews use. The script runs both agents from that path. It never looks up `omp` on `PATH` and ignores an `OMP` environment variable, so the omp you run day to day is untouched. |
+| Credential broker | launchd agent `dev.omp.auth-broker`: `<pinned omp> auth-broker serve --bind=127.0.0.1:8765 --trust-proxy-headers`. Provider logins live in `~/.omp/agent/agent.db`; its bearer token is `~/.omp/auth-broker.token`. Log: `~/.omp/logs/auth-broker.log`. |
+| Gateway | launchd agent `dev.omp.auth-gateway`, which runs `~/.omp/oracle-gateway/run.sh`: `<pinned omp> auth-gateway serve --bind=127.0.0.1:4000 --clients=~/.omp/oracle-gateway/clients.json`, with `HOME=~/.omp/oracle-gateway/home` and the broker's URL and token. Log: `~/.omp/logs/auth-gateway.log`. |
 | Client scope | `~/.omp/oracle-gateway/clients.json` (0600) admits `oracle-ci` and one client per [named client](#named-clients) token file. Each entry holds the SHA-256 of that client's token, every model `.github/oracle-omp-config.yml` on `origin/develop` lets a reviewer request, and every broker account logged in for those providers; `oracle-ci`'s token is `client.token`. `accounts` is also an allow-list: stored or environment API keys are never used for those providers. The gateway re-reads the file every 10 seconds. |
 | Gateway admin token | The gateway creates `~/.omp/oracle-gateway/home/.omp/auth-gateway.token` (0600) on first start. It is not scoped by `clients.json`. Never copy it off the host. |
 | Tailnet | `tailscale serve --bg --https=4000 http://127.0.0.1:4000`, reachable only inside the tailnet. |
@@ -91,17 +92,19 @@ Then:
    - Start the Tailscale daemon and join the tailnet:
      `sudo brew services start tailscale`, then `sudo tailscale up`.
    - Sign `gh` in as a repository admin: `gh auth login`.
-   - Install `omp` 18.12.6 or later, which has `auth-gateway serve --clients`.
-     Put it on `PATH`, or set `OMP=/path/to/omp` for every script run.
+   - No `omp` install is needed for the host: the script installs the pinned
+     build itself. Every `broker`, `gateway` and `check` run prints
+     `omp pin: <version> sha256=<hash>` for the build it resolved.
 2. Clone this repository. The host checkout may be on any branch: `gateway`
    fetches `origin/develop` and scopes every client to that branch's
    `.github/oracle-omp-config.yml`.
 3. Start the broker: `_project/scripts/oracle_gateway_host.sh broker`.
 4. Log in to each reviewer provider with the account the oracle should spend:
-   `omp auth-broker login anthropic`, then `openai-codex`, `muse-code` and
+   `<pinned omp> auth-broker login anthropic`, then `openai-codex`, `muse-code` and
    `google-antigravity`. The broker step prints any that are missing. Every
    account logged in for a provider is pinned, so log out of any the oracle
-   must not use (`omp auth-broker logout <provider>`).
+   must not use (`<pinned omp> auth-broker logout <provider>`). The broker step
+   prints the pinned binary's path.
 5. Start the gateway: `_project/scripts/oracle_gateway_host.sh gateway`.
    - It creates `client.token` if there is none.
    - It generates `clients.json` through `cli.py gateway-clients`, which
@@ -117,14 +120,19 @@ Then:
    healthy host prints:
 
    ```text
+   omp pin: 18.12.1 sha256=<hash>
    broker: ok on 127.0.0.1:8765
+   dev.omp.auth-broker: omp 18.12.1 sha256=<hash>
+   dev.omp.auth-gateway: omp 18.12.1 sha256=<hash>
    logins: anthropic openai-codex muse-code google-antigravity
    http://127.0.0.1:4000: healthz=200 models=11/11 usage=403
    https://<host>.<tailnet>.ts.net:4000: healthz=200 models=11/11 usage=403
    secrets: ORACLE_GATEWAY_TOKEN and ORACLE_GATEWAY_URL are set
    ```
 
-   `models` must equal the model count in `clients.json`, and `/v1/usage`
+   `check` fails when the broker or the gateway is running an omp whose
+   SHA-256 or version differs from the pin, or when `run.sh` names another
+   binary. `models` must equal the model count in `clients.json`, and `/v1/usage`
    must be refused with a 403. With [named clients](#named-clients), each
    one gets its own line and must list the same models as `oracle-ci`.
 9. Run one review through it:
@@ -145,6 +153,10 @@ Then:
   starts:
   `launchctl kickstart -k gui/$(id -u)/dev.omp.auth-broker` and
   `launchctl kickstart -k gui/$(id -u)/dev.omp.auth-gateway`.
+- **omp pin bumped** in `.github/oracle-reviewers.yml`: after the change
+  merges, run `broker` and `gateway` at a quiet moment. Each installs the new
+  pinned build and restarts its agent because the plist and `run.sh` name the
+  new path; a restart interrupts reviews in flight. Then run `check`.
 - **Provider login changed:** log in again with `omp auth-broker login
   <provider>`, then run `gateway` so the pinned accounts match.
 
