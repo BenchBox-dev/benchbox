@@ -20,6 +20,7 @@ on:
 concurrency:
   group: site-inputs
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
