@@ -3,8 +3,9 @@
     "Each scenario in (2) that is merged-fixed passes and fails when its defect is reintroduced (bug-replay table in context: scenario, defect, failing output).",
     "Mutation report for the listed oracle modules recorded with baseline and final kill rates; every surviving decision-logic mutant killed or recorded as equivalent with a reason; make target added.",
     "Vacuity audit table recorded (test, problem, action) and every listed test rewritten or deleted.",
-    "Gate 1 decision recorded; if approved, one live canary run recorded with all roles validating.",
     "Every open oracle item's acceptance requires its PR to add or update the matching harness scenario (checked at close-out).",
+    "Capture path live: one CI attempt and one local review each produced a redacted captured event-stream artifact; the fixtures list states, for each fixture, the source run id or local review time and the redaction check result.",
+    "A search of the harness and tests finds no OMP invocation outside the fake executable and no model-provider network call; Jev calls appear only in Jev-feature tests.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "2026-10-27: owner instruction, critical.",
@@ -30,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "7832e52ff58e42b8b66efbeba3f309cd",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T14:18:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e53588f81c0d4ce8ae58459ef1cc8478",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
