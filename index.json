@@ -16374,8 +16374,7 @@
     "oracle-gate-verdict-to-status-latency-20261025": {
       "claim": null,
       "needs": [
-        "oracle-gate-from-verdict-job-20261026",
-        "oracle-history-edited-review-fail-closed-20261027"
+        "oracle-gate-from-verdict-job-20261026"
       ],
       "priority": "medium",
       "status": "open",
