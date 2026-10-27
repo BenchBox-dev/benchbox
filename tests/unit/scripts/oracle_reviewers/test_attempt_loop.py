@@ -238,6 +238,49 @@ def test_a_detached_grandchild_is_found_through_the_subreaper(tmp_path: Path) ->
     assert all(_gone(pid) for pid in raised.value.survivors)
 
 
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="orphan adoption needs a Linux subreaper")
+def test_a_bystander_child_of_the_loop_is_not_a_leaked_reviewer_process(tmp_path: Path) -> None:
+    bystander = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(120)"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    assert processes.become_subreaper()
+    try:
+        invocation = Invocation((sys.executable, "-c", "print('done')"), tmp_path, None, dict(os.environ))
+        result = runner.execute(invocation, 30)
+        assert result.exit_code == 0
+        assert bystander.poll() is None
+    finally:
+        processes.release_subreaper()
+        bystander.kill()
+        bystander.wait()
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="orphan adoption needs a Linux subreaper")
+def test_reaping_after_a_leak_leaves_the_loops_other_children_waitable(tmp_path: Path) -> None:
+    finished = subprocess.Popen([sys.executable, "-c", "pass"])
+    for _ in range(100):
+        rows = [row for row in processes.snapshot() if row.pid == finished.pid]
+        if rows and rows[0].state.startswith(processes.ZOMBIE):
+            break
+        time.sleep(0.05)
+    script = (
+        "import subprocess, sys\n"
+        "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'],"
+        " stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+    )
+    assert processes.become_subreaper()
+    try:
+        invocation = Invocation((sys.executable, "-c", script), tmp_path, None, dict(os.environ))
+        with pytest.raises(processes.HarnessLeakError):
+            runner.execute(invocation, 30)
+        assert os.waitpid(finished.pid, 0)[0] == finished.pid
+    finally:
+        processes.release_subreaper()
+
+
 def test_the_workspace_is_reset_between_attempts(loop: Loop, monkeypatch: pytest.MonkeyPatch) -> None:
     staged = loop.workspace / runner.STAGED_DIFF_NAME
     states: list[bool] = []

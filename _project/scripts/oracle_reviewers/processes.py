@@ -76,10 +76,15 @@ def snapshot() -> list[Process]:
     return rows
 
 
-def survivors(group: int, parent: int) -> tuple[int, ...]:
+def children() -> frozenset[int]:
+    me = os.getpid()
+    return frozenset(item.pid for item in snapshot() if item.ppid == me)
+
+
+def survivors(group: int, parent: int, bystanders: frozenset[int] = frozenset()) -> tuple[int, ...]:
     found = []
     for item in snapshot():
-        if item.state.startswith(ZOMBIE) or item.pid == os.getpid():
+        if item.state.startswith(ZOMBIE) or item.pid == os.getpid() or item.pid in bystanders:
             continue
         if item.pgid == group or (OrphanWatch.active and item.ppid == parent):
             found.append(item.pid)
@@ -93,34 +98,38 @@ def _signal(pid: int) -> None:
         return
 
 
-def _reap_children() -> None:
+def _reap(pids: frozenset[int]) -> None:
     deadline = time.monotonic() + REAP_SETTLE_SECONDS
-    while True:
-        try:
-            pid, _ = os.waitpid(-1, os.WNOHANG)
-        except ChildProcessError:
-            return
-        if pid == 0:
+    pending = set(pids)
+    while pending:
+        for pid in sorted(pending):
+            try:
+                reaped, _ = os.waitpid(pid, os.WNOHANG)
+            except ChildProcessError:
+                pending.discard(pid)
+                continue
+            if reaped:
+                pending.discard(pid)
+        if pending:
             if time.monotonic() >= deadline:
                 return
             time.sleep(REAP_SETTLE_SECONDS / SETTLE_POLLS)
-        else:
-            deadline = time.monotonic() + REAP_SETTLE_SECONDS
 
 
-def confirm_exit(group: int) -> tuple[int, ...]:
+def confirm_exit(group: int, bystanders: frozenset[int] = frozenset()) -> tuple[int, ...]:
     found: tuple[int, ...] = ()
     for _ in range(SETTLE_POLLS):
-        found = survivors(group, os.getpid())
+        found = survivors(group, os.getpid(), bystanders)
         if not found:
-            return ()
+            break
         time.sleep(SETTLE_SECONDS / SETTLE_POLLS)
-    for pid in found:
-        _signal(pid)
-    try:
-        os.killpg(group, signal.SIGKILL)
-    except (ProcessLookupError, PermissionError):
-        pass
+    else:
+        for pid in found:
+            _signal(pid)
+        try:
+            os.killpg(group, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
     if OrphanWatch.active:
-        _reap_children()
+        _reap(children() - bystanders)
     return found

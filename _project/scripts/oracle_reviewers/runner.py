@@ -79,6 +79,7 @@ def _digest(path: Path) -> str | None:
 
 
 def execute(invocation: Invocation, timeout_seconds: int) -> RunResult:
+    bystanders = processes.children() if processes.OrphanWatch.active else frozenset()
     with (
         tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace", dir=invocation.cwd) as stdout_file,
         tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace", dir=invocation.cwd) as stderr_file,
@@ -102,7 +103,7 @@ def execute(invocation: Invocation, timeout_seconds: int) -> RunResult:
             os.killpg(process.pid, signal.SIGKILL)
             process.wait()
             timed_out = True
-        survivors = processes.confirm_exit(process.pid)
+        survivors = processes.confirm_exit(process.pid, bystanders)
         stdout_file.seek(0)
         stderr_file.seek(0)
         stdout, stderr = stdout_file.read(), stderr_file.read()
