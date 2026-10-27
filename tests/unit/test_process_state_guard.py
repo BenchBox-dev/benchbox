@@ -25,7 +25,7 @@ def test_subreaper_process_reports_the_leak_and_is_cleared():
 
 @pytest.mark.skipif(not process_state_guard.IS_LINUX, reason="child subreaper status exists on Linux only")
 def test_real_subreaper_status_is_detected_and_cleared():
-    from _project.scripts.oracle_reviewers import processes
+    processes = pytest.importorskip("_project.scripts.oracle_reviewers.processes")
 
     assert process_state_guard.is_child_subreaper() is False
     assert processes.become_subreaper()

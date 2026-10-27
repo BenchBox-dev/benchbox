@@ -9,6 +9,7 @@ import pytest
 IS_LINUX = sys.platform.startswith("linux")
 PR_SET_CHILD_SUBREAPER = 36
 PR_GET_CHILD_SUBREAPER = 37
+_LIBC = ctypes.CDLL(None, use_errno=True) if IS_LINUX else None
 
 LEAK_MESSAGE = (
     "process state guard: the test left the shared test process as a child subreaper. A subreaper adopts "
@@ -22,15 +23,14 @@ def is_child_subreaper() -> bool:
     if not IS_LINUX:
         return False
     flag = ctypes.c_int(0)
-    libc = ctypes.CDLL(None, use_errno=True)
-    if libc.prctl(PR_GET_CHILD_SUBREAPER, ctypes.byref(flag), 0, 0, 0) != 0:
+    if _LIBC.prctl(PR_GET_CHILD_SUBREAPER, ctypes.byref(flag), 0, 0, 0) != 0:
         return False
     return flag.value == 1
 
 
 def clear_child_subreaper() -> None:
     if IS_LINUX:
-        ctypes.CDLL(None, use_errno=True).prctl(PR_SET_CHILD_SUBREAPER, 0, 0, 0, 0)
+        _LIBC.prctl(PR_SET_CHILD_SUBREAPER, 0, 0, 0, 0)
 
 
 def subreaper_leak(

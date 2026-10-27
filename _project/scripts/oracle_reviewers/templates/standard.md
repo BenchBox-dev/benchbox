@@ -28,8 +28,9 @@ Rules:
 - Test hygiene is also a defect when a changed or new test leaves process-global state behind in the shared
   test process: child-subreaper status (become_subreaper), waitpid(-1) or reaping children it does not own,
   signal handlers, the working directory, environment changes made outside monkeypatch, the umask or resource
-  limits. Such code must run in a subprocess or be restored before the test ends. This too applies only to
-  tests the change adds or modifies.
+  limits. Such code must run in a subprocess or be restored before the test ends. This too applies to tests the change adds or
+  modifies, and to an untouched existing test only when the change under review makes it leave such state
+  behind.
 - Make one pass over the changed files, highest FILE PRIORITY scores first, skipping none. Confirm new
   behavior has test coverage by reading the tests; do not run them.
 
