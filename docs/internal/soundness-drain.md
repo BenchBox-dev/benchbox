@@ -8,8 +8,8 @@
 ## The signal, and what it is not
 
 Soundness-path PRs (paths in `.github/soundness-paths.txt`) merge only after
-the required `oracle-gate` check passes, which needs a success review of the
-current head from the `benchbox-oracle` App. CI cannot catch a change that
+the required `oracle-gate` check passes, which needs a success `oracle-verdict` status on the
+current head created by the `benchbox-oracle` App. CI cannot catch a change that
 redefines the oracle it validates against, so such a PR can sit green but
 unmergeable while it waits for that review. The oracle reviews each push on its own; to rerun it,
 post a top-level `/oracle-review` comment or run
@@ -22,7 +22,7 @@ current head, the attester posts a PR comment whose whole text is the line
 `Stand-in oracle review: APPROVE <full head SHA>`; the review itself goes in a
 separate comment. The check accepts it only for
 that exact head, only if posted after any retarget and after the oracle's
-latest review of that head, and never while a review thread from the oracle
+latest verdict status on that head, and never while a review thread from the oracle
 is unresolved. It is not compared with the push time, but a later oracle
 review of the head supersedes it. An edited comment
 does not count, and neither does one with any other text, because Markdown
