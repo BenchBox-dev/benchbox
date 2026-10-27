@@ -16059,7 +16059,9 @@
     },
     "oracle-author-family-labels-never-applied-20261009": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Remove the oracle's author-family label lookup and hard-code the claude author default"
