@@ -331,7 +331,8 @@ def _backoff_reset(
     try:
         current = int(run_id)
         grouped = sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, reset_at))
-        spent = sweep.reset_spent(grouped.get(pr, ()), reset_at, head_sha, exclude=current)
+        resolved = sweep.with_timeouts(grouped.get(pr, ()), lambda run: github.run_timed_out(repo, run), reset_at)
+        spent = sweep.reset_spent(resolved, reset_at, head_sha, exclude=current)
     except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
         _summary(f"oracle-verdict: the owner's backoff reset could not be confirmed unused: {exc}")
         return None
@@ -1141,7 +1142,10 @@ def _retry_reason(
     number = pull["number"]
     head = pull["head"]["sha"]
     state = github.latest_state(repo, number)
-    head_runs = sweep.for_head(runs, head)
+    relevant = tuple(run for run in runs if run.head in (None, head))
+    if full:
+        relevant = sweep.with_timeouts(relevant, lambda run: github.run_timed_out(repo, run))
+    head_runs = sweep.for_head(relevant, head)
     if state is not None and state.head_sha == head:
         if retry.due_for_retry(state, head, now, rules):
             if not full:
@@ -1154,7 +1158,7 @@ def _retry_reason(
         if state.outcome == retry.PENDING and state.pending_cause == retry.ALL_ABSENT:
             reset_at = github.backoff_reset_at(repo, number, head)
             if reset_at is not None and retry.due_for_retry(state, head, now, rules, reset_at):
-                if sweep.reset_spent(runs, reset_at, head):
+                if sweep.reset_spent(relevant, reset_at, head):
                     _summary(f"retry not dispatched for #{number}: the reset was already used by a later run")
                     return None
                 if sweep.stateless_failures(head_runs, reset_at) > 0:
@@ -1179,6 +1183,20 @@ def _retry_reason(
     return STATELESS_FAILURE if reason is not None else None
 
 
+def _already_surfaced(repo: str, head: str, status_context: str, bot_login: str) -> bool:
+    mine = [
+        status
+        for status in github.commit_statuses(repo, head)
+        if status.get("context") == status_context and github.is_app_status(status, bot_login)
+    ]
+    if not mine:
+        return False
+    newest = max(mine, key=lambda status: status.get("updated_at") or status.get("created_at") or "")
+    return newest.get("state") == "pending" and str(newest.get("description") or "").startswith(
+        github.SWEEP_FAILURE_SURFACE_PREFIX
+    )
+
+
 def _bounded_retry(
     repo: str,
     number: int,
@@ -1192,6 +1210,9 @@ def _bounded_retry(
     token: str | None,
 ) -> str | None:
     failures = sweep.stateless_failures(head_runs, since)
+    if _already_surfaced(repo, head, status_context, bot_login):
+        _summary(f"retry not dispatched for #{number}: the failure is already surfaced as pending")
+        return None
     if failures > 1:
         _surface_twice_failed(
             repo=repo,

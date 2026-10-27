@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -63,6 +63,17 @@ def in_flight(runs_by_pr: Mapping[int, tuple[Run, ...]], now: datetime) -> froze
         pr
         for pr, runs in runs_by_pr.items()
         if any(run.status != COMPLETED or now - run.created_at < DISPATCH_GRACE for run in runs)
+    )
+
+
+def with_timeouts(
+    runs: Iterable[Run], timed_out: Callable[[int], bool], since: datetime | None = None
+) -> tuple[Run, ...]:
+    return tuple(
+        replace(run, conclusion="timed_out")
+        if run.conclusion == "cancelled" and (since is None or run.created_at >= since) and timed_out(run.id)
+        else run
+        for run in runs
     )
 
 

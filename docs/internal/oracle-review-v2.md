@@ -626,7 +626,11 @@ cancels a run in flight, which then posts nothing.
   Each run is tied to a head by the `head=<sha>` its title records, never by
   commit dates, which an author controls; a run with no recorded head (a
   comment run, a dispatch without `head`) belongs to no head, so it counts as
-  neither a failure nor a success. A cancelled run is not a failure. A head
+  neither a failure nor a success. A cancelled run is a failure only when its
+  job hit `timeout-minutes`, which GitHub reports as a cancelled job whose
+  check-run annotation reads "has exceeded the maximum execution time"; a
+  concurrency cancel ("Canceling since a higher priority waiting request ...
+  exists") or a manual cancel is neither a failure nor a success. A head
   whose latest runs failed or timed out without leaving retry state is
   re-dispatched, unless the head has a decisive App verdict status; the
   dispatch carries a marker, and a marked retry the plan refuses, or whose
@@ -637,7 +641,9 @@ cancels a run in flight, which then posts nothing.
   reviewed it, such as a skipped plain-comment run), the sweep stops
   dispatching and posts a pending `oracle-verdict` status naming the failed
   step, with an App token minted in the reviewer-free sweep job. An existing
-  pending status is left alone; without the App the sweep reports the gap
+  pending status is left alone, and a head whose newest App status is that
+  surfaced failure is not dispatched again once its runs age out of the
+  48-hour listing; without the App the sweep reports the gap
   instead of failing. A failure in one PR's lookup, dispatch or surfacing is
   reported, the others continue, then the job fails. If the runs listing fails
   twice or is capped, the sweep degrades: it dispatches only due retries, using

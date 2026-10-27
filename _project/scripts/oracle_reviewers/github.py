@@ -414,6 +414,20 @@ def failed_steps(repo: str, run_id: int) -> list[str]:
     ]
 
 
+TIMEOUT_ANNOTATION = "has exceeded the maximum execution time"
+
+
+def run_timed_out(repo: str, run_id: int) -> bool:
+    listing = get_json(f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100")
+    for job in listing.get("jobs", []):
+        if job.get("conclusion") != "cancelled":
+            continue
+        annotations = get_json(f"repos/{repo}/check-runs/{job['id']}/annotations?per_page=100")
+        if any(TIMEOUT_ANNOTATION in str(item.get("message") or "") for item in annotations):
+            return True
+    return False
+
+
 SWEEP_FAILURE_SURFACE_PREFIX = "oracle-verdict failed twice without a result at: "
 
 

@@ -112,6 +112,7 @@ class FakeGitHub:
         self.posted: list[tuple[int, dict[str, Any]]] = []
         self.runs_error: Exception | None = None
         self.state_error: Exception | None = None
+        self.timed_out: set[int] = set()
         self.busy_fallback: set[int] = set()
         self.fallback_error: Exception | None = None
 
@@ -128,6 +129,7 @@ class FakeGitHub:
         monkeypatch.setattr(github, "commit_statuses", self._statuses)
         monkeypatch.setattr(github, "review_edit_states", self._edit_states)
         monkeypatch.setattr(github, "post_status", self._post)
+        monkeypatch.setattr(github, "run_timed_out", lambda repo, run_id: run_id in self.timed_out)
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
         monkeypatch.setattr(github, "merge_base", lambda repo, base, head: self.merge_base)
         monkeypatch.setattr(github, "tree_blobs", self._tree)

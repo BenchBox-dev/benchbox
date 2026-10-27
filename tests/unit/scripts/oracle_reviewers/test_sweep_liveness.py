@@ -333,3 +333,46 @@ def test_an_unmarked_dispatch_whose_state_cannot_be_read_still_exits_zero(
     fake.state_error = github.GitHubError("artifact unreadable")
     code, values, _ = _dispatch_plan(monkeypatch, tmp_path, fake, head=HEAD)
     assert code == 0 and values["decision"] == "skip"
+
+
+def test_a_cancelled_run_that_hit_its_job_timeout_is_a_failure_without_a_result(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    first = _verdict_run(7, conclusion="failure", event="pull_request_target", age=timedelta(hours=2))
+    timed_out = _verdict_run(7, conclusion="cancelled", age=timedelta(hours=1))
+    fake = _stateless_fake(timed_out, first)
+    fake.timed_out = {timed_out["id"]}
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and len(fake.posted) == 1
+
+
+def test_a_cancelled_run_that_hit_its_job_timeout_spends_the_owner_reset(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    run = _verdict_run(7, conclusion="cancelled", age=timedelta(minutes=10))
+    fake = FakeGitHub(_pull(), SOUNDNESS, _backed_off())
+    fake.comments = _reset_comments()
+    fake.runs = [run]
+    fake.timed_out = {run["id"]}
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "skip" and "reset" not in plan["decision_reason"]
+
+
+def test_a_failure_already_surfaced_as_pending_is_not_redispatched_after_the_runs_age_out(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    state = State(7, HEAD, "pending", datetime.now(UTC) - timedelta(days=4), pending_cause="all-absent")
+    fake = FakeGitHub(_pull(), SOUNDNESS, state)
+    fake.statuses = [
+        {
+            "context": "oracle-verdict",
+            "state": "pending",
+            "description": github.SWEEP_FAILURE_SURFACE_PREFIX + "Run the attempt loop. Rerun with /oracle-review",
+            "target_url": "u",
+            "creator": {"login": "benchbox-oracle[bot]", "type": "Bot"},
+            "updated_at": (datetime.now(UTC) - timedelta(days=3)).isoformat(),
+        }
+    ]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [] and fake.posted == []

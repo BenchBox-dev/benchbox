@@ -963,3 +963,42 @@ def test_dispatch_passes_the_pull_request_and_its_head(
             REPO,
         ]
     ]
+
+
+def _jobs_and_annotations(
+    monkeypatch: pytest.MonkeyPatch, jobs: list[dict[str, Any]], annotations: dict[int, list[dict[str, Any]]]
+) -> list[str]:
+    seen: list[str] = []
+
+    def fake_json(path: str) -> Any:
+        seen.append(path)
+        if "/annotations" in path:
+            return annotations[int(path.split("/check-runs/")[1].split("/")[0])]
+        return {"jobs": jobs}
+
+    monkeypatch.setattr(github, "get_json", fake_json)
+    return seen
+
+
+TIMEOUT_NOTE = {"annotation_level": "failure", "message": "The job has exceeded the maximum execution time of 5m0s"}
+CONCURRENCY_NOTE = {
+    "annotation_level": "failure",
+    "message": "Canceling since a higher priority waiting request for oracle-verdict-pr-3291 exists",
+}
+CANCELED_NOTE = {"annotation_level": "failure", "message": "The operation was canceled."}
+RUNNER_NOTE = {"annotation_level": "notice", "message": "The ubuntu-latest label will migrate to Ubuntu 26"}
+
+
+def test_a_cancelled_job_with_the_timeout_annotation_is_a_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    jobs = [{"id": 1, "conclusion": "success"}, {"id": 2, "conclusion": "cancelled"}]
+    seen = _jobs_and_annotations(monkeypatch, jobs, {2: [RUNNER_NOTE, TIMEOUT_NOTE]})
+    assert github.run_timed_out(REPO, 40110837085) is True
+    assert not any("/check-runs/1/" in path for path in seen)
+
+
+@pytest.mark.parametrize("notes", [[CONCURRENCY_NOTE], [CONCURRENCY_NOTE, CANCELED_NOTE], [RUNNER_NOTE], []])
+def test_a_concurrency_or_manual_cancel_is_not_a_timeout(
+    monkeypatch: pytest.MonkeyPatch, notes: list[dict[str, Any]]
+) -> None:
+    _jobs_and_annotations(monkeypatch, [{"id": 2, "conclusion": "cancelled"}], {2: notes})
+    assert github.run_timed_out(REPO, 40216941595) is False
