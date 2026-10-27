@@ -327,6 +327,18 @@ def test_gate_allows_when_the_newest_completed_run_is_not_red(conclusion: str) -
     assert _gate(_runs(("completed", conclusion, timedelta(hours=1)))) is None
 
 
+@pytest.mark.parametrize("conclusion", ["cancelled", "neutral", "skipped", "action_required", "stale"])
+def test_gate_looks_through_a_newer_non_decisive_run_to_an_older_red(conclusion: str) -> None:
+    refusal = _gate(
+        _runs(
+            ("completed", conclusion, timedelta(minutes=5)),
+            ("completed", "failure", timedelta(minutes=45)),
+        )
+    )
+    assert refusal is not None
+    assert "red for 45 minutes" in refusal
+
+
 def test_gate_orders_by_creation_even_when_an_older_run_finishes_later() -> None:
     runs = _runs(
         ("completed", "failure", timedelta(hours=3)),

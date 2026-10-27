@@ -25,6 +25,7 @@ READY_DECISION = "ready"
 GRACE = timedelta(minutes=30)
 STALE_AFTER = timedelta(minutes=30)
 RED_CONCLUSIONS = frozenset({"failure", "timed_out", "startup_failure"})
+DECISIVE_CONCLUSIONS = RED_CONCLUSIONS | {"success"}
 RUN_FIELDS = "conclusion,status,createdAt,updatedAt,databaseId,url,headSha"
 RUN_WINDOW = 30
 RUN_WINDOWS = (RUN_WINDOW, 100, 300, 1000)
@@ -125,7 +126,10 @@ def trunk_gate(
     stale = stale_run_warning(runs, now)
     if stale:
         print(f"trunk-gate: warning: {stale}", file=sys.stderr)
-    newest = next((item for item in runs if item.get("status") == "completed"), None)
+    newest = next(
+        (item for item in runs if item.get("status") == "completed" and item.get("conclusion") in DECISIVE_CONCLUSIONS),
+        None,
+    )
     if newest is None or newest.get("conclusion") not in RED_CONCLUSIONS:
         return None
     red_since = _parse_time(newest["updatedAt"])
