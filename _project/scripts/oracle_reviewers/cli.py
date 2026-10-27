@@ -1169,26 +1169,32 @@ def command_sweep(args: argparse.Namespace) -> int:
     repo = os.environ["GITHUB_REPOSITORY"]
     now = _now()
     token = os.environ.get("SURFACE_TOKEN") or None
+    runs: dict[int, tuple[sweep.Run, ...]] | None
     try:
-        runs: dict[int, tuple[sweep.Run, ...]] | None = sweep.parse_runs(
-            github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.RUN_WINDOW)
-        )
-    except (github.GitHubError, AttributeError, KeyError, TypeError, ValueError) as exc:
+        listing = github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.RUN_WINDOW)
+    except github.GitHubError as exc:
         _summary(
             "oracle-verdict: the runs listing failed; this sweep dispatches only due retries "
             f"and skips stateless retries: {exc}"
         )
         runs = None
+    else:
+        runs = sweep.parse_runs(listing)
+    busy: frozenset[int] | None
     if runs is not None:
         busy = sweep.in_flight(runs, now)
-        full = True
     else:
         try:
             busy = github.in_flight_pulls(repo, WORKFLOW_FILE)
-        except (github.GitHubError, AttributeError, KeyError, TypeError, ValueError) as exc:
-            _summary(f"oracle-verdict: the fallback in-flight lookup also failed ({exc}); dispatching due retries")
-            busy = frozenset()
-        full = False
+        except github.GitHubError as exc:
+            _summary(f"oracle-verdict: the fallback in-flight lookup also failed ({exc}); dispatching nothing")
+            busy = None
+    if busy is None:
+        print(
+            "oracle-verdict: error: the sweep could not tell which pull requests have a run in flight", file=sys.stderr
+        )
+        return 1
+    full = runs is not None
     dispatched = 0
     errors: list[str] = []
     for pull in github.get_paginated(f"repos/{repo}/pulls?state=open&base=develop&per_page=100"):
@@ -1229,6 +1235,9 @@ def command_sweep(args: argparse.Namespace) -> int:
     _summary(f"oracle-verdict sweep dispatched {dispatched} retr{'y' if dispatched == 1 else 'ies'}")
     if errors:
         print(f"oracle-verdict: error: the sweep could not handle {len(errors)} pull request(s)", file=sys.stderr)
+        return 1
+    if runs is None:
+        print("oracle-verdict: error: the sweep ran degraded because the runs listing failed", file=sys.stderr)
         return 1
     return 0
 

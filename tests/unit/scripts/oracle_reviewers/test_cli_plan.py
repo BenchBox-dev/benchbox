@@ -1103,27 +1103,37 @@ def test_sweep_degrades_to_due_only_when_the_runs_listing_fails(
     monkeypatch.setattr(github, "latest_state", latest)
     _degraded(fake)
     _env(monkeypatch, tmp_path, "schedule", {}, "refs/heads/develop")
-    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 0
+    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 1
     assert fake.dispatched == [31] and fake.posted == []
     assert "skips stateless retries" in capsys.readouterr().out
 
 
-def test_sweep_dispatches_due_retries_when_the_fallback_lookup_also_fails(
+def test_sweep_dispatches_nothing_when_the_fallback_lookup_also_fails(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
     fake.fallback_error = github.GitHubError("gh api failed: Bad Gateway")
     _degraded(fake)
-    assert _sweep(monkeypatch, tmp_path, fake) == 0
-    assert fake.dispatched == [7]
+    assert _sweep(monkeypatch, tmp_path, fake) == 1
+    assert fake.dispatched == []
     assert "fallback in-flight lookup also failed" in capsys.readouterr().out
+
+
+def test_sweep_does_not_swallow_a_parse_regression_as_a_listing_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.runs_error = KeyError("workflow_runs")
+    with pytest.raises(KeyError):
+        _sweep(monkeypatch, tmp_path, fake)
+    assert fake.dispatched == []
 
 
 def test_sweep_uses_the_fallback_busy_set_in_degraded_mode(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
     fake.busy_fallback = {7}
     _degraded(fake)
-    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert _sweep(monkeypatch, tmp_path, fake) == 1
     assert fake.dispatched == []
 
 
