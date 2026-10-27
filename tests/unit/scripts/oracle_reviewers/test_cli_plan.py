@@ -98,6 +98,7 @@ class FakeGitHub:
         self.contents: dict[str, str] = {}
         self.reviews: list[dict[str, Any]] | None = []
         self.reread_sha: str | None = None
+        self.reread_after_read = 1
         self._pull_reads = 0
         self.runs: list[dict[str, Any]] = []
         self.committed = datetime.now(UTC) - timedelta(days=1)
@@ -173,7 +174,7 @@ class FakeGitHub:
     def _json(self, path: str) -> dict[str, Any]:
         if path == f"repos/{REPO}/pulls/7":
             self._pull_reads += 1
-            if self._pull_reads > 1 and self.reread_sha is not None:
+            if self._pull_reads > self.reread_after_read and self.reread_sha is not None:
                 return {**self.pull, "head": {"sha": self.reread_sha, "repo": {"full_name": REPO}}}
         return self.pull
 
@@ -376,6 +377,28 @@ def test_moved_head_is_left_to_the_newer_run(monkeypatch: pytest.MonkeyPatch, tm
     _, values, plan = _plan(monkeypatch, tmp_path, fake)
     assert values["decision"] == "skip" and values["post"] == "false"
     assert "head moved" in plan["decision_reason"]
+
+
+def test_head_moving_between_file_list_and_diff_defers_to_newer_run(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.reread_sha = "d" * 40
+    fake.reread_after_read = 2
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "skip" and values["post"] == "false"
+    assert "head moved" in plan["decision_reason"]
+
+
+def test_base_edit_event_with_lagging_timeline_plans_a_review_not_skip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    record = _record(DIFF, "SHIP", head_sha=HEAD)
+    fake = FakeGitHub(_pull(), SOUNDNESS, diff=TWO_FILE_DIFF)
+    fake.reviews = [_review(record)]
+    event = {"action": "edited", "changes": {"base": {"ref": {"from": "main"}}}}
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event=event)
+    assert values["decision"] == "review" and values["post"] == "true"
 
 
 def test_comment_run_resolves_the_head_through_the_api(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

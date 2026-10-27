@@ -267,7 +267,17 @@ def _dispute_step(
     return threads, step
 
 
-def _base_changed_at(repo: str, pr: int) -> tuple[datetime | None, bool]:
+def _base_changed_at(
+    repo: str, pr: int, event_name: str = "", event: Mapping[str, Any] | None = None
+) -> tuple[datetime | None, bool]:
+    changes = (event or {}).get("changes")
+    if (
+        event_name == "pull_request_target"
+        and (event or {}).get("action") == "edited"
+        and isinstance(changes, Mapping)
+        and "base" in changes
+    ):
+        return _now(), False
     try:
         return github.base_changed_at(repo, pr), False
     except (github.GitHubError, KeyError, ValueError) as exc:
@@ -349,6 +359,19 @@ def _stateless_retry_allowed(repo: str, pr: int, head_sha: str, run_id: str, pre
     return 1 <= failures < 2
 
 
+def _pull_guard(pull: Mapping[str, Any], event: Mapping[str, Any], head_sha: str) -> str | None:
+    if pull["state"] != "open":
+        return "the pull request is not open"
+    if pull["base"]["ref"] != "develop":
+        return "the pull request does not target develop"
+    if pull.get("draft"):
+        return "the pull request is a draft"
+    event_head = (event.get("pull_request") or {}).get("head", {}).get("sha")
+    if event_head and event_head != head_sha:
+        return "a newer head exists; its own run reviews it"
+    return None
+
+
 def command_plan(args: argparse.Namespace) -> int:
     policy = load_policy(Path(args.policy))
     repo = os.environ["GITHUB_REPOSITORY"]
@@ -365,18 +388,9 @@ def command_plan(args: argparse.Namespace) -> int:
     plan["base_sha"] = pull["base"]["sha"]
     plan["base_ref"] = pull["base"]["ref"]
     plan["head_sha"] = pull["head"]["sha"]
-    if pull["state"] != "open":
-        plan["decision_reason"] = "the pull request is not open"
-        return _finish_plan(out_dir, plan)
-    if pull["base"]["ref"] != "develop":
-        plan["decision_reason"] = "the pull request does not target develop"
-        return _finish_plan(out_dir, plan)
-    if pull.get("draft"):
-        plan["decision_reason"] = "the pull request is a draft"
-        return _finish_plan(out_dir, plan)
-    event_head = (event.get("pull_request") or {}).get("head", {}).get("sha")
-    if event_head and event_head != plan["head_sha"]:
-        plan["decision_reason"] = "a newer head exists; its own run reviews it"
+    guard_reason = _pull_guard(pull, event, plan["head_sha"])
+    if guard_reason is not None:
+        plan["decision_reason"] = guard_reason
         return _finish_plan(out_dir, plan)
     files = [ChangedFile.from_api(item) for item in github.get_paginated(f"repos/{repo}/pulls/{pr}/files?per_page=100")]
     if github.get_json(f"repos/{repo}/pulls/{pr}")["head"]["sha"] != plan["head_sha"]:
@@ -443,11 +457,14 @@ def command_plan(args: argparse.Namespace) -> int:
         plan.update({"decision": HOLD, "decision_reason": found.error})
         return _finish_plan(out_dir, plan)
     raw_diff = github.get_diff(repo, pr)
+    if github.get_json(f"repos/{repo}/pulls/{pr}")["head"]["sha"] != plan["head_sha"]:
+        plan["decision_reason"] = "the head moved while the plan read it; its own run reviews it"
+        return _finish_plan(out_dir, plan)
     full_diff = None if raw_diff is None else raw_diff.decode("utf-8", errors="replace")
     complete = full_diff is not None and len(files) >= int(pull.get("changed_files") or 0)
     states = _file_states(plan, files) if complete else None
     strike_count = max(protocol.strikes(found.records), previous.strikes if previous else 0)
-    base_changed_at, base_change_unreadable = _base_changed_at(repo, pr)
+    base_changed_at, base_change_unreadable = _base_changed_at(repo, pr, event_name, event)
     step = _protocol_round(
         plan,
         policy,
