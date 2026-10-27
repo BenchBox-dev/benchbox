@@ -495,7 +495,7 @@ separate from the public `sqlglot`, and leaves the public package intact after
 script on `windows-latest` before tagging.
 
 Windows verification of the zip-loaded runtime: the script passed on
-`windows-latest` with Python 3.12 in `windows-fast.yml` run 40500006874
+`windows-latest` with Python 3.12 in `windows-fast.yml` run 40504950564
 (installed wheel, bundled import from the zip, translation, coexistence with
 public `sqlglot`, uninstall). No path-separator or zipimport change was needed.
 
