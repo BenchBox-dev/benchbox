@@ -115,11 +115,13 @@ def test_windows_leg_executes_target_file_and_preserves_pytest_result(tmp_path: 
     targets = [f"tests/unit/long_directory_name/test_target_{index:04d}.py" for index in range(count)]
     selection = tmp_path / "coverage-selection"
     selection.mkdir()
-    (selection / "windows-test-files.txt").write_text("".join(f"{target}\n" for target in targets), encoding="utf-8")
+    (selection / "windows-test-files.txt").write_text(
+        "".join(f"{target}\n" for target in targets), encoding="utf-8", newline="\n"
+    )
     binaries = tmp_path / "bin"
     binaries.mkdir()
     uv = binaries / "uv"
-    uv.write_text('#!/usr/bin/env bash\nshift 3\nexec python "$@"\n', encoding="utf-8")
+    uv.write_text('#!/usr/bin/env bash\nshift 3\nexec python "$@"\n', encoding="utf-8", newline="\n")
     uv.chmod(0o755)
     (tmp_path / "pytest.py").write_text(
         "import json, pathlib\n"
@@ -128,7 +130,7 @@ def test_windows_leg_executes_target_file_and_preserves_pytest_result(tmp_path: 
         f"    return {status}\n",
         encoding="utf-8",
     )
-    (tmp_path / "step.sh").write_text(run, encoding="utf-8")
+    (tmp_path / "step.sh").write_text(run, encoding="utf-8", newline="\n")
     result = subprocess.run(
         [bash, "step.sh"],
         cwd=tmp_path,
