@@ -1,13 +1,11 @@
 {
   "acceptance": [
-    "No workflow, Make target, script, test, or doc references a deleted file (G4); the Makefile targets at 333-370 run without pytest-ci.ini, or the file is kept",
-    "If path-filters.yml is deleted, ci.yml and scripts/path_filter_decision.py read ci-units.yml instead and the path-filter tests pass; otherwise it is listed as kept",
-    "ci-units.yml, scripts/canary_impact.py, scripts/publication/verify_lane_isolation.py and docs/development/dependency-inventory.md no longer name tox.ini",
-    "pytest --strict-markers collection passes",
-    "Marker list documented in docs/development/testing.md"
+    "pytest-ci.ini, tox.ini and .github/path-filters.yml are removed only after every caller (Makefile, ci-units.yml, path_filter_decision.py, ci.yml) is migrated; path-filters is kept unless its rules and fail-closed behavior move intact",
+    "pytest.ini strict markers, .importlinter, codecov.yml and .pre-commit-config.yaml are kept",
+    "Public testing docs that name removed config are corrected through the site owner"
   ],
-  "context": "Guardrails G3, G4.\n\n2026-10-09 tracker review: the original text assumed .github/path-filters.yml was replaced by ci-units.yml. It is not: ci.yml:156 and :261 still call scripts/path_filter_decision.py, which reads it (path_filter_decision.py:17). The dlv2-53 need was removed because nothing here depends on the release path. site-split-50-core-site-removal and site-split-51-publication-retirement edit ci-units.yml, path-filters.yml, path_filter_decision.py, ci_units.py and canary_impact.py, so this item waits for them to avoid conflicting edits.",
-  "description": "Delete pytest-ci.ini and tox.ini, and trim the scripts left unused by dlv2-44. Delete .github/path-filters.yml only after its job is merged into .github/ci-units.yml: ci.yml:156 and :261 still read it through scripts/path_filter_decision.py:17, so it is not yet replaced. Either drop it from the delete list or add an explicit step that moves its rules into ci-units.yml and changes path_filter_decision.py. Trim pytest.ini markers to tier markers plus engine/benchmark selection markers still used; keep .importlinter, codecov.yml, .pre-commit-config.yaml (trimmed).\n\nEach file has live references that this item must change in the same PR:\n- pytest-ci.ini: used by the Makefile targets at Makefile:333-370 (they pass `-c pytest-ci.ini`). Point them at pytest.ini or another kept config, or keep the file.\n- tox.ini: referenced by .github/ci-units.yml:18, scripts/canary_impact.py (lines 92 and 133, which also lists pytest-ci.ini), scripts/publication/verify_lane_isolation.py:109 and docs/development/dependency-inventory.md (lines 52 and 184).\n- path-filters.yml: referenced by ci.yml:156 and :261 via scripts/path_filter_decision.py:17.",
+  "context": "2026-10-27 audit: all three principal targets are live.",
+  "description": "AUDIT 2026-10-27 (owner-adjudicated, advisor-reviewed): the acceptance and context sections supersede this description wherever they differ. Historical text below is kept for reference.\n\nDelete pytest-ci.ini and tox.ini, and trim the scripts left unused by dlv2-44. Delete .github/path-filters.yml only after its job is merged into .github/ci-units.yml: ci.yml:156 and :261 still read it through scripts/path_filter_decision.py:17, so it is not yet replaced. Either drop it from the delete list or add an explicit step that moves its rules into ci-units.yml and changes path_filter_decision.py. Trim pytest.ini markers to tier markers plus engine/benchmark selection markers still used; keep .importlinter, codecov.yml, .pre-commit-config.yaml (trimmed).\n\nEach file has live references that this item must change in the same PR:\n- pytest-ci.ini: used by the Makefile targets at Makefile:333-370 (they pass `-c pytest-ci.ini`). Point them at pytest.ini or another kept config, or keep the file.\n- tox.ini: referenced by .github/ci-units.yml:18, scripts/canary_impact.py (lines 92 and 133, which also lists pytest-ci.ini), scripts/publication/verify_lane_isolation.py:109 and docs/development/dependency-inventory.md (lines 52 and 184).\n- path-filters.yml: referenced by ci.yml:156 and :261 via scripts/path_filter_decision.py:17.",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:ea32adff11bd0f17607daca2",
@@ -24,6 +22,14 @@
       "op": "update",
       "op_id": "b344872c4bd64d2499752301184b0129",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T23:29:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1176e5369a3042cfaf6e383b3a479e06",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
 }
