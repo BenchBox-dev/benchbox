@@ -301,6 +301,9 @@ benchbox-mcp = "benchbox.mcp.cli:main"
 
 [tool.ty]
 
+[tool.ty.environment]
+extra-paths = ["typings/sqlglot-runtime"]
+
 [tool.ty.src]
 include = ["benchbox", "tests"]
 exclude = ["tests/fixtures", "**/__pycache__"]
