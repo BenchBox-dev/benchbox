@@ -16704,7 +16704,8 @@
     "oracle-read-evidence-tightening-20261008": {
       "claim": null,
       "needs": [
-        "oracle-reviewer-checkout-has-no-base-commit-20261009"
+        "oracle-reviewer-checkout-has-no-base-commit-20261009",
+        "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "low",
       "status": "open",
