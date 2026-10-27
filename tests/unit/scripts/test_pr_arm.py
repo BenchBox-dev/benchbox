@@ -541,7 +541,7 @@ def test_a_would_block_verdict_refuses_with_the_ratios_and_the_baseline_route(
         "would-block",
         "summed-time ratio 1.457",
         "median per-test ratio 1.234",
-        "report-only measurement (ci-verify-fast-duration-report-only-20261025)",
+        "The duration gate blocks `core` on a would-block verdict",
         "scripts/build_fast_duration_baseline.py",
         "tests/fixtures/fast_tier_baseline",
     ):

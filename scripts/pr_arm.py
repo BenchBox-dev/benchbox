@@ -30,7 +30,6 @@ BASELINE_DIRECTORY = "tests/fixtures/fast_tier_baseline"
 VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
 VERDICT_FILE = "fast-duration-verdict.json"
 PRODUCER_CHECK = "core"
-MEASUREMENT_ITEM = "ci-verify-fast-duration-report-only-20261025"
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
@@ -113,8 +112,8 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
     return [
         f"verify-fast-duration reported would-block for {head[:9]}: normalized summed-time ratio "
         f"{_ratio(report.get('sum_ratio'))}, median per-test ratio {_ratio(report.get('median_test_ratio'))}. "
-        f"The duration gate is in report-only measurement ({MEASUREMENT_ITEM}) but arming still refuses a "
-        f"would-block head unless the PR changes {BASELINE_DIRECTORY}: remove the slowdown, or regenerate the "
+        f"The duration gate blocks `core` on a would-block verdict, and arming refuses it unless the PR changes "
+        f"{BASELINE_DIRECTORY}: remove the slowdown, or regenerate the "
         f"baseline with scripts/build_fast_duration_baseline.py (python -m scripts.build_fast_duration_baseline "
         f"build --manifest <manifest> --output {BASELINE_DIRECTORY}) and justify the change in the PR"
     ]

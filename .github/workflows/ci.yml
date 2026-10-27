@@ -1694,7 +1694,7 @@ jobs:
     needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, sql-execution-evidence, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     permissions:
       actions: write
       contents: read
@@ -1768,43 +1768,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Download fast-tier junit for duration verification
-        if: ${{ always() && github.event_name == 'pull_request' && needs.ci-paths.outputs.code-tests-needed == 'true' }}
-        continue-on-error: true
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          name: fast-junit-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-          path: fast-junit
-
-      - name: verify-fast-duration (report only)
-        if: ${{ always() && github.event_name == 'pull_request' && needs.ci-paths.outputs.code-tests-needed == 'true' }}
-        continue-on-error: true
-        timeout-minutes: 2
-        run: |
-          python -m scripts.build_fast_duration_baseline verify \
-            --baseline tests/fixtures/fast_tier_baseline \
-            --run-dir fast-junit \
-            --summary "$GITHUB_STEP_SUMMARY" \
-            --report-out fast-duration-verdict.json
-
-      - name: Record fast-duration verdict not applicable
-        if: ${{ always() && github.event_name == 'pull_request' && needs.ci-paths.outputs.code-tests-needed == 'false' }}
-        continue-on-error: true
-        run: |
-          printf '%s\n' '{"verdict": "not-applicable", "reason": "no fast-tier tests ran for this head"}' > fast-duration-verdict.json
-
-      - name: Upload fast-duration verdict
-        if: ${{ always() && github.event_name == 'pull_request' }}
-        continue-on-error: true
-        timeout-minutes: 2
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-        with:
-          name: fast-duration-verdict-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-          path: fast-duration-verdict.json
-          if-no-files-found: ignore
-          retention-days: 14
-          overwrite: true
-
       - name: Aggregate core result
         id: aggregate
         env:
@@ -1842,6 +1805,42 @@ jobs:
           set -euo pipefail
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
+
+      - name: Download fast-tier junit for duration verification
+        if: ${{ always() && github.event_name == 'pull_request' && needs.ci-paths.outputs.code-tests-needed == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: fast-junit-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: fast-junit
+
+      - name: verify-fast-duration
+        if: ${{ github.event_name == 'pull_request' && needs.ci-paths.outputs.code-tests-needed == 'true' }}
+        timeout-minutes: 2
+        run: |
+          python -m scripts.build_fast_duration_baseline verify \
+            --baseline tests/fixtures/fast_tier_baseline \
+            --run-dir fast-junit \
+            --summary "$GITHUB_STEP_SUMMARY" \
+            --report-out fast-duration-verdict.json
+
+      - name: Record fast-duration verdict not applicable
+        if: ${{ always() && github.event_name == 'pull_request' && needs.ci-paths.outputs.code-tests-needed == 'false' }}
+        continue-on-error: true
+        run: |
+          printf '%s\n' '{"verdict": "not-applicable", "reason": "no fast-tier tests ran for this head"}' > fast-duration-verdict.json
+
+      - name: Upload fast-duration verdict
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        continue-on-error: true
+        timeout-minutes: 2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: fast-duration-verdict-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: fast-duration-verdict.json
+          if-no-files-found: ignore
+          retention-days: 14
+          overwrite: true
 
   explorer:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'explorer (text edit)' || 'explorer' }}

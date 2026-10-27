@@ -96,13 +96,14 @@ def test_overhead_hitting_a_few_tests_moves_sum_but_not_median() -> None:
 @pytest.mark.parametrize(
     ("base_total", "pr_total", "verdict"),
     [
-        (1000.0, 1150.0, "pass"),
-        (1000.0, 1150.5, "would-block"),
-        (200.0, 260.0, "pass"),
-        (200.0, 260.5, "would-block"),
-        (100.0, 130.0, "pass"),
-        (1000.0, 1000.0, "pass"),
-        (1000.0, 900.0, "pass"),
+        (2000.0, 2600.0, "pass"),
+        (2000.0, 2600.5, "would-block"),
+        (1000.0, 1360.0, "pass"),
+        (1000.0, 1360.5, "would-block"),
+        (500.0, 700.0, "pass"),
+        (2000.0, 2300.0, "pass"),
+        (2000.0, 2000.0, "pass"),
+        (2000.0, 1800.0, "pass"),
     ],
 )
 def test_threshold_edges_require_both_ratio_and_delta(base_total: float, pr_total: float, verdict: str) -> None:
@@ -127,12 +128,12 @@ def test_new_tests_are_allowed_a_per_test_budget() -> None:
 def test_new_tests_over_allowance_count_toward_the_delta() -> None:
     base = ids(10, 10.0)
     current = dict(base)
-    current["tests/test_new.py::test_slow"] = 100.0
+    current["tests/test_new.py::test_slow"] = 400.0
 
     report = baseline.verify_durations(base, current)
 
-    assert report["new_test_excess_seconds"] == pytest.approx(99.5)
-    assert report["delta_seconds"] == pytest.approx(99.5)
+    assert report["new_test_excess_seconds"] == pytest.approx(399.5)
+    assert report["delta_seconds"] == pytest.approx(399.5)
     assert report["verdict"] == "would-block"
 
 
@@ -184,6 +185,23 @@ def test_real_overhead_on_a_slow_runner_still_would_block(tmp_path: Path) -> Non
     assert report["delta_seconds"] == pytest.approx(713.0)
 
 
+@pytest.mark.parametrize("factor", [0.867, 1.894])
+def test_fixed_713_second_slowdown_blocks_after_runner_normalization(tmp_path: Path, factor: float) -> None:
+    baseline_dir = committed_baseline(tmp_path, cases(1000, 1.418), best_seconds=0.5)
+    run = write_run(
+        tmp_path,
+        "slowed",
+        cases(1000, 1.418 / factor + 0.713),
+        best_seconds=0.5 / factor,
+    )
+
+    report = baseline.verify_run(baseline_dir, run)
+
+    assert report["verdict"] == "would-block"
+    assert report["delta_seconds"] == pytest.approx(713.0 * factor)
+    assert report["sum_ratio"] == pytest.approx(1 + 713.0 * factor / 1418.0)
+
+
 def test_run_without_calibration_is_rejected_not_passed(tmp_path: Path) -> None:
     baseline_dir = committed_baseline(tmp_path, cases(5, 2.0))
     run = write_run(tmp_path, "uncalibrated", cases(5, 2.0), best_seconds=None)
@@ -210,12 +228,12 @@ def test_missing_junit_is_rejected(tmp_path: Path) -> None:
     assert baseline.verify_run(baseline_dir, run)["verdict"] == "rejected"
 
 
-def test_missing_baseline_is_a_neutral_verdict(tmp_path: Path) -> None:
+def test_missing_baseline_is_a_rejected_verdict(tmp_path: Path) -> None:
     run = write_run(tmp_path, "run", cases(5, 2.0))
 
     report = baseline.verify_run(tmp_path / "absent", run)
 
-    assert report["verdict"] == "neutral"
+    assert report["verdict"] == "rejected"
     assert "baseline" in str(report["reason"])
 
 
@@ -223,13 +241,15 @@ def test_markdown_reports_ratio_median_collection_and_speed(tmp_path: Path) -> N
     baseline_dir = committed_baseline(tmp_path, cases(5, 2.0))
     run = write_run(tmp_path, "run", cases(5, 2.0), collection_max=7.5)
 
-    text = baseline.verify_markdown(baseline.verify_run(baseline_dir, run))
+    text = baseline.verify_markdown(baseline.verify_run(baseline_dir, run), mode="block")
 
+    assert "### verify-fast-duration" in text
     assert "Verdict: **pass**" in text
     assert "Median per-test ratio" in text
     assert "Summed-time ratio" in text
     assert "7.5 s" in text
     assert "Runner speed factor" in text
+    assert "Blocks when the ratio exceeds 1.30 and the delta exceeds 360 s" in text
 
 
 def test_markdown_for_neutral_and_rejected_names_the_reason() -> None:
@@ -237,17 +257,17 @@ def test_markdown_for_neutral_and_rejected_names_the_reason() -> None:
     assert "Verdict: **rejected**" in baseline.verify_markdown({"verdict": "rejected", "reason": "x"})
 
 
-def test_cli_exits_zero_even_for_would_block_and_writes_summary(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    baseline_dir = committed_baseline(tmp_path, cases(100, 5.0))
-    run = write_run(tmp_path, "slowed", cases(100, 5.0 + 1.0))
+def test_cli_exits_one_on_would_block_in_block_mode(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    baseline_dir = committed_baseline(tmp_path, cases(1000, 0.328))
+    run = write_run(tmp_path, "slowed", cases(1000, 0.328 + 0.713))
     summary = tmp_path / "summary.md"
     report_out = tmp_path / "report.json"
 
     status = baseline.main(
         [
             "verify",
+            "--mode",
+            "block",
             "--baseline",
             str(baseline_dir),
             "--run-dir",
@@ -259,18 +279,187 @@ def test_cli_exits_zero_even_for_would_block_and_writes_summary(
         ]
     )
 
-    assert status == 0
+    assert status == 1
+    assert "### verify-fast-duration\n" in summary.read_text(encoding="utf-8")
     assert "Verdict: **would-block**" in summary.read_text(encoding="utf-8")
     assert json.loads(report_out.read_text(encoding="utf-8"))["verdict"] == "would-block"
-    assert "::warning title=verify-fast-duration" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "::error title=verify-fast-duration::" in out
 
 
-def test_cli_exits_zero_for_missing_baseline_and_missing_calibration(tmp_path: Path) -> None:
-    run = write_run(tmp_path, "run", cases(5, 2.0), best_seconds=None)
+def test_cli_exits_zero_on_would_block_in_report_mode(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    baseline_dir = committed_baseline(tmp_path, cases(1000, 0.328))
+    run = write_run(tmp_path, "slowed", cases(1000, 0.328 + 0.713))
+    summary = tmp_path / "summary.md"
+    report_out = tmp_path / "report.json"
 
-    status = baseline.main(["verify", "--baseline", str(tmp_path / "absent"), "--run-dir", str(run)])
+    status = baseline.main(
+        [
+            "verify",
+            "--baseline",
+            str(baseline_dir),
+            "--run-dir",
+            str(run),
+            "--mode",
+            "report",
+            "--summary",
+            str(summary),
+            "--report-out",
+            str(report_out),
+        ]
+    )
 
     assert status == 0
+    assert "### verify-fast-duration (report only)" in summary.read_text(encoding="utf-8")
+    assert "Verdict: **would-block**" in summary.read_text(encoding="utf-8")
+    assert json.loads(report_out.read_text(encoding="utf-8"))["verdict"] == "would-block"
+    out = capsys.readouterr().out
+    assert "::warning title=verify-fast-duration::" in out
+    assert "(report only)" in out
+
+
+def test_block_mode_fails_a_slowdown_against_the_committed_baseline(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    baseline_dir = committed_baseline(tmp_path, cases(1000, 0.4))
+    run = write_run(tmp_path, "slowed", cases(1000, 0.4 + 0.713))
+    summary = tmp_path / "summary.md"
+    report_out = tmp_path / "report.json"
+
+    status = baseline.main(
+        [
+            "verify",
+            "--mode",
+            "block",
+            "--baseline",
+            str(baseline_dir),
+            "--run-dir",
+            str(run),
+            "--summary",
+            str(summary),
+            "--report-out",
+            str(report_out),
+        ]
+    )
+
+    assert status == 1
+    report = json.loads(report_out.read_text(encoding="utf-8"))
+    assert report["verdict"] == "would-block"
+    assert "::error title=verify-fast-duration::" in capsys.readouterr().out
+
+
+def test_synthetic_autouse_fixture_slowdown_blocks_in_block_mode(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    baseline_dir = committed_baseline(tmp_path, cases(1000, 0.328))
+    run = write_run(tmp_path, "slowed_fixture", cases(1000, 0.328 + 0.713))
+    report_out = tmp_path / "report.json"
+
+    status = baseline.main(
+        [
+            "verify",
+            "--mode",
+            "block",
+            "--baseline",
+            str(baseline_dir),
+            "--run-dir",
+            str(run),
+            "--report-out",
+            str(report_out),
+        ]
+    )
+
+    assert status == 1
+    report = json.loads(report_out.read_text(encoding="utf-8"))
+    assert report["verdict"] == "would-block"
+    assert report["delta_seconds"] == pytest.approx(713.0)
+    assert report["sum_ratio"] == pytest.approx(1 + 0.713 / 0.328)
+    out = capsys.readouterr().out
+    assert "::error title=verify-fast-duration::" in out
+
+
+def test_adding_50_ordinary_fast_tests_passes(tmp_path: Path) -> None:
+    baseline_dir = committed_baseline(tmp_path, cases(1000, 0.328))
+    extra = {f"test_new_{i:04d}": 0.4 for i in range(50)}
+    run = write_run(tmp_path, "added_fast_tests", {**cases(1000, 0.328), **extra})
+    report_out = tmp_path / "report.json"
+
+    status = baseline.main(
+        [
+            "verify",
+            "--mode",
+            "block",
+            "--baseline",
+            str(baseline_dir),
+            "--run-dir",
+            str(run),
+            "--report-out",
+            str(report_out),
+        ]
+    )
+
+    assert status == 0
+    report = json.loads(report_out.read_text(encoding="utf-8"))
+    assert report["verdict"] == "pass"
+    assert report["new_test_count"] == 50
+    assert report["new_test_excess_seconds"] == 0.0
+    assert report["delta_seconds"] == pytest.approx(0.0)
+    assert report["sum_ratio"] == pytest.approx(1.0)
+
+
+def test_report_mode_rollback_allows_slowdown(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(baseline, "VERIFY_MODE", "report")
+    baseline_dir = committed_baseline(tmp_path, cases(1000, 0.328))
+    run = write_run(tmp_path, "slowed_fixture", cases(1000, 0.328 + 0.713))
+    report_out = tmp_path / "report.json"
+
+    status = baseline.main(
+        [
+            "verify",
+            "--baseline",
+            str(baseline_dir),
+            "--run-dir",
+            str(run),
+            "--report-out",
+            str(report_out),
+        ]
+    )
+
+    assert status == 0
+    report = json.loads(report_out.read_text(encoding="utf-8"))
+    assert report["verdict"] == "would-block"
+    out = capsys.readouterr().out
+    assert "::warning title=verify-fast-duration::" in out
+    assert "(report only)" in out
+
+
+def test_cli_fails_a_missing_baseline_in_block_mode_only(tmp_path: Path) -> None:
+    run = write_run(tmp_path, "run", cases(5, 2.0))
+    arguments = ["verify", "--baseline", str(tmp_path / "absent"), "--run-dir", str(run)]
+
+    assert baseline.main([*arguments, "--mode", "block"]) == 1
+    assert baseline.main([*arguments, "--mode", "report"]) == 0
+
+
+def test_block_mode_fails_a_rejected_run_and_report_mode_does_not(tmp_path: Path) -> None:
+    baseline_dir = committed_baseline(tmp_path, cases(5, 2.0))
+    run = write_run(tmp_path, "run", cases(5, 2.0), best_seconds=None)
+    arguments = ["verify", "--baseline", str(baseline_dir), "--run-dir", str(run)]
+
+    assert baseline.main([*arguments, "--mode", "block"]) == 1
+    assert baseline.main([*arguments, "--mode", "report"]) == 0
+
+
+@pytest.mark.parametrize("run_cases", [{f"renamed_{index:04d}": 2.0 for index in range(1000)}, cases(900, 2.0)])
+def test_block_mode_fails_runs_that_do_not_cover_the_baseline(tmp_path: Path, run_cases: dict[str, float]) -> None:
+    baseline_dir = committed_baseline(tmp_path, cases(1000, 2.0))
+    run = write_run(tmp_path, "run", run_cases)
+    arguments = ["verify", "--baseline", str(baseline_dir), "--run-dir", str(run)]
+
+    assert baseline.main([*arguments, "--mode", "block"]) == 1
+    assert baseline.main([*arguments, "--mode", "report"]) == 0
 
 
 def test_committed_baseline_verifies_against_itself_as_pass() -> None:
@@ -286,12 +475,12 @@ def test_committed_baseline_verifies_against_itself_as_pass() -> None:
 def test_new_test_allowance_is_applied_per_test() -> None:
     base = {"tests/test_sample.py::test_base": 100.0}
     current = dict(base)
-    current["tests/test_new.py::test_slow"] = 100.0
+    current["tests/test_new.py::test_slow"] = 400.0
     current.update({f"tests/test_new.py::test_cheap_{index}": 0.0 for index in range(199)})
 
     report = baseline.verify_durations(base, current)
 
-    assert report["new_test_excess_seconds"] == pytest.approx(99.5)
+    assert report["new_test_excess_seconds"] == pytest.approx(399.5)
     assert report["verdict"] == "would-block"
 
 

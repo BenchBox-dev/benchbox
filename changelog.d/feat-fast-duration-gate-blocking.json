@@ -1,0 +1,1 @@
+{"internal": "The core fast-tier duration check now blocks pull requests above provisional speed-normalized thresholds (+30% and +360 s) and on rejected runs; set VERIFY_MODE back to report to roll back.", "schema": 1}
