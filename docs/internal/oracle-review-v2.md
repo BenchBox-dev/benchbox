@@ -663,9 +663,10 @@ cancels a run in flight, which then posts nothing.
 A same-head rerun needs a previous run where every attempted reviewer was
 absent. A run pending because its artifacts failed validation, or a selected
 reviewer never reported, is not rerun on that head; push a new one. Comment,
-dispatch and scheduled reruns share a per-head daily budget
-(`retry.daily_budget`), with backoff starting at one hour and doubling; a new
-head starts with none spent. The plan counts the retries recorded in the head's
+dispatch and scheduled reruns share a daily budget (`retry.daily_budget`), with
+backoff starting at one hour and doubling. A new head inherits the budget spent
+on a decisive earlier head, so a push does not restore it; only an earlier head
+that ended pending leaves it unspent. The plan counts the retries recorded in the
 state and the sweep counts the dispatches recorded in the run titles, and both
 apply the owner reset the same way: it ignores the backoff and the budget once.
 Retry state is the `oracle-verdict-state-<number>` artifact of this workflow's

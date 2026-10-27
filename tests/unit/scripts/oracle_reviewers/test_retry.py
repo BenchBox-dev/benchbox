@@ -232,25 +232,30 @@ def test_the_owner_reset_never_rerolls_a_decisive_result(policy: Policy, outcome
     assert not due_for_retry(decided, HEAD, NOW, policy.retry, reset_at)
 
 
-def test_only_the_current_heads_retries_count_toward_the_budget_and_backoff(policy: Policy) -> None:
-    budget = policy.retry.daily_budget
-    spent_elsewhere = _state("pending", head=OTHER, age=timedelta(minutes=10), retries=budget)
+def test_a_pending_earlier_heads_retries_do_not_refuse_the_new_heads_retry(policy: Policy) -> None:
+    spent_elsewhere = _state("pending", head=OTHER, age=timedelta(minutes=10), retries=policy.retry.daily_budget)
     assert _decide(policy, spent_elsewhere).allowed
-    assert recent_retries(spent_elsewhere, HEAD, NOW) == ()
-    assert len(recent_retries(spent_elsewhere, OTHER, NOW)) == budget
-    assert recent_retries(None, HEAD, NOW) == ()
 
 
-def test_next_state_starts_a_new_heads_retries_from_zero(policy: Policy) -> None:
-    old = _state("pending", head=OTHER, retries=3)
-    state = next_state(
-        previous=old, pr=7, head_sha=HEAD, outcome="pending", manual=True, now=NOW, pool_blocked_until={}
-    )
-    assert state.retries == (NOW,)
+@pytest.mark.parametrize("outcome", ["success", "failure"])
+def test_a_decisive_earlier_heads_spent_budget_still_refuses_a_manual_rerun_on_a_new_head(
+    policy: Policy, outcome: str
+) -> None:
+    spent = _state(outcome, head=OTHER, age=timedelta(minutes=10), retries=policy.retry.daily_budget)
+    decision = _decide(policy, spent)
+    assert not decision.allowed
+    assert "daily retry budget" in decision.reason
+    assert _decide(policy, spent, manual=False).allowed
+
+
+@pytest.mark.parametrize("outcome", ["success", "failure"])
+def test_a_new_head_carries_the_decisive_earlier_heads_retries_forward(policy: Policy, outcome: str) -> None:
+    old = _state(outcome, head=OTHER, retries=3)
     pushed = next_state(
         previous=old, pr=7, head_sha=HEAD, outcome="pending", manual=False, now=NOW, pool_blocked_until={}
     )
-    assert pushed.retries == ()
+    assert pushed.retries == old.retries
+    assert recent_retries(None, NOW) == ()
 
 
 def test_an_owner_reset_for_another_head_or_before_the_state_changes_nothing(policy: Policy) -> None:

@@ -73,8 +73,8 @@ class RerunDecision:
     reason: str
 
 
-def recent_retries(state: State | None, head_sha: str, now: datetime) -> tuple[datetime, ...]:
-    if state is None or state.head_sha != head_sha:
+def recent_retries(state: State | None, now: datetime) -> tuple[datetime, ...]:
+    if state is None:
         return ()
     return tuple(moment for moment in state.retries if now - moment < WINDOW)
 
@@ -113,7 +113,8 @@ def decide_rerun(
         return RerunDecision(True, "pull request event")
     if reset_applies(previous, head_sha, reset_at):
         return RerunDecision(True, "retry backoff reset by the owner")
-    retries = recent_retries(previous, head_sha, now)
+    inherits_budget = previous is None or same_head or previous.outcome in DECISIVE
+    retries = recent_retries(previous, now) if inherits_budget else ()
     if len(retries) >= rules.daily_budget:
         return RerunDecision(False, f"the daily retry budget of {rules.daily_budget} is used")
     if same_head and previous is not None:
@@ -138,7 +139,7 @@ def next_state(
     pending_cause: str | None = None,
     strikes: int | None = None,
 ) -> State:
-    retries = recent_retries(previous, head_sha, now) + ((now,) if manual else ())
+    retries = recent_retries(previous, now) + ((now,) if manual else ())
     cause = pending_cause if outcome == PENDING else None
     kept = max(strikes or 0, previous.strikes if previous else 0)
     return State(pr, head_sha, outcome, now, retries, dict(pool_blocked_until), cause, kept)
