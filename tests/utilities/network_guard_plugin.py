@@ -84,13 +84,17 @@ def network_guard_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def expect_network_block(network_guard_log: Path) -> Iterator[Callable[[str], contextlib.AbstractContextManager[None]]]:
     @contextlib.contextmanager
     def expect(target: str) -> Iterator[None]:
+        if not target.strip():
+            raise ValueError("expect_network_block needs a non-empty target")
         before = len(network_guard.peek_violations())
         log_name = str(network_guard_log)
         before_log = _read_lines(log_name)
         yield
         in_process = network_guard.peek_violations()[before:]
         from_log = _read_lines(log_name)[len(before_log) :]
-        matching = [line for line in [*in_process, *from_log] if repr(target) in line or target in line]
+        matching = [
+            line for line in [*in_process, *from_log] if f"target \"('{target}'" in line or f"target '{target}'" in line
+        ]
         if not matching:
             pytest.fail(f"expected the network guard to block {target!r}, but it blocked nothing for it", pytrace=False)
         network_guard.discard_violations(matching)
