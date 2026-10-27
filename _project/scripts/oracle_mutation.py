@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
-STAGE = ROOT / "build" / "oracle-mutation"
+STAGE = Path(os.environ.get("ORACLE_MUTATION_STAGE") or ROOT / "build" / "oracle-mutation")
 ALWAYS_COPIED = ("tests", "pytest.ini", "pyproject.toml", "_benchbox_pytest_xdist_safety.py")
 COUNTED = ("killed", "timeout", "survived", "no tests", "not checked")
 
