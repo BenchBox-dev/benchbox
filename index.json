@@ -16064,7 +16064,9 @@
     },
     "oracle-carry-byte-identical-20261026": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Carry an oracle decision only for a byte-identical merge-base diff with full blob ids"
