@@ -5,6 +5,8 @@
     "Tests: a Medium-only SHIP WITH FIXES proceeds; DO NOT SHIP from max_defects overflow blocks; an existing PR with a carried Critical blocks even when the new diff is clean; the reviewed SHA is pushed when the branch ref moved meanwhile; no key refuses with a message naming the keychain step; a planted copy of the local gateway token in a scanned root fails the run.",
     "Mac smoke: a branch with a seeded hardcoded-credential defect is refused before push (the remote branch has no new commit); a clean branch opens a PR (closed as a smoke artifact); outputs recorded.",
     "docs/internal/oracle-review-v2.md (local section), CONTRIBUTING.md pr-open notes and docs/agent/cloud-builder.md updated.",
+    "The cloud-reachability item's unstubbed reachable()/omp_env tests and the per-patch lock tests pass unchanged.",
+    "Test: an edited App review in the PR's history makes pr-open refuse.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "2026-10-27: Merge freeze (owner 2026-10-27, scope: oracle-code PRs): no PR that changes oracle reviewer or gate code merges, and no make pr-arm runs on one, until oracle-history-edited-review-fail-closed-20261027 is merged. In scope: #3565, #3572, #3573, #3574, #3576, the unopened scope-path, evidence-exempt and redaction branches, and any other PR touching _project/scripts/oracle_reviewers/, _project/scripts/oracle_review_check.py, _project/scripts/soundness_merge_digest.py, scripts/pr_arm.py or .github/workflows/oracle-*.yml. Excepted: the edited-review fix's own PR and #3585 (owner exemption 2026-10-27). PRs may be opened and reviewed meanwhile. Never edit, delete, dismiss or minimise an oracle review, review comment or commit status, including on test PRs; edit-detection proofs use unit fixtures and read-only GraphQL reads of existing reviews.\n\nFollow-up owner decisions 2026-10-26 (after the plan review): lock stays per machine; cache keyed by the shared digest plus all trusted inputs and model mapping; pool block persisted; cache override removed; ancestor-environment test; pre-merge smoke option.\n\nOWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q1 block with dispute plus adjudication; Q2 block when it cannot run; Q3 pend without classification; Q11 interim trusted develop export, split-ready; Q17 keychain key on the Mac and TYPESAFE_API_KEY in the Claude cloud environment.",
@@ -47,6 +49,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "3516560d511e459b86b85040abf5c15e",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T12:55:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b2934f78d85849fe98e89b4493de0c81",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
