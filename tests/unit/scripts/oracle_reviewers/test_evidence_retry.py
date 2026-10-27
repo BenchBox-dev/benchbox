@@ -328,10 +328,7 @@ class Run:
 
 @pytest.fixture
 def run(tmp_path: Path, policy: Policy, monkeypatch: pytest.MonkeyPatch) -> Run:
-    original = cli._assemble_prompt
-    loop = Loop(tmp_path, policy, monkeypatch, max_attempts=3)
-    monkeypatch.setattr(cli, "_assemble_prompt", original)
-    return Run(loop, tmp_path, monkeypatch, policy)
+    return Run(Loop(tmp_path, policy, monkeypatch, max_attempts=3), tmp_path, monkeypatch, policy)
 
 
 def _all_but(*skipped: str) -> list[str]:
