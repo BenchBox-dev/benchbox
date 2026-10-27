@@ -1,13 +1,13 @@
 {
   "acceptance": [
-    "nightly-v2 validated by 2-3 workflow_dispatch runs (off-peak where possible) with a job-level comparison to the old nightly/scheduled workflows' latest results; no 7-night shadow",
-    "Each domain has its own job conclusion, artifacts, and label; t3:cloud gated off by repo variable",
-    "Durations file refreshed by the run",
-    "macOS/Windows wheel install and Python 3.11-3.14 matrix included (moved out of T2)",
-    "Owner response policy documented: fix or revert within one working day"
+    "docs/internal/nightly-t3.md and nightly-v2.yml list the same domains; the browser domain is removed from the plan and its coverage is owned by dlv2-site-browser-check",
+    "t3:sql-execution-gate-obt, drift-gate and throughput-signal failures each reach a per-domain issue/label or an explicit infrastructure alert; skipped drift is distinguishable from a failed selection",
+    "Former needs are reconciled with primary evidence recorded here: perf (issue #2778 closed, PR #2859), docker (PR #3150, issue #2906 closed), drift (issue #2471 closed or each failing drift job fixed)",
+    "2-3 workflow_dispatch runs of nightly-v2 (t3:cloud off) in which every non-skipped domain passes, with run ids and a job-level comparison against the legacy nightly recorded",
+    "Duration handling matches dlv2-13a (aggregate gate), cloud stays opt-in, and the owner response policy is documented"
   ],
-  "context": "Moved before any deletion per codex C6 / agy A5 / muse M11. Guardrails G2, G3. Owner decision: t3:cloud is wired but gated by a repo variable (e.g. BENCHBOX_T3_CLOUD_ENABLED) that defaults to off; the agent never runs live cloud tests. Parity for the cloud domain is by static comparison with the old nightly jobs, not execution.\n\nStop checkpoint 2026-09-30 12:20 UTC: OPEN; nightly2449 and repair2465 merged, but rehearsal236672361173 at a074FAILED06:53:27 (validatorruntime/parity, AzureSynapse429, Q17failure hiddenbehinddurationSUCCESS). No new rehearsal dispatched during stop. Pricing2473/integrity2472/validator2474/verdict2475/Q172476 stillunmerged; Q17latest69ee localonly. Validator needs accepted6runtimepaths, trusteddevelopbotmirror/all437archiveidentity, separatelyreviewedWORKFLOWONLY published-results slimuvport, thenremaining2sourceguard/test; no paritywaiver/blindrerun. Afteractualdelivery/parity, run2–3serialsuccessfulrehearsals before anylegacyretirement. Clouddefaultoff unchanged, staticcloudparityonly. See /tmp/HANDOFF-dlv2-codex-20260930T1220Z.md.\n\n2026-10-09 tracker review: Status against the acceptance criteria. The matrix is green in workflow_dispatch runs 37944292492 and 37991400931, which meets acceptance 2 (separate job conclusions, artifacts and labels per domain, t3:cloud gated off), 4 (macOS/Windows and Python 3.11-3.14 matrix) and 5 (owner response policy). Acceptance 1 (2-3 green dispatch runs compared with the old workflows) and 3 (durations file refreshed by the run) are not met: no dispatch run has been fully green yet. The docker job failures in run 37991400931 were Docker Hub unauthenticated pull rate limits, an infrastructure problem, tracked in ci-docker-hub-unauthenticated-pulls-20261009. Needs added for the remaining blockers: t3-perf-aggregate-gate-tolerance-decision-20261009 (perf gate tolerance), t3-drift-dispatch-verify-20261008 (t3:drift dispatch check), t3-durations-refresh-failure-20261009 (durations refresh failure) and ci-docker-hub-unauthenticated-pulls-20261009. Fixed the stale \"develop-post-merge\" wording in the description: per-push checks on develop are in trunk.yml.",
-  "description": "New .github/workflows/nightly-v2.yml (renamed to nightly.yml when the old one retires in dlv2-70) at trunk tip with separate jobs and separate failure labels: t3:docker (postgres, clickhouse, trino from docker-integration.yml), t3:cloud (credentialed, optional), t3:perf (perf-smoke), t3:matrix (Python 3.11-3.14 x Linux/macOS/Windows from cross-platform-validation.yml), t3:browser (firefox/webkit explorer), t3:extension (duckdb-datasketches from extension-smoke.yml), t3:install (pypi-latest installability from release-canary.yml), t3:drift (weekly: corpus-drift, pricing-data drift, submission-validator drift, cross-surface baseline autodetect); plus quarantined tests and durations-file refresh. Each failing domain opens/updates one issue with its own label and owner. An open t3:* issue marked release-blocking blocks release.yml (dlv2-51). The nightly trunk-tip run replaces the re-run that the retired develop-post-merge workflow did; per-push checks on develop now run in trunk.yml.",
+  "context": "2026-10-27: dispatch #31 (2026-10-20) is the only green run of 40; no scheduled nightly-v2 run has been green. 2026-10-26/27 fixes: corpus mirror #3568 merged, Windows PR leg #3548 merged (module-state-guard home-dir env). Owner decision 2026-10-27: browser domain is ported to the site repo (dlv2-site-browser-check); Explorer-token lint retired. Perf, docker and drift needs were removed from needs because evidence above replaces them.",
+  "description": "AUDIT 2026-10-27 (owner-adjudicated, advisor-reviewed): the acceptance and context sections supersede this description wherever they differ. Historical text below is kept for reference.\n\nNew .github/workflows/nightly-v2.yml (renamed to nightly.yml when the old one retires in dlv2-70) at trunk tip with separate jobs and separate failure labels: t3:docker (postgres, clickhouse, trino from docker-integration.yml), t3:cloud (credentialed, optional), t3:perf (perf-smoke), t3:matrix (Python 3.11-3.14 x Linux/macOS/Windows from cross-platform-validation.yml), t3:browser (firefox/webkit explorer), t3:extension (duckdb-datasketches from extension-smoke.yml), t3:install (pypi-latest installability from release-canary.yml), t3:drift (weekly: corpus-drift, pricing-data drift, submission-validator drift, cross-surface baseline autodetect); plus quarantined tests and durations-file refresh. Each failing domain opens/updates one issue with its own label and owner. An open t3:* issue marked release-blocking blocks release.yml (dlv2-51). The nightly trunk-tip run replaces the re-run that the retired develop-post-merge workflow did; per-push checks on develop now run in trunk.yml.",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:ea32adff11bd0f17607daca2",
@@ -48,6 +48,14 @@
       "op": "update",
       "op_id": "721bca465f50424898cd874067e0b23d",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T23:29:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "602a52d2eae04a55a0f553390fa6652b",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
 }

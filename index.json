@@ -8533,14 +8533,7 @@
     },
     "dlv2-22-nightly-t3-shadow": {
       "claim": null,
-      "needs": [
-        "dlv2-00-decisions-adr",
-        "dlv2-13-durations-budget-quarantine",
-        "t3-perf-aggregate-gate-tolerance-decision-20261009",
-        "t3-drift-dispatch-verify-20261008",
-        "t3-durations-refresh-failure-20261009",
-        "ci-docker-hub-unauthenticated-pulls-20261009"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "Add the new T3 nightly workflow with per-domain jobs and validate it with dispatched runs"
