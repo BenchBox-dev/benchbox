@@ -16785,7 +16785,11 @@
         "oracle-gate-from-verdict-job-20261026",
         "oracle-scope-path-canonical-20261026",
         "oracle-evidence-exempt-binary-prose-20261026",
-        "pr-open-stacked-draft-base-20261026"
+        "pr-open-stacked-draft-base-20261026",
+        "oracle-history-edited-review-fail-closed-20261027",
+        "oracle-sweep-liveness-cluster-20261027",
+        "oracle-cloud-review-reachability-20261027",
+        "oracle-small-trust-fixes-20261027"
       ],
       "priority": "medium",
       "status": "open",
