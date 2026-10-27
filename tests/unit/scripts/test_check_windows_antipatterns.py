@@ -422,6 +422,7 @@ def test_dev_null_guards_do_not_hide_windows_paths(tmp_path: Path, expression: s
         ("environment = {'SYSTEMROOT': 'C:/Windows'}", []),
         ("environment = {**os.environ, 'PATH': ''}", []),
         ("environment = os.environ.copy()", []),
+        ("environment = {'PATH': ''}\nenvironment['FOO'] = 'x'", ["WA006"]),
         ("environment = {}\nenvironment['SYSTEMROOT'] = os.environ['SYSTEMROOT']", []),
         ("environment = {}\nfor key in ('SYSTEMROOT',):\n    environment[key] = os.environ[key]", []),
     ],

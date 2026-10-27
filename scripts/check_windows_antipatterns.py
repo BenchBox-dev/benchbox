@@ -126,7 +126,11 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
             if isinstance(target, ast.Name):
                 self.scope_stack[-1][target.id] = node.value
             elif isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name):
-                self.scope_stack[-1].pop(target.value.id, None)
+                key = target.slice
+                if not (
+                    isinstance(key, ast.Constant) and isinstance(key.value, str) and key.value.upper() != "SYSTEMROOT"
+                ):
+                    self.scope_stack[-1].pop(target.value.id, None)
         self.generic_visit(node)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
