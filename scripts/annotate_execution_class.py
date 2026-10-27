@@ -26,8 +26,11 @@ def _host(bundle: dict) -> dict:
 
 def is_linux_guest_on_apple_silicon(bundle: dict) -> bool:
     host = _host(bundle)
+    unrecorded = "execution_class" not in host or (
+        host["execution_class"] == "native" and host.get("execution_class_source") == "inferred"
+    )
     return (
-        "execution_class" not in host
+        unrecorded
         and str(host.get("os", "")).startswith("Linux")
         and str(host.get("cpu_vendor", "")).lower() == "apple"
     )

@@ -115,6 +115,22 @@ def test_sidecar_cannot_override_a_recorded_class(tmp_path: Path) -> None:
         published_variant_id(_bundle(execution_class="native"), "clickhouse-local", path)
 
 
+def test_sidecar_corrects_an_inferred_class_but_not_an_observed_one(tmp_path: Path) -> None:
+    path = tmp_path / "run.json"
+    path.write_text("{}", encoding="utf-8")
+    path.with_name("run.manifest.json").write_text(
+        json.dumps({"execution_class": "container", "container_host_os": "macOS", "execution_class_evidence": "owner"}),
+        encoding="utf-8",
+    )
+    inferred = _bundle(execution_class="native", execution_class_source="inferred", container_host_os="Windows")
+    observed = _bundle(execution_class="native", execution_class_source="observed")
+
+    assert published_variant_id(inferred, "clickhouse-local", path) == "clickhouse-local^container"
+    assert read_execution_environment(inferred, path)["container_host_os"] == "macOS"
+    with pytest.raises(ExecutionClassError, match="attests"):
+        published_variant_id(observed, "clickhouse-local", path)
+
+
 def test_derive_variant_id_orders_the_class_last_and_rejects_the_separator() -> None:
     assert derive_variant_id("snowflake", "other", "photon", "greybeam", "container") == (
         "snowflake~other+photon@greybeam^container"
@@ -171,12 +187,48 @@ def linux(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(host_environment.CONTAINER_HOST_OS_ENV, raising=False)
     monkeypatch.setattr(host_environment, "_read_text", lambda path: "")
     monkeypatch.setattr(host_environment.os.path, "exists", lambda path: False)
+    monkeypatch.setattr(host_environment, "detect_cpu_info", lambda: (None, None))
 
 
-def test_detection_reports_native_on_a_plain_host(linux: None) -> None:
+def test_detection_infers_native_on_an_unmarked_linux_host(linux: None) -> None:
+    assert host_environment.detect_execution_class() == {
+        "execution_class": "native",
+        "execution_class_source": "inferred",
+    }
+
+
+def test_detection_observes_native_off_linux(monkeypatch: pytest.MonkeyPatch, linux: None) -> None:
+    monkeypatch.setattr(host_environment.platform, "system", lambda: "Darwin")
+
     assert host_environment.detect_execution_class() == {
         "execution_class": "native",
         "execution_class_source": "observed",
+    }
+
+
+def test_detection_infers_a_container_for_an_unmarked_linux_guest_on_apple_silicon(
+    monkeypatch: pytest.MonkeyPatch, linux: None
+) -> None:
+    monkeypatch.setattr(host_environment, "detect_cpu_info", lambda: ("Apple M4", "Apple"))
+
+    assert host_environment.detect_execution_class() == {
+        "execution_class": "container",
+        "execution_class_source": "inferred",
+        "container_host_os": "macOS",
+    }
+
+
+def test_a_marked_container_on_apple_silicon_is_observed_with_a_mac_host(
+    monkeypatch: pytest.MonkeyPatch, linux: None
+) -> None:
+    monkeypatch.setattr(host_environment, "detect_cpu_info", lambda: ("Apple M4", "Apple"))
+    monkeypatch.setattr(host_environment.os.path, "exists", lambda path: path == "/.dockerenv")
+
+    assert host_environment.detect_execution_class() == {
+        "execution_class": "container",
+        "execution_class_source": "observed",
+        "container_runtime": "docker",
+        "container_host_os": "macOS",
     }
 
 

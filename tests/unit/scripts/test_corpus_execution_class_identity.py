@@ -128,28 +128,49 @@ def test_container_identity_composes_with_engine_and_gateway_suffixes(tmp_path: 
     assert validator_ids == {"polars+streaming^container"}
 
 
-def test_committed_corpus_identities_are_unchanged_by_the_environment_class() -> None:
-    validator = _load_validator()
-    bundles = validator.discover_bundles(BUNDLES)
-    identities = {identity for identities in validator.cohort_platforms(bundles).values() for identity in identities}
-
-    assert identities
-    assert not [identity for identity in identities if "^" in identity]
-    for path in bundles:
-        sidecar = path.with_name(f"{path.stem}.manifest.json")
-        if sidecar.exists():
-            assert "execution_class" not in json.loads(sidecar.read_text(encoding="utf-8"))
+def _attests_container(path: Path) -> bool:
+    sidecar = path.with_name(f"{path.stem}.manifest.json")
+    return sidecar.exists() and json.loads(sidecar.read_text(encoding="utf-8")).get("execution_class") == "container"
 
 
-def test_github_runner_bundles_keep_their_native_linux_identity() -> None:
+def _records_container(payload: dict) -> bool:
+    environment = payload.get("environment")
+    if not isinstance(environment, dict):
+        return False
+    client_host = environment.get("client_host")
+    return "container" in (
+        environment.get("execution_class"),
+        client_host.get("execution_class") if isinstance(client_host, dict) else None,
+    )
+
+
+def test_committed_identities_carry_the_container_suffix_only_for_attested_containers() -> None:
     validator = _load_validator()
     transformer = BundleTransformer()
-    linux_native = []
+    bundles = validator.discover_bundles(BUNDLES)
+
+    for path in bundles:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        variant_id = transformer.to_manifest_entry(path).variant_id
+        assert ("^container" in variant_id) == (_attests_container(path) or _records_container(payload)), path.name
+
+    cohorts = validator.cohort_platforms(bundles)
+    assert {identity for identities in cohorts.values() for identity in identities}
+
+
+def test_native_linux_runner_bundles_keep_their_plain_identity() -> None:
+    validator = _load_validator()
+    transformer = BundleTransformer()
+    runners = []
     for path in validator.discover_bundles(BUNDLES):
         payload = json.loads(path.read_text(encoding="utf-8"))
         environment = payload.get("environment")
-        if isinstance(environment, dict) and str(environment.get("os", "")).startswith("Linux"):
-            linux_native.append(path)
-            assert "^" not in transformer.to_manifest_entry(path).variant_id
+        if not isinstance(environment, dict) or not str(environment.get("os", "")).startswith("Linux"):
+            continue
+        client_host = environment.get("client_host") if isinstance(environment.get("client_host"), dict) else {}
+        if str(environment.get("cpu_vendor") or client_host.get("cpu_vendor", "")).lower() == "apple":
+            continue
+        runners.append(path)
+        assert "^" not in transformer.to_manifest_entry(path).variant_id
 
-    assert linux_native
+    assert runners

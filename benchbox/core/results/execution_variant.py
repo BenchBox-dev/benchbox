@@ -157,16 +157,19 @@ def read_execution_environment(bundle: Mapping[str, Any], bundle_path: Path | No
     attested = read_manifest_execution_environment(bundle_path)
     recorded = read_recorded_execution_class(bundle)
     attested_class = attested.get("execution_class")
-    if recorded and attested_class and recorded != attested_class:
+    inferred = (host.get("execution_class_source") or environment.get("execution_class_source")) == "inferred"
+    overridden = bool(inferred and attested_class)
+    if recorded and attested_class and recorded != attested_class and not overridden:
         raise ExecutionClassError(
             f"bundle records execution_class {recorded!r} but its manifest sidecar attests {attested_class!r}"
         )
+    sources = (attested, host, environment) if overridden else (host, environment, attested)
     reading = {
         key: str(value)
         for key in ("container_runtime", "container_host_os")
-        if (value := host.get(key) or environment.get(key) or attested.get(key))
+        if (value := next((source[key] for source in sources if source.get(key)), None))
     }
-    reading["execution_class"] = recorded or attested_class or NATIVE_EXECUTION_CLASS
+    reading["execution_class"] = attested_class if overridden else recorded or attested_class or NATIVE_EXECUTION_CLASS
     return reading
 
 

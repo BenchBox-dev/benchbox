@@ -222,15 +222,19 @@ def _container_runtime() -> str | None:
 
 
 def detect_execution_class() -> dict[str, str]:
-    runtime = _container_runtime() if platform.system() == "Linux" else None
-    if runtime is None:
+    if platform.system() != "Linux":
         return {"execution_class": EXECUTION_CLASS_NATIVE, "execution_class_source": "observed"}
+    runtime = _container_runtime()
+    apple_guest = detect_cpu_info()[1] == "Apple"
+    if runtime is None and not apple_guest:
+        return {"execution_class": EXECUTION_CLASS_NATIVE, "execution_class_source": "inferred"}
     detected = {
         "execution_class": EXECUTION_CLASS_CONTAINER,
-        "container_runtime": runtime,
-        "execution_class_source": "observed",
+        "execution_class_source": "observed" if runtime else "inferred",
     }
-    host_os = os.environ.get(CONTAINER_HOST_OS_ENV, "").strip()
+    if runtime:
+        detected["container_runtime"] = runtime
+    host_os = os.environ.get(CONTAINER_HOST_OS_ENV, "").strip() or ("macOS" if apple_guest else "")
     if host_os:
         detected["container_host_os"] = host_os
     return detected
