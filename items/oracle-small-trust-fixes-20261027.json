@@ -3,6 +3,7 @@
     "One test per fix that fails on develop and passes after (seven, or six if gate 1 drops (3)), including the AbsencePin probe cases (status 400 with '429' in the message is not quota; status 500 with 'HTTP 401' is not auth).",
     "Test: a WAITING for a success status without a bound, unedited receipt names 'push a new head' and 'owner stand-in', never 'run the verdict'.",
     "Tests: pr-arm holds on rejected, missing and unknown fast-duration verdicts and proceeds on pass and neutral; the baseline-update exception still applies.",
+    "Adds or updates the matching scenario in the oracle end-to-end harness (oracle-e2e-scenario-harness-and-mutation-gate-20261027) once that harness exists, proven to fail with this item's defect reintroduced.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "OWNER DECISIONS 2026-10-27 (choice dialog, joeharris76): freeze all oracle-gated merges until oracle-history-edited-review-fail-closed-20261027 merges; Critical fix = GraphQL edit-state check now, HMAC marker later; pr-arm proceeds on fast-duration pass or neutral only. ",
@@ -49,6 +50,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "71ab3ec8666d4a05a4b171d0f3b8fdbc",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T14:09:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "09a3fecd18164e4596adbe3135dbe17c",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
