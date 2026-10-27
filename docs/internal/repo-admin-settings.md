@@ -854,16 +854,22 @@ and let the canary return to green.
 ## Repository labels
 
 The retired post-merge auto-revert job created the `incident:develop-red` and
-`incident:develop-red-revert-conflict` labels on demand. No workflow creates or
-reads them now. Any that still exist on the repository are legacy and are
-scheduled for deletion in the dev-loop v2 cleanup
-(`docs/internal/adr/adr-dev-loop-v2.md`).
+`incident:develop-red-revert-conflict` labels on demand. No workflow, script,
+test, or document reads them, and both labels were deleted from the repository
+on 2026-10-27. The branch namespaces of the retired merge queue
+(`gh-readonly-queue/develop/*`) and of the auto-revert job (`auto-revert/*`)
+were deleted at the same time, together with the remote branches of closed and
+merged pull requests. Neither namespace is created any more.
 
 Verify:
 
 ```bash
 gh label list --search incident
+git ls-remote --heads origin 'gh-readonly-queue/*' 'auto-revert/*'
 ```
+
+The label search lists only `incident:release-canary-red` and
+`incident:todo-export-failed`; the branch listing is empty.
 
 ## Re-applying after a transfer or restore
 
