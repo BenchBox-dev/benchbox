@@ -406,6 +406,35 @@ jobs:
 
           echo "Mirror PR #${PR_NUMBER} is fresh against published-results@${PUBLISHED_BASE_SHA}."
 
+      - name: Close superseded mirror PRs
+        if: steps.drift.outputs.has_drift == 'true' && steps.build.outputs.has_changes == 'true' && steps.validate.outputs.state == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
+
+          OPEN_MIRRORS=$(gh pr list \
+            --base published-results \
+            --state open \
+            --json number,headRefName,isCrossRepository \
+            --jq '.[] | select(.isCrossRepository == false and (.headRefName | startswith("auto/results-mirror-"))) | "\(.number) \(.headRefName)"')
+
+          printf '%s\n' "${OPEN_MIRRORS}" | while read -r number head; do
+            [[ -n "${number}" ]] || continue
+            if [[ "${number}" == "${PR_NUMBER}" ]]; then
+              continue
+            fi
+            older_sha="${head#auto/results-mirror-}"
+            if ! git merge-base --is-ancestor "${older_sha}" "${GITHUB_SHA}" 2>/dev/null; then
+              echo "Leaving mirror PR #${number} open: ${older_sha} is not an ancestor of ${GITHUB_SHA::8}."
+              continue
+            fi
+            gh pr close "${number}" \
+              --comment "Superseded by #${PR_NUMBER}. Each mirror is a full snapshot of develop against published-results, and #${PR_NUMBER} was built from develop@${GITHUB_SHA::8}, which contains develop@${older_sha}." \
+              || echo "::warning::Could not close superseded mirror PR #${number}."
+          done
+
       - name: Fail the run if mirrored content failed validation
         if: always() && steps.drift.outputs.has_drift == 'true' && steps.build.outputs.has_changes == 'true' && steps.validate.outputs.state != 'success'
         run: |
