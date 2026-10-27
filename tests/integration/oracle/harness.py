@@ -6,29 +6,38 @@ import stat
 import subprocess
 import sys
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from .fake_github import APP_TOKEN, GH_HOST, JOB_TOKEN, FakeGitHub
+from .fake_github import APP_TOKEN, GH_HOST, JOB_TOKEN, OWNER_TOKEN, FakeGitHub
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SLUG = "BenchBox-dev/BenchBox"
 CHECKER = "benchbox/core/equivalence/checker.py"
 RECORDED_STREAM = REPO_ROOT / "tests" / "fixtures" / "oracle_reviewers" / "omp_multi_turn_review.jsonl"
 POLICY = ".github/oracle-reviewers.yml"
+TRUSTED_FILES = (POLICY, ".github/workflows/oracle-verdict.yml", ".github/soundness-paths.txt")
 GATEWAY_TOKEN = "gwtok-" + "Q7mZ4kLp" * 5
 PINNED_OMP = "18.12.1"
 STEP_TIMEOUT = 120
+COMMIT_AGE = timedelta(hours=2)
 
 
 def git(path: Path, *args: str) -> str:
+    moment = (datetime.now(UTC) - COMMIT_AGE).strftime("%Y-%m-%dT%H:%M:%SZ")
     result = subprocess.run(
         ["git", "-C", str(path), "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
         capture_output=True,
         encoding="utf-8",
         check=True,
+        env={**os.environ, "GIT_AUTHOR_DATE": moment, "GIT_COMMITTER_DATE": moment},
     )
     return result.stdout.strip()
+
+
+def ago(minutes: int) -> str:
+    return (datetime.now(UTC) - timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def outputs(path: Path) -> dict[str, str]:
@@ -87,7 +96,8 @@ class Harness:
     def _seed(self) -> None:
         self.repo.mkdir()
         git(self.repo, "init", "--quiet", "--initial-branch=develop")
-        self.write({"README.md": "seed\n", CHECKER: "def checker(a, b):\n    return a == b\n"}, "seed")
+        trusted = {path: (REPO_ROOT / path).read_text(encoding="utf-8") for path in TRUSTED_FILES}
+        self.write({"README.md": "seed\n", CHECKER: "def checker(a, b):\n    return a == b\n", **trusted}, "seed")
 
     def write(self, files: dict[str, str], message: str) -> str:
         for relative, text in files.items():
@@ -370,3 +380,37 @@ class Harness:
         summary = Path(env["GITHUB_STEP_SUMMARY"])
         step.outputs["summary"] = summary.read_text(encoding="utf-8") if summary.is_file() else ""
         return step
+
+    def arm(self, pr: int, branch: str) -> Step:
+        checkout = self.root / f"checkout-{pr}"
+        if not checkout.exists():
+            git(self.root, "clone", "--quiet", str(self.repo), str(checkout))
+            git(checkout, "switch", "--quiet", branch)
+        head = git(checkout, "rev-parse", "HEAD")
+        env = {**self.base_env(), "GH_TOKEN": OWNER_TOKEN, "GH_ENTERPRISE_TOKEN": OWNER_TOKEN}
+        argv = [sys.executable, str(REPO_ROOT / "scripts" / "pr_arm.py"), "--pr", str(pr), "--head", head]
+        return self.run("arm", [*argv, "--repo", SLUG], env, cwd=checkout)
+
+    def local_review(self, branch: str) -> Step:
+        checkout = self.root / f"local-{branch.replace('/', '-')}"
+        if not checkout.exists():
+            git(self.root, "clone", "--quiet", str(self.repo), str(checkout))
+            git(checkout, "switch", "--quiet", branch)
+            git(checkout, "branch", "--quiet", "-f", "develop", "origin/develop")
+        env = {
+            **self.base_env(),
+            "PYTHONPATH": str(REPO_ROOT),
+            "ORACLE_GATEWAY_URL": self.github.url,
+            "ORACLE_CLOUD_GATEWAY_TOKEN": GATEWAY_TOKEN,
+            "BENCHBOX_LOCAL_ORACLE_DIR": str(self.local_state),
+        }
+        argv = [sys.executable, "-m", "_project.scripts.oracle_reviewers.cli", "local-review", "--policy", POLICY]
+        return self.run("local-review", [*argv, "--base-ref", "develop"], env, cwd=checkout)
+
+    @property
+    def local_state(self) -> Path:
+        return self.root / "local-oracle"
+
+    def local_captures(self) -> list[dict[str, Any]]:
+        paths = sorted((self.local_state / "captures").glob("*/capture-*.json"))
+        return [json.loads(path.read_text(encoding="utf-8")) for path in paths]

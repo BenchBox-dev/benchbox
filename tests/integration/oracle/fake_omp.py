@@ -81,10 +81,19 @@ def fill(template: dict[str, Any], reply: dict[str, Any]) -> dict[str, Any]:
             "prior_status": answer.get("status", "not_fixed"),
             "evidence": answer.get("evidence", ""),
             "claim": answer.get("claim", ""),
-            "concedes": answer.get("concedes", ""),
+            "concedes": _spoken(answer.get("concedes", "")),
         }
-        filled["prior_defects"].append(_populate(entry, slots))
+        prior = _populate(entry, slots)
+        if "concedes" in entry and entry["concedes"] is None and "concedes" in answer:
+            prior["concedes"] = answer["concedes"]
+        filled["prior_defects"].append(prior)
     return filled
+
+
+def _spoken(value: Any) -> str:
+    if isinstance(value, bool):
+        return "Yes, the rebuttal holds." if value else "No, the rebuttal does not hold."
+    return str(value)
 
 
 def _rewrite(value: Any, workspace: str, cwd: str) -> Any:
@@ -137,9 +146,13 @@ def main(argv: list[str]) -> int:
     recorded = [
         json.loads(line) for line in Path(script["stream"]).read_text(encoding="utf-8").splitlines() if line.strip()
     ]
-    template = response_template(prompt)
-    text = json.dumps(fill(template, reply), indent=2)
-    for event in replay(recorded, text, workspace, cwd):
+    if reply.get("kind") == "truncated":
+        events = [_rewrite(event, workspace, cwd) for event in recorded]
+        final_turn = max(index for index, event in enumerate(events) if event["type"] == "turn_start")
+        events = events[:final_turn]
+    else:
+        events = replay(recorded, json.dumps(fill(response_template(prompt), reply), indent=2), workspace, cwd)
+    for event in events:
         sys.stdout.write(json.dumps(event) + "\n")
     leak = script.get("leak_env")
     if leak:

@@ -10,7 +10,7 @@ import zipfile
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -221,6 +221,28 @@ class FakeGitHub:
                 }
             )
 
+    def artifact_json(self, name: str, filename: str) -> Any:
+        with self.lock:
+            item = next(item for item in reversed(self.artifacts) if item["name"] == name)
+            with zipfile.ZipFile(io.BytesIO(item["data"])) as archive:
+                return json.loads(archive.read(filename))
+
+    def age(self, run: dict[str, Any], minutes: int) -> None:
+        with self.lock:
+            moment = datetime.strptime(run["created_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+            run["created_at"] = (moment - timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            for item in self.artifacts:
+                if item["workflow_run"]["id"] != run["id"]:
+                    continue
+                with zipfile.ZipFile(io.BytesIO(item["data"])) as archive:
+                    files = {name: archive.read(name) for name in archive.namelist()}
+                if "state.json" in files:
+                    state = json.loads(files["state.json"])
+                    updated = datetime.fromisoformat(state["updated_at"]) - timedelta(minutes=minutes)
+                    state["updated_at"] = updated.isoformat()
+                    files["state.json"] = json.dumps(state).encode("utf-8")
+                item["data"] = _zip(files)
+
     def oracle_statuses(self, sha: str) -> list[dict[str, Any]]:
         return [status for status in self.statuses[sha] if status["context"] == "oracle-verdict"]
 
@@ -302,8 +324,9 @@ class FakeGitHub:
         return 200, payload, headers
 
     def respond(self, request: Request) -> Response:
+        target = f"{request.path}?{urlencode(request.query)}"
         for failure in self.failures:
-            if failure.remaining and failure.method == request.method and failure.pattern.search(request.path):
+            if failure.remaining and failure.method == request.method and failure.pattern.search(target):
                 failure.remaining -= 1
                 return failure.status, {"message": "Server Error"}, {}
         prefix = f"/repos/{self.slug}"
@@ -437,7 +460,14 @@ class FakeGitHub:
     def _workflow_runs(self, request: Request, match: re.Match[str]) -> Response:
         name = self._workflow_name(match[1])
         created = request.query.get("created", "").removeprefix(">=")
-        runs = [run for run in self.runs if run["path"].endswith(f"/{name}") and run["created_at"] >= created]
+        wanted = request.query.get("status")
+        runs = [
+            run
+            for run in self.runs
+            if run["path"].endswith(f"/{name}")
+            and run["created_at"] >= created
+            and wanted in (None, run["status"], run["conclusion"])
+        ]
         runs.sort(key=lambda run: (run["created_at"], run["id"]), reverse=True)
         return self._page(runs, request, "workflow_runs")
 
