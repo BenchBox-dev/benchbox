@@ -315,6 +315,8 @@ class Run:
         script.chmod(0o755)
         self.monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
         self.monkeypatch.setenv(omp_pin.BINARY_ENV, str(script))
+        self.loop.plan["omp_sha256"] = omp_pin.sha256_of(script)
+        self.loop.plan_path.write_text(json.dumps(self.loop.plan), encoding="utf-8")
 
     def prompt(self, number: int) -> str:
         return (self.state / f"prompt-{number}.txt").read_text(encoding="utf-8")
