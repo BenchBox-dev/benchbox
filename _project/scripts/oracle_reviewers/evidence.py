@@ -369,6 +369,18 @@ def has_nul_head(workspace: Path, path: str) -> bool:
         return False
 
 
+def _segments_match(path: tuple[str, ...], pattern: tuple[str, ...]) -> bool:
+    if not pattern:
+        return not path
+    if pattern[0] == "**":
+        return any(_segments_match(path[skip:], pattern[1:]) for skip in range(len(path) + 1))
+    return bool(path) and fnmatch.fnmatchcase(path[0], pattern[0]) and _segments_match(path[1:], pattern[1:])
+
+
+def _glob_match(path: str, pattern: str) -> bool:
+    return _segments_match(tuple(path.split("/")), tuple(pattern.split("/")))
+
+
 def check(
     verdict: Verdict,
     *,
@@ -399,7 +411,7 @@ def check(
         norm = relative(path, workspace)
         if is_protected(norm):
             return False
-        return norm in detected_binary or any(fnmatch.fnmatchcase(norm, pattern) for pattern in patterns)
+        return norm in detected_binary or any(_glob_match(norm, pattern) for pattern in patterns)
 
     required_paths = set(required)
     needed = sorted(path for path in required_paths if not _is_exempt(path))

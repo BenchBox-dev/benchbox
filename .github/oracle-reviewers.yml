@@ -136,7 +136,7 @@ classifier:
 evidence:
   exempt_paths:
     - "README*.md"
-    - "*/README*.md"
+    - "**/README*.md"
     - "CHANGELOG*.md"
-    - "*/CHANGELOG*.md"
+    - "**/CHANGELOG*.md"
     - "docs/*.md"

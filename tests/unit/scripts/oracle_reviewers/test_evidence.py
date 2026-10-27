@@ -642,7 +642,7 @@ def test_binary_file_and_readme_no_longer_make_attempt_absent(tmp_path: Path) ->
             ["vendor/package.woff2", "pkg/README.md"],
             READ,
             diff=diff,
-            exempt_paths=["README*.md", "*/README*.md"],
+            exempt_paths=["README*.md", "**/README*.md"],
         )
         is None
     )
@@ -652,8 +652,8 @@ def test_source_file_still_requires_read(tmp_path: Path) -> None:
     workspace = tmp_path / "ws"
     workspace.mkdir()
     required = ["pkg/README.md", "benchbox/core/checker.py"]
-    assert _exposure(workspace, required, exempt_paths=["README*.md", "*/README*.md"]) == NO_READ
-    problem = _exposure(workspace, required, Trace(("other.py",)), exempt_paths=["README*.md", "*/README*.md"])
+    assert _exposure(workspace, required, exempt_paths=["README*.md", "**/README*.md"]) == NO_READ
+    problem = _exposure(workspace, required, Trace(("other.py",)), exempt_paths=["README*.md", "**/README*.md"])
     assert problem == "the verdict would ship but its trace shows no read of benchbox/core/checker.py"
 
 
@@ -764,10 +764,23 @@ def test_a_nul_byte_in_a_text_type_or_unknown_file_never_exempts(tmp_path: Path,
     assert _exposure(root, [path], diff=diff, binary_files=[path]) == NO_READ
 
 
-def test_a_machine_read_doc_stays_required_despite_the_docs_glob(tmp_path: Path) -> None:
+def test_a_machine_read_doc_stays_required_despite_a_recursive_docs_glob(tmp_path: Path) -> None:
     path = "docs/benchmarks/sf1-calibrated-sizes.md"
-    assert _exposure(tmp_path, [path], exempt_paths=["docs/*.md"]) == NO_READ
-    assert _exposure(tmp_path, ["docs/guide.md"], READ, exempt_paths=["docs/*.md"]) is None
+    assert _exposure(tmp_path, [path], READ, exempt_paths=["docs/**/*.md"]) == _unread(path)
+    assert _exposure(tmp_path, ["docs/guide/page.md"], READ, exempt_paths=["docs/**/*.md"]) is None
+
+
+def test_the_docs_exemption_covers_only_direct_children_of_docs(tmp_path: Path) -> None:
+    exempt = list(_policy_exemptions())
+    assert _exposure(tmp_path, ["docs/index.md"], READ, exempt_paths=exempt) is None
+    for path in ("docs/benchmarks/tpc-h.md", "docs/development/result-validation.md"):
+        assert _exposure(tmp_path, [path], READ, exempt_paths=exempt) == _unread(path)
+
+
+def test_readme_and_changelog_exemptions_apply_at_any_depth(tmp_path: Path) -> None:
+    exempt = list(_policy_exemptions())
+    for path in ("pkg/README.md", "pkg/sub/README.md", "pkg/CHANGELOG.md", "a/b/c/CHANGELOG-1.md"):
+        assert _exposure(tmp_path, [path], READ, exempt_paths=exempt) is None
 
 
 def test_a_protected_binary_stays_required(tmp_path: Path) -> None:
@@ -857,7 +870,7 @@ def test_exposure_exemption_does_not_bypass_withdrawal_citations(tmp_path: Path)
             workspace=tmp_path,
             required=["docs/guide.md"],
             run=READ,
-            exempt_paths=["*.md"],
+            exempt_paths=["docs/*.md"],
         )
         is None
     )

@@ -1071,7 +1071,7 @@ def test_binary_file_and_readme_no_longer_make_attempt_absent(
         brief_mode="file-list",
         required=("dist/x.woff2", "pkg/README.md"),
         binary_files=("dist/x.woff2",),
-        exempt_paths=("README*.md", "*/README*.md"),
+        exempt_paths=("README*.md", "**/README*.md"),
         protected_files=(),
     )
     assert outcome.missing is None
@@ -1092,7 +1092,7 @@ def test_source_file_with_exemptions_still_requires_read(
         brief_mode="file-list",
         required=("dist/x.woff2", "pkg/README.md", "a.txt"),
         binary_files=("dist/x.woff2",),
-        exempt_paths=("README*.md", "*/README*.md"),
+        exempt_paths=("README*.md", "**/README*.md"),
     )
     assert outcome.missing is not None
     assert outcome.missing.kind == absence.INCOMPLETE
