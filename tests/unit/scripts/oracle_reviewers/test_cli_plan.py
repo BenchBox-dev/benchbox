@@ -104,6 +104,8 @@ class FakeGitHub:
         self.failing_prs: set[int] = set()
         self.failed: dict[int, list[str]] = {}
         self.statuses: list[dict[str, Any]] = []
+        self.edit_states: dict[str, tuple[Any, bool]] | Exception | None = None
+        self.derive_verdict_statuses = True
         self.posted: list[tuple[int, dict[str, Any]]] = []
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -116,7 +118,8 @@ class FakeGitHub:
         monkeypatch.setattr(github, "verdict_runs", lambda repo, workflow, since: list(self.runs))
         monkeypatch.setattr(github, "committed_at", lambda repo, sha: self.committed)
         monkeypatch.setattr(github, "failed_steps", lambda repo, run_id: list(self.failed.get(run_id, [])))
-        monkeypatch.setattr(github, "commit_statuses", lambda repo, sha: list(self.statuses))
+        monkeypatch.setattr(github, "commit_statuses", self._statuses)
+        monkeypatch.setattr(github, "review_edit_states", self._edit_states)
         monkeypatch.setattr(github, "post_status", self._post)
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
         monkeypatch.setattr(github, "merge_base", lambda repo, base, head: self.merge_base)
@@ -134,7 +137,37 @@ class FakeGitHub:
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.reviews is None:
             raise github.GitHubError("reviews unavailable")
-        return self.reviews
+        return [{"node_id": f"PRR_{review.get('id')}", **review} for review in self.reviews]
+
+    def _edit_states(self, node_ids: Sequence[str]) -> dict[str, tuple[Any, bool]]:
+        if isinstance(self.edit_states, Exception):
+            raise self.edit_states
+        return {node_id: (self.edit_states or {}).get(node_id, (None, False)) for node_id in node_ids}
+
+    def _statuses(self, repo: str, sha: str) -> list[dict[str, Any]]:
+        return [*self.statuses, *(self._derived_statuses(sha) if self.derive_verdict_statuses else [])]
+
+    def _derived_statuses(self, sha: str) -> list[dict[str, Any]]:
+        derived = []
+        for review in self.reviews or []:
+            try:
+                record = protocol.decode_marker(review.get("body") or "")
+            except protocol.MarkerError:
+                continue
+            if record is None or record["head_sha"] != sha:
+                continue
+            suffix = f" [run {record['run_uuid']}]" if record.get("run_uuid") else ""
+            derived.append(
+                {
+                    "id": 1000 + int(review.get("id") or 0),
+                    "context": "oracle-verdict",
+                    "state": "success" if record["decision"] == protocol.SHIP else "failure",
+                    "description": f"derived{suffix if record['decision'] == protocol.SHIP else ''}",
+                    "creator": {"login": "benchbox-oracle[bot]", "type": "Bot"},
+                    "created_at": review.get("submitted_at") or "2026-10-08T10:00:00Z",
+                }
+            )
+        return derived
 
     def _json(self, path: str) -> dict[str, Any]:
         if path == f"repos/{REPO}/pulls/7":
