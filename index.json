@@ -9148,12 +9148,17 @@
       "title": "Prepare the site for bundles without source docs or downloads"
     },
     "docs-mig-site-cleanup": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-28T14:44:42Z",
+        "generation": "007e30856e8747ef849099d6a8af24ed",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [
         "docs-mig-core-removal"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Finish compatibility cleanup and documentation link checking"
     },
     "docs-mig-site-contract-checks": {
