@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from _project.scripts.oracle_reviewers import cli, local, runner
+from _project.scripts.oracle_reviewers import cli, local, omp_pin, runner
 from _project.scripts.oracle_reviewers.policy import Reviewer
 
 from .test_attempts import _v
@@ -24,9 +24,7 @@ def main(log: Path, seconds: float) -> int:
 
     local.reachable = lambda url: True
     local.keychain_key = lambda: ""
-    local.installed_omp_version = lambda: local.pinned_omp_version(
-        Path(local.WORKFLOW_FILE).read_text(encoding="utf-8")
-    )
+    local.pinned_omp = lambda text: (omp_pin.pin_from_text(text).version, Path(sys.executable))
     runner.review = review
     return cli.main(["local-review", "--policy", POLICY_RELATIVE, "--base-ref", "develop"])
 
