@@ -25,6 +25,7 @@ import yaml
 from . import attempts as attempt_files, cli, credentials, omp_pin, protocol, redaction_check, selection
 from .classifier import ChangedFile, matching, soundness_scope
 from .classify import Classification
+from .commands import GATEWAY_PROXY_ENV
 from .jev import JevError
 from .policy import Policy, load_policy, parse_policy
 from .verdict import DO_NOT_SHIP
@@ -38,6 +39,8 @@ LOCAL_GATEWAY_URL = "http://127.0.0.1:4000"
 LOCAL_TOKEN_PATH = Path(".omp") / "oracle-gateway" / "local-client.token"
 CLOUD_TOKEN_ENV = "ORACLE_CLOUD_GATEWAY_TOKEN"
 CLOUD_SESSION_ENV = "BENCHBOX_EPHEMERAL_CLONE"
+CLOUD_STATUS_FILE = "benchbox-cloud-gateway.status"
+CLOUD_PROXY = re.compile(r"http://127\.0\.0\.1:\d{1,5}")
 STATE_DIR_ENV = "BENCHBOX_LOCAL_ORACLE_DIR"
 SOUNDNESS_MANIFEST = ".github/soundness-paths.txt"
 HIDDEN_TEXT = re.compile(
@@ -75,6 +78,7 @@ class Credentials:
     client: str
     url: str
     token: str
+    proxy: str = ""
 
 
 class Reporter:
@@ -329,6 +333,19 @@ def pinned_omp(policy_text: str) -> tuple[str, Path]:
         raise Unavailable(str(exc)) from exc
 
 
+def cloud_gateway_proxy() -> str:
+    try:
+        git_dir = _git(Path.cwd(), "rev-parse", "--absolute-git-dir").strip()
+        lines = (Path(git_dir) / CLOUD_STATUS_FILE).read_text(encoding="utf-8").splitlines()
+    except (Unavailable, OSError, ValueError):
+        return ""
+    for line in lines:
+        name, _, value = line.partition("=")
+        if name == "gateway_proxy" and CLOUD_PROXY.fullmatch(value.strip()):
+            return value.strip()
+    return ""
+
+
 def resolve_credentials(environ: Mapping[str, str] | None = None) -> Credentials:
     env = os.environ if environ is None else environ
     if env.get(CLOUD_TOKEN_ENV) or env.get(CLOUD_SESSION_ENV) == "1":
@@ -336,7 +353,7 @@ def resolve_credentials(environ: Mapping[str, str] | None = None) -> Credentials
         token = env.get(CLOUD_TOKEN_ENV, "").strip()
         if not url or not token:
             raise Unavailable(f"the {CLOUD_CLIENT} client needs ORACLE_GATEWAY_URL and {CLOUD_TOKEN_ENV}")
-        return Credentials(CLOUD_CLIENT, url, token)
+        return Credentials(CLOUD_CLIENT, url, token, cloud_gateway_proxy())
     path = Path.home() / LOCAL_TOKEN_PATH
     try:
         token = path.read_text(encoding="utf-8").strip()
@@ -347,10 +364,13 @@ def resolve_credentials(environ: Mapping[str, str] | None = None) -> Credentials
     return Credentials(LOCAL_CLIENT, LOCAL_GATEWAY_URL, token)
 
 
-def reachable(url: str) -> bool:
+def reachable(url: str, proxy: str = "") -> bool:
     request = urllib.request.Request(f"{url.rstrip('/')}/healthz", method="GET")
+    opener = (
+        urllib.request.build_opener(urllib.request.ProxyHandler({"http": proxy, "https": proxy})) if proxy else None
+    )
     try:
-        with urllib.request.urlopen(request, timeout=REACHABILITY_SECONDS):
+        with (opener.open if opener else urllib.request.urlopen)(request, timeout=REACHABILITY_SECONDS):
             return True
     except urllib.error.HTTPError:
         return True
@@ -600,11 +620,13 @@ def _fresh_review(
 ) -> dict[str, Any]:
     access = resolve_credentials()
     reporter.hide(access.token, access.url)
-    if not reachable(access.url):
-        raise Unavailable(f"the {access.client} gateway is unreachable")
+    if not reachable(access.url, access.proxy):
+        hint = "; run make cloud-gateway" if access.client == CLOUD_CLIENT and not access.proxy else ""
+        raise Unavailable(f"the {access.client} gateway is unreachable{hint}")
     updates = {
         "OMP_GATEWAY_TOKEN": access.token,
         "ORACLE_GATEWAY_URL": access.url,
+        GATEWAY_PROXY_ENV: access.proxy,
         "GITHUB_RUN_ID": plan["run_id"],
         omp_pin.BINARY_ENV: str(omp_binary),
         **({"TYPESAFE_API_KEY": key} if key else {}),

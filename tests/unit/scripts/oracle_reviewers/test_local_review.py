@@ -5,7 +5,9 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +19,7 @@ import yaml
 
 from _project.scripts.oracle_reviewers import cli, local, omp_pin, runner
 from _project.scripts.oracle_reviewers.classify import Classification
+from _project.scripts.oracle_reviewers.commands import GATEWAY_PROXY_ENV, omp_env
 from _project.scripts.oracle_reviewers.policy import Policy, Reviewer
 
 from .conftest import POLICY_PATH, REPO_ROOT
@@ -44,6 +47,7 @@ SECRET_NAMES = (
     "TYPESAFE_API_KEY",
     "BENCHBOX_EPHEMERAL_CLONE",
     "GITHUB_RUN_ID",
+    GATEWAY_PROXY_ENV,
 )
 
 
@@ -101,7 +105,7 @@ class Env:
         monkeypatch.setenv("HOME", str(self.home))
         monkeypatch.setenv(local.STATE_DIR_ENV, str(tmp_path / "state"))
         monkeypatch.chdir(self.repo)
-        monkeypatch.setattr(local, "reachable", lambda url: True)
+        monkeypatch.setattr(local, "reachable", lambda url, proxy="": True)
         monkeypatch.setenv(omp_pin.CACHE_ENV, str(tmp_path / "omp-cache"))
         monkeypatch.delenv(omp_pin.BINARY_ENV, raising=False)
         self.downloads: list[str] = []
@@ -125,6 +129,7 @@ class Env:
                 "binary": os.environ.get(omp_pin.BINARY_ENV),
                 "token": os.environ.get("OMP_GATEWAY_TOKEN"),
                 "url": os.environ.get("ORACLE_GATEWAY_URL"),
+                "omp_env": omp_env(),
                 "models": (Path(os.environ["HOME"]) / ".omp" / "agent" / "models.yml").read_text(encoding="utf-8"),
             }
         )
@@ -727,3 +732,101 @@ def test_local_patch_digest_hashes_exact_diff_bytes(tmp_path: Path, env: Env) ->
         plan = local.build_plan(env.policy, repo, "develop", _git(repo, "rev-parse", "HEAD"), tmp_path / f"out-{index}")
         digests.append(plan["protocol"]["patch_digest"])
     assert digests[0] != digests[1]
+
+
+class _ProxyServer:
+    def __init__(self) -> None:
+        self.requests: list[tuple[str, str]] = []
+        requests = self.requests
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                requests.append((self.path, self.headers.get("Host", "")))
+                self.send_response(200)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+
+            def log_message(self, *args: Any) -> None:
+                return None
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+
+    def __enter__(self) -> _ProxyServer:
+        self.thread.start()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.server.shutdown()
+        self.server.server_close()
+
+
+def _write_status(repo: Path, proxy: str) -> None:
+    git_dir = Path(_git(repo, "rev-parse", "--absolute-git-dir"))
+    (git_dir / local.CLOUD_STATUS_FILE).write_text(
+        f"gateway=reachable\ngateway_detail=ok\ngateway_proxy={proxy}\nomp=installed\n", encoding="utf-8"
+    )
+
+
+def test_reachable_goes_through_the_gateway_proxy_and_fails_without_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(local, "REACHABILITY_SECONDS", 3)
+    unreachable = "http://127.0.0.1:1"
+    with _ProxyServer() as proxy:
+        assert REAL_REACHABLE(unreachable, proxy.url) is True
+        assert proxy.requests == [(f"{unreachable}/healthz", "127.0.0.1:1")]
+    assert REAL_REACHABLE(unreachable) is False
+
+
+def test_cloud_credentials_read_the_proxy_from_the_gateway_status_file(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ORACLE_GATEWAY_URL", CLOUD_URL)
+    monkeypatch.setenv("ORACLE_CLOUD_GATEWAY_TOKEN", CLOUD_TOKEN)
+    assert local.resolve_credentials().proxy == ""
+    _write_status(env.repo, "http://127.0.0.1:1055")
+    assert local.resolve_credentials().proxy == "http://127.0.0.1:1055"
+    _write_status(env.repo, "http://evil.example:1055")
+    assert local.resolve_credentials().proxy == ""
+
+
+def test_local_credentials_ignore_the_gateway_status_file(env: Env) -> None:
+    _write_status(env.repo, "http://127.0.0.1:1055")
+    assert local.resolve_credentials().proxy == ""
+
+
+def test_cloud_review_reaches_the_gateway_through_the_proxy_without_stubbing_reachable(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(local, "reachable", REAL_REACHABLE)
+    monkeypatch.setenv("ORACLE_GATEWAY_URL", "http://127.0.0.1:1")
+    monkeypatch.setenv("ORACLE_CLOUD_GATEWAY_TOKEN", CLOUD_TOKEN)
+    with _ProxyServer() as proxy:
+        _write_status(env.repo, proxy.url)
+        assert env.run() == local.EXIT_PROCEED
+        assert [path for path, _ in proxy.requests] == ["http://127.0.0.1:1/healthz"]
+    (review,) = env.reviews
+    assert review["omp_env"]["HTTPS_PROXY"] == proxy.url
+    assert review["omp_env"]["HTTP_PROXY"] == proxy.url
+    assert "127.0.0.1" in review["omp_env"]["NO_PROXY"]
+
+
+def test_cloud_review_without_the_proxy_says_how_to_start_it(
+    env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(local, "reachable", REAL_REACHABLE)
+    monkeypatch.setattr(local, "REACHABILITY_SECONDS", 2)
+    monkeypatch.setenv("ORACLE_GATEWAY_URL", "http://127.0.0.1:1")
+    monkeypatch.setenv("ORACLE_CLOUD_GATEWAY_TOKEN", CLOUD_TOKEN)
+    assert env.run() == local.EXIT_UNAVAILABLE
+    assert "make cloud-gateway" in capsys.readouterr().err
+
+
+def test_local_review_passes_no_proxy_variables_even_when_the_session_has_them(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:9")
+    monkeypatch.setenv("NO_PROXY", "x")
+    assert env.run() == local.EXIT_PROCEED
+    (review,) = env.reviews
+    assert not {"HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} & set(review["omp_env"])

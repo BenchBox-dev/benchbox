@@ -22,7 +22,7 @@ def main(log: Path, seconds: float) -> int:
             handle.write(f"end {time.time()}\n")
         return runner.ReviewOutcome(_v(), None, "")
 
-    local.reachable = lambda url: True
+    local.reachable = lambda url, proxy="": True
     local.keychain_key = lambda: ""
     local.pinned_omp = lambda text: (omp_pin.pin_from_text(text).version, Path(sys.executable))
     runner.review = review

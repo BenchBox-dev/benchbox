@@ -11,6 +11,8 @@ from .policy import OMP_THINKING_LEVELS, Reviewer
 
 FORBIDDEN_FLAGS = ("--dangerously-skip-permissions", "--yolo", "--dangerously-bypass-approvals-and-sandbox")
 OMP_READ_TOOLS = "read,grep,glob"
+GATEWAY_PROXY_ENV = "ORACLE_GATEWAY_PROXY"
+GATEWAY_NO_PROXY = "127.0.0.1,localhost,::1"
 OMP_BASE_ENV = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "LC_ALL", "TZ", "USER", "LOGNAME", "SHELL")
 
 OMP_OVERLAY_TEXT = """mcp:
@@ -60,7 +62,10 @@ class Invocation:
 
 def omp_env() -> dict[str, str]:
     names = (*OMP_BASE_ENV, *GATEWAY_ENV)
-    return {name: value for name in names if (value := os.environ.get(name))}
+    env = {name: value for name in names if (value := os.environ.get(name))}
+    if proxy := os.environ.get(GATEWAY_PROXY_ENV):
+        env.update(HTTPS_PROXY=proxy, HTTP_PROXY=proxy, NO_PROXY=GATEWAY_NO_PROXY)
+    return env
 
 
 def write_overlay(scratch: Path) -> Path:
