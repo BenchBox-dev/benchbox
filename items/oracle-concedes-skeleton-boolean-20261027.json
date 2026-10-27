@@ -3,6 +3,7 @@
     "Test that fails on develop and passes after: for each template, the rendered response skeleton with prior defects, filled by replacing only angle-bracket placeholders (leaving null as null), validates.",
     "Test: a disputed prior defect with concedes null still yields the contradiction error.",
     "Live: after merge, an /oracle-review on #3453 or #3548 produces a non-invalid attempt (record run id).",
+    "Own-PR edit check recorded before make pr-arm (gate 1).",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "2026-10-27 OWNER DECISION (choice dialog): #3585 is exempt from the merge freeze; arm once the CI oracle gives SHIP on its exact head with threads resolved.\n\n2026-10-27: PR #3585 (head d169104fe). Escalation change removed from this item; it moved to oracle-invalid-attempt-jev-recovery-20261027.\n\n2026-10-27: owner asked to fix with priority after #3453 review 5666787228 failed on all five attempts.",
@@ -77,6 +78,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "d221d5f13d1c466381e7508aeefe04cd",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T12:54:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "85a1899122774dbdb5953afe3514ae86",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
