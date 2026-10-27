@@ -472,6 +472,23 @@ def _resolve_tree(path: str, workspace: Path | str | None) -> str:
     return cleaned
 
 
+def _exists_exact(path: str, workspace: Path | str | None) -> bool:
+    if workspace is None or not path:
+        return False
+    try:
+        root = os.path.realpath(str(workspace))
+        current = root
+        for part in path.split("/"):
+            if part in ("", "."):
+                continue
+            if part not in os.listdir(current):
+                return False
+            current = os.path.join(current, part)
+        return current != root
+    except OSError:
+        return False
+
+
 def judge(
     verdict: Verdict,
     max_defects: int,
@@ -515,6 +532,9 @@ def judge(
             if exact_matches:
                 chosen = f_canon if f_canon in exact_matches else exact_matches[0]
                 in_scope_list.append(replace(item, file=chosen))
+                continue
+            if _exists_exact(f_canon, workspace):
+                outside_list.append(item)
                 continue
             f_fold = f_canon.casefold()
             case_matches = [c for c, _, c_fold in changed_map if c_fold == f_fold]

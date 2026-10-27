@@ -303,7 +303,8 @@ machinery. Follow-ups run for every size bucket.
 
 Follow-up scope preserves every exact changed-path match and additionally
 compares Unicode NFC forms and symlink aliases resolved inside the head checkout.
-A case-only citation matching one changed path uses that path; an ambiguous
+A case-only citation matching one changed path uses that path, unless the cited
+path exists in the head checkout as its own file, which is never folded; an ambiguous
 case-only match still counts against the decision rather than disappearing.
 Canonical matching can only bring findings into scope. Findings on genuinely
 unchanged files remain not counted, and aliases resolving outside the checkout

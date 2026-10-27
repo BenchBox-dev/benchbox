@@ -211,6 +211,36 @@ def test_judge_counts_ambiguous_case_variant_against_decision() -> None:
     assert judgement.not_counted == ()
 
 
+def _tree(tmp_path: Path, *names: str) -> None:
+    (tmp_path / "benchbox").mkdir()
+    for name in names:
+        (tmp_path / "benchbox" / name).write_text(name, encoding="utf-8")
+
+
+def test_judge_does_not_fold_citation_of_distinct_existing_file(tmp_path: Path) -> None:
+    _tree(tmp_path, "query.py")
+    verdict = _verdict("SHIP", [_defect(1, file="benchbox/query.py")])
+    judgement = judge(verdict, 10, changed=["benchbox/Query.py"], workspace=tmp_path)
+    assert judgement.decision == "SHIP"
+    assert judgement.defects == ()
+    assert [item.file for item in judgement.not_counted] == ["benchbox/query.py"]
+
+
+def test_judge_folds_case_variant_of_nonexistent_path_to_single_changed_file(tmp_path: Path) -> None:
+    _tree(tmp_path)
+    verdict = _verdict("SHIP", [_defect(1, file="benchbox/query.py")])
+    judgement = judge(verdict, 10, changed=["benchbox/Query.py"], workspace=tmp_path)
+    assert [item.file for item in judgement.defects] == ["benchbox/Query.py"]
+    assert judgement.not_counted == ()
+
+
+def test_judge_leaves_ambiguous_fold_unrewritten_with_workspace(tmp_path: Path) -> None:
+    _tree(tmp_path)
+    verdict = _verdict("SHIP", [_defect(1, file="benchbox/query.py")])
+    judgement = judge(verdict, 10, changed=["benchbox/Query.py", "benchbox/QUERY.py"], workspace=tmp_path)
+    assert [item.file for item in judgement.defects] == ["benchbox/query.py"]
+
+
 def test_judge_counts_symlink_alias_finding_in_workspace(tmp_path: Path) -> None:
     target = tmp_path / "benchbox" / "Café.py"
     target.parent.mkdir(parents=True)
