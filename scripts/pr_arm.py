@@ -29,6 +29,7 @@ GATE_OK_STATE = "success"
 BASELINE_DIRECTORY = "tests/fixtures/fast_tier_baseline"
 VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
 VERDICT_FILE = "fast-duration-verdict.json"
+PROCEEDING_VERDICTS = frozenset({"pass", "neutral", "not-applicable"})
 PRODUCER_CHECK = "core"
 MEASUREMENT_ITEM = "ci-verify-fast-duration-report-only-20261025"
 
@@ -104,9 +105,15 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
     if report is None:
         return [refusal] if refusal else []
     verdict = report.get("verdict")
-    if verdict != "would-block":
+    if verdict in PROCEEDING_VERDICTS:
         print(f"{label}: verify-fast-duration verdict for {head[:9]} is {verdict}; arming is not held")
         return []
+    if verdict != "would-block":
+        return [
+            f"verify-fast-duration verdict for {head[:9]} is {verdict if isinstance(verdict, str) else 'missing'}, "
+            f"not one of {', '.join(sorted(PROCEEDING_VERDICTS))}: {str(report.get('reason') or 'no reason recorded')[:200]}. "
+            "Fix the cause and re-run the core job with make pr-rerun, or push a new head"
+        ]
     if _changes_baseline(run, repo, number):
         print(f"{label}: verify-fast-duration would block {head[:9]}, but the PR updates {BASELINE_DIRECTORY}")
         return []

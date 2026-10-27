@@ -237,6 +237,14 @@ def test_an_override_in_a_commit_body_does_not_apply_without_a_body_file(env: En
         "<!--\nLocal oracle override: hidden\n-->\n",
         "```\nLocal oracle override: fenced\n```\n",
         "Local oracle override: <reason>\n",
+        "```\nLocal oracle override: never closed\n",
+        "~~~\nLocal oracle override: never closed\n",
+        "<!--\nLocal oracle override: never closed\n",
+        "    Local oracle override: indented code\n",
+        "\tLocal oracle override: tab code\n",
+        "  Local oracle override: indented\n",
+        "<details>\nLocal oracle override: folded\n</details>\n",
+        "<details><summary>x</summary>\n\nLocal oracle override: folded\n",
     ],
 )
 def test_an_invisible_or_placeholder_override_is_refused(env: Env, body: str) -> None:

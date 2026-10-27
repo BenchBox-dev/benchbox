@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import contextlib
+import email
 import hashlib
 import io
 import os
 import subprocess
 import sys
 import urllib.request
+import urllib.response
 from pathlib import Path
 
 import pytest
@@ -140,13 +142,13 @@ def test_install_reports_a_failed_download(tmp_path: Path) -> None:
 def test_the_download_sends_an_explicit_user_agent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[urllib.request.Request] = []
 
-    def fake_urlopen(
+    def fake_open(
         request: urllib.request.Request, timeout: float | None = None
     ) -> contextlib.AbstractContextManager[io.BytesIO]:
         seen.append(request)
         return contextlib.closing(io.BytesIO(b"binary-bytes"))
 
-    monkeypatch.setattr(omp_pin.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(omp_pin, "_open", fake_open)
     destination = tmp_path / "omp"
     omp_pin.download("https://downloads.example.invalid/omp-linux-x64", destination)
     assert destination.read_bytes() == b"binary-bytes"
@@ -154,6 +156,67 @@ def test_the_download_sends_an_explicit_user_agent(tmp_path: Path, monkeypatch: 
     user_agent = seen[0].get_header("User-agent") or seen[0].get_header("User-Agent")
     assert user_agent == omp_pin.USER_AGENT
     assert "Python-urllib" not in user_agent
+
+
+class _Redirecting(urllib.request.HTTPSHandler):
+    def __init__(self, location: str) -> None:
+        super().__init__()
+        self.location = location
+        self.opened: list[str] = []
+
+    def https_open(self, req: urllib.request.Request) -> urllib.response.addinfourl:
+        self.opened.append(req.full_url)
+        if len(self.opened) > 1:
+            response = urllib.response.addinfourl(io.BytesIO(b"binary-bytes"), {}, req.full_url, 200)
+            response.msg = "OK"
+            return response
+        headers = email.message_from_string(f"Location: {self.location}\n\n")
+        response = urllib.response.addinfourl(io.BytesIO(b""), headers, req.full_url, 302)
+        response.msg = "Found"
+        return response
+
+
+def test_a_download_refuses_a_redirect_to_plain_http(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    stub = _Redirecting("http://downloads.example.invalid/omp-linux-x64")
+    monkeypatch.setattr(
+        omp_pin,
+        "_open",
+        lambda request, timeout: urllib.request.build_opener(omp_pin.HttpsOnlyRedirectHandler, stub).open(
+            request, timeout=timeout
+        ),
+    )
+    with pytest.raises(OSError, match="non-https"):
+        omp_pin.download(URL, tmp_path / "omp")
+    assert stub.opened == [URL]
+
+
+def test_a_download_follows_a_redirect_that_stays_on_https(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    stub = _Redirecting("https://mirror.example.invalid/omp-linux-x64")
+    monkeypatch.setattr(
+        omp_pin,
+        "_open",
+        lambda request, timeout: urllib.request.build_opener(omp_pin.HttpsOnlyRedirectHandler, stub).open(
+            request, timeout=timeout
+        ),
+    )
+    omp_pin.download(URL, tmp_path / "omp")
+    assert (tmp_path / "omp").read_bytes() == b"binary-bytes"
+
+
+def test_a_slow_download_is_cut_off_by_an_overall_deadline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = {"now": 0.0}
+
+    class Trickle(io.BytesIO):
+        def read(self, size: int = -1) -> bytes:
+            clock["now"] += omp_pin.DOWNLOAD_SECONDS / 3
+            return b"x"
+
+    monkeypatch.setattr(omp_pin.time, "monotonic", lambda: clock["now"])
+    monkeypatch.setattr(omp_pin, "_open", lambda request, timeout: contextlib.closing(Trickle()))
+    with pytest.raises(OSError, match="exceeded"):
+        omp_pin.download(URL, tmp_path / "omp")
+    with pytest.raises(omp_pin.PinError, match="download failed"):
+        omp_pin.install(_pin(), "linux-x64", tmp_path / "cache", omp_pin.download)
 
 
 def test_the_cache_root_defaults_under_home_and_honours_the_override(

@@ -299,11 +299,11 @@ def withdrawal_cited(evidence_text: str | None) -> bool:
     return _WITHDRAWAL_CITATION.search(evidence_text or "") is not None
 
 
-def _repro_verified(evidence: str, workspace: Path, examined: frozenset[str]) -> bool:
+def _repro_verified(evidence: str, workspace: Path, read: frozenset[str]) -> bool:
     root = os.path.realpath(workspace)
     for match in _REPRO_CITATION.finditer(evidence or ""):
         cited = match.group("path").removeprefix("./")
-        if cited not in examined:
+        if cited not in read:
             continue
         target = os.path.realpath(os.path.join(root, cited))
         if not target.startswith(root + os.sep) or not os.path.isfile(target):
@@ -312,11 +312,13 @@ def _repro_verified(evidence: str, workspace: Path, examined: frozenset[str]) ->
     return False
 
 
-def maintain_verified(evidence: str, workspace: Path, examined: frozenset[str]) -> bool:
-    return _withdrawal_verified(evidence, workspace, examined) or _repro_verified(evidence, workspace, examined)
+def maintain_verified(evidence: str, workspace: Path, examined: frozenset[str], read: frozenset[str]) -> bool:
+    return _withdrawal_verified(evidence, workspace, examined) or _repro_verified(evidence, workspace, read)
 
 
-def mark_citations(verdict: Verdict, workspace: Path, disputed: Iterable[str] = ()) -> Verdict:
+def mark_citations(
+    verdict: Verdict, workspace: Path, disputed: Iterable[str] = (), read: frozenset[str] = frozenset()
+) -> Verdict:
     marked = []
     for finding in verdict.defects:
         error = _citation_error(finding, workspace)
@@ -329,13 +331,17 @@ def mark_citations(verdict: Verdict, workspace: Path, disputed: Iterable[str] = 
         if prior.status == WITHDRAWN and not _withdrawal_verified(prior.evidence, workspace, examined):
             note = f"{prior.evidence} {UNVERIFIED_WITHDRAWAL}".strip()
             prior = replace(prior, status=NOT_FIXED, evidence=note, demoted="withdrawal")
-        if prior.status == FIXED and prior.id in wanted and not maintain_verified(prior.evidence, workspace, examined):
+        if (
+            prior.status == FIXED
+            and prior.id in wanted
+            and not maintain_verified(prior.evidence, workspace, examined, read)
+        ):
             note = f"{prior.evidence} {DEMOTED_FIXED}".strip()
             prior = replace(prior, status=NOT_FIXED, evidence=note, demoted="fixed")
         if (
             prior.status == NOT_FIXED
             and prior.id in wanted
-            and not maintain_verified(prior.evidence, workspace, examined)
+            and not maintain_verified(prior.evidence, workspace, examined, read)
         ):
             note = f"{prior.evidence} {UNVERIFIED_MAINTAIN}".strip()
             prior = replace(prior, evidence=note)

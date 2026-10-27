@@ -362,9 +362,23 @@ def test_a_reproduction_reference_satisfies_maintain(policy: Policy, tmp_path: P
             files=[CHECKER, "scripts/repro_row.py"],
         )
     )
-    marked = evidence.mark_citations(verdict, tmp_path, ["D1"])
+    marked = evidence.mark_citations(verdict, tmp_path, ["D1"], frozenset({"scripts/repro_row.py"}))
     assert evidence.UNVERIFIED_MAINTAIN not in marked.prior_defects[0].evidence
     assert protocol.dispute_problem(marked, _plan_with_dispute(policy, _dispute())) is None
+
+
+def test_a_reproduction_the_reviewer_never_read_does_not_satisfy_maintain(policy: Policy, tmp_path: Path) -> None:
+    target = tmp_path / "scripts" / "repro_row.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("print('row kept')\n", encoding="utf-8")
+    verdict = validate(
+        _verdict_dict(
+            _disposition("not_fixed", evidence_text="repro: scripts/repro_row.py keeps the row.", concedes=False),
+            files=[CHECKER, "scripts/repro_row.py"],
+        )
+    )
+    marked = evidence.mark_citations(verdict, tmp_path, ["D1"], frozenset({CHECKER}))
+    assert evidence.UNVERIFIED_MAINTAIN in marked.prior_defects[0].evidence
 
 
 def test_finalize_publishes_every_disposition(policy: Policy, tmp_path: Path) -> None:
@@ -387,6 +401,14 @@ def test_finalize_publishes_every_disposition(policy: Policy, tmp_path: Path) ->
     assert "**Dispute dispositions**" in body
     assert f"- D1 (maintained): {CITED}" in body
     assert "- D2 (withdrawn): never a defect: pkg/kept.py:12" in body
+
+
+def test_a_defect_disputed_in_several_threads_gets_one_disposition_line(policy: Policy, tmp_path: Path) -> None:
+    plan = _plan_with_dispute(policy, _dispute())
+    plan["disputes"].append(_dispute())
+    final = _final(policy, tmp_path, plan, _verdict_dict(_disposition("not_fixed")))
+    assert final.review is not None
+    assert final.review["body"].count("- D1 (maintained): ") == 1
 
 
 def test_disposition_lines_survive_the_body_cap(

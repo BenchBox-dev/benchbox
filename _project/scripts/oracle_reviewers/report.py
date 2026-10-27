@@ -298,7 +298,12 @@ def _dispositions(plan: Mapping[str, Any], verdict: Verdict | None, evidence_cap
         return []
     entries = {item.id: item for item in verdict.prior_defects}
     lines = []
+    seen: set[tuple[object, object]] = set()
     for dispute in disputes:
+        key = (dispute["id"], dispute.get("cycle"))
+        if key in seen:
+            continue
+        seen.add(key)
         entry = entries.get(dispute["id"])
         if entry is None:
             lines.append(f"- {dispute['id']}: no disposition recorded")

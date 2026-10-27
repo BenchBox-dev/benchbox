@@ -8,6 +8,8 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -100,13 +102,33 @@ def sha256_of(path: Path) -> str:
     return digest.hexdigest()
 
 
+class HttpsOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(
+        self, req: urllib.request.Request, fp: Any, code: int, msg: str, headers: Any, newurl: str
+    ) -> urllib.request.Request | None:
+        if not newurl.lower().startswith("https://"):
+            raise urllib.error.URLError(f"the omp download redirected to a non-https url ({code})")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def build_opener() -> urllib.request.OpenerDirector:
+    return urllib.request.build_opener(HttpsOnlyRedirectHandler)
+
+
+def _open(request: urllib.request.Request, timeout: float) -> Any:
+    return build_opener().open(request, timeout=timeout)
+
+
 def download(url: str, destination: Path) -> None:
     if not url.startswith("https://"):
         raise PinError("omp is downloaded over https only")
+    deadline = time.monotonic() + DOWNLOAD_SECONDS
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(request, timeout=DOWNLOAD_SECONDS) as response, destination.open("wb") as handle:
+    with _open(request, DOWNLOAD_SECONDS) as response, destination.open("wb") as handle:
         while chunk := response.read(CHUNK_BYTES):
             handle.write(chunk)
+            if time.monotonic() > deadline:
+                raise TimeoutError(f"the omp download exceeded {DOWNLOAD_SECONDS} seconds")
 
 
 def reported_version(binary: Path) -> str:

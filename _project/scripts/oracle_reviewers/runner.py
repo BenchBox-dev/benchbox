@@ -205,7 +205,10 @@ def review(
     if verdict.status == INCOMPLETE:
         reason = verdict.incomplete_reason or "the reviewer reported its review incomplete"
         return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, reason), traced)
-    verdict = evidence.mark_citations(verdict, workspace, protocol.disputed_claims(plan))
+    run = evidence.trace(reviewer.harness, result.stdout)
+    verdict = evidence.mark_citations(
+        verdict, workspace, protocol.disputed_claims(plan), evidence.credited(run, workspace)
+    )
     problem = protocol.contradiction(verdict, plan, workspace=workspace)
     if problem is not None:
         return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), traced)
@@ -216,7 +219,7 @@ def review(
         brief_mode=plan["brief_mode"],
         workspace=workspace,
         required=tuple(plan.get("evidence_files", ())),
-        run=evidence.trace(reviewer.harness, result.stdout),
+        run=run,
     )
     if gap is not None:
         return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, gap.reason, unread=gap.files), traced)

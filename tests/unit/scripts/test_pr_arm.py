@@ -574,15 +574,31 @@ def test_a_would_block_verdict_refuses_when_the_changed_files_cannot_be_listed(
     [
         {"verdict": "pass", "sum_ratio": 1.01, "median_test_ratio": 1.0},
         {"verdict": "neutral", "reason": "no baseline"},
-        {"verdict": "rejected", "reason": "calibration missing"},
         {"verdict": "not-applicable", "reason": "no fast-tier tests ran for this head"},
     ],
 )
-def test_pass_neutral_rejected_and_not_applicable_verdicts_arm_normally(verdict: dict | None) -> None:
+def test_pass_neutral_and_not_applicable_verdicts_arm_normally(verdict: dict | None) -> None:
     gh = FakeGh(verdict=verdict)
     assert _arm(gh) == 0
     assert len(gh.merged()) == 1
     assert not any(call[-1].endswith("/pulls/7/files") for call in gh.calls)
+
+
+@pytest.mark.parametrize(
+    "verdict",
+    [
+        {"verdict": "rejected", "reason": "calibration missing"},
+        {"verdict": "mystery"},
+        {"reason": "no verdict field"},
+        {"verdict": None},
+    ],
+)
+def test_rejected_and_unknown_duration_verdicts_hold_arming(verdict: dict, capsys: pytest.CaptureFixture[str]) -> None:
+    gh = FakeGh(verdict=verdict, changed_files=[BASELINE_FILE])
+    assert _arm(gh) == 2
+    assert gh.merged() == []
+    err = capsys.readouterr().err
+    assert "verify-fast-duration verdict" in err and "not one of" in err
 
 
 def test_a_verdict_bound_to_a_superseded_head_refuses(capsys: pytest.CaptureFixture[str]) -> None:

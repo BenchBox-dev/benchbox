@@ -30,7 +30,7 @@ from .policy import Policy, load_policy, parse_policy
 from .verdict import DO_NOT_SHIP
 
 BLOCKING_SEVERITIES = ("Critical", "High")
-OVERRIDE_PATTERN = re.compile(r"^[ \t]*Local oracle override:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
+OVERRIDE_PATTERN = re.compile(r"^Local oracle override:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
 KEYCHAIN_SERVICE = "TYPESAFE_API_KEY"
 LOCAL_CLIENT = "oracle-local"
 CLOUD_CLIENT = "oracle-cloud"
@@ -41,7 +41,13 @@ CLOUD_SESSION_ENV = "BENCHBOX_EPHEMERAL_CLONE"
 STATE_DIR_ENV = "BENCHBOX_LOCAL_ORACLE_DIR"
 WORKFLOW_FILE = ".github/workflows/oracle-verdict.yml"
 SOUNDNESS_MANIFEST = ".github/soundness-paths.txt"
-HIDDEN_TEXT = re.compile(r"<!--.*?-->|^[ \t]*(```|~~~).*?^[ \t]*\1[^\n]*$", re.DOTALL | re.MULTILINE)
+HIDDEN_TEXT = re.compile(
+    r"<!--.*?(?:-->|\Z)"
+    r"|^[ \t]*(```|~~~).*?(?:^[ \t]*\1[^\n]*$|\Z)"
+    r"|<details\b.*?(?:</details>|\Z)"
+    r"|^(?: {4}|\t)[^\n]*$",
+    re.DOTALL | re.IGNORECASE | re.MULTILINE,
+)
 PLACEHOLDER = re.compile(r"<.*>")
 OMP_VERSION_PIN = re.compile(r"^[ \t]*OMP_VERSION:[ \t]*\"?([0-9][^\s\"]*)", re.MULTILINE)
 OMP_VERSION_OUTPUT = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+[^\s]*")
