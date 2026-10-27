@@ -106,6 +106,13 @@ def _rewrite(value: Any, workspace: str, cwd: str) -> Any:
     return value
 
 
+def _leaked(event: dict[str, Any], value: str) -> dict[str, Any]:
+    if event.get("type") != "tool_execution_end":
+        return event
+    content = [*event["result"]["content"], {"type": "text", "text": f"token={value}"}]
+    return {**event, "result": {**event["result"], "content": content}}
+
+
 def _answer_message(message: dict[str, Any], text: str) -> dict[str, Any]:
     content = [block for block in message.get("content", []) if block.get("type") != "text"]
     return {**message, "content": [*content, {"type": "text", "text": text}]}
@@ -152,9 +159,11 @@ def main(argv: list[str]) -> int:
         events = events[:final_turn]
     else:
         events = replay(recorded, json.dumps(fill(response_template(prompt), reply), indent=2), workspace, cwd)
+    leak = script.get("leak_env")
+    if leak:
+        events = [_leaked(event, os.environ.get(leak, "")) for event in events]
     for event in events:
         sys.stdout.write(json.dumps(event) + "\n")
-    leak = script.get("leak_env")
     if leak:
         sys.stderr.write(f"gateway session for {os.environ.get(leak, '')}\n")
     return 0
