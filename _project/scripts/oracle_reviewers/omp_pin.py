@@ -21,6 +21,7 @@ SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?")
 CHUNK_BYTES = 1 << 20
 DOWNLOAD_SECONDS = 600
+DOWNLOAD_READ_SECONDS = 30
 USER_AGENT = "benchbox-oracle/1.0"
 VERSION_SECONDS = 60
 SYSTEMS = {"darwin": "darwin", "linux": "linux"}
@@ -119,16 +120,24 @@ def _open(request: urllib.request.Request, timeout: float) -> Any:
     return build_opener().open(request, timeout=timeout)
 
 
+def _stream(
+    request: urllib.request.Request,
+    destination: Path,
+    deadline_seconds: float = DOWNLOAD_SECONDS,
+    read_seconds: float = DOWNLOAD_READ_SECONDS,
+) -> None:
+    deadline = time.monotonic() + deadline_seconds
+    with _open(request, read_seconds) as response, destination.open("wb") as handle:
+        while chunk := response.read1(CHUNK_BYTES):
+            handle.write(chunk)
+            if time.monotonic() > deadline:
+                raise TimeoutError(f"the omp download exceeded {deadline_seconds:g} seconds")
+
+
 def download(url: str, destination: Path) -> None:
     if not url.startswith("https://"):
         raise PinError("omp is downloaded over https only")
-    deadline = time.monotonic() + DOWNLOAD_SECONDS
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with _open(request, DOWNLOAD_SECONDS) as response, destination.open("wb") as handle:
-        while chunk := response.read(CHUNK_BYTES):
-            handle.write(chunk)
-            if time.monotonic() > deadline:
-                raise TimeoutError(f"the omp download exceeded {DOWNLOAD_SECONDS} seconds")
+    _stream(urllib.request.Request(url, headers={"User-Agent": USER_AGENT}), destination)
 
 
 def reported_version(binary: Path) -> str:
