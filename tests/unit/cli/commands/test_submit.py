@@ -939,3 +939,26 @@ def test_submit_redacts_raw_plans_and_applied_ledger_companions(
     assert "developer-macbook-pro" not in packaged_plans
     assert json.loads(packaged_plans)["queries"]["q1"]["plan"]["raw_explain_output"] is None
     assert json.loads(packaged_applied)["statements"][0]["statement_redacted"] is True
+
+
+def test_submit_pseudonymizes_inline_requested_tuning_identifiers(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    src = tmp_path / "tpch_duckdb.json"
+    raw_bundle = _valid_submission_bundle()
+    raw_bundle["platform"]["tuning"] = {
+        "requested": {
+            "table_tunings": {"secret_orders_tbl": {"clustering": ["secret_customer_col"]}},
+            "constraints": {"primary_keys": [{"table": "secret_orders_tbl", "columns": ["secret_customer_col"]}]},
+        }
+    }
+    src.write_text(json.dumps(raw_bundle), encoding="utf-8")
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
+
+    out_dir = tmp_path / "submission"
+    result = CliRunner().invoke(sub.submit, [str(src), "--output", str(out_dir)])
+
+    assert result.exit_code == 0, result.output
+    packaged_text = (out_dir / "bundle" / src.name).read_text(encoding="utf-8")
+    assert "secret_orders_tbl" not in packaged_text
+    assert "secret_customer_col" not in packaged_text

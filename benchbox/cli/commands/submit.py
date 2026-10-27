@@ -183,10 +183,22 @@ def _require_public_pseudonym_salt(ctx: click.Context) -> str:
         ctx.exit(1)
 
 
+def _inline_requested_tuning(payload: dict[str, object]) -> dict[str, object] | None:
+    platform = payload.get("platform")
+    tuning = platform.get("tuning") if isinstance(platform, dict) else None
+    requested = tuning.get("requested") if isinstance(tuning, dict) else None
+    return requested if isinstance(requested, dict) else None
+
+
 def _anonymize_bundle_payload(payload: dict[str, object], manager: AnonymizationManager) -> dict[str, object]:
     working = dict(payload)
     export = working.pop("export", None)
+    raw_requested = _inline_requested_tuning(working)
     anonymized = manager.anonymize_result_payload(working)
+    if raw_requested is not None:
+        anonymized["platform"]["tuning"]["requested"] = manager.anonymize_tuning_payload({"requested": raw_requested})[
+            "requested"
+        ]
     anonymized["export"] = {**(export if isinstance(export, dict) else {}), "anonymized": True}
     errors = export_anonymized_errors(anonymized)
     if errors:
