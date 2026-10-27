@@ -16560,9 +16560,7 @@
     },
     "oracle-local-review-lock-per-patch-20261027": {
       "claim": null,
-      "needs": [
-        "oracle-history-edited-review-fail-closed-20261027"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "Lock local oracle reviews per patch instead of per machine"
