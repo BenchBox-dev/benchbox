@@ -5,7 +5,7 @@ import json
 import pytest
 
 from .fake_github import JOB_TOKEN
-from .harness import CHECKER, GATEWAY_TOKEN, Harness
+from .harness import CHECKER, GATEWAY_TOKEN, RECORDED_STREAM, Harness
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
@@ -55,5 +55,8 @@ def test_attempt_capture_keeps_the_redacted_event_stream(harness: Harness) -> No
     final = [event for event in capture["events"] if isinstance(event, dict) and event.get("type") == "message_end"][-1]
     answer = json.loads(final["message"]["content"][-1]["text"])
     assert answer["decision"] == "SHIP"
+    recorded = [line for line in RECORDED_STREAM.read_text(encoding="utf-8").splitlines() if '"message_update"' in line]
+    assert not any(isinstance(event, dict) and event["type"].endswith("_update") for event in capture["events"])
+    assert 0 < capture["streaming_events_dropped"] <= len(recorded)
     uploaded = [item["name"] for item in harness.github.artifacts if item["workflow_run"]["id"] == run.run["id"]]
     assert "oracle-verdict-capture" in uploaded

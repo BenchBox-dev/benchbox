@@ -143,9 +143,15 @@ def _event(line: str) -> Any:
         return line
 
 
+def _streaming(event: Any) -> bool:
+    return isinstance(event, dict) and str(event.get("type", "")).endswith("_update")
+
+
 def capture(reviewer: Reviewer, result: RunResult) -> dict[str, Any]:
     secrets = _credentials()
     stdout = result.stdout if reviewer.harness == "omp" else ""
+    parsed = [_event(line) for line in stdout.splitlines() if line.strip()]
+    events = [event for event in parsed if not _streaming(event)]
     return redaction_check.redact(
         {
             "schema": CAPTURE_SCHEMA,
@@ -156,7 +162,8 @@ def capture(reviewer: Reviewer, result: RunResult) -> dict[str, Any]:
             "timed_out": result.timed_out,
             "terminal_error": absence.redact_detail(omp_terminal_error(stdout), secrets),
             "stderr_excerpt": absence.excerpt("", result.stderr, secrets),
-            "events": [_event(line) for line in stdout.splitlines() if line.strip()],
+            "streaming_events_dropped": len(parsed) - len(events),
+            "events": events,
         },
         secrets,
     )
