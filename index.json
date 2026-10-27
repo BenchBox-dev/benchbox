@@ -16640,6 +16640,15 @@
       "status": "dropped",
       "title": "muse often returns output the oracle cannot parse as a verdict, so it is recorded absent (invalid)"
     },
+    "oracle-omp-bump-post-merge-watch-20261027": {
+      "claim": null,
+      "needs": [
+        "oracle-omp-release-bump-flow-20261027"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Watch the first reviews after an omp pin bump and revert on anomaly"
+    },
     "oracle-omp-candidate-compat-suite-20261027": {
       "claim": null,
       "needs": [
