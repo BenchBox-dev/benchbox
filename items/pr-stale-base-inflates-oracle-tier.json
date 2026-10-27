@@ -3,7 +3,7 @@
     "make pr-open or oracle planning detects a base sha that is not the merge base with origin/develop and either refreshes it or fails with a clear message",
     "Test covers the stale-base case"
   ],
-  "context": "Workaround used: close and reopen. Evidence is a single occurrence.",
+  "context": "2026-10-27: Merge freeze (owner 2026-10-27, scope: oracle-code PRs): no PR that changes oracle reviewer or gate code merges, and no make pr-arm runs on one, until oracle-history-edited-review-fail-closed-20261027 is merged. In scope: #3565, #3572, #3573, #3574, #3576, the unopened scope-path, evidence-exempt and redaction branches, and any other PR touching _project/scripts/oracle_reviewers/, _project/scripts/oracle_review_check.py, _project/scripts/soundness_merge_digest.py, scripts/pr_arm.py or .github/workflows/oracle-*.yml. Excepted: the edited-review fix's own PR and #3585 (owner exemption 2026-10-27). PRs may be opened and reviewed meanwhile. Never edit, delete, dismiss or minimise an oracle review, review comment or commit status, including on test PRs; edit-detection proofs use unit fixtures and read-only GraphQL reads of existing reviews.\n\nWorkaround used: close and reopen. Evidence is a single occurrence.",
   "description": "PR #3109 (head a6acef0d9) was pushed after its branch had been merged with a newer develop. The GitHub API kept reporting an old base (base sha 27f7a7d1f, changed_files 481, additions 14532, 46 commits) while the real change against origin/develop was 11 files. gh pr diff failed with HTTP 406 (over 300 files) and the oracle planned tier very-high ('2247 code lines across 13 areas', soundness paths touched). After gh pr close then gh pr reopen the API reported base 0f5ed3aa7, 11 files, 4 commits and the oracle reported 'no soundness path changed'. Cause not established: it may be GitHub's lazy recomputation rather than anything BenchBox does. Related: oracle-coverage-gate-large-prs-20261017 covers oracle handling of genuinely large PRs; this item is about a wrongly large PR.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3109"
@@ -31,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "9d78242ff76a43078e22d617e6adf5b5",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T12:59:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d98e3d1953a34c3eabb3f33afd57a3bd",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
