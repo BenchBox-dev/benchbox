@@ -583,13 +583,13 @@ def _reviewed(
         if cached is not None:
             reporter.say("Reusing the cached local review of this unchanged patch.")
             return cached
-        result = _fresh_review(root, plan, plan_dir, work, key, reporter)
+        result = _fresh_review(root, plan, plan_dir, work, key, omp_binary, reporter)
         _store(cache, result, reporter.secrets)
     return result
 
 
 def _fresh_review(
-    root: Path, plan: dict[str, Any], plan_dir: Path, work: Path, key: str, reporter: Reporter
+    root: Path, plan: dict[str, Any], plan_dir: Path, work: Path, key: str, omp_binary: Path, reporter: Reporter
 ) -> dict[str, Any]:
     access = resolve_credentials()
     reporter.hide(access.token, access.url)
