@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -9,6 +10,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+from _project.scripts.oracle_reviewers import omp_pin
 
 from .fake_github import APP_TOKEN, GH_HOST, JOB_TOKEN, OWNER_TOKEN, FakeGitHub
 
@@ -20,6 +23,7 @@ POLICY = ".github/oracle-reviewers.yml"
 TRUSTED_FILES = (POLICY, ".github/workflows/oracle-verdict.yml", ".github/soundness-paths.txt")
 GATEWAY_TOKEN = "gwtok-" + "Q7mZ4kLp" * 5
 PINNED_OMP = "18.12.1"
+SHA256_LINE = re.compile(r"sha256: [0-9a-f]{64}")
 STEP_TIMEOUT = 120
 COMMIT_AGE = timedelta(hours=2)
 
@@ -86,9 +90,13 @@ class Harness:
         self.bin = root / "bin"
         for folder in (self.home, self.bin, root / "gh-config"):
             folder.mkdir(parents=True)
+        self._install_omp()
         self._seed()
         self.github = FakeGitHub(SLUG, self.repo).start()
-        self._install_omp()
+
+    @property
+    def omp_cache(self) -> Path:
+        return self.root / "omp-cache"
 
     def close(self) -> None:
         self.github.stop()
@@ -97,6 +105,7 @@ class Harness:
         self.repo.mkdir()
         git(self.repo, "init", "--quiet", "--initial-branch=develop")
         trusted = {path: (REPO_ROOT / path).read_text(encoding="utf-8") for path in TRUSTED_FILES}
+        trusted[POLICY] = SHA256_LINE.sub(f"sha256: {omp_pin.sha256_of(self.bin / 'omp')}", trusted[POLICY])
         self.write({"README.md": "seed\n", CHECKER: "def checker(a, b):\n    return a == b\n", **trusted}, "seed")
 
     def write(self, files: dict[str, str], message: str) -> str:
@@ -125,6 +134,9 @@ class Harness:
         target = self.bin / "omp"
         target.write_text(f"#!{sys.executable}\n{source}", encoding="utf-8")
         target.chmod(target.stat().st_mode | stat.S_IXUSR)
+        cached = omp_pin.binary_path(omp_pin.Pin(PINNED_OMP, {}), omp_pin.current_platform(), self.omp_cache)
+        cached.parent.mkdir(parents=True)
+        cached.symlink_to(target)
         security = self.bin / "security"
         security.write_text("#!/bin/sh\nexit 44\n", encoding="utf-8")
         security.chmod(security.stat().st_mode | stat.S_IXUSR)
@@ -144,6 +156,8 @@ class Harness:
         env = {
             "PATH": f"{self.bin}{os.pathsep}{os.environ['PATH']}",
             "HOME": str(self.home),
+            omp_pin.BINARY_ENV: str(self.bin / "omp"),
+            omp_pin.CACHE_ENV: str(self.omp_cache),
             "LANG": "C.UTF-8",
             "GH_CONFIG_DIR": str(self.root / "gh-config"),
             "GH_HOST": GH_HOST,
