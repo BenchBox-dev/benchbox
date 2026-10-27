@@ -31,7 +31,7 @@ DEVELOPMENT_TREE_ONLY_TARGETS := \
 	agent-commit-range-check skill-integrity-check ci-lint pr-preflight pr-arm-auto-merge shrink-rollup \
 	pr-review-followups-list pr-review-followups dev-loop-metrics ci-usage-report platform-manifest \
 	platform-manifest-check test-docker-parity blind-spots-list blind-spots-report \
-	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap
+	soundness-drain-report soundness-drain-self-test worktree-audit worktree-finish worktree-reap oracle-mutation-test
 
 .PHONY: coverage-check
 
