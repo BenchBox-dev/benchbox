@@ -499,7 +499,7 @@ def _run_attempts(plan_path: Path, work: Path, classification_path: Path, report
 
 def _result(plan: dict[str, Any], classification: Classification, work: Path) -> dict[str, Any]:
     run_id = plan["run_id"]
-    loaded = attempt_files.load(work / "attempts", plan, run_id)
+    loaded = attempt_files.load(work / "attempts", plan, run_id, workspace=work / "workspace")
     step, errors = attempt_files.decide(cli._selection(plan, classification), loaded)
     if errors:
         raise Unavailable("; ".join(errors))

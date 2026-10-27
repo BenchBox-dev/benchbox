@@ -301,6 +301,14 @@ open defects give DO NOT SHIP. The previous reviewer goes first unless the
 follow-up's own bucket names a larger one, as for a push touching review
 machinery. Follow-ups run for every size bucket.
 
+Follow-up scope preserves every exact changed-path match and additionally
+compares Unicode NFC forms and symlink aliases resolved inside the head checkout.
+A case-only citation matching one changed path uses that path; an ambiguous
+case-only match still counts against the decision rather than disappearing.
+Canonical matching can only bring findings into scope. Findings on genuinely
+unchanged files remain not counted, and aliases resolving outside the checkout
+do not establish a match.
+
 A forced follow-up rejudges rather than skips. Its brief lists each disputed
 thread under "Disputed findings", keyed by the finding id from the thread's
 hidden marker, with replies quoted as data. Only disputes bound to a
