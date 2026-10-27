@@ -644,6 +644,9 @@
     "tests/unit/workflows/test_validate_submission_changed_bundles.py": {
       "WA007": 2
     },
+    "tests/unit/workflows/test_validate_submission_override_approval.py": {
+      "WA006": 1
+    },
     "tests/validation/test_dsqgen_integration_light.py": {
       "WA001": 1
     },
