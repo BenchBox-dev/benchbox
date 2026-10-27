@@ -370,6 +370,7 @@ def _resolved_git_identity(project: Path, role: str) -> tuple[str, str]:
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     if result.returncode != 0:
         return "", ""
@@ -394,6 +395,7 @@ def _identity_origins(project: Path) -> str:
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     ).stdout.strip()
 
 
@@ -437,6 +439,7 @@ def audit_identity_overrides(project: Path) -> list[str]:
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     warnings: list[str] = []
     for line in result.stdout.splitlines():
@@ -464,6 +467,7 @@ def audit_commit_range(project: Path, base_ref: str) -> list[str]:
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     if result.returncode != 0:
         return [f"unable to inspect commit range {base_ref}..HEAD: {result.stderr.strip() or '<no detail>'}"]

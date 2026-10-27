@@ -361,14 +361,27 @@ def test_wa006_dict_of_os_environ_is_clean(tmp_path: Path) -> None:
     assert _codes(tmp_path, src) == []
 
 
-@pytest.mark.parametrize("keyword", ["text=True", "universal_newlines=True"])
-def test_git_encoding_not_ratcheted(tmp_path: Path, keyword: str) -> None:
-    src = f"import subprocess\nsubprocess.run(['git', 'ls-files', '-z'], {keyword})\n"
+def test_wa006_non_subprocess_call_is_clean(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "import foo\nfoo.run(['x'], env={'A': '1'})\n") == []
+
+
+def test_wa007_git_text_true_without_encoding(tmp_path: Path) -> None:
+    src = "import subprocess\nsubprocess.run(['git', 'ls-files', '-z'], capture_output=True, text=True)\n"
+    assert _codes(tmp_path, src) == ["WA007"]
+
+
+def test_wa007_universal_newlines(tmp_path: Path) -> None:
+    src = "import subprocess\nsubprocess.check_output(['git', 'log'], universal_newlines=True)\n"
+    assert _codes(tmp_path, src) == ["WA007"]
+
+
+def test_wa007_encoding_is_clean(tmp_path: Path) -> None:
+    src = "import subprocess\nsubprocess.run(['git', 'log'], text=True, encoding='utf-8')\n"
     assert _codes(tmp_path, src) == []
 
 
-def test_wa006_non_subprocess_call_is_clean(tmp_path: Path) -> None:
-    assert _codes(tmp_path, "import foo\nfoo.run(['x'], env={'A': '1'})\n") == []
+def test_wa007_non_git_command_is_clean(tmp_path: Path) -> None:
+    assert _codes(tmp_path, "import subprocess\nsubprocess.run(['ls'], text=True)\n") == []
 
 
 @pytest.mark.parametrize(

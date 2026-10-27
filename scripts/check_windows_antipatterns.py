@@ -33,6 +33,9 @@ CLI_DESCRIPTION = (
     "     that is not built from os.environ - Windows children cannot initialise\n"
     "     Winsock or the CRT without it (WinError 10106).\n"
     "     Only unmodified literal bindings are resolved; mutations and computed mappings are not proved safe.\n"
+    "  7. subprocess calls running git with text=True or universal_newlines=True\n"
+    "     and no encoding= - git emits UTF-8 but the pipe is decoded with the\n"
+    "     locale code page.\n"
     "     POSIX-only reviewer process/build helpers and sql-translation-ml are excluded.\n"
     "\n"
     "Existing violations are recorded per file and code in\n"
@@ -222,6 +225,18 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
                 "subprocess env= dict literal lacks SYSTEMROOT and is not built from os.environ - Windows children "
                 "fail with WinError 10106; use {**os.environ, ...} or add SYSTEMROOT",
             )
+        if (
+            any(_is_true_constant(keywords.get(name)) for name in ("text", "universal_newlines"))
+            and "encoding" not in keywords
+            and not any(kw.arg is None for kw in node.keywords)
+            and _runs_git(node)
+        ):
+            self._add(
+                node,
+                "WA007",
+                "git subprocess with text=True decodes output with the locale encoding - "
+                "pass encoding='utf-8' (and errors=) instead",
+            )
 
     def _check_read_text_encoding(self, node: ast.Call) -> None:
         encoding: ast.expr | None = None
@@ -296,6 +311,19 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
             f"signal.{node.attr} does not exist on Windows - "
             f"guard with `if hasattr(signal, '{node.attr}')` or `if os.name != 'nt'`",
         )
+
+
+def _is_true_constant(node: ast.expr | None) -> bool:
+    return isinstance(node, ast.Constant) and node.value is True
+
+
+def _runs_git(node: ast.Call) -> bool:
+    if not node.args:
+        return False
+    cmd = node.args[0]
+    if isinstance(cmd, (ast.List, ast.Tuple)) and cmd.elts:
+        cmd = cmd.elts[0]
+    return isinstance(cmd, ast.Constant) and cmd.value in {"git", "git.exe"}
 
 
 def _is_comparison_operand(node: ast.AST) -> bool:

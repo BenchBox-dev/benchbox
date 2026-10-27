@@ -560,7 +560,12 @@ def commit_files(sha: str, *, cwd: Path | None = None) -> list[str]:
 
 def is_ancestor(commit: str, descendant: str, *, cwd: Path | None = None) -> bool:
     result = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", commit, descendant], capture_output=True, text=True, check=False, cwd=cwd
+        ["git", "merge-base", "--is-ancestor", commit, descendant],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+        cwd=cwd,
     )
     if result.returncode not in (0, 1):
         raise ReadError(f"git merge-base failed for {commit[:9]}: {result.stderr.strip()[:200]}")
@@ -572,7 +577,12 @@ def merge_adds_content(sha: str, base: str, *, cwd: Path | None = None) -> bool:
     if len(parents) != 2 or not any(is_ancestor(parent, base, cwd=cwd) for parent in parents):
         return True
     result = subprocess.run(
-        ["git", "merge-tree", "--write-tree", *parents], capture_output=True, text=True, check=False, cwd=cwd
+        ["git", "merge-tree", "--write-tree", *parents],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+        cwd=cwd,
     )
     if result.returncode == 1:
         return True
