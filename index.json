@@ -24557,10 +24557,15 @@
       "title": "Make security advisories visible for the bundled SQLGlot runtime"
     },
     "sqlglot-bundled-runtime-windows-verification": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-28T14:15:11Z",
+        "generation": "e73ec6f4656d4cad8b3ebd60e307dc76",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Verify the zip-loaded SQLGlot runtime on Windows"
     },
     "sqlglot-dialect-translation-code-review-implementation": {
