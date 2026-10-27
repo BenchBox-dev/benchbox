@@ -3032,17 +3032,12 @@
       "title": "Commit a fast-tier duration baseline from merged-PR junit and refresh it weekly by reviewed PR"
     },
     "ci-fast-duration-gate-blocking-20261025": {
-      "claim": {
-        "expires_at": "2026-10-28T20:31:50Z",
-        "generation": "d6be096970bf4d7c9cf12ab9c3d7df39",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
-      },
+      "claim": null,
       "needs": [
         "ci-verify-fast-duration-report-only-20261025"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Turn the fast-tier duration check into a blocking part of core with thresholds set from measured noise"
     },
     "ci-fast-test-slowdown-20261016": {
