@@ -105,7 +105,7 @@ Each is `product-safety` or `tooling`, never `pure-process`:
 | `validate-release-pr.yml` | product-safety | Release PR base validation |
 | `validate-submission.yml` | product-safety | Submission validation |
 | `validate-submission-comment.yml` | product-safety | Submission validation comment |
-| `windows-fast.yml` | product-safety | Dispatch-only Windows fast unit suite, the same command as the nightly `t3:windows` domain |
+| `windows-fast.yml` | product-safety | Dispatch-only Windows fast unit suite, the same command as the nightly `t3:windows` domain, preceded by the installed-wheel bundled SQLGlot runtime smoke |
 | `tpcds-official-qualification.yml` | product-safety | Weekly SF 1 TPC-DS qualification; fails on DataFrame-to-SQL divergence or an unclassified printed-answer difference |
 | `tpcds-platform-identity.yml` | product-safety | Bundled TPC-DS generators agree across platforms (data checksums and dsqgen parameters) |
 | `tpch-dbgen-intel-macos.yml` | product-safety | Bundled darwin-x86_64 TPC-H dbgen is executed on an Intel macOS runner and emits the canonical supplier and customer rows |

@@ -486,6 +486,14 @@ its `trunk.yml` push run is green, because the workflow publishes that run's
 and tag `v0.5.0rc1` for a TestPyPI rehearsal, then `VERSION=0.5.0` and tag
 `v0.5.0` for PyPI. See `release-artifacts.md` for the gates it runs.
 
+The `install-matrix` job of `release-v2.yml` installs the admitted wheel on
+Ubuntu, macOS and Windows and runs `scripts/smoke_sqlglot_runtime_install.py`
+against it. That script installs the wheel beside public `sqlglot`, checks that
+`benchbox._vendor.sqlglot` loads from the bundled zip, translates SQL, stays
+separate from the public `sqlglot`, and leaves the public package intact after
+`benchbox` is uninstalled. Dispatch `windows-fast.yml` on a branch to run the same
+script on `windows-latest` before tagging.
+
 ```bash
 make release-prep VERSION=X.Y.Z
 make release-check VERSION=X.Y.Z [BASE_REF=<immutable-predecessor-sha>] [RELEASE_PRE_TAG=1]
