@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Callable, Iterable
 from datetime import datetime
@@ -43,7 +44,16 @@ def _is_standin(comment: dict[str, Any], head_sha: str, not_before: datetime | N
     )
 
 
-API_ROOT = os.environ.get("GITHUB_API_URL") or "https://api.github.com"
+def _api_root(value: str) -> str:
+    parsed = urllib.parse.urlsplit(value)
+    if parsed.scheme == "http" and parsed.hostname in LOOPBACK_HOSTS and not parsed.path.strip("/"):
+        return value.rstrip("/")
+    return GITHUB_API_ROOT
+
+
+LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
+GITHUB_API_ROOT = "https://api.github.com"
+API_ROOT = _api_root(os.environ.get("GITHUB_API_URL", ""))
 PAGE_SIZE = 100
 PASS = 0
 WAITING = 1

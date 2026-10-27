@@ -986,3 +986,19 @@ def test_a_standin_never_overrides_an_open_oracle_thread_after_a_refusal() -> No
 def test_new_verdicts_use_the_current_status_context() -> None:
     assert oracle_review_check.ORACLE_CONTEXT == "oracle-verdict"
     assert _refusal_description().startswith(oracle_review_check.REFUSED_DESCRIPTION_PREFIX)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("", "https://api.github.com"),
+        ("https://api.github.com", "https://api.github.com"),
+        ("https://attacker.example", "https://api.github.com"),
+        ("http://attacker.example", "https://api.github.com"),
+        ("http://127.0.0.1:8123/", "http://127.0.0.1:8123"),
+        ("http://localhost:8123", "http://localhost:8123"),
+        ("http://127.0.0.1:8123/elsewhere", "https://api.github.com"),
+    ],
+)
+def test_the_api_root_is_overridden_only_by_a_loopback_server(value: str, expected: str) -> None:
+    assert oracle_review_check._api_root(value) == expected
