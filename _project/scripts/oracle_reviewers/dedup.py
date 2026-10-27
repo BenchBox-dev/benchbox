@@ -35,6 +35,7 @@ def open_fingerprints(threads: Iterable[Mapping[str, Any]], login: str) -> dict[
     for thread in threads:
         if (
             thread.get("resolved")
+            or thread.get("edited")
             or thread.get("author_type") != "Bot"
             or (thread.get("author") or "").removesuffix("[bot]") != login
         ):

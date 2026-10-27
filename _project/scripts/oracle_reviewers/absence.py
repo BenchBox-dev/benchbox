@@ -18,6 +18,8 @@ EMPTY = "empty"
 ERROR = "error"
 INCOMPLETE = "incomplete"
 KINDS = (OK, QUOTA, AUTH, TIMEOUT, INVALID, EMPTY, ERROR, INCOMPLETE)
+QUOTA_STATUS = 429
+AUTH_STATUS = 401
 
 CALIBRATED_QUOTA_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
     "omp": (
@@ -86,6 +88,7 @@ class Absence:
     kind: str
     detail: str = ""
     reset_at: datetime | None = None
+    provider: str = ""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "detail", credentials.redact(self.detail))
@@ -145,16 +148,21 @@ def classify(
     timed_out: bool,
     now: datetime,
 ) -> Absence:
-    signal = f"{stderr}\n{omp_terminal_error(stdout)}" if harness == "omp" else stderr
+    terminal = omp_terminal_error(stdout) if harness == "omp" else None
     if timed_out:
         return Absence(TIMEOUT, "the reviewer did not finish within its timeout")
     if _first(CALIBRATED_EMPTY_PATTERNS.get(harness, ()), stderr) is not None:
         return Absence(EMPTY, "the reviewer produced no output because tool use was denied")
     failed = exit_code not in (0, None)
-    quota = _first(CALIBRATED_QUOTA_PATTERNS.get(harness, ()), signal) if failed else None
+    if failed and terminal is not None and terminal.status in (QUOTA_STATUS, AUTH_STATUS):
+        detail = redact_detail(f"{terminal.status} {' '.join(terminal.message.split())}".strip())
+        if terminal.status == QUOTA_STATUS:
+            return Absence(QUOTA, detail, parse_reset(terminal.message, now), terminal.provider)
+        return Absence(AUTH, detail)
+    quota = _first(CALIBRATED_QUOTA_PATTERNS.get(harness, ()), stderr) if failed else None
     if quota is not None:
-        return Absence(QUOTA, redact_detail(quota.group(0)), parse_reset(signal, now))
-    auth = _first(CALIBRATED_AUTH_PATTERNS.get(harness, ()), signal) if failed else None
+        return Absence(QUOTA, redact_detail(quota.group(0)), parse_reset(stderr, now))
+    auth = _first(CALIBRATED_AUTH_PATTERNS.get(harness, ()), stderr) if failed else None
     if auth is not None:
         return Absence(AUTH, redact_detail(auth.group(0)))
     if exit_code is None:
