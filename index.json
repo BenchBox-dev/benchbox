@@ -16968,7 +16968,9 @@
     },
     "oracle-reviewer-checkout-has-no-base-commit-20261009": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Oracle reviewers check out only the head commit, so they cannot see the base and often say the base commit was unavailable"
