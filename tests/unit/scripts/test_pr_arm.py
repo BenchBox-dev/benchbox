@@ -65,6 +65,9 @@ class FakeGh:
         self.download = kwargs.get("download", (0, None))
         self.verdict_head = kwargs.get("verdict_head", self.local_head)
         self.changed_files = kwargs.get("changed_files", ["scripts/x.py"])
+        self.rules = kwargs.get("rules", ["core"])
+        self.core_url = kwargs.get("core_url", "")
+        self.ci_runs = kwargs.get("ci_runs", [])
         self.calls: list[list[str]] = []
         self.rules = kwargs.get("rules", ["core"])
         self.statuses = kwargs.get("statuses", {})
@@ -109,12 +112,17 @@ class FakeGh:
             return 0, ""
         if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
             return 0, "\n".join(self.rules)
+        if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/ci.yml/runs?" in cmd[-1]:
+            assert f"head_sha={self.local_head}" in cmd[-1]
+            return 0, "\n".join(f"{run_id}\t{title}\t{status}" for run_id, title, status in self.ci_runs)
         if cmd[:3] == ["gh", "api", "--paginate"] and "/check-runs?" in cmd[-1]:
             runs = [("core", *self.core)] + list(self.extra_runs)
             lines = []
             for index, (name, status, conclusion) in enumerate(runs, 1):
                 record = {"id": index, "name": name, "status": status, "conclusion": conclusion}
                 record["head_sha"] = self.local_head
+                if name == "core":
+                    record["details_url"] = self.core_url
                 lines.append(json.dumps({**record, "check_suite": {"id": 9}}))
             return 0, "\n".join(lines)
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/pulls/7/files"):
@@ -735,3 +743,69 @@ def test_waiting_oracle_description_for_another_head_does_not_mask_failure() -> 
     )
     assert _arm(gh) == 2
     assert gh.merged() == []
+
+
+PLACEHOLDER_URL = f"https://github.com/{pr_arm.REPOSITORY}/actions/runs/90/job/1"
+FULL_URL = f"https://github.com/{pr_arm.REPOSITORY}/actions/runs/91/job/1"
+
+
+def _arm_live(gh: FakeGh) -> int:
+    return pr_arm.arm(
+        "7",
+        None,
+        run=gh,
+        unpublished=lambda _checkout: [],
+        threads=lambda _run, _repo, _number: False,
+    )
+
+
+@pytest.mark.parametrize("verdict", [None, {"verdict": "pass"}])
+def test_a_placeholder_core_failure_with_the_full_run_in_progress_waits_and_never_advises_a_rerun(
+    verdict: dict | None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh(
+        verdict=verdict,
+        core=("completed", "failure"),
+        core_url=PLACEHOLDER_URL,
+        ci_runs=[(90, "CI (text edit)", "completed"), (91, "CI", "in_progress")],
+    )
+    assert _arm_live(gh) == 2
+    assert gh.merged() == []
+    err = capsys.readouterr().err
+    assert "waiting for full CI run 91" in err
+    assert "pr-rerun" not in err
+    assert "no verdict will arrive" not in err
+    assert "completed with conclusion" not in err
+
+
+def test_a_placeholder_core_failure_after_the_full_run_completed_advises_the_rerun(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh(
+        verdict=None,
+        core=("completed", "failure"),
+        core_url=PLACEHOLDER_URL,
+        ci_runs=[(90, "CI (text edit)", "completed"), (91, "CI", "completed")],
+    )
+    assert _arm_live(gh) == 2
+    assert gh.merged() == []
+    err = capsys.readouterr().err
+    assert "waiting for full CI run" not in err
+    assert "make pr-rerun PR=7" in err
+    assert "required check 'core' completed with conclusion 'failure'" in err
+
+
+def test_a_real_core_failure_is_not_mistaken_for_a_placeholder_while_another_run_is_in_progress(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    gh = FakeGh(
+        verdict=None,
+        core=("completed", "failure"),
+        core_url=FULL_URL,
+        ci_runs=[(91, "CI", "completed"), (92, "CI", "in_progress")],
+    )
+    assert _arm_live(gh) == 2
+    err = capsys.readouterr().err
+    assert "waiting for full CI run" not in err
+    assert "make pr-rerun PR=7" in err
+    assert "required check 'core' completed with conclusion 'failure'" in err
