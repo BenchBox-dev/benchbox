@@ -499,3 +499,26 @@ def test_check_builds_enforces_the_broker_the_run_file_and_the_gateway(pinned: d
     assert gateway.returncode != 0 and "dev.omp.auth-gateway runs omp 9.9.9" in gateway.stderr
     run_sh = _check_builds(pinned, broker=good, gateway=good, run_sh=other)
     assert run_sh.returncode != 0 and "not the pinned build" in run_sh.stderr
+
+
+@pytest.mark.parametrize(("etime", "aged", "restarted"), [("10:00", True, False), ("2-01:00:00", False, True)])
+def test_a_rerun_restarts_an_agent_that_predates_its_pinned_binary_even_when_nothing_else_changed(
+    pinned: dict, etime: str, aged: bool, restarted: bool
+) -> None:
+    env = _running(pinned, pinned["binary"], etime=etime, aged=aged)
+    calls = pinned["tmp"] / "launchctl-calls.log"
+    _executable(
+        pinned["stubs"] / "launchctl",
+        f'#!/bin/sh\necho "$*" >> \'{calls}\'\ncase "$1" in print) [ -e "$HOME/loaded" ] || exit 1; printf \'pid = 4242\\n\';; bootout) rm -f "$HOME/loaded";; esac\n',
+    )
+    _executable(pinned["stubs"] / "plutil", "#!/bin/sh\nexit 0\n")
+    home = pinned["tmp"] / "agent-home"
+    env = {**env, "HOME": str(home)}
+    body = (
+        "require_omp >/dev/null; AGENT_DIR=$HOME/agents; LOG_DIR=$HOME/logs; mkdir -p $AGENT_DIR; "
+        "install_agent dev.omp.auth-gateway $LOG_DIR/x.log yes /bin/sh run.sh >/dev/null; touch $HOME/loaded; : > "
+        f"'{calls}'; install_agent dev.omp.auth-gateway $LOG_DIR/x.log no /bin/sh run.sh"
+    )
+    result = _source(pinned, body, env)
+    assert result.returncode == 0, result.stderr
+    assert ("bootstrap" in calls.read_text(encoding="utf-8")) == restarted

@@ -83,17 +83,28 @@ file_mtime() {
   stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"
 }
 
+process_predates_file() {
+  local pid=$1 file=$2 elapsed started
+  elapsed=$(etime_seconds "$(ps -o etime= -p "$pid" | tr -d '[:space:]')")
+  started=$(( $(date +%s) - elapsed ))
+  [ $(( started + 1 )) -lt "$(file_mtime "$file")" ]
+}
+
+agent_predates_binary() {
+  local pid
+  pid=$(launchctl print "$DOMAIN/$1" 2>/dev/null | sed -n 's/^[[:space:]]*pid = \([0-9][0-9]*\)[[:space:]]*$/\1/p' | head -n 1) || pid=""
+  [ -n "$pid" ] && process_predates_file "$pid" "$OMP"
+}
+
 check_running_build() {
-  local label=$1 port=$2 pid listener binary sha version elapsed started
+  local label=$1 port=$2 pid listener binary sha version
   pid=$(running_pid "$label") || exit 1
   listener=$(lsof -nP "-iTCP:$port" -sTCP:LISTEN -t 2>/dev/null | head -n 1)
   [ "$listener" = "$pid" ] \
     || fail "$label is process $pid but port $port is held by '${listener:-nothing}'; see its log in $LOG_DIR"
   binary=$(ps -o comm= -p "$pid" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
   [ -n "$binary" ] && [ -x "$binary" ] || fail "$label runs '$binary', which is not an executable file"
-  elapsed=$(etime_seconds "$(ps -o etime= -p "$pid" | tr -d '[:space:]')")
-  started=$(( $(date +%s) - elapsed ))
-  [ $(( started + 1 )) -ge "$(file_mtime "$binary")" ] \
+  ! process_predates_file "$pid" "$binary" \
     || fail "$label started before $binary was last written, so it may run an older build; run '$(basename "$0") broker' and '$(basename "$0") gateway'"
   sha=$(file_sha256 "$binary")
   version=$(binary_version "$binary")
@@ -177,7 +188,7 @@ install_agent() {
   staged=$(mktemp)
   render_plist "$label" "$log" "$@" > "$staged"
   plutil -lint "$staged" >/dev/null
-  if [ "$changed" = no ] && agent_loaded "$label" && cmp -s "$staged" "$plist"; then
+  if [ "$changed" = no ] && agent_loaded "$label" && cmp -s "$staged" "$plist" && ! agent_predates_binary "$label"; then
     rm -f "$staged"
     echo "$label: unchanged, left running"
     return 0
