@@ -17095,9 +17095,7 @@
     },
     "oracle-small-trust-fixes-20261027": {
       "claim": null,
-      "needs": [
-        "oracle-history-edited-review-fail-closed-20261027"
-      ],
+      "needs": [],
       "priority": "low",
       "status": "open",
       "title": "Fix the small oracle trust gaps: absence status classification, repro citations, hidden overrides, download limits, token files, thread paging"
