@@ -1,0 +1,16 @@
+{
+  "absence": {
+    "detail": "the verdict would ship but its trace shows no read of tests/unit/scripts/oracle_reviewers/test_attempts.py, tests/unit/scripts/oracle_reviewers/test_cli_plan.py",
+    "kind": "incomplete",
+    "reset_at": null
+  },
+  "diagnostic": "trace: reads=12 greps=11 failed=1 credited=[.oracle-pull-request.diff, _project/scripts/oracle_reviewers/protocol.py, _project/scripts/oracle_reviewers/render.py, _project/scripts/oracle_reviewers/templates/README.md, _project/scripts/oracle_reviewers/templates/deep.md and 8 more] required=10 missing=[tests/unit/scripts/oracle_reviewers/test_attempts.py, tests/unit/scripts/oracle_reviewers/test_cli_plan.py] elided_reads=0 elided_spans=0 elided_lines=0",
+  "head_sha": "cac6c9cfcaab940db75a6ce7d10eea03c1cae38e",
+  "outcome": "absent",
+  "pr": 3585,
+  "reviewer": "large",
+  "run_id": "40515355448",
+  "schema": 2,
+  "slot": 2,
+  "verdict": null
+}

@@ -38,6 +38,7 @@ def _values(**overrides: object) -> dict[str, object]:
         "file_priority": "none",
         "max_defects": 10,
         "prior_rule": "Leave prior_defects empty.",
+        "retry_note": "none",
         "change_data": "1 file changed.",
         "response_template": response_template(),
     }

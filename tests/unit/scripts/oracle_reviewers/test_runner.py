@@ -665,7 +665,9 @@ def test_a_file_list_ship_must_examine_every_required_file(
     ).stdout.strip()
     _omp_says(tmp_path, monkeypatch, reads=("a.txt", "b.txt"), files_examined=["a.txt"])
     short = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
-    assert short.missing == absence.Absence(absence.INCOMPLETE, "the verdict would ship but did not examine b.txt")
+    assert short.missing == absence.Absence(
+        absence.INCOMPLETE, "the verdict would ship but did not examine b.txt", unread=("b.txt",)
+    )
     inline = _review(policy, tmp_path, workspace, head, brief_mode="inline", required=("a.txt", "b.txt"))
     assert inline.missing is None
 
@@ -678,12 +680,14 @@ def test_a_file_list_ship_must_have_read_every_file_it_claims(
     _omp_says(tmp_path, monkeypatch, reads=("a.txt:1-5",), files_examined=["a.txt", "b.txt"])
     outcome = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
     assert outcome.missing == absence.Absence(
-        absence.INCOMPLETE, "the verdict would ship but its trace shows no read of b.txt"
+        absence.INCOMPLETE, "the verdict would ship but its trace shows no read of b.txt", unread=("b.txt",)
     )
     _omp_says(tmp_path, monkeypatch, files_examined=["a.txt", "b.txt"])
     unread = _review(policy, tmp_path, workspace, head, brief_mode="file-list", required=("a.txt", "b.txt"))
     assert unread.missing == absence.Absence(
-        absence.INCOMPLETE, "the verdict would ship but its trace shows no successful file read"
+        absence.INCOMPLETE,
+        "the verdict would ship but its trace shows no successful file read",
+        unread=("a.txt", "b.txt"),
     )
 
 
@@ -832,7 +836,7 @@ def test_a_follow_up_ship_with_an_unchanged_file_defect_must_list_the_changed_fi
         assert _judged(outcome, FOLLOW_UP).decision == "SHIP"
     else:
         assert outcome.missing == absence.Absence(
-            absence.INCOMPLETE, "the verdict would ship but did not examine a.txt"
+            absence.INCOMPLETE, "the verdict would ship but did not examine a.txt", unread=("a.txt",)
         )
 
 

@@ -60,6 +60,7 @@ def build_artifact(
             "detail": missing.detail,
             "reset_at": missing.reset_at.isoformat() if missing.reset_at else None,
             "provider": missing.provider,
+            "unread": list(missing.unread),
         },
         "verdict": dict(verdict) if missing is None and verdict is not None else None,
         "diagnostic": diagnostic,
@@ -100,6 +101,9 @@ def _attempt(data: Mapping[str, Any], plan: Mapping[str, Any], loaded: LoadedAtt
     if kind not in absence.KINDS or kind == absence.OK:
         return Attempt(slot, reviewer, selection.ABSENT, absence.INVALID, "unknown absence record")
     reset_at = missing.get("reset_at")
+    unread = missing.get("unread") or []
+    if not isinstance(unread, list) or not all(isinstance(item, str) for item in unread):
+        return Attempt(slot, reviewer, selection.ABSENT, absence.INVALID, "unknown absence record")
     return Attempt(
         slot,
         reviewer,
@@ -108,6 +112,7 @@ def _attempt(data: Mapping[str, Any], plan: Mapping[str, Any], loaded: LoadedAtt
         str(missing.get("detail") or ""),
         datetime.fromisoformat(reset_at) if reset_at else None,
         str(missing.get("provider") or ""),
+        tuple(unread),
     )
 
 

@@ -347,6 +347,12 @@ def _shown(paths: list[str]) -> str:
     return ", ".join(paths[:5]) + (f" and {len(paths) - 5} more" if len(paths) > 5 else "")
 
 
+@dataclass(frozen=True)
+class Gap:
+    reason: str
+    files: tuple[str, ...]
+
+
 def check(
     verdict: Verdict,
     *,
@@ -356,18 +362,18 @@ def check(
     workspace: Path,
     required: Iterable[str],
     run: Trace,
-) -> str | None:
+) -> Gap | None:
     if brief_mode == INLINE or not ships:
         return None
     needed = sorted(set(required))
     if harness in TRACED:
         if not run.reads and not run.greps:
-            return "the verdict would ship but its trace shows no successful file read"
+            return Gap("the verdict would ship but its trace shows no successful file read", tuple(needed))
         missing = unread(harness, needed, run, workspace)
         if missing:
-            return f"the verdict would ship but its trace shows no read of {_shown(missing)}"
+            return Gap(f"the verdict would ship but its trace shows no read of {_shown(missing)}", tuple(missing))
     examined = {relative(path, workspace) for path in verdict.files_examined}
     missing = [path for path in needed if path not in examined]
     if missing:
-        return f"the verdict would ship but did not examine {_shown(missing)}"
+        return Gap(f"the verdict would ship but did not examine {_shown(missing)}", tuple(missing))
     return None

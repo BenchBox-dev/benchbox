@@ -7,7 +7,10 @@ FULL_DIFF_PLACEHOLDER = "<<full-pull-request-diff-path>>"
 FULL_DIFF_LINE = (
     f"The whole pull request diff is at {FULL_DIFF_PLACEHOLDER}; read it for context outside the changed files below.\n"
 )
-FILE_LIST_DIFF_LINE = f"The whole pull request diff is at {FULL_DIFF_PLACEHOLDER}; read it with the changed files. "
+FILE_LIST_DIFF_LINE = (
+    f"The whole pull request diff is at {FULL_DIFF_PLACEHOLDER}; read it for context, but it does not replace"
+    " the direct reads required above. "
+)
 
 
 def with_full_diff(text: str, path: Path | None) -> str:

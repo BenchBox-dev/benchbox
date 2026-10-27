@@ -32,6 +32,7 @@ SLOT_MAX_BYTES = {
     "file_priority": 8192,
     "max_defects": 4,
     "prior_rule": 2048,
+    "retry_note": 512,
     "change_data": 100000,
     "response_template": 16384,
 }
@@ -64,6 +65,8 @@ def _validate(name: str, values: Mapping[str, object]) -> None:
         raise ValueError(f"template {name} slot repo must be owner/name")
     if not _NUMBER.fullmatch(str(values.get("confidence"))):
         raise ValueError(f"template {name} slot confidence must be numeric")
+    if values.get("retry_note") != RETRY_NONE and not _RETRY_NOTE.fullmatch(str(values.get("retry_note"))):
+        raise ValueError(f"template {name} slot retry_note must be none or the retry note")
     _validate_response_template(name, str(values.get("response_template")))
 
 
@@ -225,6 +228,53 @@ def file_listing(files: Sequence[ChangedFile]) -> str:
     return "\n".join(rows)
 
 
+REQUIRED_READS_HEADER = (
+    "Required reads: each file listed here needs its own direct read in the working directory, a plain,"
+    " line-ranged or raw read of that file or a grep of that single file. Reading the staged pull request diff does"
+    " not count as reading a file. One-line and low-priority files are included. A shipping verdict without a"
+    " direct read of every one of them is rejected as incomplete.\n"
+)
+OTHER_FILES_HEADER = (
+    "Not required reads (inert, exempt or deleted files): the verdict check does not require a direct read of"
+    " these, but they are part of the change; judge them from the staged diff or by reading them.\n"
+)
+NO_REQUIRED_READS = "Required reads: none.\n"
+RETRY_NONE = "none"
+UNREAD_MARK = "[unread in your previous attempt]"
+_RETRY_PREFIX = "your previous attempt at this review would have shipped but did not read "
+_RETRY_SUFFIX = (
+    f" of the required files directly, so it was rejected as incomplete. Those files carry the mark {UNREAD_MARK}"
+    " in the required reads list of the change data. Read each of them directly before you decide; reading the"
+    " staged pull request diff does not count."
+)
+_RETRY_NOTE = re.compile(re.escape(_RETRY_PREFIX) + r"[1-9][0-9]{0,5}" + re.escape(_RETRY_SUFFIX))
+
+
+def unread_required(unread: Sequence[str], required: Sequence[str]) -> list[str]:
+    wanted = set(unread)
+    return [path for path in dict.fromkeys(required) if path in wanted]
+
+
+def file_list_block(files: Sequence[ChangedFile], required: Sequence[str], unread: Sequence[str] = ()) -> str:
+    wanted = list(dict.fromkeys(required))
+    marked = set(unread)
+    by_path = {item.path: item for item in files}
+    rows = [
+        (file_listing([by_path[path]]) if path in by_path else path) + (f" {UNREAD_MARK}" if path in marked else "")
+        for path in wanted
+    ]
+    required_set = set(wanted)
+    others = [item for item in files if item.path not in required_set]
+    text = REQUIRED_READS_HEADER + "\n".join(rows) + "\n" if rows else NO_REQUIRED_READS
+    if others:
+        text += f"\n{OTHER_FILES_HEADER}{file_listing(others)}\n"
+    return text
+
+
+def retry_note(count: int) -> str:
+    return f"{_RETRY_PREFIX}{count}{_RETRY_SUFFIX}" if count > 0 else RETRY_NONE
+
+
 def prior_listing(prior: Sequence[Mapping[str, object]]) -> str:
     rows = []
     for defect in prior:
@@ -263,6 +313,7 @@ def assemble_values(
     prior_rule: str,
     prior_block: str,
     prior_ids: Sequence[str],
+    retry_note: str = RETRY_NONE,
     files_block: str,
     diff_text: str | None,
     diff_path: Path | None,
@@ -271,8 +322,8 @@ def assemble_values(
         change_data = f"{files_block}\nUnified diff of these files from base to head:\n{diff_text}{prior_block}"
     else:
         change_data = (
-            f"{files_block}\n{FILE_LIST_DIFF_LINE}Read the changed files listed above in the working directory,"
-            " and compare them with the base commit's intent as described by the change."
+            f"{files_block}\n{FILE_LIST_DIFF_LINE}Read each required file listed above in the working directory,"
+            " and compare it with the base commit's intent as described by the change."
             f"{prior_block}"
         )
         change_data = with_full_diff(change_data, diff_path)
@@ -294,6 +345,7 @@ def assemble_values(
         ),
         "max_defects": max_defects,
         "prior_rule": prior_rule,
+        "retry_note": retry_note,
         "change_data": _neutralize_mentions(change_data),
         "response_template": response_template(prior_ids),
     }
@@ -311,6 +363,7 @@ def render_review(
     prior_rule: str,
     prior_block: str,
     prior_ids: Sequence[str],
+    retry_note: str = RETRY_NONE,
     files_block: str,
     diff_text: str | None,
     diff_path: Path | None,
@@ -327,6 +380,7 @@ def render_review(
         "prior_rule": prior_rule,
         "prior_block": prior_block,
         "prior_ids": prior_ids,
+        "retry_note": retry_note,
         "files_block": files_block,
         "diff_path": diff_path,
     }
