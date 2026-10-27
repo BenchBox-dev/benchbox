@@ -13,6 +13,7 @@ import pytest
 
 from _project.scripts.oracle_reviewers import cli, github, protocol, render, sweep
 from _project.scripts.oracle_reviewers.dedup import fingerprint
+from _project.scripts.oracle_reviewers.render import dispute_listing
 from _project.scripts.oracle_reviewers.retry import State
 
 from .conftest import POLICY_PATH
@@ -205,6 +206,11 @@ def _plan(
 SOUNDNESS = [{"filename": "benchbox/core/equivalence/checker.py", "additions": 4, "deletions": 1}]
 CHECKER = "benchbox/core/equivalence/checker.py"
 CAPTURE = "benchbox/core/expected_results/registry.py"
+
+
+def test_plan_records_the_run_uuid_for_binding(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _, values, plan = _plan(monkeypatch, tmp_path, _fake(files=SOUNDNESS))
+    assert values["decision"] == "review" and plan["run_uuid"] == plan["run_id"] and plan["run_uuid"]
 
 
 def test_soundness_pr_plans_a_review_over_the_bucket_chain(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -1541,13 +1547,16 @@ def _decided_head(open_defects: list[dict[str, Any]] | None = None) -> dict[str,
     return _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", head_sha=HEAD, open_defects=open_defects or [DEFECT], next_id=2)
 
 
-def _disputed_thread(association: str | None = "OWNER") -> dict[str, Any]:
+def _disputed_thread(association: str | None = "OWNER", *, marker: bool = True) -> dict[str, Any]:
+    body = "**High**: Drops a row"
+    if marker:
+        body += "\n<!-- oracle-defect: c1-D1 -->"
     return {
         "author": "benchbox-oracle[bot]",
         "author_type": "Bot",
         "resolved": False,
         "path": CAPTURE,
-        "body": "**High**: Drops a row",
+        "body": body,
         "replies": [
             {
                 "author": "joe",
@@ -1610,6 +1619,21 @@ def test_push_with_a_disputed_thread_upgrades_carry_to_a_forced_rereview(
     assert plan["manual"] is False
     assert plan["protocol"]["kind"] == "follow-up" and plan["protocol"]["forced"] is True
     assert len(plan["disputes"]) == 1
+
+
+def test_an_unkeyed_dispute_forces_nothing_but_stays_visible_as_data(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT], next_id=2)
+    fake = FakeGitHub(_pull(), TWO_FILES, threads=[_disputed_thread(marker=False)], diff=CAPTURE_CHANGED)
+    fake.reviews = [_review(record)]
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "review" and values["post"] == "true"
+    assert plan["protocol"]["kind"] == "follow-up" and plan["protocol"]["forced"] is False
+    assert len(plan["disputes"]) == 1
+    assert plan["disputes"][0]["id"] is None
+    shown = dispute_listing(plan["disputes"])
+    assert "keeps the row" in shown and "[unkeyed rebuttal]" in shown
 
 
 def test_push_with_only_an_acknowledgement_still_carries(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

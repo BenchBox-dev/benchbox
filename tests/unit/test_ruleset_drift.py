@@ -187,7 +187,7 @@ def _deployment_policies(name: str) -> dict:
     }
 
 
-@pytest.mark.parametrize("name", ["pypi", "test-pypi"])
+@pytest.mark.parametrize("name", ["pypi", "test-pypi", "oracle"])
 def test_matching_deployment_policies_have_no_findings(name: str) -> None:
     assert deployment_policy_findings(name, _deployment_environment(), _deployment_policies(name)) == []
 
@@ -215,6 +215,18 @@ def test_matching_deployment_policies_have_no_findings(name: str) -> None:
             lambda env: None,
             lambda p: p["branch_policies"].remove({"type": "branch", "name": "release"}),
             "deployment policies",
+        ),
+        (
+            "oracle",
+            lambda env: None,
+            lambda p: p["branch_policies"].append({"type": "branch", "name": "feature/*"}),
+            "oracle environment: deployment policies",
+        ),
+        (
+            "oracle",
+            lambda env: env["deployment_branch_policy"].update(custom_branch_policies=False),
+            lambda p: None,
+            "oracle environment: deployment_branch_policy",
         ),
         ("pypi", lambda env: None, lambda p: p.update(branch_policies=None), "missing or malformed"),
         ("pypi", lambda env: None, lambda p: p["branch_policies"].append("v*"), "deployment policies"),
@@ -246,6 +258,7 @@ def test_main_fails_when_a_live_environment_gains_a_policy(
     policies = {
         "pypi": _deployment_policies("pypi"),
         "test-pypi": _deployment_policies("test-pypi"),
+        "oracle": _deployment_policies("oracle"),
     }
     policies["pypi"]["branch_policies"].append({"type": "branch", "name": "*"})
     monkeypatch.setattr(ruleset_drift_check, "_fetch_live_rulesets", lambda _repo, _token: {})
@@ -281,7 +294,7 @@ def test_token_stdin_is_forwarded_to_all_github_queries(monkeypatch: pytest.Monk
     )
 
     assert ruleset_drift_check.main(["--token-stdin"]) == 1
-    assert seen == ["stdin-token"] * 5
+    assert seen == ["stdin-token"] * 7
 
 
 def test_github_api_failure_is_reported_without_traceback(

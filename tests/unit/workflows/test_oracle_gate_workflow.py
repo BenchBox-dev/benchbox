@@ -311,7 +311,7 @@ def test_app_token_mint_matches_the_verdict_post_job() -> None:
             "app-id": "${{ secrets.ORACLE_APP_ID }}",
             "private-key": "${{ secrets.ORACLE_APP_PRIVATE_KEY }}",
             "permission-statuses": "write",
-            "permission-pull-requests": "write",
+            "permission-pull-requests": "read",
         }, name
         assert _jobs()[name]["environment"] == "oracle", name
 
