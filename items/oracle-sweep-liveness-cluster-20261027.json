@@ -6,6 +6,7 @@
     "Live after merge: a sweep on a head with stale pending state dispatches at most once and then posts the failure status (record run ids), or record that no such head occurred within 72 hours and set a not_before follow-up.",
     "Named probe tests (from /Users/joe/.omp/agent/sessions/-Developer-BenchBox/2026-10-19T10-56-55-578Z_01a153ce-ab1a-7152-979f-787cf9b6908f/local/oracle-adversarial-review/reports/probes/test_zz_review_probe.py): test_state_path_redispatches_forever_after_failures, test_stateless_dispatch_refused_by_old_head_budget_then_silent, test_cancelled_pending_replacement_counts_as_failure, test_marker_never_set_when_state_matches_head, each inverted to assert the fixed behaviour.",
     "Tests: the dead stateless-marker branch is deleted with no remaining references; recent_retries counts the current head only; a marked retry the plan refuses exits non-zero; a capped listing takes the #3565 fallback-and-exit-1 path.",
+    "Adds or updates the matching scenario in the oracle end-to-end harness (oracle-e2e-scenario-harness-and-mutation-gate-20261027) once that harness exists, proven to fail with this item's defect reintroduced.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "OWNER DECISIONS 2026-10-27 (choice dialog, joeharris76): freeze all oracle-gated merges until oracle-history-edited-review-fail-closed-20261027 merges; Critical fix = GraphQL edit-state check now, HMAC marker later; pr-arm proceeds on fast-duration pass or neutral only. ",
@@ -90,6 +91,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e2fd3c88f71f48168ae8cb6111b24186",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T14:09:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bcd9616a60d74638a78f745c4a9d3f9d",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
