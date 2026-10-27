@@ -22131,8 +22131,7 @@
       "needs": [
         "owner-drop-oracle-review-required-20261021",
         "oracle-verdict-dispatch-gate-after-review-20261025",
-        "oracle-gate-from-verdict-job-20261026",
-        "oracle-history-edited-review-fail-closed-20261027"
+        "oracle-gate-from-verdict-job-20261026"
       ],
       "priority": "medium",
       "status": "open",
