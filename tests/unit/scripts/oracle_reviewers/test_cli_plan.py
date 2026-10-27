@@ -15,6 +15,7 @@ from _project.scripts.oracle_reviewers import cli, github, protocol, render, swe
 from _project.scripts.oracle_reviewers.dedup import fingerprint
 from _project.scripts.oracle_reviewers.render import dispute_listing
 from _project.scripts.oracle_reviewers.retry import State
+from _project.scripts.oracle_reviewers.selection import PoolBlock
 
 from .conftest import POLICY_PATH
 
@@ -104,6 +105,8 @@ class FakeGitHub:
         self.failing_prs: set[int] = set()
         self.failed: dict[int, list[str]] = {}
         self.statuses: list[dict[str, Any]] = []
+        self.edit_states: dict[str, tuple[Any, bool]] | Exception | None = None
+        self.derive_verdict_statuses = True
         self.posted: list[tuple[int, dict[str, Any]]] = []
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -116,7 +119,8 @@ class FakeGitHub:
         monkeypatch.setattr(github, "verdict_runs", lambda repo, workflow, since: list(self.runs))
         monkeypatch.setattr(github, "committed_at", lambda repo, sha: self.committed)
         monkeypatch.setattr(github, "failed_steps", lambda repo, run_id: list(self.failed.get(run_id, [])))
-        monkeypatch.setattr(github, "commit_statuses", lambda repo, sha: list(self.statuses))
+        monkeypatch.setattr(github, "commit_statuses", self._statuses)
+        monkeypatch.setattr(github, "review_edit_states", self._edit_states)
         monkeypatch.setattr(github, "post_status", self._post)
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
         monkeypatch.setattr(github, "merge_base", lambda repo, base, head: self.merge_base)
@@ -134,7 +138,37 @@ class FakeGitHub:
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.reviews is None:
             raise github.GitHubError("reviews unavailable")
-        return self.reviews
+        return [{"node_id": f"PRR_{review.get('id')}", **review} for review in self.reviews]
+
+    def _edit_states(self, node_ids: Sequence[str]) -> dict[str, tuple[Any, bool]]:
+        if isinstance(self.edit_states, Exception):
+            raise self.edit_states
+        return {node_id: (self.edit_states or {}).get(node_id, (None, False)) for node_id in node_ids}
+
+    def _statuses(self, repo: str, sha: str) -> list[dict[str, Any]]:
+        return [*self.statuses, *(self._derived_statuses(sha) if self.derive_verdict_statuses else [])]
+
+    def _derived_statuses(self, sha: str) -> list[dict[str, Any]]:
+        derived = []
+        for review in self.reviews or []:
+            try:
+                record = protocol.decode_marker(review.get("body") or "")
+            except protocol.MarkerError:
+                continue
+            if record is None or record["head_sha"] != sha:
+                continue
+            suffix = f" [run {record['run_uuid']}]" if record.get("run_uuid") else ""
+            derived.append(
+                {
+                    "id": 1000 + int(review.get("id") or 0),
+                    "context": "oracle-verdict",
+                    "state": "success" if record["decision"] == protocol.SHIP else "failure",
+                    "description": f"derived{suffix if record['decision'] == protocol.SHIP else ''}",
+                    "creator": {"login": "benchbox-oracle[bot]", "type": "Bot"},
+                    "created_at": review.get("submitted_at") or "2026-10-08T10:00:00Z",
+                }
+            )
+        return derived
 
     def _json(self, path: str) -> dict[str, Any]:
         if path == f"repos/{REPO}/pulls/7":
@@ -388,12 +422,65 @@ def test_manual_retry_inside_backoff_waits_for_the_next_slot(monkeypatch: pytest
     assert "backoff" in plan["decision_reason"]
 
 
-def test_pending_pool_reset_is_carried_into_the_plan(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    later = datetime.now(UTC) + timedelta(hours=2)
-    earlier = datetime.now(UTC) - timedelta(hours=1)
-    state = State(7, "c" * 40, "pending", earlier, (), {"claude": later})
+def _block(provider: str, *, recorded: timedelta, remaining: timedelta) -> PoolBlock:
+    now = datetime.now(UTC)
+    return PoolBlock(now + remaining, provider, now - recorded)
+
+
+def test_a_primary_provider_pool_block_is_carried_to_a_new_head(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    block = _block("anthropic", recorded=timedelta(hours=1), remaining=timedelta(hours=2))
+    state = State(7, "c" * 40, "pending", block.recorded_at, (), {"claude": block})
     _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
-    assert plan["pool_blocked_until"] == {"claude": later.isoformat()}
+    assert plan["pool_blocked_until"] == {"claude": block.to_json()}
+
+
+def test_a_fallback_provider_block_does_not_follow_a_new_head(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    block = _block("google-antigravity", recorded=timedelta(minutes=10), remaining=timedelta(minutes=40))
+    state = State(7, "c" * 40, "pending", block.recorded_at, (), {"claude": block})
+    _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
+    assert plan["pool_blocked_until"] == {}
+
+
+def test_a_fallback_provider_block_stays_for_the_same_head_until_it_expires(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    block = _block("google-antigravity", recorded=timedelta(minutes=10), remaining=timedelta(minutes=40))
+    state = State(7, HEAD, "pending", block.recorded_at, (), {"claude": block})
+    _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
+    assert plan["pool_blocked_until"] == {"claude": block.to_json()}
+
+
+def test_a_fallback_provider_block_older_than_one_hour_is_dropped_for_the_same_head(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    old = _block("google-antigravity", recorded=timedelta(hours=2), remaining=timedelta(days=6))
+    stale = State(7, HEAD, "pending", old.recorded_at, (), {"claude": old})
+    _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, stale))
+    assert plan["pool_blocked_until"] == {}
+
+
+def test_a_primary_provider_block_older_than_the_cap_is_dropped(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    block = _block("anthropic", recorded=timedelta(hours=25), remaining=timedelta(days=6))
+    state = State(7, HEAD, "pending", block.recorded_at, (), {"claude": block})
+    _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
+    assert plan["pool_blocked_until"] == {}
+
+
+def test_an_owner_reset_clears_the_carried_pool_blocks(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    block = _block("anthropic", recorded=timedelta(minutes=40), remaining=timedelta(hours=2))
+    backed_off = _backed_off()
+    state = State(7, HEAD, "pending", backed_off.updated_at, backed_off.retries, {"claude": block}, "all-absent")
+    fake = FakeGitHub(_pull(), SOUNDNESS, state)
+    fake.comments = _reset_comments()
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "review"
+    assert "reset by the owner" in plan["decision_reason"]
+    assert plan["pool_blocked_until"] == {}
 
 
 def test_invalid_pr_number_is_refused(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -1306,7 +1393,6 @@ def test_a_stored_record_with_duplicate_defect_ids_still_plans_a_follow_up(
     _, values, plan = _plan(monkeypatch, tmp_path, _fake(_review(record), diff=CAPTURE_CHANGED))
     assert values["decision"] == "review" and plan["protocol"]["kind"] == "follow-up"
     assert plan["protocol"]["prior"] == [DEFECT]
-    assert render.response_template([item["id"] for item in plan["protocol"]["prior"]])
 
 
 def test_a_follow_up_after_ship_scopes_to_the_changed_file_without_tiers(

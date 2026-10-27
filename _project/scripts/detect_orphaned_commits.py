@@ -87,7 +87,9 @@ def classify(
 
 
 def _git(*args: str) -> str:
-    return subprocess.run(["git", *args], capture_output=True, text=True, check=True, cwd=CHECKOUT_ROOT).stdout.strip()
+    return subprocess.run(
+        ["git", *args], capture_output=True, text=True, encoding="utf-8", check=True, cwd=CHECKOUT_ROOT
+    ).stdout.strip()
 
 
 def remote_branches() -> list[str]:

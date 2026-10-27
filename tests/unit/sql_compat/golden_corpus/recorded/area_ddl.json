@@ -853,9 +853,9 @@
   },
   "helper_strip_primary_keys:with_properties": {
     "classification": "equivalent",
-    "fork": "CREATE TABLE t(a INT) WITH(FORMAT='PARQUET')",
+    "fork": "CREATE TABLE t(a INT) USING 'PARQUET'",
     "legacy": "CREATE TABLE t(a INT) WITH(format='PARQUET')",
-    "reason": "Only the case of the property name differs (format vs FORMAT)."
+    "reason": "The upstream PostgreSQL generator now writes the Trino format property as USING 'PARQUET' instead of WITH(FORMAT='PARQUET'); PostgreSQL rejects both (unrecognized parameter before, a syntax error now), and the strip_with_properties option removes it either way."
   },
   "lakesail_parquet:comment_prefix": {
     "classification": "equivalent",
@@ -868,6 +868,12 @@
     "fork": "CREATE TABLE t(a INT) USING PARQUET",
     "legacy": "CREATE TABLE t(a INT, CONSTRAINT pk PRIMARY KEY(a)) USING PARQUET",
     "reason": "Legacy leaves a dangling CONSTRAINT name after removing the PRIMARY KEY; the fork removes the whole constraint."
+  },
+  "postgresql_strip_foreign_keys:with_properties": {
+    "classification": "equivalent",
+    "fork": "CREATE TABLE t(a INT) USING 'PARQUET'",
+    "legacy": "CREATE TABLE t(a INT) WITH(FORMAT='PARQUET')",
+    "reason": "The upstream PostgreSQL generator now writes the Trino format property as USING 'PARQUET' instead of WITH(FORMAT='PARQUET'); PostgreSQL rejects both (unrecognized parameter before, a syntax error now), and the strip_with_properties option removes it either way."
   },
   "presto_hive:double_array": {
     "classification": "legacy-bug",

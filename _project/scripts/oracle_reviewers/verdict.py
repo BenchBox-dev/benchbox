@@ -53,7 +53,6 @@ RESPONSE_PLACEHOLDERS = {
     "prior_status": "<prior_status>",
     "evidence": "<evidence>",
     "claim": "<claim>",
-    "concedes": "<concedes>",
 }
 FINDING_METADATA = frozenset({"line_note", "end_line_note", "detail_extra"})
 _KEY_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,39}")
@@ -474,7 +473,17 @@ def extract_omp_text(stdout: str) -> str:
     return final
 
 
-def omp_terminal_error(stdout: str) -> str:
+@dataclass(frozen=True)
+class TerminalError:
+    status: int | None
+    message: str
+    provider: str
+
+
+_PROVIDER = re.compile(r"[A-Za-z0-9._-]{1,64}")
+
+
+def omp_terminal_error(stdout: str) -> TerminalError | None:
     last: dict[str, Any] | None = None
     for line in stdout.splitlines():
         try:
@@ -487,13 +496,15 @@ def omp_terminal_error(stdout: str) -> str:
         if isinstance(message, dict) and message.get("role") == "assistant":
             last = message
     if last is None or last.get("stopReason") != "error":
-        return ""
+        return None
     detail = last.get("errorMessage")
     status = last.get("errorStatus")
-    parts = [str(status)] if isinstance(status, int) and not isinstance(status, bool) else []
-    if isinstance(detail, str):
-        parts.append(detail)
-    return " ".join(parts)
+    provider = last.get("provider")
+    return TerminalError(
+        status if isinstance(status, int) and not isinstance(status, bool) else None,
+        detail if isinstance(detail, str) else "",
+        provider if isinstance(provider, str) and _PROVIDER.fullmatch(provider) else "",
+    )
 
 
 def omp_stream_without_answer(stdout: str) -> bool:

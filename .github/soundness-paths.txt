@@ -119,6 +119,7 @@ file	scripts/changelog_fragments.py
 file	scripts/check_release_curation.py
 file	scripts/check_dependency_bounds.py
 file	scripts/check_sqlglot_upstream_freshness.py
+file	scripts/check_sqlglot_advisories.py
 file	scripts/sqlglot_refresh_waiver.json
 prefix	benchbox/_vendor/
 file	benchbox/utils/dialect_utils.py

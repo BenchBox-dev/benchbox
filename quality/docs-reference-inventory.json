@@ -1713,6 +1713,17 @@
   {
    "disposition": "historical-record",
    "kinds": {
+    "file": 1
+   },
+   "occurrences": 1,
+   "path": "_project/decisions/sqlglot-maintenance-decision-record.md",
+   "rule": "project-records",
+   "target_count": 1,
+   "targets_sha256": "629ef4f911b1d1201c6eb379b296eb3ee0705b38c73eae657ad950b76be6d7b7"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
     "file": 2
    },
    "occurrences": 2,
@@ -5902,25 +5913,25 @@
    "fixture-data": 44,
    "generator-deleted": 5,
    "governance-stays": 7,
-   "historical-record": 112,
+   "historical-record": 113,
    "lock-test": 26,
    "prose-link-pinned": 19,
    "runtime-link-updated": 7,
    "site-pipeline-cutover": 12,
    "wiring-updated": 35
   },
-  "files": 277,
+  "files": 278,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
    "extra": 78,
-   "file": 1581,
+   "file": 1582,
    "generated": 22,
    "pattern": 327,
    "root": 219,
    "unresolved": 2086
   },
-  "references": 33529,
+  "references": 33530,
   "unclassified": 0
  }
 }

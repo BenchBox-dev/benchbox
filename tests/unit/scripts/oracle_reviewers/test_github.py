@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import github
+from _project.scripts.oracle_reviewers import edits, github
 from _project.scripts.oracle_reviewers.retry import State
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -398,9 +398,18 @@ def test_review_threads_pages_and_keeps_the_first_comment(monkeypatch: pytest.Mo
             "author": "benchbox-oracle",
             "author_type": "Bot",
             "body": "**High**: A",
+            "edited": False,
             "replies": [],
         },
-        {"resolved": True, "path": "b.py", "author": None, "author_type": None, "body": "", "replies": []},
+        {
+            "resolved": True,
+            "path": "b.py",
+            "author": None,
+            "author_type": None,
+            "body": "",
+            "edited": False,
+            "replies": [],
+        },
     ]
     assert "after=c1" in calls[1] and not any(arg.startswith("after=") for arg in calls[0])
     flags = dict(zip(calls[0][1::2], calls[0][2::2], strict=False))
@@ -418,15 +427,119 @@ def test_review_threads_raises_on_graphql_errors(monkeypatch: pytest.MonkeyPatch
         github.review_threads(REPO, 7)
 
 
-def _thread(resolved: bool, path: str, author: str | None, body: str) -> dict[str, Any]:
-    comment = {"author": {"__typename": "Bot", "login": author} if author else None, "body": body}
+def _thread(
+    resolved: bool, path: str, author: str | None, body: str, edit: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    comment = {
+        "author": {"__typename": "Bot", "login": author} if author else None,
+        "body": body,
+        **({"lastEditedAt": None, "includesCreatedEdit": False} if edit is None else edit),
+    }
     return {"isResolved": resolved, "path": path, "comments": {"nodes": [comment]}}
+
+
+def _serve_threads(monkeypatch: pytest.MonkeyPatch, nodes: list[dict[str, Any]]) -> None:
+    connection = {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": nodes}
+    payload = json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": connection}}}})
+    monkeypatch.setattr(github, "_gh", lambda *args, accept=None: payload)
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        {"lastEditedAt": "2026-10-20T00:00:00Z", "includesCreatedEdit": False},
+        {"lastEditedAt": None, "includesCreatedEdit": True},
+    ],
+    ids=["edited-later", "created-edit"],
+)
+def test_review_threads_flag_an_edited_first_comment(monkeypatch: pytest.MonkeyPatch, edit: dict[str, Any]) -> None:
+    _serve_threads(monkeypatch, [_thread(False, "a.py", "benchbox-oracle", "**High**: A", edit)])
+    assert [thread["edited"] for thread in github.review_threads(REPO, 7)] == [True]
+
+
+def test_review_threads_refuse_a_first_comment_without_edit_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    node = _thread(False, "a.py", "benchbox-oracle", "**High**: A")
+    del node["comments"]["nodes"][0]["includesCreatedEdit"]
+    _serve_threads(monkeypatch, [node])
+    with pytest.raises(github.GitHubError, match="edit state"):
+        github.review_threads(REPO, 7)
+
+
+def _edit_payload(*states: tuple[str, Any, bool]) -> str:
+    nodes = [{"id": node_id, "lastEditedAt": at, "includesCreatedEdit": created} for node_id, at, created in states]
+    return json.dumps({"data": {"nodes": nodes}})
+
+
+def test_review_edit_states_batch_every_id_into_one_graphql_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        calls.append(args)
+        return _edit_payload(("PRR_1", None, False), ("PRR_2", "2026-10-20T00:00:00Z", False))
+
+    monkeypatch.setattr(github, "_gh", fake_gh)
+    assert github.review_edit_states(["PRR_1", "PRR_2", "PRR_1"]) == {
+        "PRR_1": (None, False),
+        "PRR_2": ("2026-10-20T00:00:00Z", False),
+    }
+    assert len(calls) == 1
+    assert calls[0][0] == "graphql"
+    assert [arg for arg in calls[0] if arg.startswith("ids[]=")] == ["ids[]=PRR_1", "ids[]=PRR_2"]
+    assert "lastEditedAt" in calls[0][2] and "includesCreatedEdit" in calls[0][2]
+
+
+def test_review_edit_states_split_more_than_one_hundred_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    sizes: list[int] = []
+
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        ids = [arg.removeprefix("ids[]=") for arg in args if arg.startswith("ids[]=")]
+        sizes.append(len(ids))
+        return _edit_payload(*((node_id, None, False) for node_id in ids))
+
+    monkeypatch.setattr(github, "_gh", fake_gh)
+    states = github.review_edit_states([f"PRR_{index}" for index in range(150)])
+    assert sizes == [100, 50] and len(states) == 150
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        json.dumps({"errors": [{"message": "rate limited"}]}),
+        json.dumps({"data": {"nodes": [None]}}),
+        json.dumps({"data": {"nodes": [{"id": "PRR_1"}]}}),
+        "not json",
+    ],
+    ids=["graphql-error", "null-node", "missing-fields", "malformed"],
+)
+def test_review_edit_states_raise_when_the_edit_state_is_unreadable(
+    monkeypatch: pytest.MonkeyPatch, reply: str
+) -> None:
+    monkeypatch.setattr(github, "_gh", lambda *args, accept=None: reply)
+    with pytest.raises(edits.EditStateError):
+        github.review_edit_states(["PRR_1"])
+
+
+def test_review_edit_states_raise_when_gh_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken(*args: str, accept: str | None = None) -> str:
+        raise github.GitHubError("gh api failed")
+
+    monkeypatch.setattr(github, "_gh", broken)
+    with pytest.raises(edits.EditStateError, match="could not be read"):
+        github.review_edit_states(["PRR_1"])
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="the fake gh is a POSIX shebang script and PATH is colon-joined")
 def test_oracle_reviews_reads_every_page_through_gh_api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pages = [
-        [{"id": index, "user": {"login": "benchbox-oracle[bot]", "type": "Bot"}, "body": f"r{index}"} for index in part]
+        [
+            {
+                "id": index,
+                "node_id": f"PRR_{index}",
+                "user": {"login": "benchbox-oracle[bot]", "type": "Bot"},
+                "body": f"r{index}",
+            }
+            for index in part
+        ]
         for part in (range(100), range(100, 151))
     ]
     argv_log = tmp_path / "argv.json"
@@ -451,6 +564,7 @@ def test_oracle_reviews_reads_every_page_through_gh_api(tmp_path: Path, monkeypa
     reviews = github.oracle_reviews(REPO, PR)
     assert [review["id"] for review in reviews] == list(range(151))
     assert reviews[150]["login"] == "benchbox-oracle[bot]" and reviews[150]["body"] == "r150"
+    assert reviews[150]["node_id"] == "PRR_150"
     argv = json.loads(argv_log.read_text(encoding="utf-8"))
     assert argv[0] == "api" and argv[-1] == f"repos/{REPO}/pulls/{PR}/reviews?per_page=100"
 
