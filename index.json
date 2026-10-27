@@ -17152,9 +17152,7 @@
     },
     "oracle-sweep-runs-listing-resilience-20261027": {
       "claim": null,
-      "needs": [
-        "oracle-history-edited-review-fail-closed-20261027"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "Keep the oracle sweep running when the verdict runs listing fails, without double-dispatching or hiding the failure"
