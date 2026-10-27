@@ -37,10 +37,6 @@ pytestmark = [
 ]
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-_CRITERIA_MATRIX_ROW = re.compile(
-    r"^\|\s*`(?P<bid>[a-z0-9_]+)`\s*\|\s*`(?P<status>[a-z_]+)`\s*\|\s*(?P<rationale>.*?)\s*\|"
-)
-_CRITERIA_MATRIX_QUERY_COUNT = re.compile(r"\b(?P<count>\d+)-(?:query|variant)\b")
 CORE_ONLY_BENCHMARK_IDS = {"ai_primitives", "joinorder_synthetic"}
 BENCHMARK_SUPPORT_STATUS_COUNTS = {
     "stable": 6,
@@ -50,56 +46,6 @@ BENCHMARK_SUPPORT_STATUS_COUNTS = {
     "deprecated": 0,
     "document_only": 0,
 }
-_REGISTRY_CLAIM_NUMBER = re.compile(r"\d+")
-
-
-def _registry_claim_fragment_pattern(fragment: str) -> re.Pattern[str]:
-    pattern_parts: list[str] = []
-    offset = 0
-    for match in _REGISTRY_CLAIM_NUMBER.finditer(fragment):
-        pattern_parts.append(re.escape(fragment[offset : match.start()]))
-        pattern_parts.append(rf"\b{re.escape(match.group())}\b")
-        offset = match.end()
-    pattern_parts.append(re.escape(fragment[offset:]))
-    return re.compile("".join(pattern_parts))
-
-
-def _contains_registry_derived_claim(text: str, fragment: str) -> bool:
-    return _registry_claim_fragment_pattern(fragment).search(text) is not None
-
-
-def _collect_criteria_matrix_rows(
-    doc_text: str, registry_status: dict[str, str]
-) -> tuple[dict[str, dict[str, str]], list[str], list[str]]:
-    matrix_rows: dict[str, dict[str, str]] = {}
-    duplicates: list[str] = []
-    non_registry_rows: list[str] = []
-    in_benchmark_matrix = False
-
-    for line in doc_text.splitlines():
-        if line == "## Benchmark Status Rationale":
-            in_benchmark_matrix = True
-            continue
-        if in_benchmark_matrix and line.startswith("## "):
-            break
-        if not in_benchmark_matrix:
-            continue
-
-        match = _CRITERIA_MATRIX_ROW.match(line)
-        if match is None:
-            continue
-        benchmark_id = match.group("bid")
-        if benchmark_id not in registry_status:
-            non_registry_rows.append(benchmark_id)
-            continue
-        if benchmark_id in matrix_rows:
-            duplicates.append(benchmark_id)
-        matrix_rows[benchmark_id] = {
-            "status": match.group("status"),
-            "rationale": match.group("rationale"),
-        }
-
-    return matrix_rows, duplicates, non_registry_rows
 
 
 def test_benchmark_api_surface_markers_match_registry() -> None:
@@ -228,61 +174,6 @@ def test_external_dataset_stable_promotion_requires_complete_content_pins(tmp_pa
                 f"{benchmark_id} cannot be stable until its default external corpus has complete SHA-256 pins"
             )
             assert all(re.fullmatch(r"[0-9a-f]{64}", digest) for digest in configured[benchmark_id].values())
-
-
-def test_benchmark_support_status_criteria_matrix_rejects_stale_benchmark_rows() -> None:
-
-    doc_text = """
-## Acceptance Criteria by Status
-
-| Status | User docs | Result-integrity spec |
-|---|---|---|
-| `future_status` | `not_a_benchmark` | Outside the benchmark matrix. |
-
-## Benchmark Status Rationale
-
-| Benchmark | Status | Rationale and evidence | Promotion / demotion blockers |
-|---|---|---|---|
-| `tpch` | `stable` | Canonical 22-query TPC-H; DataFrame-capable. | None. |
-| `removed_benchmark` | `beta` | Stale 1-query row; not DataFrame-capable. | Remove. |
-
-## Promotion Candidates and Blockers
-"""
-
-    matrix_rows, duplicates, non_registry_rows = _collect_criteria_matrix_rows(doc_text, {"tpch": "stable"})
-
-    assert duplicates == []
-    assert matrix_rows == {
-        "tpch": {
-            "status": "stable",
-            "rationale": "Canonical 22-query TPC-H; DataFrame-capable.",
-        }
-    }
-    assert non_registry_rows == ["removed_benchmark"]
-
-
-def test_registry_derived_claim_matcher_requires_numeric_boundaries() -> None:
-
-    assert _contains_registry_derived_claim(
-        "Explore 22 benchmarks (TPC-H, TPC-DS, and more)",
-        "22 benchmarks (TPC",
-    )
-    assert _contains_registry_derived_claim(
-        "BenchBox includes **22** public-discovery benchmarks",
-        "BenchBox includes **22** public-discovery benchmarks",
-    )
-    assert not _contains_registry_derived_claim(
-        "Explore 122 benchmarks (TPC-H, TPC-DS, and more)",
-        "22 benchmarks (TPC",
-    )
-    assert not _contains_registry_derived_claim(
-        "Specs cover 20 of 122 benchmarks",
-        "20 of 22 benchmarks",
-    )
-    assert not _contains_registry_derived_claim(
-        "Specs cover 120 of 22 benchmarks",
-        "20 of 22 benchmarks",
-    )
 
 
 def test_benchmark_data_source_metadata_matches_runtime_declarations() -> None:

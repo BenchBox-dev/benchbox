@@ -120,37 +120,6 @@
       "cutover_action": "Retained in core against the registry and introspector probe; site docs-contracts/counts.ts checks coverage and the verifiable-platform set from exported facts."
     },
     {
-      "id": "benchmark-support-status-matrix",
-      "file": "tests/unit/core/test_benchmark_api_contract.py",
-      "tests": [
-        "test_benchmark_support_status_criteria_matrix_rejects_stale_benchmark_rows"
-      ],
-      "classification": "contract-field",
-      "contract_fields": [
-        "/benchmarks/support_status",
-        "/benchmarks/num_queries",
-        "/benchmarks/supports_dataframe"
-      ],
-      "site_reads": [],
-      "reason": "Parser helpers are exercised against synthetic inline tables, not the relocated page; per-benchmark status, query count and DataFrame capability are exported for the site.",
-      "cutover_action": "Retained in core against synthetic fixtures; the site check parses its own status table from exported facts."
-    },
-    {
-      "id": "benchmark-count-claims",
-      "file": "tests/unit/core/test_benchmark_api_contract.py",
-      "tests": [
-        "test_registry_derived_claim_matcher_requires_numeric_boundaries"
-      ],
-      "classification": "contract-field",
-      "contract_fields": [
-        "/benchmarks/public_ids",
-        "/benchmarks/spec_ids"
-      ],
-      "site_reads": [],
-      "reason": "Claim-matcher logic is exercised against synthetic text, not relocated pages; count claims are checked by the site from exported public and spec-covered benchmark ids.",
-      "cutover_action": "Retained in core against synthetic fixtures; the site checks counts from exported ids."
-    },
-    {
       "id": "execution-vocabulary-runtime",
       "file": "tests/unit/core/test_execution_vocabulary_parity.py",
       "tests": [
