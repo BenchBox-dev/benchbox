@@ -241,11 +241,11 @@ OTHER_FILES_HEADER = (
 NO_REQUIRED_READS = "Required reads: none.\n"
 RETRY_NONE = "none"
 UNREAD_MARK = "[unread in your previous attempt]"
-_RETRY_PREFIX = "your previous attempt at this review would have shipped but did not read "
+_RETRY_PREFIX = "your previous attempt at this review did not read "
 _RETRY_SUFFIX = (
-    f" of the required files directly, so it was rejected as incomplete. Those files carry the mark {UNREAD_MARK}"
-    " in the required reads list of the change data. Read each of them directly before you decide; reading the"
-    " staged pull request diff does not count."
+    f" of the required files directly, so it was rejected as incomplete and its decision was discarded. Those files"
+    f" carry the mark {UNREAD_MARK} in the required reads list of the change data. Read each of them directly and"
+    " reach your decision from the change itself; reading the staged pull request diff does not count."
 )
 _RETRY_NOTE = re.compile(re.escape(_RETRY_PREFIX) + r"[1-9][0-9]{0,5}" + re.escape(_RETRY_SUFFIX))
 

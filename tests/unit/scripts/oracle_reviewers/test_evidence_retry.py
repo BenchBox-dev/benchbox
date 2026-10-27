@@ -171,6 +171,8 @@ def test_the_retry_note_carries_only_a_count_and_fits_its_slot() -> None:
     assert len(note.encode("utf-8")) <= SLOT_MAX_BYTES["retry_note"]
     assert note.startswith("your previous attempt")
     assert "/" not in note
+    assert "ship" not in note.lower()
+    assert "discarded" in note
 
 
 def test_the_3585_attempt_records_name_the_files_the_retry_brief_must_carry(policy: Policy, tmp_path: Path) -> None:
