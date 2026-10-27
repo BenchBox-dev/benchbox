@@ -16847,7 +16847,10 @@
         "oracle-scope-path-canonical-20261026",
         "oracle-evidence-exempt-binary-prose-20261026",
         "oracle-history-edited-review-fail-closed-20261027",
-        "oracle-sweep-liveness-cluster-20261027"
+        "oracle-sweep-liveness-cluster-20261027",
+        "oracle-small-trust-fixes-20261027",
+        "oracle-concedes-skeleton-boolean-20261027",
+        "oracle-invalid-attempt-jev-recovery-20261027"
       ],
       "priority": "high",
       "status": "open",
