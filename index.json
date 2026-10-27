@@ -16925,7 +16925,8 @@
     "oracle-same-head-rerun-returns-verdict-20261026": {
       "claim": null,
       "needs": [
-        "oracle-dispute-trigger-budget-escalation-20261026"
+        "oracle-dispute-trigger-budget-escalation-20261026",
+        "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "medium",
       "status": "open",
