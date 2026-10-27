@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -49,3 +51,19 @@ def test_runbook_requires_the_hold_context() -> None:
     text = RUNBOOK.read_text(encoding="utf-8")
     block = text.split("Required status checks:", 1)[1].split("```", 2)[1]
     assert "- hold" in block.splitlines()
+
+
+@pytest.mark.parametrize(("held", "expected_code"), [("true", 1), ("false", 0)])
+def test_hold_step_fails_only_while_the_label_is_present(held: str, expected_code: int, tmp_path: Path) -> None:
+    script = tmp_path / "hold.sh"
+    script.write_text("#!/bin/sh\n" + _load()["jobs"]["hold"]["steps"][0]["run"], encoding="utf-8")
+    script.chmod(0o755)
+    result = subprocess.run(
+        [str(script)],
+        env={**os.environ, "HELD": held},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == expected_code
+    assert ("::error::" in result.stdout) is (held == "true")

@@ -208,13 +208,33 @@ Explicit cryptographic tag signatures are dropped. Release integrity relies on:
 5. A publish-time re-check, in the publishing job after environment approval, that the
    hosted tag object and its peeled commit still equal the admission receipt.
 
+### Amendment 2026-10-27: evidence reconciliation and owner decisions
+
+The required `ci.yml` units are five: `core`, `explorer`, `results-data`, `docs` and `tooling`. The `hold` check,
+the App-bound `oracle-gate` status and the other required contexts are separate controls, not units.
+
+The property ledger (G3) now classifies each safety property as high-risk (merge safety and required contexts,
+release integrity, commit identity and attribution, the soundness hold, the oracle gate) or process-only. A
+high-risk property is `proven` only when both its pass and its refuse behavior name a test, workflow run or canary
+pull request bound to a develop commit, or it names a blocker; a process-only property carries a one-line waiver
+reason. The ledger holds the evidence and the open blockers.
+
+Owner decisions of 2026-10-27:
+
+- The per-test 0.5 s duration policy is superseded by the aggregate fast-duration gate.
+- The browser check is ported to the site repository and the Explorer-token lint is retired.
+- GizmoSQL stays in the release rehearsal candidate.
+- Deleting the `release` branch and its ruleset is an owner-run step after the first publication on the new release
+  path; this ADR's approval to delete `release` and `publication` branches does not authorize an agent to do it.
+
 ## Standing Administrative Approvals
 
 The maintainer has granted standing approvals for the following operational changes
 once corresponding preconditions and backups (per Guardrail G5) are satisfied:
 
 1. **Rulesets:**
-   - Add new required checks (`core`, `explorer`, `results-data`, `docs`, `landing`, `tooling`).
+   - Add new required checks (`core`, `explorer`, `results-data`, `docs`, `tooling`). The `landing` check named
+     in the original approval is not a `ci.yml` unit and is not part of this set.
    - Remove legacy checks after the transition window.
    - Historical queue-parameter adjustments are retired with the queue. The dated
      retirement decision records the specific queue, strict-rule and review changes.
