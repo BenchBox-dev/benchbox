@@ -2,7 +2,8 @@
   "acceptance": [
     "Tests that fail on develop and pass after: a bogus-PR dispatch posts nothing on a foreign head; a success posted by a non-App creator is ignored by each consumer.",
     "The consumer list from gate 1 is recorded in context.",
-    "Tests: pr-arm holds on rejected, missing and unknown verdicts and proceeds on pass and neutral; a GraphQL failure in edit-state lookup yields an error status, not 'edited'; refresh_oracle_gate ignores a non-App oracle-gate status.",
+    "Tests: a GraphQL failure in edit-state lookup yields an error status, not 'edited'; refresh_oracle_gate ignores a non-App oracle-gate status, or context cites the retirement commit that removed refresh_oracle_gate.",
+    "Dead code removed (the _receipt pass-through, the duplicate run_id/run_uuid plan field) with no remaining references; the [0-9a-f]{32} run id alternative is removed only per gate below, otherwise kept with the reason recorded.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "Follow-up owner decisions 2026-10-26 (after the plan review): consumer inventory includes pr-arm-remote.\n\nOWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q13 include low items. The force-back stale-green case is handled by oracle-gate-from-verdict-job-20261026 (pending on head change).",
@@ -46,6 +47,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "7d9973f2a5d341b4ae3c4daed2e46fba",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T12:55:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4a5ef5c8dd1c4e439661e423d5b635fa",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
