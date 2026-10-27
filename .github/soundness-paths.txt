@@ -20,6 +20,7 @@ file	scripts/pr_arm.py
 file	scripts/build_fast_duration_baseline.py
 file	scripts/fast_tier_calibration.py
 file	tests/duration_policy.py
+file	tests/__init__.py
 prefix	tests/fixtures/fast_tier_baseline/
 file	benchbox/core/validation/engines.py
 file	benchbox/utils/data_validation.py
