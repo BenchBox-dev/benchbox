@@ -16962,10 +16962,15 @@
       "title": "The oracle-verdict retry sweep runs every 2 to 6 hours instead of hourly, so pending verdicts wait hours after they become due"
     },
     "oracle-sweep-stateless-retry-backoff-reset-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-28T02:11:29Z",
+        "generation": "96137bd803ff4690bea5da8b92b25769",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Retry verdict runs that failed without posting state, harden the sweep, and add an owner backoff reset"
     },
     "oracle-swf-empty-defect-list-decision-20261008": {
