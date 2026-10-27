@@ -613,7 +613,8 @@ class FakeGitHub:
                                 "body": item["body"],
                             }
                             for item in thread["comments"]
-                        ]
+                        ],
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
                     },
                 }
                 for thread in self.threads[number]
