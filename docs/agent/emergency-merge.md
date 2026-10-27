@@ -80,11 +80,13 @@ When `develop`'s own content breaks a required check so that no pull request can
 pass it, the owner alone may perform the single-merge relaxation procedure
 documented in `docs/internal/repo-admin-settings.md`. If `oracle-gate` itself is
 the broken context, the owner may remove `oracle-gate` for exactly that one merge,
-but only after independent review evidence for the named head exists: the stand-in
-approval from a reviewer other than the author, or an owner review of the full
-diff, recorded on the pull request at that head SHA. Without it, `oracle-gate`
-stays bound.
-The owner records the action in a decision record at the time it is taken.
+but only after the owner has personally read the full diff of the named head and
+posted a pull request comment naming that head SHA and stating the diff was
+reviewed. `oracle-gate` is the only required review, so without that comment it
+stays bound. An agent never substitutes for this review.
+The owner records the action in a decision record at the time it is taken. That
+record cites the accepted zero-relaxation records above and says which it
+supersedes; without it, the zero-relaxation policy stands.
 
 ## Owner sequence
 
@@ -95,7 +97,7 @@ command are in `docs/internal/repo-admin-settings.md`.
    request so only that head can merge during the window.
 2. Capture the full ruleset JSON before any change.
 3. Remove exactly one required context, the failing one (if `oracle-gate` itself
-   is broken, only with the independent review evidence for the named head
+   is broken, only after the owner's recorded full-diff review of the named head
    described above), and merge the named head.
 4. Restore the ruleset immediately after the merge attempt, whether it
    succeeded or failed. This step is unconditional and comes before any other

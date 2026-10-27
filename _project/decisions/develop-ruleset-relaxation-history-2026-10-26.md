@@ -64,6 +64,8 @@ Times are US Eastern (EDT / UTC-4).
     a listed attester can record a stand-in review with `Stand-in oracle review: APPROVE <head SHA>`."
   - PR #2625 also merged inside the window [inference: PR #2625 was armed with auto-merge and
     merged as soon as `oracle-review` was removed from the required check list].
+  - Gap: the owner's quoted exception names only #2635, #2621 and #2612. PR #2625 was not
+    named in it, and this record cites no stand-in review or other review evidence for #2625.
 
 ## Window 2: 2026-10-13/14 (Removal of `tooling`)
 

@@ -512,8 +512,14 @@ def test_capture_comparison_oracle_gate_removed_fails_and_rebound_passes() -> No
     findings = ruleset_drift_check.capture_comparison_findings(_capture(), live)
     assert any("oracle-gate" in finding for finding in findings)
 
+    live_unbound = _capture()
+    _drop_oracle_gate(live_unbound)
+    _required_checks(live_unbound).append({"context": "oracle-gate"})
+    assert ruleset_drift_check.capture_comparison_findings(_capture(), live_unbound)
+
     live_rebound = _capture()
-    _check(live_rebound, "oracle-gate")["integration_id"] = 5201041
+    _drop_oracle_gate(live_rebound)
+    _required_checks(live_rebound).append({"context": "oracle-gate", "integration_id": 5201041})
     assert ruleset_drift_check.capture_comparison_findings(_capture(), live_rebound) == []
 
 
