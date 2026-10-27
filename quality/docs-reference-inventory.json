@@ -2997,13 +2997,18 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
+    "root": 1,
     "unresolved": 1
    },
-   "occurrences": 1,
+   "occurrences": 3,
    "path": "scripts/ci_units.py",
    "rule": "ci-path-classification",
-   "target_count": 1,
+   "target_count": 2,
    "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    },
     {
      "kind": "unresolved",
      "target": "docs/tooling"
@@ -4793,7 +4798,7 @@
     "root": 1,
     "unresolved": 4
    },
-   "occurrences": 19,
+   "occurrences": 22,
    "path": "tests/unit/scripts/test_ci_units.py",
    "rule": "ci-path-classification",
    "target_count": 6,
@@ -5985,10 +5990,10 @@
    "file": 1623,
    "generated": 22,
    "pattern": 327,
-   "root": 219,
+   "root": 224,
    "unresolved": 2086
   },
-  "references": 33571,
+  "references": 33576,
   "unclassified": 0
  }
 }
