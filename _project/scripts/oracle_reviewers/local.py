@@ -43,8 +43,8 @@ WORKFLOW_FILE = ".github/workflows/oracle-verdict.yml"
 SOUNDNESS_MANIFEST = ".github/soundness-paths.txt"
 HIDDEN_TEXT = re.compile(
     r"<!--.*?(?:-->|\Z)"
-    r"|^[ \t]*(`{3,}+)[^\n]*\n.*?(?:^[ \t]*\1`*[ \t]*$|\Z)"
-    r"|^[ \t]*(~{3,}+)[^\n]*\n.*?(?:^[ \t]*\2~*[ \t]*$|\Z)"
+    r"|^[ \t]*(`{3,}+)[^\n]*\n.*?(?:^ {0,3}\1`*[ \t]*$|\Z)"
+    r"|^[ \t]*(~{3,}+)[^\n]*\n.*?(?:^ {0,3}\2~*[ \t]*$|\Z)"
     r"|<details\b.*?(?:</details>|\Z)"
     r"|^(?: {4}|\t)[^\n]*$",
     re.DOTALL | re.IGNORECASE | re.MULTILINE,

@@ -246,6 +246,8 @@ def test_an_override_in_a_commit_body_does_not_apply_without_a_body_file(env: En
         "````\nx\n```\nLocal oracle override: inside the longer fence\n````\n",
         "~~~~\nx\n~~~\nLocal oracle override: inside the longer fence\n~~~~\n",
         "```\nx\n~~~\nLocal oracle override: wrong closing character\n```\n",
+        "```\nx\n    ```\nLocal oracle override: after an indented closer\n```\n",
+        "~~~\nx\n\t~~~\nLocal oracle override: after a tab-indented closer\n~~~\n",
         "<details>\nLocal oracle override: folded\n</details>\n",
         "<details><summary>x</summary>\n\nLocal oracle override: folded\n",
     ],
