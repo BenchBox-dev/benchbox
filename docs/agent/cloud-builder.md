@@ -55,12 +55,13 @@ When `TS_AUTHKEY`, `ORACLE_GATEWAY_URL` and `ORACLE_CLOUD_GATEWAY_TOKEN` are
 all set, `make cloud-bootstrap` runs `scripts/cloud_gateway.sh`, which:
 
 1. downloads the OMP build that CI reviewers use, checks its SHA-256 and
-1. downloads the OMP build that CI reviewers use, checks its SHA-256 and
    installs it into the versioned cache `~/.cache/benchbox/omp/<version>/<platform>/omp`.
    The version, URL and checksum per platform are read from the `omp:` section
-   of `.github/oracle-reviewers.yml` on `origin/develop` (fetched first), not
-   from the branch. A checksum mismatch, or a platform with no pinned build,
-   refuses the install. The download goes straight to the host in the pin, so
+   of `.github/oracle-reviewers.yml` on `origin/develop` (fetched first, and the
+   install stops if that fetch fails), not from the branch. The installed path
+   is recorded in `omp-binary` inside the gateway state directory
+   (`<git dir>/benchbox-cloud-gateway/`). A checksum mismatch, or a platform with
+   no pinned build, refuses the install. The download goes straight to the host in the pin, so
    the environment network allowlist needs that host;
 2. starts `tailscaled` in userspace-networking mode with in-memory state, so
    nothing touches disk and no TUN device or root is needed. The tailnet DNS
@@ -87,7 +88,7 @@ Use the gateway per command, never as a session-wide proxy, because the proxy
 reaches only the tailnet and would break GitHub and package access:
 
 ```bash
-HTTPS_PROXY=http://127.0.0.1:1055 omp ...
+HTTPS_PROXY=http://127.0.0.1:1055 "$(cat "$(git rev-parse --git-dir)/benchbox-cloud-gateway/omp-binary")" ...
 ```
 
 `make cloud-gateway` repeats the setup idempotently: a live daemon and a

@@ -87,7 +87,10 @@ http_status() {
 install_omp() {
   omp_state=not-installed
   mkdir -p "$state_dir"
-  git -C "$top" fetch --quiet origin develop >/dev/null 2>&1 || true
+  if ! git -C "$top" fetch --quiet origin develop >/dev/null 2>&1; then
+    say "cannot fetch origin/develop; not installing OMP"
+    return 1
+  fi
   if ! policy=$(git -C "$top" show origin/develop:.github/oracle-reviewers.yml 2>/dev/null); then
     say "the OMP pin in origin/develop:.github/oracle-reviewers.yml is unreadable; not installing OMP"
     return 1

@@ -336,7 +336,11 @@ def _gateway_clone(tmp_path: Path, *, develop_policy: str | None = None, branch_
     policy.write_text(_policy_text() if develop_policy is None else develop_policy, encoding="utf-8")
     _git_in(repo, "add", POLICY_FILE)
     _git_in(repo, "commit", "-q", "-m", "policy")
-    _git_in(repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    origin = tmp_path / "gateway-origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
+    _git_in(repo, "remote", "add", "origin", str(origin))
+    _git_in(repo, "push", "-q", "origin", "HEAD:refs/heads/develop")
+    _git_in(repo, "fetch", "-q", "origin", "develop")
     if branch_policy is not None:
         policy.write_text(branch_policy, encoding="utf-8")
         _git_in(repo, "commit", "-q", "-am", "branch policy")
@@ -504,7 +508,9 @@ def test_gateway_reads_the_pin_from_origin_develop_not_from_the_branch(tmp_path:
 
 def test_gateway_does_not_install_omp_when_origin_develop_has_no_policy(tmp_path: Path) -> None:
     repo = _gateway_clone(tmp_path)
-    _git_in(repo, "update-ref", "-d", "refs/remotes/origin/develop")
+    _git_in(repo, "rm", "-q", POLICY_FILE)
+    _git_in(repo, "commit", "-q", "-m", "drop policy")
+    _git_in(repo, "push", "-q", "origin", "HEAD:refs/heads/develop")
     env = _gateway_env(tmp_path)
     try:
         result = _run(GATEWAY, cwd=repo, env=env)
@@ -513,6 +519,22 @@ def test_gateway_does_not_install_omp_when_origin_develop_has_no_policy(tmp_path
         assert "origin/develop:.github/oracle-reviewers.yml is unreadable" in result.stdout
         assert "omp=not-installed" in _status(repo)
         assert _stub_lines(tmp_path, "downloads.log") == []
+    finally:
+        _stop(repo, env)
+
+
+def test_gateway_does_not_install_omp_when_the_develop_fetch_fails(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    _git_in(repo, "remote", "set-url", "origin", str(tmp_path / "missing-origin.git"))
+    env = _gateway_env(tmp_path)
+    try:
+        result = _run(GATEWAY, cwd=repo, env=env)
+
+        assert result.returncode == 1
+        assert "cannot fetch origin/develop; not installing OMP" in result.stdout
+        assert "omp=not-installed" in _status(repo)
+        assert _stub_lines(tmp_path, "downloads.log") == []
+        assert not _installed_omp(tmp_path).exists()
     finally:
         _stop(repo, env)
 
