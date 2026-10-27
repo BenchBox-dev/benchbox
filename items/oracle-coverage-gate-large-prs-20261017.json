@@ -5,7 +5,7 @@
     "A regression test replays the #3096 shape: many deletions plus a few modified soundness paths",
     "The oracle docs describe the coverage rule and how large PRs are handled"
   ],
-  "context": "Found 2026-10-17 on core #3096, the site removal: about 1,230 changed files and 19,537 code lines, mostly deletions. The first opus review on f1b9d26be gave SHIP WITH FIXES (one real defect, release-cut still staging landing/index.html). On e41f96b97 the reviewer reached SHIP twice, in the original run and in recovery run 39055089707, but the gate marked both incomplete. sol (the OpenAI reviewer) was disabled for lack of quota, and no other reviewer was selected. The owner cleared the gate with a stand-in on e41f96b97, and the PR merged as 364a6e9cd.\n\noracle-response-evidence-secrets-20261021 improves source presentation and diagnostics without weakening the file-list evidence policy. Large-PR scope/evidence design remains this item; no closure implied.",
+  "context": "2026-10-27: Merge freeze (owner 2026-10-27, scope: oracle-code PRs): no PR that changes oracle reviewer or gate code merges, and no make pr-arm runs on one, until oracle-history-edited-review-fail-closed-20261027 is merged. In scope: #3565, #3572, #3573, #3574, #3576, the unopened scope-path, evidence-exempt and redaction branches, and any other PR touching _project/scripts/oracle_reviewers/, _project/scripts/oracle_review_check.py, _project/scripts/soundness_merge_digest.py, scripts/pr_arm.py or .github/workflows/oracle-*.yml. Excepted: the edited-review fix's own PR and #3585 (owner exemption 2026-10-27). PRs may be opened and reviewed meanwhile. Never edit, delete, dismiss or minimise an oracle review, review comment or commit status, including on test PRs; edit-detection proofs use unit fixtures and read-only GraphQL reads of existing reviews.\n\nFound 2026-10-17 on core #3096, the site removal: about 1,230 changed files and 19,537 code lines, mostly deletions. The first opus review on f1b9d26be gave SHIP WITH FIXES (one real defect, release-cut still staging landing/index.html). On e41f96b97 the reviewer reached SHIP twice, in the original run and in recovery run 39055089707, but the gate marked both incomplete. sol (the OpenAI reviewer) was disabled for lack of quota, and no other reviewer was selected. The owner cleared the gate with a stand-in on e41f96b97, and the PR merged as 364a6e9cd.\n\noracle-response-evidence-secrets-20261021 improves source presentation and diagnostics without weakening the file-list evidence policy. Large-PR scope/evidence design remains this item; no closure implied.",
   "description": "The oracle's coverage gate (_project/scripts/oracle_reviewers/evidence.py:215) turns a SHIP into \"pending: incomplete\" when the reviewer's trace doesn't show a read of every changed file: \"the verdict would ship but its trace shows no read of …\". On a PR with many changed paths, the reviewer can't meet that, so the gate can never pass. Retries and `make oracle-review-recover` give the same result, and the only way through is the owner's stand-in. The gate should scale with the PR: count files that are deleted outright or are generated or data files as covered by a summary, or let the reviewer cover a large diff in bounded chunks with a merged verdict. Make sure any such rule can't let unreviewed code through.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "c310b0f926b8491dae04178fa7a2fb68",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T12:57:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "519b70866e514f868dced1394364b822",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
