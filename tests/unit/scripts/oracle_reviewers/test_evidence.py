@@ -770,6 +770,12 @@ def test_a_machine_read_doc_stays_required_despite_a_recursive_docs_glob(tmp_pat
     assert _exposure(tmp_path, ["docs/guide/page.md"], READ, exempt_paths=["docs/**/*.md"]) is None
 
 
+def test_a_protected_file_whose_name_ends_in_a_line_suffix_stays_required(tmp_path: Path) -> None:
+    path = "pkg/README.md:1"
+    protected = _exposure(tmp_path, [path], READ, exempt_paths=["**/README*.md"], is_protected=lambda p: p == path)
+    assert protected == _unread(path)
+
+
 def test_the_docs_exemption_covers_only_direct_children_of_docs(tmp_path: Path) -> None:
     exempt = list(_policy_exemptions())
     assert _exposure(tmp_path, ["docs/index.md"], READ, exempt_paths=exempt) is None

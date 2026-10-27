@@ -409,7 +409,7 @@ def check(
 
     def _is_exempt(path: str) -> bool:
         norm = relative(path, workspace)
-        if is_protected(norm):
+        if is_protected(norm) or is_protected(_normalize(path, workspace)):
             return False
         return norm in detected_binary or any(glob_match(norm, pattern) for pattern in patterns)
 
