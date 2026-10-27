@@ -16404,7 +16404,9 @@
     },
     "oracle-gateway-long-silence-timeout-20261022": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Confirm the oracle's auth-gateway survives a long silent thinking stretch from @slow or @plan reviewers"
