@@ -16224,9 +16224,7 @@
     },
     "oracle-evidence-retry-feedback-and-required-reads-20261027": {
       "claim": null,
-      "needs": [
-        "oracle-history-edited-review-fail-closed-20261027"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "Name the required reads in file-list briefs and retry an evidence-incomplete attempt with the missing files instead of escalating"
