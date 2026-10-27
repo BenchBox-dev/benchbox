@@ -17018,7 +17018,9 @@
     },
     "oracle-self-attested-file-list-reviewers-20261008": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "muse SHIP verdicts on file-list briefs are self-attested"
