@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Environment class recorded in result payload next to os/cpu/memory for new runs",
+    "published_variant_id unchanged for native, historical and GitHub-runner bundles; changed only for containerized",
+    "validate_corpus and Explorer pipeline parity test extended and passing",
+    "Distinct human label for containerized runs everywhere labels are derived",
+    "Sidecar mechanism for the 26 container bundles with exact apply steps; published bundles untouched",
+    "Cohort floors before/after reported; DOCUMENTED_SHALLOW_COHORTS truthful",
+    "Internal results-data docs updated; CHANGELOG fragment",
+    "PR opened via make pr-open with local oracle SHIP, CI green except known develop regression, armed"
+  ],
+  "description": "Owner decision (design A): record an execution-environment class for new runs, include it in published_variant_id only when non-native (containerized), keep validate_corpus and Explorer pipeline in parity, add distinguishable labels, provide a manifest-sidecar annotation path for the 26 unpublished ClickHouse container bundles, never edit published bundles.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729",
+      "at": "2026-10-27T22:37:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "738c7db601204b50978a0bdffda0029f",
+      "session_id": "dcc6105a05964c618dfd87771db72de4"
+    }
+  ]
+}

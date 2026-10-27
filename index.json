@@ -6001,6 +6001,13 @@
       "status": "dropped",
       "title": "Corpus-drift canary reports community submissions as drift and recommends deleting them"
     },
+    "corpus-hardware-aware-ranking-identity": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Make ranking identity hardware/environment aware so container and native runs are distinguishable"
+    },
     "corpus-has-no-recency-or-staleness-signal": {
       "claim": null,
       "needs": [],
