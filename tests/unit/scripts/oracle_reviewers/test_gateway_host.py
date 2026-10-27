@@ -387,7 +387,7 @@ def _running(pinned: dict, binary: Path, listener: str = "4242", etime: str = "1
         stubs / "ps",
         f"#!/bin/sh\ncase \"$*\" in *comm=*) echo '  {binary}';; *etime=*) echo '  {etime}';; esac\n",
     )
-    _executable(stubs / "lsof", f"#!/bin/sh\n[ -z '{listener}' ] || echo '{listener}'\n")
+    _executable(stubs / "lsof", f"#!/bin/sh\n[ -z '{listener}' ] || printf '%b\\n' '{listener}'\n")
     return pinned["env"]
 
 
@@ -465,7 +465,7 @@ def test_check_fails_closed_when_the_process_start_time_cannot_be_read(pinned: d
     assert "may run an older build" in result.stderr
 
 
-@pytest.mark.parametrize("listener", ["777", ""])
+@pytest.mark.parametrize("listener", ["777", "", "4242\\n777", "777\\n4242"])
 def test_check_fails_when_the_launchd_process_is_not_the_one_holding_the_port(pinned: dict, listener: str) -> None:
     result = _check_running(pinned, pinned["binary"], listener)
     assert result.returncode != 0

@@ -102,7 +102,7 @@ agent_predates_binary() {
 check_running_build() {
   local label=$1 port=$2 pid listener binary sha version
   pid=$(running_pid "$label") || exit 1
-  listener=$(lsof -nP "-iTCP:$port" -sTCP:LISTEN -t 2>/dev/null | head -n 1)
+  listener=$(lsof -nP "-iTCP:$port" -sTCP:LISTEN -t 2>/dev/null | sort -u | paste -sd ' ' -)
   [ "$listener" = "$pid" ] \
     || fail "$label is process $pid but port $port is held by '${listener:-nothing}'; see its log in $LOG_DIR"
   binary=$(ps -o comm= -p "$pid" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
