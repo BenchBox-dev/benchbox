@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import attempts, cli, selection
+from _project.scripts.oracle_reviewers import attempts, cli, omp_pin, selection
 from _project.scripts.oracle_reviewers.absence import INCOMPLETE, INVALID, Absence
 from _project.scripts.oracle_reviewers.policy import Policy
 from _project.scripts.oracle_reviewers.render import (
@@ -314,6 +314,7 @@ class Run:
         )
         script.chmod(0o755)
         self.monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+        self.monkeypatch.setenv(omp_pin.BINARY_ENV, str(script))
 
     def prompt(self, number: int) -> str:
         return (self.state / f"prompt-{number}.txt").read_text(encoding="utf-8")
