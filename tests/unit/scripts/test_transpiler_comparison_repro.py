@@ -12,6 +12,8 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 @pytest.fixture(scope="module")
 def module():
     path = Path(__file__).resolve().parents[3] / "_project/sqlglot-upstream/repros/transpiler_comparison.py"
+    if not path.is_file():
+        pytest.skip("development-only comparison harness is absent from the release tree")
     spec = importlib.util.spec_from_file_location("transpiler_comparison_repro", path)
     assert spec and spec.loader
     loaded = importlib.util.module_from_spec(spec)
