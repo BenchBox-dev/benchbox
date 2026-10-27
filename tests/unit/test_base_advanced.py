@@ -639,10 +639,6 @@ class TestMockBaseBenchmarkQueryTranslation:
         with pytest.raises(ValueError, match="Invalid query ID"):
             self.benchmark.translate_query(999, "mysql")
 
-    def test_translate_query_no_sqlglot(self):
-        with patch("benchbox.base.sqlglot", None), pytest.raises(ImportError, match="Bundled benchbox._vendor.sqlglot"):
-            self.benchmark.translate_query(1, "mysql")
-
     def test_translate_query_unsupported_dialect(self):
         with pytest.raises(ValueError, match="No fork SQL dialect for 'unsupported'"):
             self.benchmark.translate_query(1, "unsupported")

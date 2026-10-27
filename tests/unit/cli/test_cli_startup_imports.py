@@ -80,3 +80,22 @@ def test_setup_help_does_not_require_textcharts(monkeypatch: pytest.MonkeyPatch)
 
     assert result.exit_code == 0
     assert "Interactive setup for cloud platform credentials" in result.output
+
+
+def test_importing_cli_does_not_load_bundled_sqlglot() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; import benchbox.cli.main; "
+                "loaded = sorted(name for name in sys.modules if name.startswith('benchbox._vendor.sqlglot')); "
+                "assert not loaded, loaded"
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr

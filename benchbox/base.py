@@ -19,13 +19,7 @@ BENCHMARK_API_SURFACE = "beta-public"
 RUN_WITH_PLATFORM_API_SURFACE = "beta-public"
 
 if TYPE_CHECKING:
-    from benchbox._vendor import sqlglot
     from benchbox.core.results.models import BenchmarkResults
-else:
-    try:
-        from benchbox._vendor import sqlglot
-    except ImportError:
-        sqlglot = None
 
 
 class GeneratorOutputDirMixin:
@@ -395,9 +389,6 @@ class BaseBenchmark(BenchmarkResultValidationMixin, VerbosityMixin, ABC):
             return f"{minutes}m {remaining_seconds:.1f}s"
 
     def translate_query(self, query_id: Union[int, str], dialect: str) -> str:
-        if sqlglot is None:
-            raise ImportError("Bundled benchbox._vendor.sqlglot runtime is unavailable; reinstall BenchBox.")
-
         from benchbox.utils.dialect_utils import SQLTranslationError, translate_sql_query
 
         query = self.get_query(query_id)
