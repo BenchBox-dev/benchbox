@@ -269,7 +269,7 @@ class FakeGitHub:
             return 0, self.gate_state + "\n"
         if cmd[:2] == ["gh", "api"] and "/statuses?" in cmd[-1]:
             lines = [
-                f"{name} {state} {self.status_descriptions.get(name, '')}" for name, state in self.statuses.items()
+                f"{name}\t{state}\t{self.status_descriptions.get(name, '')}" for name, state in self.statuses.items()
             ]
             return 0, "\n".join(lines)
         if cmd[:3] == ["gh", "workflow", "run"]:
