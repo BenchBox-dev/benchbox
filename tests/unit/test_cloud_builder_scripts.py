@@ -299,15 +299,23 @@ exec {python} "$@"
 """
 
 
+def _current_platform() -> str:
+    import platform
+
+    systems = {"darwin": "darwin", "linux": "linux"}
+    machines = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "x64", "amd64": "x64"}
+    system = systems.get(platform.system().lower(), platform.system().lower())
+    machine = machines.get(platform.machine().lower(), platform.machine().lower())
+    return f"{system}-{machine}"
+
+
 def _policy_text(url: str = FAKE_OMP_URL, content: str = FAKE_OMP) -> str:
     import hashlib
 
     import yaml
 
-    from _project.scripts.oracle_reviewers.omp_pin import current_platform
-
     digest = hashlib.sha256(content.encode()).hexdigest()
-    pin = {"version": "1.2.3", "builds": {current_platform(): {"url": url, "sha256": digest}}}
+    pin = {"version": "1.2.3", "builds": {_current_platform(): {"url": url, "sha256": digest}}}
     return yaml.safe_dump({"omp": pin})
 
 
@@ -389,9 +397,7 @@ def _assert_no_secrets(*texts: str) -> None:
 
 
 def _installed_omp(tmp_path: Path) -> Path:
-    from _project.scripts.oracle_reviewers.omp_pin import current_platform
-
-    return tmp_path / "home" / ".cache" / "benchbox" / "omp" / "1.2.3" / current_platform() / "omp"
+    return tmp_path / "home" / ".cache" / "benchbox" / "omp" / "1.2.3" / _current_platform() / "omp"
 
 
 def _status(repo: Path) -> str:
