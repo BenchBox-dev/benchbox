@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+import http.server
 import json
+import os
+import subprocess
+import sys
+import threading
 import urllib.error
+import urllib.request
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -171,34 +178,100 @@ def test_process_caching() -> None:
     assert res1["client_region"] == "ap-southeast-1"
 
 
-def test_imds_bypasses_proxy_environment() -> None:
-    import os
+@pytest.fixture
+def _no_cloud_metadata_probes():
+    yield
 
-    from benchbox.platforms.base import client_region as client_region_module
 
-    for protocol in ("http", "https"):
-        for handler in client_region_module._IMDS_OPENER.handle_open.get(protocol, []):
-            assert not (isinstance(handler, urllib.request.ProxyHandler) and handler.proxies), (
-                f"IMDS opener would proxy {protocol} via {handler.proxies}"
-            )
+@pytest.fixture
+def gcp_metadata_server():
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if (
+                self.path.startswith("/computeMetadata/v1/instance/zone")
+                and self.headers.get("Metadata-Flavor") == "Google"
+            ):
+                body = b"projects/1/zones/europe-west1-b"
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_response(404)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
 
-    gcp_response = MagicMock()
-    gcp_response.read.return_value = b"projects/1/zones/europe-west1-b"
-    gcp_response.__enter__.return_value = gcp_response
+        def do_PUT(self):
+            self.do_GET()
 
-    def fake_opener_open(req, timeout=0.2):
-        if "computeMetadata/v1/instance/zone" in req.full_url:
-            return gcp_response
-        raise urllib.error.URLError("AWS not available")
+        def log_message(self, *args):
+            pass
 
-    with (
-        patch.dict(os.environ, {"HTTP_PROXY": "http://proxy.invalid:8080", "HTTPS_PROXY": "http://proxy.invalid:8080"}),
-        patch.object(client_region_module._IMDS_OPENER, "open", side_effect=fake_opener_open),
-    ):
-        result = discover_client_region()
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
 
+
+def test_imds_bypasses_proxy_environment(gcp_metadata_server) -> None:
+    proxy_hits: list[str] = []
+
+    class ProxyHandler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            proxy_hits.append(self.path)
+            self.send_response(500)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def do_PUT(self):
+            self.do_GET()
+
+        def log_message(self, *args):
+            pass
+
+    proxy = http.server.ThreadingHTTPServer(("127.0.0.1", 0), ProxyHandler)
+    thread = threading.Thread(target=proxy.serve_forever, daemon=True)
+    thread.start()
+    proxy_url = f"http://127.0.0.1:{proxy.server_address[1]}"
+    code = (
+        "import json, sys\n"
+        "from benchbox.platforms.base import client_region\n"
+        "client_region._IMDS_BASE_URL = sys.argv[1]\n"
+        "print(json.dumps(client_region.discover_client_region()))\n"
+    )
+    env = {
+        **os.environ,
+        "HTTP_PROXY": proxy_url,
+        "http_proxy": proxy_url,
+        "HTTPS_PROXY": proxy_url,
+        "https_proxy": proxy_url,
+        "NO_PROXY": "",
+        "no_proxy": "",
+    }
+    try:
+        completed = subprocess.run(
+            [sys.executable, "-c", code, gcp_metadata_server],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env=env,
+            cwd=Path(__file__).resolve().parents[4],
+        )
+    finally:
+        proxy.shutdown()
+        proxy.server_close()
+        thread.join(timeout=5)
+
+    assert completed.returncode == 0, completed.stderr
+    result = json.loads(completed.stdout.strip().splitlines()[-1])
     assert result["client_region"] == "europe-west1"
     assert result["client_cloud"] == "gcp"
+    assert proxy_hits == []
 
 
 def test_imds_html_body_rejected() -> None:

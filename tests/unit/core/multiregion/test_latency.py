@@ -2,10 +2,12 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import socket
 import time
 
 import pytest
 
+from benchbox.experimental.multiregion.config import RegionConfig
 from benchbox.experimental.multiregion.latency import (
     LatencyMeasurement,
     LatencyMeasurer,
@@ -127,13 +129,29 @@ class TestLatencyProfile:
 
 
 class TestLatencyMeasurer:
-    def test_tcp_measurement_unreachable(self, us_east_region, eu_west_config):
-        measurer = LatencyMeasurer(
-            source_region=us_east_region,
-            target_config=eu_west_config,
+    def test_tcp_measurement_reaches_listening_loopback_server(self, us_east_region, eu_west_region):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+            server.bind(("127.0.0.1", 0))
+            server.listen(1)
+            target = RegionConfig(region=eu_west_region, endpoint="127.0.0.1", port=server.getsockname()[1])
+            measurement = LatencyMeasurer(source_region=us_east_region, target_config=target).measure_tcp_latency(
+                timeout_seconds=2.0
+            )
+        assert measurement.success is True
+        assert measurement.error is None
+        assert measurement.latency_ms > 0
+
+    def test_tcp_measurement_reports_unreachable_loopback_port(self, us_east_region, eu_west_region):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.bind(("127.0.0.1", 0))
+            closed_port = probe.getsockname()[1]
+        target = RegionConfig(region=eu_west_region, endpoint="127.0.0.1", port=closed_port)
+        measurement = LatencyMeasurer(source_region=us_east_region, target_config=target).measure_tcp_latency(
+            timeout_seconds=2.0
         )
-        measurement = measurer.measure_tcp_latency(timeout_seconds=0.1)
-        assert measurement is not None
+        assert measurement.success is False
+        assert measurement.error
+        assert measurement.latency_ms == 0
 
     def test_query_measurement_no_factory(self, us_east_region, eu_west_config):
         measurer = LatencyMeasurer(

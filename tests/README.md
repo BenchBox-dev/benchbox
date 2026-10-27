@@ -525,6 +525,51 @@ Global test configuration including:
 4. **Handle resources**: Ensure proper cleanup of temporary files and connections
 5. **Performance awareness**: Use performance markers for resource-intensive tests
 
+### Faking External Effects and the Network Guard
+
+Fake external effects at a boundary the code under test owns: an injectable
+source, URL, runner, or function in our own module, or a real local fake
+server bound to loopback. Do not fake effects by patching standard-library or
+third-party internals (`urllib.request.urlopen`, `OpenerDirector.open`,
+`socket`, `subprocess.run`, `time.sleep`, SDK client methods). Such a patch
+binds the test to how the code happens to fetch today; a refactor of the
+fetch mechanism silently bypasses the fake and the test reaches the real
+network.
+
+Unit and medium tests cannot reach non-loopback networks. The guard is
+`tests/utilities/network_guard.py`, activated per test by the autouse fixture
+in `tests/utilities/network_guard_plugin.py`. It blocks `connect`,
+`connect_ex`, `sendto`, `getaddrinfo`, and `gethostbyname*` to anything but
+loopback, in the test process and, through `tests/utilities/network_guard_site/sitecustomize.py`
+on `PYTHONPATH`, in Python subprocesses the test spawns that inherit its
+environment. A blocked call raises `NetworkAccessBlocked` with an explanatory
+message, and the test also fails at teardown if the guard fired, even if the
+code under test swallowed the exception (subprocess violations are collected
+through a per-test log). A test that intentionally provokes a block requests
+the `expect_network_block` fixture.
+
+A test is guarded when it is under `tests/unit/` or carries the `unit` or
+`medium` marker, unless it carries `integration`, `live_integration`, or
+`allow_network`. Prefer moving a network-dependent test to the integration or
+live tier. `allow_network` is only for a unit-level test whose subject is the
+network call itself and which cannot use a loopback server; the reason belongs
+in the commit message.
+
+### Process-Global State
+
+Tests share one worker process. A test must not leave behind process-global
+state: child-subreaper status (`become_subreaper`, `prctl(PR_SET_CHILD_SUBREAPER)`),
+`waitpid(-1)` or any reaping of children it does not own, signal handlers,
+the working directory, `os.environ` changes made outside `monkeypatch`, the
+umask, or resource limits. Run code that changes such state in a subprocess,
+or restore it before the test ends. The `attempts` reviewer command calls
+`become_subreaper`; invoke it through a subprocess, not `cli.main`, from tests.
+
+`tests/utilities/process_state_guard.py` fails any test that ends with the
+worker process as a Linux child subreaper (checked with
+`prctl(PR_GET_CHILD_SUBREAPER)`; skipped on other platforms) and clears the
+flag so later tests are not affected.
+
 ### Test Organization
 1. **Follow naming conventions**: Use descriptive test names with `test_` prefix
 2. **Group related tests**: Organize tests by functionality and component

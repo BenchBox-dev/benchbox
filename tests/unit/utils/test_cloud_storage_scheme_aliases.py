@@ -3,6 +3,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -122,9 +123,20 @@ class TestCredentialValidationHandlesAliases:
         monkeypatch.setenv("AZURE_STORAGE_ACCOUNT_NAME", "acct")
         monkeypatch.setenv("AZURE_STORAGE_ACCOUNT_KEY", "key")
 
+        import benchbox.utils.cloud_storage as cs
+
+        built: list[str] = []
+
+        def build_offline(path, provider, cloud_path_cls):
+            built.append(path)
+            return SimpleNamespace(exists=lambda: True)
+
+        monkeypatch.setattr(cs, "_build_cloud_path_for_validation", build_offline)
+
         alias_result = validate_cloud_credentials(alias)
         canonical_result = validate_cloud_credentials(canonical)
 
+        assert built == [alias, canonical]
         assert alias_result["valid"] == canonical_result["valid"]
         assert "does not begin with a known prefix" not in str(alias_result["error"])
 
