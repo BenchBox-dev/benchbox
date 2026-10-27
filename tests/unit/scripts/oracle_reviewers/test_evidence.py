@@ -607,7 +607,7 @@ def _exposure(workspace: Path, required: list[str], run: Trace | None = None, **
         hinted = kwargs.get("binary_files", ())
         assert isinstance(hinted, (list, tuple))
         kwargs["binary_files"] = [*hinted, *diff_binary_files(str(diff))]
-    return check(
+    gap = check(
         _verdict(examined=()),
         ships=True,
         harness="omp",
@@ -617,6 +617,7 @@ def _exposure(workspace: Path, required: list[str], run: Trace | None = None, **
         run=Trace() if run is None else run,
         **kwargs,
     )
+    return gap.reason if gap else None
 
 
 def _policy_exemptions() -> tuple[str, ...]:
@@ -627,6 +628,10 @@ def _policy_exemptions() -> tuple[str, ...]:
 
 READ = Trace(("seed.txt",))
 NO_READ = "the verdict would ship but its trace shows no successful file read"
+
+
+def _unread(path: str) -> str:
+    return f"the verdict would ship but its trace shows no read of {path}"
 
 
 def test_binary_file_and_readme_no_longer_make_attempt_absent(tmp_path: Path) -> None:
@@ -683,14 +688,16 @@ def test_diff_detected_binary_files_are_exempt(tmp_path: Path) -> None:
 
 
 def test_binary_notice_without_a_nul_byte_does_not_exempt(tmp_path: Path) -> None:
-    root, _ = _head_repo(tmp_path, {"pkg/mod.py": b"value = 1\n"})
-    notice = "diff --git a/pkg/mod.py b/pkg/mod.py\nBinary files a/pkg/mod.py and b/pkg/mod.py differ\n"
-    assert _exposure(root, ["pkg/mod.py"], diff=notice, binary_files=["pkg/mod.py"]) == NO_READ
+    root, _ = _head_repo(tmp_path, {"pkg/mod.woff2": b"value = 1\n"})
+    notice = "diff --git a/pkg/mod.woff2 b/pkg/mod.woff2\nBinary files a/pkg/mod.woff2 and b/pkg/mod.woff2 differ\n"
+    assert _exposure(root, ["pkg/mod.woff2"], READ, diff=notice, binary_files=["pkg/mod.woff2"]) == _unread(
+        "pkg/mod.woff2"
+    )
 
 
 def test_nul_byte_after_the_probe_window_does_not_confirm_binary(tmp_path: Path) -> None:
-    root, diff = _head_repo(tmp_path, {"late.zip": b"a" * 8000 + b"\x00"})
-    assert _exposure(root, ["late.zip"], diff=diff, binary_files=["late.zip"]) == NO_READ
+    root, diff = _head_repo(tmp_path, {"late.woff2": b"a" * 8000 + b"\x00"})
+    assert _exposure(root, ["late.woff2"], READ, diff=diff, binary_files=["late.woff2"]) == _unread("late.woff2")
 
 
 def test_a_python_file_marked_not_diffable_stays_required_and_fails_when_unread(tmp_path: Path) -> None:
@@ -710,14 +717,14 @@ def test_a_symlinked_binary_outside_the_checkout_is_not_confirmed(tmp_path: Path
     workspace.mkdir()
     outside = tmp_path / "outside.bin"
     outside.write_bytes(b"\x00\x01")
-    (workspace / "link.zip").symlink_to(outside)
-    assert _exposure(workspace, ["link.zip"], binary_files=["link.zip"]) == NO_READ
+    (workspace / "link.woff2").symlink_to(outside)
+    assert _exposure(workspace, ["link.woff2"], READ, binary_files=["link.woff2"]) == _unread("link.woff2")
 
 
 def test_a_binary_absent_from_the_head_tree_is_not_confirmed(tmp_path: Path) -> None:
     workspace = tmp_path / "ws"
     workspace.mkdir()
-    assert _exposure(workspace, ["gone.zip"], binary_files=["gone.zip"]) == NO_READ
+    assert _exposure(workspace, ["gone.woff2"], READ, binary_files=["gone.woff2"]) == _unread("gone.woff2")
 
 
 @pytest.mark.parametrize("path", ["package.whl", "picture.woff2", "data.zip"])
