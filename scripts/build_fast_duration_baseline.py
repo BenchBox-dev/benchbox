@@ -555,11 +555,18 @@ def verify_command(args: argparse.Namespace) -> int:
             "::warning title=verify-fast-duration::fast-tier time would be blocked by the duration gate (report only)"
         )
         return 0
-    elif verdict == "rejected":
-        if mode == "block":
-            print(f"::error title=verify-fast-duration::run rejected: {report['reason']}")
-            return 1
-        print(f"::warning title=verify-fast-duration::run rejected: {report['reason']}")
+    incomplete = {
+        "rejected": f"run rejected: {report.get('reason')}",
+        "neutral": f"nothing comparable: {report.get('reason')}",
+    }.get(str(verdict))
+    if incomplete is None and report.get("coverage_warning"):
+        incomplete = f"coverage is under {GATE_COVERAGE_MINIMUM:.0%} of baseline ids"
+    if incomplete is None:
+        return 0
+    if mode == "block":
+        print(f"::error title=verify-fast-duration::{incomplete}")
+        return 1
+    print(f"::warning title=verify-fast-duration::{incomplete}")
     return 0
 
 

@@ -30,11 +30,11 @@ verdict is `would-block` when the ratio exceeds 1.30 and the delta exceeds 360
 seconds, both strictly (provisional thresholds). New tests receive 0.5 seconds
 each; only excess time counts toward the comparison. Job wall time is not a
 metric. In report mode the command returns success; in block mode a
-`would-block` or `rejected` verdict (for example missing calibration or
-baseline) fails `core` at the duration step. The
-comparison uses the baseline committed in the PR head, so a PR that refreshes
-that baseline is compared with its own refresh; the refresh is visible in the
-PR diff and is the review control. The required status contexts do not change.
+`would-block`, `rejected` or `neutral` verdict, or coverage under 95% of the
+baseline ids, fails `core` at the duration step. The comparison uses the
+baseline, thresholds, mode and script from the PR head, so a PR can change
+the gate together with its own run; those changes are visible in the PR diff
+and are the review control. The required status contexts do not change.
 
 `quality/fast-duration-calibration.json` retains artifact IDs, exact heads,
 run IDs, attempts, comparison paths and verdicts for a bounded convenience

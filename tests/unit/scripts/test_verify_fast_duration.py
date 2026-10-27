@@ -452,6 +452,16 @@ def test_block_mode_fails_a_rejected_run_and_report_mode_does_not(tmp_path: Path
     assert baseline.main([*arguments, "--mode", "report"]) == 0
 
 
+@pytest.mark.parametrize("run_cases", [{f"renamed_{index:04d}": 2.0 for index in range(1000)}, cases(900, 2.0)])
+def test_block_mode_fails_runs_that_do_not_cover_the_baseline(tmp_path: Path, run_cases: dict[str, float]) -> None:
+    baseline_dir = committed_baseline(tmp_path, cases(1000, 2.0))
+    run = write_run(tmp_path, "run", run_cases)
+    arguments = ["verify", "--baseline", str(baseline_dir), "--run-dir", str(run)]
+
+    assert baseline.main([*arguments, "--mode", "block"]) == 1
+    assert baseline.main([*arguments, "--mode", "report"]) == 0
+
+
 def test_committed_baseline_verifies_against_itself_as_pass() -> None:
     root = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "fast_tier_baseline"
     committed = baseline.baseline_tests_map(baseline.read_sharded_baseline(root))

@@ -1699,7 +1699,7 @@ jobs:
     needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, sql-execution-evidence, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     permissions:
       actions: write
       contents: read
