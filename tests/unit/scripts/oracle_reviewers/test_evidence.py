@@ -342,7 +342,9 @@ def test_mark_citations_keeps_a_withdrawal_with_a_head_commit_citation(tmp_path:
     workspace = tmp_path / "ws"
     (workspace / "pkg").mkdir(parents=True)
     (workspace / "pkg" / "a.py").write_text("one\ntwo\nthree\n")
-    marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:2 keeps the row"), workspace)
+    marked = mark_citations(
+        _withdrawn_verdict("never a defect: pkg/a.py:2 keeps the row"), workspace, read=frozenset({"pkg/a.py"})
+    )
     assert marked.prior_defects[0].status == "withdrawn"
 
 
@@ -359,15 +361,24 @@ def test_mark_citations_reopens_a_withdrawal_citing_a_missing_line(tmp_path: Pat
     workspace = tmp_path / "ws"
     (workspace / "pkg").mkdir(parents=True)
     (workspace / "pkg" / "a.py").write_text("one\ntwo\n")
-    marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:9"), workspace)
+    marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:9"), workspace, read=frozenset({"pkg/a.py"}))
     assert marked.prior_defects[0].status == "not_fixed"
+
+
+def test_mark_citations_reopens_a_withdrawal_citing_a_file_examined_but_never_read(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    (workspace / "pkg").mkdir(parents=True)
+    (workspace / "pkg" / "a.py").write_text("one\ntwo\nthree\n")
+    marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:2"), workspace)
+    assert marked.prior_defects[0].status == "not_fixed"
+    assert UNVERIFIED_WITHDRAWAL in marked.prior_defects[0].evidence
 
 
 def test_mark_citations_reopens_a_withdrawal_citing_an_unexamined_file(tmp_path: Path) -> None:
     workspace = tmp_path / "ws"
     (workspace / "pkg").mkdir(parents=True)
     (workspace / "pkg" / "a.py").write_text("one\ntwo\nthree\n")
-    marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:2", ()), workspace)
+    marked = mark_citations(_withdrawn_verdict("never a defect: pkg/a.py:2", ()), workspace, read=frozenset())
     assert marked.prior_defects[0].status == "not_fixed"
 
 

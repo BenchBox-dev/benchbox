@@ -281,13 +281,13 @@ def _citation_error(finding: Finding, workspace: Path) -> str | None:
     return None
 
 
-def _withdrawal_verified(evidence: str, workspace: Path, examined: frozenset[str]) -> bool:
+def _withdrawal_verified(evidence: str, workspace: Path, read: frozenset[str]) -> bool:
     for match in _WITHDRAWAL_CITATION.finditer(evidence or ""):
         line = int(match.group("line"))
         if line < 1:
             continue
         cited = match.group("path").removeprefix("./")
-        if cited not in examined:
+        if cited not in read:
             continue
         count = _line_count(workspace, cited)
         if count is not None and line <= count:
@@ -312,8 +312,8 @@ def _repro_verified(evidence: str, workspace: Path, read: frozenset[str]) -> boo
     return False
 
 
-def maintain_verified(evidence: str, workspace: Path, examined: frozenset[str], read: frozenset[str]) -> bool:
-    return _withdrawal_verified(evidence, workspace, examined) or _repro_verified(evidence, workspace, read)
+def maintain_verified(evidence: str, workspace: Path, read: frozenset[str]) -> bool:
+    return _withdrawal_verified(evidence, workspace, read) or _repro_verified(evidence, workspace, read)
 
 
 def mark_citations(
@@ -324,25 +324,16 @@ def mark_citations(
         error = _citation_error(finding, workspace)
         detail = f"{CITATION_PREFIX}: {error}. {finding.detail}".rstrip() if error else finding.detail
         marked.append(replace(finding, detail=detail))
-    examined = frozenset(verdict.files_examined)
     wanted = set(disputed)
     priors = []
     for prior in verdict.prior_defects:
-        if prior.status == WITHDRAWN and not _withdrawal_verified(prior.evidence, workspace, examined):
+        if prior.status == WITHDRAWN and not _withdrawal_verified(prior.evidence, workspace, read):
             note = f"{prior.evidence} {UNVERIFIED_WITHDRAWAL}".strip()
             prior = replace(prior, status=NOT_FIXED, evidence=note, demoted="withdrawal")
-        if (
-            prior.status == FIXED
-            and prior.id in wanted
-            and not maintain_verified(prior.evidence, workspace, examined, read)
-        ):
+        if prior.status == FIXED and prior.id in wanted and not maintain_verified(prior.evidence, workspace, read):
             note = f"{prior.evidence} {DEMOTED_FIXED}".strip()
             prior = replace(prior, status=NOT_FIXED, evidence=note, demoted="fixed")
-        if (
-            prior.status == NOT_FIXED
-            and prior.id in wanted
-            and not maintain_verified(prior.evidence, workspace, examined, read)
-        ):
+        if prior.status == NOT_FIXED and prior.id in wanted and not maintain_verified(prior.evidence, workspace, read):
             note = f"{prior.evidence} {UNVERIFIED_MAINTAIN}".strip()
             prior = replace(prior, evidence=note)
         priors.append(prior)
