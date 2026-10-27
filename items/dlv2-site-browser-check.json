@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A scheduled site-repo workflow runs the Explorer smoke on Firefox and WebKit and reports failures to an issue/label",
+    "The core property ledger row for browser coverage is marked moved with a link; the Explorer-token lint is recorded as retired by owner decision",
+    "dlv2-22 no longer lists browser as a T3 domain"
+  ],
+  "description": "The old nightly cross-browser Explorer check was dropped when nightly-v2 replaced the old nightly; the site repo (BenchBox-dev/benchbox-site) has only an advisory Chromium-only visual.yml on pull_request. Owner decision 2026-10-27: port the browser check (Firefox and WebKit) to the site repo; retire the Explorer-token lint. Work happens in the site repo by PR (see AGENTS.md); core only updates its ledger. Guardrails: primary clone /Users/joe/Developer/BenchBox is read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A; identity Joe Harris, no agent attribution; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\"; uv run -- for Python; never bypass hooks; never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR; make pr-open needs PATH=\"$HOME/.cache/omp-18.12.1/bin:$PATH\" while installed omp differs from the CI pin.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T23:30:41Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "11fba0060eaa4a8c998c54fa8ec98850",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}

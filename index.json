@@ -8861,6 +8861,13 @@
       "status": "done",
       "title": "Run the stop-the-world flip: swap required checks and merge the flip PR"
     },
+    "dlv2-site-browser-check": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Add the scheduled Firefox/WebKit Explorer check to the site repo"
+    },
     "doc-external-links-fragments-20261017": {
       "claim": null,
       "needs": [],
