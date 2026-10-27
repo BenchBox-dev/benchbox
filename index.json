@@ -16129,7 +16129,9 @@
     },
     "oracle-coverage-gate-large-prs-20261017": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "medium-high",
       "status": "open",
       "title": "Let the oracle review PRs too large for its read-every-changed-file coverage gate"
