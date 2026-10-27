@@ -962,3 +962,18 @@ def test_submit_pseudonymizes_inline_requested_tuning_identifiers(
     packaged_text = (out_dir / "bundle" / src.name).read_text(encoding="utf-8")
     assert "secret_orders_tbl" not in packaged_text
     assert "secret_customer_col" not in packaged_text
+
+
+def test_submit_real_run_packages_override_companion_unchanged(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    src = tmp_path / "tpch_duckdb_plateau.json"
+    _write_flat_plateau_bundle(src)
+    _write_sibling_override_artifact(src)
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
+
+    out_dir = tmp_path / "submission"
+    result = CliRunner().invoke(sub.submit, [str(src), "--output", str(out_dir)])
+
+    assert result.exit_code == 0, result.output
+    original = json.loads(src.with_name(f"{src.stem}.override.json").read_text(encoding="utf-8"))
+    packaged = json.loads((out_dir / "bundle" / f"{src.stem}.override.json").read_text(encoding="utf-8"))
+    assert packaged == original
