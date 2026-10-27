@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "A report lists 20 measured post-flip verdicts with ratio, delta, speed factor and verdict, states how many blocked and whether each was a real slowdown, and recommends keeping, adjusting or rolling back the thresholds."
+  ],
+  "context": "Interim data on 2026-10-27 (5 measured verdicts since the gate went blocking, all pass): ratio 1.046, 0.950, 0.561, 1.039, 0.977; delta +63.9, -68.7, -606.4, +53.9, -32.2 s; speed factor 0.993, 0.937, 0.589, 0.966, 1.231. The 0.561 run at speed factor 0.589 shows normalization can swing the result by a large factor; check whether a speed factor far from 1 hides or invents slowdowns. Verdict artifacts are named fast-duration-verdict-<pr>-<sha> on the ci.yml run for each head. Roll back by setting VERIFY_MODE to report in scripts/build_fast_duration_baseline.py.",
+  "description": "Decide whether the blocking fast-tier duration gate (ratio above 1.30 and delta above 360 s) needs different thresholds, after collecting the first 20 measured pull-request verdicts that ran in block mode. Report ratio, delta, runner speed factor, coverage and verdict per run, the number of blocks and whether each was a real slowdown, and a recommendation on keeping both thresholds, dropping the delta term, or rolling back to report mode.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-27T21:35:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "147949cb1c2e4112bd10da96eaacb133",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}

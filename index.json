@@ -3040,6 +3040,13 @@
       "status": "done",
       "title": "Turn the fast-tier duration check into a blocking part of core with thresholds set from measured noise"
     },
+    "ci-fast-duration-gate-false-block-review-20261027": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Review the blocking duration gate after 20 measured runs"
+    },
     "ci-fast-test-slowdown-20261016": {
       "claim": null,
       "needs": [],
