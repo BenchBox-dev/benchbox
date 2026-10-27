@@ -10,11 +10,13 @@ from _project.scripts.oracle_reviewers.retry import (
     INTEGRITY,
     OMP_INSTALL,
     UNREPORTED,
+    WINDOW,
     State,
     decide_rerun,
     due_for_retry,
     next_state,
     recent_retries,
+    reset_applies,
 )
 from _project.scripts.oracle_reviewers.selection import QUOTA_BACKOFF, PoolBlock, effective_until
 
@@ -297,3 +299,37 @@ def test_a_failed_install_is_not_re_dispatched_by_the_sweep_but_a_manual_rerun_m
     assert _decide(policy, previous, manual=True).allowed
     spent = _state("pending", cause=OMP_INSTALL, age=timedelta(minutes=5))
     assert not _decide(policy, spent, manual=True).allowed
+
+
+def test_a_retry_exactly_one_window_old_no_longer_counts() -> None:
+    inside = NOW - WINDOW + timedelta(seconds=1)
+    state = State(7, HEAD, "pending", NOW - timedelta(hours=1), (NOW - WINDOW, inside), pending_cause=ALL_ABSENT)
+    assert recent_retries(state, NOW) == (inside,)
+
+
+def test_an_owner_reset_at_the_moment_the_state_was_written_does_not_apply() -> None:
+    state = _state("pending", age=timedelta(minutes=10))
+    assert reset_applies(state, HEAD, state.updated_at) is False
+    assert reset_applies(state, HEAD, state.updated_at + timedelta(seconds=1)) is True
+
+
+def test_a_pending_head_is_due_only_once_its_backoff_has_elapsed(policy: Policy) -> None:
+    backoff = timedelta(minutes=policy.retry.backoff_start_minutes)
+    assert due_for_retry(_state("pending", age=backoff - timedelta(minutes=1)), HEAD, NOW, policy.retry) is False
+    assert due_for_retry(_state("pending", age=backoff), HEAD, NOW, policy.retry) is True
+
+
+def test_a_manual_rerun_on_a_new_head_ignores_the_previous_heads_backoff(policy: Policy) -> None:
+    previous = _state("pending", head=OTHER, age=timedelta(minutes=10))
+    assert _decide(policy, previous).allowed is True
+
+
+def test_a_first_state_starts_with_no_strikes() -> None:
+    first = next_state(
+        previous=None, pr=7, head_sha=HEAD, outcome="success", manual=False, now=NOW, pool_blocked_until={}
+    )
+    assert first.strikes == 0
+    again = next_state(
+        previous=first, pr=7, head_sha=HEAD, outcome="success", manual=False, now=NOW, pool_blocked_until={}
+    )
+    assert again.strikes == 0

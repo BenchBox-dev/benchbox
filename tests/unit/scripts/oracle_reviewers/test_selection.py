@@ -262,6 +262,27 @@ def test_pool_providers_match_the_reviewer_roles_in_the_omp_config() -> None:
     assert set(POOL_PROVIDERS) == set(policy.pools)
 
 
+def test_pool_resets_drop_a_block_that_ends_now() -> None:
+    chain = [_reviewer("a", pool="claude")]
+    block = PoolBlock(NOW, "anthropic", NOW - timedelta(hours=1))
+    assert pool_resets(_input(chain, pool_blocked_until={"claude": block}), []) == {}
+
+
+@pytest.mark.parametrize("absence", RETRYABLE)
+def test_pool_resets_ignore_absences_other_than_quota(absence: str) -> None:
+    chain = [_reviewer("a", pool="pool-a")]
+    assert pool_resets(_input(chain), [Attempt(1, "a", ABSENT, absence, reset_at=NOW + timedelta(hours=3))]) == {}
+
+
+@pytest.mark.parametrize(("stored", "reported"), [(3, 1), (1, 3)])
+def test_pool_resets_keep_the_later_of_a_stored_block_and_a_new_quota_reset(stored: int, reported: int) -> None:
+    chain = [_reviewer("a", pool="claude")]
+    kept = PoolBlock(NOW + timedelta(hours=stored), "anthropic", NOW - timedelta(minutes=5))
+    attempt = Attempt(1, "a", ABSENT, "quota", reset_at=NOW + timedelta(hours=reported), provider="anthropic")
+    later = kept if stored > reported else PoolBlock(NOW + timedelta(hours=reported), "anthropic", NOW)
+    assert pool_resets(_input(chain, pool_blocked_until={"claude": kept}), [attempt]) == {"claude": later}
+
+
 def test_oversize_brief_skips_everything() -> None:
     chain = [_reviewer("r1"), _reviewer("r2")]
     step = next_step(_input(chain, brief_mode="oversize"), [])
