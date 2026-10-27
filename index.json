@@ -16374,6 +16374,13 @@
       "status": "done",
       "title": "Let the oracle gateway admit named clients besides oracle-ci, and add oracle-local"
     },
+    "oracle-history-edited-review-fail-closed-20261027": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Fail closed when a marked oracle App review was edited, so an edited marker can never drive carry or follow-up scope"
+    },
     "oracle-hunk-headingless-and-repeated-heading-collisions-20261024": {
       "claim": null,
       "needs": [
