@@ -231,6 +231,23 @@ def test_pool_resets_from_a_fallback_provider_ignore_the_reset_and_last_one_hour
     assert resets == {"claude": PoolBlock(NOW + QUOTA_BACKOFF, "google-antigravity", NOW)}
 
 
+def test_pool_resets_from_a_fallback_provider_never_end_before_the_backoff() -> None:
+    chain = [_reviewer("a", pool="claude")]
+    soon = NOW + timedelta(minutes=5)
+    resets = pool_resets(
+        _input(chain), [Attempt(1, "a", ABSENT, "quota", reset_at=soon, provider="google-antigravity")]
+    )
+    assert resets == {"claude": PoolBlock(NOW + QUOTA_BACKOFF, "google-antigravity", NOW)}
+
+
+def test_a_new_quota_block_replaces_a_recorded_block_that_ends_at_the_same_moment() -> None:
+    chain = [_reviewer("a", pool="claude")]
+    recorded = PoolBlock(NOW + QUOTA_BACKOFF, "other-provider", NOW)
+    attempt = Attempt(1, "a", ABSENT, "quota", provider="google-antigravity")
+    resets = pool_resets(_input(chain, pool_blocked_until={"claude": recorded}), [attempt])
+    assert resets == {"claude": PoolBlock(NOW + QUOTA_BACKOFF, "google-antigravity", NOW)}
+
+
 def test_pool_resets_default_backoff_without_reported_provider() -> None:
     chain = [_reviewer("a", pool="claude")]
     far = NOW + timedelta(days=6)
