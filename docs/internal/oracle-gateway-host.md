@@ -94,7 +94,9 @@ Then:
    - Sign `gh` in as a repository admin: `gh auth login`.
    - No `omp` install is needed for the host: the script installs the pinned
      build itself. Every `broker`, `gateway` and `check` run prints
-     `omp pin: <version> sha256=<hash>` for the build it resolved.
+     `omp pin: <version> sha256=<hash>` for the build it resolved, and refuses a
+     pinned build whose `omp auth-gateway` has no `--clients` (18.12.1, the
+     current pin, has it; the gateway scopes every reviewer client with it).
 2. Clone this repository. The host checkout may be on any branch: `gateway`
    fetches `origin/develop` and scopes every client to that branch's
    `.github/oracle-omp-config.yml`.
@@ -131,8 +133,10 @@ Then:
    ```
 
    `check` fails when the broker or the gateway is running an omp whose
-   SHA-256 or version differs from the pin, or when `run.sh` names another
-   binary. `models` must equal the model count in `clients.json`, and `/v1/usage`
+   SHA-256 or version differs from the pin, when the process launchd runs for
+   either agent is not the one holding its port, or when `run.sh` names another
+   binary. The comparison is of the executable file the process was started
+   from, as `ps` reports it. `models` must equal the model count in `clients.json`, and `/v1/usage`
    must be refused with a 403. With [named clients](#named-clients), each
    one gets its own line and must list the same models as `oracle-ci`.
 9. Run one review through it:

@@ -53,19 +53,25 @@ require_omp() {
   PINNED_SHA=$(file_sha256 "$OMP")
   PINNED_VERSION=$(binary_version "$OMP")
   [ -n "$PINNED_VERSION" ] || fail "the pinned omp at $OMP reports no version"
+  "$OMP" auth-gateway --help 2>&1 | grep -q -e '--clients' \
+    || fail "the pinned omp $PINNED_VERSION has no auth-gateway serve --clients, which scopes each reviewer client"
   echo "omp pin: $PINNED_VERSION sha256=$PINNED_SHA"
 }
 
-running_binary() {
+running_pid() {
   local pid
   pid=$(launchctl print "$DOMAIN/$1" 2>/dev/null | sed -n 's/^[[:space:]]*pid = \([0-9][0-9]*\)[[:space:]]*$/\1/p' | head -n 1)
   [ -n "$pid" ] || fail "$1 is not running"
-  ps -o comm= -p "$pid" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+  echo "$pid"
 }
 
 check_running_build() {
-  local label=$1 binary sha version
-  binary=$(running_binary "$label") || exit 1
+  local label=$1 port=$2 pid listener binary sha version
+  pid=$(running_pid "$label") || exit 1
+  listener=$(lsof -nP "-iTCP:$port" -sTCP:LISTEN -t 2>/dev/null | head -n 1)
+  [ "$listener" = "$pid" ] \
+    || fail "$label is process $pid but port $port is held by '${listener:-nothing}'; see its log in $LOG_DIR"
+  binary=$(ps -o comm= -p "$pid" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
   [ -n "$binary" ] && [ -x "$binary" ] || fail "$label runs '$binary', which is not an executable file"
   sha=$(file_sha256 "$binary")
   version=$(binary_version "$binary")
@@ -380,9 +386,9 @@ cmd_check() {
   require_omp
   broker_ok || fail "the broker is not running"
   echo "broker: ok on 127.0.0.1:$BROKER_PORT"
-  check_running_build "$BROKER_LABEL"
+  check_running_build "$BROKER_LABEL" "$BROKER_PORT"
   check_run_file_build
-  check_running_build "$GATEWAY_LABEL"
+  check_running_build "$GATEWAY_LABEL" "$GATEWAY_PORT"
   local missing url secrets name
   missing=$(missing_logins)
   [ -z "$missing" ] || fail "no broker login for: $(printf '%s\n' "$missing" | paste -sd ' ' -)"

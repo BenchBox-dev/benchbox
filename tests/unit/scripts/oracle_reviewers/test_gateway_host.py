@@ -264,9 +264,15 @@ def test_revoke_and_the_token_file_check_accept_the_same_names(host: dict, suffi
     assert revoked == (suffix in {"local", "my-ci", "ci2"})
 
 
-PINNED_BINARY = "#!/bin/sh\necho omp/1.2.3\n"
-OTHER_VERSION_BINARY = "#!/bin/sh\necho omp/9.9.9\n"
-SAME_VERSION_OTHER_BYTES = "#!/bin/sh\necho omp/1.2.3\n# built elsewhere\n"
+def _fake_omp(version: str, clients: bool = True, extra: str = "") -> str:
+    help_line = "--clients=<value>" if clients else "--bind=<value>"
+    return f'#!/bin/sh\ncase "$*" in *--help*) echo "{help_line}";; *) echo omp/{version};; esac\n{extra}'
+
+
+PINNED_BINARY = _fake_omp("1.2.3")
+OTHER_VERSION_BINARY = _fake_omp("9.9.9")
+SAME_VERSION_OTHER_BYTES = _fake_omp("1.2.3", extra="# built elsewhere\n")
+NO_CLIENTS_BINARY = _fake_omp("1.2.3", clients=False)
 
 
 def _sha256(text: str) -> str:
@@ -370,15 +376,20 @@ def test_the_host_refuses_a_cached_binary_that_does_not_match_the_pin(pinned: di
     assert not pinned["calls"].exists()
 
 
-def _running(pinned: dict, binary: Path) -> dict:
+def _running(pinned: dict, binary: Path, listener: str = "4242") -> dict:
     stubs = pinned["stubs"]
     _executable(stubs / "launchctl", "#!/bin/sh\nprintf 'service = x\\n\\tpid = 4242\\n'\n")
     _executable(stubs / "ps", f"#!/bin/sh\necho '  {binary}'\n")
+    _executable(stubs / "lsof", f"#!/bin/sh\n[ -z '{listener}' ] || echo '{listener}'\n")
     return pinned["env"]
 
 
-def _check_running(pinned: dict, binary: Path) -> subprocess.CompletedProcess[str]:
-    return _source(pinned, "require_omp >/dev/null; check_running_build dev.omp.auth-gateway", _running(pinned, binary))
+def _check_running(pinned: dict, binary: Path, listener: str = "4242") -> subprocess.CompletedProcess[str]:
+    return _source(
+        pinned,
+        "require_omp >/dev/null; check_running_build dev.omp.auth-gateway 4000",
+        _running(pinned, binary, listener),
+    )
 
 
 def test_check_reports_the_running_gateway_version_and_hash_when_it_is_the_pinned_build(pinned: dict) -> None:
@@ -405,7 +416,7 @@ def test_check_fails_when_the_running_gateway_has_the_pinned_version_but_other_b
 
 def test_check_fails_when_the_gateway_is_not_running(pinned: dict) -> None:
     _executable(pinned["stubs"] / "launchctl", "#!/bin/sh\nprintf 'service = x\\n'\n")
-    result = _source(pinned, "require_omp >/dev/null; check_running_build dev.omp.auth-gateway")
+    result = _source(pinned, "require_omp >/dev/null; check_running_build dev.omp.auth-gateway 4000")
     assert result.returncode != 0
     assert "dev.omp.auth-gateway is not running" in result.stderr
 
@@ -427,3 +438,19 @@ def test_the_host_script_has_no_omp_lookup_on_path_or_override() -> None:
     text = HOST_SCRIPT.read_text(encoding="utf-8")
     assert "command -v omp" not in text
     assert "OMP=${OMP" not in text
+
+
+@pytest.mark.parametrize("listener", ["777", ""])
+def test_check_fails_when_the_launchd_process_is_not_the_one_holding_the_port(pinned: dict, listener: str) -> None:
+    result = _check_running(pinned, pinned["binary"], listener)
+    assert result.returncode != 0
+    assert "is process 4242 but port 4000 is held by" in result.stderr
+
+
+def test_the_host_refuses_a_pinned_build_without_the_clients_scope_flag(pinned: dict) -> None:
+    platform = omp_pin.current_platform()
+    _pin_policy(pinned["origin"], {platform: _sha256(NO_CLIENTS_BINARY)})
+    _executable(pinned["binary"], NO_CLIENTS_BINARY)
+    result = _source(pinned, 'require_omp; echo "resolved=$OMP"')
+    assert result.returncode != 0
+    assert "has no auth-gateway serve --clients" in result.stderr
