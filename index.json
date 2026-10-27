@@ -15008,7 +15008,8 @@
     "merge-authority-docs-reconcile-20261026": {
       "claim": null,
       "needs": [
-        "oracle-gate-reject-edited-reviews-20261026"
+        "oracle-gate-reject-edited-reviews-20261026",
+        "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "medium-high",
       "status": "open",
