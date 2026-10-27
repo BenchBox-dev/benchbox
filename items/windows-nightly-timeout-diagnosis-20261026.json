@@ -4,7 +4,7 @@
     "If it failed or timed out, the failing or hanging test is named from the job log with evidence; a follow-up fix item is created if the cause is ours",
     "If it passed, duration is recorded and the item closes with that evidence; #2964 and #2568 states are reported"
   ],
-  "context": "Decision gate: do not raise timeout-minutes in this item. A timeout change needs a new owner decision with this diagnosis as evidence.",
+  "context": "2026-10-27 read-only evidence: nightly-v2 run 40339587542 t3:windows job 121630308439 ended cancelled at 55:01 (timeout-minutes 50, pytest --timeout=120); Run fast tests step in_progress 54:19; prior runs 19-26 min (10-22..10-25), so a stall, not gradual slowness (INFERENCE; job logs/artifact unavailable to read-only scout: 403/401, no t3-windows report uploaded). Top candidate: tests/unit/test_module_state_guard.py child pytest subprocess without subprocess timeout (touched in head commit; SYSTEMROOT/WinError 10106 fix). Legacy nightly 40494140132 (2026-10-27, head 2b884a10b) has two failed windows-latest quarantine #2568 jobs (py3.11/3.12 Run fast tests), logs not yet readable while run in progress. Next: read next t3:windows run (after 14:00Z) and the legacy windows job logs once finished.",
   "description": "The 2026-10-26 nightly t3:windows fast-unit job was cancelled at its 50-minute timeout with tests still running; its log has expired, so hang-vs-slow is unknown. The Windows fast tier measured 19-25 min on earlier nights. Owner decision 2026-10-26: leave the timeout unchanged and diagnose from the next run. Guardrails (all items): primary clone read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A or git stash; identity Joe Harris, no agent attribution; never bypass hooks by any route; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\" on file/subprocess text I/O; uv run -- for Python; no CHANGELOG entries; never weaken or delete tests or gates; TEST LOCK: never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR, never run make test-unlock, xdist only under the shared lock; for make pr-open put ~/.cache/omp-18.12.1/bin first on PATH; make pr-preflight once, make pr-open, make pr-arm; never post oracle comments or rerun the oracle; commit/PR text for a reader who never saw this session (no item ids or plan labels).",
   "not_before": "2026-10-27T14:00:00Z",
   "sessions": [
@@ -14,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "22394b0de4ad4e5daaf8ec227726f6e1",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T12:04:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "12e6db8b9826451c84f0a514b95b9171",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
