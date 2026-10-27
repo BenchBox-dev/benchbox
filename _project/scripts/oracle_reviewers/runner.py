@@ -157,6 +157,25 @@ def _scrubbed(value: Any) -> Any:
     return value
 
 
+def _marker(kind: str, value: Any) -> str:
+    return f"[{kind} withheld: {len(json.dumps(value))} characters]"
+
+
+def _withheld(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_withheld(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    if value.get("type") == "thinking":
+        return {"type": "thinking", "thinking": _marker("thinking", value.get("thinking", ""))}
+    if value.get("role") == "toolResult" or value.get("type") == "tool_execution_end":
+        return {
+            key: _marker("tool output", item) if key in ("content", "result", "details") else _withheld(item)
+            for key, item in value.items()
+        }
+    return {key: _withheld(item) for key, item in value.items()}
+
+
 def capture(reviewer: Reviewer, result: RunResult) -> dict[str, Any]:
     secrets = _credentials()
     stdout = result.stdout if reviewer.harness == "omp" else ""
@@ -173,7 +192,7 @@ def capture(reviewer: Reviewer, result: RunResult) -> dict[str, Any]:
             "terminal_error": absence.redact_detail(omp_terminal_error(stdout), secrets),
             "stderr_excerpt": absence.excerpt("", result.stderr, secrets),
             "streaming_events_dropped": len(parsed) - len(events),
-            "events": _scrubbed(redaction_check.redact(events, secrets)),
+            "events": _scrubbed(redaction_check.redact(_withheld(events), secrets)),
         },
         secrets,
     )

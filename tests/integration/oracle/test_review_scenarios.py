@@ -58,5 +58,7 @@ def test_attempt_capture_keeps_the_redacted_event_stream(harness: Harness) -> No
     recorded = [line for line in RECORDED_STREAM.read_text(encoding="utf-8").splitlines() if '"message_update"' in line]
     assert not any(isinstance(event, dict) and event["type"].endswith("_update") for event in capture["events"])
     assert 0 < capture["streaming_events_dropped"] <= len(recorded)
+    tool_results = [event["result"] for event in capture["events"] if event["type"] == "tool_execution_end"]
+    assert tool_results and all(item.startswith("[tool output withheld: ") for item in tool_results)
     uploaded = [item["name"] for item in harness.github.artifacts if item["workflow_run"]["id"] == run.run["id"]]
     assert "oracle-verdict-capture" in uploaded
