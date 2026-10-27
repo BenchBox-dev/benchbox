@@ -604,7 +604,9 @@ def _head_repo(tmp_path: Path, files: dict[str, bytes], attributes: str = "") ->
 def _exposure(workspace: Path, required: list[str], run: Trace | None = None, **kwargs: object) -> str | None:
     diff = kwargs.pop("diff", "")
     if diff:
-        kwargs["binary_files"] = [*kwargs.get("binary_files", ()), *diff_binary_files(str(diff))]
+        hinted = kwargs.get("binary_files", ())
+        assert isinstance(hinted, (list, tuple))
+        kwargs["binary_files"] = [*hinted, *diff_binary_files(str(diff))]
     return check(
         _verdict(examined=()),
         ships=True,
