@@ -147,6 +147,16 @@ def _streaming(event: Any) -> bool:
     return isinstance(event, dict) and str(event.get("type", "")).endswith("_update")
 
 
+def _scrubbed(value: Any) -> Any:
+    if isinstance(value, str):
+        return absence.scrub_long_tokens(value)
+    if isinstance(value, list):
+        return [_scrubbed(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _scrubbed(item) for key, item in value.items()}
+    return value
+
+
 def capture(reviewer: Reviewer, result: RunResult) -> dict[str, Any]:
     secrets = _credentials()
     stdout = result.stdout if reviewer.harness == "omp" else ""
@@ -163,7 +173,7 @@ def capture(reviewer: Reviewer, result: RunResult) -> dict[str, Any]:
             "terminal_error": absence.redact_detail(omp_terminal_error(stdout), secrets),
             "stderr_excerpt": absence.excerpt("", result.stderr, secrets),
             "streaming_events_dropped": len(parsed) - len(events),
-            "events": events,
+            "events": _scrubbed(redaction_check.redact(events, secrets)),
         },
         secrets,
     )

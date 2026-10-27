@@ -179,6 +179,10 @@ def _redact(text: str, extra: Iterable[str], limit: int) -> str:
     return _LONG_TOKEN.sub(credentials.REDACTED, sanitize(text, limit, extra))
 
 
+def scrub_long_tokens(text: str) -> str:
+    return _LONG_TOKEN.sub(credentials.REDACTED, text)
+
+
 def excerpt(stdout: str, stderr: str, extra: Iterable[str] = ()) -> str:
     lines = [line.strip() for line in stderr.splitlines() if line.strip()]
     lines = lines or [line.strip() for line in stdout.splitlines() if line.strip()]
