@@ -16184,7 +16184,8 @@
         "oracle-dispute-keyed-published-evidence-20261026",
         "oracle-gate-from-verdict-job-20261026",
         "merge-authority-docs-reconcile-20261026",
-        "oracle-sweep-stateless-retry-backoff-reset-20261026"
+        "oracle-sweep-stateless-retry-backoff-reset-20261026",
+        "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "high",
       "status": "open",
