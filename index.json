@@ -16640,6 +16640,16 @@
       "status": "dropped",
       "title": "muse often returns output the oracle cannot parse as a verdict, so it is recorded absent (invalid)"
     },
+    "oracle-omp-candidate-compat-suite-20261027": {
+      "claim": null,
+      "needs": [
+        "oracle-omp-pin-single-source-20261026",
+        "oracle-e2e-scenario-harness-and-mutation-gate-20261027"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Check a candidate omp build offline against every contract the oracle depends on, with no model quota"
+    },
     "oracle-omp-gateway-pinned-build-20261027": {
       "claim": null,
       "needs": [
