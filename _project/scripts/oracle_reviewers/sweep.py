@@ -69,12 +69,19 @@ def in_flight(runs_by_pr: Mapping[int, tuple[Run, ...]], now: datetime) -> froze
 def with_timeouts(
     runs: Iterable[Run], timed_out: Callable[[int], bool], since: datetime | None = None
 ) -> tuple[Run, ...]:
-    return tuple(
-        replace(run, conclusion="timed_out")
-        if run.conclusion == "cancelled" and (since is None or run.created_at >= since) and timed_out(run.id)
-        else run
-        for run in runs
-    )
+    resolved: list[Run] = []
+    settled = False
+    for run in runs:
+        if (
+            not settled
+            and run.conclusion == "cancelled"
+            and (since is None or run.created_at >= since)
+            and timed_out(run.id)
+        ):
+            run = replace(run, conclusion="timed_out")
+        settled = settled or run.conclusion == "success"
+        resolved.append(run)
+    return tuple(resolved)
 
 
 def for_head(runs: Iterable[Run], head: str) -> tuple[Run, ...]:

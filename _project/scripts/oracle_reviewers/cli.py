@@ -1143,22 +1143,29 @@ def _retry_reason(
     head = pull["head"]["sha"]
     state = github.latest_state(repo, number)
     relevant = tuple(run for run in runs if run.head in (None, head))
-    if full:
-        relevant = sweep.with_timeouts(relevant, lambda run: github.run_timed_out(repo, run))
-    head_runs = sweep.for_head(relevant, head)
+
+    def resolved() -> tuple[tuple[sweep.Run, ...], tuple[sweep.Run, ...]]:
+        found = sweep.with_timeouts(relevant, lambda run: github.run_timed_out(repo, run))
+        return found, sweep.for_head(found, head)
+
     if state is not None and state.head_sha == head:
         due = retry.due_for_retry(state, head, now, rules)
         if not full:
             return "its retry is due" if due else None
-        if state.outcome == retry.PENDING and state.pending_cause == retry.ALL_ABSENT:
-            reset_at = github.backoff_reset_at(repo, number, head)
-            if reset_at is not None and retry.due_for_retry(state, head, now, rules, reset_at):
-                if sweep.reset_spent(relevant, reset_at, head):
-                    _summary(f"reset not applied for #{number}: the reset was already used by a later run")
-                elif sweep.stateless_failures(head_runs, reset_at) > 0:
-                    _summary(f"reset not applied for #{number}: a run since the reset failed without a result")
-                else:
-                    return "the owner reset its backoff"
+        if state.outcome != retry.PENDING or state.pending_cause != retry.ALL_ABSENT:
+            return None
+        reset_at = github.backoff_reset_at(repo, number, head)
+        usable = reset_at is not None and retry.due_for_retry(state, head, now, rules, reset_at)
+        if not due and not usable:
+            return None
+        found, head_runs = resolved()
+        if usable and reset_at is not None:
+            if sweep.reset_spent(found, reset_at, head):
+                _summary(f"reset not applied for #{number}: the reset was already used by a later run")
+            elif sweep.stateless_failures(head_runs, reset_at) > 0:
+                _summary(f"reset not applied for #{number}: a run since the reset failed without a result")
+            else:
+                return "the owner reset its backoff"
         if due:
             return _bounded_retry(
                 repo, number, head, head_runs, state.updated_at, rules, now, status_context, bot_login, token
@@ -1166,6 +1173,9 @@ def _retry_reason(
         return None
     if not full:
         return None
+    if not any(run.head == head and run.conclusion in (*sweep.FAILED, "cancelled") for run in relevant):
+        return None
+    _, head_runs = resolved()
     if not sweep.newest_failed(head_runs):
         return None
     if sweep.stateless_failures(head_runs) == 0:

@@ -424,3 +424,39 @@ def test_a_spent_owner_reset_leaves_a_surfaced_head_held(monkeypatch: pytest.Mon
     fake.runs = [_verdict_run(7, conclusion="failure", age=timedelta(minutes=10))]
     assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
     assert fake.dispatched == []
+
+
+def test_timeouts_are_looked_up_only_for_a_pull_request_that_is_a_retry_candidate(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    cancelled = [_verdict_run(7, conclusion="cancelled", age=timedelta(minutes=30 + index)) for index in range(3)]
+    decided = FakeGitHub(_pull(), SOUNDNESS, State(7, HEAD, "success", datetime.now(UTC) - timedelta(hours=3)))
+    decided.runs = list(cancelled)
+    assert _sweep(monkeypatch, tmp_path, decided) == 0
+    fresh = FakeGitHub(
+        _pull(),
+        SOUNDNESS,
+        State(7, HEAD, "pending", datetime.now(UTC) - timedelta(minutes=5), pending_cause="all-absent"),
+    )
+    fresh.runs = list(cancelled)
+    assert _sweep(monkeypatch, tmp_path, fresh) == 0
+    assert decided.timeout_lookups == [] and fresh.timeout_lookups == []
+
+
+def test_a_head_with_a_finished_success_newer_than_its_cancelled_runs_needs_no_timeout_lookup(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _stateless_fake(
+        _verdict_run(7, conclusion="success", age=timedelta(minutes=20)),
+        _verdict_run(7, conclusion="cancelled", age=timedelta(minutes=40)),
+    )
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.timeout_lookups == [] and fake.dispatched == []
+
+
+def test_a_head_with_no_failed_or_cancelled_run_needs_no_timeout_lookup(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _stateless_fake(_verdict_run(7, conclusion="skipped", age=timedelta(minutes=20)))
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.timeout_lookups == []

@@ -113,6 +113,7 @@ class FakeGitHub:
         self.runs_error: Exception | None = None
         self.state_error: Exception | None = None
         self.timed_out: set[int] = set()
+        self.timeout_lookups: list[int] = []
         self.busy_fallback: set[int] = set()
         self.fallback_error: Exception | None = None
 
@@ -129,10 +130,14 @@ class FakeGitHub:
         monkeypatch.setattr(github, "commit_statuses", self._statuses)
         monkeypatch.setattr(github, "review_edit_states", self._edit_states)
         monkeypatch.setattr(github, "post_status", self._post)
-        monkeypatch.setattr(github, "run_timed_out", lambda repo, run_id: run_id in self.timed_out)
+        monkeypatch.setattr(github, "run_timed_out", self._timed_out)
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
         monkeypatch.setattr(github, "merge_base", lambda repo, base, head: self.merge_base)
         monkeypatch.setattr(github, "tree_blobs", self._tree)
+
+    def _timed_out(self, repo: str, run_id: int) -> bool:
+        self.timeout_lookups.append(run_id)
+        return run_id in self.timed_out
 
     def _latest_state(self, repo: str, pr: int) -> State | None:
         if self.state_error is not None:
