@@ -16640,6 +16640,15 @@
       "status": "dropped",
       "title": "muse often returns output the oracle cannot parse as a verdict, so it is recorded absent (invalid)"
     },
+    "oracle-omp-gateway-pinned-build-20261027": {
+      "claim": null,
+      "needs": [
+        "oracle-omp-pin-single-source-20261026"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Run the oracle gateway host from the pinned omp build instead of whatever omp is on the Mac's PATH"
+    },
     "oracle-omp-pin-hardening-20261027": {
       "claim": null,
       "needs": [
