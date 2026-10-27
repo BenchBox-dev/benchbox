@@ -73,7 +73,7 @@ the pure run asserts zero and the wrapper imports zero (the bundled wheel is
 | Wrapper with `date_columns` | 31 | 0 | 4 | 1 |
 | SQLGlot pure | 27 | 2 | 6 | 1 |
 | SQLGlot compiled | 27 | 2 | 6 | 1 |
-| Polyglot 0.13.4 | 30 | 2 | 2 | 2 |
+| Polyglot 0.13.4 | 29 | 2 | 2 | 3 |
 
 All five engines match all 14 known-good outcomes (7 queries times two targets).
 
@@ -85,8 +85,8 @@ Repairs and regressions relative to pure SQLGlot 30.25.0:
   two are `EXTRACT` to SQLite for Postgres and DuckDB sources.
 - Compiled SQLGlot: identical outcomes to pure SQLGlot.
 - Polyglot: four repairs (`EXTRACT` year and month, `DATE_PART`, and
-  `ORDER BY ALL` to SQLite, which it rewrites to `ORDER BY 1, 2`) and one
-  regression.
+  `ORDER BY ALL` to SQLite, which it rewrites to `ORDER BY 1, 2`) and two
+  regressions (integer division and `STRING_AGG`, below).
 
 Problems that remain, by class:
 
@@ -99,8 +99,9 @@ Problems that remain, by class:
   `CAST(7 AS REAL) / 2` to SQLite and returns 3.5, a regression: the wrapper and
   SQLGlot return 3 there.
 - Polyglot drops the `ORDER BY` inside `STRING_AGG` for SQLite
-  (`GROUP_CONCAT(w, ',')`). The fixture is already sorted, so the case counts as
-  a match; the semantic loss is visible only in the translated text.
+  (`GROUP_CONCAT(w, ',')`). The fixture table `g` is stored out of order, so the
+  case returns `z,x,y` instead of `x,y,z` and counts as a silent wrong result, a
+  regression against SQLGlot and the wrapper.
 - The previously reported Polyglot `ORDER BY ALL` misorder is not present in
   0.13.4 without `identify`; the quoting behaviour under `identify=True` cannot
   be reproduced because the option does not exist.
@@ -108,39 +109,33 @@ Problems that remain, by class:
 ## Timing
 
 Identical workload for every engine: 14 known-good queries times two targets,
-each call timed with `perf_counter_ns`, 300 iterations with 30 discarded as
-warmup (3,780 timed calls). Cold start is a freshly spawned interpreter, seven
-runs, measuring process wall time with import and first translation separated.
-Reports record `os.getloadavg()` before the timing phase.
-
-The workstation was shared with other jobs. The first pass below ran before the
-load average was recorded and used a subprocess-based cold probe (the committed
-harness now spawns the child with `multiprocessing` instead); two later passes
-ran at load averages of 48 to 100 on this machine and inflated every figure
-two to five times. Only the ordering and ratios are stable across passes; treat
-absolute numbers as indicative.
-
-First pass (load unrecorded):
+each call timed with the repository clock (`benchbox.utils.clock.mono_time` and
+`elapsed_seconds`, loaded by path so the isolated environments need no
+`benchbox` install), 300 iterations with 30 discarded as warmup (3,780 timed
+calls). Cold start is a freshly spawned interpreter, seven runs, measuring process
+wall time with import and first translation separated. Each report records
+`os.getloadavg()`; this pass started at a one-minute load average of about 5
+on an otherwise idle Apple silicon workstation.
 
 | Engine | warm median us | warm p95 us | cold process median ms | import median ms | first translate median ms |
 |--------|---------------|-------------|------------------------|------------------|---------------------------|
-| Wrapper | 231.1 | 371.8 | 1042.6 | 888.3 | 35.5 |
-| SQLGlot pure | 140.2 | 246.3 | 96.5 | 35.8 | 3.4 |
-| SQLGlot compiled | 36.1 | 89.8 | 149.6 | 76.2 | 12.8 |
-| Polyglot | 18.3 | 46.4 | 64.7 | 14.8 | 0.5 |
+| Wrapper | 218.7 | 349.3 | 749.9 | 372.1 | 302.2 |
+| SQLGlot pure | 130.4 | 204.5 | 76.8 | 26.7 | 2.8 |
+| SQLGlot compiled | 33.5 | 70.4 | 108.1 | 51.6 | 9.4 |
+| Polyglot | 16.6 | 23.4 | 52.9 | 10.6 | 0.4 |
 
-Loaded passes (load average 48 to 100), warm median us: wrapper 443 to 601,
-SQLGlot pure 239 to 294, compiled 54 to 83, Polyglot 19.5 to 27.3. The ordering
-Polyglot, compiled, pure, wrapper held in every pass for warm translation and for
-cold process time (compiled SQLGlot is slower to cold start than pure Python in
-every pass because of its larger import).
+Warm ordering is Polyglot, compiled SQLGlot, pure SQLGlot, wrapper. Cold-process
+ordering is Polyglot, pure SQLGlot, compiled SQLGlot, wrapper: compiled SQLGlot
+pays about 25 ms more import time and a slower first translation than pure
+Python in return for roughly 3.9 times faster warm translation. The wrapper
+cold start includes importing the `benchbox` package and its first translation
+loads the SQLite rewrites, so it is not a translator-only figure. The
+Polyglot to compiled warm ratio (about 0.5) matches the historical roughly 23 us
+versus 43 us on a different workload.
 
-The wrapper cold start includes importing the `benchbox` package, not only the
-translator, and its warm path includes outcome recording and the SQLite
-rewrites. Compiled SQLGlot costs more import time than pure Python for roughly
-3 to 5 times faster warm translation. The Polyglot to compiled warm ratio in the
-first pass (about 0.5) is consistent with the historical roughly 23 us versus
-43 us, on a different workload.
+Earlier passes of an earlier harness revision, run while the shared workstation
+showed load averages of 48 to 100, inflated every figure two to five times and
+are not recorded. Ratios and orderings were stable across them.
 
 ## What was not run
 
@@ -150,5 +145,5 @@ first pass (about 0.5) is consistent with the historical roughly 23 us versus
   DuckDB execute the translated text, with SQLite dates stored as ISO text.
 - Polyglot under `identify=True`, and the `netezza` source dialect for Polyglot
   and public SQLGlot, are not available to compare.
-- Only one machine and one Python (3.12.15); no quiet-machine timing pass was
-  captured with the load average recorded, so timings are indicative only.
+- Only one machine and one Python (3.12.15) and a single timing pass, so
+  timings are indicative and not a statistical comparison across hardware.

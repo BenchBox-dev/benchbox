@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib.metadata
+import importlib.util
 import json
 import multiprocessing
 import os
@@ -11,9 +12,19 @@ import sqlite3
 import statistics
 import subprocess
 import sys
-import time
 from pathlib import Path
 from typing import Any, Callable
+
+_CLOCK_SPEC = importlib.util.spec_from_file_location(
+    "benchbox_clock", Path(__file__).resolve().parents[3] / "benchbox" / "utils" / "clock.py"
+)
+if _CLOCK_SPEC is None or _CLOCK_SPEC.loader is None:
+    raise ImportError("benchbox/utils/clock.py not found")
+_clock = importlib.util.module_from_spec(_CLOCK_SPEC)
+sys.modules["benchbox_clock"] = _clock
+_CLOCK_SPEC.loader.exec_module(_clock)
+mono_time = _clock.mono_time
+elapsed_seconds = _clock.elapsed_seconds
 
 SCHEMA = "sql-transpiler-comparison-v1"
 ENGINES = ("wrapper", "wrapper-date-columns", "sqlglot", "sqlglot-compiled", "polyglot")
@@ -35,6 +46,7 @@ SETUP_ROWS = [
     (5, None, 50, "b"),
 ]
 SETUP_U = [(1, "x"), (2, "y"), (3, "z")]
+SETUP_G = [(1, "z"), (2, "x"), (3, "y")]
 
 DATES = [(2000,), (1900,), (2024,), (2024,), (None,)]
 
@@ -179,7 +191,7 @@ CASES: list[dict[str, Any]] = [
         "id": "problem-string-agg",
         "kind": "known-problem",
         "source": "postgres",
-        "sql": "SELECT STRING_AGG(w, ',' ORDER BY w) FROM u",
+        "sql": "SELECT STRING_AGG(w, ',' ORDER BY w) FROM g",
         "expected": [("x,y,z",)],
         "ordered": True,
     },
@@ -285,10 +297,11 @@ def _distributions(fragment: str) -> list[str]:
 def _fixture_sqlite() -> sqlite3.Connection:
     connection = sqlite3.connect(":memory:")
     connection.executescript(
-        "CREATE TABLE t(id INTEGER, d TEXT, v INTEGER, s TEXT); CREATE TABLE u(id INTEGER, w TEXT);"
+        "CREATE TABLE t(id INTEGER, d TEXT, v INTEGER, s TEXT); CREATE TABLE u(id INTEGER, w TEXT); CREATE TABLE g(id INTEGER, w TEXT);"
     )
     connection.executemany("INSERT INTO t VALUES (?, ?, ?, ?)", SETUP_ROWS)
     connection.executemany("INSERT INTO u VALUES (?, ?)", SETUP_U)
+    connection.executemany("INSERT INTO g VALUES (?, ?)", SETUP_G)
     return connection
 
 
@@ -297,10 +310,11 @@ def _fixture_duckdb() -> Any:
 
     connection = duckdb.connect(":memory:")
     connection.execute(
-        "CREATE TABLE t(id INTEGER, d DATE, v INTEGER, s VARCHAR); CREATE TABLE u(id INTEGER, w VARCHAR)"
+        "CREATE TABLE t(id INTEGER, d DATE, v INTEGER, s VARCHAR); CREATE TABLE u(id INTEGER, w VARCHAR); CREATE TABLE g(id INTEGER, w VARCHAR)"
     )
     connection.executemany("INSERT INTO t VALUES (?, CAST(? AS DATE), ?, ?)", SETUP_ROWS)
     connection.executemany("INSERT INTO u VALUES (?, ?)", SETUP_U)
+    connection.executemany("INSERT INTO g VALUES (?, ?)", SETUP_G)
     return connection
 
 
@@ -346,11 +360,11 @@ def _warm(translate: Callable[[str, str, str], str]) -> dict[str, Any]:
     samples: list[float] = []
     for iteration in range(WARM_ITERATIONS):
         for sql, source, target in workload:
-            start = time.perf_counter_ns()
+            start = mono_time()
             translate(sql, source, target)
-            elapsed = time.perf_counter_ns() - start
+            elapsed = elapsed_seconds(start)
             if iteration >= WARM_DISCARD:
-                samples.append(elapsed / 1000.0)
+                samples.append(elapsed * 1_000_000.0)
     return {
         "calls": len(samples),
         "iterations": WARM_ITERATIONS,
@@ -361,12 +375,14 @@ def _warm(translate: Callable[[str, str, str], str]) -> dict[str, Any]:
 
 
 def _cold_child(engine: str, queue: Any) -> None:
-    start = time.perf_counter()
+    start = mono_time()
     translate, _ = _load_engine(engine)
-    loaded = time.perf_counter()
+    loaded = mono_time()
     translate(COLD_PROBE_SQL, "postgres", "sqlite")
-    done = time.perf_counter()
-    queue.put({"import_ms": (loaded - start) * 1000, "first_translate_ms": (done - loaded) * 1000})
+    done = mono_time()
+    queue.put(
+        {"import_ms": elapsed_seconds(start, loaded) * 1000, "first_translate_ms": elapsed_seconds(loaded, done) * 1000}
+    )
 
 
 def _cold(engine: str) -> dict[str, Any]:
@@ -374,12 +390,12 @@ def _cold(engine: str) -> dict[str, Any]:
     runs = []
     for _ in range(COLD_RUNS):
         queue = context.Queue()
-        start = time.perf_counter()
+        start = mono_time()
         child = context.Process(target=_cold_child, args=(engine, queue))
         child.start()
         probe = queue.get(timeout=120)
         child.join()
-        wall = (time.perf_counter() - start) * 1000
+        wall = elapsed_seconds(start) * 1000
         runs.append({"process_wall_ms": wall, **probe})
     return {
         "runs": COLD_RUNS,
