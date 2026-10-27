@@ -4,7 +4,7 @@
     "A decision: require a traced second reviewer, add a muse trace, set muse reads_files: false, or accept the risk with its documented reason",
     "_project/decisions/oracle-review-protocol-2026-10-08.md records the outcome"
   ],
-  "context": "2026-10-27: Merge freeze (owner 2026-10-27, scope: oracle-code PRs): no PR that changes oracle reviewer or gate code merges, and no make pr-arm runs on one, until oracle-history-edited-review-fail-closed-20261027 is merged. In scope: #3565, #3572, #3573, #3574, #3576, the unopened scope-path, evidence-exempt and redaction branches, and any other PR touching _project/scripts/oracle_reviewers/, _project/scripts/oracle_review_check.py, _project/scripts/soundness_merge_digest.py, scripts/pr_arm.py or .github/workflows/oracle-*.yml. Excepted: the edited-review fix's own PR and #3585 (owner exemption 2026-10-27). PRs may be opened and reviewed meanwhile. Never edit, delete, dismiss or minimise an oracle review, review comment or commit status, including on test PRs; edit-detection proofs use unit fixtures and read-only GraphQL reads of existing reviews.\n\nShadow data so far (checked 2026-10-09): since #2760 merged (2026-10-08 18:30 UTC) muse ran in 7 oracle-verdict runs (the workflow was named oracle-review-shadow until #2843) and returned a verdict in all 7: once as the first reviewer (37866366206, #2792) and six times as the second (37844575540, 37844862581, 37847792715, 37861958813, 37863646848, 37879106749). Whether any of those were file-list briefs, and whether muse's files_examined matched the files it was asked to read, is not yet checked.\n\n2026-10-09 tracker review: agy removed from the title and description; it is owned by oracle-agy-reviewer-calibration-20261008. Added the cheap option of setting muse reads_files: false. Muse is also the subject of oracle-muse-invalid-verdict-output-20261009, and which reviewers are eligible depends on oracle-author-family-labels-never-applied-20261009, which should be decided first.",
+  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nShadow data so far (checked 2026-10-09): since #2760 merged (2026-10-08 18:30 UTC) muse ran in 7 oracle-verdict runs (the workflow was named oracle-review-shadow until #2843) and returned a verdict in all 7: once as the first reviewer (37866366206, #2792) and six times as the second (37844575540, 37844862581, 37847792715, 37861958813, 37863646848, 37879106749). Whether any of those were file-list briefs, and whether muse's files_examined matched the files it was asked to read, is not yet checked.\n\n2026-10-09 tracker review: agy removed from the title and description; it is owned by oracle-agy-reviewer-calibration-20261008. Added the cheap option of setting muse reads_files: false. Muse is also the subject of oracle-muse-invalid-verdict-output-20261009, and which reviewers are eligible depends on oracle-author-family-labels-never-applied-20261009, which should be decided first.",
   "description": "muse (read_only: hard, reads_files: true) can take file-list briefs, but leaves no read trace, so only its own files_examined list and the citation check apply. muse is early in the low-medium and medium-high chains. The decision record leaves open whether a muse SHIP on a file-list brief needs a second reviewer.\n\nOptions:\n- require a traced second reviewer for a muse SHIP on a file-list brief;\n- add a muse read trace;\n- accept the risk with a documented reason;\n- cheap option: set muse `reads_files: false` in .github/oracle-reviewers.yml until muse leaves a read trace. Then muse only takes inline briefs. Cost: more pending results when codex is out of quota, because muse can no longer be the reviewer for file-list briefs. See oracle-muse-invalid-verdict-output-20261009 for muse's other reliability problem.\n\nagy is covered by oracle-agy-reviewer-calibration-20261008.",
   "sessions": [
     {
@@ -53,6 +53,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "282ffd3468a44db58aba787b7a1e9366",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T15:13:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "80cd3b92f68f4dc4be6b93e8264a07bd",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
