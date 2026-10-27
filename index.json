@@ -16141,17 +16141,12 @@
       "title": "Check the oracle diff parser for the same control-character line splitting"
     },
     "oracle-dispute-keyed-published-evidence-20261026": {
-      "claim": {
-        "expires_at": "2026-10-28T02:11:08Z",
-        "generation": "c2fff52a935b4f08a5c1819afcdfd4d6",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
-      },
+      "claim": null,
       "needs": [
         "oracle-carry-byte-identical-20261026"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Bind each oracle dispute to its finding id, require evidence to maintain it, and publish every disposition"
     },
     "oracle-dispute-trigger-budget-escalation-20261026": {
