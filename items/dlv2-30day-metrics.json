@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Metrics reported with collector version and cohort definition; unavailable measurements are named, not zero",
+    "Comparison to thresholds and baseline recorded with exceptions explained"
+  ],
+  "description": "Observation item split from dlv2-84. Starts at the final cleanup merge recorded in dlv2-84; set not_before to 30 days after that date. Metrics: T1 p95 <=7 min, T2 p95 <=15 min, red-trunk incidents 0 (a failing trunk.yml run on develop until fixed/reverted), public Make targets <=90, flaky retry rate <2%, merges/day informational. Runner wait is dropped by owner decision 2026-10-27. Baseline: _project/archive/dev-loop-v2/baseline.md (2026-09-28).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T23:30:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "21d4b2fa68724e5bb177599d9982e6e5",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}

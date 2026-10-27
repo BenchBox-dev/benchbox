@@ -8554,6 +8554,15 @@
       "status": "dropped",
       "title": "Update the ruleset drift expected settings to include the six new required checks before any ruleset change"
     },
+    "dlv2-30day-metrics": {
+      "claim": null,
+      "needs": [
+        "dlv2-84-final-audit-and-metrics"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Compare the 30-day dev-loop v2 metrics against the baseline"
+    },
     "dlv2-31-ruleset-add-new-checks": {
       "claim": null,
       "needs": [
