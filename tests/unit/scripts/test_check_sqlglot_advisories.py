@@ -12,13 +12,16 @@ from scripts.check_sqlglot_advisories import check, evaluate, main, query_osv, u
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PIN = {"version": "30.24.0.13"}
+SHA = "5d588c0f32d17a08191898638f67ff27bb0a13ff"
+OTHER_SHA = "0123456789abcdef0123456789abcdef01234567"
+PIN = {"version": "30.24.0.13", "upstream_sha": SHA}
+TAGS = {"v30.23.0": OTHER_SHA, "v30.24.0": SHA}
 
 
 def make_root(tmp_path: Path, version: str = "30.24.0.13") -> Path:
     pin = tmp_path / "benchbox" / "_vendor" / "sqlglot.json"
     pin.parent.mkdir(parents=True)
-    pin.write_text(json.dumps({"version": version}), encoding="utf-8")
+    pin.write_text(json.dumps({"version": version, "upstream_sha": SHA}), encoding="utf-8")
     return tmp_path
 
 
@@ -40,7 +43,7 @@ def test_committed_pin_maps_to_its_wheel_and_upstream_version() -> None:
 
 
 def test_clean_version_passes(tmp_path: Path) -> None:
-    assert check(make_root(tmp_path), lambda version: []) == []
+    assert check(make_root(tmp_path), lambda version: [], lambda: TAGS) == []
 
 
 def test_matching_advisory_fails_naming_id_aliases_and_version(tmp_path: Path) -> None:
@@ -50,7 +53,7 @@ def test_matching_advisory_fails_naming_id_aliases_and_version(tmp_path: Path) -
         seen.append(version)
         return [{"id": "GHSA-xxxx", "aliases": ["CVE-2099-1"], "summary": "parser DoS"}]
 
-    (problem,) = check(make_root(tmp_path), querier)
+    (problem,) = check(make_root(tmp_path), querier, lambda: TAGS)
     assert seen == ["30.24.0"]
     assert "GHSA-xxxx" in problem and "CVE-2099-1" in problem and "30.24.0" in problem and "parser DoS" in problem
 
@@ -63,13 +66,40 @@ def test_unreachable_database_fails(tmp_path: Path) -> None:
     def querier(version: str):
         raise RuntimeError("cannot query OSV advisories: offline")
 
-    (problem,) = check(make_root(tmp_path), querier)
+    (problem,) = check(make_root(tmp_path), querier, lambda: TAGS)
     assert "offline" in problem
 
 
 def test_malformed_pin_version_fails(tmp_path: Path) -> None:
-    (problem,) = check(make_root(tmp_path, "30.24.0"), lambda version: [])
+    (problem,) = check(make_root(tmp_path, "30.24.0"), lambda version: [], lambda: TAGS)
     assert "fork revision" in problem
+
+
+def test_label_naming_an_older_release_than_the_pinned_commit_fails_without_querying(tmp_path: Path) -> None:
+    seen: list[str] = []
+    (problem,) = check(make_root(tmp_path, "30.23.0.1"), lambda version: seen.append(version) or [], lambda: TAGS)
+    assert seen == []
+    assert "30.23.0" in problem and OTHER_SHA in problem and SHA in problem
+
+
+def test_label_naming_a_version_without_an_upstream_tag_fails(tmp_path: Path) -> None:
+    (problem,) = check(make_root(tmp_path, "99.0.0.1"), lambda version: [], lambda: TAGS)
+    assert "not a final upstream release tag" in problem
+
+
+def test_pin_without_upstream_sha_fails(tmp_path: Path) -> None:
+    root = make_root(tmp_path)
+    (root / "benchbox" / "_vendor" / "sqlglot.json").write_text(json.dumps({"version": "30.24.0.13"}), encoding="utf-8")
+    (problem,) = check(root, lambda version: [], lambda: TAGS)
+    assert "upstream_sha" in problem
+
+
+def test_unlistable_upstream_tags_fail(tmp_path: Path) -> None:
+    def lister():
+        raise RuntimeError("cannot list upstream tags: offline")
+
+    (problem,) = check(make_root(tmp_path), lambda version: [], lister)
+    assert "cannot list upstream tags" in problem
 
 
 class FakeResponse(io.BytesIO):
@@ -105,6 +135,7 @@ def test_query_osv_wraps_network_errors(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_main_exit_codes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     root = make_root(tmp_path)
+    monkeypatch.setattr(advisories, "list_upstream_tags", lambda: TAGS)
     monkeypatch.setattr(advisories, "query_osv", lambda version: [])
     assert main(["--root", str(root)]) == 0
     monkeypatch.setattr(advisories, "query_osv", lambda version: [{"id": "GHSA-xxxx"}])
@@ -114,6 +145,8 @@ def test_main_exit_codes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 
 def test_main_default_root_reads_committed_pin(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[str] = []
+    pin = json.loads((REPO_ROOT / "benchbox/_vendor/sqlglot.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr(advisories, "list_upstream_tags", lambda: {f"v{upstream_version(pin)}": pin["upstream_sha"]})
     monkeypatch.setattr(advisories, "query_osv", lambda version: seen.append(version) or [])
     assert main([]) == 0
     assert len(seen[0].split(".")) == 3

@@ -16,16 +16,28 @@ CLI_DESCRIPTION = (
     "Package-level scanners such as pip-audit only see declared requirements, and SQLGlot is\n"
     "shipped inside benchbox/_vendor, so this check derives the upstream SQLGlot version from\n"
     "benchbox/_vendor/sqlglot.json and queries the OSV advisory database for that version.\n"
-    "Any matching advisory, or an unreachable database, fails the gate.\n"
+    "Any matching advisory, or an unreachable database, fails the gate. The version is trusted\n"
+    "only when the upstream release tag for it points at the pinned upstream_sha.\n"
 )
 
 OSV_QUERY_URL = "https://api.osv.dev/v1/query"
 UPSTREAM_PACKAGE = "sqlglot"
 PIN_PATH = Path("benchbox/_vendor/sqlglot.json")
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def list_upstream_tags() -> Mapping[str, str]:
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    from scripts.check_sqlglot_upstream_freshness import list_upstream_tags as list_tags
+
+    return list_tags()
+
+
 _FORK_VERSION = re.compile(r"(\d+\.\d+\.\d+)\.\d+")
 
 Querier = Callable[[str], list[Mapping[str, Any]]]
+TagLister = Callable[[], Mapping[str, str]]
 
 
 def upstream_version(pin: Mapping[str, Any]) -> str:
@@ -34,6 +46,20 @@ def upstream_version(pin: Mapping[str, Any]) -> str:
     if match is None:
         raise ValueError(f"bundled SQLGlot version {version!r} is not <upstream X.Y.Z>.<fork revision>")
     return match.group(1)
+
+
+def verify_upstream_identity(pin: Mapping[str, Any], tags: Mapping[str, str]) -> list[str]:
+    version = upstream_version(pin)
+    upstream_sha = pin.get("upstream_sha")
+    tagged = tags.get(f"v{version}")
+    if tagged is None:
+        return [f"bundled SQLGlot version label claims upstream {version}, which is not a final upstream release tag"]
+    if tagged != upstream_sha:
+        return [
+            f"bundled SQLGlot version label claims upstream {version} (tag commit {tagged}) but the pinned "
+            f"upstream_sha is {upstream_sha}; the advisory lookup would query the wrong release"
+        ]
+    return []
 
 
 def query_osv(version: str) -> list[Mapping[str, Any]]:
@@ -74,10 +100,13 @@ def evaluate(pin: Mapping[str, Any], vulns: list[Mapping[str, Any]]) -> list[str
     return problems
 
 
-def check(root: Path, querier: Querier | None = None) -> list[str]:
+def check(root: Path, querier: Querier | None = None, tag_lister: TagLister | None = None) -> list[str]:
     pin = json.loads((root / PIN_PATH).read_text(encoding="utf-8"))
     try:
         version = upstream_version(pin)
+        identity = verify_upstream_identity(pin, (tag_lister or list_upstream_tags)())
+        if identity:
+            return identity
         vulns = (querier or query_osv)(version)
     except (OSError, RuntimeError, ValueError) as error:
         return [str(error)]
