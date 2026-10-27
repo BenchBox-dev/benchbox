@@ -5,6 +5,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+PUBLIC_DISTRIBUTION = "sqlglot"
 CLI_DESCRIPTION = "Install a BenchBox wheel beside public sqlglot and verify the bundled SQLGlot runtime."
 
 CHECK = """
@@ -59,7 +60,7 @@ def smoke(wheel: Path) -> None:
         environment = root / "venv"
         _run("uv", "venv", environment, cwd=root)
         python = environment / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
-        _run("uv", "pip", "install", "--python", python, "sqlglot", wheel, cwd=root)
+        _run("uv", "pip", "install", "--python", python, PUBLIC_DISTRIBUTION, wheel, cwd=root)
         _run(python, "-c", CHECK, cwd=root)
         _run("uv", "pip", "uninstall", "--python", python, "benchbox", cwd=root)
         _run(python, "-c", AFTER_UNINSTALL, cwd=root)
