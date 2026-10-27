@@ -463,7 +463,8 @@ def test_submit_canonical_manifest_hashes_primary_and_companions(
     packaged_tuning = out_dir / "bundle" / tuning.name
     manifest = json.loads((out_dir / "tpch_duckdb.manifest.json").read_text(encoding="utf-8"))
 
-    assert packaged_source.read_bytes() == _canonical_file_bytes(src)
+    packaged_payload = json.loads(packaged_source.read_text(encoding="utf-8"))
+    assert packaged_payload.get("export", {}).get("anonymized") is True
     assert packaged_plans.read_bytes() == _canonical_file_bytes(plans)
     assert packaged_tuning.read_bytes() == _canonical_file_bytes(tuning)
     assert _eof_fixed(packaged_source.read_bytes()) == packaged_source.read_bytes()
@@ -688,7 +689,8 @@ def test_submit_service_upload_uses_canonical_manifest_hashes(monkeypatch: pytes
     result = CliRunner().invoke(sub.submit, [str(src), "--service", "--no-wait"])
 
     assert result.exit_code == 0, result.output
-    assert captured["source_bytes"] == _canonical_file_bytes(src)
+    uploaded_payload = json.loads(captured["source_bytes"].decode("utf-8"))
+    assert uploaded_payload.get("export", {}).get("anonymized") is True
     assert captured["companion_bytes"][plans.name] == _canonical_file_bytes(plans)
     assert captured["companion_bytes"][tuning.name] == _canonical_file_bytes(tuning)
     assert _eof_fixed(captured["source_bytes"]) == captured["source_bytes"]
@@ -869,3 +871,71 @@ def test_submit_help_mentions_results_paths_affordance() -> None:
     result = CliRunner().invoke(sub.submit, ["--help"])
     assert result.exit_code == 0
     assert "benchbox results --paths" in result.output
+
+
+def test_submit_pseudonymizes_retained_identifiers_and_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    src = tmp_path / "tpch_duckdb.json"
+    raw_bundle = _valid_submission_bundle()
+    raw_bundle["environment"] = {
+        "cwd": "/Users/developer/secret-project/BenchBox",
+        "hostname": "developer-macbook-pro.local",
+        "user": "developer",
+    }
+    src.write_text(json.dumps(raw_bundle), encoding="utf-8")
+
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
+
+    out_dir = tmp_path / "submission"
+    result = CliRunner().invoke(sub.submit, [str(src), "--output", str(out_dir)])
+
+    assert result.exit_code == 0, result.output
+    packaged_source = out_dir / "bundle" / src.name
+    packaged_text = packaged_source.read_text(encoding="utf-8")
+    packaged_data = json.loads(packaged_text)
+
+    assert "/Users/developer" not in packaged_text
+    assert "developer-macbook-pro.local" not in packaged_text
+    assert packaged_data.get("export", {}).get("anonymized") is True
+    assert packaged_data["environment"]["cwd"].startswith("path_")
+    assert packaged_data["environment"]["hostname"].startswith("host_")
+
+    validation_results = sub.validate_bundles([packaged_source])
+    assert validation_results and all(v.ok for v in validation_results)
+
+
+def test_submit_redacts_raw_plans_and_applied_ledger_companions(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    src = tmp_path / "tpch_duckdb.json"
+    _write_valid_submission_bundle(src)
+    plans = {
+        "queries": {
+            "q1": {
+                "plan": {
+                    "raw_explain_output": "Seq Scan on /Users/developer/data/lineitem.parquet",
+                    "logical_root": {
+                        "physical_operator": {"platform_metadata": {"path": "/Users/developer/data"}},
+                        "children": [{"physical_operator": {"platform_metadata": {"host": "developer-macbook-pro"}}}],
+                    },
+                }
+            }
+        }
+    }
+    applied = {
+        "status": "applied_verified",
+        "statements": [{"statement": "CREATE INDEX i ON /Users/developer/db.t(c)", "phase": "ddl"}],
+    }
+    (tmp_path / "tpch_duckdb.plans.json").write_text(json.dumps(plans), encoding="utf-8")
+    (tmp_path / "tpch_duckdb.applied.json").write_text(json.dumps(applied), encoding="utf-8")
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
+
+    out_dir = tmp_path / "submission"
+    result = CliRunner().invoke(sub.submit, [str(src), "--output", str(out_dir)])
+
+    assert result.exit_code == 0, result.output
+    packaged_plans = (out_dir / "bundle" / "tpch_duckdb.plans.json").read_text(encoding="utf-8")
+    packaged_applied = (out_dir / "bundle" / "tpch_duckdb.applied.json").read_text(encoding="utf-8")
+    assert "/Users/developer" not in packaged_plans + packaged_applied
+    assert "developer-macbook-pro" not in packaged_plans
+    assert json.loads(packaged_plans)["queries"]["q1"]["plan"]["raw_explain_output"] is None
+    assert json.loads(packaged_applied)["statements"][0]["statement_redacted"] is True
