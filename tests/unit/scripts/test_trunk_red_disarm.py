@@ -271,15 +271,22 @@ def _runs_with_an_older_unfinished_run() -> list[dict]:
     ]
 
 
-def test_undetermined_culprit_disarms_nothing_and_names_no_commit(capsys: pytest.CaptureFixture[str]) -> None:
-    run = DisarmRun(_runs_with_an_older_unfinished_run(), armed=[_armed(3385, "fix/thing")])
+def test_undetermined_culprit_disarms_every_armed_ordinary_pr_without_naming_a_commit(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run = DisarmRun(
+        _runs_with_an_older_unfinished_run(),
+        armed=[_armed(3385, "fix/thing"), _armed(3386, "fix/revert-3200")],
+    )
     with pytest.raises(trunk_revert.UndeterminedCulpritError):
         trunk_red_disarm.select_for_disarm(run, trunk_revert.REPOSITORY)
-    assert trunk_red_disarm.disarm_all(run, trunk_revert.REPOSITORY) == 1
-    assert run.mutations == []
-    err = capsys.readouterr().err
-    assert "undetermined" in err
-    assert "disarming nothing" in err
+    assert trunk_red_disarm.disarm_all(run, trunk_revert.REPOSITORY) == 0
+    assert run.mutations == ["PR_node_3385"]
+    out = capsys.readouterr().out
+    assert "undetermined" in out
+    assert "PR #3385" in out
+    assert "3386" not in out
+    assert "PR #3200" not in out
 
 
 def test_streak_lookup_failure_disarms_nothing_and_fails(capsys: pytest.CaptureFixture[str]) -> None:
