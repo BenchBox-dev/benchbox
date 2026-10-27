@@ -169,6 +169,7 @@ def _base_plan(policy: Policy, repo: str, pr: int | None, run_id: str) -> dict[s
         "max_attempts": policy.max_attempts,
         "pool_blocked_until": {},
         "manual": False,
+        "omp_sha256": policy.omp_sha256.get(omp_pin.current_platform(), ""),
         "created_at": _now().isoformat(),
     }
 
@@ -189,6 +190,8 @@ def _finish_plan(out_dir: Path, plan: dict[str, Any]) -> int:
     return 0
 
 
+OMP_INSTALLED = "installed"
+OMP_INSTALL_FAILED = "failed"
 DISPUTE_MARKER = "Dispute:"
 
 
@@ -977,6 +980,20 @@ def command_finalize(args: argparse.Namespace) -> int:
         final = report.fixed(retry.PENDING, "fork: owner review")
     elif plan["decision"] == HOLD:
         final = report.fixed(retry.PENDING, plan["decision_reason"])
+    elif plan["decision"] == REVIEW and getattr(args, "omp_install", OMP_INSTALLED) == OMP_INSTALL_FAILED:
+        previous = retry.State.from_json(plan["previous_state"]) if plan.get("previous_state") else None
+        final = report.omp_install_failed()
+        state = retry.next_state(
+            previous=previous,
+            pr=plan["pr"],
+            head_sha=plan["head_sha"],
+            outcome=final.state,
+            manual=bool(plan["manual"]),
+            now=now,
+            pool_blocked_until=_carried_blocks(previous, plan["head_sha"], now, False),
+            pending_cause=final.pending_cause,
+        )
+        _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     elif plan["decision"] in (CARRY, REFUSED):
         previous = retry.State.from_json(plan["previous_state"]) if plan.get("previous_state") else None
         final = report.carried(plan) if plan["decision"] == CARRY else report.refused(plan)
@@ -1597,6 +1614,7 @@ def _parser() -> argparse.ArgumentParser:
     finalize.add_argument("--out-dir", required=True)
     finalize.add_argument("--classification")
     finalize.add_argument("--workspace")
+    finalize.add_argument("--omp-install", choices=(OMP_INSTALLED, OMP_INSTALL_FAILED), default=OMP_INSTALLED)
     finalize.set_defaults(handler=command_finalize)
     guard = commands.add_parser("guard")
     guard.add_argument("--plan", required=True)

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from . import absence, credentials, dedup, protocol, selection
-from .retry import ALL_ABSENT, FAILURE, INTEGRITY, MARKER_LIMIT, OVERSIZE, PENDING, SUCCESS, UNREPORTED
+from .retry import ALL_ABSENT, FAILURE, INTEGRITY, MARKER_LIMIT, OMP_INSTALL, OVERSIZE, PENDING, SUCCESS, UNREPORTED
 from .selection import Attempt, Step
 from .verdict import (
     MAX_DETAIL,
@@ -498,6 +498,10 @@ def refused(plan: Mapping[str, Any]) -> Final:
 
 def fixed(state: str, description: str) -> Final:
     return Final(state, _clip(description), "", None, None)
+
+
+def omp_install_failed() -> Final:
+    return Final(PENDING, "the pinned omp build could not be installed; no reviewer ran", "", None, None, OMP_INSTALL)
 
 
 def status_payload(plan: Mapping[str, Any], final: Final, target_url: str) -> dict[str, Any]:

@@ -732,7 +732,18 @@ to GitHub.
   then checks the binary reports the pinned version. The CI `Install omp` step,
   `scripts/cloud_gateway.sh` and the local review all use it, and the reviewer
   runs the installed binary by its path (`ORACLE_OMP_BINARY`), never the `omp` on
-  `PATH`. A platform with no pin refuses, naming the platform. Like the policy,
+  `PATH`. A platform with no pin refuses, naming the platform. Build keys must be
+  platform names (`[a-z0-9]+-[a-z0-9_]+`); any other key is rejected, because the
+  key becomes a cache path segment. The plan records the pinned SHA-256 for the
+  running platform, and the runner re-hashes the binary named by
+  `ORACLE_OMP_BINARY` against it before every attempt: a swapped or modified
+  binary, or a plan with no hash, is an error absence and the reviewer never
+  starts. The `Install omp` step is not `continue-on-error`. When the install or
+  the version check fails, the step reports `state=failed`, the attempt loop does
+  not run, and `finalize --omp-install failed` posts a `pending` status reading
+  "the pinned omp build could not be installed; no reviewer ran" with the
+  `omp-install` pending cause. The sweep never re-dispatches that state; a
+  manual `/oracle-review` retries it within the usual backoff and budget. Like the policy,
   the pin is read from `origin/develop`, not from the branch or working tree. The
   build host publishes no checksum file, so each SHA-256 was computed from a TLS
   download of the published artifact, the method that established the original

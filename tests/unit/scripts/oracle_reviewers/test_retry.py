@@ -8,6 +8,7 @@ from _project.scripts.oracle_reviewers.policy import Policy
 from _project.scripts.oracle_reviewers.retry import (
     ALL_ABSENT,
     INTEGRITY,
+    OMP_INSTALL,
     UNREPORTED,
     State,
     decide_rerun,
@@ -287,3 +288,12 @@ def test_a_legacy_pool_block_loads_with_an_unknown_provider() -> None:
     block = State.from_json(data).pool_blocked_until["claude"]
     assert block == PoolBlock(until, "", NOW)
     assert effective_until("claude", block) == NOW + QUOTA_BACKOFF
+
+
+def test_a_failed_install_is_not_re_dispatched_by_the_sweep_but_a_manual_rerun_may_retry_it(policy: Policy) -> None:
+    previous = _state("pending", cause=OMP_INSTALL)
+    assert not due_for_retry(previous, HEAD, NOW, policy.retry)
+    assert not _decide(policy, previous, manual=False).allowed
+    assert _decide(policy, previous, manual=True).allowed
+    spent = _state("pending", cause=OMP_INSTALL, age=timedelta(minutes=5))
+    assert not _decide(policy, spent, manual=True).allowed

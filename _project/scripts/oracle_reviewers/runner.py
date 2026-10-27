@@ -153,7 +153,7 @@ def review(
     if not prompt:
         return ReviewOutcome(None, absence.Absence(absence.INVALID, "the brief is empty or truncated"), "")
     try:
-        omp_pin.required_binary()
+        omp_pin.verified_binary(str(plan.get("omp_sha256") or ""))
     except omp_pin.PinError as exc:
         return ReviewOutcome(None, absence.Absence(absence.ERROR, str(exc)), "")
     scratch.mkdir(parents=True, exist_ok=True)
