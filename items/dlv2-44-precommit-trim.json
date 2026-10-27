@@ -1,11 +1,12 @@
 {
   "acceptance": [
-    "pre-commit run --all-files passes",
-    "Every removed hook is classified pure-process in the ledger; every kept hook listed with its property",
-    "Scripts only used by removed hooks are deleted or listed for dlv2-81"
+    "Every current hook has a recorded disposition (keep/remove) including windows-antipatterns, audit-raw, untracked-handoffs and the comment-policy hook",
+    "timing-policy-fast-lane, pr-preflight, uat-loc-table, agent-instructions-check and duplicate-code-warn are removed unless a property-ledger row requires them; scripts used elsewhere are not deleted",
+    "The Explorer-token hook is already absent and its lint is retired (owner decision 2026-10-27)",
+    "Verified for default, pre-push and commit-msg stages, not only --all-files"
   ],
-  "context": "agy A12 (blind-spot-validate and agent-write-preflight dispositions).\n\n2026-10-09 tracker review: Fixed the hook ids against .pre-commit-config.yaml on origin/develop: the pre-push hook is `pr-preflight` (not pr-preflight-fast-tests), and `timing-policy-fast-lane` now runs fast_lane_ceiling_check.py. Added `comment-policy` (scripts/run_comment_policy.py --staged) to the keep list. Removed the need dlv2-43-makefile-agent-instructions-lockstep because that item is merged into dlv2-42 and the hook trim does not depend on it, so this item is ready once dlv2-16 is done. When removing a hook, check that the script it calls is not still used elsewhere before deleting it (acceptance 3).",
-  "description": ".pre-commit-config.yaml: remove timing-policy-fast-lane (pre-push; it now runs _project/scripts/fast_lane_ceiling_check.py --strict), pr-preflight (pre-push; runs make pr-preflight), uat-loc-table, agent-instructions-check, duplicate-code-warn (manual). Keep comment-policy, timing-policy-check (wall-clock policy only, after dlv2-16), blind-spot-validate, agent-write-preflight, agent-git-identity, agent-attribution-trailers (commit-msg), corpus-inventory, uv-lock-revision-guard, explorer-tokens, ruff, codespell, pre-commit-hooks hygiene, markdownlint.",
+  "context": "2026-10-27: all five listed hooks are still configured; explorer-tokens is absent; three hooks added since the item was written have no disposition.",
+  "description": "AUDIT 2026-10-27 (owner-adjudicated, advisor-reviewed): the acceptance and context sections supersede this description wherever they differ. Historical text below is kept for reference.\n\n.pre-commit-config.yaml: remove timing-policy-fast-lane (pre-push; it now runs _project/scripts/fast_lane_ceiling_check.py --strict), pr-preflight (pre-push; runs make pr-preflight), uat-loc-table, agent-instructions-check, duplicate-code-warn (manual). Keep comment-policy, timing-policy-check (wall-clock policy only, after dlv2-16), blind-spot-validate, agent-write-preflight, agent-git-identity, agent-attribution-trailers (commit-msg), corpus-inventory, uv-lock-revision-guard, explorer-tokens, ruff, codespell, pre-commit-hooks hygiene, markdownlint.",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:ea32adff11bd0f17607daca2",
@@ -22,6 +23,14 @@
       "op": "update",
       "op_id": "c9f401dfc85d4997b93627fdd0247874",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T23:29:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "89ce0cc81b844fe6bb3655bbbb981b72",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
 }
