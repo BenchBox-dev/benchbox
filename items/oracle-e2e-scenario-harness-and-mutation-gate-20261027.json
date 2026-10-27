@@ -8,7 +8,7 @@
     "A search of the harness and tests finds no OMP invocation outside the fake executable and no model-provider network call; Jev calls appear only in Jev-feature tests.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
-  "context": "2026-10-27: mutation PR #3600 opened (f973fa897). Owner decision: mutation testing is manual only; bar >=90% control modules, >=80% digest/verdict/evidence/render/report; triage in progress on that branch. Harness PR opening from cd85df598.\n\n2026-10-27 OWNER DECISION: no real OMP quota in tests; only Jev usage acceptable; capture real outputs and use them for the harnesses.\n\n2026-10-27: owner instruction, critical.",
+  "context": "2026-10-27 late: develop broke three times from stale-base merges (#3572+#3594 fixed by #3605; #3572+#3601 fixed by #3610; Linux reaping exposed by #3594 fixed by #3612). Process now: one PR at a time, rebased when develop touched its files, Linux container evidence, trunk run green before the next. Follow-ups in flight: network/process-state test guard (test/unit-network-guard), Loop subprocess isolation (fix/oracle-loop-subprocess-isolation).\n\n2026-10-27: mutation PR #3600 opened (f973fa897). Owner decision: mutation testing is manual only; bar >=90% control modules, >=80% digest/verdict/evidence/render/report; triage in progress on that branch. Harness PR opening from cd85df598.\n\n2026-10-27 OWNER DECISION: no real OMP quota in tests; only Jev usage acceptable; capture real outputs and use them for the harnesses.\n\n2026-10-27: owner instruction, critical.",
   "deferrals": [
     {
       "created_at": "2026-10-27T19:07:59Z",
@@ -81,6 +81,14 @@
       "client": "omp-coding-agent",
       "op": "defer",
       "op_id": "0e0bd4cc601d4e419bb4fc0a7a90f9b3",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T22:08:15Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c7f34aa23f2d48c69d6a8dcbee9b7d2e",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
