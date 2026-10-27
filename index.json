@@ -16113,6 +16113,13 @@
       "status": "done",
       "title": "Codex reviewers cannot run read commands in CI: the read-only sandbox fails to start bubblewrap"
     },
+    "oracle-concedes-skeleton-boolean-20261027": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Show concedes as a boolean slot in the oracle reply skeleton so follow-up reviews are not rejected as invalid"
+    },
     "oracle-coverage-gate-large-prs-20261017": {
       "claim": null,
       "needs": [],
