@@ -24539,10 +24539,15 @@
       "title": "Reduce first-import cost of the zip-loaded SQLGlot runtime"
     },
     "sqlglot-bundled-runtime-advisory-visibility": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-28T15:31:59Z",
+        "generation": "abef545e9c9540a28d6ced66f5b57ea0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Make security advisories visible for the bundled SQLGlot runtime"
     },
     "sqlglot-bundled-runtime-windows-verification": {
