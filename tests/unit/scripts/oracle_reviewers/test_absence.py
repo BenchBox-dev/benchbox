@@ -226,16 +226,18 @@ def test_four_hundred_one_inside_a_longer_number_is_not_auth() -> None:
     assert _classify("omp", 1, stderr="processed 14015 files then crashed").kind == absence.ERROR
 
 
-def _terminal(error: str, status: int | None = None, text: str = "") -> str:
+def _terminal(error: str, status: int | None = None, text: str = "", provider: str | None = None) -> str:
     message: dict = {"role": "assistant", "content": [{"type": "text", "text": text}], "stopReason": "error"}
     message["errorMessage"] = error
     if status is not None:
         message["errorStatus"] = status
+    if provider is not None:
+        message["provider"] = provider
     return json.dumps({"type": "message_end", "message": message}) + "\n"
 
 
 def test_json_terminal_quota_event_is_quota_with_reset() -> None:
-    stdout = _terminal("rate_limit_error: 429 Too Many Requests. Resets in 2h.")
+    stdout = _terminal("rate_limit_error: 429 Too Many Requests. Resets in 2h.", 429)
     result = _classify("omp", 1, stdout=stdout)
     assert result.kind == absence.QUOTA
     assert result.reset_at == NOW + timedelta(hours=2)
@@ -258,3 +260,50 @@ def test_an_earlier_error_message_does_not_classify_a_later_failure() -> None:
 
 def test_json_terminal_429_status_is_quota_even_when_the_message_has_no_known_phrase() -> None:
     assert _classify("omp", 1, stdout=_terminal("Too many requests, slow down", 429)).kind == absence.QUOTA
+
+
+def test_a_message_naming_429_under_another_status_is_not_quota() -> None:
+    stdout = _terminal("429 Too Many Requests: rate_limit_error, bad request", 400)
+    assert _classify("omp", 1, stdout=stdout).kind == absence.ERROR
+
+
+def test_a_message_naming_401_under_another_status_is_not_auth() -> None:
+    assert _classify("omp", 1, stdout=_terminal("401 Unauthorized invalid_grant", 500)).kind == absence.ERROR
+
+
+def test_a_terminal_event_without_a_status_is_not_classified_by_its_message() -> None:
+    assert _classify("omp", 1, stdout=_terminal("rate_limit_error: 429 Too Many Requests")).kind == absence.ERROR
+
+
+def test_the_status_decides_between_quota_and_auth() -> None:
+    assert _classify("omp", 1, stdout=_terminal("401 Unauthorized", 429)).kind == absence.QUOTA
+    assert _classify("omp", 1, stdout=_terminal("rate_limit_error", 401)).kind == absence.AUTH
+
+
+def test_a_quota_absence_carries_the_provider_that_returned_it() -> None:
+    stdout = _terminal("Cloud Code Assist API error (429): {", 429, provider="google-antigravity")
+    result = _classify("omp", 1, stdout=stdout)
+    assert result.kind == absence.QUOTA
+    assert result.provider == "google-antigravity"
+    assert result.detail == "429 Cloud Code Assist API error (429): {"
+
+
+def test_the_reset_comes_from_the_terminal_error_message_not_from_stderr() -> None:
+    stdout = _terminal("Usage limit reached. Resets in 2h.", 429, provider="anthropic")
+    result = _classify("omp", 1, stdout=stdout, stderr="Resets in 9h")
+    assert result.reset_at == NOW + timedelta(hours=2)
+    unrelated = _classify("omp", 1, stdout=_terminal("usage limit", 429, provider="anthropic"), stderr="Resets in 9h")
+    assert unrelated.kind == absence.QUOTA
+    assert unrelated.reset_at is None
+
+
+def test_a_stderr_quota_has_no_provider() -> None:
+    result = _classify("omp", 1, stderr="rate_limit_error: slow down")
+    assert result.kind == absence.QUOTA
+    assert result.provider == ""
+
+
+def test_a_malformed_provider_is_dropped() -> None:
+    result = _classify("omp", 1, stdout=_terminal("usage limit", 429, provider="a b\nc"))
+    assert result.kind == absence.QUOTA
+    assert result.provider == ""

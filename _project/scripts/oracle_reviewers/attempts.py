@@ -59,6 +59,7 @@ def build_artifact(
             "kind": missing.kind,
             "detail": missing.detail,
             "reset_at": missing.reset_at.isoformat() if missing.reset_at else None,
+            "provider": missing.provider,
         },
         "verdict": dict(verdict) if missing is None and verdict is not None else None,
         "diagnostic": diagnostic,
@@ -106,6 +107,7 @@ def _attempt(data: Mapping[str, Any], plan: Mapping[str, Any], loaded: LoadedAtt
         kind,
         str(missing.get("detail") or ""),
         datetime.fromisoformat(reset_at) if reset_at else None,
+        str(missing.get("provider") or ""),
     )
 
 

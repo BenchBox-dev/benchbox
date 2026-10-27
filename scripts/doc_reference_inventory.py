@@ -49,7 +49,6 @@ def tracked_files() -> list[str]:
         capture_output=True,
         text=True,
         encoding="utf-8",
-        errors="replace",
         check=True,
     )
     return sorted(path for path in result.stdout.split("\0") if path)
