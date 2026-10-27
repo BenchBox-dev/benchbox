@@ -4,7 +4,7 @@
     "Make a retry path that actually reruns the reviewer on the same head (or document the exact trigger).",
     "Report which reviewers are required and alert when quota or availability leaves none."
   ],
-  "context": "2026-10-27: Merge freeze (owner 2026-10-27, scope: oracle-code PRs): no PR that changes oracle reviewer or gate code merges, and no make pr-arm runs on one, until oracle-history-edited-review-fail-closed-20261027 is merged. In scope: #3565, #3572, #3573, #3574, #3576, the unopened scope-path, evidence-exempt and redaction branches, and any other PR touching _project/scripts/oracle_reviewers/, _project/scripts/oracle_review_check.py, _project/scripts/soundness_merge_digest.py, scripts/pr_arm.py or .github/workflows/oracle-*.yml. Excepted: the edited-review fix's own PR and #3585 (owner exemption 2026-10-27). PRs may be opened and reviewed meanwhile. Never edit, delete, dismiss or minimise an oracle review, review comment or commit status, including on test PRs; edit-detection proofs use unit fixtures and read-only GraphQL reads of existing reviews.\n\n\n\noracle-response-evidence-secrets-20261021 disables read summarization and preserves bounded useful read traces without reducing required-file evidence. Broad large-diff coverage/capacity acceptance remains here. No closure implied.",
+  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n\n\noracle-response-evidence-secrets-20261021 disables read summarization and preserves bounded useful read traces without reducing required-file evidence. Broad large-diff coverage/capacity acceptance remains here. No closure implied.",
   "description": "On PR #3139 the muse reviewer finished 'incomplete' because it did not examine eight workflow files, and the other reviewers were unavailable (OpenAI quota exhausted, same-family skip, diff over the agy brief cap). The verdict stayed pending and the PR could only merge through a stand-in. A /oracle-review comment started no new run. Large soundness-path diffs will hit this again.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3139",
@@ -42,6 +42,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "1dc1a90a426d4af1b673e6071076cf6b",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T15:11:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6a3068976f3c43b68611872fb22f72cf",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]

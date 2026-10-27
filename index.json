@@ -17017,9 +17017,7 @@
     },
     "oracle-reviewer-coverage-incomplete-on-large-diffs": {
       "claim": null,
-      "needs": [
-        "oracle-history-edited-review-fail-closed-20261027"
-      ],
+      "needs": [],
       "priority": "medium",
       "status": "open",
       "title": "Oracle verdict stays pending when its only available reviewer cannot read every changed file"
