@@ -16941,7 +16941,9 @@
     },
     "oracle-review-waiting-signal": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Distinguish oracle-review waiting state from verdict failure"
