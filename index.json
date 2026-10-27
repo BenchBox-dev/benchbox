@@ -16849,9 +16849,7 @@
     },
     "oracle-review-body-length-cap-20261022": {
       "claim": null,
-      "needs": [
-        "oracle-history-edited-review-fail-closed-20261027"
-      ],
+      "needs": [],
       "priority": "medium",
       "status": "open",
       "title": "Cap the oracle review body so an oversized result cannot lose the review"
