@@ -3027,3 +3027,22 @@ def test_bundle_environment_execution_class_is_validated(environment, ok):
     vr = ValidationResult("test")
     bundle_module._validate_environment_execution_class(data, vr)
     assert vr.ok is ok
+
+
+@pytest.mark.parametrize(
+    ("environment", "ok"),
+    [
+        ({"os": "Linux"}, True),
+        ({"execution_class": "container"}, True),
+        ({"execution_class": "native", "execution_class_source": "inferred"}, True),
+        ({"execution_class": "native", "execution_class_source": "observed"}, False),
+        ({"client_host": {"execution_class": "native"}}, False),
+    ],
+)
+def test_manifest_class_attestation_must_match_the_recorded_bundle(tmp_path, environment, ok):
+    bundle = tmp_path / "run.json"
+    bundle.write_text(json.dumps({"environment": environment}), encoding="utf-8")
+    vr = ValidationResult("test")
+    manifest = {"execution_class": "container", "execution_class_evidence": "owner attestation"}
+    _validate_manifest_provenance(manifest, bundle, vr)
+    assert vr.ok is ok

@@ -2576,6 +2576,23 @@ def export_anonymized_errors(payload: Any) -> list[str]:
     return findings
 
 
+def _validate_manifest_class_matches_bundle(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
+    attested = manifest.get("execution_class")
+    if attested is None or not primary_path.is_file():
+        return
+    try:
+        environment = json.loads(primary_path.read_text(encoding="utf-8")).get("environment")
+    except (OSError, ValueError, AttributeError):
+        return
+    if not isinstance(environment, dict):
+        return
+    host = environment.get("client_host") if isinstance(environment.get("client_host"), dict) else {}
+    recorded = host.get("execution_class") or environment.get("execution_class")
+    source = host.get("execution_class_source") or environment.get("execution_class_source")
+    if recorded is not None and recorded != attested and source != "inferred":
+        vr.error(f"Manifest execution_class {attested!r} conflicts with the bundle's recorded {recorded!r}")
+
+
 def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, vr: ValidationResult) -> None:
     funding = manifest.get("funding")
     if funding is not None and funding not in FUNDING_SOURCES:
@@ -2604,6 +2621,8 @@ def _validate_manifest_provenance(manifest: dict[str, Any], primary_path: Path, 
         evidence = manifest.get("execution_class_evidence")
         if not isinstance(evidence, str) or not evidence.strip():
             vr.error("Manifest execution_class requires a non-empty execution_class_evidence string")
+
+    _validate_manifest_class_matches_bundle(manifest, primary_path, vr)
 
     known_defects = manifest.get("known_defects")
     if known_defects is not None:

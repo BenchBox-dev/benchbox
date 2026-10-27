@@ -115,6 +115,18 @@ def test_recorded_class_conflicting_with_the_sidecar_is_refused(tmp_path: Path) 
         validator.cohort_platforms([path])
 
 
+def test_a_conflicting_sidecar_fails_the_corpus_gate_even_for_an_unranked_bundle(tmp_path: Path) -> None:
+    payload = _bundle(NATIVE_ENVIRONMENT, execution_class="native")
+    payload["environment"]["execution_class_source"] = "observed"
+    payload["summary"]["validation"] = "failed"
+    path = _write(tmp_path, "unranked.json", payload, SIDECAR)
+    validator = _load_validator()
+
+    assert validator.exclusion_reason(payload, path) is not None
+    with pytest.raises(validator.CorpusReadError, match="attests"):
+        validator.cohort_platforms([path])
+
+
 def test_container_identity_composes_with_engine_and_gateway_suffixes(tmp_path: Path) -> None:
     payload = _bundle(CONTAINER_ENVIRONMENT, execution_class="container")
     payload["platform"] = {"name": "Polars", "execution_engine": {"requested": "streaming"}}
