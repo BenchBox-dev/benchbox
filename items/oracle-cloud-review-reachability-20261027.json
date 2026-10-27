@@ -4,6 +4,7 @@
     "Loopback smoke: a throwaway local HTTP proxy in front of the local gateway, a fake status file and the cloud client selection make make pr-open's review step reach the gateway (record output).",
     "Live cloud smoke in a Claude cloud session: make pr-open completes a local review (or the item is blocked per gate 1).",
     "docs/agent/cloud-builder.md updated (proxy, cached omp path, no 'do without reviews').",
+    "Adds or updates the matching scenario in the oracle end-to-end harness (oracle-e2e-scenario-harness-and-mutation-gate-20261027) once that harness exists, proven to fail with this item's defect reintroduced.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "2026-10-27: before marking this item blocked under gate 1, ask the owner via the choice dialog to launch a Claude cloud session for the live smoke.\n\nOWNER DECISIONS 2026-10-27 (choice dialog, joeharris76): freeze all oracle-gated merges until oracle-history-edited-review-fail-closed-20261027 merges; Critical fix = GraphQL edit-state check now, HMAC marker later; pr-arm proceeds on fast-duration pass or neutral only. ",
@@ -39,6 +40,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "71de007bdf1b4e3fa9483cd0f38ae9ad",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T14:09:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4a3272ce080d499398c6bce4c1f03c0c",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
