@@ -192,6 +192,20 @@ Existing registrations created by the retired workflow are not automatically
 reset or removed by this workflow. Review and remove them separately,
 preserving dirty, locked, divergent, or ambiguous worktrees.
 
+## Markdown anchor checks
+
+`make docs-validate` checks inline fragment links between tracked Markdown
+files, including same-file links. Run `uv run -- python scripts/check_doc_anchors.py`
+to check anchors without running the other documentation checks.
+
+The check recognizes heading slugs and explicit anchors. It skips external
+URLs, server-absolute paths, code, and targets outside tracked Markdown.
+Existing broken links in frozen site-owned sources are recorded in
+`quality/doc-anchor-baseline.json`; they must be fixed in the site repository,
+not by changing frozen core copies. New failures, extra occurrences, and stale
+baseline entries fail CI. Once a recorded failure disappears, run the checker
+with `--write-baseline` to remove it. This option refuses to add failures.
+
 ## Test lock
 
 Parallel pytest runs serialize on the shared flock in `tests/conftest.py`.

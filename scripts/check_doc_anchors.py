@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import os
 import re
 import subprocess
 import sys
-import time
+from collections import Counter
 from pathlib import Path
+
+from benchbox.utils.clock import elapsed_seconds, mono_time
 
 CLI_DESCRIPTION = (
     "Fail when a tracked Markdown file links to a missing heading anchor.\n"
@@ -24,6 +27,11 @@ CLI_DESCRIPTION = (
     "code spans, fenced code blocks, and targets that are not tracked Markdown\n"
     "files are left to other checks and site routing and are not inspected here.\n"
     "\n"
+    "Existing broken links in frozen site-owned documents are recorded exactly in\n"
+    "quality/doc-anchor-baseline.json. New failures and stale baseline entries\n"
+    "fail this check. After fixing links in their owning repository, use\n"
+    "--write-baseline to shrink the baseline; it refuses to add failures.\n"
+    "\n"
     "Usage:\n"
     "    python scripts/check_doc_anchors.py\n"
     "\n"
@@ -33,6 +41,7 @@ CLI_DESCRIPTION = (
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+BASELINE_PATH = "quality/doc-anchor-baseline.json"
 
 _LINK_RE = re.compile(r"(?<!!)\[(?:[^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 _INLINE_CODE_RE = re.compile(r"`[^`]*`")
@@ -157,13 +166,23 @@ def collect_broken(sources: list[str], contents: dict[str, str]) -> tuple[list[t
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=CLI_DESCRIPTION)
-    parser.parse_args()
+    parser.add_argument("--write-baseline", action="store_true", help="Remove resolved entries; never add failures")
+    args = parser.parse_args()
 
-    started = time.perf_counter()
+    started = mono_time()
     sources = tracked_markdown_files()
     contents = {source: (REPO_ROOT / source).read_text(encoding="utf-8") for source in sources}
     broken, checked = collect_broken(sources, contents)
-    elapsed = time.perf_counter() - started
+    elapsed = elapsed_seconds(started)
+    baseline_path = REPO_ROOT / BASELINE_PATH
+    baseline = (
+        Counter(tuple(entry) for entry in json.loads(baseline_path.read_text(encoding="utf-8")))
+        if baseline_path.exists()
+        else Counter()
+    )
+    current = Counter((source, target, resolved) for source, _, target, resolved in broken)
+    regressions = current - baseline
+    stale = baseline - current
 
     print("Checking Markdown heading anchors ...")
     print(f"  scanned files : {len(sources)}")
@@ -171,14 +190,29 @@ def main() -> int:
     print(f"  broken total  : {len(broken)}")
     print(f"  elapsed       : {elapsed:.1f}s (local only, no network access)")
 
-    if broken:
+    if regressions:
         print("\n❌ Dead Markdown anchors:")
         for source, line_num, target, resolved in broken:
+            if (source, target, resolved) not in regressions:
+                continue
             print(f"   {source}:{line_num} -> {target} (missing in {resolved})")
         print("\n❌ DOC ANCHOR CHECK FAILED")
         return 1
 
-    print("\n✅ Every Markdown anchor resolves.")
+    if args.write_baseline:
+        baseline_path.write_text(
+            json.dumps(sorted(current.elements()), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        print(f"Baseline shrunk to {sum(current.values())} existing broken links.")
+        return 0
+
+    if stale:
+        print("\nStale anchor baseline entries; run --write-baseline after fixing links:")
+        for (source, target, resolved), count in sorted(stale.items()):
+            print(f"   {source} -> {target} (target {resolved}, stale occurrences {count})")
+        return 1
+
+    print(f"\nEvery Markdown anchor resolves or matches the exact baseline ({sum(baseline.values())} existing links).")
     return 0
 
 

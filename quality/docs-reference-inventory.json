@@ -2770,6 +2770,74 @@
    ]
   },
   {
+   "disposition": "site-pipeline-cutover",
+   "kinds": {
+    "file": 14
+   },
+   "occurrences": 42,
+   "path": "quality/doc-anchor-baseline.json",
+   "rule": "doc-link-and-example-checkers",
+   "target_count": 14,
+   "targets": [
+    {
+     "kind": "file",
+     "target": "docs/CLI_REFERENCE.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/concepts/glossary.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/guides/dataframe-migration.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/guides/tpc/tpc-ds-official-guide.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/guides/tpc/tpc-h-official-guide.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/platforms/dataframe.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/cli/auth.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/cli/index.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/cli/results.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/cli/submit.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/cli/tuning.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/reference/cli/utilities.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/tutorials/dataframe-quickstart.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/usage/troubleshooting.md"
+    }
+   ]
+  },
+  {
    "disposition": "wiring-updated",
    "kinds": {
     "root": 1
@@ -5877,21 +5945,21 @@
    "lock-test": 26,
    "prose-link-pinned": 19,
    "runtime-link-updated": 7,
-   "site-pipeline-cutover": 12,
+   "site-pipeline-cutover": 13,
    "wiring-updated": 35
   },
-  "files": 277,
+  "files": 278,
   "kinds": {
    "built-url": 29043,
    "dir": 173,
    "extra": 78,
-   "file": 1581,
+   "file": 1623,
    "generated": 22,
    "pattern": 320,
    "root": 219,
    "unresolved": 2086
   },
-  "references": 33522,
+  "references": 33564,
   "unclassified": 0
  }
 }

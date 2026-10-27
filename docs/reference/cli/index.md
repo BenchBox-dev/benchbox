@@ -22,17 +22,17 @@ BenchBox provides the following commands:
 | `convert`              | Convert data to Parquet, Vortex, Delta Lake, or Iceberg | [convert](convert.md)                     |
 | `shell`                | Launch interactive SQL shell for database          | [shell](shell.md)                         |
 | `platforms`            | Manage database platform adapters                  | [platforms](platforms.md)                 |
-| `check-deps`           | Check dependency status and installation guidance  | [utilities](utilities.md#cli-check-deps)  |
-| `profile`              | Profile system resources                           | [utilities](utilities.md#cli-profile)     |
-| `benchmarks`           | Manage benchmark suites                            | [utilities](utilities.md#cli-benchmarks)  |
-| `validate`             | Validate configuration files                       | [utilities](utilities.md#cli-validate)    |
-| `tuning init`          | Generate sample tuning configurations              | [tuning](tuning.md#cli-tuning-init)       |
-| `tuning` (DataFrame)   | DataFrame tuning via unified tuning commands        | [tuning](tuning.md#cli-tuning-dataframe)  |
-| `export`               | Export benchmark results to various formats        | [results](results.md#cli-export)          |
+| `check-deps`           | Check dependency status and installation guidance  | [utilities](utilities.md#check-deps)      |
+| `profile`              | Profile system resources                           | [utilities](utilities.md#profile)         |
+| `benchmarks`           | Manage benchmark suites                            | [utilities](utilities.md#benchmarks)      |
+| `validate`             | Validate configuration files                       | [utilities](utilities.md#validate)        |
+| `tuning init`          | Generate sample tuning configurations              | [tuning](tuning.md#tuning-init)           |
+| `tuning` (DataFrame)   | DataFrame tuning via unified tuning commands        | [tuning](tuning.md#tuning-dataframe)      |
+| `export`               | Export benchmark results to various formats        | [results](results.md#export)              |
 | `submit`               | Package results for PR contribution or hosted API upload | [submit](submit.md)                   |
 | `auth`                 | Manage hosted submission credentials               | [auth](auth.md)                           |
-| `results`              | Display exported benchmark results                 | [results](results.md#cli-results)         |
-| `compare`              | Compare benchmark results for regression detection | [results](results.md#cli-compare)         |
+| `results`              | Display exported benchmark results                 | [results](results.md#results)             |
+| `compare`              | Compare benchmark results for regression detection | [results](results.md#compare)             |
 | `visualize`            | Generate ASCII charts from benchmark results       | [visualize](visualize.md)                 |
 | `report`               | Historical analysis, rankings, and regressions     | [report](report.md)                       |
 | `metrics`              | Calculate TPC Power@Size and Throughput@Size      | [metrics](metrics.md)                     |
