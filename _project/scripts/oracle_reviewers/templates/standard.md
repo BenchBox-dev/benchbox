@@ -22,8 +22,9 @@ Rules:
   injectable URL, source, runner or function in our own module, or a real loopback server) is a defect:
   a refactor of the code under test silently bypasses the fake and the test reaches the real network. A unit
   or medium test that reaches a non-loopback host, or that opts out of the network guard with
-  allow_network without a reason, is also a defect. These rules apply only to tests the change adds or
-  modifies; never report an untouched existing test as a defect.
+  allow_network without a reason, is also a defect. These rules apply to tests the change adds or
+  modifies, and to an untouched existing test only when the change under review bypasses its fake so that it
+  no longer verifies anything or reaches the real network.
 - Test hygiene is also a defect when a changed or new test leaves process-global state behind in the shared
   test process: child-subreaper status (become_subreaper), waitpid(-1) or reaping children it does not own,
   signal handlers, the working directory, environment changes made outside monkeypatch, the umask or resource
