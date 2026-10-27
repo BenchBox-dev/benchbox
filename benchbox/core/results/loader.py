@@ -484,6 +484,10 @@ def _extract_system_profile(environment_section: dict[str, Any]) -> dict[str, An
         if source.get(env_key):
             profile[profile_key] = source[env_key]
 
+    for key in ("execution_class", "container_runtime", "container_host_os", "execution_class_source"):
+        if source.get(key):
+            profile[key] = source[key]
+
     return profile
 
 

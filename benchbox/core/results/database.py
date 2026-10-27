@@ -159,6 +159,7 @@ def _result_variant(result: BenchmarkResults) -> ExecutionVariant:
         result.platform_info,
         deployment=result.platform_deployment,
         execution_engine=result.execution_engine,
+        execution_environment=getattr(result, "execution_environment", None),
     )
     if isinstance(run_config, Mapping):
         bundle["config"] = dict(run_config)
@@ -794,7 +795,7 @@ class ResultDatabase:
             ]
 
     def _distinct_variants(self, platform: str, benchmark: str, scale_factor: float) -> list[ExecutionVariant]:
-        variants: dict[tuple[str | None, str, str], ExecutionVariant] = {}
+        variants: dict[tuple[str | None, str, str, str], ExecutionVariant] = {}
         for _, _, variant in self._variant_rows(platform, benchmark, scale_factor):
             variants.setdefault(variant.comparison_key(), variant)
         return list(variants.values())

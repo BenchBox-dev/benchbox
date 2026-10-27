@@ -363,6 +363,10 @@ class SystemProfile(BaseModel):
     disk_space_gb: float
     timestamp: datetime
     hostname: Optional[str] = None
+    execution_class: Optional[Literal["native", "container"]] = None
+    container_runtime: Optional[str] = None
+    container_host_os: Optional[str] = None
+    execution_class_source: Optional[str] = None
 
     @field_validator("cpu_cores_physical", "cpu_cores_logical")
     @classmethod

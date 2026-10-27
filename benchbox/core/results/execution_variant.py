@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, fields, is_dataclass
+from pathlib import Path
 from typing import Any
 
 from benchbox.core.execution_variant import (
+    NATIVE_EXECUTION_CLASS,
     NO_GATEWAY,
     append_variant_suffix,
     manifest_default_deployment,
     resolve_variant_platform_id,
 )
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
+from benchbox.utils.environment import EXECUTION_CLASSES
 
 UNKNOWN = "unknown"
 LEGACY_STREAMING_ENGINE = "streaming"
@@ -18,6 +22,12 @@ _POLARS_DATAFRAME_PLATFORM_ID = "polars-df"
 _TRUE_STRINGS = frozenset({"true", "1", "yes", "on"})
 _ATHENA_PLATFORM_NAME = "athena"
 _NULLABLE_RECEIPT_KEYS = frozenset({"applied", "applied_class"})
+MANIFEST_SUFFIX = ".manifest.json"
+_MANIFEST_ENVIRONMENT_KEYS = ("execution_class", "container_runtime", "container_host_os", "execution_class_evidence")
+
+
+class ExecutionClassError(ValueError):
+    pass
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -102,8 +112,75 @@ def _variant_platform_id(bundle: Mapping[str, Any]) -> str | None:
     )
 
 
-def published_variant_id(bundle: Mapping[str, Any], base: str) -> str:
-    return append_variant_suffix(base, _variant_platform_id(bundle), *read_requested_variant(bundle))
+def _declared_class(block: Mapping[str, Any], origin: str) -> str | None:
+    value = block.get("execution_class")
+    if value is None:
+        return None
+    if value not in EXECUTION_CLASSES:
+        raise ExecutionClassError(f"{origin} execution_class {value!r} must be one of {list(EXECUTION_CLASSES)}")
+    return str(value)
+
+
+def read_recorded_execution_class(bundle: Mapping[str, Any]) -> str | None:
+    environment = _mapping(bundle.get("environment"))
+    declared = {
+        value
+        for value in (
+            _declared_class(environment, "environment"),
+            _declared_class(_mapping(environment.get("client_host")), "environment.client_host"),
+        )
+        if value
+    }
+    if len(declared) > 1:
+        raise ExecutionClassError(f"environment records conflicting execution classes {sorted(declared)}")
+    return next(iter(declared), None)
+
+
+def read_manifest_execution_environment(bundle_path: Path | None) -> dict[str, str]:
+    if bundle_path is None:
+        return {}
+    try:
+        payload = json.loads(bundle_path.with_name(f"{bundle_path.stem}{MANIFEST_SUFFIX}").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(payload, Mapping):
+        return {}
+    _declared_class(payload, "manifest")
+    return {
+        key: payload[key] for key in _MANIFEST_ENVIRONMENT_KEYS if isinstance(payload.get(key), str) and payload[key]
+    }
+
+
+def read_execution_environment(bundle: Mapping[str, Any], bundle_path: Path | None = None) -> dict[str, str]:
+    environment = _mapping(bundle.get("environment"))
+    host = _mapping(environment.get("client_host"))
+    attested = read_manifest_execution_environment(bundle_path)
+    recorded = read_recorded_execution_class(bundle)
+    attested_class = attested.get("execution_class")
+    if recorded and attested_class and recorded != attested_class:
+        raise ExecutionClassError(
+            f"bundle records execution_class {recorded!r} but its manifest sidecar attests {attested_class!r}"
+        )
+    reading = {
+        key: str(value)
+        for key in ("container_runtime", "container_host_os")
+        if (value := host.get(key) or environment.get(key) or attested.get(key))
+    }
+    reading["execution_class"] = recorded or attested_class or NATIVE_EXECUTION_CLASS
+    return reading
+
+
+def read_execution_class(bundle: Mapping[str, Any], bundle_path: Path | None = None) -> str:
+    return read_execution_environment(bundle, bundle_path)["execution_class"]
+
+
+def published_variant_id(bundle: Mapping[str, Any], base: str, bundle_path: Path | None = None) -> str:
+    return append_variant_suffix(
+        base,
+        _variant_platform_id(bundle),
+        *read_requested_variant(bundle),
+        read_execution_class(bundle, bundle_path),
+    )
 
 
 @dataclass(frozen=True)
@@ -112,19 +189,23 @@ class ExecutionVariant:
     default_deployment: str | None
     execution_engine: str
     gateway: str
+    execution_class: str = NATIVE_EXECUTION_CLASS
 
     @property
     def deployment_choice(self) -> str | None:
         return None if self.deployment == self.default_deployment else self.deployment
 
-    def comparison_key(self) -> tuple[str | None, str, str]:
-        return (self.deployment_choice, self.execution_engine, self.gateway)
+    def comparison_key(self) -> tuple[str | None, str, str, str]:
+        return (self.deployment_choice, self.execution_engine, self.gateway, self.execution_class)
 
     def describe(self) -> str:
-        return (
+        description = (
             f"deployment={self.deployment or 'default'}, "
             f"execution engine={self.execution_engine}, gateway={self.gateway}"
         )
+        if self.execution_class != NATIVE_EXECUTION_CLASS:
+            description += f", execution class={self.execution_class}"
+        return description
 
 
 class IncomparableVariantsError(ValueError):
@@ -133,14 +214,20 @@ class IncomparableVariantsError(ValueError):
         super().__init__(
             "Runs use different execution variants: "
             + "; ".join(self.differences)
-            + ". Compare runs of the same deployment, execution engine and gateway."
+            + ". Compare runs of the same deployment, execution engine, gateway and execution class."
         )
 
 
 def read_execution_variant(bundle: Mapping[str, Any]) -> ExecutionVariant:
     deployment, engine, gateway = read_requested_variant(bundle)
     default = manifest_default_deployment(_variant_platform_id(bundle))
-    return ExecutionVariant(deployment or default, default, engine, gateway or NO_GATEWAY)
+    return ExecutionVariant(
+        deployment or default,
+        default,
+        engine,
+        gateway or NO_GATEWAY,
+        read_recorded_execution_class(bundle) or NATIVE_EXECUTION_CLASS,
+    )
 
 
 def platform_info_bundle(
@@ -149,16 +236,20 @@ def platform_info_bundle(
     *,
     deployment: Any = None,
     execution_engine: Any = None,
+    execution_environment: Any = None,
 ) -> dict[str, Any]:
     info = _mapping(platform_info)
+    environment = _record(execution_environment)
+    client_host = _record(environment.get("client_host"))
     return {
+        "environment": {"client_host": client_host} if client_host else {},
         "platform": {
             "name": name,
             "deployment": _record(deployment) or _record(info.get("deployment")),
             "execution_engine": _record(execution_engine) or _record(info.get("execution_engine")),
             "gateway": _record(info.get("gateway")),
             "config": dict(info),
-        }
+        },
     }
 
 
@@ -177,6 +268,12 @@ def variant_differences(baseline: ExecutionVariant, current: ExecutionVariant) -
             current.execution_engine,
         ),
         ("gateway", baseline.gateway != current.gateway, baseline.gateway, current.gateway),
+        (
+            "execution class",
+            baseline.execution_class != current.execution_class,
+            baseline.execution_class,
+            current.execution_class,
+        ),
     )
     return [f"{label} differs ({left} vs {right})" for label, differs, left, right in parts if differs]
 

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Results record whether a run executed natively or in a container, and a container run now ranks and is labelled separately from a native run of the same engine (for example `ClickHouse Local (Linux container)`); existing results and rankings are unchanged."
+    }
+  ]
+}

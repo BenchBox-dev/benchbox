@@ -648,7 +648,7 @@ def _cohort_key(payload: dict) -> CohortKey:
 _VARIANT_PLATFORM_SUFFIX_RE = re.compile(r"[-_]trust[-_](?:ci|community|local|unknown)", re.IGNORECASE)
 
 
-def _variant_aware_identity(payload: dict, platform_name: str) -> str:
+def _variant_aware_identity(payload: dict, platform_name: str, bundle: pathlib.Path | None = None) -> str:
     try:
         from benchbox.core.results.execution_variant import published_variant_id
     except ModuleNotFoundError as exc:
@@ -658,7 +658,7 @@ def _variant_aware_identity(payload: dict, platform_name: str) -> str:
         ) from exc
 
     base = _VARIANT_PLATFORM_SUFFIX_RE.sub("", platform_name).strip().lower().replace(" ", "-")
-    return published_variant_id(payload, base)
+    return published_variant_id(payload, base, bundle)
 
 
 def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
@@ -680,7 +680,7 @@ def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
                     if candidate and str(candidate) != "unknown":
                         version = candidate
                         break
-        identity = _variant_aware_identity(payload, str(platform))
+        identity = _variant_aware_identity(payload, str(platform), bundle)
     except Exception as exc:
         raise CorpusReadError(f"ERROR reading platform identity from {bundle}: {exc}") from exc
     if version and str(version) != "unknown":

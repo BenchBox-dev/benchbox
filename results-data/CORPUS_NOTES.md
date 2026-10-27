@@ -297,6 +297,48 @@ are unchanged platform names and no cohort gains or loses depth from the rename.
 Gateway-routed bundles are excluded from native ranking with
 `ranking_exclusion_reason=gateway_routed` and contribute no identity.
 
+## Execution-class identity
+
+Where a run executed changes its hardware, so a ranking identity also carries the
+execution class: `native` (a host or a cloud VM) or `container` (a Linux container,
+including one on a Mac). A `container` bundle gets a `^container` suffix after the
+engine and gateway suffixes (`clickhouse-local^container`) and its Explorer label reads
+`ClickHouse Local (Linux container)`. A `native` bundle, and every bundle that records
+no class, keeps the plain identity, so no historical identity or cohort count moves.
+
+- New runs record `execution_class` (plus `container_runtime`, `container_host_os` and
+  `execution_class_source`) in `environment` and `environment.client_host`, next to
+  `os`, `cpu_count` and `memory_gb`. Detection reads `/.dockerenv`,
+  `/run/.containerenv`, `KUBERNETES_SERVICE_HOST` and PID 1's cgroup; it cannot see a
+  host OS, so `BENCHBOX_CONTAINER_HOST_OS` supplies one when set. Cloud and other VMs
+  are not told apart from bare metal and stay `native`.
+- A bundle that predates the field can be attested in its `.manifest.json` sidecar with
+  `execution_class`, `execution_class_evidence` (required) and optionally
+  `container_runtime` and `container_host_os`. The sidecar only fills a bundle that
+  records no class; a conflicting recorded class is an error. Bundle JSON is never edited.
+- `validate_corpus.py` and the Explorer pipeline both call
+  `benchbox.core.results.execution_variant.published_variant_id` with the bundle path,
+  so they cannot disagree; `tests/unit/scripts/test_corpus_execution_class_identity.py`
+  holds that parity.
+- Local comparison (`ExecutionVariant`) treats a native run and a container run of the
+  same engine as incomparable.
+
+### Annotating Linux-guest-on-Apple-silicon bundles
+
+The ClickHouse Local reruns of 2026-10-26 record `Linux 6.18.15`, 4 CPUs, 9.8 GB and
+CPU vendor Apple, with no container marker: they ran in a Linux container on a Mac, not
+on the native macOS host. `scripts/annotate_execution_class.py` finds bundles that
+record a Linux OS on an Apple CPU vendor and no execution class and attests the class in
+their manifest sidecars only:
+
+```bash
+uv run -- python scripts/annotate_execution_class.py
+uv run -- python scripts/annotate_execution_class.py --write
+uv run -- python results-data/validate_corpus.py
+```
+
+The first command lists the sidecars it would change; the second writes them.
+
 ## Zero-query DataFrame withdrawal (2026-08-24)
 
 Sixty legacy DataFrame bundles were withdrawn because they reported
