@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from oracle_review_check import (
+    ORACLE_CONTEXT,
     ORACLE_LOGIN,
     STANDIN_ATTESTERS,
     _attested_shas,
@@ -21,6 +22,8 @@ from oracle_review_check import (
     standin_not_before,
     verdict_state,
 )
+from oracle_reviewers import edits
+from oracle_reviewers.protocol import MarkerError, decode_marker
 
 ORACLE_VERDICT_LINE = re.compile(
     r"### (?:oracle-verdict|oracle-review-shadow): (?P<state>[a-z]+) for `(?P<sha>[0-9a-f]{40})`"
@@ -99,6 +102,8 @@ class Review:
     state: str
     user_type: str = ""
     body: str = ""
+    node_id: str = ""
+    unverifiable: str = ""
 
 
 @dataclass(frozen=True)
@@ -123,6 +128,7 @@ class Thread:
     started_by: str
     first_comment_sha: str
     severity: str = ""
+    unverifiable: str = ""
 
 
 @dataclass(frozen=True)
@@ -145,6 +151,17 @@ class PullEvidence:
     threads: tuple[Thread, ...] = ()
     base_changed_at: str = ""
     armed_at: tuple[str, ...] = ()
+
+    @property
+    def unverifiable(self) -> tuple[str, ...]:
+        return tuple(
+            [
+                f"review on `{review.commit_sha[:9]}`: {review.unverifiable}"
+                for review in self.reviews
+                if review.unverifiable
+            ]
+            + [f"review thread: {thread.unverifiable}" for thread in self.threads if thread.unverifiable]
+        )
 
     @property
     def content_cutoff(self) -> str:
@@ -256,6 +273,7 @@ def _oracle_reviews(evidence: PullEvidence, shas: frozenset[str] | set[str]) -> 
         if review.login == f"{ORACLE_LOGIN}[bot]"
         and review.user_type == "Bot"
         and review.state not in ("PENDING", "DISMISSED")
+        and not review.unverifiable
         and review.commit_sha in shas
         and evidence.base_changed_at < review.submitted_at <= evidence.merged_at
     ]
@@ -597,6 +615,85 @@ def commit_subject(sha: str) -> str:
     return run(["git", "show", "-s", "--format=%s", sha]).strip()
 
 
+def _thread_unverifiable(comment: Mapping[str, Any]) -> str:
+    try:
+        edited = edits.node_edited(comment)
+    except edits.EditStateError as exc:
+        return f"an oracle finding's edit state could not be read ({exc})"
+    return "an oracle finding was edited after posting" if edited else ""
+
+
+def _graphql_review_edits(node_ids: Sequence[str]) -> dict[str, tuple[Any, bool]]:
+    states: dict[str, tuple[Any, bool]] = {}
+    for batch in edits.batches(list(dict.fromkeys(node_ids))):
+        args = ["api", "graphql", "-f", f"query={edits.REVIEW_EDITS_QUERY}"]
+        for node_id in batch:
+            args += ["-f", f"ids[]={node_id}"]
+        states.update(edits.parse_review_edits(gh_json(*args), batch))
+    return states
+
+
+def _review_decision(review: Review) -> tuple[str | None, str | None, str | None]:
+    try:
+        record = decode_marker(review.body)
+    except MarkerError:
+        record = None
+    header = _review_verdict(review)
+    if record is None:
+        return None, None, header
+    return record["decision"], record.get("run_uuid"), header
+
+
+def _status_disagreement(review: Review, statuses: Sequence[Mapping[str, Any]]) -> str:
+    decision, run_uuid, header = _review_decision(review)
+    expected = edits.expected_state(decision) if decision is not None else header
+    if expected is None or (decision is not None and header not in (None, expected)):
+        return "its decision cannot be read from the review"
+    status = edits.chosen_status(statuses, ORACLE_CONTEXT, ORACLE_LOGIN, run_uuid, decision or "")
+    if status is None:
+        return "no oracle-verdict status from the App matches the review"
+    if status.get("state") != expected:
+        return f"its decision disagrees with the App's {status.get('state')} status"
+    return ""
+
+
+def verify_oracle_reviews(repo: str, reviews: Sequence[Review]) -> tuple[Review, ...]:
+    candidates = [
+        review
+        for review in reviews
+        if review.login == f"{ORACLE_LOGIN}[bot]"
+        and review.user_type == "Bot"
+        and review.state not in ("PENDING", "DISMISSED")
+    ]
+    if not candidates:
+        return tuple(reviews)
+    reasons: dict[int, str] = {}
+    try:
+        if not all(review.node_id for review in candidates):
+            raise edits.EditStateError("an oracle review has no node id")
+        states = _graphql_review_edits([review.node_id for review in candidates])
+    except (edits.EditStateError, ReadError, ValueError, OSError) as exc:
+        return tuple(
+            replace(review, unverifiable=f"its edit state could not be read ({exc})")
+            if review in candidates
+            else review
+            for review in reviews
+        )
+    statuses: dict[str, Sequence[Mapping[str, Any]] | str] = {}
+    for review in candidates:
+        if edits.is_edited(*states[review.node_id]):
+            reasons[id(review)] = "it was edited after posting"
+            continue
+        if review.commit_sha not in statuses:
+            try:
+                statuses[review.commit_sha] = gh_pages(f"repos/{repo}/commits/{review.commit_sha}/statuses")
+            except (ReadError, ValueError, OSError) as exc:
+                statuses[review.commit_sha] = f"its head's statuses could not be read ({exc})"
+        found = statuses[review.commit_sha]
+        reasons[id(review)] = found if isinstance(found, str) else _status_disagreement(review, found)
+    return tuple(replace(review, unverifiable=reasons.get(id(review), "")) for review in reviews)
+
+
 def collect_threads(repo: str, number: int) -> tuple[Thread, ...]:
     owner, name = repo.split("/", 1)
     query = """
@@ -607,7 +704,7 @@ def collect_threads(repo: str, number: int) -> tuple[Thread, ...]:
             pageInfo { hasNextPage }
             nodes {
               isResolved
-              comments(first: 1) { nodes { author { login } originalCommit { oid } body } }
+              comments(first: 1) { nodes { author { login } originalCommit { oid } body lastEditedAt includesCreatedEdit } }
             }
           }
         }
@@ -637,12 +734,15 @@ def collect_threads(repo: str, number: int) -> tuple[Thread, ...]:
             if not node["comments"]["nodes"]:
                 continue
             first = node["comments"]["nodes"][0]
+            started_by = (first.get("author") or {}).get("login", "")
+            unverifiable = _thread_unverifiable(first) if started_by.removesuffix("[bot]") == ORACLE_LOGIN else ""
             parsed.append(
                 Thread(
                     resolved=bool(node["isResolved"]),
-                    started_by=(first.get("author") or {}).get("login", ""),
+                    started_by=started_by,
                     first_comment_sha=(first.get("originalCommit") or {}).get("oid", ""),
-                    severity=finding_severity(first.get("body") or ""),
+                    severity="" if unverifiable else finding_severity(first.get("body") or ""),
+                    unverifiable=unverifiable,
                 )
             )
     except (KeyError, IndexError, TypeError) as exc:
@@ -730,16 +830,20 @@ def collect_pull(repo: str, sha: str) -> PullEvidence | None:
         author=pull["user"]["login"],
         merged_at=pull["merged_at"],
         commits=commits,
-        reviews=tuple(
-            Review(
-                (r.get("user") or {}).get("login", ""),
-                r.get("commit_id") or "",
-                r.get("submitted_at") or "",
-                r.get("state") or "",
-                (r.get("user") or {}).get("type", ""),
-                r.get("body") or "",
-            )
-            for r in gh_pages(f"repos/{repo}/pulls/{number}/reviews")
+        reviews=verify_oracle_reviews(
+            repo,
+            tuple(
+                Review(
+                    (r.get("user") or {}).get("login", ""),
+                    r.get("commit_id") or "",
+                    r.get("submitted_at") or "",
+                    r.get("state") or "",
+                    (r.get("user") or {}).get("type", ""),
+                    r.get("body") or "",
+                    r.get("node_id") or "",
+                )
+                for r in gh_pages(f"repos/{repo}/pulls/{number}/reviews")
+            ),
         ),
         reactions=tuple(
             Reaction((r.get("user") or {}).get("login", ""), r["content"], r["created_at"])
@@ -938,6 +1042,19 @@ def render_unreadable(unreadable: Sequence[UnreadablePull]) -> str:
     for item in unreadable:
         which = f"#{item.number}" if item.number is not None else f"`{item.sha[:9]}`"
         lines.append(f"- {which}: unreadable ({item.reason}).")
+    return "\n".join(lines)
+
+
+def render_unverifiable(pulls: Sequence[PullEvidence]) -> str:
+    items = [(pull.number, reason) for pull in pulls for reason in pull.unverifiable]
+    if not items:
+        return ""
+    lines = [
+        "",
+        "Unverifiable oracle evidence: reviews and findings that were edited, unreadable or disagree with the "
+        "App's status are not counted as oracle review.",
+    ]
+    lines.extend(f"- #{number}: {reason}." for number, reason in items)
     return "\n".join(lines)
 
 
@@ -1159,7 +1276,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "\nOracle withdrawals are unavailable for this window: the window's pull requests were unreadable."
             )
         else:
-            supplement = render_unreadable(unreadable)
+            supplement = render_unreadable(unreadable) + render_unverifiable(pulls)
             try:
                 found = standin_overrides(pulls)
                 supplement += render_standin_overrides(found)

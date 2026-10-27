@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from . import reset
+from . import edits, reset
 from .retry import State
 
 STATE_ARTIFACT_PREFIX = "oracle-verdict-state-"
@@ -83,7 +83,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
         nodes {
           isResolved
           path
-          comments(first: 50) { nodes { author { __typename login } authorAssociation body } }
+          comments(first: 50) { nodes { author { __typename login } authorAssociation body lastEditedAt includesCreatedEdit } }
         }
       }
     }
@@ -106,6 +106,10 @@ def review_threads(repo: str, pr: int) -> list[dict[str, Any]]:
         for node in connection["nodes"]:
             comments = node["comments"]["nodes"] or [{}]
             first = comments[0]
+            try:
+                edited = edits.node_edited(first) if node["comments"]["nodes"] else False
+            except edits.EditStateError as exc:
+                raise GitHubError(f"a review thread's edit state could not be read: {exc}") from exc
             threads.append(
                 {
                     "resolved": node["isResolved"],
@@ -113,6 +117,7 @@ def review_threads(repo: str, pr: int) -> list[dict[str, Any]]:
                     "author": (first.get("author") or {}).get("login"),
                     "author_type": (first.get("author") or {}).get("__typename"),
                     "body": first.get("body") or "",
+                    "edited": edited,
                     "replies": [
                         {
                             "author": (item.get("author") or {}).get("login"),
@@ -133,6 +138,7 @@ def oracle_reviews(repo: str, pr: int) -> list[dict[str, Any]]:
     return [
         {
             "id": item.get("id"),
+            "node_id": item.get("node_id"),
             "login": (item.get("user") or {}).get("login"),
             "user_type": (item.get("user") or {}).get("type"),
             "state": item.get("state"),
@@ -142,6 +148,20 @@ def oracle_reviews(repo: str, pr: int) -> list[dict[str, Any]]:
         }
         for item in get_paginated(f"repos/{repo}/pulls/{pr}/reviews?per_page=100")
     ]
+
+
+def review_edit_states(node_ids: Sequence[str]) -> dict[str, tuple[Any, bool]]:
+    states: dict[str, tuple[Any, bool]] = {}
+    for batch in edits.batches(list(dict.fromkeys(node_ids))):
+        args = ["graphql", "-f", f"query={edits.REVIEW_EDITS_QUERY}"]
+        for node_id in batch:
+            args += ["-f", f"ids[]={node_id}"]
+        try:
+            payload = json.loads(_gh(*args))
+        except (GitHubError, ValueError) as exc:
+            raise edits.EditStateError(f"the oracle reviews' edit state could not be read: {exc}") from exc
+        states.update(edits.parse_review_edits(payload, batch))
+    return states
 
 
 def state_artifact_name(pr: int, prefix: str = STATE_ARTIFACT_PREFIX) -> str:

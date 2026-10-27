@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from .edits import EDITED_REASON, EditStateError, is_edited
 from .evidence import withdrawal_cited
 from .policy import SEVERITIES
 from .verdict import (
@@ -287,14 +288,25 @@ def _review_time(value: Any) -> datetime | None:
         return None
 
 
-def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
-    own = [
-        review
-        for review in reviews
-        if (review.get("login") or "") == f"{bot_login}[bot]"
+def _is_app_review(review: Mapping[str, Any], bot_login: str) -> bool:
+    return (
+        (review.get("login") or "") == f"{bot_login}[bot]"
         and review.get("user_type") == "Bot"
         and review.get("state") != "DISMISSED"
-    ]
+    )
+
+
+def is_marked_app_review(review: Mapping[str, Any], bot_login: str) -> bool:
+    return _is_app_review(review, bot_login) and MARKER_OPEN in (review.get("body") or "")
+
+
+def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
+    own = [review for review in reviews if _is_app_review(review, bot_login)]
+    for review in filter(lambda item: is_marked_app_review(item, bot_login), own):
+        if "last_edited_at" not in review or "includes_created_edit" not in review:
+            raise EditStateError(f"oracle review {review.get('id')} has no readable edit state")
+        if is_edited(review["last_edited_at"], review["includes_created_edit"]):
+            return History([], EDITED_REASON)
     found = History()
     for review in sorted(own, key=lambda item: (str(item.get("submitted_at") or ""), int(item.get("id") or 0))):
         try:

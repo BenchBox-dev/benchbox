@@ -685,8 +685,13 @@ def graphql_threads(nodes, *, more=False):
     }
 
 
-def thread_node(resolved, login, sha):
-    comment = {"author": {"login": login}, "originalCommit": {"oid": sha}}
+def thread_node(resolved, login, sha, *, last_edited_at=None, includes_created_edit=False):
+    comment = {
+        "author": {"login": login},
+        "originalCommit": {"oid": sha},
+        "lastEditedAt": last_edited_at,
+        "includesCreatedEdit": includes_created_edit,
+    }
     return {"isResolved": resolved, "comments": {"nodes": [comment]}}
 
 
@@ -2034,3 +2039,230 @@ def test_a_known_closed_section_ends_the_findings():
 def test_an_instruction_from_an_untrusted_comment_does_not_count(comment):
     pull = evidence(reviews=(failure_review(),), comments=(comment, standin(HEAD, at=STANDIN_AT)))
     assert digest.standin_overrides([pull])[0].instruction_gap_seconds is None
+
+
+APP_LOGIN = "benchbox-oracle[bot]"
+APP_CREATOR = {"login": APP_LOGIN, "type": "Bot"}
+
+
+def oracle_record(decision, **over):
+    record = {
+        "v": 1,
+        "cycle": 1,
+        "round": 1,
+        "kind": "first",
+        "decision": decision,
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "small",
+        "tier": "small",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 1,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+    }
+    record.update(over)
+    return record
+
+
+def oracle_review_body(decision="SHIP", state="success", marker=True, **over):
+    from oracle_reviewers import protocol
+
+    body = f"### oracle-verdict: {state} for `{HEAD}`\n\nDecision text.\n"
+    return body + ("\n" + protocol.encode_marker(oracle_record(decision, **over)) if marker else "")
+
+
+def app_review(body, node_id="PRR_1", submitted_at=AFTER):
+    return digest.Review(APP_LOGIN, HEAD, submitted_at, "COMMENTED", "Bot", body, node_id)
+
+
+def app_status(state, description="d", created_at=AFTER, creator=APP_CREATOR, id_=1):
+    return {
+        "id": id_,
+        "context": "oracle-verdict",
+        "state": state,
+        "description": description,
+        "creator": creator,
+        "created_at": created_at,
+    }
+
+
+def serve_verification(monkeypatch, *, edited=None, statuses=(), graphql_error=None, status_error=None):
+    def graphql(node_ids):
+        if graphql_error is not None:
+            raise graphql_error
+        return {node_id: (None, False) if node_id not in (edited or {}) else edited[node_id] for node_id in node_ids}
+
+    def pages(endpoint):
+        if status_error is not None:
+            raise status_error
+        assert endpoint == f"repos/o/r/commits/{HEAD}/statuses"
+        return list(statuses)
+
+    monkeypatch.setattr(digest, "_graphql_review_edits", graphql)
+    monkeypatch.setattr(digest, "gh_pages", pages)
+
+
+def test_an_unedited_review_agreeing_with_the_app_status_counts_as_oracle_evidence(monkeypatch):
+    serve_verification(monkeypatch, statuses=[app_status("success")])
+    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body())])
+    assert checked.unverifiable == ""
+    assert "oracle-review" in digest.review_signals(evidence(reviews=(checked,)))
+
+
+def test_a_ship_with_fixes_review_agreeing_with_the_app_failure_status_counts(monkeypatch):
+    serve_verification(monkeypatch, statuses=[app_status("failure")])
+    body = oracle_review_body("SHIP_WITH_FIXES", "failure")
+    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(body)])
+    assert checked.unverifiable == ""
+    assert digest.blocking_verdict_decision(evidence(reviews=(checked,))) == "failure"
+
+
+def test_an_edited_review_is_unverifiable_and_never_oracle_evidence(monkeypatch):
+    serve_verification(monkeypatch, edited={"PRR_1": ("2026-10-03T00:00:00Z", False)}, statuses=[app_status("success")])
+    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body())])
+    assert "edited" in checked.unverifiable
+    pull = evidence(reviews=(checked,))
+    assert "oracle-review" not in digest.review_signals(pull)
+    assert pull.unverifiable == (f"review on `{HEAD[:9]}`: {checked.unverifiable}",)
+
+
+def test_a_created_edit_is_unverifiable_too(monkeypatch):
+    serve_verification(monkeypatch, edited={"PRR_1": (None, True)}, statuses=[app_status("success")])
+    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body())])
+    assert "edited" in checked.unverifiable
+
+
+@pytest.mark.parametrize(
+    ("decision", "state", "status"),
+    [("SHIP", "success", "failure"), ("SHIP_WITH_FIXES", "failure", "success")],
+)
+def test_a_review_disagreeing_with_the_app_status_is_unverifiable(monkeypatch, decision, state, status):
+    serve_verification(monkeypatch, statuses=[app_status(status)])
+    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body(decision, state))])
+    assert "disagrees" in checked.unverifiable
+    assert "oracle-review" not in digest.review_signals(evidence(reviews=(checked,)))
+
+
+def test_a_marker_decision_contradicting_the_review_header_is_unverifiable(monkeypatch):
+    serve_verification(monkeypatch, statuses=[app_status("success")])
+    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body("DO_NOT_SHIP", "success"))])
+    assert checked.unverifiable
+
+
+def test_a_non_app_success_status_never_verifies_a_review(monkeypatch):
+    serve_verification(monkeypatch, statuses=[app_status("success", creator={"login": "joe", "type": "User"})])
+    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body())])
+    assert "no oracle-verdict status" in checked.unverifiable
+
+
+def test_the_review_is_matched_to_the_status_by_its_run_id(monkeypatch):
+    statuses = [
+        app_status("success", "ok [run 111]", "2026-10-02T10:00:00Z", id_=1),
+        app_status("failure", "later", "2026-10-02T12:00:00Z", id_=2),
+    ]
+    serve_verification(monkeypatch, statuses=statuses)
+    (verified,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body(run_uuid="111"))])
+    assert verified.unverifiable == ""
+    (other,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body(run_uuid="222"))])
+    assert other.unverifiable
+
+
+def test_a_review_with_no_readable_decision_is_unverifiable(monkeypatch):
+    serve_verification(monkeypatch, statuses=[app_status("success")])
+    (checked,) = digest.verify_oracle_reviews("o/r", [app_review("Free text, no verdict header.")])
+    assert checked.unverifiable
+
+
+def test_unreadable_edit_state_makes_every_oracle_review_unverifiable(monkeypatch):
+    from oracle_reviewers import edits
+
+    serve_verification(monkeypatch, graphql_error=edits.EditStateError("GraphQL returned errors"))
+    reviews = [app_review(oracle_review_body()), review("joe", HEAD, user_type="User")]
+    checked = digest.verify_oracle_reviews("o/r", reviews)
+    assert "could not be read" in checked[0].unverifiable and checked[1].unverifiable == ""
+
+
+def test_a_review_without_a_node_id_is_unverifiable(monkeypatch):
+    serve_verification(monkeypatch, statuses=[app_status("success")])
+    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body(), node_id="")])
+    assert checked.unverifiable
+
+
+def test_unreadable_head_statuses_make_the_review_unverifiable(monkeypatch):
+    serve_verification(monkeypatch, status_error=digest.ReadError("boom"))
+    (checked,) = digest.verify_oracle_reviews("o/r", [app_review(oracle_review_body())])
+    assert "statuses could not be read" in checked.unverifiable
+
+
+def test_collect_pull_verifies_the_oracle_reviews_it_reads(monkeypatch):
+    serve_verification(monkeypatch, edited={"PRR_1": (None, True)}, statuses=[app_status("success")])
+    raw = {
+        "user": {"login": APP_LOGIN, "type": "Bot"},
+        "commit_id": HEAD,
+        "submitted_at": AFTER,
+        "state": "COMMENTED",
+        "body": oracle_review_body(),
+        "node_id": "PRR_1",
+    }
+    rest = {"reviews": [raw], "reactions": [], "timeline": [], "comments": []}
+    monkeypatch.setattr(digest, "merged_pull_number", lambda repo, sha: 7)
+    monkeypatch.setattr(digest, "gh_json", lambda *args: {"user": {"login": "dev"}, "merged_at": MERGED_AT})
+    monkeypatch.setattr(digest, "collect_commits", lambda *args, **kwargs: ())
+    monkeypatch.setattr(digest, "collect_threads", lambda repo, number: ())
+    pages = digest.gh_pages
+    monkeypatch.setattr(
+        digest,
+        "gh_pages",
+        lambda endpoint: (
+            rest[endpoint.rsplit("/", 1)[1]] if "/pulls/" in endpoint or "/issues/" in endpoint else pages(endpoint)
+        ),
+    )
+    (collected,) = digest.collect_pull("o/r", MERGED).reviews
+    assert collected.node_id == "PRR_1" and "edited" in collected.unverifiable
+
+
+def comment_node(login, body, **edit):
+    node = thread_node(False, login, HEAD, **edit)
+    node["comments"]["nodes"][0]["body"] = body
+    return node
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [{"last_edited_at": "2026-10-03T00:00:00Z"}, {"includes_created_edit": True}],
+    ids=["edited-later", "created-edit"],
+)
+def test_the_severity_of_an_edited_app_first_comment_is_unverifiable(monkeypatch, edit):
+    node = comment_node("benchbox-oracle", "**High**: the title", **edit)
+    monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([node]))
+    (thread,) = digest.collect_threads("o/r", 7)
+    assert thread.severity == "" and "edited" in thread.unverifiable
+    assert not digest.is_overridden_finding(thread)
+    assert digest.open_finding_severities(evidence(threads=(thread,))) == ()
+    assert evidence(threads=(thread,)).unverifiable == (f"review thread: {thread.unverifiable}",)
+
+
+def test_an_edited_non_app_first_comment_keeps_its_reading(monkeypatch):
+    node = comment_node("reviewer", "Consider **High** performance", includes_created_edit=True)
+    monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([node]))
+    (thread,) = digest.collect_threads("o/r", 7)
+    assert thread.unverifiable == ""
+
+
+def test_an_app_first_comment_without_edit_state_is_unverifiable(monkeypatch):
+    node = comment_node("benchbox-oracle", "**High**: the title")
+    del node["comments"]["nodes"][0]["includesCreatedEdit"]
+    monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([node]))
+    (thread,) = digest.collect_threads("o/r", 7)
+    assert thread.severity == "" and "could not be read" in thread.unverifiable
+
+
+def test_the_digest_lists_unverifiable_oracle_evidence():
+    checked = digest.Review(APP_LOGIN, HEAD, AFTER, "COMMENTED", "Bot", "x", "PRR_1", "it was edited after posting")
+    assert digest.render_unverifiable([evidence(reviews=(checked,))]).splitlines()[2:] == [
+        f"- #7: review on `{HEAD[:9]}`: it was edited after posting."
+    ]
+    assert digest.render_unverifiable([evidence()]) == ""

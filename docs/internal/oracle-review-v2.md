@@ -244,6 +244,32 @@ forced re-review budgets. If any field is unreadable (truncated file list or
 tree, a head blob id disagreeing with the tree, an unresolvable merge base) the
 digest is `unread-<head>` and nothing carries.
 
+The marker is not signed, so an account with write access could rewrite it by
+editing the review. The planner, the post guard, the merge digest, finding
+deduplication and dispute binding therefore fail closed on edited App objects.
+`plan` and the guard read every App review's `lastEditedAt` and
+`includesCreatedEdit` in one batched GraphQL call (the `review` job's
+`pull-requests: read` token is enough). An edited App review, marked or not (so
+a stripped marker cannot hide a record), holds the result pending, and no marker
+from it ever drives a carry, a follow-up scope or a strike count. If the edit
+state cannot be read (a GraphQL error, a review without a node id, a missing
+field) the `plan` step fails and posts nothing, so a decided head keeps its
+latest status. The guard lets a planned hold post its pending status, but fails
+the run when the history it re-reads has an error the plan did not see (an edit
+that landed after the plan), and when it cannot re-read the history after its
+three tries, instead of posting unconfirmed.
+
+Before a carry is planned, the recorded decision is checked against the App's
+own `oracle-verdict` status for the reviewed head: only statuses created by the
+App's Bot account count, the one whose description carries the record's
+`[run <uuid>]` is chosen, and when several qualify the one created nearest the
+review's submission wins (a record with no run uuid considers every App success
+or failure, and a non-`SHIP` record falls back to the App statuses without a run
+uuid, because only success statuses carry one). The status must be `success`
+exactly when the decision is `SHIP`; `SHIP WITH FIXES`, `DO NOT SHIP` and
+`REFUSED` require `failure`. A mismatch or a missing status holds the result
+pending, and a status list that cannot be read fails the `plan` step.
+
 | Situation | Action |
 |---|---|
 | No marker yet | first round: a full review |
@@ -331,15 +357,19 @@ stand-in attestation still works on a refused PR.
 
 Before posting, the `review` job re-reads the review list and posts nothing if
 the head already has a marker, so two runs cannot both post for one head. It
-tries three times about two seconds apart; if all fail it posts anyway and notes
-in the job summary that the post was unconfirmed, since skipping would leave the
-head unreviewed. A run that skips posting, or whose status post failed, uploads
-no retry state and adds no strike.
+tries three times about two seconds apart; if every try fails, or an App review
+was edited, the guard step fails and nothing is posted: the head keeps its latest
+status and a later run decides it. A run that skips posting, or whose status post
+failed, uploads no retry state and adds no strike.
 
 `post` drops any finding matching an open review thread from this App by file
 and normalized title, unless the new one is more severe. Each new thread carries
 a hidden `oracle-finding` marker with that fingerprint. A dropped finding still
-counts toward the result and is listed in the review body.
+counts toward the result and is listed in the review body. An open thread whose
+first comment was edited is ignored for this: its fingerprint never suppresses a
+finding. A dispute under an edited App first comment is never bound. If a
+thread's edit state cannot be read, nothing is deduplicated and no dispute is
+bound.
 
 A defect on a line outside the diff still fails the review. It cannot be a line
 comment, so the body lists it with a note that it counts like the others;

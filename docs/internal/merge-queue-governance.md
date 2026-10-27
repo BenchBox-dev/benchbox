@@ -359,6 +359,16 @@ The reaction and comment must come after the last content commit and before
 the merge. A review submitted after the merge, or still pending, does not
 count. An "eyes" reaction is not a signal.
 
+An oracle review counts as a signal only if it was never edited (read through
+GraphQL `lastEditedAt` and `includesCreatedEdit`) and its decision agrees with the
+App's own `oracle-verdict` status for that head: the status created by the App's Bot account
+whose description carries the review marker's `[run <uuid>]` (the latest App success or
+failure when the marker has no run uuid), which must be `success` exactly when the
+decision is `SHIP`. A review that fails either check, or whose edit state or statuses cannot be read,
+is not counted and is listed under "Unverifiable oracle evidence". The severity of an
+oracle finding thread whose first comment was edited, or whose edit state cannot be read, is
+likewise not reported and the thread is listed there.
+
 Because authors set commit dates, the digest dates the last content commit by
 GitHub's first run of this PR's workflows for it. With no such run (for
 example, pushed with `[skip ci]` or runs expired), it uses the first run of a
