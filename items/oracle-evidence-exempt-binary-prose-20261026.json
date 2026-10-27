@@ -3,6 +3,8 @@
     "Tests that fail on develop and pass after: a binary file and a README change no longer make an attempt absent; a source file still requires a read; a soundness-path prose file still requires a read; a branch-side policy edit cannot add exemptions.",
     "docs/internal/oracle-review-v2.md calls the evidence check an exposure check and lists the exemptions.",
     "Tests that fail on the current branch head and pass after: a .py file marked -diff (Binary files notice) stays required and fails the evidence check when unread; a real binary blob is exempt; *README* no longer matches a .py file; a branch-edited soundness manifest does not widen local exemptions.",
+    "A .gitattributes change is a soundness-path change and is never exempt; a deleted binary follows the explicit deletion rule.",
+    "The PR is opened only on a head where the -diff, glob and manifest tests pass (opening runs the branch's own reviewer code locally).",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "2026-10-26 IN PROGRESS: being implemented in a linked worktree in parallel by this batch's controller session. Do not take.\n\nOWNER DECISIONS 2026-10-26 (asked in session via the choice dialog, answered by joeharris76; full list in the linked decisions file): Q13 close every gap; added after the plan review (code half of finding SF5).",
@@ -53,6 +55,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "4245b8d92fae4bb399caf9ce6b45852d",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T12:55:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "65d8c1bc010e43278c4346029f808791",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
