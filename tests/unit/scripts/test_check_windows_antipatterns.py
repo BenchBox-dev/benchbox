@@ -428,13 +428,22 @@ def test_function_environment_bindings_do_not_leak(tmp_path: Path) -> None:
     assert _codes(tmp_path, source) == []
 
 
-def test_explicit_file_scan_does_not_check_unrelated_baseline(tmp_path: Path, monkeypatch, capsys) -> None:
+def test_default_roots_cover_project_tooling() -> None:
+    import check_windows_antipatterns as checker
+
+    assert {"benchbox", "tests", "scripts", "_project"} <= set(checker._DEFAULT_ROOTS)
+
+
+def test_explicit_file_scan_ignores_baseline_entries_for_other_files(tmp_path: Path) -> None:
     import check_windows_antipatterns as checker
 
     clean = _write(tmp_path, "value = 1\n")
-    (tmp_path / "unrelated.py").write_text("value = 2\n", encoding="utf-8")
-    baseline = tmp_path / "baseline.json"
-    baseline.write_text(json.dumps({"files": {str(tmp_path / "unrelated.py"): {"WA001": 1}}}), encoding="utf-8")
-    monkeypatch.setattr("sys.argv", ["check_windows_antipatterns.py", str(clean), "--baseline", str(baseline)])
-    assert checker.main() == 0
-    assert "1 files checked" in capsys.readouterr().out
+    other = tmp_path / "unrelated.py"
+    other.write_text("value = 2\n", encoding="utf-8")
+    baseline = {"unrelated.py": {"WA001": 1}}
+
+    whole_tree = checker.apply_baseline([], baseline, tmp_path, [tmp_path])
+    explicit = checker.apply_baseline([], baseline, tmp_path, [clean], explicit_files=[clean])
+
+    assert whole_tree.stale
+    assert explicit.stale == []
