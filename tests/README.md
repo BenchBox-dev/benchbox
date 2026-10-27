@@ -549,11 +549,18 @@ through a per-test log). A test that intentionally provokes a block requests
 the `expect_network_block` fixture.
 
 A test is guarded when it is under `tests/unit/` or carries the `unit` or
-`medium` marker, unless it carries `integration`, `live_integration`, or
-`allow_network`. Prefer moving a network-dependent test to the integration or
-live tier. `allow_network` is only for a unit-level test whose subject is the
-network call itself and which cannot use a loopback server; the reason belongs
-in the commit message.
+`medium` marker. Tests outside `tests/unit/` are exempt when they carry
+`integration` or `live_integration`; a test under `tests/unit/` cannot opt out
+that way. `@pytest.mark.allow_network(reason="...")` exempts a single test
+whose subject is the network call itself and which cannot use a loopback
+server; the reason is required and collection fails without it. Prefer moving
+a network-dependent test to the integration or live tier. The
+`expect_network_block` fixture is for tests that provoke a block on purpose and
+fails if nothing was blocked.
+
+These rules bind new and changed tests. Existing tests that patch stdlib or
+third-party internals are inventoried and converted opportunistically; they are
+not defects in an unrelated change.
 
 ### Process-Global State
 
