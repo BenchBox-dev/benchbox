@@ -16794,7 +16794,8 @@
     "oracle-review-automatic-reevaluation-20261021": {
       "claim": null,
       "needs": [
-        "retire-oracle-review-workflow-20261021"
+        "retire-oracle-review-workflow-20261021",
+        "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "medium",
       "status": "open",
