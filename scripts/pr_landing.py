@@ -61,6 +61,8 @@ REQUIRED_CONTEXTS: tuple[str, ...] = (
     "docs",
     "tooling",
 )
+TERMINAL_STATUS_FAILURES = frozenset({"failure", "error"})
+STATUS_CONTEXTS_JQ = r'.[] | [.context, .state, (.description // "")] | @tsv'
 REQUIRED_BATCH_TOOLS = frozenset({"register_batch", "prepare", "bind_batch_pr", "abort_batch"})
 MAX_RERUNS_PER_JOB = 1
 MAX_REENTRIES_PER_HEAD = 1
@@ -585,6 +587,56 @@ def _hidden_failures(run: Runner, repo_full: str, branch: str, records: list[dic
 
 def hidden_failed_suites(run: Runner, repo_full: str, branch: str, head: str) -> list[str]:
     return _hidden_failures(run, repo_full, branch, live_check_runs(run, repo_full, head))
+
+
+def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, str]:
+    rc, out = run(
+        [
+            "gh",
+            "api",
+            "--paginate",
+            "--jq",
+            STATUS_CONTEXTS_JQ,
+            f"repos/{repo_full}/commits/{head}/statuses?per_page=100",
+        ]
+    )
+    if rc != 0:
+        raise LandingError(f"live status verification failed for {head[:12]}")
+    statuses: dict[str, str] = {}
+    for line in out.splitlines():
+        parts = line.rstrip("\n").split("\t", 2)
+        if len(parts) >= 2 and parts[0] not in statuses:
+            name, state = parts[:2]
+            description = parts[2] if len(parts) == 3 else ""
+            if (
+                name == "oracle-gate"
+                and state == "failure"
+                and description.startswith(f"oracle-review: waiting for the oracle's verdict on {head},")
+            ):
+                state = "pending"
+            statuses[name] = state
+    return statuses
+
+
+def visible_required_failure_reasons(run: Runner, repo_full: str, branch: str, head: str) -> list[str]:
+    required = ruleset_required_contexts(run, repo_full, branch)
+    evaluations = check_suites.evaluate(live_check_runs(run, repo_full, head), required, check_suites.NON_BLOCKING)
+    statuses = live_commit_statuses(run, repo_full, head)
+    reasons: list[str] = []
+    for name in required:
+        suites = evaluations[name].suites
+        if suites and suites[0].completed and suites[0].conclusion not in check_suites.NON_BLOCKING:
+            reasons.append(
+                f"required check {name!r} completed with conclusion {suites[0].conclusion!r} "
+                f"on {head[:9]}; pending checks do not block arming"
+            )
+        state = statuses.get(name)
+        if state in TERMINAL_STATUS_FAILURES:
+            reasons.append(
+                f"required status {name!r} completed with state {state!r} "
+                f"on {head[:9]}; pending checks do not block arming"
+            )
+    return reasons
 
 
 def verify_evidence_live(run: Runner, repo_full: str, pr: dict, evidence: ReadyEvidence) -> None:

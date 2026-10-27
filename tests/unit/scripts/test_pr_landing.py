@@ -1771,3 +1771,41 @@ def test_pr_open_refuses_before_any_push_when_head_moves_during_the_local_oracle
     assert "HEAD moved during the local oracle review" in result.stderr.decode()
     assert pushes == []
     assert not [args for _, args in calls if "scripts/pr_open_rest.py" in args]
+
+
+@pytest.mark.parametrize(
+    ("description", "expected"),
+    [
+        (f"oracle-review: waiting for the oracle's verdict on {'a' * 40}, or a stand-in attestation", "pending"),
+        (f"oracle-review: waiting for the oracle's verdict on {'b' * 40}, or a stand-in attestation", "failure"),
+        ("oracle-review: the oracle's latest review reports SHIP WITH FIXES, not success", "failure"),
+        ("oracle-review: error: could not fetch reviews", "failure"),
+        ("", "failure"),
+    ],
+)
+def test_live_statuses_distinguish_waiting_from_failed_oracle(description: str, expected: str) -> None:
+    def run(cmd: list[str]) -> tuple[int, str]:
+        assert "--paginate" in cmd
+        assert cmd[-1] == f"repos/o/r/commits/{'a' * 40}/statuses?per_page=100"
+        return 0, f"oracle-gate\tfailure\t{description}\n"
+
+    assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {"oracle-gate": expected}
+
+
+def test_live_statuses_keep_newest_context_across_paginated_results() -> None:
+    def run(cmd: list[str]) -> tuple[int, str]:
+        assert "--paginate" in cmd
+        return 0, "core\tsuccess\n" + "optional\tsuccess\n" * 100 + "hold\tfailure\ncore\tfailure\nhold\tsuccess\n"
+
+    assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {
+        "core": "success",
+        "optional": "success",
+        "hold": "failure",
+    }
+
+
+def test_live_statuses_keep_contexts_that_contain_spaces() -> None:
+    def run(cmd: list[str]) -> tuple[int, str]:
+        return 0, "build / test\tfailure\tboom\nlint\tsuccess\n"
+
+    assert landing.live_commit_statuses(run, "o/r", "a" * 40) == {"build / test": "failure", "lint": "success"}

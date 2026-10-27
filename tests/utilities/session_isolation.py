@@ -17,6 +17,46 @@ _OUTPUT_DIR = "BENCHBOX_OUTPUT_DIR"
 _OWNED_OUTPUT_DIR = "BENCHBOX_TEST_SESSION_OUTPUT_DIR"
 _ENV_KEYS = ("HOME", "USERPROFILE", "BENCHBOX_TEST_LOCK_DIR", _OUTPUT_DIR, _OWNER, _OWNED_OUTPUT_DIR)
 _state: dict[str, Any] | None = None
+_SKIP_LOCK = "BENCHBOX_SKIP_TEST_LOCK"
+_LOCK_DIR = "BENCHBOX_TEST_LOCK_DIR"
+_XDIST_WORKER = "PYTEST_XDIST_WORKER"
+
+
+def _default_lock_path() -> Path:
+    return Path.home() / ".benchbox" / "test.lock"
+
+
+def lock_bypass_trigger() -> str | None:
+    if os.environ.get(_XDIST_WORKER):
+        return None
+    owner = (os.environ.get(_OWNER) or "").strip()
+    if owner and owner != str(os.getpid()):
+        return None
+    if os.environ.get(_SKIP_LOCK):
+        return _SKIP_LOCK
+    configured = os.environ.get(_LOCK_DIR)
+    if configured:
+        try:
+            custom = Path(configured).expanduser().resolve()
+        except OSError:
+            return _LOCK_DIR
+        try:
+            if custom != _default_lock_path().resolve():
+                return _LOCK_DIR
+        except OSError:
+            return _LOCK_DIR
+    return None
+
+
+def warn_lock_bypass() -> None:
+    trigger = lock_bypass_trigger()
+    if trigger is None:
+        return
+    sys.stderr.write(
+        f"[benchbox] WARNING: test lock bypass active via {trigger} "
+        f"(pid={os.getpid()}, cwd={os.getcwd()}); the default ~/.benchbox/test.lock is not held.\n"
+    )
+    sys.stderr.flush()
 
 
 def _ancestor_holds_lock(lock_path: Path) -> bool:
@@ -77,6 +117,8 @@ def start(acquire_lock: bool = True) -> bool:
             wait = 3600.0
         fd = wait_for_lock(lock_path, wait)
         write_holder(fd, lock_path, phase="pytest-session", gate="hermetic")
+    if not inherited and (not acquire_lock or lock_path != _default_lock_path()):
+        warn_lock_bypass()
     try:
         home = tempfile.TemporaryDirectory(
             prefix="benchbox-pytest-home-", dir=os.environ.get("JCODE_SCRATCH_DIR"), ignore_cleanup_errors=True

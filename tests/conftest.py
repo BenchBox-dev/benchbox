@@ -58,7 +58,7 @@ from tests.utilities.optional_engines import (
     chdb_open_count,
     install_chdb_open_counter,
 )
-from tests.utilities.session_isolation import active as isolated_session_active
+from tests.utilities.session_isolation import active as isolated_session_active, warn_lock_bypass
 
 pytest_plugins = [
     "tests.fixtures.database_fixtures",
@@ -163,6 +163,9 @@ def pytest_configure(config) -> None:
 
     if sys.platform == "darwin" and hasattr(config, "workerinput"):
         _suppress_xdist_worker_title()
+
+    if not isolated_session_active() and not hasattr(config, "workerinput") and not _should_acquire_test_lock(config):
+        warn_lock_bypass()
 
     if _should_acquire_test_lock(config):
         test_lock_path = _get_test_lock_path()
