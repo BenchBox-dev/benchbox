@@ -203,5 +203,4 @@ node_modules/
 .claude/handoffs/
 .todo-batch/
 
-/typings/sqlglot-runtime/*
-!/typings/sqlglot-runtime/.gitkeep
+/quality/sqlglot-typing/benchbox/

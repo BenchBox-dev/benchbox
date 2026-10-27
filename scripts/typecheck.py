@@ -7,14 +7,12 @@ import zipfile
 
 from scripts.sync_sqlglot_runtime import ROOT, RUNTIME, check_runtime
 
-TYPING_ROOT = ROOT / "typings" / "sqlglot-runtime"
+TYPING_ROOT = ROOT / "quality" / "sqlglot-typing"
 
 
 def extract_typing_data() -> None:
     runtime = check_runtime()
-    for entry in TYPING_ROOT.iterdir():
-        if entry.name != ".gitkeep":
-            shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
+    shutil.rmtree(TYPING_ROOT / "benchbox", ignore_errors=True)
     with zipfile.ZipFile(RUNTIME / runtime["archive"]) as archive:
         for member in archive.namelist():
             if member.endswith((".py", ".pyi", "/py.typed")):

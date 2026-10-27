@@ -97,7 +97,7 @@ Type checking is available via:
 make typecheck
 ```
 
-`make typecheck` extracts the typing data of the bundled SQLGlot runtime into `typings/sqlglot-runtime/` (git-ignored) and then runs `ty check`. `[tool.ty.environment]` in `pyproject.toml` points `ty` at that directory, so a plain `uv run ty check` and editor language servers resolve `benchbox._vendor.sqlglot` once `make typecheck` has run in the checkout.
+`make typecheck` extracts the typing data of the bundled SQLGlot runtime into `quality/sqlglot-typing/` (git-ignored) and then runs `ty check`. `[tool.ty.environment]` in `pyproject.toml` points `ty` at that directory, so a plain `uv run ty check` and editor language servers resolve `benchbox._vendor.sqlglot` once `make typecheck` has run in the checkout.
 
 ## Contributing
 

@@ -302,7 +302,7 @@ benchbox-mcp = "benchbox.mcp.cli:main"
 [tool.ty]
 
 [tool.ty.environment]
-extra-paths = ["typings/sqlglot-runtime"]
+extra-paths = ["quality/sqlglot-typing"]
 
 [tool.ty.src]
 include = ["benchbox", "tests"]
