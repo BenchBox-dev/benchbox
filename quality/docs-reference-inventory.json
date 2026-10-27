@@ -1379,6 +1379,17 @@
   {
    "disposition": "historical-record",
    "kinds": {
+    "file": 1
+   },
+   "occurrences": 1,
+   "path": "_project/decisions/sqlglot-maintenance-decision-record.md",
+   "rule": "project-records",
+   "target_count": 1,
+   "targets_sha256": "629ef4f911b1d1201c6eb379b296eb3ee0705b38c73eae657ad950b76be6d7b7"
+  },
+  {
+   "disposition": "historical-record",
+   "kinds": {
     "file": 2
    },
    "occurrences": 2,
@@ -3549,7 +3560,7 @@
    "kinds": {
     "unresolved": 1
    },
-   "occurrences": 3,
+   "occurrences": 4,
    "path": "tests/unit/scripts/test_coverage_test_selection.py",
    "rule": "test-sample-data",
    "target_count": 1,
@@ -4391,24 +4402,24 @@
    "contract-tooling": 6,
    "fixture-data": 44,
    "governance-stays": 8,
-   "historical-record": 112,
+   "historical-record": 113,
    "lock-test": 8,
    "prose-link-pinned": 15,
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 229,
+  "files": 230,
   "kinds": {
    "built-url": 29042,
    "dir": 165,
    "extra": 36,
-   "file": 1397,
+   "file": 1398,
    "generated": 3,
    "pattern": 323,
    "root": 197,
-   "unresolved": 2047
+   "unresolved": 2048
   },
-  "references": 33210,
+  "references": 33212,
   "unclassified": 0
  }
 }
