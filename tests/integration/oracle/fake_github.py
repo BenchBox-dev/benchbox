@@ -171,7 +171,8 @@ class FakeGitHub:
     def add_run(self, workflow: str, *, event: str, pr: int | None, head_sha: str, **fields: Any) -> dict[str, Any]:
         with self.lock:
             run_id = next(self.ids) * 1000
-            title = f"{workflow.removesuffix('.yml')} ({event} pr={pr if pr is not None else 'sweep'})"
+            suffix = f" head={head_sha}" if pr is not None else ""
+            title = f"{workflow.removesuffix('.yml')} ({event} pr={pr if pr is not None else 'sweep'}{suffix})"
             run = {
                 "id": run_id,
                 "name": workflow.removesuffix(".yml"),

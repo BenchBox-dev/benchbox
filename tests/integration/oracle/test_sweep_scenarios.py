@@ -26,7 +26,7 @@ def test_a_failed_run_is_redispatched_once_then_a_second_failure_is_surfaced_as_
 
     assert first.code == 0, first.stderr
     assert harness.github.dispatches == [
-        {"workflow": VERDICT, "ref": "develop", "inputs": {"pr": "61", "reason": "stateless-retry"}}
+        {"workflow": VERDICT, "ref": "develop", "inputs": {"pr": "61", "head": head, "reason": "stateless-retry"}}
     ]
     assert harness.github.oracle_statuses(head) == []
 
@@ -53,13 +53,15 @@ def _pending_review(harness: Harness, pr: int, branch: str) -> tuple[str, dict]:
 
 
 def test_a_same_head_pending_state_past_its_backoff_is_dispatched(harness: Harness) -> None:
-    _, run = _pending_review(harness, 62, "feat/pending")
+    head, run = _pending_review(harness, 62, "feat/pending")
     harness.github.age(run, 180)
 
     sweep = harness.sweep()
 
     assert sweep.code == 0, sweep.stderr
-    assert harness.github.dispatches[-1:] == [{"workflow": VERDICT, "ref": "develop", "inputs": {"pr": "62"}}]
+    assert harness.github.dispatches[-1:] == [
+        {"workflow": VERDICT, "ref": "develop", "inputs": {"pr": "62", "head": head}}
+    ]
 
 
 def test_a_due_same_head_state_is_not_dispatched_over_a_run_in_flight(harness: Harness) -> None:
