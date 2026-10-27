@@ -16219,7 +16219,9 @@
     },
     "oracle-external-review-findings-20261026": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Address oracle-reviewer defects found by the 2026-10-26 external codex reviews of #2807 and #2808"
