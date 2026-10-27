@@ -16383,7 +16383,8 @@
       "claim": null,
       "needs": [
         "oracle-gateway-named-clients-20261025",
-        "oracle-review-driver-local-20261026"
+        "oracle-review-driver-local-20261026",
+        "oracle-cloud-review-reachability-20261027"
       ],
       "priority": "medium-high",
       "status": "open",
