@@ -13,7 +13,6 @@ from _project.scripts.oracle_reviewers.absence import Absence
 from _project.scripts.oracle_reviewers.selection import (
     ABSENT,
     FAIL,
-    INVALID_STOP,
     JOB_FAILURE_DETAIL,
     PASS,
     PENDING,
@@ -54,12 +53,10 @@ def test_job_failure_marker_is_not_retried() -> None:
     assert _chosen(_input([_reviewer("r1"), _reviewer("r2")]), history) == "r2"
 
 
-def test_second_attempt_infrastructure_failure_after_an_invalid_reply_ends_the_run() -> None:
+def test_second_attempt_infrastructure_failure_ends_the_retry() -> None:
     chain = [_reviewer("r1"), _reviewer("r2")]
     history = [Attempt(1, "r1", ABSENT, "invalid"), Attempt(2, "r1", ABSENT, "timeout")]
-    step = next_step(_input(chain), history)
-    assert step.kind == PENDING
-    assert step.reasons == ("r1: absent (timeout)", f"r2: {INVALID_STOP}")
+    assert _chosen(_input(chain), history) == "r2"
 
 
 def test_terminal_verdicts_are_never_retried() -> None:
@@ -72,39 +69,14 @@ def test_two_reviewer_chain_retries_first_before_advancing() -> None:
     selection = _input([_reviewer("r1"), _reviewer("r2")])
     history = [Attempt(1, "r1", ABSENT, "incomplete")]
     assert _chosen(selection, history) == "r1"
-    history.append(Attempt(2, "r1", ABSENT, "empty"))
+    history.append(Attempt(2, "r1", ABSENT, "invalid"))
     assert _chosen(selection, history) == "r2"
     history.append(Attempt(3, "r2", ABSENT, "empty"))
     assert _chosen(selection, history) == "r2"
     history.append(Attempt(4, "r2", ABSENT, "empty"))
     step = next_step(selection, history)
     assert step.kind == PENDING
-    assert step.reasons == ("r1: absent (empty)", "r2: absent (empty)")
-
-
-@pytest.mark.parametrize("slot_of_invalid", [1, 2])
-def test_an_invalid_reply_retries_its_reviewer_once_and_never_escalates(slot_of_invalid: int) -> None:
-    chain = [_reviewer("r1"), _reviewer("r2"), _reviewer("r3")]
-    history = [Attempt(slot, "r1", ABSENT, "invalid" if slot == slot_of_invalid else "empty") for slot in (1, 2)]
-    step = next_step(_input(chain), history)
-    assert step.kind == PENDING
-    assert step.reasons[1:] == (f"r2: {INVALID_STOP}", f"r3: {INVALID_STOP}")
-    first = next_step(_input(chain), history[:1])
-    assert first.kind == REVIEW and first.reviewer is not None and first.reviewer.name == "r1"
-
-
-def test_an_invalid_reply_from_an_escalated_reviewer_stops_further_escalation() -> None:
-    chain = [_reviewer("r1"), _reviewer("r2"), _reviewer("r3")]
-    history = [
-        Attempt(1, "r1", ABSENT, "incomplete"),
-        Attempt(2, "r1", ABSENT, "incomplete"),
-        Attempt(3, "r2", ABSENT, "invalid"),
-    ]
-    assert _chosen(_input(chain), history) == "r2"
-    history.append(Attempt(4, "r2", ABSENT, "invalid"))
-    step = next_step(_input(chain), history)
-    assert step.kind == PENDING
-    assert step.reasons[-1] == f"r3: {INVALID_STOP}"
+    assert step.reasons == ("r1: absent (invalid)", "r2: absent (empty)")
 
 
 def test_overall_cap_one_blocks_the_retry() -> None:
@@ -174,7 +146,7 @@ def _decide(directory: Path, plan: dict[str, Any]) -> tuple[str, list[str]]:
 
 def test_replay_accepts_the_retry_and_chain_advance(tmp_path: Path) -> None:
     plan = _plan([_reviewer("r1"), _reviewer("r2")])
-    _write(tmp_path, 1, "r1", plan, "incomplete")
+    _write(tmp_path, 1, "r1", plan, "invalid")
     _write(tmp_path, 2, "r1", plan, "empty")
     _write(tmp_path, 3, "r2", plan, "invalid")
     assert _decide(tmp_path, plan) == ("r2", [])
@@ -183,18 +155,9 @@ def test_replay_accepts_the_retry_and_chain_advance(tmp_path: Path) -> None:
 def test_replay_rejects_a_third_attempt_of_one_reviewer(tmp_path: Path) -> None:
     plan = _plan([_reviewer("r1"), _reviewer("r2")])
     for slot in (1, 2, 3):
-        _write(tmp_path, slot, "r1", plan, "empty")
+        _write(tmp_path, slot, "r1", plan, "invalid")
     _, errors = _decide(tmp_path, plan)
     assert errors == ["slot 3 ran r1, but the policy selects r2"]
-
-
-def test_replay_rejects_an_escalation_after_an_invalid_reply(tmp_path: Path) -> None:
-    plan = _plan([_reviewer("r1"), _reviewer("r2")])
-    _write(tmp_path, 1, "r1", plan, "invalid")
-    _write(tmp_path, 2, "r1", plan, "invalid")
-    _write(tmp_path, 3, "r2", plan, "empty")
-    _, errors = _decide(tmp_path, plan)
-    assert errors == ["slot 3 ran r2, but the policy selects pending"]
 
 
 def test_replay_rejects_a_retry_after_infrastructure_absence(tmp_path: Path) -> None:
