@@ -8,6 +8,7 @@
     "Smoke: replay the #3555 edited-marker data (carry_trust_smoke in the session kernel, or an equivalent throwaway script) through the branch's plan and get HOLD; record output.",
     "docs/internal/oracle-review-v2.md states that the planner, guard, merge digest, dedup and dispute binding fail closed on edited App objects and never post on unreadable edit state.",
     "Live after merge: the next oracle-verdict run on any PR plans normally (no false HOLD on unedited history), and one soundness-merge-digest run reports no false unverifiable; record run ids.",
+    "Adds or updates the matching scenario in the oracle end-to-end harness (oracle-e2e-scenario-harness-and-mutation-gate-20261027) once that harness exists, proven to fail with this item's defect reintroduced.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "2026-10-27 GATE 1 PASSED: read-only GraphQL on #3561 returns lastEditedAt (null) and includesCreatedEdit (false) for Bot-authored PullRequestReview (PRR_kwDOQ7J64c8AAAABUSBOrA, PRR_kwDOQ7J64c8AAAABUSGTAg) and PullRequestReviewComment (PRRC_kwDOQ7J64c8AAAABBRSWvg, PRRC_kwDOQ7J64c8AAAABBRpiKA); author __typename Bot.\n\n2026-10-27 OWNER DECISIONS: freeze scope = oracle-code PRs (this PR and #3585 excepted); an edit-held head keeps the owner stand-in path even with open findings.\n\nOWNER DECISIONS 2026-10-27 (choice dialog, joeharris76): freeze all oracle-gated merges until oracle-history-edited-review-fail-closed-20261027 merges; Critical fix = GraphQL edit-state check now, HMAC marker later; pr-arm proceeds on fast-duration pass or neutral only. ",
@@ -64,6 +65,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "3bbc1bf0e8054c9687e40f50f0613d19",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T14:09:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "087b8fb0459847d5a5ca703a47200910",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
