@@ -1835,3 +1835,137 @@ def test_develop_changed_tests_exclude_files_missing_from_the_checkout(
     files = sel.changed_files(repo, base_sha)
     result = sel.select_tests(repo, _mapping(repo, map_sha), files, base_sha)
     assert result["develop_changed_tests"] == []
+
+
+def test_windows_test_files_union_selected_changed_and_changed_paths_dropping_missing_files(repo: Path) -> None:
+    payload = {
+        "selected": ["tests/unit/core/test_engine.py::test_x[a]", "tests/unit/core/test_engine.py", "tests/gone.py"],
+        "changed_tests": ["tests\\unit\\test_tool.py", "tests/unit/test_missing.py"],
+    }
+    changed = ["benchbox/base.py", "tests/unit/test_unrelated.py", "docs/guide.md"]
+    assert sel.windows_test_files(repo, payload, changed) == [
+        "tests/unit/core/test_engine.py",
+        "tests/unit/test_tool.py",
+        "tests/unit/test_unrelated.py",
+    ]
+
+
+def test_windows_test_files_keep_changed_tests_the_runtime_limit_drops_from_selected(repo: Path) -> None:
+    payload = {"selected": [], "changed_tests": ["tests/unit/test_tool.py"]}
+    assert sel.windows_test_files(repo, payload, []) == ["tests/unit/test_tool.py"]
+
+
+def test_windows_targets_cli_writes_files_and_count(repo: Path, tmp_path: Path) -> None:
+    selection = tmp_path / "selection.json"
+    selection.write_text(json.dumps({"selected": ["tests/unit/core/test_engine.py::test_x"]}), encoding="utf-8")
+    changed = tmp_path / "changed.txt"
+    changed.write_text("tests/unit/test_tool.py\nbenchbox/base.py\n", encoding="utf-8")
+    out = tmp_path / "targets.txt"
+    output = tmp_path / "github-output.txt"
+    assert (
+        sel.main(
+            [
+                "windows-targets",
+                "--selection-in",
+                str(selection),
+                "--changed-in",
+                str(changed),
+                "--targets-out",
+                str(out),
+                "--github-output",
+                str(output),
+                "--repo-root",
+                str(repo),
+            ]
+        )
+        == 0
+    )
+    assert out.read_text(encoding="utf-8").splitlines() == [
+        "tests/unit/core/test_engine.py",
+        "tests/unit/test_tool.py",
+    ]
+    assert output.read_text(encoding="utf-8") == "windows-test-files=2\n"
+
+
+def test_windows_targets_cli_rejects_unreadable_selection(repo: Path, tmp_path: Path) -> None:
+    selection = tmp_path / "selection.json"
+    selection.write_text("[]", encoding="utf-8")
+    out = tmp_path / "targets.txt"
+    args = ["windows-targets", "--selection-in", str(selection), "--targets-out", str(out), "--repo-root", str(repo)]
+    assert sel.main(args) == 1
+    selection.unlink()
+    assert sel.main(args) == 1
+    assert not out.exists()
+
+
+def test_windows_test_files_excludes_develop_changed_tests(repo: Path) -> None:
+    _write(repo, "tests/unit/test_develop_broken.py")
+    payload = {
+        "selected": ["tests/unit/test_develop_broken.py::test_fail", "tests/unit/core/test_engine.py"],
+        "develop_changed_tests": ["tests/unit/test_develop_broken.py"],
+    }
+    assert sel.windows_test_files(repo, payload, []) == ["tests/unit/core/test_engine.py"]
+    assert sel.windows_test_files(repo, payload, ["tests/unit/test_develop_broken.py"]) == [
+        "tests/unit/core/test_engine.py",
+        "tests/unit/test_develop_broken.py",
+    ]
+
+
+def test_windows_test_files_excludes_posix_only_directories(repo: Path) -> None:
+    _write(repo, "tests/unit/scripts/oracle_reviewers/test_posix.py")
+    payload = {
+        "selected": [
+            "tests/unit/scripts/oracle_reviewers/test_posix.py",
+            "tests/unit/core/test_engine.py",
+        ]
+    }
+    assert sel.windows_test_files(repo, payload, []) == ["tests/unit/core/test_engine.py"]
+    assert sel.windows_test_files(repo, payload, ["tests/unit/scripts/oracle_reviewers/test_posix.py"]) == [
+        "tests/unit/core/test_engine.py",
+        "tests/unit/scripts/oracle_reviewers/test_posix.py",
+    ]
+
+
+def test_windows_targets_cli_excludes_develop_changed_tests(repo: Path, tmp_path: Path) -> None:
+    _write(repo, "tests/unit/test_develop_broken.py")
+    selection = tmp_path / "selection.json"
+    selection.write_text(
+        json.dumps(
+            {
+                "selected": ["tests/unit/test_develop_broken.py::test_x", "tests/unit/core/test_engine.py"],
+                "develop_changed_tests": ["tests/unit/test_develop_broken.py"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    out = tmp_path / "targets.txt"
+    output = tmp_path / "github-output.txt"
+    assert (
+        sel.main(
+            [
+                "windows-targets",
+                "--selection-in",
+                str(selection),
+                "--targets-out",
+                str(out),
+                "--github-output",
+                str(output),
+                "--repo-root",
+                str(repo),
+            ]
+        )
+        == 0
+    )
+    assert out.read_text(encoding="utf-8").splitlines() == ["tests/unit/core/test_engine.py"]
+    assert output.read_text(encoding="utf-8") == "windows-test-files=1\n"
+
+
+@pytest.mark.parametrize("key", ["coverage_tests", "importer_tests", "reader_tests"])
+def test_windows_test_files_keep_develop_changed_tests_reached_by_the_change(repo: Path, key: str) -> None:
+    _write(repo, "tests/unit/test_develop_reached.py")
+    payload = {
+        "selected": ["tests/unit/test_develop_reached.py"],
+        "develop_changed_tests": ["tests/unit/test_develop_reached.py"],
+        key: ["tests/unit/test_develop_reached.py::test_one"],
+    }
+    assert sel.windows_test_files(repo, payload, []) == ["tests/unit/test_develop_reached.py"]

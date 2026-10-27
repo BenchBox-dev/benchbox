@@ -99,6 +99,7 @@ jobs:
       api-contract-changed: ${{ steps.path-flags.outputs.api-contract-changed }}
       tuning-paths-changed: ${{ steps.path-flags.outputs.tuning-paths-changed }}
       sql-evidence-paths-changed: ${{ steps.path-flags.outputs.sql-evidence-paths-changed }}
+      windows-leg-needed: ${{ steps.windows-select.outputs.windows-leg-needed }}
       trunk-lane-plain-needed: ${{ steps.path-flags.outputs.trunk-lane-plain-needed }}
       trunk-lane-coverage-needed: ${{ steps.path-flags.outputs.trunk-lane-coverage-needed }}
       estimated-runner-minutes-saved: ${{ steps.classify.outputs.estimated-runner-minutes-saved }}
@@ -287,6 +288,21 @@ jobs:
             --summary "$GITHUB_STEP_SUMMARY"
           test -s coverage-selection.json
 
+      - name: Select tests for the Windows leg
+        id: windows-select
+        run: |
+          set -euo pipefail
+          python scripts/coverage_test_selection.py windows-targets \
+            --selection-in coverage-selection.json \
+            --changed-in .ci-paths/changed.txt \
+            --targets-out windows-test-files.txt \
+            --github-output "$GITHUB_OUTPUT"
+          needed=false
+          if grep -qE '^(tests|scripts|_project/scripts|benchbox)/.*\.py$' .ci-paths/changed.txt && [ -s windows-test-files.txt ]; then
+            needed=true
+          fi
+          echo "windows-leg-needed=$needed" >> "$GITHUB_OUTPUT"
+
       - name: Upload coverage selection
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
@@ -294,6 +310,7 @@ jobs:
           path: |
             coverage-selection.json
             coverage-nodeids.txt
+            windows-test-files.txt
           if-no-files-found: error
           retention-days: 14
 
@@ -1399,6 +1416,77 @@ jobs:
           uv pip install "polars==2.0.0"
           make polars-df-compat-check
 
+  windows-tests:
+    name: windows-tests (windows-latest, py3.12)
+    needs: ci-paths
+    if: ${{ needs.ci-paths.outputs.windows-leg-needed == 'true' }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Download coverage selection
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: coverage-selection-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: coverage-selection
+
+      - name: Run the selected and changed test files on Windows
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -s coverage-selection/windows-test-files.txt ]; then
+            echo "::error::The Windows leg is required but coverage-selection/windows-test-files.txt is empty or missing."
+            echo "Windows: required leg received an empty test target file." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          target_count=$(wc -l < coverage-selection/windows-test-files.txt | tr -d ' ')
+          echo "Test files selected for Windows: $target_count"
+          head -n 50 coverage-selection/windows-test-files.txt
+          status=0
+          uv run -- python -c "import pathlib, sys, pytest; targets = [l.strip() for l in pathlib.Path('coverage-selection/windows-test-files.txt').read_text(encoding='utf-8').splitlines() if l.strip()]; raise SystemExit(0 if not targets else pytest.main([*sys.argv[1:], *targets]))" -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120 --junitxml=junit-windows-pr.xml || status=$?
+          if [ "$status" -eq 5 ]; then
+            fast_target=""
+            while IFS= read -r target; do
+              if [ -f "$target" ] && grep -qE 'mark\.fast' "$target"; then
+                fast_target="$target"
+                break
+              fi
+            done < coverage-selection/windows-test-files.txt
+            if [ -n "$fast_target" ]; then
+              echo "::error::pytest collected no tests although $fast_target carries the fast marker."
+              echo "Windows: pytest collected no eligible tests although $fast_target carries the fast marker." >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+            echo "::notice::Selected Windows test files contain no tests matching the fast-tier marker."
+            echo "Windows: $target_count selected test files contained no fast-tier tests; pytest collected no eligible tests." >> "$GITHUB_STEP_SUMMARY"
+          else
+            exit "$status"
+          fi
+
+      - name: Upload Windows test report
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: windows-tests-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: junit-windows-pr.xml
+          if-no-files-found: ignore
+          retention-days: 14
+
   tuning-liveness:
     name: tuning-liveness
     needs: ci-paths
@@ -1691,7 +1779,7 @@ jobs:
 
   core:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
-    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, sql-execution-evidence, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
+    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, sql-execution-evidence, windows-tests, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -1786,6 +1874,7 @@ jobs:
             --expect tpch-binary-framing=${{ needs.ci-paths.outputs.heavy-needed == 'true' || needs.ci-paths.outputs.framing-needed == 'true' }} \
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
             --expect sql-execution-evidence=${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }} \
+            --expect windows-tests=${{ needs.ci-paths.outputs.windows-leg-needed == 'true' }} \
             --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \
             --expect dependency-audit=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \
             --expect trunk-lane-plain=${{ needs.ci-paths.outputs.trunk-lane-plain-needed == 'true' }} \
