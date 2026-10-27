@@ -1156,3 +1156,31 @@ def test_a_plan_without_a_protected_list_fails_closed(
     )
     assert outcome.missing is not None
     assert outcome.missing.kind == absence.INCOMPLETE
+
+
+@skip_on_windows
+def test_a_reply_without_its_defaulted_fields_still_records_a_verdict(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    reply = {key: value for key, value in VERDICT.items() if key not in ("summary", "incomplete_reason")}
+    reply["defects"] = [{**DEFECT, "line_note": "n"}]
+    reply["decision"] = "SHIP_WITH_FIXES"
+    stdout = "\n".join([_reads("a.txt"), _envelope(json.dumps(reply))])
+    _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(stdout)})")
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.missing is None and outcome.verdict is not None
+    assert (outcome.verdict["summary"], outcome.verdict["incomplete_reason"]) == ("", "")
+    assert outcome.diagnostic.startswith("rewrites=default_incomplete_reason,default_summary,defects_metadata\n")
+
+
+@skip_on_windows
+def test_an_incomplete_reply_without_a_reason_is_an_invalid_absence(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    reply = {key: value for key, value in VERDICT.items() if key != "incomplete_reason"}
+    reply["status"] = "incomplete"
+    _fake_omp(tmp_path, monkeypatch, f"print({json.dumps(_envelope(json.dumps(reply)))})")
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.verdict is None and outcome.missing is not None and outcome.missing.kind == "invalid"

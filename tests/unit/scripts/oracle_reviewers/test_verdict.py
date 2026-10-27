@@ -14,6 +14,7 @@ from _project.scripts.oracle_reviewers.verdict import (
     VerdictError,
     comment_span,
     extract_omp_text,
+    normalize_reviewer,
     parse_output,
     place,
     sanitize,
@@ -391,3 +392,22 @@ def test_a_finding_key_error_names_the_missing_and_unexpected_keys() -> None:
     finding["category"] = "x"
     with pytest.raises(VerdictError, match=r"missing \['detail'\], unexpected \['category'\]"):
         validate(_verdict(finding))
+
+
+def test_a_span_on_a_file_outside_the_diff_has_no_comment_span() -> None:
+    finding = validate(_verdict(_finding(file="elsewhere.py", end_line=12))).defects[0]
+    assert comment_span(finding, commentable_lines(DIFF)) is None
+
+
+def test_missing_defaulted_fields_are_filled_and_named_once() -> None:
+    reply = {
+        key: value
+        for key, value in _verdict(_finding(line_note="n")).items()
+        if key not in ("summary", "incomplete_reason")
+    }
+    reply["prior_defects"] = {"#D1": {"status": "fixed", "evidence": "x"}}
+    normalized, rewrites = normalize_reviewer(reply)
+    assert rewrites == ("default_incomplete_reason", "default_summary", "prior_dictionary", "defects_metadata")
+    assert (normalized["incomplete_reason"], normalized["summary"]) == ("", "")
+    assert normalized["prior_defects"] == [{"status": "fixed", "evidence": "x", "id": "D1"}]
+    assert normalize_reviewer(_verdict(_finding())) == (_verdict(_finding()), ())
