@@ -16062,12 +16062,17 @@
       "title": "Remove the oracle's author-family label lookup and hard-code the claude author default"
     },
     "oracle-carry-byte-identical-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-28T15:56:25Z",
+        "generation": "2e90ae40033045ac8444521db321abd4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [
         "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Carry an oracle decision only for a byte-identical merge-base diff with full blob ids"
     },
     "oracle-carry-publication-and-failed-post-strike-state-20261024": {
