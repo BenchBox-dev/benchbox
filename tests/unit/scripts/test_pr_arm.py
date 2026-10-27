@@ -116,20 +116,23 @@ class FakeGh:
             assert f"head_sha={self.local_head}" in cmd[-1]
             return 0, "\n".join(f"{run_id}\t{title}\t{status}" for run_id, title, status in self.ci_runs)
         if cmd[:3] == ["gh", "api", "--paginate"] and "/check-runs?" in cmd[-1]:
-            runs = [("core", *self.core)] + list(self.extra_runs)
-            lines = []
-            for index, (name, status, conclusion) in enumerate(runs, 1):
-                record = {"id": index, "name": name, "status": status, "conclusion": conclusion}
-                record["head_sha"] = self.local_head
-                if name == "core":
-                    record["details_url"] = self.core_url
-                lines.append(json.dumps({**record, "check_suite": {"id": 9}}))
-            return 0, "\n".join(lines)
+            return 0, self._check_runs()
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/pulls/7/files"):
             return 0, "\n".join(self.changed_files)
         if cmd[:3] == ["gh", "workflow", "run"]:
             return self.dispatch_code, "" if self.dispatch_code == 0 else "gh: HTTP 403"
         raise AssertionError(f"unexpected command {cmd}")
+
+    def _check_runs(self) -> str:
+        runs = [("core", *self.core)] + list(self.extra_runs)
+        lines = []
+        for index, (name, status, conclusion) in enumerate(runs, 1):
+            record = {"id": index, "name": name, "status": status, "conclusion": conclusion}
+            record["head_sha"] = self.local_head
+            if name == "core":
+                record["details_url"] = self.core_url
+            lines.append(json.dumps({**record, "check_suite": {"id": 9}}))
+        return "\n".join(lines)
 
     def dispatched(self) -> list[list[str]]:
         return [call for call in self.calls if call[:3] == ["gh", "workflow", "run"]]
