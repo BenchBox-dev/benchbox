@@ -2,6 +2,7 @@
   "acceptance": [
     "Tests that fail on develop and pass after: with a placeholder core failure and the full run in progress, pr-arm reports waiting for that run and does not advise pr-rerun; with the full run completed and core still failed, pr-arm advises pr-rerun; pr-rerun's in-progress refusal names the run.",
     "Live: one PR armed through the in-progress case without manual job restarts (record PR and run).",
+    "Adds or updates the matching scenario in the oracle end-to-end harness (oracle-e2e-scenario-harness-and-mutation-gate-20261027) once that harness exists, proven to fail with this item's defect reintroduced.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "2026-10-27: owner restarted #3585's failed jobs by hand after the two tools contradicted each other.",
@@ -18,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "eb034f72f8d740d8821e1bd34147d280",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T14:09:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5875af5f580649a290377f604b924fe7",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
