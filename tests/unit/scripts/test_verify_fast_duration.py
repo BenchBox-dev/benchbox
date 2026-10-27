@@ -318,7 +318,7 @@ def test_cli_exits_zero_on_would_block_in_report_mode(tmp_path: Path, capsys: py
     assert "(report only)" in out
 
 
-def test_refreshed_baseline_does_not_exempt_a_further_slowdown(
+def test_block_mode_fails_a_slowdown_against_the_committed_baseline(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     baseline_dir = committed_baseline(tmp_path, cases(1000, 0.4))
@@ -435,12 +435,21 @@ def test_report_mode_rollback_allows_slowdown(
     assert "(report only)" in out
 
 
-def test_cli_exits_zero_for_missing_baseline_and_missing_calibration(tmp_path: Path) -> None:
-    run = write_run(tmp_path, "run", cases(5, 2.0), best_seconds=None)
+def test_cli_exits_zero_for_missing_baseline(tmp_path: Path) -> None:
+    run = write_run(tmp_path, "run", cases(5, 2.0))
 
     status = baseline.main(["verify", "--baseline", str(tmp_path / "absent"), "--run-dir", str(run)])
 
     assert status == 0
+
+
+def test_block_mode_fails_a_rejected_run_and_report_mode_does_not(tmp_path: Path) -> None:
+    baseline_dir = committed_baseline(tmp_path, cases(5, 2.0))
+    run = write_run(tmp_path, "run", cases(5, 2.0), best_seconds=None)
+    arguments = ["verify", "--baseline", str(baseline_dir), "--run-dir", str(run)]
+
+    assert baseline.main([*arguments, "--mode", "block"]) == 1
+    assert baseline.main([*arguments, "--mode", "report"]) == 0
 
 
 def test_committed_baseline_verifies_against_itself_as_pass() -> None:

@@ -556,6 +556,9 @@ def verify_command(args: argparse.Namespace) -> int:
         )
         return 0
     elif verdict == "rejected":
+        if mode == "block":
+            print(f"::error title=verify-fast-duration::run rejected: {report['reason']}")
+            return 1
         print(f"::warning title=verify-fast-duration::run rejected: {report['reason']}")
     return 0
 
