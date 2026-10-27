@@ -176,6 +176,14 @@ def _withheld(value: Any) -> Any:
     return {key: _withheld(item) for key, item in value.items()}
 
 
+def _terminal(stdout: str, secrets: tuple[str, ...]) -> dict[str, Any] | None:
+    error = omp_terminal_error(stdout)
+    if error is None:
+        return None
+    message = absence.redact_detail(error.message, secrets)
+    return {"status": error.status, "provider": error.provider, "message": message}
+
+
 def capture(reviewer: Reviewer, result: RunResult) -> dict[str, Any]:
     secrets = _credentials()
     stdout = result.stdout if reviewer.harness == "omp" else ""
@@ -189,7 +197,7 @@ def capture(reviewer: Reviewer, result: RunResult) -> dict[str, Any]:
             "model": reviewer.model,
             "exit_code": result.exit_code,
             "timed_out": result.timed_out,
-            "terminal_error": absence.redact_detail(omp_terminal_error(stdout), secrets),
+            "terminal_error": _terminal(stdout, secrets),
             "stderr_excerpt": absence.excerpt("", result.stderr, secrets),
             "streaming_events_dropped": len(parsed) - len(events),
             "events": _scrubbed(redaction_check.redact(_withheld(events), secrets)),

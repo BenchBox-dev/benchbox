@@ -578,17 +578,14 @@ class FakeGitHub:
     def graphql(self, payload: dict[str, Any], token: str) -> dict[str, Any]:
         query = payload.get("query", "")
         variables = payload.get("variables") or {}
-        if "lastEditedAt" in query:
-            review = next(
-                (item for items in self.reviews.values() for item in items if item["node_id"] == variables.get("id")),
-                None,
-            )
-            node = (
-                None
-                if review is None
-                else {"lastEditedAt": review["last_edited_at"], "includesCreatedEdit": review["edited"]}
-            )
-            return {"data": {"node": node}}
+        reviews = {item["node_id"]: item for items in self.reviews.values() for item in items}
+        if "nodes(ids" in query:
+            ids = variables.get("ids") or []
+            nodes = [self._edit_state(reviews[node_id], node_id) for node_id in ids if node_id in reviews]
+            return {"data": {"nodes": nodes}}
+        if "node(id" in query:
+            review = reviews.get(variables.get("id"))
+            return {"data": {"node": None if review is None else self._edit_state(review, review["node_id"])}}
         if query.lstrip().startswith("mutation"):
             return self.mutation(query, variables)
         number = int(variables.get("number") or variables.get("pr_number") or 0)
@@ -611,6 +608,8 @@ class FakeGitHub:
                                     "login": item["author"]["login"].removesuffix("[bot]"),
                                 },
                                 "authorAssociation": item["association"],
+                                "lastEditedAt": None,
+                                "includesCreatedEdit": False,
                                 "body": item["body"],
                             }
                             for item in thread["comments"]
@@ -626,6 +625,9 @@ class FakeGitHub:
             }
             return {"data": {"repository": {"pullRequest": {"reviewThreads": connection}}}}
         return {"data": {"repository": {"pullRequest": self.graphql_pull(pull)}}}
+
+    def _edit_state(self, review: dict[str, Any], node_id: str) -> dict[str, Any]:
+        return {"id": node_id, "lastEditedAt": review["last_edited_at"], "includesCreatedEdit": review["edited"]}
 
     def graphql_pull(self, pull: dict[str, Any]) -> dict[str, Any]:
         return {
