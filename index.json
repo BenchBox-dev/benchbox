@@ -16430,7 +16430,7 @@
         "oracle-concedes-skeleton-boolean-20261027"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Classify each invalid reviewer attempt with Jev as retry, stop or escalate"
     },
     "oracle-jev-gateway-gap": {
