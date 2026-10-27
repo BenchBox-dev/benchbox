@@ -26,6 +26,7 @@ def git_lines(args: list[str]) -> list[str]:
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip()
@@ -50,6 +51,7 @@ def is_ancestor(commit: str, target_ref: str) -> bool:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             text=True,
+            encoding="utf-8",
         ).returncode
         == 0
     )

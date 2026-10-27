@@ -110,7 +110,9 @@ def repo_path(value: Any, roots: tuple[str, ...], directory: bool = False) -> st
 
 
 def git(root: Path, *args: str) -> str:
-    result = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        ["git", "-C", str(root), *args], capture_output=True, text=True, encoding="utf-8", check=False
+    )
     if result.returncode:
         raise ValueError(f"git {' '.join(args)} failed: {result.stderr.strip()}")
     return result.stdout
@@ -149,6 +151,7 @@ def generated_outputs(root: Path, generated: Any, files: dict[str, str], tracked
         ["git", "-C", str(root), "check-ignore", "--no-index", QUERY_ROOT + "ownership-probe.md"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     if probe.returncode != 0:

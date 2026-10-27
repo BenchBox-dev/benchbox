@@ -46,6 +46,7 @@ def run_git(args: list[str]) -> str:
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip()
@@ -62,6 +63,7 @@ def git_ok(args: list[str]) -> bool:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             text=True,
+            encoding="utf-8",
         ).returncode
         == 0
     )

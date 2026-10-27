@@ -102,7 +102,7 @@
       "sql": "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x) FROM t",
       "source": "postgres", "target": "mysql", "identify": true, "entry": "transpile",
       "expected": {"outcome": "unsupported", "error_type": "SyntheticPercentileDecorator"},
-      "workaround": {"decision": "retain", "path": "benchbox/sql_compat/rules/query_source/h2odb_variants.py", "reason": "The MySQL-target percentile proxy still generates CASE/NULL decoration. Upstreamed SingleStore support does not prove this separate variant removable or certify native MySQL execution."}
+      "workaround": {"decision": "retain", "path": "benchbox/sql_compat/rules/query_source/h2odb_variants.py", "reason": "The MySQL-target percentile proxy still generates CASE/NULL decoration. Upstreamed SingleStore support does not prove this separate variant removable. MySQL has no PERCENTILE_CONT and no MySQL engine runs in this check, so retirement is manual: a changed observation fails the check and a maintainer reviews it."}
     }
   ]
 }

@@ -83,7 +83,7 @@
       "path": "tests/unit/scripts/test_ci_lint_environment_boundary.py",
       "symbol": "TestGateFailsClosed.test_ci_lint_environment_boundary_runs_the_guard_when_the_gate_is_broken",
       "text": "unresolved executable source: f'{broken} echo RAN; else echo SKIPPED; fi'",
-      "payload": "sha256:d9de6a27a46433d6062e9d8855e24de88d975bb64e9e6fdcceb7a53842c74b60",
+      "payload": "sha256:ecb9eda5f86def5ec1977064e57340c4b70da732c6b6bed4ba6192fb09dbaff9",
       "finding_kind": "payload-error",
       "kind": "fixture",
       "consumer": "tests/unit/scripts/test_ci_lint_environment_boundary.py",

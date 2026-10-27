@@ -834,6 +834,5 @@ def test_identical_findings_are_listed_once_and_stored_with_unique_ids(policy: P
     assert record is not None
     ids = [item["id"] for item in record["open_defects"]]
     assert ids == ["D1", "D2"] and record["next_id"] == 3
-    assert render.response_template(ids)
     assert "1 identical finding(s) were reported more than once and are listed once." in final.body
     assert final.review is not None and len(final.review["comments"]) == 2

@@ -1369,6 +1369,7 @@ def _commit_parents(commit: str) -> list[str] | None:
             check=False,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=60,
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -1401,6 +1402,7 @@ def _commit_timestamp(commit: str) -> int | None:
             check=False,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=60,
         )
     except (OSError, subprocess.TimeoutExpired):
