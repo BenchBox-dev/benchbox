@@ -109,7 +109,7 @@ help:
 	@echo ""
 	@echo "Documentation:"
 	@echo "  make compat-inventory-check    Check SQL compatibility inventory and DDL drift"
-	@echo "  make docs-validate             Validate example references and syntax, and repo-local doc links"
+	@echo "  make docs-validate             Check documentation ownership, example references and example syntax"
 	@echo "  make docs-generate             Check the prompt catalog and generated docs inputs"
 	@echo "  make doc-contracts             Write doc-contracts.json (facts site-owned docs are validated against)"
 	@echo "  make doc-contracts-check       Validate doc-contracts.json against its schema and check determinism"
