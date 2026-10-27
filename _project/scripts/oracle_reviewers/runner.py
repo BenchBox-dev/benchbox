@@ -213,6 +213,13 @@ def _with_trace(diagnostic: str, harness: str, stdout: str, plan: Mapping[str, A
     return f"{diagnostic} | {summary}" if diagnostic else summary
 
 
+def _captured(reviewer: Reviewer, result: RunResult) -> dict[str, Any] | None:
+    try:
+        return capture(reviewer, result)
+    except Exception:
+        return None
+
+
 def review(
     reviewer: Reviewer,
     *,
@@ -236,7 +243,7 @@ def review(
     staged_before = _digest(workspace / STAGED_DIFF_NAME)
     result = execute(invocation, reviewer.timeout_minutes * 60)
     outcome = _judge(reviewer, invocation, result, workspace=workspace, staged_before=staged_before, now=now, plan=plan)
-    return replace(outcome, capture=capture(reviewer, result))
+    return replace(outcome, capture=_captured(reviewer, result))
 
 
 def _judge(

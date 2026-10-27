@@ -59,6 +59,7 @@ STEP_ORDER = [
     "Post the findings review",
     "Upload the retry state",
     *[f"Upload attempt {slot}" for slot in range(1, POLICY.max_attempts + 1)],
+    "Upload the captured reviewer event streams",
     DISPATCH_STEP,
 ]
 LOOP_STEP = "Run the attempt loop"

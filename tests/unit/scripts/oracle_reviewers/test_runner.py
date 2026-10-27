@@ -965,3 +965,20 @@ def test_capture_redacts_a_token_split_across_text_blocks(monkeypatch: pytest.Mo
     assert token not in "".join(block["text"] for block in message["content"])
     assert token not in json.dumps(captured)
     assert "[redacted]" in json.dumps(captured)
+
+
+@skip_on_windows
+def test_a_capture_crash_keeps_the_completed_verdict(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace, head = _workspace(tmp_path)
+    _omp_says(tmp_path, monkeypatch)
+
+    def explode(*_: object) -> dict[str, object]:
+        raise RecursionError("maximum recursion depth exceeded")
+
+    monkeypatch.setattr(runner, "capture", explode)
+    outcome = _review(policy, tmp_path, workspace, head)
+    assert outcome.verdict is not None
+    assert outcome.verdict["decision"] == "SHIP"
+    assert outcome.capture is None
