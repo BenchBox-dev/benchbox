@@ -16444,7 +16444,6 @@
     "oracle-invalid-attempt-jev-recovery-20261027": {
       "claim": null,
       "needs": [
-        "oracle-history-edited-review-fail-closed-20261027",
         "oracle-concedes-skeleton-boolean-20261027"
       ],
       "priority": "high",
