@@ -24516,15 +24516,10 @@
       "title": "Publish the tiny SQL translation feasibility verdict"
     },
     "sql-transpiler-comparison-evidence": {
-      "claim": {
-        "expires_at": "2026-10-28T18:04:42Z",
-        "generation": "55bfa894f7824d23968d20da78c9ee38",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Preserve and refresh SQLGlot versus Polyglot execution evidence"
     },
     "sql-transpiler-maintenance-decision": {
