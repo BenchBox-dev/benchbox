@@ -50,6 +50,7 @@ class TSBSDevOpsQueryManager:
         overrides: Optional[dict[str, Any]] = None,
         query_id: Optional[str] = None,
     ) -> dict[str, Any]:
+        rng = np.random.default_rng([self.seed, zlib.crc32((query_id or "").encode("utf-8"))])
         params = {}
         rng = np.random.default_rng([self.seed, zlib.crc32((query_id or "").encode("utf-8"))])
         query_params = query_def.get("params", {})

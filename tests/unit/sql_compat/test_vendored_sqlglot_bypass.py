@@ -391,12 +391,7 @@ _UPSTREAM_SQLGLOT_TOOLS: dict[str, str] = {
     "_project/sqlglot-upstream/repros/sqlite_extract.py": UPSTREAM_REPRO,
 }
 
-BASE_AVAILABILITY = (
-    "Import guard that reports a missing bundled runtime before translate_query delegates to the wrapper"
-)
-
 _BYPASS_ENTRIES: dict[tuple[str, str], AllowlistEntry] = {
-    ("benchbox/base.py", KIND_IMPORT): AllowlistEntry(2, "7e7849bc6ba20bd5", AVAILABILITY_GUARD, BASE_AVAILABILITY),
     ("benchbox/core/equivalence/builders/tpcds.py", KIND_IMPORT): AllowlistEntry(
         2, "3cbc8c0042278b22", PARSE_ONLY, EQUIVALENCE_TPCDS
     ),

@@ -274,3 +274,17 @@ Each finding retains its reviewer, severity and evidence. Accepted findings
 name a plan correction and the proving check; rebuttals require checkable
 counter-evidence. The revised plan and the full disposition table accompany
 the implementation TODOs. No reviewer writes code or changes tracker state.
+
+## Startup cost of the zip-loaded runtime
+
+Zip import never writes bytecode, so every process that imports SQLGlot
+recompiles about 3.4 MB of source. On macOS arm64, a fresh interpreter that
+imports the runtime and translates one statement spends about 0.7 s more CPU
+from the archive than from an unpacked tree with warm bytecode.
+
+Decision: keep loading from the archive. Unpacking source or caching bytecode
+would add a writable cache directory, a staleness rule per Python version and a
+second copy of the code that the pinned archive hash no longer covers. The
+runtime is imported lazily instead: `import benchbox`, `benchbox --help` and
+other commands that do not translate SQL no longer load it, which halves their
+CPU time. Commands that translate SQL still pay the one-time compile cost.

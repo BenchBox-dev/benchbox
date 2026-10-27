@@ -3,6 +3,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 from datetime import datetime
+from random import Random
 
 import pytest
 
@@ -110,6 +111,39 @@ class TestTSBSDevOpsQueryManager:
         assert "MAX(time) AS max_time" in query
         assert "ORDER BY c.hostname" in query
         assert "(hostname, time) IN" not in query
+
+    @pytest.mark.parametrize("seed", [None, 0, 42])
+    def test_rendering_is_independent_of_call_order(self, seed):
+        manager = TSBSDevOpsQueryManager(seed=seed, duration_days=2)
+        expected = manager.get_queries()
+        query_ids = list(QUERIES)
+        Random(17).shuffle(query_ids)
+
+        for query_id in query_ids:
+            assert manager.get_query(query_id) == expected[query_id]
+            assert manager.get_query(query_id) == expected[query_id]
+        assert manager.get_queries() == expected
+
+    @pytest.mark.parametrize("seed", [0, 42])
+    def test_seeded_instances_render_identically_in_different_orders(self, seed):
+        expected = TSBSDevOpsQueryManager(seed=seed, duration_days=2).get_queries()
+        manager = TSBSDevOpsQueryManager(seed=seed, duration_days=2)
+
+        for query_id in reversed(QUERIES):
+            assert manager.get_query(query_id) == expected[query_id]
+
+    def test_overrides_do_not_change_subsequent_rendering(self, manager):
+        query_id = "single-host-1-hr"
+        expected = manager.get_query(query_id)
+        overrides = {"hostname": "custom_host", "start_time": "2024-01-01 00:00:00"}
+        expected_overrides = overrides.copy()
+
+        overridden = manager.get_query(query_id, params=overrides)
+
+        assert "custom_host" in overridden
+        assert "2024-01-01 00:00:00" in overridden
+        assert overrides == expected_overrides
+        assert manager.get_query(query_id) == expected
 
     def test_get_query_with_param_override(self, manager):
         query = manager.get_query("single-host-12-hr", params={"hostname": "custom_host"})

@@ -28,7 +28,9 @@ SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
 
 
 def _git_lines(repo: Path, *args: str) -> list[str]:
-    proc = subprocess.run(["git", *args], cwd=repo, check=True, text=True, capture_output=True, timeout=120)
+    proc = subprocess.run(
+        ["git", *args], cwd=repo, check=True, text=True, encoding="utf-8", capture_output=True, timeout=120
+    )
     return [line for line in proc.stdout.splitlines() if line]
 
 
