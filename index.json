@@ -16105,7 +16105,6 @@
     "oracle-cloud-review-reachability-20261027": {
       "claim": null,
       "needs": [
-        "oracle-history-edited-review-fail-closed-20261027",
         "oracle-omp-pin-single-source-20261026"
       ],
       "priority": "high",
