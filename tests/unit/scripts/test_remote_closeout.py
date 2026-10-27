@@ -759,7 +759,7 @@ def test_pending_required_status_still_arms(world: World, ready_pr: FakeGitHub) 
 def test_waiting_oracle_failure_status_refreshes_and_arms(world: World, ready_pr: FakeGitHub) -> None:
     ready_pr.statuses["oracle-gate"] = "failure"
     ready_pr.status_descriptions["oracle-gate"] = (
-        f"oracle-review: waiting for the oracle's review of {world.head}, or a stand-in attestation"
+        f"oracle-review: waiting for the oracle's verdict on {world.head}, or a stand-in attestation"
     )
     ready_pr.gate_state = "failure"
     assert arm(world, ready_pr) == 0

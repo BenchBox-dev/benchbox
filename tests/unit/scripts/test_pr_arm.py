@@ -699,7 +699,7 @@ def test_waiting_oracle_failure_status_refreshes_and_arms() -> None:
     gh = FakeGh(
         statuses={"oracle-gate": "failure"},
         status_descriptions={
-            "oracle-gate": f"oracle-review: waiting for the oracle's review of {HEAD}, or a stand-in attestation"
+            "oracle-gate": f"oracle-review: waiting for the oracle's verdict on {HEAD}, or a stand-in attestation"
         },
         rules=["core", "oracle-gate"],
         gate_state="failure",
@@ -713,7 +713,7 @@ def test_waiting_oracle_description_for_another_head_does_not_mask_failure() -> 
     gh = FakeGh(
         statuses={"oracle-gate": "failure"},
         status_descriptions={
-            "oracle-gate": f"oracle-review: waiting for the oracle's review of {'b' * 40}, or a stand-in attestation"
+            "oracle-gate": f"oracle-review: waiting for the oracle's verdict on {'b' * 40}, or a stand-in attestation"
         },
         rules=["core", "oracle-gate"],
     )
