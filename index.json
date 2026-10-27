@@ -16096,7 +16096,8 @@
       "claim": null,
       "needs": [
         "oracle-verdict-single-job-20261025",
-        "oracle-local-prepr-review-20261025"
+        "oracle-local-prepr-review-20261025",
+        "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "low",
       "status": "open",
