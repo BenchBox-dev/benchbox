@@ -570,7 +570,9 @@ run stays pending. A hollow answer never passes.
   measurable. It never carries the raw event stream, and OMP stdout is no longer
   excerpted.
 - Credentials: `commands.omp_env()` forwards only the base environment and the
-  gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`). `credentials.py`
+  gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`), plus the loopback
+  gateway proxy variables only while a cloud local review has set one in-process.
+  `credentials.py`
   `NAMES` lists that token, the broker and provider variables the loop no longer
   receives, the runner-held values (gateway URL, Tailscale client ID and
   audience, OIDC request token) and legacy extras, so a local run still holding
@@ -691,6 +693,10 @@ to GitHub.
   (`ORACLE_CLOUD_GATEWAY_TOKEN` set or `BENCHBOX_EPHEMERAL_CLONE=1`) use the
   `oracle-cloud` client from `ORACLE_GATEWAY_URL` and
   `ORACLE_CLOUD_GATEWAY_TOKEN`, refusing if either is missing.
+  The tailnet is reachable only through the local proxy that `make cloud-gateway`
+  records as `gateway_proxy=` in `<git dir>/benchbox-cloud-gateway.status`: the
+  health check uses it, and the reviewer gets `HTTPS_PROXY`, `HTTP_PROXY` and a
+  loopback-only `NO_PROXY` for the cloud client alone, never for local or CI.
   `write_reviewer_home` accepts `http://` on a loopback host only for local
   review; the CI loop still requires `https://`. Token, key and URL values are
   never printed: every line passes the redaction that covers the stored result.

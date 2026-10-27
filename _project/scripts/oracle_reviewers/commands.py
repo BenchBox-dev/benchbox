@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import contextlib
 import os
-from collections.abc import Mapping
+import re
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,6 +13,8 @@ from .policy import OMP_THINKING_LEVELS, Reviewer
 
 FORBIDDEN_FLAGS = ("--dangerously-skip-permissions", "--yolo", "--dangerously-bypass-approvals-and-sandbox")
 OMP_READ_TOOLS = "read,grep,glob"
+LOOPBACK_PROXY = re.compile(r"http://127\.0\.0\.1:\d{1,5}")
+GATEWAY_NO_PROXY = "127.0.0.1,localhost,::1"
 OMP_BASE_ENV = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "LC_ALL", "TZ", "USER", "LOGNAME", "SHELL")
 
 OMP_OVERLAY_TEXT = """mcp:
@@ -58,9 +62,26 @@ class Invocation:
     env: Mapping[str, str] | None = None
 
 
+_gateway_proxy = ""
+
+
+@contextlib.contextmanager
+def gateway_proxy(proxy: str) -> Iterator[None]:
+    global _gateway_proxy
+    previous = _gateway_proxy
+    _gateway_proxy = proxy if LOOPBACK_PROXY.fullmatch(proxy) else ""
+    try:
+        yield
+    finally:
+        _gateway_proxy = previous
+
+
 def omp_env() -> dict[str, str]:
     names = (*OMP_BASE_ENV, *GATEWAY_ENV)
-    return {name: value for name in names if (value := os.environ.get(name))}
+    env = {name: value for name in names if (value := os.environ.get(name))}
+    if _gateway_proxy:
+        env.update(HTTPS_PROXY=_gateway_proxy, HTTP_PROXY=_gateway_proxy, NO_PROXY=GATEWAY_NO_PROXY)
+    return env
 
 
 def write_overlay(scratch: Path) -> Path:
