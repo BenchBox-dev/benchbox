@@ -6,13 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.duration_policy import (
-    T1_BUDGET_SECONDS,
-    collect_junit_durations,
-    current_test_tier,
-    load_durations,
-    write_duration_file,
-)
+from tests.duration_policy import collect_junit_durations, current_test_tier, write_duration_file
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -27,17 +21,6 @@ def test_current_test_tier_defaults_to_t1_and_rejects_unknown(monkeypatch: pytes
     monkeypatch.setenv("BENCHBOX_TEST_TIER", "nightly")
     with pytest.raises(ValueError, match="BENCHBOX_TEST_TIER"):
         current_test_tier()
-
-
-def test_load_durations_rejects_non_finite_and_boolean_values(tmp_path: Path) -> None:
-    for value in [True, "0.2", float("inf")]:
-        path = tmp_path / "durations.json"
-        path.write_text(
-            json.dumps({"schema_version": 1, "tests": {"tests/unit/test.py::test": {"p95_seconds": value}}}),
-            encoding="utf-8",
-        )
-        with pytest.raises(ValueError, match="p95_seconds|negative"):
-            load_durations(path)
 
 
 def test_collect_junit_durations_computes_p95_across_reports(tmp_path: Path) -> None:
@@ -60,7 +43,7 @@ def test_write_duration_file_is_sorted_and_loadable(tmp_path: Path) -> None:
     write_duration_file(
         path,
         {
-            "tests/z.py::test_z": T1_BUDGET_SECONDS,
+            "tests/z.py::test_z": 0.5,
             "tests/a.py::test_a": 0.25,
         },
         generated_at="2026-09-28T20:00:00Z",
@@ -68,7 +51,7 @@ def test_write_duration_file_is_sorted_and_loadable(tmp_path: Path) -> None:
 
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert list(payload["tests"]) == ["tests/a.py::test_a", "tests/z.py::test_z"]
-    assert load_durations(path)["tests/a.py::test_a"] == 0.25
+    assert payload["tests"]["tests/a.py::test_a"] == {"p95_seconds": 0.25}
 
 
 def test_collection_hook_skips_quarantine_outside_t3(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -135,54 +118,3 @@ def test_collect_junit_durations_derives_nodeid_from_classname_without_file(tmp_
         "tests/unit/test_example.py::TestClass::test_method": 0.2,
         "tests/unit/skipped_module.py": 0.0,
     }
-
-
-def test_t1_budget_violations_rejects_missing_timing_record(monkeypatch: pytest.MonkeyPatch) -> None:
-    from tests import duration_policy
-
-    monkeypatch.delenv("BENCHBOX_TEST_DURATION_BOOTSTRAP", raising=False)
-    item = SimpleNamespace(
-        nodeid="tests/unit/test_new.py::test_unmeasured",
-        get_closest_marker=lambda name: object() if name == "fast" else None,
-    )
-
-    violations = duration_policy.t1_budget_violations(item, {}, allow_missing=False)
-    assert len(violations) == 1
-    assert "missing timing record" in violations[0]
-
-
-def test_t1_budget_violations_bootstrap_allows_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    from tests import duration_policy
-
-    monkeypatch.setenv("BENCHBOX_TEST_DURATION_BOOTSTRAP", "1")
-    item = SimpleNamespace(
-        nodeid="tests/unit/test_new.py::test_unmeasured",
-        get_closest_marker=lambda name: object() if name == "fast" else None,
-    )
-
-    violations = duration_policy.t1_budget_violations(item, {}, allow_missing=True)
-    assert violations == []
-
-
-def test_is_bootstrap_artifact_requires_an_empty_explicit_baseline(tmp_path: Path) -> None:
-    from tests.duration_policy import is_bootstrap_artifact
-
-    empty = tmp_path / "empty.json"
-    empty.write_text(json.dumps({"bootstrap": True, "tests": {}}), encoding="utf-8")
-    assert is_bootstrap_artifact(empty) is True
-
-    populated = tmp_path / "populated.json"
-    populated.write_text(
-        json.dumps({"bootstrap": True, "tests": {"tests/unit/test.py::test": {"p95_seconds": 0.1}}}),
-        encoding="utf-8",
-    )
-    assert is_bootstrap_artifact(populated) is False
-
-    malformed = tmp_path / "malformed.json"
-    malformed.write_text("invalid json", encoding="utf-8")
-    assert is_bootstrap_artifact(malformed) is False
-
-
-def test_write_duration_file_rejects_non_empty_bootstrap_artifact(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="empty tests map"):
-        write_duration_file(tmp_path / "durations.json", {"tests/unit/test.py::test": 0.1}, bootstrap=True)

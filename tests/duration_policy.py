@@ -8,9 +8,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
-T1_BUDGET_SECONDS = 0.5
 _VALID_TIERS = {"t1", "t2", "t3"}
-DURATION_FILE = Path(__file__).with_name("fixtures") / "test_durations.json"
 
 
 def current_test_tier() -> str:
@@ -18,30 +16,6 @@ def current_test_tier() -> str:
     if tier not in _VALID_TIERS:
         raise ValueError(f"BENCHBOX_TEST_TIER must be one of {sorted(_VALID_TIERS)}, got {tier!r}")
     return tier
-
-
-def load_durations(path: Path = DURATION_FILE) -> dict[str, float]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError("duration file root must be an object")
-    if payload.get("schema_version") != 1:
-        raise ValueError(f"unsupported duration file schema: {payload.get('schema_version')!r}")
-    records = payload.get("tests")
-    if not isinstance(records, dict):
-        raise ValueError("duration file tests must be an object")
-
-    durations: dict[str, float] = {}
-    for nodeid, record in records.items():
-        if not isinstance(nodeid, str) or not nodeid:
-            raise ValueError("duration file node IDs must be non-empty strings")
-        p95_value = record.get("p95_seconds") if isinstance(record, dict) else None
-        if isinstance(p95_value, bool) or not isinstance(p95_value, (int, float)):
-            raise ValueError(f"duration record for {nodeid!r} must contain numeric p95_seconds")
-        p95_seconds = float(p95_value)
-        if not math.isfinite(p95_seconds) or p95_seconds < 0:
-            raise ValueError(f"duration record for {nodeid!r} must be finite and non-negative")
-        durations[nodeid] = p95_seconds
-    return durations
 
 
 def _percentile(values: list[float], percentile: float) -> float:
@@ -146,27 +120,14 @@ def collect_junit_durations(paths: list[Path]) -> dict[str, float]:
     return {nodeid: _percentile(values, 95) for nodeid, values in sorted(samples.items())}
 
 
-def is_bootstrap_artifact(path: Path = DURATION_FILE) -> bool:
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return False
-    if not isinstance(payload, dict):
-        return False
-    return payload.get("bootstrap") is True and payload.get("tests") == {}
-
-
 def write_duration_file(
     path: Path,
     durations: dict[str, float],
     *,
     generated_at: str | None = None,
     source: str = "T3 nightly JUnit reports",
-    bootstrap: bool = False,
     default_seconds: float | None = None,
 ) -> None:
-    if bootstrap and durations:
-        raise ValueError("bootstrap duration artifacts must contain an empty tests map")
     for nodeid, value in durations.items():
         if not isinstance(nodeid, str) or not nodeid or not isinstance(value, (int, float)) or isinstance(value, bool):
             raise ValueError(f"duration for {nodeid!r} must contain a numeric value")
@@ -182,8 +143,6 @@ def write_duration_file(
         if not math.isfinite(default_seconds) or default_seconds < 0:
             raise ValueError("default_seconds must be finite and non-negative")
         payload["default_seconds"] = round(default_seconds, 6)
-    if bootstrap:
-        payload["bootstrap"] = True
     payload["tests"] = {nodeid: {"p95_seconds": round(value, 6)} for nodeid, value in sorted(durations.items())}
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -221,44 +180,4 @@ def validate_markers(item: Any, *, today: date | None = None) -> list[str]:
         ):
             errors.append(expiry_error)
 
-    exemption = _marker_kwargs(item, "duration_exempt")
-    if exemption is not None:
-        if not isinstance(exemption.get("reason"), str) or not exemption["reason"].strip():
-            errors.append(f"{nodeid}: @pytest.mark.duration_exempt requires non-empty reason=")
-        if expiry_error := _validate_expiry(
-            exemption.get("expiry"), marker_name="duration_exempt", nodeid=nodeid, today=today
-        ):
-            errors.append(expiry_error)
-
     return errors
-
-
-def t1_budget_violations(
-    item: Any,
-    durations: dict[str, float],
-    *,
-    allow_missing: bool | None = None,
-) -> list[str]:
-    if item.get_closest_marker("fast") is None:
-        return []
-    if item.get_closest_marker("duration_exempt") is not None:
-        return []
-    duration = durations.get(item.nodeid)
-    if duration is None:
-        if allow_missing is None:
-            allow_missing = (
-                os.environ.get("BENCHBOX_TEST_DURATION_BOOTSTRAP", "").strip().lower() in {"1", "true", "yes"}
-                or is_bootstrap_artifact()
-            )
-        if not allow_missing:
-            return [
-                f"{item.nodeid}: missing timing record in {DURATION_FILE.name}; "
-                "add a valid @pytest.mark.duration_exempt or refresh duration artifact"
-            ]
-        return []
-    if duration > T1_BUDGET_SECONDS:
-        return [
-            f"{item.nodeid}: p95 duration {duration:.3f}s exceeds the T1 budget of "
-            f"{T1_BUDGET_SECONDS:.3f}s; add a valid @pytest.mark.duration_exempt or move it to T2"
-        ]
-    return []

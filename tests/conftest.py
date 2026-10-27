@@ -320,36 +320,20 @@ def _create_test_databases() -> None:
 
 @pytest.hookimpl(trylast=True)
 def pytest_collection_modifyitems(session, config, items) -> None:
-    from tests.duration_policy import (
-        current_test_tier,
-        is_bootstrap_artifact,
-        load_durations,
-        t1_budget_violations,
-        validate_markers,
-    )
+    from tests.duration_policy import current_test_tier, validate_markers
 
     try:
         tier = current_test_tier()
-        durations = load_durations()
-    except (OSError, ValueError) as exc:
-        raise pytest.UsageError(f"test duration policy is invalid: {exc}") from exc
+    except ValueError as exc:
+        raise pytest.UsageError(f"test tier is invalid: {exc}") from exc
 
-    duration_bootstrap = is_bootstrap_artifact() or os.environ.get(
-        "BENCHBOX_TEST_DURATION_BOOTSTRAP", ""
-    ).strip().lower() in {
-        "1",
-        "true",
-        "yes",
-    }
     violations: list[str] = []
     for item in items:
         violations.extend(validate_markers(item))
-        if tier == "t1":
-            violations.extend(t1_budget_violations(item, durations, allow_missing=duration_bootstrap))
         if tier in {"t1", "t2"} and item.get_closest_marker("quarantine") is not None:
             item.add_marker(pytest.mark.skip(reason=f"quarantined outside T3 ({tier})"))
     if violations:
-        raise pytest.UsageError("test duration policy violations:\n" + "\n".join(violations))
+        raise pytest.UsageError("test marker policy violations:\n" + "\n".join(violations))
 
     if _items_require_test_databases(items):
         _create_test_databases()

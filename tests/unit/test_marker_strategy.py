@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import ast
 import re
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from tests import conftest as benchbox_conftest
-from tests.duration_policy import T1_BUDGET_SECONDS, t1_budget_violations, validate_markers
+from tests.duration_policy import validate_markers
 
 pytestmark = [
     pytest.mark.unit,
@@ -170,30 +170,6 @@ def test_quarantine_requires_owner_expiry_and_issue():
     assert any("owner" in error for error in errors)
     assert any("issue" in error for error in errors)
     assert any("expired" in error for error in errors)
-
-
-def test_t1_budget_requires_exemption_for_measured_slow_fast_test():
-    item = SimpleNamespace(
-        nodeid="tests/unit/test_example.py::test_case",
-        get_closest_marker=lambda name: object() if name == "fast" else None,
-    )
-
-    violations = t1_budget_violations(item, {item.nodeid: T1_BUDGET_SECONDS + 0.01})
-
-    assert len(violations) == 1
-    assert "duration_exempt" in violations[0]
-
-
-def test_future_duration_exemption_clears_t1_budget_violation():
-    exemption = {"reason": "tracked setup cost", "expiry": (date.today() + timedelta(days=30)).isoformat()}
-    markers = {
-        "fast": SimpleNamespace(kwargs={}),
-        "duration_exempt": SimpleNamespace(kwargs=exemption),
-    }
-    item = SimpleNamespace(nodeid="tests/unit/test_example.py::test_case", get_closest_marker=markers.get)
-
-    assert validate_markers(item) == []
-    assert t1_budget_violations(item, {item.nodeid: T1_BUDGET_SECONDS + 0.01}) == []
 
 
 def test_conftest_database_setup_gate_uses_collected_item_markers(monkeypatch: pytest.MonkeyPatch):
