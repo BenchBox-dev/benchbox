@@ -570,7 +570,9 @@ run stays pending. A hollow answer never passes.
   measurable. It never carries the raw event stream, and OMP stdout is no longer
   excerpted.
 - Credentials: `commands.omp_env()` forwards only the base environment and the
-  gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`). `credentials.py`
+  gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`), plus the loopback
+  gateway proxy variables only while a cloud local review has set one in-process.
+  `credentials.py`
   `NAMES` lists that token, the broker and provider variables the loop no longer
   receives, the runner-held values (gateway URL, Tailscale client ID and
   audience, OIDC request token) and legacy extras, so a local run still holding
