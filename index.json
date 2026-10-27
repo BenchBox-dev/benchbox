@@ -16986,9 +16986,7 @@
     },
     "oracle-reviewer-backend-capacity": {
       "claim": null,
-      "needs": [
-        "oracle-history-edited-review-fail-closed-20261027"
-      ],
+      "needs": [],
       "priority": "high",
       "status": "open",
       "title": "Restore oracle deep-reviewer capacity or record stand-in as the normal path"
