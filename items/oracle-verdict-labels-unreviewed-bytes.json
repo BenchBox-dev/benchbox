@@ -4,7 +4,7 @@
     "A unit test covers the labeling with a non-UTF-8 diff fixture.",
     "Existing verdict behavior on fully decodable diffs is unchanged."
   ],
-  "context": "2026-10-27: Merge freeze (owner 2026-10-27, scope: oracle-code PRs): no PR that changes oracle reviewer or gate code merges, and no make pr-arm runs on one, until oracle-history-edited-review-fail-closed-20261027 is merged. In scope: #3565, #3572, #3573, #3574, #3576, the unopened scope-path, evidence-exempt and redaction branches, and any other PR touching _project/scripts/oracle_reviewers/, _project/scripts/oracle_review_check.py, _project/scripts/soundness_merge_digest.py, scripts/pr_arm.py or .github/workflows/oracle-*.yml. Excepted: the edited-review fix's own PR and #3585 (owner exemption 2026-10-27). PRs may be opened and reviewed meanwhile. Never edit, delete, dismiss or minimise an oracle review, review comment or commit status, including on test PRs; edit-detection proofs use unit fixtures and read-only GraphQL reads of existing reviews.\n\nFound 2026-10-19 while unblocking PR 3168 (docs-mig-tpc-adjacent-eulas): the canonical TPC EULA files are Windows-1252 and must stay byte-identical. docs-mig-oracle-diff-decode (PR 3170) stops the oracle-verdict crash by decoding with replacement characters, which means the oracle will review U+FFFD mojibake in place of the real bytes without saying so. A verdict that silently passes over unreadable content overstates what was reviewed. Follow-up to docs-mig-oracle-diff-decode; implement after that item merges.\n\noracle-response-evidence-secrets-20261021 adds no blanket binary exemption. Binary/unreviewable content labels remain owned by this item; actual pinned-harness binary notice/result-shape evidence is recorded by oracle-response-live-verification-20261021 when available. No closure implied.",
+  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nFound 2026-10-19 while unblocking PR 3168 (docs-mig-tpc-adjacent-eulas): the canonical TPC EULA files are Windows-1252 and must stay byte-identical. docs-mig-oracle-diff-decode (PR 3170) stops the oracle-verdict crash by decoding with replacement characters, which means the oracle will review U+FFFD mojibake in place of the real bytes without saying so. A verdict that silently passes over unreadable content overstates what was reviewed. Follow-up to docs-mig-oracle-diff-decode; implement after that item merges.\n\noracle-response-evidence-secrets-20261021 adds no blanket binary exemption. Binary/unreviewable content labels remain owned by this item; actual pinned-harness binary notice/result-shape evidence is recorded by oracle-response-live-verification-20261021 when available. No closure implied.",
   "description": "After the oracle diff-decode fix, the oracle reviews U+FFFD replacement characters wherever a PR diff contains non-UTF-8 bytes (for example the canonical TPC EULA files), with no record that those bytes were never actually reviewed. Detect undecodable spans during diff fetch and surface the affected paths in the verdict as explicitly unreviewed, so approval scope is honest. Byte-identity of such files must continue to be enforced by dedicated drift tests, not by the oracle.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox"
@@ -40,6 +40,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "851ad3b5fbd943aba451113234037dcb",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T15:11:23Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "74bcad10920a4b44aea12b5c2d6bf8e3",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
