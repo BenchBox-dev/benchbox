@@ -609,7 +609,7 @@ def test_a_reviewed_pull_request_passes_and_every_call_uses_the_token_and_target
 def test_only_exempt_paths_stop_before_any_status_is_read(
     net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
 ) -> None:
-    _wire(net, files=["docs/index.md"], statuses=[], reviews=[])
+    _wire(net, files=["NOTES.md"], statuses=[], reviews=[])
     assert _run(monkeypatch) == gate.PASS
     assert capsys.readouterr().out == "oracle-review: only exempt paths changed\n"
     assert net.paths() == ["/repos/o/r/pulls/7", "/repos/o/r/pulls/7/files?per_page=100&page=1"]
@@ -698,7 +698,7 @@ def test_a_github_failure_is_reported_on_stderr_as_an_error(
 def test_the_command_line_defaults_to_the_process_arguments(
     net: Network, monkeypatch: pytest.MonkeyPatch, capsys: Any
 ) -> None:
-    _wire(net, files=["docs/index.md"], statuses=[], reviews=[])
+    _wire(net, files=["NOTES.md"], statuses=[], reviews=[])
     monkeypatch.setenv("GITHUB_TOKEN", "tok")
     monkeypatch.setattr(sys, "argv", ["oracle_review_check.py", "--repo", "o/r", "--pr", "7"])
     assert gate.main() == gate.PASS
