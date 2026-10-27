@@ -3,6 +3,7 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 from datetime import datetime
+from random import Random
 
 import pytest
 
@@ -111,6 +112,39 @@ class TestTSBSDevOpsQueryManager:
         assert "ORDER BY c.hostname" in query
         assert "(hostname, time) IN" not in query
 
+    @pytest.mark.parametrize("seed", [None, 0, 42])
+    def test_rendering_is_independent_of_call_order(self, seed):
+        manager = TSBSDevOpsQueryManager(seed=seed, duration_days=2)
+        expected = manager.get_queries()
+        query_ids = list(QUERIES)
+        Random(17).shuffle(query_ids)
+
+        for query_id in query_ids:
+            assert manager.get_query(query_id) == expected[query_id]
+            assert manager.get_query(query_id) == expected[query_id]
+        assert manager.get_queries() == expected
+
+    @pytest.mark.parametrize("seed", [0, 42])
+    def test_seeded_instances_render_identically_in_different_orders(self, seed):
+        expected = TSBSDevOpsQueryManager(seed=seed, duration_days=2).get_queries()
+        manager = TSBSDevOpsQueryManager(seed=seed, duration_days=2)
+
+        for query_id in reversed(QUERIES):
+            assert manager.get_query(query_id) == expected[query_id]
+
+    def test_overrides_do_not_change_subsequent_rendering(self, manager):
+        query_id = "single-host-1-hr"
+        expected = manager.get_query(query_id)
+        overrides = {"hostname": "custom_host", "start_time": "2024-01-01 00:00:00"}
+        expected_overrides = overrides.copy()
+
+        overridden = manager.get_query(query_id, params=overrides)
+
+        assert "custom_host" in overridden
+        assert "2024-01-01 00:00:00" in overridden
+        assert overrides == expected_overrides
+        assert manager.get_query(query_id) == expected
+
     def test_get_query_with_param_override(self, manager):
         query = manager.get_query("single-host-12-hr", params={"hostname": "custom_host"})
         assert "custom_host" in query
@@ -189,6 +223,45 @@ class TestQueryParameterGeneration:
         query1 = manager1.get_query("single-host-12-hr")
         query2 = manager2.get_query("single-host-12-hr")
         assert query1 == query2
+
+    @pytest.mark.parametrize("seed", [None, 0, 42])
+    def test_repeated_and_reordered_retrieval(self, start_time, seed):
+        manager = TSBSDevOpsQueryManager(num_hosts=100, start_time=start_time, seed=seed)
+        expected = manager.get_queries()
+
+        for query_id in reversed(QUERIES):
+            assert manager.get_query(query_id) == expected[query_id]
+            assert manager.get_query(query_id) == expected[query_id]
+
+        assert manager.get_queries() == expected
+        if seed is not None:
+            other = TSBSDevOpsQueryManager(num_hosts=100, start_time=start_time, seed=seed)
+            assert {query_id: other.get_query(query_id) for query_id in reversed(QUERIES)} == expected
+
+    @pytest.mark.parametrize("query_id", ["single-host-12-hr", "by-region"])
+    def test_overrides_are_stable_and_do_not_change_defaults(self, manager, query_id):
+        expected = manager.get_queries()
+        overrides = {
+            "hostname": "custom_host",
+            "region": "custom_region",
+            "start_time": "2024-01-01 02:00:00",
+            "end_time": "2024-01-01 03:00:00",
+        }
+        original = overrides.copy()
+        query = manager.get_query(query_id, params=overrides)
+
+        assert query == QUERIES[query_id]["sql"].strip().format(**overrides)
+        manager.get_query("cpu-max-all-1-hr")
+        assert manager.get_query(query_id, params=overrides) == query
+        assert overrides == original
+        assert manager.get_queries() == expected
+
+    def test_partial_override_preserves_other_defaults(self, manager):
+        expected = manager.get_query("single-host-12-hr")
+        hostname = expected.split("hostname = '", 1)[1].split("'", 1)[0]
+        assert manager.get_query("single-host-12-hr", params={"hostname": "custom_host"}) == expected.replace(
+            f"hostname = '{hostname}'", "hostname = 'custom_host'"
+        )
 
     def test_different_seed_different_params(self, start_time):
         manager1 = TSBSDevOpsQueryManager(num_hosts=100, start_time=start_time, seed=42)

@@ -1075,21 +1075,11 @@ def test_the_digest_reads_both_first_lines(context):
     assert digest.review_signals(failure) == ()
 
 
-def test_the_digest_keeps_its_own_pattern_for_merged_history(monkeypatch):
-    import re
-
-    checker = sys.modules["oracle_review_check"]
-    current_only = re.compile(r"### oracle-verdict: (?P<state>[a-z]+) for `(?P<sha>[0-9a-f]{40})`")
-    monkeypatch.setattr(checker, "_ORACLE_VERDICT", current_only)
-    fresh_spec = importlib.util.spec_from_file_location("soundness_merge_digest_fresh", SCRIPT_PATH)
-    assert fresh_spec is not None and fresh_spec.loader is not None
-    fresh = importlib.util.module_from_spec(fresh_spec)
-    monkeypatch.setitem(sys.modules, fresh_spec.name, fresh)
-    fresh_spec.loader.exec_module(fresh)
+def test_the_digest_keeps_reading_the_legacy_first_line_for_merged_history():
     legacy = oracle_verdict(HEAD, context="oracle-review-shadow")
-    assert fresh.ORACLE_VERDICT_LINE.match(legacy) is not None
+    assert digest.ORACLE_VERDICT_LINE.match(legacy) is not None
     pull = evidence(reviews=(review(ORACLE_BOT, HEAD, user_type="Bot", body=legacy),))
-    assert fresh.review_signals(pull) == ("oracle-review",)
+    assert digest.review_signals(pull) == ("oracle-review",)
 
 
 STANDIN_AT = "2026-10-15T00:09:40Z"
@@ -1138,16 +1128,38 @@ TIMELINES = {
 
 def gate_accepts(verdicts, standin_at, base_change):
     checker = sys.modules["oracle_review_check"]
-    reviews = [
+    run_uuid = "1" * 32
+    from _project.scripts.oracle_reviewers import protocol
+
+    record = {
+        "v": protocol.MARKER_VERSION,
+        "cycle": 1,
+        "round": 1,
+        "kind": protocol.FIRST,
+        "decision": protocol.SHIP,
+        "head_sha": HEAD,
+        "base_ref": "develop",
+        "reviewer": "large",
+        "tier": "large",
+        "strikes_after": 0,
+        "open_defects": [],
+        "next_id": 1,
+        "patch_digest": "d" * 32,
+        "carried": False,
+        "summary": "",
+        "run_uuid": run_uuid,
+    }
+    statuses = [
         {
+            "id": index,
+            "context": "oracle-verdict",
+            "state": state,
+            "description": f"large: {state} [run {run_uuid}]" if state == "success" else "",
             "login": ORACLE_BOT,
             "user_type": "Bot",
-            "commit_id": HEAD,
-            "state": "COMMENTED",
-            "submitted_at": at,
-            "body": oracle_verdict(HEAD, state),
+            "created_at": at,
         }
-        for state, at in verdicts
+        for index, (state, at) in enumerate(verdicts)
     ]
     comments = []
     if standin_at:
@@ -1160,7 +1172,19 @@ def gate_accepts(verdicts, standin_at, base_change):
                 "updated_at": standin_at,
             }
         )
-    status, _ = checker.decide(HEAD, ["AGENTS.md"], reviews, [], lambda _files: True, base_change, comments)
+    receipt = {
+        "login": ORACLE_BOT,
+        "user_type": "Bot",
+        "commit_id": HEAD,
+        "state": "COMMENTED",
+        "submitted_at": T_A,
+        "body": f"{oracle_verdict(HEAD, 'success')}\n\n{protocol.encode_marker(record)}",
+        "last_edited_at": None,
+        "includes_created_edit": False,
+    }
+    status, _ = checker.decide(
+        HEAD, ["AGENTS.md"], statuses, [], lambda _files: True, base_change, comments, reviews=[receipt]
+    )
     return status == checker.PASS
 
 
@@ -1862,10 +1886,16 @@ WITHDRAWN_BODY = "\n".join(
         "",
         "Decision: **SHIP WITH FIXES**.",
         "",
-        "Withdrawn:",
+        "Withdrawn as never defects: D1, D2. Resolve their review threads.",
         "",
-        "- D1: scaled timeouts are covered by the canary",
-        "- D2: docs-only head needs no re-review",
+        "**Still open from earlier reviews**",
+        "",
+        "- **Medium** `a.py:1`: D3: open",
+        "",
+        "**Dispute dispositions**",
+        "",
+        "- D1 (withdrawn): scaled timeouts are covered by the canary: a.py:2",
+        "- D2 (maintained): the bound is still unchecked: a.py:3",
     ]
 )
 
@@ -1874,13 +1904,10 @@ def test_withdrawals_list_the_marked_findings():
     pull = evidence(reviews=(failure_review(body=WITHDRAWN_BODY.replace("HEAD", HEAD)),))
     withdrawal = digest.withdrawn_findings([pull])[0]
     assert withdrawal.number == 7
-    assert withdrawal.items == (
-        "D1: scaled timeouts are covered by the canary",
-        "D2: docs-only head needs no re-review",
-    )
+    assert withdrawal.items == ("D1, D2. Resolve their review threads.",)
     text = digest.render_withdrawals([withdrawal])
     assert f"- #7 (`{HEAD[:9]}`):" in text
-    assert "D1: scaled timeouts are covered" in text
+    assert "D1, D2. Resolve their review threads." in text
 
 
 def test_withdrawals_are_skipped_when_no_review_marks_any():

@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -148,9 +149,9 @@ def test_base_reader_pins_all_files_before_a_ref_moves(tmp_path: Path, monkeypat
         (repo / relative).write_text("dirty worktree contents\n", encoding="utf-8")
     original = subprocess.check_output
 
-    def read_and_move(cmd: list[str], *, text: bool, stderr: int) -> str:
-        assert text is True
-        result = original(cmd, text=True, stderr=stderr)
+    def read_and_move(cmd: list[str], **kwargs: object) -> str:
+        assert kwargs.get("text") is True
+        result = original(cmd, **kwargs)
         if "rev-parse" in cmd:
             subprocess.run(["git", "-C", str(repo), "update-ref", "refs/heads/policy-base", pr_head], check=True)
         return result
@@ -291,3 +292,56 @@ def test_selection_logic_check_runs_before_the_code_route_exit(tmp_path: Path) -
     result = heavy.heavy_needed(decision, "absent", tmp_path)
     assert result["heavy_needed"] is True
     assert "test-infrastructure carve-out" in result["reason"]
+
+
+def _windows_locale_output(real_output: Any) -> Any:
+    def check_output(*args: Any, **kwargs: Any) -> Any:
+        if kwargs.get("text") and "encoding" not in kwargs:
+            kwargs["encoding"] = "cp1252"
+        return real_output(*args, **kwargs)
+
+    return check_output
+
+
+def test_base_reader_decodes_smart_quotes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    quoted = "soundness " + chr(0x201D) + " quote"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def git(*args: str) -> str:
+        return subprocess.check_output(["git", "-C", str(repo), *args], text=True).strip()
+
+    git("init", "-b", "main")
+    git("config", "user.name", "Test")
+    git("config", "user.email", "test@example.invalid")
+    git("config", "commit.gpgsign", "false")
+    for relative in POLICY_FILES:
+        path = repo / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"{relative}\n{quoted}\n", encoding="utf-8")
+    git("add", "--", *POLICY_FILES)
+    git("commit", "-m", "base")
+    monkeypatch.setattr(heavy.subprocess, "check_output", _windows_locale_output(subprocess.check_output))
+    assert heavy._read_base_copy("HEAD", repo) == {relative: f"{relative}\n{quoted}\n" for relative in POLICY_FILES}
+
+
+def test_non_utf8_base_copy_fails_closed(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def git(*args: str) -> str:
+        return subprocess.check_output(["git", "-C", str(repo), *args], text=True).strip()
+
+    git("init", "-b", "main")
+    git("config", "user.name", "Test")
+    git("config", "user.email", "test@example.invalid")
+    git("config", "commit.gpgsign", "false")
+    for relative in POLICY_FILES:
+        path = repo / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"soundness \xff quote\n")
+    git("add", "--", *POLICY_FILES)
+    git("commit", "-m", "base")
+    result = heavy.heavy_needed(_decision(["ordinary.py"]), "HEAD", repo)
+    assert result["heavy_needed"] is True
+    assert "failed closed" in result["reason"]
