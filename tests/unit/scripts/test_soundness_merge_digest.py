@@ -2307,3 +2307,25 @@ def test_each_same_head_review_is_matched_to_the_status_nearest_its_submission(m
     second = app_review(oracle_review_body("SHIP", "success"), "PRR_2", "2026-10-02T11:00:02Z")
     checked = digest.verify_oracle_reviews("o/r", [first, second])
     assert [item.unverifiable for item in checked] == ["", ""]
+
+
+def test_an_edited_newer_review_voids_an_older_verified_success_signal():
+    older = review(ORACLE_BOT, HEAD, submitted_at=PUSHED, user_type="Bot", body=oracle_verdict(HEAD, "success"))
+    newer = digest.Review(
+        ORACLE_BOT, HEAD, AFTER, "COMMENTED", "Bot", verdict_with_open(HEAD), "PRR_2", "it was edited after posting"
+    )
+    pull = evidence(reviews=(older, newer), comments=(standin(HEAD, at=STANDIN_AT),))
+    assert "oracle-review" not in digest.review_signals(pull)
+    assert [override.severities for override in digest.standin_overrides([pull])] == [(digest.UNVERIFIABLE_FINDING,)]
+
+
+def test_an_unverifiable_review_sets_the_standin_cutoff_whatever_its_header_says():
+    headerless = digest.Review(ORACLE_BOT, HEAD, AFTER, "COMMENTED", "Bot", "edited", "PRR_1", "it was edited")
+    early = standin(HEAD, at=PUSHED)
+    assert digest.standin_comment(evidence(reviews=(headerless,), comments=(early,))) is None
+
+
+def test_an_edited_finding_thread_on_a_non_content_commit_is_flagged():
+    thread = digest.Thread(False, "benchbox-oracle", OLD, "", "an oracle finding was edited after posting")
+    pull = refreshed(threads=(thread,), comments=(standin(HEAD, at=STANDIN_AT),))
+    assert digest.unverifiable_oracle_evidence(pull)

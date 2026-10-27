@@ -286,8 +286,12 @@ def _review_verdict(review: Review) -> str | None:
 
 
 def _oracle_success(evidence: PullEvidence) -> bool:
-    latest = max(_oracle_reviews(evidence, evidence.content_shas), key=lambda review: review.submitted_at, default=None)
-    return latest is not None and _review_verdict(latest) == "success"
+    latest = max(
+        _oracle_reviews(evidence, evidence.content_shas, include_unverifiable=True),
+        key=lambda review: review.submitted_at,
+        default=None,
+    )
+    return latest is not None and not latest.unverifiable and _review_verdict(latest) == "success"
 
 
 def _standin_after(evidence: PullEvidence) -> str:
@@ -296,7 +300,11 @@ def _standin_after(evidence: PullEvidence) -> str:
     head_reviews = _oracle_reviews(evidence, {evidence.commits[-1].sha}, include_unverifiable=True)
     return (
         standin_not_before(
-            evidence.base_changed_at, ((review.submitted_at, _review_verdict(review)) for review in head_reviews)
+            evidence.base_changed_at,
+            (
+                (review.submitted_at, "failure" if review.unverifiable else _review_verdict(review))
+                for review in head_reviews
+            ),
         )
         or ""
     )
@@ -456,7 +464,9 @@ def unverifiable_oracle_evidence(evidence: PullEvidence) -> bool:
     return any(
         review.unverifiable for review in _oracle_reviews(evidence, evidence.content_shas, include_unverifiable=True)
     ) or any(
-        thread.unverifiable and not thread.resolved and thread.first_comment_sha in evidence.content_shas
+        thread.unverifiable
+        and not thread.resolved
+        and thread.first_comment_sha in {commit.sha for commit in evidence.commits}
         for thread in evidence.threads
     )
 
