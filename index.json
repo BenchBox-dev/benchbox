@@ -16218,8 +16218,7 @@
     "oracle-evidence-exempt-binary-prose-20261026": {
       "claim": null,
       "needs": [
-        "oracle-dispute-keyed-published-evidence-20261026",
-        "oracle-history-edited-review-fail-closed-20261027"
+        "oracle-dispute-keyed-published-evidence-20261026"
       ],
       "priority": "medium",
       "status": "open",
