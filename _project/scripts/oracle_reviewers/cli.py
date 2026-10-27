@@ -9,7 +9,7 @@ import re
 import shutil
 import sys
 import tempfile
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -22,6 +22,7 @@ from . import (
     credentials,
     dedup,
     disk_scan,
+    edits,
     github,
     omp_pin,
     processes,
@@ -45,10 +46,13 @@ from .render import (
     UNOPENED_PR,
     OversizeError,
     dispute_listing,
+    file_list_block,
     file_listing,
     prior_listing,
     render_review,
+    retry_note,
     select_prior_rule,
+    unread_required,
 )
 from .selection import SelectionInput
 from .verdict import DO_NOT_SHIP
@@ -195,7 +199,7 @@ def _is_dispute(body: str) -> bool:
 def _disputed_threads(threads: list[dict[str, Any]], bot_login: str) -> list[dict[str, Any]]:
     disputes = []
     for thread in threads:
-        if thread.get("resolved") or thread.get("author_type") != "Bot":
+        if thread.get("resolved") or thread.get("edited") or thread.get("author_type") != "Bot":
             continue
         if (thread.get("author") or "").removesuffix("[bot]") != bot_login:
             continue
@@ -266,7 +270,17 @@ def _dispute_step(
     return threads, step
 
 
-def _base_changed_at(repo: str, pr: int) -> tuple[datetime | None, bool]:
+def _base_changed_at(
+    repo: str, pr: int, event_name: str = "", event: Mapping[str, Any] | None = None
+) -> tuple[datetime | None, bool]:
+    changes = (event or {}).get("changes")
+    if (
+        event_name == "pull_request_target"
+        and (event or {}).get("action") == "edited"
+        and isinstance(changes, Mapping)
+        and "base" in changes
+    ):
+        return _now(), False
     try:
         return github.base_changed_at(repo, pr), False
     except (github.GitHubError, KeyError, ValueError) as exc:
@@ -348,6 +362,19 @@ def _stateless_retry_allowed(repo: str, pr: int, head_sha: str, run_id: str, pre
     return 1 <= failures < 2
 
 
+def _pull_guard(pull: Mapping[str, Any], event: Mapping[str, Any], head_sha: str) -> str | None:
+    if pull["state"] != "open":
+        return "the pull request is not open"
+    if pull["base"]["ref"] != "develop":
+        return "the pull request does not target develop"
+    if pull.get("draft"):
+        return "the pull request is a draft"
+    event_head = (event.get("pull_request") or {}).get("head", {}).get("sha")
+    if event_head and event_head != head_sha:
+        return "a newer head exists; its own run reviews it"
+    return None
+
+
 def command_plan(args: argparse.Namespace) -> int:
     policy = load_policy(Path(args.policy))
     repo = os.environ["GITHUB_REPOSITORY"]
@@ -364,18 +391,9 @@ def command_plan(args: argparse.Namespace) -> int:
     plan["base_sha"] = pull["base"]["sha"]
     plan["base_ref"] = pull["base"]["ref"]
     plan["head_sha"] = pull["head"]["sha"]
-    if pull["state"] != "open":
-        plan["decision_reason"] = "the pull request is not open"
-        return _finish_plan(out_dir, plan)
-    if pull["base"]["ref"] != "develop":
-        plan["decision_reason"] = "the pull request does not target develop"
-        return _finish_plan(out_dir, plan)
-    if pull.get("draft"):
-        plan["decision_reason"] = "the pull request is a draft"
-        return _finish_plan(out_dir, plan)
-    event_head = (event.get("pull_request") or {}).get("head", {}).get("sha")
-    if event_head and event_head != plan["head_sha"]:
-        plan["decision_reason"] = "a newer head exists; its own run reviews it"
+    guard_reason = _pull_guard(pull, event, plan["head_sha"])
+    if guard_reason is not None:
+        plan["decision_reason"] = guard_reason
         return _finish_plan(out_dir, plan)
     files = [ChangedFile.from_api(item) for item in github.get_paginated(f"repos/{repo}/pulls/{pr}/files?per_page=100")]
     if github.get_json(f"repos/{repo}/pulls/{pr}")["head"]["sha"] != plan["head_sha"]:
@@ -434,18 +452,22 @@ def command_plan(args: argparse.Namespace) -> int:
     plan["manual"] = manual
     plan["previous_state"] = previous.to_json() if previous else None
     try:
-        found = protocol.history(github.oracle_reviews(repo, pr), policy.bot_login)
-    except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
-        found = protocol.History([], f"the oracle's review history could not be read: {exc}")
+        found = _plan_history(repo, pr, policy.bot_login)
+    except edits.EditStateError as exc:
+        print(f"oracle-verdict: error: {exc}", file=sys.stderr)
+        return 2
     if found.error is not None:
         plan.update({"decision": HOLD, "decision_reason": found.error})
         return _finish_plan(out_dir, plan)
     raw_diff = github.get_diff(repo, pr)
+    if github.get_json(f"repos/{repo}/pulls/{pr}")["head"]["sha"] != plan["head_sha"]:
+        plan["decision_reason"] = "the head moved while the plan read it; its own run reviews it"
+        return _finish_plan(out_dir, plan)
     full_diff = None if raw_diff is None else raw_diff.decode("utf-8", errors="replace")
     complete = full_diff is not None and len(files) >= int(pull.get("changed_files") or 0)
     states = _file_states(plan, files) if complete else None
     strike_count = max(protocol.strikes(found.records), previous.strikes if previous else 0)
-    base_changed_at, base_change_unreadable = _base_changed_at(repo, pr)
+    base_changed_at, base_change_unreadable = _base_changed_at(repo, pr, event_name, event)
     step = _protocol_round(
         plan,
         policy,
@@ -476,17 +498,90 @@ def command_plan(args: argparse.Namespace) -> int:
         plan.update({"decision": REFUSED, "decision_reason": step.reason})
         return _finish_plan(out_dir, plan)
     if step.kind == protocol.CARRY:
-        plan.update({"decision": CARRY, "decision_reason": step.reason, "reviewed_head": step.previous["head_sha"]})
-        return _finish_plan(out_dir, plan)
+        return _plan_carry(out_dir, plan, policy.bot_login, step, found.latest_at)
     try:
         threads = github.review_threads(repo, pr) if threads is None else threads
         plan["open_findings"] = dedup.open_fingerprints(threads, policy.bot_login)
         plan["disputes"] = _disputed_threads(threads, policy.bot_login)
     except (github.GitHubError, KeyError, ValueError) as exc:
         _summary(f"oracle-verdict: open review threads could not be read, so none are suppressed: {exc}")
-    _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, previous, now)
+    owner_reset = retry.reset_applies(previous, plan["head_sha"], reset_at)
+    pool_blocks = _carried_blocks(previous, plan["head_sha"], now, owner_reset)
+    _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, pool_blocks)
     plan["decision_reason"] = f"{step.reason}; {rerun.reason}"
     return _finish_plan(out_dir, plan)
+
+
+def _oracle_history(repo: str, pr: int, bot_login: str) -> protocol.History:
+    reviews = github.oracle_reviews(repo, pr)
+    marked = [review for review in reviews if protocol.is_app_review(review, bot_login)]
+    node_ids = [review.get("node_id") for review in marked]
+    if not all(isinstance(node_id, str) and node_id for node_id in node_ids):
+        raise edits.EditStateError("an oracle review carries no node id, so its edit state cannot be read")
+    states = github.review_edit_states(node_ids) if node_ids else {}
+    if any(node_id not in states for node_id in node_ids):
+        raise edits.EditStateError("the edit state of an oracle review was not returned")
+    return protocol.history(
+        [
+            {
+                **review,
+                "last_edited_at": states[review["node_id"]][0],
+                "includes_created_edit": states[review["node_id"]][1],
+            }
+            if protocol.is_app_review(review, bot_login)
+            else review
+            for review in reviews
+        ],
+        bot_login,
+    )
+
+
+def _plan_history(repo: str, pr: int, bot_login: str) -> protocol.History:
+    try:
+        return _oracle_history(repo, pr, bot_login)
+    except edits.EditStateError:
+        raise
+    except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
+        return protocol.History([], f"the oracle's review history could not be read: {exc}")
+
+
+def _plan_carry(
+    out_dir: Path, plan: dict[str, Any], bot_login: str, step: protocol.Round, near: datetime | None
+) -> int:
+    previous = step.previous
+    try:
+        disagreement = _carry_disagreement(plan, bot_login, previous, near)
+    except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
+        print(
+            f"oracle-verdict: error: the status of head {previous['head_sha']} could not be read: {exc}",
+            file=sys.stderr,
+        )
+        return 2
+    if disagreement is not None:
+        plan.update({"decision": HOLD, "decision_reason": disagreement})
+    else:
+        plan.update({"decision": CARRY, "decision_reason": step.reason, "reviewed_head": previous["head_sha"]})
+    return _finish_plan(out_dir, plan)
+
+
+def _carry_disagreement(
+    plan: Mapping[str, Any], bot_login: str, previous: Mapping[str, Any], near: datetime | None
+) -> str | None:
+    statuses = github.commit_statuses(plan["repo"], previous["head_sha"])
+    if edits.status_agrees(statuses, plan["status_context"], bot_login, previous, near):
+        return None
+    return (
+        f"the recorded {protocol.LABELS[previous['decision']]} decision on head {previous['head_sha']} "
+        "does not match the oracle's own status for that head"
+    )
+
+
+def _carried_blocks(
+    previous: retry.State | None, head_sha: str, now: datetime, cleared: bool
+) -> dict[str, selection.PoolBlock]:
+    if previous is None or cleared:
+        return {}
+    return selection.active_blocks(previous.pool_blocked_until, now, same_head=previous.head_sha == head_sha)
 
 
 def _file_states(plan: dict[str, Any], files: list[ChangedFile]) -> list[protocol.FileState] | None:
@@ -571,8 +666,7 @@ def _plan_review(
     scoped: list[ChangedFile],
     in_scope: set[str],
     full_diff: str | None,
-    previous: retry.State | None,
-    now: datetime,
+    pool_blocks: Mapping[str, selection.PoolBlock],
 ) -> None:
     latest = step.previous or {}
     follow_up = step.kind == protocol.FOLLOW_UP
@@ -597,18 +691,21 @@ def _plan_review(
             chain.append(reviewer)
     names = {reviewer.name for reviewer in chain}
     follow_up_reviewer = latest.get("reviewer") if follow_up and latest.get("reviewer") in names else None
+    evidence_files = sorted(item.path for item in reviewed_now if item.path in in_scope and not item.removed)
     listing_bytes = len(file_listing(changed).encode("utf-8"))
     diff_bytes = len((diff_text or "").encode("utf-8"))
     if listing_bytes > policy.brief_max_bytes:
         brief_mode = "oversize"
     elif diff_bytes <= policy.brief_max_bytes - DIFF_HEADROOM_BYTES:
         brief_mode = "inline"
+    elif len(file_list_block(changed, evidence_files, evidence_files).encode("utf-8")) > policy.brief_max_bytes:
+        brief_mode = "oversize"
     else:
         brief_mode = "file-list"
     plan.update(
         {
             "decision": REVIEW,
-            "evidence_files": sorted(item.path for item in reviewed_now if item.path in in_scope and not item.removed),
+            "evidence_files": evidence_files,
             "chain": [reviewer.to_json() for reviewer in chain],
             "buckets": dict(policy.buckets),
             "follow_up_reviewer": follow_up_reviewer,
@@ -630,11 +727,7 @@ def _plan_review(
             "scope": "changed" if partial else "full",
             "reviewed_head": latest["head_sha"] if partial else None,
             "gate_path_list": list(policy.classifier.gate_paths),
-            "pool_blocked_until": {
-                pool: moment.isoformat()
-                for pool, moment in (previous.pool_blocked_until.items() if previous else ())
-                if moment > now
-            },
+            "pool_blocked_until": {pool: block.to_json() for pool, block in pool_blocks.items()},
         }
     )
 
@@ -702,7 +795,8 @@ def _choose_reviewer(
 
 def command_select(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
-    loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"])
+    workspace = getattr(args, "workspace", None)
+    loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"], workspace=workspace)
     classification_path = Path(args.classification)
     if args.slot == 1:
         try:
@@ -728,7 +822,13 @@ def _chain_reviewer(plan: Mapping[str, Any], name: str) -> Reviewer:
     raise SystemExit(f"oracle-verdict: {name!r} is not in this run's reviewer chain")
 
 
-def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Classification, workspace: Path) -> str:
+def _assemble_prompt(
+    plan: Mapping[str, Any],
+    plan_dir: Path,
+    classification: Classification,
+    workspace: Path,
+    unread: Sequence[str] = (),
+) -> str:
     reviewed = [
         ChangedFile(
             path=item["path"],
@@ -739,7 +839,13 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
         )
         for item in plan.get("reviewed_files", [])
     ]
-    files_block = f"Changed files:\n{file_listing(reviewed)}\n"
+    file_list = plan["brief_mode"] == "file-list"
+    marked = unread_required(unread, plan.get("evidence_files", [])) if file_list else []
+    files_block = (
+        f"Changed files:\n{file_list_block(reviewed, plan.get('evidence_files', []), marked)}"
+        if file_list
+        else f"Changed files:\n{file_listing(reviewed)}\n"
+    )
     if plan.get("scope") == "changed":
         unchanged = "\n".join(plan.get("unchanged_files", []))
         files_block += (
@@ -779,6 +885,7 @@ def _assemble_prompt(plan: Mapping[str, Any], plan_dir: Path, classification: Cl
             raise DiffNotStagedError(DIFF_NOT_STAGED_DETAIL)
     return render_review(
         template_name=classification.template,
+        retry_note=retry_note(len(marked)),
         classification=classification,
         repo=plan["repo"],
         pr=UNOPENED_PR if plan["pr"] is None else int(plan["pr"]),
@@ -809,7 +916,10 @@ def command_review(args: argparse.Namespace) -> int:
         raise SystemExit(f"oracle-verdict: classification unreadable: {exc}") from exc
     workspace = Path(args.workspace)
     try:
-        prompt: str | None = _assemble_prompt(plan, plan_path.parent, classification, workspace)
+        unread = selection.retry_unread(
+            attempt_files.load(Path(args.out_dir), plan, os.environ["GITHUB_RUN_ID"]).attempts, reviewer.name, args.slot
+        )
+        prompt: str | None = _assemble_prompt(plan, plan_path.parent, classification, workspace, unread)
     except DiffNotStagedError as exc:
         prompt = None
         outcome = runner.ReviewOutcome(None, Absence(ERROR, str(exc)), str(exc))
@@ -888,18 +998,19 @@ def command_finalize(args: argparse.Namespace) -> int:
             outcome=final.state,
             manual=bool(plan["manual"]),
             now=now,
-            pool_blocked_until=previous.pool_blocked_until if previous else {},
+            pool_blocked_until=_carried_blocks(previous, plan["head_sha"], now, False),
             strikes=final.strikes,
         )
         _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     else:
         classification = _read_classification(Path(args.classification)) if args.classification else None
         selection_input = _selection(plan, classification)
-        loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"])
+        ws = Path(args.workspace) if getattr(args, "workspace", None) else None
+        loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"], workspace=ws)
         step, errors = attempt_files.decide(selection_input, loaded)
         diff_path = Path(args.plan).parent / DIFF_FILE
         commentable = commentable_lines(diff_path.read_bytes().decode("utf-8")) if diff_path.is_file() else {}
-        final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable)
+        final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable, workspace=ws)
         previous = plan.get("previous_state")
         state = retry.next_state(
             previous=retry.State.from_json(previous) if previous else None,
@@ -932,25 +1043,37 @@ def command_finalize(args: argparse.Namespace) -> int:
     return 0
 
 
+class HistoryUnreadable(RuntimeError):
+    pass
+
+
 def _reread_history(plan: Mapping[str, Any]) -> protocol.History:
     error: Exception | None = None
     for attempt in range(GUARD_ATTEMPTS):
         if attempt:
             sleep(GUARD_PAUSE_SECONDS)
         try:
-            return protocol.history(github.oracle_reviews(plan["repo"], plan["pr"]), plan["bot_login"])
-        except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
+            return _oracle_history(plan["repo"], plan["pr"], plan["bot_login"])
+        except (edits.EditStateError, github.GitHubError, KeyError, TypeError, ValueError) as exc:
             error = exc
-    _summary(
-        f"oracle-verdict: posting without confirming that head {plan['head_sha']} has no decision yet; "
-        f"the review list could not be re-read after {GUARD_ATTEMPTS} attempts: {error}"
+    raise HistoryUnreadable(
+        f"the review list or its edit state could not be re-read after {GUARD_ATTEMPTS} attempts: {error}"
     )
-    return protocol.History()
 
 
 def command_guard(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
-    found = _reread_history(plan)
+    try:
+        found = _reread_history(plan)
+    except HistoryUnreadable as exc:
+        print(f"oracle-verdict: error: {exc}; nothing is posted for head {plan['head_sha']}", file=sys.stderr)
+        return 2
+    if found.error is not None:
+        if plan.get("decision") == HOLD:
+            _output({"skip": "false"})
+            return 0
+        print(f"oracle-verdict: error: {found.error}; nothing is posted for head {plan['head_sha']}", file=sys.stderr)
+        return 2
     latest = found.latest
     rules = plan.get("protocol") or {}
     planned = (int(rules.get("cycle", 0)), int(rules.get("round", 0)))
@@ -1024,6 +1147,8 @@ def _retry_reason(
     status_context: str,
     bot_login: str,
     token: str | None,
+    *,
+    full: bool = True,
 ) -> str | None:
     number = pull["number"]
     head = pull["head"]["sha"]
@@ -1031,6 +1156,8 @@ def _retry_reason(
     if state is not None and state.head_sha == head:
         if retry.due_for_retry(state, head, now, rules):
             return "its retry is due"
+        if not full:
+            return None
         if state.outcome == retry.PENDING and state.pending_cause == retry.ALL_ABSENT:
             reset_at = github.backoff_reset_at(repo, number, head)
             if reset_at is not None and retry.due_for_retry(state, head, now, rules, reset_at):
@@ -1045,6 +1172,8 @@ def _retry_reason(
                     _summary(f"retry not dispatched for #{number}: the daily budget of {rules.daily_budget} is used")
                     return None
                 return "the owner reset its backoff"
+        return None
+    if not full:
         return None
     if not sweep.newest_failed(runs):
         return None
@@ -1081,8 +1210,32 @@ def command_sweep(args: argparse.Namespace) -> int:
     repo = os.environ["GITHUB_REPOSITORY"]
     now = _now()
     token = os.environ.get("SURFACE_TOKEN") or None
-    runs = sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.RUN_WINDOW))
-    busy = sweep.in_flight(runs, now)
+    runs: dict[int, tuple[sweep.Run, ...]] | None
+    try:
+        listing = github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.RUN_WINDOW)
+    except github.GitHubError as exc:
+        _summary(
+            "oracle-verdict: the runs listing failed; this sweep dispatches only due retries "
+            f"and skips stateless retries: {exc}"
+        )
+        runs = None
+    else:
+        runs = sweep.parse_runs(listing)
+    busy: frozenset[int] | None
+    if runs is not None:
+        busy = sweep.in_flight(runs, now)
+    else:
+        try:
+            busy = github.in_flight_pulls(repo, WORKFLOW_FILE)
+        except github.GitHubError as exc:
+            _summary(f"oracle-verdict: the fallback in-flight lookup also failed ({exc}); dispatching nothing")
+            busy = None
+    if busy is None:
+        print(
+            "oracle-verdict: error: the sweep could not tell which pull requests have a run in flight", file=sys.stderr
+        )
+        return 1
+    full = runs is not None
     dispatched = 0
     errors: list[str] = []
     for pull in github.get_paginated(f"repos/{repo}/pulls?state=open&base=develop&per_page=100"):
@@ -1093,7 +1246,15 @@ def command_sweep(args: argparse.Namespace) -> int:
         number = pull["number"]
         try:
             reason = _retry_reason(
-                repo, pull, runs.get(number, ()), policy.retry, now, policy.status_context, policy.bot_login, token
+                repo,
+                pull,
+                runs.get(number, ()) if runs is not None else (),
+                policy.retry,
+                now,
+                policy.status_context,
+                policy.bot_login,
+                token,
+                full=full,
             )
             if reason is None:
                 continue
@@ -1115,6 +1276,9 @@ def command_sweep(args: argparse.Namespace) -> int:
     _summary(f"oracle-verdict sweep dispatched {dispatched} retr{'y' if dispatched == 1 else 'ies'}")
     if errors:
         print(f"oracle-verdict: error: the sweep could not handle {len(errors)} pull request(s)", file=sys.stderr)
+        return 1
+    if runs is None:
+        print("oracle-verdict: error: the sweep ran degraded because the runs listing failed", file=sys.stderr)
         return 1
     return 0
 
@@ -1221,6 +1385,7 @@ def _run_slot(args: argparse.Namespace, plan: Mapping[str, Any], slot: int, revi
 def command_attempts(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
     out_dir = Path(args.attempts_dir)
+    workspace = Path(args.workspace)
     out_dir.mkdir(parents=True, exist_ok=True)
     classification = _read_classification(Path(args.classification))
     ran = 0
@@ -1233,7 +1398,7 @@ def command_attempts(args: argparse.Namespace) -> int:
             if classification is None:
                 _summary(f"slot {slot}: pending (classification unreadable)")
                 break
-            loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"])
+            loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=workspace)
             chosen, line = _choose_reviewer(plan, loaded, classification, slot)
             _summary(line)
             if chosen is None:
@@ -1374,6 +1539,7 @@ def _parser() -> argparse.ArgumentParser:
     select.add_argument("--attempts-dir", required=True)
     select.add_argument("--slot", type=int, required=True)
     select.add_argument("--classification", required=True)
+    select.add_argument("--workspace")
     select.set_defaults(handler=command_select)
     review = commands.add_parser("review")
     review.add_argument("--plan", required=True)
@@ -1396,6 +1562,7 @@ def _parser() -> argparse.ArgumentParser:
     finalize.add_argument("--attempts-dir", required=True)
     finalize.add_argument("--out-dir", required=True)
     finalize.add_argument("--classification")
+    finalize.add_argument("--workspace")
     finalize.set_defaults(handler=command_finalize)
     guard = commands.add_parser("guard")
     guard.add_argument("--plan", required=True)

@@ -348,3 +348,10 @@ def test_check_command_fails_when_a_gate_fails(tmp_path: Path) -> None:
 
     assert status != 0
     assert json.loads(report_path.read_text(encoding="utf-8"))["coverage_within_minimum"] is False
+
+
+def test_verify_threshold_and_mode_defaults() -> None:
+    assert baseline.VERIFY_MODE == "block"
+    assert baseline.VERIFY_RATIO_THRESHOLD == 0.30
+    assert baseline.VERIFY_DELTA_SECONDS == 360.0
+    assert baseline.VERIFY_NEW_TEST_ALLOWANCE_SECONDS == 0.5

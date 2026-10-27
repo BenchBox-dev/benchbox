@@ -234,8 +234,7 @@ def build_plan(
         scoped,
         in_scope,
         full_diff,
-        None,
-        cli._now(),
+        {},
     )
     plan["decision_reason"] = reason
     return plan
@@ -290,22 +289,22 @@ def state_dir() -> Path:
 
 
 @contextlib.contextmanager
-def exclusive(directory: Path, reporter: Reporter) -> Iterator[None]:
+def exclusive(lock_path: Path, reporter: Reporter) -> Iterator[None]:
     import fcntl
 
-    directory.mkdir(parents=True, exist_ok=True)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
     deadline = time.monotonic() + LOCK_WAIT_SECONDS
     announced = False
-    with open(directory / "review.lock", "a+", encoding="utf-8") as handle:
+    with open(lock_path, "a+", encoding="utf-8") as handle:
         while True:
             try:
                 fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except OSError:
                 if time.monotonic() >= deadline:
-                    raise Unavailable("another local oracle review kept running on this machine") from None
+                    raise Unavailable("another local oracle review of this patch kept running") from None
                 if not announced:
-                    reporter.say("Waiting for another local oracle review on this machine to finish.")
+                    reporter.say("Waiting for another local oracle review of this patch to finish.")
                     announced = True
                 time.sleep(LOCK_POLL_SECONDS)
         try:
@@ -500,7 +499,7 @@ def _run_attempts(plan_path: Path, work: Path, classification_path: Path, report
 
 def _result(plan: dict[str, Any], classification: Classification, work: Path) -> dict[str, Any]:
     run_id = plan["run_id"]
-    loaded = attempt_files.load(work / "attempts", plan, run_id)
+    loaded = attempt_files.load(work / "attempts", plan, run_id, workspace=work / "workspace")
     step, errors = attempt_files.decide(cli._selection(plan, classification), loaded)
     if errors:
         raise Unavailable("; ".join(errors))
@@ -604,6 +603,19 @@ def _reviewed(
     if cached is not None:
         reporter.say("Reusing the cached local review of this unchanged patch.")
         return cached
+    with exclusive(cache.with_suffix(".lock"), reporter):
+        cached = _load_cached(cache)
+        if cached is not None:
+            reporter.say("Reusing the cached local review of this unchanged patch.")
+            return cached
+        result = _fresh_review(root, plan, plan_dir, work, key, reporter)
+        _store(cache, result, reporter.secrets)
+    return result
+
+
+def _fresh_review(
+    root: Path, plan: dict[str, Any], plan_dir: Path, work: Path, key: str, reporter: Reporter
+) -> dict[str, Any]:
     access = resolve_credentials()
     reporter.hide(access.token, access.url)
     if not reachable(access.url):
@@ -628,9 +640,7 @@ def _reviewed(
                 redaction_check.sanitize(path, ())
             except redaction_check.Unredactable as exc:
                 raise Unavailable(str(exc)) from exc
-        result = _result(plan, classification, work)
-    _store(cache, result, reporter.secrets)
-    return result
+        return _result(plan, classification, work)
 
 
 def _review(args: argparse.Namespace, reporter: Reporter) -> int:
@@ -640,12 +650,11 @@ def _review(args: argparse.Namespace, reporter: Reporter) -> int:
     policy_text = trusted_text(root, args.base_ref, args.policy)
     workflow_text = trusted_text(root, args.base_ref, WORKFLOW_FILE)
     policy = parse_policy(yaml.safe_load(policy_text))
-    with exclusive(state_dir(), reporter):
-        work = Path(tempfile.mkdtemp(prefix="oracle-local-"))
-        try:
-            result = _reviewed(root, head, args, policy, (policy_text, workflow_text), work, reporter)
-        finally:
-            shutil.rmtree(work, ignore_errors=True)
+    work = Path(tempfile.mkdtemp(prefix="oracle-local-"))
+    try:
+        result = _reviewed(root, head, args, policy, (policy_text, workflow_text), work, reporter)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
     if result is None:
         return EXIT_PROCEED
     _show(result, reporter)

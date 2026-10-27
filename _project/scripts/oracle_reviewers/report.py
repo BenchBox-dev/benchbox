@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from . import absence, credentials, dedup, protocol, selection
@@ -315,6 +316,7 @@ def finalize(
     attempts: list[Attempt],
     verdicts: Mapping[int, Verdict],
     commentable: Mapping[str, frozenset[int]],
+    workspace: Path | str | None = None,
 ) -> Final:
     if errors:
         body = "\n".join(
@@ -334,7 +336,8 @@ def finalize(
         None,
     )
     verdict = verdicts.get(terminal.slot) if terminal is not None else None
-    judgement = protocol.judge_planned(verdict, plan) if verdict is not None else None
+    ws = workspace if workspace is not None else plan.get("workspace")
+    judgement = protocol.judge_planned(verdict, plan, workspace=ws) if verdict is not None else None
     rules = plan.get("protocol") or {}
     defects = judgement.defects if judgement is not None else ()
     next_id = int(rules.get("next_id", 1))

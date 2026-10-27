@@ -15,6 +15,7 @@ from _project.scripts.oracle_reviewers import cli, github, protocol, render, swe
 from _project.scripts.oracle_reviewers.dedup import fingerprint
 from _project.scripts.oracle_reviewers.render import dispute_listing
 from _project.scripts.oracle_reviewers.retry import State
+from _project.scripts.oracle_reviewers.selection import PoolBlock
 
 from .conftest import POLICY_PATH
 
@@ -97,6 +98,7 @@ class FakeGitHub:
         self.contents: dict[str, str] = {}
         self.reviews: list[dict[str, Any]] | None = []
         self.reread_sha: str | None = None
+        self.reread_after_read = 1
         self._pull_reads = 0
         self.runs: list[dict[str, Any]] = []
         self.committed = datetime.now(UTC) - timedelta(days=1)
@@ -104,7 +106,12 @@ class FakeGitHub:
         self.failing_prs: set[int] = set()
         self.failed: dict[int, list[str]] = {}
         self.statuses: list[dict[str, Any]] = []
+        self.edit_states: dict[str, tuple[Any, bool]] | Exception | None = None
+        self.derive_verdict_statuses = True
         self.posted: list[tuple[int, dict[str, Any]]] = []
+        self.runs_error: Exception | None = None
+        self.busy_fallback: set[int] = set()
+        self.fallback_error: Exception | None = None
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(github, "get_json", self._json)
@@ -113,10 +120,12 @@ class FakeGitHub:
         monkeypatch.setattr(github, "review_threads", self._threads)
         monkeypatch.setattr(github, "latest_state", lambda repo, pr: self.state)
         monkeypatch.setattr(github, "dispatch", self._dispatch)
-        monkeypatch.setattr(github, "verdict_runs", lambda repo, workflow, since: list(self.runs))
+        monkeypatch.setattr(github, "verdict_runs", self._verdict_runs)
+        monkeypatch.setattr(github, "in_flight_pulls", self._in_flight)
         monkeypatch.setattr(github, "committed_at", lambda repo, sha: self.committed)
         monkeypatch.setattr(github, "failed_steps", lambda repo, run_id: list(self.failed.get(run_id, [])))
-        monkeypatch.setattr(github, "commit_statuses", lambda repo, sha: list(self.statuses))
+        monkeypatch.setattr(github, "commit_statuses", self._statuses)
+        monkeypatch.setattr(github, "review_edit_states", self._edit_states)
         monkeypatch.setattr(github, "post_status", self._post)
         monkeypatch.setattr(github, "oracle_reviews", self._reviews)
         monkeypatch.setattr(github, "merge_base", lambda repo, base, head: self.merge_base)
@@ -124,6 +133,16 @@ class FakeGitHub:
 
     def _post(self, repo: str, head_sha: str, payload: dict[str, Any], token: str) -> None:
         self.posted.append((len(self.posted), {"head_sha": head_sha, **payload, "token": token}))
+
+    def _verdict_runs(self, repo: str, workflow: str, since: object) -> list[dict[str, Any]]:
+        if self.runs_error is not None:
+            raise self.runs_error
+        return list(self.runs)
+
+    def _in_flight(self, repo: str, workflow: str) -> frozenset[int]:
+        if self.fallback_error is not None:
+            raise self.fallback_error
+        return frozenset(self.busy_fallback)
 
     def _dispatch(self, repo: str, workflow: str, pr: int, reason: str | None = None) -> None:
         if pr in self.failing_prs:
@@ -134,12 +153,42 @@ class FakeGitHub:
     def _reviews(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.reviews is None:
             raise github.GitHubError("reviews unavailable")
-        return self.reviews
+        return [{"node_id": f"PRR_{review.get('id')}", **review} for review in self.reviews]
+
+    def _edit_states(self, node_ids: Sequence[str]) -> dict[str, tuple[Any, bool]]:
+        if isinstance(self.edit_states, Exception):
+            raise self.edit_states
+        return {node_id: (self.edit_states or {}).get(node_id, (None, False)) for node_id in node_ids}
+
+    def _statuses(self, repo: str, sha: str) -> list[dict[str, Any]]:
+        return [*self.statuses, *(self._derived_statuses(sha) if self.derive_verdict_statuses else [])]
+
+    def _derived_statuses(self, sha: str) -> list[dict[str, Any]]:
+        derived = []
+        for review in self.reviews or []:
+            try:
+                record = protocol.decode_marker(review.get("body") or "")
+            except protocol.MarkerError:
+                continue
+            if record is None or record["head_sha"] != sha:
+                continue
+            suffix = f" [run {record['run_uuid']}]" if record.get("run_uuid") else ""
+            derived.append(
+                {
+                    "id": 1000 + int(review.get("id") or 0),
+                    "context": "oracle-verdict",
+                    "state": "success" if record["decision"] == protocol.SHIP else "failure",
+                    "description": f"derived{suffix if record['decision'] == protocol.SHIP else ''}",
+                    "creator": {"login": "benchbox-oracle[bot]", "type": "Bot"},
+                    "created_at": review.get("submitted_at") or "2026-10-08T10:00:00Z",
+                }
+            )
+        return derived
 
     def _json(self, path: str) -> dict[str, Any]:
         if path == f"repos/{REPO}/pulls/7":
             self._pull_reads += 1
-            if self._pull_reads > 1 and self.reread_sha is not None:
+            if self._pull_reads > self.reread_after_read and self.reread_sha is not None:
                 return {**self.pull, "head": {"sha": self.reread_sha, "repo": {"full_name": REPO}}}
         return self.pull
 
@@ -344,6 +393,28 @@ def test_moved_head_is_left_to_the_newer_run(monkeypatch: pytest.MonkeyPatch, tm
     assert "head moved" in plan["decision_reason"]
 
 
+def test_head_moving_between_file_list_and_diff_defers_to_newer_run(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.reread_sha = "d" * 40
+    fake.reread_after_read = 2
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert values["decision"] == "skip" and values["post"] == "false"
+    assert "head moved" in plan["decision_reason"]
+
+
+def test_base_edit_event_with_lagging_timeline_plans_a_review_not_skip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    record = _record(DIFF, "SHIP", head_sha=HEAD)
+    fake = FakeGitHub(_pull(), SOUNDNESS, diff=TWO_FILE_DIFF)
+    fake.reviews = [_review(record)]
+    event = {"action": "edited", "changes": {"base": {"ref": {"from": "main"}}}}
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event=event)
+    assert values["decision"] == "review" and values["post"] == "true"
+
+
 def test_comment_run_resolves_the_head_through_the_api(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
     _, values, plan = _plan(
@@ -388,12 +459,65 @@ def test_manual_retry_inside_backoff_waits_for_the_next_slot(monkeypatch: pytest
     assert "backoff" in plan["decision_reason"]
 
 
-def test_pending_pool_reset_is_carried_into_the_plan(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    later = datetime.now(UTC) + timedelta(hours=2)
-    earlier = datetime.now(UTC) - timedelta(hours=1)
-    state = State(7, "c" * 40, "pending", earlier, (), {"claude": later})
+def _block(provider: str, *, recorded: timedelta, remaining: timedelta) -> PoolBlock:
+    now = datetime.now(UTC)
+    return PoolBlock(now + remaining, provider, now - recorded)
+
+
+def test_a_primary_provider_pool_block_is_carried_to_a_new_head(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    block = _block("anthropic", recorded=timedelta(hours=1), remaining=timedelta(hours=2))
+    state = State(7, "c" * 40, "pending", block.recorded_at, (), {"claude": block})
     _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
-    assert plan["pool_blocked_until"] == {"claude": later.isoformat()}
+    assert plan["pool_blocked_until"] == {"claude": block.to_json()}
+
+
+def test_a_fallback_provider_block_does_not_follow_a_new_head(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    block = _block("google-antigravity", recorded=timedelta(minutes=10), remaining=timedelta(minutes=40))
+    state = State(7, "c" * 40, "pending", block.recorded_at, (), {"claude": block})
+    _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
+    assert plan["pool_blocked_until"] == {}
+
+
+def test_a_fallback_provider_block_stays_for_the_same_head_until_it_expires(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    block = _block("google-antigravity", recorded=timedelta(minutes=10), remaining=timedelta(minutes=40))
+    state = State(7, HEAD, "pending", block.recorded_at, (), {"claude": block})
+    _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
+    assert plan["pool_blocked_until"] == {"claude": block.to_json()}
+
+
+def test_a_fallback_provider_block_older_than_one_hour_is_dropped_for_the_same_head(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    old = _block("google-antigravity", recorded=timedelta(hours=2), remaining=timedelta(days=6))
+    stale = State(7, HEAD, "pending", old.recorded_at, (), {"claude": old})
+    _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, stale))
+    assert plan["pool_blocked_until"] == {}
+
+
+def test_a_primary_provider_block_older_than_the_cap_is_dropped(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    block = _block("anthropic", recorded=timedelta(hours=25), remaining=timedelta(days=6))
+    state = State(7, HEAD, "pending", block.recorded_at, (), {"claude": block})
+    _, _, plan = _plan(monkeypatch, tmp_path, FakeGitHub(_pull(), SOUNDNESS, state))
+    assert plan["pool_blocked_until"] == {}
+
+
+def test_an_owner_reset_clears_the_carried_pool_blocks(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    event = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"body": "/oracle-review"}}
+    block = _block("anthropic", recorded=timedelta(minutes=40), remaining=timedelta(hours=2))
+    backed_off = _backed_off()
+    state = State(7, HEAD, "pending", backed_off.updated_at, backed_off.retries, {"claude": block}, "all-absent")
+    fake = FakeGitHub(_pull(), SOUNDNESS, state)
+    fake.comments = _reset_comments()
+    _, values, plan = _plan(monkeypatch, tmp_path, fake, event_name="issue_comment", event=event)
+    assert values["decision"] == "review"
+    assert "reset by the owner" in plan["decision_reason"]
+    assert plan["pool_blocked_until"] == {}
 
 
 def test_invalid_pr_number_is_refused(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -978,6 +1102,62 @@ def test_reset_spent_counts_only_runs_that_could_have_used_the_reset() -> None:
     assert not sweep.reset_spent(_parsed(after), reset_at, exclude=after["id"])
     in_flight = _verdict_run(7, status="in_progress", conclusion=None, age=timedelta(minutes=10))
     assert sweep.reset_spent(_parsed(in_flight), reset_at)
+
+
+def _degraded(fake: FakeGitHub) -> FakeGitHub:
+    fake.runs_error = github.GitHubError("gh api failed: Bad Gateway")
+    return fake
+
+
+def test_sweep_degrades_to_due_only_when_the_runs_listing_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pulls = [_pull(number=number) for number in (31, 32)]
+    fake = FakeGitHub(_pull(), SOUNDNESS)
+    fake.runs = [_verdict_run(pull["number"], conclusion="failure") for pull in pulls]
+    fake._paginated = lambda path: pulls if path.startswith(f"repos/{REPO}/pulls?") else []
+    fake.install(monkeypatch)
+
+    def latest(repo: str, pr: int) -> State | None:
+        if pr == 31:
+            return State(31, HEAD, "pending", datetime.now(UTC) - timedelta(hours=2), pending_cause="all-absent")
+        return None
+
+    monkeypatch.setattr(github, "latest_state", latest)
+    _degraded(fake)
+    _env(monkeypatch, tmp_path, "schedule", {}, "refs/heads/develop")
+    assert cli.main(["sweep", "--policy", str(POLICY_PATH)]) == 1
+    assert fake.dispatched == [31] and fake.posted == []
+    assert "skips stateless retries" in capsys.readouterr().out
+
+
+def test_sweep_dispatches_nothing_when_the_fallback_lookup_also_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.fallback_error = github.GitHubError("gh api failed: Bad Gateway")
+    _degraded(fake)
+    assert _sweep(monkeypatch, tmp_path, fake) == 1
+    assert fake.dispatched == []
+    assert "fallback in-flight lookup also failed" in capsys.readouterr().out
+
+
+def test_sweep_does_not_swallow_a_parse_regression_as_a_listing_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.runs_error = KeyError("workflow_runs")
+    with pytest.raises(KeyError):
+        _sweep(monkeypatch, tmp_path, fake)
+    assert fake.dispatched == []
+
+
+def test_sweep_uses_the_fallback_busy_set_in_degraded_mode(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.busy_fallback = {7}
+    _degraded(fake)
+    assert _sweep(monkeypatch, tmp_path, fake) == 1
+    assert fake.dispatched == []
 
 
 def _reset_comments(head: str = HEAD, *, edited: bool = False) -> list[dict[str, Any]]:

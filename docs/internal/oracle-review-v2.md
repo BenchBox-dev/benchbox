@@ -244,6 +244,32 @@ forced re-review budgets. If any field is unreadable (truncated file list or
 tree, a head blob id disagreeing with the tree, an unresolvable merge base) the
 digest is `unread-<head>` and nothing carries.
 
+The marker is not signed, so an account with write access could rewrite it by
+editing the review. The planner, the post guard, the merge digest, finding
+deduplication and dispute binding therefore fail closed on edited App objects.
+`plan` and the guard read every App review's `lastEditedAt` and
+`includesCreatedEdit` in one batched GraphQL call (the `review` job's
+`pull-requests: read` token is enough). An edited App review, marked or not (so
+a stripped marker cannot hide a record), holds the result pending, and no marker
+from it ever drives a carry, a follow-up scope or a strike count. If the edit
+state cannot be read (a GraphQL error, a review without a node id, a missing
+field) the `plan` step fails and posts nothing, so a decided head keeps its
+latest status. The guard lets a planned hold post its pending status, but fails
+the run when the history it re-reads has an error the plan did not see (an edit
+that landed after the plan), and when it cannot re-read the history after its
+three tries, instead of posting unconfirmed.
+
+Before a carry is planned, the recorded decision is checked against the App's
+own `oracle-verdict` status for the reviewed head: only statuses created by the
+App's Bot account count, the one whose description carries the record's
+`[run <uuid>]` is chosen, and when several qualify the one created nearest the
+review's submission wins (a record with no run uuid considers every App success
+or failure, and a non-`SHIP` record falls back to the App statuses without a run
+uuid, because only success statuses carry one). The status must be `success`
+exactly when the decision is `SHIP`; `SHIP WITH FIXES`, `DO NOT SHIP` and
+`REFUSED` require `failure`. A mismatch or a missing status holds the result
+pending, and a status list that cannot be read fails the `plan` step.
+
 | Situation | Action |
 |---|---|
 | No marker yet | first round: a full review |
@@ -274,6 +300,15 @@ elsewhere are listed as not counted, collapsed and capped at five. More than 10
 open defects give DO NOT SHIP. The previous reviewer goes first unless the
 follow-up's own bucket names a larger one, as for a push touching review
 machinery. Follow-ups run for every size bucket.
+
+Follow-up scope preserves every exact changed-path match and additionally
+compares Unicode NFC forms and symlink aliases resolved inside the head checkout.
+A case-only citation matching one changed path uses that path, unless the cited
+path exists in the head checkout as its own file, which is never folded; an ambiguous
+case-only match still counts against the decision rather than disappearing.
+Canonical matching can only bring findings into scope. Findings on genuinely
+unchanged files remain not counted, and aliases resolving outside the checkout
+do not establish a match.
 
 A forced follow-up rejudges rather than skips. Its brief lists each disputed
 thread under "Disputed findings", keyed by the finding id from the thread's
@@ -331,15 +366,19 @@ stand-in attestation still works on a refused PR.
 
 Before posting, the `review` job re-reads the review list and posts nothing if
 the head already has a marker, so two runs cannot both post for one head. It
-tries three times about two seconds apart; if all fail it posts anyway and notes
-in the job summary that the post was unconfirmed, since skipping would leave the
-head unreviewed. A run that skips posting, or whose status post failed, uploads
-no retry state and adds no strike.
+tries three times about two seconds apart; if every try fails, or an App review
+was edited, the guard step fails and nothing is posted: the head keeps its latest
+status and a later run decides it. A run that skips posting, or whose status post
+failed, uploads no retry state and adds no strike.
 
 `post` drops any finding matching an open review thread from this App by file
 and normalized title, unless the new one is more severe. Each new thread carries
 a hidden `oracle-finding` marker with that fingerprint. A dropped finding still
-counts toward the result and is listed in the review body.
+counts toward the result and is listed in the review body. An open thread whose
+first comment was edited is ignored for this: its fingerprint never suppresses a
+finding. A dispute under an edited App first comment is never bound. If a
+thread's edit state cannot be read, nothing is deduplicated and no dispute is
+bound.
 
 A defect on a line outside the diff still fails the review. It cannot be a line
 comment, so the body lists it with a note that it counts like the others;
@@ -433,9 +472,8 @@ The code, not the model, decides, and the stricter outcome wins:
 Severity orders the list and never gates: any listed defect, even Low, makes
 SHIP WITH FIXES. SHIP posts `success`; SHIP WITH FIXES and DO NOT SHIP post
 `failure`. The body opens `### oracle-verdict: <state> for <sha>`, then a
-`Decision:` line. Reviews before 2026-10-09 open with `###
-oracle-review-shadow:`; the required check still reads that on open PRs, and the
-merge digest reads both permanently since it reads merged history. More than 10
+`Decision:` line. Reviews before 2026-10-09 opened with `### oracle-review-shadow:`; the merge
+digest reads both permanently since it reads merged history. More than 10
 defects is not an invalid verdict, because every reviewer would then fail in
 turn and leave the PR pending.
 
@@ -469,14 +507,25 @@ fallback over family exclusion.
 
 A defect-free verdict can be hollow: a reviewer that could not read the files
 may still answer. The job checks each verdict against the head checkout before
-recording it; a failure records the reviewer absent (`incomplete`), so it runs
-once more before the chain advances, and with no verdict the run stays pending.
-A hollow answer never passes.
+recording it; a failure records the reviewer absent (`incomplete`) and the
+required files it left unread on the attempt artifact (`absence.unread`). The
+same reviewer then runs once more. Its brief marks those files in the fenced
+"Required reads" list, taken from the plan's required list intersected with the
+recorded list, never from reviewer text, and carries a fixed "Earlier attempt
+feedback" note that holds only their count, so author-chosen file names stay
+inside the data fences. If the retry also fails the check, the chain advances
+and the next reviewer's brief carries neither mark nor note. With no verdict the
+run stays pending. A hollow answer never passes.
 
 - Every defect must cite a head-commit file and a line within it. One that does
   not is kept, noted as citation not found, so it still fails the change;
   discarding the verdict would hand the change to a reviewer that might pass it.
-- In `file-list` mode (the brief lists files instead of the diff), a verdict
+- In `file-list` mode (the brief lists files instead of the diff), the brief
+  names the required reads explicitly: the plan's `evidence_files`, each with its
+  line counts, under "Required reads". Every other changed file (inert, exempt or
+  deleted) is listed under "Not required reads". The brief says each required
+  file needs its own direct read, that reading the staged pull request diff does
+  not count, and that one-line and low-priority files are included. A verdict
   that would be SHIP must name in `files_examined` every soundness-path file
   under review still present at the head (in a follow-up, those changed since
   the last review), and OMP's event stream must show a successful `read` of each
@@ -581,7 +630,11 @@ cancels a run in flight, which then posts nothing.
   the reviewer-free sweep job. An existing pending status is left alone; without
   the App the sweep reports the gap instead of failing. A failure in one PR's
   lookup, dispatch or surfacing is reported, the others continue, then the job
-  fails. Daily budget, backoff and attempt limits are unchanged.
+  fails. If the week-long runs listing fails twice, the sweep degrades: it
+  dispatches only due retries, using a bounded lookup of every non-completed run
+  status for the in-flight check, and says so in the summary. If that lookup also
+  fails it dispatches nothing. A degraded sweep exits 1 after dispatching what it
+  safely can. Daily budget, backoff and attempt limits are unchanged.
 - `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the
   owner clear one PR head's backoff and retry window once. It needs a prior
   `Owner instruction` comment from an attester naming the head, as for a
@@ -598,9 +651,7 @@ dispatch and scheduled reruns share a per-PR daily budget
 (`retry.daily_budget`), with backoff starting at one hour and doubling. Retry
 state is the `oracle-verdict-state-<number>` artifact of this workflow's latest
 run whose commit is on `develop`; other workflows' and branches' artifacts are
-ignored. Without one, `plan` reads the `oracle-review-shadow-state-<number>`
-artifact from runs of the former `.github/workflows/oracle-review-shadow.yml`,
-so strikes, budget and backoff survive the rename.
+ignored.
 
 A PR whose brief exceeds the size cap even without the diff (its file list alone
 is too long) cannot be reviewed: every reviewer is skipped and the result is
@@ -673,9 +724,16 @@ to GitHub.
   and a hash of the review machinery (the `oracle_reviewers` package, its
   templates, the OMP config). An unchanged patch reuses the result, even after
   an override; a keyless default result is not reused once a key exists, and
-  machinery changes are reviewed again. Only verdicts are cached. A lock in the
-  same directory allows one local review per machine; a second waits up to an
-  hour, then refuses.
+  machinery changes are reviewed again. Only verdicts are cached. The lock is per
+  patch: each cache key has its own lock file (`cache/<key>.lock`), so reviews
+  of different patches run in parallel, and a second review of the same patch
+  waits for the first (up to an hour per key, then it refuses), re-checks the
+  cache under the lock and reuses the result without running the reviewers. A
+  review's state is
+  private (its own work directory, reviewer homes and workspace clone, survivor
+  checks scoped to its own process group, atomic cache writes), and CI already
+  reviews different PRs concurrently on the same gateway, so a machine-wide lock
+  only made one slow review block every other PR without saving quota.
 
 ## Calibration
 
@@ -693,9 +751,19 @@ invalid, incomplete or failed evidence); its paths are redacted by known value
 and secret pattern, not the generic long-token filter. Add the messages to the
 `CALIBRATED_*_PATTERNS` tables in
 `_project/scripts/oracle_reviewers/absence.py`; until then they count as errors,
-which never pass. A quota absence means OMP's fallback chain was also exhausted;
-it skips the reviewer's whole pool for the rest of the run and for one hour in
-later runs (`QUOTA_BACKOFF` in `selection.py`).
+which never pass. A quota is the terminal event's structured `errorStatus` 429
+and an authentication failure is `errorStatus` 401; the message text of that
+event never classifies a failure, and the `CALIBRATED_*_PATTERNS` tables apply
+to stderr only. A quota absence records the `provider` of the terminal event,
+which may be a fallback provider. It skips the reviewer's whole pool for the rest
+of the run. In later runs the block lasts one hour (`QUOTA_BACKOFF` in
+`selection.py`) unless the provider is the pool's own primary provider
+(`POOL_PROVIDERS`) and the reset time was parsed from that error's own message;
+such a block lasts until the reset but at most 24 hours (`PRIMARY_BLOCK_CAP`),
+long enough to cover a daily or session limit without letting one stale reset
+hide a pool for days. A new head carries only primary-provider blocks, and an
+owner backoff reset carries none. A pending reason names the provider that
+returned the quota error and when the block was recorded.
 
 ## Changing the reviewer harness
 

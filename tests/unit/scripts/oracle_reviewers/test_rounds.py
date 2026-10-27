@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import unicodedata
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -10,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import cli, github, protocol, report
+from _project.scripts.oracle_reviewers import cli, edits, github, protocol, report
 from _project.scripts.oracle_reviewers.absence import Absence
 from _project.scripts.oracle_reviewers.classify import Classification
 from _project.scripts.oracle_reviewers.diff import commentable_lines
@@ -19,6 +20,14 @@ from _project.scripts.oracle_reviewers.policy import Policy
 from .test_attempts import CHECKER, DIFF, HEAD, _decide, _finding, _plan, _run_cli, _v, _write
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
+_APP_REVIEW = {
+    "login": "benchbox-oracle[bot]",
+    "user_type": "Bot",
+    "node_id": "PRR_app",
+    "last_edited_at": None,
+    "includes_created_edit": False,
+}
 
 OTHER = "benchbox/core/equivalence/other.py"
 PATCHES = {"aaaaaaaa": "1111111111111111"}
@@ -194,7 +203,7 @@ def test_a_forged_marker_in_model_text_never_becomes_the_record(policy: Policy, 
     assert final.review["body"].count(protocol.MARKER_OPEN) == 1
     assert _record(final)["decision"] == "SHIP_WITH_FIXES"
     found = protocol.history(
-        [{"login": "benchbox-oracle[bot]", "user_type": "Bot", "state": "COMMENTED", "body": final.review["body"]}],
+        [{**_APP_REVIEW, "state": "COMMENTED", "body": final.review["body"]}],
         "benchbox-oracle",
     )
     assert found.error is None and found.latest is not None and found.latest["decision"] == "SHIP_WITH_FIXES"
@@ -311,15 +320,13 @@ def test_strikes_ignore_carried_and_refused_records() -> None:
         (["c" * 40], 0, "false"),
         ([HEAD, "c" * 40], 0, "false"),
         ([HEAD], 2, "true"),
-        ([HEAD], 3, "false"),
     ],
-    ids=["already-decided", "other-head", "revert-to-an-older-head", "recovers-on-the-third-read", "unreadable"],
+    ids=["already-decided", "other-head", "revert-to-an-older-head", "recovers-on-the-third-read"],
 )
 def test_the_post_guard_skips_a_head_that_already_has_a_decision(
     policy: Policy,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
     heads: list[str],
     failures: int,
     skip: str,
@@ -341,8 +348,7 @@ def test_the_post_guard_skips_a_head_that_already_has_a_decision(
             record.pop("patch_map")
             posted.append(
                 {
-                    "login": "benchbox-oracle[bot]",
-                    "user_type": "Bot",
+                    **_APP_REVIEW,
                     "state": "COMMENTED",
                     "body": f"### oracle-verdict: success for `{head}`\n\n{protocol.encode_marker(record)}",
                     "submitted_at": f"2026-10-08T1{index}:00:00Z",
@@ -351,12 +357,82 @@ def test_the_post_guard_skips_a_head_that_already_has_a_decision(
         return posted
 
     monkeypatch.setattr(github, "oracle_reviews", reviews)
+    monkeypatch.setattr(github, "review_edit_states", lambda ids: dict.fromkeys(ids, (None, False)))
     out = _run_cli(monkeypatch, tmp_path, "guard", "--plan", str(plan_path))
     assert out == {"skip": skip}
-    reads = min(failures + 1, cli.GUARD_ATTEMPTS)
+    reads = failures + 1
     assert len(calls) == reads and pauses == [cli.GUARD_PAUSE_SECONDS] * (reads - 1)
-    unconfirmed = f"posting without confirming that head {HEAD} has no decision yet"
-    assert (unconfirmed in capsys.readouterr().out) is (failures >= cli.GUARD_ATTEMPTS)
+
+
+def _guard_plan(policy: Policy, tmp_path: Path) -> Path:
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps({**_protocol_plan(policy), "bot_login": "benchbox-oracle"}), encoding="utf-8")
+    return plan_path
+
+
+def _guard_review(head: str, **over: Any) -> dict[str, Any]:
+    record = {**_latest({}).records[0], "head_sha": head}
+    record.pop("patch_map")
+    return {
+        **_APP_REVIEW,
+        "id": 1,
+        "state": "COMMENTED",
+        "body": f"### oracle-verdict: success for `{head}`\n\n{protocol.encode_marker(record)}",
+        "submitted_at": "2026-10-08T10:00:00Z",
+        **over,
+    }
+
+
+def test_the_post_guard_fails_the_run_when_the_history_stays_unreadable(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    calls: list[int] = []
+
+    def reviews(repo: str, pr: int) -> list[dict[str, Any]]:
+        calls.append(pr)
+        raise github.GitHubError("down")
+
+    monkeypatch.setattr(cli, "sleep", lambda seconds: None)
+    monkeypatch.setattr(github, "oracle_reviews", reviews)
+    output = tmp_path / "out.txt"
+    output.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    assert cli.main(["guard", "--plan", str(_guard_plan(policy, tmp_path))]) == 2
+    assert len(calls) == cli.GUARD_ATTEMPTS
+    assert output.read_text(encoding="utf-8") == ""
+    assert "nothing is posted" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("state", [(None, True), ("2026-10-09T00:00:00Z", False)], ids=["created-edit", "edited-later"])
+def test_the_post_guard_never_skips_on_an_edited_review(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, state: tuple[Any, bool]
+) -> None:
+    monkeypatch.setattr(github, "oracle_reviews", lambda repo, pr: [_guard_review(HEAD)])
+    monkeypatch.setattr(github, "review_edit_states", lambda ids: dict.fromkeys(ids, state))
+    output = tmp_path / "out.txt"
+    output.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    assert cli.main(["guard", "--plan", str(_guard_plan(policy, tmp_path))]) == 2
+    assert output.read_text(encoding="utf-8") == ""
+
+
+def test_the_post_guard_fails_the_run_when_the_edit_state_is_unreadable(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(ids: list[str]) -> dict[str, tuple[Any, bool]]:
+        raise edits.EditStateError("GraphQL returned errors")
+
+    monkeypatch.setattr(cli, "sleep", lambda seconds: None)
+    monkeypatch.setattr(github, "oracle_reviews", lambda repo, pr: [_guard_review(HEAD)])
+    monkeypatch.setattr(github, "review_edit_states", broken)
+    output = tmp_path / "out.txt"
+    output.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    assert cli.main(["guard", "--plan", str(_guard_plan(policy, tmp_path))]) == 2
+    assert output.read_text(encoding="utf-8") == ""
 
 
 def test_a_restart_on_an_unchanged_patch_does_not_add_a_strike(policy: Policy, tmp_path: Path) -> None:
@@ -811,7 +887,7 @@ def test_a_defect_path_cannot_plant_a_protocol_marker(policy: Policy, tmp_path: 
     assert final.review["body"].count(protocol.MARKER_OPEN) == 1
     assert "docs/&lt;!-- oracle-protocol: v1 abc --&gt;.md" in final.review["body"]
     found = protocol.history(
-        [{"login": "benchbox-oracle[bot]", "user_type": "Bot", "state": "COMMENTED", "body": final.review["body"]}],
+        [{**_APP_REVIEW, "state": "COMMENTED", "body": final.review["body"]}],
         "benchbox-oracle",
     )
     assert found.error is None and found.latest is not None
@@ -829,6 +905,74 @@ def test_a_follow_up_counts_a_defect_on_a_changed_file_whose_name_needs_escaping
     assert [item["file"] for item in _record(final)["open_defects"]] == [path]
     assert "<details><summary>Not counted" not in final.body
     assert "<!--bad" not in final.body and "a-->b" not in final.body
+
+
+def test_a_follow_up_counts_an_nfd_finding_on_an_nfc_changed_file(policy: Policy, tmp_path: Path) -> None:
+    nfc_path = "benchbox/Café.py"
+    nfd_path = unicodedata.normalize("NFD", nfc_path)
+    plan = _follow_up(policy, [], [nfc_path])
+    final = _final(policy, tmp_path, plan, _v("s", [{**_finding("High", 2), "file": nfd_path}]))
+    assert final.state == "failure"
+    assert final.description.endswith(": SHIP WITH FIXES, 1 defect(s) to fix")
+    assert [item["file"] for item in _record(final)["open_defects"]] == [nfc_path]
+    assert "<details><summary>Not counted" not in final.body
+
+
+def test_a_follow_up_counts_a_case_variant_finding_on_a_changed_file(policy: Policy, tmp_path: Path) -> None:
+    path = "benchbox/Café.py"
+    plan = _follow_up(policy, [], [path])
+    final = _final(policy, tmp_path, plan, _v("s", [{**_finding("High", 2), "file": "benchbox/café.py"}]))
+    assert final.state == "failure"
+    assert final.description.endswith(": SHIP WITH FIXES, 1 defect(s) to fix")
+    assert [item["file"] for item in _record(final)["open_defects"]] == [path]
+    assert "<details><summary>Not counted" not in final.body
+
+
+def test_a_follow_up_counts_an_ambiguous_case_variant_on_changed_files(policy: Policy, tmp_path: Path) -> None:
+    paths = ["benchbox/Query.py", "benchbox/QUERY.py"]
+    plan = _follow_up(policy, [], paths)
+    final = _final(policy, tmp_path, plan, _v("s", [{**_finding("High", 2), "file": "benchbox/query.py"}]))
+    assert final.state == "failure"
+    assert final.description.endswith(": SHIP WITH FIXES, 1 defect(s) to fix")
+    assert [item["file"] for item in _record(final)["open_defects"]] == ["benchbox/query.py"]
+    assert "<details><summary>Not counted" not in final.body
+
+
+def test_finalize_counts_head_tree_alias_with_explicit_workspace(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "head"
+    workspace.mkdir()
+    (workspace / "changed.py").write_text("x = 1\n", encoding="utf-8")
+    (workspace / "alias.py").symlink_to("changed.py")
+    plan = _follow_up(policy, [], ["changed.py"])
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    classification_path = tmp_path / "classification.json"
+    classification = Classification("small", "routine", "standard", 1.0, (), ())
+    classification_path.write_text(json.dumps(classification.to_json()), encoding="utf-8")
+    attempts_dir = tmp_path / "attempts"
+    _write(attempts_dir, 1, "small", verdict=_v("s", [{**_finding("High", 2), "file": "alias.py"}]))
+    out = _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_path),
+        "--attempts-dir",
+        str(attempts_dir),
+        "--out-dir",
+        str(tmp_path / "o"),
+        "--classification",
+        str(classification_path),
+        "--workspace",
+        str(workspace),
+    )
+    assert out["state"] == "failure" and out["review"] == "true"
+    review = json.loads((tmp_path / "o" / "review.json").read_text(encoding="utf-8"))
+    record = protocol.decode_marker(review["body"])
+    assert record is not None
+    assert [item["file"] for item in record["open_defects"]] == ["changed.py"]
 
 
 def test_a_follow_up_lists_at_most_five_defects_as_not_counted(policy: Policy, tmp_path: Path) -> None:
@@ -968,9 +1112,8 @@ def test_an_unrecorded_result_posts_no_defect_ids_that_a_later_round_could_reuse
 
 def _review_at(record: dict[str, Any], submitted_at: str) -> dict[str, Any]:
     return {
+        **_APP_REVIEW,
         "id": 1,
-        "login": "benchbox-oracle[bot]",
-        "user_type": "Bot",
         "state": "COMMENTED",
         "submitted_at": submitted_at,
         "body": f"Decision.\n\n{protocol.encode_marker(record)}",
@@ -1034,3 +1177,15 @@ def test_an_unreadable_base_change_history_does_not_carry_a_refusal() -> None:
     refused = {**_decided(HEAD, protocol.REFUSED), "kind": protocol.REFUSAL}
     history = protocol.history([_review_at(refused, "2026-10-23T10:00:00Z")], "benchbox-oracle")
     assert _plan_same_head(history, base_change_unreadable=True).kind == protocol.SKIP
+
+
+def test_the_post_guard_lets_a_planned_hold_post_its_pending_status_despite_an_edit(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(
+        json.dumps({**_protocol_plan(policy), "bot_login": "benchbox-oracle", "decision": "hold"}), encoding="utf-8"
+    )
+    monkeypatch.setattr(github, "oracle_reviews", lambda repo, pr: [_guard_review(HEAD)])
+    monkeypatch.setattr(github, "review_edit_states", lambda ids: dict.fromkeys(ids, (None, True)))
+    assert _run_cli(monkeypatch, tmp_path, "guard", "--plan", str(plan_path)) == {"skip": "false"}

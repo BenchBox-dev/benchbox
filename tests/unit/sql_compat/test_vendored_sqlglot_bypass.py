@@ -389,6 +389,7 @@ _UPSTREAM_SQLGLOT_TOOLS: dict[str, str] = {
     "_project/sql-translation-ml/schema_generator.py": UPSTREAM_ML_EVALUATION,
     "_project/sqlglot-upstream/repros/repro_all.py": UPSTREAM_REPRO,
     "_project/sqlglot-upstream/repros/sqlite_extract.py": UPSTREAM_REPRO,
+    "_project/sqlglot-upstream/repros/transpiler_comparison.py": UPSTREAM_REPRO,
 }
 
 _BYPASS_ENTRIES: dict[tuple[str, str], AllowlistEntry] = {

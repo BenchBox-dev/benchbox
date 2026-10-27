@@ -4,13 +4,17 @@ import base64
 import binascii
 import hashlib
 import json
+import os
 import re
+import unicodedata
 import zlib
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
+from .edits import EDITED_REASON, EditStateError, is_edited
 from .evidence import withdrawal_cited
 from .policy import SEVERITIES
 from .verdict import (
@@ -287,14 +291,21 @@ def _review_time(value: Any) -> datetime | None:
         return None
 
 
-def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
-    own = [
-        review
-        for review in reviews
-        if (review.get("login") or "") == f"{bot_login}[bot]"
+def is_app_review(review: Mapping[str, Any], bot_login: str) -> bool:
+    return (
+        (review.get("login") or "") == f"{bot_login}[bot]"
         and review.get("user_type") == "Bot"
         and review.get("state") != "DISMISSED"
-    ]
+    )
+
+
+def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
+    own = [review for review in reviews if is_app_review(review, bot_login)]
+    for review in own:
+        if "last_edited_at" not in review or "includes_created_edit" not in review:
+            raise EditStateError(f"oracle review {review.get('id')} has no readable edit state")
+        if is_edited(review["last_edited_at"], review["includes_created_edit"]):
+            return History([], EDITED_REASON)
     found = History()
     for review in sorted(own, key=lambda item: (str(item.get("submitted_at") or ""), int(item.get("id") or 0))):
         try:
@@ -437,12 +448,54 @@ def plan_round(
     )
 
 
+def _clean_path(path: str) -> str:
+    norm = unicodedata.normalize("NFC", path)
+    if norm.startswith("./"):
+        norm = norm[2:]
+    return norm
+
+
+def _resolve_tree(path: str, workspace: Path | str | None) -> str:
+    cleaned = _clean_path(path)
+    if not cleaned or workspace is None:
+        return cleaned
+    try:
+        root = os.path.realpath(str(workspace))
+        candidate = os.path.normpath(os.path.join(root, path))
+        if candidate == root or candidate.startswith(root + os.sep):
+            real = os.path.realpath(candidate)
+            if real == root or real.startswith(root + os.sep):
+                rel = os.path.relpath(real, root).replace("\\", "/")
+                return _clean_path(rel)
+    except (OSError, ValueError):
+        return cleaned
+    return cleaned
+
+
+def _exists_exact(path: str, workspace: Path | str | None) -> bool:
+    if workspace is None or not path:
+        return False
+    try:
+        root = os.path.realpath(str(workspace))
+        current = root
+        for part in path.split("/"):
+            if part in ("", "."):
+                continue
+            if part not in os.listdir(current):
+                return False
+            current = os.path.join(current, part)
+        return current != root
+    except OSError:
+        return False
+
+
 def judge(
     verdict: Verdict,
     max_defects: int,
     prior: Sequence[Mapping[str, Any]] = (),
     changed: Iterable[str] | None = None,
     rejudge_fixed: bool = False,
+    workspace: Path | str | None = None,
 ) -> Judgement:
     if verdict.status != COMPLETE:
         raise ValueError("only a complete review can be judged")
@@ -458,11 +511,43 @@ def judge(
     carried = tuple(item for item in prior if statuses.get(item["id"], NOT_FIXED) == NOT_FIXED)
     fixed = tuple(item["id"] for item in prior if statuses.get(item["id"], NOT_FIXED) == FIXED)
     withdrawn = tuple(item["id"] for item in prior if statuses.get(item["id"]) == WITHDRAWN)
-    scope = None if changed is None else frozenset(changed)
-    in_scope = tuple(item for item in verdict.defects if scope is None or item.file in scope)
+    if changed is None:
+        in_scope = verdict.defects
+        outside = ()
+    else:
+        changed_list = list(changed)
+        scope = frozenset(changed_list)
+        changed_map = []
+        for path in changed_list:
+            canonical = _resolve_tree(path, workspace)
+            changed_map.append((path, canonical, canonical.casefold()))
+        in_scope_list: list[Finding] = []
+        outside_list: list[Finding] = []
+        for item in verdict.defects:
+            if item.file in scope:
+                in_scope_list.append(item)
+                continue
+            f_canon = _resolve_tree(item.file, workspace)
+            exact_matches = [c for c, c_canon, _ in changed_map if c_canon == f_canon]
+            if exact_matches:
+                chosen = f_canon if f_canon in exact_matches else exact_matches[0]
+                in_scope_list.append(replace(item, file=chosen))
+                continue
+            if _exists_exact(f_canon, workspace):
+                outside_list.append(item)
+                continue
+            f_fold = f_canon.casefold()
+            case_matches = [c for c, _, c_fold in changed_map if c_fold == f_fold]
+            if len(case_matches) == 1:
+                in_scope_list.append(replace(item, file=case_matches[0]))
+            elif len(case_matches) > 1:
+                in_scope_list.append(item)
+            else:
+                outside_list.append(item)
+        in_scope = tuple(in_scope_list)
+        outside = tuple(outside_list)[:NOT_COUNTED_LIMIT]
     counted = tuple(dict.fromkeys(in_scope))
     merged = len(in_scope) - len(counted)
-    outside = tuple(item for item in verdict.defects if item not in counted)[:NOT_COUNTED_LIMIT]
     uncounted = verdict.listed - len(verdict.defects)
     total = len(carried) + len(counted) + uncounted
     if verdict.decision == DO_NOT_SHIP or total > max_defects:
@@ -476,10 +561,22 @@ def judge(
     return Judgement(SHIP, (), verdict.summary, (), fixed, outside, withdrawn)
 
 
-def judge_planned(verdict: Verdict, plan: Mapping[str, Any]) -> Judgement:
+def judge_planned(
+    verdict: Verdict,
+    plan: Mapping[str, Any],
+    workspace: Path | str | None = None,
+) -> Judgement:
     rules = plan.get("protocol") or {}
     changed = rules.get("changed") if rules.get("kind") == FOLLOW_UP else None
-    return judge(verdict, int(plan["max_defects"]), rules.get("prior", ()), changed, bool(rules.get("forced")))
+    ws = workspace if workspace is not None else plan.get("workspace")
+    return judge(
+        verdict,
+        int(plan["max_defects"]),
+        rules.get("prior", ()),
+        changed,
+        bool(rules.get("forced")),
+        workspace=ws,
+    )
 
 
 THREAD_MARKER = re.compile(r"<!--\s*oracle-defect:\s*c([0-9]+)-(D[1-9][0-9]{0,3})\s*-->")
@@ -598,11 +695,15 @@ def dispute_problem(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
     return None
 
 
-def contradiction(verdict: Verdict, plan: Mapping[str, Any]) -> str | None:
+def contradiction(
+    verdict: Verdict,
+    plan: Mapping[str, Any],
+    workspace: Path | str | None = None,
+) -> str | None:
     problem = dispute_problem(verdict, plan)
     if problem is not None:
         return problem
-    if verdict.status != COMPLETE or judge_planned(verdict, plan).decision != SHIP:
+    if verdict.status != COMPLETE or judge_planned(verdict, plan, workspace=workspace).decision != SHIP:
         return None
     if verdict.incomplete_reason.strip():
         return "the verdict would ship but reports that the review could not be finished"

@@ -64,6 +64,8 @@ version. Human review precedes upstream publication.
 |------|------------|
 | `repros/repro_all.py` | Single-file Python harness covering all candidates; pinned to `sqlglot==30.6.0` |
 | `repros/generator.py` | Deterministic nightly translation generator and seed-replay entrypoint |
+| `repros/transpiler_comparison.py` | Replays fixtures through the BenchBox wrapper, public SQLGlot (pure and compiled) and Polyglot on SQLite and DuckDB; see `transpiler-comparison.md` |
+| `transpiler-comparison.md` | Recorded versions, commands, outcomes and timings from that comparison, with historical-only figures labelled |
 | `issues/02-sqlite-interval-date-arithmetic.md` | Drafted bug report (Tier A) |
 | `issues/03-sqlite-extract-not-lowered-to-strftime.md` | Drafted bug report (Tier B confirmed) |
 | `issues/05-mysql-percentile-cont-extra-case-decorator.md` | Drafted bug report (Tier A) |

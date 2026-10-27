@@ -15,6 +15,8 @@ REVIEW = "review"
 PENDING = "pending"
 BRIEF_MODES = ("inline", "file-list", "oversize")
 QUOTA_BACKOFF = timedelta(hours=1)
+PRIMARY_BLOCK_CAP = timedelta(hours=24)
+POOL_PROVIDERS = {"claude": "anthropic", "codex": "openai-codex"}
 JOB_FAILURE_DETAIL = "the reviewer job did not finish"
 RETRYABLE_ABSENCES = frozenset({INVALID, INCOMPLETE, EMPTY, ERROR})
 MAX_ATTEMPTS_PER_REVIEWER = 2
@@ -28,6 +30,30 @@ class Attempt:
     absence: str = ""
     detail: str = ""
     reset_at: datetime | None = None
+    provider: str = ""
+    unread: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class PoolBlock:
+    until: datetime
+    provider: str
+    recorded_at: datetime
+
+    def to_json(self) -> dict[str, str]:
+        return {
+            "until": self.until.isoformat(),
+            "provider": self.provider,
+            "recorded_at": self.recorded_at.isoformat(),
+        }
+
+    @classmethod
+    def from_json(cls, data: Mapping[str, Any]) -> PoolBlock:
+        return cls(
+            datetime.fromisoformat(data["until"]),
+            str(data.get("provider") or ""),
+            datetime.fromisoformat(data["recorded_at"]),
+        )
 
 
 @dataclass(frozen=True)
@@ -43,7 +69,7 @@ class SelectionInput:
     brief_mode: str
     max_attempts: int
     now: datetime
-    pool_blocked_until: Mapping[str, datetime] = field(default_factory=dict)
+    pool_blocked_until: Mapping[str, PoolBlock] = field(default_factory=dict)
 
     @classmethod
     def from_plan(cls, plan: Mapping[str, Any], now: datetime) -> SelectionInput:
@@ -53,9 +79,30 @@ class SelectionInput:
             max_attempts=int(plan["max_attempts"]),
             now=now,
             pool_blocked_until={
-                pool: datetime.fromisoformat(value) for pool, value in plan.get("pool_blocked_until", {}).items()
+                pool: PoolBlock.from_json(value) for pool, value in plan.get("pool_blocked_until", {}).items()
             },
         )
+
+
+def _source(provider: str) -> str:
+    return provider or "an unknown provider"
+
+
+def _from_primary(pool: str, provider: str) -> bool:
+    return bool(provider) and POOL_PROVIDERS.get(pool) == provider
+
+
+def effective_until(pool: str, block: PoolBlock) -> datetime:
+    cap = PRIMARY_BLOCK_CAP if _from_primary(pool, block.provider) else QUOTA_BACKOFF
+    return min(block.until, block.recorded_at + cap)
+
+
+def active_blocks(blocks: Mapping[str, PoolBlock], now: datetime, *, same_head: bool = True) -> dict[str, PoolBlock]:
+    return {
+        pool: block
+        for pool, block in blocks.items()
+        if effective_until(pool, block) > now and (same_head or _from_primary(pool, block.provider))
+    }
 
 
 def _may_retry(history: Sequence[Attempt]) -> bool:
@@ -67,11 +114,20 @@ def _may_retry(history: Sequence[Attempt]) -> bool:
     )
 
 
+def retry_unread(attempts: Sequence[Attempt], reviewer: str, slot: int) -> tuple[str, ...]:
+    history = sorted(
+        (item for item in attempts if item.reviewer == reviewer and item.slot < slot), key=lambda a: a.slot
+    )
+    if not history or not _may_retry(history):
+        return ()
+    return history[-1].unread if history[-1].absence == INCOMPLETE else ()
+
+
 def _skip_reason(
     reviewer: Reviewer,
     selection: SelectionInput,
     attempted: Mapping[str, Sequence[Attempt]],
-    quota_pools: set[str],
+    quota_pools: Mapping[str, str],
 ) -> str | None:
     history = attempted.get(reviewer.name, ())
     if history and not _may_retry(history):
@@ -80,10 +136,13 @@ def _skip_reason(
     if not reviewer.enabled:
         return f"disabled ({reviewer.disabled_reason})"
     if reviewer.pool in quota_pools:
-        return f"skipped: {reviewer.pool} pool out of quota in this run"
-    blocked_until = selection.pool_blocked_until.get(reviewer.pool)
-    if blocked_until is not None and blocked_until > selection.now:
-        return f"skipped: {reviewer.pool} pool out of quota until {blocked_until.isoformat()}"
+        return f"skipped: {reviewer.pool} pool blocked in this run, {_source(quota_pools[reviewer.pool])} returned a quota error"
+    block = selection.pool_blocked_until.get(reviewer.pool)
+    if block is not None and effective_until(reviewer.pool, block) > selection.now:
+        return (
+            f"skipped: {reviewer.pool} pool blocked until {effective_until(reviewer.pool, block).isoformat()}, "
+            f"{_source(block.provider)} returned a quota error at {block.recorded_at.isoformat()}"
+        )
     if selection.brief_mode == "oversize":
         return "skipped: the brief exceeds the size cap even without the diff"
     if selection.brief_mode == "file-list" and not (reviewer.read_only == "hard" and reviewer.reads_files):
@@ -103,7 +162,7 @@ def next_step(selection: SelectionInput, attempts: Sequence[Attempt]) -> Step:
     for attempt in ordered:
         attempted.setdefault(attempt.reviewer, []).append(attempt)
     quota_pools = {
-        by_name[attempt.reviewer].pool
+        by_name[attempt.reviewer].pool: attempt.provider
         for attempt in ordered
         if attempt.absence == "quota" and attempt.reviewer in by_name
     }
@@ -119,12 +178,17 @@ def next_step(selection: SelectionInput, attempts: Sequence[Attempt]) -> Step:
     return Step(PENDING, None, tuple(reasons))
 
 
-def pool_resets(selection: SelectionInput, attempts: Sequence[Attempt]) -> dict[str, datetime]:
+def pool_resets(selection: SelectionInput, attempts: Sequence[Attempt]) -> dict[str, PoolBlock]:
     by_name = {reviewer.name: reviewer for reviewer in selection.chain}
-    resets = {pool: until for pool, until in selection.pool_blocked_until.items() if until > selection.now}
+    resets = active_blocks(selection.pool_blocked_until, selection.now)
     for attempt in attempts:
         if attempt.absence == "quota" and attempt.reviewer in by_name:
             pool = by_name[attempt.reviewer].pool
-            until = attempt.reset_at or selection.now + QUOTA_BACKOFF
-            resets[pool] = max(resets.get(pool, until), until)
+            primary = _from_primary(pool, attempt.provider)
+            requested = attempt.reset_at if primary and attempt.reset_at else selection.now + QUOTA_BACKOFF
+            cap = PRIMARY_BLOCK_CAP if primary else QUOTA_BACKOFF
+            block = PoolBlock(min(requested, selection.now + cap), attempt.provider, selection.now)
+            kept = resets.get(pool)
+            if kept is None or block.until >= kept.until:
+                resets[pool] = block
     return resets

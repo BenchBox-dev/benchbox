@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -489,21 +491,114 @@ def test_planted_cloud_values_never_appear_in_the_output(
     assert CLOUD_URL not in captured.out + captured.err
 
 
-def test_a_second_review_waits_for_the_machine_lock_then_refuses(
+def test_a_second_review_of_the_same_patch_waits_for_its_lock_then_refuses(
     env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     import fcntl
 
     monkeypatch.setattr(local, "LOCK_WAIT_SECONDS", 0.3)
     monkeypatch.setattr(local, "LOCK_POLL_SECONDS", 0.05)
-    directory = local.state_dir()
-    directory.mkdir(parents=True)
-    with open(directory / "review.lock", "a+", encoding="utf-8") as held:
+    seen: list[Path] = []
+    real = local._cache_path
+
+    def recording(*args: Any, **kwargs: Any) -> Path:
+        path = real(*args, **kwargs)
+        seen.append(path)
+        return path
+
+    monkeypatch.setattr(local, "_cache_path", recording)
+    assert env.run() == local.EXIT_PROCEED
+    cache = seen[0]
+    cache.unlink()
+    with open(cache.with_suffix(".lock"), "a+", encoding="utf-8") as held:
         fcntl.flock(held, fcntl.LOCK_EX)
         assert env.run() == local.EXIT_UNAVAILABLE
-    assert "another local oracle review" in capsys.readouterr().err
-    assert env.reviews == []
+    assert "another local oracle review of this patch" in capsys.readouterr().err
+    assert len(env.reviews) == 1
     assert env.run() == local.EXIT_PROCEED
+
+
+def test_a_lock_held_for_another_patch_does_not_delay_this_review(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    import fcntl
+
+    monkeypatch.setattr(local, "LOCK_WAIT_SECONDS", 0.3)
+    directory = local.state_dir() / "cache"
+    directory.mkdir(parents=True)
+    with open(directory / ("0" * 64 + ".lock"), "a+", encoding="utf-8") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        assert env.run() == local.EXIT_PROCEED
+    assert len(env.reviews) == 1
+
+
+def _spawn(repo: Path, tmp_path: Path, name: str, seconds: float) -> tuple[subprocess.Popen[str], Path]:
+    log = tmp_path / f"{name}.log"
+    env = {
+        **os.environ,
+        "HOME": str(tmp_path / "home"),
+        local.STATE_DIR_ENV: str(tmp_path / "state"),
+        "PYTHONPATH": str(REPO_ROOT),
+    }
+    for secret in SECRET_NAMES:
+        env.pop(secret, None)
+    process = subprocess.Popen(
+        [sys.executable, "-m", "tests.unit.scripts.oracle_reviewers.local_review_process", str(log), str(seconds)],
+        cwd=repo,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    return process, log
+
+
+def _wait_for(path: Path, text: str) -> None:
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        if path.exists() and text in path.read_text(encoding="utf-8"):
+            return
+        time.sleep(0.05)
+    raise AssertionError(f"{text!r} never appeared in {path}")
+
+
+def _seed_home(tmp_path: Path) -> None:
+    token = tmp_path / "home" / local.LOCAL_TOKEN_PATH
+    token.parent.mkdir(parents=True)
+    token.write_text(LOCAL_TOKEN + "\n", encoding="utf-8")
+
+
+def test_reviews_of_different_patches_run_at_the_same_time_in_separate_processes(tmp_path: Path) -> None:
+    _seed_home(tmp_path)
+    first_repo = _make_repo(tmp_path / "first")
+    second_repo = _make_repo(tmp_path / "second", "benchbox/core/equivalence/other.py")
+    slow, slow_log = _spawn(first_repo, tmp_path, "slow", 8)
+    try:
+        _wait_for(slow_log, "start")
+        fast, _ = _spawn(second_repo, tmp_path, "fast", 0)
+        fast_output, _ = fast.communicate(timeout=60)
+        assert fast.returncode == local.EXIT_PROCEED, fast_output
+        assert slow.poll() is None
+        assert "Waiting for another" not in fast_output
+    finally:
+        slow.communicate(timeout=60)
+    assert slow.returncode == local.EXIT_PROCEED
+
+
+def test_a_second_process_reviewing_the_same_patch_waits_and_reuses_the_result(tmp_path: Path) -> None:
+    _seed_home(tmp_path)
+    repo = _make_repo(tmp_path / "repo")
+    first, first_log = _spawn(repo, tmp_path, "first", 4)
+    try:
+        _wait_for(first_log, "start")
+        second, second_log = _spawn(repo, tmp_path, "second", 4)
+        second_output, _ = second.communicate(timeout=120)
+    finally:
+        first.communicate(timeout=120)
+    assert first.returncode == local.EXIT_PROCEED
+    assert second.returncode == local.EXIT_PROCEED, second_output
+    assert "Waiting for another local oracle review of this patch" in second_output
+    assert "Reusing the cached local review" in second_output
+    assert not second_log.exists()
+    assert first_log.read_text(encoding="utf-8").count("start") == 1
 
 
 def test_a_change_with_only_exempt_paths_needs_no_review(

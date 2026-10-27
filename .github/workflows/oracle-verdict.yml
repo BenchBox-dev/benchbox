@@ -222,6 +222,7 @@ jobs:
         run: >-
           python3 -m _project.scripts.oracle_reviewers.cli finalize --plan "$RUNNER_TEMP/oracle-plan/plan.json" --attempts-dir "$RUNNER_TEMP/oracle-attempts"
           --out-dir "$RUNNER_TEMP/oracle-final" --classification "$RUNNER_TEMP/oracle-classification/classification.json"
+          --workspace "$GITHUB_WORKSPACE/workspace"
 
       - name: Redact every secret value held by the job from the results
         id: redact

@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from _project.scripts.oracle_reviewers import github
+from _project.scripts.oracle_reviewers import edits, github
 from _project.scripts.oracle_reviewers.retry import State
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -398,9 +398,18 @@ def test_review_threads_pages_and_keeps_the_first_comment(monkeypatch: pytest.Mo
             "author": "benchbox-oracle",
             "author_type": "Bot",
             "body": "**High**: A",
+            "edited": False,
             "replies": [],
         },
-        {"resolved": True, "path": "b.py", "author": None, "author_type": None, "body": "", "replies": []},
+        {
+            "resolved": True,
+            "path": "b.py",
+            "author": None,
+            "author_type": None,
+            "body": "",
+            "edited": False,
+            "replies": [],
+        },
     ]
     assert "after=c1" in calls[1] and not any(arg.startswith("after=") for arg in calls[0])
     flags = dict(zip(calls[0][1::2], calls[0][2::2], strict=False))
@@ -418,15 +427,119 @@ def test_review_threads_raises_on_graphql_errors(monkeypatch: pytest.MonkeyPatch
         github.review_threads(REPO, 7)
 
 
-def _thread(resolved: bool, path: str, author: str | None, body: str) -> dict[str, Any]:
-    comment = {"author": {"__typename": "Bot", "login": author} if author else None, "body": body}
+def _thread(
+    resolved: bool, path: str, author: str | None, body: str, edit: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    comment = {
+        "author": {"__typename": "Bot", "login": author} if author else None,
+        "body": body,
+        **({"lastEditedAt": None, "includesCreatedEdit": False} if edit is None else edit),
+    }
     return {"isResolved": resolved, "path": path, "comments": {"nodes": [comment]}}
+
+
+def _serve_threads(monkeypatch: pytest.MonkeyPatch, nodes: list[dict[str, Any]]) -> None:
+    connection = {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": nodes}
+    payload = json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": connection}}}})
+    monkeypatch.setattr(github, "_gh", lambda *args, accept=None: payload)
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        {"lastEditedAt": "2026-10-20T00:00:00Z", "includesCreatedEdit": False},
+        {"lastEditedAt": None, "includesCreatedEdit": True},
+    ],
+    ids=["edited-later", "created-edit"],
+)
+def test_review_threads_flag_an_edited_first_comment(monkeypatch: pytest.MonkeyPatch, edit: dict[str, Any]) -> None:
+    _serve_threads(monkeypatch, [_thread(False, "a.py", "benchbox-oracle", "**High**: A", edit)])
+    assert [thread["edited"] for thread in github.review_threads(REPO, 7)] == [True]
+
+
+def test_review_threads_refuse_a_first_comment_without_edit_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    node = _thread(False, "a.py", "benchbox-oracle", "**High**: A")
+    del node["comments"]["nodes"][0]["includesCreatedEdit"]
+    _serve_threads(monkeypatch, [node])
+    with pytest.raises(github.GitHubError, match="edit state"):
+        github.review_threads(REPO, 7)
+
+
+def _edit_payload(*states: tuple[str, Any, bool]) -> str:
+    nodes = [{"id": node_id, "lastEditedAt": at, "includesCreatedEdit": created} for node_id, at, created in states]
+    return json.dumps({"data": {"nodes": nodes}})
+
+
+def test_review_edit_states_batch_every_id_into_one_graphql_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        calls.append(args)
+        return _edit_payload(("PRR_1", None, False), ("PRR_2", "2026-10-20T00:00:00Z", False))
+
+    monkeypatch.setattr(github, "_gh", fake_gh)
+    assert github.review_edit_states(["PRR_1", "PRR_2", "PRR_1"]) == {
+        "PRR_1": (None, False),
+        "PRR_2": ("2026-10-20T00:00:00Z", False),
+    }
+    assert len(calls) == 1
+    assert calls[0][0] == "graphql"
+    assert [arg for arg in calls[0] if arg.startswith("ids[]=")] == ["ids[]=PRR_1", "ids[]=PRR_2"]
+    assert "lastEditedAt" in calls[0][2] and "includesCreatedEdit" in calls[0][2]
+
+
+def test_review_edit_states_split_more_than_one_hundred_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    sizes: list[int] = []
+
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        ids = [arg.removeprefix("ids[]=") for arg in args if arg.startswith("ids[]=")]
+        sizes.append(len(ids))
+        return _edit_payload(*((node_id, None, False) for node_id in ids))
+
+    monkeypatch.setattr(github, "_gh", fake_gh)
+    states = github.review_edit_states([f"PRR_{index}" for index in range(150)])
+    assert sizes == [100, 50] and len(states) == 150
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        json.dumps({"errors": [{"message": "rate limited"}]}),
+        json.dumps({"data": {"nodes": [None]}}),
+        json.dumps({"data": {"nodes": [{"id": "PRR_1"}]}}),
+        "not json",
+    ],
+    ids=["graphql-error", "null-node", "missing-fields", "malformed"],
+)
+def test_review_edit_states_raise_when_the_edit_state_is_unreadable(
+    monkeypatch: pytest.MonkeyPatch, reply: str
+) -> None:
+    monkeypatch.setattr(github, "_gh", lambda *args, accept=None: reply)
+    with pytest.raises(edits.EditStateError):
+        github.review_edit_states(["PRR_1"])
+
+
+def test_review_edit_states_raise_when_gh_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken(*args: str, accept: str | None = None) -> str:
+        raise github.GitHubError("gh api failed")
+
+    monkeypatch.setattr(github, "_gh", broken)
+    with pytest.raises(edits.EditStateError, match="could not be read"):
+        github.review_edit_states(["PRR_1"])
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="the fake gh is a POSIX shebang script and PATH is colon-joined")
 def test_oracle_reviews_reads_every_page_through_gh_api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pages = [
-        [{"id": index, "user": {"login": "benchbox-oracle[bot]", "type": "Bot"}, "body": f"r{index}"} for index in part]
+        [
+            {
+                "id": index,
+                "node_id": f"PRR_{index}",
+                "user": {"login": "benchbox-oracle[bot]", "type": "Bot"},
+                "body": f"r{index}",
+            }
+            for index in part
+        ]
         for part in (range(100), range(100, 151))
     ]
     argv_log = tmp_path / "argv.json"
@@ -451,6 +564,7 @@ def test_oracle_reviews_reads_every_page_through_gh_api(tmp_path: Path, monkeypa
     reviews = github.oracle_reviews(REPO, PR)
     assert [review["id"] for review in reviews] == list(range(151))
     assert reviews[150]["login"] == "benchbox-oracle[bot]" and reviews[150]["body"] == "r150"
+    assert reviews[150]["node_id"] == "PRR_150"
     argv = json.loads(argv_log.read_text(encoding="utf-8"))
     assert argv[0] == "api" and argv[-1] == f"repos/{REPO}/pulls/{PR}/reviews?per_page=100"
 
@@ -472,8 +586,7 @@ def _state_sources(
     def fake_run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
         name = argv[argv.index("-n") + 1]
         downloaded.append(name)
-        strikes = 2 if name.startswith(github.LEGACY_STATE_ARTIFACT_PREFIX) else 1
-        state = State(7, "a" * 40, "failure", datetime(2026, 10, 5, tzinfo=UTC), strikes=strikes)
+        state = State(7, "a" * 40, "failure", datetime(2026, 10, 5, tzinfo=UTC), strikes=1)
         (Path(argv[argv.index("-D") + 1]) / github.STATE_FILE).write_text(json.dumps(state.to_json()), "utf-8")
         return subprocess.CompletedProcess(argv, 0, "", "")
 
@@ -487,36 +600,17 @@ def _artifact(run_id: int) -> dict[str, Any]:
     return {"created_at": "2026-10-05T12:00:00Z", "workflow_run": {"id": run_id}, "expired": False}
 
 
-def test_latest_state_falls_back_to_the_legacy_artifact_and_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
-    legacy = github.state_artifact_name(7, github.LEGACY_STATE_ARTIFACT_PREFIX)
-    runs = {"1": _run(path=github.LEGACY_WORKFLOW_PATH)}
-    downloaded = _state_sources(monkeypatch, {legacy: [_artifact(1)]}, runs)
-    state = github.latest_state(REPO, 7)
-    assert state is not None and state.strikes == 2
-    assert downloaded == ["oracle-review-shadow-state-7"]
-
-
-def test_latest_state_prefers_the_current_artifact(monkeypatch: pytest.MonkeyPatch) -> None:
-    legacy = github.state_artifact_name(7, github.LEGACY_STATE_ARTIFACT_PREFIX)
-    runs = {"1": _run(path=github.LEGACY_WORKFLOW_PATH), "2": _run()}
-    downloaded = _state_sources(monkeypatch, {"oracle-verdict-state-7": [_artifact(2)], legacy: [_artifact(1)]}, runs)
+def test_latest_state_downloads_matching_verdict_artifact(monkeypatch: pytest.MonkeyPatch) -> None:
+    name = github.state_artifact_name(7, github.STATE_ARTIFACT_PREFIX)
+    downloaded = _state_sources(monkeypatch, {name: [_artifact(1)]}, {"1": _run(path=github.WORKFLOW_PATH)})
     state = github.latest_state(REPO, 7)
     assert state is not None and state.strikes == 1
-    assert downloaded == ["oracle-verdict-state-7"]
+    assert downloaded == [name]
 
 
-@pytest.mark.parametrize(
-    ("name", "path"),
-    [
-        ("oracle-verdict-state-7", github.LEGACY_WORKFLOW_PATH),
-        ("oracle-review-shadow-state-7", github.WORKFLOW_PATH),
-    ],
-    ids=["current-artifact-from-legacy-workflow", "legacy-artifact-from-current-workflow"],
-)
-def test_latest_state_pairs_each_artifact_name_with_its_own_workflow(
-    monkeypatch: pytest.MonkeyPatch, name: str, path: str
-) -> None:
-    downloaded = _state_sources(monkeypatch, {name: [_artifact(1)]}, {"1": _run(path=path)})
+def test_latest_state_ignores_artifacts_from_another_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
+    name = github.state_artifact_name(7, github.STATE_ARTIFACT_PREFIX)
+    downloaded = _state_sources(monkeypatch, {name: [_artifact(1)]}, {"1": _run(path=".github/workflows/other.yml")})
     assert github.latest_state(REPO, 7) is None
     assert downloaded == []
 
@@ -651,6 +745,89 @@ def test_commit_statuses_lists_paginated_statuses_with_creator_metadata(
     monkeypatch.setattr(github, "get_paginated", lambda path: (seen.append(path), entries)[1])
     assert github.commit_statuses(REPO, SHA) == [entries[0], entries[2]]
     assert seen == [f"repos/{REPO}/commits/{SHA}/statuses?per_page=100"]
+
+
+def test_verdict_runs_retries_once_with_a_short_pause(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, ...]] = []
+    pauses: list[float] = []
+    payload = [{"workflow_runs": [{"id": 3, "display_title": "oracle-verdict (workflow_dispatch pr=7)"}]}]
+
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        calls.append(args)
+        if len(calls) == 1:
+            raise github.GitHubError("gh api failed: Bad Gateway")
+        return json.dumps(payload)
+
+    monkeypatch.setattr(github, "_gh", fake_gh)
+    monkeypatch.setattr(github, "sleep", pauses.append)
+    assert (
+        github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC))
+        == payload[0]["workflow_runs"]
+    )
+    assert len(calls) == 2 and all(call[:2] == ("--paginate", "--slurp") for call in calls)
+    assert pauses == [github.RUN_LIST_PAUSE_SECONDS]
+
+
+def test_verdict_runs_retries_a_json_decode_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    replies = iter(["<html>Bad Gateway</html>", json.dumps([{"workflow_runs": [{"id": 3}]}])])
+    pauses: list[float] = []
+    monkeypatch.setattr(github, "_gh", lambda *args, accept=None: next(replies))
+    monkeypatch.setattr(github, "sleep", pauses.append)
+    assert github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC)) == [{"id": 3}]
+    assert pauses == [github.RUN_LIST_PAUSE_SECONDS]
+
+
+def test_verdict_runs_raises_a_github_error_when_the_json_stays_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(github, "_gh", lambda *args, accept=None: "not json")
+    monkeypatch.setattr(github, "sleep", lambda seconds: None)
+    with pytest.raises(github.GitHubError, match="invalid JSON"):
+        github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC))
+
+
+def test_verdict_runs_raises_after_the_bounded_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, ...]] = []
+    pauses: list[float] = []
+
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        calls.append(args)
+        raise github.GitHubError("gh api failed: Bad Gateway")
+
+    monkeypatch.setattr(github, "_gh", fake_gh)
+    monkeypatch.setattr(github, "sleep", pauses.append)
+    with pytest.raises(github.GitHubError, match="Bad Gateway"):
+        github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC))
+    assert len(calls) == github.RUN_LIST_ATTEMPTS
+    assert pauses == [github.RUN_LIST_PAUSE_SECONDS]
+
+
+def test_in_flight_pulls_reads_only_the_first_page_of_active_runs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: list[str] = []
+    pages = {
+        "status=pending": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=11)"}]},
+        "status=waiting": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=12)"}]},
+        "status=requested": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=13)"}]},
+        "status=queued": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=7)"}]},
+        "status=in_progress": {
+            "workflow_runs": [
+                {"display_title": "oracle-verdict (pull_request_target pr=9)"},
+                {"display_title": "oracle-verdict (schedule pr=sweep)"},
+            ]
+        },
+    }
+
+    def fake_json(path: str) -> dict[str, Any]:
+        seen.append(path)
+        return next(page for key, page in pages.items() if key in path)
+
+    monkeypatch.setattr(github, "get_json", fake_json)
+    assert github.in_flight_pulls(REPO, "oracle-verdict.yml") == frozenset({7, 9, 11, 12, 13})
+    assert seen == [
+        f"repos/{REPO}/actions/workflows/oracle-verdict.yml/runs?status={status}&per_page=100"
+        for status in ("pending", "waiting", "requested", "queued", "in_progress")
+    ]
+    assert "--paginate" not in " ".join(seen)
 
 
 def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch) -> None:
