@@ -538,8 +538,8 @@ def test_protected_evidence_covers_renames_logic_data_and_machine_read_paths(env
     _git(env.repo, "mv", GATE_FILE, "docs/guide.md")
     (env.repo / "benchbox" / "core").mkdir(parents=True, exist_ok=True)
     (env.repo / "benchbox/core/row_validation.sql").write_bytes(b"select 1\x00")
-    (env.repo / "docs/benchmarks").mkdir()
-    (env.repo / "docs/benchmarks/sf1-calibrated-sizes.md").write_text("sizes\n", encoding="utf-8")
+    (env.repo / "docs/agent").mkdir()
+    (env.repo / "docs/agent/overview.md").write_text("sizes\n", encoding="utf-8")
     (env.repo / "docs/plain.md").write_text("plain\n", encoding="utf-8")
     _git(env.repo, "add", "-A")
     _git(env.repo, "commit", "--quiet", "-m", "feat: rename and add")
@@ -547,21 +547,21 @@ def test_protected_evidence_covers_renames_logic_data_and_machine_read_paths(env
         env.policy, env.repo, "develop", _git(env.repo, "rev-parse", "HEAD"), env.tmp_path / "protected-plan"
     )
     protected = set(plan["evidence_protected_files"])
-    assert {"docs/guide.md", "benchbox/core/row_validation.sql", "docs/benchmarks/sf1-calibrated-sizes.md"} <= protected
+    assert {"docs/guide.md", "benchbox/core/row_validation.sql", "docs/agent/overview.md"} <= protected
     assert "docs/plain.md" not in protected
 
 
 def test_branch_inert_manifest_edit_cannot_unprotect_machine_read_docs(env: Env) -> None:
     kept = [line for line in INERT_TEXT.splitlines() if not line.startswith("except\t")]
     (env.repo / local.INERT_MANIFEST).write_text("\n".join(kept) + "\n", encoding="utf-8")
-    (env.repo / "docs" / "benchmarks").mkdir(parents=True)
-    (env.repo / "docs/benchmarks/sf1-calibrated-sizes.md").write_text("sizes\n", encoding="utf-8")
+    (env.repo / "docs" / "agent").mkdir(parents=True)
+    (env.repo / "docs/agent/overview.md").write_text("sizes\n", encoding="utf-8")
     _git(env.repo, "add", "-A")
     _git(env.repo, "commit", "--quiet", "-m", "feat: drop except rules on branch")
     plan = local.build_plan(
         env.policy, env.repo, "develop", _git(env.repo, "rev-parse", "HEAD"), env.tmp_path / "inert-plan"
     )
-    assert "docs/benchmarks/sf1-calibrated-sizes.md" in plan["evidence_protected_files"]
+    assert "docs/agent/overview.md" in plan["evidence_protected_files"]
 
 
 def test_a_deleted_binary_is_never_required_evidence(env: Env) -> None:

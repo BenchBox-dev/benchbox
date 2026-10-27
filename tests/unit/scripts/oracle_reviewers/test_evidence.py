@@ -765,7 +765,7 @@ def test_a_nul_byte_in_a_text_type_or_unknown_file_never_exempts(tmp_path: Path,
 
 
 def test_a_machine_read_doc_stays_required_despite_a_recursive_docs_glob(tmp_path: Path) -> None:
-    path = "docs/benchmarks/sf1-calibrated-sizes.md"
+    path = "docs/agent/overview.md"
     assert _exposure(tmp_path, [path], READ, exempt_paths=["docs/**/*.md"]) == _unread(path)
     assert _exposure(tmp_path, ["docs/guide/page.md"], READ, exempt_paths=["docs/**/*.md"]) is None
 
