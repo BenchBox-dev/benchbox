@@ -16,8 +16,8 @@ repos:
         name: windows antipattern ratchet
         entry: uv run -- python scripts/check_windows_antipatterns.py
         language: system
-        pass_filenames: false
-        files: ^((benchbox|tests|scripts)/.*\.py|quality/windows-antipatterns-baseline\.json)$
+        pass_filenames: true
+        files: ^(benchbox|tests|scripts|_project)/.*\.py$
         stages: [pre-commit]
 
       - id: corpus-inventory

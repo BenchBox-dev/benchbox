@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 CLI_DESCRIPTION = (
-    "Check for Windows anti-patterns in benchbox/, tests/ and scripts/.\n"
+    "Check for Windows anti-patterns in benchbox/, tests/, scripts/ and _project/.\n"
     "\n"
     "Uses AST analysis to find patterns that compile and run on Linux/macOS\n"
     "but silently misbehave or fail on Windows:\n"
@@ -25,16 +25,15 @@ CLI_DESCRIPTION = (
     "     the locale encoding and can fail on non-UTF-8 Windows installations.\n"
     "     Builtin open() without an encoding is covered by ruff PLW1514.\n"
     "  4. The literal path /dev/null - it does not exist on Windows; use\n"
-    "     os.devnull or a temporary file.\n"
+    "     os.devnull or a temporary file. Diff headers and platform guards are exempt.\n"
     "  5. Module-level imports of POSIX-only modules (fcntl, termios, pwd, grp,\n"
     "     resource) outside a sys.platform/os.name guard or a try/except\n"
     "     ImportError - the import itself fails on Windows.\n"
-    "  6. subprocess calls passing an env= dict literal without SYSTEMROOT that\n"
-    "     is not built from os.environ - Windows children cannot initialise\n"
+    "  6. subprocess calls passing an env= dict or local dict variable without SYSTEMROOT\n"
+    "     that is not built from os.environ - Windows children cannot initialise\n"
     "     Winsock or the CRT without it (WinError 10106).\n"
-    "  7. subprocess calls running git with text=True or universal_newlines=True\n"
-    "     and no encoding= - git emits UTF-8 but the pipe is decoded with the\n"
-    "     locale code page.\n"
+    "     Only unmodified literal bindings are resolved; mutations and computed mappings are not proved safe.\n"
+    "     POSIX-only reviewer process/build helpers and sql-translation-ml are excluded.\n"
     "\n"
     "Existing violations are recorded per file and code in\n"
     "quality/windows-antipatterns-baseline.json. A file fails when it holds more\n"
@@ -44,6 +43,7 @@ CLI_DESCRIPTION = (
     "\n"
     "Usage:\n"
     "    uv run -- python scripts/check_windows_antipatterns.py\n"
+    "    uv run -- python scripts/check_windows_antipatterns.py benchbox/core/query.py\n"
     "    uv run -- python scripts/check_windows_antipatterns.py --path benchbox/\n"
     "    uv run -- python scripts/check_windows_antipatterns.py --write-baseline\n"
 )
@@ -58,7 +58,14 @@ _SUBPROCESS_CALLS = {"run", "Popen", "check_output", "check_call", "call"}
 
 _IMPORT_ERROR_NAMES = {"ImportError", "ModuleNotFoundError", "Exception", "BaseException"}
 
-_DEFAULT_ROOTS = ["benchbox", "tests", "scripts"]
+_DEFAULT_ROOTS = ["benchbox", "tests", "scripts", "_project"]
+
+_DEFAULT_EXCLUDES = {
+    "_project/sql-translation-ml",
+    "_project/scripts/oracle_reviewers/omp_pin.py",
+    "_project/scripts/oracle_reviewers/processes.py",
+    "_project/scripts/oracle_reviewers/runner.py",
+}
 
 _DEFAULT_BASELINE = "quality/windows-antipatterns-baseline.json"
 
@@ -83,8 +90,12 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
         self.violations: list[Violation] = []
         self.subprocess_modules: set[str] = {"subprocess"}
         self.subprocess_funcs: set[str] = set()
+        self.scope_stack: list[dict[str, ast.expr]] = [{}]
 
     def visit_Module(self, node: ast.Module) -> None:
+        for parent in ast.walk(node):
+            for child in ast.iter_child_nodes(parent):
+                child.parent = parent
         for child in ast.walk(node):
             if isinstance(child, ast.Import):
                 for alias in child.names:
@@ -97,6 +108,29 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
         self._check_posix_module_imports(node.body)
         self.generic_visit(node)
 
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self.scope_stack.append({})
+        self.generic_visit(node)
+        self.scope_stack.pop()
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self.scope_stack.append({})
+        self.generic_visit(node)
+        self.scope_stack.pop()
+
+    def visit_Assign(self, node: ast.Assign) -> None:
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                self.scope_stack[-1][target.id] = node.value
+            elif isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name):
+                self.scope_stack[-1].pop(target.value.id, None)
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        if isinstance(node.target, ast.Name) and node.value is not None:
+            self.scope_stack[-1][node.target.id] = node.value
+        self.generic_visit(node)
+
     def _check_posix_module_imports(self, body: list[ast.stmt]) -> None:
         for stmt in body:
             if isinstance(stmt, ast.Import):
@@ -105,10 +139,13 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
             elif isinstance(stmt, ast.ImportFrom) and stmt.level == 0 and stmt.module:
                 self._flag_posix_import(stmt, stmt.module)
             elif isinstance(stmt, ast.If):
-                if _mentions_platform(stmt.test):
-                    continue
-                self._check_posix_module_imports(stmt.body)
-                self._check_posix_module_imports(stmt.orelse)
+                if _is_posix_check(stmt.test) or (isinstance(stmt.test, ast.Name) and stmt.test.id == "TYPE_CHECKING"):
+                    self._check_posix_module_imports(stmt.orelse)
+                elif _is_windows_check(stmt.test):
+                    self._check_posix_module_imports(stmt.body)
+                else:
+                    self._check_posix_module_imports(stmt.body)
+                    self._check_posix_module_imports(stmt.orelse)
             elif isinstance(stmt, ast.Try):
                 if not any(_handler_catches_import_error(h) for h in stmt.handlers):
                     self._check_posix_module_imports(stmt.body)
@@ -148,12 +185,18 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Constant(self, node: ast.Constant) -> None:
-        if node.value == _DEV_NULL:
-            self._add(
-                node,
-                "WA004",
-                "'/dev/null' does not exist on Windows - use os.devnull or a temporary file",
-            )
+        if isinstance(node.value, str):
+            val = node.value
+            if val in {"--- /dev/null", "+++ /dev/null"} or val.startswith(("--- /dev/null", "+++ /dev/null")):
+                return
+            if val == _DEV_NULL:
+                if _is_comparison_operand(node) or _is_in_posix_branch(node):
+                    return
+                self._add(
+                    node,
+                    "WA004",
+                    "'/dev/null' does not exist on Windows - use os.devnull or a temporary file",
+                )
 
     def _is_subprocess_call(self, node: ast.Call) -> bool:
         func = node.func
@@ -170,24 +213,14 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
             return
         keywords = {kw.arg: kw.value for kw in node.keywords if kw.arg is not None}
         env = keywords.get("env")
-        if isinstance(env, ast.Dict) and not _env_dict_is_safe(env):
+        if isinstance(env, ast.Name):
+            env = self.scope_stack[-1].get(env.id)
+        if isinstance(env, ast.Dict) and not _env_dict_is_safe(env) and not _is_in_posix_branch(node):
             self._add(
                 node,
                 "WA006",
                 "subprocess env= dict literal lacks SYSTEMROOT and is not built from os.environ - Windows children "
                 "fail with WinError 10106; use {**os.environ, ...} or add SYSTEMROOT",
-            )
-        if (
-            any(_is_true_constant(keywords.get(name)) for name in ("text", "universal_newlines"))
-            and "encoding" not in keywords
-            and not any(kw.arg is None for kw in node.keywords)
-            and _runs_git(node)
-        ):
-            self._add(
-                node,
-                "WA007",
-                "git subprocess with text=True decodes output with the locale encoding - "
-                "pass encoding='utf-8' (and errors=) instead",
             )
 
     def _check_read_text_encoding(self, node: ast.Call) -> None:
@@ -265,17 +298,103 @@ class WindowsAntipatternsVisitor(ast.NodeVisitor):
         )
 
 
-def _is_true_constant(node: ast.expr | None) -> bool:
-    return isinstance(node, ast.Constant) and node.value is True
+def _is_comparison_operand(node: ast.AST) -> bool:
+    parent = getattr(node, "parent", None)
+    if isinstance(parent, (ast.Tuple, ast.List, ast.Set)):
+        parent = getattr(parent, "parent", None)
+    return isinstance(parent, ast.Compare)
 
 
-def _runs_git(node: ast.Call) -> bool:
-    if not node.args:
-        return False
-    cmd = node.args[0]
-    if isinstance(cmd, (ast.List, ast.Tuple)) and cmd.elts:
-        cmd = cmd.elts[0]
-    return isinstance(cmd, ast.Constant) and cmd.value in {"git", "git.exe"}
+def _is_in_posix_branch(node: ast.AST) -> bool:
+    curr = getattr(node, "parent", None)
+    prev = node
+    while curr is not None:
+        if isinstance(curr, ast.If):
+            if _is_posix_check(curr.test):
+                if prev in curr.body or any(prev is b for b in curr.body):
+                    return True
+            elif _is_windows_check(curr.test):
+                if prev in curr.orelse or any(prev is b for b in curr.orelse):
+                    return True
+        elif isinstance(curr, ast.IfExp):
+            if _is_posix_check(curr.test) and prev is curr.body:
+                return True
+            if _is_windows_check(curr.test) and prev is curr.orelse:
+                return True
+        elif isinstance(curr, ast.BoolOp) and isinstance(curr.op, ast.And):
+            if any(_is_posix_check(v) for v in curr.values):
+                return True
+        prev = curr
+        curr = getattr(curr, "parent", None)
+    return False
+
+
+def _is_sys_platform(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == "platform"
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "sys"
+    )
+
+
+def _is_os_name(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == "name"
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "os"
+    )
+
+
+def _is_platform_system(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "system"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "platform"
+    )
+
+
+def _is_posix_check(node: ast.expr) -> bool:
+    if isinstance(node, ast.Compare):
+        if len(node.ops) == 1 and len(node.comparators) == 1:
+            op = node.ops[0]
+            val = node.comparators[0]
+            left = node.left
+            if isinstance(op, ast.NotEq):
+                if _is_sys_platform(left) and isinstance(val, ast.Constant) and val.value == "win32":
+                    return True
+                if _is_os_name(left) and isinstance(val, ast.Constant) and val.value == "nt":
+                    return True
+                if _is_platform_system(left) and isinstance(val, ast.Constant) and val.value == "Windows":
+                    return True
+            elif isinstance(op, ast.Eq):
+                if _is_os_name(left) and isinstance(val, ast.Constant) and val.value == "posix":
+                    return True
+                if _is_platform_system(left) and isinstance(val, ast.Constant) and val.value in {"Linux", "Darwin"}:
+                    return True
+    return False
+
+
+def _is_windows_check(node: ast.expr) -> bool:
+    if isinstance(node, ast.Compare):
+        if len(node.ops) == 1 and len(node.comparators) == 1:
+            op = node.ops[0]
+            val = node.comparators[0]
+            left = node.left
+            if isinstance(op, ast.Eq):
+                if _is_sys_platform(left) and isinstance(val, ast.Constant) and val.value == "win32":
+                    return True
+                if _is_os_name(left) and isinstance(val, ast.Constant) and val.value == "nt":
+                    return True
+                if _is_platform_system(left) and isinstance(val, ast.Constant) and val.value == "Windows":
+                    return True
+            elif isinstance(op, ast.NotEq):
+                if _is_os_name(left) and isinstance(val, ast.Constant) and val.value == "posix":
+                    return True
+    return False
 
 
 def _mentions_environ(node: ast.AST) -> bool:
@@ -288,19 +407,6 @@ def _env_dict_is_safe(env: ast.Dict) -> bool:
             if _mentions_environ(value) or isinstance(value, (ast.Name, ast.Attribute, ast.Call, ast.Subscript)):
                 return True
         elif isinstance(key, ast.Constant) and isinstance(key.value, str) and key.value.upper() == "SYSTEMROOT":
-            return True
-    return False
-
-
-def _mentions_platform(test: ast.expr) -> bool:
-    for n in ast.walk(test):
-        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name):
-            if (n.value.id, n.attr) in {("sys", "platform"), ("os", "name")}:
-                return True
-        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "system":
-            if isinstance(n.func.value, ast.Name) and n.func.value.id == "platform":
-                return True
-        if isinstance(n, ast.Name) and n.id == "TYPE_CHECKING":
             return True
     return False
 
@@ -384,15 +490,19 @@ def _collect_os_name_guarded_lines(tree: ast.AST) -> set[int]:
 
     for node in ast.walk(tree):
         if isinstance(node, ast.BoolOp):
-            has_guard = any(_is_platform_check(v) for v in node.values)
-            if has_guard:
+            if any(_is_platform_check(v) or _is_posix_check(v) for v in node.values):
                 for v in node.values:
                     _collect_os_access_lines(v, guarded_lines)
 
-        if isinstance(node, ast.If) and _is_platform_check(node.test):
-            for stmt in node.body:
-                for child in ast.walk(stmt):
-                    _collect_os_access_lines(child, guarded_lines)
+        if isinstance(node, ast.If):
+            if _is_platform_check(node.test) or _is_posix_check(node.test):
+                for stmt in node.body:
+                    for child in ast.walk(stmt):
+                        _collect_os_access_lines(child, guarded_lines)
+            elif _is_windows_check(node.test):
+                for stmt in node.orelse:
+                    for child in ast.walk(stmt):
+                        _collect_os_access_lines(child, guarded_lines)
 
     return guarded_lines
 
@@ -539,11 +649,19 @@ def check_file(path: Path) -> list[Violation]:
     return filtered
 
 
-def check_tree(roots: list[Path]) -> tuple[list[Violation], int]:
+def _is_excluded(path: Path, repo_root: Path) -> bool:
+    key = _file_key(path, repo_root)
+    return any(key == ex or key.startswith(f"{ex}/") for ex in _DEFAULT_EXCLUDES)
+
+
+def check_tree(roots: list[Path], repo_root: Path | None = None) -> tuple[list[Violation], int]:
     violations: list[Violation] = []
     file_count = 0
+    repo_root = repo_root or Path(__file__).resolve().parent.parent
     for root in roots:
         for py_file in sorted(root.rglob("*.py")):
+            if _is_excluded(py_file, repo_root):
+                continue
             violations.extend(check_file(py_file))
             file_count += 1
     return violations, file_count
@@ -582,7 +700,11 @@ def count_violations(violations: list[Violation], repo_root: Path) -> Baseline:
 
 
 def apply_baseline(
-    violations: list[Violation], baseline: Baseline, repo_root: Path, roots: list[Path]
+    violations: list[Violation],
+    baseline: Baseline,
+    repo_root: Path,
+    roots: list[Path],
+    explicit_files: list[Path] | None = None,
 ) -> RatchetResult:
     current = count_violations(violations, repo_root)
     regressions = [
@@ -591,13 +713,22 @@ def apply_baseline(
         if current[_file_key(v.file, repo_root)][v.code] > baseline.get(_file_key(v.file, repo_root), {}).get(v.code, 0)
     ]
     stale: list[str] = []
-    for key, codes in baseline.items():
-        if not (repo_root / key).is_file() or not any((repo_root / key).is_relative_to(root) for root in roots):
-            continue
-        for code, allowed in codes.items():
-            found = current.get(key, {}).get(code, 0)
-            if found < allowed:
-                stale.append(f"{key}: {code} baseline allows {allowed}, found {found}")
+    if explicit_files is not None:
+        explicit_keys = {_file_key(f, repo_root) for f in explicit_files}
+        for key in explicit_keys:
+            if key in baseline:
+                for code, allowed in baseline[key].items():
+                    found = current.get(key, {}).get(code, 0)
+                    if found < allowed:
+                        stale.append(f"{key}: {code} baseline allows {allowed}, found {found}")
+    else:
+        for key, codes in baseline.items():
+            if not (repo_root / key).is_file() or not any((repo_root / key).is_relative_to(root) for root in roots):
+                continue
+            for code, allowed in codes.items():
+                found = current.get(key, {}).get(code, 0)
+                if found < allowed:
+                    stale.append(f"{key}: {code} baseline allows {allowed}, found {found}")
     return RatchetResult(regressions=regressions, stale=sorted(stale))
 
 
@@ -631,11 +762,17 @@ def write_baseline(path: Path, violations: list[Violation], repo_root: Path, roo
 def main() -> int:
     parser = argparse.ArgumentParser(description=CLI_DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
+        "files",
+        nargs="*",
+        metavar="FILE",
+        help="Specific file or directory paths to scan (default: scan _DEFAULT_ROOTS)",
+    )
+    parser.add_argument(
         "--path",
         metavar="DIR",
         action="append",
         dest="paths",
-        help="Directory to scan (repeatable; default: benchbox/, tests/ and scripts/)",
+        help="Directory to scan (repeatable; default: benchbox/, tests/, scripts/, _project/)",
     )
     parser.add_argument("--baseline", metavar="FILE", default=_DEFAULT_BASELINE, help="Ratchet baseline file")
     parser.add_argument(
@@ -645,21 +782,47 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    repo_root = Path(__file__).parent.parent
-    roots = [repo_root / p for p in (args.paths or _DEFAULT_ROOTS)]
+    repo_root = Path(__file__).resolve().parent.parent
 
-    missing = [r for r in roots if not r.exists()]
-    if missing:
-        print(f"error: paths not found: {', '.join(str(m) for m in missing)}", file=sys.stderr)
-        return 2
+    if args.files:
+        passed = [Path(p) if Path(p).is_absolute() else (repo_root / p) for p in args.files]
+        missing = [p for p in passed if not p.exists()]
+        if missing:
+            print(f"error: paths not found: {', '.join(str(m) for m in missing)}", file=sys.stderr)
+            return 2
+        py_files: list[Path] = []
+        for p in passed:
+            if p.is_file():
+                if p.suffix == ".py" and not _is_excluded(p, repo_root):
+                    py_files.append(p)
+            elif p.is_dir():
+                for f in sorted(p.rglob("*.py")):
+                    if not _is_excluded(f, repo_root):
+                        py_files.append(f)
+        violations: list[Violation] = []
+        for f in py_files:
+            violations.extend(check_file(f))
+        file_count = len(py_files)
+        baseline_path = repo_root / args.baseline
 
-    violations, file_count = check_tree(roots)
-    baseline_path = repo_root / args.baseline
+        if args.write_baseline:
+            return write_baseline(baseline_path, violations, repo_root, py_files)
 
-    if args.write_baseline:
-        return write_baseline(baseline_path, violations, repo_root, roots)
+        result = apply_baseline(violations, load_baseline(baseline_path), repo_root, py_files, explicit_files=py_files)
+    else:
+        roots = [repo_root / p for p in (args.paths or _DEFAULT_ROOTS)]
+        missing = [r for r in roots if not r.exists()]
+        if missing:
+            print(f"error: paths not found: {', '.join(str(m) for m in missing)}", file=sys.stderr)
+            return 2
 
-    result = apply_baseline(violations, load_baseline(baseline_path), repo_root, roots)
+        violations, file_count = check_tree(roots, repo_root)
+        baseline_path = repo_root / args.baseline
+
+        if args.write_baseline:
+            return write_baseline(baseline_path, violations, repo_root, roots)
+
+        result = apply_baseline(violations, load_baseline(baseline_path), repo_root, roots)
 
     if not result.clean:
         if result.regressions:

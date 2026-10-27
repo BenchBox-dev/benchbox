@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -41,7 +42,7 @@ def _run_review_program(program: str, payload: object, *, want: str) -> str:
         capture_output=True,
         text=True,
         check=False,
-        env={"PATH": "", "WANT": want},
+        env={"SYSTEMROOT": os.environ.get("SYSTEMROOT", ""), "PATH": "", "WANT": want},
     )
     assert proc.returncode == 0, proc.stderr
     return proc.stdout.strip()
