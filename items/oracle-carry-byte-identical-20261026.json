@@ -3,7 +3,7 @@
     "Tests that fail on develop and pass after: a relocated identical hunk does not carry; a headingless relocation does not carry; a binary file with the same abbreviated id but a different full id does not carry; a mode-change-only difference does not carry; a byte-identical rebase carries.",
     "Dead normalisation code removed with no remaining references (duplicate and unused checks pass).",
     "oracle-hunk-headingless-and-repeated-heading-collisions-20261024 context records the evidence that this resolves it.",
-    "Live: the next carried review in CI shows a byte-identical diff (record the run), or the context records that none occurred within a week.",
+    "Live: the next carried review in CI after the edited-review fix merged, whose source review has includesCreatedEdit=false, shows a byte-identical diff (record the run and the GraphQL query), or the context records that none occurred within 7 days of that merge.",
     "The local-checkout digest equals the CI digest for one real PR containing a rename, a mode change and a binary file (an existing PR, or a throwaway branch if none exists); recorded.",
     "Tests pin strike and forced-round counts across a byte-identical rebase (unchanged) and a rebase onto changed files (new digest).",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
@@ -71,6 +71,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "4b8147152f2b4924b827b2970987b942",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T12:55:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0b8c738231bf4091b45d6e9260ea705f",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
