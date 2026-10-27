@@ -16520,6 +16520,15 @@
       "status": "open",
       "title": "Run a local oracle review inside make pr-open and refuse to open a PR with Critical or High findings"
     },
+    "oracle-local-review-lock-per-patch-20261027": {
+      "claim": null,
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Lock local oracle reviews per patch instead of per machine"
+    },
     "oracle-map-staged-gate-scale-and-label-vocabulary": {
       "claim": null,
       "needs": [],
