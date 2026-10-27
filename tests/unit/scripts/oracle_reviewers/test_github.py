@@ -421,6 +421,31 @@ def test_review_threads_pages_and_keeps_the_first_comment(monkeypatch: pytest.Mo
     assert flags["-F"] == "number=7"
 
 
+def test_review_threads_follow_a_thread_past_its_first_page_of_comments(monkeypatch: pytest.MonkeyPatch) -> None:
+    def comment(body: str) -> dict[str, Any]:
+        return {"author": {"__typename": "User", "login": "joe"}, "authorAssociation": "OWNER", "body": body}
+
+    thread = _thread(False, "a.py", "benchbox-oracle", "**High**: A")
+    thread["comments"] = {
+        "pageInfo": {"hasNextPage": True, "endCursor": "k1"},
+        "nodes": [thread["comments"]["nodes"][0], comment("early reply")],
+    }
+    seen: list[tuple[str, ...]] = []
+
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        seen.append(args)
+        if any(arg.startswith("thread=") for arg in args):
+            assert "after=k1" in args and "thread=T_a.py" in args
+            page = {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [comment("Dispute: late reply")]}
+            return json.dumps({"data": {"node": {"comments": page}}})
+        connection = {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [thread]}
+        return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": connection}}}})
+
+    monkeypatch.setattr(github, "_gh", fake_gh)
+    [result] = github.review_threads(REPO, 7)
+    assert [reply["body"] for reply in result["replies"]] == ["early reply", "Dispute: late reply"]
+
+
 def test_review_threads_raises_on_graphql_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(github, "_gh", lambda *args, accept=None: json.dumps({"errors": [{"message": "no"}]}))
     with pytest.raises(github.GitHubError, match="GraphQL"):
@@ -435,7 +460,12 @@ def _thread(
         "body": body,
         **({"lastEditedAt": None, "includesCreatedEdit": False} if edit is None else edit),
     }
-    return {"isResolved": resolved, "path": path, "comments": {"nodes": [comment]}}
+    return {
+        "id": f"T_{path}",
+        "isResolved": resolved,
+        "path": path,
+        "comments": {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [comment]},
+    }
 
 
 def _serve_threads(monkeypatch: pytest.MonkeyPatch, nodes: list[dict[str, Any]]) -> None:

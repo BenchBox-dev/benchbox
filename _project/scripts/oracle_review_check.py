@@ -233,8 +233,8 @@ def decide(
             if standin is None:
                 return WAITING, (
                     f"oracle-review: the oracle-verdict status for {head_sha} reports only exempt paths changed, "
-                    "but the gate's current rules require a review of this head; push a fix, or rerun the verdict "
-                    "under the current rules"
+                    "but the gate's current rules require a review of this head; push a new head (a byte-identical "
+                    "rebase is enough), or have the owner stand-in post an attestation"
                 )
         else:
             receipt = _receipt(reviews, head_sha, base_time)
@@ -245,8 +245,8 @@ def decide(
                 return WAITING, (
                     f"oracle-review: the oracle-verdict status for {head_sha} is success, but this pull request "
                     f"has no unedited oracle review of {head_sha} from the same verdict run agreeing with it; "
-                    "run the verdict for this pull request, or post a stand-in attestation after that verdict, "
-                    "then rerun this check"
+                    "push a new head (a byte-identical rebase is enough) so the verdict runs again, or have the "
+                    "owner stand-in post an attestation, then rerun this check"
                 )
     assert standin is not None
     return PASS, f"oracle-review: pass (stand-in review attested by {standin.get('login')} for {head_sha})"

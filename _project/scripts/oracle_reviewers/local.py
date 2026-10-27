@@ -30,7 +30,7 @@ from .policy import Policy, load_policy, parse_policy
 from .verdict import DO_NOT_SHIP
 
 BLOCKING_SEVERITIES = ("Critical", "High")
-OVERRIDE_PATTERN = re.compile(r"^[ \t]*Local oracle override:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
+OVERRIDE_PATTERN = re.compile(r"^Local oracle override:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
 KEYCHAIN_SERVICE = "TYPESAFE_API_KEY"
 LOCAL_CLIENT = "oracle-local"
 CLOUD_CLIENT = "oracle-cloud"
@@ -40,7 +40,14 @@ CLOUD_TOKEN_ENV = "ORACLE_CLOUD_GATEWAY_TOKEN"
 CLOUD_SESSION_ENV = "BENCHBOX_EPHEMERAL_CLONE"
 STATE_DIR_ENV = "BENCHBOX_LOCAL_ORACLE_DIR"
 SOUNDNESS_MANIFEST = ".github/soundness-paths.txt"
-HIDDEN_TEXT = re.compile(r"<!--.*?-->|^[ \t]*(```|~~~).*?^[ \t]*\1[^\n]*$", re.DOTALL | re.MULTILINE)
+HIDDEN_TEXT = re.compile(
+    r"<!--.*?(?:-->|\Z)"
+    r"|^[ \t]*(`{3,}+)[^\n]*\n.*?(?:^ {0,3}\1`*[ \t]*$|\Z)"
+    r"|^[ \t]*(~{3,}+)[^\n]*\n.*?(?:^ {0,3}\2~*[ \t]*$|\Z)"
+    r"|<details\b.*?(?:</details>|\Z)"
+    r"|^(?: {4}|\t)[^\n]*$",
+    re.DOTALL | re.IGNORECASE | re.MULTILINE,
+)
 PLACEHOLDER = re.compile(r"<.*>")
 REMOTE_SLUG = re.compile(r"github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$")
 DEFAULT_REPOSITORY = "BenchBox-dev/BenchBox"

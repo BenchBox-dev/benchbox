@@ -153,6 +153,8 @@ client_token_files() {
 
 require_valid_token_files() {
   local name file
+  [ ! -e "$GATEWAY_DIR/ci-client.token" ] \
+    || fail "$GATEWAY_DIR/ci-client.token would be a second oracle-ci; oracle-ci's token is $CLIENT_TOKEN_FILE, so remove or rename it"
   while read -r name file; do
     valid_client_name "$name" \
       || fail "$file names the client '$name'; rename it to <name>-client.token with <name> lowercase letters, digits and single hyphens"

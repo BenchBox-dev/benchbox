@@ -235,6 +235,14 @@ def test_a_token_file_with_a_non_matching_name_is_refused_by_name(host: dict, su
     assert "t" * 48 not in result.stdout + result.stderr
 
 
+def test_a_token_file_that_derives_a_second_oracle_ci_is_refused(host: dict) -> None:
+    (host["dir"] / "ci-client.token").write_text("t" * 48, encoding="utf-8")
+    result = _require_valid_token_files(host)
+    assert result.returncode != 0
+    assert "ci-client.token" in result.stderr and "second oracle-ci" in result.stderr
+    assert "t" * 48 not in result.stdout + result.stderr
+
+
 def test_the_existing_token_file_names_are_accepted(host: dict) -> None:
     assert _require_valid_token_files(host).returncode == 0
 

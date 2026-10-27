@@ -81,9 +81,13 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
       reviewThreads(first: 100, after: $after) {
         pageInfo { hasNextPage endCursor }
         nodes {
+          id
           isResolved
           path
-          comments(first: 50) { nodes { author { __typename login } authorAssociation body lastEditedAt includesCreatedEdit } }
+          comments(first: 50) {
+            pageInfo { hasNextPage endCursor }
+            nodes { author { __typename login } authorAssociation body lastEditedAt includesCreatedEdit }
+          }
         }
       }
     }
@@ -91,20 +95,54 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
 }
 """
 
+_THREAD_COMMENTS_QUERY = """
+query($thread: ID!, $after: String!) {
+  node(id: $thread) {
+    ... on PullRequestReviewThread {
+      comments(first: 100, after: $after) {
+        pageInfo { hasNextPage endCursor }
+        nodes { author { __typename login } authorAssociation body }
+      }
+    }
+  }
+}
+"""
+
+
+def _graphql(*args: str) -> Any:
+    payload = json.loads(_gh("graphql", *args))
+    if payload.get("errors"):
+        raise GitHubError(f"GitHub GraphQL returned errors: {payload['errors']}")
+    return payload["data"]
+
+
+def _thread_comments(node: Mapping[str, Any]) -> list[dict[str, Any]]:
+    connection = node["comments"]
+    comments = list(connection["nodes"] or [])
+    while connection["pageInfo"]["hasNextPage"]:
+        data = _graphql(
+            "-f",
+            f"query={_THREAD_COMMENTS_QUERY}",
+            "-f",
+            f"thread={node['id']}",
+            "-f",
+            f"after={connection['pageInfo']['endCursor']}",
+        )
+        connection = data["node"]["comments"]
+        comments.extend(connection["nodes"] or [])
+    return comments
+
 
 def review_threads(repo: str, pr: int) -> list[dict[str, Any]]:
     owner, name = repo.split("/", 1)
     threads: list[dict[str, Any]] = []
     after: str | None = None
     while True:
-        args = ["graphql", "-f", f"query={_THREADS_QUERY}", "-f", f"owner={owner}", "-f", f"name={name}"]
+        args = ["-f", f"query={_THREADS_QUERY}", "-f", f"owner={owner}", "-f", f"name={name}"]
         args += ["-F", f"number={pr}", *(("-f", f"after={after}") if after else ())]
-        payload = json.loads(_gh(*args))
-        if payload.get("errors"):
-            raise GitHubError(f"GitHub GraphQL returned errors: {payload['errors']}")
-        connection = payload["data"]["repository"]["pullRequest"]["reviewThreads"]
+        connection = _graphql(*args)["repository"]["pullRequest"]["reviewThreads"]
         for node in connection["nodes"]:
-            comments = node["comments"]["nodes"] or [{}]
+            comments = _thread_comments(node) or [{}]
             first = comments[0]
             try:
                 edited = edits.node_edited(first) if node["comments"]["nodes"] else False
