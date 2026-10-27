@@ -16986,7 +16986,9 @@
     },
     "oracle-runner-integrity-lows-20261008": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Decide shared-credential concurrency and whether a later pending oracle review voids a stand-in"
