@@ -16964,6 +16964,15 @@
       "status": "done",
       "title": "The oracle's retry-state strike count rises on every DO NOT SHIP, not once per distinct patch"
     },
+    "oracle-sweep-runs-listing-resilience-20261027": {
+      "claim": null,
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Keep the oracle sweep running when the verdict runs listing fails, without double-dispatching or hiding the failure"
+    },
     "oracle-sweep-schedule-drops-most-runs-20261022": {
       "claim": null,
       "needs": [
