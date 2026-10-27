@@ -17121,7 +17121,8 @@
     "oracle-verdict-labels-unreviewed-bytes": {
       "claim": null,
       "needs": [
-        "docs-mig-oracle-diff-decode"
+        "docs-mig-oracle-diff-decode",
+        "oracle-history-edited-review-fail-closed-20261027"
       ],
       "priority": "medium",
       "status": "open",
