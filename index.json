@@ -16094,6 +16094,16 @@
       "status": "open",
       "title": "Serve oracle size classification from the gateway host so runners and authors need no TypeSafe key"
     },
+    "oracle-cloud-review-reachability-20261027": {
+      "claim": null,
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027",
+        "oracle-omp-pin-single-source-20261026"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Let make pr-open's local oracle review reach the gateway from cloud sessions through the tailnet proxy"
+    },
     "oracle-codex-sandbox-bwrap-ci-20261009": {
       "claim": null,
       "needs": [],
