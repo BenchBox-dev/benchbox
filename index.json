@@ -16640,6 +16640,15 @@
       "status": "dropped",
       "title": "muse often returns output the oracle cannot parse as a verdict, so it is recorded absent (invalid)"
     },
+    "oracle-omp-pin-hardening-20261027": {
+      "claim": null,
+      "needs": [
+        "oracle-omp-pin-single-source-20261026"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Harden the pinned omp install: verify the hash at use, validate build names, and fail the install step instead of burning retries"
+    },
     "oracle-omp-pin-single-source-20261026": {
       "claim": null,
       "needs": [
