@@ -100,6 +100,7 @@ help:
 	@echo "  make guards-fix      Regenerate every mechanical drift-guard artifact (oracle-map/parity/pricing/UAT-LOC/skill-sync), then print git status"
 	@echo "  make makefile-inventory-check Check that the Makefile and its modules parse and the migration proof holds (CI summarizes interface changes)"
 	@echo "  make mutation-test   Run mutation testing on critical modules (mutmut)"
+	@echo "  make oracle-mutation-test Run mutation testing on the oracle decision modules against the oracle tests (mutmut)"
 	@echo "  make format          Format code with ruff"
 	@echo "  make clean           Remove build artifacts"
 	@echo "  make install         Install the package"

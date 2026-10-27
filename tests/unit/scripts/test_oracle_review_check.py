@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib.util
+import importlib
 import sys
 from pathlib import Path
 from typing import Any
@@ -8,13 +8,9 @@ from typing import Any
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SCRIPT = REPO_ROOT / "_project/scripts/oracle_review_check.py"
-sys.path.insert(0, str(SCRIPT.parent))
-SPEC = importlib.util.spec_from_file_location("oracle_review_check", SCRIPT)
-assert SPEC and SPEC.loader
-oracle_review_check = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = oracle_review_check
-SPEC.loader.exec_module(oracle_review_check)
+sys.path.insert(0, str(REPO_ROOT / "_project/scripts"))
+oracle_review_check = importlib.import_module("_project.scripts.oracle_review_check")
+sys.modules["oracle_review_check"] = oracle_review_check
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 

@@ -868,6 +868,26 @@ which unit tests cannot check alone. A change to `commands.py`, `verdict.py`,
 - be self-reviewed across every module at that boundary and its tests, not a
   subset.
 
+## Mutation testing
+
+`make oracle-mutation-test` mutates the oracle decision modules (selection,
+protocol, absence, retry, sweep, verdict, render, evidence, attempts, report,
+`oracle_review_check.py` and `soundness_merge_digest.py`) and runs only the
+oracle tests against each mutant, then prints a kill-rate table per module.
+The module and test lists live in `[tool.oracle-mutation]` in
+`pyproject.toml`; `make mutation-test` and its `[tool.mutmut]` scope are
+separate. `_project/scripts/oracle_mutation.py` stages the run under
+`build/oracle-mutation/`; `run` and `results` accept mutmut mutant-name
+globs, `show` prints one mutant's diff, and `report` reprints the table. A
+full run takes about an hour on a laptop.
+
+A surviving mutant that changes a decision, a status, a dispatch, a block,
+posted text or a gate outcome needs a test that kills it, or a recorded
+reason why it is equivalent. Tests import the gate and digest scripts as
+`_project.scripts.oracle_review_check` and
+`_project.scripts.soundness_merge_digest`; a test that loads them under another
+module name never runs their mutants.
+
 ## Cut-over
 
 Done: `.github/oracle-reviewers.yml` sets `mode: enforce`, and the checker

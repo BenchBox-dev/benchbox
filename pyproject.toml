@@ -392,6 +392,30 @@ paths_to_mutate = [
 ]
 tests_dir = ["tests/unit/"]
 
+[tool.oracle-mutation]
+paths_to_mutate = [
+    "_project/scripts/oracle_reviewers/selection.py",
+    "_project/scripts/oracle_reviewers/protocol.py",
+    "_project/scripts/oracle_reviewers/absence.py",
+    "_project/scripts/oracle_reviewers/retry.py",
+    "_project/scripts/oracle_reviewers/sweep.py",
+    "_project/scripts/oracle_reviewers/verdict.py",
+    "_project/scripts/oracle_reviewers/render.py",
+    "_project/scripts/oracle_reviewers/evidence.py",
+    "_project/scripts/oracle_reviewers/attempts.py",
+    "_project/scripts/oracle_reviewers/report.py",
+    "_project/scripts/oracle_review_check.py",
+    "_project/scripts/soundness_merge_digest.py",
+]
+tests_dir = [
+    "tests/unit/scripts/oracle_reviewers/",
+    "tests/unit/scripts/test_oracle_review_check.py",
+    "tests/unit/scripts/test_oracle_gate.py",
+    "tests/unit/scripts/test_soundness_merge_digest.py",
+]
+also_copy = ["_project/scripts/", ".github/", "scripts/"]
+pytest_add_cli_args = ["-n", "0", "-p", "no:cacheprovider"]
+
 [tool.setuptools.package-data]
 "benchbox._vendor" = ["*.zip", "sqlglot.json", "SQLGLOT_LICENSE.txt"]
 "benchbox.core" = ["benchmark_registry.yaml"]

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib.util
+import importlib
 import os
 import subprocess
 import sys
@@ -14,14 +14,9 @@ pytestmark = [
 ]
 
 ROOT = Path(__file__).resolve().parents[3]
-SCRIPT_PATH = ROOT / "_project/scripts/soundness_merge_digest.py"
-
-sys.path.insert(0, str(SCRIPT_PATH.parent))
-spec = importlib.util.spec_from_file_location("soundness_merge_digest", SCRIPT_PATH)
-assert spec is not None and spec.loader is not None
-digest = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = digest
-spec.loader.exec_module(digest)
+sys.path.insert(0, str(ROOT / "_project/scripts"))
+sys.modules["oracle_review_check"] = importlib.import_module("_project.scripts.oracle_review_check")
+digest = importlib.import_module("_project.scripts.soundness_merge_digest")
 
 HEAD = "a" * 40
 OLD = "b" * 40

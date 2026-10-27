@@ -630,6 +630,13 @@ mutation-test:
 	@echo "--- Mutation test results ---"
 	uv run -- mutmut results
 
+.PHONY: oracle-mutation-test
+oracle-mutation-test:
+	@echo "Running mutation tests on the oracle decision modules against the oracle tests..."
+	uv run -- python _project/scripts/oracle_mutation.py run
+	@echo "--- Oracle mutation test results ---"
+	uv run -- python _project/scripts/oracle_mutation.py report
+
 .PHONY: guards-fix
 guards-fix:
 	@echo "== guards-fix: regenerating every mechanically-regenerable drift-guard artifact =="

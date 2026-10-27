@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib.util
+import importlib
 import json
 import os
 import subprocess
@@ -14,13 +14,9 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = REPO_ROOT / "_project/scripts/oracle_gate.py"
 sys.path.insert(0, str(SCRIPT.parent))
-SPEC = importlib.util.spec_from_file_location("oracle_gate", SCRIPT)
-assert SPEC and SPEC.loader
-oracle_gate = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = oracle_gate
-SPEC.loader.exec_module(oracle_gate)
-
-oracle_review_check = sys.modules["oracle_review_check"]
+oracle_review_check = importlib.import_module("_project.scripts.oracle_review_check")
+sys.modules["oracle_review_check"] = oracle_review_check
+oracle_gate = importlib.import_module("_project.scripts.oracle_gate")
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
