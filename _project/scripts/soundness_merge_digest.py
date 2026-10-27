@@ -266,14 +266,16 @@ def finding_severity(body: str) -> str:
     return match.group(1) if match else ""
 
 
-def _oracle_reviews(evidence: PullEvidence, shas: frozenset[str] | set[str]) -> list[Review]:
+def _oracle_reviews(
+    evidence: PullEvidence, shas: frozenset[str] | set[str], *, include_unverifiable: bool = False
+) -> list[Review]:
     return [
         review
         for review in evidence.reviews
         if review.login == f"{ORACLE_LOGIN}[bot]"
         and review.user_type == "Bot"
         and review.state not in ("PENDING", "DISMISSED")
-        and not review.unverifiable
+        and (include_unverifiable or not review.unverifiable)
         and review.commit_sha in shas
         and evidence.base_changed_at < review.submitted_at <= evidence.merged_at
     ]
@@ -291,7 +293,7 @@ def _oracle_success(evidence: PullEvidence) -> bool:
 def _standin_after(evidence: PullEvidence) -> str:
     if not evidence.commits:
         return ""
-    head_reviews = _oracle_reviews(evidence, {evidence.commits[-1].sha})
+    head_reviews = _oracle_reviews(evidence, {evidence.commits[-1].sha}, include_unverifiable=True)
     return (
         standin_not_before(
             evidence.base_changed_at, ((review.submitted_at, _review_verdict(review)) for review in head_reviews)
@@ -447,14 +449,31 @@ def blocking_verdict_decision(evidence: PullEvidence) -> str | None:
     return _review_verdict(blocking[-1]) or "failure"
 
 
+UNVERIFIABLE_FINDING = "unverifiable"
+
+
+def unverifiable_oracle_evidence(evidence: PullEvidence) -> bool:
+    return any(
+        review.unverifiable for review in _oracle_reviews(evidence, evidence.content_shas, include_unverifiable=True)
+    ) or any(
+        thread.unverifiable and not thread.resolved and thread.first_comment_sha in evidence.content_shas
+        for thread in evidence.threads
+    )
+
+
 def standin_overrides(pulls: Sequence[PullEvidence]) -> list[StandinOverride]:
     found: list[StandinOverride] = []
     for pull in pulls:
         comment = standin_comment(pull)
         if comment is None or "oracle-review" in review_signals(pull):
             continue
-        severities = open_finding_severities(pull) or (blocking_verdict_decision(pull),)
-        if severities == (None,):
+        severities = open_finding_severities(pull)
+        if not severities:
+            blocking = blocking_verdict_decision(pull)
+            severities = (blocking,) if blocking is not None else ()
+        if unverifiable_oracle_evidence(pull):
+            severities = (*severities, UNVERIFIABLE_FINDING)
+        if not severities:
             continue
         head = pull.commits[-1].sha if pull.commits else ""
         found.append(
@@ -644,12 +663,19 @@ def _review_decision(review: Review) -> tuple[str | None, str | None, str | None
     return record["decision"], record.get("run_uuid"), header
 
 
+def _submitted(review: Review) -> datetime | None:
+    try:
+        return datetime.fromisoformat(review.submitted_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def _status_disagreement(review: Review, statuses: Sequence[Mapping[str, Any]]) -> str:
     decision, run_uuid, header = _review_decision(review)
     expected = edits.expected_state(decision) if decision is not None else header
     if expected is None or (decision is not None and header not in (None, expected)):
         return "its decision cannot be read from the review"
-    status = edits.chosen_status(statuses, ORACLE_CONTEXT, ORACLE_LOGIN, run_uuid, decision or "")
+    status = edits.chosen_status(statuses, ORACLE_CONTEXT, ORACLE_LOGIN, run_uuid, decision or "", _submitted(review))
     if status is None:
         return "no oracle-verdict status from the App matches the review"
     if status.get("state") != expected:

@@ -288,7 +288,7 @@ def _review_time(value: Any) -> datetime | None:
         return None
 
 
-def _is_app_review(review: Mapping[str, Any], bot_login: str) -> bool:
+def is_app_review(review: Mapping[str, Any], bot_login: str) -> bool:
     return (
         (review.get("login") or "") == f"{bot_login}[bot]"
         and review.get("user_type") == "Bot"
@@ -296,13 +296,9 @@ def _is_app_review(review: Mapping[str, Any], bot_login: str) -> bool:
     )
 
 
-def is_marked_app_review(review: Mapping[str, Any], bot_login: str) -> bool:
-    return _is_app_review(review, bot_login) and MARKER_OPEN in (review.get("body") or "")
-
-
 def history(reviews: Iterable[Mapping[str, Any]], bot_login: str) -> History:
-    own = [review for review in reviews if _is_app_review(review, bot_login)]
-    for review in filter(lambda item: is_marked_app_review(item, bot_login), own):
+    own = [review for review in reviews if is_app_review(review, bot_login)]
+    for review in own:
         if "last_edited_at" not in review or "includes_created_edit" not in review:
             raise EditStateError(f"oracle review {review.get('id')} has no readable edit state")
         if is_edited(review["last_edited_at"], review["includes_created_edit"]):

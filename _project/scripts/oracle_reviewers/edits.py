@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping, Sequence
+from datetime import datetime
 from typing import Any
 
 BATCH_SIZE = 100
@@ -96,23 +97,50 @@ def expected_state(decision: str) -> str:
     return SUCCESS if decision == SHIP else FAILURE
 
 
+def _moment(value: Any) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _nearest(statuses: list[Mapping[str, Any]], near: datetime | None) -> Mapping[str, Any] | None:
+    if not statuses:
+        return None
+    if near is None:
+        return statuses[-1]
+    stamped = [(status, _moment(status["created_at"])) for status in statuses]
+    timed = [(status, moment) for status, moment in stamped if moment is not None]
+    if not timed:
+        return statuses[-1]
+    return min(timed, key=lambda item: abs((item[1] - near).total_seconds()))[0]
+
+
 def chosen_status(
-    statuses: Iterable[Mapping[str, Any]], context: str, bot_login: str, run_uuid: str | None, decision: str
+    statuses: Iterable[Mapping[str, Any]],
+    context: str,
+    bot_login: str,
+    run_uuid: str | None,
+    decision: str,
+    near: datetime | None = None,
 ) -> Mapping[str, Any] | None:
     verdicts = app_verdict_statuses(statuses, context, bot_login)
     if run_uuid is None:
-        return verdicts[-1] if verdicts else None
+        return _nearest(verdicts, near)
     matching = [status for status in verdicts if run_suffix(status.get("description")) == run_uuid]
     if matching:
-        return matching[-1]
+        return _nearest(matching, near)
     if decision == SHIP:
         return None
-    bare = [status for status in verdicts if run_suffix(status.get("description")) is None]
-    return bare[-1] if bare else None
+    return _nearest([status for status in verdicts if run_suffix(status.get("description")) is None], near)
 
 
 def status_agrees(
-    statuses: Iterable[Mapping[str, Any]], context: str, bot_login: str, record: Mapping[str, Any]
+    statuses: Iterable[Mapping[str, Any]],
+    context: str,
+    bot_login: str,
+    record: Mapping[str, Any],
+    near: datetime | None = None,
 ) -> bool:
-    status = chosen_status(statuses, context, bot_login, record.get("run_uuid"), record["decision"])
+    status = chosen_status(statuses, context, bot_login, record.get("run_uuid"), record["decision"], near)
     return status is not None and status.get("state") == expected_state(record["decision"])

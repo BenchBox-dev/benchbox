@@ -2266,3 +2266,44 @@ def test_the_digest_lists_unverifiable_oracle_evidence():
         f"- #7: review on `{HEAD[:9]}`: it was edited after posting."
     ]
     assert digest.render_unverifiable([evidence()]) == ""
+
+
+def unverifiable_failure_review(sha=HEAD):
+    return digest.Review(
+        ORACLE_BOT, sha, AFTER, "COMMENTED", "Bot", verdict_with_open(sha), "PRR_1", "it was edited after posting"
+    )
+
+
+def test_a_standin_over_an_edited_blocking_review_is_still_an_override():
+    pull = evidence(reviews=(unverifiable_failure_review(),), comments=(standin(HEAD, at=STANDIN_AT),))
+    found = digest.standin_overrides([pull])
+    assert [override.severities for override in found] == [(digest.UNVERIFIABLE_FINDING,)]
+    assert "unverifiable" in digest.render_standin_overrides(found)
+
+
+def test_a_standin_over_an_edited_finding_thread_is_still_an_override():
+    thread = digest.Thread(False, "benchbox-oracle", HEAD, "", "an oracle finding was edited after posting")
+    pull = evidence(threads=(thread,), comments=(standin(HEAD, at=STANDIN_AT),))
+    assert [override.severities for override in digest.standin_overrides([pull])] == [(digest.UNVERIFIABLE_FINDING,)]
+
+
+def test_unverifiable_evidence_adds_to_the_verified_open_findings():
+    verified = failure_review(body=verdict_with_open(HEAD, ("High",)))
+    pull = evidence(reviews=(verified, unverifiable_failure_review()), comments=(standin(HEAD, at=STANDIN_AT),))
+    assert digest.standin_overrides([pull])[0].severities == ("High", digest.UNVERIFIABLE_FINDING)
+
+
+def test_a_standin_with_no_oracle_evidence_at_all_is_still_not_an_override():
+    assert digest.standin_overrides([evidence(comments=(standin(HEAD, at=STANDIN_AT),))]) == []
+
+
+def test_each_same_head_review_is_matched_to_the_status_nearest_its_submission(monkeypatch):
+    statuses = [
+        app_status("failure", "round one", "2026-10-02T10:00:00Z", id_=1),
+        app_status("success", "round two", "2026-10-02T11:00:00Z", id_=2),
+    ]
+    serve_verification(monkeypatch, statuses=statuses)
+    first = app_review(oracle_review_body("DO_NOT_SHIP", "failure"), "PRR_1", "2026-10-02T10:00:02Z")
+    second = app_review(oracle_review_body("SHIP", "success"), "PRR_2", "2026-10-02T11:00:02Z")
+    checked = digest.verify_oracle_reviews("o/r", [first, second])
+    assert [item.unverifiable for item in checked] == ["", ""]

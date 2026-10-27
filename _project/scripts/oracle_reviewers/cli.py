@@ -478,7 +478,7 @@ def command_plan(args: argparse.Namespace) -> int:
         plan.update({"decision": REFUSED, "decision_reason": step.reason})
         return _finish_plan(out_dir, plan)
     if step.kind == protocol.CARRY:
-        return _plan_carry(out_dir, plan, policy.bot_login, step)
+        return _plan_carry(out_dir, plan, policy.bot_login, step, found.latest_at)
     try:
         threads = github.review_threads(repo, pr) if threads is None else threads
         plan["open_findings"] = dedup.open_fingerprints(threads, policy.bot_login)
@@ -492,7 +492,7 @@ def command_plan(args: argparse.Namespace) -> int:
 
 def _oracle_history(repo: str, pr: int, bot_login: str) -> protocol.History:
     reviews = github.oracle_reviews(repo, pr)
-    marked = [review for review in reviews if protocol.is_marked_app_review(review, bot_login)]
+    marked = [review for review in reviews if protocol.is_app_review(review, bot_login)]
     node_ids = [review.get("node_id") for review in marked]
     if not all(isinstance(node_id, str) and node_id for node_id in node_ids):
         raise edits.EditStateError("an oracle review carries no node id, so its edit state cannot be read")
@@ -506,7 +506,7 @@ def _oracle_history(repo: str, pr: int, bot_login: str) -> protocol.History:
                 "last_edited_at": states[review["node_id"]][0],
                 "includes_created_edit": states[review["node_id"]][1],
             }
-            if protocol.is_marked_app_review(review, bot_login)
+            if protocol.is_app_review(review, bot_login)
             else review
             for review in reviews
         ],
@@ -523,10 +523,12 @@ def _plan_history(repo: str, pr: int, bot_login: str) -> protocol.History:
         return protocol.History([], f"the oracle's review history could not be read: {exc}")
 
 
-def _plan_carry(out_dir: Path, plan: dict[str, Any], bot_login: str, step: protocol.Round) -> int:
+def _plan_carry(
+    out_dir: Path, plan: dict[str, Any], bot_login: str, step: protocol.Round, near: datetime | None
+) -> int:
     previous = step.previous
     try:
-        disagreement = _carry_disagreement(plan, bot_login, previous)
+        disagreement = _carry_disagreement(plan, bot_login, previous, near)
     except (github.GitHubError, KeyError, TypeError, ValueError) as exc:
         print(
             f"oracle-verdict: error: the status of head {previous['head_sha']} could not be read: {exc}",
@@ -540,9 +542,11 @@ def _plan_carry(out_dir: Path, plan: dict[str, Any], bot_login: str, step: proto
     return _finish_plan(out_dir, plan)
 
 
-def _carry_disagreement(plan: Mapping[str, Any], bot_login: str, previous: Mapping[str, Any]) -> str | None:
+def _carry_disagreement(
+    plan: Mapping[str, Any], bot_login: str, previous: Mapping[str, Any], near: datetime | None
+) -> str | None:
     statuses = github.commit_statuses(plan["repo"], previous["head_sha"])
-    if edits.status_agrees(statuses, plan["status_context"], bot_login, previous):
+    if edits.status_agrees(statuses, plan["status_context"], bot_login, previous, near):
         return None
     return (
         f"the recorded {protocol.LABELS[previous['decision']]} decision on head {previous['head_sha']} "

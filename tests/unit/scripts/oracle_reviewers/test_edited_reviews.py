@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -87,11 +88,24 @@ def test_history_refuses_a_marked_app_review_without_edit_state(missing: str) ->
         protocol.history([review], BOT)
 
 
-def test_history_ignores_the_edit_state_of_reviews_that_carry_no_marker_or_are_not_the_apps() -> None:
-    unmarked = _app_review("Plain review.", includes_created_edit=True)
+def test_history_holds_on_an_edited_app_review_whose_marker_was_stripped() -> None:
+    stripped = _app_review("Decision.\n", includes_created_edit=True)
+    assert protocol.history([_app_review(_marked_body("DO_NOT_SHIP"), id=1), stripped], BOT).error == (
+        "an oracle review was edited"
+    )
+
+
+def test_history_refuses_an_unmarked_app_review_without_edit_state() -> None:
+    review = _app_review("Plain review.")
+    del review["last_edited_at"]
+    with pytest.raises(edits.EditStateError):
+        protocol.history([review], BOT)
+
+
+def test_history_ignores_the_edit_state_of_reviews_that_are_not_the_apps_or_are_dismissed() -> None:
     human = _app_review(_marked_body(), login="joe", user_type="User", includes_created_edit=True)
     dismissed = _app_review(_marked_body(), state="DISMISSED", includes_created_edit=True)
-    assert protocol.history([unmarked, human, dismissed], BOT).error is None
+    assert protocol.history([human, dismissed], BOT).error is None
 
 
 def _states(*pairs: tuple[str, Any, bool]) -> dict[str, Any]:
@@ -297,11 +311,52 @@ def test_an_unreadable_review_list_still_holds_rather_than_failing(
     assert values["decision"] == "hold"
 
 
-def test_a_history_with_no_marked_review_reads_no_edit_state(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    fake = _fake(_review(None))
-    fake.edit_states = edits.EditStateError("must not be read")
-    _, values, _ = _plan(monkeypatch, tmp_path, fake)
+def test_a_marker_stripped_edited_review_holds_the_plan_and_keeps_the_strikes_unreduced(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    struck = _record(TWO_FILE_DIFF, "DO_NOT_SHIP", head_sha="a" * 40)
+    stripped = _review(None, id=2, submitted_at="2026-10-08T11:00:00Z", body="Decision text.\n")
+    fake = _fake(_review(struck), stripped)
+    fake.edit_states = {"PRR_2": (None, True)}
+    _, values, plan = _plan(monkeypatch, tmp_path, fake)
+    assert _held(values, plan) and plan["decision_reason"] == "an oracle review was edited"
+    assert plan.get("protocol") in (None, {}) and fake.posted == []
+
+
+def test_an_unmarked_app_review_without_a_node_id_fails_the_plan_step(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake = _fake(_review(None, node_id=None))
+    code, values, plan = _plan(monkeypatch, tmp_path, fake)
+    _assert_nothing_posted(code, values, plan, fake)
+
+
+def test_an_unmarked_unedited_app_review_does_not_block_planning(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _, values, _ = _plan(monkeypatch, tmp_path, _fake(_review(None)))
     assert values["decision"] == "review"
+
+
+def test_the_carry_check_matches_a_same_head_review_to_the_status_nearest_its_submission(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    statuses = [
+        _status("success", "first round", "2026-10-08T10:00:00Z", id_=1),
+        _status("failure", "later round", "2026-10-08T11:30:00Z", id_=2),
+    ]
+    _, values, _ = _plan(monkeypatch, tmp_path, _carry_fake("SHIP", statuses))
+    assert values["decision"] == "carry"
+
+
+def test_the_nearest_status_wins_over_the_latest_for_a_record_without_a_run_id() -> None:
+    statuses = [
+        _status("success", "first round", "2026-10-08T10:00:00Z", id_=1),
+        _status("failure", "later round", "2026-10-08T11:30:00Z", id_=2),
+    ]
+    near = datetime(2026, 10, 8, 10, 0, 5, tzinfo=UTC)
+    assert edits.status_agrees(statuses, "oracle-verdict", BOT, {"decision": "SHIP"}, near)
+    assert not edits.status_agrees(statuses, "oracle-verdict", BOT, {"decision": "SHIP"})
 
 
 def _carry_fake(decision: str, statuses: list[dict[str, Any]], **record: Any) -> Any:
