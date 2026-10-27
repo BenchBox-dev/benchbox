@@ -16123,7 +16123,7 @@
       "needs": [],
       "priority": "critical",
       "status": "active",
-      "title": "Accept follow-up oracle replies (concedes as a boolean slot) and stop escalating reviewers after an invalid reply"
+      "title": "Show concedes as a boolean slot in the oracle reply skeleton so follow-up reviews validate"
     },
     "oracle-coverage-gate-large-prs-20261017": {
       "claim": null,
