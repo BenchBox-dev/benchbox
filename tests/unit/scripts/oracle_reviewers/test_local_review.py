@@ -790,6 +790,7 @@ def _spawn(repo: Path, tmp_path: Path, name: str, seconds: float) -> tuple[subpr
         "HOME": str(tmp_path / "home"),
         local.STATE_DIR_ENV: str(tmp_path / "state"),
         "PYTHONPATH": str(REPO_ROOT),
+        "MUTANT_UNDER_TEST": "",
     }
     for secret in SECRET_NAMES:
         env.pop(secret, None)
