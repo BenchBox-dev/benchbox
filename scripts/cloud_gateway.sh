@@ -58,7 +58,10 @@ stop_daemon() {
       kill -9 "$pid" 2>/dev/null || true
     fi
   fi
-  rm -rf "$state_dir" "$socket_dir"
+  rm -rf "$socket_dir"
+  if [ -d "$state_dir" ]; then
+    find "$state_dir" -mindepth 1 -maxdepth 1 ! -name omp-binary ! -name omp-install.log -exec rm -rf {} +
+  fi
 }
 
 record() {
@@ -87,6 +90,7 @@ http_status() {
 install_omp() {
   omp_state=not-installed
   mkdir -p "$state_dir"
+  rm -f "$state_dir/omp-binary"
   if ! git -C "$top" fetch --quiet origin develop >/dev/null 2>&1; then
     say "cannot fetch origin/develop; not installing OMP"
     return 1
@@ -103,6 +107,7 @@ install_omp() {
     say "OMP installed and verified"
     return 0
   fi
+  rm -f "$state_dir/omp-binary"
   sed 's/^/cloud-gateway: omp: /' "$log" | tail -n 5
   say "OMP not installed; the environment network allowlist needs the OMP download host named in the pin"
   return 1
@@ -166,6 +171,7 @@ up() {
   omp_state=not-installed
   if [ -z "${TS_AUTHKEY:-}" ] || [ -z "${ORACLE_GATEWAY_URL:-}" ] || [ -z "${ORACLE_CLOUD_GATEWAY_TOKEN:-}" ]; then
     stop_daemon
+    rm -f "$state_dir/omp-binary" "$state_dir/omp-install.log"
     record unavailable "TS_AUTHKEY, ORACLE_GATEWAY_URL and ORACLE_CLOUD_GATEWAY_TOKEN are not all set"
     say "gateway unavailable: TS_AUTHKEY, ORACLE_GATEWAY_URL and ORACLE_CLOUD_GATEWAY_TOKEN are not all set"
     return 0
@@ -214,6 +220,7 @@ case "${1:-up}" in
   up) up ;;
   stop)
     stop_daemon
+    rm -rf "$state_dir"
     rm -f "$status_file"
     say "stopped"
     ;;

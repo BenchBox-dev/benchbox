@@ -60,7 +60,9 @@ all set, `make cloud-bootstrap` runs `scripts/cloud_gateway.sh`, which:
    of `.github/oracle-reviewers.yml` on `origin/develop` (fetched first, and the
    install stops if that fetch fails), not from the branch. The installed path
    is recorded in `omp-binary` inside the gateway state directory
-   (`<git dir>/benchbox-cloud-gateway/`). A checksum mismatch, or a platform with
+   (`<git dir>/benchbox-cloud-gateway/`) and survives daemon cleanup, including a
+   failed bring-up; it is removed only by `ACTION=stop`, or when the install did
+   not succeed. A checksum mismatch, or a platform with
    no pinned build, refuses the install. The download goes straight to the host in the pin, so
    the environment network allowlist needs that host;
 2. starts `tailscaled` in userspace-networking mode with in-memory state, so

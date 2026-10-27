@@ -447,6 +447,9 @@ def test_gateway_joins_userspace_verifies_and_installs_omp_without_printing_secr
         assert _installed_omp(tmp_path).stat().st_mode & 0o111
         assert _stub_lines(tmp_path, "downloads.log") == [FAKE_OMP_URL]
         assert "omp=installed" in _status(repo)
+        record = repo / ".git" / "benchbox-cloud-gateway" / "omp-binary"
+        assert record.read_text(encoding="utf-8").strip() == str(_installed_omp(tmp_path))
+        assert (repo / ".git" / "benchbox-cloud-gateway" / "omp-install.log").exists()
         _assert_no_secrets(result.stdout, result.stderr)
         assert FAKE_TOKEN not in "\n".join(_stub_lines(tmp_path, "downloads.log"))
         _assert_no_secrets(_status(repo), "\n".join(tailscale_log))
@@ -463,7 +466,10 @@ def test_gateway_records_unreachable_gateway_and_leaves_no_daemon(tmp_path: Path
     assert result.returncode == 0
     assert "gateway unavailable" in result.stdout
     assert "gateway=unavailable" in _status(repo)
-    assert not (repo / ".git" / "benchbox-cloud-gateway").exists()
+    state = repo / ".git" / "benchbox-cloud-gateway"
+    assert sorted(p.name for p in state.iterdir()) == ["omp-binary", "omp-install.log"]
+    assert (state / "omp-binary").read_text(encoding="utf-8").strip() == str(_installed_omp(tmp_path))
+    assert "omp=installed" in _status(repo)
     _assert_no_secrets(result.stdout, result.stderr, _status(repo))
 
 
@@ -475,8 +481,41 @@ def test_gateway_failed_join_cleans_up_the_daemon(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "gateway=unavailable" in _status(repo)
-    assert not (repo / ".git" / "benchbox-cloud-gateway").exists()
+    state = repo / ".git" / "benchbox-cloud-gateway"
+    assert sorted(p.name for p in state.iterdir()) == ["omp-binary", "omp-install.log"]
+    assert (state / "omp-binary").read_text(encoding="utf-8").strip() == str(_installed_omp(tmp_path))
+    assert "omp=installed" in _status(repo)
     _assert_no_secrets(result.stdout, result.stderr)
+
+
+def test_gateway_omp_record_survives_a_restart_and_stop_removes_it(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path)
+    state = repo / ".git" / "benchbox-cloud-gateway"
+    try:
+        _run(GATEWAY, cwd=repo, env=env)
+        (state / "tailscaled.pid").write_text("0", encoding="utf-8")
+        second = _run(GATEWAY, cwd=repo, env=env)
+        assert second.returncode == 0, second.stdout + second.stderr
+        assert (state / "omp-binary").read_text(encoding="utf-8").strip() == str(_installed_omp(tmp_path))
+    finally:
+        _stop(repo, env)
+    assert not state.exists()
+
+
+def test_gateway_without_credentials_leaves_no_stale_omp_record(tmp_path: Path) -> None:
+    repo = _gateway_clone(tmp_path)
+    env = _gateway_env(tmp_path)
+    state = repo / ".git" / "benchbox-cloud-gateway"
+    try:
+        _run(GATEWAY, cwd=repo, env=env)
+        assert (state / "omp-binary").exists()
+        result = _run(GATEWAY, cwd=repo, env=_gateway_env(tmp_path, credentials=False))
+        assert result.returncode == 0
+        assert "omp=not-installed" in _status(repo)
+        assert not (state / "omp-binary").exists()
+    finally:
+        _stop(repo, env)
 
 
 def test_gateway_refuses_an_omp_download_with_a_bad_checksum(tmp_path: Path) -> None:
