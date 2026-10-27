@@ -606,6 +606,19 @@ def test_a_font_only_binary_keeps_the_inline_brief(env: Env) -> None:
     assert plan["brief_mode"] == "inline"
 
 
+def test_a_font_named_binary_under_a_protected_path_forces_the_file_list_brief(env: Env) -> None:
+    target = env.repo / "benchbox" / "core" / "equivalence"
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "face.woff2").write_bytes(b"wOF2\x00")
+    _git(env.repo, "add", "benchbox")
+    _git(env.repo, "commit", "--quiet", "-m", "feat: add protected font")
+    plan = local.build_plan(
+        env.policy, env.repo, "develop", _git(env.repo, "rev-parse", "HEAD"), env.tmp_path / "protected-font-plan"
+    )
+    assert "benchbox/core/equivalence/face.woff2" in plan["binary_files"]
+    assert plan["brief_mode"] == "file-list"
+
+
 def test_exposure_exemptions_do_not_remove_files_from_review(env: Env) -> None:
     (env.repo / "README.md").write_text("changed prose\n", encoding="utf-8")
     (env.repo / "payload").write_bytes(b"\x00binary\n")

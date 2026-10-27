@@ -3302,19 +3302,23 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "file": 1,
-    "pattern": 1,
+    "file": 4,
+    "pattern": 2,
     "root": 1,
-    "unresolved": 6
+    "unresolved": 7
    },
-   "occurrences": 15,
+   "occurrences": 19,
    "path": "tests/unit/scripts/oracle_reviewers/test_evidence.py",
    "rule": "test-sample-data",
-   "target_count": 9,
+   "target_count": 14,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/**/*.md"
     },
     {
      "kind": "pattern",
@@ -3337,6 +3341,14 @@
      "target": "docs/benchmarks/sf1-calibrated-sizes.md"
     },
     {
+     "kind": "file",
+     "target": "docs/benchmarks/tpc-h.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/development/result-validation.md"
+    },
+    {
      "kind": "unresolved",
      "target": "docs/gen.py"
     },
@@ -3347,6 +3359,14 @@
     {
      "kind": "unresolved",
      "target": "docs/guide.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/guide/page.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/index.md"
     }
    ]
   },
@@ -4536,13 +4556,13 @@
    "built-url": 29042,
    "dir": 167,
    "extra": 36,
-   "file": 1403,
+   "file": 1406,
    "generated": 3,
-   "pattern": 328,
+   "pattern": 329,
    "root": 199,
    "unresolved": 2066
   },
-  "references": 33244,
+  "references": 33248,
   "unclassified": 0
  }
 }

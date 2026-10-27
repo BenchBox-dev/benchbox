@@ -656,9 +656,11 @@ def _protocol_round(
     return step
 
 
-def _opaque_in_diff(diff_text: str) -> bool:
+def _opaque_in_diff(diff_text: str, is_protected: Callable[[str], bool]) -> bool:
     named = binary_files(diff_text)
-    return binary_notice_count(diff_text) != len(named) or any(not is_binary_candidate(path) for path in named)
+    return binary_notice_count(diff_text) != len(named) or any(
+        not is_binary_candidate(path) or is_protected(path) for path in named
+    )
 
 
 def _plan_review(
@@ -698,6 +700,11 @@ def _plan_review(
     names = {reviewer.name for reviewer in chain}
     follow_up_reviewer = latest.get("reviewer") if follow_up and latest.get("reviewer") in names else None
     evidence_files = sorted(item.path for item in reviewed_now if item.path in in_scope and not item.removed)
+    held = (*policy.classifier.gate_paths, *policy.classifier.logic_paths, *policy.classifier.data_paths)
+
+    def _protected(path: str) -> bool:
+        return is_soundness(path) or is_machine_read(path) or bool(matching([path], held))
+
     listing_bytes = len(file_listing(changed).encode("utf-8"))
     diff_bytes = len((diff_text or "").encode("utf-8"))
     if listing_bytes > policy.brief_max_bytes:
@@ -705,7 +712,7 @@ def _plan_review(
     elif (
         diff_text is not None
         and diff_bytes <= policy.brief_max_bytes - DIFF_HEADROOM_BYTES
-        and not _opaque_in_diff(diff_text)
+        and not _opaque_in_diff(diff_text, _protected)
     ):
         brief_mode = "inline"
     elif len(file_list_block(changed, evidence_files, evidence_files).encode("utf-8")) > policy.brief_max_bytes:
@@ -713,11 +720,6 @@ def _plan_review(
     else:
         brief_mode = "file-list"
     evidence_set = set(evidence_files)
-    held = (*policy.classifier.gate_paths, *policy.classifier.logic_paths, *policy.classifier.data_paths)
-
-    def _protected(path: str) -> bool:
-        return is_soundness(path) or is_machine_read(path) or bool(matching([path], held))
-
     plan.update(
         {
             "decision": REVIEW,

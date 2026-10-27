@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import fnmatch
 import json
 import subprocess
 from pathlib import Path
@@ -16,6 +15,7 @@ from _project.scripts.oracle_reviewers.evidence import (
     Trace,
     check,
     describe,
+    glob_match,
     mark_citations,
     relative,
     trace,
@@ -814,11 +814,10 @@ def test_a_gitattributes_change_is_a_soundness_path_change() -> None:
         "CHANGELOG.md",
         "pkg/CHANGELOG-1.md",
         "docs/guide.md",
-        "docs/a/b/guide.md",
     ],
 )
 def test_prose_globs_cover_prose_files(path: str) -> None:
-    assert any(fnmatch.fnmatchcase(path, pattern) for pattern in _policy_exemptions())
+    assert any(glob_match(path, pattern) for pattern in _policy_exemptions())
 
 
 @pytest.mark.parametrize(
@@ -831,12 +830,13 @@ def test_prose_globs_cover_prose_files(path: str) -> None:
         "benchbox/core/CHANGELOG_parser.py",
         "docs/gen.py",
         "docs/a/conf.yaml",
+        "docs/a/b/guide.md",
         "CONTRIBUTING.md",
         "notes.md",
     ],
 )
 def test_prose_globs_do_not_cover_other_files(path: str) -> None:
-    assert not any(fnmatch.fnmatchcase(path, pattern) for pattern in _policy_exemptions())
+    assert not any(glob_match(path, pattern) for pattern in _policy_exemptions())
 
 
 @pytest.mark.parametrize(
