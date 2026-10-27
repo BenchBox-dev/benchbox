@@ -20,7 +20,7 @@ def _run(
     conclusion: str | None = "failure",
     event: str = sweep.DISPATCH_EVENT,
 ) -> sweep.Run:
-    return sweep.Run(run_id, 7, event, status, conclusion, NOW - age)
+    return sweep.Run(run_id, 7, event, status, conclusion, NOW - age, None)
 
 
 def test_a_completed_run_exactly_one_grace_period_old_is_no_longer_in_flight() -> None:
@@ -46,8 +46,8 @@ def test_recent_dispatches_count_each_dispatch_inside_the_window_once() -> None:
 
 
 def test_a_run_created_at_the_reset_moment_spends_the_reset() -> None:
-    assert sweep.reset_spent([_run(1, timedelta(hours=1))], NOW - timedelta(hours=1)) is True
-    assert sweep.reset_spent([_run(1, timedelta(hours=1))], NOW - timedelta(minutes=59)) is False
+    assert sweep.reset_spent([_run(1, timedelta(hours=1))], NOW - timedelta(hours=1), "abc") is True
+    assert sweep.reset_spent([_run(1, timedelta(hours=1))], NOW - timedelta(minutes=59), "abc") is False
 
 
 def test_the_surfaced_description_names_every_failed_step_or_an_earlier_step() -> None:
