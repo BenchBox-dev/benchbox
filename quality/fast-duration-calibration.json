@@ -1,6 +1,6 @@
 {
   "collected_at": "2026-10-26",
-  "sampling": "10 most recent completed pull_request CI runs plus first three repeated-head groups in 100 completed CI runs; bounded convenience sample, not random or representative",
+  "sampling": "9 recent completed pull_request CI runs plus first three repeated-head groups in 100 completed CI runs; bounded convenience sample, not random or representative",
   "ordinary_pr_verdicts": [
     {
       "run_id": 40395285464,
@@ -404,7 +404,32 @@
         "speed_factor": 1.0075427498482585,
         "calibration_best_seconds": 1.508656819999942,
         "collection_max_seconds": 77.44987968399997
-      }
+      },
+      "base": "ca56464a8216ced0dea4a667ec6cf1c3a240d3ad",
+      "changed_files": [
+        "_project/scripts/oracle_reviewers/cli.py",
+        "_project/scripts/oracle_reviewers/evidence.py",
+        "_project/scripts/oracle_reviewers/protocol.py",
+        "_project/scripts/oracle_reviewers/render.py",
+        "_project/scripts/oracle_reviewers/report.py",
+        "_project/scripts/oracle_reviewers/runner.py",
+        "_project/scripts/oracle_reviewers/templates/README.md",
+        "_project/scripts/oracle_reviewers/templates/deep.md",
+        "_project/scripts/oracle_reviewers/templates/gate.md",
+        "_project/scripts/oracle_reviewers/templates/standard.md",
+        "_project/scripts/oracle_reviewers/verdict.py",
+        "_project/scripts/soundness_merge_digest.py",
+        "tests/fixtures/oracle_reviewers/dispute_3407.json",
+        "tests/fixtures/oracle_reviewers/dispute_3465.json",
+        "tests/unit/scripts/oracle_reviewers/test_cli_plan.py",
+        "tests/unit/scripts/oracle_reviewers/test_dispute_keyed_evidence.py",
+        "tests/unit/scripts/oracle_reviewers/test_render.py",
+        "tests/unit/scripts/oracle_reviewers/test_response_ingress.py",
+        "tests/unit/scripts/oracle_reviewers/test_verdict.py",
+        "tests/unit/scripts/test_soundness_merge_digest.py"
+      ],
+      "classification": "test-or-test-config-change",
+      "docs_files_changed": 1
     },
     {
       "run_id": 40392493626,
