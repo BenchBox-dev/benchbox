@@ -1776,8 +1776,8 @@ def test_pr_open_refuses_before_any_push_when_head_moves_during_the_local_oracle
 @pytest.mark.parametrize(
     ("description", "expected"),
     [
-        (f"oracle-review: waiting for the oracle's review of {'a' * 40}, or a stand-in attestation", "pending"),
-        (f"oracle-review: waiting for the oracle's review of {'b' * 40}, or a stand-in attestation", "failure"),
+        (f"oracle-review: waiting for the oracle's verdict on {'a' * 40}, or a stand-in attestation", "pending"),
+        (f"oracle-review: waiting for the oracle's verdict on {'b' * 40}, or a stand-in attestation", "failure"),
         ("oracle-review: the oracle's latest review reports SHIP WITH FIXES, not success", "failure"),
         ("oracle-review: error: could not fetch reviews", "failure"),
         ("", "failure"),

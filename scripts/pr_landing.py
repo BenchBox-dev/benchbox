@@ -611,7 +611,7 @@ def live_commit_statuses(run: Runner, repo_full: str, head: str) -> dict[str, st
             if (
                 name == "oracle-gate"
                 and state == "failure"
-                and description.startswith(f"oracle-review: waiting for the oracle's review of {head},")
+                and description.startswith(f"oracle-review: waiting for the oracle's verdict on {head},")
             ):
                 state = "pending"
             statuses[name] = state
