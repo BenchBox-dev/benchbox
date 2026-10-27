@@ -24,7 +24,8 @@ scratch. The design and its accepted risks are in
 | GitHub | `oracle` environment secrets `ORACLE_GATEWAY_TOKEN` (the contents of `client.token`) and `ORACLE_GATEWAY_URL` (`https://<host>.<tailnet>.ts.net:4000`). |
 
 `_project/scripts/oracle_gateway_host.sh` builds and checks all of this. A
-rerun restarts an agent only when its plist or `run.sh` changed; a new
+rerun restarts an agent only when its plist or `run.sh` changed or its
+process started before the pinned binary file was last written; a new
 `clients.json` needs no restart. `gateway` fetches `origin/develop` and
 generates `clients.json` from that export, never from the branch the host
 checkout happens to be on.

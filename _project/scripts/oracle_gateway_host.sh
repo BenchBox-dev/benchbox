@@ -84,10 +84,13 @@ file_mtime() {
 }
 
 process_predates_file() {
-  local pid=$1 file=$2 elapsed started
-  elapsed=$(etime_seconds "$(ps -o etime= -p "$pid" | tr -d '[:space:]')")
-  started=$(( $(date +%s) - elapsed ))
-  [ $(( started + 1 )) -lt "$(file_mtime "$file")" ]
+  local pid=$1 file=$2 etime elapsed mtime
+  etime=$(ps -o etime= -p "$pid" 2>/dev/null | tr -d '[:space:]') || return 0
+  [[ $etime =~ ^([0-9]+-)?([0-9]+:)?[0-9]+:[0-9]+$ ]] || return 0
+  elapsed=$(etime_seconds "$etime") || return 0
+  mtime=$(file_mtime "$file") || return 0
+  [[ $mtime =~ ^[0-9]+$ ]] || return 0
+  [ $(( $(date +%s) - elapsed + 1 )) -lt "$mtime" ]
 }
 
 agent_predates_binary() {
@@ -114,10 +117,12 @@ check_running_build() {
 }
 
 check_run_file_build() {
-  local configured
-  configured=$(sed -n 's/^exec "\([^"]*\)" auth-gateway serve.*/\1/p' "$RUN_FILE" 2>/dev/null)
-  [ "$configured" = "$OMP" ] \
-    || fail "$RUN_FILE runs '${configured:-nothing}', not the pinned build at $OMP; run '$(basename "$0") gateway'"
+  grep -qxF "$(run_file_exec_line)" "$RUN_FILE" 2>/dev/null \
+    || fail "$RUN_FILE does not exec the pinned build at $OMP with the clients file and bind address this script writes; run '$(basename "$0") gateway'"
+}
+
+run_file_exec_line() {
+  echo "exec \"$OMP\" auth-gateway serve --bind=127.0.0.1:$GATEWAY_PORT --clients=\"$CLIENTS_FILE\""
 }
 
 check_builds() {
@@ -374,7 +379,7 @@ export HOME="$GATEWAY_DIR/home"
 export OMP_AUTH_BROKER_URL="http://127.0.0.1:$BROKER_PORT"
 OMP_AUTH_BROKER_TOKEN=\$(cat "$BROKER_TOKEN_FILE")
 export OMP_AUTH_BROKER_TOKEN
-exec "$OMP" auth-gateway serve --bind=127.0.0.1:$GATEWAY_PORT --clients="$CLIENTS_FILE"
+$(run_file_exec_line)
 EOF
   if cmp -s "$staged" "$RUN_FILE"; then
     rm -f "$staged"

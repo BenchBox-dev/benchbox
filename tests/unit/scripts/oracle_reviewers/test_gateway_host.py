@@ -430,17 +430,39 @@ def test_check_fails_when_the_gateway_is_not_running(pinned: dict) -> None:
     assert "dev.omp.auth-gateway is not running" in result.stderr
 
 
-@pytest.mark.parametrize(("configured", "ok"), [("pinned", True), ("daily", False)])
-def test_check_requires_run_sh_to_exec_the_pinned_build(pinned: dict, configured: str, ok: bool) -> None:
+def _exec_line(pinned: dict, target: Path, flags: str | None = None) -> str:
+    flags = flags if flags is not None else f'--bind=127.0.0.1:4000 --clients="{pinned["dir"]}/clients.json"'
+    return f'exec "{target}" auth-gateway serve {flags}'
+
+
+@pytest.mark.parametrize(
+    ("configured", "flags", "ok"),
+    [
+        ("pinned", None, True),
+        ("daily", None, False),
+        ("pinned", "--bind=127.0.0.1:4000", False),
+        ("pinned", '--bind=127.0.0.1:4000 --clients="/elsewhere/clients.json"', False),
+        ("pinned", '--bind=0.0.0.0:4000 --clients="{dir}/clients.json"', False),
+    ],
+)
+def test_check_requires_run_sh_to_exec_the_pinned_build_with_the_scoping_flags(
+    pinned: dict, configured: str, flags: str | None, ok: bool
+) -> None:
     target = pinned["binary"] if configured == "pinned" else pinned["tmp"] / "daily" / "omp"
-    (pinned["dir"] / "run.sh").write_text(
-        f'#!/bin/sh\nexec "{target}" auth-gateway serve --bind=127.0.0.1:4000\n', encoding="utf-8"
-    )
+    flags = flags.replace("{dir}", str(pinned["dir"])) if flags else flags
+    (pinned["dir"] / "run.sh").write_text(f"#!/bin/sh\n{_exec_line(pinned, target, flags)}\n", encoding="utf-8")
     env = {**pinned["env"], "GATEWAY_DIR": str(pinned["dir"])}
     result = _source(pinned, "require_omp >/dev/null; check_run_file_build", env)
     assert (result.returncode == 0) == ok
     if not ok:
-        assert "not the pinned build" in result.stderr
+        assert "does not exec the pinned build" in result.stderr
+
+
+@pytest.mark.parametrize("etime", ["", "garbage", "5"])
+def test_check_fails_closed_when_the_process_start_time_cannot_be_read(pinned: dict, etime: str) -> None:
+    result = _check_running(pinned, pinned["binary"], etime=etime)
+    assert result.returncode != 0
+    assert "may run an older build" in result.stderr
 
 
 @pytest.mark.parametrize("listener", ["777", ""])
@@ -480,9 +502,7 @@ def _check_builds(pinned: dict, *, broker: Path, gateway: Path, run_sh: Path) ->
         f"#!/bin/sh\ncase \"$*\" in *comm*111*) echo '{broker}';; *comm*) echo '{gateway}';; *) echo 10:00;; esac\n",
     )
     _executable(stubs / "lsof", '#!/bin/sh\ncase "$*" in *8765*) echo 111;; *) echo 222;; esac\n')
-    (pinned["dir"] / "run.sh").write_text(
-        f'#!/bin/sh\nexec "{run_sh}" auth-gateway serve --bind=127.0.0.1:4000\n', encoding="utf-8"
-    )
+    (pinned["dir"] / "run.sh").write_text(f"#!/bin/sh\n{_exec_line(pinned, run_sh)}\n", encoding="utf-8")
     env = {**pinned["env"], "GATEWAY_DIR": str(pinned["dir"])}
     return _source(pinned, "require_omp >/dev/null; check_builds", env)
 
@@ -498,7 +518,7 @@ def test_check_builds_enforces_the_broker_the_run_file_and_the_gateway(pinned: d
     gateway = _check_builds(pinned, broker=good, gateway=other, run_sh=good)
     assert gateway.returncode != 0 and "dev.omp.auth-gateway runs omp 9.9.9" in gateway.stderr
     run_sh = _check_builds(pinned, broker=good, gateway=good, run_sh=other)
-    assert run_sh.returncode != 0 and "not the pinned build" in run_sh.stderr
+    assert run_sh.returncode != 0 and "does not exec the pinned build" in run_sh.stderr
 
 
 @pytest.mark.parametrize(("etime", "aged", "restarted"), [("10:00", True, False), ("2-01:00:00", False, True)])
