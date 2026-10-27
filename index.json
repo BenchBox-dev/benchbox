@@ -28530,10 +28530,15 @@
       "title": "[Tutorials] Verify benchmark commands in tutorial posts"
     },
     "ty-check-resolve-bundled-sqlglot": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-28T11:50:34Z",
+        "generation": "42df9b683731405798614ffdc38b0956",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Make plain 'uv run ty check' resolve the bundled SQLGlot namespace"
     },
     "uat-accounting-hardening": {
