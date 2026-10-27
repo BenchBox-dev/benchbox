@@ -984,3 +984,8 @@ def test_a_standin_never_overrides_an_open_oracle_thread_after_a_refusal() -> No
 )
 def test_the_api_root_is_overridden_only_by_a_loopback_server(value: str, expected: str) -> None:
     assert oracle_review_check._api_root(value) == expected
+
+
+def test_a_verdict_posted_before_the_base_changed_is_not_a_verdict_for_the_new_base() -> None:
+    status, message = _oracle(statuses=[_verdict("success", created_at=AFTER_HEAD)], base_date=RETARGETED)
+    assert status == oracle_review_check.WAITING and "waiting for the oracle's verdict" in message

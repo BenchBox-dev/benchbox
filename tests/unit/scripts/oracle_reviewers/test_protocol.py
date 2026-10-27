@@ -579,3 +579,8 @@ def test_live_disputes_need_an_open_defect_id_and_a_matching_or_missing_cycle() 
     current = {"id": "D1", "cycle": 2}
     disputes = [undated, current, {"id": "D1", "cycle": 1}, {"cycle": 2}, {"id": "D3", "cycle": 2}]
     assert protocol.live_disputes(disputes, latest) == [undated, current]
+
+
+def test_a_summary_clip_keeps_text_that_fits_exactly() -> None:
+    assert protocol._clip("abc", 3) == "abc"
+    assert protocol._clip("abcd", 3) == "ab…"
