@@ -703,9 +703,16 @@ to GitHub.
   and a hash of the review machinery (the `oracle_reviewers` package, its
   templates, the OMP config). An unchanged patch reuses the result, even after
   an override; a keyless default result is not reused once a key exists, and
-  machinery changes are reviewed again. Only verdicts are cached. A lock in the
-  same directory allows one local review per machine; a second waits up to an
-  hour, then refuses.
+  machinery changes are reviewed again. Only verdicts are cached. The lock is per
+  patch: each cache key has its own lock file (`cache/<key>.lock`), so reviews
+  of different patches run in parallel, and a second review of the same patch
+  waits for the first (up to an hour per key, then it refuses), re-checks the
+  cache under the lock and reuses the result without running the reviewers. A
+  review's state is
+  private (its own work directory, reviewer homes and workspace clone, survivor
+  checks scoped to its own process group, atomic cache writes), and CI already
+  reviews different PRs concurrently on the same gateway, so a machine-wide lock
+  only made one slow review block every other PR without saving quota.
 
 ## Calibration
 
