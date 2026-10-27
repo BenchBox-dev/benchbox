@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Ledger rows are classified high-risk vs process-only; each high-risk row has a named test, workflow run or canary showing both the pass and the refuse case, or a named blocker",
+    "Process-only rows are waived with a one-line reason each",
+    "Evidence is bound to a recorded develop SHA and the CI units are described as the five real units (core, explorer, results-data, docs, tooling)",
+    "No retirement item (42, 44, 53, 70, 80, 81) deletes a predecessor of a still-pending high-risk row"
+  ],
+  "description": "Every row of docs/internal/dev-loop-property-ledger.md is still pending and dlv2-f2 closed with acceptance incomplete. Owner decision 2026-10-27: prove high-risk properties (merge safety, release integrity, identity/attribution, soundness holds, oracle gate/required contexts) with positive/negative evidence; waive obsolete process-only properties with a stated reason. Guardrails: primary clone /Users/joe/Developer/BenchBox is read-only; work only in a linked worktree from origin/develop (make worktree-create + make agent-write-preflight); never git add -A; identity Joe Harris, no agent attribution; no code comments/docstrings (make comment-policy-check clean); encoding=\"utf-8\"; uv run -- for Python; never bypass hooks; never set BENCHBOX_SKIP_TEST_LOCK or BENCHBOX_TEST_LOCK_DIR; make pr-open needs PATH=\"$HOME/.cache/omp-18.12.1/bin:$PATH\" while installed omp differs from the CI pin.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T23:30:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "faa9ad94516b4d58a06625dceb90912b",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    }
+  ]
+}
