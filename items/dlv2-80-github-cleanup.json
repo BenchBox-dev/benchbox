@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "The release branch, incident:release-canary-red and no-auto-merge are deleted and no workflow or script references them",
-    "Branches, labels and secrets left unused by dlv2-70 are listed and deleted or kept with a reason",
-    "No workflow references a deleted label or secret (G4)",
-    "Post-cleanup branch/label/secret-name lists archived"
+    "no-auto-merge and the pr-hold check are PRESERVED (AGENTS.md, ADR, pr-hold.yml, pr_landing.py); the earlier deletion criterion is withdrawn",
+    "release branch and its rulesets are retired by dlv2-53 as an owner-run step, not here",
+    "incident:release-canary-red is deleted only after release-canary.yml and release_canary_incident.py are retired",
+    "Authenticated post-cleanup branch/label/secret-name inventory archived"
   ],
-  "context": "Re-planned 2026-10-17. This item will likely run in a later session; its needs (dlv2-53, dlv2-70 via dlv2-22, dlv2-42, dlv2-80a) are not close. dlv2-80a is ready now and does not wait on the release path.",
-  "description": "Final GitHub cleanup after the code that uses these objects is gone. Updated 2026-10-17: site-split-54-publication-github-cleanup is done, so it is no longer an unmet need (live unmet total is 4: dlv2-53, dlv2-70, dlv2-42, dlv2-80a). The release branch deletion is owned by dlv2-53 alone (archive tag first); this item only verifies it is gone and must not re-list it as its own deletion step (claude NEW-10).\n\nAfter dlv2-53 and dlv2-42 have removed the code that uses them:\n- Labels: incident:release-canary-red (used by release-canary.yml and scripts/release_canary_incident.py) and no-auto-merge (used by scripts/pr_landing.py) — delete only when no workflow or script references them. Note AGENTS.md records a 2026-10-15 amendment to keep no-auto-merge; re-check that decision at execution time and record the owner's current answer before deleting it.\n- Any branches, labels, or secrets that dlv2-70 workflow deletions leave unused, listed with a keep/delete reason each.\n\nPre-approved admin changes only with G5 backups and archive tags first. Keep secrets CODECOV_TOKEN and RULESET_DRIFT_TOKEN. Out of scope: publication objects (owned by site-split-54, done).",
+  "context": "2026-10-27 audit: the original acceptance would have deleted a live hold mechanism.",
+  "description": "AUDIT 2026-10-27 (owner-adjudicated, advisor-reviewed): the acceptance and context sections supersede this description wherever they differ. Historical text below is kept for reference.\n\nFinal GitHub cleanup after the code that uses these objects is gone. Updated 2026-10-17: site-split-54-publication-github-cleanup is done, so it is no longer an unmet need (live unmet total is 4: dlv2-53, dlv2-70, dlv2-42, dlv2-80a). The release branch deletion is owned by dlv2-53 alone (archive tag first); this item only verifies it is gone and must not re-list it as its own deletion step (claude NEW-10).\n\nAfter dlv2-53 and dlv2-42 have removed the code that uses them:\n- Labels: incident:release-canary-red (used by release-canary.yml and scripts/release_canary_incident.py) and no-auto-merge (used by scripts/pr_landing.py) — delete only when no workflow or script references them. Note AGENTS.md records a 2026-10-15 amendment to keep no-auto-merge; re-check that decision at execution time and record the owner's current answer before deleting it.\n- Any branches, labels, or secrets that dlv2-70 workflow deletions leave unused, listed with a keep/delete reason each.\n\nPre-approved admin changes only with G5 backups and archive tags first. Keep secrets CODECOV_TOKEN and RULESET_DRIFT_TOKEN. Out of scope: publication objects (owned by site-split-54, done).",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:ea32adff11bd0f17607daca2",
@@ -55,6 +55,14 @@
       "op": "update",
       "op_id": "0a6ead9cc750463487c8006d74b01627",
       "session_id": "b88f90bbf0854ed0a599432bfe5fd099"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T23:29:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "539e4c3eda81453da5e3cdca1461884d",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
 }
