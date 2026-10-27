@@ -119,10 +119,10 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
 5. Disk scan (C4).
 6. Install and verify OMP, then join the tailnet; either failing leaves the
    attempt absent instead of ending the run.
-7. **Attempt loop** (`cli.py attempts`): per slot up to `max_attempts`, select
-   the reviewer, reset the checkout, create a fresh scratch `HOME` with its OMP
-   home, run the reviewer, confirm nothing was left behind, delete the `HOME`,
-   and write the slot's result file: an artifact with run ID, head SHA,
+7. **Attempt loop** (`cli.py attempts`): per slot up to `max_attempts` (five),
+   select the reviewer, reset the checkout, create a fresh scratch `HOME` with
+   its OMP home, run the reviewer, confirm nothing was left behind, delete the
+   `HOME`, and write the slot's result file: an artifact with run ID, head SHA,
    reviewer, and a validated verdict or an absence. A crash or timeout still
    leaves an absence. OMP runs on a detached, credential-free head checkout: an
    empty working directory, the checkout as a read-only workspace, tools
@@ -563,26 +563,25 @@ cancels a run in flight, which then posts nothing.
 - `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>` does the
   same; other refs are refused.
 - The sweep retries PRs whose last result on the current head is pending and
-  due. It runs on every push to `develop` and hourly, but GitHub starts the
-  schedule irregularly (2.0 to 6.1 hours apart, 2026-10-20 to 2026-10-25), so
-  the first push after a head becomes due is the usual trigger; the target is a
-  dispatch within 25 minutes of that push, or at the next scheduled sweep
-  without one. Push and schedule sweeps share one concurrency group that never
-  cancels a running sweep. It lists seven days of `oracle-verdict` runs, all
-  pages, and skips a PR with a run queued, in progress, waiting, pending or
-  requested, or started in the last two minutes, so it never cancels a retry in
-  flight. It also re-dispatches a head whose latest run failed, timed out or was
-  cancelled without leaving retry state, unless the head has a decisive App
-  verdict status; the dispatch carries a marker the plan verifies against the
-  head's failed runs, so it reviews instead of skipping on backoff. This happens
-  once: when the two latest runs on the head failed without a result (ignoring
-  runs that never reviewed it, such as a skipped plain-comment run), the sweep
-  stops dispatching and posts a pending `oracle-verdict` status naming the
-  failed step, with an App token minted in the reviewer-free sweep job. An
-  existing pending status is left alone; without the App the sweep reports the
-  gap instead of failing. A failure in one PR's lookup, dispatch or surfacing is
-  reported, the others continue, then the job fails. Daily budget, backoff and
-  attempt limits are unchanged.
+  due. It runs on every push to `develop` and hourly; because GitHub starts the
+  schedule irregularly, the first push after a head becomes due is the usual
+  trigger. The target is a dispatch within 25 minutes of that push, or at the
+  next scheduled sweep without one. Push and schedule sweeps share one
+  concurrency group that never cancels a running sweep. It lists seven days of
+  `oracle-verdict` runs, all pages, and skips a PR with a run queued, in
+  progress, waiting, pending or requested, or started in the last two minutes,
+  so it never cancels a retry in flight. It also re-dispatches a head whose
+  latest run failed, timed out or was cancelled without leaving retry state,
+  unless the head has a decisive App verdict status; the dispatch carries a
+  marker the plan verifies against the head's failed runs, so it reviews instead
+  of skipping on backoff. This happens once: when the two latest runs on the
+  head failed without a result (ignoring runs that never reviewed it, such as a
+  skipped plain-comment run), the sweep stops dispatching and posts a pending
+  `oracle-verdict` status naming the failed step, with an App token minted in
+  the reviewer-free sweep job. An existing pending status is left alone; without
+  the App the sweep reports the gap instead of failing. A failure in one PR's
+  lookup, dispatch or surfacing is reported, the others continue, then the job
+  fails. Daily budget, backoff and attempt limits are unchanged.
 - `make oracle-backoff-reset PR=<number> HEAD=<sha> REASON='<why>'` lets the
   owner clear one PR head's backoff and retry window once. It needs a prior
   `Owner instruction` comment from an attester naming the head, as for a
@@ -653,18 +652,10 @@ to GitHub.
   need no PyYAML. The shared `omp_pin.py` installer downloads into
   `~/.cache/benchbox/omp/<version>/<platform>/omp` (`BENCHBOX_OMP_CACHE`
   overrides the root), checks SHA-256 before making it executable and its
-  reported version before caching. Unpinned platforms refuse by name. The build
-  host publishes no checksums; these hashes, like the original linux-x64
-  workflow pin, come from fresh TLS downloads. The darwin-arm64 download matches
-  the cached build and reports `omp/18.12.1`. During the consumer migration CI
-  adds the verified cache directory to the job PATH, and the legacy workflow
-  values remain solely for two consumers: local review checks PATH omp against
-  the workflow's `OMP_VERSION` from `origin/develop`, and cloud bootstrap reads
-  `OMP_URL` and `OMP_SHA256` from the branch workflow. CI's installer refuses if
-  any legacy value differs from the policy pin, and the workflow test enforces
-  equality, so change both together until local and cloud consume the policy
-  pin. That cutover removes the legacy values and equality check and calls the
-  cached binary by explicit path instead of PATH.
+  reported version before caching. Unpinned platforms refuse by name. The
+  workflow's legacy `OMP_URL`, `OMP_SHA256` and `OMP_VERSION` values must equal
+  the policy pin: CI's installer refuses otherwise, and the workflow test
+  enforces it.
 - **Blocking.** A Critical or High finding, or DO NOT SHIP, makes `pr-open`
   refuse before pushing (exit 1). A `Local oracle override: <reason>` line with
   a non-empty reason in the PR body file (`PR_BODY_FILE`) lets it proceed and
@@ -688,26 +679,23 @@ to GitHub.
 
 ## Calibration
 
-These checks must pass before the cut-over that makes the context required.
+The workflow has five attempt slots. Each reviewer authenticates in CI through
+the credential gateway with the `ORACLE_GATEWAY_TOKEN` client token; one that
+cannot is set `enabled: false` with a `disabled_reason`.
 
-- **P2:** a `pull_request_target` run from a same-repository test PR enters the
-  `oracle` environment; a `pull_request` run from the PR branch cannot.
-- **P3:** each reviewer authenticates in CI through the credential gateway with
-  the `ORACLE_GATEWAY_TOKEN` client token; one that cannot is set `enabled:
-  false` with a `disabled_reason`. The workflow has five slots.
-- **P4:** capture each reviewer's quota, authentication and outage output from
-  real runs. The attempt artifact's `diagnostic` holds one redacted output line
-  of at most 300 characters or, for an invalid verdict, the last 2,000
-  characters of the final message, both stripped of credentials and long tokens;
-  raw output is never uploaded. For OMP only stderr is excerpted, never stdout.
-  A `trace:` line of at most 700 characters follows every outcome that reached
-  verdict parsing (valid, invalid, incomplete or failed evidence); its paths are
-  redacted by known value and secret pattern, not the generic long-token filter.
-  Add the messages to the `CALIBRATED_*_PATTERNS` tables in
-  `_project/scripts/oracle_reviewers/absence.py`; until then they count as
-  errors, which never pass. A quota absence means OMP's fallback chain was also
-  exhausted; it skips the reviewer's whole pool for the rest of the run and for
-  one hour in later runs (`QUOTA_BACKOFF` in `selection.py`).
+Capture each reviewer's quota, authentication and outage output from real runs.
+The attempt artifact's `diagnostic` holds one redacted output line of at most
+300 characters or, for an invalid verdict, the last 2,000 characters of the
+final message, both stripped of credentials and long tokens; raw output is never
+uploaded. For OMP only stderr is excerpted, never stdout. A `trace:` line of at
+most 700 characters follows every outcome that reached verdict parsing (valid,
+invalid, incomplete or failed evidence); its paths are redacted by known value
+and secret pattern, not the generic long-token filter. Add the messages to the
+`CALIBRATED_*_PATTERNS` tables in
+`_project/scripts/oracle_reviewers/absence.py`; until then they count as errors,
+which never pass. A quota absence means OMP's fallback chain was also exhausted;
+it skips the reviewer's whole pool for the rest of the run and for one hour in
+later runs (`QUOTA_BACKOFF` in `selection.py`).
 
 ## Changing the reviewer harness
 
@@ -808,17 +796,9 @@ self-closes only an issue opened because a commit had no review signal, once it
 finds one; issues opened for a reviewer thread, or several reasons, close only
 on an attester's review.
 
-The Codex connector is no longer a signal. The daily soundness merge digest
-still accepts a connector review or thumbs-up for merges before the cut-over
-(2026-10-09 00:16 UTC), keeping history accurate. A PR opened before the
-cut-over keeps check runs requiring the connector; re-running them reuses the
-original base and does not help, so it needs a new push, a fresh `pull_request`
-event, or a stand-in.
-
 `oracle-gate` runs `develop`'s gate and checker, both accepting only the oracle
 signal. `tests/unit/scripts/oracle_reviewers/test_policy.py` fails if the live
-policy leaves `mode: enforce` or delivery is not `review`. Returning to the
-connector would need this cleanup reverted and the connector App reinstalled.
+policy leaves `mode: enforce` or delivery is not `review`.
 
 ## Required gate from trusted code
 
@@ -861,13 +841,11 @@ success would count and the gate property would not hold.
 - every `push` to `develop`, so a merge re-evaluates open PRs without waiting
   for the schedule.
 
-GitHub delays and drops scheduled runs (observed starts 3 to 6 hours apart), so
-pushes bound latency while `develop` is active and the schedule covers quiet
-hours. Sweeps since 2026-10-24 ran a median 1.7 and 90th percentile 7.2 minutes,
-and `develop` gets about 36 pushes a day: about one runner-hour a day. Only the
-sweep job runs on `push`; the gate and bridge jobs exclude it. Push sweeps share
-one concurrency group, separate from every PR's, and queue rather than cancel,
-so a running sweep finishes before the next starts.
+GitHub delays and drops scheduled runs, so pushes bound latency while `develop`
+is active and the schedule covers quiet hours. Only the sweep job runs on
+`push`; the gate and bridge jobs exclude it. Push sweeps share one concurrency
+group, separate from every PR's, and queue rather than cancel, so a running
+sweep finishes before the next starts.
 
 A completion run evaluates nothing: its `bridge` job finds the open `develop` PR
 whose head is the completed run's head commit (not the payload's first PR, which
@@ -896,9 +874,8 @@ resolve step; `issue_comment` payloads carry none, so those runs rely on
 GraphQL. The remaining gap: if REST and GraphQL both fail with no head supplied,
 nothing posts and the prior status stands until the next sweep carries the head.
 PRs not based on `develop` and `--no-post` runs never post, errors included. The
-sweep lists open `develop` PRs with `gh api --paginate`; its 45-minute timeout
-is sized from a measured sweep of 16 PRs in about 75 seconds (about 5 seconds
-each), leaving room for several hundred.
+sweep lists open `develop` PRs with `gh api --paginate`, with a 45-minute
+timeout.
 
 `oracle-gate` became required on 2026-10-21, scoped to the `benchbox-oracle`
 App's integration ID, alongside `oracle-review`, which stopped being required on
