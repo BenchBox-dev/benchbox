@@ -1,0 +1,1 @@
+{"schema":1,"internal":"Scope Windows portability checks to staged Python files locally, inspect project scripts in full CI scans, and avoid false positives for guarded POSIX operations and inherited subprocess environments."}

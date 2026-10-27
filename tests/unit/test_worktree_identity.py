@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -26,7 +27,11 @@ def _run_helper(worktree: Path, home: Path) -> subprocess.CompletedProcess[str]:
         check=False,
         capture_output=True,
         text=True,
-        env={"HOME": str(home), "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"},
+        env={
+            "HOME": str(home),
+            "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin",
+            "SYSTEMROOT": os.environ.get("SYSTEMROOT", ""),
+        },
     )
 
 

@@ -37,6 +37,7 @@ def _git(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
         check=check,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -629,6 +630,7 @@ def test_ci_release_check_step_passes_skip_and_pre_tag_from_the_selection_output
     fake.chmod(0o755)
     calls = tmp_path / "calls.txt"
     env = {
+        "SYSTEMROOT": os.environ.get("SYSTEMROOT", ""),
         "PATH": f"{bin_dir}:/usr/bin:/bin",
         "CALLS": str(calls),
         "RELEASE_VERSION": VERSION,
