@@ -3,7 +3,7 @@
     "Tests show red_streak_start reports the culprit as undetermined while an older develop Trunk run is still in progress, and the arm gate and trunk-revert handle that state without naming or reverting a commit",
     "site-inputs.yml never lets an older commit's run displace a newer one (test or workflow pin)"
   ],
-  "context": "Source: Trunk queue study on trunk-serial-queue-latency-20261025 (2026-10-25). Do not start unless that item's owner decision approves concurrent Trunk runs.",
+  "context": "Merged: PR 3613 (7334472f1). red_streak_start raises UndeterminedCulpritError while an older develop Trunk run is unfinished; the arm gate, status and trunk-revert refuse without naming or reverting a commit; the disarm workflow disarms armed non-revert PRs in that state. site-inputs.yml uses queue: max (already used by trunk.yml), pinned by a workflow test. Not verified on live Actions; queue: max was checked against the documentation only.\n\nSource: Trunk queue study on trunk-serial-queue-latency-20261025 (2026-10-25). Do not start unless that item's owner decision approves concurrent Trunk runs.",
   "description": "Prerequisite for any change that lets more than one Trunk run go at once. red_streak_start (used by culprit naming, the arm gate and trunk-revert) skips unfinished runs, so with concurrent runs a newer commit can be named as culprit while an older run is still in progress; it should report the culprit as undetermined until every older run has finished. site-inputs.yml keeps only one pending run, so an older commit's trigger can displace a newer one when runs complete out of order; it needs queue: max or an ancestry check. The work is only needed if the owner approves Trunk lanes after re-measuring the queue.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "40d6aadeb92e408aa45a5e82ba836c45",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-27T22:02:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bb7bb1ad849b400fab95c40d4521fbad",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
