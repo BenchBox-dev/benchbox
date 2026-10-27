@@ -163,3 +163,37 @@ def test_windows_leg_executes_target_file_and_preserves_pytest_result(tmp_path: 
         assert f"{count} selected test files contained no fast-tier tests" in summary.read_text(encoding="utf-8")
     else:
         assert not summary.exists()
+
+
+def test_windows_leg_fails_when_a_fast_marked_target_collects_nothing(tmp_path: Path) -> None:
+    bash = shutil.which("bash")
+    assert bash is not None
+    run = _step(_jobs("ci.yml")["windows-tests"], "Run the selected and changed test files on Windows")["run"]
+    selection = tmp_path / "coverage-selection"
+    selection.mkdir()
+    target = tmp_path / "tests" / "test_fast_target.py"
+    target.parent.mkdir()
+    target.write_text("import pytest\npytestmark = [pytest.mark.fast]\n", encoding="utf-8")
+    (selection / "windows-test-files.txt").write_text("tests/test_fast_target.py\n", encoding="utf-8", newline="\n")
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    uv = binaries / "uv"
+    uv.write_text('#!/usr/bin/env bash\nshift 3\nexec python "$@"\n', encoding="utf-8", newline="\n")
+    uv.chmod(0o755)
+    (tmp_path / "pytest.py").write_text("def main(args):\n    return 5\n", encoding="utf-8")
+    (tmp_path / "step.sh").write_text(run, encoding="utf-8", newline="\n")
+    result = subprocess.run(
+        [bash, "step.sh"],
+        cwd=tmp_path,
+        env={
+            **os.environ,
+            "PATH": str(binaries) + os.pathsep + os.environ["PATH"],
+            "GITHUB_STEP_SUMMARY": str(tmp_path / "summary.txt"),
+        },
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 1
+    assert "::error::" in result.stdout
+    assert "tests/test_fast_target.py" in (tmp_path / "summary.txt").read_text(encoding="utf-8")

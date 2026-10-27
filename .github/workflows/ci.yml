@@ -1460,6 +1460,18 @@ jobs:
           status=0
           uv run -- python -c "import pathlib, sys, pytest; targets = [l.strip() for l in pathlib.Path('coverage-selection/windows-test-files.txt').read_text(encoding='utf-8').splitlines() if l.strip()]; raise SystemExit(0 if not targets else pytest.main([*sys.argv[1:], *targets]))" -m "fast and not (slow or stress or resource_heavy or live_integration)" --tb=short --timeout=120 --junitxml=junit-windows-pr.xml || status=$?
           if [ "$status" -eq 5 ]; then
+            fast_target=""
+            while IFS= read -r target; do
+              if [ -f "$target" ] && grep -qE 'mark\.fast' "$target"; then
+                fast_target="$target"
+                break
+              fi
+            done < coverage-selection/windows-test-files.txt
+            if [ -n "$fast_target" ]; then
+              echo "::error::pytest collected no tests although $fast_target carries the fast marker."
+              echo "Windows: pytest collected no eligible tests although $fast_target carries the fast marker." >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
             echo "::notice::Selected Windows test files contain no tests matching the fast-tier marker."
             echo "Windows: $target_count selected test files contained no fast-tier tests; pytest collected no eligible tests." >> "$GITHUB_STEP_SUMMARY"
           else
