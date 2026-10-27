@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "Branch deletion list generated, archived and executed; archive tags created for auto-revert/* and any branch with unmerged commits",
-    "incident:develop-red and incident:develop-red-revert-conflict are deleted and no workflow or script references them",
-    "TODO_DB_URL, TODO_DB_RO_AUTH_TOKEN and TODO_EXPORT_PR_TOKEN are deleted, and the three docs no longer describe them as repository secrets",
-    "Post-cleanup branch, label and secret-name lists archived"
+    "Per-ref inventory of gh-readonly-queue/*, auto-revert/* and closed-PR mirror branches against open PRs and active run SHAs; tips archived to a recorded list before deletion",
+    "Preserve develop, release, published-results, todo-state, open-PR branches and the auto/results-mirror-* mechanism",
+    "Unused incident:develop-red and incident:develop-red-revert-conflict labels deleted after a consumer search; keep awaiting-owner, nightly-quarantine, t3:*, no-auto-merge, incident:release-canary-red",
+    "The three TODO secrets are deleted only after an authenticated inventory shows them unused; otherwise recorded as an owner action (secrets list returned 401 in the audit)"
   ],
-  "context": "Split from dlv2-80-github-cleanup in the 2026-10-09 tracker review so the release-independent cleanup is not held behind dlv2-53, dlv2-70 and dlv2-42.",
-  "description": "Pre-approved admin changes (standing approvals); G5 backups and archive tags first. None of this waits on the release-path work.\n\n- Branches: gh-readonly-queue/* with no queued entry and no workflow run referencing the SHA (the merge queue was retired in #2582); auto-revert/* after closing their PRs (archive tags first); auto/* whose PRs are closed; fix/*, claude/*, feat/*, docs/*, chore/* whose PRs are merged or closed. Never delete develop, published-results, todo-state, release, publication, v*, or any branch with an open PR.\n- Labels: delete incident:develop-red and incident:develop-red-revert-conflict (repo-admin-settings.md:645 says nothing uses them).\n- Secrets: delete TODO_DB_URL, TODO_DB_RO_AUTH_TOKEN and TODO_EXPORT_PR_TOKEN. No workflow consumes them (todo-state-validate.yml is asserted credential-free by tests/unit/scripts/test_todo_state_workflow.py). Fix the stale docs in the same change: docs/operations/todo-db-benchbox-extraction.md:125-131 (and the check at :164-165), docs/operations/hosted-credentials.md, and docs/operations/github-org-transfer.md:48 and :103.\n\nKeep the labels awaiting-owner, incident:todo-export-failed, nightly-quarantine and t3:*, and the secrets CODECOV_TOKEN (D6) and RULESET_DRIFT_TOKEN (D7).",
+  "context": "2026-10-27 owner decision: verified GitHub cleanup is authorized for branches and labels only; no secrets, rulesets or release-canary/no-auto-merge labels.",
+  "description": "AUDIT 2026-10-27 (owner-adjudicated, advisor-reviewed): the acceptance and context sections supersede this description wherever they differ. Historical text below is kept for reference.\n\nPre-approved admin changes (standing approvals); G5 backups and archive tags first. None of this waits on the release-path work.\n\n- Branches: gh-readonly-queue/* with no queued entry and no workflow run referencing the SHA (the merge queue was retired in #2582); auto-revert/* after closing their PRs (archive tags first); auto/* whose PRs are closed; fix/*, claude/*, feat/*, docs/*, chore/* whose PRs are merged or closed. Never delete develop, published-results, todo-state, release, publication, v*, or any branch with an open PR.\n- Labels: delete incident:develop-red and incident:develop-red-revert-conflict (repo-admin-settings.md:645 says nothing uses them).\n- Secrets: delete TODO_DB_URL, TODO_DB_RO_AUTH_TOKEN and TODO_EXPORT_PR_TOKEN. No workflow consumes them (todo-state-validate.yml is asserted credential-free by tests/unit/scripts/test_todo_state_workflow.py). Fix the stale docs in the same change: docs/operations/todo-db-benchbox-extraction.md:125-131 (and the check at :164-165), docs/operations/hosted-credentials.md, and docs/operations/github-org-transfer.md:48 and :103.\n\nKeep the labels awaiting-owner, incident:todo-export-failed, nightly-quarantine and t3:*, and the secrets CODECOV_TOKEN (D6) and RULESET_DRIFT_TOKEN (D7).",
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:8c06561181af4cd0d5004653",
@@ -15,6 +15,14 @@
       "op": "create",
       "op_id": "e50de4a61863434b93d4a4b3011a63dd",
       "session_id": "05afd70780334fa0b0e411a688cf8f7a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T23:29:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7fd6be0e1f134bb39de1870dc7723bf3",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
 }
