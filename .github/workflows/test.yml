@@ -493,6 +493,9 @@ jobs:
       - name: Check bundled SQLGlot is on the newest upstream release
         run: uv run -- python scripts/check_sqlglot_upstream_freshness.py
 
+      - name: Check bundled SQLGlot carries no published advisory
+        run: uv run -- python scripts/check_sqlglot_advisories.py
+
       - name: Check release branch curation
         run: |
           missing=0

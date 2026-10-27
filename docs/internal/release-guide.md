@@ -538,6 +538,16 @@ problem it finds. It verifies that:
   `SKIP_UPSTREAM_FRESHNESS=1` so an upstream SQLGlot release cannot block
   unrelated merges. The release workflows and `release-readiness` still run
   the check unconditionally.
+- the bundled SQLGlot runtime carries no published security advisory
+  (`scripts/check_sqlglot_advisories.py`, `make sqlglot-advisory-check`).
+  `pip-audit` and other package scanners only see declared requirements, and
+  SQLGlot ships inside `benchbox/_vendor`, so this check derives the upstream
+  version from `benchbox/_vendor/sqlglot.json` (`<upstream X.Y.Z>.<fork
+  revision>`) and queries the OSV database for it. A matching advisory, or an
+  unreachable database, fails the check. The release owner acts on a failure:
+  refresh the fork onto an upstream release that fixes the advisory and adopt
+  the new wheel; there is no waiver. It runs wherever the freshness check
+  runs: `make release-check`, the `sqlglot-upstream-freshness` job in `release.yml` (which gates `build` and publish), and the `release-readiness` job in `test.yml`. `SKIP_UPSTREAM_FRESHNESS=1` skips both checks in `make release-check` because both need network access. A pull request that edits `benchbox/_vendor/sqlglot.json` or the advisory check re-runs it.
 - with `RELEASE_PRE_TAG=1` (`release_flow.py check --pre-tag`), no
   `changelog.d/*.json` fragment is pending. The pull request check passes it
   only when the pull request changes the release identity: a version marker,

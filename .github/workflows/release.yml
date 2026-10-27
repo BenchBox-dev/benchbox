@@ -130,6 +130,9 @@ jobs:
       - name: Require the bundled SQLGlot runtime to be on the newest upstream release
         run: uv run -- python scripts/check_sqlglot_upstream_freshness.py
 
+      - name: Require the bundled SQLGlot runtime to carry no published advisory
+        run: uv run -- python scripts/check_sqlglot_advisories.py
+
   build:
     needs: [verify-tag-on-release, verify-uat-charter, dependency-bounds, sqlglot-upstream-freshness]
     runs-on: ubuntu-latest
