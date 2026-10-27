@@ -16776,8 +16776,7 @@
     "oracle-redaction-marker-and-summary-20261026": {
       "claim": null,
       "needs": [
-        "oracle-verdict-oauth-tailnet-join-20261026",
-        "oracle-history-edited-review-fail-closed-20261027"
+        "oracle-verdict-oauth-tailnet-join-20261026"
       ],
       "priority": "medium",
       "status": "open",
