@@ -3,9 +3,13 @@ from __future__ import annotations
 import base64
 import json
 import os
+import pickle
 import subprocess
 import sys
 import time
+import traceback
+import warnings
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +49,48 @@ def _git(path: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def run_isolated(fn: Callable[[], Any]) -> Any:
+    read_fd, write_fd = os.pipe()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        pid = os.fork()
+    if pid == 0:
+        status = 1
+        try:
+            os.close(read_fd)
+            try:
+                payload = pickle.dumps(("ok", fn()))
+            except BaseException:
+                payload = pickle.dumps(("error", traceback.format_exc()))
+            with os.fdopen(write_fd, "wb") as sink:
+                sink.write(payload)
+            status = 0
+        finally:
+            os._exit(status)
+    os.close(write_fd)
+    with os.fdopen(read_fd, "rb") as source:
+        data = source.read()
+    os.waitpid(pid, 0)
+    kind, value = pickle.loads(data)
+    if kind == "error":
+        raise AssertionError(f"the isolated child failed:\n{value}")
+    return value
+
+
+class Journal:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+    def append(self, item: Any) -> None:
+        with self.path.open("a", encoding="utf-8") as sink:
+            sink.write(json.dumps(item) + "\n")
+
+    def items(self) -> list[Any]:
+        if not self.path.exists():
+            return []
+        return [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines()]
+
+
 class Loop:
     def __init__(self, tmp_path: Path, policy: Policy, monkeypatch: pytest.MonkeyPatch, max_attempts: int = 2) -> None:
         self.tmp_path = tmp_path
@@ -72,21 +118,29 @@ class Loop:
         monkeypatch.setattr(cli, "_assemble_prompt", lambda *args, **kwargs: "review this")
 
     def run(self) -> int:
-        return cli.main(
-            [
-                "attempts",
-                "--plan",
-                str(self.plan_path),
-                "--attempts-dir",
-                str(self.attempts),
-                "--classification",
-                str(self.classification),
-                "--workspace",
-                str(self.workspace),
-                "--home-root",
-                str(self.tmp_path),
-            ]
-        )
+        def attempts_command() -> tuple[int, str | None, str | None]:
+            status = cli.main(
+                [
+                    "attempts",
+                    "--plan",
+                    str(self.plan_path),
+                    "--attempts-dir",
+                    str(self.attempts),
+                    "--classification",
+                    str(self.classification),
+                    "--workspace",
+                    str(self.workspace),
+                    "--home-root",
+                    str(self.tmp_path),
+                ]
+            )
+            return status, os.environ.get("HOME"), os.environ.get("TMPDIR")
+
+        status, self.home_after, self.tmpdir_after = run_isolated(attempts_command)
+        return status
+
+    def journal(self, name: str) -> Journal:
+        return Journal(self.tmp_path / f"{name}.journal")
 
     def artifact(self, slot: int) -> dict[str, Any]:
         return json.loads((self.attempts / attempts.artifact_name(slot)).read_text(encoding="utf-8"))
@@ -126,25 +180,25 @@ def _gone(pid: int) -> bool:
 def test_each_attempt_gets_a_fresh_home_and_the_previous_one_is_deleted(
     loop: Loop, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    homes: list[Path] = []
-    seen_before: list[bool] = []
+    journal = loop.journal("homes")
     original_home = os.environ.get("HOME")
 
     def fake_review(reviewer: Reviewer, **kwargs: Any) -> runner.ReviewOutcome:
         home = Path(os.environ["HOME"])
-        seen_before.append(any(previous.exists() for previous in homes))
+        seen_before = any(Path(previous).exists() for previous, _ in journal.items())
         assert (home / ".omp" / "agent" / "models.yml").is_file()
         assert GATEWAY_URL in (home / ".omp" / "agent" / "models.yml").read_text(encoding="utf-8")
-        homes.append(home)
+        journal.append([str(home), seen_before])
         return runner.ReviewOutcome(None, Absence(INVALID, "unparseable"), "")
 
     monkeypatch.setattr(runner, "review", fake_review)
     assert loop.run() == 0
+    homes = [Path(home) for home, _ in journal.items()]
     assert len(homes) == 2
     assert homes[0] != homes[1]
-    assert seen_before == [False, False]
+    assert [seen_before for _, seen_before in journal.items()] == [False, False]
     assert not homes[0].exists() and not homes[1].exists()
-    assert os.environ.get("HOME") == original_home
+    assert loop.home_after == original_home
     assert loop.ran() == "2"
     assert loop.artifact(1)["absence"]["kind"] == INVALID and loop.artifact(2)["absence"]["kind"] == INVALID
 
@@ -227,15 +281,20 @@ def test_a_detached_grandchild_is_found_through_the_subreaper(tmp_path: Path) ->
         "subprocess.Popen([sys.executable, '-c', 'import os, time; os.setsid(); time.sleep(120)'],"
         " stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
     )
-    assert processes.become_subreaper()
-    try:
-        invocation = Invocation((sys.executable, "-c", script), tmp_path, None, dict(os.environ))
-        with pytest.raises(processes.HarnessLeakError) as raised:
-            runner.execute(invocation, 30)
-    finally:
-        processes.release_subreaper()
-    assert raised.value.survivors
-    assert all(_gone(pid) for pid in raised.value.survivors)
+
+    def adopt_and_execute() -> tuple[int, ...]:
+        assert processes.become_subreaper()
+        try:
+            invocation = Invocation((sys.executable, "-c", script), tmp_path, None, dict(os.environ))
+            with pytest.raises(processes.HarnessLeakError) as raised:
+                runner.execute(invocation, 30)
+        finally:
+            processes.release_subreaper()
+        return tuple(raised.value.survivors)
+
+    survivors = run_isolated(adopt_and_execute)
+    assert survivors
+    assert all(_gone(pid) for pid in survivors)
 
 
 @pytest.mark.skipif(not sys.platform.startswith("linux"), reason="orphan adoption needs a Linux subreaper")
@@ -283,16 +342,16 @@ def test_reaping_after_a_leak_leaves_the_loops_other_children_waitable(tmp_path:
 
 def test_the_workspace_is_reset_between_attempts(loop: Loop, monkeypatch: pytest.MonkeyPatch) -> None:
     staged = loop.workspace / runner.STAGED_DIFF_NAME
-    states: list[bool] = []
+    journal = loop.journal("states")
 
     def fake_review(reviewer: Reviewer, **kwargs: Any) -> runner.ReviewOutcome:
-        states.append(staged.exists())
+        journal.append(staged.exists())
         staged.write_text("diff", encoding="utf-8")
         return runner.ReviewOutcome(None, Absence(INVALID, "unparseable"), "")
 
     monkeypatch.setattr(runner, "review", fake_review)
     assert loop.run() == 0
-    assert states == [False, False]
+    assert journal.items() == [False, False]
 
 
 def test_the_loop_stops_when_the_classification_is_unreadable(loop: Loop, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -462,18 +521,20 @@ def test_the_loop_fails_closed_on_linux_when_it_cannot_adopt_orphans(
 def test_each_attempt_gets_its_own_temporary_directory_inside_its_home(
     loop: Loop, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    seen: list[tuple[Path, Path]] = []
+    journal = loop.journal("tmpdirs")
     original = os.environ.get("TMPDIR")
 
     def fake_review(reviewer: Reviewer, **kwargs: Any) -> runner.ReviewOutcome:
-        seen.append((Path(os.environ["HOME"]), Path(os.environ["TMPDIR"])))
+        journal.append([os.environ["HOME"], os.environ["TMPDIR"]])
         return runner.ReviewOutcome(None, Absence(INVALID, "unparseable"), "")
 
     monkeypatch.setattr(runner, "review", fake_review)
     assert loop.run() == 0
-    assert all(tmp == home / "tmp" for home, tmp in seen)
+    seen = journal.items()
+    assert len(seen) == 2
+    assert all(Path(tmp) == Path(home) / "tmp" for home, tmp in seen)
     assert seen[0][1] != seen[1][1]
-    assert os.environ.get("TMPDIR") == original
+    assert loop.tmpdir_after == original
 
 
 def test_the_disk_scan_finds_the_job_token_inside_a_basic_auth_header(tmp_path: Path) -> None:

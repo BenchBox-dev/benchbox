@@ -20,15 +20,16 @@ def test_real_execute_survives_deleted_cached_tempdir_across_slots(loop: Loop, m
     cached.mkdir()
     cached.rmdir()
     monkeypatch.setattr(tempfile, "tempdir", str(cached))
-    homes: list[str] = []
+    journal = loop.journal("homes")
 
     def build(reviewer, workspace: Path, prompt: str, scratch: Path) -> Invocation:
-        homes.append(os.environ["HOME"])
+        journal.append(os.environ["HOME"])
         return Invocation((sys.executable, "-c", "print('not a verdict')"), scratch, None, dict(os.environ))
 
     monkeypatch.setattr(runner, "build", build)
     monkeypatch.setenv(omp_pin.BINARY_ENV, sys.executable)
     assert loop.run() == 0
+    homes = journal.items()
     assert len(homes) == 2 and homes[0] != homes[1]
     for slot in (1, 2):
         artifact = loop.artifact(slot)
