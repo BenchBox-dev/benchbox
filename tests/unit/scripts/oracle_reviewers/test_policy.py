@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import copy
+import importlib
 from typing import Any, Callable
 
 import pytest
 import yaml
 
-from _project.scripts.oracle_reviewers.policy import HARNESSES, SIZE_BUCKETS, Policy, PolicyError, parse_policy
+from _project.scripts.oracle_reviewers.policy import SIZE_BUCKETS, Policy, PolicyError, parse_policy
 
 from .conftest import POLICY_PATH
 
@@ -17,17 +18,14 @@ def _raw() -> dict[str, Any]:
     return yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
 
 
-def test_live_config_is_version_two(policy: Policy) -> None:
-    assert _raw()["version"] == 2
-    assert policy.mode == "enforce"
-    assert policy.status_context == "oracle-verdict"
-    assert policy.findings_delivery == "review"
-    assert policy.bot_login == "benchbox-oracle"
-
-
-def test_size_buckets_and_harness_constants() -> None:
-    assert SIZE_BUCKETS == ("trivial", "small", "medium", "large", "huge", "max")
-    assert HARNESSES == ("omp",)
+def test_the_live_policy_enforces_and_posts_where_the_gate_reads(
+    policy: Policy, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.syspath_prepend(str(POLICY_PATH.parents[1] / "_project" / "scripts"))
+    gate = importlib.import_module("_project.scripts.oracle_review_check")
+    assert (policy.mode, policy.findings_delivery) == ("enforce", "review")
+    assert policy.status_context == gate.ORACLE_CONTEXT
+    assert policy.bot_login == gate.ORACLE_LOGIN
 
 
 def test_live_reviewers_match_buckets_one_to_one(policy: Policy) -> None:

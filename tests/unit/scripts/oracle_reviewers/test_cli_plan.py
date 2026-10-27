@@ -8,10 +8,12 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
 from _project.scripts.oracle_reviewers import cli, github, protocol, render, sweep
+from _project.scripts.oracle_reviewers.classify import Classification
 from _project.scripts.oracle_reviewers.dedup import fingerprint
 from _project.scripts.oracle_reviewers.render import dispute_listing
 from _project.scripts.oracle_reviewers.retry import State
@@ -103,6 +105,8 @@ class FakeGitHub:
         self.reread_after_read = 1
         self._pull_reads = 0
         self.runs: list[dict[str, Any]] = []
+        self.listings: list[datetime] = []
+        self.committed = datetime.now(UTC) - timedelta(days=1)
         self.comments: list[dict[str, Any]] = []
         self.failing_prs: set[int] = set()
         self.failed: dict[int, list[str]] = {}
@@ -118,8 +122,9 @@ class FakeGitHub:
         self.fallback_error: Exception | None = None
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self._real_verdict_runs = github.verdict_runs
         monkeypatch.setattr(github, "get_json", self._json)
-        monkeypatch.setattr(github, "get_paginated", self._paginated)
+        monkeypatch.setattr(github, "get_paginated", self._route)
         monkeypatch.setattr(github, "get_diff", self._diff)
         monkeypatch.setattr(github, "review_threads", self._threads)
         monkeypatch.setattr(github, "latest_state", self._latest_state)
@@ -128,6 +133,7 @@ class FakeGitHub:
         monkeypatch.setattr(github, "in_flight_pulls", self._in_flight)
         monkeypatch.setattr(github, "failed_steps", lambda repo, run_id: list(self.failed.get(run_id, [])))
         monkeypatch.setattr(github, "commit_statuses", self._statuses)
+        monkeypatch.setattr(github, "_gh", self._gh)
         monkeypatch.setattr(github, "review_edit_states", self._edit_states)
         monkeypatch.setattr(github, "post_status", self._post)
         monkeypatch.setattr(github, "run_timed_out", self._timed_out)
@@ -147,10 +153,10 @@ class FakeGitHub:
     def _post(self, repo: str, head_sha: str, payload: dict[str, Any], token: str) -> None:
         self.posted.append((len(self.posted), {"head_sha": head_sha, **payload, "token": token}))
 
-    def _verdict_runs(self, repo: str, workflow: str, since: object) -> list[dict[str, Any]]:
+    def _verdict_runs(self, repo: str, workflow: str, since: datetime) -> list[dict[str, Any]]:
         if self.runs_error is not None:
             raise self.runs_error
-        return list(self.runs)
+        return self._real_verdict_runs(repo, workflow, since)
 
     def _in_flight(self, repo: str, workflow: str) -> frozenset[int]:
         if self.fallback_error is not None:
@@ -204,7 +210,25 @@ class FakeGitHub:
             self._pull_reads += 1
             if self._pull_reads > self.reread_after_read and self.reread_sha is not None:
                 return {**self.pull, "head": {"sha": self.reread_sha, "repo": {"full_name": REPO}}}
+        if path.startswith(f"repos/{REPO}/commits/"):
+            return {"commit": {"committer": {"date": self.committed.strftime("%Y-%m-%dT%H:%M:%SZ")}}}
+        jobs = re.fullmatch(rf"repos/{REPO}/actions/runs/(\d+)/jobs\?filter=latest&per_page=100", path)
+        if jobs:
+            steps = [{"name": "Check out", "conclusion": "success"}]
+            steps += [{"name": name, "conclusion": "failure"} for name in self.failed.get(int(jobs.group(1)), [])]
+            return {"jobs": [{"steps": steps}]}
         return self.pull
+
+    def _gh(self, *args: str, accept: str | None = None) -> str:
+        listing = f"repos/{REPO}/actions/workflows/{cli.WORKFLOW_FILE}/runs?"
+        assert args[:2] == ("--paginate", "--slurp") and args[2].startswith(listing), args
+        query = parse_qs(urlsplit(args[2]).query)
+        assert query["per_page"] == ["100"]
+        since = datetime.strptime(query["created"][0].removeprefix(">="), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+        self.listings.append(since)
+        listed = [run for run in self.runs if datetime.fromisoformat(run["created_at"]) >= since]
+        pages = [listed[start : start + 100] for start in range(0, len(listed), 100)] or [[]]
+        return json.dumps([{"total_count": len(listed), "workflow_runs": page} for page in pages])
 
     def _threads(self, repo: str, pr: int) -> list[dict[str, Any]]:
         if self.threads is None:
@@ -221,6 +245,11 @@ class FakeGitHub:
         if sha == HEAD:
             return {new: _head_entry(self.diff, new) for _, new in paths}
         return None
+
+    def _route(self, path: str) -> list[dict[str, Any]]:
+        if path.startswith(f"repos/{REPO}/commits/") and "/statuses?" in path:
+            return self._statuses(REPO, path.split("/commits/", 1)[1].split("/", 1)[0])
+        return self._paginated(path)
 
     def _paginated(self, path: str) -> list[dict[str, Any]]:
         if "/issues/" in path and path.split("?")[0].endswith("/comments"):
@@ -621,10 +650,19 @@ def test_sweep_dispatches_once_when_only_other_runs_are_in_flight(
 def test_sweep_reads_every_page_of_runs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
     fake.runs = [_verdict_run(900 + index) for index in range(250)] + [
-        _verdict_run(7, status="in_progress", conclusion=None, age=timedelta(days=3))
+        _verdict_run(7, status="in_progress", conclusion=None, age=sweep.RUN_WINDOW - timedelta(hours=1))
     ]
     assert _sweep(monkeypatch, tmp_path, fake) == 0
     assert fake.dispatched == []
+    (since,) = fake.listings
+    assert abs(datetime.now(UTC) - sweep.RUN_WINDOW - since) < timedelta(minutes=1)
+
+
+def test_sweep_ignores_a_run_older_than_its_listing_window(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fake = FakeGitHub(_pull(), SOUNDNESS, _due_state())
+    fake.runs = [_verdict_run(7, status="in_progress", conclusion=None, age=sweep.RUN_WINDOW + timedelta(hours=1))]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7]
 
 
 def test_the_run_listing_follows_every_page(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1432,13 +1470,18 @@ def test_a_follow_up_after_ship_with_fixes_reviews_only_the_changed_file(
     assert (tmp_path / "plan" / "diff.patch").read_text(encoding="utf-8") == CAPTURE_CHANGED
 
 
-def test_a_stored_record_with_duplicate_defect_ids_still_plans_a_follow_up(
+def test_a_stored_record_with_duplicate_defect_ids_prompts_the_follow_up_with_each_id_once(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     record = _record(TWO_FILE_DIFF, "SHIP_WITH_FIXES", open_defects=[DEFECT, dict(DEFECT)], next_id=2)
     _, values, plan = _plan(monkeypatch, tmp_path, _fake(_review(record), diff=CAPTURE_CHANGED))
     assert values["decision"] == "review" and plan["protocol"]["kind"] == "follow-up"
     assert plan["protocol"]["prior"] == [DEFECT]
+    classification = Classification("medium", "routine", "standard", 0.0, (), ())
+    prompt = cli._assemble_prompt(plan, tmp_path / "plan", classification, tmp_path)
+    tail = prompt.rsplit("## RESPONSE TEMPLATE", 1)[1]
+    template = json.loads(tail[tail.index("{") : tail.rindex("}") + 1])
+    assert [entry["id"] for entry in template["prior_defects"]] == [DEFECT["id"]]
 
 
 def test_a_follow_up_after_ship_scopes_to_the_changed_file_without_tiers(

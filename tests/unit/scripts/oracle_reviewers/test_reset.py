@@ -102,7 +102,8 @@ def test_the_owner_resets_a_backoff_with_the_reason_recorded(monkeypatch: pytest
     console = Console(monkeypatch, [_instruction()])
     assert console.run() == 0
     assert console.posted == [(7, f"Oracle backoff reset: {HEAD}\nReason: the gateway was down")]
-    assert reset.reset_moment([_instruction(), _comment(console.posted[0][1], 5)], HEAD) is not None
+    posted = _comment(console.posted[0][1], 5)
+    assert reset.reset_moment([_instruction(), posted], HEAD) == START + timedelta(minutes=5)
 
 
 def test_a_reset_without_an_owner_instruction_naming_the_head_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:

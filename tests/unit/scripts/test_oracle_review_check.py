@@ -155,16 +155,6 @@ def test_a_success_status_without_a_bound_unedited_receipt_names_the_recovery_no
     assert "run the verdict" not in message
 
 
-def test_the_exempt_success_marker_matches_the_report_builder() -> None:
-    from _project.scripts.oracle_reviewers import report, retry
-
-    assert oracle_review_check.EXEMPT_SUCCESS_DESCRIPTION == "only exempt paths changed"
-    assert (
-        report.fixed(retry.SUCCESS, "only exempt paths changed").description
-        == oracle_review_check.EXEMPT_SUCCESS_DESCRIPTION
-    )
-
-
 def test_an_exempt_success_verdict_never_satisfies_a_gate_that_requires_a_review() -> None:
     exempt = _verdict("success", description=oracle_review_check.EXEMPT_SUCCESS_DESCRIPTION)
     status, message = _oracle(statuses=[exempt])
@@ -928,10 +918,11 @@ def test_fetch_statuses_reads_the_head_commit_and_keeps_the_creator_type(monkeyp
 
 def _refusal_description() -> str:
     from _project.scripts.oracle_reviewers import report
+    from _project.scripts.oracle_reviewers.policy import load_policy
 
     patches = {"aaaaaaaa": "11111111"}
     plan = {
-        "status_context": "oracle-verdict",
+        "status_context": load_policy(REPO_ROOT / ".github" / "oracle-reviewers.yml").status_context,
         "head_sha": HEAD,
         "mode": "shadow",
         "tier": "very-high",
@@ -977,11 +968,6 @@ def test_a_standin_never_overrides_an_open_oracle_thread_after_a_refusal() -> No
         statuses=statuses, threads=threads, comments=[_attestation(created_at="2026-10-08T23:59:59Z")]
     )
     assert status == oracle_review_check.WAITING and "unresolved oracle review thread" in message
-
-
-def test_new_verdicts_use_the_current_status_context() -> None:
-    assert oracle_review_check.ORACLE_CONTEXT == "oracle-verdict"
-    assert _refusal_description().startswith(oracle_review_check.REFUSED_DESCRIPTION_PREFIX)
 
 
 @pytest.mark.parametrize(

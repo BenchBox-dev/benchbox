@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 from datetime import UTC, datetime, timedelta
@@ -420,6 +421,41 @@ def test_cli_finalize_fixed_decisions(
     assert out["state"] == state and out["has_state"] == "false" and out["comment"] == "false"
     status = json.loads((tmp_path / "o" / "status.json").read_text(encoding="utf-8"))
     assert status["description"] == ("only exempt paths changed" if decision == "success" else "fork: owner review")
+
+
+def test_a_finalized_exempt_success_never_satisfies_a_gate_whose_rules_require_a_review(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps({**_plan(policy), "decision": "success", "run_uuid": "1" * 32}), encoding="utf-8")
+    _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_path),
+        "--attempts-dir",
+        str(tmp_path),
+        "--out-dir",
+        str(tmp_path / "o"),
+    )
+    status = json.loads((tmp_path / "o" / "status.json").read_text(encoding="utf-8"))
+    posted = {
+        **status,
+        "id": 1,
+        "login": f"{policy.bot_login}[bot]",
+        "user_type": "Bot",
+        "created_at": "2026-10-05T12:00:00Z",
+    }
+    monkeypatch.syspath_prepend(str(Path(cli.__file__).resolve().parents[1]))
+    gate = importlib.import_module("_project.scripts.oracle_review_check")
+    rules = gate.path_matcher(2, 2, *gate._review_rules())
+    code, message = gate.decide(HEAD, [CHECKER], [posted], [], rules)
+    assert code == gate.WAITING and "reports only exempt paths changed" in message
+    assert gate.decide(HEAD, ["docs/index.md"], [posted], [], rules) == (
+        gate.PASS,
+        "oracle-review: only exempt paths changed",
+    )
 
 
 def test_verdict_comes_from_the_terminal_reviewer_slot(policy: Policy, tmp_path: Path) -> None:

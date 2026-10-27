@@ -197,7 +197,6 @@ def test_gate_state_maps_pass_to_success_and_everything_else_to_failure() -> Non
 
 
 def test_status_payload_posts_the_gate_context() -> None:
-    assert oracle_gate.GATE_CONTEXT == "oracle-gate"
     payload = oracle_gate.status_payload(oracle_gate.PASS, "oracle-review: pass (oracle verdict for " + HEAD + ")")
     assert payload == {
         "state": "success",

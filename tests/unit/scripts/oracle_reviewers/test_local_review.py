@@ -7,7 +7,8 @@ import subprocess
 import sys
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from collections.abc import Iterator
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +28,48 @@ from .test_attempts import CHECKER, _classification, _finding, _v
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-REAL_REACHABLE = local.reachable
+
+class Gateway(HTTPServer):
+    def __init__(self, host: str) -> None:
+        super().__init__(("127.0.0.1", 0), GatewayHandler)
+        self.status = 200
+        self.paths: list[str] = []
+        self.url = f"http://{host}:{self.server_address[1]}"
+
+
+class GatewayHandler(BaseHTTPRequestHandler):
+    server: Gateway
+
+    def do_GET(self) -> None:
+        self.server.paths.append(self.path)
+        self.send_response(self.server.status)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def log_message(self, format: str, *args: Any) -> None:
+        return None
+
+
+def _serve(host: str) -> Iterator[Gateway]:
+    server = Gateway(host)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield server
+    server.shutdown()
+    server.server_close()
+    thread.join()
+
+
+@pytest.fixture
+def gateway() -> Iterator[Gateway]:
+    yield from _serve("127.0.0.1")
+
+
+@pytest.fixture
+def cloud_gateway() -> Iterator[Gateway]:
+    yield from _serve("localhost")
+
+
 LOCAL_TOKEN = "localtok-" + "k3Jd9sLp" * 5
 CLOUD_TOKEN = "cloudtok-" + "Wq8Zx2Rm" * 5
 CLOUD_URL = "https://cloud-gateway.example.ts.net:4000"
@@ -94,7 +136,7 @@ def _make_repo(path: Path, changed: str = CHECKER) -> Path:
 
 
 class Env:
-    def __init__(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, policy: Policy) -> None:
+    def __init__(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, policy: Policy, gateway: Gateway) -> None:
         self.tmp_path = tmp_path
         self.monkeypatch = monkeypatch
         self.policy = policy
@@ -108,7 +150,7 @@ class Env:
         monkeypatch.setenv("HOME", str(self.home))
         monkeypatch.setenv(local.STATE_DIR_ENV, str(tmp_path / "state"))
         monkeypatch.chdir(self.repo)
-        monkeypatch.setattr(local, "reachable", lambda url, proxy="": True)
+        monkeypatch.setattr(local, "LOCAL_GATEWAY_URL", gateway.url)
         monkeypatch.setenv(omp_pin.CACHE_ENV, str(tmp_path / "omp-cache"))
         monkeypatch.delenv(omp_pin.BINARY_ENV, raising=False)
         self.downloads: list[str] = []
@@ -151,8 +193,8 @@ class Env:
 
 
 @pytest.fixture
-def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, policy: Policy) -> Env:
-    return Env(tmp_path, monkeypatch, policy)
+def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, policy: Policy, gateway: Gateway) -> Env:
+    return Env(tmp_path, monkeypatch, policy, gateway)
 
 
 def _high() -> dict[str, Any]:
@@ -286,7 +328,6 @@ def test_an_invisible_or_placeholder_override_is_refused(env: Env, body: str) ->
 def test_unreachable_gateway_refuses_and_an_override_does_not_apply(
     env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(local, "reachable", REAL_REACHABLE)
     monkeypatch.setattr(local, "LOCAL_GATEWAY_URL", "http://127.0.0.1:1")
     monkeypatch.setattr(local, "REACHABILITY_SECONDS", 2)
     env.verdict = _high()
@@ -295,6 +336,13 @@ def test_unreachable_gateway_refuses_and_an_override_does_not_apply(
     assert "unreachable" in captured.err
     assert "does not cover an unavailable review" in captured.err
     assert env.reviews == []
+
+
+def test_a_gateway_that_answers_its_health_probe_with_an_error_is_reachable(env: Env, gateway: Gateway) -> None:
+    gateway.status = 503
+    assert env.run() == local.EXIT_PROCEED
+    assert gateway.paths == ["/healthz"]
+    assert len(env.reviews) == 1
 
 
 def test_a_reviewer_absence_refuses_and_an_override_does_not_apply(
@@ -321,9 +369,13 @@ def test_absent_keychain_key_selects_the_fixed_default_and_says_so(
 
 
 def test_absent_keychain_key_selects_the_gate_template_when_review_machinery_changes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, policy: Policy, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    policy: Policy,
+    gateway: Gateway,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    env = Env(tmp_path, monkeypatch, policy)
+    env = Env(tmp_path, monkeypatch, policy, gateway)
     gate_repo = _make_repo(tmp_path / "gate-repo", GATE_FILE)
     monkeypatch.chdir(gate_repo)
     assert env.run() == local.EXIT_PROCEED
@@ -349,26 +401,28 @@ def test_a_present_key_runs_the_classifier_and_hides_the_key(
     assert [review["reviewer"] for review in env.reviews] == ["small"]
 
 
-def test_local_sessions_use_the_oracle_local_client_on_the_loopback_gateway(env: Env) -> None:
+def test_local_sessions_use_the_oracle_local_client_on_the_loopback_gateway(env: Env, gateway: Gateway) -> None:
     assert env.run() == local.EXIT_PROCEED
+    assert gateway.paths == ["/healthz"]
     (review,) = env.reviews
     assert review["token"] == LOCAL_TOKEN
-    assert review["url"] == local.LOCAL_GATEWAY_URL
-    assert local.LOCAL_GATEWAY_URL in review["models"]
+    assert review["url"] == gateway.url
+    assert gateway.url in review["models"]
     assert local.resolve_credentials().client == local.LOCAL_CLIENT
 
 
 def test_cloud_environment_credentials_select_the_oracle_cloud_client(
-    env: Env, monkeypatch: pytest.MonkeyPatch
+    env: Env, monkeypatch: pytest.MonkeyPatch, gateway: Gateway, cloud_gateway: Gateway
 ) -> None:
-    monkeypatch.setenv("ORACLE_GATEWAY_URL", CLOUD_URL)
+    monkeypatch.setenv("ORACLE_GATEWAY_URL", cloud_gateway.url)
     monkeypatch.setenv("ORACLE_CLOUD_GATEWAY_TOKEN", CLOUD_TOKEN)
     access = local.resolve_credentials()
-    assert (access.client, access.url, access.token) == (local.CLOUD_CLIENT, CLOUD_URL, CLOUD_TOKEN)
+    assert (access.client, access.url, access.token) == (local.CLOUD_CLIENT, cloud_gateway.url, CLOUD_TOKEN)
     assert env.run() == local.EXIT_PROCEED
+    assert (cloud_gateway.paths, gateway.paths) == (["/healthz"], [])
     (review,) = env.reviews
-    assert review["token"] == CLOUD_TOKEN and review["url"] == CLOUD_URL
-    assert CLOUD_URL in review["models"]
+    assert review["token"] == CLOUD_TOKEN and review["url"] == cloud_gateway.url
+    assert cloud_gateway.url in review["models"]
 
 
 def test_a_cloud_session_without_the_cloud_client_refuses_instead_of_using_the_local_one(
@@ -678,15 +732,16 @@ def test_planted_secret_values_never_appear_in_the_output_or_the_cache(
 
 
 def test_planted_cloud_values_never_appear_in_the_output(
-    env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    env: Env, monkeypatch: pytest.MonkeyPatch, cloud_gateway: Gateway, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setenv("ORACLE_GATEWAY_URL", CLOUD_URL)
+    url = cloud_gateway.url
+    monkeypatch.setenv("ORACLE_GATEWAY_URL", url)
     monkeypatch.setenv("ORACLE_CLOUD_GATEWAY_TOKEN", CLOUD_TOKEN)
-    env.verdict = _v(f"{CLOUD_TOKEN} {CLOUD_URL}", [{**_finding("High"), "detail": f"{CLOUD_TOKEN} {CLOUD_URL}"}])
+    env.verdict = _v(f"{CLOUD_TOKEN} {url}", [{**_finding("High"), "detail": f"{CLOUD_TOKEN} {url}"}])
     assert env.run() == local.EXIT_REFUSED
     captured = capsys.readouterr()
     assert CLOUD_TOKEN not in captured.out + captured.err
-    assert CLOUD_URL not in captured.out + captured.err
+    assert url not in captured.out + captured.err
 
 
 def test_a_second_review_of_the_same_patch_waits_for_its_lock_then_refuses(
@@ -800,9 +855,13 @@ def test_a_second_process_reviewing_the_same_patch_waits_and_reuses_the_result(t
 
 
 def test_a_change_with_only_exempt_paths_needs_no_review(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, policy: Policy, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    policy: Policy,
+    gateway: Gateway,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    env = Env(tmp_path, monkeypatch, policy)
+    env = Env(tmp_path, monkeypatch, policy, gateway)
     inert_repo = _make_repo(tmp_path / "inert-repo", "NOTES.md")
     monkeypatch.chdir(inert_repo)
     assert env.run() == local.EXIT_PROCEED
@@ -825,7 +884,6 @@ def test_the_reviewer_home_accepts_http_loopback_only_when_the_local_review_asks
 def test_the_attempt_loop_without_the_local_flag_refuses_a_plaintext_gateway(
     env: Env, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(local, "LOCAL_GATEWAY_URL", "http://127.0.0.1:4000")
     original = cli.command_attempts
     monkeypatch.setattr(
         cli,
@@ -907,9 +965,9 @@ def test_reachable_goes_through_the_gateway_proxy_and_fails_without_it(monkeypat
     monkeypatch.setenv("no_proxy", "127.0.0.1")
     unreachable = "http://127.0.0.1:1"
     with _ProxyServer() as proxy:
-        assert REAL_REACHABLE(unreachable, proxy.url) is True
+        assert local.reachable(unreachable, proxy.url) is True
         assert proxy.requests == [(f"{unreachable}/healthz", "127.0.0.1:1")]
-    assert REAL_REACHABLE(unreachable) is False
+    assert local.reachable(unreachable) is False
 
 
 def test_cloud_credentials_read_the_proxy_from_the_gateway_status_file(
@@ -932,7 +990,6 @@ def test_local_credentials_ignore_the_gateway_status_file(env: Env) -> None:
 def test_cloud_review_reaches_the_gateway_through_the_proxy_without_stubbing_reachable(
     env: Env, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(local, "reachable", REAL_REACHABLE)
     monkeypatch.setenv("ORACLE_GATEWAY_URL", "http://127.0.0.1:1")
     monkeypatch.setenv("ORACLE_CLOUD_GATEWAY_TOKEN", CLOUD_TOKEN)
     with _ProxyServer() as proxy:
@@ -948,7 +1005,6 @@ def test_cloud_review_reaches_the_gateway_through_the_proxy_without_stubbing_rea
 def test_cloud_review_without_the_proxy_says_how_to_start_it(
     env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(local, "reachable", REAL_REACHABLE)
     monkeypatch.setattr(local, "REACHABILITY_SECONDS", 2)
     monkeypatch.setenv("ORACLE_GATEWAY_URL", "http://127.0.0.1:1")
     monkeypatch.setenv("ORACLE_CLOUD_GATEWAY_TOKEN", CLOUD_TOKEN)

@@ -48,10 +48,10 @@ def _windows_locale_run(real_run: Any) -> Any:
     return run
 
 
-def test_local_imports_without_fcntl(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(sys.modules, "fcntl", None)
-    importlib.reload(local)
-    assert local.EXIT_PROCEED == 0
+def test_local_imports_without_fcntl() -> None:
+    probe = "import sys; sys.modules['fcntl'] = None; import _project.scripts.oracle_reviewers.local"
+    proc = subprocess.run([sys.executable, "-c", probe], cwd=ROOT, capture_output=True, text=True, timeout=60)
+    assert proc.returncode == 0, proc.stderr
 
 
 def test_explicit_collection_skips_without_fcntl() -> None:
