@@ -500,6 +500,7 @@ max-complexity = 18
 "benchbox/platforms/dataframe/unified_frame.py" = ["N812"]
 "_project/sqlglot-upstream/repros/repro_all.py" = ["TID251"]
 "_project/sqlglot-upstream/repros/sqlite_extract.py" = ["TID251"]
+"_project/sqlglot-upstream/repros/transpiler_comparison.py" = ["TID251"]
 "_project/scripts/build_joinorder_data.py" = ["TID251"]
 "tests/utilities/qgen_wrapper.py" = ["TID251"]
 
