@@ -16434,7 +16434,9 @@
     },
     "oracle-jev-gateway-gap": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "oracle-history-edited-review-fail-closed-20261027"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Jev classification failed through omp auth-gateway; oracle now calls TypeSafe directly"
