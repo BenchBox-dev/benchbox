@@ -106,7 +106,7 @@ jobs:
           app-id: ${{ secrets.ORACLE_APP_ID }}
           private-key: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
           permission-statuses: write
-          permission-pull-requests: write
+          permission-pull-requests: read
 
       - name: Post the gate for the head
         if: steps.resolve.outputs.pr != '' && env.HAS_APP == 'true'
@@ -206,7 +206,7 @@ jobs:
           app-id: ${{ secrets.ORACLE_APP_ID }}
           private-key: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
           permission-statuses: write
-          permission-pull-requests: write
+          permission-pull-requests: read
 
       - name: Gate every open pull request targeting develop
         env:

@@ -205,7 +205,7 @@ def review(
     if verdict.status == INCOMPLETE:
         reason = verdict.incomplete_reason or "the reviewer reported its review incomplete"
         return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, reason), traced)
-    verdict = evidence.mark_citations(verdict, workspace)
+    verdict = evidence.mark_citations(verdict, workspace, protocol.disputed_claims(plan))
     problem = protocol.contradiction(verdict, plan)
     if problem is not None:
         return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), traced)

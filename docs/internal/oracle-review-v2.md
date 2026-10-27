@@ -327,21 +327,8 @@ than 10 open defects in total give DO NOT SHIP. The previous reviewer is tried
 first unless the follow-up's own bucket names a larger reviewer, as it does for
 a push that touches review machinery. A follow-up runs for every size bucket.
 
-A forced follow-up rejudges rather than skips: its brief adds the disputed
-threads under "Disputed findings", with each reply quoted as data, and tells
-the reviewer to confirm each disputed defect as not fixed or withdraw it with
-an examined head-commit file and line that refutes it. A withdrawal without
-such a citation counts as not fixed, and a defect the reviewer marks fixed on
-an unchanged patch counts as not fixed too, so only evidenced withdrawals
-leave the open list, and they are reported separately as never defects. On a
-forced round the judge counts a withdrawal without a file-and-line citation
-as not fixed; the head-commit existence check still happens when citations
-are marked.
-A thread reply counts as a dispute only when a reply from an owner, member or
-collaborator of the repository, other than the oracle bot, contains a line
-starting with `Dispute:` that states the case against the defect. Replies from
-other accounts never reach the brief and never force a re-review. A plain
-acknowledgement such as `done` is not a dispute.
+A forced follow-up rejudges rather than skips: its brief lists each disputed thread under "Disputed findings", keyed by the finding id from the thread's hidden marker, with each reply quoted as data. For every keyed disputed finding the verdict must give an explicit disposition: withdraw it with an examined head-commit file and line that refutes it, or maintain it as not fixed by restating one shown rebuttal reply exactly as shown, saying in concedes whether the rebuttal holds, and citing an examined head-commit file and line that answers it or an examined reproduction script as `repro: path`. Withdrawing grants the rebuttal, so a withdrawal needs concedes set; agreeing with the rebuttal yet keeping the defect not fixed is invalid, as is a missing disposition, a claim that matches no shown reply, or withdrawing without conceding: those make the attempt invalid and it is retried. A maintain or fixed disposition whose citation does not verify is not invalid: the defect stays open and its disposition is published with the evidence gap. A demoted withdrawal or fix is judged exactly as a maintain, so its concedes and claim values cannot invalidate it. A keep-open verdict is never discarded or rerolled; only the safe direction is taken. A withdrawal without a verified citation counts as not fixed, and a defect the reviewer marks fixed on an unchanged patch counts as not fixed too, so only evidenced dispositions leave the open list, and withdrawals are reported separately as never defects. Every disposition and its evidence is published under its finding in the review body; when the body would exceed the cap, finding details shrink first and no disposition line is ever dropped. On a forced round the judge counts a withdrawal without a file-and-line citation as not fixed; the head-commit existence check still happens when citations are marked. Only disputes bound to a current-cycle prior finding are enforced, shown and published; a stale or unknown dispute stays data.
+A thread reply counts as a keyed dispute only when a reply from an owner, member or collaborator of the repository, other than the oracle bot, contains a line starting with `Dispute:` that states the case against the defect, and the thread carries the hidden finding marker. Replies from other accounts never reach the brief and never force a re-review. A `Dispute:` reply on a thread without a marker is shown as data and forces no re-review. A plain acknowledgement such as `done` is not a dispute.
 A forced re-review runs only after a SHIP or SHIP WITH FIXES decision, never
 after DO NOT SHIP. The third forced re-review of one patch is refused with a
 message to change the patch or ask the owner for a stand-in: empty commits and
@@ -618,9 +605,9 @@ cancels a run in flight and a cancelled run posts nothing.
   doubling backoff, so an author can dispute a finding with a `Dispute:` reply
   on its thread without a new commit. A manual rerun with no `Dispute:` reply
   leaves the head's decision in place instead of forcing another re-review.
-  The new brief carries unresolved thread replies as disputed findings and
-  asks the reviewer to confirm or withdraw each disputed defect with a reason,
-  checking any claimed grammar or documented behaviour.
+  The new brief carries unresolved thread replies as disputed findings keyed by finding id and
+  asks the reviewer to withdraw or maintain each keyed disputed defect with an explicit disposition
+  and its evidence, published under the finding, checking any claimed grammar or documented behaviour.
 - `gh workflow run oracle-verdict.yml --ref develop -f pr=<number>`
   does the same. A dispatch from any other ref is refused.
 - A sweep retries pull requests whose last result on the current head is
@@ -822,27 +809,43 @@ policy or the attempt loop must also:
 The cut-over is done: `.github/oracle-reviewers.yml` sets `mode: enforce`, and
 the checker (`_project/scripts/oracle_review_check.py`), whose decision the
 required `oracle-gate` check reports, accepts only the oracle signal. It
-requires, from the `benchbox-oracle` App's Bot account:
+requires:
 
-- a review of the head, not pending or dismissed, submitted after any retarget,
-  whose latest one opens with `### oracle-verdict: success for` (or, before
-  2026-10-09, `### oracle-review-shadow: success for`) the head SHA, because
-  the oracle posts every verdict as a comment review and a defect outside the
-  diff has no thread;
+- a latest `oracle-verdict` commit status on the head, created by the
+  `benchbox-oracle` App's Bot account, in state `success`, posted after any
+  retarget;
 - no unresolved review thread from the App.
 
-The verdict is read from the pull request's own review, not from the commit
-status, which any pull request with the same head commit could set. The
-oracle signal needs `findings_delivery: review`, under which every run that
-reaches a result, including a pending one, posts a review, so the latest
-review is the latest result.
+The verdict is read from the App's commit status, not from review bodies. A
+review can be edited or deleted by the account every agent uses, while a
+commit status cannot be edited or deleted and records its creator, so the
+gate ignores a status from any other account and any other context, including
+the legacy `oracle-review-shadow` context, and never reads a review body for
+its decision. A commit status belongs to a head commit, not to a pull
+request, so the gate also binds the verdict to this pull request with an
+explicit same-run binding: every verdict run mints a run uuid that it writes
+into the review marker and appends to the success status description
+(`[run <uuid>]`, capped to the 140-character status limit), and the gate
+passes on a success status only when this pull request has its own unedited
+oracle review of that head whose marker carries the same run uuid and whose
+header agrees with the status. Unedited is verified through the review API;
+a receipt whose edit state cannot be verified never authorizes. A status left
+by another pull request at the same head, or by an earlier policy, never
+authorizes this pull request: any success status without a run uuid fails closed
+(waiting for a fresh verdict run), so an unbound status can never authorize an
+open pull request. Evidence predating the run uuid requirement carries no uuid
+and fails closed (waiting for a fresh verdict run); merged pull requests predate
+this cutover and never re-run the gate. The oracle signal needs `findings_delivery:
+review`, under which every run that reaches a result, including a pending
+one, posts a review and then a status in the same state.
 
 The `oracle-review` workflow is a review-event notification, not a check. It
 triggers only on `pull_request_review` submitted, edited and dismissed, holds no
 token permissions, and runs one `review-event` job with a single no-op step: no
 checkout, no secrets and no API calls. It produces no check run named
-`oracle-review`. The `edited` type is included because the gate reads the
-current review body, so an edited oracle review can change the decision.
+`oracle-review`. The `edited` type keeps edits to oracle reviews visible in the run history; the
+gate does not read review bodies for its decision, but it rejects edited receipts when binding
+a status to this pull request.
 
 Because `pull_request_review` runs the pull request's own workflow file, the
 notification is controlled by the pull request and can be deleted or altered by
