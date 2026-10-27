@@ -1125,6 +1125,8 @@ def _retry_reason(
     status_context: str,
     bot_login: str,
     token: str | None,
+    *,
+    full: bool = True,
 ) -> str | None:
     number = pull["number"]
     head = pull["head"]["sha"]
@@ -1132,6 +1134,8 @@ def _retry_reason(
     if state is not None and state.head_sha == head:
         if retry.due_for_retry(state, head, now, rules):
             return "its retry is due"
+        if not full:
+            return None
         if state.outcome == retry.PENDING and state.pending_cause == retry.ALL_ABSENT:
             reset_at = github.backoff_reset_at(repo, number, head)
             if reset_at is not None and retry.due_for_retry(state, head, now, rules, reset_at):
@@ -1146,6 +1150,8 @@ def _retry_reason(
                     _summary(f"retry not dispatched for #{number}: the daily budget of {rules.daily_budget} is used")
                     return None
                 return "the owner reset its backoff"
+        return None
+    if not full:
         return None
     if not sweep.newest_failed(runs):
         return None
@@ -1182,8 +1188,32 @@ def command_sweep(args: argparse.Namespace) -> int:
     repo = os.environ["GITHUB_REPOSITORY"]
     now = _now()
     token = os.environ.get("SURFACE_TOKEN") or None
-    runs = sweep.parse_runs(github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.RUN_WINDOW))
-    busy = sweep.in_flight(runs, now)
+    runs: dict[int, tuple[sweep.Run, ...]] | None
+    try:
+        listing = github.verdict_runs(repo, WORKFLOW_FILE, now - sweep.RUN_WINDOW)
+    except github.GitHubError as exc:
+        _summary(
+            "oracle-verdict: the runs listing failed; this sweep dispatches only due retries "
+            f"and skips stateless retries: {exc}"
+        )
+        runs = None
+    else:
+        runs = sweep.parse_runs(listing)
+    busy: frozenset[int] | None
+    if runs is not None:
+        busy = sweep.in_flight(runs, now)
+    else:
+        try:
+            busy = github.in_flight_pulls(repo, WORKFLOW_FILE)
+        except github.GitHubError as exc:
+            _summary(f"oracle-verdict: the fallback in-flight lookup also failed ({exc}); dispatching nothing")
+            busy = None
+    if busy is None:
+        print(
+            "oracle-verdict: error: the sweep could not tell which pull requests have a run in flight", file=sys.stderr
+        )
+        return 1
+    full = runs is not None
     dispatched = 0
     errors: list[str] = []
     for pull in github.get_paginated(f"repos/{repo}/pulls?state=open&base=develop&per_page=100"):
@@ -1194,7 +1224,15 @@ def command_sweep(args: argparse.Namespace) -> int:
         number = pull["number"]
         try:
             reason = _retry_reason(
-                repo, pull, runs.get(number, ()), policy.retry, now, policy.status_context, policy.bot_login, token
+                repo,
+                pull,
+                runs.get(number, ()) if runs is not None else (),
+                policy.retry,
+                now,
+                policy.status_context,
+                policy.bot_login,
+                token,
+                full=full,
             )
             if reason is None:
                 continue
@@ -1216,6 +1254,9 @@ def command_sweep(args: argparse.Namespace) -> int:
     _summary(f"oracle-verdict sweep dispatched {dispatched} retr{'y' if dispatched == 1 else 'ies'}")
     if errors:
         print(f"oracle-verdict: error: the sweep could not handle {len(errors)} pull request(s)", file=sys.stderr)
+        return 1
+    if runs is None:
+        print("oracle-verdict: error: the sweep ran degraded because the runs listing failed", file=sys.stderr)
         return 1
     return 0
 

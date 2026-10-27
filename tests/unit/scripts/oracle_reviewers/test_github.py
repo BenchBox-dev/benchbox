@@ -767,6 +767,89 @@ def test_commit_statuses_lists_paginated_statuses_with_creator_metadata(
     assert seen == [f"repos/{REPO}/commits/{SHA}/statuses?per_page=100"]
 
 
+def test_verdict_runs_retries_once_with_a_short_pause(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, ...]] = []
+    pauses: list[float] = []
+    payload = [{"workflow_runs": [{"id": 3, "display_title": "oracle-verdict (workflow_dispatch pr=7)"}]}]
+
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        calls.append(args)
+        if len(calls) == 1:
+            raise github.GitHubError("gh api failed: Bad Gateway")
+        return json.dumps(payload)
+
+    monkeypatch.setattr(github, "_gh", fake_gh)
+    monkeypatch.setattr(github, "sleep", pauses.append)
+    assert (
+        github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC))
+        == payload[0]["workflow_runs"]
+    )
+    assert len(calls) == 2 and all(call[:2] == ("--paginate", "--slurp") for call in calls)
+    assert pauses == [github.RUN_LIST_PAUSE_SECONDS]
+
+
+def test_verdict_runs_retries_a_json_decode_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    replies = iter(["<html>Bad Gateway</html>", json.dumps([{"workflow_runs": [{"id": 3}]}])])
+    pauses: list[float] = []
+    monkeypatch.setattr(github, "_gh", lambda *args, accept=None: next(replies))
+    monkeypatch.setattr(github, "sleep", pauses.append)
+    assert github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC)) == [{"id": 3}]
+    assert pauses == [github.RUN_LIST_PAUSE_SECONDS]
+
+
+def test_verdict_runs_raises_a_github_error_when_the_json_stays_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(github, "_gh", lambda *args, accept=None: "not json")
+    monkeypatch.setattr(github, "sleep", lambda seconds: None)
+    with pytest.raises(github.GitHubError, match="invalid JSON"):
+        github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC))
+
+
+def test_verdict_runs_raises_after_the_bounded_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, ...]] = []
+    pauses: list[float] = []
+
+    def fake_gh(*args: str, accept: str | None = None) -> str:
+        calls.append(args)
+        raise github.GitHubError("gh api failed: Bad Gateway")
+
+    monkeypatch.setattr(github, "_gh", fake_gh)
+    monkeypatch.setattr(github, "sleep", pauses.append)
+    with pytest.raises(github.GitHubError, match="Bad Gateway"):
+        github.verdict_runs(REPO, "oracle-verdict.yml", datetime(2026, 10, 19, tzinfo=UTC))
+    assert len(calls) == github.RUN_LIST_ATTEMPTS
+    assert pauses == [github.RUN_LIST_PAUSE_SECONDS]
+
+
+def test_in_flight_pulls_reads_only_the_first_page_of_active_runs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: list[str] = []
+    pages = {
+        "status=pending": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=11)"}]},
+        "status=waiting": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=12)"}]},
+        "status=requested": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=13)"}]},
+        "status=queued": {"workflow_runs": [{"display_title": "oracle-verdict (workflow_dispatch pr=7)"}]},
+        "status=in_progress": {
+            "workflow_runs": [
+                {"display_title": "oracle-verdict (pull_request_target pr=9)"},
+                {"display_title": "oracle-verdict (schedule pr=sweep)"},
+            ]
+        },
+    }
+
+    def fake_json(path: str) -> dict[str, Any]:
+        seen.append(path)
+        return next(page for key, page in pages.items() if key in path)
+
+    monkeypatch.setattr(github, "get_json", fake_json)
+    assert github.in_flight_pulls(REPO, "oracle-verdict.yml") == frozenset({7, 9, 11, 12, 13})
+    assert seen == [
+        f"repos/{REPO}/actions/workflows/oracle-verdict.yml/runs?status={status}&per_page=100"
+        for status in ("pending", "waiting", "requested", "queued", "in_progress")
+    ]
+    assert "--paginate" not in " ".join(seen)
+
+
 def test_post_status_posts_with_the_given_token(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[list[str], dict[str, str]]] = []
     environment = dict(os.environ)

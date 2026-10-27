@@ -9,6 +9,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 from typing import Any
 from urllib.parse import quote
 
@@ -318,12 +319,43 @@ def _latest_state(repo: str, pr: int, name: str, workflow_path: str) -> State | 
     return None
 
 
+RUN_LIST_ATTEMPTS = 2
+RUN_LIST_PAUSE_SECONDS = 10
+IN_FLIGHT_STATUSES = ("pending", "waiting", "requested", "queued", "in_progress")
+RUN_TITLE_PULL = re.compile(r"\bpr=(\d+)\)$")
+
+
 def verdict_runs(repo: str, workflow: str, since: datetime) -> list[dict[str, Any]]:
     created = quote(f">={since.strftime('%Y-%m-%dT%H:%M:%SZ')}", safe="")
-    pages = json.loads(
-        _gh("--paginate", "--slurp", f"repos/{repo}/actions/workflows/{workflow}/runs?per_page=100&created={created}")
-    )
-    return [run for page in pages for run in page.get("workflow_runs", [])]
+    query = f"repos/{repo}/actions/workflows/{workflow}/runs?per_page=100&created={created}"
+    error: GitHubError | None = None
+    for attempt in range(RUN_LIST_ATTEMPTS):
+        if attempt:
+            sleep(RUN_LIST_PAUSE_SECONDS)
+        try:
+            pages = json.loads(_gh("--paginate", "--slurp", query))
+            return [run for page in pages for run in page.get("workflow_runs", [])]
+        except (GitHubError, json.JSONDecodeError) as exc:
+            error = exc
+    assert error is not None
+    if isinstance(error, GitHubError):
+        raise error
+    raise GitHubError(f"gh api {query} returned invalid JSON: {error}") from error
+
+
+def in_flight_pulls(repo: str, workflow: str) -> frozenset[int]:
+    running: set[int] = set()
+    for status in IN_FLIGHT_STATUSES:
+        path = f"repos/{repo}/actions/workflows/{workflow}/runs?status={status}&per_page=100"
+        try:
+            listing = get_json(path)
+        except json.JSONDecodeError as exc:
+            raise GitHubError(f"gh api {path} returned invalid JSON: {exc}") from exc
+        for run in listing.get("workflow_runs", []):
+            match = RUN_TITLE_PULL.search(run.get("display_title") or "")
+            if match:
+                running.add(int(match.group(1)))
+    return frozenset(running)
 
 
 def committed_at(repo: str, sha: str) -> datetime:
