@@ -3166,10 +3166,15 @@
       "title": "CI savings reviews must account for same-event workflow fan-out"
     },
     "ci-pr-arm-disarm-red-and-refuse-visible-failures-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-28T20:30:46Z",
+        "generation": "354a52736d324762b9510b8712406a02",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Disarm red PRs #3548/#3549 and make pr-arm refuse visible required-check failures"
     },
     "ci-rebalance-medium-shards": {
