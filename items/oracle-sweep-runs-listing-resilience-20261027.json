@@ -2,6 +2,7 @@
   "acceptance": [
     "Tests that fail on the current #3565 head and pass after: a pending/waiting/requested run counts as in flight in the fallback; listing and fallback both failing dispatches nothing; a degraded sweep returns 1 after dispatching; a JSON decode error in the listing is retried.",
     "Live after merge: one scheduled or push sweep succeeds (record run id).",
+    "Adds or updates the matching scenario in the oracle end-to-end harness (oracle-e2e-scenario-harness-and-mutation-gate-20261027) once that harness exists, proven to fail with this item's defect reintroduced.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
   "context": "2026-10-27: #3565 rebased and fixed, head c3860d665 (statuses widened, dual failure dispatches nothing and exits 1, degraded exits 1, except narrowed, JSON retried); 7 new tests fail before; 1249 pass. Frozen until the edited-review fix merges.\n\nOWNER DECISIONS 2026-10-27 (choice dialog, joeharris76): freeze all oracle-gated merges until oracle-history-edited-review-fail-closed-20261027 merges; Critical fix = GraphQL edit-state check now, HMAC marker later; pr-arm proceeds on fast-duration pass or neutral only. PR #3565 head cd1cecd09 is the starting point; it previously had oracle SHIP on 96401df40 but was rebased.",
@@ -36,6 +37,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "ba5e2fc0ca414fe9ae36a073c1f876f6",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-27T14:09:23Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cc92497a9f034d0e82faa23f586daa7a",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
