@@ -2,8 +2,8 @@
 
 **Created:** 2026-04-01
 **Phase scope:** Phase 3 (Hosted API at `api.benchbox.dev`)
-**Prerequisite reading:** `docs/reference/threat-model.md` and
-`docs/reference/hosted-results-contract.md`
+**Prerequisite reading:** `docs/reference/threat-model.md` and the [hosted
+results contract](https://benchbox.dev/docs/reference/hosted-results-contract.html)
 
 Phase 1 and Phase 2 have no hosted services. This runbook applies exclusively to
 Phase 3. Until Phase 3 launches, file GitHub issues for any anomalies found in

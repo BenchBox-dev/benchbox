@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 
 from benchbox.core.tpcds.schema.registry import TABLES_BY_NAME
@@ -8,7 +6,6 @@ from benchbox.core.tpcds_obt.lineage import render_lineage_markdown
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-LINEAGE_DOC = Path(__file__).parents[4] / "docs" / "benchmarks" / "tpc-ds-obt-lineage.md"
 NEW_ROLES = {
     "bill_cur_addr",
     "bill_cur_cdemo",
@@ -96,5 +93,12 @@ def test_minimal_mode_excludes_the_new_roles() -> None:
     assert not NEW_ROLES & {column.role for column in schema.get_obt_columns("minimal")}
 
 
-def test_lineage_page_is_generated_from_the_model() -> None:
-    assert LINEAGE_DOC.read_text(encoding="utf-8") == render_lineage_markdown()
+def test_lineage_markdown_renders_the_whole_model_deterministically() -> None:
+    page = render_lineage_markdown()
+    assert page == render_lineage_markdown()
+    for fact in schema.get_fact_specs():
+        assert f"| `{fact.column.name}` |" in page
+    for role in schema.get_dimension_roles():
+        assert f"| `{role.name}` | `{role.prefix}` |" in page
+    for channel in schema.get_channels().values():
+        assert f"| `{channel.name}` | `{channel.sales_table}` |" in page

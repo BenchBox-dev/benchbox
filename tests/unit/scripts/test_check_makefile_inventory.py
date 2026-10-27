@@ -228,7 +228,7 @@ AGENT_MAKE_INTERFACES = [
     "ci-lint",
     "ci-linux",
     "comment-policy-check",
-    "compat-docs-check",
+    "compat-inventory-check",
     "duplicate-check-delta",
     "duplicate-check-verbose",
     "help",

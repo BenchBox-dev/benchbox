@@ -3,7 +3,7 @@
 When the nightly cross-platform validation workflow fails, this runbook
 walks you from raw GitHub artifact to resolution.
 
-See also: [Cross-Platform Result Validation](../development/result-validation.md) for
+See also: [Cross-Platform Result Validation](https://benchbox.dev/docs/development/result-validation.html) for
 background on the comparator and tolerance model.
 
 ## 1. Locate the failure
@@ -245,7 +245,7 @@ specific regression from coming back.
    Validation → Run workflow** to confirm the fix.
 2. If the fix is a tolerance override, updating
    `docs/internal/duplication-residuals.md` is NOT required, but
-   consider updating `docs/development/result-validation.md`'s
+   consider updating the [result validation](https://benchbox.dev/docs/development/result-validation.html)
    tolerance table if the pattern is new.
 3. Monitor the next two automated nightly runs to confirm stability.
 

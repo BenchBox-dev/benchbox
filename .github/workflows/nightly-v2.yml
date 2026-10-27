@@ -814,40 +814,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  linkcheck:
-    name: "t3:linkcheck | external documentation links"
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-
-      - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: '3.12'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-
-      - name: Install dependencies
-        run: uv sync --group dev
-
-      - name: Generate documentation inputs
-        run: make query-docs
-
-      - name: Check documentation links
-        run: uv run -- python scripts/check_doc_external_links.py --report linkcheck/report.json
-
-      - name: Upload linkcheck report
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-        with:
-          name: t3-linkcheck
-          path: linkcheck/
-          if-no-files-found: ignore
-          retention-days: 14
-
   liveness:
     name: "t3:liveness | scheduled workflow liveness"
     runs-on: ubuntu-latest
@@ -1164,7 +1130,6 @@ jobs:
       - throughput-cedardb
       - drift
       - quarantine
-      - linkcheck
       - liveness
       - ruleset-drift
       - windows
@@ -1191,7 +1156,7 @@ jobs:
           result_of() {
             printf '%s' "$NEEDS_JSON" | jq -r --arg j "$1" '.[$j].result // "skipped"'
           }
-          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine linkcheck liveness ruleset-drift windows tpcds-obt durations-refresh; do
+          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine liveness ruleset-drift windows tpcds-obt durations-refresh; do
             case "$job" in
               durations-refresh) domain=durations ;;
               *) domain="$job" ;;

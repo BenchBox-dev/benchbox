@@ -33,7 +33,6 @@ DOMAIN_JOBS = {
     "throughput-cedardb": "t3:throughput-cedardb",
     "drift": "t3:drift",
     "quarantine": "t3:quarantine",
-    "linkcheck": "t3:linkcheck",
     "liveness": "t3:liveness",
     "ruleset-drift": "t3:ruleset-drift",
     "windows": "t3:windows",

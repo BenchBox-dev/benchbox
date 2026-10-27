@@ -3,7 +3,7 @@
 These YAML files are **generated rerun shards** — operational scratch emitted by
 the 2026-05-05 tuned follow-up UAT sweep (one aggregate config plus one per
 platform). They are class 3 ("generated rerun shard") in the config lifecycle
-documented in `docs/operations/uat-framework.md`.
+documented in https://benchbox.dev/docs/operations/uat-framework.html.
 
 They are **not editable templates** and must not be cloned as starting points:
 

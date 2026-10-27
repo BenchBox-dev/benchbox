@@ -1,5 +1,0 @@
-# Pre-existing broken repo-local relative link occurrences in docs/.
-# Format: <source-path-from-repo-root><TAB><link-target>
-# Repeat rows intentionally represent multiple broken occurrences.
-# Regenerate: uv run -- python scripts/check_doc_relative_links.py --update-baseline
-# Burn this list down; do NOT add new entries to silence regressions.

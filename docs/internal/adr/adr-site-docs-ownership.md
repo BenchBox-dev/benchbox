@@ -2,6 +2,13 @@
 
 ## Status
 
+> **Core removal (2026-10-26).** The migration this ADR constrains has
+> landed: the site-owned Markdown and the Python Markdown generators named
+> below now live in the `benchbox-site` repository, and the site-inputs
+> bundle default is schema 5 with no `docs`/`downloads` members. The body
+> below is kept as the historical record; treat generator and frozen-source
+> references as pre-removal.
+
 Accepted 2026-10-18. Supersedes D1 and refines D16 of the
 [site repository split](adr-site-repo-split.md). This record defines the target
 ownership and migration constraints; it does not change publication, bundle

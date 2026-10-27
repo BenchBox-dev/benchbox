@@ -73,7 +73,8 @@ def main(argv: list[str] | None = None) -> int:
     platform = args.platform.strip()
     if platform in DOCUMENT_ONLY_PLATFORMS:
         print(
-            f"platform {platform!r} is document-only for UAT bring-up; see docs/operations/uat-local-provisioning.md",
+            f"platform {platform!r} is document-only for UAT bring-up; see "
+            f"https://benchbox.dev/docs/operations/uat-local-provisioning.html",
             file=sys.stderr,
         )
         return 2

@@ -255,7 +255,7 @@
       "WA003": 1
     },
     "tests/unit/core/test_benchmark_api_contract.py": {
-      "WA003": 5
+      "WA003": 1
     },
     "tests/unit/core/test_comparison.py": {
       "WA003": 3
@@ -337,9 +337,6 @@
     },
     "tests/unit/generators/test_scale_factor_harmonization_resource_heavy.py": {
       "WA003": 2
-    },
-    "tests/unit/generators/test_sf1_measurement.py": {
-      "WA003": 1
     },
     "tests/unit/generators/test_ssb_manifest.py": {
       "WA003": 1
@@ -483,9 +480,6 @@
       "WA003": 15,
       "WA007": 2
     },
-    "tests/unit/scripts/test_docs_freeze.py": {
-      "WA007": 1
-    },
     "tests/unit/scripts/test_docs_history_filter.py": {
       "WA007": 1
     },
@@ -577,9 +571,6 @@
     "tests/unit/test_canary_impact_live.py": {
       "WA007": 1
     },
-    "tests/unit/test_cli_documentation.py": {
-      "WA003": 1
-    },
     "tests/unit/test_cloud_builder_scripts.py": {
       "WA007": 2
     },
@@ -588,9 +579,6 @@
     },
     "tests/unit/test_conftest_git_environment.py": {
       "WA007": 2
-    },
-    "tests/unit/test_generate_query_docs.py": {
-      "WA003": 1
     },
     "tests/unit/test_makefile_docker_data_dir_guard.py": {
       "WA003": 5

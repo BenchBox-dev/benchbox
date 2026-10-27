@@ -1,6 +1,6 @@
 # Hosted results: Phase 3 planning notes
 
-Maintainer planning that accompanies `docs/reference/hosted-results-contract.md`.
+Maintainer planning that accompanies the [hosted results contract](https://benchbox.dev/docs/reference/hosted-results-contract.html).
 The hosted API and self-service submission (Phase 3) are built only if Phase 2
 pull-request volume exceeds maintainer capacity.
 
@@ -12,8 +12,7 @@ resolved by this contract:
 - **`public_result_id` collision resolution (Phase 3 only):** Concurrent mint
   strategy when two API submissions race to the same content-addressed id.
   Phase 1 static publication already fails closed on distinct content and
-  skips identical content (see §1.1 and
-  `docs/development/adr/adr-public-result-id-permanence.md`).
+  skips identical content (see §1.1 and the [public result id permanence ADR](https://benchbox.dev/docs/development/adr/adr-public-result-id-permanence.html)).
 - **Idempotency semantics:** Re-submitting a bundle that is already in
   `pending` or `validated` state - return `200 OK` or `409 Conflict`?
 - **Cross-visibility cohort comparisons:** Whether results in different

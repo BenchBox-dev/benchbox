@@ -40,7 +40,7 @@ def check(old: int, new: int) -> int:
         print(
             f"uv.lock revision DOWNGRADE rejected: {old} -> {new}.\n"
             f"An older local uv rewrites the lock schema as a side effect; "
-            f"upgrade uv (see docs/development/development.md) and regenerate "
+            f"upgrade uv (see https://benchbox.dev/docs/development/development.html) and regenerate "
             f"the lock, or discard the uv.lock hunk from this change.",
             file=sys.stderr,
         )

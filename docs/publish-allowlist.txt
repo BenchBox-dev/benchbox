@@ -8,8 +8,8 @@
 # docs/internal/, which is never published. A page in these directories that
 # stays unpublished must be listed in docs/publish-exclusions.txt.
 #
-# tests/unit/docs/test_publish_policy.py and the site repository's build enforce
-# this list.
+# tests/unit/docs/test_publish_policy.py guards this list against the ownership
+# catalogue; site contract checks enforce it against the published pages.
 
 development/adding-dataframe-platform.md
 development/adding-new-platforms.md

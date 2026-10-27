@@ -137,14 +137,6 @@ test-correctness-gate:
 	rm -f "$$REPORT"; \
 	test $$PYTEST_STATUS -eq 0 && test $$GUARD_STATUS -eq 0
 
-.PHONY: tuning-support-matrix
-tuning-support-matrix:
-	uv run -- python scripts/generate_tuning_support_matrix.py
-
-.PHONY: tuning-support-matrix-check
-tuning-support-matrix-check:
-	uv run -- python scripts/generate_tuning_support_matrix.py --check
-
 .PHONY: plan-capture-gate
 plan-capture-gate:
 	uv run -- python -m pytest tests/integration/test_plan_capture_gate.py -q -n 0 --tb=short
@@ -648,8 +640,6 @@ guards-fix:
 	@$(MAKE) -s oracle-coverage-map
 	@echo "-- visualization parity fixtures --"
 	@$(MAKE) -s parity-fixtures
-	@echo "-- sql_compat capability matrix / skip-reference docs --"
-	@$(MAKE) -s compat-docs
 	@echo "-- vendor-derived pricing tables (offline, from checked-in evidence) --"
 	@$(MAKE) -s pricing-data
 	@echo "-- skill-sync (fail-closed: a missing wrapper aborts instead of no-op-ing) --"
@@ -716,8 +706,8 @@ ci-lint:
 	[ $$? -eq 0 ] || failed="$$failed fast-lane-guards"; \
 	uv run --project _project/scripts --no-sync -- python _project/scripts/uat_loc_table.py --check; \
 	[ $$? -eq 0 ] || failed="$$failed uat-loc-table"; \
-	$(MAKE) compat-docs-check; \
-	[ $$? -eq 0 ] || failed="$$failed compat-docs-check"; \
+	$(MAKE) compat-inventory-check; \
+	[ $$? -eq 0 ] || failed="$$failed compat-inventory-check"; \
 	$(MAKE) platform-manifest-check; \
 	[ $$? -eq 0 ] || failed="$$failed platform-manifest-check"; \
 	$(MAKE) oracle-coverage-map-check; \

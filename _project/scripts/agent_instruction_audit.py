@@ -132,7 +132,6 @@ HANDBACK_TEXT = (
     "CONTRIBUTING.md",
     ".claude/commands/*.md",
     "docs/agent/*.md",
-    "docs/development/development.md",
     "docs/internal/pr-triage.md",
     "docs/internal/repo-admin-settings.md",
     "Makefile",
@@ -505,7 +504,8 @@ def audit_dependency_caps(project: Path) -> list[str]:
         return [
             "AGENTS.md restates dependency caps ("
             + ", ".join(sorted(set(offenders)))
-            + "); pyproject.toml owns them and docs/development/dependency-compatibility.md explains them"
+            + "); pyproject.toml owns them and "
+            + "https://benchbox.dev/docs/development/dependency-compatibility.html explains them"
         ]
     return []
 

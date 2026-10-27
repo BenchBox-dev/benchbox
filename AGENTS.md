@@ -121,12 +121,12 @@ and state the next operator step.
 ## BenchBox invariants
 
 - Timing durations use `benchbox.utils.clock.mono_time()` and `elapsed_seconds()`; wall clocks are event/audit only.
-- Adapter SDK imports stay lazy. New platforms follow `docs/development/adding-new-platforms.md` and pass `make platform-manifest-check`.
-- CREATE TABLE rewrites are registered under `benchbox.sql_compat.context.Phase.DDL_OPTIMIZE`; run `make compat-docs-check`, which covers both generated-doc and DDL drift checks.
+- Adapter SDK imports stay lazy. New platforms follow https://benchbox.dev/docs/development/adding-new-platforms.html and pass `make platform-manifest-check`.
+- CREATE TABLE rewrites are registered under `benchbox.sql_compat.context.Phase.DDL_OPTIMIZE`; `make compat-inventory-check` covers their drift.
 - CLI dry runs must propagate explicit phases; deterministic runs use a seed.
 - Green focused/fast tests are not UAT or production certification.
 
-Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux` (`release-guide.md`). Mocker is local-only, never CI: databend's `minio` was observed to exit under it; doris/starrocks are single-service. `docs/operations/uat-framework.md` holds per-stack status. Never prune globally.
+Apple/macOS: correctness-gate digests are Linux-generated; use `make ci-linux` (`release-guide.md`). Mocker is local-only, never CI: databend's `minio` was observed to exit under it; doris/starrocks are single-service. Per-stack status: https://benchbox.dev/docs/operations/uat-framework.html. Never prune globally.
 
 ## Skills and generated mirrors
 

@@ -26,7 +26,6 @@ FILE_PLAN_SQL = (
     "pyproject.toml (optional dependency extra)",
     "SQL compatibility rule or explicit exemption",
     "tests/unit/platforms/test_<key>.py",
-    "docs/platforms/<key>.md",
 )
 
 FILE_PLAN_DATAFRAME = (
@@ -36,7 +35,6 @@ FILE_PLAN_DATAFRAME = (
     "benchbox/platforms/dataframe/platform_checker.py (DATAFRAME_PLATFORMS entry)",
     "pyproject.toml (optional dependency extra)",
     "tests/unit/platforms/test_<key>_df.py",
-    "docs/platforms/<key>-df.md",
 )
 
 

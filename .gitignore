@@ -50,7 +50,6 @@ virtualenv/
 
 docs/_tags/
 docs/site/
-docs/benchmarks/queries/
 /doc-contracts.json
 
 .idea/

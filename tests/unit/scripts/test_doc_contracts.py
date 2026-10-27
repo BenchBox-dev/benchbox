@@ -274,7 +274,7 @@ def _exporter_inputs(contracts: dict[str, Any]) -> set[str]:
         ROOT / "scripts/doc_contracts.py",
         ROOT / "scripts/update_version.py",
         ROOT / "scripts/measure_sf1_sizes.py",
-        ROOT / "scripts/generate_tuning_support_matrix.py",
+        ROOT / "scripts/docs_data_sources.py",
     }
     modules = {
         Path(module.__file__).resolve()

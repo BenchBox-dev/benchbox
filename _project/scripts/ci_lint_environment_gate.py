@@ -30,7 +30,7 @@ RUNNER_INAPPLICABLE_GUARDS: dict[str, str] = {
         "config/receipt/tool-pin policy, clones the skill sources, and runs "
         "the full preview/apply/verify/check cycle before "
         "the tooling unit can pass. See "
-        "docs/operations/ci-local-parity.md's 'Required skill-integrity "
+        "https://benchbox.dev/docs/operations/ci-local-parity.html's 'Required skill-integrity "
         "lane' section for why that check has no local/ci-lint equivalent "
         "of its own."
     ),
@@ -41,7 +41,7 @@ CLI_DESCRIPTION = (
     "Decide whether a `make ci-lint` guard is meaningful on a CI runner.\n"
     "\n"
     "`ci-lint` (Makefile) exists to mirror the `ci.yml` `code-lint` job locally\n"
-    "(docs/operations/ci-local-parity.md), but `make ci-lint` can also run\n"
+    "(https://benchbox.dev/docs/operations/ci-local-parity.html), but `make ci-lint` can also run\n"
     "directly on a real, ephemeral GitHub-hosted runner (no workflow does today; the\n"
     "post-merge workflow that did was retired with the six-unit CI). Most\n"
     "guards are equally meaningful there: they inspect the checked-out tree, the\n"

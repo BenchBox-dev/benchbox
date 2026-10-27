@@ -69,7 +69,6 @@ def test_top_level_help_uses_live_docs_url_and_long_run_flags() -> None:
 _OWNERSHIP_MANIFEST = REPO_ROOT / "quality" / "docs-ownership.json"
 _DOC_URL_RE = re.compile(r"https://benchbox\.dev/(docs(?:/[^\s<>\"'`\[\]()#?\\|]*)?)")
 _URL_TRAILING_PUNCTUATION = ".,;:!*_"
-_OUTPUT_PATH_ALLOWED = frozenset({("benchbox/core/tpcds_obt/lineage.py", "docs/benchmarks/tpc-ds-obt-lineage.md")})
 _LINK_SURFACES = (
     "README.md",
     "CONTRIBUTING.md",
@@ -116,8 +115,7 @@ def test_link_surfaces_do_not_cite_site_owned_pages_by_repo_path() -> None:
         text = path.read_text(encoding="utf-8", errors="replace")
         rel = path.relative_to(REPO_ROOT).as_posix()
         for cited in _repo_path_citations(text, site_owned):
-            if (rel, cited) not in _OUTPUT_PATH_ALLOWED:
-                hits.append(f"{rel}: {cited}")
+            hits.append(f"{rel}: {cited}")
     assert hits == [], f"cite the published https://benchbox.dev/docs/...html URL instead of a repo path: {hits}"
 
 
