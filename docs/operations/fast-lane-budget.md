@@ -13,11 +13,12 @@ mechanism; it does not notice a slowdown that stays under the cap.
 
 ## Fast-tier duration report
 
-The `core` job runs `verify-fast-duration` on pull requests. The policy
-`VERIFY_MODE` in `scripts/build_fast_duration_baseline.py` remains `report`
-until controlled noise evidence and live draft-PR experiments support enabling
-`block`; changing it back to `report` is the rollback. The step downloads only
-the PR head's `fast-junit` artifact and compares it with that head's committed
+The `core` job runs `verify-fast-duration` on pull requests in `block` mode
+(`VERIFY_MODE` in `scripts/build_fast_duration_baseline.py`); a `would-block`
+verdict fails `core`. The thresholds are provisional: no false-block rate has
+been measured, so a runner-noise block is investigated and, if it is noise,
+the mode is set back to `report`, which is the rollback. The step downloads
+only the PR head's `fast-junit` artifact and compares it with that head's committed
 baseline in `tests/fixtures/fast_tier_baseline`. Calibration scales test times
 to a reference CPU speed; it does not establish that runner noise is removed.
 A missing calibration is rejected and a missing baseline is neutral.

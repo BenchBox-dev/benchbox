@@ -393,7 +393,7 @@ def drift_markdown(report: dict[str, Any]) -> str:
 VERIFY_RATIO_THRESHOLD = 0.30
 VERIFY_DELTA_SECONDS = 360.0
 VERIFY_NEW_TEST_ALLOWANCE_SECONDS = 0.5
-VERIFY_MODE = "report"
+VERIFY_MODE = "block"
 
 
 def normalized_pr_samples(run_dir: Path, baseline: dict[str, object]) -> tuple[dict[str, float], float, float]:
