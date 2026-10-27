@@ -24955,6 +24955,13 @@
       "status": "done",
       "title": "SQLGlot v30.24.0 release makes the freshness gate fail ci-paths for every PR"
     },
+    "sqlglot-freshness-waiver-v30-25-0": {
+      "claim": null,
+      "needs": [],
+      "priority": "critical",
+      "status": "open",
+      "title": "Unblock PRs: record a reviewed freshness waiver for upstream SQLGlot v30.25.0"
+    },
     "sqlglot-mysql-retirement-needs-execution-evidence": {
       "claim": null,
       "needs": [],

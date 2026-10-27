@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "scripts/sqlglot_refresh_waiver.json carries one waiver for v30.25.0 with a reason that names sqlglot-fork-refresh-v30-25-0, an approval date of today and a short expiry; the freshness check passes locally and in CI on the PR.",
+    "The PR is merged through the normal oracle-reviewed path; the waiver is removed by the adoption PR in sqlglot-fork-refresh-v30-25-0."
+  ],
+  "description": "Upstream tagged v30.25.0 (2026-10-27). scripts/check_sqlglot_upstream_freshness.py now fails ci-paths for every PR because the bundled runtime is based on v30.24.0 and scripts/sqlglot_refresh_waiver.json has no entry. Record a reasoned waiver for exactly v30.25.0 that expires well inside MAX_WAIVER_DAYS and names the refresh item, so unrelated PRs are not blocked while the fork refresh is done.",
+  "links": [
+    "scripts/check_sqlglot_upstream_freshness.py",
+    "scripts/sqlglot_refresh_waiver.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729",
+      "at": "2026-10-27T12:57:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6bb7ed57e7164c4fa4b47ed897384cae",
+      "session_id": "dcc6105a05964c618dfd87771db72de4"
+    }
+  ]
+}
