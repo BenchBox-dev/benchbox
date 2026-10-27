@@ -685,12 +685,17 @@ def windows_test_files(repo: Path, payload: dict, changed_paths: list[str]) -> l
     develop_changed = {
         str(entry).replace("\\", "/").split("::", 1)[0] for entry in payload.get("develop_changed_tests", [])
     }
+    reached = {
+        str(entry).replace("\\", "/").split("::", 1)[0]
+        for key in ("coverage_tests", "importer_tests", "reader_tests")
+        for entry in payload.get(key, [])
+    }
     files: set[str] = set()
     for entry in payload.get("selected", []):
         path = str(entry).replace("\\", "/").split("::", 1)[0]
         if not (_is_test_file(path) and (repo / path).is_file()):
             continue
-        if path in develop_changed and path not in pr_changed:
+        if path in develop_changed and path not in pr_changed and path not in reached:
             continue
         if any(path.startswith(prefix) for prefix in POSIX_ONLY_TEST_PREFIXES) and path not in pr_changed:
             continue

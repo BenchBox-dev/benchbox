@@ -107,7 +107,7 @@ def test_windows_leg_has_no_secrets_and_pinned_actions() -> None:
     assert _step(job, "Checkout code")["with"]["persist-credentials"] is False
 
 
-@pytest.mark.parametrize(("count", "status"), [(0, 0), (1, 5), (1, 1), (1000, 0)])
+@pytest.mark.parametrize(("count", "status"), [(0, 1), (1, 5), (1, 1), (1000, 0)])
 def test_windows_leg_executes_target_file_and_preserves_pytest_result(tmp_path: Path, count: int, status: int) -> None:
     bash = shutil.which("bash")
     assert bash is not None
@@ -143,15 +143,19 @@ def test_windows_leg_executes_target_file_and_preserves_pytest_result(tmp_path: 
         text=True,
         timeout=30,
     )
-    assert result.returncode == (0 if status == 5 else status), result.stderr
+    expected = 0 if status == 5 else status
+    if not targets:
+        expected = 1
+    assert result.returncode == expected, result.stderr
     called = tmp_path / "called.json"
     if not targets:
         assert not called.exists()
-        assert "No test files selected for Windows." in result.stdout
-    else:
-        args = json.loads(called.read_text(encoding="utf-8"))
-        assert args[-count:] == targets
-        assert "--timeout=120" in args
+        assert "::error::" in result.stdout
+        assert "empty test target file" in (tmp_path / "summary.txt").read_text(encoding="utf-8")
+        return
+    args = json.loads(called.read_text(encoding="utf-8"))
+    assert args[-count:] == targets
+    assert "--timeout=120" in args
     summary = tmp_path / "summary.txt"
     if status == 5:
         assert "::notice::" in result.stdout

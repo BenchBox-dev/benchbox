@@ -89,12 +89,13 @@ Markdown routes to the `docs` unit alone unless a test or audit reads it. `.gith
 | `tooling` | every event | content guard, skill integrity, and audit checks by path |
 | `oracle-gate` | every PR, from `develop` code on trusted triggers | `benchbox-oracle` success review of the current head, or the stand-in approval, with oracle threads resolved; inert-only changes report success. Posted by the `benchbox-oracle` App, so it needs `ORACLE_APP_ID` and `ORACLE_APP_PRIVATE_KEY` in the `oracle` environment, else nothing is posted and the head cannot merge |
 
-The Windows PR selection excludes tests changed only on `develop`, including
-those already present in the coverage-selected list. POSIX-only repository
+The Windows PR selection excludes tests changed only on `develop` unless the PR changes them or the
+coverage, importer or reader selection reaches them. POSIX-only repository
 tooling is excluded unless the PR changes its tests; changed tooling tests must
 skip unsupported platforms cleanly. Targets are loaded inside Python so their
-paths do not expand the Windows process command line. An empty target list is
-reported explicitly. If selected files contain no eligible fast-tier tests,
+paths do not expand the Windows process command line. The leg only runs when the target list is
+non-empty, so an empty or missing target file fails the job with an error and
+a run summary. If selected files contain no eligible fast-tier tests,
 the job emits a notice and records that outcome in the run summary.
 
 The public site is built, compared and deployed in `BenchBox-dev/benchbox-site`.

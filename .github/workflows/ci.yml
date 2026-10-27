@@ -1455,8 +1455,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ ! -s coverage-selection/windows-test-files.txt ]; then
-            echo "No test files selected for Windows."
-            exit 0
+            echo "::error::The Windows leg is required but coverage-selection/windows-test-files.txt is empty or missing."
+            echo "Windows: required leg received an empty test target file." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi
           target_count=$(wc -l < coverage-selection/windows-test-files.txt | tr -d ' ')
           echo "Test files selected for Windows: $target_count"

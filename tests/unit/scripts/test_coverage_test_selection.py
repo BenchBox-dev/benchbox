@@ -1958,3 +1958,14 @@ def test_windows_targets_cli_excludes_develop_changed_tests(repo: Path, tmp_path
     )
     assert out.read_text(encoding="utf-8").splitlines() == ["tests/unit/core/test_engine.py"]
     assert output.read_text(encoding="utf-8") == "windows-test-files=1\n"
+
+
+@pytest.mark.parametrize("key", ["coverage_tests", "importer_tests", "reader_tests"])
+def test_windows_test_files_keep_develop_changed_tests_reached_by_the_change(repo: Path, key: str) -> None:
+    _write(repo, "tests/unit/test_develop_reached.py")
+    payload = {
+        "selected": ["tests/unit/test_develop_reached.py"],
+        "develop_changed_tests": ["tests/unit/test_develop_reached.py"],
+        key: ["tests/unit/test_develop_reached.py::test_one"],
+    }
+    assert sel.windows_test_files(repo, payload, []) == ["tests/unit/test_develop_reached.py"]
