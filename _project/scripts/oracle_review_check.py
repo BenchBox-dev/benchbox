@@ -43,7 +43,7 @@ def _is_standin(comment: dict[str, Any], head_sha: str, not_before: datetime | N
     )
 
 
-API_ROOT = "https://api.github.com"
+API_ROOT = os.environ.get("GITHUB_API_URL") or "https://api.github.com"
 PAGE_SIZE = 100
 PASS = 0
 WAITING = 1
