@@ -24543,15 +24543,10 @@
       "title": "Record the selected SQLGlot downstream maintenance strategy and delivery evidence"
     },
     "sqlglot-bundled-import-startup-cost": {
-      "claim": {
-        "expires_at": "2026-10-28T14:14:52Z",
-        "generation": "98a788fd767740dfaebaf382de9c826a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:468f91a9ba98283d748c8729"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Reduce first-import cost of the zip-loaded SQLGlot runtime"
     },
     "sqlglot-bundled-runtime-advisory-visibility": {
