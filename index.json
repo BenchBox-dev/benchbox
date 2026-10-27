@@ -17065,7 +17065,7 @@
       "needs": [
         "oracle-history-edited-review-fail-closed-20261027"
       ],
-      "priority": "high",
+      "priority": "critical",
       "status": "open",
       "title": "Stop one fallback provider's quota reset from blocking a reviewer pool on a PR for days"
     },
