@@ -2,6 +2,8 @@
 develop_sha: 7b8484a4c7c9d14062c38552511ba1f38789eaf9
 checked_sha: e642bf0e60005a0632023e6473ebbca40a0c9005
 measured_at_sha: e642bf0e60005a0632023e6473ebbca40a0c9005
+replay_sha: 9fc8a585bcda9970e69c8b7fde4687583356bb01
+replay_scope: changed-file tests for the comparator and clock change through make pr-preflight, 20 passed; no query was re-run and no measurement was replaced
 ---
 
 # TPC-Havoc variants on PrestoDB 0.298.1 (Java)
@@ -225,3 +227,15 @@ seconds against 29 to 32 for the next two.
   `ORDER BY`; order ties are not distinguished from a wrong order.
 - Raw JSON output, server logs and the Presto configuration directories were kept
   under `/tmp` and are not committed.
+
+## Harness changes after the measurement
+
+The measurement used the harness at `e642bf0e6`. Commit `9fc8a585b` changes two
+things in it: unordered comparison now matches rows inside each group of equal
+rounded sort keys when the positional comparison fails, and query durations use
+`mono_time` and `elapsed_seconds` from `benchbox.utils.clock`. A comparison that
+passed positionally is unchanged, so no `PASS` in this record depends on the
+change. The four `MISMATCH` results differ in row count and the `ORDER_DIFFERS`
+result is decided before the new matching runs, so neither is affected either.
+Only the unit tests were run again; the numbers above are the original
+measurement.

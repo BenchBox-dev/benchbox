@@ -2,6 +2,8 @@
 develop_sha: 7b8484a4c7c9d14062c38552511ba1f38789eaf9
 checked_sha: 7323edca548705e0dfebc36bda136e7724043bc8
 measured_at_sha: 7323edca548705e0dfebc36bda136e7724043bc8
+replay_sha: 9fc8a585bcda9970e69c8b7fde4687583356bb01
+replay_scope: changed-file tests for the comparator and clock change through make pr-preflight, 20 passed; no query was re-run and no measurement was replaced
 ---
 
 # Presto C++ reduce cap and TPC-Havoc 1_v7
@@ -750,19 +752,16 @@ performance guarantees.
 Before the final schema-quoting correction, the focused harness unit file and
 release infrastructure suite passed together: 105 passed, 2 deselected. After
 import ordering was fixed, the harness file alone passed: 18 passed. These
-counts refer to the pre-correction tree, not the measured commit. The final
-schema-quoting correction passed Ruff checks and formatting and the commit
-hooks. No pytest was run after the owner imposed the test hold. No
-`make pr-preflight` or release-curation dry run was run because that hold
-remained in force. Existing release-cut removal and LEFTOVER entries already
-cover `tests/unit/test_tpchavoc_presto_variant_check.py`; no new test file was
-added.
+counts refer to those earlier trees, not the measured commit. After a later
+comparator and clock change in the harness (`replay_sha`), `make pr-preflight`
+ran the changed-file tests: 20 passed. No query was run again, so the
+measurements in this record are unchanged.
 
 The isolated worker was stopped and removed with `container stop pcpp-native-1`
 and `container rm pcpp-native-1`. The launcher stopped coordinator PID 15358.
 All created coordinator data, worker configuration, extracted server files,
 and downloaded archive under `/tmp/pcpp` were removed after this record
-captured the results. No push or PR operation was attempted.
+captured the results.
 
 `container ls -a` after teardown listed only the unrelated QuestDB container.
 `lsof -nP -iTCP:18081 -iTCP:7777 -sTCP:LISTEN` returned no entries
