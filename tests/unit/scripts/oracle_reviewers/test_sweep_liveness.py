@@ -376,3 +376,51 @@ def test_a_failure_already_surfaced_as_pending_is_not_redispatched_after_the_run
     ]
     assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
     assert fake.dispatched == [] and fake.posted == []
+
+
+def _surfaced_status() -> dict[str, Any]:
+    return {
+        "context": "oracle-verdict",
+        "state": "pending",
+        "description": github.SWEEP_FAILURE_SURFACE_PREFIX + "Run the attempt loop. Rerun with /oracle-review",
+        "target_url": "u",
+        "creator": {"login": "benchbox-oracle[bot]", "type": "Bot"},
+        "updated_at": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
+    }
+
+
+def test_an_unused_owner_reset_restarts_a_due_head_whose_failure_was_surfaced(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    now = datetime.now(UTC)
+    state = State(
+        7, HEAD, "pending", now - timedelta(hours=10), (now - timedelta(hours=9),), pending_cause="all-absent"
+    )
+    fake = FakeGitHub(_pull(), SOUNDNESS, state)
+    fake.statuses = [_surfaced_status()]
+    fake.runs = [_verdict_run(7, conclusion="failure", age=timedelta(hours=hours)) for hours in (5, 6)]
+    fake.comments = _reset_comments()
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7] and fake.posted == []
+
+
+def test_an_unused_owner_reset_overrides_the_daily_dispatch_budget_for_a_due_head(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    budget = cli.load_policy(POLICY_PATH).retry.daily_budget
+    state = State(7, HEAD, "pending", datetime.now(UTC) - timedelta(hours=10), pending_cause="all-absent")
+    fake = FakeGitHub(_pull(), SOUNDNESS, state)
+    fake.comments = _reset_comments()
+    fake.runs = [_verdict_run(7, conclusion="success", age=timedelta(hours=1 + index)) for index in range(budget)]
+    assert _sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == [7] and fake.reasons == [None]
+
+
+def test_a_spent_owner_reset_leaves_a_surfaced_head_held(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    state = State(7, HEAD, "pending", datetime.now(UTC) - timedelta(hours=10), pending_cause="all-absent")
+    fake = FakeGitHub(_pull(), SOUNDNESS, state)
+    fake.statuses = [_surfaced_status()]
+    fake.comments = _reset_comments()
+    fake.runs = [_verdict_run(7, conclusion="failure", age=timedelta(minutes=10))]
+    assert _surfaced_sweep(monkeypatch, tmp_path, fake) == 0
+    assert fake.dispatched == []

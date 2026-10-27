@@ -1147,24 +1147,22 @@ def _retry_reason(
         relevant = sweep.with_timeouts(relevant, lambda run: github.run_timed_out(repo, run))
     head_runs = sweep.for_head(relevant, head)
     if state is not None and state.head_sha == head:
-        if retry.due_for_retry(state, head, now, rules):
-            if not full:
-                return "its retry is due"
-            return _bounded_retry(
-                repo, number, head, head_runs, state.updated_at, rules, now, status_context, bot_login, token
-            )
+        due = retry.due_for_retry(state, head, now, rules)
         if not full:
-            return None
+            return "its retry is due" if due else None
         if state.outcome == retry.PENDING and state.pending_cause == retry.ALL_ABSENT:
             reset_at = github.backoff_reset_at(repo, number, head)
             if reset_at is not None and retry.due_for_retry(state, head, now, rules, reset_at):
                 if sweep.reset_spent(relevant, reset_at, head):
-                    _summary(f"retry not dispatched for #{number}: the reset was already used by a later run")
-                    return None
-                if sweep.stateless_failures(head_runs, reset_at) > 0:
-                    _summary(f"retry not dispatched for #{number}: a run since the reset failed without a result")
-                    return None
-                return "the owner reset its backoff"
+                    _summary(f"reset not applied for #{number}: the reset was already used by a later run")
+                elif sweep.stateless_failures(head_runs, reset_at) > 0:
+                    _summary(f"reset not applied for #{number}: a run since the reset failed without a result")
+                else:
+                    return "the owner reset its backoff"
+        if due:
+            return _bounded_retry(
+                repo, number, head, head_runs, state.updated_at, rules, now, status_context, bot_login, token
+            )
         return None
     if not full:
         return None
