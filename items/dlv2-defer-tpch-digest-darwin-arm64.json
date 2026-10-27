@@ -4,7 +4,7 @@
     "The stale macOS-mismatch guidance is removed or corrected at AGENTS.md:125 (\"correctness-gate digests are Linux-generated; use make ci-linux\") and docs/operations/release-guide.md:50-51",
     "The correctness gate is not made a required case on any macOS job until this item is done"
   ],
-  "context": "Likely explanation found after deferral: AGENTS.md states 'Apple/macOS: correctness-gate digests are Linux-generated; use make ci-linux (release-guide.md)'. First step: rerun the gate via make ci-linux on the same commit; if it passes, close this item by documenting the gate as Linux-only and adding a T3 cross-OS data-parity check if desired. Blocks the macOS portion of dlv2-15-required-t2-cases and T4 cross-OS correctness claims in dlv2-51-release-yml-v2.\n\n2026-10-09 tracker review: the root cause is now known and the Linux-only plan above is superseded. #2622 (e23ba66c9) rebuilt the darwin-arm64 dbgen/qgen to generate canonical S_ADDRESS and C_ADDRESS (the columns Q2, Q10 and Q15 return; see _sources/tpc-h/PATCHES.md). nightly-v2 run 37944292492 (scheduled, 2026-10-09), job 113866429323 (t3:matrix on macos-latest, py3.12) passed the canonical-address tests. One local SF=1 run on Apple Silicon is the remaining closing evidence. Priority lowered from high to medium.",
+  "context": "2026-10-27 owner decision: waived. Root cause fixed by #2622 (e23ba66c9, Darwin -O2 unsigned arithmetic; macOS generator framing check passes, test_tpch_dbgen_framing_binaries.py:124-135). The correctness-gate stays Linux-only: AGENTS.md \"digests are Linux-generated; use make ci-linux\" is correct guidance and is kept; the gate is not required on macOS. The full SF=1 Apple-Silicon run is not required.",
   "description": "Deferred from the 2026-09-28 dev-loop planning session; not investigated by owner instruction.\n\nObserved: running the correctness gate locally on a 10-core Apple Silicon Mac (Darwin 27) in a clean uv env at develop@5e09d0e49:\nBENCHBOX_STRICT_EXPECTED_RESULTS=1 BENCHBOX_EMIT_RESULT_DIGEST=1 BENCHBOX_CORRECTNESS_GATE_QUERY_IDS=1,2,3,4,5,6,7,8,9,10,12,13,14,15,17,19,21,22 pytest -m stress \"tests/integration/test_local_platform_benchmark_matrix.py::test_local_platform_benchmark_matrix[tpch-duckdb]\" -n 0\nfailed with VALUE DIGEST mismatch for tpch query 2 (expected 9e98f3d5..., actual bae86f3b...), query 10 (expected b1ed6912..., actual 40752477...), query 15 (expected da98d50d..., actual ed6b766d...); row counts matched. Environment note: chdb was uninstalled in that env (chdb 4.1.6 fails dlopen on Darwin 27).\n\nRoot cause (found): the darwin-arm64 dbgen/qgen built with -O2 generated non-canonical S_ADDRESS and C_ADDRESS values. Q2, Q10 and Q15 return those columns, so their digests differed while row counts matched. #2622 (e23ba66c9) rebuilt the darwin-arm64 binaries to generate canonical addresses; the patch is described in _sources/tpc-h/PATCHES.md. The earlier hypotheses (seed drift, a regression on develop) are ruled out by this.\n\nRemaining work: run the gate once on Apple Silicon at or after e23ba66c9 and record that Q2, Q10 and Q15 match, then remove the now-stale \"digests are Linux-generated\" guidance.",
   "sessions": [
     {
@@ -38,6 +38,14 @@
       "generation": "9dd104d9ce0740a2b1adba3ea5fff888",
       "op": "take",
       "op_id": "f69d21bb8fb740318e622cae3cae7baa",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-27T23:31:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e8d25ed1bbc14432be1bb1d82dfa874d",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
