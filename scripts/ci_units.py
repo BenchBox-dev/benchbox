@@ -67,6 +67,8 @@ def classify_units(changed_paths: Iterable[str], rules: dict[str, list[str]]) ->
         if not owners:
             unowned.append(path)
             owners = ["core"]
+        if path.endswith(".md") and "docs" not in owners:
+            owners.append("docs")
         for unit in owners:
             unit_paths[unit].append(path)
 

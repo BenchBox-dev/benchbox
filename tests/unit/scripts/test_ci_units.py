@@ -77,6 +77,22 @@ def test_unowned_path_fails_closed_to_core(rules: dict[str, list[str]]) -> None:
     assert decision["unowned_paths"] == ["brand-new-top-level/thing.bin"]
 
 
+@pytest.mark.parametrize(
+    ("path", "kept"),
+    [
+        ("brand-new-top-level/guide.md", {"core", "docs"}),
+        (".claude/skills/todo/SKILL.md", {"tooling", "docs"}),
+        ("benchbox/core/tpchavoc/README.md", {"core", "docs"}),
+    ],
+)
+def test_any_markdown_change_also_runs_the_docs_unit_without_losing_its_owner(
+    path: str, kept: set[str], rules: dict[str, list[str]]
+) -> None:
+    decision = classify_units([path], rules)
+    assert kept <= needed([path], rules)
+    assert decision["code_tests_needed"] is True
+
+
 def test_empty_change_set_runs_every_unit(rules: dict[str, list[str]]) -> None:
     decision = classify_units([], rules)
     assert decision["run_all"] is True
