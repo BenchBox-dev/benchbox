@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import unicodedata
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -904,6 +905,74 @@ def test_a_follow_up_counts_a_defect_on_a_changed_file_whose_name_needs_escaping
     assert [item["file"] for item in _record(final)["open_defects"]] == [path]
     assert "<details><summary>Not counted" not in final.body
     assert "<!--bad" not in final.body and "a-->b" not in final.body
+
+
+def test_a_follow_up_counts_an_nfd_finding_on_an_nfc_changed_file(policy: Policy, tmp_path: Path) -> None:
+    nfc_path = "benchbox/Café.py"
+    nfd_path = unicodedata.normalize("NFD", nfc_path)
+    plan = _follow_up(policy, [], [nfc_path])
+    final = _final(policy, tmp_path, plan, _v("s", [{**_finding("High", 2), "file": nfd_path}]))
+    assert final.state == "failure"
+    assert final.description.endswith(": SHIP WITH FIXES, 1 defect(s) to fix")
+    assert [item["file"] for item in _record(final)["open_defects"]] == [nfc_path]
+    assert "<details><summary>Not counted" not in final.body
+
+
+def test_a_follow_up_counts_a_case_variant_finding_on_a_changed_file(policy: Policy, tmp_path: Path) -> None:
+    path = "benchbox/Café.py"
+    plan = _follow_up(policy, [], [path])
+    final = _final(policy, tmp_path, plan, _v("s", [{**_finding("High", 2), "file": "benchbox/café.py"}]))
+    assert final.state == "failure"
+    assert final.description.endswith(": SHIP WITH FIXES, 1 defect(s) to fix")
+    assert [item["file"] for item in _record(final)["open_defects"]] == [path]
+    assert "<details><summary>Not counted" not in final.body
+
+
+def test_a_follow_up_counts_an_ambiguous_case_variant_on_changed_files(policy: Policy, tmp_path: Path) -> None:
+    paths = ["benchbox/Query.py", "benchbox/QUERY.py"]
+    plan = _follow_up(policy, [], paths)
+    final = _final(policy, tmp_path, plan, _v("s", [{**_finding("High", 2), "file": "benchbox/query.py"}]))
+    assert final.state == "failure"
+    assert final.description.endswith(": SHIP WITH FIXES, 1 defect(s) to fix")
+    assert [item["file"] for item in _record(final)["open_defects"]] == ["benchbox/query.py"]
+    assert "<details><summary>Not counted" not in final.body
+
+
+def test_finalize_counts_head_tree_alias_with_explicit_workspace(
+    policy: Policy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "head"
+    workspace.mkdir()
+    (workspace / "changed.py").write_text("x = 1\n", encoding="utf-8")
+    (workspace / "alias.py").symlink_to("changed.py")
+    plan = _follow_up(policy, [], ["changed.py"])
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    classification_path = tmp_path / "classification.json"
+    classification = Classification("small", "routine", "standard", 1.0, (), ())
+    classification_path.write_text(json.dumps(classification.to_json()), encoding="utf-8")
+    attempts_dir = tmp_path / "attempts"
+    _write(attempts_dir, 1, "small", verdict=_v("s", [{**_finding("High", 2), "file": "alias.py"}]))
+    out = _run_cli(
+        monkeypatch,
+        tmp_path,
+        "finalize",
+        "--plan",
+        str(plan_path),
+        "--attempts-dir",
+        str(attempts_dir),
+        "--out-dir",
+        str(tmp_path / "o"),
+        "--classification",
+        str(classification_path),
+        "--workspace",
+        str(workspace),
+    )
+    assert out["state"] == "failure" and out["review"] == "true"
+    review = json.loads((tmp_path / "o" / "review.json").read_text(encoding="utf-8"))
+    record = protocol.decode_marker(review["body"])
+    assert record is not None
+    assert [item["file"] for item in record["open_defects"]] == ["changed.py"]
 
 
 def test_a_follow_up_lists_at_most_five_defects_as_not_counted(policy: Policy, tmp_path: Path) -> None:

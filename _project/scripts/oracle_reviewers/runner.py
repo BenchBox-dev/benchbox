@@ -206,12 +206,12 @@ def review(
         reason = verdict.incomplete_reason or "the reviewer reported its review incomplete"
         return ReviewOutcome(None, absence.Absence(absence.INCOMPLETE, reason), traced)
     verdict = evidence.mark_citations(verdict, workspace, protocol.disputed_claims(plan))
-    problem = protocol.contradiction(verdict, plan)
+    problem = protocol.contradiction(verdict, plan, workspace=workspace)
     if problem is not None:
         return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), traced)
     problem = evidence.check(
         verdict,
-        ships=protocol.judge_planned(verdict, plan).decision == SHIP,
+        ships=protocol.judge_planned(verdict, plan, workspace=workspace).decision == SHIP,
         harness=reviewer.harness,
         brief_mode=plan["brief_mode"],
         workspace=workspace,

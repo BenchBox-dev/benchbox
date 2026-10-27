@@ -79,7 +79,12 @@ def _check(condition: bool, errors: list[str], message: str) -> bool:
     return condition
 
 
-def _attempt(data: Mapping[str, Any], plan: Mapping[str, Any], loaded: LoadedAttempts) -> Attempt:
+def _attempt(
+    data: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    loaded: LoadedAttempts,
+    workspace: Path | str | None = None,
+) -> Attempt:
     slot = int(data["slot"])
     reviewer = str(data["reviewer"])
     if data["outcome"] == VERDICT_OUTCOME:
@@ -89,11 +94,11 @@ def _attempt(data: Mapping[str, Any], plan: Mapping[str, Any], loaded: LoadedAtt
             return Attempt(slot, reviewer, selection.ABSENT, absence.INVALID, str(exc))
         if verdict.status != COMPLETE:
             return Attempt(slot, reviewer, selection.ABSENT, absence.INCOMPLETE, verdict.incomplete_reason)
-        problem = protocol.contradiction(verdict, plan)
+        problem = protocol.contradiction(verdict, plan, workspace=workspace)
         if problem is not None:
             return Attempt(slot, reviewer, selection.ABSENT, absence.INVALID, problem)
         loaded.verdicts[slot] = verdict
-        shipped = protocol.judge_planned(verdict, plan).decision == SHIP
+        shipped = protocol.judge_planned(verdict, plan, workspace=workspace).decision == SHIP
         return Attempt(slot, reviewer, selection.PASS if shipped else selection.FAIL)
     missing = data["absence"] or {}
     kind = missing.get("kind")
@@ -111,7 +116,13 @@ def _attempt(data: Mapping[str, Any], plan: Mapping[str, Any], loaded: LoadedAtt
     )
 
 
-def load(directory: Path, plan: Mapping[str, Any], run_id: str) -> LoadedAttempts:
+def load(
+    directory: Path,
+    plan: Mapping[str, Any],
+    run_id: str,
+    workspace: Path | str | None = None,
+) -> LoadedAttempts:
+    ws = workspace if workspace is not None else plan.get("workspace")
     loaded = LoadedAttempts()
     chain = {item["name"] for item in plan["chain"]}
     seen: set[int] = set()
@@ -146,7 +157,7 @@ def load(directory: Path, plan: Mapping[str, Any], run_id: str) -> LoadedAttempt
         if not _check(data["slot"] not in seen, errors, f"{path.name}: duplicate slot"):
             continue
         seen.add(data["slot"])
-        loaded.attempts.append(_attempt(data, plan, loaded))
+        loaded.attempts.append(_attempt(data, plan, loaded, workspace=ws))
     loaded.attempts.sort(key=lambda attempt: attempt.slot)
     expected = list(range(1, len(loaded.attempts) + 1))
     _check([attempt.slot for attempt in loaded.attempts] == expected, loaded.errors, "attempt slots are not contiguous")

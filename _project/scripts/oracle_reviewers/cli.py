@@ -772,7 +772,8 @@ def _choose_reviewer(
 
 def command_select(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
-    loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"])
+    workspace = getattr(args, "workspace", None)
+    loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"], workspace=workspace)
     classification_path = Path(args.classification)
     if args.slot == 1:
         try:
@@ -965,11 +966,12 @@ def command_finalize(args: argparse.Namespace) -> int:
     else:
         classification = _read_classification(Path(args.classification)) if args.classification else None
         selection_input = _selection(plan, classification)
-        loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"])
+        ws = Path(args.workspace) if getattr(args, "workspace", None) else None
+        loaded = attempt_files.load(Path(args.attempts_dir), plan, os.environ["GITHUB_RUN_ID"], workspace=ws)
         step, errors = attempt_files.decide(selection_input, loaded)
         diff_path = Path(args.plan).parent / DIFF_FILE
         commentable = commentable_lines(diff_path.read_bytes().decode("utf-8")) if diff_path.is_file() else {}
-        final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable)
+        final = report.finalize(plan, step, errors, loaded.attempts, loaded.verdicts, commentable, workspace=ws)
         previous = plan.get("previous_state")
         state = retry.next_state(
             previous=retry.State.from_json(previous) if previous else None,
@@ -1303,6 +1305,7 @@ def _run_slot(args: argparse.Namespace, plan: Mapping[str, Any], slot: int, revi
 def command_attempts(args: argparse.Namespace) -> int:
     plan = _read_json(Path(args.plan))
     out_dir = Path(args.attempts_dir)
+    workspace = Path(args.workspace)
     out_dir.mkdir(parents=True, exist_ok=True)
     classification = _read_classification(Path(args.classification))
     ran = 0
@@ -1315,7 +1318,7 @@ def command_attempts(args: argparse.Namespace) -> int:
             if classification is None:
                 _summary(f"slot {slot}: pending (classification unreadable)")
                 break
-            loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"])
+            loaded = attempt_files.load(out_dir, plan, os.environ["GITHUB_RUN_ID"], workspace=workspace)
             chosen, line = _choose_reviewer(plan, loaded, classification, slot)
             _summary(line)
             if chosen is None:
@@ -1456,6 +1459,7 @@ def _parser() -> argparse.ArgumentParser:
     select.add_argument("--attempts-dir", required=True)
     select.add_argument("--slot", type=int, required=True)
     select.add_argument("--classification", required=True)
+    select.add_argument("--workspace")
     select.set_defaults(handler=command_select)
     review = commands.add_parser("review")
     review.add_argument("--plan", required=True)
@@ -1478,6 +1482,7 @@ def _parser() -> argparse.ArgumentParser:
     finalize.add_argument("--attempts-dir", required=True)
     finalize.add_argument("--out-dir", required=True)
     finalize.add_argument("--classification")
+    finalize.add_argument("--workspace")
     finalize.set_defaults(handler=command_finalize)
     guard = commands.add_parser("guard")
     guard.add_argument("--plan", required=True)
