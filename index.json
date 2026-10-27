@@ -8820,10 +8820,15 @@
       "title": "Pilot GitHub native stacked PRs once merge-queue support is confirmed on this repository"
     },
     "dlv2-defer-tpch-digest-darwin-arm64": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-28T23:30:56Z",
+        "generation": "9dd104d9ce0740a2b1adba3ea5fff888",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Deferral: TPC-H correctness gate value-digest mismatch on darwin-arm64 (Q2, Q10, Q15)"
     },
     "dlv2-evidence-reconcile": {
