@@ -480,3 +480,47 @@ def test_replay_fixtures_produce_published_dispositions(policy: Policy, tmp_path
         else:
             problem = protocol.dispute_problem(validate(case["verdict"]), plan)
             assert problem is not None and case["expected_problem"] in problem
+
+
+@pytest.mark.parametrize(
+    "prior",
+    [
+        _disposition("not_fixed", claim="Dispute: a paraphrase of the rebuttal."),
+        _disposition("not_fixed", evidence_text="pkg/kept.py:2 still drops the row.", concedes=True),
+        _disposition("not_fixed", concedes=None),
+        _disposition("withdrawn", evidence_text="", claim="not the rebuttal", concedes=False),
+        _disposition("fixed", evidence_text=""),
+    ],
+)
+def test_a_blocking_verdict_survives_a_malformed_disposition(policy: Policy, prior: dict[str, Any]) -> None:
+    plan = _plan_with_dispute(policy, _dispute())
+    verdict = validate({**_verdict_dict(prior), "decision": "DO_NOT_SHIP"})
+    assert protocol.dispute_problem(verdict, plan) is not None
+    assert protocol.contradiction(verdict, plan) is None
+    kept = protocol.keep_disputes_open(verdict, plan)
+    assert protocol.dispute_problem(kept, plan) is None
+    assert [(item.id, item.status) for item in kept.prior_defects] == [("D1", "not_fixed")]
+    assert "the defect stays open" in kept.prior_defects[0].evidence
+    assert protocol.judge_planned(kept, plan).decision == "DO_NOT_SHIP"
+
+
+def test_a_missing_disposition_keeps_the_defect_open_for_a_blocking_verdict(policy: Policy) -> None:
+    plan = _plan_with_dispute(policy, _dispute())
+    verdict = validate({**_verdict_dict(_disposition("not_fixed")), "prior_defects": []})
+    assert protocol.contradiction(verdict, plan) is None
+    kept = protocol.keep_disputes_open(verdict, plan)
+    assert [(item.id, item.status) for item in kept.prior_defects] == [("D1", "not_fixed")]
+    assert protocol.judge_planned(kept, plan).decision == "SHIP_WITH_FIXES"
+
+
+def test_a_shipping_verdict_with_a_malformed_disposition_is_still_invalid(policy: Policy) -> None:
+    plan = _plan_with_dispute(policy, _dispute())
+    prior = _disposition("withdrawn", evidence_text="never a defect: pkg/kept.py:12", concedes=False)
+    problem = protocol.contradiction(validate({**_verdict_dict(prior), "decision": "SHIP"}), plan)
+    assert problem is not None and "without conceding" in problem
+
+
+def test_keeping_disputes_open_leaves_well_formed_dispositions_alone(policy: Policy) -> None:
+    plan = _plan_with_dispute(policy, _dispute())
+    verdict = validate(_verdict_dict(_disposition("not_fixed")))
+    assert protocol.keep_disputes_open(verdict, plan) is verdict

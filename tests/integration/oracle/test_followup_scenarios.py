@@ -82,3 +82,46 @@ def test_dispute_round_rejudges_the_disputed_finding_and_ships(harness: Harness)
     assert [(item["id"], item["path"]) for item in run.plan["disputes"]] == [("D1", CHECKER)]
     assert [item["absence"] for item in run.attempts()][:1] == [None], run.attempts()[0]["absence"]
     assert [item["state"] for item in harness.github.oracle_statuses(head)] == ["success"]
+
+
+def test_dispute_round_keeps_a_blocking_verdict_whose_rebuttal_claim_is_paraphrased(harness: Harness) -> None:
+    _first_round(harness, 53)
+    harness.github.reply(53, 0, REBUTTAL, {**ACCOUNTS[OWNER_TOKEN]}, "OWNER")
+    maintained = {
+        "status": "not_fixed",
+        "evidence": f"{CHECKER}:2 still returns a is b, so interning does not make identity equality.",
+        "claim": "Dispute: identity is intended because callers intern every value.",
+        "concedes": False,
+    }
+    harness.script_omp(
+        [
+            {
+                "decision": "SHIP_WITH_FIXES",
+                "summary": "The defect stays open.",
+                "files_examined": [CHECKER],
+                "priors": {"D1": maintained},
+            },
+            {
+                "decision": "SHIP",
+                "summary": "The dispute holds; D1 is withdrawn.",
+                "files_examined": [CHECKER],
+                "priors": {
+                    "D1": {
+                        "status": "withdrawn",
+                        "evidence": f"{CHECKER}:2 compares interned values, so identity equals equality here.",
+                        "claim": REBUTTAL,
+                        "concedes": True,
+                    }
+                },
+            },
+        ]
+    )
+
+    head = harness.push("feat/checker", {"README.md": "seed\n\nCallers intern every value.\n"}, "explain interning")
+    run = harness.review(53)
+
+    assert [(item["id"], item["path"]) for item in run.plan["disputes"]] == [("D1", CHECKER)]
+    assert harness.omp_calls() == 1
+    assert [item["absence"] for item in run.attempts()][:1] == [None], run.attempts()[0]["absence"]
+    assert [item["state"] for item in harness.github.oracle_statuses(head)] == ["failure"]
+    assert "does not restate one of its rebuttal replies" in harness.github.reviews[53][-1]["body"]

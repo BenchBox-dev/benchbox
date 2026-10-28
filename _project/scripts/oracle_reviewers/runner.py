@@ -318,6 +318,7 @@ def _judge(
     problem = protocol.contradiction(verdict, plan, workspace=workspace)
     if problem is not None:
         return ReviewOutcome(None, absence.Absence(absence.INVALID, problem), traced)
+    verdict = protocol.keep_disputes_open(verdict, plan)
     gap = evidence.check(
         verdict,
         ships=protocol.judge_planned(verdict, plan, workspace=workspace).decision == SHIP,
