@@ -26140,12 +26140,17 @@
       "title": "Investigate corpus drift reported by nightly-v2 verification"
     },
     "t3-drift-dispatch-verify-20261008": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T16:39:24Z",
+        "generation": "eccc86cf45904bee9631aea753a3e9b5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e"
+      },
       "needs": [
         "t3-drift-corpus-mismatch-20261009"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Dispatch nightly-v2 with run_drift=true and confirm all five drift checks pass"
     },
     "t3-drift-pricing-refresh-20261008": {
