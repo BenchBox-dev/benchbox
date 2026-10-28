@@ -9189,15 +9189,10 @@
       "title": "Resolve the 17 allowlisted broken published links and verify generated edit links"
     },
     "docs-mig-followup-schema5-generator-regression-guard-20261028": {
-      "claim": {
-        "expires_at": "2026-10-29T14:06:46Z",
-        "generation": "6c940f80b8d14f1e9597006e684d13da",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Guard the TypeScript documentation generators against regressions now that docs:parity is not applicable"
     },
     "docs-mig-followup-schema5-rollback-rehearsal-20261028": {
