@@ -1,6 +1,7 @@
 {
   "acceptance": [
-    "Agreed behavior (code or documented reading) so a waiting verdict is never misread as a refusal."
+    "Agreed behavior (code or documented reading) so a waiting verdict is never misread as a refusal.",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n2026-10-26: the gate's waiting messages change in oracle-gate-from-verdict-job-20261026 (thread check removed) and retire-oracle-review-workflow-20261021 (no manual dispatch instruction); re-check this item against the result.\n\nUnblocked 2026-10-18: the blocking pair (ci-stale + cancel-race) merged in PR #3111. Ready to implement: show waiting-for-review as pending instead of failed, following the pending reporting decided by that fix. Not started; work stopped 2026-10-18.",
   "description": "The oracle-review CI check exits failure while merely awaiting a verdict for the head, which reads identically to a refusal. Consider reporting pending/neutral until a verdict exists for the head, failing only on refusal, expiry, or SHIP-with-unresolved-threads; or document the reading so the next session does not chase a non-defect.",
@@ -52,6 +53,14 @@
       "op": "update",
       "op_id": "67b349b1238a45bca896d3295c73d3f3",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:1948f97172a178432f115e58",
+      "at": "2026-10-28T17:17:33Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "0972afac002a42a5a263858ba99ddf1a",
+      "session_id": "d1d7d5ebbf3a460fbb9cc738a2c9afb3"
     }
   ]
 }
