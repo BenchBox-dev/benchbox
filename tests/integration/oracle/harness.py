@@ -363,7 +363,11 @@ class Harness:
             recover_env = {**env, "TYPESAFE_API_KEY": JEV_KEY, "TYPESAFE_BASE_URL": self.jev.url}
             record.steps["attempts"] = self.cli("attempts", loop_args, loop_env)
             for after in range(1, int(record.plan["max_attempts"])):
+                if record.steps["attempts" if after == 1 else f"resume-{after - 1}"].code != 0:
+                    break
                 record.steps[f"recover-{after}"] = self.cli(f"recover-{after}", recover_args, recover_env)
+                if record.steps[f"recover-{after}"].code != 0:
+                    break
                 record.steps[f"resume-{after}"] = self.cli(f"resume-{after}", loop_args, loop_env)
         if tamper_attempts is not None:
             tamper_attempts(attempts_dir)
