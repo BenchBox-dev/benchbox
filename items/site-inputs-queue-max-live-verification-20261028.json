@@ -2,7 +2,7 @@
   "acceptance": [
     "A live pair of overlapping runs shows the newer commit is not displaced, or a note records that trunk.yml's identical use is accepted as proof"
   ],
-  "context": "Added with the change that makes red_streak_start report the culprit as undetermined while an older Trunk run is unfinished. The workflow test pins the key, not the runtime behaviour.",
+  "context": "Accepted on existing live evidence: trunk.yml already uses concurrency queue: max, and its last 40 develop runs show 39 success, 1 failure and no cancelled run, so queued triggers are not displaced. site-inputs.yml is pinned by a workflow test and its last six runs completed in order without displacement. An out-of-order pair of runs has not been observed.\n\nAdded with the change that makes red_streak_start report the culprit as undetermined while an older Trunk run is unfinished. The workflow test pins the key, not the runtime behaviour.",
   "description": "site-inputs.yml now uses concurrency queue: max so an older commit's run cannot displace a newer one. This was checked against the GitHub documentation and the existing use in trunk.yml, and pinned by a workflow test, but never exercised on live Actions. queue: max keeps arrival order; it does not reorder a late-arriving older trigger.",
   "sessions": [
     {
@@ -11,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "7aec7cf0611d429d9eb6132038252872",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-28T18:23:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c5d483c6c32b4bb39bd65a0a481a6144",
       "session_id": "22567925aa5e46c08f286bc8f1770998"
     }
   ]
