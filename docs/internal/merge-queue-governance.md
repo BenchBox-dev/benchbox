@@ -454,7 +454,7 @@ does not defend against it.
 
 ## 7. Nightly Run
 
-`.github/workflows/nightly.yml` runs daily at 06:00 UTC and on dispatch. It
+`.github/workflows/nightly-v2.yml` (Nightly T3) runs daily and on dispatch. It
 runs the slow and scheduled checks no required check covers, plus the advisory
 ruleset drift check, which is also run by hand after a settings change and no
 longer runs in `ci.yml` (it ran only in merge groups). A nightly failure never

@@ -186,7 +186,7 @@ class TestReleaseInfrastructure:
         assert "--cov-fail-under=70" in main_pr_run_text
         assert "coverage remains CI-only" in makefile_content
 
-    def test_fast_suite_runs_on_python_314_per_pr_and_on_python_312_after_merge_and_nightly(self):
+    def test_fast_suite_runs_on_python_314_per_pr_and_on_python_312_after_merge(self):
         expected_marker_flag = f'-m "{CI_FAST_EXPRESSION}"'
 
         def python_version(workflow_name: str, job_name: str) -> str:
@@ -203,15 +203,6 @@ class TestReleaseInfrastructure:
         assert _workflow("trunk.yml")[True]["push"] == {"branches": ["develop"]}
         assert python_version("trunk.yml", "fast") == "3.12"
         assert expected_marker_flag in _workflow_job_run_text("trunk.yml", "fast")
-
-        nightly = _workflow("nightly.yml")
-        assert "schedule" in nightly[True]
-        nightly_matrix = nightly["jobs"]["test"]["strategy"]["matrix"]
-        assert "ubuntu-latest" in nightly_matrix["os"]
-        assert "3.12" in nightly_matrix["python-version"]
-        nightly_run_text = _workflow_job_run_text("nightly.yml", "test")
-        assert expected_marker_flag in nightly_run_text
-        assert "--cov-fail-under=70" in nightly_run_text
 
     def test_release_workflow_configuration(self):
         release_workflow_path = REPO_ROOT / ".github" / "workflows" / "release.yml"

@@ -143,7 +143,7 @@ def _postgres_image_references() -> list[tuple[str, str]]:
 def test_every_postgres_image_reference_is_pinned_by_sha256() -> None:
     references = _postgres_image_references()
     assert {path for path, _ in references} >= {
-        ".github/workflows/nightly.yml",
+        ".github/workflows/nightly-v2.yml",
         "docker/postgresql/docker-compose.yml",
         "docker/postgres-extensions/docker-compose.yml",
         "docker/postgres-extensions/docker-compose.timescaledb.yaml",

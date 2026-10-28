@@ -78,7 +78,7 @@ group, no validate/package/explorer phases).
   to `benchbox run-official --streams N` (the only CLI surface that honors
   N>1 concurrent streams; see `tests.uat.matrix.benchbox_run_official_argv`).
   Nightly-only in practice — `tests/uat/configs/uat-throughput-duckdb-nightly.yaml`
-  run from `.github/workflows/nightly.yml` — because multi-stream cells
+  run from `.github/workflows/nightly-v2.yml` — because multi-stream cells
   multiply wall-clock cost; not part of the default fast-lane matrix.
 - A `benchbox uat` CLI subcommand — UAT is a project-developer
   concern, `benchbox` is a project-user concern. `make` targets are

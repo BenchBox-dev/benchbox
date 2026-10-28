@@ -40,7 +40,7 @@ alone:
    `duplicate-check-delta` define local runs and report-all behavior.
 3. `.github/workflows/ci.yml` defines required develop-PR jobs and steps and the duplicate
    delta base SHA.
-4. `.github/workflows/lint.yml`, `test.yml`, and `nightly.yml` run configured
+4. `.github/workflows/lint.yml`, `test.yml`, and `nightly-v2.yml` run configured
    Ruff and ty for releases and compatibility. They do not imply the `_project`
    complexity checker exists on curated release branches.
 5. `_project/scripts/check_complexity.py` measures custom scores in isolation,

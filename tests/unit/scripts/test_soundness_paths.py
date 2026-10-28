@@ -103,7 +103,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
         ".github/workflows/pr.yml",
         ".github/workflows/release-canary.yml",
         ".github/workflows/trunk.yml",
-        ".github/workflows/nightly.yml",
+        ".github/workflows/nightly-v2.yml",
         ".github/workflows/new-example.yml",
         "scripts/pr_arm.py",
         "_project/decisions/single-repo-migration.md",

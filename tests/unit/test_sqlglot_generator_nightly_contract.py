@@ -6,7 +6,7 @@ import yaml
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-NIGHTLY = REPO_ROOT / ".github/workflows/nightly.yml"
+NIGHTLY = REPO_ROOT / ".github/workflows/nightly-v2.yml"
 PR_WORKFLOW = REPO_ROOT / ".github/workflows/ci.yml"
 
 
@@ -27,7 +27,7 @@ def test_generator_is_nightly_only_and_preserves_required_pr_workflow() -> None:
 
 def test_policy_discovery_and_infrastructure_failures_stay_blocking() -> None:
     workflow = NIGHTLY.read_text(encoding="utf-8")
-    job = _job_block(workflow, "sqlglot-generator", "integration-smoke")
+    job = _job_block(workflow, "sqlglot-generator", "report")
 
     guard = job.index("scripts/check_sqlglot_generator_known_failures.py")
     generator = job.index("_project/sqlglot-upstream/repros/generator.py")
@@ -45,7 +45,7 @@ def test_policy_discovery_and_infrastructure_failures_stay_blocking() -> None:
 
 def test_nightly_pilot_is_bounded_and_uploads_replay_evidence() -> None:
     workflow = NIGHTLY.read_text(encoding="utf-8")
-    job = _job_block(workflow, "sqlglot-generator", "integration-smoke")
+    job = _job_block(workflow, "sqlglot-generator", "report")
 
     assert "timeout-minutes: 10" in job
     assert "--cases 1024" in job
@@ -60,7 +60,7 @@ def test_ruleset_drift_runs_trusted_develop_code_with_the_token() -> None:
     job = workflow["jobs"]["ruleset-drift"]
 
     assert "needs" not in job
-    assert job["continue-on-error"] is True
+    assert "continue-on-error" not in job
     checkout = next(step for step in job["steps"] if str(step.get("uses", "")).startswith("actions/checkout@"))
     assert checkout["with"]["ref"] == "develop"
     assert checkout["with"]["persist-credentials"] is False

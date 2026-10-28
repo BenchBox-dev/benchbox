@@ -429,7 +429,7 @@ class TestMakefileCommands:
         workflow_paths = [
             repo_root / ".github" / "workflows" / "ci.yml",
             repo_root / ".github" / "workflows" / "test.yml",
-            repo_root / ".github" / "workflows" / "nightly.yml",
+            repo_root / ".github" / "workflows" / "nightly-v2.yml",
         ]
         combined_text = "\n".join(path.read_text(encoding="utf-8") for path in workflow_paths)
 

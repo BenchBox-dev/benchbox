@@ -18,7 +18,29 @@ SWEEP = WORKFLOWS_DIR / "green-unmerged-sweep.yml"
 RUNBOOK = REPO_ROOT / "docs" / "internal" / "nightly-t3.md"
 MAKEFILE = REPO_ROOT / "Makefile"
 SMOKE_MARKERS = "platform_smoke or (integration and fast)"
-LEGACY_WORKFLOWS = ("nightly.yml", "cross-platform-validation.yml")
+LEGACY_JOBS = (
+    "test",
+    "slow-tier-observation",
+    "duckdb-preview",
+    "binary-framing",
+    "check-test-patterns",
+    "security",
+    "sqlglot-generator",
+    "integration-smoke",
+    "integration-table-formats",
+    "mirror-postgres17",
+    "mirror-questdb",
+    "postgres-integration",
+    "cloud-live-plan-capture",
+    "integration",
+    "test-package",
+    "parity",
+    "scheduled-workflow-liveness",
+    "pyspark-tests",
+    "green-unmerged-sweep",
+    "ruleset-drift",
+    "cross-platform-validation",
+)
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -165,6 +187,7 @@ def test_every_ported_domain_is_in_the_report_loop_and_runbook_table() -> None:
         "parity",
         "sqlglot-generator",
         "mirror-questdb",
+        "mirror-postgres17",
     ):
         assert job in looped
         assert f"| `t3:{job}` | `{job}` |" in runbook
@@ -200,13 +223,14 @@ def test_runbook_records_a_disposition_for_every_legacy_job() -> None:
     text = RUNBOOK.read_text(encoding="utf-8")
     section = text.split("## Legacy workflow retirement", 1)[1].split("\n## ", 1)[0]
     rows = {
-        row.split("|")[1].strip(): row.split("|")[-2].strip() for row in section.splitlines() if row.startswith("| `")
+        row.split("|")[1].strip(): row.split("|")[-2].strip()
+        for row in section.splitlines()
+        if row.startswith(("| Nightly Validation ", "| Cross-Platform Validation "))
     }
-    for name in LEGACY_WORKFLOWS:
-        for job in _load(WORKFLOWS_DIR / name)["jobs"]:
-            matching = [disposition for label, disposition in rows.items() if f"`{job}`" in label]
-            assert matching, f"{name} job {job} has no disposition"
-            assert re.match(r"\*\*(Port|Keep|Drop)\*\*", matching[0]), (job, matching[0])
+    for job in LEGACY_JOBS:
+        matching = [disposition for label, disposition in rows.items() if f"`{job}`" in label]
+        assert matching, f"legacy job {job} has no disposition"
+        assert re.match(r"\*\*(Port|Keep|Drop)\*\*", matching[0]), (job, matching[0])
     for job in ("slow-tier-observation", "duckdb-preview", "pyspark-tests"):
         assert any(
             f"`{job}`" in label and "owner decision 2026-10-27" in disposition for label, disposition in rows.items()

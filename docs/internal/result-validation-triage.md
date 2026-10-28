@@ -1,6 +1,6 @@
 # Cross-Platform Validation Triage
 
-When the nightly cross-platform validation workflow fails, this runbook
+When the `t3:cross-engine` domain of the Nightly T3 workflow fails, this runbook
 walks you from raw GitHub artifact to resolution.
 
 See also: [Cross-Platform Result Validation](https://benchbox.dev/docs/development/result-validation.html) for
@@ -10,12 +10,12 @@ background on the comparator and tolerance model.
 
 On a failed run:
 
-1. Open **Actions → Cross-Platform Validation** in the private repo.
-2. Expand the failed matrix leg (e.g., `TPC-H SF=0.01 | DuckDB × datafusion`).
+1. Open **Actions → Nightly T3** in the private repo.
+2. Expand the failed `t3:cross-engine` matrix leg (e.g., `t3:cross-engine | tpch sf0.01 duckdb x datafusion`).
 3. Click **Summary → Artifacts** and download the relevant artifact:
 
 ```
-cross-platform-diff-tpch-<platform>.zip
+t3-cross-engine-tpch-<platform>.zip
 ```
 
 The zip contains two files:
@@ -241,8 +241,8 @@ specific regression from coming back.
 
 ## 6. After the fix lands
 
-1. Trigger the nightly workflow manually via **Actions → Cross-Platform
-   Validation → Run workflow** to confirm the fix.
+1. Trigger the nightly workflow manually via **Actions → Nightly T3 →
+   Run workflow** to confirm the fix.
 2. If the fix is a tolerance override, updating
    `docs/internal/duplication-residuals.md` is NOT required, but
    consider updating the [result validation](https://benchbox.dev/docs/development/result-validation.html)

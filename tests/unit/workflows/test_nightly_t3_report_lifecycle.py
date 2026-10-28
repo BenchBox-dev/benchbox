@@ -44,6 +44,7 @@ DOMAIN_JOBS = [
     "parity",
     "sqlglot-generator",
     "mirror-questdb",
+    "mirror-postgres17",
 ]
 SUPPORT_JOBS = ["mirror-images", "mirror-cedardb", "throughput-signal", "drift-gate"]
 

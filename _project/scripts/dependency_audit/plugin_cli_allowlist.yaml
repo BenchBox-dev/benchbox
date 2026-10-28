@@ -14,7 +14,7 @@ pytest-timeout:
   reason: "Timeout plugin; loaded via pytest marks/config. Not imported."
 
 pytest-json-report:
-  reason: "JSON report plugin for pytest; activated via --json-report/--json-report-file CLI flags (see .github/workflows/cross-platform-validation.yml). Not imported."
+  reason: "JSON report plugin for pytest; activated via --json-report/--json-report-file CLI flags (see .github/workflows/nightly-v2.yml). Not imported."
 
 ruff:
   reason: "Linter/formatter CLI; invoked as `uv run ruff check/format`. Not imported."

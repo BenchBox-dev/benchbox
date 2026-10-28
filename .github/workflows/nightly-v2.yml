@@ -46,6 +46,14 @@ jobs:
     with:
       images: '["questdb"]'
 
+  mirror-postgres17:
+    uses: ./.github/workflows/mirror-ci-images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["postgres17"]'
+
   docker:
     name: "t3:docker | ${{ matrix.service }}"
     needs: mirror-images
@@ -446,7 +454,12 @@ jobs:
         run: |
           history="$HOME/Developer/benchmark_runs/throughput-baseline-history"
           mkdir -p "$history"
-          for workflow in nightly-v2.yml nightly.yml; do
+          if ! legacy_id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows" --paginate \
+            --jq '.workflows[] | select(.name == "Nightly Validation") | .id'); then
+            echo "::warning::could not resolve the retired Nightly Validation workflow; its Throughput@Size baselines are not counted"
+            legacy_id=""
+          fi
+          for workflow in nightly-v2.yml ${legacy_id}; do
             if ! run_ids=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" --branch develop --event schedule --limit 30 \
               --json databaseId --jq ".[] | select(.databaseId != ${GITHUB_RUN_ID}) | .databaseId"); then
               echo "::warning::could not list prior ${workflow} runs; their Throughput@Size baselines are not counted"
@@ -1448,6 +1461,7 @@ jobs:
       - parity
       - sqlglot-generator
       - mirror-questdb
+      - mirror-postgres17
       - durations-refresh
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
@@ -1470,7 +1484,7 @@ jobs:
           result_of() {
             printf '%s' "$NEEDS_JSON" | jq -r --arg j "$1" '.[$j].result // "skipped"'
           }
-          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine liveness ruleset-drift windows tpcds-obt sql-execution-gate-obt durations-refresh security cross-engine integration-smoke integration parity sqlglot-generator mirror-questdb; do
+          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine liveness ruleset-drift windows tpcds-obt sql-execution-gate-obt durations-refresh security cross-engine integration-smoke integration parity sqlglot-generator mirror-questdb mirror-postgres17; do
             case "$job" in
               durations-refresh) domain=durations ;;
               *) domain="$job" ;;

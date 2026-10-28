@@ -19,7 +19,7 @@ red domain does not hide the others, and each domain uploads its own artifacts.
 | `t3:matrix` | `matrix` | Wheel build and install smoke on Python 3.11 to 3.14 across Ubuntu, macOS, and Windows, plus one bundled `dbgen` and one `dsdgen` run per runner. |
 | `t3:extension` | `extension` | DuckDB `datasketches` community-extension smoke, which catches upstream rebuilds. |
 | `t3:install` | `install` | Installs the latest PyPI release outside the checkout and imports it. |
-| `t3:throughput` | `throughput` | DuckDB TPC-H SF1 `run-official --streams 3` cell, plus the DuckDB throughput integration tests. It fails when a requested stream is missing or fails, and evaluates the Throughput@Size floor from retained baselines of scheduled `nightly-v2.yml` and `nightly.yml` runs. |
+| `t3:throughput` | `throughput` | DuckDB TPC-H SF1 `run-official --streams 3` cell, plus the DuckDB throughput integration tests. It fails when a requested stream is missing or fails, and evaluates the Throughput@Size floor from retained baselines of scheduled `nightly-v2.yml` runs and of the retained scheduled runs of the retired Nightly Validation workflow, which it finds by workflow name because the file no longer exists. |
 | `t3:throughput-cedardb` | `throughput-cedardb` | CedarDB TPC-H SF1 `run-official --streams 3` cell from the mirrored `ghcr.io/benchbox-dev/cedardb` image. It gates the nightly signal. |
 | `t3:drift` | `drift` | Corpus drift and privacy scan, submission-validator drift, cross-surface baseline drift, and vendor pricing drift. Scheduled runs execute it on Mondays (UTC); a manual run executes it unless `run_drift` is cleared. |
 | `t3:quarantine` | `quarantine` | Runs tests marked `quarantine`. It passes with a notice until the marker is registered in `pytest.ini`. |
@@ -36,40 +36,44 @@ red domain does not hide the others, and each domain uploads its own artifacts.
 | `t3:parity` | `parity` | Runs `make parity-check`: parity fixtures match their Python source. The pull-request lane runs the same check only when visualization paths change. |
 | `t3:sqlglot-generator` | `sqlglot-generator` | Deterministic generated SQLGlot translation cases (PostgreSQL to DuckDB, 1024 cases, 300 s deadline, seeded by the run id) after validating the known-failure policy. A discovered divergence fails the domain and uploads the replay artifact `t3-sqlglot-generator`. |
 | `t3:mirror-questdb` | `mirror-questdb` | Seeds the digest-pinned `ghcr.io/benchbox-dev/questdb` mirror that the pull-request QuestDB service in `ci.yml` pulls. |
+| `t3:mirror-postgres17` | `mirror-postgres17` | Seeds the digest-pinned `ghcr.io/benchbox-dev/postgres` PostgreSQL 17 mirror that the pull-request SQL execution evidence job in `ci.yml` and the `t3:sql-execution-gate-obt` domain pull. |
 
 ## Legacy workflow retirement
 
-`nightly.yml` (daily at 06:00 UTC) and `cross-platform-validation.yml` (daily at
-03:00 UTC) are retired in favour of this workflow and one small standalone
-workflow. Every job was mapped to one disposition on 2026-10-27; the owner chose
-the dispositions for the first four rows, and the rest follow the rule that a
-job with no equal elsewhere is ported rather than dropped. Neither legacy file
-is deleted yet: they are removed only after this workflow has two or three green
-`workflow_dispatch` runs and one green scheduled run. Timeouts are the declared
+The Nightly Validation workflow (daily at 06:00 UTC) and the Cross-Platform
+Validation workflow (daily at 03:00 UTC) were retired in favour of this workflow
+and one small standalone workflow, `green-unmerged-sweep.yml`. Every job was
+mapped to one disposition on 2026-10-27; the owner chose the dispositions for the
+first four rows, and the rest follow the rule that a job with no equal elsewhere
+is ported rather than dropped. Both legacy files were removed once this workflow
+had two or three green `workflow_dispatch` runs and one green scheduled run.
+Scheduled-run history under the old workflow paths stays in GitHub and the
+throughput floor lookup still reads it (the `t3:throughput` domain). Timeouts are the declared
 `timeout-minutes`; "default" means none was declared (GitHub's 360-minute
 limit). Measured runtimes were not recorded in the legacy files.
 
 | Legacy job | Trigger | What it checked | Failure semantics | Timeout | Disposition |
 |------------|---------|-----------------|-------------------|---------|-------------|
-| `nightly.yml` `security` | schedule, dispatch | `pip-audit` over the synced dev environment | Red job | default | **Port** to `t3:security`. |
-| `cross-platform-validation.yml` `cross-platform-validation` | schedule, dispatch (`query_subset` input) | DuckDB against DataFusion, Polars DataFrame and ClickHouse-local on TPC-H SF=0.01 | Red leg with a diff artifact | default | **Port** to `t3:cross-engine`. The `query_subset` dispatch input is not carried; narrow a run locally with `pytest -k`. |
-| `nightly.yml` `integration-smoke` | schedule, dispatch | Smoke integration subset on Ubuntu and Windows | Red leg | default | **Port** to `t3:integration-smoke`. |
-| `nightly.yml` `green-unmerged-sweep` | schedule, dispatch | `_project/scripts/green_unmerged_sweep.py --apply`, which upserts the "Green-but-unmerged PR sweep" issue (#1508) | Red job | 10 | **Keep** as `.github/workflows/green-unmerged-sweep.yml` (daily 06:11 UTC, dispatch). It is repository hygiene rather than a nightly validation domain, so it stays out of the `t3:*` report. The legacy copy keeps running until `nightly.yml` is deleted; the script upserts one issue, so the overlap is harmless. |
-| `nightly.yml` `slow-tier-observation` | schedule, dispatch | Slow-tier tests plus a duration-file refresh, `continue-on-error` | Never red | 90 | **Drop** (owner decision 2026-10-27). It was observation-only and could not fail the run; slow-tier correctness is gated by the PR, trunk and release-canary lanes, and `t3:durations` records slow-tier durations. |
-| `nightly.yml` `duckdb-preview` | schedule, dispatch | DuckDB 2.0 preview (`1.6.0.dev379`) compatibility suite | Red job | 20 | **Drop** (owner decision 2026-10-27). Compatibility with an unreleased DuckDB preview is not a supported-platform commitment. Re-add it when DuckDB 2.0 is a release target. |
-| `nightly.yml` `pyspark-tests` | schedule, dispatch | `make test-pyspark`, `continue-on-error` | Never red | default | **Drop** (owner decision 2026-10-27). It could not fail the run, and PySpark is not a supported nightly platform. |
-| `nightly.yml` `test` | schedule, dispatch | Lint, type check and fast tier with coverage on Ubuntu 3.11 to 3.14, macOS 3.12, Windows 3.11 and 3.12 (Windows `continue-on-error`) | Red leg | 90 | **Drop**. The fast tier runs on every pull request and trunk commit (`ci.yml`, `trunk.yml`, including a Python 3.14 leg and macOS and Windows legs), `t3:windows` is the daily Windows backstop, `t3:matrix` covers every interpreter on every OS, and `trunk-coverage.yml` owns coverage. |
-| `nightly.yml` `binary-framing` | schedule, dispatch | Bundled `dbgen` framing guard on three OSes | Red leg | default | **Drop**, already ported: `t3:matrix` runs the same test on every Python 3.12 runner and `ci.yml` runs it per pull request. |
-| `nightly.yml` `test-package` | schedule, dispatch | Wheel build and install smoke on Ubuntu and Windows | Red leg | default | **Drop**, already ported: `t3:matrix` builds and installs the wheel on three OSes and four interpreters. |
-| `nightly.yml` `check-test-patterns` | schedule, dispatch | `scripts/check_patch_safety.py` | Red job | default | **Drop**: `ci.yml` runs the same script on every pull request. |
-| `nightly.yml` `scheduled-workflow-liveness` | schedule, dispatch | Every scheduled workflow has a recent scheduled run | Red job | 10 | **Drop**, already ported as `t3:liveness`. |
-| `nightly.yml` `ruleset-drift` | schedule, dispatch | Live rulesets against the runbook | `continue-on-error` | 5 | **Drop**, already ported as `t3:ruleset-drift`. |
-| `nightly.yml` `postgres-integration` and `mirror-postgres17` | schedule, dispatch | PostgreSQL live suite against the digest-pinned mirror | Red job; refuses a run with no passing tests | 15 | **Drop**, already ported: `t3:docker` runs the same suite against the same digest. |
-| `nightly.yml` `cloud-live-plan-capture` | schedule, dispatch | Credentialed plan-capture tests for Snowflake, BigQuery, Redshift and MotherDuck | Red job | 15 | **Drop**, already ported as the opt-in `t3:cloud`. |
-| `nightly.yml` `mirror-questdb` | schedule, dispatch | Seeds the QuestDB GHCR mirror | Red job | n/a | **Port** to `t3:mirror-questdb`: `ci.yml` pulls the mirrored digest and nothing else seeds it. |
-| `nightly.yml` `sqlglot-generator` | schedule, dispatch | Generated SQLGlot translation pilot | Red job; replay artifact | 10 | **Port** to `t3:sqlglot-generator`: seeded discovery has no pull-request equivalent. |
-| `nightly.yml` `integration` and `integration-table-formats` | schedule, dispatch | Non-slow integration suite and table-format tests | Red job | 20 each | **Port** to `t3:integration`: no other lane runs these selections. |
-| `nightly.yml` `parity` | schedule, dispatch | `make parity-check` | Red job | default | **Port** to `t3:parity`: the pull-request lane runs it only for visualization changes. |
+| Nightly Validation `security` | schedule, dispatch | `pip-audit` over the synced dev environment | Red job | default | **Port** to `t3:security`. |
+| Cross-Platform Validation `cross-platform-validation` | schedule, dispatch (`query_subset` input) | DuckDB against DataFusion, Polars DataFrame and ClickHouse-local on TPC-H SF=0.01 | Red leg with a diff artifact | default | **Port** to `t3:cross-engine`. The `query_subset` dispatch input is not carried; narrow a run locally with `pytest -k`. |
+| Nightly Validation `integration-smoke` | schedule, dispatch | Smoke integration subset on Ubuntu and Windows | Red leg | default | **Port** to `t3:integration-smoke`. |
+| Nightly Validation `green-unmerged-sweep` | schedule, dispatch | `_project/scripts/green_unmerged_sweep.py --apply`, which upserts the "Green-but-unmerged PR sweep" issue (#1508) | Red job | 10 | **Keep** as `.github/workflows/green-unmerged-sweep.yml` (daily 06:11 UTC, dispatch). It is repository hygiene rather than a nightly validation domain, so it stays out of the `t3:*` report. The script upserts one issue (#1508). |
+| Nightly Validation `slow-tier-observation` | schedule, dispatch | Slow-tier tests plus a duration-file refresh, `continue-on-error` | Never red | 90 | **Drop** (owner decision 2026-10-27). It was observation-only and could not fail the run; slow-tier correctness is gated by the PR, trunk and release-canary lanes, and `t3:durations` records slow-tier durations. |
+| Nightly Validation `duckdb-preview` | schedule, dispatch | DuckDB 2.0 preview (`1.6.0.dev379`) compatibility suite | Red job | 20 | **Drop** (owner decision 2026-10-27). Compatibility with an unreleased DuckDB preview is not a supported-platform commitment. Re-add it when DuckDB 2.0 is a release target. |
+| Nightly Validation `pyspark-tests` | schedule, dispatch | `make test-pyspark`, `continue-on-error` | Never red | default | **Drop** (owner decision 2026-10-27). It could not fail the run, and PySpark is not a supported nightly platform. |
+| Nightly Validation `test` | schedule, dispatch | Lint, type check and fast tier with coverage on Ubuntu 3.11 to 3.14, macOS 3.12, Windows 3.11 and 3.12 (Windows `continue-on-error`) | Red leg | 90 | **Drop**. The fast tier runs on every pull request and trunk commit (`ci.yml`, `trunk.yml`, including a Python 3.14 leg and macOS and Windows legs), `t3:windows` is the daily Windows backstop, `t3:matrix` covers every interpreter on every OS, and `trunk-coverage.yml` owns coverage. |
+| Nightly Validation `binary-framing` | schedule, dispatch | Bundled `dbgen` framing guard on three OSes | Red leg | default | **Drop**, already ported: `t3:matrix` runs the same test on every Python 3.12 runner and `ci.yml` runs it per pull request. |
+| Nightly Validation `test-package` | schedule, dispatch | Wheel build and install smoke on Ubuntu and Windows | Red leg | default | **Drop**, already ported: `t3:matrix` builds and installs the wheel on three OSes and four interpreters. |
+| Nightly Validation `check-test-patterns` | schedule, dispatch | `scripts/check_patch_safety.py` | Red job | default | **Drop**: `ci.yml` runs the same script on every pull request. |
+| Nightly Validation `scheduled-workflow-liveness` | schedule, dispatch | Every scheduled workflow has a recent scheduled run | Red job | 10 | **Drop**, already ported as `t3:liveness`. |
+| Nightly Validation `ruleset-drift` | schedule, dispatch | Live rulesets against the runbook | `continue-on-error` | 5 | **Drop**, already ported as `t3:ruleset-drift`. |
+| Nightly Validation `postgres-integration` | schedule, dispatch | PostgreSQL live suite against the digest-pinned PostgreSQL 17 mirror | Red job; refuses a run with no passing tests | 15 | **Drop**, already ported: `t3:docker` runs the same live suite and applies the same no-passing-tests refusal. |
+| Nightly Validation `mirror-postgres17` | schedule, dispatch | Seeds the PostgreSQL 17 GHCR mirror | Red job | n/a | **Port** to `t3:mirror-postgres17`: `ci.yml` and `t3:sql-execution-gate-obt` pull the mirrored digest and nothing else seeds it. |
+| Nightly Validation `cloud-live-plan-capture` | schedule, dispatch | Credentialed plan-capture tests for Snowflake, BigQuery, Redshift and MotherDuck | Red job | 15 | **Drop**, already ported as the opt-in `t3:cloud`. |
+| Nightly Validation `mirror-questdb` | schedule, dispatch | Seeds the QuestDB GHCR mirror | Red job | n/a | **Port** to `t3:mirror-questdb`: `ci.yml` pulls the mirrored digest and nothing else seeds it. |
+| Nightly Validation `sqlglot-generator` | schedule, dispatch | Generated SQLGlot translation pilot | Red job; replay artifact | 10 | **Port** to `t3:sqlglot-generator`: seeded discovery has no pull-request equivalent. |
+| Nightly Validation `integration` and `integration-table-formats` | schedule, dispatch | Non-slow integration suite and table-format tests | Red job | 20 each | **Port** to `t3:integration`: no other lane runs these selections. |
+| Nightly Validation `parity` | schedule, dispatch | `make parity-check` | Red job | default | **Port** to `t3:parity`: the pull-request lane runs it only for visualization changes. |
 
 ## Fast-test duration policy
 

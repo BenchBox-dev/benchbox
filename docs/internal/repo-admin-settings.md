@@ -102,7 +102,7 @@ The public site is built, compared and deployed in `BenchBox-dev/benchbox-site`.
 
 `scripts/ruleset_drift_check.py` compares the live rulesets with this runbook.
 With no merge queue it no longer runs inside `ci.yml`. Run it by hand after a
-settings change; the nightly workflow also runs it as an advisory check.
+settings change; the nightly workflow also runs it as the `ruleset-drift` domain.
 
 To change the required contexts:
 
@@ -743,7 +743,7 @@ that introduces `release-canary.yml`, before GitHub can run it from the default
 branch, `validate-base` runs the same non-fast canary suite and ruleset drift
 check inline as bootstrap evidence.
 
-The ruleset drift check runs as an advisory job in `nightly.yml`, on manual
+The ruleset drift check runs as the `ruleset-drift` domain of `nightly-v2.yml`, on manual
 invocation, and as a blocking release check in `release-canary.yml` and the
 `validate-release-pr.yml` bootstrap. It is not part of the required develop
 `tooling` result. Nightly and canary drift jobs check out `develop`; the release
@@ -777,8 +777,8 @@ without a separate code path.
 > Verified 2026-07-08 with the Actions list-workflows API: `release-canary.yml`
 > (id 309070628) and two other scheduled workflows (since retired) are
 > registered (26 workflows, up from 19). Options (a), (b) and (c) and the admin
-> steps below are **superseded** history. The `nightly.yml`
-> `scheduled-workflow-liveness` guard now runs from `develop` directly, with no
+> steps below are **superseded** history. The nightly
+> `scheduled-workflow-liveness` guard (now the `liveness` domain of `nightly-v2.yml`) now runs from `develop` directly, with no
 > "until its file lands on `main`" caveat. The canary's first scheduled run is
 > expected **RED** on the broken 0.3.0 PyPI release (see
 > `release-recovery-v0-3-1`); that is the canary working, not a regression.
@@ -831,8 +831,8 @@ Admin steps (maintainer action, never an agent push):
    `release-recovery-v0-3-1` as live pressure for the recovery release. Do not
    weaken the canary to get a green first run.
 
-Once the canary is live, the `scheduled-workflow-liveness` job in
-`nightly.yml` (added 2026-07-05) checks daily that every workflow in the
+Once the canary is live, the `liveness` job in
+`nightly-v2.yml` (originally added to the nightly workflow on 2026-07-05) checks daily that every workflow in the
 `develop` tree that declares `on.schedule` has an `event=schedule` run
 within a window set by its cron: 3 days for daily, 9 for weekly, 35 for
 monthly, and 100 when the cron names a month. A newly registered workflow
