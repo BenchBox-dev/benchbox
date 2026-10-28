@@ -96,7 +96,10 @@ def sanitize(path: Path, extra: tuple[str, ...]) -> bool:
         raise Unredactable(path) from exc
     cleaned = redact(data, extra)
     text = json.dumps(cleaned, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    remaining = (*_keys(cleaned), *_strings(cleaned), text)
+    try:
+        remaining = (*_keys(cleaned), *_strings(cleaned), text)
+    except protocol.MarkerError as exc:
+        raise Unredactable(path) from exc
     if any(credentials.contains(item, extra) for item in remaining):
         raise Unredactable(path)
     changed = cleaned != data

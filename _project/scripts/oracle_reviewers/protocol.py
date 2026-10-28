@@ -304,12 +304,13 @@ def marker_payloads(text: str) -> list[Any]:
     for match in _ANY_MARKER.finditer(text):
         data = match.group("data")
         try:
-            raw = zlib.decompressobj().decompress(
-                base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)), MARKER_INFLATE_LIMIT
-            )
+            inflater = zlib.decompressobj()
+            raw = inflater.decompress(base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)), MARKER_INFLATE_LIMIT)
+            if not inflater.eof:
+                raise MarkerError("a protocol marker is larger than it may inflate")
             found.append(json.loads(raw))
-        except (binascii.Error, ValueError, zlib.error):
-            continue
+        except (binascii.Error, ValueError, zlib.error) as exc:
+            raise MarkerError(f"a protocol marker cannot be decoded: {exc}") from exc
     return found
 
 

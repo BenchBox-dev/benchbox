@@ -74,3 +74,22 @@ def test_sanitize_accepts_a_marker_without_a_secret(tmp_path: Path, monkeypatch:
     path = tmp_path / "review.json"
     path.write_text(json.dumps({"body": _marked("plain title")}), encoding="utf-8")
     assert redaction_check.sanitize(path, ()) is False
+
+
+@pytest.mark.parametrize("data", ["AAAA", "eJwDAAAAAAE"])
+def test_sanitize_fails_closed_on_a_marker_it_cannot_decode(tmp_path: Path, data: str) -> None:
+    path = tmp_path / "review.json"
+    path.write_text(json.dumps({"body": f"Body\n\n<!-- oracle-protocol: v1 {data} -->"}), encoding="utf-8")
+    with pytest.raises(redaction_check.Unredactable):
+        redaction_check.sanitize(path, ())
+
+
+def test_sanitize_fails_closed_on_a_marker_that_inflates_past_the_limit(tmp_path: Path) -> None:
+    import base64
+    import zlib
+
+    packed = base64.urlsafe_b64encode(zlib.compress(b'"' + b"a" * (2 << 20) + b'"', 9)).decode("ascii").rstrip("=")
+    path = tmp_path / "review.json"
+    path.write_text(json.dumps({"body": f"<!-- oracle-protocol: v1 {packed} -->"}), encoding="utf-8")
+    with pytest.raises(redaction_check.Unredactable):
+        redaction_check.sanitize(path, ())
