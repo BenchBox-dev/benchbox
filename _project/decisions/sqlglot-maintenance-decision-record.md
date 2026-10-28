@@ -45,11 +45,11 @@ adoption gate.
 
 Current release identity, from `benchbox/_vendor/sqlglot.json`:
 
-- fork version `30.25.0.1` (upstream `30.25.0`, fork revision 1);
-- fork commit `87a34a6cc16fbaa30df26638a32158f8d8810434` (fork PR #77);
+- fork version `30.25.0.2` (upstream `30.25.0`, fork revision 2);
+- fork commit `9f51489a1721423dd45e2662b87a2870648b61bd` (fork PR #78);
 - upstream commit `9d2966ed3f8a7f0d370846dbae1579b40ddc2924`;
-- wheel `benchbox_sqlglot-30.25.0.1-py3-none-any.whl`, SHA256
-  `c8556873638a1a5d05e6fb91de852e1c890c53a8c9f313131f47c947cc90bfb2`.
+- wheel `benchbox_sqlglot-30.25.0.2-py3-none-any.whl`, SHA256
+  `6207c3526bbaf1d90c6c69aec133496d0a4af2b3e2d1d06d2bb52c8c77ec8fa2`.
 
 Earlier refreshes (upstream v30.24.0 and v30.25.0) and the adoption slices A1 to
 A5 are recorded in the tracker as done, with the BenchBox PRs in the git history.
