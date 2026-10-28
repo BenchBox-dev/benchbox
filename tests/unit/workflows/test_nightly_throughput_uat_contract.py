@@ -282,7 +282,7 @@ def test_baseline_history_is_downloaded_before_the_duckdb_assert() -> None:
     assert download["env"] == {"GH_TOKEN": "${{ github.token }}"}
     run = download["run"]
     assert "gh run list" in run
-    assert 'select(.name == "Nightly Validation") | .id' in run
+    assert 'select(.name == "Nightly Validation" or (.path | endswith(' in run
     assert "for workflow in nightly-v2.yml ${legacy_id}; do" in run
     assert '--workflow "$workflow"' in run
     assert "--branch develop" in run

@@ -455,7 +455,7 @@ jobs:
           history="$HOME/Developer/benchmark_runs/throughput-baseline-history"
           mkdir -p "$history"
           if ! legacy_id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows" --paginate \
-            --jq '.workflows[] | select(.name == "Nightly Validation") | .id'); then
+            --jq '.workflows[] | select(.name == "Nightly Validation" or (.path | endswith("/nightly.yml"))) | .id'); then
             echo "::warning::could not resolve the retired Nightly Validation workflow; its Throughput@Size baselines are not counted"
             legacy_id=""
           fi

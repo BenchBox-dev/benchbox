@@ -786,7 +786,7 @@ def test_throughput_domain_runs_the_duckdb_cell_and_reads_history_from_both_nigh
     assert "tests/uat/configs/uat-throughput-duckdb-nightly.yaml" in text
     assert "--platform duckdb --benchmark tpch --scale 1 --streams 3" in text
     assert "--evaluate-floor" in text
-    assert 'select(.name == "Nightly Validation") | .id' in text
+    assert 'select(.name == "Nightly Validation" or (.path | endswith(' in text
     assert "for workflow in nightly-v2.yml ${legacy_id}; do" in text
     assert '--workflow "$workflow" --branch develop --event schedule' in text
     assert "throughput-baseline-duckdb-tpch-sf1-*" in text
