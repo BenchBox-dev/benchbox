@@ -59,6 +59,8 @@ def test_isolation_rejects_root(tmp_path, monkeypatch) -> None:
 
 @pytest.mark.skipif(sys.platform != "linux", reason="the permanent runner prerequisite is Linux-only")
 def test_live_linux_prerequisite_and_sibling_memory_denial() -> None:
+    if not Path("/proc/sys/kernel/yama/ptrace_scope").exists() and not os.environ.get("GITHUB_ACTIONS"):
+        pytest.skip("this kernel has no Yama LSM (no /proc/sys/kernel/yama/ptrace_scope); CI runners provide it")
     isolation.require_isolation()
     with subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"]) as sibling:
         try:
