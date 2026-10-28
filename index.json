@@ -18353,6 +18353,13 @@
       "status": "open",
       "title": "Exercise make pr-rerun against live GitHub"
     },
+    "pr-rerun-oracle-gate-coverage": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Make pr-rerun re-run the oracle-gate job that failed waiting for a verdict"
+    },
     "pr-review-followups-2026-08-20": {
       "claim": null,
       "needs": [],
