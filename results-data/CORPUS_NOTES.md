@@ -343,16 +343,19 @@ their manifest sidecars only:
 ```bash
 uv run -- python scripts/annotate_execution_class.py
 uv run -- python scripts/annotate_execution_class.py --write
+uv run -- python scripts/annotate_execution_class.py --write --attest-docker-servers
 uv run -- python results-data/validate_corpus.py
 ```
 
-The tool selects two kinds of bundle that record no class: a Linux OS on an Apple CPU vendor,
-and a self-hosted `localhost_port` server engine driven from a Darwin client whose Docker
-discovery was attempted but found no container (`platform_runtime.runtime_type: unknown`
-with a `container` block). The second rule covers CedarDB, ClickHouse Server and StarRocks
-(TPC-H SF 0.01, all known-defective and unranked) and Apache Doris (TPC-H SF 1); it attests
-`container_runtime: docker`. LakeSail, which also listens on localhost, records
-`local_process` and is not selected.
+By default the tool selects bundles that record no class and a Linux OS on an Apple CPU
+vendor. With `--attest-docker-servers` it also selects a self-hosted `localhost_port`
+server engine driven from a Darwin client whose Docker discovery was attempted but failed
+(`platform_runtime.runtime_type: unknown` with a `container` block). That second rule
+records the maintainer's knowledge that the engine ran in Docker on the Mac; the bundles
+themselves only show `docker_not_found`, so the sidecar evidence says so. It covers CedarDB,
+ClickHouse Server and StarRocks (TPC-H SF 0.01, known-defective and unranked) and Apache
+Doris (TPC-H SF 1) and attests `container_runtime: docker`. LakeSail, which also listens on
+localhost, records `local_process` and is not selected.
 
 The first command lists the sidecars it would change; the second writes them. The
 already-published `tpcds_obt_sf1_clickhouse_local_sql_20261026_132451_e8646728` bundle

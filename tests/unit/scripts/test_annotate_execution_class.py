@@ -93,7 +93,7 @@ def _server(directory: Path, name: str, *, deployment: dict, runtime: str = "unk
     return path
 
 
-def test_docker_server_engines_driven_from_a_mac_are_attested_as_docker_containers(tmp_path: Path) -> None:
+def test_docker_server_engines_are_attested_only_on_an_explicit_maintainer_flag(tmp_path: Path) -> None:
     local = {"deployment_type": "self_hosted", "endpoint_class": "localhost_port"}
     doris = _server(tmp_path, "doris", deployment=local)
     _server(tmp_path, "lakesail", deployment=local, runtime="local_process")
@@ -101,9 +101,15 @@ def test_docker_server_engines_driven_from_a_mac_are_attested_as_docker_containe
     _server(tmp_path, "undiscovered", deployment=local, container=False)
     _server(tmp_path, "duckdb", deployment={"deployment_type": "embedded", "endpoint_class": "embedded_process"})
 
-    changed = annotate(tmp_path, write=True)
+    assert annotate(tmp_path, write=False) == []
+
+    changed = annotate(tmp_path, write=True, attest_docker_servers=True)
 
     assert [path.name for path in changed] == ["doris.manifest.json"]
+    assert (
+        "Maintainer attestation"
+        in json.loads(doris.with_name("doris.manifest.json").read_text("utf-8"))["execution_class_evidence"]
+    )
     manifest = json.loads(doris.with_name("doris.manifest.json").read_text("utf-8"))
     assert manifest["execution_class"] == "container"
     assert manifest["container_runtime"] == "docker"
