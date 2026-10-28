@@ -29,6 +29,19 @@ red domain does not hide the others, and each domain uploads its own artifacts.
 | `t3:tpcds-obt` | `tpcds-obt` | Runs `make tpcds-obt-equivalence TPCDS_OBT_EQUIVALENCE_SF=1`: every served OBT query against its TPC-DS query on DuckDB at SF1 with identical dsqgen parameters, failing on an unlisted divergence or a listed query that now matches (see `tests/integration/test_tpcds_obt_equivalence.py`). The PR tier runs the same test at SF0.01. |
 | `t3:durations` | `durations-refresh` | Records pytest `--durations` and JUnit reports for the fast and slow tiers in the `t3-durations` artifact. It also regenerates the duration file there when the tooling is present. Test correctness is gated by the PR, trunk and release-canary lanes, so failed sampled tests (pytest exit 1) emit a `::warning::` naming the failing test ids, keep their artifacts and pass the domain. The domain fails when a pytest verdict or JUnit report is missing or unparseable, pytest exits above 1, or the duration tooling fails. |
 
+## Fast-test duration policy
+
+Fast-tier duration is gated in aggregate, not per test. The weekly
+`fast-duration-baseline-refresh.yml` run regenerates the committed baseline in
+`tests/fixtures/fast_tier_baseline/` through
+`scripts/build_fast_duration_baseline.py`, and the `verify-fast-duration`
+verdict blocks a head whose fast tier regresses against it. The repository
+owner retired the earlier 0.5 second per-test budget on 2026-10-27: it read an
+empty bootstrap file and never failed a test. Collection in `tests/conftest.py`
+now enforces only the quarantine marker contract (owner, issue and unexpired
+expiry) and skips quarantined tests outside T3. The `t3:durations` artifact is
+a measurement record and is not read at collection time.
+
 ## Live cloud tests are opt-in
 
 The `cloud` job runs only when the repository variable
