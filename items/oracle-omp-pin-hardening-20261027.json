@@ -4,7 +4,7 @@
     "Adds the matching scenario to the oracle end-to-end harness.",
     "make pr-preflight, make docs-reference-inventory-check, make doc-contracts-guard and make comment-policy-check pass; the PR gets oracle SHIP on its exact head with every oracle thread answered and resolved, and merges through make pr-arm."
   ],
-  "context": "2026-10-27 23:35Z: PR #3609 merged (fe00f0738, head 8e2a1ea2e) BEFORE the owner's darwin-arm64 check of the pinned 18.12.1 build, which was a stated pre-merge owner step. Owner check still required post-merge: a local review on the Mac must pass through the re-hash and install path.\n\n2026-10-27: branch fix/oracle-omp-pin-hardening (ea5ec2615) ready; waiting to rebase onto the evidence-retry fixture fix (#3605, merged) before pr-open. Owner step: darwin-arm64 compatibility check of 18.12.1 before merge.\n\nOWNER DECISIONS 2026-10-27 (OMP pin, after the Advisor review reports/AdvisorOmpPin.md): keep the exact per-platform hash pin; #3572 exempt from the freeze; no mirror of pinned builds (availability and revert risk accepted); redacted captured OMP streams and terminal error events may be committed as fixtures, and hand-built stubs are allowed only for error shapes never captured, clearly labelled and replaced once a real one exists; the gateway host runs the pinned cache build; bumps track every omp release and the owner's Mac (darwin-arm64) compatibility run is required before merge. ",
+  "context": "2026-10-28 close-out: the owner's darwin-arm64 check is satisfied after the fact by an agent run on the Mac (owner decision 2026-10-28: agent runs here count as owner Mac evidence): a local review with PATH omp 18.13.2 and no PATH prefix at origin/develop 4a6822108 ran the pinned ~/.cache/benchbox/omp/18.12.1/darwin-arm64/omp (sha256 fa41b27d…, ps-confirmed) through develop's re-hash path and exited 0. The gateway host now also runs the pinned build (switch-over 2026-10-28 11:44Z). Harness: #3626 test_omp_pin_scenarios.py (3 scenarios, each failing with fe00f0738's files reverted). First post-merge CI review 40603240559 installed omp and reviewed. Every acceptance item met.\n\n2026-10-27 23:35Z: PR #3609 merged (fe00f0738, head 8e2a1ea2e) BEFORE the owner's darwin-arm64 check of the pinned 18.12.1 build, which was a stated pre-merge owner step.\n\n2026-10-27: branch fix/oracle-omp-pin-hardening (ea5ec2615) ready; waiting to rebase onto the evidence-retry fixture fix (#3605, merged) before pr-open.\n\nOWNER DECISIONS 2026-10-27 (OMP pin, after the Advisor review reports/AdvisorOmpPin.md): keep the exact per-platform hash pin; #3572 exempt from the freeze; no mirror of pinned builds (availability and revert risk accepted); redacted captured OMP streams and terminal error events may be committed as fixtures, and hand-built stubs are allowed only for error shapes never captured, clearly labelled and replaced once a real one exists; the gateway host runs the pinned cache build; bumps track every omp release and the owner's Mac (darwin-arm64) compatibility run is required before merge. ",
   "deferrals": [
     {
       "created_at": "2026-10-27T20:33:40Z",
@@ -80,6 +80,14 @@
       "client": "omp-coding-agent",
       "op": "dismiss",
       "op_id": "4a5ced3dc0aa4ebf82b876e21f0c0e56",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-28T11:57:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "67df34abb88a4b0989e1f295f709a59e",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
