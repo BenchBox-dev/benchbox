@@ -197,7 +197,11 @@ def _write_owner(worktree_path: Path, record: dict[str, Any]) -> None:
 
 
 def _clear_owner(worktree_path: Path) -> None:
-    _run_git(["config", "--worktree", "--unset", f"{CONFIG_PREFIX}.owner"], worktree_path)
+    result = _run_git(["config", "--worktree", "--unset-all", f"{CONFIG_PREFIX}.owner"], worktree_path)
+    if _get_worktree_config("owner", worktree_path) is not None:
+        raise MetadataError(
+            f"Could not clear the worktree ownership record: {result.stderr.strip() or 'git config failed'}"
+        )
 
 
 def _guard_supported() -> bool:

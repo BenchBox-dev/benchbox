@@ -10,6 +10,13 @@ import pytest
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
+
+@pytest.fixture(autouse=True)
+def _isolated_ambient_environment(monkeypatch):
+    for name in (*meta.SESSION_ENV_VARS, meta.HARNESS_PID_ENV):
+        monkeypatch.delenv(name, raising=False)
+
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 spec = importlib.util.spec_from_file_location(
     "worktree_lifecycle_metadata", REPO_ROOT / "scripts" / "worktree_lifecycle_metadata.py"
@@ -254,6 +261,7 @@ def _fake_ps(monkeypatch, processes: dict[int, tuple[str, int, str | None]], cal
         return {"comm": comm, "ppid": str(ppid), "lstart": start}[field]
 
     monkeypatch.setattr(meta, "_ps_field", ps_field)
+    monkeypatch.setattr(meta, "process_start", lambda pid: ps_field(pid, "lstart"))
     monkeypatch.setattr(meta.os, "getppid", lambda: caller_parent)
 
 
@@ -384,3 +392,22 @@ def test_declared_harness_pid_is_used_only_when_it_is_live(monkeypatch, live_pro
     live_process.wait()
     monkeypatch.setenv(meta.HARNESS_PID_ENV, str(live_process.pid))
     assert meta.harness_pid() is None
+
+
+def test_release_fails_loudly_when_the_record_cannot_be_cleared(worktree, live_process, monkeypatch, capsys):
+    _as_session(monkeypatch, "session-a", live_process.pid)
+    meta.claim_worktree(worktree)
+    real_run_git = meta._run_git
+
+    def failing_unset(args, cwd):
+        if "--unset-all" in args:
+            return subprocess.CompletedProcess(args, 5, "", "could not lock config file")
+        return real_run_git(args, cwd)
+
+    monkeypatch.setattr(meta, "_run_git", failing_unset)
+
+    assert _main(monkeypatch, worktree, "session-release") == 1
+    captured = capsys.readouterr()
+    assert "released" not in captured.out
+    assert "could not lock" in captured.err
+    assert _record(worktree)["session"] == "session-a"
