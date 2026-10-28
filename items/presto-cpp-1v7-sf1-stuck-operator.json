@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Determine whether 1_v7 completes at SF1 on a Presto C++ worker, with the property, memory and worker count used, recorded as durable evidence",
+    "Record the cause of the stuck operator, or that it was not found and what was ruled out",
+    "State whether the documented requirement for Presto C++ in the TPC-Havoc docs needs correcting"
+  ],
+  "context": "Evidence: _project/audits/tpchavoc-presto-cpp-reduce-cap-2026-10-26.md, section '1_v7 results' (v7_sf1_raised). The 0.299 coordinator tarball came from the Google Central mirror because Maven Central returned 429; the image is prestodb/presto-native:0.299 (arm64 manifest sha256:aed8a18a04edb97af7397c1eaad582a513ff2432d9a6be25272efc71db730ad0). The harness (_project/scripts/tpchavoc_presto_variant_check.py) has ad-hoc statement and session-property modes. Heavy: needs a 16 GiB machine with nothing else large running, and a bounded timeout well under 40 minutes per attempt. Filed from session review 2026-10-27.\n\nMoved from the todo-db tracker on 2026-10-28; the item was filed there by mistake.",
+  "description": "On Presto C++ 0.299 the rendered 1_v7 fails the 100,000-element REDUCE cap from SF0.1. With native_expression_max_array_size_in_reduce raised, SF0.1 passes, but SF1 failed with GENERIC_INTERNAL_ERROR after the worker's stuck-operator watchdog cancelled the task at 40 minutes (FilterProject.10::getOutput; peak memory 732954624 bytes), so the cause is neither the cap nor a memory limit. The cause is unknown. Not tested: setting the property with a literal SET SESSION (it was sent as a REST session header), Presto C++ 0.298.x, a multi-worker cluster, and a worker with more than 4 GiB.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/3577",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/71"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:5427f38a811abefa5a292dd6",
+      "at": "2026-10-28T13:46:58Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "c3bcc0a7bf8a48bb8bdc4bef0cd7e956",
+      "session_id": "8dd2786d2f544912829f10b74985f086"
+    }
+  ]
+}

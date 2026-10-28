@@ -18461,6 +18461,13 @@
       "status": "done",
       "title": "Support creation of pre-sorted / pre-clustered datasets in open table formats"
     },
+    "presto-cpp-1v7-sf1-stuck-operator": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Find why TPC-Havoc 1_v7 hangs on a Presto C++ worker at SF1 once the REDUCE cap is raised"
+    },
     "presto-trino-platform-documentation": {
       "claim": null,
       "needs": [],
