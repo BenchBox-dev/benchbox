@@ -438,7 +438,7 @@ jobs:
 
       - name: Compare the driver outputs with the posted outputs
         id: shadow_compare
-        if: always() && steps.plan.outputs.post == 'true'
+        if: always() && steps.shadow_plan.outcome != 'skipped'
         continue-on-error: true
         working-directory: trusted
         env:
@@ -451,7 +451,7 @@ jobs:
         run: python3 -m _project.scripts.oracle_reviewers.cli drive compare
 
       - name: Upload the shadow comparison
-        if: always() && steps.plan.outputs.post == 'true'
+        if: always() && steps.shadow_plan.outcome != 'skipped'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           overwrite: true
