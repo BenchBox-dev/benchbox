@@ -124,19 +124,6 @@ def _receipt_candidates(
     ]
 
 
-def _latest_receipt(
-    reviews: Iterable[dict[str, Any]], head_sha: str, base_time: datetime | None
-) -> dict[str, Any] | None:
-    candidates = _receipt_candidates(reviews, head_sha, base_time)
-    return max(
-        candidates, key=lambda review: (_parse_time(review["submitted_at"]), review.get("id") or 0), default=None
-    )
-
-
-def _receipt(reviews: Iterable[dict[str, Any]], head_sha: str, base_time: datetime | None) -> dict[str, Any] | None:
-    return _latest_receipt(reviews, head_sha, base_time)
-
-
 def _status_run_uuid(status: dict[str, Any]) -> str | None:
     match = _RUN_SUFFIX.search(status.get("description") or "")
     return match.group("run") if match else None
@@ -168,6 +155,25 @@ def _receipt_agrees(receipt: dict[str, Any], head_sha: str, status_uuid: str | N
         return False
     receipt_uuid = _receipt_run_uuid(receipt)
     return receipt_uuid is not None and receipt_uuid == status_uuid
+
+
+def _receipt_backed_success(
+    verdicts: list[dict[str, Any]], reviews: Iterable[dict[str, Any]], head_sha: str, base_time: datetime | None
+) -> bool:
+    candidates = _receipt_candidates(reviews, head_sha, base_time)
+    for status in reversed(verdicts):
+        if status["state"] != "success":
+            return False
+        if _strip_run_suffix(status.get("description")) == EXEMPT_SUCCESS_DESCRIPTION:
+            continue
+        status_uuid = _status_run_uuid(status)
+        own = [
+            receipt for receipt in candidates if status_uuid is not None and _receipt_run_uuid(receipt) == status_uuid
+        ]
+        latest = max(own, key=lambda review: (_parse_time(review["submitted_at"]), review.get("id") or 0), default=None)
+        if latest is not None:
+            return _receipt_agrees(latest, head_sha, status_uuid)
+    return False
 
 
 def _verdict_statuses(statuses: Iterable[dict[str, Any]], base_time: datetime | None) -> list[dict[str, Any]]:
@@ -247,9 +253,7 @@ def decide(
                     "rebase is enough), or have the owner stand-in post an attestation"
                 )
         else:
-            receipt = _receipt(reviews, head_sha, base_time)
-            status_uuid = _status_run_uuid(latest)
-            if receipt is not None and _receipt_agrees(receipt, head_sha, status_uuid):
+            if _receipt_backed_success(verdicts, reviews, head_sha, base_time):
                 return PASS, f"oracle-review: pass (oracle verdict for {head_sha})"
             if standin is None:
                 return WAITING, (
@@ -388,9 +392,11 @@ def fetch_review_edit(token: str, node_id: str) -> tuple[str | None, bool]:
 
 def annotate_receipt(token: str, reviews: list[dict[str, Any]], head_sha: str, base_date: str | None = None) -> None:
     base_time = _parse_time(base_date) if base_date else None
-    receipt = _latest_receipt(reviews, head_sha, base_time)
-    if receipt is None:
-        return
+    for receipt in _receipt_candidates(reviews, head_sha, base_time):
+        _annotate_one(token, receipt)
+
+
+def _annotate_one(token: str, receipt: dict[str, Any]) -> None:
     if not receipt.get("node_id"):
         receipt["last_edited_at"] = ""
         receipt["includes_created_edit"] = True

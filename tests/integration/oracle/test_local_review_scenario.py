@@ -79,3 +79,17 @@ def test_override_text_that_the_rendered_description_hides_is_not_an_override(ha
     assert review.code == 1, review.stdout + review.stderr
     assert "Refusing to open the PR" in review.stderr
     assert "override accepted" not in review.stdout + review.stderr
+
+
+def test_renaming_gate_machinery_keeps_the_gate_template(harness: Harness) -> None:
+    harness.rename_branch(
+        "feat/rename-gate",
+        ".github/workflows/oracle-verdict.yml",
+        ".github/workflows/renamed-review.yml",
+        "rename the verdict workflow",
+    )
+    harness.script_omp([{"decision": "SHIP", "summary": "A pure rename.", "files_examined": []}])
+
+    review = harness.local_review("feat/rename-gate")
+
+    assert "with the gate template" in review.stdout + review.stderr, review.stdout + review.stderr

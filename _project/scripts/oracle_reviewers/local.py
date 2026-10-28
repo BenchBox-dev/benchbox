@@ -24,7 +24,7 @@ from typing import Any
 import yaml
 
 from . import attempts as attempt_files, cli, credentials, omp_pin, protocol, redaction_check, selection
-from .classifier import ChangedFile, matching, soundness_scope
+from .classifier import ChangedFile, soundness_scope
 from .classify import Classification
 from .commands import LOOPBACK_PROXY, gateway_proxy
 from .jev import JevError
@@ -449,8 +449,7 @@ def classify(plan: dict[str, Any], reporter: Reporter, keyed: bool) -> Classific
             return cli._classify_plan(plan)
         except (JevError, KeyError, TypeError, ValueError) as exc:
             raise Unavailable(f"classification unavailable: {exc}") from exc
-    paths = [item["path"] for item in plan.get("reviewed_files", [])]
-    flags = matching(paths, plan.get("gate_path_list", []))
+    flags = cli.plan_gate_flags(plan)
     template = "gate" if flags else "standard"
     reporter.say(
         f"No classifier key ({KEYCHAIN_SERVICE} in the keychain or the environment): used the fixed default, "

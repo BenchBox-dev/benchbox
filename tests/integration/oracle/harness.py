@@ -181,6 +181,15 @@ class Harness:
         git(self.repo, "switch", "--quiet", "develop")
         return sha
 
+    def rename_branch(self, name: str, old: str, new: str, message: str) -> str:
+        git(self.repo, "switch", "--quiet", "-C", name, "develop")
+        (self.repo / new).parent.mkdir(parents=True, exist_ok=True)
+        git(self.repo, "mv", old, new)
+        git(self.repo, "commit", "--quiet", "-m", message)
+        sha = git(self.repo, "rev-parse", "HEAD")
+        git(self.repo, "switch", "--quiet", "develop")
+        return sha
+
     def push(self, name: str, files: dict[str, str | bytes], message: str) -> str:
         git(self.repo, "switch", "--quiet", name)
         sha = self.write(files, message)
