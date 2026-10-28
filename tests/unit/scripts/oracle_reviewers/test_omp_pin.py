@@ -456,3 +456,20 @@ def test_a_relative_binary_override_is_resolved_against_the_launch_directory(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv(omp_pin.BINARY_ENV, "bin/omp")
     assert omp_pin.configured_binary() == Path(os.getcwd()) / "bin" / "omp"
+
+
+def test_the_pin_digest_binds_the_version_and_every_platform_url_and_hash() -> None:
+    base = omp_pin.Pin(
+        "1.2.3",
+        {"linux-x64": omp_pin.Build("https://a/x", "a" * 64), "darwin-arm64": omp_pin.Build("https://a/d", "b" * 64)},
+    )
+    reordered = omp_pin.Pin("1.2.3", dict(reversed(list(base.builds.items()))))
+    assert omp_pin.pin_digest(base) == omp_pin.pin_digest(reordered)
+    changed = {
+        "version": omp_pin.Pin("1.2.4", base.builds),
+        "linux hash": omp_pin.Pin("1.2.3", {**base.builds, "linux-x64": omp_pin.Build("https://a/x", "c" * 64)}),
+        "linux url": omp_pin.Pin("1.2.3", {**base.builds, "linux-x64": omp_pin.Build("https://evil/x", "a" * 64)}),
+        "dropped": omp_pin.Pin("1.2.3", {"darwin-arm64": base.builds["darwin-arm64"]}),
+    }
+    digests = {omp_pin.pin_digest(pin) for pin in changed.values()} | {omp_pin.pin_digest(base)}
+    assert len(digests) == len(changed) + 1

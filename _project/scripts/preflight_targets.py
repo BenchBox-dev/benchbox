@@ -50,6 +50,7 @@ SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     "_project/scripts/oracle_gate.py": ORACLE_SCENARIO_TESTS,
     "_project/scripts/soundness_merge_digest.py": ORACLE_SCENARIO_TESTS,
     "scripts/pr_arm.py": ORACLE_SCENARIO_TESTS,
+    "scripts/pr_arm_omp_bump.py": ORACLE_SCENARIO_TESTS,
     "tests/integration/oracle/": ORACLE_SCENARIO_TESTS,
     ".github/workflows/oracle-": ORACLE_SCENARIO_TESTS,
     ".github/oracle-": ORACLE_SCENARIO_TESTS,

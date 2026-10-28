@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 POLICY_PATH = REPO_ROOT / ".github" / "oracle-reviewers.yml"
 FIXTURE_DIR = REPO_ROOT / "tests" / "fixtures" / "oracle_reviewers" / "omp_candidate"
 USAGE_ERROR = 2
+EVIDENCE_PREFIX = "Omp candidate check:"
 
 
 class Chain(Protocol):
@@ -51,6 +53,16 @@ class Report:
     checks: tuple[Check, ...]
     unverified: tuple[str, ...] = ()
     unprobed_providers: tuple[str, ...] = ()
+    host: str = ""
+    pin_digest: str = ""
+    head: str = ""
+
+    @property
+    def evidence_line(self) -> str | None:
+        build = next((item for item in self.builds if item.target == self.host), None)
+        if not self.releasable or build is None or not self.head:
+            return None
+        return f"{EVIDENCE_PREFIX} version={self.version} platform={self.host} sha256={build.actual} pin={self.pin_digest} head={self.head} result=releasable"
 
     @property
     def passed(self) -> bool:
@@ -60,12 +72,19 @@ class Report:
     def ok(self) -> bool:
         return self.passed and not self.unverified and not self.unprobed_providers
 
+    @property
+    def releasable(self) -> bool:
+        hashed = {build.target for build in self.builds}
+        host_probed = any(build.target == self.host and build.probed for build in self.builds)
+        return self.passed and host_probed and all(target in hashed for target in self.unverified)
+
     def to_json(self) -> dict[str, Any]:
         return {
             "version": self.version,
             "ok": self.ok,
             "unverified_platforms": list(self.unverified),
             "unprobed_providers": list(self.unprobed_providers),
+            "evidence_line": self.evidence_line,
             "version_transcript": self.transcript,
             "builds": [
                 {
@@ -108,6 +127,8 @@ class Report:
                 + ", ".join(self.unprobed_providers)
             )
         lines.append("result: " + ("green" if self.ok else "partial" if self.passed else "red"))
+        if self.evidence_line is not None:
+            lines.append(self.evidence_line)
         return "\n".join(lines)
 
 
@@ -198,7 +219,14 @@ def check_candidate(
     builds = [replace(build, probed=build.target in probed) for build in builds]
     unverified = tuple(target for target in pin.builds if target not in probed)
     return Report(
-        pin.version, tuple(builds), transcript, tuple(checks), unverified, candidate_checks.unprobed_providers()
+        pin.version,
+        tuple(builds),
+        transcript,
+        tuple(checks),
+        unverified,
+        candidate_checks.unprobed_providers(),
+        host,
+        omp_pin.pin_digest(pin),
     )
 
 
@@ -210,6 +238,31 @@ def _load_pin(args: argparse.Namespace) -> omp_pin.Pin:
             f"{source} pins omp {pin.version}, not {args.version}; pass --pin with a file whose omp section names the candidate"
         )
     return pin
+
+
+def clean_head() -> str:
+    try:
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            timeout=60,
+        )
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    value = head.stdout.strip()
+    clean = status.returncode == 0 and not status.stdout.strip() and head.returncode == 0
+    return value if clean and re.fullmatch(r"[0-9a-f]{40}", value) else ""
 
 
 def command_check(args: argparse.Namespace) -> int:
@@ -224,6 +277,7 @@ def command_check(args: argparse.Namespace) -> int:
     except (OSError, omp_pin.PinError) as exc:
         print(f"omp-candidate-check: error: {exc}", file=sys.stderr)
         return USAGE_ERROR
+    report = replace(report, head=clean_head())
     print(json.dumps(report.to_json(), indent=2) if args.json else report.render())
     return 0 if report.ok else 1
 

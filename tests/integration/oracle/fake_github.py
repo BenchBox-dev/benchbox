@@ -397,6 +397,7 @@ class FakeGitHub:
                 lambda request, match: self._page(self.timeline[int(match[1])], request),
             ),
             ("GET", r"/compare/([^.]+)\.\.\.(.+)", lambda request, match: (200, self.compare(match[1], match[2]), {})),
+            ("GET", r"/contents/(.+)", self._contents),
             ("GET", r"/git/trees/([0-9a-f]{40})", lambda request, match: (200, self.tree(match[1]), {})),
             ("GET", r"/commits/([0-9a-f]{40})", self._commit),
             ("GET", r"/commits/([0-9a-f]{40})/statuses", self._status_list),
@@ -418,6 +419,10 @@ class FakeGitHub:
             ("GET", r"/actions/artifacts/(\d+)/zip", self._artifact_zip),
             ("GET", "/rules/branches/([^/]+)", lambda request, match: (200, self.rulesets, {})),
         ]
+
+    def _contents(self, request: Request, match: re.Match[str]) -> Response:
+        data = self.git_bytes("show", f"{request.query['ref']}:{match[1]}")
+        return 200, data, {"Content-Type": "text/plain; charset=utf-8"}
 
     def _pull(self, request: Request, match: re.Match[str]) -> Response:
         number = int(match[1])

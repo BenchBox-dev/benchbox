@@ -22,6 +22,7 @@ from oracle_review_check import (
     changed_paths,
     decide,
     fetch_base_change_date,
+    fetch_bump_refusals,
     fetch_comments,
     fetch_files,
     fetch_head_oid,
@@ -141,7 +142,10 @@ def evaluate(repo: str, pr: int, token: str) -> tuple[str, int, str]:
         comments = fetch_comments(token, repo, pr)
         reviews = fetch_reviews(token, repo, pr)
         annotate_receipt(token, reviews, head_sha, base_date)
-        status, message = decide(head_sha, files, statuses, threads, matcher, base_date, comments, reviews=reviews)
+        bump = fetch_bump_refusals(token, repo, pull, files, len(items), comments)
+        status, message = decide(
+            head_sha, files, statuses, threads, matcher, base_date, comments, reviews=reviews, bump_refusals=bump
+        )
     except Exception as exc:
         raise EvaluationFailed(head_sha, exc) from exc
     return head_sha, status, message
