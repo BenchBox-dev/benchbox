@@ -9,7 +9,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from tests.duration_policy import collect_junit_durations, write_duration_file
 
-CLI_DESCRIPTION = "Regenerate the committed per-test p95 artifact from T3 JUnit reports."
+CLI_DESCRIPTION = "Write the per-test p95 duration artifact from T3 JUnit reports."
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -19,7 +19,7 @@ def main(argv: list[str] | None = None) -> int:
         "--output",
         type=Path,
         default=REPO_ROOT / "tests" / "fixtures" / "test_durations.json",
-        help="Committed duration artifact to write",
+        help="Duration artifact to write",
     )
     parser.add_argument("--source", default="T3 nightly JUnit reports", help="Provenance label for the artifact")
     parser.add_argument(
