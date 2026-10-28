@@ -40,6 +40,12 @@ def test_tm1_clickhouse_uses_todatetime_wrapper():
     assert "EXTRACT" not in q.upper(), f"TM1 must not use EXTRACT for ClickHouse:\n{q}"
 
 
+def test_tm1_clickhouse_prefixes_date_before_todatetime():
+    q = _bench().get_queries(dialect="clickhouse")["TM1"]
+    assert "toDateTime(ol.order_time)" not in q, f"Bare time string yields NULL in ClickHouse:\n{q}"
+    assert q.count("toDateTime(concat('1970-01-01 ', ol.order_time))") == 3, q
+
+
 def test_tm1_clickhouse_preserves_day_part_categories():
 
     q = _bench().get_queries(dialect="clickhouse")["TM1"]
