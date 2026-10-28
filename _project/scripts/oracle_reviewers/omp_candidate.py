@@ -147,23 +147,28 @@ def check_candidate(
             builds.append(_fetch_build(target, build, destination, fetch or omp_pin.download))
             if target != host:
                 destination.unlink()
-        candidate.chmod(0o755)
         home = root / "static-home"
         home.mkdir()
-        checks = candidate_checks.static_checks(candidate, home, pin.version)
         host_build = next(item for item in builds if item.target == host)
+        transcript = "not executed: the host build does not hash to the pin"
+        if host_build.ok:
+            candidate.chmod(0o755)
+            checks = candidate_checks.static_checks(candidate, home, pin.version)
+            code, text = candidate_checks.run_omp(candidate, home, "--version")
+            transcript = " ".join(text.split()) if code == 0 else f"exit {code}"
+        else:
+            checks = [Check("static-probes", (1, 2, 3, 4, 11), (f"skipped: {transcript}",))]
         runnable = host_build.ok and all(check.ok for check in checks)
         checks.extend(candidate_checks.fixture_checks(fixtures))
         if runnable:
             checks.extend(_live_checks(chain_factory, candidate, root, capture))
         else:
             checks.append(Check("live-chain", (1, 12), ("skipped: the candidate hash or static checks failed",)))
-        code, text = candidate_checks.run_omp(candidate, home, "--version")
         checks.extend(
             Check("row-coverage", (row,), (f"no probe covers contract row {row}",))
             for row in candidate_checks.uncovered_rows(checks)
         )
-    return Report(pin.version, tuple(builds), " ".join(text.split()) if code == 0 else f"exit {code}", tuple(checks))
+    return Report(pin.version, tuple(builds), transcript, tuple(checks))
 
 
 def _load_pin(args: argparse.Namespace) -> omp_pin.Pin:

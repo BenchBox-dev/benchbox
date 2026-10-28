@@ -775,8 +775,9 @@ to GitHub.
   (the committed policy by default); `BINARY=<path>` reuses an already
   downloaded build for this platform. It downloads each pinned platform build,
   hashes it against the pin, and runs the probes on the build for the platform
-  it runs on, so linux-x64 evidence comes from CI and darwin-arm64 evidence from
-  the owner's Mac. The probes are: the `--version` format (exactly one version
+  it runs on, and only after the build hashes to the pin; a build that does not
+  is never executed. Run the target on a linux-x64 machine for linux-x64
+  evidence and on the owner's Mac for darwin-arm64 evidence. The probes are: the `--version` format (exactly one version
   token, equal to the pin); every flag in the reviewer command is listed by
   `--help`; enumerated flag values and the tool roster are rejected when invalid
   and still name the values the reviewer uses; every overlay and reviewer-home

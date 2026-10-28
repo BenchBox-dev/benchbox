@@ -34,6 +34,7 @@ SCRIPT = (
     "import json, sys\n"
     "from pathlib import Path\n"
     "data = json.loads(Path({data!r}).read_text())\n"
+    "Path({marker!r}).touch()\n"
     "args = sys.argv[1:]\n"
     "def emit(text, code=0):\n"
     "    sys.stdout.write(text)\n"
@@ -60,7 +61,10 @@ def _fake(tmp_path: Path, mutate: Callable[[dict[str, Any]], None] | None = None
     directory.mkdir(exist_ok=True)
     (directory / "static.json").write_text(json.dumps(data), encoding="utf-8")
     binary = directory / "omp"
-    binary.write_text(SCRIPT.format(python=sys.executable, data=str(directory / "static.json")), encoding="utf-8")
+    binary.write_text(
+        SCRIPT.format(python=sys.executable, data=str(directory / "static.json"), marker=str(directory / "executed")),
+        encoding="utf-8",
+    )
     binary.chmod(binary.stat().st_mode | stat.S_IXUSR)
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
@@ -413,7 +417,8 @@ def _chain_from(runs: dict[str, ClientRun]) -> Iterator[Any]:
 
 def _pin_for_host(binary: Path, **overrides: str) -> omp_pin.Pin:
     digest = omp_pin.sha256_of(binary)
-    builds = {omp_pin.current_platform(): omp_pin.Build("https://downloads.example.invalid/omp", digest)}
+    host = omp_pin.Build("https://downloads.example.invalid/omp", overrides.get("host", digest))
+    builds = {omp_pin.current_platform(): host}
     builds["linux-arm64"] = omp_pin.Build("https://downloads.example.invalid/other", overrides.get("other", digest))
     return omp_pin.Pin(VERSION, builds)
 
@@ -449,6 +454,23 @@ def test_a_platform_build_that_does_not_hash_to_the_pin_turns_the_report_red(tmp
     assert not report.ok
     assert [build.target for build in report.builds if not build.ok] == ["linux-arm64"]
     assert "MISMATCH" in report.render()
+
+
+def test_a_host_build_that_does_not_hash_to_the_pin_is_never_executed(tmp_path: Path) -> None:
+    binary, _ = _fake(tmp_path)
+    started: list[bool] = []
+
+    def factory(*_: Any) -> Any:
+        started.append(True)
+        return _chain_from(_good_runs())
+
+    report = omp_candidate.check_candidate(
+        _pin_for_host(binary, host="0" * 64), fetch=_fetcher(binary), chain_factory=factory
+    )
+    assert not report.ok and started == []
+    assert not (binary.parent / "executed").exists()
+    assert report.transcript == "not executed: the host build does not hash to the pin"
+    assert "static-probes" in _failed(list(report.checks))
 
 
 def test_a_candidate_failing_a_static_probe_never_starts_the_loopback_chain(tmp_path: Path) -> None:
