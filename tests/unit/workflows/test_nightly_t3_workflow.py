@@ -859,7 +859,7 @@ def test_throughput_signal_publishes_the_commit_status_the_retiring_workflow_pub
     assert 'context="nightly/throughput-uat"' in text
     assert "success:success) state=success" in text
     assert "cancelled:*|*:cancelled) state=error" in text
-    assert "throughput-signal" not in _load()["jobs"]["report"]["needs"]
+    assert "throughput-signal" in _load()["jobs"]["report"]["needs"]
 
 
 @pytest.mark.parametrize(

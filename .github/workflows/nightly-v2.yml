@@ -1128,12 +1128,15 @@ jobs:
       - install
       - throughput
       - throughput-cedardb
+      - throughput-signal
+      - drift-gate
       - drift
       - quarantine
       - liveness
       - ruleset-drift
       - windows
       - tpcds-obt
+      - sql-execution-gate-obt
       - durations-refresh
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
@@ -1156,7 +1159,7 @@ jobs:
           result_of() {
             printf '%s' "$NEEDS_JSON" | jq -r --arg j "$1" '.[$j].result // "skipped"'
           }
-          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine liveness ruleset-drift windows tpcds-obt durations-refresh; do
+          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine liveness ruleset-drift windows tpcds-obt sql-execution-gate-obt durations-refresh; do
             case "$job" in
               durations-refresh) domain=durations ;;
               *) domain="$job" ;;
@@ -1166,6 +1169,8 @@ jobs:
             failure_detail="Domain job result: ${result}."
             case "$job" in
               docker) legs="mirror-images docker" ;;
+              throughput) legs="throughput throughput-signal" ;;
+              drift) legs="drift-gate drift" ;;
               throughput-cedardb) legs="mirror-cedardb throughput-cedardb" ;;
               *) legs="$job" ;;
             esac
@@ -1184,6 +1189,12 @@ jobs:
             if [ "$job" = throughput-cedardb ] && [ "$(result_of mirror-cedardb)" = failure ]; then
               failure_detail="CedarDB image mirror infrastructure failed; throughput cell result: ${result}."
             fi
+            if [ "$job" = throughput ] && [ "$(result_of throughput-signal)" = failure ]; then
+              failure_detail="The nightly/throughput-uat commit status was not published; throughput job result: ${result}."
+            fi
+            if [ "$job" = drift ] && [ "$(result_of drift-gate)" = failure ]; then
+              failure_detail="Drift selection (drift-gate) failed, so drift checks did not run; drift job result: ${result}."
+            fi
             if [ -n "$signature" ]; then
               result=failure
               failure_detail="${failure_detail} Failed jobs: ${signature}."
@@ -1191,6 +1202,9 @@ jobs:
               result=cancelled
             fi
             echo "${label}: ${result}"
+            if [ "$job" = drift ] && [ "$result" = skipped ]; then
+              echo "Drift not selected: drift-gate ran and chose run=$(printf '%s' "$NEEDS_JSON" | jq -r '.["drift-gate"].outputs.run // "unknown"')."
+            fi
 
             existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --label "$label" \
               --limit 1 --json number --jq '.[0].number // empty')"
