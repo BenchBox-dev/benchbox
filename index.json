@@ -15724,7 +15724,7 @@
         "agent-write-preflight-quoted-interpreter-20261009"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "blocked",
       "title": "Add a Windows unit-test domain to nightly-v2 so retiring nightly.yml keeps Windows coverage"
     },
     "nightly-windows-mcp-durable-fsync-followup": {
