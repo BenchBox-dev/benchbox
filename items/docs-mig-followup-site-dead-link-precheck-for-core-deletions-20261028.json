@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "A check on the core PR, or on the site against the candidate core tree, fails when a deleted or renamed core path is linked from a site page; shown against a seeded dead link."
+  ],
+  "description": "A core PR that deletes a file linked from a site-owned page passes core CI and site CI, then fails the site build gate at deploy. Observed on 2026-10-27: after core PR 3545 merged, the site converter rejected development/adr/adr-sqlglot-use-and-non-use.md:218 (link to the deleted scripts/generate_compat_docs.py), and production deploys 40602921344 and 40603742160 failed at the build gate (nothing deployed; fixed in site PR 74). Site CI only builds against bundles that already merged, and core's retired link checker no longer covers site pages.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T01:09:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e18e814036c64da0aa45a9116260bf11",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}
