@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Documented behavior: either an unchanged patch carries the verdict and keeps arming, or the reason it cannot is recorded."
+  ],
+  "description": "Core PR 3545 was rebased six times onto a moving develop; each forced a fresh full review of about 25 minutes and cleared auto-merge, even when the rebase changed no PR content beyond regenerated files. The oracle protocol has a CARRY decision; whether it covers a rebase with an identical patch is not established.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T01:09:46Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "709c095f4b0c4205952c9c71a5eb676f",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}

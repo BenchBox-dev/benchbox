@@ -16184,6 +16184,13 @@
       "status": "open",
       "title": "Serve oracle size classification from the gateway host so runners and authors need no TypeSafe key"
     },
+    "oracle-clean-rebase-rereview-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Check whether a conflict-free rebase needs a fresh full oracle review and re-arm"
+    },
     "oracle-cloud-review-reachability-20261027": {
       "claim": null,
       "needs": [
