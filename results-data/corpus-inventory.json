@@ -1,6 +1,6 @@
 {
   "schema_version": "2.3",
-  "generated_at": "2026-10-28T14:11:29.454294+00:00",
+  "generated_at": "2026-10-28T20:04:17.274530+00:00",
   "bundles": [
     {
       "file": "amplab_sf01_bigquery_sql_20260920_000055_35490af7.json",
@@ -2593,18 +2593,18 @@
       "bundle_sha256": "42eec4be1c3b8fed52bd09cb079e32390e314b1f9bbdacecafcb5f99fc9e2578"
     },
     {
-      "file": "read_primitives_sf001_datafusion_sql_20261026_112843_a4c2be65.json",
+      "file": "read_primitives_sf001_datafusion_sql_20261028_155934_ac8474d7.json",
       "benchmark": "read_primitives",
       "benchmark_name": "Read Primitives",
       "platform": "DataFusion",
       "platform_version": "54.0.0",
       "scale_factor": 0.01,
       "phase": "power",
-      "timestamp": "2026-10-26T11:28:43.908987",
+      "timestamp": "2026-10-28T15:59:34.006181",
       "query_count": 414,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "d2101c4e3c59dab953400a11e446e069d3083b880222b21819832fdc30bc708f"
+      "bundle_sha256": "50f05afe4f5141d8a1114b4c52d9d7e852370a249048ac4abf11fbdec8ebb8b7"
     },
     {
       "file": "read_primitives_sf01_datafusion_sql_20260826_095258_1cdd70ad.json",
@@ -2621,18 +2621,18 @@
       "bundle_sha256": "d81e7cdae32515c68ec307e0bbe09a4f23c428ecee2ee35845f3df4f1db33c91"
     },
     {
-      "file": "read_primitives_sf01_datafusion_sql_20261026_113304_4cf65e8f.json",
+      "file": "read_primitives_sf01_datafusion_sql_20261028_155941_a45d3e71.json",
       "benchmark": "read_primitives",
       "benchmark_name": "Read Primitives",
       "platform": "DataFusion",
       "platform_version": "54.0.0",
       "scale_factor": 0.1,
       "phase": "power",
-      "timestamp": "2026-10-26T11:33:04.395326",
+      "timestamp": "2026-10-28T15:59:41.697256",
       "query_count": 414,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "caff1f8872a181e24d7a6be0a76bdfe01b795af0dfd34617e779067e3b2c6bfe"
+      "bundle_sha256": "db58519e2bdeec576f27711390786090f0eeb8fa4de9560bbc9530ab8511ca3b"
     },
     {
       "file": "read_primitives_sf001_databricks_sql_20261001_152239_14b1d8d2.json",

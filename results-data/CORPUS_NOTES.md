@@ -991,8 +991,9 @@ e4401a0ed it found 422 bundles with queries, 64 of them in subdirectories.
 
 ### Wheel consistency
 
-46 of the 58 bundles ran on SQLGlot fork 30.24.0.17; the two SQLite Read Primitives bundles
-and the ten variant and loader defect cells were rerun on 30.25.0.2 (see the sections below).
+44 of the 58 bundles ran on SQLGlot fork 30.24.0.17; the two SQLite and two DataFusion Read
+Primitives bundles and the ten variant and loader defect cells were rerun on 30.25.0.2 (see the
+sections below).
 Later reruns use 30.25.0.1 or newer and earlier valid bundles are kept. The #3587 comparison
 translated 72,483 queries across both wheels and changed 9 outputs, all with a DuckDB target,
 none of which is a target of these bundles.
@@ -1134,7 +1135,8 @@ Real defects found (the bundles hold wrong values or rows for these queries):
   and SF0.1 bundles, left unadjudicated individually).
 - DataFusion TPC-DI EQ7 returns wrong scores (Int64 division) in all three bundles;
   DataFusion ClickBench Q6 returns 17 where DuckDB and SQLite return 18 (loader null
-  marker); DataFusion `pivot_basic` returns 2,100 rows against 2.
+  marker); DataFusion `pivot_basic` returned 2,100 rows against 2 in the original two Read
+  Primitives bundles, which were replaced on fork 30.25.0.2 (see the DataFusion section below).
 - SQLite Read Primitives `pivot_basic` (PIVOT dropped), `unpivot_basic` (UNPIVOT dropped)
   and `orderby_all_desc` (no ordering) succeeded with wrong results in the original two
   bundles. They were replaced on fork 30.25.0.2 (see the section below); the SQLite table
@@ -1157,13 +1159,16 @@ Accepted as engine semantics or ties:
 
 Still open: ClickHouse Local Flight Data `delay-by-airport` SF0.1 (7.9e-4 relative) and NYC
 Taxi SF0.01 `top-routes` and `airport-trips`; ClickHouse Local `json_extract_simple` has no
-DuckDB reference; SQLite TPC-H Q11 and TPC-H skew Q9 and Q11 differ by one row of 76 to
-1,048.
+DuckDB reference. SQLite TPC-H Q11 and TPC-H skew Q9 and Q11 were reported as one-row
+differences; re-run directly against DuckDB on the retained SF1 TPC-H, SF0.1 and SF1 skew
+databases (the bundle's query, translated for each engine), both engines return the same rows
+(TPC-H Q11 1,048; skew Q9 76 at SF0.1 and 98 at SF1; skew Q11 22 at SF0.1 and 1,048 at SF1)
+with every value within relative 1e-6, so no discrepancy reproduces.
 
 Cells reran after the engine fixes merged: ClickHouse Local Coffeeshop (3) and TPC-DI (3),
-DataFusion TPC-DI (3) and ClickBench SF1 (see the rerun section at the end). ClickHouse Local
-Read Primitives (2) and DataFusion Read Primitives (2) are not rerun; their differences are
-algorithmic or comparator printing, and `map_access` is tracked in
+DataFusion TPC-DI (3) and ClickBench SF1 (see the rerun section at the end), and DataFusion
+Read Primitives (2, see the DataFusion section below). ClickHouse Local Read Primitives (2) are
+not rerun; their differences are algorithmic or comparator printing, and `map_access` is tracked in
 `clickhouse-map-access-missing-key-returns-zero`.
 
 ### SQLite Read Primitives replacement on fork 30.25.0.2 (2026-10-28)
@@ -1207,8 +1212,7 @@ Capture comparison against DuckDB (capture run on 30.25.0.2, `compare.py` row co
 | `orderby_all_desc` | 100 | 100 unordered (wrong) | 100 / 100 (pass) |
 | `orderby_all_simple` | 25 | 25 unordered | 25 / 25 (pass) |
 
-DataFusion `pivot_basic` on 30.25.0.2 returns 2 rows at both scales and matches DuckDB
-(the DataFusion bundles still hold the earlier result and are not replaced here).
+DataFusion `pivot_basic` on 30.25.0.2 returns 2 rows at both scales and matches DuckDB.
 
 Per-cell adjudication after the rerun (passed / unproven / bundle-failed / discrepancy):
 SF0.01 92 / 16 / 38 / 6 (was 88 / 16 / 38 / 10), SF0.1 85 / 21 / 38 / 8 (was 83 / 21 / 38 / 10).
@@ -1217,6 +1221,28 @@ discrepancy at the two scales: it ties at the LIMIT cutoff and its SQL is byte-i
 wheels. The 14,060-translation comparison of 30.25.0.1 and 30.25.0.2 over 370 shipped queries and
 38 targets changed eight outputs, all `pivot_basic`, `unpivot_basic`, `orderby_all_simple` and
 `orderby_all_desc` on SQLite and DataFusion.
+
+### DataFusion Read Primitives replacement on fork 30.25.0.2 (2026-10-28)
+
+The two DataFusion Read Primitives bundles of this set (`a4c2be65` at SF0.01 and `4cf65e8f` at
+SF0.1, both on fork 30.24.0.17) recorded `pivot_basic` as SUCCESS with 2,100 and 22,576 rows
+against DuckDB's 2, because the PIVOT was dropped (the same defect as SQLite above). They were
+rerun on 30.25.0.2 through the project CLI (`benchbox run --platform datafusion --benchmark
+read_primitives --scale <sf> --phases generate,load,power --tuning notuning --result-source
+internal --non-interactive`, DataFusion 54.0.0 on the Darwin host, same data) and staged through
+the public anonymiser as above. Both report 414 of 414 queries passed.
+
+| scale | replaced bundle | replacement bundle |
+|---|---|---|
+| 0.01 | `a4c2be65` | `ac8474d7` |
+| 0.1 | `4cf65e8f` | `a45d3e71` |
+
+Compared per query with the replaced bundles, `pivot_basic` is the only query whose status or
+row count changed (2,100 and 22,576 rows became 2 and 2, equal to DuckDB's); every other query
+returns the same rows as before. The replaced bundles are removed from `results-data/bundles`,
+the ledger seed and the corpus inventory; their ids stay in this note as superseded history. The
+discrepancy counts in the DataFusion table above predate the replacement and include
+`pivot_basic` (one fewer discrepancy at each scale after it).
 
 ### Rerun of the variant and loader defect cells on fork 30.25.0.2 (2026-10-28)
 
