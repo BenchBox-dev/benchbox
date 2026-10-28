@@ -870,6 +870,17 @@ def test_an_earlier_success_is_not_reused_across_a_later_failure_and_new_success
     assert _oracle(statuses=statuses)[0] == oracle_review_check.WAITING
 
 
+def test_an_edited_receipt_for_the_newest_run_here_is_not_bypassed_by_an_older_run() -> None:
+    older = _verdict(created_at=BEFORE_HEAD, id=1)
+    newer_run = "3" * 32
+    newest = _verdict(created_at=LATER, id=2, description=f"large: success [run {newer_run}]")
+    edited = _receipt_review(
+        body=_marked_body(newer_run), submitted_at=LATEST, last_edited_at=LATEST, includes_created_edit=True
+    )
+    reviews = [_receipt_review(submitted_at=BEFORE_HEAD), edited]
+    assert _oracle(statuses=[older, newest], reviews=reviews)[0] == oracle_review_check.WAITING
+
+
 def test_a_withheld_verdict_between_two_successes_blocks_the_earlier_one() -> None:
     statuses = [_verdict(), _verdict("pending", created_at=LATER, id=3), _other_pr_success() | {"created_at": LATEST}]
     assert _oracle(statuses=statuses)[0] == oracle_review_check.WAITING

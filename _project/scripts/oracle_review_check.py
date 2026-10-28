@@ -171,8 +171,8 @@ def _receipt_backed_success(
             receipt for receipt in candidates if status_uuid is not None and _receipt_run_uuid(receipt) == status_uuid
         ]
         latest = max(own, key=lambda review: (_parse_time(review["submitted_at"]), review.get("id") or 0), default=None)
-        if latest is not None and _receipt_agrees(latest, head_sha, status_uuid):
-            return True
+        if latest is not None:
+            return _receipt_agrees(latest, head_sha, status_uuid)
     return False
 
 
