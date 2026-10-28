@@ -437,6 +437,7 @@ def test_the_shadow_steps_never_post_never_fail_the_job_and_hold_only_what_the_p
         assert step["continue-on-error"] is True
         assert "gh " not in step["run"] and "ORACLE_APP" not in _text(step)
         assert "drive" in step["run"]
+    assert _step("Upload the shadow comparison")["continue-on-error"] is True
     assert _step(SHADOW_PLAN_STEP)["env"] == {
         "GH_TOKEN": "${{ github.token }}",
         "PR_NUMBER": "${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}",

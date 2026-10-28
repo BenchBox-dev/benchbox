@@ -534,6 +534,7 @@ jobs:
         if: >-
           always() && steps.shadow_plan.outcome != 'skipped' &&
           (steps.plan.outputs.post != 'true' || (steps.redact.outcome == 'success' && steps.shadow_finalize.outcome == 'success'))
+        continue-on-error: true
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           overwrite: true
