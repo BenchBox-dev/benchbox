@@ -199,7 +199,7 @@ files, including same-file links. Run `uv run -- python scripts/check_doc_anchor
 to check anchors without running the other documentation checks.
 
 The check recognizes heading slugs and explicit anchors. It skips external
-URLs, server-absolute paths, code, and targets outside tracked Markdown.
+URLs, server-absolute paths, code, and targets outside tracked Markdown. Any
 broken fragment link fails CI. Site-owned documentation is checked by the
 site repository's own build.
 
