@@ -11,7 +11,9 @@
       "from_item": "oracle-omp-pin-hardening-20261027",
       "id": 1,
       "reason": "Develop broke when #3601 changed the fetch call and #3572's tests stubbed urlopen; stubbing library internals silently bypasses on refactor.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-10-28T11:57:00Z",
+      "resolved_reason": "Done: #3610 replaced the urllib stubs with a loopback download mirror seam owned by omp_pin (BENCHBOX_OMP_DOWNLOAD_MIRROR, loopback only) and #3616 blocks non-loopback network in unit and medium tests, including subprocesses.",
       "summary": "Cloud-builder and omp tests stub urllib internals; give the installer a local download source for tests and deny network in unit tests"
     }
   ],
@@ -70,6 +72,14 @@
       "generation": "c3cabf6fc4b84311b2b11ae9c4201376",
       "op": "take",
       "op_id": "effe561db1dc45539ac9eec4427ca251",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-28T11:57:01Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "4a5ced3dc0aa4ebf82b876e21f0c0e56",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
