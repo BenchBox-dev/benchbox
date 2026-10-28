@@ -37,6 +37,34 @@ if sqlite3 is not None:
 else:
     _SQLITE_VERSION_ERRORS = (AttributeError, IndexError, TypeError)
 
+_ScriptConnectionBase: type = sqlite3.Connection if sqlite3 is not None else object
+
+
+def _split_sqlite_script(sql: str) -> list[str]:
+    statements: list[str] = []
+    start = 0
+    for index, char in enumerate(sql):
+        if char == ";" and sqlite3.complete_statement(sql[start : index + 1]):
+            statements.append(sql[start : index + 1].strip())
+            start = index + 1
+    tail = sql[start:].strip()
+    if tail:
+        statements.append(tail)
+    return [statement for statement in statements if statement.strip("; \t\r\n")]
+
+
+class _SQLiteScriptConnection(_ScriptConnectionBase):
+    def execute(self, sql, parameters=()):
+        if parameters or ";" not in sql:
+            return super().execute(sql, parameters)
+        statements = _split_sqlite_script(sql)
+        if len(statements) <= 1:
+            return super().execute(statements[0] if statements else sql)
+        for statement in statements[:-1]:
+            super().execute(statement)
+        return super().execute(statements[-1])
+
+
 _TPCH_TABLES: frozenset[str] = frozenset(
     {"customer", "lineitem", "nation", "orders", "part", "partsupp", "region", "supplier"}
 )
@@ -350,6 +378,7 @@ class SQLiteAdapter(PlatformAdapter):
             timeout=self.timeout,
             check_same_thread=self.check_same_thread,
             cached_statements=0,
+            factory=_SQLiteScriptConnection,
         )
 
         _register_sqlite_compatibility_functions(conn)

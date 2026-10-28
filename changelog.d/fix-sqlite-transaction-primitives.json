@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Transaction Primitives now runs on SQLite: multi-statement transaction scripts execute statement by statement, typed date literals and generated series are rewritten for SQLite, TRUNCATE inside a transaction uses DELETE, SERIALIZABLE runs without the unsupported SET TRANSACTION statement, and READ COMMITTED / REPEATABLE READ are reported as skipped. The commit_medium cleanup now removes every inserted row so repeated iterations no longer collide."
+    }
+  ]
+}
