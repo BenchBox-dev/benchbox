@@ -2052,59 +2052,6 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "extra": 1,
-    "unresolved": 1
-   },
-   "occurrences": 2,
-   "path": "changelog.d/unreleased-006-error-messages-benchbox-help-the-package-readmes.json",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 2,
-   "targets": [
-    {
-     "kind": "unresolved",
-     "target": "docs/...md"
-    },
-    {
-     "kind": "extra",
-     "target": "quality/docs-ownership.json"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "root": 1
-   },
-   "occurrences": 1,
-   "path": "changelog.d/unreleased-017-the-locked-filelock-moves-from-3-25-2-to-4-2-4-t.json",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
-    "root": 1
-   },
-   "occurrences": 1,
-   "path": "changelog.d/unreleased-020-make-doc-contracts-exports-doc-contracts-json-th.json",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "root",
-     "target": "docs/"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
     "root": 1
    },
    "occurrences": 3,
@@ -4536,22 +4483,22 @@
    "governance-stays": 9,
    "historical-record": 113,
    "lock-test": 8,
-   "prose-link-pinned": 15,
+   "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
    "wiring-updated": 31
   },
-  "files": 234,
+  "files": 231,
   "kinds": {
    "built-url": 29042,
    "dir": 165,
-   "extra": 36,
+   "extra": 35,
    "file": 1401,
    "generated": 3,
    "pattern": 329,
-   "root": 198,
-   "unresolved": 2071
+   "root": 196,
+   "unresolved": 2070
   },
-  "references": 33245,
+  "references": 33241,
   "unclassified": 0
  }
 }

@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "CI-only: trunk coverage maps are produced on a schedule instead of on every develop push"
-}

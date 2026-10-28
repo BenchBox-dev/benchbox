@@ -1,4 +1,0 @@
-{
-  "schema": 1,
-  "internal": "Maintainer script and make target that adopt a verified benchbox-sqlglot wheel (pin, runtime manifest, baseline identity, checks); no user-visible behavior changes."
-}

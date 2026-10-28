@@ -1,1 +1,0 @@
-{"schema":1,"internal":"PR arming reports waiting for the full CI run when a placeholder summary check failure is still covered by an in-progress run, and only advises the rerun once that run has completed. The rerun refusal names the in-progress run and when to retry."}
