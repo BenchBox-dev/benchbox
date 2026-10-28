@@ -80,14 +80,6 @@ review; the attempt is absent.
 rotating and moving the gateway host, and the Tailscale OIDC credential and
 tailnet policy the job needs.
 
-**Cut-over cleanup (one time).** The pre-gateway secrets
-(`CLAUDE_CODE_OAUTH_TOKEN`, `OPENAI_API_KEY`, `META_API_KEY`,
-`OMP_AUTH_BROKER_URL`, `OMP_AUTH_BROKER_TOKEN`, `OMP_AGENT_CONFIG`) are deleted
-from `oracle`. Rotate those credentials once and remove the rule that still lets
-`tag:oracle-ci` reach the broker on `tcp:8765`; if nothing else reaches the
-broker over the tailnet, stop publishing it (`tailscale serve --https=8765
-off`).
-
 Without `ORACLE_APP_ID`, the job logs the result and succeeds.
 
 ## How a run works
@@ -568,15 +560,14 @@ run stays pending. A hollow answer never passes.
 - Every parsed outcome keeps a bounded, redacted `trace:` line in the attempt
   diagnostic: read, grep and failed-call counts, up to five credited, required
   and missing paths, and elision totals, so elided credited reads stay
-  measurable. It never carries the raw event stream, and OMP stdout is no longer
-  excerpted.
+  measurable. It never carries the raw event stream or excerpts OMP stdout.
 - Credentials: `commands.omp_env()` forwards only the base environment and the
   gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`), plus the loopback
   gateway proxy variables only while a cloud local review has set one in-process.
-  `credentials.py`
-  `NAMES` lists that token, the broker and provider variables the loop no longer
-  receives, the runner-held values (gateway URL, Tailscale client ID and
-  audience, OIDC request token) and legacy extras, so a local run still holding
+  `credentials.py` `NAMES` lists that token, the broker and provider variables
+  (which the loop does not receive), the runner-held values (gateway URL,
+  Tailscale client ID and audience, OIDC request token) and legacy extras, so a
+  local run still holding
   them is redacted too. Values of eight or more characters are removed by exact
   match before and after every sanitising transform and before truncation,
   across control-character splits and overlaps, in verdict text, absence
@@ -595,11 +586,12 @@ The verdict is the reviewer's final assistant message, from its `message_end`
 event; remarks between tool calls are ignored. A final message that is not
 exactly one JSON verdict is invalid.
 
-The brief no longer forbids commands, but OMP's tools are only `read`, `grep`
-and `glob`, so the reviewer cannot write or run anything. A file-list brief also
-stages the whole PR diff in the checkout. The workflow-level concurrency group
-serializes runs per PR; the `review` job has none of its own, so a new push
-cancels a run in flight, which then posts nothing.
+The brief forbids running commands, tests or builds, and OMP's tools are only
+`read`, `grep` and `glob`, so the reviewer cannot write or run anything. A
+file-list brief also stages the whole PR diff in the checkout. The
+workflow-level concurrency group serializes runs per PR; the `review` job has
+none of its own, so a new push cancels a run in flight, which then posts
+nothing.
 
 ## Commands
 
