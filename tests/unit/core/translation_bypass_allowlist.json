@@ -388,6 +388,7 @@
         "olap_cube_analysis",
         "statistical_correlation",
         "statistical_percentiles",
+        "statistical_variance_stddev",
         "timeseries_trend_analysis",
         "window_moving_frame"
       ]
