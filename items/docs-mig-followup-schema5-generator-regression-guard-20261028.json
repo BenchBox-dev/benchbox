@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "Snapshot or golden tests of generator output from a fixed docs-data fixture run in site CI and fail on an unreviewed change; the TSBS render stability that the removed test covered is asserted in the exporter test."
+  ],
+  "description": "docs:parity compares the TypeScript generators with the bundle's docs member, which schema 5 no longer carries, so it reports not applicable. The Python generators and the generator-vs-export test in tests/unit/scripts/test_export_docs_data.py are gone. Nothing now fails if a generator change alters the compat, query or tuning-matrix pages for the same docs-data.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a",
+      "at": "2026-10-28T01:09:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "615f8ff735604de18bbee93f8ec8b316",
+      "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    }
+  ]
+}

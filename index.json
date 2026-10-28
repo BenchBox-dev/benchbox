@@ -9139,6 +9139,13 @@
       "status": "open",
       "title": "Make explorer/results.duckdb build byte-identical from identical bundle inputs"
     },
+    "docs-mig-followup-schema5-generator-regression-guard-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Guard the TypeScript documentation generators against regressions now that docs:parity is not applicable"
+    },
     "docs-mig-followup-site-dead-link-precheck-for-core-deletions-20261028": {
       "claim": null,
       "needs": [],
