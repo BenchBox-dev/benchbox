@@ -187,7 +187,7 @@ the required test command's coverage threshold still applies.
 ### D7: Ruleset drift detection retained
 
 Ruleset drift verification (`ruleset_drift_check.py`) is retained. It executes as a
-advisory check in `nightly.yml`, by hand after a settings change, and as enforced
+advisory check in `nightly-v2.yml`, by hand after a settings change, and as enforced
 release-canary/bootstrap validation. It no longer runs inside the required
 `tooling` unit. The `RULESET_DRIFT_TOKEN` secret is maintained; required thread
 resolution and tag-creation protection remain checked.
