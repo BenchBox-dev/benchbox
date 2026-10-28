@@ -16854,6 +16854,13 @@
       "status": "dropped",
       "title": "pull_request_target state trust has a retarget timing race"
     },
+    "oracle-quota-record-and-manual-retry-backoff-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Verify the oracle quota record clears when the provider recovers and that manual retries do not extend the backoff"
+    },
     "oracle-read-evidence-tightening-20261008": {
       "claim": null,
       "needs": [
