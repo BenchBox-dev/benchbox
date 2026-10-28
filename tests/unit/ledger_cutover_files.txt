@@ -144,7 +144,6 @@ tests/unit/workflows/test_comment_policy_nightly_workflow.py
 tests/unit/workflows/test_corpus_event_bridge.py
 tests/unit/workflows/test_corpus_trust_boundary.py
 tests/unit/workflows/test_docker_integration_workflow.py
-tests/unit/workflows/test_nightly_legacy_test_job.py
 tests/unit/workflows/test_nightly_t3_workflow.py
 tests/unit/workflows/test_oracle_gate_workflow.py
 tests/unit/workflows/test_oracle_verdict_workflow.py

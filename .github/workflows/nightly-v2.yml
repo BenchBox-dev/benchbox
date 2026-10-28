@@ -459,6 +459,9 @@ jobs:
             echo "::warning::could not resolve the retired Nightly Validation workflow; its Throughput@Size baselines are not counted"
             legacy_id=""
           fi
+          if [ -z "${legacy_id}" ]; then
+            echo "::warning::no workflow named Nightly Validation is registered; its Throughput@Size baselines are not counted"
+          fi
           for workflow in nightly-v2.yml ${legacy_id}; do
             if ! run_ids=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" --branch develop --event schedule --limit 30 \
               --json databaseId --jq ".[] | select(.databaseId != ${GITHUB_RUN_ID}) | .databaseId"); then
@@ -964,6 +967,8 @@ jobs:
 
   sql-execution-gate-obt:
     name: "t3:sql-execution-gate-obt | OBT execution gate (SF0.01)"
+    needs: mirror-postgres17
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

@@ -1096,6 +1096,9 @@ def test_postgres17_mirror_is_a_reported_domain_with_package_write() -> None:
     assert _mirrored_images(mirror) == ["postgres17"]
     assert "mirror-postgres17" in jobs["report"]["needs"]
     assert "public.ecr.aws/docker/library/postgres" not in WORKFLOW.read_text(encoding="utf-8")
+    gate = jobs["sql-execution-gate-obt"]
+    assert gate["needs"] == "mirror-postgres17"
+    assert gate["if"] == "${{ !cancelled() }}"
 
 
 _POSTGRES_17_GHCR_IMAGE = (
