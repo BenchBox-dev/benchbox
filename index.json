@@ -19980,7 +19980,9 @@
     },
     "query-plan-dataframe-contract-parity": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "query-plan-dataframe-error-accounting"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Close DataFrame query-plan capture and fingerprint integration gaps"
