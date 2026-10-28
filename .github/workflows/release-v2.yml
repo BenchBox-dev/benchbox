@@ -446,6 +446,24 @@ jobs:
           fi
           git ls-files -z benchbox | xargs -0 git update-index --no-assume-unchanged
 
+      - name: Require every shard job to have succeeded
+        if: always()
+        env:
+          STAGE1_RESULT: ${{ needs.uat-stage1.result }}
+          STAGE2_RESULT: ${{ needs.uat-stage2.result }}
+          STAGE3_RESULT: ${{ needs.uat-stage3.result }}
+        run: |
+          set -euo pipefail
+          status=0
+          for stage in 1 2 3; do
+            var="STAGE${stage}_RESULT"
+            if [ "${!var}" != "success" ]; then
+              echo "::error::UAT stage $stage shard jobs finished as '${!var}', not 'success'."
+              status=1
+            fi
+          done
+          exit "$status"
+
       - name: Upload the combined UAT evidence with the distribution digest
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f

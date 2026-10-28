@@ -214,6 +214,16 @@ def test_release_uat_gate_checks_every_shard_against_the_admitted_digest():
     assert not any("uat-sweep" in step.get("run", "") for step in gate["steps"])
 
 
+def test_release_uat_gate_fails_unless_every_shard_job_succeeded():
+    gate = _jobs()["release-uat"]
+    step = next(s for s in gate["steps"] if s.get("name") == "Require every shard job to have succeeded")
+    assert step["if"] == "always()"
+    for number in (1, 2, 3):
+        assert step["env"][f"STAGE{number}_RESULT"] == f"${{{{ needs.uat-stage{number}.result }}}}"
+    assert '!= "success"' in step["run"]
+    assert 'exit "$status"' in step["run"]
+
+
 def test_release_uat_jobs_use_the_local_environment_action_from_the_admitted_checkout():
     for name in (*UAT_STAGE_JOBS, "release-uat"):
         steps = _jobs()[name]["steps"]
