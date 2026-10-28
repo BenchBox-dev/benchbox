@@ -7,7 +7,8 @@ hand-written query variants or data loader, not an engine. Each now carries
 `known_defects: ["defective-variant-or-loader-wrong-result"]` in its
 `.manifest.json` sidecar, which the explorer pipeline turns into
 `ranking_exclusion_reason=known_defective_data`. The bundle JSON is unchanged;
-six sidecars already existed and the three TPC-DI ones were created with
+four sidecars already existed (the three CoffeeShop bundles and the DataFusion
+ClickBench bundle) and the three TPC-DI ones were created with
 `result_source: internal`. Replacing them means fixing the variant or loader,
 then rerunning the cells and ingesting the new bundles; those fixes and reruns
 follow in separate changes. Each short id resolves to exactly one bundle.
