@@ -19936,6 +19936,13 @@
       "status": "done",
       "title": "Query Plan Documentation & Testing"
     },
+    "query-plan-mcp-qualified-bundle-lookup": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Load exported query plans through the MCP analytics interface"
+    },
     "query-plan-parser-framework": {
       "claim": null,
       "needs": [],

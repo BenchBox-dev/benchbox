@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "A real DuckDB TPC-H Q1/Q6 CLI run with --capture-plans exports a bundle whose plans are retrievable through the MCP implementation using supported query-ID spellings, including when companion keys are Q1#0:power and Q6#0:power.",
+    "MCP retrieval preserves the correct plan identity for multiple stream/phase variants; missing or ambiguous requests have explicit outcomes and never silently select a different query.",
+    "A regression test consumes an actual exported bundle rather than a hand-built bare-key companion; existing CLI show-plan and comparison consumers continue to work."
+  ],
+  "context": "Reproduced on 2026-10-28: real DuckDB TPC-H SF 0.01, queries 1,6, iterations 1, seed 42, phases generate,load,power. show-plan and compare --include-plans succeeded; direct calls to _get_query_plan_impl returned no_plan for tree, summary and json. Exported companion keys were Q1#0:power and Q6#0:power. The ordinary loader rehydrated plans with verified fingerprint integrity. No fix applied.",
+  "description": "MCP get_query_plan reports no_plan for plans that the CLI can display from the same real result bundle. analytics._get_query_plan_impl directly indexes queries by a normalized bare query ID, while build_plans_payload emits query/stream/phase-qualified keys and can retain prefixed IDs. Reuse the canonical result loader and its identity rules rather than introducing another companion lookup convention. Preserve a defined selection policy when several stream or phase variants exist.",
+  "links": [
+    "benchbox/mcp/tools/analytics.py:268-308",
+    "benchbox/core/results/loader.py:530-628",
+    "benchbox/core/results/schema.py:1263-1312",
+    "tests/integration/test_plan_capture_cli_realpath_review.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-28T12:03:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "420e586d241542849e3a4e37db1d4952",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    }
+  ]
+}
