@@ -3,7 +3,7 @@
     "A hosted `@slow` or `@plan` oracle review through the gateway completes, with its longest silent stretch measured from the gateway log, or a reproducible failure is recorded with its cause.",
     "If silent stretches past the idle limit fail, the gateway or reviewer setting is changed and the fix verified the same way."
   ],
-  "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\n",
+  "context": "2026-10-28 close-out (owner decision: close on the @plan evidence; reopen if a timeout ever appears): 29 CI reviewer captures since run 40606584392, every review exited 0, none timed out. Two @plan reviews of PR 3571 went through the gateway (21 and 14 requests matching 21 and 14 turns in ~/.omp/oracle-gateway/home/.omp/logs). Longest silence about 53 s (run 40609022552: 53.4 s between request starts, 52.7 s longest single request); longest request in any tier 57.7 s; time to first output at most 7.6 s. Limits: gateway idle timeout 255 s (18.12.1 and 18.13.2), client stream timeouts 300 s, reviewer kill at 30/40/45 min, job 255 min. Caveats: the gateway log records request starts only (silence inside a request is bounded, not measured); no @slow review ran in the window; the pi-native format has no gateway keepalive, so a single provider silence over 255 s could still hit the idle limit.\n\n2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).",
   "description": "Once PR #3296 moves the reviewer onto the scoped auth-gateway, every reviewer request streams through `omp auth-gateway serve` on the owner's Mac. The local test of that setup did not include a request with a long silent stretch. The gateway runs on Bun, whose server idle timeout is at most 255 seconds; the gateway's setting and its keepalive behaviour during provider silence were not checked. A high-effort `@slow` or `@plan` review can think longer than that before emitting output, so long reviews could fail as absent. Start after #3296 merges.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/3296"
@@ -48,6 +48,14 @@
       "generation": "ef89d025548d47d39c262fa6a738c453",
       "op": "take",
       "op_id": "ffbb096078924a6192664049d8541b1d",
+      "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5",
+      "at": "2026-10-28T11:40:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "341f38a89aae47a8ae1f01cdb06a9c88",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
     }
   ]
