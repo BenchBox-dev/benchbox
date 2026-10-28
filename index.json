@@ -9135,10 +9135,15 @@
       "title": "Verify production migration and release source ownership freeze"
     },
     "docs-mig-followup-contract-checker-coverage-20261028": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T13:35:12Z",
+        "generation": "a20c5ee852a5488e9486d634332ab17e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8e0dd140d544b1f9b6cf783a"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Extend the site docs contract checker to usage/cli-quick-start.md and --platform values"
     },
     "docs-mig-followup-core-retained-doc-link-gate-20261028": {
