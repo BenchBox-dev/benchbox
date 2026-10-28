@@ -113,9 +113,6 @@
   "docs/internal/results-phase-3-runbook.md": [
     "tests/unit/docs/test_publication_architecture.py"
   ],
-  "docs/linkcheck_ignore.txt": [
-    "tests/unit/docs/test_linkcheck_ignore_policy.py"
-  ],
   "docs/reference/threat-model.md": [
     "tests/unit/docs/test_publication_architecture.py"
   ],

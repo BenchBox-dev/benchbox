@@ -138,13 +138,13 @@
    "disposition": "wiring-updated",
    "kinds": {
     "extra": 3,
-    "file": 4,
+    "file": 3,
     "pattern": 8
    },
-   "occurrences": 15,
+   "occurrences": 14,
    "path": ".github/ci-units.yml",
    "rule": "ci-path-classification",
-   "target_count": 15,
+   "target_count": 14,
    "targets": [
     {
      "kind": "extra",
@@ -188,10 +188,6 @@
     },
     {
      "kind": "file",
-     "target": "docs/linkcheck_ignore.txt"
-    },
-    {
-     "kind": "file",
      "target": "docs/publish-allowlist.txt"
     },
     {
@@ -211,13 +207,13 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "file": 4,
+    "file": 3,
     "pattern": 2
    },
-   "occurrences": 6,
+   "occurrences": 5,
    "path": ".github/inert-paths.txt",
    "rule": "ci-path-classification",
-   "target_count": 6,
+   "target_count": 5,
    "targets": [
     {
      "kind": "pattern",
@@ -230,10 +226,6 @@
     {
      "kind": "pattern",
      "target": "docs/agent/**"
-    },
-    {
-     "kind": "file",
-     "target": "docs/linkcheck_ignore.txt"
     },
     {
      "kind": "file",
@@ -265,13 +257,13 @@
    "disposition": "wiring-updated",
    "kinds": {
     "extra": 1,
-    "file": 4,
+    "file": 3,
     "pattern": 11
    },
-   "occurrences": 16,
+   "occurrences": 15,
    "path": ".github/path-filters.yml",
    "rule": "ci-path-classification",
-   "target_count": 16,
+   "target_count": 15,
    "targets": [
     {
      "kind": "pattern",
@@ -320,10 +312,6 @@
     {
      "kind": "pattern",
      "target": "docs/internal/agent-instruction*.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/linkcheck_ignore.txt"
     },
     {
      "kind": "file",
@@ -569,14 +557,14 @@
   {
    "disposition": "historical-record",
    "kinds": {
-    "file": 3,
-    "unresolved": 12
+    "file": 2,
+    "unresolved": 13
    },
    "occurrences": 17,
    "path": "_project/analysis/ci-waste-remeasure-2026-08-31-manifest.json",
    "rule": "project-records",
    "target_count": 15,
-   "targets_sha256": "e1c945882fe4e858ce58ab6eb971e92941dd5a93aea170ca6bdea18db53b9030"
+   "targets_sha256": "76b2be2971de9d37328320cada7f7cedea6cc62af1acb3aef2eb19fca89614d3"
   },
   {
    "disposition": "historical-record",
@@ -1534,22 +1522,6 @@
    "targets_sha256": "7d3ff4769d0751231305bfa99fec362125f133d84e6f466d07d9b9c716b09ee0"
   },
   {
-   "disposition": "wiring-updated",
-   "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "_project/inert-doc-readers.json",
-   "rule": "inert-doc-readers",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/linkcheck_ignore.txt"
-    }
-   ]
-  },
-  {
    "disposition": "historical-record",
    "kinds": {
     "file": 1
@@ -2017,16 +1989,16 @@
     "built-url": 5,
     "dir": 12,
     "extra": 1,
-    "file": 138,
+    "file": 137,
     "pattern": 34,
     "root": 1,
-    "unresolved": 150
+    "unresolved": 151
    },
    "occurrences": 2340,
    "path": "_project/todo-db-export/items.jsonl",
    "rule": "project-records",
    "target_count": 341,
-   "targets_sha256": "b26035520c98644779ef313e2f10c3cc04e8bcd61d4da8ed080693394174d321"
+   "targets_sha256": "4afbac7da9e345ec7353f2749848e5456596522ff117aa9f18bc2e285e8a0061"
   },
   {
    "disposition": "governance-stays",
@@ -2328,14 +2300,14 @@
    "disposition": "contract-tooling",
    "kinds": {
     "extra": 2,
-    "file": 3,
+    "file": 2,
     "pattern": 1,
     "root": 1
    },
-   "occurrences": 7,
+   "occurrences": 6,
    "path": "scripts/doc_contracts.py",
    "rule": "contract-export-tooling",
-   "target_count": 7,
+   "target_count": 6,
    "targets": [
     {
      "kind": "extra",
@@ -2344,10 +2316,6 @@
     {
      "kind": "root",
      "target": "docs/"
-    },
-    {
-     "kind": "file",
-     "target": "docs/linkcheck_ignore.txt"
     },
     {
      "kind": "file",
@@ -3160,22 +3128,6 @@
   {
    "disposition": "lock-test",
    "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/docs/test_linkcheck_ignore_policy.py",
-   "rule": "lock-tests-docs-directory",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/linkcheck_ignore.txt"
-    }
-   ]
-  },
-  {
-   "disposition": "lock-test",
-   "kinds": {
     "extra": 1,
     "root": 1
    },
@@ -3886,14 +3838,14 @@
    "disposition": "site-pipeline-cutover",
    "kinds": {
     "extra": 2,
-    "file": 5,
+    "file": 4,
     "root": 1,
     "unresolved": 9
    },
-   "occurrences": 35,
+   "occurrences": 34,
    "path": "tests/unit/scripts/test_docs_ownership.py",
    "rule": "site-input-pipeline",
-   "target_count": 17,
+   "target_count": 16,
    "targets": [
     {
      "kind": "root",
@@ -3926,10 +3878,6 @@
     {
      "kind": "unresolved",
      "target": "docs/internal/kept.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/linkcheck_ignore.txt"
     },
     {
      "kind": "unresolved",
@@ -3968,14 +3916,14 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
-    "file": 4,
+    "file": 3,
     "root": 1,
     "unresolved": 5
    },
-   "occurrences": 21,
+   "occurrences": 19,
    "path": "tests/unit/scripts/test_inert_paths.py",
    "rule": "ci-path-classification",
-   "target_count": 10,
+   "target_count": 9,
    "targets": [
     {
      "kind": "root",
@@ -3988,10 +3936,6 @@
     {
      "kind": "unresolved",
      "target": "docs/guide.md"
-    },
-    {
-     "kind": "file",
-     "target": "docs/linkcheck_ignore.txt"
     },
     {
      "kind": "file",
@@ -4513,23 +4457,23 @@
    "fixture-data": 48,
    "governance-stays": 9,
    "historical-record": 114,
-   "lock-test": 8,
+   "lock-test": 7,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
-   "wiring-updated": 31
+   "wiring-updated": 30
   },
-  "files": 233,
+  "files": 231,
   "kinds": {
    "built-url": 29042,
    "dir": 165,
    "extra": 35,
-   "file": 1401,
+   "file": 1385,
    "generated": 3,
    "pattern": 329,
    "root": 196,
-   "unresolved": 2077
+   "unresolved": 2084
   },
-  "references": 33248,
+  "references": 33239,
   "unclassified": 0
  }
 }

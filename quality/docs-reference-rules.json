@@ -130,14 +130,6 @@
       "reason": "Protected comment-policy registries name docs paths and generator scripts that move or are deleted at cutover; edited with oracle review."
     },
     {
-      "id": "inert-doc-readers",
-      "match": [
-        "_project/inert-doc-readers.json"
-      ],
-      "disposition": "wiring-updated",
-      "reason": "Soundness-listed registry of tests and tools that read docs; entries for moved pages are dropped at cutover."
-    },
-    {
       "id": "ci-path-classification",
       "match": [
         ".github/ci-units.yml",

@@ -47,7 +47,6 @@ core:
   - "docs/reference/threat-model.md"
   - "docs/publish-allowlist.txt"
   - "docs/publish-exclusions.txt"
-  - "docs/linkcheck_ignore.txt"
 
 explorer:
   - "_project/scripts/explorer_pipeline/**"

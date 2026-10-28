@@ -30,7 +30,6 @@ MACHINE_READ_SAMPLE = [
     "docs/internal/dev-loop-worktrees.md",
     "docs/publish-allowlist.txt",
     "docs/publish-exclusions.txt",
-    "docs/linkcheck_ignore.txt",
     "tests/uat/CHARTER.md",
     ".claude/settings.json",
     ".claude/commands/blind-spot.md",
@@ -203,7 +202,6 @@ def test_guard_resolves_the_joined_path_consumers(inert_scan: dict[str, list[str
     assert "docs/internal/repo-admin-settings.md" in refs["scripts/ruleset_drift_check.py"]
     assert "README.md" in refs["benchbox/utils/version.py"]
     assert "docs/publish-exclusions.txt" in refs["scripts/doc_contracts.py"]
-    assert "docs/linkcheck_ignore.txt" in refs["scripts/doc_contracts.py"]
     assert "_project/scripts/prompts/pr_review_followup.md" in refs["_project/scripts/pr_review_followups.py"]
 
 
