@@ -81,6 +81,7 @@ LOOP_STEPS = (
     LOOP_STEP,
     *(f"Resume the attempt loop after attempt {after}" for after in range(1, POLICY.max_attempts)),
 )
+FINALIZE_STEP = "Validate this run's attempts and decide"
 REDACT_STEP = "Redact every secret value held by the job from the results"
 REDACTION_ENV = {
     "OMP_GATEWAY_TOKEN": "${{ secrets.ORACLE_GATEWAY_TOKEN }}",
@@ -336,6 +337,7 @@ def test_only_the_scans_the_classifier_the_recovery_and_the_redaction_step_hold_
         *RECOVER_STEPS,
         *SCAN_STEPS,
         JOIN_SCAN_STEP,
+        FINALIZE_STEP,
         REDACT_STEP,
     }
     for name in _steps_referencing("TYPESAFE_API_KEY"):
@@ -401,10 +403,10 @@ def test_the_sweep_mints_an_app_token_for_failure_statuses_in_the_oracle_environ
 
 def test_every_secret_is_referenced_only_where_it_is_needed() -> None:
     allowed = {
-        "ORACLE_GATEWAY_TOKEN": {*LOOP_STEPS, REDACT_STEP},
-        "ORACLE_GATEWAY_URL": {*LOOP_STEPS, REDACT_STEP},
-        "TS_OAUTH_CI_CLIENT_ID": {JOIN_STEP, REDACT_STEP},
-        "TS_OAUTH_CI_SECRET": {JOIN_STEP, JOIN_SCAN_STEP, *SCAN_STEPS, REDACT_STEP},
+        "ORACLE_GATEWAY_TOKEN": {*LOOP_STEPS, FINALIZE_STEP, REDACT_STEP},
+        "ORACLE_GATEWAY_URL": {*LOOP_STEPS, FINALIZE_STEP, REDACT_STEP},
+        "TS_OAUTH_CI_CLIENT_ID": {JOIN_STEP, FINALIZE_STEP, REDACT_STEP},
+        "TS_OAUTH_CI_SECRET": {JOIN_STEP, JOIN_SCAN_STEP, *SCAN_STEPS, FINALIZE_STEP, REDACT_STEP},
         "ORACLE_APP_ID": {"Mint the App token"},
     }
     for secret, steps in allowed.items():
@@ -425,6 +427,22 @@ def test_the_redaction_step_holds_every_secret_value_the_job_held() -> None:
     assert names.index(LOOP_STEP) < names.index("Validate this run's attempts and decide") < names.index(step["name"])
     assert names.index(step["name"]) < names.index("Mint the App token")
     assert step["if"] == "steps.plan.outputs.post == 'true'"
+
+
+def test_the_finalize_step_holds_every_secret_value_so_the_marker_is_built_from_redacted_findings() -> None:
+    step = _step(FINALIZE_STEP)
+    assert {key: value for key, value in step["env"].items() if key != "OMP_INSTALL_STATE"} == REDACTION_ENV
+    assert "--env JOB_TOKEN" in step["run"]
+
+
+def test_no_step_summary_write_reaches_the_summary_before_the_redaction_step_except_the_omp_version() -> None:
+    names = _names()
+    redact = names.index(REDACT_STEP)
+    writers = [step["name"] for step in _steps()[:redact] if "GITHUB_STEP_SUMMARY" in _text(step)]
+    assert writers == ["Install omp"]
+    run = _run(REDACT_STEP)
+    assert '--summary-file "$RUNNER_TEMP/oracle-attempts/summary.json"' in run
+    assert '--summary-file "$RUNNER_TEMP/oracle-final/summary.json"' in run
 
 
 def test_the_disk_scans_bracket_the_reviewer_and_cover_the_declared_scratch_roots() -> None:

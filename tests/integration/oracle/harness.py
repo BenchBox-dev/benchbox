@@ -32,6 +32,7 @@ TRUSTED_FILES = (
     ".github/inert-paths.txt",
 )
 GATEWAY_TOKEN = "gwtok-" + "Q7mZ4kLp" * 5
+HELD_SECRET = "oauth-secret-" + "W3xT9vNb" * 4
 JEV_KEY = "jevk-" + "T5nB8wXc" * 4
 PINNED_OMP = "18.12.1"
 SHA256_LINE = re.compile(r"sha256: [0-9a-f]{64}")
@@ -82,6 +83,7 @@ class ReviewRun:
     run: dict[str, Any]
     temp: Path
     steps: dict[str, Step] = field(default_factory=dict)
+    loop_summary: str = ""
 
     @property
     def plan(self) -> dict[str, Any]:
@@ -91,6 +93,10 @@ class ReviewRun:
     def attempts(self) -> list[dict[str, Any]]:
         folder = self.temp / "oracle-attempts"
         return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(folder.glob("attempt-*.json"))]
+
+    def step_summary(self) -> str:
+        path = self.temp / "summary.md"
+        return path.read_text(encoding="utf-8") if path.is_file() else ""
 
     def captures(self) -> list[dict[str, Any]]:
         folder = self.temp / "oracle-attempts" / "captures"
@@ -383,6 +389,7 @@ class Harness:
         if not post:
             self.github.complete_run(run, "success")
             return record
+        record.loop_summary = record.step_summary()
         finalize_args = ["--omp-install", "failed"] if install_state == "failed" else []
         record.steps["finalize"] = self.cli(
             "finalize",
@@ -396,14 +403,28 @@ class Harness:
                 str(final_dir),
                 "--classification",
                 str(classification_path),
+                "--env",
+                "JOB_TOKEN",
                 *finalize_args,
             ],
-            env,
+            {**env, "JOB_TOKEN": JOB_TOKEN, "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN, "TS_OAUTH_CI_SECRET": HELD_SECRET},
         )
         record.steps["redact"] = self.cli(
             "redact",
-            ["redact-check", "--path", str(attempts_dir), "--path", str(final_dir), "--env", "JOB_TOKEN"],
-            {**env, "JOB_TOKEN": JOB_TOKEN, "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN},
+            [
+                "redact-check",
+                "--path",
+                str(attempts_dir),
+                "--path",
+                str(final_dir),
+                "--env",
+                "JOB_TOKEN",
+                "--summary-file",
+                str(attempts_dir / "summary.json"),
+                "--summary-file",
+                str(final_dir / "summary.json"),
+            ],
+            {**env, "JOB_TOKEN": JOB_TOKEN, "OMP_GATEWAY_TOKEN": GATEWAY_TOKEN, "TS_OAUTH_CI_SECRET": HELD_SECRET},
         )
         guard = self.cli("guard", ["guard", "--plan", str(plan_dir / "plan.json")], {**env, "GH_TOKEN": APP_TOKEN})
         record.steps["guard"] = guard
