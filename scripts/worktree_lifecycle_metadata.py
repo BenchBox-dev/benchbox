@@ -81,10 +81,12 @@ def process_start(pid: int) -> Optional[str]:
 
 def harness_pid() -> int:
     pid = os.getppid()
+    outermost = pid
     while pid > 1:
         comm = _ps_field(pid, "comm")
         if comm is None:
             break
+        outermost = pid
         name = Path(comm).name.lower().lstrip("-")
         if name not in WRAPPER_COMMANDS and not name.startswith("python"):
             return pid
@@ -92,7 +94,7 @@ def harness_pid() -> int:
         if not parent or not parent.isdigit():
             break
         pid = int(parent)
-    return os.getppid()
+    return outermost
 
 
 def _owner_alive(pid_text: Optional[str], start: Optional[str]) -> bool:

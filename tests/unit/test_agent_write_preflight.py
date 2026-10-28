@@ -56,7 +56,7 @@ def _install_configured_write_hook(repo: Path) -> None:
     scripts = repo / "scripts"
     scripts.mkdir()
     (scripts / SCRIPT.name).write_text(SCRIPT.read_text(encoding="utf-8"), encoding="utf-8")
-    for name in ("agent_pre_commit_guard.sh", "check_primary_clone_clean.sh"):
+    for name in ("agent_pre_commit_guard.sh", "check_primary_clone_clean.sh", "worktree_lifecycle_metadata.py"):
         companion = REPO_ROOT / "scripts" / name
         (scripts / name).write_text(companion.read_text(encoding="utf-8"), encoding="utf-8")
     (repo / ".pre-commit-config.yaml").write_text(
