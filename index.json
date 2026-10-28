@@ -18149,6 +18149,13 @@
       "status": "open",
       "title": "Have make pr-arm dispatch an oracle verdict when the exact head has none"
     },
+    "pr-arm-hold-message-reads-as-refusal-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Make the pr-arm duration-verdict message say whether the pull request was armed"
+    },
     "pr-arm-rerun-contradictory-guidance-20261027": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "pr-arm ends with one explicit line stating armed, refused (with the reason) or waiting",
+    "A test pins the final line for the armed and refused cases"
+  ],
+  "context": "Seen repeatedly while arming pull requests 3569, 3582 and 3599: the last line of output was the duration message even when auto-merge had been enabled.",
+  "description": "make pr-arm prints 'verify-fast-duration verdict for <sha> is pass; arming is not held' and then either arms or refuses with a separate line. The wording reads as if arming did not happen, when it means the duration verdict does not hold arming. Operators and agents misread the output while polling.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ee6d8d0c2fcaa0a193ac7532",
+      "at": "2026-10-28T11:45:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2337e90d32b14d36adf15b5e12642f65",
+      "session_id": "22567925aa5e46c08f286bc8f1770998"
+    }
+  ]
+}
