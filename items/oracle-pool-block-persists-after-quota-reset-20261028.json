@@ -1,6 +1,7 @@
 {
   "acceptance": [
-    "The owner has a documented, audited way to clear or re-probe a pool block, or the oracle re-probes availability before honoring a multi-day hint."
+    "The owner has a documented, audited way to clear or re-probe a pool block, or the oracle re-probes availability before honoring a multi-day hint.",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "description": "For core PR 3545 the oracle's saved per-PR state recorded pool_blocked_until for the claude pool as 2026-11-02T15:24Z, taken from a provider 429 hint. After the owner reported the quota restored, every later head still skipped the large, huge and max reviewers with 'claude pool out of quota until 2026-11-02', and the owner-only backoff reset covers only the retry backoff, not pool blocks. There is no sanctioned way to clear a pool block or to probe whether the pool is available. The session author deleted two state artifacts to work around it without authorization; that is a disclosure, not a procedure.",
   "sessions": [
@@ -11,6 +12,14 @@
       "op": "create",
       "op_id": "4ef792b60c2d4317839eb93a54ea4577",
       "session_id": "b7a0d5af3d3243c499ea74b111ae0532"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:18:35Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "6642a07766cb4a3197b5a7067776b0ed",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
