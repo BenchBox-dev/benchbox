@@ -5,7 +5,7 @@
     "The Explorer-token hook is already absent and its lint is retired (owner decision 2026-10-27)",
     "Verified for default, pre-push and commit-msg stages, not only --all-files"
   ],
-  "context": "2026-10-27: all five listed hooks are still configured; explorer-tokens is absent; three hooks added since the item was written have no disposition.",
+  "context": "2026-10-28 done: PR #3620 merged as df164fccb. Removed hooks timing-policy-fast-lane, pr-preflight, uat-loc-table, agent-instructions-check, duplicate-code-warn; deleted the pre-push preflight test; CONTRIBUTING.md updated. explorer-tokens retired by owner decision; its ledger row is removed by PR #3634.",
   "description": "AUDIT 2026-10-27 (owner-adjudicated, advisor-reviewed): the acceptance and context sections supersede this description wherever they differ. Historical text below is kept for reference.\n\n.pre-commit-config.yaml: remove timing-policy-fast-lane (pre-push; it now runs _project/scripts/fast_lane_ceiling_check.py --strict), pr-preflight (pre-push; runs make pr-preflight), uat-loc-table, agent-instructions-check, duplicate-code-warn (manual). Keep comment-policy, timing-policy-check (wall-clock policy only, after dlv2-16), blind-spot-validate, agent-write-preflight, agent-git-identity, agent-attribution-trailers (commit-msg), corpus-inventory, uv-lock-revision-guard, explorer-tokens, ruff, codespell, pre-commit-hooks hygiene, markdownlint.",
   "sessions": [
     {
@@ -39,6 +39,14 @@
       "generation": "8699e939d059494a9d137904341ca7f5",
       "op": "take",
       "op_id": "6a2446d6a97247c494706b1cbd6f2a40",
+      "session_id": "6b7047f0c07b4b9fa58995780041b734"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6787ac37ba9608d92398c21e",
+      "at": "2026-10-28T03:37:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c7c4313a78c746f49069b6f854d61cde",
       "session_id": "6b7047f0c07b4b9fa58995780041b734"
     }
   ]
