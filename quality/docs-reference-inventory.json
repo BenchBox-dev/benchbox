@@ -582,17 +582,6 @@
    "kinds": {
     "unresolved": 1
    },
-   "occurrences": 1,
-   "path": "_project/analysis/known-stranded-commits.txt",
-   "rule": "project-records",
-   "target_count": 1,
-   "targets_sha256": "80f5fb805ec0e8f3e3570013b0458678a1c8c6e9010901215fcd525746c42b26"
-  },
-  {
-   "disposition": "historical-record",
-   "kinds": {
-    "unresolved": 1
-   },
    "occurrences": 2,
    "path": "_project/analysis/phase-3-promotion-metrics.md",
    "rule": "project-records",
@@ -4422,13 +4411,13 @@
    "contract-tooling": 6,
    "fixture-data": 47,
    "governance-stays": 9,
-   "historical-record": 113,
+   "historical-record": 112,
    "lock-test": 5,
    "prose-link-pinned": 12,
    "site-pipeline-cutover": 4,
    "wiring-updated": 30
   },
-  "files": 227,
+  "files": 226,
   "kinds": {
    "built-url": 29042,
    "dir": 163,
@@ -4437,9 +4426,9 @@
    "generated": 3,
    "pattern": 333,
    "root": 203,
-   "unresolved": 2083
+   "unresolved": 2082
   },
-  "references": 33246,
+  "references": 33245,
   "unclassified": 0
  }
 }

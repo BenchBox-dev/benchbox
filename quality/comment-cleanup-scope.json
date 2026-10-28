@@ -1960,9 +1960,6 @@
         },
         {
           "path": "scripts/pr_refresh_certification.py"
-        },
-        {
-          "path": "scripts/queue_certification.py"
         }
       ]
     },
@@ -2884,7 +2881,7 @@
       ],
       "owner": "comment-cleanup-project-tooling",
       "state": "blocked",
-      "blocking_disposition": "Helper code and data under _project. The owner classifies each file by provenance as a current tool, frozen evidence or external reproducer source before any edit, and maps its consumer first: detect_orphaned_commits.py reads _project/analysis/known-stranded-commits.txt and treats # lines as comments, uat_loc_table.py reads _project/specs/uat-loc-budget.json, and test_visible_metrics_registry.py reads _project/planning/visible_metrics.yaml. The task description names analysis, audit and sqlglot-upstream helpers but not _project/sql-translation-ml; its description needs that scope added or the directory reassigned."
+      "blocking_disposition": "Helper code and data under _project. The owner classifies each file by provenance as a current tool, frozen evidence or external reproducer source before any edit, and maps its consumer first: uat_loc_table.py reads _project/specs/uat-loc-budget.json, and test_visible_metrics_registry.py reads _project/planning/visible_metrics.yaml. The task description names analysis, audit and sqlglot-upstream helpers but not _project/sql-translation-ml; its description needs that scope added or the directory reassigned."
     }
   ],
   "payloads": [

@@ -169,12 +169,6 @@ until it ages out of the window. A docs baseline can be recovered by dispatch
 as above. A dispatched trunk run gives test evidence, but release admission
 requires a push-produced artifact and rejects dispatch as a substitute.
 
-## Retired tooling
-
-`scripts/detect_develop_post_merge_gaps.py` and `scripts/sweep_coverage.py`
-were written for the retired workflow and have no workflow caller now. They
-remain in the tree until a follow-up removes them together with their tests.
-
 ## What we deliberately did not do
 
 - **No extra push-adjacent spam** (`pull_request`, `repository_dispatch`, and
