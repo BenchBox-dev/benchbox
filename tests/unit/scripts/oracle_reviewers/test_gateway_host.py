@@ -7,10 +7,13 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
+import yaml
 
+from _project.scripts.oracle_reviewers import omp_pin
 from tests.utilities.posix_shell import run_posix_shell
 
 from .conftest import REPO_ROOT
@@ -61,7 +64,6 @@ def host(tmp_path: Path) -> dict:
         "HOME": str(tmp_path / "home"),
         "GATEWAY_DIR": str(gateway_dir),
         "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}",
-        "OMP": str(stubs / "omp"),
     }
     return {"dir": gateway_dir, "clients": clients, "calls": calls, "env": env}
 
@@ -261,3 +263,282 @@ def test_revoke_and_the_token_file_check_accept_the_same_names(host: dict, suffi
     revoked = _revoke(host, name).returncode == 0
     assert checked == revoked
     assert revoked == (suffix in {"local", "my-ci", "ci2"})
+
+
+def _fake_omp(version: str, clients: bool = True, extra: str = "") -> str:
+    help_line = "--clients=<value>" if clients else "--bind=<value>"
+    return f'#!/bin/sh\ncase "$*" in *--help*) echo "{help_line}";; *) echo omp/{version};; esac\n{extra}'
+
+
+PINNED_BINARY = _fake_omp("1.2.3")
+OTHER_VERSION_BINARY = _fake_omp("9.9.9")
+SAME_VERSION_OTHER_BYTES = _fake_omp("1.2.3", extra="# built elsewhere\n")
+NO_CLIENTS_BINARY = _fake_omp("1.2.3", clients=False)
+
+
+def _sha256(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def _pin_policy(origin: Path, builds: dict[str, str]) -> None:
+    policy = origin / ".github" / "oracle-reviewers.yml"
+    data = yaml.safe_load(policy.read_text(encoding="utf-8"))
+    data["omp"] = {
+        "version": "1.2.3",
+        "builds": {
+            name: {"url": f"https://downloads.example.invalid/{name}", "sha256": digest}
+            for name, digest in builds.items()
+        },
+    }
+    policy.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    _git(origin, "commit", "-q", "-a", "-m", "pin omp")
+
+
+def _executable(path: Path, text: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    path.chmod(0o755)
+    return path
+
+
+@pytest.fixture
+def pinned(tmp_path: Path, host: dict) -> dict:
+    origin, checkout = _checkout_on_a_feature_branch(tmp_path)
+    platform = omp_pin.current_platform()
+    _pin_policy(origin, {platform: _sha256(PINNED_BINARY)})
+    cache = tmp_path / "omp-cache"
+    pinned_binary = _executable(cache / "1.2.3" / platform / "omp", PINNED_BINARY)
+    stubs = tmp_path / "pin-stubs"
+    stubs.mkdir()
+    uv = _executable(
+        stubs / "uv",
+        f"#!{sys.executable}\nimport os, sys\n"
+        "args = sys.argv[1:]\n"
+        "os.environ['PYTHONPATH'] = os.getcwd()\n"
+        "os.execv(sys.executable, [sys.executable, *args[args.index('--') + 2:]])\n",
+    )
+    decoy = _executable(stubs / "omp", f'#!/bin/sh\necho "decoy omp $*" >> "{host["calls"]}"\nexit 1\n')
+    env = {
+        **host["env"],
+        **GIT_IDENTITY,
+        "PATH": f"{stubs}{os.pathsep}{host['env']['PATH']}",
+        "BENCHBOX_OMP_CACHE": str(cache),
+        "OMP": str(decoy),
+    }
+    return {
+        "script": checkout / "_project" / "scripts" / "oracle_gateway_host.sh",
+        "env": env,
+        "binary": pinned_binary,
+        "uv": uv,
+        "decoy": decoy,
+        "dir": host["dir"],
+        "calls": host["calls"],
+        "stubs": stubs,
+        "origin": origin,
+        "tmp": tmp_path,
+    }
+
+
+def _source(pinned: dict, body: str, env: dict | None = None) -> subprocess.CompletedProcess[str]:
+    return run_posix_shell(
+        f"bash -c '. \"$0\"; {body}' {shlex.quote(str(pinned['script']))}",
+        env=env or pinned["env"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_the_host_runs_omp_from_the_pinned_cache_never_from_path_or_the_environment(pinned: dict) -> None:
+    result = _source(pinned, 'require_omp; echo "resolved=$OMP"')
+    assert result.returncode == 0, result.stderr
+    assert f"resolved={pinned['binary']}" in result.stdout.splitlines()
+    assert f"omp pin: 1.2.3 sha256={_sha256(PINNED_BINARY)}" in result.stdout
+    assert not pinned["calls"].exists()
+
+
+def test_the_host_refuses_when_the_pin_cannot_be_installed_and_does_not_fall_back_to_a_path_omp(
+    pinned: dict,
+) -> None:
+    _pin_policy(pinned["origin"], {"plan9-mips": _sha256(PINNED_BINARY)})
+    result = _source(pinned, 'require_omp; echo "resolved=$OMP"')
+    assert result.returncode != 0
+    assert "resolved=" not in result.stdout
+    assert "no omp build is pinned for" in result.stderr
+    assert "cannot install the omp build pinned in origin/develop" in result.stderr
+    assert not pinned["calls"].exists()
+
+
+def test_the_host_refuses_a_cached_binary_that_does_not_match_the_pin(pinned: dict) -> None:
+    _executable(pinned["binary"], SAME_VERSION_OTHER_BYTES)
+    result = _source(pinned, 'require_omp; echo "resolved=$OMP"')
+    assert result.returncode != 0
+    assert "resolved=" not in result.stdout
+    assert not pinned["calls"].exists()
+
+
+def _running(pinned: dict, binary: Path, listener: str = "4242", etime: str = "10:00", aged: bool = True) -> dict:
+    stubs = pinned["stubs"]
+    if aged:
+        old = time.time() - 3600
+        os.utime(binary, (old, old))
+    _executable(stubs / "launchctl", "#!/bin/sh\nprintf 'service = x\\n\\tpid = 4242\\n'\n")
+    _executable(
+        stubs / "ps",
+        f"#!/bin/sh\ncase \"$*\" in *comm=*) echo '  {binary}';; *etime=*) echo '  {etime}';; esac\n",
+    )
+    _executable(stubs / "lsof", f"#!/bin/sh\n[ -z '{listener}' ] || printf '%b\\n' '{listener}'\n")
+    return pinned["env"]
+
+
+def _check_running(
+    pinned: dict, binary: Path, listener: str = "4242", etime: str = "10:00", aged: bool = True
+) -> subprocess.CompletedProcess[str]:
+    return _source(
+        pinned,
+        "require_omp >/dev/null; check_running_build dev.omp.auth-gateway 4000",
+        _running(pinned, binary, listener, etime, aged),
+    )
+
+
+def test_check_reports_the_running_gateway_version_and_hash_when_it_is_the_pinned_build(pinned: dict) -> None:
+    result = _check_running(pinned, pinned["binary"])
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == f"dev.omp.auth-gateway: omp 1.2.3 sha256={_sha256(PINNED_BINARY)}"
+
+
+def test_check_fails_when_the_running_gateway_has_another_version(pinned: dict) -> None:
+    other = _executable(pinned["tmp"] / "daily" / "omp", OTHER_VERSION_BINARY)
+    result = _check_running(pinned, other)
+    assert result.returncode != 0
+    assert f"omp 9.9.9 sha256={_sha256(OTHER_VERSION_BINARY)}" in result.stdout
+    assert "not the pinned omp 1.2.3" in result.stderr
+
+
+def test_check_fails_when_the_running_gateway_has_the_pinned_version_but_other_bytes(pinned: dict) -> None:
+    other = _executable(pinned["tmp"] / "daily" / "omp", SAME_VERSION_OTHER_BYTES)
+    result = _check_running(pinned, other)
+    assert result.returncode != 0
+    assert f"sha256={_sha256(SAME_VERSION_OTHER_BYTES)}" in result.stdout
+    assert f"sha256={_sha256(PINNED_BINARY)}" in result.stderr
+
+
+def test_check_fails_when_the_gateway_is_not_running(pinned: dict) -> None:
+    _executable(pinned["stubs"] / "launchctl", "#!/bin/sh\nprintf 'service = x\\n'\n")
+    result = _source(pinned, "require_omp >/dev/null; check_running_build dev.omp.auth-gateway 4000")
+    assert result.returncode != 0
+    assert "dev.omp.auth-gateway is not running" in result.stderr
+
+
+def _exec_line(pinned: dict, target: Path, flags: str | None = None) -> str:
+    flags = flags if flags is not None else f'--bind=127.0.0.1:4000 --clients="{pinned["dir"]}/clients.json"'
+    return f'exec "{target}" auth-gateway serve {flags}'
+
+
+@pytest.mark.parametrize(
+    ("configured", "flags", "ok"),
+    [
+        ("pinned", None, True),
+        ("daily", None, False),
+        ("pinned", "--bind=127.0.0.1:4000", False),
+        ("pinned", '--bind=127.0.0.1:4000 --clients="/elsewhere/clients.json"', False),
+        ("pinned", '--bind=0.0.0.0:4000 --clients="{dir}/clients.json"', False),
+    ],
+)
+def test_check_requires_run_sh_to_exec_the_pinned_build_with_the_scoping_flags(
+    pinned: dict, configured: str, flags: str | None, ok: bool
+) -> None:
+    target = pinned["binary"] if configured == "pinned" else pinned["tmp"] / "daily" / "omp"
+    flags = flags.replace("{dir}", str(pinned["dir"])) if flags else flags
+    (pinned["dir"] / "run.sh").write_text(f"#!/bin/sh\n{_exec_line(pinned, target, flags)}\n", encoding="utf-8")
+    env = {**pinned["env"], "GATEWAY_DIR": str(pinned["dir"])}
+    result = _source(pinned, "require_omp >/dev/null; check_run_file_build", env)
+    assert (result.returncode == 0) == ok
+    if not ok:
+        assert "does not exec the pinned build" in result.stderr
+
+
+@pytest.mark.parametrize("etime", ["", "garbage", "5"])
+def test_check_fails_closed_when_the_process_start_time_cannot_be_read(pinned: dict, etime: str) -> None:
+    result = _check_running(pinned, pinned["binary"], etime=etime)
+    assert result.returncode != 0
+    assert "may run an older build" in result.stderr
+
+
+@pytest.mark.parametrize("listener", ["777", "", "4242\\n777", "777\\n4242"])
+def test_check_fails_when_the_launchd_process_is_not_the_one_holding_the_port(pinned: dict, listener: str) -> None:
+    result = _check_running(pinned, pinned["binary"], listener)
+    assert result.returncode != 0
+    assert "is process 4242 but port 4000 is held by" in result.stderr
+
+
+def test_the_host_refuses_a_pinned_build_without_the_clients_scope_flag(pinned: dict) -> None:
+    platform = omp_pin.current_platform()
+    _pin_policy(pinned["origin"], {platform: _sha256(NO_CLIENTS_BINARY)})
+    _executable(pinned["binary"], NO_CLIENTS_BINARY)
+    result = _source(pinned, 'require_omp; echo "resolved=$OMP"')
+    assert result.returncode != 0
+    assert "has no auth-gateway serve --clients" in result.stderr
+
+
+def test_check_fails_when_the_process_started_before_its_binary_was_rewritten_at_the_same_path(pinned: dict) -> None:
+    result = _check_running(pinned, pinned["binary"], etime="2-01:00:00", aged=False)
+    assert result.returncode != 0
+    assert "started before" in result.stderr
+    assert "may run an older build" in result.stderr
+
+
+def _check_builds(pinned: dict, *, broker: Path, gateway: Path, run_sh: Path) -> subprocess.CompletedProcess[str]:
+    stubs = pinned["stubs"]
+    for path in (broker, gateway):
+        old = time.time() - 3600
+        os.utime(path, (old, old))
+    _executable(
+        stubs / "launchctl",
+        '#!/bin/sh\ncase "$*" in *auth-broker*) pid=111;; *) pid=222;; esac\nprintf \'pid = %s\\n\' "$pid"\n',
+    )
+    _executable(
+        stubs / "ps",
+        f"#!/bin/sh\ncase \"$*\" in *comm*111*) echo '{broker}';; *comm*) echo '{gateway}';; *) echo 10:00;; esac\n",
+    )
+    _executable(stubs / "lsof", '#!/bin/sh\ncase "$*" in *8765*) echo 111;; *) echo 222;; esac\n')
+    (pinned["dir"] / "run.sh").write_text(f"#!/bin/sh\n{_exec_line(pinned, run_sh)}\n", encoding="utf-8")
+    env = {**pinned["env"], "GATEWAY_DIR": str(pinned["dir"])}
+    return _source(pinned, "require_omp >/dev/null; check_builds", env)
+
+
+def test_check_builds_enforces_the_broker_the_run_file_and_the_gateway(pinned: dict) -> None:
+    other = _executable(pinned["tmp"] / "daily" / "omp", OTHER_VERSION_BINARY)
+    good = pinned["binary"]
+    passing = _check_builds(pinned, broker=good, gateway=good, run_sh=good)
+    assert passing.returncode == 0, passing.stderr
+    assert passing.stdout.count(f"omp 1.2.3 sha256={_sha256(PINNED_BINARY)}") == 2
+    broker = _check_builds(pinned, broker=other, gateway=good, run_sh=good)
+    assert broker.returncode != 0 and "dev.omp.auth-broker runs omp 9.9.9" in broker.stderr
+    gateway = _check_builds(pinned, broker=good, gateway=other, run_sh=good)
+    assert gateway.returncode != 0 and "dev.omp.auth-gateway runs omp 9.9.9" in gateway.stderr
+    run_sh = _check_builds(pinned, broker=good, gateway=good, run_sh=other)
+    assert run_sh.returncode != 0 and "does not exec the pinned build" in run_sh.stderr
+
+
+@pytest.mark.parametrize(("etime", "aged", "restarted"), [("10:00", True, False), ("2-01:00:00", False, True)])
+def test_a_rerun_restarts_an_agent_that_predates_its_pinned_binary_even_when_nothing_else_changed(
+    pinned: dict, etime: str, aged: bool, restarted: bool
+) -> None:
+    env = _running(pinned, pinned["binary"], etime=etime, aged=aged)
+    calls = pinned["tmp"] / "launchctl-calls.log"
+    _executable(
+        pinned["stubs"] / "launchctl",
+        f'#!/bin/sh\necho "$*" >> \'{calls}\'\ncase "$1" in print) [ -e "$HOME/loaded" ] || exit 1; printf \'pid = 4242\\n\';; bootout) rm -f "$HOME/loaded";; esac\n',
+    )
+    _executable(pinned["stubs"] / "plutil", "#!/bin/sh\nexit 0\n")
+    home = pinned["tmp"] / "agent-home"
+    env = {**env, "HOME": str(home)}
+    body = (
+        "require_omp >/dev/null; AGENT_DIR=$HOME/agents; LOG_DIR=$HOME/logs; mkdir -p $AGENT_DIR; "
+        "install_agent dev.omp.auth-gateway $LOG_DIR/x.log yes /bin/sh run.sh >/dev/null; touch $HOME/loaded; : > "
+        f"'{calls}'; install_agent dev.omp.auth-gateway $LOG_DIR/x.log no /bin/sh run.sh"
+    )
+    result = _source(pinned, body, env)
+    assert result.returncode == 0, result.stderr
+    assert ("bootstrap" in calls.read_text(encoding="utf-8")) == restarted

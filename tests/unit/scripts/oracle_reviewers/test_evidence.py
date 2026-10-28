@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 
+from _project.scripts.oracle_reviewers.diff import binary_files as diff_binary_files
 from _project.scripts.oracle_reviewers.evidence import (
     CITATION_PREFIX,
     INLINE,
@@ -13,6 +15,7 @@ from _project.scripts.oracle_reviewers.evidence import (
     Trace,
     check,
     describe,
+    glob_match,
     mark_citations,
     relative,
     trace,
@@ -566,3 +569,317 @@ def test_required_symlink_inside_checkout_is_credited_by_real_path(tmp_path):
     (tmp_path / "real.md").write_text("x\n")
     (tmp_path / "link.md").symlink_to("real.md")
     assert unread("omp", ["link.md"], Trace(("real.md",)), tmp_path) == []
+
+
+def _git(root: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    ).stdout
+
+
+def _head_repo(tmp_path: Path, files: dict[str, bytes], attributes: str = "") -> tuple[Path, str]:
+    root = tmp_path / "repo"
+    root.mkdir()
+    _git(root, "init", "-q")
+    (root / "seed.txt").write_text("seed\n", encoding="utf-8")
+    _git(root, "add", "seed.txt")
+    _git(root, "commit", "-q", "-m", "seed")
+    base = _git(root, "rev-parse", "HEAD").strip()
+    if attributes:
+        (root / ".gitattributes").write_text(attributes, encoding="utf-8")
+    for name, data in files.items():
+        target = root / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "change")
+    return root, _git(root, "diff", "--no-color", "--no-ext-diff", "--no-textconv", base, "HEAD")
+
+
+def _exposure(workspace: Path, required: list[str], run: Trace | None = None, **kwargs: object) -> str | None:
+    diff = kwargs.pop("diff", "")
+    if diff:
+        hinted = kwargs.get("binary_files", ())
+        assert isinstance(hinted, (list, tuple))
+        kwargs["binary_files"] = [*hinted, *diff_binary_files(str(diff))]
+    gap = check(
+        _verdict(examined=()),
+        ships=True,
+        harness="omp",
+        brief_mode="summary",
+        workspace=workspace,
+        required=required,
+        run=Trace() if run is None else run,
+        **kwargs,
+    )
+    return gap.reason if gap else None
+
+
+def _policy_exemptions() -> tuple[str, ...]:
+    from _project.scripts.oracle_reviewers.policy import load_policy
+
+    return load_policy(Path(__file__).resolve().parents[4] / ".github" / "oracle-reviewers.yml").evidence.exempt_paths
+
+
+READ = Trace(("seed.txt",))
+NO_READ = "the verdict would ship but its trace shows no successful file read"
+
+
+def _unread(path: str) -> str:
+    return f"the verdict would ship but its trace shows no read of {path}"
+
+
+def test_binary_file_and_readme_no_longer_make_attempt_absent(tmp_path: Path) -> None:
+    root, diff = _head_repo(tmp_path, {"vendor/package.woff2": b"PK\x03\x04\x00\x00data", "pkg/README.md": b"prose\n"})
+    assert (
+        _exposure(
+            root,
+            ["vendor/package.woff2", "pkg/README.md"],
+            READ,
+            diff=diff,
+            exempt_paths=["README*.md", "**/README*.md"],
+        )
+        is None
+    )
+
+
+def test_source_file_still_requires_read(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    required = ["pkg/README.md", "benchbox/core/checker.py"]
+    assert _exposure(workspace, required, exempt_paths=["README*.md", "**/README*.md"]) == NO_READ
+    problem = _exposure(workspace, required, Trace(("other.py",)), exempt_paths=["README*.md", "**/README*.md"])
+    assert problem == "the verdict would ship but its trace shows no read of benchbox/core/checker.py"
+
+
+def test_soundness_path_prose_file_still_requires_read(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    soundness_prose = ".github/PULL_REQUEST_TEMPLATE.md"
+    assert _exposure(workspace, [soundness_prose], exempt_paths=["*.md"]) == NO_READ
+    problem = _exposure(workspace, [soundness_prose], Trace(("other.py",)), exempt_paths=["*.md"])
+    assert problem == f"the verdict would ship but its trace shows no read of {soundness_prose}"
+
+
+def test_an_archive_stays_required_even_after_a_binary_entry_notice(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    (workspace / "dist").mkdir(parents=True)
+    (workspace / "dist" / "x.whl").write_bytes(b"PK\x03\x04\x00\x00")
+    events = _tool_events(
+        "read",
+        "dist/x.whl:pkg/mod.so",
+        is_error=False,
+        output="[Cannot read binary archive entry 'pkg/mod.so' (12 bytes)]",
+    )
+    run = trace("omp", events)
+    assert run.failed == 1
+    assert _exposure(workspace, ["dist/x.whl"], run, binary_files=["dist/x.whl"]) == NO_READ
+
+
+def test_diff_detected_binary_files_are_exempt(tmp_path: Path) -> None:
+    root, diff = _head_repo(tmp_path, {"bin.woff2": b"head\x00tail"})
+    assert "Binary files /dev/null and b/bin.woff2 differ" in diff
+    assert _exposure(root, ["bin.woff2"], READ, diff=diff) is None
+
+
+def test_binary_notice_without_a_nul_byte_does_not_exempt(tmp_path: Path) -> None:
+    root, _ = _head_repo(tmp_path, {"pkg/mod.woff2": b"value = 1\n"})
+    notice = "diff --git a/pkg/mod.woff2 b/pkg/mod.woff2\nBinary files a/pkg/mod.woff2 and b/pkg/mod.woff2 differ\n"
+    assert _exposure(root, ["pkg/mod.woff2"], READ, diff=notice, binary_files=["pkg/mod.woff2"]) == _unread(
+        "pkg/mod.woff2"
+    )
+
+
+def test_nul_byte_after_the_probe_window_does_not_confirm_binary(tmp_path: Path) -> None:
+    root, diff = _head_repo(tmp_path, {"late.woff2": b"a" * 8000 + b"\x00"})
+    assert _exposure(root, ["late.woff2"], READ, diff=diff, binary_files=["late.woff2"]) == _unread("late.woff2")
+
+
+def test_a_python_file_marked_not_diffable_stays_required_and_fails_when_unread(tmp_path: Path) -> None:
+    root, diff = _head_repo(
+        tmp_path,
+        {"benchbox/core/checker.py": b"def verify():\n    return True\n"},
+        attributes="*.py -diff\n",
+    )
+    assert "Binary files /dev/null and b/benchbox/core/checker.py differ" in diff
+    assert _exposure(root, ["benchbox/core/checker.py"], diff=diff) == NO_READ
+    problem = _exposure(root, ["benchbox/core/checker.py"], Trace(("benchbox/core/checker.py",)), diff=diff)
+    assert problem == "the verdict would ship but did not examine benchbox/core/checker.py"
+
+
+def test_a_symlinked_binary_outside_the_checkout_is_not_confirmed(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    outside = tmp_path / "outside.bin"
+    outside.write_bytes(b"\x00\x01")
+    (workspace / "link.woff2").symlink_to(outside)
+    assert _exposure(workspace, ["link.woff2"], READ, binary_files=["link.woff2"]) == _unread("link.woff2")
+
+
+def test_a_binary_absent_from_the_head_tree_is_not_confirmed(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    assert _exposure(workspace, ["gone.woff2"], READ, binary_files=["gone.woff2"]) == _unread("gone.woff2")
+
+
+@pytest.mark.parametrize("path", ["package.whl", "picture.woff2", "data.zip"])
+def test_binary_extension_alone_does_not_exempt_a_file(tmp_path: Path, path: str) -> None:
+    (tmp_path / path).write_bytes(b"\x00\x01")
+    assert _exposure(tmp_path, [path]) == NO_READ
+
+
+@pytest.mark.parametrize("path", [".github/PULL_REQUEST_TEMPLATE.md", ".gitattributes", "docs/.gitattributes"])
+def test_binary_soundness_file_still_requires_exposure(tmp_path: Path, path: str) -> None:
+    target = tmp_path / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"\x00\x01")
+    problem = _exposure(tmp_path, [path], binary_files=[path], exempt_paths=["*.md", "*"])
+    assert problem == NO_READ
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "data.sql",
+        "golden.csv",
+        "fixture.json",
+        "mod.py",
+        "notes.txt",
+        "blob.dat",
+        "noext",
+        "_native.so",
+        "mod.pyc",
+        "tool.exe",
+        "data.parquet",
+    ],
+)
+def test_a_nul_byte_in_a_text_type_or_unknown_file_never_exempts(tmp_path: Path, path: str) -> None:
+    root, diff = _head_repo(tmp_path, {path: b"payload\x00hidden"})
+    assert "differ" in diff
+    assert _exposure(root, [path], diff=diff, binary_files=[path]) == NO_READ
+
+
+def test_a_machine_read_doc_stays_required_despite_a_recursive_docs_glob(tmp_path: Path) -> None:
+    path = "docs/agent/overview.md"
+    assert _exposure(tmp_path, [path], READ, exempt_paths=["docs/**/*.md"]) == _unread(path)
+    assert _exposure(tmp_path, ["docs/guide/page.md"], READ, exempt_paths=["docs/**/*.md"]) is None
+
+
+def test_a_protected_file_whose_name_ends_in_a_line_suffix_stays_required(tmp_path: Path) -> None:
+    path = "pkg/README.md:1"
+    protected = _exposure(tmp_path, [path], READ, exempt_paths=["**/README*.md"], is_protected=lambda p: p == path)
+    assert protected == _unread(path)
+
+
+def test_the_docs_exemption_covers_only_direct_children_of_docs(tmp_path: Path) -> None:
+    exempt = list(_policy_exemptions())
+    assert _exposure(tmp_path, ["docs/index.md"], READ, exempt_paths=exempt) is None
+    for path in ("docs/benchmarks/tpc-h.md", "docs/development/result-validation.md"):
+        assert _exposure(tmp_path, [path], READ, exempt_paths=exempt) == _unread(path)
+
+
+def test_readme_and_changelog_exemptions_apply_at_any_depth(tmp_path: Path) -> None:
+    exempt = list(_policy_exemptions())
+    for path in ("pkg/README.md", "pkg/sub/README.md", "pkg/CHANGELOG.md", "a/b/c/CHANGELOG-1.md"):
+        assert _exposure(tmp_path, [path], READ, exempt_paths=exempt) is None
+
+
+def test_a_protected_binary_stays_required(tmp_path: Path) -> None:
+    root, diff = _head_repo(tmp_path, {"vendor/pack.woff2": b"PK\x00\x00"})
+    assert _exposure(root, ["vendor/pack.woff2"], READ, diff=diff) is None
+    protected = _exposure(root, ["vendor/pack.woff2"], diff=diff, is_protected=lambda path: path == "vendor/pack.woff2")
+    assert protected == NO_READ
+
+
+def test_an_unread_all_exempt_change_still_needs_one_successful_read(tmp_path: Path) -> None:
+    root, diff = _head_repo(tmp_path, {"pic.woff2": b"wOF2\x00"})
+    assert _exposure(root, [], diff=diff) == NO_READ
+    assert _exposure(root, ["pic.woff2"], diff=diff) == NO_READ
+    assert _exposure(root, ["pic.woff2"], READ, diff=diff) is None
+
+
+def test_a_gitattributes_change_is_a_soundness_path_change() -> None:
+    from _project.scripts.soundness_paths import is_soundness_path
+
+    assert is_soundness_path(".gitattributes")
+    assert is_soundness_path("docs/.gitattributes")
+    assert not is_soundness_path("docs/gitattributes.md")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "README.md",
+        "pkg/README.md",
+        "README-dev.md",
+        "CHANGELOG.md",
+        "pkg/CHANGELOG-1.md",
+        "docs/guide.md",
+    ],
+)
+def test_prose_globs_cover_prose_files(path: str) -> None:
+    assert any(glob_match(path, pattern) for pattern in _policy_exemptions())
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "benchbox/README_helper.py",
+        "README/loader.py",
+        "pkg/README/loader.py",
+        "CHANGELOG/gen.py",
+        "benchbox/core/CHANGELOG_parser.py",
+        "docs/gen.py",
+        "docs/a/conf.yaml",
+        "docs/a/b/guide.md",
+        "CONTRIBUTING.md",
+        "notes.md",
+    ],
+)
+def test_prose_globs_do_not_cover_other_files(path: str) -> None:
+    assert not any(glob_match(path, pattern) for pattern in _policy_exemptions())
+
+
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        ("Binary files a/blob and b/blob differ\n", frozenset({"blob"})),
+        ("Binary files /dev/null and b/blob differ\n", frozenset({"blob"})),
+        ("Binary files a/blob and /dev/null differ\n", frozenset({"blob"})),
+        ("GIT binary patch\nliteral 3\nabc\n", frozenset({"blob"})),
+        ("@@ -1 +1 @@\n+GIT binary patch\n", frozenset()),
+        ("@@ -1 +1 @@\n Binary files a/blob and b/blob differ\n", frozenset()),
+        ("Binary files a/other and b/other differ\n", frozenset()),
+    ],
+)
+def test_binary_detection_uses_diff_metadata(body: str, expected: frozenset[str]) -> None:
+    from _project.scripts.oracle_reviewers.diff import binary_files
+
+    assert binary_files("diff --git a/blob b/blob\n" + body) == expected
+
+
+def test_exposure_exemption_does_not_bypass_withdrawal_citations(tmp_path: Path) -> None:
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "guide.md").write_text("prose\n", encoding="utf-8")
+    verdict = _withdrawn_verdict("never a defect: docs/guide.md:1", ())
+    assert (
+        check(
+            verdict,
+            ships=True,
+            harness="omp",
+            brief_mode="file-list",
+            workspace=tmp_path,
+            required=["docs/guide.md"],
+            run=READ,
+            exempt_paths=["docs/*.md"],
+        )
+        is None
+    )
+    marked = mark_citations(verdict, tmp_path)
+    assert marked.prior_defects[0].status == "not_fixed"
+    assert UNVERIFIED_WITHDRAWAL in marked.prior_defects[0].evidence

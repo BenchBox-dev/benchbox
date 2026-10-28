@@ -27,6 +27,7 @@ red domain does not hide the others, and each domain uploads its own artifacts.
 | `t3:ruleset-drift` | `ruleset-drift` | Compares the live GitHub rulesets, merge-queue contexts and `pypi` environment with the recorded runbook through `scripts/ruleset_drift_check.py`, using the `RULESET_DRIFT_TOKEN` secret. It stays in this workflow when the release-branch workflows are retired, so a changed ruleset still opens a `t3:ruleset-drift` issue. |
 | `t3:windows` | `windows` | The fast unit tier on `windows-latest` with Python 3.12 (no coverage gate). The matrix domain only builds and smoke-tests on Windows; this is the Windows unit suite. It takes 19 to 25 minutes, so pull requests run only the test files their change selects on the same runner and marker through the `windows-tests` job in `ci.yml`, which the required `core` context aggregates. This domain stays the full-suite backstop for tests the selection does not reach. |
 | `t3:tpcds-obt` | `tpcds-obt` | Runs `make tpcds-obt-equivalence TPCDS_OBT_EQUIVALENCE_SF=1`: every served OBT query against its TPC-DS query on DuckDB at SF1 with identical dsqgen parameters, failing on an unlisted divergence or a listed query that now matches (see `tests/integration/test_tpcds_obt_equivalence.py`). The PR tier runs the same test at SF0.01. |
+| `t3:sql-execution-gate-obt` | `sql-execution-gate-obt` | Runs the SQL execution gate for the `tpcds_obt` benchmark at SF0.01 against the digest-pinned `ghcr.io/benchbox-dev/postgres` service (`make sql-execution-gate`, no baseline ref) and uploads the gate report. |
 | `t3:durations` | `durations-refresh` | Records pytest `--durations` and JUnit reports for the fast and slow tiers in the `t3-durations` artifact. It also regenerates the duration file there when the tooling is present. Test correctness is gated by the PR, trunk and release-canary lanes, so failed sampled tests (pytest exit 1) emit a `::warning::` naming the failing test ids, keep their artifacts and pass the domain. The domain fails when a pytest verdict or JUnit report is missing or unparseable, pytest exits above 1, or the duration tooling fails. |
 
 ## Fast-test duration policy
@@ -92,7 +93,16 @@ no other labels. The job reads each domain's result and decides as follows:
 4. A domain whose job result is `cancelled` with an open issue gets one comment per run,
    "no verdict (cancelled or timed out)". It never creates, reopens, or closes an
    issue. A cancelled image mirror job also counts as no verdict for its domain.
-5. A skipped domain (cloud disabled, or drift on a non-Monday) changes nothing.
+5. A skipped domain (cloud disabled, or drift on a non-Monday) changes nothing. For
+   drift the report log records the `drift-gate` selection, so a deliberate skip
+   (`run=false`) is distinguishable from a failed selection.
+
+Helper jobs report through the domain they serve. `drift-gate` is a leg of
+`drift`: if it fails, `drift` is skipped without running, so the report opens
+a `t3:drift` issue naming `drift-gate` as the failed job. `throughput-signal`
+is a leg of `throughput`: if publishing the `nightly/throughput-uat` commit
+status fails, the report opens a `t3:throughput` issue naming it. The browser
+check is owned by the site repository and is not a domain here.
 
 Each issue links to the failing run. Its artifacts are attached to that run.
 

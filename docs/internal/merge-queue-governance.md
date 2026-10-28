@@ -275,9 +275,12 @@ freshness changed. The
 `tests/conftest.py` coverage warning reads the data file named by
 `COVERAGE_FILE` so sharded runs report their own file.
 
-Runs use `concurrency.queue: max` with running work retained, so later pushes
-do not replace earlier pending runs; results can lag during a burst of merges.
-This protects queued runs for delivered events, not push-event delivery itself.
+Each commit runs in its own `trunk-<sha>` concurrency group, so runs for
+different commits proceed in parallel and later pushes never wait behind or
+replace earlier runs; only a re-run of the same commit waits for the earlier
+run of that commit. Results can still arrive out of order. This covers runs for
+delivered events, not push-event delivery itself. See
+[the per-commit trunk decision](../../_project/decisions/trunk-per-commit-runs-2026-10-27.md).
 Release admission requires the latest exact-commit trunk `push` run on `develop`
 to succeed and have a matching artifact attempt; it never falls back to an
 older success. See [the release artifact contract](release-artifacts.md).
@@ -290,9 +293,13 @@ make trunk-revert PR=<number>
 
 So nothing new stacks on a broken tip, `make pr-open` opens a non-revert
 branch as a draft, and says arming needs authorization, when the newest
-`trunk.yml` run on `develop` finished red more than 30
-minutes ago (`scripts/trunk_revert.py gate`). It warns instead of drafting
-while a newer run is in progress or when `gh` cannot read the runs. If trunk
+completed `trunk.yml` run on `develop` finished red more than 30
+minutes ago (`scripts/trunk_revert.py gate`). A newer run still in progress
+does not hide that red. When `gh` cannot read the runs it warns instead of
+drafting. Separately, when the newest run (by creation time) has been queued,
+waiting or in progress for more than 30 minutes, `make pr-open` and
+`make pr-arm` print a warning naming the run and its age and carry on; a slow
+run never blocks. If trunk
 stays red over two hours with no revert pull request open, that is a risk
 signal for the owner, who should revert the culprit; nothing enforces the
 two-hour figure.
@@ -310,6 +317,15 @@ when the streak outruns that bound. An owner-authorized fix-forward comment
 current head; required checks, `oracle-gate`, threads and holds still apply. PRs
 armed before the run failed still merge, and arming outside these targets
 bypasses the gate; see [develop push gaps](develop-post-merge-gaps.md).
+
+Red-streak rule with out-of-order results: runs are ordered by creation time,
+never by completion time, and unfinished and cancelled runs are skipped. A
+completed green on a later commit clears every earlier red, because that run
+tested a tree containing the earlier commit, even when the earlier red finishes
+after it. A green on an earlier commit never clears a later red. The streak
+starts at the oldest red completed run newer than the newest green. A red with
+an unfinished run older than it and no green between is undetermined, so
+arming is refused without naming a culprit until that run finishes.
 
 If more than one medium-tier shard is killed in a day, someone should read
 that shard's memory sampler output for the test that is growing a worker.

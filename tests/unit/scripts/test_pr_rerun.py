@@ -136,7 +136,7 @@ def test_success_reruns_nothing() -> None:
 
 def test_running_ci_is_refused() -> None:
     gh = FakeGitHub([_run(11, "2026-10-17T10:00:00Z", status="in_progress", conclusion=None)], {11: _jobs()})
-    with pytest.raises(pr_rerun.RerunError, match="still running"):
+    with pytest.raises(pr_rerun.RerunError, match=r"CI run 11 on a{9} is still running.*once run 11 completes"):
         pr_rerun.rerun(REPO, PR, gh)
     assert gh.reruns() == []
 

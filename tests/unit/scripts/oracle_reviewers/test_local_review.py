@@ -40,6 +40,7 @@ FAKE_OMP = "#!/bin/sh\necho omp/18.12.1\n"
 FAKE_OMP_SHA = hashlib.sha256(FAKE_OMP.encode()).hexdigest()
 FAKE_OMP_URL = "https://downloads.example.invalid/omp"
 MANIFEST_TEXT = (REPO_ROOT / local.SOUNDNESS_MANIFEST).read_text(encoding="utf-8")
+INERT_TEXT = (REPO_ROOT / local.INERT_MANIFEST).read_text(encoding="utf-8")
 SECRET_NAMES = (
     "OMP_GATEWAY_TOKEN",
     "ORACLE_GATEWAY_URL",
@@ -74,6 +75,7 @@ def _make_repo(path: Path, changed: str = CHECKER) -> Path:
     for relative, text in (
         (POLICY_RELATIVE, _pinned_policy_text()),
         (local.SOUNDNESS_MANIFEST, MANIFEST_TEXT),
+        (local.INERT_MANIFEST, INERT_TEXT),
     ):
         seeded = path / relative
         seeded.parent.mkdir(parents=True, exist_ok=True)
@@ -126,6 +128,7 @@ class Env:
         self.reviews.append(
             {
                 "reviewer": reviewer.name,
+                "plan": kwargs["plan"],
                 "head": kwargs["head_sha"],
                 "binary": os.environ.get(omp_pin.BINARY_ENV),
                 "token": os.environ.get("OMP_GATEWAY_TOKEN"),
@@ -502,6 +505,134 @@ def test_the_policy_comes_from_the_base_ref_not_the_working_tree(env: Env) -> No
     _git(env.repo, "commit", "--quiet", "-am", "feat: exempt everything")
     assert env.run() == local.EXIT_PROCEED
     assert len(env.reviews) == 1
+
+
+def test_branch_policy_cannot_widen_evidence_exemptions(env: Env) -> None:
+    edited = yaml.safe_load(POLICY_TEXT)
+    edited.setdefault("evidence", {})["exempt_paths"] = ["benchbox/*", "*.py"]
+    (env.repo / POLICY_RELATIVE).write_text(yaml.safe_dump(edited), encoding="utf-8")
+    _git(env.repo, "commit", "--quiet", "-am", "feat: widen evidence exemptions on branch")
+    assert env.run() == local.EXIT_PROCEED
+    assert len(env.reviews) == 1
+    plan = env.reviews[0]["plan"]
+    assert plan["evidence_exempt_paths"] == list(env.policy.evidence.exempt_paths)
+    assert CHECKER in plan["evidence_files"]
+
+
+def test_branch_manifest_edit_cannot_widen_local_exemptions(env: Env) -> None:
+    manifest = env.repo / local.SOUNDNESS_MANIFEST
+    kept = [line for line in MANIFEST_TEXT.splitlines() if "equivalence/" not in line and ".gitattributes" not in line]
+    manifest.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    (env.repo / ".gitattributes").write_text("*.py -diff\n", encoding="utf-8")
+    _git(env.repo, "add", ".gitattributes")
+    _git(env.repo, "commit", "--quiet", "-am", "feat: drop manifest rules on branch")
+    plan = local.build_plan(
+        env.policy, env.repo, "develop", _git(env.repo, "rev-parse", "HEAD"), env.tmp_path / "manifest-plan"
+    )
+    assert {CHECKER, ".gitattributes"} <= set(plan["evidence_protected_files"])
+    assert {CHECKER, ".gitattributes"} <= set(plan["evidence_files"])
+
+
+def test_protected_evidence_covers_renames_logic_data_and_machine_read_paths(env: Env) -> None:
+    (env.repo / "docs").mkdir(exist_ok=True)
+    _git(env.repo, "mv", GATE_FILE, "docs/guide.md")
+    (env.repo / "benchbox" / "core").mkdir(parents=True, exist_ok=True)
+    (env.repo / "benchbox/core/row_validation.sql").write_bytes(b"select 1\x00")
+    (env.repo / "docs/agent").mkdir()
+    (env.repo / "docs/agent/overview.md").write_text("sizes\n", encoding="utf-8")
+    (env.repo / "docs/plain.md").write_text("plain\n", encoding="utf-8")
+    _git(env.repo, "add", "-A")
+    _git(env.repo, "commit", "--quiet", "-m", "feat: rename and add")
+    plan = local.build_plan(
+        env.policy, env.repo, "develop", _git(env.repo, "rev-parse", "HEAD"), env.tmp_path / "protected-plan"
+    )
+    protected = set(plan["evidence_protected_files"])
+    assert {"docs/guide.md", "benchbox/core/row_validation.sql", "docs/agent/overview.md"} <= protected
+    assert "docs/plain.md" not in protected
+
+
+def test_branch_inert_manifest_edit_cannot_unprotect_machine_read_docs(env: Env) -> None:
+    kept = [line for line in INERT_TEXT.splitlines() if not line.startswith("except\t")]
+    (env.repo / local.INERT_MANIFEST).write_text("\n".join(kept) + "\n", encoding="utf-8")
+    (env.repo / "docs" / "agent").mkdir(parents=True)
+    (env.repo / "docs/agent/overview.md").write_text("sizes\n", encoding="utf-8")
+    _git(env.repo, "add", "-A")
+    _git(env.repo, "commit", "--quiet", "-m", "feat: drop except rules on branch")
+    plan = local.build_plan(
+        env.policy, env.repo, "develop", _git(env.repo, "rev-parse", "HEAD"), env.tmp_path / "inert-plan"
+    )
+    assert "docs/agent/overview.md" in plan["evidence_protected_files"]
+
+
+def test_a_deleted_binary_is_never_required_evidence(env: Env) -> None:
+    _git(env.repo, "switch", "--quiet", "develop")
+    (env.repo / "payload").write_bytes(b"\x00binary\n")
+    _git(env.repo, "add", "payload")
+    _git(env.repo, "commit", "--quiet", "-m", "chore: add binary data")
+    _git(env.repo, "switch", "--quiet", "feat/x")
+    _git(env.repo, "rebase", "--quiet", "develop")
+    _git(env.repo, "rm", "--quiet", "payload")
+    _git(env.repo, "commit", "--quiet", "-m", "feat: drop binary data")
+    plan = local.build_plan(
+        env.policy, env.repo, "develop", _git(env.repo, "rev-parse", "HEAD"), env.tmp_path / "deleted-plan"
+    )
+    removed = {item["path"] for item in plan["reviewed_files"] if item["status"] == "removed"}
+    assert removed == {"payload"}
+    assert "payload" not in plan["evidence_files"]
+    assert CHECKER in plan["evidence_files"]
+
+
+def test_a_not_diffable_source_file_forces_the_file_list_brief(env: Env) -> None:
+    (env.repo / ".gitattributes").write_text("*.py -diff\n", encoding="utf-8")
+    _git(env.repo, "add", ".gitattributes")
+    _git(env.repo, "commit", "--quiet", "-m", "feat: hide python diffs")
+    plan = local.build_plan(
+        env.policy, env.repo, "develop", _git(env.repo, "rev-parse", "HEAD"), env.tmp_path / "opaque-plan"
+    )
+    assert CHECKER in plan["binary_files"]
+    assert plan["brief_mode"] == "file-list"
+    assert plan["diff_inline"] is None
+
+
+def test_a_font_only_binary_keeps_the_inline_brief(env: Env) -> None:
+    (env.repo / "assets").mkdir()
+    (env.repo / "assets" / "face.woff2").write_bytes(b"wOF2\x00")
+    _git(env.repo, "add", "assets")
+    _git(env.repo, "commit", "--quiet", "-m", "feat: add font")
+    plan = local.build_plan(
+        env.policy, env.repo, "develop", _git(env.repo, "rev-parse", "HEAD"), env.tmp_path / "font-plan"
+    )
+    assert "assets/face.woff2" in plan["binary_files"]
+    assert plan["brief_mode"] == "inline"
+
+
+def test_a_font_named_binary_under_a_protected_path_forces_the_file_list_brief(env: Env) -> None:
+    target = env.repo / "benchbox" / "core" / "equivalence"
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "face.woff2").write_bytes(b"wOF2\x00")
+    _git(env.repo, "add", "benchbox")
+    _git(env.repo, "commit", "--quiet", "-m", "feat: add protected font")
+    plan = local.build_plan(
+        env.policy, env.repo, "develop", _git(env.repo, "rev-parse", "HEAD"), env.tmp_path / "protected-font-plan"
+    )
+    assert "benchbox/core/equivalence/face.woff2" in plan["binary_files"]
+    assert plan["brief_mode"] == "file-list"
+
+
+def test_exposure_exemptions_do_not_remove_files_from_review(env: Env) -> None:
+    (env.repo / "README.md").write_text("changed prose\n", encoding="utf-8")
+    (env.repo / "payload").write_bytes(b"\x00binary\n")
+    _git(env.repo, "add", "README.md", "payload")
+    _git(env.repo, "commit", "--quiet", "-m", "feat: update prose and binary data")
+    plan = local.build_plan(
+        env.policy, env.repo, "develop", _git(env.repo, "rev-parse", "HEAD"), env.tmp_path / "exempt-plan"
+    )
+    assert set(plan["binary_files"]) == {"payload"}
+    assert {item["path"] for item in plan["reviewed_files"]} >= {"README.md", "payload", CHECKER}
+    diff = (env.tmp_path / "exempt-plan" / cli.DIFF_FILE).read_text(encoding="utf-8")
+    assert "+changed prose" in diff
+    assert "Binary files /dev/null and b/payload differ" in diff
+    assert "payload" in plan["scope_paths"]
 
 
 def test_the_omp_pin_comes_from_the_base_ref_not_the_branch(env: Env) -> None:

@@ -80,14 +80,6 @@ review; the attempt is absent.
 rotating and moving the gateway host, and the Tailscale OIDC credential and
 tailnet policy the job needs.
 
-**Cut-over cleanup (one time).** The pre-gateway secrets
-(`CLAUDE_CODE_OAUTH_TOKEN`, `OPENAI_API_KEY`, `META_API_KEY`,
-`OMP_AUTH_BROKER_URL`, `OMP_AUTH_BROKER_TOKEN`, `OMP_AGENT_CONFIG`) are deleted
-from `oracle`. Rotate those credentials once and remove the rule that still lets
-`tag:oracle-ci` reach the broker on `tcp:8765`; if nothing else reaches the
-broker over the tailnet, stop publishing it (`tailscale serve --https=8765
-off`).
-
 Without `ORACLE_APP_ID`, the job logs the result and succeeds.
 
 ## How a run works
@@ -140,8 +132,9 @@ a manual dispatch, a `pull_request_target` event other than a plain edit, and a
 8. Disk scan (C4); finalize, which re-validates this run's artifacts and replays
    selection; redaction check (C5).
 9. **Post.** Mint the App token, run the guard, post the status and findings,
-   upload the retry state (only if the status posted) and attempt artifacts, and
-   dispatch `oracle-gate`. `findings_delivery` in `.github/oracle-reviewers.yml`
+   upload the retry state (only if the status posted), the attempt artifacts and
+   the captured event streams, and dispatch `oracle-gate`. `findings_delivery` in
+   `.github/oracle-reviewers.yml`
    chooses the findings form:
    - `comment`: one PR comment, so findings never block a merge.
    - `review` (the policy value, required by the oracle signal): one PR review
@@ -553,10 +546,34 @@ run stays pending. A hollow answer never passes.
   extension, inside the checkout) credits only the archive; a member path never
   credits a repository file. An error, binary-entry notice, `?q=` or `..`
   member, no match, directory, `;`-joined read including an archive member,
-  sibling or outside path credits nothing. Binary and unreviewable content,
-  out-of-bounds line reads and notice-only reads stay with
-  `oracle-verdict-labels-unreviewed-bytes` and
-  `oracle-read-evidence-tightening-20261008`; no file is exempted.
+  sibling or outside path credits nothing. Out-of-bounds line reads and
+  notice-only reads stay with `oracle-verdict-labels-unreviewed-bytes` and
+  `oracle-read-evidence-tightening-20261008`.
+- The evidence check is an exposure check: it confirms that changed files were
+  exposed to the reviewer, not whole-file or semantic proof of review. Two classes
+  of files are exempt from the per-file read requirement while staying in the
+  reviewed diff and in scope for findings:
+  1. Binary files: a diff `Binary files ... differ` or `GIT binary patch` notice, taken from the
+     plan's diff, only nominates a file. The exemption applies only to font files (`.eot`, `.otf`,
+     `.ttf`, `.woff`, `.woff2`), which the harness cannot read, when the head checkout holds a
+     regular file inside the workspace for them and its first 8000 bytes contain a NUL byte.
+     Archives, images, PDFs and every text or unknown type (sql, csv, json, yaml, md, py, txt,
+     no extension), a `.gitattributes` `-diff` rule and a bare notice never exempt; an archive
+     listing read credits the container. A deleted file has no head content and is never a
+     required read.
+  2. Prose files: matched by the exemption list in `develop`'s trusted `.github/oracle-reviewers.yml`
+     (`evidence.exempt_paths`: `README*.md` and `CHANGELOG*.md` at any depth, and `docs/*.md`).
+  Protected files are never exempt, even when they match the prose list or hold NUL bytes: soundness
+  paths (including every `.gitattributes`), gate, logic and data paths, and machine-read docs. A
+  rename is protected when either its old or new path is. The plan records them in
+  `evidence_protected_files` using the trusted `develop` soundness manifest, inert-path manifest and
+  policy (the local runner reads all three from the base ref), so a branch edit of
+  `.github/soundness-paths.txt` or `.github/inert-paths.txt` cannot widen the exemptions in CI or in
+  the local runner. A plan without that list treats every required file as protected.
+  Exemptions never waive the baseline: a verdict that ships still needs at least one successful read
+  or grep in its trace.
+  A diff with a "Binary files" notice for any non-font path, a notice whose path cannot be parsed
+  (for example a quoted header), or no diff at all is never briefed inline, so the read check applies.
 - Partial reads keep credit: exposure, not whole-file or semantic proof. The
   overlay sets `read.summarize.enabled: false` so a large file's plain read is
   not replaced by a structural summary; the trace records each credited read's
@@ -567,15 +584,14 @@ run stays pending. A hollow answer never passes.
 - Every parsed outcome keeps a bounded, redacted `trace:` line in the attempt
   diagnostic: read, grep and failed-call counts, up to five credited, required
   and missing paths, and elision totals, so elided credited reads stay
-  measurable. It never carries the raw event stream, and OMP stdout is no longer
-  excerpted.
+  measurable. It never carries the raw event stream or excerpts OMP stdout.
 - Credentials: `commands.omp_env()` forwards only the base environment and the
   gateway client token (`GATEWAY_ENV`, `OMP_GATEWAY_TOKEN`), plus the loopback
   gateway proxy variables only while a cloud local review has set one in-process.
-  `credentials.py`
-  `NAMES` lists that token, the broker and provider variables the loop no longer
-  receives, the runner-held values (gateway URL, Tailscale client ID and
-  audience, OIDC request token) and legacy extras, so a local run still holding
+  `credentials.py` `NAMES` lists that token, the broker and provider variables
+  (which the loop does not receive), the runner-held values (gateway URL,
+  Tailscale client ID and audience, OIDC request token) and legacy extras, so a
+  local run still holding
   them is redacted too. Values of eight or more characters are removed by exact
   match before and after every sanitising transform and before truncation,
   across control-character splits and overlaps, in verdict text, absence
@@ -594,11 +610,12 @@ The verdict is the reviewer's final assistant message, from its `message_end`
 event; remarks between tool calls are ignored. A final message that is not
 exactly one JSON verdict is invalid.
 
-The brief no longer forbids commands, but OMP's tools are only `read`, `grep`
-and `glob`, so the reviewer cannot write or run anything. A file-list brief also
-stages the whole PR diff in the checkout. The workflow-level concurrency group
-serializes runs per PR; the `review` job has none of its own, so a new push
-cancels a run in flight, which then posts nothing.
+The brief forbids running commands, tests or builds, and OMP's tools are only
+`read`, `grep` and `glob`, so the reviewer cannot write or run anything. A
+file-list brief also stages the whole PR diff in the checkout. The
+workflow-level concurrency group serializes runs per PR; the `review` job has
+none of its own, so a new push cancels a run in flight, which then posts
+nothing.
 
 ## Commands
 
@@ -732,12 +749,26 @@ to GitHub.
   then checks the binary reports the pinned version. The CI `Install omp` step,
   `scripts/cloud_gateway.sh` and the local review all use it, and the reviewer
   runs the installed binary by its path (`ORACLE_OMP_BINARY`), never the `omp` on
-  `PATH`. A platform with no pin refuses, naming the platform. Like the policy,
+  `PATH`. A platform with no pin refuses, naming the platform. Build keys must be
+  platform names (`[a-z0-9]+-[a-z0-9_]+`); any other key is rejected, because the
+  key becomes a cache path segment. The plan records the pinned SHA-256 for the
+  running platform, and the runner re-hashes the binary named by
+  `ORACLE_OMP_BINARY` against it before every attempt: a swapped or modified
+  binary, or a plan with no hash, is an error absence and the reviewer never
+  starts. The `Install omp` step is not `continue-on-error`. When the install or
+  the version check fails, the step reports `state=failed`, the attempt loop does
+  not run, and `finalize --omp-install failed` posts a `pending` status reading
+  "the pinned omp build could not be installed; no reviewer ran" with the
+  `omp-install` pending cause. The sweep never re-dispatches that state; a
+  manual `/oracle-review` retries it within the usual backoff and budget. Like the policy,
   the pin is read from `origin/develop`, not from the branch or working tree. The
   build host publishes no checksum file, so each SHA-256 was computed from a TLS
   download of the published artifact, the method that established the original
   linux-x64 pin. To bump the build, change the version and every platform's URL
-  and SHA-256 together.
+  and SHA-256 together. The gateway host runs the same `darwin-arm64` build from
+  the same cache (`oracle-gateway-host.md`), so a bump reaches the serving half
+  when the owner re-runs `broker` and `gateway`; `check` fails while either
+  agent runs anything else.
 - **Blocking.** A Critical or High finding, or DO NOT SHIP, makes `pr-open`
   refuse before pushing (exit 1). A `Local oracle override: <reason>` line with
   a non-empty reason in the PR body file (`PR_BODY_FILE`) lets it proceed and
@@ -765,6 +796,10 @@ to GitHub.
   checks scoped to its own process group, atomic cache writes), and CI already
   reviews different PRs concurrently on the same gateway, so a machine-wide lock
   only made one slow review block every other PR without saving quota.
+- **Captures.** Every reviewer attempt that ran also keeps its captured event
+  stream, as described under P4, in a `captures/<time>-<head>` directory of
+  the same cache directory, with the local client token and gateway URL
+  redacted.
 
 ## Calibration
 
@@ -775,8 +810,20 @@ cannot is set `enabled: false` with a `disabled_reason`.
 Capture each reviewer's quota, authentication and outage output from real runs.
 The attempt artifact's `diagnostic` holds one redacted output line of at most
 300 characters or, for an invalid verdict, the last 2,000 characters of the
-final message, both stripped of credentials and long tokens; raw output is never
-uploaded. For OMP only stderr is excerpted, never stdout. A `trace:` line of at
+final message, both stripped of credentials and long tokens. For OMP only
+stderr is excerpted, never stdout. Every attempt whose reviewer ran also writes
+`captures/capture-<slot>.json` beside its result: the OMP JSON event stream
+(one entry per stdout line, without the streaming `*_update` delta events, whose
+fragments could split a secret past redaction; the completed messages carry the
+same content), the terminal error event, a stderr excerpt, the exit code and the
+attempt's absence. Tool output and thinking are withheld (each replaced by its
+length), since the reviewer reads author-controlled content and runs beside the
+gateway token; every known credential value is redacted and every run of 32 or
+more letters, digits, `_` or `-` in an event replaced, so encoded forms of a
+secret are removed too. The redaction check covers it like the attempt
+artifacts, and the `oracle-verdict-capture` artifact keeps it for 30 days so
+real outputs can be curated into the scenario harness fixtures under
+`tests/integration/oracle/`. A `trace:` line of at
 most 700 characters follows every outcome that reached verdict parsing (valid,
 invalid, incomplete or failed evidence); its paths are redacted by known value
 and secret pattern, not the generic long-token filter. Add the messages to the

@@ -214,8 +214,12 @@ and a test-package `__init__.py` selects its package and importers, when that
 directory holds at most 200 test modules (a broader one runs the full medium
 shards through the heavy tier); a platform module selects its
 `tests/integration/platforms` smoke test; and `SOURCE_GUARD_TESTS` names the
-drift guards that check a source prefix, such as the module-size guard for any
-`benchbox/` change. Everything else in the medium tier runs after merge in
+tests that guard a source or test-helper prefix, such as the module-size guard
+for any `benchbox/` change and the oracle scenario harness
+(`tests/integration/oracle/`), which runs the oracle code in subprocesses that
+coverage cannot attribute, for any change to the oracle reviewers, the gate,
+`soundness_merge_digest.py`, `scripts/pr_arm.py` or the harness itself.
+Everything else in the medium tier runs after merge in
 `trunk.yml` and on release PRs. The selection cannot see dynamic imports,
 string-built patch targets, tests reaching the changed module through
 attribute access or inheritance more than one hop from a patched module, or
@@ -520,6 +524,58 @@ Global test configuration including:
 3. **Use fixtures**: Leverage shared fixtures for database connections and test data
 4. **Handle resources**: Ensure proper cleanup of temporary files and connections
 5. **Performance awareness**: Use performance markers for resource-intensive tests
+
+### Faking External Effects and the Network Guard
+
+Fake external effects at a boundary the code under test owns: an injectable
+source, URL, runner, or function in our own module, or a real local fake
+server bound to loopback. Do not fake effects by patching standard-library or
+third-party internals (`urllib.request.urlopen`, `OpenerDirector.open`,
+`socket`, `subprocess.run`, `time.sleep`, SDK client methods). Such a patch
+binds the test to how the code happens to fetch today; a refactor of the
+fetch mechanism silently bypasses the fake and the test reaches the real
+network.
+
+Unit and medium tests cannot reach non-loopback networks through Python sockets or name resolution (native-code clients that open their own sockets are outside the guard). The guard is
+`tests/utilities/network_guard.py`, activated per test by the autouse fixture
+in `tests/utilities/network_guard_plugin.py`. It blocks `connect`,
+`connect_ex`, `sendto`, `getaddrinfo`, and `gethostbyname*` to anything but
+loopback, in the test process and, through `tests/utilities/network_guard_site/sitecustomize.py`
+on `PYTHONPATH`, in Python subprocesses the test spawns that inherit its
+environment. A blocked call raises `NetworkAccessBlocked` with an explanatory
+message, and the test also fails at teardown if the guard fired, even if the
+code under test swallowed the exception (subprocess violations are collected
+through a per-test log). A test that intentionally provokes a block requests
+the `expect_network_block` fixture.
+
+A test is guarded when it is under `tests/unit/` or carries the `unit` or
+`medium` marker. Tests outside `tests/unit/` are exempt when they carry
+`integration` or `live_integration`; a test under `tests/unit/` cannot opt out
+that way. `@pytest.mark.allow_network(reason="...")` exempts a single test
+whose subject is the network call itself and which cannot use a loopback
+server; the reason is required and collection fails without it. Prefer moving
+a network-dependent test to the integration or live tier. A
+test that provokes a block on purpose uses `with expect_network_block("<target>"):`;
+it excuses only violations naming that target and fails if none occurred.
+
+These rules bind new and changed tests. Existing tests that patch stdlib or
+third-party internals are inventoried and converted opportunistically; they are
+not defects in an unrelated change.
+
+### Process-Global State
+
+Tests share one worker process. A test must not leave behind process-global
+state: child-subreaper status (`become_subreaper`, `prctl(PR_SET_CHILD_SUBREAPER)`),
+`waitpid(-1)` or any reaping of children it does not own, signal handlers,
+the working directory, `os.environ` changes made outside `monkeypatch`, the
+umask, or resource limits. Run code that changes such state in a subprocess,
+or restore it before the test ends. The `attempts` reviewer command calls
+`become_subreaper`; invoke it through a subprocess, not `cli.main`, from tests.
+
+`tests/utilities/process_state_guard.py` fails any test that ends with the
+worker process as a Linux child subreaper (checked with
+`prctl(PR_GET_CHILD_SUBREAPER)`; skipped on other platforms) and clears the
+flag so later tests are not affected.
 
 ### Test Organization
 1. **Follow naming conventions**: Use descriptive test names with `test_` prefix

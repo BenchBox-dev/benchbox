@@ -17,6 +17,7 @@ import urllib.request
 import uuid
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,7 @@ CLOUD_SESSION_ENV = "BENCHBOX_EPHEMERAL_CLONE"
 CLOUD_STATUS_FILE = "benchbox-cloud-gateway.status"
 STATE_DIR_ENV = "BENCHBOX_LOCAL_ORACLE_DIR"
 SOUNDNESS_MANIFEST = ".github/soundness-paths.txt"
+INERT_MANIFEST = ".github/inert-paths.txt"
 HIDDEN_TEXT = re.compile(
     r"<!--.*?(?:-->|\Z)"
     r"|^[ \t]*(`{3,}+)[^\n]*\n.*?(?:^ {0,3}\1`*[ \t]*$|\Z)"
@@ -54,6 +56,7 @@ PLACEHOLDER = re.compile(r"<.*>")
 REMOTE_SLUG = re.compile(r"github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$")
 DEFAULT_REPOSITORY = "BenchBox-dev/BenchBox"
 CACHE_SCHEMA = 1
+CAPTURE_DIR = "captures"
 LOCK_WAIT_SECONDS = 3600.0
 LOCK_POLL_SECONDS = 1.0
 REACHABILITY_SECONDS = 10
@@ -242,6 +245,8 @@ def build_plan(
         in_scope,
         full_diff,
         {},
+        predicate,
+        trusted_machine_read(root, base_ref),
     )
     plan["decision_reason"] = reason
     return plan
@@ -272,6 +277,24 @@ def soundness_predicate(manifest: str) -> Any:
         )
 
     return is_soundness
+
+
+def machine_read_predicate(manifest: str) -> Any:
+    from _project.scripts import inert_paths
+
+    with tempfile.TemporaryDirectory() as scratch:
+        path = Path(scratch) / "inert-paths.txt"
+        path.write_text(manifest, encoding="utf-8")
+        try:
+            rules = inert_paths._load_rules(path, inert_paths._VALID_KINDS)
+        except ValueError as exc:
+            raise Unavailable(f"the inert-path manifest is invalid: {exc}") from exc
+    patterns = tuple(rule.pattern for rule in rules if rule.kind == "except")
+    return lambda path: inert_paths.matches_exception(path, patterns)
+
+
+def trusted_machine_read(root: Path, base_ref: str) -> Any:
+    return machine_read_predicate(trusted_text(root, base_ref, INERT_MANIFEST))
 
 
 def trusted_predicate(root: Path, base_ref: str) -> Any:
@@ -483,6 +506,20 @@ def _store(path: Path, result: dict[str, Any], secrets: tuple[str, ...]) -> None
     os.replace(scratch, path)
 
 
+def _keep_captures(source: Path, head: str, secrets: tuple[str, ...]) -> None:
+    files = sorted(source.glob("capture-*.json")) if source.is_dir() else []
+    if not files:
+        return
+    target = state_dir() / CAPTURE_DIR / f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%fZ')}-{head[:12]}"
+    target.mkdir(parents=True, exist_ok=True)
+    for path in files:
+        try:
+            redaction_check.sanitize(path, secrets)
+        except redaction_check.Unredactable:
+            continue
+        shutil.copyfile(path, target / path.name)
+
+
 def _stage_workspace(root: Path, head: str, workspace: Path) -> None:
     _git(root, "clone", "--quiet", "--no-checkout", "--shared", str(root), str(workspace))
     _git(workspace, "checkout", "--quiet", "--detach", head)
@@ -654,6 +691,7 @@ def _fresh_review(
                 redaction_check.sanitize(path, ())
             except redaction_check.Unredactable as exc:
                 raise Unavailable(str(exc)) from exc
+        _keep_captures(work / "attempts" / cli.CAPTURE_DIR, plan["head_sha"], reporter.secrets)
         return _result(plan, classification, work)
 
 

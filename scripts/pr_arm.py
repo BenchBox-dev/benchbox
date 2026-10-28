@@ -13,6 +13,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ci_text_edit_verdict
 import pr_landing
 
 CLI_DESCRIPTION = "Arm a pull request for its exact head after a live check that nothing holds it."
@@ -34,6 +35,53 @@ PRODUCER_CHECK = "core"
 
 Runner = Callable[[list[str]], tuple[int, str]]
 
+CI_RUNS_JQ = r".workflow_runs[] | [.id, .display_title, .status] | @tsv"
+
+
+def _ci_runs(run: Runner, repo: str, head: str) -> list[tuple[int, str, str]]:
+    code, out = run(
+        [
+            "gh",
+            "api",
+            "--paginate",
+            "--jq",
+            CI_RUNS_JQ,
+            f"repos/{repo}/actions/workflows/ci.yml/runs?event=pull_request&head_sha={head}&per_page=100",
+        ]
+    )
+    if code != 0:
+        raise pr_landing.LandingError(f"could not list the CI runs of {head[:9]}: {out.strip()[:200]}")
+    runs: list[tuple[int, str, str]] = []
+    for line in out.splitlines():
+        fields = line.split("\t")
+        if len(fields) == 3 and fields[0].isdigit():
+            runs.append((int(fields[0]), fields[1], fields[2]))
+    return runs
+
+
+def _waiting_full_run(runs: Sequence[tuple[int, str, str]], url: str) -> int | None:
+    match = pr_landing.check_suites.ACTIONS_RUN_RE.search(url)
+    if match is None:
+        return None
+    placeholder = {run_id for run_id, title, _ in runs if title == ci_text_edit_verdict.TEXT_EDIT_RUN_NAME}
+    if int(match.group(1)) not in placeholder:
+        return None
+    return next(
+        (
+            run_id
+            for run_id, title, status in runs
+            if title != ci_text_edit_verdict.TEXT_EDIT_RUN_NAME and status != "completed"
+        ),
+        None,
+    )
+
+
+def _waiting_reason(name: str, full_run: int) -> str:
+    return (
+        f"waiting for full CI run {full_run}: the required {name!r} check is a placeholder failure that re-runs "
+        f"on its own when that run completes; arm again after it completes"
+    )
+
 
 def _core_state(run: Runner, repo: str, number: int, head: str) -> str:
     core = pr_landing.live_check_verdicts(run, repo, head).get(PRODUCER_CHECK)
@@ -43,6 +91,10 @@ def _core_state(run: Runner, repo: str, number: int, head: str) -> str:
             f"arm again once {PRODUCER_CHECK} completes"
         )
     conclusion = core.get("conclusion")
+    if conclusion not in pr_landing.check_suites.NON_BLOCKING:
+        full_run = _waiting_full_run(_ci_runs(run, repo, head), str(core.get("url") or ""))
+        if full_run is not None:
+            return _waiting_reason(PRODUCER_CHECK, full_run)
     remedy = f"rerun it with make pr-rerun PR={number}"
     if conclusion not in pr_landing.check_suites.RERUN_FAILED | pr_landing.check_suites.RERUN_ALL:
         remedy += " (or push a new head if it refuses)"
@@ -50,6 +102,42 @@ def _core_state(run: Runner, repo: str, number: int, head: str) -> str:
         f"the {PRODUCER_CHECK} job ended {conclusion or 'without a conclusion'} for {head[:9]} and no verdict "
         f"will arrive; {remedy}, then arm again"
     )
+
+
+def _placeholder_waits(run: Runner, repo: str, branch: str, head: str) -> tuple[dict, dict[str, dict]]:
+    required = pr_landing.ruleset_required_contexts(run, repo, branch)
+    evaluations = pr_landing.check_suites.evaluate(
+        pr_landing.live_check_runs(run, repo, head), required, pr_landing.check_suites.NON_BLOCKING
+    )
+    runs = _ci_runs(run, repo, head) if any(item.failed for item in evaluations.values()) else []
+    placeholders: dict[str, dict] = {}
+    for name, item in evaluations.items():
+        waits = {}
+        for suite in item.failed:
+            full_run = _waiting_full_run(runs, suite.url)
+            if full_run is not None:
+                waits[suite] = full_run
+        placeholders[name] = waits
+    return evaluations, placeholders
+
+
+def suite_refusals(run: Runner, repo: str, branch: str, head: str) -> list[str]:
+    evaluations, placeholders = _placeholder_waits(run, repo, branch, head)
+    waiting: list[str] = []
+    remaining = {}
+    for name, item in evaluations.items():
+        waits = placeholders[name]
+        waiting.extend(_waiting_reason(name, full_run) for full_run in dict.fromkeys(waits.values()))
+        remaining[name] = pr_landing.check_suites.NameEvaluation(
+            name, tuple(suite for suite in item.suites if suite not in waits), item.passing
+        )
+    return [*waiting, *pr_landing.check_suites.hidden_failure_reasons(remaining)]
+
+
+def visible_refusals(run: Runner, repo: str, branch: str, head: str) -> list[str]:
+    _, placeholders = _placeholder_waits(run, repo, branch, head)
+    waiting = frozenset(name for name, waits in placeholders.items() if waits)
+    return pr_landing.visible_required_failure_reasons(run, repo, branch, head, waiting)
 
 
 def _read_duration_verdict(run: Runner, repo: str, number: int, head: str) -> tuple[dict | None, str | None]:
@@ -207,9 +295,9 @@ def arm(
     checkout: Path = Path("."),
     unpublished: Callable[[Path], list[str]] = pr_landing.unpublished_work,
     threads: Callable[[Runner, str, int], bool] = pr_landing.unresolved_review_threads,
-    suites: Callable[[Runner, str, str, str], list[str]] = pr_landing.hidden_failed_suites,
+    suites: Callable[[Runner, str, str, str], list[str]] = suite_refusals,
     duration: Callable[[Runner, str, int, str], list[str]] = duration_verdict_refusals,
-    visible: Callable[[Runner, str, str, str], list[str]] = pr_landing.visible_required_failure_reasons,
+    visible: Callable[[Runner, str, str, str], list[str]] = visible_refusals,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         print(f"pr-arm: refusing: --repo must be owner/name, got {repo!r}", file=sys.stderr)

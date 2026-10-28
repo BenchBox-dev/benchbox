@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import sys
@@ -102,48 +103,39 @@ def quiet_logging():
     logging.disable(previous)
 
 
-def _observed_bypasses(monkeypatch) -> dict[str, dict[str, set[str]]]:
+@functools.cache
+def _public_benchmark(benchmark_id: str):
+    benchmark = _benchmark_instance(benchmark_id)
+    assert benchmark is not None, benchmark_id
+    return benchmark
+
+
+def _public_benchmark_ids() -> list[str]:
+    return [
+        benchmark_id for benchmark_id in sorted(get_all_benchmarks()) if get_benchmark_surface(benchmark_id) == "public"
+    ]
+
+
+def _observed_bypasses(monkeypatch, benchmark_id: str, dialect: str) -> set[str]:
+    benchmark = _public_benchmark(benchmark_id)
     produced: set[str] = set()
     _install_spy(monkeypatch, lambda args, kwargs, result: produced.add(result))
 
-    observed: dict[str, dict[str, set[str]]] = {}
-    for benchmark_id in sorted(get_all_benchmarks()):
-        if get_benchmark_surface(benchmark_id) != "public":
-            continue
-        benchmark = _benchmark_instance(benchmark_id)
-        assert benchmark is not None, benchmark_id
-        implementation = _implementation(benchmark)
-        native_source = (
-            implementation._source_dialect if getattr(implementation, "_native_source_passthrough", False) else None
-        )
-        per_dialect: dict[str, set[str]] = {}
-        for dialect in DIALECTS:
-            if native_source is not None and is_native_dialect(native_source, dialect):
-                continue
-            produced.clear()
-            queries = benchmark.get_queries(dialect=dialect)
-            bypassed = {str(query_id) for query_id, sql in queries.items() if sql not in produced}
-            if bypassed:
-                per_dialect[dialect] = bypassed
-        if per_dialect:
-            observed[benchmark_id] = per_dialect
-    return observed
+    implementation = _implementation(benchmark)
+    native_source = (
+        implementation._source_dialect if getattr(implementation, "_native_source_passthrough", False) else None
+    )
+    if native_source is not None and is_native_dialect(native_source, dialect):
+        return set()
+    queries = benchmark.get_queries(dialect=dialect)
+    return {str(query_id) for query_id, sql in queries.items() if sql not in produced}
 
 
-def _allowed_bypasses() -> dict[str, dict[str, set[str]]]:
-    return {
-        benchmark_id: {dialect: set(ids) for dialect, ids in entry["dialects"].items()}
-        for benchmark_id, entry in _allowlist().items()
-    }
-
-
-def _pairs(bypasses: dict[str, dict[str, set[str]]]) -> set[tuple[str, str, str]]:
-    return {
-        (benchmark_id, dialect, query_id)
-        for benchmark_id, per_dialect in bypasses.items()
-        for dialect, ids in per_dialect.items()
-        for query_id in ids
-    }
+def _allowed_bypasses(benchmark_id: str, dialect: str) -> set[str]:
+    entry = _allowlist().get(benchmark_id)
+    if entry is None:
+        return set()
+    return set(entry["dialects"].get(dialect, ()))
 
 
 def test_allowlist_entries_carry_reasons():
@@ -154,14 +146,20 @@ def test_allowlist_entries_carry_reasons():
         assert set(entry["dialects"]) <= set(DIALECTS), benchmark_id
 
 
-def test_no_benchmark_bypasses_translation_without_an_allowlisted_reason(monkeypatch, quiet_logging):
-    observed = _pairs(_observed_bypasses(monkeypatch))
-    allowed = _pairs(_allowed_bypasses())
+def test_allowlist_only_names_public_benchmarks():
+    assert sorted(set(_allowlist()) - set(_public_benchmark_ids())) == []
+
+
+@pytest.mark.parametrize("dialect", DIALECTS)
+@pytest.mark.parametrize("benchmark_id", _public_benchmark_ids())
+def test_no_benchmark_bypasses_translation_without_an_allowlisted_reason(
+    monkeypatch, quiet_logging, benchmark_id, dialect
+):
+    observed = _observed_bypasses(monkeypatch, benchmark_id, dialect)
+    allowed = _allowed_bypasses(benchmark_id, dialect)
 
     unexplained = sorted(observed - allowed)
     stale = sorted(allowed - observed)
 
-    assert unexplained == [], (
-        f"(benchmark, dialect, query) reaches a platform without translate_sql_query: {unexplained}"
-    )
-    assert stale == [], f"allowlist entries no longer bypass translation: {stale}"
+    assert unexplained == [], f"queries reach {dialect} for {benchmark_id} without translate_sql_query: {unexplained}"
+    assert stale == [], f"allowlist entries no longer bypass translation for {benchmark_id}/{dialect}: {stale}"

@@ -63,6 +63,19 @@ def _platform_id(raw: str) -> str:
     return stripped.lower().replace(" ", "-")
 
 
+_EXECUTION_CLASS_SEPARATOR = "^"
+
+
+def _split_execution_class(variant_id: str) -> tuple[str, str | None]:
+    base, separator, execution_class = variant_id.partition(_EXECUTION_CLASS_SEPARATOR)
+    return base, (execution_class or None) if separator else None
+
+
+def _execution_class_label(execution_class: str, container_os: str | None, host_os: str | None) -> str:
+    qualifier = f"{container_os} {execution_class}" if container_os else execution_class
+    return f"{qualifier} on {host_os}" if host_os else qualifier
+
+
 def variant_label(
     platform: str,
     *,
@@ -70,14 +83,22 @@ def variant_label(
     requested_execution_engine: str = "default",
     gateway_name: str | None = None,
     gateway_routed: bool = False,
+    container_os: str | None = None,
+    container_host_os: str | None = None,
 ) -> str:
+    variant_base, execution_class = _split_execution_class(variant_id)
     if gateway_routed and gateway_name:
-        return f"{platform} via {str(gateway_name).capitalize()}"
-    if requested_execution_engine and requested_execution_engine != "default":
-        return f"{platform} ({requested_execution_engine})"
-    if variant_id and variant_id != _platform_id(platform):
-        return f"{platform} ({variant_id})"
-    return platform
+        label = f"{platform} via {str(gateway_name).capitalize()}"
+    elif requested_execution_engine and requested_execution_engine != "default":
+        label = f"{platform} ({requested_execution_engine})"
+    elif variant_base and variant_base != _platform_id(platform):
+        label = f"{platform} ({variant_base})"
+    else:
+        label = platform
+    if not execution_class:
+        return label
+    qualifier = _execution_class_label(execution_class, container_os, container_host_os)
+    return f"{label[:-1]}, {qualifier})" if label.endswith(")") else f"{label} ({qualifier})"
 
 
 RANKING_ELIGIBLE_VISIBILITIES: frozenset[str] = frozenset(
@@ -343,6 +364,9 @@ class ExplorerEnvironment(BaseModel):
     cpu_model: str | None = None
     cpu_family: str | None = None
     cpu_identity_provenance: Any = None
+    execution_class: str | None = None
+    container_runtime: str | None = None
+    container_host_os: str | None = None
     client_region: str | None = None
     client_cloud: str | None = None
     link_status: str | None = None

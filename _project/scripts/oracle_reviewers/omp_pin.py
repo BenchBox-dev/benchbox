@@ -22,6 +22,7 @@ CACHE_ENV = "BENCHBOX_OMP_CACHE"
 MIRROR_ENV = "BENCHBOX_OMP_DOWNLOAD_MIRROR"
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
+PLATFORM_PATTERN = re.compile(r"[a-z0-9]+-[a-z0-9_]+")
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9._-]+)?")
 CHUNK_BYTES = 1 << 20
 DOWNLOAD_SECONDS = 600
@@ -62,13 +63,15 @@ def parse_pin(data: Any) -> Pin:
         raise PinError("the omp pin lists no platform builds")
     builds: dict[str, Build] = {}
     for name, entry in builds_data.items():
+        if not isinstance(name, str) or PLATFORM_PATTERN.fullmatch(name) is None:
+            raise PinError(f"the omp pin has a build key that is not a platform name: {name!r}")
         url = entry.get("url") if isinstance(entry, Mapping) else None
         digest = entry.get("sha256") if isinstance(entry, Mapping) else None
         if not isinstance(url, str) or not url.startswith("https://"):
             raise PinError(f"the omp pin for {name} needs an https url")
         if not isinstance(digest, str) or SHA256_PATTERN.fullmatch(digest) is None:
             raise PinError(f"the omp pin for {name} needs a lowercase hex sha256")
-        builds[str(name)] = Build(url, digest)
+        builds[name] = Build(url, digest)
     return Pin(version, builds)
 
 
@@ -229,6 +232,19 @@ def required_binary() -> Path:
     binary = configured_binary()
     if binary is None or not binary.is_file() or not os.access(binary, os.X_OK):
         raise PinError(f"the pinned omp is not installed; {BINARY_ENV} does not name an executable")
+    return binary
+
+
+def verified_binary(expected_sha256: str) -> Path:
+    binary = required_binary()
+    if SHA256_PATTERN.fullmatch(expected_sha256) is None:
+        raise PinError("the plan carries no pinned omp sha256 for this platform")
+    try:
+        actual = sha256_of(binary)
+    except OSError as exc:
+        raise PinError(f"the omp binary could not be read: {type(exc).__name__}") from exc
+    if actual != expected_sha256:
+        raise PinError(f"the omp binary at {BINARY_ENV} does not match the pinned sha256; refusing to run it")
     return binary
 
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import csv
 import io
 import json
@@ -27,6 +26,7 @@ from benchbox.core.results.anonymization import (
     AnonymizationConfig,
     AnonymizationManager,
     anonymize_applied_tuning_payload,
+    anonymize_plans_payload,
 )
 from benchbox.core.results.canonical_json import canonical_json_text
 from benchbox.core.results.models import BenchmarkResults
@@ -294,7 +294,7 @@ class ResultExporter:
         if not plans_payload:
             return
         if self.anonymize and self.anonymization_manager:
-            plans_payload = self._anonymize_plans_payload(plans_payload)
+            plans_payload = anonymize_plans_payload(plans_payload)
         plans_path = self._create_file_path(f"{filename_base}.plans.json")
         self._write_file(plans_path, canonical_json_text(plans_payload))
         self.console.print(f"[dim]Exported plans: {plans_path}[/dim]")
@@ -316,31 +316,6 @@ class ResultExporter:
         anonymized_payload = self.anonymization_manager.anonymize_result_payload(payload)
         payload.clear()
         payload.update(anonymized_payload)
-
-    def _anonymize_plans_payload(self, plans_payload: dict[str, Any]) -> dict[str, Any]:
-        sanitized = copy.deepcopy(plans_payload)
-        queries = sanitized.get("queries")
-        if not isinstance(queries, dict):
-            return sanitized
-        for entry in queries.values():
-            if not isinstance(entry, dict):
-                continue
-            plan = entry.get("plan")
-            if not isinstance(plan, dict):
-                continue
-            if plan.get("raw_explain_output") is not None:
-                plan["raw_explain_output"] = None
-            self._strip_operator_platform_metadata(plan.get("logical_root"))
-        return sanitized
-
-    def _strip_operator_platform_metadata(self, node: Any) -> None:
-        if not isinstance(node, dict):
-            return
-        physical_operator = node.get("physical_operator")
-        if isinstance(physical_operator, dict) and physical_operator.get("platform_metadata"):
-            physical_operator["platform_metadata"] = {}
-        for child in node.get("children") or []:
-            self._strip_operator_platform_metadata(child)
 
     def _convert_datetimes_to_iso(self, obj: Any) -> Any:
         if isinstance(obj, datetime):

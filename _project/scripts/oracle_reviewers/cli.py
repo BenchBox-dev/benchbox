@@ -9,13 +9,15 @@ import re
 import shutil
 import sys
 import tempfile
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from time import sleep
 from typing import Any
 from urllib.parse import urlparse
+
+from _project.scripts.inert_paths import is_machine_read_doc
 
 from . import (
     attempts as attempt_files,
@@ -39,7 +41,8 @@ from .absence import ERROR, Absence
 from .brief import write_private
 from .classifier import ChangedFile, matching, soundness_scope
 from .classify import Classification, classify_diff
-from .diff import commentable_lines, select_files
+from .diff import binary_files, binary_notice_count, commentable_lines, select_files
+from .evidence import is_binary_candidate
 from .jev import JevError, JevSession
 from .policy import SIZE_BUCKETS, Policy, RetryRules, Reviewer, load_policy
 from .render import (
@@ -61,6 +64,7 @@ PLAN_FILE = "plan.json"
 CLASSIFICATION_FILE = "classification.json"
 DIFF_FILE = "diff.patch"
 DIFF_NOT_STAGED_DETAIL = "the full pull request diff could not be staged in the workspace"
+CAPTURE_DIR = "captures"
 LEAK_DETAIL = "the reviewer's exit could not be confirmed clean"
 
 
@@ -157,6 +161,9 @@ def _base_plan(policy: Policy, repo: str, pr: int | None, run_id: str) -> dict[s
         "max_defects": policy.protocol.max_defects,
         "brief_max_bytes": policy.brief_max_bytes,
         "evidence_files": [],
+        "evidence_exempt_paths": list(policy.evidence.exempt_paths),
+        "evidence_protected_files": [],
+        "binary_files": [],
         "chain": [],
         "scope_paths": [],
         "gate_paths": [],
@@ -169,6 +176,7 @@ def _base_plan(policy: Policy, repo: str, pr: int | None, run_id: str) -> dict[s
         "max_attempts": policy.max_attempts,
         "pool_blocked_until": {},
         "manual": False,
+        "omp_sha256": policy.omp_sha256.get(omp_pin.current_platform(), ""),
         "created_at": _now().isoformat(),
     }
 
@@ -189,6 +197,8 @@ def _finish_plan(out_dir: Path, plan: dict[str, Any]) -> int:
     return 0
 
 
+OMP_INSTALLED = "installed"
+OMP_INSTALL_FAILED = "failed"
 DISPUTE_MARKER = "Dispute:"
 
 
@@ -496,7 +506,7 @@ def command_plan(args: argparse.Namespace) -> int:
         _summary(f"oracle-verdict: open review threads could not be read, so none are suppressed: {exc}")
     owner_reset = retry.reset_applies(previous, plan["head_sha"], reset_at)
     pool_blocks = _carried_blocks(previous, plan["head_sha"], now, owner_reset)
-    _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, pool_blocks)
+    _plan_review(plan, out_dir, policy, step, files, scoped, in_scope, full_diff, pool_blocks, _soundness_predicate())
     plan["decision_reason"] = f"{step.reason}; {rerun.reason}"
     return _finish_plan(out_dir, plan)
 
@@ -646,6 +656,13 @@ def _protocol_round(
     return step
 
 
+def _opaque_in_diff(diff_text: str, is_protected: Callable[[str], bool]) -> bool:
+    named = binary_files(diff_text)
+    return binary_notice_count(diff_text) != len(named) or any(
+        not is_binary_candidate(path) or is_protected(path) for path in named
+    )
+
+
 def _plan_review(
     plan: dict[str, Any],
     out_dir: Path,
@@ -656,6 +673,8 @@ def _plan_review(
     in_scope: set[str],
     full_diff: str | None,
     pool_blocks: Mapping[str, selection.PoolBlock],
+    is_soundness: Callable[[str], bool],
+    is_machine_read: Callable[[str], bool] = is_machine_read_doc,
 ) -> None:
     latest = step.previous or {}
     follow_up = step.kind == protocol.FOLLOW_UP
@@ -681,20 +700,37 @@ def _plan_review(
     names = {reviewer.name for reviewer in chain}
     follow_up_reviewer = latest.get("reviewer") if follow_up and latest.get("reviewer") in names else None
     evidence_files = sorted(item.path for item in reviewed_now if item.path in in_scope and not item.removed)
+    held = (*policy.classifier.gate_paths, *policy.classifier.logic_paths, *policy.classifier.data_paths)
+
+    def _protected(path: str) -> bool:
+        return is_soundness(path) or is_machine_read(path) or bool(matching([path], held))
+
     listing_bytes = len(file_listing(changed).encode("utf-8"))
     diff_bytes = len((diff_text or "").encode("utf-8"))
     if listing_bytes > policy.brief_max_bytes:
         brief_mode = "oversize"
-    elif diff_bytes <= policy.brief_max_bytes - DIFF_HEADROOM_BYTES:
+    elif (
+        diff_text is not None
+        and diff_bytes <= policy.brief_max_bytes - DIFF_HEADROOM_BYTES
+        and not _opaque_in_diff(diff_text, _protected)
+    ):
         brief_mode = "inline"
     elif len(file_list_block(changed, evidence_files, evidence_files).encode("utf-8")) > policy.brief_max_bytes:
         brief_mode = "oversize"
     else:
         brief_mode = "file-list"
+    evidence_set = set(evidence_files)
     plan.update(
         {
             "decision": REVIEW,
             "evidence_files": evidence_files,
+            "evidence_protected_files": sorted(
+                item.path
+                for item in reviewed_now
+                if item.path in evidence_set and any(_protected(path) for path in item.paths)
+            ),
+            "evidence_exempt_paths": list(policy.evidence.exempt_paths),
+            "binary_files": sorted(binary_files(full_diff or "")),
             "chain": [reviewer.to_json() for reviewer in chain],
             "buckets": dict(policy.buckets),
             "follow_up_reviewer": follow_up_reviewer,
@@ -935,6 +971,18 @@ def command_review(args: argparse.Namespace) -> int:
         diagnostic=outcome.diagnostic,
     )
     _write_json(Path(args.out_dir) / attempt_files.artifact_name(args.slot), artifact)
+    if outcome.capture is not None:
+        _write_json(
+            Path(args.out_dir) / CAPTURE_DIR / f"capture-{args.slot}.json",
+            {
+                "run_id": os.environ["GITHUB_RUN_ID"],
+                "pr": plan["pr"],
+                "head_sha": plan["head_sha"],
+                "slot": args.slot,
+                "absence": artifact["absence"],
+                **outcome.capture,
+            },
+        )
     state = "verdict" if outcome.missing is None else f"absent ({outcome.missing.kind}: {outcome.missing.detail})"
     _summary(f"slot {args.slot}: {reviewer.name} {state}")
     return 0
@@ -977,6 +1025,20 @@ def command_finalize(args: argparse.Namespace) -> int:
         final = report.fixed(retry.PENDING, "fork: owner review")
     elif plan["decision"] == HOLD:
         final = report.fixed(retry.PENDING, plan["decision_reason"])
+    elif plan["decision"] == REVIEW and getattr(args, "omp_install", OMP_INSTALLED) == OMP_INSTALL_FAILED:
+        previous = retry.State.from_json(plan["previous_state"]) if plan.get("previous_state") else None
+        final = report.omp_install_failed()
+        state = retry.next_state(
+            previous=previous,
+            pr=plan["pr"],
+            head_sha=plan["head_sha"],
+            outcome=final.state,
+            manual=bool(plan["manual"]),
+            now=now,
+            pool_blocked_until=_carried_blocks(previous, plan["head_sha"], now, False),
+            pending_cause=final.pending_cause,
+        )
+        _write_json(out_dir / "state" / github.STATE_FILE, state.to_json())
     elif plan["decision"] in (CARRY, REFUSED):
         previous = retry.State.from_json(plan["previous_state"]) if plan.get("previous_state") else None
         final = report.carried(plan) if plan["decision"] == CARRY else report.refused(plan)
@@ -1597,6 +1659,7 @@ def _parser() -> argparse.ArgumentParser:
     finalize.add_argument("--out-dir", required=True)
     finalize.add_argument("--classification")
     finalize.add_argument("--workspace")
+    finalize.add_argument("--omp-install", choices=(OMP_INSTALLED, OMP_INSTALL_FAILED), default=OMP_INSTALLED)
     finalize.set_defaults(handler=command_finalize)
     guard = commands.add_parser("guard")
     guard.add_argument("--plan", required=True)

@@ -154,6 +154,17 @@ def test_missing_exempt_paths_defaults_to_empty() -> None:
     assert parse_policy(raw).classifier.exempt_paths == ()
 
 
+def test_evidence_exempt_paths_parsed_and_defaults_to_empty() -> None:
+    raw = _raw()
+    policy = parse_policy(raw)
+    assert "README*.md" in policy.evidence.exempt_paths
+    raw.pop("evidence", None)
+    assert parse_policy(raw).evidence.exempt_paths == ()
+    raw["evidence"] = {"exempt_paths": "not-a-list"}
+    with pytest.raises(PolicyError, match="evidence exempt_paths must be a string list"):
+        parse_policy(raw)
+
+
 @pytest.mark.parametrize("effort", ["off", "minimal", "low", "medium", "high", "xhigh", "max", "auto", ""])
 def test_known_effort_levels_are_accepted(effort: str) -> None:
     raw = _raw()
@@ -166,3 +177,26 @@ def test_shadow_and_enforce_modes_are_accepted(mode: str) -> None:
     raw = _raw()
     raw["mode"] = mode
     assert parse_policy(raw).mode == mode
+
+
+def test_the_policy_carries_the_pinned_hash_of_every_platform_build(policy: Policy) -> None:
+    builds = _raw()["omp"]["builds"]
+    assert dict(policy.omp_sha256) == {name: build["sha256"] for name, build in builds.items()}
+
+
+def test_a_policy_with_a_bad_build_key_is_rejected() -> None:
+    data = _raw()
+    data["omp"]["builds"]["../evil-x64"] = data["omp"]["builds"]["linux-x64"]
+    with pytest.raises(PolicyError, match="not a platform name"):
+        parse_policy(data)
+
+
+def test_a_plan_carries_the_hash_pinned_for_the_running_platform(
+    policy: Policy, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from _project.scripts.oracle_reviewers import cli, omp_pin
+
+    monkeypatch.setattr(omp_pin, "current_platform", lambda: "linux-x64")
+    assert cli._base_plan(policy, "o/r", 7, "x")["omp_sha256"] == _raw()["omp"]["builds"]["linux-x64"]["sha256"]
+    monkeypatch.setattr(omp_pin, "current_platform", lambda: "plan9-mips")
+    assert cli._base_plan(policy, "o/r", 7, "x")["omp_sha256"] == ""

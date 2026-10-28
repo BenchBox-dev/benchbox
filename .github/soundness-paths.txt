@@ -102,6 +102,7 @@ file	.github/oracle-reviewers.yml
 file	.github/oracle-omp-config.yml
 file	_project/scripts/oracle_gateway_host.sh
 prefix	_project/scripts/oracle_reviewers/
+prefix	tests/integration/oracle/
 file	_project/scripts/ruleset_review_enforcement.py
 file	scripts/ruleset_drift_check.py
 file	.github/soundness-paths.txt
@@ -167,3 +168,5 @@ file	scripts/comment_policy_entry.py
 file	.github/workflows/comment-policy-nightly.yml
 file	_project/scripts/soundness_merge_digest.py
 file	.github/workflows/soundness-merge-digest.yml
+file	.gitattributes
+glob	*/.gitattributes
