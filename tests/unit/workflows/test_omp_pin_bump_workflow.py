@@ -47,10 +47,10 @@ def test_the_bump_check_runs_daily_and_on_demand_and_only_in_the_main_repository
     assert job()["if"] == "github.repository == 'BenchBox-dev/BenchBox'"
 
 
-def test_the_job_holds_only_contents_and_pull_request_write_and_the_workflow_defaults_to_read() -> None:
+def test_the_opener_holds_only_actions_contents_and_pull_request_write_and_the_workflow_defaults_to_read() -> None:
     assert load()["permissions"] == {"contents": "read"}
     assert job()["permissions"] == {"contents": "read"}
-    assert opener_job()["permissions"] == {"contents": "write", "pull-requests": "write"}
+    assert opener_job()["permissions"] == {"actions": "write", "contents": "write", "pull-requests": "write"}
 
 
 def test_every_action_is_pinned_to_a_commit_and_develop_is_what_gets_checked_out() -> None:
@@ -74,9 +74,18 @@ def test_a_pull_request_opens_only_for_a_ready_candidate_and_never_twice_for_one
     assert opener_job()["needs"] == "bump"
     opener = opener_steps()["Open the bump pull request"]
     text = opener["run"]
-    assert len(re.findall(r"gh pr create", text)) == 1
-    assert 'gh pr list --head "$BRANCH" --state all' in text
-    assert "--base develop" in text and 'BRANCH="chore/omp-pin-${VERSION}"' in text
+    assert len(re.findall(r"--method POST \"repos/\$\{GITHUB_REPOSITORY\}/pulls\"", text)) == 1
+    assert "pulls?state=all&head=" in text
+    assert "-f base=develop" in text and 'BRANCH="chore/omp-pin-${VERSION}"' in text
+
+
+def test_the_opener_starts_the_review_itself_because_the_job_token_cannot_trigger_pull_request_events() -> None:
+    text = opener_steps()["Open the bump pull request"]["run"]
+    assert len(re.findall(r"gh workflow run oracle-verdict\.yml", text)) == 1
+    assert '--ref develop -f pr="$PR" -f head="$HEAD_SHA"' in text
+    assert "workflows/oracle-verdict.yml/runs" in text
+    assert text.index("workflows/oracle-verdict.yml/runs") < text.index("gh workflow run")
+    assert "ORACLE_APP" not in WORKFLOW.read_text(encoding="utf-8")
 
 
 def test_the_pull_request_changes_only_the_policy_file_and_nothing_merges_or_pushes_to_develop() -> None:

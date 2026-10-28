@@ -1019,6 +1019,20 @@ and the `--help` difference from the previous build. A red candidate opens
 nothing: the old pin stands and the run fails with the suite output in its
 summary. `make omp-bump-prepare` runs the same preparation locally.
 
+GitHub does not start `pull_request_target` workflows for a pull request the
+job token opens, and the sweep never bootstraps a pull request with no state or
+prior run, so the bump job starts the review itself. Right after it opens the
+pull request (or finds the `chore/omp-pin-<version>` pull request still open) it
+checks the `oracle-verdict` run titles for the pull request's current head and,
+when none names it, runs `gh workflow run oracle-verdict.yml --ref develop -f
+pr=<number> -f head=<sha>` with the same job token. A token-started
+`workflow_dispatch` is the one event GitHub does not suppress, so the job needs
+only `actions: write` beyond its existing grants and no App credential. A
+rerun of the bump job therefore reviews a head that has none, such as one left
+behind by a failed dispatch, and never starts a second run for a head that has
+one; a closed bump pull request is left alone. The workflow is classified as
+gate machinery, so a change to it is reviewed at the gate tier.
+
 The owner runs `make omp-candidate-check VERSION=<version>` on the Mac
 (darwin-arm64) from the bump's branch and posts the `Omp candidate check:` line
 it prints as a comment. The repository's arming helpers (`make pr-arm`,

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+from _project.scripts.oracle_reviewers import omp_bump, omp_pin
+
 from .harness import CHECKER, Harness
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
@@ -71,3 +73,65 @@ def test_a_pin_with_a_path_character_build_key_stops_the_plan(harness: Harness) 
     assert "not a platform name" in run.steps["plan"].stderr
     assert harness.github.oracle_statuses(harness.github.pulls[73]["head"]["sha"]) == []
     assert harness.omp_calls() == 0
+
+
+BUMP_VERSION = "18.99.0"
+BUMP_BRANCH = f"chore/omp-pin-{BUMP_VERSION}"
+VERDICT = "oracle-verdict.yml"
+
+
+def _bumped_policy(harness: Harness) -> str:
+    text = harness.policy_file.read_text(encoding="utf-8")
+    pin = omp_pin.pin_from_text(text)
+    digests = {target: f"{index:02x}" * 32 for index, target in enumerate(sorted(pin.builds), start=10)}
+    bumped = omp_pin.Pin(BUMP_VERSION, {t: omp_pin.Build(b.url, digests[t]) for t, b in pin.builds.items()})
+    return omp_bump.replace_pin(text, bumped)
+
+
+def test_a_new_bump_pull_request_is_opened_and_its_review_is_dispatched_for_its_head(harness: Harness) -> None:
+    opened = harness.open_bump_pull(BUMP_VERSION, _bumped_policy(harness))
+
+    assert opened.code == 0, opened.stdout + opened.stderr
+    [pull] = harness.github.pulls.values()
+    assert pull["title"] == f"chore(oracle): pin omp {BUMP_VERSION}"
+    assert pull["head"]["ref"] == BUMP_BRANCH
+    assert harness.github.dispatches == [
+        {"workflow": VERDICT, "ref": "develop", "inputs": {"pr": str(pull["number"]), "head": pull["head"]["sha"]}}
+    ]
+
+
+def test_a_rerun_reviews_a_bump_head_only_once_and_reviews_a_moved_head(harness: Harness) -> None:
+    policy = _bumped_policy(harness)
+    harness.open_bump_pull(BUMP_VERSION, policy)
+    [pull] = harness.github.pulls.values()
+    number, first = pull["number"], pull["head"]["sha"]
+    harness.github.add_run(VERDICT, event="workflow_dispatch", pr=number, head_sha="d" * 40, title_head=first)
+
+    settled = harness.open_bump_pull(BUMP_VERSION, policy)
+
+    assert settled.code == 0, settled.stdout + settled.stderr
+    assert "already has a review run" in settled.stdout
+    assert len(harness.github.dispatches) == 1
+    assert len(harness.github.pulls) == 1
+
+    moved = harness.push(BUMP_BRANCH, {"NOTES.md": "adjusted\n"}, "retune the bump")
+    again = harness.open_bump_pull(BUMP_VERSION, policy)
+
+    assert again.code == 0, again.stdout + again.stderr
+    assert [item["inputs"]["head"] for item in harness.github.dispatches] == [first, moved]
+    assert len(harness.github.pulls) == 1
+
+
+def test_a_closed_bump_pull_request_is_neither_reopened_nor_reviewed(harness: Harness) -> None:
+    policy = _bumped_policy(harness)
+    harness.open_bump_pull(BUMP_VERSION, policy)
+    [pull] = harness.github.pulls.values()
+    pull["state"] = "closed"
+    harness.github.dispatches.clear()
+
+    rerun = harness.open_bump_pull(BUMP_VERSION, policy)
+
+    assert rerun.code == 0, rerun.stdout + rerun.stderr
+    assert "closed pull request" in rerun.stdout
+    assert harness.github.dispatches == []
+    assert len(harness.github.pulls) == 1

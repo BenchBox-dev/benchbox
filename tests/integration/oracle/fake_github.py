@@ -381,6 +381,7 @@ class FakeGitHub:
     def _repo_routes(self) -> list[tuple[str, str, Route]]:
         return [
             ("GET", "/?", lambda request, match: (200, {"full_name": self.slug, "default_branch": "develop"}, {})),
+            ("POST", "/pulls", self._create_pull),
             ("GET", r"/pulls/(\d+)", self._pull),
             ("GET", "/pulls", self._pull_list),
             ("GET", r"/pulls/(\d+)/files", lambda request, match: self._page(self.files(int(match[1])), request)),
@@ -431,6 +432,19 @@ class FakeGitHub:
             return 200, self.diff(number), {"Content-Type": "text/plain; charset=utf-8"}
         self.refresh(number)
         return 200, self.pulls[number], {}
+
+    def _create_pull(self, request: Request, match: re.Match[str]) -> Response:
+        payload = request.json()
+        number = max(self.pulls, default=0) + 1
+        pull = self.open_pull(
+            number,
+            payload["head"],
+            payload["base"],
+            title=payload["title"],
+            body=payload.get("body", ""),
+            user={"login": "github-actions[bot]", "type": "Bot"},
+        )
+        return 201, pull, {}
 
     def _pull_list(self, request: Request, match: re.Match[str]) -> Response:
         query = request.query
