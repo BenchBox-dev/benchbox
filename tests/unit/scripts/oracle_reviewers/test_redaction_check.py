@@ -77,19 +77,17 @@ def test_sanitize_accepts_a_marker_without_a_secret(tmp_path: Path, monkeypatch:
 
 
 @pytest.mark.parametrize("data", ["AAAA", "eJwDAAAAAAE"])
-def test_sanitize_fails_closed_on_a_marker_it_cannot_decode(tmp_path: Path, data: str) -> None:
+def test_sanitize_ignores_marker_shaped_text_no_reader_can_decode(tmp_path: Path, data: str) -> None:
     path = tmp_path / "review.json"
-    path.write_text(json.dumps({"body": f"Body\n\n<!-- oracle-protocol: v1 {data} -->"}), encoding="utf-8")
-    with pytest.raises(redaction_check.Unredactable):
-        redaction_check.sanitize(path, ())
+    path.write_text(json.dumps({"detail": f"quoted <!-- oracle-protocol: v1 {data} -->"}), encoding="utf-8")
+    assert redaction_check.sanitize(path, ()) is False
 
 
-def test_sanitize_fails_closed_on_a_marker_that_inflates_past_the_limit(tmp_path: Path) -> None:
-    import base64
-    import zlib
-
-    packed = base64.urlsafe_b64encode(zlib.compress(b'"' + b"a" * (2 << 20) + b'"', 9)).decode("ascii").rstrip("=")
+def test_sanitize_ignores_marker_shaped_text_that_is_not_the_trailing_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OMP_GATEWAY_TOKEN", TOKEN)
+    quoted = _marked(f"see {TOKEN}").split("\n\n", 1)[1]
     path = tmp_path / "review.json"
-    path.write_text(json.dumps({"body": f"<!-- oracle-protocol: v1 {packed} -->"}), encoding="utf-8")
-    with pytest.raises(redaction_check.Unredactable):
-        redaction_check.sanitize(path, ())
+    path.write_text(json.dumps({"detail": f"{quoted}\nand then more text"}), encoding="utf-8")
+    assert redaction_check.sanitize(path, ()) is False

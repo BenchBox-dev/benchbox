@@ -53,8 +53,7 @@ MARKER_LIMIT = 4096
 MARKER_TRIMS = ((120, 120), (80, 80), (50, 60), (32, 40), (24, 24))
 MARKER_OPEN = "<!-- oracle-protocol:"
 _MARKER = re.compile(r"<!-- oracle-protocol: v1 (?P<data>[A-Za-z0-9_-]+) -->\s*\Z")
-_ANY_MARKER = re.compile(r"<!-- oracle-protocol: v[0-9]+ (?P<data>[A-Za-z0-9_-]+) -->")
-MARKER_INFLATE_LIMIT = 1 << 20
+MARKER_INFLATE_LIMIT = 64 << 20
 DEFECT_ID = re.compile(r"D([1-9][0-9]{0,3})")
 NOT_COUNTED_LIMIT = 5
 PATCH_HEX = 16
@@ -299,19 +298,17 @@ def decode_marker(body: str) -> dict[str, Any] | None:
     return {**record, "open_defects": [_clamped(item) for item in record["open_defects"]]}
 
 
-def marker_payloads(text: str) -> list[Any]:
-    found: list[Any] = []
-    for match in _ANY_MARKER.finditer(text):
-        data = match.group("data")
-        try:
-            inflater = zlib.decompressobj()
-            raw = inflater.decompress(base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)), MARKER_INFLATE_LIMIT)
-            if not inflater.eof:
-                raise MarkerError("a protocol marker is larger than it may inflate")
-            found.append(json.loads(raw))
-        except (binascii.Error, ValueError, zlib.error) as exc:
-            raise MarkerError(f"a protocol marker cannot be decoded: {exc}") from exc
-    return found
+def marker_payload(text: str) -> Any:
+    match = _MARKER.search(text)
+    if match is None:
+        return None
+    data = match.group("data")
+    try:
+        inflater = zlib.decompressobj()
+        raw = inflater.decompress(base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)), MARKER_INFLATE_LIMIT)
+        return json.loads(raw) if inflater.eof else None
+    except (binascii.Error, ValueError, zlib.error):
+        return None
 
 
 def _review_time(value: Any) -> datetime | None:

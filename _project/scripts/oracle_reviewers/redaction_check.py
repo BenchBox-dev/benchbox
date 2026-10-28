@@ -66,7 +66,8 @@ def redact(value: Any, extra: tuple[str, ...]) -> Any:
 def _strings(value: Any) -> Iterator[str]:
     if isinstance(value, str):
         yield value
-        for payload in protocol.marker_payloads(value):
+        payload = protocol.marker_payload(value)
+        if payload is not None:
             yield from _strings(payload)
             yield from _keys(payload)
     elif isinstance(value, list):
@@ -96,10 +97,7 @@ def sanitize(path: Path, extra: tuple[str, ...]) -> bool:
         raise Unredactable(path) from exc
     cleaned = redact(data, extra)
     text = json.dumps(cleaned, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    try:
-        remaining = (*_keys(cleaned), *_strings(cleaned), text)
-    except protocol.MarkerError as exc:
-        raise Unredactable(path) from exc
+    remaining = (*_keys(cleaned), *_strings(cleaned), text)
     if any(credentials.contains(item, extra) for item in remaining):
         raise Unredactable(path)
     changed = cleaned != data
