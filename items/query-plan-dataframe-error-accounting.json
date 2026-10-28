@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Force a native explain/logical-plan acquisition failure for each capture helper; the benchmark query may still succeed in non-strict mode, but the result and persisted bundle report capture failure with the original cause and do not count the error wrapper as a captured plan.",
+    "A failed capture is not hidden by another successful stream/phase variant of the same query ID; define and consistently apply capture identity/count semantics without changing ordinary repeated-query deduplication accidentally.",
+    "Adapter reuse resets capture error/warning state per run, and configured strict behavior is respected without double-executing the benchmark query.",
+    "Regression tests cover helper-caught exceptions through actual profiling, mixin processing, statistics and serialization rather than only exceptions thrown outside the helper."
+  ],
+  "context": "Source-backed defect hypothesis from 2026-10-28; helper-error-to-persisted-count path was not exercised at runtime. Reproduce before changing. Prior completed qpc-15 addressed error persistence/reset generally; this item targets caught helper errors retained as non-None plan objects and same-ID masking.",
+  "description": "capture_polars_plan, capture_datafusion_plan and capture_pyspark_plan catch exceptions and return a truthy QueryPlan(plan_type=\"error\"). _structure_dataframe_plan explicitly retains error wrappers. compute_plan_capture_stats treats any non-None query_plan as captured, so these acquisition failures can appear as successful captures and their cause can bypass the existing error channel. ID-only set accounting can also mask a failed variant when another execution of the same query ID has a plan. Verify these paths and route genuine failures through the existing persisted error contract.",
+  "links": [
+    "benchbox/core/dataframe/profiling.py:378-442",
+    "benchbox/platforms/dataframe/benchmark_mixin.py:1123-1180",
+    "benchbox/core/results/schema.py:1170-1211",
+    "todo:qpc-15-dataframe-capture-error-persistence"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bb7fd2d6b114a6501df93f97",
+      "at": "2026-10-28T12:03:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "89028ffd52fb429c9cd8c5e6400474c0",
+      "session_id": "90f8a9b97a794a8c8bea2c314f5cccc5"
+    }
+  ]
+}

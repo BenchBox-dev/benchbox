@@ -19943,6 +19943,13 @@
       "status": "open",
       "title": "Close DataFrame query-plan capture and fingerprint integration gaps"
     },
+    "query-plan-dataframe-error-accounting": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Report DataFrame plan-capture error wrappers as failures"
+    },
     "query-plan-documentation-testing": {
       "claim": null,
       "needs": [],
