@@ -9176,7 +9176,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Make explorer/results.duckdb build byte-identical from identical bundle inputs"
     },
     "docs-mig-followup-guards-fix-stale-compat-targets-20261028": {
