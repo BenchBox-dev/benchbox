@@ -30,6 +30,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 FIXTURES = omp_candidate.FIXTURE_DIR
 STATIC = json.loads((FIXTURES / "static_outputs.json").read_text(encoding="utf-8"))
 VERSION = "18.12.1"
+OTHER = "unlisted-host-platform"
 SCRIPT = (
     "#!{python}\n"
     "import json, sys\n"
@@ -445,7 +446,7 @@ def _pin_for_host(binary: Path, *, only_host: bool = False, **overrides: str) ->
     host = omp_pin.Build("https://downloads.example.invalid/omp", overrides.get("host", digest))
     builds = {omp_pin.current_platform(): host}
     if not only_host:
-        builds["linux-arm64"] = omp_pin.Build("https://downloads.example.invalid/other", overrides.get("other", digest))
+        builds[OTHER] = omp_pin.Build("https://downloads.example.invalid/other", overrides.get("other", digest))
     return omp_pin.Pin(VERSION, builds)
 
 
@@ -464,14 +465,14 @@ def test_a_platform_that_was_only_hash_checked_is_unverified_and_never_green(tmp
         chain_factory=lambda *_: _chain_from(_good_runs()),
     )
     assert report.passed and not report.ok
-    assert {build.target for build in report.builds} == {omp_pin.current_platform(), "linux-arm64"}
-    assert report.unverified == ("linux-arm64",)
+    assert {build.target for build in report.builds} == {omp_pin.current_platform(), OTHER}
+    assert report.unverified == (OTHER,)
     assert {build.target: build.probed for build in report.builds} == {
         omp_pin.current_platform(): True,
-        "linux-arm64": False,
+        OTHER: False,
     }
     assert "result: partial" in report.render()
-    assert "linux-arm64: sha256=" in report.render()
+    assert f"{OTHER}: sha256=" in report.render()
 
 
 def test_a_run_limited_to_some_platforms_is_partial_and_never_green(tmp_path: Path) -> None:
@@ -483,9 +484,9 @@ def test_a_run_limited_to_some_platforms_is_partial_and_never_green(tmp_path: Pa
         chain_factory=lambda *_: _chain_from(_good_runs()),
     )
     assert report.passed and not report.ok
-    assert report.unverified == ("linux-arm64",)
+    assert report.unverified == (OTHER,)
     assert "result: partial" in report.render()
-    assert report.to_json()["unverified_platforms"] == ["linux-arm64"]
+    assert report.to_json()["unverified_platforms"] == [OTHER]
 
 
 def test_a_platform_build_that_does_not_hash_to_the_pin_turns_the_report_red(tmp_path: Path) -> None:
@@ -496,7 +497,7 @@ def test_a_platform_build_that_does_not_hash_to_the_pin_turns_the_report_red(tmp
         chain_factory=lambda *_: _chain_from(_good_runs()),
     )
     assert not report.ok
-    assert [build.target for build in report.builds if not build.ok] == ["linux-arm64"]
+    assert [build.target for build in report.builds if not build.ok] == [OTHER]
     assert "MISMATCH" in report.render()
 
 
