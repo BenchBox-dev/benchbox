@@ -1,7 +1,8 @@
 {
   "acceptance": [
     "make pr-open or oracle planning detects a base sha that is not the merge base with origin/develop and either refreshes it or fails with a clear message",
-    "Test covers the stale-base case"
+    "Test covers the stale-base case",
+    "Adds or updates the matching scenario in tests/integration/oracle (registered in ORACLE_SCENARIO_TESTS), proven to fail with this item's defect reintroduced; the scenario runs only the fake omp executable and fake servers, never a real omp or model-provider call."
   ],
   "context": "2026-10-27: FREEZE LIFTED (owner 2026-10-27): the oracle-code merge freeze is removed; PRs merge on the normal rules (oracle SHIP on the exact head, threads answered and resolved, make pr-arm).\n\nWorkaround used: close and reopen. Evidence is a single occurrence.",
   "description": "PR #3109 (head a6acef0d9) was pushed after its branch had been merged with a newer develop. The GitHub API kept reporting an old base (base sha 27f7a7d1f, changed_files 481, additions 14532, 46 commits) while the real change against origin/develop was 11 files. gh pr diff failed with HTTP 406 (over 300 files) and the oracle planned tier very-high ('2247 code lines across 13 areas', soundness paths touched). After gh pr close then gh pr reopen the API reported base 0f5ed3aa7, 11 files, 4 commits and the oracle reported 'no soundness path changed'. Cause not established: it may be GitHub's lazy recomputation rather than anything BenchBox does. Related: oracle-coverage-gate-large-prs-20261017 covers oracle handling of genuinely large PRs; this item is about a wrongly large PR.",
@@ -48,6 +49,14 @@
       "op": "update",
       "op_id": "b6a27e1fd88749fb806c7d11dd1a3acb",
       "session_id": "4f0513ce55e64abf8ac9a3fc4d4ded4c"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:4d1c216a121363560797b702",
+      "at": "2026-10-28T17:19:41Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "f8f0ef9d8ad3497ca530a407a64bc9d3",
+      "session_id": "f2ea81a526d74429861bc01fff72f167"
     }
   ]
 }
