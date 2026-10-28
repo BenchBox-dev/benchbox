@@ -17334,12 +17334,17 @@
       "title": "Oracle reviews, status and workflow are still named \"oracle-review-shadow\" after it became the required reviewer"
     },
     "oracle-verdict-oauth-tailnet-join-20261026": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-10-29T17:07:26Z",
+        "generation": "a99f3003bfa34910809352942d7ee418",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a1b3362c09536f35d316a0a5"
+      },
       "needs": [
         "oracle-omp-pin-single-source-20261026"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Join the tailnet with a step-scoped OAuth secret and drop id-token: write from the oracle verdict job"
     },
     "oracle-verdict-single-job-20261025": {
