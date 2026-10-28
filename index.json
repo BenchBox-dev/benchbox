@@ -9160,6 +9160,13 @@
       "status": "open",
       "title": "Guard the TypeScript documentation generators against regressions now that docs:parity is not applicable"
     },
+    "docs-mig-followup-schema5-rollback-rehearsal-20261028": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Rehearse a deploy rollback to a retained receipt now that production serves schema 5"
+    },
     "docs-mig-followup-site-dead-link-precheck-for-core-deletions-20261028": {
       "claim": null,
       "needs": [],
