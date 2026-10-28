@@ -2563,13 +2563,17 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 1
+    "pattern": 2
    },
-   "occurrences": 3,
+   "occurrences": 4,
    "path": "tests/fixtures/fast_tier_baseline/tests-00.json",
    "rule": "test-sample-data",
-   "target_count": 2,
+   "target_count": 3,
    "targets": [
+    {
+     "kind": "pattern",
+     "target": "docs/.gitattributes]"
+    },
     {
      "kind": "pattern",
      "target": "docs/reference/threat-model.md]"
@@ -2583,14 +2587,14 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "extra": 1,
+    "extra": 2,
     "file": 1,
     "pattern": 6
    },
-   "occurrences": 10,
+   "occurrences": 11,
    "path": "tests/fixtures/fast_tier_baseline/tests-01.json",
    "rule": "test-sample-data",
-   "target_count": 8,
+   "target_count": 9,
    "targets": [
     {
      "kind": "extra",
@@ -2623,6 +2627,10 @@
     {
      "kind": "file",
      "target": "docs/usage/getting-started.md"
+    },
+    {
+     "kind": "extra",
+     "target": "scripts/check_docs_ownership.py"
     }
    ]
   },
@@ -2675,26 +2683,19 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "extra": 1,
     "file": 1,
-    "pattern": 7,
+    "pattern": 4,
     "unresolved": 1
    },
-   "occurrences": 11,
+   "occurrences": 9,
    "path": "tests/fixtures/fast_tier_baseline/tests-03.json",
    "rule": "test-sample-data",
-   "target_count": 9,
+   "target_count": 7,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs//page.md-unsafe"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/benchmarks/queries/q1.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/development/adr/adr-public-result-id-permanence.md]"
     },
     {
      "kind": "pattern",
@@ -2709,16 +2710,16 @@
      "target": "docs/publish-exclusions.txt]"
     },
     {
-     "kind": "pattern",
-     "target": "docs/reference/hosted-results-contract.md]"
-    },
-    {
      "kind": "file",
      "target": "docs/usage/getting-started.md"
     },
     {
      "kind": "pattern",
      "target": "docs/uv.lock]"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -2726,16 +2727,24 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 2
+    "pattern": 4
    },
-   "occurrences": 3,
+   "occurrences": 5,
    "path": "tests/fixtures/fast_tier_baseline/tests-04.json",
    "rule": "test-sample-data",
-   "target_count": 3,
+   "target_count": 5,
    "targets": [
     {
      "kind": "pattern",
      "target": "docs/blog/post.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/adr/adr-duckdb-datasketches-vendoring.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/internal/site-deploy.md]"
     },
     {
      "kind": "pattern",
@@ -2751,17 +2760,21 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 2,
+    "pattern": 3,
     "unresolved": 1
    },
-   "occurrences": 5,
+   "occurrences": 6,
    "path": "tests/fixtures/fast_tier_baseline/tests-05.json",
    "rule": "test-sample-data",
-   "target_count": 4,
+   "target_count": 5,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs/../outside.md-unsafe"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/a/conf.yaml]"
     },
     {
      "kind": "pattern",
@@ -2818,13 +2831,13 @@
    "disposition": "fixture-data",
    "kinds": {
     "file": 1,
-    "pattern": 4,
+    "pattern": 7,
     "unresolved": 1
    },
-   "occurrences": 6,
+   "occurrences": 9,
    "path": "tests/fixtures/fast_tier_baseline/tests-07.json",
    "rule": "test-sample-data",
-   "target_count": 6,
+   "target_count": 9,
    "targets": [
     {
      "kind": "unresolved",
@@ -2832,7 +2845,19 @@
     },
     {
      "kind": "pattern",
+     "target": "docs/a/b/guide.md]"
+    },
+    {
+     "kind": "pattern",
      "target": "docs/agent/review-protocol.md]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/gen.py]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/guide.md]"
     },
     {
      "kind": "pattern",
@@ -4455,14 +4480,14 @@
   "kinds": {
    "built-url": 29042,
    "dir": 163,
-   "extra": 35,
+   "extra": 37,
    "file": 1384,
    "generated": 3,
-   "pattern": 329,
+   "pattern": 333,
    "root": 204,
    "unresolved": 2084
   },
-  "references": 33244,
+  "references": 33250,
   "unclassified": 0
  }
 }
