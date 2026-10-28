@@ -327,6 +327,18 @@ def test_gate_allows_when_the_newest_completed_run_is_not_red(conclusion: str) -
     assert _gate(_runs(("completed", conclusion, timedelta(hours=1)))) is None
 
 
+@pytest.mark.parametrize("conclusion", ["cancelled", "neutral", "skipped", "action_required", "stale"])
+def test_gate_looks_through_a_newer_non_decisive_run_to_an_older_red(conclusion: str) -> None:
+    refusal = _gate(
+        _runs(
+            ("completed", conclusion, timedelta(minutes=5)),
+            ("completed", "failure", timedelta(minutes=45)),
+        )
+    )
+    assert refusal is not None
+    assert "red for 45 minutes" in refusal
+
+
 def test_gate_orders_by_creation_even_when_an_older_run_finishes_later() -> None:
     runs = _runs(
         ("completed", "failure", timedelta(hours=3)),
@@ -374,13 +386,84 @@ def test_gate_does_not_look_past_a_success() -> None:
     assert _gate(runs) is None
 
 
-@pytest.mark.parametrize("status", ["queued", "in_progress", "waiting", "pending", "requested"])
-def test_gate_allows_when_the_newest_run_is_pending(status: str) -> None:
+PENDING_STATUSES = ["queued", "in_progress", "waiting", "pending", "requested"]
+
+
+@pytest.mark.parametrize("status", PENDING_STATUSES)
+def test_gate_allows_when_the_newest_run_is_pending_over_a_green_one(status: str) -> None:
+    runs = _runs(
+        (status, None, timedelta(minutes=1)),
+        ("completed", "success", timedelta(hours=1)),
+    )
+    assert _gate(runs) is None
+
+
+@pytest.mark.parametrize("status", PENDING_STATUSES)
+def test_gate_refuses_a_stale_red_even_while_a_newer_run_is_pending(status: str) -> None:
     runs = _runs(
         (status, None, timedelta(minutes=1)),
         ("completed", "failure", timedelta(hours=1)),
     )
+    refusal = _gate(runs)
+    assert refusal is not None
+    assert "red for 60 minutes" in refusal
+
+
+def test_gate_is_cleared_by_a_later_green_that_finished_before_the_earlier_red() -> None:
+    runs = _runs(
+        ("completed", "success", timedelta(hours=2)),
+        ("completed", "failure", timedelta(hours=1)),
+    )
+    runs[0]["createdAt"], runs[1]["createdAt"] = runs[1]["createdAt"], runs[0]["createdAt"]
     assert _gate(runs) is None
+
+
+def test_gate_stays_red_when_the_earlier_green_finishes_after_the_later_red() -> None:
+    runs = _runs(
+        ("completed", "success", timedelta(minutes=5)),
+        ("completed", "failure", timedelta(hours=1)),
+    )
+    runs[0]["createdAt"], runs[1]["createdAt"] = (
+        (NOW - timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        (NOW - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+    assert _gate(runs) is not None
+
+
+@pytest.mark.parametrize("status", PENDING_STATUSES)
+def test_gate_warns_without_blocking_when_the_newest_run_has_waited_over_thirty_minutes(
+    status: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runs = _runs((status, None, timedelta(minutes=45)), ("completed", "success", timedelta(hours=2)))
+    assert _gate(runs) is None
+    err = capsys.readouterr().err
+    assert "warning" in err
+    assert runs[0]["url"] in err
+    assert f"{status} for 46 minutes" in err
+
+
+def test_gate_does_not_warn_when_the_newest_run_is_under_thirty_minutes(capsys: pytest.CaptureFixture[str]) -> None:
+    assert (
+        _gate(_runs(("in_progress", None, timedelta(minutes=28)), ("completed", "success", timedelta(hours=2)))) is None
+    )
+    assert capsys.readouterr().err == ""
+
+
+def test_gate_does_not_warn_when_the_newest_run_is_complete(capsys: pytest.CaptureFixture[str]) -> None:
+    assert _gate(_runs(("completed", "success", timedelta(hours=3)))) is None
+    assert capsys.readouterr().err == ""
+
+
+def test_gate_warns_about_the_newest_run_only(capsys: pytest.CaptureFixture[str]) -> None:
+    runs = _runs(("in_progress", None, timedelta(minutes=5)), ("in_progress", None, timedelta(hours=3)))
+    assert _gate(runs) is None
+    assert capsys.readouterr().err == ""
+
+
+def test_stale_warning_still_accompanies_a_red_refusal(capsys: pytest.CaptureFixture[str]) -> None:
+    runs = _runs(("queued", None, timedelta(minutes=40)), ("completed", "failure", timedelta(hours=1)))
+    assert _gate(runs) is not None
+    assert "queued for 41 minutes" in capsys.readouterr().err
 
 
 def test_gate_exempts_revert_branches() -> None:
@@ -697,7 +780,11 @@ def test_arm_gate_finds_a_streak_start_beyond_the_first_page() -> None:
     message = trunk_revert.arm_gate("fix/thing", run=run)
     assert message is not None
     assert "PR #3200" in message
-    assert [cmd[cmd.index("--limit") + 1] for cmd in run.calls if cmd[:3] == ["gh", "run", "list"]] == ["30", "100"]
+    assert [cmd[cmd.index("--limit") + 1] for cmd in run.calls if cmd[:3] == ["gh", "run", "list"]] == [
+        "30",
+        "30",
+        "100",
+    ]
 
 
 def test_arm_gate_exempts_the_revert_of_a_streak_start_beyond_the_first_page() -> None:
@@ -1103,3 +1190,102 @@ def test_main_gate_opens_a_revert_branch_ready_even_when_develop_has_long_been_r
 ) -> None:
     assert trunk_revert.main(["gate", "--branch", "fix/revert-3380"], run=FixForwardRun([])) == 0
     assert capsys.readouterr().out.strip() == "ready"
+
+
+def _stale_arm_runs(status: str, age: timedelta) -> list[dict]:
+    runs = _runs((status, None, age), ("completed", "success", timedelta(hours=5)))
+    for item in runs:
+        item["headSha"] = "g" * 40
+    return runs
+
+
+@pytest.mark.parametrize("status", PENDING_STATUSES)
+def test_arm_gate_warns_without_blocking_when_the_newest_run_is_stale(
+    status: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runs = _stale_arm_runs(status, timedelta(minutes=90))
+    assert trunk_revert.arm_gate("fix/thing", run=ArmRun(runs), now=NOW) is None
+    err = capsys.readouterr().err
+    assert runs[0]["url"] in err
+    assert f"{status} for 91 minutes" in err
+
+
+def test_arm_gate_is_silent_when_the_newest_run_is_fresh(capsys: pytest.CaptureFixture[str]) -> None:
+    runs = _stale_arm_runs("in_progress", timedelta(minutes=10))
+    assert trunk_revert.arm_gate("fix/thing", run=ArmRun(runs), now=NOW) is None
+    assert capsys.readouterr().err == ""
+
+
+def test_arm_gate_still_refuses_a_red_streak_behind_a_stale_pending_run(capsys: pytest.CaptureFixture[str]) -> None:
+    runs = _streak(None, FIRST_SHA, LATER_SHA)
+    pending = _runs(("in_progress", None, timedelta(minutes=1)))[0]
+    pending["databaseId"], pending["headSha"] = 900, "h" * 40
+    run = ArmRun(runs + [pending], pulls_by_sha={FIRST_SHA: _merged_pulls(3200)})
+    assert trunk_revert.arm_gate("fix/thing", run=run, now=NOW + timedelta(hours=3)) is not None
+    assert "in_progress for" in capsys.readouterr().err
+
+
+def test_arm_gate_does_not_fail_when_the_stale_check_cannot_read_runs(capsys: pytest.CaptureFixture[str]) -> None:
+    run = ArmRun([], runs_code=1)
+    trunk_revert.warn_if_stale(run, trunk_revert.REPOSITORY, NOW)
+    assert capsys.readouterr().err == ""
+
+
+def _out_of_order(*items: tuple[str, str | None, int, int]) -> list[dict]:
+    runs = []
+    for index, (status, conclusion, created_min, finished_min) in enumerate(items):
+        runs.append(
+            {
+                "status": status,
+                "conclusion": conclusion,
+                "createdAt": (NOW - timedelta(minutes=created_min)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "updatedAt": (NOW - timedelta(minutes=finished_min)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "databaseId": 700 + index,
+                "url": f"https://github.com/BenchBox-dev/BenchBox/actions/runs/{700 + index}",
+                "headSha": f"{index:x}" * 40,
+            }
+        )
+    return runs
+
+
+def test_a_later_commit_green_that_finished_first_clears_an_earlier_red_finishing_later() -> None:
+    runs = _out_of_order(("completed", "failure", 200, 5), ("completed", "success", 100, 60))
+    assert trunk_revert.red_streak_start(ArmRun(runs), trunk_revert.REPOSITORY) is None
+
+
+def test_an_earlier_commit_green_finishing_last_does_not_clear_a_later_red() -> None:
+    runs = _out_of_order(("completed", "success", 200, 5), ("completed", "failure", 100, 60))
+    failed = trunk_revert.red_streak_start(ArmRun(runs), trunk_revert.REPOSITORY)
+    assert failed is not None
+    assert failed["databaseId"] == 701
+
+
+def test_a_later_green_clears_a_red_even_with_an_unfinished_run_in_between() -> None:
+    runs = _out_of_order(
+        ("completed", "success", 300, 290),
+        ("completed", "failure", 200, 5),
+        ("in_progress", None, 150, 150),
+        ("completed", "success", 100, 60),
+    )
+    assert trunk_revert.red_streak_start(ArmRun(runs), trunk_revert.REPOSITORY) is None
+
+
+def test_a_red_with_an_unfinished_earlier_run_stays_undetermined_when_it_finishes_first() -> None:
+    runs = _out_of_order(
+        ("completed", "success", 300, 290),
+        ("in_progress", None, 200, 200),
+        ("completed", "failure", 100, 60),
+    )
+    with pytest.raises(trunk_revert.UndeterminedCulpritError):
+        trunk_revert.red_streak_start(ArmRun(runs), trunk_revert.REPOSITORY)
+
+
+def test_the_streak_starts_at_the_earliest_red_when_results_arrive_in_reverse_order() -> None:
+    runs = _out_of_order(
+        ("completed", "success", 300, 290),
+        ("completed", "failure", 200, 5),
+        ("completed", "failure", 100, 60),
+    )
+    failed = trunk_revert.red_streak_start(ArmRun(runs), trunk_revert.REPOSITORY)
+    assert failed is not None
+    assert failed["databaseId"] == 701

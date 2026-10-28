@@ -23,7 +23,9 @@ STREAK_MARK = "@@"
 DRAFT_DECISION = "draft"
 READY_DECISION = "ready"
 GRACE = timedelta(minutes=30)
+STALE_AFTER = timedelta(minutes=30)
 RED_CONCLUSIONS = frozenset({"failure", "timed_out", "startup_failure"})
+DECISIVE_CONCLUSIONS = RED_CONCLUSIONS | {"success"}
 RUN_FIELDS = "conclusion,status,createdAt,updatedAt,databaseId,url,headSha"
 RUN_WINDOW = 30
 RUN_WINDOWS = (RUN_WINDOW, 100, 300, 1000)
@@ -84,6 +86,29 @@ def trunk_runs(run: Runner = live_run, repo: str = REPOSITORY, limit: int = RUN_
         raise TrunkError(f"unreadable gh run list output: {exc}") from exc
 
 
+def stale_run_warning(runs: list[dict], now: datetime | None = None, threshold: timedelta = STALE_AFTER) -> str | None:
+    newest = runs[0] if runs else None
+    if newest is None or newest.get("status") == "completed":
+        return None
+    age = (now or datetime.now(UTC)) - _parse_time(newest["createdAt"])
+    if age <= threshold:
+        return None
+    return (
+        f"the newest {TRUNK_WORKFLOW} run on {BASE_BRANCH} ({newest['url']}) has been {newest.get('status')} for "
+        f"{int(age.total_seconds() // 60)} minutes (over {int(threshold.total_seconds() // 60)}), so "
+        f"{BASE_BRANCH} may be unverified; continuing anyway."
+    )
+
+
+def warn_if_stale(run: Runner, repo: str, now: datetime | None = None) -> None:
+    try:
+        stale = stale_run_warning(trunk_runs(run, repo), now)
+    except TrunkError:
+        return
+    if stale:
+        print(f"trunk-arm-gate: warning: {stale}", file=sys.stderr)
+
+
 def trunk_gate(
     branch: str,
     run: Runner = live_run,
@@ -94,11 +119,18 @@ def trunk_gate(
     if branch.startswith(REVERT_PREFIX):
         return None
     try:
-        newest = trunk_runs(run, repo)[0]
+        runs = trunk_runs(run, repo)
     except TrunkError as exc:
         print(f"trunk-gate: warning: could not read {TRUNK_WORKFLOW} runs ({exc}); not blocking", file=sys.stderr)
         return None
-    if newest.get("status") != "completed" or newest.get("conclusion") not in RED_CONCLUSIONS:
+    stale = stale_run_warning(runs, now)
+    if stale:
+        print(f"trunk-gate: warning: {stale}", file=sys.stderr)
+    newest = next(
+        (item for item in runs if item.get("status") == "completed" and item.get("conclusion") in DECISIVE_CONCLUSIONS),
+        None,
+    )
+    if newest is None or newest.get("conclusion") not in RED_CONCLUSIONS:
         return None
     red_since = _parse_time(newest["updatedAt"])
     age = (now or datetime.now(UTC)) - red_since
@@ -334,8 +366,9 @@ def arm_refusal(
     )
 
 
-def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY) -> str | None:
+def arm_gate(ref: str, run: Runner = live_run, repo: str = REPOSITORY, now: datetime | None = None) -> str | None:
     pr = pr_head(ref, run, repo)
+    warn_if_stale(run, repo, now)
     try:
         failed = red_streak_start(run, repo)
     except NoTrunkRunsError:
